@@ -1,8 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import math
 import sys
 from dials.array_family import flex
-import cPickle as pickle
+import pickle as pickle
 from rstbx.dials_core.integration_core import show_observations
 
 class reduction(object):
@@ -63,7 +68,7 @@ class reduction(object):
     if self.stash_res_filter is not None:  return self.stash_res_filter
     if self.params.significance_filter.apply is True: #------------------------------------
 
-      print >>out, "Step 5. Frame by frame resolution filter"
+      print("Step 5. Frame by frame resolution filter", file=out)
       # Apply an I/sigma filter ... accept resolution bins only if they
       #   have significant signal; tends to screen out higher resolution observations
       #   if the integration model doesn't quite fit
@@ -76,20 +81,20 @@ class reduction(object):
         [min([self.params.significance_filter.n_bins,N_bins_small_set]),
          N_bins_large_set, 1]
       )
-      print >>out, "Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins)
+      print("Total obs %d Choose n bins = %d"%(N_obs_pre_filter,N_bins), file=out)
       bin_results = show_observations(self.measurements, out=sys.stdout, n_bins=N_bins)
 
       if True: # no fuller kapton -- not implemented here,
                # but code can and should be borrowed from cxi.merge
         acceptable_resolution_bins = [
           bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
-        acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+        acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                            if False not in acceptable_resolution_bins[:i+1]]
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])
-        print >> out, "New resolution filter at %7.2f"%imposed_res_filter,self.filename
-        print >> out, "N acceptable bins",N_acceptable_bins
-      print >> out, "Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,self.measurements.size())
+        print("New resolution filter at %7.2f"%imposed_res_filter,self.filename, file=out)
+        print("N acceptable bins",N_acceptable_bins, file=out)
+      print("Old n_obs: %d, new n_obs: %d"%(N_obs_pre_filter,self.measurements.size()), file=out)
       # Finished applying the binwise I/sigma filter---------------------------------------
     else:
       imposed_res_filter=None

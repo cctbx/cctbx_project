@@ -1,13 +1,16 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_restraints
 
+from future import standard_library
+standard_library.install_aliases()
 from mmtbx.secondary_structure import sec_str_master_phil_str, \
   sec_str_master_phil, manager
 import iotbx.pdb
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
-import cStringIO
+import io
 import sys, os
 
 master_phil_str = """
@@ -58,7 +61,7 @@ Usage examples:
 
 Full scope of parameters:
   """
-  print help_msg
+  print(help_msg)
   master_phil.show()
 
 def run (args, params=None, out=sys.stdout, log=sys.stderr) :
@@ -84,7 +87,7 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   assert work_params.format in ["phenix", "phenix_refine", "phenix_bonds",
       "pymol", "refmac", "kinemage", "pdb"]
   if work_params.quiet :
-    out = cStringIO.StringIO()
+    out = io.StringIO()
 
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=pdb_files)
   pdb_structure = iotbx.pdb.input(source_info=None,
@@ -102,10 +105,10 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
 
   if cs is None:
     if corrupted_cs:
-      print >> out, "Symmetry information is corrupted, "
+      print("Symmetry information is corrupted, ", file=out)
     else:
-      print >> out, "Symmetry information was not found, "
-    print >> out, "putting molecule in P1 box."
+      print("Symmetry information was not found, ", file=out)
+    print("putting molecule in P1 box.", file=out)
     from cctbx import uctbx
     atoms = pdb_structure.atoms()
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
@@ -156,7 +159,7 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   #     geometry)
   # hb_b, hb_a = nucleic_acids.get_basepair_hbond_proxies(pdb_hierarchy,
   #     m.params.secondary_structure.nucleic_acid.base_pair)
-  result_out = cStringIO.StringIO()
+  result_out = io.StringIO()
   # prefix_scope="refinement.pdb_interpretation"
   # prefix_scope=""
   prefix_scope=""
@@ -178,17 +181,17 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
       "# These parameters are suitable for use in phenix.refine only.",
       "# To use them in other Phenix tools remove ",
       "# 'refinement.' if front of pdb_interpretation."])
-    print >> result_out, comment
+    print(comment, file=result_out)
     if (prefix_scope != "") :
-      print >> result_out, "%s {" % prefix_scope
+      print("%s {" % prefix_scope, file=result_out)
     if work_params.show_all_params :
       working_phil.show(prefix="  ", out=result_out)
     else :
       phil_diff.show(prefix="  ", out=result_out)
     if (prefix_scope != "") :
-      print >> result_out, "}"
+      print("}", file=result_out)
   elif work_params.format == "pdb":
-    print >> result_out, m.actual_sec_str.as_pdb_str()
+    print(m.actual_sec_str.as_pdb_str(), file=result_out)
   elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage"] :
@@ -208,12 +211,12 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
       else :
         bonds_in_format = hb_proxies.as_refmac_restraints(
             pdb_hierarchy=pdb_hierarchy)
-      print >> result_out, bonds_in_format
+      print(bonds_in_format, file=result_out)
     if hb_angle_proxies.size() > 0:
       if work_params.format == "pymol":
         angles_in_format = hb_angle_proxies.as_pymol_dashes(
             pdb_hierarchy=pdb_hierarchy)
-        print >> result_out, angles_in_format
+        print(angles_in_format, file=result_out)
   result = result_out.getvalue()
   out_prefix = os.path.basename(work_params.file_name[0])
   if work_params.output_prefix is not None:
@@ -224,7 +227,7 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   outf = open(filename, "w")
   outf.write(result)
   outf.close()
-  print >> out, result
+  print(result, file=out)
 
   return os.path.abspath(filename)
 

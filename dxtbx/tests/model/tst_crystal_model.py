@@ -1,6 +1,12 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import map
+from builtins import range
 import math
-from cStringIO import StringIO
+from io import StringIO
 from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 from cctbx import crystal, sgtbx, uctbx
@@ -9,10 +15,10 @@ from dxtbx.model import Crystal, MosaicCrystalKabsch2010, MosaicCrystalSauter201
 def random_rotation():
   import random
   from scitbx.math import euler_angles_as_matrix
-  return euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
+  return euler_angles_as_matrix([random.uniform(0,360) for i in range(3)])
 
 def exercise_crystal_model_from_mosflm_matrix():
-  mosflm_matrix = map(float, ''' -0.00495480 -0.01491776  0.00238445
+  mosflm_matrix = list(map(float, ''' -0.00495480 -0.01491776  0.00238445
   0.01505572 -0.00661190 -0.00149401
   0.00585043  0.00438127  0.00586415
        0.000       0.000       0.000
@@ -20,7 +26,7 @@ def exercise_crystal_model_from_mosflm_matrix():
    0.8911171  -0.3913446  -0.2296951
    0.3462750   0.2593185   0.9015806
      57.7822     57.7822    150.0931     90.0000     90.0000     90.0000
-       0.000       0.000       0.000'''.split())
+       0.000       0.000       0.000'''.split()))
   A = mosflm_matrix[:9]
   unit_cell = uctbx.unit_cell(mosflm_matrix[21:27])
   cm = CrystalFactory.from_mosflm_matrix(A, unit_cell=unit_cell)
@@ -77,7 +83,7 @@ def exercise_crystal_model():
   assert approx_equal(b_, R * real_space_b)
   assert approx_equal(c_, R * real_space_c)
   s = StringIO()
-  print >> s, model
+  print(model, file=s)
   assert not show_diff(s.getvalue().replace("-0.0000", " 0.0000"), """\
 Crystal:
     Unit cell: (10.000, 11.000, 12.000, 90.000, 90.000, 90.000)
@@ -124,12 +130,12 @@ Crystal:
   assert approx_equal(model_ref.get_A(), model_ref.get_B())
   assert approx_equal(model_ref.get_unit_cell().parameters(),
                       (44,44,44,90,90,90))
-  a_ref, b_ref, c_ref = map(matrix.col, model_ref.get_real_space_vectors())
+  a_ref, b_ref, c_ref = list(map(matrix.col, model_ref.get_real_space_vectors()))
   cb_op_to_primitive = sgi_ref.change_of_basis_op_to_primitive_setting()
   model_primitive = model_ref.change_basis(cb_op_to_primitive)
   cb_op_to_reference = model_primitive.get_space_group().info()\
     .change_of_basis_op_to_reference_setting()
-  a_prim, b_prim, c_prim = map(matrix.col, model_primitive.get_real_space_vectors())
+  a_prim, b_prim, c_prim = list(map(matrix.col, model_primitive.get_real_space_vectors()))
   #print cb_op_to_primitive.as_abc()
   ##'-1/2*a+1/2*b+1/2*c,1/2*a-1/2*b+1/2*c,1/2*a+1/2*b-1/2*c'
   assert approx_equal(a_prim, -1/2 * a_ref + 1/2 * b_ref + 1/2 * c_ref)
@@ -353,7 +359,7 @@ def exercise_check_old_vs_new():
   assert approx_equal(cell_volume_sd_1, cell_volume_sd_2)
   assert approx_equal(cell_sd_1, cell_sd_2)
 
-  print 'OK'
+  print('OK')
 
 def run():
   exercise_crystal_model()

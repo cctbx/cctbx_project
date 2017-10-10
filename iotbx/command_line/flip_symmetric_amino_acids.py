@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.flip_symmetric_amino_acids
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Usage
 import sys
 import iotbx.pdb
@@ -36,7 +37,7 @@ def run(args):
   t0=time.time()
   pdb_h = pdb_input.construct_hierarchy()
   info = pdb_h.flip_symmetric_amino_acids()
-  print info
+  print(info)
 
   out_fn_prefix = inp_fn
   if inp_fn.endswith(".pdb") or inp_fn.endswith(".cif"):

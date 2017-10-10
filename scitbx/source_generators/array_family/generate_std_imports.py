@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.source_generators.array_family import generate_operator_functors
 from scitbx.source_generators import utils
 
@@ -78,7 +79,7 @@ def generate_2arg(f):
 def run(target_dir):
   f = utils.join_open(target_dir, "detail/std_imports.h", "w")
   utils.write_this_is_auto_generated(f, this)
-  print >> f, """\
+  print("""\
 #ifndef SCITBX_ARRAY_FAMILY_STD_IMPORTS_H
 #define SCITBX_ARRAY_FAMILY_STD_IMPORTS_H
 
@@ -89,7 +90,7 @@ def run(target_dir):
 #include <complex>
 
 namespace scitbx { namespace fn {
-"""
+""", file=f)
 
   all_function_names = []
   for function_name in (cmath_1arg + cmath_2arg + cstdlib_1arg
@@ -102,17 +103,17 @@ namespace scitbx { namespace fn {
       all_function_names.append(function_name)
 
   for function_name in all_function_names:
-    print >> f, "  using std::" + filter_function_name(function_name) + ";"
+    print("  using std::" + filter_function_name(function_name) + ";", file=f)
 
   generate_1arg(f)
   generate_2arg(f)
 
-  print >> f, """
+  print("""
 }} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-#endif // SCITBX_ARRAY_FAMILY_STD_IMPORTS_H"""
+#endif // SCITBX_ARRAY_FAMILY_STD_IMPORTS_H""", file=f)
   f.close()
 
 if (__name__ == "__main__"):

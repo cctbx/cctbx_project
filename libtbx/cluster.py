@@ -2,6 +2,7 @@
 http://pypi.python.org/pypi/cluster/1.1.1b3
 """
 from __future__ import division
+from __future__ import print_function
 
 #
 # This is part of "python-cluster". A library to group similar items together.
@@ -20,6 +21,9 @@ from __future__ import division
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
+from builtins import str
+from builtins import range
+from builtins import object
 from types import TupleType
 
 class ClusteringError(Exception):
@@ -135,7 +139,7 @@ def printmatrix(list):
    format =  " %%%is |" % maxlen
    format = "|" + format*colcount
    for row in list:
-      print format % tuple(row)
+      print(format % tuple(row))
 
 def magnitude(a):
    "calculates the magnitude of a vecor"
@@ -160,7 +164,7 @@ def centroid(list, method=median):
       out.append( method( [x[i] for x in list] ) )
    return tuple(out)
 
-class Cluster:
+class Cluster(object):
    """
    A collection of items. This is internally used to detect clustered items in
    the data so we could distinguish other collection types (lists, dicts, ...)
@@ -224,7 +228,7 @@ class Cluster:
       """
       flattened_items = []
       if len(args) == 0: collection = self.__items
-      else:              collection = args[0].items()
+      else:              collection = list(args[0].items())
 
       for item in collection:
          if isinstance(item, Cluster):
@@ -244,12 +248,12 @@ class Cluster:
       """
       Pretty-prints this cluster. Useful for debuging
       """
-      print depth*"   " + "[level %s]" % self.__level
+      print(depth*"   " + "[level %s]" % self.__level)
       for item in self.__items:
          if isinstance(item, Cluster):
             item.display(depth+1)
          else:
-            print depth*"   "+"%s" % item
+            print(depth*"   "+"%s" % item)
 
    def topology(self):
       """
@@ -333,7 +337,7 @@ class Cluster:
       else:
          return [[left], [right]]
 
-class BaseClusterMethod:
+class BaseClusterMethod(object):
    """
    The base class of all clustering methods.
    """
@@ -434,7 +438,7 @@ class HierarchicalClustering(BaseClusterMethod):
       elif method == 'uclus':
          self.linkage = self.uclusDistance
       else:
-         raise ValueError, 'distance method must be one of single, complete, average of uclus'
+         raise ValueError('distance method must be one of single, complete, average of uclus')
 
    def uclusDistance(self, x, y):
       """
@@ -615,7 +619,7 @@ class HierarchicalClustering(BaseClusterMethod):
 
       return self._data[0].getlevel(threshold)
 
-class KMeansClustering:
+class KMeansClustering(object):
    """
    Implementation of the kmeans clustering method as explained in
    http://www.elet.polimi.it/upload/matteucc/Clustering/tutorial_html/kmeans.html
@@ -734,7 +738,7 @@ available. You supplied %d items, and asked for %d clusters.""" %
       """
       # initialise the clusters with empty lists
       self.__clusters = []
-      for x in xrange(clustercount): self.__clusters.append([])
+      for x in range(clustercount): self.__clusters.append([])
 
       # distribute the items into the clusters
       count = 0

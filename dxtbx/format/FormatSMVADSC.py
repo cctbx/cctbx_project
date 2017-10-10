@@ -9,7 +9,9 @@
 # FormatSMV.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import str
 import time
 
 from dxtbx.format.FormatSMV import FormatSMV
@@ -190,13 +192,13 @@ class FormatSMVADSC(FormatSMV):
     try:
       date_str = self._header_dictionary['DATE']
       date_str = date_str.replace('PST', '').replace('PDT', '')
-    except KeyError, e:
+    except KeyError as e:
       date_str = ''
     for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
       try:
         epoch = calendar.timegm(time.strptime(date_str, format_string))
         break
-      except ValueError, e:
+      except ValueError as e:
         pass
 
     # assert(epoch)
@@ -244,4 +246,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print(FormatSMVADSC.understand(arg))

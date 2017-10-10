@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -125,7 +126,7 @@ def run(args):
   while 1:
      if (random_seed is None):
        random_seed = flex.get_random_seed()
-     print "random_seed:", random_seed
+     print("random_seed:", random_seed)
      sys.stdout.flush()
      random.seed(random_seed)
      flex.set_random_seed(value=random_seed)
@@ -133,7 +134,7 @@ def run(args):
      exercise_1()
      sys.stdout.flush()
      if(not forever):
-       print "random_seed last used:", random_seed
+       print("random_seed last used:", random_seed)
        break
 
 if (__name__ == "__main__"):

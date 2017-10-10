@@ -1,5 +1,11 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.thread_utils import thread_with_callback_and_wait
 from libtbx.thread_utils import process_with_callbacks
 from libtbx.utils import Sorry, Abort
@@ -35,7 +41,7 @@ def exercise_threading() :
   for callback1,expected in [
         (None, [1,10]),
         (first_callback, [1,-10])]:
-    for n_resume in xrange(7):
+    for n_resume in range(7):
       collected = []
       t = thread_with_callback_and_wait(
         run=run,
@@ -45,7 +51,7 @@ def exercise_threading() :
         t.start()
       else:
         t.start_and_wait_for_first_callback()
-      for i in xrange(n_resume):
+      for i in range(n_resume):
         t.resume()
       t.resume(last_iteration=True).join()
       assert collected == expected
@@ -142,8 +148,8 @@ def tst_no_return_value () :
 
 #--- test 03 : callbacks for stdout, runtime, result
 def _target_function03 (args, kwds, connection) :
-  for i in xrange(4) :
-    print i
+  for i in range(4) :
+    print(i)
     connection.send(i)
   return 4
 
@@ -171,7 +177,7 @@ def tst_callbacks () :
 def _tst_print (out=None) :
   if out is None :
     out = sys.stdout
-  for i in xrange(1000) :
+  for i in range(1000) :
     out.write("%s\n" % i)
   return None
 
@@ -179,8 +185,8 @@ def _target_function04 (args, kwds, connection) :
   return _tst_print(*args, **kwds)
 
 def tst_stdout () :
-  import cStringIO
-  tmpout = cStringIO.StringIO()
+  import io
+  tmpout = io.StringIO()
   _tst_print(tmpout)
 
   for buffer_stdout in [True, False] :
@@ -219,8 +225,8 @@ def tst_exceptions () :
 # Process.terminate() does not work on RedHat 8, but this test will still
 # be successful despite taking an extra 100 seconds to finish.
 def _target_function06 (args, kwds, connection) :
-  for i in xrange(10) :
-    print i
+  for i in range(10) :
+    print(i)
     time.sleep(1)
 
 def tst_abort_simple () :
@@ -251,8 +257,8 @@ def tst_abort_2 () :
 
 def _target_function08 (args, kwds, connection) :
   import libtbx.callbacks # import dependency
-  import cStringIO
-  log = cStringIO.StringIO()
+  import io
+  log = io.StringIO()
   libtbx.call_back.set_warning_log(log)
   time.sleep(1)
   libtbx.warn("Hello, world!")
@@ -272,7 +278,7 @@ def tst_warn_callback () :
 #--- pause, resume, and kill
 def _target_function09 (args, kwds, connection) :
   for i in range(10) :
-    print i
+    print(i)
     time.sleep(1)
 
 class _callback_handler_2 (object) :
@@ -297,7 +303,7 @@ class _callback_handler_2 (object) :
 
 def tst_pause_resume_kill () :
   if (sys.platform == "win32") :
-    print "Skipping pause/resume test (not available on Windows)"
+    print("Skipping pause/resume test (not available on Windows)")
   else :
     ch = _callback_handler_2()
     p = process_with_callbacks(
@@ -345,10 +351,10 @@ def exercise_process () :
     tst_abort_2()
     tst_warn_callback()
     tst_pause_resume_kill()
-  except ImportError, e:
-    print "Skipping thread_utils tests:", str(e)
+  except ImportError as e:
+    print("Skipping thread_utils tests:", str(e))
   else :
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   exercise_threading()

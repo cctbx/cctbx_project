@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.make_dials_mask
@@ -11,6 +12,7 @@ from __future__ import division
 # The result is a dials-style pickle file containing a list of flex.bool objects.
 #
 
+from builtins import zip
 from dxtbx.format.Registry import Registry
 from scitbx.array_family import flex
 import sys
@@ -98,8 +100,8 @@ def run(argv=None):
   masked_out = sum([len(mask_p.as_1d().select((~mask_p).as_1d())) for mask_p in mask])
   total = sum([len(mask_p) for mask_p in mask])
 
-  print "Masked out %d pixels out of %d (%.2f%%)"% \
-    (masked_out,total,masked_out*100/total)
+  print("Masked out %d pixels out of %d (%.2f%%)"% \
+    (masked_out,total,masked_out*100/total))
 
 if (__name__ == "__main__"):
   sys.exit(run())

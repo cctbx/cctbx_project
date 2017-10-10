@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import str
+from builtins import object
 from libtbx import easy_run
 import libtbx.phil
 import libtbx.load_env
@@ -212,7 +216,7 @@ class align_pdb_residues (object) :
       return resid
     try :
       return self._lookup_table[seq_name][resid.strip()]
-    except KeyError, e :
+    except KeyError as e :
       raise RuntimeError("""\
 Encountered IndexError attempting to convert residue ID!
 Values:
@@ -235,7 +239,7 @@ Dump of full alignment:
     i_res = resseq + offset - 1
     try :
       return self._lookup_table[seq_name][i_res]
-    except IndexError, e :
+    except IndexError as e :
       raise RuntimeError("""\
 Encountered IndexError attempting to convert residue number!
 Values:
@@ -280,10 +284,10 @@ def align_pdb_hierarchies (hierarchies,
     pdb_resids.append([ strip(resid) for resid in resids ])
     if (hierarchy is reference_hierarchy) :
       reference_index = i
-      print >> log, "  Using %s for sequence numbering" % name
+      print("  Using %s for sequence numbering" % name, file=log)
     elif (reference_hierarchy is None) and (reference_index is None) :
       reference_index = i
-      print >> log, "  Using %s for sequence numbering" % name
+      print("  Using %s for sequence numbering" % name, file=log)
   if (reference_index is not None) :
     pdb_names = hierarchy_names
     msa_manager = align_pdb_residues(
@@ -334,7 +338,7 @@ def get_muscle_alignment (fasta_sequences, group_sequences=True, out=None) :
   from iotbx.bioinformatics import clustal_alignment_parse
   alignment, null = clustal_alignment_parse("\n".join(muscle_out))
   if (out is not None) :
-    print >> out, "\n".join(muscle_out)
+    print("\n".join(muscle_out), file=out)
   return alignment, errors
 
 def get_muscle_alignment_ordered(sequences, out = None):
@@ -351,7 +355,7 @@ def get_muscle_alignment_ordered(sequences, out = None):
   alignment, errors = get_muscle_alignment(
     fasta_sequences = "\n".join(
       str( bioinformatics.sequence( name = name, sequence = seq.sequence ) )
-      for ( seq, name ) in name_for.items()
+      for ( seq, name ) in list(name_for.items())
       ),
     out = out,
     )
@@ -362,18 +366,18 @@ def get_muscle_alignment_ordered(sequences, out = None):
     for error in errors:
       error = error.strip()
       if ('Invalid character' in error):
-        for seq in name_for.keys():
+        for seq in list(name_for.keys()):
           invalid = validate_sequence(
             seq.sequence, protein=True, strict_protein=False,
             nucleic_acid=True, strict_nucleic_acid=False)
           if (len(invalid) > 0):
             name_for.pop(seq)
-        sequences = name_for.keys()
+        sequences = list(name_for.keys())
       elif (len(error) > 0):
         raise Sorry(error)
 
-  lookup = dict( zip( alignment.names, alignment.alignments ) )
-  assert all( n in lookup for n in name_for.values() )
+  lookup = dict( list(zip( alignment.names, alignment.alignments )) )
+  assert all( n in lookup for n in list(name_for.values()) )
 
   return bioinformatics.clustal_alignment(
     names = [ seq.name for seq in sequences ],
@@ -438,7 +442,7 @@ def run (args=(), params=None, out=sys.stdout) :
         seq_objects, non_compliant = any_sequence_format(file_name,
           assign_name_if_not_defined=True)
         seqs.extend(seq_objects)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(("Error parsing '%s' - not a recognizable sequence "+
           "format.  (Original message: %s)") % (file_name, str(e)))
   if (len(seqs) < 2) :

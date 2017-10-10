@@ -1,4 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
+from builtins import chr
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.utils import product
 from libtbx import group_args
 from libtbx import mutable
@@ -14,7 +24,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   if (nc <= max_len):
     cb_finalize(line)
     return
-  for i_start in xrange(nc):
+  for i_start in range(nc):
     if (line[i_start] != " "):
       break
   else:
@@ -76,7 +86,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       if (j > 4): # ad-hoc value
         i = j+1
       else:
-        for j in xrange(i-1,-1,-1):
+        for j in range(i-1,-1,-1):
           if (s[j] != "\\"):
             if ((i - j ) % 2 == 0):
               i -= 1
@@ -90,10 +100,10 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   else:                      indent_width = 2
   pprio = 0
   pp = 0
-  for ip in xrange(len(potential_break_points)):
+  for ip in range(len(potential_break_points)):
     prio,p = potential_break_points[ip]
     def following_point_is_better():
-      for jp in xrange(ip,len(potential_break_points)):
+      for jp in range(ip,len(potential_break_points)):
         prio,p = potential_break_points[jp]
         if (prio == 1 and p-b+f <= max_len):
           return True
@@ -168,10 +178,10 @@ def create_buffer_blocks(
 
 def show_traceback():
   import traceback
-  print traceback.format_exc(limit=None)
+  print(traceback.format_exc(limit=None))
 
 def strip_leading_zeros(string):
-  for i in xrange(len(string)):
+  for i in range(len(string)):
     if (string[i] != "0"):
       return string[i:]
   if (len(string) == 0):
@@ -352,9 +362,11 @@ class comment_manager(object):
       if (ssl is not None):
         for sl in ssl.source_line_cluster:
           O.sl_list.append(sl)
-    def cmp_sl(a, b):
-      return cmp(a.global_line_index, b.global_line_index)
-    O.sl_list.sort(cmp_sl)
+    #def cmp_sl(a, b):
+    #  return cmp(a.global_line_index, b.global_line_index)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    O.sl_list = sorted(O.sl_list, key = lambda a: a.global_line_index)
+    #O.sl_list.sort(cmp_sl)
     O.index = 0
 
   def produce(O, callback):
@@ -557,7 +569,7 @@ def convert_tokens(conv_info, tokens, commas=False, had_str_concat=None):
   prev_tok = None
   if (had_str_concat is None):
     had_str_concat = mutable(value=False)
-  from tokenization import group_power
+  from .tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
       if (    len(tok.value) == 2
@@ -994,7 +1006,7 @@ def convert_io_loop(
   prev_tok = None
   if (had_str_concat is None):
     had_str_concat = mutable(value=False)
-  from tokenization import group_power
+  from .tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
       convert_io_loop(
@@ -1055,7 +1067,7 @@ def equivalence_align_with_arg(conv_info, top_scope, identifier, tok_seq):
   if (len(tokens) == 1):
     return ""
   cindices = []
-  for i in xrange(1,len(tokens)):
+  for i in range(1,len(tokens)):
     tok = tokens[i]
     if (i == 3 or not tok.is_parentheses()):
       tok.raise_semantic_error()
@@ -1208,7 +1220,7 @@ def convert_variant_allocate_and_bindings(conv_info, top_scope):
     bindings=[])
   equiv_info = conv_info.fproc.equivalence_info()
   equiv_tok_clusters = equiv_info.equiv_tok_clusters
-  for common_name,common_fdecl_list in conv_info.fproc.common.items():
+  for common_name,common_fdecl_list in list(conv_info.fproc.common.items()):
     vcn = conv_info.fproc.conv_hook.variant_common_names
     if (vcn is None or common_name not in vcn):
       continue
@@ -1343,7 +1355,7 @@ def convert_data(conv_info, data_init_scope):
       }.get(list(tok_types)[0])
     def data_values_blocked():
       data_scope.append("fem::data_values data;")
-      for i_block in xrange(0, len(ccs), conv_info.data_values_block_size):
+      for i_block in range(0, len(ccs), conv_info.data_values_block_size):
         data_scope.append(
           "data.values, %s;"
             % ", ".join(ccs[i_block:i_block+conv_info.data_values_block_size]))
@@ -1661,7 +1673,7 @@ def convert_executable(
   if (conv_info.fproc.uses_write):
     top_scope.append("common_write write(cmn);")
   top_scope_point_before_common = top_scope.current_point()
-  for common_name,fdecl_list in conv_info.fproc.common.items():
+  for common_name,fdecl_list in list(conv_info.fproc.common.items()):
     if (common_name in conv_info.fproc.conv_hook.variant_common_names):
       continue
     top_scope.remember_insert_point()
@@ -2164,12 +2176,12 @@ def convert_executable(
     except (Error, SemanticError):
       raise
     except Exception:
-      print "*"*80
-      print ei.ssl.format_error(
+      print("*"*80)
+      print(ei.ssl.format_error(
         i=None,
-        msg="Sorry: fable internal error")
-      print "*"*80
-      print
+        msg="Sorry: fable internal error"))
+      print("*"*80)
+      print()
       raise
   assert curr_scope.parent is None
   if (    conv_info.fproc.fproc_type == "function"
@@ -2466,7 +2478,7 @@ def convert_to_struct(
       callback("  %s(" % struct_name)
       callback("    dynamic_parameters const& dynamic_params)")
       callback("  :")
-    for i in xrange(n):
+    for i in range(n):
       ii = initializers[i]
       if (i+1 == n): comma = ""
       else:          comma = ","
@@ -2495,74 +2507,73 @@ def generate_common_report(
       member_registry,
       variant_due_to_equivalence_common_names,
       stringio):
-  from cStringIO import StringIO
+  from io import StringIO
   variant_common_names = set()
   if (stringio is None):
     report = StringIO()
   else:
     report = stringio
-  for common_name,fproc_cpp_pairs in ccode_registry.items():
+  for common_name,fproc_cpp_pairs in list(ccode_registry.items()):
     fprocs_by_cpp = {}
     for fproc,cpp in fproc_cpp_pairs:
       fprocs_by_cpp.setdefault("\n".join(cpp), []).append(fproc)
     if (len(fprocs_by_cpp) != 1):
       variant_common_names.add(common_name)
-      fprocs_by_cpp_items = fprocs_by_cpp.items()
+      fprocs_by_cpp_items = list(fprocs_by_cpp.items())
       def cmp_size(a, b):
         return cmp(len(b[0]), len(a[0]))
       fprocs_by_cpp_items.sort(cmp_size)
       import difflib
       diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
       def show_fprocs(label, cpp_fprocs):
-        print >> report, \
-          "procedures %s:" % label, \
-          " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]]))
+        print("procedures %s:" % label, \
+          " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]])), file=report)
       main_cpp_fprocs = fprocs_by_cpp_items[0]
-      print >> report, "common name:", common_name
-      print >> report, "number of variants:", len(fprocs_by_cpp_items)
-      print >> report, "total number of procedures using the common block:", \
-        sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items])
+      print("common name:", common_name, file=report)
+      print("number of variants:", len(fprocs_by_cpp_items), file=report)
+      print("total number of procedures using the common block:", \
+        sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items]), file=report)
       show_fprocs("first", main_cpp_fprocs)
       for other_cpp_fprocs in fprocs_by_cpp_items[1:]:
         show_fprocs("second", other_cpp_fprocs)
         for line in diff_function(
                       (main_cpp_fprocs[0]+"\n").splitlines(1),
                       (other_cpp_fprocs[0]+"\n").splitlines(1)):
-          print >> report, line,
-        print >> report
+          print(line, end=' ', file=report)
+        print(file=report)
   #
   need_empty_line = False
   for identifier in sorted(member_registry.keys()):
     common_names = member_registry[identifier]
     if (len(common_names) != 1):
-      print >> report, "Name clash: %s in COMMONs: %s" % (
-        identifier, ", ".join(sorted(common_names)))
+      print("Name clash: %s in COMMONs: %s" % (
+        identifier, ", ".join(sorted(common_names))), file=report)
       need_empty_line = True
   if (need_empty_line):
-    print >> report
+    print(file=report)
   #
   vv = list(variant_due_to_equivalence_common_names - variant_common_names)
   if (len(vv) != 0):
-    print >> report, "common variants due to equivalence:", len(vv)
+    print("common variants due to equivalence:", len(vv), file=report)
     size_sums = {}
-    for common_name,sizes in common_fdecl_list_sizes.items():
+    for common_name,sizes in list(common_fdecl_list_sizes.items()):
       size_sums[common_name] = sum(sizes)
     def vv_cmp(a, b):
       result = cmp(size_sums[b], size_sums[a])
       if (result == 0): result = cmp(a, b)
       return result
     vv.sort(vv_cmp)
-    print >> report, "  %-20s   procedures    sum of members" % "common name"
+    print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
-      print >> report, "  %-20s   %8d         %8d" % (
+      print("  %-20s   %8d         %8d" % (
         common_name,
         len(common_fdecl_list_sizes[common_name]),
-        size_sums[common_name])
-    print >> report
-    print >> report, "Locations of equivalence statements:"
+        size_sums[common_name]), file=report)
+    print(file=report)
+    print("Locations of equivalence statements:", file=report)
     reported_already = set()
     for common_name in vv:
-      print >> report, "  %s" % common_name
+      print("  %s" % common_name, file=report)
       prev_loc = ""
       tab = []
       max_len_col1 = 6
@@ -2582,13 +2593,13 @@ def generate_common_report(
       if (len(tab) != 0):
         fmt = "    %%-%ds %%s" % max_len_col1
         for row in tab:
-          print >> report, fmt % row
+          print(fmt % row, file=report)
   #
   if (len(report.getvalue()) != 0 and stringio is None):
     import sys
     report_file_name = "fable_cout_common_report"
     from libtbx.str_utils import show_string
-    print >> sys.stderr, "Writing file:", show_string(report_file_name)
+    print("Writing file:", show_string(report_file_name), file=sys.stderr)
     open(report_file_name, "w").write(report.getvalue())
   #
   return variant_common_names
@@ -2644,7 +2655,7 @@ def convert_commons(
   struct_commons_need_dynamic_parameters = set()
   for fproc in bottom_up_filtered:
     fproc.conv_hook.needs_variant_bind = False
-    for common_name,common_fdecl_list in fproc.common.items():
+    for common_name,common_fdecl_list in list(fproc.common.items()):
       common_fdecl_list_sizes.setdefault(common_name, []).append(
         len(common_fdecl_list))
       id_tok_list = []
@@ -2689,7 +2700,7 @@ def convert_commons(
   variant_commons = []
   for fproc in bottom_up_filtered:
     fproc.conv_hook.variant_common_names = set()
-    for common_name,common_fdecl_list in fproc.common.items():
+    for common_name,common_fdecl_list in list(fproc.common.items()):
       if (common_name in variant_common_names):
         fproc.conv_hook.variant_common_names.add(common_name)
         if (common_name not in commons_defined_already):
@@ -2722,15 +2733,17 @@ def convert_commons(
   save_struct_names = []
   for fproc in bottom_up_filtered:
     id_tok_list = []
-    for fdecl in fproc.fdecl_by_identifier.values():
+    for fdecl in list(fproc.fdecl_by_identifier.values()):
       if (fdecl.is_save()):
         id_tok_list.append(fdecl.id_tok)
     if (    len(id_tok_list) == 0
         and not fproc.conv_hook.needs_is_called_first_time):
       continue
-    def id_tok_cmp(a, b):
-      return cmp(a.value, b.value)
-    id_tok_list.sort(id_tok_cmp)
+    #def id_tok_cmp(a, b):
+    #  return cmp(a.value, b.value)
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+    id_tok_list = sorted(id_tok_list, key = lambda a: a.value)
+    #id_tok_list.sort(id_tok_cmp)
     struct_name = "%s_save" % fproc.name.value
     buffer = []
     info = convert_to_struct(
@@ -2935,7 +2948,7 @@ def process(
     lines = break_lines(cpp_text=[line+"\n"], prev_line=prev_line)
     if (len(lines) != 0):
       if (debug):
-        print "\n".join(lines)
+        print("\n".join(lines))
       result.extend(lines)
   #
   need_function_hpp = False
@@ -3043,11 +3056,11 @@ def process(
     common_commons_info = None
   if (separate_cmn_hpp):
     close_namespace(callback=cmn_callback, namespace=namespace, hpp_guard=True)
-    print >> open("cmn.hpp", "w"), "\n".join(break_lines(cpp_text=cmn_buffer))
+    print("\n".join(break_lines(cpp_text=cmn_buffer)), file=open("cmn.hpp", "w"))
   #
   separate_function_buffers = []
   separate_function_buffer_by_function_name = {}
-  for name,identifiers in separate_files_main_namespace.items():
+  for name,identifiers in list(separate_files_main_namespace.items()):
     if (len(identifiers) == 0):
       raise RuntimeError(
         "separate_files_main_namespace: empty list: %s" % name)
@@ -3065,7 +3078,7 @@ def process(
   #
   separate_namespaces = {}
   separate_namespaces_buffers = {}
-  for name,identifiers in separate_files_separate_namespace.items():
+  for name,identifiers in list(separate_files_separate_namespace.items()):
     if (len(identifiers) == 0):
       raise RuntimeError(
         "separate_files_separate_namespace: empty list: %s" % name)
@@ -3174,10 +3187,10 @@ def process(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
     if (write_separate_files_main_namespace == "All"
           or name in write_separate_files_main_namespace):
-      print >> open(name+".cpp", "w"), "\n".join(
-        break_lines(cpp_text=buffer))
+      print("\n".join(
+        break_lines(cpp_text=buffer)), file=open(name+".cpp", "w"))
   #
-  for name,identifiers in separate_files_separate_namespace.items():
+  for name,identifiers in list(separate_files_separate_namespace.items()):
     buffers = separate_namespaces_buffers[identifiers[0]]
     for ext in ["hpp", "cpp"]:
       buffer = getattr(buffers, ext)
@@ -3185,8 +3198,8 @@ def process(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
       if (write_separate_files_separate_namespace == "All"
             or name in write_separate_files_separate_namespace):
-        print >> open(name+"."+ext, "w"), "\n".join(
-          break_lines(cpp_text=buffer))
+        print("\n".join(
+          break_lines(cpp_text=buffer)), file=open(name+"."+ext, "w"))
   #
   if (function_declarations is not None):
     def write_functions(buffers, serial=None):
@@ -3198,7 +3211,7 @@ def process(
       else:
         fn = "functions_%03d.cpp" % serial
       f = open(fn, "w")
-      def fcb(line): print >> f, line
+      def fcb(line): print(line, file=f)
       if (buffers is function_declarations):
         include_guard(
           callback=fcb, namespace=namespace, suffix="_FUNCTIONS_HPP")
@@ -3245,6 +3258,6 @@ def process(
       show_traceback()
   #
   if (top_cpp_file_name is not None):
-    print >> open(top_cpp_file_name, "w"), "\n".join(result)
+    print("\n".join(result), file=open(top_cpp_file_name, "w"))
   #
   return result

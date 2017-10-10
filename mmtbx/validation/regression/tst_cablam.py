@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from mmtbx.validation import cablam
 from libtbx.test_utils import show_diff
 from iotbx import pdb
@@ -167,7 +170,7 @@ SUMMARY: 0.00% of these residues have severe CA geometry outliers. (<=0.5% expec
 ref_cablam_oneline = """pdbid:151:1.3:3.3:0.00
 """
 
-class cablam_test_string():
+class cablam_test_string(object):
   #I wrote the regression test to use a class with a custom .write() method as a
   #  proof of principle for learning OOP and to see if I could. Possible because
   #  all my print functions accept an optional writeto= variable.
@@ -181,7 +184,7 @@ def exercise_cablam():
     relative_path="phenix_regression/pdb/pdb103l.ent",
     test=os.path.isfile) #This is the same file used for tst_kinemage.py
   if (regression_pdb is None):
-    print "Skipping exercise_cablam(): input pdb (pdb103l.ent) not available"
+    print("Skipping exercise_cablam(): input pdb (pdb103l.ent) not available")
     return
   #-----
   pdb_io = pdb.input(regression_pdb)
@@ -206,7 +209,7 @@ def exercise_cablam():
 
 def run():
   exercise_cablam()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

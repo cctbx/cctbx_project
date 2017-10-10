@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
@@ -533,12 +535,12 @@ def exercise():
   xrs_poor = pi_poor.xrs.deep_copy_scatterers()
   #
   d = xrs_good.distances(other=xrs_poor)
-  print d.min_max_mean().as_tuple()
+  print(d.min_max_mean().as_tuple())
   assert flex.max(d)>2
   assert flex.mean(d)>0.7
   #
   xrs_refined = xrs_poor
-  for i in xrange(3):
+  for i in range(3):
     ero = individual_sites.easy(
       map_data                    = map_data,
       xray_structure              = xrs_refined,
@@ -547,7 +549,7 @@ def exercise():
     xrs_refined = ero.xray_structure
   # comapre
   d = xrs_good.distances(other=xrs_refined)
-  print d.min_max_mean().as_tuple()
+  print(d.min_max_mean().as_tuple())
   assert flex.max(d)<0.15
   assert flex.mean(d)<0.03
   ero.pdb_hierarchy.write_pdb_file(file_name="refined.pdb",
@@ -556,5 +558,5 @@ def exercise():
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
   exercise()
-  print "Time: %6.2f" % timer.elapsed()
-  print "OK"
+  print("Time: %6.2f" % timer.elapsed())
+  print("OK")

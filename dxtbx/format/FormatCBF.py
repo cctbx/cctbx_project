@@ -9,6 +9,7 @@
 # which will tell you whether something is a CBF file (or no.)
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.Format import Format
 
@@ -87,4 +88,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBF.understand(arg)
+    print(FormatCBF.understand(arg))

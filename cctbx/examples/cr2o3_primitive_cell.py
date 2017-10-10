@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -24,16 +25,16 @@ def demo():
     crystal_symmetry=crystal_symmetry,
     scatterers=scatterers)
   icsd_structure.show_summary().show_scatterers()
-  print
+  print()
   icsd_structure.show_distances(distance_cutoff=2.5)
-  print
+  print()
   primitive_structure = icsd_structure.primitive_setting()
   primitive_structure.show_summary().show_scatterers()
-  print
+  print()
   p1_structure = primitive_structure.expand_to_p1()
   p1_structure.show_summary().show_scatterers()
-  print
-  print "OK"
+  print()
+  print("OK")
 
 if (__name__ == "__main__"):
   demo()

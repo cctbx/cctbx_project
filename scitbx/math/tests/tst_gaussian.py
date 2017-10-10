@@ -1,14 +1,20 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.examples import immoptibox_ports
 from scitbx.math import gaussian
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, eps_eq
 from libtbx.utils import format_cpu_times
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
-from cStringIO import StringIO
+from io import StringIO
 import math
 import sys
 
@@ -20,7 +26,7 @@ def finite_gradient_dx_at_x(gaussian, x, eps=1.e-5):
   return (tp-tm)/(2*eps)
 
 def exercise_gradient_dx(gaussian, x_max=1., n_points=50):
-  for i in xrange(n_points+1):
+  for i in range(n_points+1):
     x = x_max * i / n_points
     grad_finite = finite_gradient_dx_at_x(gaussian, x)
     grad_analytical = gaussian.gradient_dx_at_x(x)
@@ -29,7 +35,7 @@ def exercise_gradient_dx(gaussian, x_max=1., n_points=50):
 def exercise_integral_dx(gaussian, x_max=1., n_points=1000):
   numerical_integral = 0
   x_step = x_max / n_points
-  for i in xrange(n_points+1):
+  for i in range(n_points+1):
     x = x_max * i / n_points
     new_value = gaussian.at_x(x)
     if (i):
@@ -49,7 +55,7 @@ def term_finite_gradient_d_ab_at_x(term, x, eps=1.e-5):
   return gaussian.term(gr_a, gr_b)
 
 def exercise_term_gradients_d_ab(term, x_max=1., n_points=50):
-  for i in xrange(n_points+1):
+  for i in range(n_points+1):
     x = x_max * i / n_points
     grad_finite = term_finite_gradient_d_ab_at_x(term, x)
     grad_analytical = term.gradients_d_ab_at_x_sq(x*x)
@@ -63,7 +69,7 @@ def exercise_term():
   assert approx_equal(t.at_x_sq(4), 2*math.exp(-3*4))
   assert approx_equal(t.at_x(2), 2*math.exp(-3*4))
   eps = 1.e-5
-  for ix in (xrange(10)):
+  for ix in (range(10)):
     x = ix/10.
     assert eps_eq((t.at_x(x+eps)-t.at_x(x-eps))/(2*eps), t.gradient_dx_at_x(x))
   for f in [1,-1]:
@@ -183,7 +189,7 @@ def fit_finite_diff_gradients(gfit, x, eps=1.e-2):
   gr = flex.double()
   c = gfit.c()
   use_c = gfit.use_c()
-  for i in xrange(gfit.n_terms()):
+  for i in range(gfit.n_terms()):
     t = []
     for seps in (eps, -eps):
       a = list(gfit.array_of_a())
@@ -213,7 +219,7 @@ def fit_finite_diff_target_gradients(gfit, power, use_sigmas, eps=1.e-2):
   gr = flex.double()
   c = gfit.c()
   use_c = gfit.use_c()
-  for i in xrange(gfit.n_terms()):
+  for i in range(gfit.n_terms()):
     t = []
     for seps in (eps, -eps):
       a = list(gfit.array_of_a())
@@ -389,7 +395,7 @@ def exercise_fit():
       fit_finite_diff_gradients(sgf, 0),
       expected_gradients,
       eps=1.e-4)
-    for i in xrange(10):
+    for i in range(10):
       gf = gaussian.fit(
         flex.double([i / 10.]),
         g5c,
@@ -426,7 +432,7 @@ carbon_s_y_table = [
 1.90, 0.418, 2.00, 0.373, 2.50, 0.216, 3.00, 0.130, 3.50, 0.081, 4.00, 0.053,
 5.00, 0.025, 6.00, 0.013]
 
-class tabulated_fit:
+class tabulated_fit(object):
 
   def __init__(self, limit, coefficients):
     self.limit = limit
@@ -522,9 +528,9 @@ class carbon_fit(immoptibox_ports.test_function):
       assert capital_f_x_star < tolerance, (
         capital_f_x_star, self.capital_f_x_star)
       if (self.verbose):
-        print "  WARNING: minimization converged to larger residual", \
-          "than original solution:"
-        print "    original:", self.capital_f_x_star
+        print("  WARNING: minimization converged to larger residual", \
+          "than original solution:")
+        print("    original:", self.capital_f_x_star)
       assert self.perturb
 
   def f(self, x):
@@ -559,7 +565,7 @@ def run():
   exercise_sum()
   exercise_fit()
   exercise_fit_jacobian_and_hessian(verbose="--verbose" in sys.argv[1:])
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

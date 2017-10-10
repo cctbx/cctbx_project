@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
+from builtins import object
 class misc_handler(object):
   def calculate_SE(self, results, iparams):
     """
@@ -190,8 +194,8 @@ class wilson_plot_handler(object):
     try:
       import matplotlib.pyplot as plt
     except Exception as e:
-      print "Warning: error importing matplotlib.pyplot"
-      print e
+      print("Warning: error importing matplotlib.pyplot")
+      print(e)
       return
     if n_bins is None:
       binner = miller_array_in.setup_binner(auto_binning=True)

@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014

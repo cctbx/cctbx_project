@@ -1,4 +1,10 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
@@ -16,7 +22,7 @@ try:
 except ImportError:
   threading = None
 else:
-  import Queue
+  import queue
 
 class _string_with_attributes(type("")):
   """Subclass string so that it can accept additional attributes."""
@@ -60,7 +66,7 @@ class pickle_detector(object):
 Exception_expected = RuntimeError("Exception expected.")
 Exception_not_expected = RuntimeError("Exception not expected.")
 
-class Default: pass
+class Default(object): pass
 
 def test_usage (cmd) :
   result = easy_run.fully_buffered(cmd)
@@ -107,20 +113,20 @@ def run_tests(build_dir, dist_dir, tst_list, display_times=False):
   co = command_line.options
   if (threading is None or co.threads == 1):
     for cmd in iter_tests_cmd(co, build_dir, dist_dir, tst_list):
-      print cmd
+      print(cmd)
       sys.stdout.flush()
       easy_run.call(command=cmd)
-      print
+      print()
       sys.stderr.flush()
       sys.stdout.flush()
   else:
-    cmd_queue = Queue.Queue()
+    cmd_queue = queue.Queue()
     for cmd in iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd_queue.put(cmd)
     threads_pool = []
-    log_queue = Queue.Queue()
+    log_queue = queue.Queue()
     interrupted = threading.Event()
-    for i in xrange(co.threads):
+    for i in range(co.threads):
       working_dir = os.tempnam()
       os.mkdir(working_dir)
       t = threading.Thread(
@@ -135,25 +141,25 @@ def run_tests(build_dir, dist_dir, tst_list, display_times=False):
         log = log_queue.get()
         if isinstance(log, tuple):
           msg = log[0]
-          print >> sys.stderr, "\n +++ thread %s +++\n" % msg
+          print("\n +++ thread %s +++\n" % msg, file=sys.stderr)
           finished_threads += 1
           if finished_threads == co.threads: break
         else:
-          print log
+          print(log)
       except KeyboardInterrupt:
-        print
-        print "********************************************"
-        print "** Received Keyboard Interrupt            **"
-        print "** Waiting for running tests to terminate **"
-        print "********************************************"
+        print()
+        print("********************************************")
+        print("** Received Keyboard Interrupt            **")
+        print("** Waiting for running tests to terminate **")
+        print("********************************************")
         interrupted.set()
         break
   if display_times:
-    print "TIME (%s) (%s) %7.2f %s" % (start,
+    print("TIME (%s) (%s) %7.2f %s" % (start,
                                        time.asctime(),
                                        time.time()-t0,
                                        tst_list,
-                                       )
+                                       ))
 
 def make_pick_and_run_tests(working_dir, interrupted,
                             cmd_queue, log_queue):
@@ -170,7 +176,7 @@ def make_pick_and_run_tests(working_dir, interrupted,
         proc.wait()
         log += "\n%s" % proc.stdout.read()
         log_queue.put(log)
-      except Queue.Empty:
+      except queue.Empty:
         log_queue.put( ("done",) )
         break
       except KeyboardInterrupt:
@@ -220,14 +226,14 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
     yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
-  if isinstance(a1, str) or isinstance(a1, unicode):
+  if isinstance(a1, str) or isinstance(a1, str):
     return a1 == a2
   if hasattr(a1, "__len__"): # traverse list
     if (len(a1) != len(a2)):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
           len(a1), len(a2)))
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if not approx_equal_core(
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
@@ -272,9 +278,9 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
     annotation = ""
     if (not ok):
       annotation = " approx_equal ERROR"
-    print >> out, prefix + str(a1) + annotation
-    print >> out, prefix + str(a2) + annotation
-    print >> out, prefix.rstrip()
+    print(prefix + str(a1) + annotation, file=out)
+    print(prefix + str(a2) + annotation, file=out)
+    print(prefix.rstrip(), file=out)
     return True
   return ok
 
@@ -282,8 +288,8 @@ def approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10, out=Default, prefix=""):
   ok = approx_equal_core(a1, a2, eps, multiplier, None, prefix)
   if (not ok and out is not None):
     if (out is Default): out = sys.stdout
-    print >> out, prefix + "approx_equal eps:", eps
-    print >> out, prefix + "approx_equal multiplier:", multiplier
+    print(prefix + "approx_equal eps:", eps, file=out)
+    print(prefix + "approx_equal multiplier:", multiplier, file=out)
     assert approx_equal_core(a1, a2, eps, multiplier, out, prefix)
   return ok
 
@@ -293,7 +299,7 @@ def not_approx_equal(a1, a2, eps=1.e-6, multiplier=1.e10):
 def eps_eq_core(a1, a2, eps, out, prefix):
   if (hasattr(a1, "__len__")): # traverse list
     assert len(a1) == len(a2)
-    for i in xrange(len(a1)):
+    for i in range(len(a1)):
       if (not eps_eq_core(a1[i], a2[i], eps, out, prefix+"  ")):
         return False
     return True
@@ -317,9 +323,9 @@ def eps_eq_core(a1, a2, eps, out, prefix):
     annotation = ""
     if (not ok):
       annotation = " eps_eq ERROR"
-    print >> out, prefix + str(a1) + annotation
-    print >> out, prefix + str(a2) + annotation
-    print >> out, prefix.rstrip()
+    print(prefix + str(a1) + annotation, file=out)
+    print(prefix + str(a2) + annotation, file=out)
+    print(prefix.rstrip(), file=out)
     return True
   return ok
 
@@ -327,7 +333,7 @@ def eps_eq(a1, a2, eps=1.e-6, out=Default, prefix=""):
   ok = eps_eq_core(a1, a2, eps, None, prefix)
   if (not ok and out is not None):
     if (out is Default): out = sys.stdout
-    print >> out, prefix + "eps_eq eps:", eps
+    print(prefix + "eps_eq eps:", eps, file=out)
     assert eps_eq_core(a1, a2, eps, out, prefix)
   return ok
 
@@ -347,15 +353,14 @@ def is_below_limit(
         if (out is Default): out = sys.stdout
         introspection.show_stack(
           frames_back=1, reverse=True, out=out, prefix=info_prefix)
-        print >> out, \
-          "%sis_below_limit(value=%s, limit=%s, info_low_eps=%s)" % (
-            info_prefix, str(value), str(limit), str(info_low_eps))
+        print("%sis_below_limit(value=%s, limit=%s, info_low_eps=%s)" % (
+            info_prefix, str(value), str(limit), str(info_low_eps)), file=out)
     return True
   if (out is not None):
     if (out is Default): out = sys.stdout
-    print >> out, "ERROR:", \
+    print("ERROR:", \
       "is_below_limit(value=%s, limit=%s, eps=%s)" % (
-        str(value), str(limit), str(eps))
+        str(value), str(limit), str(eps)), file=out)
   return False
 
 def is_above_limit(
@@ -371,15 +376,14 @@ def is_above_limit(
         if (out is Default): out = sys.stdout
         introspection.show_stack(
           frames_back=1, reverse=True, out=out, prefix=info_prefix)
-        print >> out, \
-          "%sis_above_limit(value=%s, limit=%s, info_high_eps=%s)" % (
-            info_prefix, str(value), str(limit), str(info_high_eps))
+        print("%sis_above_limit(value=%s, limit=%s, info_high_eps=%s)" % (
+            info_prefix, str(value), str(limit), str(info_high_eps)), file=out)
     return True
   if (out is not None):
     if (out is Default): out = sys.stdout
-    print >> out, "ERROR:", \
+    print("ERROR:", \
       "is_above_limit(value=%s, limit=%s, eps=%s)" % (
-        str(value), str(limit), str(eps))
+        str(value), str(limit), str(eps)), file=out)
   return False
 
 def precision_approx_equal(self,other,precision=24):
@@ -426,13 +430,12 @@ def show_diff(a, b, out=sys.stdout,
     if (not a.endswith("\n") or not b.endswith("\n")):
       a += "\n"
       b += "\n"
-    print >> out, "".join(diff_function(b.splitlines(1), a.splitlines(1)))
+    print("".join(diff_function(b.splitlines(1), a.splitlines(1))), file=out)
     return True
   if (    expected_number_of_lines is not None
       and len(a_lines) != expected_number_of_lines):
-    print >> out, \
-      "show_diff: expected_number_of_lines != len(a.splitlines()): %d != %d" \
-        % (expected_number_of_lines, len(a_lines))
+    print("show_diff: expected_number_of_lines != len(a.splitlines()): %d != %d" \
+        % (expected_number_of_lines, len(a_lines)), file=out)
     return True
   return False
 
@@ -443,10 +446,10 @@ def block_show_diff(lines, expected, last_startswith=False):
     expected = expected.splitlines()
   assert len(expected) > 1
   def raise_not_found():
-    print "block_show_diff() lines:"
-    print "-"*80
-    print "\n".join(lines)
-    print "-"*80
+    print("block_show_diff() lines:")
+    print("-"*80)
+    print("\n".join(lines))
+    print("-"*80)
     raise AssertionError('Expected line not found: "%s"' % eline)
   eline = expected[0]
   for i,line in enumerate(lines):
@@ -500,17 +503,17 @@ def contains_substring(
   assert isinstance(actual, str)
   assert isinstance(expected, str)
   if (actual.find(expected) < 0):
-    print "%sFAILURE:" % failure_prefix
+    print("%sFAILURE:" % failure_prefix)
     def show(s):
-      print "v"*79
+      print("v"*79)
       if (s.endswith("\n") or s.endswith(os.linesep)):
         sys.stdout.write(s)
       else:
-        print s
-      print "^"*79
+        print(s)
+      print("^"*79)
     show(actual)
-    print "  ACTUAL ----^"
-    print "EXPECTED ----v"
+    print("  ACTUAL ----^")
+    print("EXPECTED ----v")
     show(expected)
     return False
   return True
@@ -550,9 +553,9 @@ def _check_command_output(
     lines = open(file_name).read().splitlines()
   def show_and_raise(detected):
     if (show_command_if_error):
-      print show_command_if_error
-      print
-    print "\n".join(lines)
+      print(show_command_if_error)
+      print()
+    print("\n".join(lines))
     msg = detected + " detected in output"
     if (file_name is None):
       msg += "."
@@ -607,8 +610,8 @@ directly from within the same Python process running the unit tests.
 """
   assert verbose >= 0
   if (verbose > 0):
-    print command
-    print
+    print(command)
+    print()
     show_command_if_error = None
   else:
     show_command_if_error = command
@@ -627,9 +630,9 @@ directly from within the same Python process running the unit tests.
       join_stdout_stderr=join_stdout_stderr)
     if (len(cmd_result.stderr_lines) != 0):
       if (verbose == 0):
-        print command
-        print
-      print "\n".join(cmd_result.stdout_lines)
+        print(command)
+        print()
+      print("\n".join(cmd_result.stdout_lines))
       cmd_result.raise_if_errors()
     _check_command_output(
       lines=cmd_result.stdout_lines,
@@ -650,24 +653,24 @@ directly from within the same Python process running the unit tests.
       raise RunCommandError(
         "Missing output file: %s" % show_string(file_name))
   if (verbose > 1 and cmd_result is not None):
-    print "\n".join(cmd_result.stdout_lines)
-    print
+    print("\n".join(cmd_result.stdout_lines))
+    print()
   if (    show_diff_log_stdout
       and log_file_name is not None
       and stdout_file_name is not None):
     if (verbose > 0):
-      print "diff %s %s" % (show_string(log_file_name),
-                            show_string(stdout_file_name))
-      print
+      print("diff %s %s" % (show_string(log_file_name),
+                            show_string(stdout_file_name)))
+      print()
     if (show_diff(open(log_file_name).read(), open(stdout_file_name).read())):
       introspection.show_stack(
         frames_back=1, reverse=True, prefix="INFO_LOG_STDOUT_DIFFERENCE: ")
-      print "ERROR_LOG_STDOUT_DIFFERENCE"
+      print("ERROR_LOG_STDOUT_DIFFERENCE")
   sys.stdout.flush()
   return cmd_result
 
 def exercise():
-  from cStringIO import StringIO
+  from io import StringIO
   assert approx_equal(1, 1)
   out = StringIO()
   assert not approx_equal(1, 0, out=out)
@@ -794,7 +797,7 @@ ERROR: is_above_limit(value=None, limit=-3, eps=1)
 ERROR: is_above_limit(value=None, limit=3, eps=1)
 """)
   #
-  import pickle, cPickle
+  import pickle, pickle
   for p in [pickle, cPickle]:
     d = pickle_detector()
     assert d.unpickled_counter is None
@@ -818,7 +821,7 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   #
   assert precision_approx_equal(0.799999,0.800004,precision=17)==True
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

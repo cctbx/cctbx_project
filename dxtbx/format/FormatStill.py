@@ -30,7 +30,7 @@ class FormatStill(Format):
       assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
-    except exceptions.Exception, e:
+    except exceptions.Exception as e:
       # FIXME ideally should not squash the errors here...
       pass
     finally:

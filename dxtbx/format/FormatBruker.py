@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import range
 from dxtbx.format.Format import Format
 
 class FormatBruker(Format):
@@ -56,10 +58,10 @@ class FormatBruker(Format):
   def understand(image_file):
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError as e:
       return False
     matches = []
-    for x in xrange(0,1024,80):
+    for x in range(0,1024,80):
       word = tag[x:x+16]
       if word[0:7].isupper() and word[7]==":":
         matches.append(word)
@@ -135,4 +137,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatBruker.understand(arg)
+    print(FormatBruker.understand(arg))

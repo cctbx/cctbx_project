@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
 from docutils import nodes
@@ -18,7 +21,7 @@ class PhilDirective(Directive):
                  'attributes-level': directives.nonnegative_int}
 
   def run(self):
-    from cStringIO import StringIO
+    from io import StringIO
 
     phil_include = self.arguments[0]
     expert_level = self.options.get('expert-level', None)
@@ -54,7 +57,7 @@ class PhilDirective(Directive):
           import_path = phil_include
         else:
           import_path = "%s.%s" %(phil_include, i)
-        print import_path
+        print(import_path)
         master_params = libtbx.utils.import_python_object(
           import_path=import_path,
           error_prefix="",
@@ -64,14 +67,14 @@ class PhilDirective(Directive):
         if isinstance(master_params, ModuleType):
           continue
         break
-      except Exception, e:
-        print e
+      except Exception as e:
+        print(e)
         pass
 
     # Check if the module attribute is a string, a scope, ...
     if isinstance(master_params, libtbx.phil.scope):
       pass
-    elif isinstance(master_params, (str, unicode)):
+    elif isinstance(master_params, (str, str)):
       master_params = iotbx.phil.parse(master_params, process_includes=True)
     elif hasattr(master_params, '__call__'):
       master_params = master_params()

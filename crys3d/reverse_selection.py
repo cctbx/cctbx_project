@@ -1,6 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 # XXX: internal data for mouse selections in wx_selection_editor.py
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 import re
@@ -196,7 +202,7 @@ class mouse_selection_manager (object) :
         atom_selection = self.selection_cache.selection(selection_string)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       raise
       atom_selection =None
     return atom_selection
@@ -338,7 +344,7 @@ class mouse_selection_manager (object) :
     if n_selected == 1 and not allow_duplicate :
       # force items to be unique (no self-pairing)
       if str(selected_object) == str(self.selected_pair[0]) :
-        print "skipping"
+        print("skipping")
         return
     self.selected_pair.append(selected_object)
     self.construct_selection()
@@ -377,7 +383,7 @@ class mouse_selection_manager (object) :
     final_selection = ""
     # Part 1: stuff we want
     clauses = []
-    for chain_id, chain_info in self.selected_chains.iteritems() :
+    for chain_id, chain_info in self.selected_chains.items() :
       clauses.append(str(chain_info))
     chains_selection_str = assemble_selection_clauses(clauses)
     selection1 = self.get_atom_selection(chains_selection_str)
@@ -460,7 +466,7 @@ def assemble_resseq_ranges_with_altloc (ranges, altloc) :
 ########################################################################
 def exercise () :
   from mmtbx.monomer_library import pdb_interpretation
-  import cStringIO
+  import io
   open("tmp.pdb", "w").write("""\
 CRYST1   50.800   50.800  155.300  90.00  90.00  90.00 P 43 21 2     8
 ATOM      4  N   SER A   1       8.753  29.755  61.685  1.00 49.13
@@ -512,7 +518,7 @@ HETATM 1478  O3  SO4 S 188      31.128  43.217  61.738  1.00 59.44           O1-
 HETATM 1479  O4  SO4 S 188      30.353  43.201  59.539  1.00 60.54           O1-
 HETATM 1480  O   HOH W 200      29.478  23.354  61.364  1.00  8.67      WATE
 END""")
-  out = cStringIO.StringIO()
+  out = io.StringIO()
   processed_pdb_file = pdb_interpretation.run(args=["tmp.pdb"], log=out)
   m = mouse_selection_manager()
   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
@@ -572,7 +578,7 @@ END""")).construct_hierarchy()
   m.start_range_selection(10)
   m.end_range_selection(12, deselect=True, ignore_altloc=False)
   assert m.selection_size() == 5
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__" :
   exercise()

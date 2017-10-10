@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from boost_adaptbx import graph
 from boost_adaptbx.graph import clustering_algorithm
 

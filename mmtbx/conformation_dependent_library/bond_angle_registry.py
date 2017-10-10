@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import str
 class bond_angle_registry(dict):
   def __init__(self):
     pass

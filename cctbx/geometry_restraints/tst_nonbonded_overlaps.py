@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 from cctbx.geometry_restraints.nonbonded_overlaps import compute
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
@@ -7,7 +11,7 @@ from cctbx.array_family import flex
 import mmtbx.monomer_library.server
 from mmtbx import monomer_library
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from io import StringIO
 from libtbx.utils import Sorry
 from libtbx import easy_run
 from cctbx import xray
@@ -933,7 +937,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     fn = 'test_unknown_pairs_in_pdb.pdb'
     self.file_to_delete.append(fn)
     open(fn,'w').write(unknown_pairs_pdb_str)
-    print 'current _dir',os.getcwd()
+    print('current _dir',os.getcwd())
     pdb_with_h, h_were_added = mvc.check_and_add_hydrogen(
         file_name=fn,
         allow_multiple_models=False,
@@ -1143,7 +1147,7 @@ def run_selected_tests():
   """
   # tests = ['test_abort_when_bad_cryst_records']
   tests = ['test_abort_when_bad_cryst_records']
-  suite = unittest.TestSuite(map(test_nonbonded_overlaps, tests))
+  suite = unittest.TestSuite(list(map(test_nonbonded_overlaps, tests)))
   return suite
 
 if (__name__ == "__main__"):
@@ -1151,6 +1155,6 @@ if (__name__ == "__main__"):
   # unittest.TextTestRunner().run(run_selected_tests())
 
   if (chem_data is None) :
-    print "chem_data not present, skipping"
+    print("chem_data not present, skipping")
   else :
     unittest.main(verbosity=0)

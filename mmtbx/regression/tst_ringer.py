@@ -1,5 +1,7 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 from mmtbx.regression import tst_build_alt_confs
 from scitbx.array_family import flex
 from libtbx import easy_run
@@ -20,7 +22,7 @@ def exercise () :
     "label=F",
     "output.file_name=%s" % mtz_file,
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   result = easy_run.fully_buffered(
     "phenix.maps \"%s\" \"%s\" output.prefix=tmp_ringer" %
@@ -54,4 +56,4 @@ def exercise () :
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

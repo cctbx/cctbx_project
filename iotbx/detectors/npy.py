@@ -1,11 +1,15 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8; -*-
 #
 # $Id$
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from iotbx.detectors.detectorbase import DetectorImageBase, tile_manager_base
 from scitbx.array_family          import flex
-import cPickle as pickle
+import pickle as pickle
 
 #INT   = (int,)
 #FLOAT = (float,)
@@ -135,7 +139,7 @@ class NpyImage(DetectorImageBase):
           self.parameters['SIZE1'] = 185
           self.linearintdata = self.linearintdata[int(len(self.linearintdata)/2):]
           self.linearintdata.reshape(flex.grid(self.size1,self.size2))
-        print "CXI 2x2 size",self.size1,self.size2, self.linearintdata.focus()
+        print("CXI 2x2 size",self.size1,self.size2, self.linearintdata.focus())
       return
 
     assert 2 * len(phil.distl.tile_translations) == len(phil.distl.detector_tiling)
@@ -183,7 +187,7 @@ class NpyImage(DetectorImageBase):
     assert len(active_areas)%4 == 0
     # apply an additional margin of 1 pixel, since we don't seem to be
     # registering the global peripheral margin.  XXX this should be changed later
-    asics = [(B[i]+1,B[i+1]+1,B[i+2]-1,B[i+3]-1) for i in xrange(0,len(B),4)]
+    asics = [(B[i]+1,B[i+1]+1,B[i+2]-1,B[i+3]-1) for i in range(0,len(B),4)]
 
     for asic in asics:
       self.linearintdata.matrix_paste_block_in_place(
@@ -229,7 +233,7 @@ class tile_manager(tile_manager_base):
     if self.working_params.distl.quad_translations != None:
       from scitbx.matrix import col
       beam = col(self.beam)
-      for itile in xrange(len(self.working_params.distl.detector_tiling) // 4):
+      for itile in range(len(self.working_params.distl.detector_tiling) // 4):
         tile_center = (
           col(self.working_params.distl.detector_tiling[4*itile:4*itile+2]) +
           col(self.working_params.distl.detector_tiling[4*itile+2:4*itile+4]))/2
@@ -242,7 +246,7 @@ class tile_manager(tile_manager_base):
                self.working_params.distl.quad_translations[2 * iquad + 1])
       return
 
-    for i in xrange(len(self.working_params.distl.tile_translations) // 2):
+    for i in range(len(self.working_params.distl.tile_translations) // 2):
        yield (self.working_params.distl.tile_translations[2 * i + 0],
               self.working_params.distl.tile_translations[2 * i + 1])
 
@@ -251,7 +255,7 @@ class tile_manager(tile_manager_base):
     IT = flex.int(copy.copy(self.working_params.distl.detector_tiling))
 
     assert len(IT)%4==0 # only meaningful for groups of 4
-    for itl in xrange(0,len(IT),4): # validate upper-left/ lower-right ordering
+    for itl in range(0,len(IT),4): # validate upper-left/ lower-right ordering
       assert IT[itl] < IT[itl+2]; assert IT[itl+1] < IT[itl+3]
 
     if self.working_params.distl.tile_translations!=None and \

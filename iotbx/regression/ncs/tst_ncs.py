@@ -299,11 +299,11 @@ def exercise_01():
   expected = 'chain A or chain B'
   assert result == expected
   # transforms that are not present
-  result = transforms_obj.transform_to_ncs.keys()
+  result = list(transforms_obj.transform_to_ncs.keys())
   expected = ['0000000002', '0000000003']
   assert result == expected
   # all transforms
-  result = transforms_obj.ncs_transform.keys()
+  result = list(transforms_obj.ncs_transform.keys())
   expected = ['0000000001', '0000000002', '0000000003']
   result.sort()
   assert result == expected

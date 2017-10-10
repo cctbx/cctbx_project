@@ -1,11 +1,15 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
 Last Changed: 04/25/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
+from __future__ import print_function
 
 import os
 from cctbx import miller
@@ -17,7 +21,7 @@ from libtbx import easy_run
 from collections import Counter
 
 
-class InputFinder():
+class InputFinder(object):
   def __init__(self):
     self.images = ['cbf', 'img', 'corr', 'mccd', 'marccd', 'mar']
     self.sequences = ['seq', 'fasta']
@@ -310,7 +314,7 @@ class InputFinder():
 class RadAverageCalculator(object):
   def __init__(self, image=None, datablock=None):
     if (image is None and datablock is None):
-      print 'ERROR: Need image or datablock for Radial Average Calculator'
+      print('ERROR: Need image or datablock for Radial Average Calculator')
       return
     if datablock is None:
       from dxtbx.datablock import DataBlockFactory

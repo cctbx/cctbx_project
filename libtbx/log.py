@@ -1,5 +1,7 @@
 """A simple logging interface."""
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import logging
 import sys
 
@@ -58,13 +60,13 @@ class logger(object):
   def flush(self):
     try:
       self.ch.flush()
-    except Exception, e:
+    except Exception as e:
       pass
 
   def close(self):
     try:
       self.ch.close()
-    except Exception, e:
+    except Exception as e:
       pass
 
   def set_quiet(self, state=True):
@@ -127,7 +129,7 @@ class TestLog(unittest.TestCase):
         assert value in data
 
   def test_debug(self):
-    print "Check set_debug"
+    print("Check set_debug")
     logger.set_logfile("test.log")
     logger.set_debug(False)
     debug("debug: muted")
@@ -140,7 +142,7 @@ class TestLog(unittest.TestCase):
       assert "ok" in data
 
   def test_quiet(self):
-    print "Check set_quiet"
+    print("Check set_quiet")
     logger.set_logfile("test.log")
     logger.set_quiet(False)
     info("quiet: ok")
@@ -153,7 +155,7 @@ class TestLog(unittest.TestCase):
       assert "ok" in data
 
   def test_logfile(self):
-    print "Check output file"
+    print("Check output file")
     logger.set_logfile("test.log")
     info("logfile: ok")
     with open("test.log") as f:
@@ -162,11 +164,11 @@ class TestLog(unittest.TestCase):
 
   def test_stdout(self):
     oldsys = sys.stdout
-    print "Checking sys.stdout redirect"
+    print("Checking sys.stdout redirect")
     sys.stdout = logger
-    print "redirect: ok"
+    print("redirect: ok")
     sys.stdout = oldsys
-    print "... and back again"
+    print("... and back again")
 
 if __name__ == "__main__":
   unittest.main(verbosity=0)

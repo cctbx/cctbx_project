@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 import mmtbx.utils
 import iotbx.phil
 from scitbx.array_family import flex
@@ -255,7 +260,7 @@ def cast_map_coeff_params(map_type_obj):
      map_type_obj.f_obs_filled)
   return iotbx.phil.parse(map_coeff_params_str, process_includes=False)
 
-class map_coeffs_mtz_label_manager:
+class map_coeffs_mtz_label_manager(object):
 
   def __init__(self, map_params):
     self._amplitudes = map_params.mtz_label_amplitudes
@@ -553,9 +558,9 @@ def b_factor_sharpening_by_map_kurtosis_maximization(map_coeffs, show=True,
         kurt = kurt_
         b_sharp_best = b_sharp
       if(show):
-        print "b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
-          o.skewness(), o.kurtosis())
-  if(show): print "Best sharpening B-factor:", b_sharp_best
+        print("b_sharp: %6.1f skewness: %6.4f kurtosis: %6.4f"%(b_sharp,
+          o.skewness(), o.kurtosis()))
+  if(show): print("Best sharpening B-factor:", b_sharp_best)
   k_sharp = 1./flex.exp(-ss * b_sharp_best)
   if(b_only): return b_sharp_best
   else:

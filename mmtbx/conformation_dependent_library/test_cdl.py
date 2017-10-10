@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 import os, sys
 import time
 #import libtbx.load_env
@@ -8,7 +12,7 @@ import mmtbx.monomer_library.server
 from cctbx.array_family import flex
 import mmtbx.model
 import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
+from io import StringIO
 #from mmtbx import utils
 #from libtbx.utils import format_cpu_times
 
@@ -826,13 +830,13 @@ def test_res_type(hierarchy,
     geometry=restraints_manager.geometry,
     )
                              ):
-    print threes.show(),
+    print(threes.show(), end=' ')
     res_type_group = cdl_utils.get_res_type_group(
       threes[1].resname,
       threes[2].resname,
       )
     assert res_type_group
-    print i, res_type_group, filenames[filename][0][i]
+    print(i, res_type_group, filenames[filename][0][i])
     assert res_type_group == filenames[filename][0][i]
 
 def test_phi_psi_key(hierarchy,
@@ -846,7 +850,7 @@ def test_phi_psi_key(hierarchy,
     )
                              ):
     key = threes.get_cdl_key()
-    print i,key,filenames[filename][1]
+    print(i,key,filenames[filename][1])
     assert key == filenames[filename][1][i]
 
 def test_cdl_lookup(hierarchy,
@@ -864,12 +868,12 @@ def test_cdl_lookup(hierarchy,
       threes[2].resname,
       )
     key = threes.get_cdl_key()
-    print 'key',key
+    print('key',key)
     if key is None:
       assert filenames[filename][2][i] is None
       continue
     restraint_values = cdl_database[res_type_group][key]
-    print restraint_values[:4]
+    print(restraint_values[:4])
     assert restraint_values[:3] == filenames[filename][2][i]
 
 def test_cis_trans_peptide(hierarchy,
@@ -883,7 +887,7 @@ def test_cis_trans_peptide(hierarchy,
                              ):
     cis_peptide_bond = threes.cis_group()
     if cis_peptide_bond:
-      print cis_peptide_bond
+      print(cis_peptide_bond)
       assert cis_peptide_bond == filenames[filename][3][i]
 
 def test_average(hierarchy,
@@ -896,7 +900,7 @@ def test_average(hierarchy,
     )
                              ):
     if threes.registry.n:
-      assert threes.registry.n.keys() == filenames[filename][3]
+      assert list(threes.registry.n.keys()) == filenames[filename][3]
 
 def get_managers(filename, testing=False, verbose=False):
   mon_lib_srv = monomer_library.server.server()
@@ -941,7 +945,7 @@ def run_apply(filename, testing=False, verbose=False):
                            filename,
                            restraints_manager,
                            )
-    print "OK"
+    print("OK")
 
   sites_cart = processed_pdb_file.all_chain_proxies.sites_cart_exact()
   if True:
@@ -966,9 +970,9 @@ def run_apply(filename, testing=False, verbose=False):
                  filename,
                  restraints_manager,
                  )
-    print 'OK'
+    print('OK')
 
-  print 'Time to update restraints %0.5fs' % (time.time()-t0)
+  print('Time to update restraints %0.5fs' % (time.time()-t0))
   if True:
     lines = StringIO()
     restraints_manager.geometry.show_sorted(sites_cart=sites_cart,
@@ -994,11 +998,11 @@ def convert_dict_to_excel(keys_number=4,
     if phi>=180: phi-=360
     for j, psi in enumerate(range(*psi_range)):
       if psi>=180: psi-=360
-      print phi, psi, cdl_database[key][(phi, psi)][column_number]
+      print(phi, psi, cdl_database[key][(phi, psi)][column_number])
       outl += ", %0.2f" %  cdl_database[key][(phi, psi)][column_number]
     outl += "\n"
   outl += "\n"
-  print outl
+  print(outl)
   return outl
 
 def convert_dict_to_gnuplot(keys_number=4,
@@ -1093,7 +1097,7 @@ def convert_dict_to_scilab(keys_number=4,
   #axfig10=gca();
   #surf(axfig10,Z,'zdat',[100:119],'marker','d','markerfac','green','markeredg','yel') // draw onto the axe of figure 10
 
-  print outl
+  print(outl)
   return outl
 
 def convert_dict_to_kin2Dcont(keys_number=4,
@@ -1120,7 +1124,7 @@ def convert_dict_to_kin2Dcont(keys_number=4,
       else: kpsi=psi
       outl += " %12.5f %12.5f %12.5f\n" % (phi, psi, cdl_database[key][(kphi, kpsi)][column_number])
 
-  print outl
+  print(outl)
   return outl
 
 def get_min_max_table():
@@ -1153,7 +1157,7 @@ def get_min_max_table():
   for i, (residue_class, resdiue_data) in enumerate(cdl_database.items()):
     if residue_class.startswith("Gly"): continue
     if residue_class.startswith("Pro"): continue
-    print residue_class
+    print(residue_class)
     for j, (phi_psi, data) in enumerate(sorted(resdiue_data.items())):
       for k, d in enumerate(data):
         if k<2: continue
@@ -1163,16 +1167,16 @@ def get_min_max_table():
         if d>max_values[k]:
           max_values[k]=d
           max_data[k]=(residue_class, phi_psi)
-  print min_values
-  print max_values
-  print min_data
-  print max_data
+  print(min_values)
+  print(max_values)
+  print(min_data)
+  print(max_data)
   outl = "Angle\tSVL\tmin(CDL)\tmax(CDL)\n"
   for i, c in enumerate(columns):
     if i<2: continue
     if i>15: continue
     if c.startswith("s"): continue
-    print i, c
+    print(i, c)
     outl += anglise(c)
     if svl_data[i] is None:
       outl += "\t-"
@@ -1183,17 +1187,17 @@ def get_min_max_table():
     #outl += "\t#%s %s" % min_data[i]
     #outl += "\t%s %s" % max_data[i]
     outl += "\n"
-    print outl
+    print(outl)
   assert 0
 
 def run(filename=None):
   if 0:
-    print get_min_max_table()
+    print(get_min_max_table())
     assert 0
   if 0:
     for i, key in enumerate(sorted(cdl_database)):
       output = "n_ca_c_m_%s.dat" % key
-      print i+1,key,output
+      print(i+1,key,output)
       f=file(output, "wb")
       f.write(convert_dict_to_gnuplot(keys_number=i, dales_format=True))
       f.close()
@@ -1212,20 +1216,20 @@ def run(filename=None):
     assert 0
 
   if filename:
-    print 'run CDL on',filename
+    print('run CDL on',filename)
     run_apply(filename,
               #verbose=True,
               )
   else:
-    print 'Running tests'
+    print('Running tests')
     for filename in output_filenames:
-      print filename
+      print(filename)
       f=file(filename, "wb")
       f.write(output_filenames[filename])
       f.close()
     for filename in filenames:
       #if filename.find("_8")==-1: continue
-      print ('%s ' % filename)*5
+      print(('%s ' % filename)*5)
       run_apply(filename, testing=True)
 
 def test_threes_methods():

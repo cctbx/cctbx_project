@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 import boost.python
 ext = boost.python.import_ext( "boost_adaptbx_graph_min_cut_max_flow_ext" )
 

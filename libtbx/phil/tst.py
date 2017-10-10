@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx import phil
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -7,7 +14,7 @@ from libtbx.test_utils import \
 from libtbx import easy_pickle
 from libtbx import Auto
 import warnings
-from cStringIO import StringIO
+from io import StringIO
 import copy
 import sys, os
 
@@ -46,7 +53,7 @@ def exercise_string_quote_and_tokenize():
   assert len(words) == 1
   assert words[0].value == "\t\n\rz\x8f"
   assert str(words[0]) == '"\t\n\rz\x8f"'
-  value = "".join([chr(_) for _ in xrange(256)])
+  value = "".join([chr(_) for _ in range(256)])
   words = tvl(input_string=phil.tokenizer.quote_python_str(
     quote_token='"', string=value))
   assert len(words) == 1
@@ -87,9 +94,9 @@ class recycle(object):
         print_width=print_width)
       out_out = out_out.getvalue()
       if (out_out != self.out):
-        print "self.out:"
+        print("self.out:")
         sys.stdout.write(self.out)
-        print "out_out:"
+        print("out_out:")
         sys.stdout.write(out_out)
         raise RuntimeError("out_out != self.out")
 
@@ -404,7 +411,7 @@ z3 = 4
 x=None
   .type=foo.int
 """)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unexpected definition type: "foo.int" (input line 2)'
   else: raise Exception_expected
   #
@@ -412,7 +419,7 @@ x=None
 x=None
   .type=libtbx.phil.tst.none
 """)
-  except AttributeError, e:
+  except AttributeError as e:
     assert str(e) == '.type=libtbx.phil.tst.none: object' \
       ' "none_phil_converters" not found in module "libtbx.phil.tst"' \
       ' (input line 2)'
@@ -422,7 +429,7 @@ x=None
 x=None
   .type=libtbx.phil.tst.improper
 """)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) == '"libtbx.phil.tst.improper_phil_converters" is not' \
       ' a callable Python object (input line 2)'
   else: raise Exception_expected
@@ -431,7 +438,7 @@ x=None
 x=None
   .type=libtbx.phil.tst.int(factor=1.5)
 """)
-  except RuntimeError, e:
+  except RuntimeError as e:
     e = str(e)
     assert e.startswith(
       'Error constructing definition type "libtbx.phil.tst.int(factor=1.5)":'
@@ -443,7 +450,7 @@ x=None
 x=None
   .type=libtbx.phil.tst.int(a=1=2)
 """)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Error evaluating definition type "libtbx.phil.tst.int' \
       '(a=1=2)": SyntaxError: invalid syntax (line 1) (input line 2)'
   else: raise Exception_expected
@@ -451,11 +458,11 @@ x=None
 def test_exception(input_string, exception_string=None):
   try: phil.parse(input_string=input_string)
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     if (exception_string is None or str(e) != exception_string):
-      print str(e)
+      print(str(e))
       if (exception_string is not None):
-        print exception_string
+        print(exception_string)
     if (exception_string is not None):
       assert str(e) == exception_string
   else: raise Exception_expected
@@ -550,7 +557,7 @@ d = 4
   assert params.get(path="c").objects[0].words[0].line_number == 12
   assert params.get(path="d").objects[0].words[0].line_number == 14
   try: phil.parse(input_string="#phil __Off__\n")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Unknown: #phil __Off__ (input line 1)"
   else: raise Exception_expected
 
@@ -812,8 +819,8 @@ def check_resolve_variables(parameters, path, expected_out=None, n_matches=1):
   assert len(matches.objects) == n_matches
   result = matches.objects[0].resolve_variables().as_str()
   if (expected_out is None):
-    print '  check_resolve_variables(parameters, "%s", "%s")' % (
-      path, result.replace("\n", "\\n"))
+    print('  check_resolve_variables(parameters, "%s", "%s")' % (
+      path, result.replace("\n", "\\n")))
   elif (result != expected_out):
     raise AssertionError('"%s" != "%s"' % (result, expected_out))
 
@@ -881,7 +888,7 @@ l=$s
   check_resolve_variables(parameters, "s.t.n", "n = 1 10 10\n")
   check_resolve_variables(parameters, "f", "f = 10\n")
   try: check_resolve_variables(parameters, "g")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Undefined variable: $s.a (input line 26)'
   else: raise Exception_expected
   check_resolve_variables(parameters, "h", "h = 30\n")
@@ -892,7 +899,7 @@ l=$s
   check_resolve_variables(parameters, "s.f", "f = 2\n")
   check_resolve_variables(parameters, "s.g", "g = 20\n")
   try: check_resolve_variables(parameters, "l")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Not a definition: $s (input line 37)'
   else: raise Exception_expected
   check_resolve_variables(parameters, "h", "h = 30\n")
@@ -930,12 +937,12 @@ m=$k
     "g": "Undefined variable: $e (input line 4)"}
   for path in "abcdefg":
     try: parameters.get(path=path)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e) != diags[path]):
         raise AssertionError("%s != %s" % (repr(str(e)), repr(diags[path])))
     else: raise Exception_expected
   try: parameters.get(path="h")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
   else: raise Exception_expected
   os.environ["_X_Y_Z_"] = "xyz"
@@ -979,25 +986,25 @@ n='$a'
   check_get_sub(parameters, path="h",
     expected_out='h = "abcyes nobc" "12yes nox56"\n')
   try: parameters.get(path="i")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Syntax error: $ must be followed by an identifier:' \
                    + ' "$" (input line 10)'
   else: raise Exception_expected
   try: parameters.get(path="j")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
   else: raise Exception_expected
   try: parameters.get(path="k")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
                    + ' (input line 12)'
   else: raise Exception_expected
   try: parameters.get(path="l")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
   else: raise Exception_expected
   try: parameters.get(path="m")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
   else: raise Exception_expected
   check_get_sub(parameters, path="n", expected_out="n = '$a'\n")
@@ -1032,7 +1039,7 @@ a=$b
 !b=y
 """)
   try: parameters.get(path="a")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Undefined variable: $b (input line 1)'
   else: raise Exception_expected
 
@@ -1057,18 +1064,18 @@ a0 {
     assert params.get(path).objects[0].full_path() == path
 
 def exercise_include():
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 !include none
 a=x
-"""
-  print >> open("tmp2.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 b=y
-"""
-  print >> open("tmp3.params", "w"), """\
+""", file=open("tmp2.params", "w"))
+  print("""\
 c=z
 include file tmp2.params
 d=$z
-"""
+""", file=open("tmp3.params", "w"))
   parameters = phil.parse(
     input_string="""\
 tmp2=tmp2.params
@@ -1104,43 +1111,43 @@ d = $z
 s = 1
 """)
   try: parameters.get(path="d")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
   else: raise Exception_expected
   try: os.makedirs("tmp")
   except OSError: pass
   #
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 include file tmp3.params
-"""
-  print >> open("tmp2.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 include file tmp1.params
-"""
-  print >> open("tmp3.params", "w"), """\
+""", file=open("tmp2.params", "w"))
+  print("""\
 include file tmp2.params
-"""
+""", file=open("tmp3.params", "w"))
   try: parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith("Include dependency cycle: ")
     assert len(str(e).split(",")) == 4
   else: raise Exception_expected
   #
-  print >> open("tmp1.params", "w"), """\
+  print("""\
 a=0
 include file tmp/tmp1.params
 x=1
-"""
-  print >> open("tmp/tmp1.params", "w"), """\
+""", file=open("tmp1.params", "w"))
+  print("""\
 b=1
 include file tmp2.params
 y=2
-"""
-  print >> open("tmp/tmp2.params", "w"), """\
+""", file=open("tmp/tmp1.params", "w"))
+  print("""\
 c=2
 z=3
-"""
+""", file=open("tmp/tmp2.params", "w"))
   parameters = phil.parse(
     file_name="tmp1.params",
     process_includes=True)
@@ -1154,7 +1161,7 @@ z = 3
 y = 2
 x = 1
 """)
-  print >> open("tmp4.params", "w"), """\
+  print("""\
 a=1
 include file tmp1.params
 s {
@@ -1168,7 +1175,7 @@ s {
   z=3
 }
 z=1
-"""
+""", file=open("tmp4.params", "w"))
   parameters = phil.parse(
     file_name="tmp4.params",
     process_includes=True)
@@ -1226,20 +1233,20 @@ z = 1
   try: phil.parse(input_string="""\
 include foo
 """, process_includes=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
       == '"include" must be followed by at least two arguments (input line 1)'
   else: raise Exception_expected
   try: phil.parse(input_string="""\
 include foo bar
 """, process_includes=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Unknown include type: foo (input line 1)"
   else: raise Exception_expected
   try: phil.parse(input_string="""\
 include file foo foo
 """, process_includes=True)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
       == '"include file" must be followed exactly one argument (input line 1)'
   else: raise Exception_expected
@@ -1342,7 +1349,7 @@ b = None
     try: phil.parse(input_string="""\
 include scope foo foo foo
 """, process_includes=True)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) \
         == '"include scope" must be followed one or two arguments,' \
            ' i.e. an import path and optionally a phil path (input line 1)'
@@ -1350,14 +1357,14 @@ include scope foo foo foo
     try: phil.parse(input_string="""\
 include scope libtbx
 """, process_includes=True)
-    except ValueError, e:
+    except ValueError as e:
       assert str(e) == 'include scope: import path "libtbx" is too short;' \
         ' target must be a phil scope object or phil string (input line 1)'
     else: raise Exception_expected
     try: phil.parse(input_string="""\
 include scope libtbx.phil.t_s_t.include_scope_target_1
 """, process_includes=True)
-    except ImportError, e:
+    except ImportError as e:
       assert str(e) \
         == "include scope: no module libtbx.phil.t_s_t (input line 1)" \
            " or possibly import errors in module libtbx.phil.t_s_t", \
@@ -1366,7 +1373,7 @@ include scope libtbx.phil.t_s_t.include_scope_target_1
     try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_none
 """, process_includes=True)
-    except AttributeError, e:
+    except AttributeError as e:
       assert str(e) == 'include scope: object' \
         ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
         ' (input line 1)'
@@ -1374,7 +1381,7 @@ include scope libtbx.phil.tst.include_scope_target_none
     try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_0n
 """, process_includes=True)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'include scope: python object' \
         ' "include_scope_target_0n" in module "libtbx.phil.tst"' \
         ' is not a libtbx.phil.scope instance (input line 1)'
@@ -1382,7 +1389,7 @@ include scope libtbx.phil.tst.include_scope_target_0n
     try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_0f
 """, process_includes=True)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == 'include scope: python object' \
         ' "include_scope_target_0f" in module "libtbx.phil.tst"' \
         ' is not a libtbx.phil.scope instance (input line 1)'
@@ -1390,7 +1397,7 @@ include scope libtbx.phil.tst.include_scope_target_0f
     try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_1 t
 """, process_includes=True)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert str(e) == \
         'include scope: path "t" not found in phil scope object' \
         ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
@@ -1650,28 +1657,28 @@ d { a {} }
 """, source_info="master")
   source = phil.parse(input_string="a { }", source_info="source")
   try: master.fetch(source=source)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Incompatible parameter objects: definition "a" ' \
       '(master, line 1) vs. scope "a" (source, line 1)'
   else: raise Exception_expected
   master.fetch(source=source, skip_incompatible_objects=True)
   source = phil.parse(input_string="b=None")
   try: master.fetch(source=source)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Incompatible parameter objects: scope "b" ' \
       '(master, line 2) vs. definition "b" (input line 1)'
   else: raise Exception_expected
   master.fetch(source=source, skip_incompatible_objects=True)
   source = phil.parse(input_string="c { a { } }")
   try: master.fetch(source=source)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Incompatible parameter objects: definition "a" ' \
       '(master, line 3) vs. scope "a" (input line 1)'
   else: raise Exception_expected
   master.fetch(source=source, skip_incompatible_objects=True)
   source = phil.parse(input_string="d { a=None\n}")
   try: master.fetch(source=source)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Incompatible parameter objects: scope "a" ' \
       '(master, line 5) vs. definition "a" (input line 1)'
   else: raise Exception_expected
@@ -1809,7 +1816,7 @@ c=a *b c
 c=a *d c
 """)
   try: fetched = master.fetch(source=source)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 Not a possible choice for c: d (input line 1)
   Possible choices are:
@@ -1869,7 +1876,7 @@ v {
 }
 """)
   try: parameters.fetch(source=parameters)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Undefined variable: $v.x (input line 2)'
   else: raise Exception_expected
   #
@@ -2657,7 +2664,7 @@ a = None
 a = None
 """)
   try: master.fetch()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 Duplicate definitions in master (first not marked with .multiple=True):
   a (input line 1)
@@ -3239,19 +3246,19 @@ group {
     with_substitution=False).objects[0].extract() == "b"
   try: parameters.get(path="group.e",
     with_substitution=False).objects[1].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Multiple choices for group.e;' \
       ' only one choice can be selected (input line 13)'
   else: raise Exception_expected
   try: parameters.get(path="group.e",
     with_substitution=False).objects[2].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unspecified choice for group.e:' \
       ' exactly one choice must be selected (input line 15)'
   else: raise Exception_expected
   try: parameters.get(path="group.f",
     with_substitution=False).objects[3].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Unspecified choice for group.f:' \
       ' at least one choice must be selected (input line 24)'
   else: raise Exception_expected
@@ -3277,7 +3284,7 @@ group {
     with_substitution=False).objects[0].extract() == 2
   try: parameters.get(path="group.i",
     with_substitution=False).objects[1].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Error interpreting group.i="1/2" as' \
       ' an integer expression (input line 33)'
   else: raise Exception_expected
@@ -3285,13 +3292,13 @@ group {
     with_substitution=False).objects[0].extract() == 0.5
   try: parameters.get(path="group.j",
     with_substitution=False).objects[1].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """Error interpreting group.j="'a'" as""" \
       " a floating-point expression (input line 37)"
   else: raise Exception_expected
   try: parameters.get(path="group.j",
     with_substitution=False).objects[2].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Error interpreting group.j="a" as a numeric expression:'\
                    + " NameError: name 'a' is not defined (input line 39)"
   else: raise Exception_expected
@@ -3311,28 +3318,28 @@ group {
     with_substitution=False).objects[0]
   try: parameters.get(path="group.int_true",
     with_substitution=False).objects[0].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       'Error interpreting group.int_true="True" as a numeric expression'
       ' (input line 53)')
   else: raise Exception_expected
   try: parameters.get(path="group.int_false",
     with_substitution=False).objects[0].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       'Error interpreting group.int_false="False" as a numeric expression'
       ' (input line 55)')
   else: raise Exception_expected
   try: parameters.get(path="group.float_true",
     with_substitution=False).objects[0].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       'Error interpreting group.float_true="True" as a numeric expression'
       ' (input line 57)')
   else: raise Exception_expected
   try: parameters.get(path="group.float_false",
     with_substitution=False).objects[0].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       'Error interpreting group.float_false="False" as a numeric expression'
       ' (input line 59)')
@@ -3472,13 +3479,13 @@ t {
     "t.c.d.e", "f")
   #
   try: extracted.z = 12
-  except AttributeError, e:
+  except AttributeError as e:
     assert not show_diff(str(e), """Assignment to non-existing attribute "z"
   Please correct the attribute name, or to create
   a new attribute use: obj.__inject__(name, value)""")
   else: raise Exception_expected
   try: extracted.t.c.z = 13
-  except AttributeError, e:
+  except AttributeError as e:
     assert not show_diff(str(e),"""Assignment to non-existing attribute "t.c.z"
   Please correct the attribute name, or to create
   a new attribute use: obj.__inject__(name, value)""")
@@ -3489,7 +3496,7 @@ t {
   extracted.__inject__("z", 15)
   assert extracted.z == 15
   try: extracted.__inject__("z", 16)
-  except AttributeError, e:
+  except AttributeError as e:
     assert str(e) == 'Attribute "z" exists already.'
   else: raise Exception_expected
   extracted.t.c.__inject__("z", 17)
@@ -3498,7 +3505,7 @@ t {
   extracted.t.c.__inject__("z", 18)
   assert extracted.t.c.z == 18
   try: extracted.t.c.__inject__("z", 19)
-  except AttributeError, e:
+  except AttributeError as e:
     assert str(e) == 'Attribute "t.c.z" exists already.'
   else: raise Exception_expected
   #
@@ -3599,7 +3606,7 @@ eq="1\\""'2\\"\\''
   .type=qstr
 """)
   work = master
-  for i_cycle in xrange(2):
+  for i_cycle in range(2):
     ex = work.extract()
     assert ex.a is None
     assert ex.b is Auto
@@ -4486,13 +4493,13 @@ y=*a b
   py_params = master.extract()
   py_params.x = "c"
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid choice: x=c"
   else: raise Exception_expected
   py_params.x = "b"
   py_params.y = "c"
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid choice: y=c"
   else: raise Exception_expected
   master = phil.parse(input_string="""\
@@ -4501,7 +4508,7 @@ x=*a a
 """)
   py_params = master.extract()
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
         == "Improper master choice definition: x = *a a (input line 1)"
   else: raise Exception_expected
@@ -4517,12 +4524,12 @@ y=a b
   py_params = master.extract()
   py_params.x = ["a", "c", "d"]
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid choice(multi=True): x=['c', 'd']"
   else: raise Exception_expected
   py_params.x = []
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Empty list for mandatory choice(multi=True): x"
   else: raise Exception_expected
   master = phil.parse(input_string="""\
@@ -4552,7 +4559,7 @@ x=*a b
   py_params = master.extract()
   py_params.x = None
   try: master.format(py_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid choice: x=None"
   else: raise Exception_expected
   master_phil = phil.parse("""\
@@ -4596,13 +4603,13 @@ c=None
 """,
     converter_registry=foo_converter_registry)
   try: params.get(path="a").objects[0].extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       '.type=foo2 does not have a from_words method (input line 1):' \
       " AttributeError: 'foo2_converters' object has no attribute 'from_words'"
   else: raise Exception_expected
   try: params.get(path="a").objects[0].format(python_object=0)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       '.type=foo2 does not have an as_words method (input line 1):' \
       " AttributeError: 'foo2_converters' object has no attribute 'as_words'"
@@ -4613,7 +4620,7 @@ a=None
   .type=foo1
 """,
     converter_registry=foo_converter_registry)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       'Error constructing definition type "foo1": RuntimeError:' \
       ' foo1 problem (input line 2)'
@@ -4624,7 +4631,7 @@ a=None
   .type=foo2(bar=1)
 """,
     converter_registry=foo_converter_registry)
-  except RuntimeError, e:
+  except RuntimeError as e:
     e = str(e)
     assert e.startswith(
       'Error constructing definition type "foo2(bar=1)": RuntimeError: ')
@@ -4636,7 +4643,7 @@ a=None
   .type=foo2(foo=1)
 """,
     converter_registry=foo_converter_registry)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       'Error constructing definition type "foo2(foo=1)": TypeError:' \
       " __init__() got an unexpected keyword argument 'foo' (input line 2)"
@@ -4646,7 +4653,7 @@ a=None
   .type=foo2(foo=1
 """,
     converter_registry=foo_converter_registry)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith('Error evaluating definition type "foo2(foo=1": ')
     assert str(e).endswith(' (input line 2)')
   else: raise Exception_expected
@@ -4655,7 +4662,7 @@ a=None
   .type=foo2(foo=1=2)
 """,
     converter_registry=foo_converter_registry)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Error constructing definition type "foo2(foo=1=2)":' \
       ' SyntaxError: invalid syntax (line 1) (input line 2)'
   else: raise Exception_expected
@@ -4693,7 +4700,7 @@ astrings=%(na)s
 awords=%(na)s
   .type=words
 """ % vars())
-    for i in xrange(3):
+    for i in range(3):
       params = master.extract()
       assert params.abool is nao
       assert params.aint is nao
@@ -4831,7 +4838,7 @@ a=-1.5
   .type=float(value_min=1.0)
 """)
   try: master_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "a element is less than the minimum allowed value:"
       " -1.5 < 1 (input line 1)")
@@ -4842,7 +4849,7 @@ b=5.1
   .type=float(value_min=0.0, value_max=5.0)
 """)
   try: master_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "b element is greater than the maximum allowed value:"
       " 5.1 > 5 (input line 1)")
@@ -4853,7 +4860,7 @@ c=7
   .type=int(value_max=6)
 """)
   try: master_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "c element is greater than the maximum allowed value:"
       " 7 > 6 (input line 1)")
@@ -4864,7 +4871,7 @@ d=-6
   .type=int(value_min=3, value_max=25)
 """)
   try: master_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "d element is less than the minimum allowed value:"
       " -6 < 3 (input line 1)")
@@ -4912,7 +4919,7 @@ a=1 v
   .type=floats
 """)
   try: master_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == """\
 Error interpreting a="v" as a numeric expression:\
  NameError: name 'v' is not defined (input line 1)"""
@@ -4958,7 +4965,7 @@ f=9
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "f element is less than the minimum allowed value:"
       " 9 < 10 (input line 1)")
@@ -4970,7 +4977,7 @@ f=10
   work_params = work_phil.extract()
   work_params.f[0] = 9
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "f element is less than the minimum allowed value: 9 < 10")
   else: raise Exception_expected
@@ -4980,7 +4987,7 @@ f=21
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "f element is greater than the maximum allowed value:"
       " 21 > 20 (input line 1)")
@@ -4992,7 +4999,7 @@ f=20
   work_params = work_phil.extract()
   work_params.f[0] = 21
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "f element is greater than the maximum allowed value: 21 > 20")
   else: raise Exception_expected
@@ -5002,14 +5009,14 @@ e=1
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Not enough values for e: 1 given, at least 2 required (input line 1)")
   else: raise Exception_expected
   work_params = master_phil.extract()
   work_params.e = [1]
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Not enough values for e: 1 given, at least 2 required")
   else: raise Exception_expected
@@ -5019,14 +5026,14 @@ a=1
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Not enough values for a: 1 given, exactly 2 required (input line 1)")
   else: raise Exception_expected
   work_params = master_phil.extract()
   work_params.a = [1]
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Not enough values for a: 1 given, exactly 2 required")
   else: raise Exception_expected
@@ -5036,14 +5043,14 @@ e=1 2 3 4 5
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Too many values for e: 5 given, 4 allowed at most (input line 1)")
   else: raise Exception_expected
   work_params = master_phil.extract()
   work_params.e = [1,2,3,4,5]
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Too many values for e: 5 given, 4 allowed at most")
   else: raise Exception_expected
@@ -5053,14 +5060,14 @@ a=1 2 3
 """)
   work_phil = master_phil.fetch(source=user_phil)
   try: work_phil.extract()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Too many values for a: 3 given, exactly 2 required (input line 1)")
   else: raise Exception_expected
   work_params = master_phil.extract()
   work_params.a = [1,2,3]
   try: master_phil.format(python_object=work_params)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       "Too many values for a: 3 given, exactly 2 required")
   else: raise Exception_expected
@@ -5071,14 +5078,14 @@ a=1 %s
 """ % value.lower())
     work_phil = master_phil.fetch(source=user_phil)
     try: work_phil.extract()
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e),
         "a element cannot be %s (input line 1)" % value)
     else: raise Exception_expected
     work_params = master_phil.extract()
     work_params.a = [1, eval(value)]
     try: master_phil.format(python_object=work_params)
-    except RuntimeError, e:
+    except RuntimeError as e:
       assert not show_diff(str(e),
         "a element cannot be %s" % value)
     else: raise Exception_expected
@@ -5189,7 +5196,7 @@ bar.max = 2
   assert itpr_bar.process(arg="max=6").as_str() == "bar.max = 6\n"
   assert itpr_bar.process(arg="ax=7").as_str() == "bar.max = 7\n"
   try: assert itpr_neutral.process(arg="max=5")
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 Ambiguous parameter definition: max = 5
 Best matches:
@@ -5202,28 +5209,28 @@ Best matches:
     assert itpr.process(arg="index=0").as_str() == "foo.index = 0\n"
     assert itpr.process(arg="ndex=0").as_str() == "foo.index = 0\n"
   try: itpr_bar.process(arg="xyz=")
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e), """\
 Error interpreting command line argument as parameter definition:
   "xyz="
   RuntimeError: Missing value for xyz (command line argument, line 1)""")
   else: raise Exception_expected
   try: itpr_bar.process(arg="xyz=8")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == "Unknown command line parameter definition: xyz = 8"
   else: raise Exception_expected
   try: itpr_bar.process(arg="  ")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == 'Command line parameter definition has no effect: "  "'
   else: raise Exception_expected
   itpr = master_phil.command_line_argument_interpreter(
     argument_description="")
   try: itpr.process(arg="bar {}")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
   else: raise Exception_expected
   #
-  print >> open("tmp0d5f6e10.phil", "w"), "foo.limit=-3"
+  print("foo.limit=-3", file=open("tmp0d5f6e10.phil", "w"))
   user_phils = itpr_bar.process(args=[
     "",
     "--flag",
@@ -5243,13 +5250,13 @@ Error interpreting command line argument as parameter definition:
   assert not os.path.exists("tmp0d5f6e10.phil")
   for arg in ["tmp0d5f6e10.phil", "lmit=3"]:
     try: itpr_bar.process(args=[arg])
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e),
         'Uninterpretable command line argument: "%s"' % arg)
     else: raise Exception_expected
-  print >> open("tmp0d5f6e10.phil", "w"), "foo$limit=0"
+  print("foo$limit=0", file=open("tmp0d5f6e10.phil", "w"))
   try: itpr_bar.process(args=["tmp0d5f6e10.phil"])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e),
       'Syntax error: improper definition name "foo$limit"'
       ' (file "tmp0d5f6e10.phil", line 1)')
@@ -5269,7 +5276,7 @@ Error interpreting command line argument as parameter definition:
     intercepted.append(arg)
     return True
   try: itpr_bar.process(args=args, custom_processor=custom_processor)
-  except Sorry, e:
+  except Sorry as e:
     assert not show_diff(str(e),
       'Uninterpretable command line argument: "lmit=3"')
   else: raise Exception_expected
@@ -5336,7 +5343,7 @@ def exercise_choice_multi_plus_support():
     assert not show_diff(work_params.as_str(), expected_result+"\n")
   for arg,err in [("u=a+d", "d"), ("u=e + b", "e")]:
     try: master_phil.fetch(source=cai.process(arg=arg))
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), """\
 Not a possible choice for u: %s (command line argument, line 1)
   Possible choices are:
@@ -5346,7 +5353,7 @@ Not a possible choice for u: %s (command line argument, line 1)
     else: raise Exception_expected
   for val in ["++a", "a++", "a++b", "a+b+"]:
     try: master_phil.fetch(source=cai.process(arg="u="+val))
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), """\
 Not a possible choice for u: %s (command line argument, line 1)
   Possible choices are:
@@ -5362,7 +5369,7 @@ s
 {
 }
 """)
-  except AttributeError, e:
+  except AttributeError as e:
     assert str(e) == 'scope "s" .call: object "scope_call_none" not found in' \
       ' module "libtbx.phil.tst" (input line 2)'
   else: raise Exception_expected
@@ -5373,7 +5380,7 @@ s
 {
 }
 """)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e) \
       == 'scope "s" .call: "libtbx.phil.tst.scope_call_not_callable"' \
         ' is not a callable Python object (input line 2)'
@@ -5385,7 +5392,7 @@ s
 {
 }
 """)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith(
       'scope "s" .call=libtbx.phil.tst.scope_call_func(: ')
     assert str(e).endswith(' (input line 2)')
@@ -5397,7 +5404,7 @@ s
 {
 }
 """)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'scope "s" .call=libtbx.phil.tst.scope_call_func(a=b=c):'\
       ' SyntaxError: invalid syntax (line 1) (input line 2)'
   else: raise Exception_expected
@@ -5458,13 +5465,13 @@ v {
   assert c[0] is params.u
   assert c[1] == {"a": 3, "b": 2}
   try: params.u(action="raise")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) \
       == 'scope "u" .call=libtbx.phil.tst.scope_call_func(a=1, b=2)' \
         ' execution: ValueError: action==raise (input line 10)'
   else: raise Exception_expected
   try: params.v()
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'scope "v" is not callable.'
   else: raise Exception_expected
   #
@@ -5576,7 +5583,7 @@ def scope_call_func(scope_extract, **keyword_args):
     raise ValueError("action==raise")
   return scope_extract, keyword_args
 
-class scope_call_class:
+class scope_call_class(object):
   def __init__(self, scope_extract, **keyword_args):
     self.scope_extract = scope_extract
     self.keyword_args = keyword_args
@@ -5873,7 +5880,7 @@ def exercise():
   exercise_command_line()
   exercise_choice_multi_plus_support()
   exercise_deprecation()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

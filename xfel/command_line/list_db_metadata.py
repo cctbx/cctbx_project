@@ -3,6 +3,7 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import str
 import libtbx.phil
 from libtbx.utils import Sorry
 import sys
@@ -28,7 +29,7 @@ def run(args):
     for arg in args :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
     params = master_phil.fetch(sources=user_phil).extract()
 

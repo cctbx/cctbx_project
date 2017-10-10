@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 from mmtbx.refinement import tst_tardy_comprehensive
 from mmtbx.refinement import tst_tardy_pdb
 from scitbx.array_family import flex
@@ -12,7 +18,7 @@ op = os.path
 try: import reportlab
 except ImportError: reportlab = None
 if (reportlab is None):
-  print "Skipping generation of plots: reportlab not available."
+  print("Skipping generation of plots: reportlab not available.")
 
 class plot_grid(object):
 
@@ -101,13 +107,13 @@ class plot_grid(object):
     lp.strokeWidth = 1
     lp.xValueAxis.valueMin = 0
     lp.xValueAxis.valueMax = xy_max
-    lp.xValueAxis.valueSteps = range(xy_max+1)
+    lp.xValueAxis.valueSteps = list(range(xy_max+1))
     lp.xValueAxis.strokeWidth = 1
     lp.xValueAxis.tickDown = 3
     lp.xValueAxis.labels.fontSize = label_font_size
     lp.yValueAxis.valueMin = 0
     lp.yValueAxis.valueMax = xy_max
-    lp.yValueAxis.valueSteps = range(xy_max+1)
+    lp.yValueAxis.valueSteps = list(range(xy_max+1))
     lp.yValueAxis.strokeWidth = 1
     lp.yValueAxis.tickLeft = 3
     lp.yValueAxis.labels.fontSize = label_font_size
@@ -173,7 +179,7 @@ class min_mean_stats(object):
     O.data[a+b].append(param_values)
 
   def finalize(O):
-    O.data = O.data.items()
+    O.data = list(O.data.items())
     def cmp_data(a, b):
       result = -cmp(len(a[1]), len(b[1]))
       if (result == 0):
@@ -184,9 +190,9 @@ class min_mean_stats(object):
 
   def show(O):
     for k,v in O.data:
-      print "MIN_MEAN_STATS", O.algorithm, O.pdb_file, k, len(v), v
+      print("MIN_MEAN_STATS", O.algorithm, O.pdb_file, k, len(v), v)
 
-    print "MIN_MEAN_STATS", O.algorithm
+    print("MIN_MEAN_STATS", O.algorithm)
     return O
 
   def pickle(O):
@@ -217,7 +223,7 @@ def rmsd_start_final_plots_minimization(
             rmsd_n=flex.double())
   #
   p = tst_tardy_pdb_params
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     tst_tardy_comprehensive.set_parameters(
       params=p,
       trial_table=parameter_trial_table,
@@ -235,7 +241,7 @@ def rmsd_start_final_plots_minimization(
   mpp = multi_page_plots(file_name="plots_h_e.pdf")
   for e in  ttd["emulate_cartesian"]:
     short_label = "e%d" % int(e)
-    print short_label
+    print(short_label)
     top_labels = [
       compose_top_label(
         pdb_file, random_displacements_parameterization, e),
@@ -259,12 +265,12 @@ def rmsd_start_final_plots_minimization(
           page_rn.append((rn, (w,d)))
           page_rf.append((rf, (w,d)))
           label = "h%.2f_w%04.0f: %d=%.2f, %.2f" % (h, w, rmsd_n_n, rn, rf)
-          print "  ", label
+          print("  ", label)
           page.process(
             grid_ij=(i_h,i_w),
             xy_max=plot_xy_max,
             label=label,
-            data=zip(pd.rmsd_start, pd.rmsd_final))
+            data=list(zip(pd.rmsd_start, pd.rmsd_final)))
       def cmp_rx(a, b):
         result = cmp(a[0], b[0])
         if (result == 0):
@@ -279,8 +285,8 @@ def rmsd_start_final_plots_minimization(
     if (write_separate_pages):
       page.write_to_file(file_name="plot_%s.pdf" % short_label)
     mpp.add_page(page=page)
-    w_d_ranks_rn = w_d_ranks_rn.items()
-    w_d_ranks_rf = w_d_ranks_rf.items()
+    w_d_ranks_rn = list(w_d_ranks_rn.items())
+    w_d_ranks_rf = list(w_d_ranks_rf.items())
     def cmp_w_d_ranks(a, b):
       result = cmp(sum(a[1]), sum(b[1]))
       if (result == 0):
@@ -292,14 +298,14 @@ def rmsd_start_final_plots_minimization(
       return result
     w_d_ranks_rn.sort(cmp_w_d_ranks)
     w_d_ranks_rf.sort(cmp_w_d_ranks)
-    print "emulate_cartesian = %s" % str(e)
+    print("emulate_cartesian = %s" % str(e))
     for prefix,w_d_ranks in [("rn:", w_d_ranks_rn),
                              ("rf:", w_d_ranks_rf)]:
       for w_d,ranks in w_d_ranks:
-        print prefix, "%4.0f %4.2f" % w_d, "%2d" % sum(ranks), \
-          "[" + ", ".join(["%2d" % r for r in ranks]) + "]"
+        print(prefix, "%4.0f %4.2f" % w_d, "%2d" % sum(ranks), \
+          "[" + ", ".join(["%2d" % r for r in ranks]) + "]")
         prefix = "   "
-      print
+      print()
   mpp.write_to_file()
   #
   mms = min_mean_stats(
@@ -342,7 +348,7 @@ def rmsd_start_final_plots_annealing(
                 rmsd_final=flex.double())
   #
   p = tst_tardy_pdb_params
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     tst_tardy_comprehensive.set_parameters(
       params=p,
       trial_table=parameter_trial_table,
@@ -374,7 +380,7 @@ def rmsd_start_final_plots_annealing(
   for i_h,h in enumerate(ttd["structure_factors_high_resolution"]):
     for e in  ttd["emulate_cartesian"]:
       short_label = "h%.2f_e%d" % (h, int(e))
-      print short_label
+      print(short_label)
       top_labels = [compose_top_label(
         pdb_file, random_displacements_parameterization, e)]
       top_labels.append("high resol: %.2f, algorithm: annealing" % h)
@@ -387,12 +393,12 @@ def rmsd_start_final_plots_annealing(
               pd = plot_data[h][e][d][w][t][c]
               rf = flex.mean(pd.rmsd_final)
               label = "w%04.0f_t%.0f_c%d: %.2f" % (w, t, c, rf)
-              print "  ", label
+              print("  ", label)
               page.process(
                 grid_ij=(i_t*2+i_c, i_w),
                 xy_max=plot_xy_max,
                 label=label,
-                data=zip(pd.rmsd_start, pd.rmsd_final))
+                data=list(zip(pd.rmsd_start, pd.rmsd_final)))
               if (extra_type == 0
                   and h == 3.75
                   and t == 5000
@@ -402,7 +408,7 @@ def rmsd_start_final_plots_annealing(
                   grid_ij=(i_w+1, int(e)),
                   xy_max=plot_xy_max,
                   label=extra_label,
-                  data=zip(pd.rmsd_start, pd.rmsd_final),
+                  data=list(zip(pd.rmsd_start, pd.rmsd_final)),
                   label_font_size=14)
               elif (extra_type == 1
                     and w == 100
@@ -413,7 +419,7 @@ def rmsd_start_final_plots_annealing(
                   grid_ij=(i_h, int(e)),
                   xy_max=plot_xy_max,
                   label=extra_label,
-                  data=zip(pd.rmsd_start, pd.rmsd_final),
+                  data=list(zip(pd.rmsd_start, pd.rmsd_final)),
                   label_font_size=14)
       if (write_separate_pages):
         page.write_to_file(file_name="plot_%s.pdf" % short_label)
@@ -505,7 +511,7 @@ def eval_1(args):
     table=parameter_trial_table)
   #
   random_seed_rmsd = []
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     random_seed_rmsd.append({})
   for file_name in args:
     for line in open(file_name).read().splitlines():
@@ -516,21 +522,21 @@ def eval_1(args):
       cp_i_trial = int(flds[1])
       random_seed = int(flds[2])
       rmsd = flex.double(eval(flds[3]))
-      assert not random_seed_rmsd[cp_i_trial].has_key(random_seed)
+      assert random_seed not in random_seed_rmsd[cp_i_trial]
       random_seed_rmsd[cp_i_trial][random_seed] = rmsd
   random_seeds_found = dict_with_default_0()
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     random_seeds_found[tuple(sorted(random_seed_rmsd[cp_i_trial].keys()))] += 1
   if (len(random_seeds_found) != 1):
-    print random_seeds_found
+    print(random_seeds_found)
     raise RuntimeError("Unexpected random_seeds_found (see output).")
-  assert random_seeds_found.values()[0] == cp_n_trials
-  random_seeds_found = random_seeds_found.keys()[0]
+  assert list(random_seeds_found.values())[0] == cp_n_trials
+  random_seeds_found = list(random_seeds_found.keys())[0]
   assert random_seeds_found == tuple(range(len(random_seeds_found)))
   rmsds = []
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     rmsds.append([random_seed_rmsd[cp_i_trial][random_seed]
-      for random_seed in xrange(len(random_seeds_found))])
+      for random_seed in range(len(random_seeds_found))])
   #
   write_separate_pages = False
   if (algorithm == "minimization"):
@@ -576,7 +582,7 @@ def eval_2(args):
     "annealing": 1}
   def make_table():
     return [[None] * n_cols for tc in i_row_by_tc]
-  tabs = [make_table() for i_tab in xrange(4)]
+  tabs = [make_table() for i_tab in range(4)]
   done = set()
   for file_name in args:
     mms = easy_pickle.load(file_name=file_name)
@@ -601,12 +607,12 @@ def eval_2(args):
         raise AssertionError
       tabs[i_tab*2+1][i_row][i_col] = len(list_of_param_values) - n
   assert len(done) == len(tabs)//2 * len(i_row_by_tc) * n_cols
-  table_i = dict([tuple(reversed(item)) for item in i_table.items()])
+  table_i = dict([tuple(reversed(item)) for item in list(i_table.items())])
   for i_tab,tab in enumerate(tabs):
-    print table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2))
+    print(table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2)))
     for row in tab:
-      print " ".join([str(v) for v in row])
-    print
+      print(" ".join([str(v) for v in row]))
+    print()
 
 def eval_2_orca(args):
   # HIGH REDUNDANCY eval_2()
@@ -627,7 +633,7 @@ def eval_2_orca(args):
     "minimization": 0}
   def make_table():
     return [[None] * n_cols for tc in i_row_by_tc]
-  tabs = [make_table() for i_tab in xrange(2)]
+  tabs = [make_table() for i_tab in range(2)]
   done = set()
   for file_name in args:
     mms = easy_pickle.load(file_name=file_name)
@@ -652,12 +658,12 @@ def eval_2_orca(args):
         raise AssertionError
       tabs[i_tab*1+1][i_row][i_col] = len(list_of_param_values) - n
   assert len(done) == len(tabs)//2 * len(i_row_by_tc) * n_cols
-  table_i = dict([tuple(reversed(item)) for item in i_table.items()])
+  table_i = dict([tuple(reversed(item)) for item in list(i_table.items())])
   for i_tab,tab in enumerate(tabs):
-    print table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2))
+    print(table_i[i_tab//2], "omit_weight_10=%s" % str(bool(i_tab%2)))
     for row in tab:
-      print " ".join([str(v) for v in row])
-    print
+      print(" ".join([str(v) for v in row]))
+    print()
 
 def run(args):
   if (args[0] == "eval_pickles"):

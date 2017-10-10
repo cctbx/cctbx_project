@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
 
+from builtins import zip
+from builtins import range
 def template_regex(filename):
   '''Try a bunch of templates to work out the most sensible. N.B. assumes
   that the image index will be the last digits found in the file name.'''
@@ -61,7 +63,7 @@ def template_regex_from_list(filenames):
   '''
   import os.path
   common_prefix = os.path.commonprefix(filenames)
-  templates, indices = zip(*[template_regex(f[len(common_prefix):]) for f in filenames])
+  templates, indices = list(zip(*[template_regex(f[len(common_prefix):]) for f in filenames]))
   template = templates[0]
   assert all(t == template for t in templates[1:])
   return common_prefix + template, indices

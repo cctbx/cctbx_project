@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # This example uses an internal table, with 530 space group settings,
 # that is based on Table 4.3.1 in the International Tables for
 # Crystallography, Volume A (1983). Via the web interface the user
@@ -7,8 +8,10 @@ from __future__ import division
 # tabulated settings for that space group number. If no space group
 # symbol is given, all 530 entries in the internal table are listed.
 
+from future import standard_library
+standard_library.install_aliases()
 from cctbx import sgtbx
-import urllib
+import urllib.request, urllib.parse, urllib.error
 from cctbx.web import cgi_utils
 
 def interpret_form_data(form):
@@ -24,26 +27,26 @@ def run(server_info, inp, status):
       symbol=inp.sgsymbol,
       table_id=inp.convention).type().number()
   n_settings = 0
-  print "<table border=2 cellpadding=2>"
-  print "<tr>"
-  print "<th>Space group<br>No."
-  print "<th>Schoenflies<br>symbol"
-  print "<th>Hermann-Mauguin<br>symbol"
-  print "<th>Hall<br>symbol"
+  print("<table border=2 cellpadding=2>")
+  print("<tr>")
+  print("<th>Space group<br>No.")
+  print("<th>Schoenflies<br>symbol")
+  print("<th>Hermann-Mauguin<br>symbol")
+  print("<th>Hall<br>symbol")
   for symbols in sgtbx.space_group_symbol_iterator():
     if (sg_number == 0 or symbols.number() == sg_number):
-      print "<tr>"
-      print "<td>(%d)<td>%s" % (
-        symbols.number(), symbols.schoenflies())
+      print("<tr>")
+      print("<td>(%d)<td>%s" % (
+        symbols.number(), symbols.schoenflies()))
       query = "target_module=explore_symmetry&sgsymbol=" \
-            + urllib.quote_plus(symbols.universal_hermann_mauguin())
-      print ("<td><a href=\"%s\">%s</a>") % (
+            + urllib.parse.quote_plus(symbols.universal_hermann_mauguin())
+      print(("<td><a href=\"%s\">%s</a>") % (
         server_info.script(query),
-        symbols.universal_hermann_mauguin())
-      print "<td>%s" % (symbols.hall(),)
+        symbols.universal_hermann_mauguin()))
+      print("<td>%s" % (symbols.hall(),))
       n_settings += 1
-  print "</table>"
+  print("</table>")
   if (sg_number == 0):
-    print "<p>"
-    print "Number of settings listed:", n_settings
-  print "<p>"
+    print("<p>")
+    print("Number of settings listed:", n_settings)
+  print("<p>")

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from libtbx.test_utils import approx_equal, show_diff
 import iotbx.ncs as ncs
 import iotbx.pdb
@@ -1284,7 +1286,7 @@ ncs_group {
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     of = open(pdb_file_name, "w")
     files_to_delete.append(pdb_file_name)
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
     pdb_hierarchy = iotbx.pdb.input(file_name = pdb_file_name).\
@@ -1325,7 +1327,7 @@ ncs_group {
   for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
     files_to_delete.append(pdb_file_name)
     of = open(pdb_file_name, "w")
-    print >> of, pdb_str
+    print(pdb_str, file=of)
     of.close()
     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
 
@@ -1366,8 +1368,8 @@ def exercise_04():
   """
   ncs_inp = ncs.input(pdb_string=pdb_str_6)
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ['chain A or chain B']
-  assert t.values() == [['chain C or chain D', 'chain E or chain F']]
+  assert list(t.keys()) == ['chain A or chain B']
+  assert list(t.values()) == [['chain C or chain D', 'chain E or chain F']]
 
 def exercise_05():
   """
@@ -1390,8 +1392,8 @@ ncs_group {
     hierarchy=pdb_inp.construct_hierarchy(),
     ncs_phil_groups=phil_groups.ncs_group)
   expected = {'chain A': ['chain C'], 'chain B': ['chain D']}
-  assert ncs_inp.ncs_to_asu_selection.keys(), expected.keys()
-  assert ncs_inp.ncs_to_asu_selection.values(), expected.values()
+  assert list(ncs_inp.ncs_to_asu_selection.keys()), list(expected.keys())
+  assert list(ncs_inp.ncs_to_asu_selection.values()), list(expected.values())
 
 def exercise_06():
   """
@@ -1402,8 +1404,8 @@ def exercise_06():
   ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
   t = ncs_inp.ncs_to_asu_selection
   # assert t.keys() == ['chain D', 'chain A'], t.keys()
-  assert t.keys() == ["chain 'A'", "chain 'D'"], t.keys()
-  assert t.values() == [["chain 'B'", "chain 'C'"], ["chain 'E'"]], t.values()
+  assert list(t.keys()) == ["chain 'A'", "chain 'D'"], list(t.keys())
+  assert list(t.values()) == [["chain 'B'", "chain 'C'"], ["chain 'E'"]], list(t.values())
   assert ncs_inp.ncs_group_map[1][0] == {"chain 'A'"}, ncs_inp.ncs_group_map[1][0]
   assert ncs_inp.ncs_group_map[2][0] == {"chain 'D'"}, ncs_inp.ncs_group_map[2][0]
 
@@ -1415,10 +1417,10 @@ def exercise_07():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ["chain 'A'"], t.keys()
-  assert t.values() == \
+  assert list(t.keys()) == ["chain 'A'"], list(t.keys())
+  assert list(t.values()) == \
       [["chain 'B'", "chain 'C'", "chain 'D'", "chain 'E'", "chain 'F'",
-        "chain 'G'", "chain 'H'", "chain 'I'"]], t.values()
+        "chain 'G'", "chain 'H'", "chain 'I'"]], list(t.values())
 
 def exercise_08():
   """
@@ -1428,8 +1430,8 @@ def exercise_08():
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
   t = ncs_inp.ncs_to_asu_selection
-  assert t.keys()==['chain A or chain B or chain C']
-  assert t.values()==\
+  assert list(t.keys())==['chain A or chain B or chain C']
+  assert list(t.values())==\
     [['chain D or chain E or chain F',
       'chain G or chain H or chain I']]
 
@@ -1606,7 +1608,7 @@ def exercise_15():
   try:
     ncs_inp = ncs.input(hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_12).construct_hierarchy())
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
-  except Exception, e:
+  except Exception as e:
     exc = e
   assert str(exc)=="Multi-model PDB (with MODEL-ENDMDL) is not supported."
 
@@ -1799,4 +1801,4 @@ if (__name__ == "__main__"):
   exercise_22()
   # exercise_23() # Not grouping chains anymore. Test is left to illustrate
   # failure of update_chain_ids_search_order in this example
-  print "OK"
+  print("OK")

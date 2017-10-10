@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
 from cctbx.array_family import flex
 from cctbx import maptbx, masks, uctbx
 from libtbx.test_utils import approx_equal
@@ -62,13 +64,13 @@ def exercise_flood_fill():
       pai_cart.inertia_tensor(), flood_fill.inertia_tensors_cart()[0])
     assert approx_equal(pai_cart.eigensystem().vectors(),
                         flood_fill.eigensystems_cart()[0].vectors())
-    assert approx_equal(pai_cart.eigensystem().values(),
-                        flood_fill.eigensystems_cart()[0].values())
+    assert approx_equal(list(pai_cart.eigensystem().values()),
+                        list(flood_fill.eigensystems_cart()[0].values()))
   return
 
 def run():
   exercise_flood_fill()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import mmtbx.monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import sys
@@ -61,4 +63,4 @@ class from_pdb(object):
   def show(self, log=None):
     if(log is None): log = sys.stdout
     for pair in self._pairs:
-      print >> log, self.format_clash_string(pair=pair)
+      print(self.format_clash_string(pair=pair), file=log)

@@ -3,6 +3,7 @@
 
 """pySlip demonstration program."""
 from __future__ import division
+from __future__ import print_function
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or
@@ -26,6 +27,8 @@ from __future__ import division
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+from builtins import str
+from builtins import range
 import sys
 import wx
 

@@ -1,5 +1,7 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from libtbx.utils import null_out
 import libtbx.load_env
 import warnings
@@ -92,4 +94,4 @@ if (__name__ == "__main__") :
     warnings.warn("phenix_regression missing, skipping test")
   else :
     exercise_assembly(verbose=("--verbose" in sys.argv))
-    print "OK"
+    print("OK")

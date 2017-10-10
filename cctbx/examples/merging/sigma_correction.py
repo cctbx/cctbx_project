@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 class ccp4_model(object):
   """Implement a sigma correction for semi-datasets, inspired by the classic
@@ -29,19 +32,19 @@ class ccp4_model(object):
     delta_I_a = a_data - mean_values
     normal_a = delta_I_a / (a_sigmas)
     stats_a = flex.mean_and_variance(normal_a)
-    print "\nA mean %7.4f std %7.4f"%(stats_a.mean(),stats_a.unweighted_sample_standard_deviation())
+    print("\nA mean %7.4f std %7.4f"%(stats_a.mean(),stats_a.unweighted_sample_standard_deviation()))
     order_a = flex.sort_permutation(normal_a)
 
     delta_I_b = b_data - mean_values
     normal_b = delta_I_b / (b_sigmas)
     stats_b = flex.mean_and_variance(normal_b)
-    print "B mean %7.4f std %7.4f"%(stats_b.mean(),stats_b.unweighted_sample_standard_deviation())
+    print("B mean %7.4f std %7.4f"%(stats_b.mean(),stats_b.unweighted_sample_standard_deviation()))
     order_b = flex.sort_permutation(normal_b)
     # plots for debugging
     from matplotlib import pyplot as plt
     cumnorm = plt.subplot(321)
-    cumnorm.plot(xrange(len(order_a)),normal_a.select(order_a),"b.")
-    cumnorm.plot(xrange(len(order_b)),normal_b.select(order_b),"r.")
+    cumnorm.plot(range(len(order_a)),normal_a.select(order_a),"b.")
+    cumnorm.plot(range(len(order_b)),normal_b.select(order_b),"r.")
     #plt.show()
     logger = plt.subplot(324)
     logger.loglog(a_data,b_data,"r.")
@@ -56,7 +59,7 @@ class ccp4_model(object):
     mean_order = flex.sort_permutation(mean_values)
     scatters = flex.double(50)
     scattersb = flex.double(50)
-    for isubsection in xrange(50):
+    for isubsection in range(50):
       subselect = mean_order[isubsection*len(mean_order)//50:(isubsection+1)*len(mean_order)//50]
       vals = normal_a.select(subselect)
       #scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_standard_deviation()
@@ -66,7 +69,7 @@ class ccp4_model(object):
       #scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_standard_deviation()
       scattersb[isubsection] = flex.mean_and_variance(valsb).unweighted_sample_variance()
     aaronsplot = plt.subplot(325)
-    aaronsplot.plot(xrange(50), 2. * scatters, "b.")
+    aaronsplot.plot(range(50), 2. * scatters, "b.")
     plt.show()
 
   @staticmethod
@@ -87,7 +90,7 @@ class ccp4_model(object):
   def optimize(a_data, b_data, a_sigmas, b_sigmas):
 
 
-    print """Fit the parameters SDfac, SDB and SDAdd using Nelder-Mead simplex method."""
+    print("""Fit the parameters SDfac, SDB and SDAdd using Nelder-Mead simplex method.""")
 
     from scitbx.simplex import simplex_opt
     class simplex_minimizer(object):
@@ -98,7 +101,7 @@ class ccp4_model(object):
         self.n = 2
         self.x = flex.double([0.5,0.0])
         self.starting_simplex = []
-        for i in xrange(self.n+1):
+        for i in range(self.n+1):
           self.starting_simplex.append(flex.random_double(self.n))
 
         self.optimizer = simplex_opt( dimension = self.n,
@@ -129,7 +132,7 @@ class ccp4_model(object):
         mean_order = flex.sort_permutation(mean_values)
         scatters = flex.double(50)
         scattersb = flex.double(50)
-        for isubsection in xrange(50):
+        for isubsection in range(50):
           subselect = mean_order[isubsection*len(mean_order)//50:(isubsection+1)*len(mean_order)//50]
           vals = normal_a.select(subselect)
           scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_variance()
@@ -138,8 +141,8 @@ class ccp4_model(object):
           scattersb[isubsection] = flex.mean_and_variance(valsb).unweighted_sample_variance()
 
         f = flex.sum( flex.pow(1.-scatters, 2) )
-        print "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+        print("f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd))
         return f
     optimizer = simplex_minimizer()
-    print "new parameters:",list(optimizer.x)
+    print("new parameters:",list(optimizer.x))
     return ccp4_model.apply_sd_error_params(optimizer.x,a_data, b_data, a_sigmas, b_sigmas)

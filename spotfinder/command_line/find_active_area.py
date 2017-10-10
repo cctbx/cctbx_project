@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.find_active_area
+from builtins import range
+from builtins import object
 import os, sys
 from iotbx.detectors.npy import NpyImage
 from spotfinder.core_toolbox import find_active_area
@@ -11,16 +14,16 @@ def ImageFactory(filename):
     I.readHeader()
     return I
 
-class graph_tracker:
+class graph_tracker(object):
   def has_one(self,graph):
-    for key in graph.keys():
+    for key in list(graph.keys()):
       if len(graph[key])==1:
         self.key = key
         self.item_sink = graph[key][0]
         return True
     return False
   def prune(self,graph):
-    for key in graph.keys():
+    for key in list(graph.keys()):
       try:
         graph[key].remove(self.item_sink)
       except ValueError: pass
@@ -32,12 +35,12 @@ def run_one(path, display):
   PC = find_active_area(data)
 
   sources = []; sinks = []
-  for x in xrange(0,len(PC),2):
+  for x in range(0,len(PC),2):
     if PC[x]>=0:
       sources.append((PC[x],PC[x+1]))
     else:
       sinks.append((-PC[x],-PC[x+1]))
-  print len(sources),len(sinks)
+  print(len(sources),len(sinks))
   assert len(sources)==len(sinks)
   graph = {}
   final_graph = {}
@@ -47,12 +50,12 @@ def run_one(path, display):
 
   G = graph_tracker()
   while G.has_one(graph):
-    print G.key, G.item_sink
+    print(G.key, G.item_sink)
     final_graph[G.key]=G.item_sink
     del graph[G.key]
     G.prune(graph)
 
-  assert len(graph.keys())==0
+  assert len(list(graph.keys()))==0
 
 if __name__ == "__main__":
   for arg in sys.argv[1:]:

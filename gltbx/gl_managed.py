@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import absolute_import
 
+from builtins import str
+from builtins import object
 from gltbx import gl
 
-class display_lists_owner:
+class display_lists_owner(object):
 
   def __init__(self, range):
     self.range = range
@@ -10,11 +13,11 @@ class display_lists_owner:
 
   def __del__(self):
     try: gl.glDeleteLists(list=self.list, range=self.range)
-    except RuntimeError, e:
+    except RuntimeError as e:
       if (str(e) != 'OpenGL: invalid operation'): raise
       # else: apparently the GL context was destroyed already
 
-class display_list:
+class display_list(object):
 
   def __init__(self, index=0, owner=None):
     if (owner is None):
@@ -39,7 +42,7 @@ class display_list:
   def call(self):
     gl.glCallList(list=self.gl_index)
 
-class display_lists:
+class display_lists(object):
 
   def __init__(self, range):
     self.owner = display_lists_owner(range=range)
@@ -73,7 +76,7 @@ class material_model(object):
     self.specular_focus = specular_focus
 
   def execute(self, specular=True):
-    from gl import glMaterialfv, glMaterialf
+    from .gl import glMaterialfv, glMaterialf
     glMaterialfv(gl.GL_BACK, gl.GL_AMBIENT, self.ambient_back_colour)
     glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, self.ambient_front_colour)
     glMaterialfv(gl.GL_BACK, gl.GL_DIFFUSE, self.diffuse_back_colour)

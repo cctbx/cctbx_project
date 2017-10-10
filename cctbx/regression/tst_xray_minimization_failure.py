@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx.array_family import flex
 from cctbx.regression import tst_xray_minimization
@@ -63,7 +64,7 @@ def test2():
 def run():
   test2()
   test1()
-  print 'OK'
+  print('OK')
 
 
 if __name__ == '__main__':

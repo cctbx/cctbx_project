@@ -7,6 +7,7 @@ XXX mod_param must be run as a single process--guard against it!
 """
 from __future__ import division
 
+from builtins import object
 __version__ = "$Revision$"
 
 import logging

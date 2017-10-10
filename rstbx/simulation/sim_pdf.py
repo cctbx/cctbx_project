@@ -1,9 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 page_origin = (20.,220.)
 boxedge = 500.
 
-class PointTransform:
+class PointTransform(object):
   '''provide the necessary transformation to go from image pixel coordinates
      to coordinates on the printed page of the .pdf report'''
 
@@ -35,13 +38,13 @@ class PointTransform:
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm,mm
-class Graph:
+class Graph(object):
 
   def __init__(self,fileout):
     self.c = Canvas(fileout,pagesize=letter)
 
   def title(self,text):
-    print text
+    print(text)
     lines = text.split('\n')
     self.c.setFont('Helvetica',12)
     self.c.drawString(2*cm,26*cm,lines[0])
@@ -55,7 +58,7 @@ class Graph:
   def __del__(self):
     self.c.save()
 
-class PDF:
+class PDF(object):
   def __init__(self,filename):
     self.R = Graph(filename)
 
@@ -89,9 +92,9 @@ class PDF:
 
 if __name__=="__main__":
    data_array = flex.double(flex.grid((768,768)),1.0)
-   print data_array.focus()
+   print(data_array.focus())
    data_array = flex.double(flex.grid((7,7)),255)
-   for x in xrange(7):
+   for x in range(7):
      data_array[(3,x)] = 0.
      data_array[(x,3)] = 0.
    try:

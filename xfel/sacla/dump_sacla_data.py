@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import sys, os, dxtbx
 from xfel.cxi.cspad_ana import cspad_tbx
 from libtbx import easy_pickle
@@ -36,9 +38,9 @@ def do_work(img_no):
     try:
       raw_data = data.get_raw_data(img_no)
       break
-    except KeyError, ValueError:
+    except KeyError as ValueError:
       n_fails +=1
-      print "Fail to read, attempt number", n_fails
+      print("Fail to read, attempt number", n_fails)
       if n_fails > 100:
         raise Exception("Couldn't read the data")
     import time; time.sleep(n_fails * 0.1)
@@ -58,10 +60,10 @@ def do_work(img_no):
     preserve_active_areas_even_though_cropping_would_invalidate_them=True)
 
   dest_path = os.path.join(dest_dir, dest_base + "_%06d.pickle"%img_no)
-  print "Saving image", img_no, "to", dest_path
+  print("Saving image", img_no, "to", dest_path)
   easy_pickle.dump(dest_path, imgdict)
 
 easy_mp.pool_map(
-            args=range(data.get_num_images()),
+            args=list(range(data.get_num_images())),
             func=do_work,
             processes=4)

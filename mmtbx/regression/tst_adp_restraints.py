@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 from mmtbx.monomer_library import pdb_interpretation
@@ -20,7 +22,7 @@ def run():
   grm = processed_pdb_file.geometry_restraints_manager(
                                                       plain_pairs_radius = 5.0)
   grm.pair_proxies(sites_cart=xray_structure.sites_cart())
-  class parameters:
+  class parameters(object):
     sphere_radius = 1.6
     distance_power = 0.0
     average_power = 0.0
@@ -43,4 +45,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print format_cpu_times()
+  print(format_cpu_times())

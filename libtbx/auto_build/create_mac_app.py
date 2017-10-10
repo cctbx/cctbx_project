@@ -3,11 +3,12 @@
 # necessary, although it will use installed resources if found
 
 from __future__ import division
+from __future__ import print_function
 try :
   import libtbx.load_env
 # can be either ImportError or SyntaxError, depending on whether we're using
 # the bundled Python version or something more ancient
-except Exception, e :
+except Exception as e :
   libtbx_env = None
 else :
   libtbx_env = libtbx.env
@@ -19,7 +20,7 @@ import sys
 
 def run (args, out=sys.stdout) :
   if (sys.platform != "darwin") :
-    print >> out, "This application will only run on Mac systems."
+    print("This application will only run on Mac systems.", file=out)
     return 1
   parser = optparse.OptionParser(
     description="Utility for creating an iconified Mac launcher for the specified command, which must be present in $LIBTBX_BUILD/bin.")
@@ -51,13 +52,13 @@ def run (args, out=sys.stdout) :
   build_dir = abs(libtbx.env.build_path)
   bin_dir = os.path.join(build_dir, "bin")
   if (not program_name in os.listdir(bin_dir)) :
-    print >> out, "No program named '%s' found in %s." % (program_name,
-      bin_dir)
+    print("No program named '%s' found in %s." % (program_name,
+      bin_dir), file=out)
     return 1
   try :
     import py2app.script_py2applet
-  except ImportError, e :
-    print >> out, "py2app not installed."
+  except ImportError as e :
+    print("py2app not installed.", file=out)
     return 1
   app_name = program_name
   if (options.app_name is not None) :
@@ -94,7 +95,7 @@ argv-emulation=0""")
     rc = subprocess.call(args)
     if (rc != 0) : raise RuntimeError("oops!")
   except RuntimeError :
-    print >> out, "py2app not available, aborting .app creation."
+    print("py2app not available, aborting .app creation.", file=out)
     return 1
   args = [executable, script_name, "--make-setup", "%s.py" % app_name]
   if (options.icon is not None) :
@@ -114,7 +115,7 @@ argv-emulation=0""")
   if (os.path.exists("%s.app" % app_name)) :
     shutil.rmtree("%s.app" % app_name)
   shutil.move(app_path, os.getcwd())
-  print >> out, "Created %s" % os.path.join(os.getcwd(), "%s.app" % app_name)
+  print("Created %s" % os.path.join(os.getcwd(), "%s.app" % app_name), file=out)
   return 0
 
 if (__name__ == "__main__") :

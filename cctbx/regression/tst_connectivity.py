@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from scitbx.array_family import flex
 import time
 import iotbx.pdb
@@ -253,10 +256,10 @@ def exercise_max_values():
   assert m_vals == [0.0, 15.0, 25.0]
 
 def debug_printing(co):
-  print "volumes    :",  list(co.regions())
-  print "values     :",  list(co.maximum_values())
-  print "coordinates:",  list(co.maximum_coors())
-  print "============"
+  print("volumes    :",  list(co.regions()))
+  print("values     :",  list(co.maximum_values()))
+  print("coordinates:",  list(co.maximum_coors()))
+  print("============")
 
 
 def exercise_noise_elimination_two_cutoffs():
@@ -288,11 +291,11 @@ def exercise_noise_elimination_two_cutoffs():
   cmap.fill(10)
   for i in range(10,40):
     cmap[i,1,1] = i
-  for i,v in zip(range(40,60), range(40,20,-1)):
+  for i,v in zip(list(range(40,60)), list(range(40,20,-1))):
     cmap[i,1,1] = v
-  for i,v in zip(range(60,70), range(20,30)):
+  for i,v in zip(list(range(60,70)), list(range(20,30))):
     cmap[i,1,1] = v
-  for i,v in zip(range(70,90), range(30,10,-1)):
+  for i,v in zip(list(range(70,90)), list(range(30,10,-1))):
     cmap[i,1,1] = v
   #for i in range(100):
   #  print "%d   : %d" % (i,  cmap[i,1,1])
@@ -476,4 +479,4 @@ if __name__ == "__main__":
   exercise_noise_elimination_two_cutoffs() # example and comment
   exercise_get_blobs_boundaries()
   exercise_expand_mask()
-  print "OK time =%8.3f"%(time.time() - t0)
+  print("OK time =%8.3f"%(time.time() - t0))

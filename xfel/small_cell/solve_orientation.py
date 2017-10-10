@@ -1,6 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
-class small_cell_orientation:
+from builtins import object
+class small_cell_orientation(object):
  """ Class for determining an orientation matrix given a set of reflections """
 
  def __init__(self,miller_indices, u_vectors, sym):
@@ -38,8 +40,8 @@ class small_cell_orientation:
 
   try:
     result = np.linalg.lstsq(hkl,xyz)
-  except Exception,e:
-    print "Exception while calculating basis vectors: %s"%e.message
+  except Exception as e:
+    print("Exception while calculating basis vectors: %s"%e.message)
     return None
 
   solution,self.residuals,rank,singular = result[0],result[1],result[2],result[3]
@@ -62,4 +64,4 @@ if __name__=="__main__":
   data = ep.load("r0013_shot-s00-20130311223605649.example")
   miller_indices,u_vectors,symmetry = data[0],data[1],data[2]
   S = small_cell_orientation(miller_indices, u_vectors, symmetry)
-  print S.unrestrained_setting()
+  print(S.unrestrained_setting())

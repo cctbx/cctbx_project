@@ -7,7 +7,7 @@ defaultImageFactory = iotbx.detectors.ImageFactory
 def SlipViewerImageFactory(filename):
   try:
     return NpyImageFactory(filename)
-  except Exception, e:
+  except Exception as e:
     return defaultImageFactory(filename)
 
 # Use the dxtbx class as it handles all possible variance of NPY images

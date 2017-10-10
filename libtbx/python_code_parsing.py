@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import str
+from builtins import object
 import sys
 assert sys.version_info[0:2] >= (2, 6)
 
@@ -58,7 +60,7 @@ class unused_imports(ast.NodeVisitor):
     self._used = set()
     self.visit(tree)
     self._unused = set()
-    for imported in self.imported_in_context.itervalues():
+    for imported in self.imported_in_context.values():
       self._unused.update(imported)
     self._unused -= self._used
 
@@ -68,7 +70,7 @@ class unused_imports(ast.NodeVisitor):
   def __iter__(self):
     return iter(self._unused)
 
-  def __nonzero__(self):
+  def __bool__(self):
     return bool(self._unused)
 
   @property
@@ -101,7 +103,7 @@ class unused_imports(ast.NodeVisitor):
     self.consolidate_imports_info()
 
   def consolidate_imports_info(self):
-    for ctx, imported in self.imported_in_context.iteritems():
+    for ctx, imported in self.imported_in_context.items():
       discarded = set()
       for imp1 in self.imported_from_full_name_in_context.get(ctx, set()):
         for imp in imported:
@@ -110,7 +112,7 @@ class unused_imports(ast.NodeVisitor):
       imported -= discarded
 
   def _process_namespace(self, namespace, lineno):
-    for import_ctx, imported in self.imported_in_context.iteritems():
+    for import_ctx, imported in self.imported_in_context.items():
       if self.is_subpath_of(import_ctx, self.current_context):
         for imp in imported:
           if lineno < imp.lineno: continue
@@ -207,7 +209,7 @@ class find_old_style_classes(ast.NodeVisitor):
   def __iter__(self):
     return iter(self._old_style_classes)
 
-  def __nonzero__(self):
+  def __bool__(self):
     return bool(self._old_style_classes)
 
   def visit_ClassDef(self, node):

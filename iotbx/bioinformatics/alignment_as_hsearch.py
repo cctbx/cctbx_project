@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 from iotbx import bioinformatics
 
 def get_extension(filename):

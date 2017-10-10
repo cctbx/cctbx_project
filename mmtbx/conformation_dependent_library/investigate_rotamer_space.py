@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import sys
 import copy
 
@@ -172,7 +174,7 @@ def write_to_pdb(i, sym_chis, f):
   try:
     f.write(water % (i,i,sym_chis[0],sym_chis[1],sym_chis[2]))
   except: # intentional
-    print 'WARNING',i, sym_chis
+    print('WARNING',i, sym_chis)
 
 def loop_on_residue_rotamer(resname,
                             rid,
@@ -219,7 +221,7 @@ def _order_dihedral_keys(d1,d2):
   assert 0
 
 def run(only_resname=None):
-  for resname, rotamers in rdl_database.rdl_database.items():
+  for resname, rotamers in list(rdl_database.rdl_database.items()):
     if only_resname is not None:
       if only_resname=='new':
         if resname in results: continue
@@ -227,28 +229,28 @@ def run(only_resname=None):
     for rotamer in rotamers:
       starting_chis = None
       if rotamer=='default': continue
-      print resname, rotamer
+      print(resname, rotamer)
       resname_d = results.get(resname, None)
       if type(resname_d)==type({}):
         if rotamer in resname_d:
           continue
       if number_of_chis.get(resname, None)>3:
-        print resname_d
-        keys = rdl_database.rdl_database[resname][rotamer].keys()
+        print(resname_d)
+        keys = list(rdl_database.rdl_database[resname][rotamer].keys())
         keys.sort(_order_dihedral_keys)
-        print keys
+        print(keys)
         starting_chis = []
         for key in keys:
           if len(key)!=4: continue
-          print key, rdl_database.rdl_database[resname][rotamer][key]
+          print(key, rdl_database.rdl_database[resname][rotamer][key])
           starting_chis.append(rdl_database.rdl_database[resname][rotamer][key][0])
         for i in range(3):
           del starting_chis[-1]
-        print starting_chis
+        print(starting_chis)
       points = loop_on_residue_rotamer(resname,
                                        rotamer,
                                        starting_chis=starting_chis)
-      print 'POINTS', len(points)
+      print('POINTS', len(points))
       if not points and 0:
         #seeds = [-171.7, -75.9, 127.2]
         points = loop_on_residue_rotamer(resname,
@@ -258,7 +260,7 @@ def run(only_resname=None):
         )
       assert points, "there are no points"
       min_max = get_min_max(points)
-      print min_max
+      print(min_max)
 
       r=results.get(resname, None)
       for i, (m, n) in enumerate(min_max):
@@ -267,7 +269,7 @@ def run(only_resname=None):
         elif type(r)==type({}):
           r=r.get(rotamer, -1)
           if i+1==r: continue
-        print i,m,n,m!=0, n!=360
+        print(i,m,n,m!=0, n!=360)
         assert not (m==0 and n==360), "\n\n\tphenix.start_coot %s_%s.pdb\n\n" % (
           resname.lower(),
           rotamer,

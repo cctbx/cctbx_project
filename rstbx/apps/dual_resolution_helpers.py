@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import math
 from scitbx.array_family import flex
 from scitbx.matrix import col
@@ -39,7 +41,7 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
     mos_high = mos_max + 0.
     steps = math.pow(mos_high/mos_low,1./20.)
     from bpcx_regression.use_case_1_2.compare_bpcx_xds import cc,cc_slope
-    for i in xrange(20):
+    for i in range(20):
       mos_test = mos_low * math.pow(steps,i)
 
 
@@ -52,30 +54,30 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
 
       obs_tt_sort = tt.select(flex.sort_permutation(tt))
       pred_tt_sort = pred_two_theta_rad.select(flex.sort_permutation(pred_two_theta_rad))
-      print "len obs",len(obs_tt_sort)
-      print "len pred",len(pred_tt_sort)
+      print("len obs",len(obs_tt_sort))
+      print("len pred",len(pred_tt_sort))
       if not len(pred_tt_sort)>len(obs_tt_sort):continue
       conversion = len(pred_tt_sort)/len(obs_tt_sort)
       select_pred_tt_sort = flex.double()
-      for x in xrange(len(obs_tt_sort)):
+      for x in range(len(obs_tt_sort)):
         select_pred_tt_sort.append(pred_tt_sort[int(x * conversion)])
-      print "len select pred",len(select_pred_tt_sort)
+      print("len select pred",len(select_pred_tt_sort))
       corr_test = cc(obs_tt_sort, select_pred_tt_sort)
-      print "test mosaicity",mos_test,"Correlation",corr_test
+      print("test mosaicity",mos_test,"Correlation",corr_test)
       if mos_best==None:
         mos_best=mos_test;corr_best=corr_test;pred_two_theta_rad_best=select_pred_tt_sort
         pred_full_set_best=pred_tt_sort
       if corr_test > corr_best:
         mos_best=mos_test;corr_best=corr_test;pred_two_theta_rad_best=select_pred_tt_sort
         pred_full_set_best=pred_tt_sort
-    print "best mosaicity",mos_best
+    print("best mosaicity",mos_best)
 
     # got best model mosaicity, now go back again and match up predictions to observations
     # get get prediction set with same length and two theta values as the observation set
     modified_pred_x=flex.double()
     modified_pred_y=flex.double()
     ipred = 0
-    for iobs in xrange(len(obs_tt_sort)):
+    for iobs in range(len(obs_tt_sort)):
       try:
         while pred_full_set_best[ipred]<obs_tt_sort[iobs]: ipred+=1
       except IndexError:
@@ -95,17 +97,17 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
     #print K,B,corr
 
     ccc=[];cccx=[];
-    for x in xrange(int(len(obs_tt_sort)/3),len(obs_tt_sort)):
+    for x in range(int(len(obs_tt_sort)/3),len(obs_tt_sort)):
       cccx.append(x)
-      ccc.append(cc(xrange(x),modified_pred_x[0:x]))
+      ccc.append(cc(range(x),modified_pred_x[0:x]))
       #print x,cc(xrange(x),modified_pred_x[0:x])
-      corr,slope = cc_slope(xrange(x),modified_pred_x[0:x])
+      corr,slope = cc_slope(range(x),modified_pred_x[0:x])
       scaled_modified_pred_x = modified_pred_x/slope
 
       second_modified_pred_x=flex.double()
       second_modified_pred_y=flex.double()
       ipred = 0
-      for ixx in xrange(len(obs_tt_sort)):
+      for ixx in range(len(obs_tt_sort)):
         try:
           while scaled_modified_pred_x[ipred]<ixx: ipred+=1
         except IndexError:
@@ -118,18 +120,18 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
 
       rmsd = stats.unweighted_sample_standard_deviation()
       mean = stats.mean()
-      print x,mean,rmsd,-diff[x]/rmsd
+      print(x,mean,rmsd,-diff[x]/rmsd)
       if -diff[x]/rmsd > 0.5:  # ad hoc cutoff seems like reasonable criterion for resolution cutoff
-        print "twotheta rad cutoff",obs_tt_sort[x]
-        print "angstrom cutoff",inputai.wavelength / (2.*math.sin (  obs_tt_sort[x] /2.))
+        print("twotheta rad cutoff",obs_tt_sort[x])
+        print("angstrom cutoff",inputai.wavelength / (2.*math.sin (  obs_tt_sort[x] /2.)))
         break
 
     if False:
       from matplotlib import pyplot as plt
       #plt.plot(delx,dely,"r.")
       #plt.show()
-      plt.plot(xrange(len(tt)),obs_tt_sort,"r.")
-      plt.plot(flex.double(xrange(len(pred_two_theta_rad_best))),pred_two_theta_rad_best,"g.")
+      plt.plot(range(len(tt)),obs_tt_sort,"r.")
+      plt.plot(flex.double(range(len(pred_two_theta_rad_best))),pred_two_theta_rad_best,"g.")
       #plt.plot(flex.double(xrange(len(pred_full_set_best))),pred_full_set_best,"b.")
       plt.plot(cccx, ccc,"b.")
       plt.plot(scaled_modified_pred_x, modified_pred_y,"b.")

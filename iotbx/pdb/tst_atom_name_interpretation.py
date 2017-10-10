@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from iotbx.pdb.atom_name_interpretation import interpreters
-from cStringIO import StringIO
+from io import StringIO
 from libtbx.test_utils import show_diff
 
 def exercise():
@@ -26,7 +29,7 @@ def exercise():
   assert ala_h.missing_atom_names(ignore_hydrogen=False) == set(())
 
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

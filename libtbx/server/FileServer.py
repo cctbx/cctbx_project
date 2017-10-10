@@ -1,22 +1,28 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 import threading
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
-import SocketServer
+from . import SocketServer
 import sys
 import traceback
 import os
 import socket
 import time
 
-import FileClient
-import FileSocket
+from . import FileClient
+from . import FileSocket
 
 # Socket Server
 
-class FileServer:
+class FileServer(object):
   def __init__(self, port='', handler=''):
     sys.setcheckinterval(0)
 
@@ -65,9 +71,9 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
     rc = 1
     self.server.ServerLock.acquire()
     try:
-      if id in DICT.keys():
+      if id in list(DICT.keys()):
         rc = 0
-      if file in DICT.values():
+      if file in list(DICT.values()):
         rc = 0
       if rc:
         DICT[id] = file
@@ -87,7 +93,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       obj = pickle.load(f)
       f.close()
     except Exception:
-      print 'failed to load',file
+      print('failed to load',file)
       obj = None
     return obj
 
@@ -97,7 +103,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       pickle.dump(obj, f)
       f.close()
     except Exception:
-      print 'failed to dump',file
+      print('failed to dump',file)
 
   def ReadFile(self, file):
     try:
@@ -105,7 +111,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       lines = f.read()
       f.close()
     except Exception:
-      print 'failed to read',file
+      print('failed to read',file)
       lines = ''
     return lines
 
@@ -115,16 +121,16 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
       f.write(lines)
       f.close()
     except Exception:
-      print 'failed to write',file
+      print('failed to write',file)
 
   def _UnlockFile(self, file, id):
     DICT = self.server.FileLockDictionary
     rc = 1
     self.server.ServerLock.acquire()
     try:
-      if not id in DICT.keys():
+      if not id in list(DICT.keys()):
         rc = 0
-      if not file in DICT.values():
+      if not file in list(DICT.values()):
         rc = 0
       if rc:
         del DICT[id]
@@ -245,13 +251,13 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
           args = pickle.load(self.rfile)
         except Exception:
           args = ()
-          print 'Method',method
-          print 'error in args ',args
+          print('Method',method)
+          print('error in args ',args)
         try:
           kw = pickle.load(self.rfile)
         except Exception:
           kw = {}
-          print 'error in kw ',kw
+          print('error in kw ',kw)
 
         #print method
         #print args
@@ -263,16 +269,16 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
 
         # call method
         try:
-          result = apply(meth_obj,args,kw)
+          result = meth_obj(*args, **kw)
           pickle.dump(result,self.wfile,1) # binary by default
         except Exception:
           try:
             pickle.dump('0\n',self.wfile,1)
           except Exception:
             pass
-          print 'Method',meth_obj
-          print 'Args  ',args
-          print 'Kw    ',kw
+          print('Method',meth_obj)
+          print('Args  ',args)
+          print('Kw    ',kw)
           raise
         try:
           self.wfile.flush()
@@ -280,7 +286,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
           pass
 
     except Exception:
-      print self.__class__.__name__+'.handle: '
+      print(self.__class__.__name__+'.handle: ')
       traceback.print_exc()
       pass
 
@@ -321,7 +327,7 @@ def ReadServerFile():
     host, port = pickle.load(f)
     f.close()
   except Exception:
-    print 'failed to read server port file'
+    print('failed to read server port file')
   return host, port
 
 def WriteServerFile(port):
@@ -333,7 +339,7 @@ def WriteServerFile(port):
                 )
     f.close()
   except Exception:
-    print 'failed to write server port file'
+    print('failed to write server port file')
 
 def GetServerClient():
   host, port = ReadServerFile()

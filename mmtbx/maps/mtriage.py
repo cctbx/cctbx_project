@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import sys
 from libtbx import group_args
 from cctbx import maptbx
@@ -174,7 +177,7 @@ class mtriage(object):
     t0 = time.time()
     func()
     if(show_time):
-      print prefix, ":", time.time()-t0
+      print(prefix, ":", time.time()-t0)
       sys.stdout.flush()
 
   def run(self):
@@ -317,38 +320,38 @@ class mtriage(object):
       of = open(file_name,"w")
       for a,b in zip(self.fsc_curve_model.fsc.d_inv,
                      self.fsc_curve_model.fsc.fsc):
-        print >> of, "%15.9f %15.9f"%(a,b)
+        print("%15.9f %15.9f"%(a,b), file=of)
       of.close()
 
   def write_fsc_curve_plot_data(self, file_name):
     if(self.fsc_curve is not None):
       of = open(file_name,"w")
       for a,b in zip(self.fsc_curve.fsc.d_inv, self.fsc_curve.fsc.fsc):
-        print >> of, "%15.9f %15.9f"%(a,b)
+        print("%15.9f %15.9f"%(a,b), file=of)
       of.close()
 
   def show_summary(self, log=None, fsc_file_prefix="fsc_curve"):
     if(log is None): log = sys.stdout
     r = self.get_results()
-    print >> log, "d99                    : ", r.d99
-    print >> log, "d99_1                  : ", r.d99_1
-    print >> log, "d99_2                  : ", r.d99_2
-    print >> log, "d_model                : ", r.d_model
-    print >> log, "b_iso_overall          : ", r.b_iso_overall
-    print >> log, "d_fsc                  : ", r.d_fsc
-    print >> log, "d_fsc_model (FSC=0.5)  : ", r.d_fsc_model
-    print >> log, "d_fsc_model (FSC=0.143): ", r.d_fsc_model_0143
-    print >> log, "d_fsc_model (FSC=0)    : ", r.d_fsc_model_0
+    print("d99                    : ", r.d99, file=log)
+    print("d99_1                  : ", r.d99_1, file=log)
+    print("d99_2                  : ", r.d99_2, file=log)
+    print("d_model                : ", r.d_model, file=log)
+    print("b_iso_overall          : ", r.b_iso_overall, file=log)
+    print("d_fsc                  : ", r.d_fsc, file=log)
+    print("d_fsc_model (FSC=0.5)  : ", r.d_fsc_model, file=log)
+    print("d_fsc_model (FSC=0.143): ", r.d_fsc_model_0143, file=log)
+    print("d_fsc_model (FSC=0)    : ", r.d_fsc_model_0, file=log)
     #
     of = open("%s_model"%fsc_file_prefix,"w")
     for a,b in zip(r.fsc_curve_model.fsc.d_inv, r.fsc_curve_model.fsc.fsc):
-      print >>of, "%15.9f %15.9f"%(a,b)
+      print("%15.9f %15.9f"%(a,b), file=of)
     of.close()
     #
     if(r.fsc_curve is not None):
       of = open("%s"%fsc_file_prefix,"w")
       for a,b in zip(r.fsc_curve.fsc.d_inv, r.fsc_curve.fsc.fsc):
-        print >>of, "%15.9f %15.9f"%(a,b)
+        print("%15.9f %15.9f"%(a,b), file=of)
       of.close()
 
   def get_results(self, slim=False):

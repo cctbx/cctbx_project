@@ -10,6 +10,7 @@
 #  included in the root directory of this package.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
@@ -38,7 +39,7 @@ class FormatNexus(FormatHDF5):
   def understand(image_file):
     try:
       is_nexus = is_nexus_file(image_file)
-    except IOError, e:
+    except IOError as e:
       return False
     return is_nexus
 
@@ -160,7 +161,7 @@ class FormatNexusStill(FormatNexus, FormatStill):
         for sample in find_class(entry, "NXsample"):
           if 'depends_on' not in sample:
             is_nexus_still = True
-    except IOError, e:
+    except IOError as e:
       return False
     return is_nexus_still
 
@@ -175,4 +176,4 @@ class FormatNexusStill(FormatNexus, FormatStill):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatNexus.understand(arg)
+    print(FormatNexus.understand(arg))

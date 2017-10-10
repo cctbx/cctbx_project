@@ -1,4 +1,7 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import libtbx.load_env
 
 class Test(object):
@@ -30,7 +33,7 @@ class Test(object):
       self.tst_single(xy)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_single(self, xy):
     from scitbx import matrix
@@ -69,9 +72,9 @@ class Test(object):
 
 if __name__ == '__main__':
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
   elif not libtbx.env.has_module("dials_regression"):
-    print "Skipping test: dials_regression not present"
+    print("Skipping test: dials_regression not present")
   else:
     test = Test()
     test.run()

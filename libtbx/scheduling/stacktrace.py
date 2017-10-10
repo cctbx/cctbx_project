@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 __prev_excepthook = None
 __last_exception = ( None, None )
 

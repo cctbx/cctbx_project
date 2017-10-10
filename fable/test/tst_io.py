@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import os
@@ -17,13 +18,13 @@ def build_cmds(tst_f, opts, ignore_ifort=False):
   if (opts.ifort and not ignore_ifort):
     remove_file("a.out")
     cmd = "ifort -diag-disable 7951 %s" % tst_f
-    if (opts.verbose): print cmd
+    if (opts.verbose): print(cmd)
     easy_run.fully_buffered(command=cmd).raise_if_errors()
     assert op.exists("a.out")
     result.append("a.out")
   remove_file("fable_cout")
   cmd = "fable.cout %s --link" % tst_f
-  if (opts.verbose): print cmd
+  if (opts.verbose): print(cmd)
   easy_run.fully_buffered(command=cmd).raise_if_errors()
   assert op.exists("fable_cout"+exe)
   result.append("fable_cout"+exe)
@@ -62,7 +63,7 @@ def exercise_open(opts):
       #
       results = [
         stdout_1, exists_1, stdout_2, exists_2, stdout_3, exists_3, size_3]
-      if (opts.verbose): print "%-12s" % cmd, results
+      if (opts.verbose): print("%-12s" % cmd, results)
       expected = {
         "old": [['F'], False, ['T'], True, ['T'], True, 1],
         "new": [['T'], True, ['F'], True, ['F'], True, 1],
@@ -85,7 +86,7 @@ def exercise_mixed_read_write(opts):
       end
 """ % tmp)
   for cmd in build_cmds(tst_f=tst_f, opts=opts):
-    if (opts.verbose): print cmd
+    if (opts.verbose): print(cmd)
     open(tmp, "w").write("""\
 12
 34
@@ -128,7 +129,7 @@ def run(args):
   ).process(args=args)
   keys = set(command_line.args)
   exercises = set()
-  for key in globals().keys():
+  for key in list(globals().keys()):
     if (key.startswith("exercise_")):
       exercises.add(key[9:])
   assert len(keys) == 0 or keys.issubset(exercises)
@@ -141,7 +142,7 @@ def run(args):
     exercise_mixed_read_write(opts=co)
   if (len(keys) == 0 or "read_from_non_existing_file" in keys):
     exercise_read_from_non_existing_file(opts=co)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

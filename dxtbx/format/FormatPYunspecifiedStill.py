@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 from dxtbx.format.FormatStill import FormatStill
 from dxtbx.format.FormatPYunspecified import FormatPYunspecified
 from dxtbx.format.FormatPYunspecified import FormatPYunspecifiedInMemory
@@ -16,9 +19,9 @@ class FormatPYunspecifiedStill(FormatStill, FormatPYunspecified):
 
     try:
       stream = FormatPYunspecified.open_file(image_file, 'rb')
-      import cPickle as pickle
+      import pickle as pickle
       data = pickle.load(stream)
-    except IOError,e:
+    except IOError as e:
       return False
 
     if 'OSC_START' not in data or 'OSC_RANGE' not in data:
@@ -48,7 +51,7 @@ class FormatPYunspecifiedStillInMemory(FormatStill, FormatPYunspecifiedInMemory)
     data = image_file
 
     try:
-      if 'OSC_START' not in data.keys() or 'OSC_RANGE' not in data.keys():
+      if 'OSC_START' not in list(data.keys()) or 'OSC_RANGE' not in list(data.keys()):
         return True
     except AttributeError:
       return False
@@ -67,4 +70,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatPYunspecifiedStill.understand(arg)
+    print(FormatPYunspecifiedStill.understand(arg))

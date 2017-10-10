@@ -1,10 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 from cctbx.eltbx.development import itvc_section61_io
 from cctbx.eltbx.development import kissel_io
 import cctbx.eltbx.gaussian_fit
 from cctbx.array_family import flex
 from libtbx.option_parser import OptionParser
-import cStringIO as StringIO
+import io as StringIO
 import sys, os
 
 def run(args, cutoff, high_resolution_only,
@@ -33,7 +37,7 @@ def run(args, cutoff, high_resolution_only,
     ktab_sigmas_i = flex.linear_interpolation(ktab.x, ktab.sigmas, itab_x)
     assert ktab_y_i.all_gt(0)
     s = StringIO.StringIO()
-    print >> s, "stol  kissel    itvc   delta sig_itvc rel_sig rel_del tol_del"
+    print("stol  kissel    itvc   delta sig_itvc rel_sig rel_del tol_del", file=s)
     max_delta = 0
     max_tol_del = 0
     for x,ky,ksig,iy,isig in zip(itab_x, ktab_y_i, ktab_sigmas_i,
@@ -43,14 +47,14 @@ def run(args, cutoff, high_resolution_only,
       delta = iy - ky
       rel_del = abs(delta) / ky
       tol_del = max(0, abs(delta)-ksig-isig) / ky
-      print >> s, "%4.2f %7.4f %7.4f %7.4f %8.5f %-s %7.4f %7.4f" % (
-        x,ky,iy,delta,isig,ie,rel_del,tol_del)
+      print("%4.2f %7.4f %7.4f %7.4f %8.5f %-s %7.4f %7.4f" % (
+        x,ky,iy,delta,isig,ie,rel_del,tol_del), file=s)
       max_delta = max(max_delta, abs(delta))
       max_tol_del = max(max_tol_del, tol_del)
-    print "Element:", ktab.element, "max_delta=%.4f, max_tol_del=%.4f" % (
-      max_delta, max_tol_del)
+    print("Element:", ktab.element, "max_delta=%.4f, max_tol_del=%.4f" % (
+      max_delta, max_tol_del))
     sys.stdout.write(s.getvalue())
-    print
+    print()
 
 def main():
   parser = OptionParser(

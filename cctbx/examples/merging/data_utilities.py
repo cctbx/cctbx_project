@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.array_family import flex
 
 def I_and_G_base_estimate(data,params=None):
@@ -23,7 +25,7 @@ def I_and_G_base_estimate(data,params=None):
 def plot_it(fit, sim, mode=None):
   sub_fit = []
   sub_sim = []
-  for i in xrange(len(fit)):
+  for i in range(len(fit)):
     if sim[i] > 0:
       sub_fit.append(fit[i])
       sub_sim.append(sim[i])
@@ -49,7 +51,7 @@ def show_correlation(A, B, selection, message):
   data_A = A.select(selection==1)
   data_B = B.select(selection==1)
   LC = flex.linear_correlation(data_A,data_B)
-  print message,LC.coefficient(),"on %d values"%LC.n()
+  print(message,LC.coefficient(),"on %d values"%LC.n())
 
 def show_histogram(data,title):
   from matplotlib import pyplot as plt

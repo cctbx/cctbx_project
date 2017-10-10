@@ -4,6 +4,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from __future__ import division
+from builtins import str
 from crys3d.hklview.frames import *
 from cctbx.miller.display import master_phil
 from wxtbx import icons
@@ -16,7 +17,7 @@ class RfactorFrame (HKLViewFrame) :
     pass
 
   def load_reflections_file (self, file_name, **kwds) :
-    if (isinstance(file_name, unicode)) :
+    if (isinstance(file_name, str)) :
       file_name = str(file_name)
     if (file_name != "") :
       from iotbx.reflection_file_reader import any_reflection_file
@@ -24,7 +25,7 @@ class RfactorFrame (HKLViewFrame) :
       from scitbx.array_family import flex
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=True)
       f_obs = f_model = None

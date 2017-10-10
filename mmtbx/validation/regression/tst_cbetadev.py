@@ -1,9 +1,12 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from io import StringIO
 import os.path
 
 def exercise_cbetadev():
@@ -11,7 +14,7 @@ def exercise_cbetadev():
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available"
+    print("Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available")
     return
   from mmtbx.validation import cbetadev
   from iotbx import file_reader
@@ -153,13 +156,13 @@ ATOM   1196  OG BSER A 146      23.468  39.645  17.028  0.50 18.32           O  
   all_relevant_atoms_1 = extract_atoms_from_residue_group(rg1)
   all_relevant_atoms_2 = extract_atoms_from_residue_group(rg2)
   all_relevant_atoms_3 = extract_atoms_from_residue_group(rg3)
-  keys_1 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_1 ]
-  keys_2 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_2 ]
-  keys_3 = [ sorted([ k for k in a.keys() ]) for a in all_relevant_atoms_3 ]
+  keys_1 = [ sorted([ k for k in list(a.keys()) ]) for a in all_relevant_atoms_1 ]
+  keys_2 = [ sorted([ k for k in list(a.keys()) ]) for a in all_relevant_atoms_2 ]
+  keys_3 = [ sorted([ k for k in list(a.keys()) ]) for a in all_relevant_atoms_3 ]
   assert keys_1 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
   assert keys_2 == [[' C  ',' CA ',' CB ',' N  '],[' C  ',' CA ',' CB ',' N  ']]
   assert keys_3 == [[' C  ', ' CA ', ' CB ', ' N  ']]
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise_cbetadev()

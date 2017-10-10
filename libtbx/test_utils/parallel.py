@@ -1,12 +1,18 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import map
+from builtins import object
 from libtbx import easy_run
 from libtbx import test_utils
 import libtbx.load_env
 from libtbx.utils import import_python_object, Sorry, multi_out
 from libtbx import group_args, Auto
 from multiprocessing import Pool, cpu_count
-from cStringIO import StringIO
+from io import StringIO
 import traceback
 import time
 import os
@@ -157,7 +163,7 @@ class run_command_list (object) :
       if (not cmd in self.cmd_list) :
         self.cmd_list.append(cmd)
       else :
-        print >> self.out, "Test %s repeated, skipping"%cmd
+        print("Test %s repeated, skipping"%cmd, file=self.out)
 
     # Set number of processors.
     if (nprocs is Auto) :
@@ -166,10 +172,10 @@ class run_command_list (object) :
 
     # Starting summary.
     if (self.verbosity > 0) :
-      print >> self.out, "Running %d tests on %s processors:"%(len(self.cmd_list), nprocs)
+      print("Running %d tests on %s processors:"%(len(self.cmd_list), nprocs), file=self.out)
       for cmd in self.cmd_list:
-        print >> self.out, "  %s"%cmd
-      print >> self.out, ""
+        print("  %s"%cmd, file=self.out)
+      print("", file=self.out)
 
     t_start = time.time()
     if nprocs > 1:
@@ -183,7 +189,7 @@ class run_command_list (object) :
       try:
         self.pool.close()
       except KeyboardInterrupt:
-        print >> self.out, "Caught KeyboardInterrupt, terminating"
+        print("Caught KeyboardInterrupt, terminating", file=self.out)
         self.pool.terminate()
       finally:
         try:
@@ -199,10 +205,10 @@ class run_command_list (object) :
 
     # Print ending summary.
     t_end = time.time()
-    print >> self.out, "="*80
-    print >> self.out, ""
-    print >> self.out, "Tests finished. Elapsed time: %.2fs" %(t_end-t_start)
-    print >> self.out, ""
+    print("="*80, file=self.out)
+    print("", file=self.out)
+    print("Tests finished. Elapsed time: %.2fs" %(t_end-t_start), file=self.out)
+    print("", file=self.out)
     test_cases = []
     # Process results for errors and warnings.
     extra_stderr = len([result for result in self.results if result.stderr_lines])
@@ -221,11 +227,11 @@ class run_command_list (object) :
         try:
           return string.encode('ascii', 'xmlcharrefreplace')
         except Exception: # intentional
-          return unicode(string, errors='ignore').encode('ascii', 'xmlcharrefreplace')
+          return str(string, errors='ignore').encode('ascii', 'xmlcharrefreplace')
       for result in self.results:
         test_name = reconstruct_test_name(result.command)
-        plain_stdout = map(decode_string, result.stdout_lines)
-        plain_stderr = map(decode_string, result.stderr_lines)
+        plain_stdout = list(map(decode_string, result.stdout_lines))
+        plain_stderr = list(map(decode_string, result.stderr_lines))
         output = '\n'.join(plain_stdout + plain_stderr)
         tc = TestCase(classname=test_name[0],
                       name=test_name[1],
@@ -250,71 +256,71 @@ class run_command_list (object) :
         test_cases.append(tc)
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
-        print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
-    except ImportError, e:
+        print(TestSuite.to_xml_string([ts], prettyprint=True), file=f)
+    except ImportError as e:
       pass
 
     # Run time distribution.
     if (libtbx.env.has_module("scitbx")) :
       from scitbx.array_family import flex
-      print >> self.out, "Distribution of test runtimes:"
+      print("Distribution of test runtimes:", file=self.out)
       hist = flex.histogram(flex.double([result.wall_time for result in self.results]), n_slots=10)
       hist.show(f=self.out, prefix="  ", format_cutoffs="%.1fs")
-      print >> self.out, ""
+      print("", file=self.out)
 
     # Long job warning.
     if longjobs:
-      print >> self.out, ""
-      print >> self.out, "Warning: the following jobs took at least %d seconds:"%max_time
+      print("", file=self.out)
+      print("Warning: the following jobs took at least %d seconds:"%max_time, file=self.out)
       for result in sorted(longjobs, key=lambda result:result.wall_time):
-        print >> self.out, "  %s: %.1fs"%(result.command, result.wall_time)
-      print >> self.out, "Please try to reduce overall runtime - consider splitting up these tests."
+        print("  %s: %.1fs"%(result.command, result.wall_time), file=self.out)
+      print("Please try to reduce overall runtime - consider splitting up these tests.", file=self.out)
 
     # Failures.
     if failures:
-      print >> self.out, ""
-      print >> self.out, "Error: the following jobs returned non-zero exit codes or suspicious stderr output:"
-      print >> self.out, ""
+      print("", file=self.out)
+      print("Error: the following jobs returned non-zero exit codes or suspicious stderr output:", file=self.out)
+      print("", file=self.out)
       for result in warnings:
         self.display_result(result, alert=1, out=self.out, log_return=self.out, log_stderr=self.out)
       for result in failures:
         self.display_result(result, alert=2, out=self.out, log_return=self.out, log_stderr=self.out)
-      print >> self.out, ""
-      print >> self.out, "Please verify these tests manually."
-      print >> self.out, ""
+      print("", file=self.out)
+      print("Please verify these tests manually.", file=self.out)
+      print("", file=self.out)
 
     # Summary
-    print >> self.out, "Summary:"
-    print >> self.out, "  Tests run                    :",self.finished
-    print >> self.out, "  Failures                     :",self.failure
-    print >> self.out, "  Warnings (possible failures) :",self.warning
-    print >> self.out, "  Stderr output (discouraged)  :",extra_stderr
+    print("Summary:", file=self.out)
+    print("  Tests run                    :",self.finished, file=self.out)
+    print("  Failures                     :",self.failure, file=self.out)
+    print("  Warnings (possible failures) :",self.warning, file=self.out)
+    print("  Stderr output (discouraged)  :",extra_stderr, file=self.out)
     if (self.finished != len(self.cmd_list)) :
-      print >> self.out, "*" * 80
-      print >> self.out, "  WARNING: NOT ALL TESTS FINISHED!"
-      print >> self.out, "*" * 80
+      print("*" * 80, file=self.out)
+      print("  WARNING: NOT ALL TESTS FINISHED!", file=self.out)
+      print("*" * 80, file=self.out)
 
   def check_alert(self, result):
     alert = 0
     if result.error_lines:
       if self.verbosity == EXTRA_VERBOSE:
-        print >> self.out, "ERROR BEGIN "*10
-        print >> self.out, result.error_lines
-        print >> self.out, '-'*80
-        print >> self.out, result.stderr_lines
-        print >> self.out, "ERROR -END- "*10
+        print("ERROR BEGIN "*10, file=self.out)
+        print(result.error_lines, file=self.out)
+        print('-'*80, file=self.out)
+        print(result.stderr_lines, file=self.out)
+        print("ERROR -END- "*10, file=self.out)
       alert = 1
     if result.return_code != 0:
       if self.verbosity == EXTRA_VERBOSE:
-        print >> self.out, "RETURN CODE BEGIN "*5
-        print >> self.out, result.return_code
-        print >> self.out, "RETURN CODE -END- "*5
+        print("RETURN CODE BEGIN "*5, file=self.out)
+        print(result.return_code, file=self.out)
+        print("RETURN CODE -END- "*5, file=self.out)
       alert = 2
     return alert
 
   def save_result (self, result) :
     if (result is None ):
-      print >> self.out, "ERROR: job returned None, assuming CTRL+C pressed"
+      print("ERROR: job returned None, assuming CTRL+C pressed", file=self.out)
       if self.pool: self.pool.terminate()
       return False
     alert = self.check_alert(result)
@@ -348,20 +354,20 @@ class run_command_list (object) :
   def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
     status = ['OK', 'WARNING', 'FAIL']
     if out:
-      print >> out, "%s [%s]"%(result.command, status[alert])
+      print("%s [%s]"%(result.command, status[alert]), file=out)
       out.flush()
     if log_return:
-      print >> log_return, "  Time: %5.2f"%result.wall_time
-      print >> log_return, "  Return code: %s"%result.return_code
-      print >> log_return, "  OKs:", len(filter(lambda x:'OK' in x, result.stdout_lines))
+      print("  Time: %5.2f"%result.wall_time, file=log_return)
+      print("  Return code: %s"%result.return_code, file=log_return)
+      print("  OKs:", len([x for x in result.stdout_lines if 'OK' in x]), file=log_return)
       log_return.flush()
     if log_stdout and (len(result.stdout_lines) > 0) :
-      print >> log_stdout, "  Standard out:"
-      print >> log_stdout, "    "+"\n    ".join(result.stdout_lines)
+      print("  Standard out:", file=log_stdout)
+      print("    "+"\n    ".join(result.stdout_lines), file=log_stdout)
       log_stdout.flush()
     if log_stderr and (len(result.stderr_lines) > 0) :
-      print >> sys.stderr, "  Standard error:"
-      print >> sys.stderr, "    "+"\n    ".join(result.stderr_lines)
+      print("  Standard error:", file=sys.stderr)
+      print("    "+"\n    ".join(result.stderr_lines), file=sys.stderr)
       sys.stderr.flush()
 
 def make_commands (files) :
@@ -440,4 +446,4 @@ print "OK"
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

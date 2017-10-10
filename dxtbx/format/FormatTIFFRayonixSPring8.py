@@ -10,6 +10,7 @@
 #
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import struct
 
@@ -124,5 +125,5 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixSPring8.understand(arg)
+    print(FormatTIFFRayonixSPring8.understand(arg))
     #print FormatTIFFRayonixSPring8BL26B2.understand(arg)

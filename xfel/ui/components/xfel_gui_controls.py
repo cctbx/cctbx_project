@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import str
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/03/2016
@@ -479,7 +480,7 @@ class MultiChoiceCtrl(CtrlBase):
     self.txt.SetFont(self.font)
     choice_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, choices in items.iteritems():
+    for key, choices in items.items():
       if len(items) > 1:
         ch_label =wx.StaticText(self, id=wx.ID_ANY, label=key)
         choice_box.Add(ch_label, flag=wx.ALIGN_CENTER_VERTICAL)
@@ -557,7 +558,7 @@ class RadioCtrl(CtrlBase):
       self.txt.SetFont(self.font)
       radio_group.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
 
-    for key, value in items.iteritems():
+    for key, value in items.items():
       button = wx.RadioButton(self, id=wx.ID_ANY, label=value)
       radio_group.Add(button)
       self.__setattr__(key, button)

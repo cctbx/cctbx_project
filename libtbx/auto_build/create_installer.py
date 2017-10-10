@@ -12,6 +12,8 @@ before it can be tarred.
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from optparse import OptionParser
 import shutil
 import time
@@ -72,17 +74,17 @@ source $%(env_prefix)s/build/setpaths.csh
 def makedirs(path):
   try:
     os.makedirs(path)
-  except Exception, e:
-    print "Directory already exists: %s"%path
+  except Exception as e:
+    print("Directory already exists: %s"%path)
 
 def archive(source, destination, tarfile=None):
   if source == destination:
-    print "Source and destination are the same, skipping: %s"%source
+    print("Source and destination are the same, skipping: %s"%source)
     return
   assert not os.path.exists(destination), "File exists: %s"%destination
-  print "Copying: %s -> %s"%(source, destination)
+  print("Copying: %s -> %s"%(source, destination))
   if not os.path.exists(source):
-    print "Warning: source does not exist! Skipping: %s"%source
+    print("Warning: source does not exist! Skipping: %s"%source)
     return
   try:
     if os.path.basename(source) != 'build': # don't delete lib files from python or modules
@@ -99,7 +101,7 @@ def archive(source, destination, tarfile=None):
         ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
         symlinks=True
         )
-  except Exception, err:
+  except Exception as err:
     # workaround for possible very long path problem on Windows
     if sys.platform == "win32" and type(err)==shutil.Error:
       for e in err[0]:
@@ -111,13 +113,13 @@ def archive(source, destination, tarfile=None):
             ultddst = "\\\\?\\" + dst
             shutil.copy(ultdsrc, ultddst)
     else:
-      raise Exception, err
+      raise Exception(err)
 
 
 
 def tar(source, tarfile, cwd=None):
   assert not os.path.exists(tarfile), "File exists: %s"%tarfile
-  print "Archiving: %s -> %s"%(source, tarfile)
+  print("Archiving: %s -> %s"%(source, tarfile))
   # TODO: replace system call to tar with platform independent python tarfile module
   #mytar = tarfile.open(tarfile, mode="r:gz")
   #mytar.add(source, arcname=tarfile)
@@ -159,7 +161,7 @@ class SetupInstaller(object):
 
   def run(self):
     # Setup directory structure
-    print "Installer will be %s"%self.dest_dir
+    print("Installer will be %s"%self.dest_dir)
     assert not os.path.exists(self.dest_dir), "Installer dir exists: %s"%self.dest_dir
     makedirs(self.dest_dir)
     for i in ['bin', 'lib']:
@@ -268,7 +270,7 @@ class SetupInstaller(object):
     """Generate shell scripts in the top-level installation directory."""
     if sys.platform == "win32":
       return
-    print "Generating %s environment setup scripts..."%self.installer.product_name
+    print("Generating %s environment setup scripts..."%self.installer.product_name)
     fmt = {'env_prefix':self.installer.product_name.upper(), 'version':self.version}
     # bash
     with open(os.path.join(self.dest_dir, '%s_env.sh'%self.installer.product_name.lower()), 'w') as f:
@@ -287,7 +289,7 @@ class SetupInstaller(object):
              os.path.join(self.dest_dir,'bin','install.py'), '--nopycompile']
       installer_utils.call(arg, cwd=self.dest_dir)
 
-      print "Creating zip archive of distribution"
+      print("Creating zip archive of distribution")
       fname = os.path.join(self.dist_dir, '%s.zip'%os.path.basename(self.dest_dir))
       myzip = zipfile.ZipFile(fname, 'w', zipfile.ZIP_DEFLATED, allowZip64=True )
       for dirpath,dirs,files in os.walk(self.dest_dir):
@@ -302,7 +304,7 @@ class SetupInstaller(object):
           myzip.write(filename=fname, arcname=relfname)
       myzip.close()
     else:
-      print "Creating tar archive of distribution"
+      print("Creating tar archive of distribution")
       tar(
         os.path.basename(self.dest_dir),
         os.path.join(self.dist_dir, '%s.tar.gz'%os.path.basename(self.dest_dir)),
@@ -311,7 +313,7 @@ class SetupInstaller(object):
 
   def make_dist_pkg(self):
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
-      print "Can't access /Applications - skipping .pkg build"
+      print("Can't access /Applications - skipping .pkg build")
       return
 
     # This has to match other conventions...

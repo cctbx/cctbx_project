@@ -12,6 +12,8 @@
 # http://www.x-spectrum.de/
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import str
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
@@ -21,7 +23,7 @@ class FormatHDF5Lambda(FormatHDF5):
   def understand(image_file):
     try:
       tag = FormatHDF5.open_file(image_file, 'rb').read(8)
-    except IOError, e:
+    except IOError as e:
       return False
 
     # check that this is a HDF5 file (should not have got here if not
@@ -165,4 +167,4 @@ class FormatHDF5Lambda(FormatHDF5):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatHDF5Lambda.understand(arg)
+    print(FormatHDF5Lambda.understand(arg))

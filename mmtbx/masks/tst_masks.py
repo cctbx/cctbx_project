@@ -1,5 +1,6 @@
 from __future__ import division
 #from mmtbx import masks
+from builtins import range
 from cctbx.eltbx import van_der_waals_radii
 from cctbx import maptbx
 from cctbx import xray
@@ -134,7 +135,7 @@ def exercise_2():
   structure = xray.structure(crystal_symmetry=symmetry)
   atmrad = flex.double()
   xyzf = flex.vec3_double()
-  for k in xrange(100):
+  for k in range(100):
     scatterer = xray.scatterer(
       site = ((1.+k*abs(math.sin(k)))/1000.0,
               (1.+k*abs(math.cos(k)))/1000.0,

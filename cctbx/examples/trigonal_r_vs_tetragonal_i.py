@@ -20,6 +20,7 @@ See also: http://en.wikipedia.org/wiki/Bravais_lattice
 Note that "trigonal P" and "hexagonal P" are the same Bravais type.
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import crystal
 import sys
@@ -27,30 +28,30 @@ import sys
 def run(args):
   assert len(args) == 0
   #
-  print 'This is the "tetragonal I" setting humans like:'
+  print('This is the "tetragonal I" setting humans like:')
   tetragonal_i = crystal.symmetry(
     unit_cell=(10,10,13,90,90,90),
     space_group_symbol="I4")
   tetragonal_i.show_summary()
-  print
-  print 'Exact same symmetry, but using a basis system that is not very'
-  print 'accessible to humans:'
+  print()
+  print('Exact same symmetry, but using a basis system that is not very')
+  print('accessible to humans:')
   cb_op = tetragonal_i.change_of_basis_op_to_primitive_setting()
-  print 'Change of basis:', cb_op
+  print('Change of basis:', cb_op)
   tetragonal_i.change_basis(cb_op=cb_op).show_summary()
-  print
+  print()
   #
-  print 'This is the "trigonal R" setting most humans like best:'
+  print('This is the "trigonal R" setting most humans like best:')
   trigonal_r = crystal.symmetry(
     unit_cell=(10,10,13,90,90,120),
     space_group_symbol="R3")
   trigonal_r.show_summary()
-  print
-  print 'Same symmetry, sometimes preferred:'
+  print()
+  print('Same symmetry, sometimes preferred:')
   cb_op = trigonal_r.change_of_basis_op_to_primitive_setting()
-  print 'Change of basis:', cb_op
+  print('Change of basis:', cb_op)
   trigonal_r.change_basis(cb_op).show_summary()
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

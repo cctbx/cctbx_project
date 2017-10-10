@@ -5,6 +5,8 @@ energy functions) on coordinates and B-factors; used in phenix.refine.
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import cctbx.adp_restraints
 import math
 from cctbx.array_family import flex
@@ -52,8 +54,8 @@ class manager(object):
         sites_cart = pdb_hierarchy.atoms().extract_xyz()
         compute_gradients=False
         make_header("Initializing AMBER", out=log)
-        print >> log, "  topology    : %s" % params.amber.topology_file_name
-        print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
+        print("  topology    : %s" % params.amber.topology_file_name, file=log)
+        print("  coordinates : %s" % params.amber.coordinate_file_name, file=log)
         from amber_adaptbx import interface
         self.amber_structs, sander = interface.get_amber_struct_object(params)
         self.sander=sander # used for cleanup
@@ -106,7 +108,7 @@ class manager(object):
             pdb_hierarchy,
             params.afitt.ff,
             params.afitt.scale)
-        print >> log, afitt_object
+        print(afitt_object, file=log)
         afitt_object.check_covalent(self.geometry)
         # afitt log output
         afitt_object.initial_energies = afitt.get_afitt_energy(
@@ -397,16 +399,16 @@ class manager(object):
           site_labels=site_labels,
           excessive_distance_limit=excessive_distance_limit,
           out=outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
       self.ncs_groups.show_adp_iso_differences_to_average(
           u_isos=xray_structure.extract_u_iso_or_u_equiv(),
           site_labels=site_labels,
           out=outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
       processed_pdb_file.show_atoms_without_ncs_restraints(
         ncs_restraints_groups=self.ncs_groups,
         out=outf_descriptor)
-      print >> outf_descriptor
+      print(file=outf_descriptor)
     if file_name is not None:
       outf_descriptor.close()
     if (n_excessive != 0):

@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import object
 from mmtbx.tls import tools
 import mmtbx.f_model
 import mmtbx.model
@@ -42,7 +46,7 @@ def exercise_2(eps = 1.e-6):
   restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
                                                 normalization = False)
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  class refinement_flags: pass
+  class refinement_flags(object): pass
   refinement_flags.adp_tls = selections
   tls_groups = tools.tls_groups(selection_strings = selection_strings)
   tlsos = tools.generate_tlsos(
@@ -128,7 +132,7 @@ def exercise_2(eps = 1.e-6):
   fmodel.update_xray_structure(xray_structure = xray_structure,
                                update_f_calc  = True)
   fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
-  print "*"*80
+  print("*"*80)
 ###> TLS refinement against xray data
   if (not "--comprehensive" in sys.argv[1:]):
           number_of_macro_cycles   = 1
@@ -139,7 +143,7 @@ def exercise_2(eps = 1.e-6):
 
   for start_tls_value in [None]:#[0.0, tlsosA, None]:
   #for start_tls_value in [None]:
-      print " \n "+str(start_tls_value) + " \n "
+      print(" \n "+str(start_tls_value) + " \n ")
       fmodel_cp = fmodel.deep_copy()
       #for sc in fmodel_cp.xray_structure.scatterers():
       #  sc.flags.set_use_u_aniso(True)
@@ -172,8 +176,8 @@ def exercise_2(eps = 1.e-6):
          for m1,m2 in zip(u_cart_answer, u_cart):
              counter += 1
              if(counter < 10):
-                print "1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5])
-                print "2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5])
+                print("1=" + format % (m1[0],m1[1],m1[2],m1[3],m1[4],m1[5]))
+                print("2=" + format % (m2[0],m2[1],m2[2],m2[3],m2[4],m2[5]))
              assert approx_equal(m1,m2, tolerance)
 
 def exercise(args):
@@ -187,13 +191,13 @@ def exercise(args):
   if (random_seed is None):
     random_seed = flex.get_random_seed()
   while True:
-    print "random_seed:", random_seed
+    print("random_seed:", random_seed)
     random.seed(random_seed)
     flex.set_random_seed(value=random_seed)
     exercise_2()
     if (not forever): break
     random_seed += 1
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

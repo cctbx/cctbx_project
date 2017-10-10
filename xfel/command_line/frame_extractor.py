@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.frame_extractor
@@ -6,6 +7,10 @@ from __future__ import division
 #
 # $Id: frame_extractor.py idyoung $
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from dials.array_family import flex
 from dials.util.options import Importer, flatten_reflections, flatten_experiments, OptionParser
 from cctbx import crystal, miller
@@ -59,9 +64,9 @@ class ConstructFrame(object):
     self.frame = self.get_template_pickle()
     self.pixel_size = experiment.detector[0].get_pixel_size()[0]
 
-    if reflections.has_key('intensity.prf.value'):
+    if 'intensity.prf.value' in reflections:
       self.method = 'prf' # integration by profile fitting
-    elif reflections.has_key('intensity.sum.value'):
+    elif 'intensity.sum.value' in reflections:
       self.method = 'sum' # integration by simple summation
     self.reflections = reflections.select(reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
 
@@ -154,17 +159,17 @@ class ConstructFrame(object):
 
   # collect predicted spot positions
   def populate_pixel_positions(self):
-    assert self.reflections.has_key('xyzcal.px'), "no calculated spot positions"
+    assert 'xyzcal.px' in self.reflections, "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
-    for i in xrange(len(self.reflections['xyzcal.px'])):
+    for i in range(len(self.reflections['xyzcal.px'])):
       self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][1::-1])) # 1::-1 reverses the order taking only the first two elements first.
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
   def populate_corrections(self):
-    assert self.reflections.has_key('xyzobs.px.value') and self.reflections.has_key('xyzcal.px'), "no calculated or observed spot positions"
+    assert 'xyzobs.px.value' in self.reflections and 'xyzcal.px' in self.reflections, "no calculated or observed spot positions"
     assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
     self.frame['correction_vectors'] = [[]]
-    for idx in xrange(len(self.reflections['xyzobs.px.value'])):
+    for idx in range(len(self.reflections['xyzobs.px.value'])):
       if self.reflections['xyzcal.px'][idx][0:2] != self.reflections['xyzobs.px.value'][idx][0:2]:
         theoret_center = 1765/2, 1765/2
         refined_center = self.frame['xbeam']/self.pixel_size, self.frame['ybeam']/self.pixel_size # px to mm conversion
@@ -219,7 +224,7 @@ class ConstructFrameFromFiles(ConstructFrame):
     # experiement list
     importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
     if importer.unhandled:
-      print "unable to process:", importer.unhandled
+      print("unable to process:", importer.unhandled)
     reflections_l = flatten_reflections(importer.reflections)
     experiments_l = flatten_experiments(importer.experiments)
     assert len(experiments_l) == 1, "cannot construct a single frame from multiple experiments"
@@ -230,7 +235,7 @@ class ConstructFrameFromFiles(ConstructFrame):
 def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None):
   importer = Importer([refl_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
   if importer.unhandled:
-    print "unable to process:", importer.unhandled
+    print("unable to process:", importer.unhandled)
   reflections_l = flatten_reflections(importer.reflections)[0]
   experiments_l = flatten_experiments(importer.experiments)
   frames = []
@@ -240,7 +245,7 @@ def construct_frames_from_files(refl_name, json_name, outname=None, outdir=None)
     outname = 'int-%d' + refl_name.split('.pickle')[0] + '_extracted.pickle'
   elif '%' not in outname:
     outname = outname.split(".pickle")[0] + ("_%d.pickle")
-  for i in xrange(len(experiments_l)):
+  for i in range(len(experiments_l)):
     refl = reflections_l.select(reflections_l['id'] == i)
     if len(refl) == 0: continue
     expt = experiments_l[i]

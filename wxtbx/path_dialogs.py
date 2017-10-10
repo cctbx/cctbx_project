@@ -1,5 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 from wxtbx.utils import add_ok_cancel_buttons, std_sizer_flags
 from wxtbx.phil_controls import choice_multi, path
 import wx
@@ -227,4 +230,4 @@ if (__name__ == "__main__") :
   mgr = manager()
   fn = mgr.select_file(parent=None,
     message="Select a file")
-  print fn
+  print(fn)

@@ -10,12 +10,19 @@
 # well tested except to the extent it is used daily in the Phenix GUI
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from past.builtins import basestring
+from builtins import object
 from libtbx.utils import Sorry, Abort, multi_out, host_and_user
 from libtbx import easy_pickle
 from libtbx import adopt_init_args, group_args
 import libtbx.load_env
 import libtbx.phil
-import cStringIO
+import io
 import traceback
 import signal
 import stat
@@ -179,8 +186,8 @@ class detached_process_server (detached_base) :
       return_value = self.target()
     except Abort : # FIXME why is this not working properly?
       self.callback_abort()
-    except Exception, e :
-      print >> sys.stderr, type(e).__name__
+    except Exception as e :
+      print(type(e).__name__, file=sys.stderr)
       if (type(e).__name__ == "Abort") :
         self.callback_abort()
       else :
@@ -294,9 +301,9 @@ class detached_process_client (detached_base) :
         host, pid = data.split()
         self._process_host = host
         self._process_pid = int(pid)
-      except Exception, e :
-        print "Error acquiring runtime info:"
-        print e
+      except Exception as e :
+        print("Error acquiring runtime info:")
+        print(e)
       self.callback_start(data)
     if self.update_progress :
       self.check_stdout()
@@ -314,7 +321,7 @@ class detached_process_client (detached_base) :
       try :
         result = easy_pickle.load(self.result_file)
       except EOFError :
-        print "EOFError trying to load result file!"
+        print("EOFError trying to load result file!")
       else :
         time.sleep(1)
         self.check_stdout()
@@ -351,8 +358,8 @@ class detached_process_client (detached_base) :
           raise
         except EOFError :
           pass
-        except Exception, e :
-          print e
+        except Exception as e :
+          print(e)
         else :
           n_cb = len(accumulated_status)
           n_cb_old = len(self._accumulated_callbacks)
@@ -370,8 +377,8 @@ class detached_process_client (detached_base) :
           raise
         except EOFError :
           pass
-        except Exception, e :
-          print e
+        except Exception as e :
+          print(e)
         else :
           self.callback_other(current_status)
 
@@ -395,8 +402,8 @@ class detached_process_client (detached_base) :
     assert (self._process_pid is not None) and (sys.platform != "win32")
     try :
       os.kill(self._process_pid, signal_number)
-    except OSError, e :
-      print e
+    except OSError as e :
+      print(e)
       #self.callback_abort()
       return False
     else :
@@ -423,8 +430,8 @@ class detached_process_client (detached_base) :
       if os.path.exists(file_name) :
         try :
           os.remove(file_name)
-        except Exception, e :
-          print e
+        except Exception as e :
+          print(e)
 
 def touch_file (file_name) :
   f = open(file_name, "w").close()
@@ -466,8 +473,8 @@ def run (args) :
     else :
       try :
         arg_phil = libtbx.phil.parse(arg)
-      except RuntimeError, e :
-        print e
+      except RuntimeError as e :
+        print(e)
       else :
         user_phil.append(arg_phil)
   working_phil = process_master_phil.fetch(sources=user_phil)
@@ -484,7 +491,7 @@ def run (args) :
 class simple_client (detached_process_client) :
   def __init__ (self, *args, **kwds) :
     self.n_cb = 0
-    self.out = cStringIO.StringIO()
+    self.out = io.StringIO()
     detached_process_client.__init__(self, *args, **kwds)
 
   def callback_error (self, error, traceback_info) :
@@ -514,7 +521,7 @@ class simple_run (object) :
       mu = 10.0
       pu = 0.0
       pol =[0] * 100
-      r = range(0,100)
+      r = list(range(0,100))
       libtbx.call_back("run %d" % run, None, accumulate=True)
       time.sleep(1)
       for i in range(0,n):
@@ -526,11 +533,11 @@ class simple_run (object) :
         pu = pu + su
       pu_total += pu
       libtbx.call_back("current_total", pu, accumulate=False)
-      print "current is %f" % pu
+      print("current is %f" % pu)
     return pu_total
 
 class simple_func (object) :
   def __init__ (self, x) :
     self.x = x
   def __call__ (self) :
-    print self.x
+    print(self.x)

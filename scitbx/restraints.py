@@ -4,6 +4,7 @@ Handling for normalized target and gradients.
 """
 
 from __future__ import division
+from builtins import object
 from stdlib import math
 from libtbx.utils import Sorry
 

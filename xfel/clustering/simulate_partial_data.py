@@ -5,6 +5,9 @@ particular, it is intended to help test XFEL data merging tools.
 """
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from iotbx import mtz
 import cctbx.miller
 from cctbx.crystal_orientation import crystal_orientation, basis_type
@@ -15,7 +18,7 @@ from dials.array_family import flex
 from dxtbx.model import DetectorFactory
 
 import random
-import cPickle
+import pickle
 import logging
 
 eps = 0.001  # Tolerance for assertions
@@ -121,7 +124,7 @@ def run(args):
 
         pkl_name = "simulated_data_{0:04d}.pickle".format(im)
         with(open(pkl_name, 'wb')) as pkl:
-          cPickle.dump(temp_dict, pkl)
+          pickle.dump(temp_dict, pkl)
 
         ''' Only works with no noise:
         if logging.Logger.root.level <= logging.DEBUG:  # debug!

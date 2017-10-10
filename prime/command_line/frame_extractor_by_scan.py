@@ -1,10 +1,14 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.frame_extractor
+from builtins import str
+from builtins import range
+from builtins import object
 """
 Author      : Uervirojnangkoorn, M.
 Desc        : Taking the original code from xfel/command_line/frame_extractor.py
               and adding by scan so that each scan is output as a single pickle file.
 """
+from __future__ import print_function
 
 from dials.array_family import flex
 from dials.util.options import Importer, flatten_reflections, flatten_experiments, OptionParser
@@ -39,9 +43,9 @@ class ConstructFrame(object):
     self.frame = self.get_template_pickle()
     self.pixel_size = experiment.detector[0].get_pixel_size()[0]
 
-    if reflections.has_key('intensity.prf.value'):
+    if 'intensity.prf.value' in reflections:
       self.method = 'prf' # integration by profile fitting
-    elif reflections.has_key('intensity.sum.value'):
+    elif 'intensity.sum.value' in reflections:
       self.method = 'sum' # integration by simple summation
     #self.reflections = reflections.select(reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
     self.reflections = reflections
@@ -53,7 +57,7 @@ class ConstructFrame(object):
     self.gonio = experiment.goniometer
     self.scan = experiment.scan
     self.img_sweep = experiment.imageset
-    print scan_no, len(self.reflections)
+    print(scan_no, len(self.reflections))
 
   # experiment-dependent components ---------------------------------------------------------------------------
 
@@ -105,7 +109,7 @@ class ConstructFrame(object):
   def populate_mosaicity(self):
     try:
       self.frame['mosaicity'] = self.xtal.get_mosaicity()
-    except AttributeError, e:
+    except AttributeError as e:
       pass
 
   # get any available ML values
@@ -131,17 +135,17 @@ class ConstructFrame(object):
 
   # collect predicted spot positions
   def populate_pixel_positions(self):
-    assert self.reflections.has_key('xyzcal.px'), "no calculated spot positions"
+    assert 'xyzcal.px' in self.reflections, "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
-    for i in xrange(len(self.reflections['xyzcal.px'])):
+    for i in range(len(self.reflections['xyzcal.px'])):
       self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][1::-1])) # 1::-1 reverses the order taking only the first two elements first.
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
   def populate_corrections(self):
-    assert self.reflections.has_key('xyzobs.px.value') and self.reflections.has_key('xyzcal.px'), "no calculated or observed spot positions"
+    assert 'xyzobs.px.value' in self.reflections and 'xyzcal.px' in self.reflections, "no calculated or observed spot positions"
     assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
     self.frame['correction_vectors'] = [[]]
-    for idx in xrange(len(self.reflections['xyzobs.px.value'])):
+    for idx in range(len(self.reflections['xyzobs.px.value'])):
       if self.reflections['xyzcal.px'][idx][0:2] != self.reflections['xyzobs.px.value'][idx][0:2]:
         theoret_center = 1765/2, 1765/2
         refined_center = self.frame['xbeam']/self.pixel_size, self.frame['ybeam']/self.pixel_size # px to mm conversion
@@ -187,7 +191,7 @@ class ConstructFrameFromFiles(ConstructFrame):
     # experiement list
     importer = Importer([pickle_name, json_name], read_experiments=True, read_reflections=True, check_format=False)
     if importer.unhandled:
-      print "unable to process:", importer.unhandled
+      print("unable to process:", importer.unhandled)
     ConstructFrame.__init__(self, flatten_reflections(importer.reflections)[0],
                                   flatten_experiments(importer.experiments)[0],
                                   scan_no)
@@ -209,10 +213,10 @@ if __name__ == "__main__":
   #get scan range number
   importer = Importer([params.pickle_name, params.json_name], read_experiments=True, read_reflections=True, check_format=False)
   if importer.unhandled:
-    print "unable to process:", importer.unhandled
+    print("unable to process:", importer.unhandled)
   experiment = flatten_experiments(importer.experiments)[0]
   scan = experiment.scan
-  for scan_no in xrange(scan.get_image_range()[0], scan.get_image_range()[1]):
+  for scan_no in range(scan.get_image_range()[0], scan.get_image_range()[1]):
     #build each frame
     frame = ConstructFrameFromFiles(params.pickle_name, params.json_name, scan_no).make_frame()
     if not params.output_dir is None:

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
 from cctbx import sgtbx
 import scitbx.math
 from libtbx.utils import format_cpu_times
@@ -15,7 +18,7 @@ special = {
 
 def run(args):
   if ("--full" in args):
-    to_do = range(1,230+1)
+    to_do = list(range(1,230+1))
   elif ("--special" in args):
     to_do = sorted(special.keys())
   else:
@@ -36,13 +39,13 @@ def run(args):
       if (c.r().is_unit_mx() and c.t().num() != (0,0,0)):
         n_special += 1
         cb_ref_sgi = sgi.change_basis(cb_op=cb_op_ref)
-        print "  cb_op=%s -> %s" % (
-          str(cb_op.c()), cb_ref_sgi.type().universal_hermann_mauguin_symbol())
+        print("  cb_op=%s -> %s" % (
+          str(cb_op.c()), cb_ref_sgi.type().universal_hermann_mauguin_symbol()))
         sys.stdout.flush()
         # verify that c.t() is not an allowed origin shift
         assert cb_ref_sgi.group() != sgi.group()
     assert special.get(space_group_number, 0) == n_special
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

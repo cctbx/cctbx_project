@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.index
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
 
+from builtins import range
 from xfel.cxi.display_spots import run_one_index
 from libtbx.utils import Usage, Sorry
 import libtbx.option_parser
@@ -76,12 +78,12 @@ if (__name__ == "__main__"):
     file, arguments, kwargs = item
     try:
       run_one_index(file, *arguments, **({'display':display}))
-    except Exception, e:
+    except Exception as e:
       if hasattr(e, "classname"):
-        print e.classname, "for %s:"%file,
+        print(e.classname, "for %s:"%file, end=' ')
       else:
-        print "Indexing error for %s:"%file,
-      print e
+        print("Indexing error for %s:"%file, end=' ')
+      print(e)
 
   if command_line.options.num_procs == 1:
     for file in files:
@@ -89,7 +91,7 @@ if (__name__ == "__main__"):
         int_pickle_path = os.path.join(command_line.options.output_dir, \
           command_line.options.output_basename + os.path.basename(file))
         if command_line.options.skip_processed and os.path.isfile(int_pickle_path):
-          print file, "already processed, skipping"
+          print(file, "already processed, skipping")
           continue
         arguments.append("indexing.completeness_pickle=%s"%int_pickle_path)
       do_work((file, arguments, ({'display':display})))
@@ -114,7 +116,7 @@ if (__name__ == "__main__"):
         int_pickle_path = os.path.join(command_line.options.output_dir, \
           command_line.options.output_basename + os.path.basename(file))
         if command_line.options.skip_processed and os.path.isfile(int_pickle_path):
-          print file, "already processed, skipping"
+          print(file, "already processed, skipping")
           continue
         args = copy.copy(arguments)
         args.append("indexing.completeness_pickle=%s"%int_pickle_path)
@@ -133,5 +135,5 @@ if (__name__ == "__main__"):
     for p in procs:
       p.join()
 
-    print "Finished everything...."
-    print "num active children:", len(multiprocessing.active_children())
+    print("Finished everything....")
+    print("num active children:", len(multiprocessing.active_children()))

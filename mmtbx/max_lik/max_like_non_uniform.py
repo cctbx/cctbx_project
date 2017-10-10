@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 import math
 from cctbx.array_family import flex
 from cctbx.eltbx import van_der_waals_radii
@@ -162,7 +164,7 @@ class ordered_solvent_distribution(object):
       fp  = self._f.phases().data()
       fod = abs(self._fo).data()
       st = "%4d%4d%4d %10.6f %10.6f %4d%4d%4d %10.6f %10.6f %4d%4d%4d %10.3f \n"
-      for j in xrange(fd.size()):
+      for j in range(fd.size()):
         file.write(st % (ic[j][0],ic[j][1],ic[j][2],fcd[j],fcp[j],\
                          i[j][0] ,i[j][1] ,i[j][2] ,fd[j] ,fp[j],\
                          io[j][0],io[j][1],io[j][2],fod[j]))
@@ -189,7 +191,7 @@ def form_factor(absent_atom_type,ss):
     b_wk=table.array_of_b()
     c_wk=table.c()
     result_wk=c_wk
-    for i in xrange(5):
+    for i in range(5):
        result_wk += a_wk[i]*math.exp(-b_wk[i]*ss/4.0)
     return result_wk
 

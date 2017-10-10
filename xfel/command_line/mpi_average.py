@@ -1,9 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_average
 #
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import psana
 import numpy as np
 from xfel.cxi.cspad_ana import cspad_tbx, parse_calib
@@ -201,7 +205,7 @@ the output images in the folder cxi49812.
 
   # set this to sys.maxint to analyze all events
   if command_line.options.numevents is None:
-    maxevents = sys.maxint
+    maxevents = sys.maxsize
   else:
     maxevents = command_line.options.numevents
 
@@ -237,24 +241,24 @@ the output images in the folder cxi49812.
 
     # list of all events
     if command_line.options.skipevents > 0:
-      print "Skipping first %d events"%command_line.options.skipevents
+      print("Skipping first %d events"%command_line.options.skipevents)
     elif "Rayonix" in command_line.options.address:
-      print "Skipping first image in the Rayonix detector" # Shuttering issue
+      print("Skipping first image in the Rayonix detector") # Shuttering issue
       command_line.options.skipevents = 1
 
     times = run.times()[command_line.options.skipevents:]
     nevents = min(len(times),maxevents)
     # chop the list into pieces, depending on rank.  This assigns each process
     # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
-    for i in xrange(len(mytimes)):
-      if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
+    for i in range(len(mytimes)):
+      if i%10==0: print('Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes))
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
       if 'Rayonix' in command_line.options.address or 'FeeHxSpectrometer' in command_line.options.address or 'XrayTransportDiagnostic' in command_line.options.address:
         data = evt.get(psana.Camera.FrameV1,src)
         if data is None:
-          print "No data"
+          print("No data")
           continue
         data=data.data16().astype(np.float64)
       elif command_line.options.as_pickle:
@@ -274,7 +278,7 @@ the output images in the folder cxi49812.
                                             per_pixel_gain=False)
 
       if data is None:
-        print "No data"
+        print("No data")
         continue
 
       if command_line.options.background_pickle is not None:
@@ -286,7 +290,7 @@ the output images in the folder cxi49812.
       else:
         d = cspad_tbx.env_distance(address, run.env(), command_line.options.detz_offset)
         if d is None:
-          print "No distance, using distance", command_line.options.detz_offset
+          print("No distance, using distance", command_line.options.detz_offset)
           assert command_line.options.detz_offset is not None
           if 'distance' not in locals():
             distance = np.array([command_line.options.detz_offset])
@@ -300,7 +304,7 @@ the output images in the folder cxi49812.
 
         w = cspad_tbx.evt_wavelength(evt)
         if w is None:
-          print "No wavelength"
+          print("No wavelength")
           if 'wavelength' not in locals():
             wavelength = np.array([1.0])
         else:
@@ -311,7 +315,7 @@ the output images in the folder cxi49812.
 
       t = cspad_tbx.evt_time(evt)
       if t is None:
-        print "No timestamp, skipping shot"
+        print("No timestamp, skipping shot")
         continue
       if 'timestamp' in locals():
         timestamp += t[0] + (t[1]/1000)
@@ -341,7 +345,7 @@ the output images in the folder cxi49812.
 
   #sum the images across mpi cores
   if size > 1:
-    print "Synchronizing rank", rank
+    print("Synchronizing rank", rank)
   totevent = np.zeros(nevent.shape)
   comm.Reduce(nevent,totevent)
 
@@ -372,7 +376,7 @@ the output images in the folder cxi49812.
 
   if rank==0:
     if size > 1:
-      print "Synchronized"
+      print("Synchronized")
 
     # Accumulating floating-point numbers introduces errors,
     # which may cause negative variances.  Since a two-pass
@@ -416,7 +420,7 @@ the output images in the folder cxi49812.
       split_address = cspad_tbx.address_split(address)
       old_style_address = split_address[0] + "-" + split_address[1] + "|" + split_address[2] + "-" + split_address[3]
       for data, path in zip(all_data, dest_paths):
-        print "Saving", path
+        print("Saving", path)
         d = cspad_tbx.dpack(
             active_areas=active_areas,
             address=old_style_address,
@@ -444,7 +448,7 @@ the output images in the folder cxi49812.
           timestamp=timestamp,
           wavelength=wavelength
         )
-        print "Saving", path
+        print("Saving", path)
         easy_pickle.dump(path, d)
     elif command_line.options.as_pickle:
       split_address = cspad_tbx.address_split(address)
@@ -484,40 +488,40 @@ the output images in the folder cxi49812.
           return self.d
 
       if xpp:
-        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in range(4)]
         mean = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         mean = flex.double(mean.astype(np.float64))
 
-        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in range(4)]
         stddev = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         stddev = flex.double(stddev.astype(np.float64))
 
-        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in range(4)]
         maxall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         maxall = flex.double(maxall.astype(np.float64))
 
         if command_line.options.do_minimum_projection:
-          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in range(4)]
           minall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
           minall = flex.double(minall.astype(np.float64))
       else:
-        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in range(4)]
         mean = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         mean = flex.double(mean.astype(np.float64))
 
-        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in range(4)]
         stddev = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         stddev = flex.double(stddev.astype(np.float64))
 
-        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in range(4)]
         maxall = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         maxall = flex.double(maxall.astype(np.float64))
 
         if command_line.options.do_minimum_projection:
-          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in range(4)]
           minall = cspad_tbx.CsPadDetector(
             address, evt, ds.env(), sections, quads=quads)
           minall = flex.double(minall.astype(np.float64))
@@ -527,7 +531,7 @@ the output images in the folder cxi49812.
         all_data.append(minall)
 
       for data, path in zip(all_data, dest_paths):
-        print "Saving", path
+        print("Saving", path)
 
         d = cspad_tbx.dpack(
           active_areas=active_areas,
@@ -555,7 +559,7 @@ the output images in the folder cxi49812.
         all_data.append(minall)
 
       for data, path in zip(all_data, dest_paths):
-        print "Saving", path
+        print("Saving", path)
         cspad_img = cspad_cbf_tbx.format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, address, round_to_int=False)
         cspad_img._cbf_handle.write_widefile(path, pycbf.CBF,\
           pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K, 0)

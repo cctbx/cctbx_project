@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 import iotbx.symmetry
 from cctbx import sgtbx, uctbx
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from io import StringIO
 
 def exercise () :
   m = iotbx.symmetry.manager(prefer_pdb_space_group=True)
@@ -66,4 +69,4 @@ data_rfree.hkl: None None
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

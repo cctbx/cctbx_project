@@ -48,7 +48,7 @@ patterson_lookup = {}
 def get_patterson_group(conventional_symbol):
   global patterson_lookup
   SGI = space_group_info(sgtbx_redefine[conventional_symbol])
-  if patterson_lookup.has_key(SGI):
+  if SGI in patterson_lookup:
     PG = patterson_lookup[SGI]
   else:
     SG = SGI.group()

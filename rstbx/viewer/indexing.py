@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import str
+from builtins import chr
 from rstbx.viewer import controls, results_base
 from libtbx import str_utils
 from libtbx import easy_pickle

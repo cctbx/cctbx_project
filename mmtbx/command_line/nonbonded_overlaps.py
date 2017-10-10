@@ -1,6 +1,8 @@
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.nonbonded_overlaps
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 import mmtbx.monomer_library.pdb_interpretation as pdb_inter
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 import mmtbx.validation.clashscore as mvc
@@ -114,7 +116,7 @@ def run (args, out=None) :
   """
   if not out: out = sys.stdout
   if not args:
-    print >> out,usage_string
+    print(usage_string, file=out)
     return None
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -183,8 +185,8 @@ def run (args, out=None) :
     all = nb_overlaps.result.nb_overlaps_all
     macro_molecule = nb_overlaps.result.nb_overlaps_macro_molecule
     sym = nb_overlaps.result.nb_overlaps_due_to_sym_op
-    out_list = map(lambda x: str(round(x,2)),[macro_molecule,sym,all])
-    print >> out,', '.join(out_list)
+    out_list = [str(round(x,2)) for x in [macro_molecule,sym,all]]
+    print(', '.join(out_list), file=out)
   return nb_overlaps
 
 if (__name__ == "__main__") :

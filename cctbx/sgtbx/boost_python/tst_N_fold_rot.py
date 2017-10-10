@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from scitbx import matrix
 from libtbx.math_utils import iround
 from cctbx import sgtbx
@@ -55,7 +57,7 @@ International Tables for Crystallography, Volume A, 4th revised edition,
 2,1,0 1 0,-1 0 0 -1 1 0 0 0 -1
 -6,-1,0 0 1,0 -1 0 1 -1 0 0 0 -1"""
 
-class CompareToInternationalTables:
+class CompareToInternationalTables(object):
   def __init__(self):
     self.coord_system_lookup = {
       'ersatz_tests':cubic,'IT96_Table_11_2':cubic,'IT96_Table_11_3':hexag}
@@ -84,4 +86,4 @@ if __name__=='__main__':
   C.test_list('ersatz_tests')
   C.test_list('IT96_Table_11_2') #test non-hexagonal cells
   C.test_list('IT96_Table_11_3') #test hexagonal cells
-  print "OK"
+  print("OK")

@@ -10,6 +10,10 @@ from __future__ import absolute_import, division
 # in internal ticket #1555. This is not designed to be used outside of the
 # XSweep classes.
 
+from builtins import str
+from builtins import map
+from builtins import range
+from builtins import object
 import pycbf
 import copy
 from dxtbx_model_ext import Scan
@@ -41,7 +45,7 @@ scan_phil_scope = libtbx.phil.parse('''
   }
 ''')
 
-class ScanFactory:
+class ScanFactory(object):
   '''A factory for scan instances, to help with constructing the classes
   in a set of common circumstances.'''
 
@@ -109,7 +113,7 @@ class ScanFactory:
       if t == None: return None
       else: return from_dict(t, None)
     elif t != None:
-      d = dict(t.items() + d.items())
+      d = dict(list(t.items()) + list(d.items()))
     if not isinstance(d['exposure_time'], list):
       d['exposure_time'] = [d['exposure_time']]
 
@@ -174,7 +178,7 @@ class ScanFactory:
     gonio = cbf_handle.construct_goniometer()
     try:
       angles = tuple(gonio.get_rotation_range())
-    except Exception, e:
+    except Exception as e:
       if str(e).strip() == 'CBFlib Error(s): CBF_NOTFOUND':
         # probaby a still shot -> no scan object
         return None
@@ -238,4 +242,4 @@ class ScanFactory:
     elif name.upper() == 'MAR':
       return scan_helper_image_formats.FORMAT_MAR
 
-    raise RuntimeError, 'name %s not known' % name
+    raise RuntimeError('name %s not known' % name)

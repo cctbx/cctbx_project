@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 from cctbx import sgtbx
 from scitbx import lbfgs
 from cctbx.array_family import flex
@@ -168,4 +171,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

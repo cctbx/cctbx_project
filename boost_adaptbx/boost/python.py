@@ -1,4 +1,6 @@
 from __future__ import division, with_statement
+from builtins import str
+from builtins import object
 import sys, os
 import re
 from libtbx import cpp_function_name
@@ -23,7 +25,7 @@ def import_ext(name, optional=False):
     previous_dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(0x100|0x2)
   try: mod = __import__(name)
-  except ImportError, e:
+  except ImportError as e:
     if (optional): return None
     error_msg = str(e)
     m = symbol_not_found_pat.search(error_msg)
@@ -186,7 +188,7 @@ class gcc_version(object):
       self.major, self.minor, self.patchlevel = tuple(
         [ int(x) for x in m.groups() ])
 
-  def __nonzero__(self):
+  def __bool__(self):
     return self.major is not None
 
   def __str__(self):
@@ -205,7 +207,7 @@ class injector(object):
         # bases[0] is this injector
         target = bases[1] # usually a Boost.Python class
         def setattr_from_dict(d):
-          for k,v in d.items():
+          for k,v in list(d.items()):
             if (k not in (
                   "__init__",
                   "__del__",
@@ -228,7 +230,7 @@ def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
       {},
       {"docstring_options": ext.docstring_options})
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     from libtbx.str_utils import show_string
     raise RuntimeError(
       "Error processing %s=%s\n" % (env_var, show_string(from_env))

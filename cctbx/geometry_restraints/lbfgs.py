@@ -1,9 +1,10 @@
 from __future__ import division
+from builtins import object
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.lbfgs
 
-class empty: pass
+class empty(object): pass
 
 class lbfgs(object):
 

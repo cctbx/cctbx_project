@@ -1,8 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.calc_gain_ratio
 #
+from builtins import next
+from builtins import zip
+from builtins import str
+from builtins import range
 import dxtbx, sys
 from libtbx import phil
 from libtbx.utils import Sorry
@@ -37,19 +42,19 @@ phil_scope = phil.parse(phil_str)
 
 def run(args):
   if "-c" in args or "-h" in args or "--help" in args:
-    print help_message
+    print(help_message)
   user_phil = []
   for arg in args :
     try :
       user_phil.append(phil.parse(arg))
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = phil_scope.fetch(sources=user_phil).extract()
 
   img = dxtbx.load(params.average)
   dataset_name = "exp=%s:run=%s:idx"%(params.experiment,params.run)
   ds = psana.DataSource(dataset_name)
-  run = ds.runs().next()
+  run = next(ds.runs())
 
   psana_det = psana.Detector(params.address, ds.env())
   psana_gain_mask = psana_det.gain_mask()
@@ -57,7 +62,7 @@ def run(args):
 
   gain_masks = []
   assert psana_gain_mask.focus() == (32, 185, 388)
-  for i in xrange(32):
+  for i in range(32):
     gain_masks.append(psana_gain_mask[i:i+1,:,:194])
     gain_masks[-1].reshape(flex.grid(185,194))
     gain_masks.append(psana_gain_mask[i:i+1,:,194:])
@@ -71,8 +76,8 @@ def run(args):
 
     panel_sum = 0
     panel_count = 0
-    for s in xrange(data.focus()[1]):
-      for f in xrange(data.focus()[0]):
+    for s in range(data.focus()[1]):
+      for f in range(data.focus()[0]):
         if f+1 == data.focus()[0]:
           continue
         if (not mask[f,s]) and mask[f+1,s] and data[f+1,s] != 0:
@@ -85,16 +90,16 @@ def run(args):
       ratio = panel_sum/panel_count
       ratios.append(ratio)
       counts.append(panel_count)
-      print "Panel", panel_id, "ratio:", ratio, "N pairs", panel_count
+      print("Panel", panel_id, "ratio:", ratio, "N pairs", panel_count)
 
   if len(ratios) <= 1:
     return
-  print "Mean:", flex.mean(ratios)
-  print "Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation()
+  print("Mean:", flex.mean(ratios))
+  print("Standard deviation", flex.mean_and_variance(ratios).unweighted_sample_standard_deviation())
 
   stats = flex.mean_and_variance(ratios, counts.as_double())
-  print "Weighted mean:", stats.mean()
-  print "Weighted standard deviation", stats.gsl_stats_wsd()
+  print("Weighted mean:", stats.mean())
+  print("Weighted standard deviation", stats.gsl_stats_wsd())
 
 if __name__ == "__main__":
   run(sys.argv[1:])

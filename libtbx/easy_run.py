@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
 # XXX how early a version can we get away with using the built-in module?
 if (sys.version_info[1] >= 7) :
@@ -8,7 +15,7 @@ else :
     from libtbx import subprocess_with_fixes as subprocess
   except ImportError:
     try :
-      import subprocess_with_fixes as subprocess
+      from . import subprocess_with_fixes as subprocess
     except ImportError :
       import subprocess
 import sys, os
@@ -16,7 +23,7 @@ import sys, os
 def _show_lines(lines, out, prefix):
   if (out is None): out = sys.stdout
   for line in lines:
-    print >> out, prefix+line
+    print(prefix+line, file=out)
 
 class fully_buffered_base(object):
 
@@ -212,7 +219,7 @@ def call(command):
   return subprocess.call(args=command, shell=True)
 
 def exercise(args=None):
-  from cStringIO import StringIO
+  from io import StringIO
   import sys
   if (args is None): args = sys.argv[1:]
   verbose = "--verbose" in args
@@ -226,40 +233,40 @@ def exercise(args=None):
     for result in [fb(command=command).raise_if_errors(),
                    fb(command=command, join_stdout_stderr=True),
                    go(command=command)]:
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert result.stdout_lines == ["hello world"]
   #
   if (os.path.isfile("/bin/ls")):
     for command in ["/bin/ls /bin", ("/bin/ls", "/bin")]:
       result = fb(command=command).raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert "ls" in result.stdout_lines
   if (os.path.isfile("/usr/bin/wc")):
     for command in ["/usr/bin/wc -l", ("/usr/bin/wc", "-l")]:
       result = fb(command=command).raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert [s.strip() for s in result.stdout_lines] == ["0"]
       result = fb(command=command, stdin_lines=["hello"]) \
         .raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert [s.strip() for s in result.stdout_lines] == ["1"]
       result = fb(command=command, stdin_lines=["hello", "world"]) \
         .raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert [s.strip() for s in result.stdout_lines] == ["2"]
       result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
         .raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert [s.strip() for s in result.stdout_lines] == ["3"]
   #
   if (os.name == "nt"):
     result = fb(command="dir").raise_if_errors()
-    if (verbose): print result.stdout_lines
+    if (verbose): print(result.stdout_lines)
     assert len(result.stdout_lines) > 0
     windir = os.environ.get("windir", None)
     if (windir is not None and windir.find(" ") < 0):
       result = fb(command="dir "+windir).raise_if_errors()
-      if (verbose): print result.stdout_lines
+      if (verbose): print(result.stdout_lines)
       assert len(result.stdout_lines) > 0
   #
   pyexe = sys.executable
@@ -268,7 +275,7 @@ def exercise(args=None):
   if (os.name == "nt"):
     pyexe = "call " + pyexe
   #
-  if (os.environ.has_key("PYTHONPATH")):
+  if ("PYTHONPATH" in os.environ):
     if (not hasattr(os, "unsetenv")):
       os.environ["PYTHONPATH"] = ""
     else:
@@ -280,7 +287,7 @@ def exercise(args=None):
   else:
     result = None
   if (result is not None):
-    if (verbose): print result.stdout_lines
+    if (verbose): print(result.stdout_lines)
     for line in result.stdout_lines:
       assert not line.startswith("PYTHONPATH") or line == "PYTHONPATH="
   #
@@ -288,7 +295,7 @@ def exercise(args=None):
     result = fb(
       command="%s -V" % pyexe,
       stdout_splitlines=stdout_splitlines).raise_if_output()
-    if (verbose): print result.stderr_lines
+    if (verbose): print(result.stderr_lines)
     assert result.stderr_lines[0].startswith("Python " + sys.version.split()[0])
     if (stdout_splitlines):
       assert result.stdout_buffer is None
@@ -297,28 +304,28 @@ def exercise(args=None):
       assert result.stdout_buffer == ""
       assert result.stdout_lines is None
   result = go(command="%s -V" % pyexe)
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines[0].startswith("Python " + sys.version.split()[0])
   result = fb(
     command='%s -c "print 3+4"' % pyexe).raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == ["7"]
   command = command = pyexe \
     + ' -c "import sys; print len(sys.stdin.read().splitlines())"'
   result = fb(command=command).raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == ["0"]
   result = fb(command=command, stdin_lines=["hello"]) \
     .raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == ["1"]
   result = fb(command=command, stdin_lines=["hello", "world"]) \
     .raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == ["2"]
   result = fb(command=command, stdin_lines="hello\nworld\nbye\n") \
     .raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == ["3"]
   if ("--quick" in args):
     n_lines_o = 10000
@@ -329,9 +336,9 @@ def exercise(args=None):
   else:
     n_lines_e = 10000
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)]) \
     .raise_if_errors()
-  if (verbose): print result.stdout_lines
+  if (verbose): print(result.stdout_lines)
   assert result.stdout_lines == [str(n_lines_o)]
   command = pyexe \
     + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
@@ -358,22 +365,22 @@ def exercise(args=None):
 >:bye
 """
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)]) \
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)]) \
     .raise_if_errors()
-  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
+  if (verbose): print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
   assert result.stdout_lines[-5:] == [str(s)
-    for s in xrange(n_lines_o-5, n_lines_o)]
+    for s in range(n_lines_o-5, n_lines_o)]
   command = pyexe \
     + ' -c "import sys; sys.stderr.write(sys.stdin.read())"'
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_e,0,-1)])
+    command=command, stdin_lines=[str(i) for i in range(n_lines_e,0,-1)])
   assert len(result.stdout_lines) == 0
-  if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
+  if (verbose): print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stderr_lines) == n_lines_e
   assert result.stderr_lines[:5] == [str(s)
-    for s in xrange(n_lines_e, n_lines_e-5, -1)]
+    for s in range(n_lines_e, n_lines_e-5, -1)]
   assert result.stderr_lines[-5:] == ["5","4","3","2","1"]
   command = pyexe + "; ".join((''' -c "\
 import sys, os
@@ -386,27 +393,27 @@ nl = chr(%d)
 sys.stderr.write(nl.join(lines)+nl)
 sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   result = fb(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
-  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
-  if (verbose): print result.stderr_lines[:5], result.stderr_lines[-5:]
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
+  if (verbose): print(result.stdout_lines[:5], result.stdout_lines[-5:])
+  if (verbose): print(result.stderr_lines[:5], result.stderr_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
   assert result.stdout_lines[-5:] == [str(s)
-    for s in xrange(n_lines_o-5, n_lines_o)]
+    for s in range(n_lines_o-5, n_lines_o)]
   assert len(result.stderr_lines) == n_lines_e
   assert result.stderr_lines[:5] == [str(s)
-    for s in xrange(n_lines_e-1, n_lines_e-6, -1)]
+    for s in range(n_lines_e-1, n_lines_e-6, -1)]
   assert result.stderr_lines[-5:] == ["4","3","2","1","0"]
   result = go(
-    command=command, stdin_lines=[str(i) for i in xrange(n_lines_o)])
-  if (verbose): print result.stdout_lines[:5], result.stdout_lines[-5:]
+    command=command, stdin_lines=[str(i) for i in range(n_lines_o)])
+  if (verbose): print(result.stdout_lines[:5], result.stdout_lines[-5:])
   assert len(result.stdout_lines) == n_lines_o + n_lines_e
   assert result.stdout_lines[:5] == ["0","1","2","3","4"]
   assert result.stdout_lines[-5:] == ["4","3","2","1","0"]
   #
   try: fb(command="C68649356116218352").raise_if_errors()
-  except RuntimeError, e:
-    if (verbose): print e
+  except RuntimeError as e:
+    if (verbose): print(e)
     # Just check for RuntimeError; there are now additional
     # specific error messages.
     pass
@@ -418,10 +425,10 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
       try:
         fb(
           command=cat_command,
-          stdin_lines=[str(i) for i in xrange(n)],
+          stdin_lines=[str(i) for i in range(n)],
           stdout_splitlines=stdout_splitlines).raise_if_output()
-      except RuntimeError, e:
-        if (verbose): print e
+      except RuntimeError as e:
+        if (verbose): print(e)
         assert str(e).startswith("unexpected child process output:\n")
         if (stdout_splitlines):
           if (n != 13):
@@ -436,12 +443,12 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   #
   result = fb(command=["nslookup", "localhost"])
   if (verbose):
-    print result.stdout_lines
-    print result.stderr_lines
+    print(result.stdout_lines)
+    print(result.stderr_lines)
   #
   while ("--forever" in args): pass
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

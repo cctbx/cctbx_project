@@ -4,6 +4,9 @@
 
 from __future__ import division
 
+from builtins import str
+from builtins import range
+from builtins import object
 import math
 import wx
 
@@ -106,7 +109,7 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
     try:
       beam_center += col(panel.get_beam_centre_lab(beam.get_s0()))
       npanels += 1
-    except RuntimeError, e: # catch DXTBX_ASSERT for no intersection
+    except RuntimeError as e: # catch DXTBX_ASSERT for no intersection
       pass
   beam_center /= (npanels / 1e-3)
 
@@ -543,11 +546,11 @@ class _Tiles(object):
       test_pattern = False
       if test_pattern is True and self.raw_image.__class__.__name__.find("CSPadDetector") >= 0:
         key_count = -1
-        for key, asic in self.raw_image._tiles.iteritems():
+        for key, asic in self.raw_image._tiles.items():
           key_count += 1
           focus = asic.focus()
-          for slow in xrange(0,focus[0],20):
-            for fast in xrange(0,focus[1],20):
+          for slow in range(0,focus[0],20):
+            for fast in range(0,focus[1],20):
               slowpic,fastpic = self.flex_image.tile_readout_to_picture(key_count,slow,fast)
               mr1,mr2 = self.picture_fast_slow_to_map_relative(fastpic,slowpic)
               pointdata.append((mr1,mr2,{"data":key}))
@@ -556,7 +559,7 @@ class _Tiles(object):
         from cxi_xdr_xes.cftbx.spotfinder.speckfinder import spotfind_readout
 
         key_count = -1
-        for key, asic in self.raw_image._tiles.iteritems():
+        for key, asic in self.raw_image._tiles.items():
           key_count += 1
           indexing = spotfind_readout(
               readout=asic,
@@ -590,7 +593,7 @@ class _Tiles(object):
       text_data = []
       if hasattr(self.raw_image, 'get_tile_manager'):
         IT = self.raw_image.get_tile_manager(params).effective_tiling_as_flex_int()
-        for i in xrange(len(IT) // 4):
+        for i in range(len(IT) // 4):
           tile = IT[4*i:4*i+4]
           attributes = {'color': '#0000FFA0', 'width': 1, 'closed': False}
           box_data.append(

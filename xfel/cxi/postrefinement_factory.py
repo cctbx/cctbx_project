@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 class factory(object):
   def __init__(self, params):
     self.params = params

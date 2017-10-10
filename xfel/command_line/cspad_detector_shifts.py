@@ -12,6 +12,10 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_shifts
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.phil import parse
@@ -91,7 +95,7 @@ class Script(ParentScript):
       while root.is_group():
         root = root[0]
         params.max_hierarchy_level += 1
-      print "Found", params.max_hierarchy_level+1, "hierarchy levels"
+      print("Found", params.max_hierarchy_level+1, "hierarchy levels")
 
     reference_root = detectors[0].hierarchy()
     moving_root = detector.hierarchy()
@@ -125,7 +129,7 @@ class Script(ParentScript):
       return shift
 
     # Iterate through the hierarchy levels
-    for level in xrange(params.max_hierarchy_level+1):
+    for level in range(params.max_hierarchy_level+1):
       delta_xy = flex.double()
       r_offsets = flex.double()
       t_offsets = flex.double()
@@ -240,8 +244,8 @@ class Script(ParentScript):
       wm_row = ["Weighted mean", ""]
       ws_row = ["Weighted stddev", ""]
       s_row = ["%d"%level]
-      iterable = zip([delta_xy, r_offsets, t_offsets, z_offsets, delta_r_norm, delta_t_norm, local_dnorm, rot_z],
-                     ["%6.1f","%6.1f","%6.1f","%6.1f","%.4f","%.4f","%.4f","%.4f"])
+      iterable = list(zip([delta_xy, r_offsets, t_offsets, z_offsets, delta_r_norm, delta_t_norm, local_dnorm, rot_z],
+                     ["%6.1f","%6.1f","%6.1f","%6.1f","%.4f","%.4f","%.4f","%.4f"]))
       if len(z_offsets) == 0:
         wm_row.extend(["%6.1f"%0]*8)
         ws_row.extend(["%6.1f"%0]*8)
@@ -270,14 +274,14 @@ class Script(ParentScript):
       table_data.append(ws_row)
 
       from libtbx import table_utils
-      print "Hierarchy level %d Detector shifts"%level
-      print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+      print("Hierarchy level %d Detector shifts"%level)
+      print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
-    print "Detector shifts summary"
-    print table_utils.format(summary_table_data,has_header=3,justify='center',delim=" ")
+    print("Detector shifts summary")
+    print(table_utils.format(summary_table_data,has_header=3,justify='center',delim=" "))
 
-    print
-    print """
+    print()
+    print("""
 For each hierarchy level, the average shifts in are computed among objects at that level, weighted by the number of reflections recorded on each object. For example, for a four quadrant detector, the average Z shift will be the average of the four quadrant Z values, each weighted by the number of reflections on that quadrant.
 
 -------------------
@@ -296,7 +300,7 @@ Z offsets: relative shifts in the local frame in the local Z direction.
 R, T Norm: angle between normal vectors in lab space, projected onto the radial or transverse plane.
 Local dNorm: local relative angle between normal vectors.
 Rot Z: rotation around detector normal in lab space
-"""
+""")
 
 if __name__ == '__main__':
   from dials.util import halraiser

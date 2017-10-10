@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
@@ -28,7 +32,7 @@ def canal(x, y, simple=False, assert_concave_up=False,
   for i,j in zip(x,y):
     d.setdefault(i,[]).append(j)
   x_,y_ = flex.double(), flex.double()
-  for i,j in zip(d.keys(), d.values()):
+  for i,j in zip(list(d.keys()), list(d.values())):
     x_.append(i)
     y_.append(max(j))
   x,y = x_[:], y_[:]
@@ -48,7 +52,7 @@ def canal(x, y, simple=False, assert_concave_up=False,
   if(show):
     if(of is not None):
       for i,j in zip(x,y):
-        print >> of,  "%5.2f %9.6f"%(i,j)
+        print("%5.2f %9.6f"%(i,j), file=of)
   # Find maxima
   maxima = []
   if(simple):
@@ -56,7 +60,7 @@ def canal(x, y, simple=False, assert_concave_up=False,
     maxima.append([x.select(s)[0], y.select(s)[0], None])
     return maxima
   else:
-    for i in xrange(y.size()):
+    for i in range(y.size()):
       yi = y[i]
       cntr=0
       yp,ym=[],[]
@@ -70,7 +74,7 @@ def canal(x, y, simple=False, assert_concave_up=False,
           yp.append(y[i+j])
       if(cntr>=2 and len(ym)==len(yp)): maxima.append([x[i],yi,i])
     #
-    for i in xrange(y.size()):
+    for i in range(y.size()):
       yi = y[i]
       if(i-1>=0 and y[i-1]<yi):
         offsets = [1,2,3,4,5,6,7,8,9,10]
@@ -104,7 +108,7 @@ def canal(x, y, simple=False, assert_concave_up=False,
 
 def moving_average(y):
     y_=[]
-    for i in xrange(y.size()):
+    for i in range(y.size()):
       if(i>=1 and i<=y.size()-2):
         y_ave = (y[i-1]+y[i]+y[i+1])/3.
       elif(i==0):
@@ -145,7 +149,7 @@ def get_fo_fc_adjust_d_min_start(map, fc, xrs, d_mins):
         use_scale      = True,
         anomalous_flag = False,
         use_sg         = False)
-    except RuntimeError, e:
+    except RuntimeError as e:
       pass
     if(f_obs is not None): break
     d_min_start += 0.1
@@ -292,7 +296,7 @@ def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
   xray_structure = xray_structure.select(selection)
   size_final = xray_structure.scatterers().size()
   fr = size_final*100./size_start
-  if(DEBUG): print "Fraction remains: %6.4f"%fr
+  if(DEBUG): print("Fraction remains: %6.4f"%fr)
   if(fr < 50):
     return None
   else:
@@ -398,4 +402,4 @@ class run(object):
 #            self.d_min, self.b_iso, self.cc, self.radius = d_min,b_iso,cc,radius
 #          if(DEBUG): print "   ", d_min, b_iso, cc, "<<HERE2", radius
     if(DEBUG):
-      print "RESULT:", self.d_min, self.b_iso, self.cc, self.radius
+      print("RESULT:", self.d_min, self.b_iso, self.cc, self.radius)

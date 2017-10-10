@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import itertools

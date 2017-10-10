@@ -1,14 +1,17 @@
 from __future__ import division
-class potential_url_request:
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
+class potential_url_request(object):
   def __init__(self,text):
     self.text = text
 
   def is_url_request(self):
     #backward compatibility with Python 2.5
-    try: from urlparse import parse_qs
+    try: from urllib.parse import parse_qs
     except Exception: from cgi import parse_qs
 
-    from urlparse import urlparse
+    from urllib.parse import urlparse
     try:
       self.parsed = urlparse(self.text)
     except Exception:

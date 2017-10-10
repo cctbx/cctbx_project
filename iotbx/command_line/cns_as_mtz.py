@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.cns_as_mtz
 
 import iotbx.cns.reflection_reader
@@ -23,26 +24,26 @@ def run(args, command_name="phenix.cns_as_mtz"):
   cns_file_name = command_line.args[0]
   crystal_symmetry = command_line.symmetry
   if (crystal_symmetry.unit_cell() is None):
-    print
-    print "*" * 79
-    print "Unknown unit cell parameters."
-    print "Use --symmetry or --unit_cell to define unit cell:"
-    print "*" * 79
-    print
+    print()
+    print("*" * 79)
+    print("Unknown unit cell parameters.")
+    print("Use --symmetry or --unit_cell to define unit cell:")
+    print("*" * 79)
+    print()
     command_line.parser.show_help()
     return
   if (crystal_symmetry.space_group_info() is None):
-    print
-    print "*" * 79
-    print "Unknown space group."
-    print "Use --symmetry or --space_group to define space group:"
-    print "*" * 79
-    print
+    print()
+    print("*" * 79)
+    print("Unknown space group.")
+    print("Use --symmetry or --space_group to define space group:")
+    print("*" * 79)
+    print()
     command_line.parser.show_help()
     return
   if (not command_line.options.quiet):
-    print "CNS file name:", cns_file_name
-    print "Crystal symmetry:"
+    print("CNS file name:", cns_file_name)
+    print("Crystal symmetry:")
     crystal_symmetry.show_summary(prefix="  ")
   reflection_file = iotbx.cns.reflection_reader.cns_reflection_file(
     file_handle=open(cns_file_name, "r"))
@@ -71,7 +72,7 @@ def run(args, command_name="phenix.cns_as_mtz"):
   if (mtz_file_name.count(".") == 1):
      mtz_file_name = mtz_file_name[:mtz_file_name.index(".")]
   mtz_file_name += ".mtz"
-  print "Writing MTZ file:", mtz_file_name
+  print("Writing MTZ file:", mtz_file_name)
   mtz_object.write(mtz_file_name)
 
 if (__name__ == "__main__"):

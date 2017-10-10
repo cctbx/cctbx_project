@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from iotbx.pdb import rna_dna_detection
 from cctbx import geometry_restraints
 from cctbx import uctbx
@@ -65,21 +70,21 @@ class looped_data(object):
   def show(self, f=None):
     if (f is None): f = sys.stdout
     for key in self.cif_keywords():
-      print >> f, "_%s.%s: %s" % (
-        self.__class__.__name__, key, getattr(self, key))
+      print("_%s.%s: %s" % (
+        self.__class__.__name__, key, getattr(self, key)), file=f)
 
   def show_loop_header(self, f):
-    print >> f, "loop_"
+    print("loop_", file=f)
     for key in self.cif_keywords():
-      print >> f, "_%s.%s" % (
-        self.__class__.__name__, key)
+      print("_%s.%s" % (
+        self.__class__.__name__, key), file=f)
 
   def show_loop_data(self, f):
     for key in self.cif_keywords():
       val = getattr(self, key)
       if (val in (None, "")): val = "."
-      print >> f, val,
-    print >> f
+      print(val, end=' ', file=f)
+    print(file=f)
 
 def show_loop(data_list, f):
   first = True
@@ -89,7 +94,7 @@ def show_loop(data_list, f):
       first = False
     datum.show_loop_data(f=f)
   if (not first):
-    print >> f
+    print(file=f)
 
 def apply_chem_mod_list(label, mod_list, result_list):
   for mod in mod_list:
@@ -284,7 +289,7 @@ class comp_comp_id(slots_getstate_setstate):
     return None
 
   def i_atom_by_id(self, atom_id):
-    for i_atom in xrange(len(self.atom_list)):
+    for i_atom in range(len(self.atom_list)):
       if (self.atom_list[i_atom].atom_id == atom_id):
         return i_atom
       if (atom_id.find("'")>-1):
@@ -363,7 +368,7 @@ class comp_comp_id(slots_getstate_setstate):
         "change_atom_in_place: unknown atom_id: %s" % mod_atom.atom_id)
     atom = copy.copy(self.atom_list[i_atom])
     old_atom_id = atom.atom_id
-    for attr_name in atom.__dict__.keys():
+    for attr_name in list(atom.__dict__.keys()):
       new_attr = getattr(mod_atom, "new_"+attr_name, None)
       if (new_attr not in (None, "")):
         setattr(atom, attr_name, new_attr)
@@ -447,7 +452,7 @@ class comp_comp_id(slots_getstate_setstate):
       atom_dict=atom_dict, bond_list=self.bond_list)
 
   def test_for_water(self, atom_dict):
-    atom_list = atom_dict.keys()
+    atom_list = list(atom_dict.keys())
     atom_list.sort()
     if (atom_list == ["H1", "H2", "O"]):
       return "water"
@@ -713,7 +718,7 @@ _chem_comp_synonym_atom.atom_id
 _chem_comp_synonym_atom.atom_alternative_id
   """
 
-class link_link_id:
+class link_link_id(object):
 
   def __init__(self, source_info, chem_link):
     self.source_info = source_info
@@ -958,7 +963,7 @@ _chem_link_plane.atom_id
 _chem_link_plane.dist_esd:float
   """
 
-class mod_mod_id:
+class mod_mod_id(object):
 
   def __init__(self, source_info, chem_mod):
     self.source_info = source_info

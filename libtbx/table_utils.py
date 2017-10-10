@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 ## Some functionality for formatted printing,
 ## indentation and simple tables
 ##
@@ -6,8 +7,16 @@ from __future__ import division
 ##   http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/267662
 ## slightly modifed functionality.
 ##
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import libtbx.forward_compatibility # for sum
-import cStringIO,operator
+import io,operator
+from functools import reduce
 
 def format(rows,
            comments=None,
@@ -56,25 +65,25 @@ def format(rows,
                     + len(delim)*(len(max_widths)-1))
     # select the appropriate justify method
     justify = {'center':str.center, 'right':str.rjust, 'left':str.ljust}[justify.lower()]
-    output=cStringIO.StringIO()
+    output=io.StringIO()
 
     total_row_width=0
     line=None
     # Printing the table with values
-    if leading_and_terminal_separator: print >> output, row_separator
+    if leading_and_terminal_separator: print(row_separator, file=output)
     for physical_rows in logical_rows:
         for row in physical_rows:
             line =  prefix \
                 + delim.join([justify(str(item),width) for (item,width) in zip(row,max_widths)]) \
                 + postfix
-            print >> output, line
-        if separate_rows or has_header == 1: print >> output, row_separator
+            print(line, file=output)
+        if separate_rows or has_header == 1: print(row_separator, file=output)
         if has_header : has_header-=1
     if not separate_rows:
         if leading_and_terminal_separator:
-            print >> output, row_separator
+            print(row_separator, file=output)
     if comments is not None:
-        print >> output, wrap_onspace(comments,len(line))
+        print(wrap_onspace(comments,len(line)), file=output)
     return "\n".join(
       [line.rstrip() for line in output.getvalue().splitlines()])
 
@@ -83,7 +92,7 @@ def manage_columns (table_data, include_columns) :
     assert len(row) == len(include_columns)
   new_table = []
   for row in table_data:
-    new_row = [row[idx] for idx in xrange(len(row)) if include_columns[idx]]
+    new_row = [row[idx] for idx in range(len(row)) if include_columns[idx]]
     new_table.append(new_row)
   return new_table
 
@@ -151,7 +160,7 @@ def wrap_always(text, width):
     """A simple word-wrap function that wraps text on exactly width characters.
        It doesn't split the text in words."""
     return '\n'.join([ text[width*i:width*(i+1)] \
-                       for i in xrange(int(math.ceil(1.*len(text)/width))) ])
+                       for i in range(int(math.ceil(1.*len(text)/width))) ])
 
 ## Additional functionality; go beyond formatted printing; emulate spreadsheet
 ## Typical use case to include:
@@ -161,7 +170,7 @@ def wrap_always(text, width):
 ##
 ## This is original source code developed for the LABELIT project
 
-class Spreadsheet:
+class Spreadsheet(object):
 
   def __init__(self,rows=0):
     self.S_table_rows = rows
@@ -187,36 +196,36 @@ class Spreadsheet:
           len(self.__dict__[column].format%self.__dict__[column][0])
         )
       master[column] = "%%%ds "%(padding[column])
-      print >>out, master[column]%column,
-    print >>out
-    for i in xrange(self.S_table_rows):
+      print(master[column]%column, end=' ', file=out)
+    print(file=out)
+    for i in range(self.S_table_rows):
       if not printed_rows[i]: continue
       for column in columns:
-        print >>out, master[column]%(
-          self.__dict__[column].format%self.__dict__[column][i] ,),
-      print >>out
+        print(master[column]%(
+          self.__dict__[column].format%self.__dict__[column][i] ,), end=' ', file=out)
+      print(file=out)
     #print summations at the bottom
     for column in columns:
       if column in self.summaries:
-        print >>out, " "+"-"*(padding[column]),
+        print(" "+"-"*(padding[column]), end=' ', file=out)
       else:
-        print >>out, " "*(1+padding[column]),
-    print >>out
+        print(" "*(1+padding[column]), end=' ', file=out)
+    print(file=out)
     for column in columns:
       if column in self.summaries:
-        print >>out, master[column]%(
-          self.__dict__[column].format%self.__dict__[column].sum(),),
+        print(master[column]%(
+          self.__dict__[column].format%self.__dict__[column].sum(),), end=' ', file=out)
       elif hasattr(self,"wtmean") and column in self.wtmean:
         normalizer = self.weights.sum()
         summation = 0
-        for x in xrange(self.S_table_rows):
+        for x in range(self.S_table_rows):
             summation += self.weights[x] * self.__dict__[column][x]
         mean = summation/normalizer
-        print >>out, (master[column]%(
-          self.__dict__[column].format%mean,) ),
+        print((master[column]%(
+          self.__dict__[column].format%mean,) ), end=' ', file=out)
       else:
-        print >>out, " "*(1+padding[column]),
-    print >>out
+        print(" "*(1+padding[column]), end=' ', file=out)
+    print(file=out)
 
   def rows(self):
     return self.S_table_rows
@@ -224,7 +233,7 @@ class Spreadsheet:
   def eval(self,expression):
     return eval(expression)
 
-class SpreadsheetColumn:
+class SpreadsheetColumn(object):
 
   def __init__(self,parent,rows,default_value):
     self.parent = parent
@@ -270,9 +279,9 @@ class SpreadsheetColumn:
 
   def sum(self):
     def typesum(x,y): return(x+y)
-    return reduce(typesum,[self[i] for i in xrange(len(self))])
+    return reduce(typesum,[self[i] for i in range(len(self))])
 
-class Formula:
+class Formula(object):
   def __init__(self,expression):
     self.expression = expression
 
@@ -288,12 +297,12 @@ def excercise_spreadsheet():
       self.addColumn('MeanI')
       self.addColumn('Population',0) # 0 is the default value
 
-      for xrow in xrange(0,self.S_table_rows):
+      for xrow in range(0,self.S_table_rows):
         self.Limit[xrow] = [12.543,9.959,8.700,7.90,7.34,6.90][xrow]
         self.MeanI[xrow] = [4348,461,313,378,376,0][xrow]
 
       population_data = [926,121,8,2,6]
-      for c in xrange(len(population_data)): #reconcile inconsistent bin counts
+      for c in range(len(population_data)): #reconcile inconsistent bin counts
           self.Population[c]=population_data[c]
 
       self.Limit.format = "%.2f"
@@ -305,12 +314,12 @@ def excercise_spreadsheet():
       self.wtmean=['MeanI']         #display the weighted mean of MeanI column,
       self.weights=self.Population  #...weighted by the Population
       legend = """Detailed explanation of each column here"""
-      print >>out,message+":\n"
+      print(message+":\n", file=out)
       to_print = [True,True,True,True,True,True]
       self.printTable(columns_to_print,printed_rows=to_print,out=out)
-      print >>out,legend
+      print(legend, file=out)
 
-  OC = cStringIO.StringIO()
+  OC = io.StringIO()
   derived_1 = typical_use_case_1()
   derived_1.show(message="Analysis of signals after noise suppression",out=OC)
   assert "\n".join([i.rstrip() for i in OC.getvalue().split("\n")]) == \
@@ -338,7 +347,7 @@ Detailed explanation of each column here
       self.addColumn('adjustPop',
                      Formula('self.Population[%row] / self.Fract[%row]'))
 
-      for xrow in xrange(Total_rows):
+      for xrow in range(Total_rows):
         self.Limit[xrow] = [39.34,31.22,27.28,24.78][xrow]
         self.Fract[xrow] = [1.0,2.0,3.0,4.0][xrow]
         self.Population[xrow]=[53,102,107,86][xrow]
@@ -352,7 +361,7 @@ Detailed explanation of each column here
       self.printTable(default,out=out)
       #print >>out,"0"
 
-  OC = cStringIO.StringIO()
+  OC = io.StringIO()
   derived_2 = typical_use_case_2()
   derived_2.show(out=OC)
 
@@ -382,7 +391,7 @@ alpha | beta | gamma
 40    | 50   | 60
 --------------------
 comments here"""
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   excercise_spreadsheet()

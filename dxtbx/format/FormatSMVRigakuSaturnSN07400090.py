@@ -11,7 +11,10 @@
 # of fast and slow directions.)
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
+from builtins import range
 from scitbx import matrix
 
 from dxtbx.format.FormatSMVRigakuSaturn import FormatSMVRigakuSaturn
@@ -54,8 +57,8 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
     detector_name = self._header_dictionary[
         'DETECTOR_NAMES'].split()[0].strip()
 
-    detector_axes = map(float, self._header_dictionary[
-        '%sDETECTOR_VECTORS' % detector_name].split())
+    detector_axes = list(map(float, self._header_dictionary[
+        '%sDETECTOR_VECTORS' % detector_name].split()))
 
     R = matrix.col((0, 0, 1)).axis_and_angle_as_r3_rotation_matrix(
         -90, deg = True)
@@ -63,20 +66,20 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
     detector_fast = R * matrix.col(tuple(detector_axes[:3]))
     detector_slow = R * matrix.col(tuple(detector_axes[3:]))
 
-    beam_pixels = map(float, self._header_dictionary[
-        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2])
-    pixel_size = map(float, self._header_dictionary[
-        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:])
-    image_size = map(int, self._header_dictionary[
-        '%sDETECTOR_DIMENSIONS' % detector_name].split())
+    beam_pixels = list(map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2]))
+    pixel_size = list(map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:]))
+    image_size = list(map(int, self._header_dictionary[
+        '%sDETECTOR_DIMENSIONS' % detector_name].split()))
 
     detector_origin = - (beam_pixels[0] * pixel_size[0] * detector_fast + \
                          beam_pixels[1] * pixel_size[1] * detector_slow)
 
-    gonio_axes = map(float, self._header_dictionary[
-        '%sGONIO_VECTORS' % detector_name].split())
-    gonio_values = map(float, self._header_dictionary[
-        '%sGONIO_VALUES' % detector_name].split())
+    gonio_axes = list(map(float, self._header_dictionary[
+        '%sGONIO_VECTORS' % detector_name].split()))
+    gonio_values = list(map(float, self._header_dictionary[
+        '%sGONIO_VALUES' % detector_name].split()))
     gonio_units = self._header_dictionary[
         '%sGONIO_UNITS' % detector_name].split()
     gonio_num_axes = int(self._header_dictionary[
@@ -97,7 +100,7 @@ class FormatSMVRigakuSaturnSN07400090(FormatSMVRigakuSaturn):
                                      0.0, 0.0, 1.0)))
         translations.append(gonio_values[j] * axis)
       else:
-        raise RuntimeError, 'unknown axis unit %s' % unit
+        raise RuntimeError('unknown axis unit %s' % unit)
 
     rotations.reverse()
     translations.reverse()
@@ -120,4 +123,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVRigakuSaturnSN07400090.understand(arg)
+    print(FormatSMVRigakuSaturnSN07400090.understand(arg))

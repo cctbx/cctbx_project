@@ -5,6 +5,9 @@
     stream events as being a two color event or not.
 '''
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 import numpy as np
@@ -114,7 +117,7 @@ class mod_spectrum_filter_v2(object):
       if one_D:
         # filtering out outlier spikes in FEE data
         data = np.array(data.hproj().astype(np.float64))
-        for i in xrange(len(data)):
+        for i in range(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
         if self.dark is not None:
@@ -135,12 +138,12 @@ class mod_spectrum_filter_v2(object):
       if not one_D:
         # the x-coordinate of the weighted center of peak region
         weighted_peak_one_positions = []
-        for i in xrange(self.peak_one_range_min,self.peak_one_range_max):
+        for i in range(self.peak_one_range_min,self.peak_one_range_max):
           weighted_peak_one_positions.append(spectrum[i]*i)
         weighted_sum_peak_one = sum(weighted_peak_one_positions)
         weighted_peak_one_center_position = weighted_sum_peak_one//sum(spectrum[self.peak_one_range_min:self.peak_one_range_max])
         weighted_peak_two_positions = []
-        for i in xrange(self.peak_two_range_min,self.peak_two_range_max):
+        for i in range(self.peak_two_range_min,self.peak_two_range_max):
           weighted_peak_two_positions.append(spectrum[i]*i)
         weighted_sum_peak_two = sum(weighted_peak_two_positions)
         weighted_peak_two_center_position = weighted_sum_peak_two//sum(spectrum[self.peak_two_range_min:self.peak_two_range_max])
@@ -167,52 +170,52 @@ class mod_spectrum_filter_v2(object):
       # now to do the filtering
       if not one_D:
         if min(int_peak_one_norm,int_peak_two_norm)/max(int_peak_one_norm,int_peak_two_norm) < self.peak_ratio:
-          print "event(): too low"
+          print("event(): too low")
           evt.put(skip_event_flag(), "skip_event")
           return
         if (np.argmax(spectrum2)+len(spectrum2)) > (weighted_peak_two_center_position+(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)) or (np.argmax(spectrum2)+len(spectrum2)) < (weighted_peak_two_center_position-(len(spectrum[self.peak_two_range_min:self.peak_two_range_max])/2)):
-          print "event(): out of range high energy peak"
+          print("event(): out of range high energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
         if np.argmax(spectrum1) > (weighted_peak_one_center_position+(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)) or np.argmax(spectrum1) < (weighted_peak_one_center_position-(len(spectrum[self.peak_one_range_min:self.peak_one_range_max])/2)):
-          print "event(): out of range low energy peak"
+          print("event(): out of range low energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_left_region_norm/int_peak_one_norm > self.normalized_peak_to_noise_ratio:
-          print "event(): noisy left of low energy peak"
+          print("event(): noisy left of low energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_middle_region_norm/int_peak_one_norm > self.normalized_peak_to_noise_ratio:
-          print "event(): noisy middle"
+          print("event(): noisy middle")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_middle_region_norm/int_peak_one_norm > self.normalized_peak_to_noise_ratio:
-          print "event(): noisy middle"
+          print("event(): noisy middle")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_right_region_norm/int_peak_two_norm > self.normalized_peak_to_noise_ratio:
-          print "event(): noisy right of high energy peak"
+          print("event(): noisy right of high energy peak")
           evt.put(skip_event_flag(), "skip_event")
           return
       else:
       # filter for cxih8015
       #iron edge at 738 pixels on FFE detetor
         if int_metal_region>=0.10*int_peak_two:
-          print "event(): high intensity at metal edge"
+          print("event(): high intensity at metal edge")
           evt.put(skip_event_flag(), "skip_event")
           return
         if int_metal_region>=0.10*int_peak_one:
-          print "event(): high intensity at metal edge"
+          print("event(): high intensity at metal edge")
           evt.put(skip_event_flag(), "skip_event")
           return
         if min(int_peak_one,int_peak_two)/max(int_peak_one,int_peak_two) < self.peak_ratio:
-          print "event(): peak ratio too low"
+          print("event(): peak ratio too low")
           evt.put(skip_event_flag(), "skip_event")
           return
       #self.logger.info("TIMESTAMP %s accepted" %timestamp)
       self.naccepted += 1
       self.ntwo_color += 1
-      print "%d Two Color shots"  %self.ntwo_color
+      print("%d Two Color shots"  %self.ntwo_color)
 
   def endjob(self, obj1, obj2=None):
     """

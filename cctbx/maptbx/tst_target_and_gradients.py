@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import zip
 from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import miller

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx.xray import ext
 from cctbx.xray import weighting_schemes
 from cctbx import miller

@@ -1,8 +1,13 @@
 # LIBTBX_SET_DISPATCHER_NAME labelit.png
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 from libtbx.utils import Sorry, Usage
-from cStringIO import StringIO
+from io import StringIO
 import os
 import sys
 
@@ -33,9 +38,9 @@ def run (args) :
   C = convert_image(img_file,graphics_bin)
   C.img.show_header()
   open(output_file, "wb").write(C.output().getvalue())
-  print "Wrote %s" % output_file
+  print("Wrote %s" % output_file)
 
-class convert_image:
+class convert_image(object):
 
  def __init__(self,file_name,graphics_bin=1):#, output_file=None) :
   from rstbx.slip_viewer.slip_viewer_image_factory import SlipViewerImageFactory as ImageFactory
@@ -46,7 +51,7 @@ class convert_image:
     import Image
   try :
     img = ImageFactory(file_name)
-  except ImageException, e :
+  except ImageException as e :
     raise Sorry(str(e))
   img.read()
   self.img = img

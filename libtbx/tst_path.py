@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 def exercise_posix_relpath(f, enable_abspath_if_through_root):
   # based on .test_relpath() in Python-2.7.2/Lib/test/test_posixpath.py
   import os
@@ -102,7 +106,7 @@ def exercise_move_old_create_new_directory():
   import os
   mocnd("tmp_mocnd")
   assert len(os.listdir("tmp_mocnd")) == 0
-  for i in xrange(3):
+  for i in range(3):
     mocnd("tmp_mocnd/a")
   assert sorted(os.listdir("tmp_mocnd")) == ["a", "a_001", "a_002"]
   open("tmp_mocnd/a_23", "w")
@@ -122,7 +126,7 @@ def exercise_move_old_create_new_directory():
 
 def exercise_cleanup () :
   from libtbx.path import clean_out_directory
-  from cStringIO import StringIO
+  from io import StringIO
   import shutil
   import os
   if os.path.isdir("tmp_libtbx_path_cleanup") :
@@ -166,10 +170,10 @@ def run(args):
   assert len(random_new_directory_name()) == len("tmp_dir_00000000")
   import os
   if (os.name == "nt") : # FIXME
-    print "skipping directory cleanup test on Windows"
+    print("skipping directory cleanup test on Windows")
   else :
     exercise_cleanup()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

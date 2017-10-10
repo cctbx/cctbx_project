@@ -1,6 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 # svn co https://cbflib.svn.sourceforge.net/svnroot/cbflib/trunk/CBFlib_bleeding_edge sourceforge_cbflib
 
+from builtins import object
 class info_counters(object):
   def __init__(O):
     O.mkdir = 0
@@ -8,10 +10,10 @@ class info_counters(object):
     O.updated = 0
     O.already_up_to_date = 0
   def report(O):
-    print "Directories created:", O.mkdir
-    print "Files copied:", O.copied
-    print "Files updated:", O.updated
-    print "Files already up-to-date:", O.already_up_to_date
+    print("Directories created:", O.mkdir)
+    print("Files copied:", O.copied)
+    print("Files updated:", O.updated)
+    print("Files already up-to-date:", O.already_up_to_date)
 
 def run(args):
   assert len(args) == 1, "<path>/sourceforge_cbflib"
@@ -54,7 +56,7 @@ def run(args):
     fnames.append("TAG")
   copy_from_directory(".", fnames)
   counters.report()
-  print "Done."
+  print("Done.")
 
 if (__name__ == "__main__"):
   import sys

@@ -1,11 +1,13 @@
 from __future__ import division
+from builtins import str
+from builtins import object
 import cctbx.array_family.flex # import dependency
 from cctbx import uctbx # import dependency
 import boost.python
 ext = boost.python.import_ext("cctbx_orientation_ext")
 from cctbx_orientation_ext import *
 
-class basis_type:
+class basis_type(object):
   direct = False
   reciprocal = True
 

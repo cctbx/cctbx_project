@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 import mmtbx.f_model
 import mmtbx.f_model
@@ -58,7 +62,7 @@ def lbfgs_run(target_evaluator,
       if (not have_request): break
       requests_f_and_g = minimizer.requests_f_and_g()
       requests_diag = minimizer.requests_diag()
-  except RuntimeError, e:
+  except RuntimeError as e:
     minimizer.error = str(e)
   minimizer.n_calls = icall
   return minimizer
@@ -68,7 +72,7 @@ class refinement_flags(object):
                refine_u=False):
     adopt_init_args(self, locals())
 
-class minimizer:
+class minimizer(object):
 
   def __init__(self, tgc, min_iterations=0, max_iterations=25):
     adopt_init_args(self, locals())
@@ -287,7 +291,7 @@ class tgc(object):
 
   def minimize_u(self, n_cycles=5):
     #print "minimize_u, r:", self.kbu.r_factor()
-    for it in xrange(n_cycles):
+    for it in range(n_cycles):
       start_r = self.kbu.r_factor()
       save_b_cart = self.kbu.b_cart()
       self.set_refine_u()
@@ -344,9 +348,9 @@ class tgc(object):
         break
 
   def show_k_sols(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor()
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()], self.kbu.r_factor())
 
   def show_kbu(self):
-    print "k_sols:", [round(k,3) for k in self.kbu.k_sols()]
-    print "b_sols:", [round(b,3) for b in self.kbu.b_sols()]
-    print "b_cart:", [round(b,3) for b in self.kbu.b_cart()]
+    print("k_sols:", [round(k,3) for k in self.kbu.k_sols()])
+    print("b_sols:", [round(b,3) for b in self.kbu.b_sols()])
+    print("b_cart:", [round(b,3) for b in self.kbu.b_cart()])

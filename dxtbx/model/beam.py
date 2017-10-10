@@ -10,6 +10,9 @@ from __future__ import absolute_import, division
 # in internal ticket #1555. This is not designed to be used outside of the
 # XSweep classes.
 
+from builtins import map
+from builtins import range
+from builtins import object
 import math
 import pycbf
 from dxtbx_model_ext import Beam
@@ -34,7 +37,7 @@ beam_phil_scope = libtbx.phil.parse('''
 ''')
 
 
-class BeamFactory:
+class BeamFactory(object):
   '''A factory class for beam objects, which encapsulate standard beam
   models. In cases where a full cbf description is available this
   will be used, otherwise simplified descriptions can be applied.'''
@@ -86,7 +89,7 @@ class BeamFactory:
       if t == None: return None
       else: return from_dict(t, None)
     elif t != None:
-      d = dict(t.items() + d.items())
+      d = dict(list(t.items()) + list(d.items()))
 
     # Create the model from the dictionary
     return Beam.from_dict(d)
@@ -111,7 +114,7 @@ class BeamFactory:
     elif unit_s0:
       assert(wavelength)
       return Beam(
-          tuple(map(lambda x: - x, map(float, unit_s0))),
+          tuple([- x for x in list(map(float, unit_s0))]),
           float(wavelength),
           float(divergence),
           float(sigma_divergence))
@@ -152,7 +155,7 @@ class BeamFactory:
     elif unit_s0:
       assert(wavelength)
       return Beam(
-          tuple(map(lambda x: - x, map(float, unit_s0))),
+          tuple([- x for x in list(map(float, unit_s0))]),
           float(wavelength),
           float(divergence),
           float(sigma_divergence),

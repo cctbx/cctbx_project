@@ -1,6 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iota.bulletproof
 
+from builtins import str
 '''
 Author      : Brewster, A.S., Lyubimov, A.Y.
 Created     : 10/12/2014
@@ -29,7 +30,7 @@ if __name__ == "__main__":
     # save specific results from the info object to be used by iota
     int_final = info.last_saved_best
     easy_pickle.dump(tmppath, int_final)
-  except Exception, e:
+  except Exception as e:
     if hasattr(e, "classname"):
       error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
     else:

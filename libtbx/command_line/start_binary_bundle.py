@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.bundle import copy_all
 from libtbx.bundle import install_csh
 from libtbx.bundle import install_bat
@@ -6,17 +7,17 @@ import sys, os
 
 def run(args):
   if (len(os.listdir(".")) != 0):
-    print "Please use this command only in an empty directory."
+    print("Please use this command only in an empty directory.")
     return
   if (len(args) != 2) and (len(args) != 3) :
-    print "usage: libtbx.start_binary_bundle bundle_name top_modules [--single_directory]"
+    print("usage: libtbx.start_binary_bundle bundle_name top_modules [--single_directory]")
     return
   single_dir = False
   if (len(args) == 2) :
     bundle_name, top_modules = args
   else :
     if (args[2] != "--single_directory") :
-      print "usage: libtbx.start_binary_bundle bundle_name top_modules [--single_directory]"
+      print("usage: libtbx.start_binary_bundle bundle_name top_modules [--single_directory]")
       return
     bundle_name, top_modules = args[:2]
     single_dir = True
@@ -37,7 +38,7 @@ def run(args):
       install_csh.create_script(
         bundle=bundle_name,
         top_modules=top_modules))
-    os.chmod(install_script, 0755)
+    os.chmod(install_script, 0o755)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

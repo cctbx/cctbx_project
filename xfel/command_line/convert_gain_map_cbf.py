@@ -9,6 +9,7 @@ from __future__ import division
 # to gain-corrected CSPAD CBF images
 #
 
+from builtins import range
 import sys, os, numpy
 
 from libtbx.option_parser import option_parser

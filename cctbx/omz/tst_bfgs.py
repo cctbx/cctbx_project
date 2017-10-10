@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from cctbx.omz import bfgs
 import scitbx.lbfgs
 from scitbx.array_family import flex
@@ -58,7 +60,7 @@ class refinery(object):
       bl = bfgs.b_update(bk, xl-xk, gl-gk)
       assert approx_equal(matrix.sqr(hl).inverse(), bl)
       es = eigensystem.real_symmetric(bl)
-      assert es.values().all_gt(0)
+      assert list(es.values()).all_gt(0)
       assert bfgs.h0_scaling(sk=xl-xk, yk=gl-gk) > 0
     #
     bk = flex.double([[1,0],[0,1]])
@@ -67,7 +69,7 @@ class refinery(object):
     #
     bk = O.fgh.h(xk)
     es = eigensystem.real_symmetric(bk)
-    if (es.values().all_gt(0)):
+    if (list(es.values()).all_gt(0)):
       hk = bk.deep_copy()
       hk.matrix_inversion_in_place()
       check(bk, hk)
@@ -121,7 +123,7 @@ def run(args):
   for fgh in [fgh1, fgh2]:
     exercise_two_loop_recursion(fgh=fgh())
     refinery(fgh=fgh())
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

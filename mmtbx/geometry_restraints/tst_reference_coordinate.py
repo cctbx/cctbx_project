@@ -1,11 +1,16 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
 from mmtbx.monomer_library import server, pdb_interpretation
-from cStringIO import StringIO
+from io import StringIO
 import random
 from mmtbx.geometry_restraints import reference
 
@@ -208,7 +213,7 @@ def exercise_2(mon_lib_srv, ener_lib):
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
-    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    print("distance start (use_reference: %s): %6.4f"%(str(use_reference), d1))
     assert d1>4.0
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
@@ -229,7 +234,7 @@ def exercise_2(mon_lib_srv, ener_lib):
     xrs2.set_sites_cart(sites_cart = sites_cart)
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(selection) -
                               xrs3.sites_cart().select(selection)).dot()))
-    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    print("distance final (use_reference: %s): %6.4f"%(str(use_reference), d2))
     if(use_reference): assert d2<0.005, "failed: %f<0.05" % d2
     else: assert d2>4.0, d2
     assert approx_equal(
@@ -295,7 +300,7 @@ def exercise_3(mon_lib_srv, ener_lib):
           selection = selection)
     d1 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
-    print "distance start (use_reference: %s): %6.4f"%(str(use_reference), d1)
+    print("distance start (use_reference: %s): %6.4f"%(str(use_reference), d1))
     assert d1>4.0
     assert approx_equal(
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
@@ -317,7 +322,7 @@ def exercise_3(mon_lib_srv, ener_lib):
     xrs2.set_sites_cart(sites_cart = sites_cart)
     d2 = flex.mean(flex.sqrt((xrs2.sites_cart().select(min_selection) -
                               xrs3.sites_cart().select(min_selection)).dot()))
-    print "distance final (use_reference: %s): %6.4f"%(str(use_reference), d2)
+    print("distance final (use_reference: %s): %6.4f"%(str(use_reference), d2))
     if(use_reference in ['True', 'top_out']): assert d2<0.02, d2
     else: assert d2>4.0, d2
     assert approx_equal(
@@ -370,4 +375,4 @@ if (__name__ == "__main__") :
   exercise_1(mon_lib_srv, ener_lib)
   exercise_2(mon_lib_srv, ener_lib)
   exercise_3(mon_lib_srv, ener_lib)
-  print "OK"
+  print("OK")

@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import miller
@@ -58,7 +62,7 @@ def tst_ls_on_i():
     assert approx_equal( cmplx.real, da, eps=1e-5)
     assert approx_equal( cmplx.imag, db, eps=1e-5)
 
-  for alpha in flex.double(range(50))/100.0:
+  for alpha in flex.double(list(range(50)))/100.0:
     #----------------------------------------------------------------
     # use fin diffs to check the derivatives to a and b
     old_target_evaluator = xray.least_squares_hemihedral_twinning_on_i(
@@ -77,7 +81,7 @@ def tst_ls_on_i():
     new_data =  sfs.data()
     h=0.0001
 
-    for N_test in xrange(sfs.data().size() ):
+    for N_test in range(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
       #print "----------------"
       #print alpha
@@ -174,7 +178,7 @@ def tst_ls_on_f():
     assert approx_equal( cmplx.real, da, eps=1e-5)
     assert approx_equal( cmplx.imag, -db, eps=1e-5)
 
-  for alpha in flex.double(range(50))/100.0:
+  for alpha in flex.double(list(range(50)))/100.0:
     #----------------------------------------------------------------
     # use fin diffs to check the derivatives to a and b
     old_target_evaluator = xray.least_squares_hemihedral_twinning_on_f(
@@ -193,7 +197,7 @@ def tst_ls_on_f():
     new_data =  sfs.data()
     h=0.0001
     checked=0
-    for N_test in xrange(sfs.data().size() ):
+    for N_test in range(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
       #print "----------------"
       #print alpha
@@ -398,11 +402,11 @@ def plot_function(twin_lik, range=7):
   s12= -is12/det
   s1= math.sqrt( abs(s11)*2.0 )
   s2= math.sqrt( abs(s22)*2.0 )
-  for ii in xrange(-25,26):
-    for jj in xrange(-25,26):
+  for ii in range(-25,26):
+    for jj in range(-25,26):
       x=range*ii/25.0 + fm1
       y=range*jj/25.0 + fm2
-      print x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2)
+      print(x,y, twin_lik.log_p(x,y)-twin_lik.log_p(fm1,fm2))
 
 def tst_single_likelihood(centric=False,
                           twin_fraction=0.1,
@@ -519,7 +523,7 @@ def tst_detwin():
     diff = flex.sum( flex.abs(diff) ) # / flex.sum( sfs.data() )
     assert approx_equal( diff, 0, eps=1e-5 )
     permut = tmp_detwin.obs_to_twin_obs()
-    ind = range( permut.size() )
+    ind = list(range( permut.size()))
     for ii, jj, kk, pp, mm  in zip( sfs.data(), i, dti, ind, permut ):
       no = (1-t)*sfs.data()[pp] + t*sfs.data()[mm]
       assert approx_equal( jj-no, 0, eps=1e-5)
@@ -584,4 +588,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print format_cpu_times()
+  print(format_cpu_times())

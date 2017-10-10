@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.psana
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
@@ -14,7 +15,7 @@ def run(args):
   assert [sit_reldir, sit_release, sit_arch].count(None) == 0
   pyana_path = os.path.join(sit_reldir,sit_release,"arch",sit_arch,"bin","psana")
   cmd = " ".join([pyana_path] + args)
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
 
 

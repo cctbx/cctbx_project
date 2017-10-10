@@ -1,5 +1,8 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import threading
 import multiprocessing
 
@@ -15,7 +18,7 @@ class Thread(threading.Thread):
     try:
       super( Thread, self ).run()
 
-    except Exception, e:
+    except Exception as e:
       #import traceback
       #print traceback.format_exc()
       self.exitcode = 1
@@ -145,8 +148,8 @@ class QQFactory(object):
   @staticmethod
   def create():
 
-    import Queue
-    return Queue.Queue()
+    import queue
+    return queue.Queue()
 
 
   @staticmethod

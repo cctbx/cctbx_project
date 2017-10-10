@@ -1,17 +1,20 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from mmtbx import scaling
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 
 
 def tst_outliers_compare_mode_mean():
-  fobs  = flex.double( range(1000) )/300.0
-  fcalc = flex.double( range(1000) )/300.0
+  fobs  = flex.double( list(range(1000)) )/300.0
+  fcalc = flex.double( list(range(1000)) )/300.0
   sigmas = None
-  epsilon = flex.double( range(1000) )*0 +1.0
+  epsilon = flex.double( list(range(1000)) )*0 +1.0
   centric = flex.bool( [False]*1000 )
 
-  for ii in xrange(50):
+  for ii in range(50):
     a = ii/50.0
     b = 1.0-a*a
     alpha = flex.double( [a]*1000 )
@@ -33,7 +36,7 @@ def tst_outliers_compare_mode_mean():
       if (a>0.9):
         assert approx_equal(mm,m,eps=1e-1)
 
-  for ii in xrange(1,50):
+  for ii in range(1,50):
     a = ii/50.0
     b = 1.0-a*a
     alpha = flex.double( [a]*1000 )
@@ -63,7 +66,7 @@ def tst_outliers_find_posterior_mode():
   # first check if we can find the posterior mode for the acentric
   # when alpha is close to 1, this should be very close to fcalc
   fobs  =  flex.double( [3]*10 )
-  fcalc =  flex.double( range(10) )*10 + 10
+  fcalc =  flex.double( list(range(10)) )*10 + 10
   sigmas = flex.double( [0]*10 )
   epsilon = flex.double( [1]*10 )
   centric = flex.bool( [False]*10 )
@@ -83,7 +86,7 @@ def tst_outliers_find_posterior_mode():
 
   # have a look at centrics
   fobs  =  flex.double( [3]*10 )
-  fcalc =  flex.double( range(10) )*100 + 100
+  fcalc =  flex.double( list(range(10)) )*100 + 100
   sigmas = flex.double( [0]*10 )
   epsilon = flex.double( [1]*10 )
   centric = flex.bool( [True]*10 )
@@ -102,7 +105,7 @@ def tst_outliers_find_posterior_mode():
     assert approx_equal(m/f, 0.099, eps=0.001)
 
 def tst_loglikelihoods():
-  fobs  =  flex.double( range(1000) )/200
+  fobs  =  flex.double( list(range(1000)) )/200
   fcalc =  flex.double( [1]*1000 )
   sigmas = flex.double( [0]*1000 )
   epsilon = flex.double( [1]*1000 )
@@ -132,7 +135,7 @@ def run():
   tst_outliers_compare_mode_mean()
   tst_outliers_find_posterior_mode()
   tst_loglikelihoods()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

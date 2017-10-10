@@ -28,7 +28,7 @@ class hydrogens(geometrical.any):
     pivot_neighbour_sites = ()
     pivot_neighbour_site_params = ()
     pivot_neighbour_substituent_site_params = ()
-    for j, ops in reparametrisation.pair_sym_table[i_pivot].items():
+    for j, ops in list(reparametrisation.pair_sym_table[i_pivot].items()):
       if j in self.constrained_site_indices: continue
       for op in ops:
         if (conformer_indices is None or
@@ -39,7 +39,7 @@ class hydrogens(geometrical.any):
           pivot_neighbour_site_params += (s,)
           pivot_neighbour_sites += (op*scatterers[j].site,)
           if (self.need_pivot_neighbour_substituents):
-            for k, ops_k in reparametrisation.pair_sym_table[j].items():
+            for k, ops_k in list(reparametrisation.pair_sym_table[j].items()):
               if k != i_pivot and scatterers[k].scattering_type != 'H':
                 s = reparametrisation.add_new_site_parameter(k, ops_k[0])
                 pivot_neighbour_substituent_site_params += (s,)
@@ -108,8 +108,8 @@ class terminal_tetrahedral_xhn_site(hydrogens):
     azimuth = reparametrisation.add(_.independent_scalar_parameter,
                                     value=0, variable=self.rotating)
     uc = reparametrisation.structure.unit_cell()
-    for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
-      for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
+    for j, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
+      for k, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), tetrahedral_angle)
@@ -254,8 +254,8 @@ class terminal_planar_xh2_sites(hydrogens):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
-    for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
-      for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
+    for j, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
+      for k, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), 120.0)
@@ -282,8 +282,8 @@ class terminal_linear_ch_site(hydrogens):
     if len(pivot_neighbour_site_params) != 1:
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
-    for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
-      for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
+    for j, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
+      for k, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), 180.0)
@@ -343,8 +343,8 @@ class staggered_terminal_tetrahedral_xhn_sites(hydrogens):
       # If we reach here, this is not the case so an error is raised.
       raise InvalidConstraint(_.bad_connectivity_msg %(
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
-    for j, ops in reparametrisation.pair_sym_table[self.pivot].items():
-      for k, ops in reparametrisation.pair_sym_table[self.pivot].items():
+    for j, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
+      for k, ops in list(reparametrisation.pair_sym_table[self.pivot].items()):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), tetrahedral_angle)

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import math
 import os
 
@@ -119,16 +122,16 @@ class lbfgs(object):
       if sc.flags.grad_fdp():
         self.g.append(d_target_d_fdp[i])
     if self.verbose > 0:
-      print "xray.minimization line search: f,rms(g):",
-      print self.f, math.sqrt(flex.mean_sq(self.g))
+      print("xray.minimization line search: f,rms(g):", end=' ')
+      print(self.f, math.sqrt(flex.mean_sq(self.g)))
     jacobian = self.reparametrisation.jacobian_transpose_matching_grad_fc()
     self.g = jacobian * self.g
     return self.f, self.g
 
   def callback_after_step(self, minimizer):
     if self.verbose > 0:
-      print "xray.minimization step: f,iter,nfun:",
-      print self.f,minimizer.iter(),minimizer.nfun()
+      print("xray.minimization step: f,iter,nfun:", end=' ')
+      print(self.f,minimizer.iter(),minimizer.nfun())
     if self.verbose > 1 and self.reference_structure is not None:
       xray.meaningful_site_cart_differences(self.xray_structure, self.reference_structure).show()
 
@@ -190,9 +193,9 @@ def run(args):
     if ext == ".cif":
       xs_dict = xray.structure.from_cif(file_path=file_path)
       assert len(xs_dict) == 1, "CIF should contain only one xray structure"
-      xs = xs_dict.values()[0]
+      xs = list(xs_dict.values())[0]
       xs.show_summary().show_scatterers()
-      print
+      print()
       constraints_list = None
       t_celsius = 20
     else:
@@ -304,20 +307,20 @@ def exercise_constrained_lbfgs(xray_structure,
     verbose=verbose)
 
   if verbose > 0:
-    print "Total parameters: ", xs.n_parameters()
-    print "Independent parameters: ", reparametrisation.n_independents
+    print("Total parameters: ", xs.n_parameters())
+    print("Independent parameters: ", reparametrisation.n_independents)
 
-    print "Reference model: "
+    print("Reference model: ")
     xs0.show_angles(distance_cutoff=1.5)
-    print
-    print "Starting model: "
+    print()
+    print("Starting model: ")
     xs1.show_angles(distance_cutoff=1.5)
-    print
-    print "Refined model: "
+    print()
+    print("Refined model: ")
     xs.show_angles(distance_cutoff=1.5)
-    print
+    print()
 
-    print "n_iter, n_fun: ", minimizer.minimizer.iter(), minimizer.minimizer.nfun()
+    print("n_iter, n_fun: ", minimizer.minimizer.iter(), minimizer.minimizer.nfun())
 
   h_selection = xs.element_selection('H')
 
@@ -328,13 +331,13 @@ def exercise_constrained_lbfgs(xray_structure,
   #assert diff.max_absolute() < 1e-3
   if verbose > 0:
     diff.show()
-    print
+    print()
   assert diff.max_absolute() < 2e-2, diff.max_absolute()
 
   diff = xray.meaningful_site_cart_differences(xs0, xs)
   if verbose > 0:
     diff.show()
-    print
+    print()
   # XXX why does this tolerance have to be so high?
   assert diff.max_absolute() < 0.5, diff.max_absolute()
 

@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
 
+from builtins import zip
+from builtins import range
 import gltbx.util
 from gltbx.gl import *
 from gltbx.glu import *
@@ -14,7 +17,7 @@ import scitbx.math
 from scitbx import matrix
 try:
   import wx
-except ImportError, e:
+except ImportError as e:
   exit() # To pass through the "make" step (dials.geometry_viewer), for graphics-free HPC build
 import wx.glcanvas
 import math
@@ -204,7 +207,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif (key == ord('\t')):
       callback = getattr(self, "tab_callback", None)
       if (callback is None):
-        print "Tab callback not available."
+        print("Tab callback not available.")
       else:
         kwargs = {"shift_down": event.ShiftDown() }
         if (event.ControlDown()): kwargs["control_down"] = True
@@ -212,10 +215,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     else:
       callback = getattr(self, "process_key_stroke", None)
       if (callback is None):
-        print "No action for this key stroke."
+        print("No action for this key stroke.")
       else:
         if (callback(key=key) == False):
-          print "No action for this key stroke."
+          print("No action for this key stroke.")
     self.autospin = False
 
   def OnMouseWheel(self, event):
@@ -637,8 +640,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, mv_depth)
     glGetIntegerv(GL_PROJECTION_STACK_DEPTH, pr_depth)
     glGetIntegerv(GL_TEXTURE_STACK_DEPTH, tx_depth)
-    print "Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
-      pr_depth[0], tx_depth[0])
+    print("Modelview: %d  Projection: %d  Texture: %d" % (mv_depth[0],
+      pr_depth[0], tx_depth[0]))
 
   def OnUpdate (self, event=None) :
     pass
@@ -660,11 +663,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     pil_image = gltbx.viewer_utils.read_pixels_to_pil_image(
       x=0, y=0, width=self.w, height=self.h)
     if (pil_image is None):
-      print \
-        "Cannot save screen shot to file:" \
-        " Python Imaging Library (PIL) not available."
+      print("Cannot save screen shot to file:" \
+        " Python Imaging Library (PIL) not available.")
       return 0
-    print "Screen shot width x height: %d x %d" % (self.w, self.h)
+    print("Screen shot width x height: %d x %d" % (self.w, self.h))
     save = pil_image.save
     def try_save(file_name_ext):
       try: save(file_name_ext)
@@ -673,17 +675,17 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       return True
     for ext in extensions:
       if (file_name.endswith("."+ext)):
-        print "Writing file: %s" % show_string(os.path.abspath(file_name))
+        print("Writing file: %s" % show_string(os.path.abspath(file_name)))
         if (not try_save(file_name_ext=file_name)):
-          print "Failure saving screen shot as %s file." % ext.upper()
+          print("Failure saving screen shot as %s file." % ext.upper())
         return 1
     n_written = 0
     for ext in extensions:
       file_name_ext = file_name + "."+ext
       if (not try_save(file_name_ext=file_name_ext)):
-        print "Image output format not available: %s" % ext.upper()
+        print("Image output format not available: %s" % ext.upper())
       else:
-        print "Wrote file: %s" % show_string(os.path.abspath(file_name_ext))
+        print("Wrote file: %s" % show_string(os.path.abspath(file_name_ext)))
         n_written += 1
     return n_written
 
@@ -691,19 +693,19 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     from libtbx.str_utils import show_string
     gl2ps = gltbx.util.gl2ps_interface
     if (not gl2ps(file_name=None, draw_background=False, callback=None)):
-      print "PDF output via gl2ps not available: cannot write file %s" \
-        % file_name
+      print("PDF output via gl2ps not available: cannot write file %s" \
+        % file_name)
       return 0
     try:
       # preempt potential error in C++, for better reporting here
       open(file_name, "wb")
     except KeyboardInterrupt: raise
     except Exception:
-      print "Error opening file for writing: %s" % \
-        show_string(os.path.abspath(file_name))
+      print("Error opening file for writing: %s" % \
+        show_string(os.path.abspath(file_name)))
       return 0
     gl2ps(file_name=file_name, draw_background=False, callback=self.OnRedraw)
-    print "Wrote file: %s" % show_string(os.path.abspath(file_name))
+    print("Wrote file: %s" % show_string(os.path.abspath(file_name)))
     return 1
 
   def save_screen_shot(self,
@@ -787,7 +789,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       gray = 0.3
       glColor3f(gray,gray,gray)
       glBegin(GL_POLYGON)
-      for i in xrange(360):
+      for i in range(360):
         a = i * math.pi / 180
         rs = r * math.sin(a)
         rc = r * math.cos(a)
@@ -840,7 +842,8 @@ class show_points_and_lines_mixin(wxGLWindow):
       self.labels_display_list.end()
     self.labels_display_list.call()
 
-  def draw_cross_at(self, (x,y,z), color=(1,1,1), f=0.1):
+  def draw_cross_at(self, xxx_todo_changeme, color=(1,1,1), f=0.1):
+    (x,y,z) = xxx_todo_changeme
     glBegin(GL_LINES)
     glColor3f(*color)
     glVertex3f(x-f,y,z)
@@ -901,7 +904,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       else:
         lbl = "index %d" % i_point_closest
       txt = "pick point: %s" % lbl
-      print txt
+      print(txt)
       self.parent.SetStatusText(txt)
 
 class OpenGLSettingsToolbox (wx.MiniFrame) :
@@ -938,7 +941,7 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose)
 
   def OnUpdate (self, event=None) :
-    for setting_name, widget in self.widgets.iteritems() :
+    for setting_name, widget in self.widgets.items() :
       new_value = float(widget.GetValue()) / 100.0
       setattr(self.parent, setting_name, new_value)
     self.parent.flag_show_fog = self.fog_box.GetValue()

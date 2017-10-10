@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import os
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart
@@ -31,8 +33,8 @@ def get_spotfinder_url(file_object,host,port):
     ("adsc_data",file_object.filename,raw_string)
   ]
 
-  print "length of data in ints",stop_index
-  print "length of data in bytes",len(raw_string)
+  print("length of data in ints",stop_index)
+  print("length of data in bytes",len(raw_string))
   assert len(raw_string)/4==stop_index
 
   T = Timer("do_POST")
@@ -40,7 +42,7 @@ def get_spotfinder_url(file_object,host,port):
     fields = query_object, files = files)
   del T
 
-  print Response.getresponse().read()
+  print(Response.getresponse().read())
 
 def get_labelit_image_object(file,convention):
   Q = quick_image(file)
@@ -57,7 +59,7 @@ def do_main(filepath, force_binning, convention, host, port):
     Q.show_header()
   get_spotfinder_url(Q,host,port)
 
-  for x in xrange(12):
+  for x in range(12):
     file = "file://%s?slice=%d"%(absfile,x)
     Q = get_labelit_image_object(file, convention)
     if force_binning:
@@ -73,7 +75,7 @@ if __name__=="__main__":
     port = int(port)
     convention = int(convention)
   except Exception:
-    print """
+    print("""
 Usage:
 libtbx.python pilatus_client.py <filepath> <force_binning> <convention> <host> <port>
 Four mandatory arguments:
@@ -83,5 +85,5 @@ Four mandatory arguments:
   convention: beam_center_convention as defined on the spotfinder servers wiki ==0
   host: usually "localhost"; in any case, must be machine with same endianness
   port: port number of image analyzer http service
-"""
+""")
   do_main(filepath, force_binning, convention, host, port)

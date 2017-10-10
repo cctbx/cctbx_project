@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 from cctbx import xray
 from cctbx import crystal
 from cctbx.array_family import flex
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -46,4 +49,4 @@ def test_spacegroup_tidy_pickling():
 
 if (__name__ == "__main__"):
   test_spacegroup_tidy_pickling()
-  print "OK"
+  print("OK")

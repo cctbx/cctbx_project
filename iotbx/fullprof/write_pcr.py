@@ -1,5 +1,9 @@
 from __future__ import division
 from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
 from cctbx.eltbx import wavelengths
 
 def _make_phase_block(phase, number=1, name="", scale_down=1.0):
@@ -208,7 +212,7 @@ def _set_ref_flags(inputstring, freeparams=[]):
             varcount += 1
           ret = __replace_match(ret, m , param_to_var[m.group(0)])
       else:
-        raise(ValueError("unknown parameter type: '{0}'".format(param)))
+        raise ValueError
   # fix all still unhandled flags
   for m in re.finditer('##_.*?_##', ret):
     ret = ret[:m.start()] + "0.00".rjust(len(m.group(0))) + ret[m.end():]
@@ -265,7 +269,7 @@ def write_pcr(s,
 
 if __name__ == '__main__':
   # just a little test for debugging
-  from StringIO import StringIO
+  from io import StringIO
   from cctbx import sgtbx
   from cctbx.development import random_structure
   xrs1 = random_structure.xray_structure(

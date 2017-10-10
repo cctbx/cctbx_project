@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import range
+from builtins import object
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 8/17/2016
@@ -65,7 +68,7 @@ class kmeans_handler(object):
     n_data, n_features = dataset.shape
     n_centroids = len(centroids)
     dist = np.zeros((n_data, n_centroids))
-    for c,i in zip(centroids, range(n_centroids)):
+    for c,i in zip(centroids, list(range(n_centroids))):
       dist[:,i] = np.sqrt(((dataset-c)**2).sum(axis=1))
     labels = np.argmin(dist, axis=1)
     return labels

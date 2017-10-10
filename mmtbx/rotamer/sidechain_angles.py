@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import scitbx.math
 from libtbx.utils import Sorry
 import libtbx.load_env
@@ -16,7 +21,7 @@ Can't seem to find mmtbx/rotamer/ directory.
   """)
   return result
 
-class PropertyFile:
+class PropertyFile(object):
 
   #properties = {}
 
@@ -26,8 +31,8 @@ class PropertyFile:
   def process(self, fileLoc):
     try:
       f = open(fileLoc)
-    except ImportError, e:
-      print fileLoc+" file not found"
+    except ImportError as e:
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -36,7 +41,7 @@ class PropertyFile:
         self.properties[props[0].strip()] = props[1].strip().strip("\"")
     f.close()
 
-class SidechainAngles:
+class SidechainAngles(object):
 
   #knownAA = {}
   chisPerAA = {}
@@ -145,7 +150,7 @@ class SidechainAngles:
                           sites_cart=sites_cart))
         return values
       except KeyError:
-        if self.show_errors: print resName + " is an unknown residue type"
+        if self.show_errors: print(resName + " is an unknown residue type")
         return None
     else:
       return None

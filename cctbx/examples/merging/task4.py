@@ -1,8 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -38,10 +42,10 @@ def prepare_simulation_with_noise(sim, transmittance,
 
   sigma_obs = flex.sqrt(flex.abs(raw_obs))
   mean_sigma = flex.mean(sigma_obs)
-  print "<I> / <sigma>", (mean_signal/ mean_sigma)
+  print("<I> / <sigma>", (mean_signal/ mean_sigma))
 
   scale_factor = mean_signal/10.
-  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
+  print("Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor)
 
   #most important line; puts input data on a numerically reasonable scale
   result.raw_obs = raw_obs / scale_factor
@@ -54,7 +58,7 @@ def prepare_simulation_with_noise(sim, transmittance,
   if ordered_intensities is not None:
     uc = ordered_intensities.unit_cell()
     stol_sq = flex.double()
-    for i in xrange(len(result.miller)):
+    for i in range(len(result.miller)):
       this_hkl = ordered_intensities.indices()[result.miller[i]]
       stol_sq_item = uc.stol_sq(this_hkl)
       stol_sq.append(stol_sq_item)
@@ -90,10 +94,10 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
 
   mean_signal = flex.mean(raw_obs)
   mean_sigma = flex.mean(sigma_obs)
-  print "<I> / <sigma>", (mean_signal/ mean_sigma)
+  print("<I> / <sigma>", (mean_signal/ mean_sigma))
 
   scale_factor = mean_signal/10.
-  print "Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor
+  print("Mean signal is",mean_signal,"Applying a constant scale factor of ",scale_factor)
   SDFAC_FROM_CHISQ = work_params.levmar.sdfac_value
   #most important line; puts input data on a numerically reasonable scale
   # XXX
@@ -107,7 +111,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
   if reference_intensities is not None:
     uc = reference_intensities.unit_cell()
     stol_sq = flex.double()
-    for i in xrange(len(result.miller)):
+    for i in range(len(result.miller)):
       this_hkl = reference_intensities.indices()[result.miller[i]]
       stol_sq_item = uc.stol_sq(this_hkl)
       stol_sq.append(stol_sq_item)
@@ -116,15 +120,15 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
 
 if __name__=="__main__":
 
-  import cPickle as pickle
+  import pickle as pickle
   ordered_intensities = pickle.load(open("intensities.pickle","rb"))
   frames = pickle.load(open("frames.pickle","rb"))
   case = 1000
   sim = pickle.load(open("simulated%05d_0.pickle"%case,"rb"))
-  print
+  print()
   #print "accepted %d obs"%(len(sim["miller_lookup"]))
   #print "accepted frames %d"%(len(sim["frame_lookup"]))
-  print "accepted obs %d"%(len(sim["observed_intensity"]))
+  print("accepted obs %d"%(len(sim["observed_intensity"])))
   #print list(sim["frame_lookup"])
   #print list(sim["miller_lookup"])
   #print list(sim["observed_intensity"])
@@ -135,4 +139,4 @@ if __name__=="__main__":
                                        apply_noise=apply_noise)
 
 
-  print "OK"
+  print("OK")

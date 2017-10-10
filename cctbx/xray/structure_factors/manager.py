@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx.xray.structure_factors.misc import quality_factor_from_any
 from cctbx.xray import ext
 from cctbx import maptbx

@@ -1,10 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.cbfheader2slaccalib
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 # $Id
 #
 
+from builtins import str
 import sys, os, dxtbx, getpass
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
@@ -35,7 +37,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
     """
     if path is not None : self.path = path
 
-    if self.pbits & 32 : print 'Load file: %s' % self.path
+    if self.pbits & 32 : print('Load file: %s' % self.path)
 
     img = dxtbx.load(self.path)
     cbf = img._cbf_handle
@@ -160,7 +162,7 @@ class GeometryAccessFromCspadCBF(GeometryAccess):
 
 def run(args):
   if ("--help" in args or "-h" in args) :
-    print "Write a SLAC metrology file from a CSPAD CBF. Parameters:"
+    print("Write a SLAC metrology file from a CSPAD CBF. Parameters:")
     master_phil.show(attributes_level=2)
     return
 
@@ -168,7 +170,7 @@ def run(args):
   for arg in args:
     try :
       user_phil.append(libtbx.phil.parse(arg))
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -180,7 +182,7 @@ def run(args):
   if not os.path.exists(params.cbf_header):
     raise Sorry("File not found: %s"%params.cbf_header)
 
-  print "Converting", params.cbf_header, "to", params.out_metrology_file
+  print("Converting", params.cbf_header, "to", params.out_metrology_file)
 
   geometry = GeometryAccessFromCspadCBF(params.cbf_header)
 

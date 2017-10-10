@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 from scitbx import sparse
 from cctbx import uctbx, xray, crystal
@@ -21,7 +26,7 @@ def exercise_rigid_site_proxy(n=5):
     independents.append(p)
   pivot, pivot_neighbour = independents
   rigid_group_scatterers = [ ]
-  for i in xrange(n):
+  for i in range(n):
     sc = xray.scatterer('C%i' %i,
                         site=tuple(flex.random_double(3)))
     sc.flags.set_grad_site(True)
@@ -36,7 +41,7 @@ def exercise_rigid_site_proxy(n=5):
                             size=size,
                             scatterers=rigid_group_scatterers)
   proxies = [ ]
-  for i in xrange(n):
+  for i in range(n):
     proxies.append(reparam.add(constraints.rigid_site_proxy,
                                parent=rigid_group,
                                index=i))
@@ -72,7 +77,7 @@ digraph dependencies {
   jt0 = sparse.matrix(q, q + 2*3*n) # + rigid_group + constrained site proxies
   assert jt.n_rows == jt0.n_rows
   assert jt.n_cols == jt0.n_cols
-  for i,j in zip(xrange(q, q+3*n), xrange(q+3*n, jt0.n_cols)):
+  for i,j in zip(range(q, q+3*n), range(q+3*n, jt0.n_cols)):
     assert jt.col(i) == jt.col(j)
 
 def exercise_rigid_pivoted_rotatable():
@@ -162,7 +167,7 @@ class rigid_rotatable(object):
     r.linearise()
     r.store()
     shift = col(self.sites[0]) - (col(self.sites[0])-self.center)*self.size_value
-    for i in xrange(1,4):
+    for i in range(1,4):
       calc_site = (col(self.sites[i])-self.center)*self.size_value + shift
       assert approx_equal(
         self.uc.distance(
@@ -201,7 +206,7 @@ class rigid_rotatable(object):
                     0, 0, 1))
     R = rx_m*ry_m*rz_m #comulative rotation matrix
     shift = col(self.sites[0])-col(mat.row(col(self.sites[0])-self.center)*R)
-    for i in xrange(1,4):
+    for i in range(1,4):
       calc_site = col(mat.row(col(self.sites[i])-self.center)*R) + shift
       assert approx_equal(
         self.uc.distance(
@@ -280,7 +285,7 @@ def run():
   exercise_rigid_pivoted_rotatable()
   rigid_rotatable().excercise()
   idealised().excersise()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

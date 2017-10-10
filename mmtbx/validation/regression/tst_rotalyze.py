@@ -1,5 +1,10 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from mmtbx.validation import rotalyze
 from iotbx import file_reader
@@ -8,7 +13,7 @@ from libtbx.test_utils import show_diff, Exception_expected
 from libtbx.utils import Sorry
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
-from cStringIO import StringIO
+from io import StringIO
 import os.path
 
 def exercise_rotalyze():
@@ -16,10 +21,10 @@ def exercise_rotalyze():
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_rotalyze(): input pdb (jcm.pdb) not available"
+    print("Skipping exercise_rotalyze(): input pdb (jcm.pdb) not available")
     return
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise_rotalyze(): rotarama_data directory not available"
+    print("Skipping exercise_rotalyze(): rotarama_data directory not available")
     return
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.hierarchy
@@ -96,7 +101,7 @@ def exercise_rotalyze():
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
   if (regression_pdb is None):
-    print "Skipping exercise_ramalyze(): input pdb (pdb1jxt.ent) not available"
+    print("Skipping exercise_ramalyze(): input pdb (pdb1jxt.ent) not available")
     return
   pdb_in = file_reader.any_file(file_name=regression_pdb)
   hierarchy = pdb_in.file_object.hierarchy
@@ -243,7 +248,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
   hierarchy = pdb_io.construct_hierarchy()
   try :
     rotalyze.rotalyze(pdb_hierarchy=hierarchy)
-  except Sorry, e :
+  except Sorry as e :
     assert ("GLY A 262" in str(e))
   else :
     raise Exception_expected
@@ -291,4 +296,4 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
 if (__name__ == "__main__") :
   exercise_rotalyze()
   exercise_2()
-  print "OK"
+  print("OK")

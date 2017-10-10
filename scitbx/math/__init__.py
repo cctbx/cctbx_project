@@ -1,4 +1,9 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
 import scitbx.math.gaussian # implicit import
@@ -6,6 +11,7 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from boost import rational # implicit import
 import math
+from functools import reduce
 
 gaussian_fit_1d_analytical.__doc__ = """
 Fits a gaussian function to a list of points.
@@ -88,7 +94,7 @@ def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
   """
 
   if not matrices:
-    raise TypeError, "Average of empty sequence"
+    raise TypeError("Average of empty sequence")
 
   import operator
   import scitbx.matrix
@@ -111,10 +117,10 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
   """
 
   if not matrices:
-    raise TypeError, "Average of empty sequence"
+    raise TypeError("Average of empty sequence")
 
   if maxiter < 0 or convergence <= 0:
-    raise ValueError, "Invalid iteration parameters"
+    raise ValueError("Invalid iteration parameters")
 
   from scitbx.math import so3_lie_algebra
   import operator
@@ -136,7 +142,7 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
 
     current *= log_diff.exponential()
 
-  raise RuntimeError, "Iteration limit exceeded"
+  raise RuntimeError("Iteration limit exceeded")
 
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
@@ -174,7 +180,7 @@ class erf_verification(object):
       if (self.max_delta < delta):
         self.max_delta = delta
         if (delta > self.tolerance):
-          print x, expected_result, result, delta
+          print(x, expected_result, result, delta)
 
 class minimum_covering_sphere_nd(object):
 
@@ -196,7 +202,7 @@ class minimum_covering_sphere_nd(object):
       return
     n_dim = len(points[0].elems)
     w = 1./len(points)
-    weights = matrix.row([w for i in xrange(len(points))])
+    weights = matrix.row([w for i in range(len(points))])
     while 1:
       x = matrix.col([0]*n_dim)
       for w,t in zip(weights.elems,points):
@@ -377,7 +383,7 @@ def equally_spaced_points_on_vector(start, end, n=None, step=None):
     n = int(vec_length/step)-1
   dr = r*(1/float(n+1))
   points = flex.vec3_double()
-  for i in xrange(n+1):
+  for i in range(n+1):
     points.extend(dr * i + start)
   points.append(end)
   return points
@@ -419,7 +425,7 @@ class sin_cos_table(object):
     self.step = 2*math.pi/self.n
     self.sin_table = flex.double()
     self.cos_table = flex.double()
-    for i in xrange(self.n):
+    for i in range(self.n):
       self.sin_table.append(math.sin(i*self.step))
       self.cos_table.append(math.cos(i*self.step))
 

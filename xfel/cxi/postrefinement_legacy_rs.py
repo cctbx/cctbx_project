@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -94,7 +97,7 @@ class legacy_rs(object):
       SWC = simple_weighted_correlation(I_weight.select(~non_positive),
             I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    print >> out, "Old correlation is", SWC.corr
+    print("Old correlation is", SWC.corr, file=out)
     if params.postrefinement.algorithm=="rs":
       Rhall = flex.double()
       for mill in MILLER:
@@ -123,7 +126,7 @@ class legacy_rs(object):
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
-    print >> out, "functional",functional
+    print("functional",functional, file=out)
     self.current = current; self.parameterization_class = parameterization_class
     self.refinery = refinery; self.out=out; self.params = params;
     self.miller_set = miller_set
@@ -146,9 +149,9 @@ class legacy_rs(object):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError, "< 3 near-fulls after refinement"
-    print >> self.out, "On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count)
+      raise ValueError("< 3 near-fulls after refinement")
+    print("On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count), file=self.out)
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -271,11 +274,11 @@ class rs_parameterization(unpack_base):
     return getattr(YY,item)
 
   def show(YY, out):
-    print >> out, "G: %10.7f"%YY.G,
-    print >> out, "B: %10.7f"%YY.BFACTOR, \
+    print("G: %10.7f"%YY.G, end=' ', file=out)
+    print("B: %10.7f"%YY.BFACTOR, \
         "RS: %10.7f"%YY.RS, \
         "%7.3f deg %7.3f deg"%(
-        180.*YY.thetax/math.pi,180.*YY.thetay/math.pi)
+        180.*YY.thetax/math.pi,180.*YY.thetay/math.pi), file=out)
 
 class eta_deff_parameterization(unpack_base):
   def __getattr__(YY,item):
@@ -288,14 +291,14 @@ class eta_deff_parameterization(unpack_base):
     return getattr(YY,item)
 
   def show(YY, out):
-    print >> out, "%10.7f"%YY.G,
-    print >> out, "%10.7f"%YY.BFACTOR, \
+    print("%10.7f"%YY.G, end=' ', file=out)
+    print("%10.7f"%YY.BFACTOR, \
           "eta %10.7f"%YY.ETA, \
           "Deff %10.2f"%YY.DEFF, \
           "%7.3f deg %7.3f deg"%(
-      180.*YY.thetax/math.pi,180.*YY.thetay/math.pi)
+      180.*YY.thetax/math.pi,180.*YY.thetay/math.pi), file=out)
 
-class lbfgs_minimizer_base:
+class lbfgs_minimizer_base(object):
 
   def __init__(self, current_x=None, parameterization=None, refinery=None, out=None,
                min_iterations=0, max_calls=1000, max_drop_eps=1.e-5):
@@ -328,7 +331,7 @@ class lbfgs_minimizer_base:
     self.f = functional
     DELTA = 1.E-7
     self.g = flex.double()
-    for x in xrange(self.n):
+    for x in range(self.n):
       templist = list(self.x)
       templist[x]+=DELTA
       dvalues = flex.double(templist)
@@ -338,12 +341,12 @@ class lbfgs_minimizer_base:
       #calculate by finite_difference
       self.g.append( ( dfunctional-functional )/DELTA )
     self.g[2]=0.
-    print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+    print("rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)
     return self.f, self.g
 
   def __del__(self):
     values = self.parameterization(self.x)
-    print >> self.out, "FINALMODEL",
-    print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
+    print("FINALMODEL", end=' ', file=self.out)
+    print("rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)), end=' ', file=self.out)
     values.show(self.out)

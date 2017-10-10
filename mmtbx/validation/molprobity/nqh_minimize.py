@@ -1,9 +1,12 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 import os
 from mmtbx.command_line import geometry_minimization
 from libtbx.utils import Usage
-from cStringIO import StringIO
+from io import StringIO
 
 def parse_user_mods(filename):
   flipped_residues = []
@@ -24,12 +27,12 @@ def finalize_coords(filename, outfile, updated_coords):
       key = line[12:26]
       if key in updated_coords:
         new_line = line[:30]+updated_coords[key]+line[54:]
-        print >> out_f, new_line.strip()
+        print(new_line.strip(), file=out_f)
       else:
-        print >> out_f, line.strip()
+        print(line.strip(), file=out_f)
 
     else:
-      print >> out_f, line.strip()
+      print(line.strip(), file=out_f)
   f.close()
   out_f.close()
 
@@ -90,13 +93,13 @@ def run(args):
   directory = "directory="+temp_dir
   params = os.path.join(temp_dir, "nqh.params")
   p = file(params, 'w')
-  print >> p, selection
-  print >> p, restrain
-  print >> p, sigma
-  print >> p, "pdb_interpretation.reference_coordinate_restraints.enabled=True"
-  print >> p, directory
-  print >> p, "stop_for_unknowns=False"
-  print >> p, "pdb_interpretation.clash_guard.nonbonded_distance_threshold=None"
+  print(selection, file=p)
+  print(restrain, file=p)
+  print(sigma, file=p)
+  print("pdb_interpretation.reference_coordinate_restraints.enabled=True", file=p)
+  print(directory, file=p)
+  print("stop_for_unknowns=False", file=p)
+  print("pdb_interpretation.clash_guard.nonbonded_distance_threshold=None", file=p)
   p.close()
   temp_pdb = os.path.join(temp_dir, "nqh_flips.pdb")
   out = file(temp_pdb, 'w')
@@ -108,7 +111,7 @@ def run(args):
       if id_str[0] != ' ':
         key = key+"    %s" % id_str[0]
       if key in flipped_residues:
-        print >> out, line.strip()
+        print(line.strip(), file=out)
   out.close()
   f.close()
   min_args = []

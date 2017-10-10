@@ -1,4 +1,8 @@
 from __future__ import division
+from builtins import zip
+from builtins import next
+from builtins import str
+from builtins import object
 import scitbx.rigid_body
 import scitbx.graph.tardy_tree
 import scitbx.math
@@ -190,7 +194,7 @@ def build_rotamer_tor_atom_ids_by_tor_id(comp_comp_id, rotamer_info):
 
 def build_i_q_packed_by_tor_id(rotamer_tor_atom_ids_by_tor_id, tardy_model):
   tor_id_by_rotatable_bond_atom_names = {}
-  for tor_id,atom_ids in rotamer_tor_atom_ids_by_tor_id.items():
+  for tor_id,atom_ids in list(rotamer_tor_atom_ids_by_tor_id.items()):
     atom_names = tuple(sorted(atom_ids[1:3]))
     assert atom_names not in tor_id_by_rotatable_bond_atom_names
     tor_id_by_rotatable_bond_atom_names[atom_names] = tor_id
@@ -219,7 +223,7 @@ def build_angle_start_by_tor_id(
       i_q_packed_by_tor_id):
   result = {}
   atom_indices = sequence_index_dict(seq=mon_lib_atom_names)
-  for tor_id in i_q_packed_by_tor_id.keys():
+  for tor_id in list(i_q_packed_by_tor_id.keys()):
     d_sites = []
     atom_ids = []
     for atom_id in rotamer_tor_atom_ids_by_tor_id[tor_id]:
@@ -315,11 +319,11 @@ class rotamer_iterator(object):
   def __iter__(O):
     return O
 
-  def next(O):
-    rotamer = O.__iterates.next()
+  def __next__(O):
+    rotamer = next(O.__iterates)
     if O.rotamer_info.fine_sampling == False:
       while(rotamer.frequency_annotation == "for more uniform sampling"):
-        rotamer = O.__iterates.next()
+        rotamer = next(O.__iterates)
     q_packed_work = flex.double(O.tardy_model.q_packed_size, 0)
     for tor_id,angle in zip(O.rotamer_info.tor_ids, rotamer.angles):
       i_q_packed = O.i_q_packed_by_tor_id.get(tor_id)

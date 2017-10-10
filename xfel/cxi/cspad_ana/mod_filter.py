@@ -14,6 +14,8 @@ selected instead.  Events with missing timestamps are always skipped.
 """
 from __future__ import division
 
+from builtins import range
+from builtins import object
 __version__ = "$Revision$"
 
 import logging
@@ -107,7 +109,7 @@ class mod_filter(object):
              positive if @p l > @p r
     """
 
-    for i in xrange(2):
+    for i in range(2):
       if (l[i] < r[i]):
         return -1
       if (l[i] > r[i]):

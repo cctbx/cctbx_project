@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   if (len(args) == 0): args = ["--help"]
   from libtbx.option_parser import option_parser
@@ -19,20 +20,20 @@ def run(args):
     top_procedures=co.top_procedure)
   dep_cycles = topological_fprocs.dependency_cycles
   if (len(dep_cycles) != 0):
-    print "Dependency cycles:", len(dep_cycles)
+    print("Dependency cycles:", len(dep_cycles))
     for cycle in dep_cycles:
-      print " ", " ".join(cycle)
-    print
-  print "Top-down procedure list:"
-  print
+      print(" ", " ".join(cycle))
+    print()
+  print("Top-down procedure list:")
+  print()
   digraph_lhs_rhs = []
   for fproc in reversed(topological_fprocs.bottom_up_list):
     if (fproc.name is None):
       lhs = fproc.fproc_type
-      print lhs
+      print(lhs)
     else:
       lhs = fproc.name.value
-      print fproc.fproc_type, fproc.name.value
+      print(fproc.fproc_type, fproc.name.value)
     fwds = set(
       topological_fprocs.forward_uses_by_identifier.get(
         fproc.name.value, []))
@@ -62,14 +63,14 @@ def run(args):
         s = called_name
       if (called_name in fwds):
         s += " (dependency cycle)"
-      print "  %s" % s
-  print
+      print("  %s" % s)
+  print()
   if (co.write_graphviz_dot is not None):
     f = open(co.write_graphviz_dot, "w")
-    print >> f, "digraph G {"
+    print("digraph G {", file=f)
     for lhs_rhs in digraph_lhs_rhs:
-      print >> f, "  %s -> %s;" % lhs_rhs
-    print >> f, "}"
+      print("  %s -> %s;" % lhs_rhs, file=f)
+    print("}", file=f)
     del f
 
 if (__name__ == "__main__"):

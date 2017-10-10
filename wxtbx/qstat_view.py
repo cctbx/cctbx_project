@@ -1,5 +1,8 @@
 from __future__ import division
 
+from past.builtins import cmp
+from builtins import str
+from builtins import object
 import wxtbx.bitmaps
 from libtbx.queuing_system_utils import sge_utils
 from libtbx.utils import Sorry
@@ -207,7 +210,7 @@ class queue_list_frame (wx.Frame) :
     if self.ConfirmDelete(job_ids) :
       try :
         success = sge_utils.qdel(job_ids=job_ids)
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Error executing 'qdel' command: %s" % str(e))
       else :
         GenericMessageDialog("Job(s) deleted successfuly.", style=wx.OK)

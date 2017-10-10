@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from scitbx import math
 from stdlib import math as smath
 from scitbx.array_family import flex
@@ -23,7 +26,7 @@ def j2(x):
   return result
 
 def exercise_results():
-  x = flex.double( range(1,100) )/99.0
+  x = flex.double( list(range(1,100)) )/99.0
   f0 = math.spherical_bessel_array(0,x)
   f1 = math.spherical_bessel_array(1,x)
   f2 = math.spherical_bessel_array(2,x)
@@ -33,12 +36,12 @@ def exercise_results():
     assert abs(ffff-j2(xx))/ffff < 1e-5
 
 def tst_sph_bessel_j1():
-  x = flex.double( range(1,200) )/199.0+7.5
+  x = flex.double( list(range(1,200)) )/199.0+7.5
   f1 = math.spherical_bessel_array(1,x)
   for xx,ff in zip(x,f1):
     assert abs( ff-j1(xx) )/abs(ff) < 1e-5
     #print xx, ff, j1(xx), abs( ff-j1(xx) )/abs(ff)
-  print "OK"
+  print("OK")
 
 def tst_bessel_J():
   x1 = 5.00000000e-02
@@ -64,7 +67,7 @@ def tst_bessel_J():
 
 def exercise():
   if (not hasattr(math, "spherical_bessel")):
-    print "Skipping tst_bessel.py: functions not available."
+    print("Skipping tst_bessel.py: functions not available.")
     return
   exercise_interfaces()
   exercise_results()
@@ -72,7 +75,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   # XXX Test disabled: "Floating-point error" crash, pending future investigation.

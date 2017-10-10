@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from libtbx import binary_search
 import random
 import sys
@@ -17,7 +20,7 @@ class random_callback(object):
       n_block = min(rng.randrange(1,21), n_bad - len(O.bad_points))
       begin = low + 1 + rng.randrange(high-low-1)
       assert begin < high
-      for i in xrange(begin, min(begin+n_block,high)):
+      for i in range(begin, min(begin+n_block,high)):
         if (i != O.critical_point):
           O.bad_points.add(i)
           if (len(O.bad_points) == n_bad):
@@ -49,7 +52,7 @@ def run(args):
     low=30, high=39, callback=callback)
   assert points_tested == [34,36,37,38,35,32,33,31]
   #
-  for i_trial in xrange(32):
+  for i_trial in range(32):
     callback = random_callback(
       rng=random.Random(i_trial),
       low=i_trial*13,
@@ -61,13 +64,13 @@ def run(args):
     assert info.low_point_false == callback.critical_point
     assert info.high_point_true < info.low_point_false
     assert info.high_point_true not in callback.bad_points
-    for i in xrange(info.high_point_true+1, info.low_point_false):
+    for i in range(info.high_point_true+1, info.low_point_false):
       assert i in callback.bad_points
     assert info.bad_points.issubset(callback.bad_points)
     assert info.number_of_iterations >= info.number_of_callbacks
     assert info.bad_gap_width >= 0
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

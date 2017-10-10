@@ -3,6 +3,8 @@ from __future__ import division
 # $Id
 #
 
+from builtins import str
+from builtins import range
 import sys, os
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
@@ -47,7 +49,7 @@ if (__name__ == "__main__") :
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -69,12 +71,12 @@ if (__name__ == "__main__") :
     corrections_params = horizons_phil.extract()
 
     bc = [0,0]
-    for q in xrange(len(sections)):
+    for q in range(len(sections)):
       corner = sections[q][1].corners(True)[0]
       bc     = [bc[0] + corner[1] / len(sections), bc[1] + corner[0] / len(sections)]
     beam = col(bc)
 
-    for itile in xrange(len(corrections_params.distl.tile_translations) // 4): # 128 tile_translations/4 = 32 sensors
+    for itile in range(len(corrections_params.distl.tile_translations) // 4): # 128 tile_translations/4 = 32 sensors
       # order of quads in sections (UL,UR,LR,LL) is not the same as in quad_translations (UL,UR,LL,LR)
       sections_quad = itile//8
       phil_quad = [0,1,3,2].index(sections_quad)

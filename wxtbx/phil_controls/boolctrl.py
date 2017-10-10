@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from wxtbx import phil_controls
 import wx
 from libtbx import Auto
@@ -73,7 +75,7 @@ if (__name__ == "__main__") :
   box1.SetValue(True)
   assert (box1.GetStringValue() == "True")
   def OnChange (event) :
-    print event.GetEventObject().GetPhilValue()
+    print(event.GetEventObject().GetPhilValue())
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnChange)
   frame.Show()
   app.MainLoop()

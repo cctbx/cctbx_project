@@ -1,7 +1,11 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 import libtbx.phil
-from cStringIO import StringIO
+from io import StringIO
 
 master_params = """
 set_partial_occupancy = None
@@ -168,4 +172,4 @@ END
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

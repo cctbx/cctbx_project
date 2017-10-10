@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from cctbx import xray
 from libtbx import easy_pickle
 from libtbx.str_utils import show_string
@@ -11,13 +13,13 @@ def run(args):
       xray_structures = xray.structure.from_cif(file_path=f)
     except KeyboardInterrupt:
       raise
-    except Exception, e:
-      print "Error extracting xray structure from file: %s:" % (
-        show_string(f))
-      print " ", str(e)
+    except Exception as e:
+      print("Error extracting xray structure from file: %s:" % (
+        show_string(f)))
+      print(" ", str(e))
       continue
     basename, _ = op.splitext(op.basename(f))
-    for key, xs in xray_structures.items():
+    for key, xs in list(xray_structures.items()):
       xs.show_summary()
       r = basename
       if key != r:

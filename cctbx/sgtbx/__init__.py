@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx import uctbx
 
 import boost.python
@@ -16,7 +22,7 @@ rhombohedral_hermann_mauguin_symbols = [
   "R -3 m",
   "R -3 c"]
 
-class empty: pass
+class empty(object): pass
 
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -43,11 +49,11 @@ class _(boost.python.injector, ext.space_group):
   def smx(self, with_inversion=False):
     if with_inversion: n = 2*self.n_smx()
     else: n = self.n_smx()
-    for i_smx in xrange(n):
+    for i_smx in range(n):
       yield self(i_smx)
 
   def ltr(self):
-    for i in xrange(self.n_ltr()):
+    for i in range(self.n_ltr()):
       yield self(i,0,0).t()
 
   def info(self):
@@ -249,7 +255,7 @@ class space_group_info(object):
         delta = other_ti.origin_shift().minus(
              self_ti.origin_shift()).mod_positive()
         delta_num = delta.num()
-        for i in xrange(3):
+        for i in range(3):
           if origin_shift[i] == 0:
             origin_shift[i] = 24//delta.den()*delta_num[i]
         if origin_shift.elems.count(0) == 0: break
@@ -296,7 +302,7 @@ class space_group_info(object):
 
   def show_summary(self, f=None, prefix="Space group: "):
     if (f is None): f = sys.stdout
-    print >> f, "%s%s" % (prefix, self.symbol_and_number())
+    print("%s%s" % (prefix, self.symbol_and_number()), file=f)
 
   def number_of_continuous_allowed_origin_shifts(self):
     return self.structure_seminvariants() \
@@ -363,7 +369,7 @@ class space_group_info(object):
       cb_op=self.change_of_basis_op_to_reference_setting().inverse())
     f = (volume / unit_cell.volume())**(1/3.)
     params = list(unit_cell.parameters())
-    for i in xrange(3): params[i] *= f
+    for i in range(3): params[i] *= f
     return uctbx.unit_cell(params)
 
   def any_compatible_crystal_symmetry(self, volume=None, asu_volume=None):
@@ -401,7 +407,7 @@ class space_group_info(object):
     return "%i%s" %(idx+1, sep) + "%i%i%i" %(klm)
 
 def reference_space_group_infos():
-  for number in xrange(1,230+1):
+  for number in range(1,230+1):
     yield space_group_info(number=number)
 
 class _(boost.python.injector, tr_vec):
@@ -409,7 +415,7 @@ class _(boost.python.injector, tr_vec):
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
 
-class le_page_1982_delta_details:
+class le_page_1982_delta_details(object):
 
   def __init__(self, reduced_cell, rot_mx, deg=False):
     orth = matrix.sqr(reduced_cell.orthogonalization_matrix())
@@ -500,17 +506,17 @@ class _(boost.python.injector, ext.rt_mx):
     if out is None: out = sys.stdout
     r_info = self.r().info()
     t_info = translation_part_info(self)
-    print >>out, "%s %s" % (r_info, t_info)
+    print("%s %s" % (r_info, t_info), file=out)
 
 class _(boost.python.injector, ext.search_symmetry_flags):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "use_space_group_symmetry:", self.use_space_group_symmetry()
-    print >> f, "use_space_group_ltr:", self.use_space_group_ltr()
-    print >> f, "use_normalizer_k2l:", self.use_normalizer_k2l()
-    print >> f, "use_normalizer_l2n:", self.use_normalizer_l2n()
-    print >> f, "use_seminvariants:", self.use_seminvariants()
+    print("use_space_group_symmetry:", self.use_space_group_symmetry(), file=f)
+    print("use_space_group_ltr:", self.use_space_group_ltr(), file=f)
+    print("use_normalizer_k2l:", self.use_normalizer_k2l(), file=f)
+    print("use_normalizer_l2n:", self.use_normalizer_l2n(), file=f)
+    print("use_seminvariants:", self.use_seminvariants(), file=f)
 
 class special_op_simplified_term(libtbx.slots_getstate_setstate):
 
@@ -582,7 +588,7 @@ def special_op_simplifier(special_op):
     return special_op_simplified(terms=terms)
   if (n_done == 0):
     m, v = [], []
-    for i in xrange(3):
+    for i in range(3):
       m.append([r[i+0], r[i+3]])
       v.append(r[i+6])
     from scitbx.matrix import row_echelon
@@ -595,10 +601,10 @@ def special_op_simplifier(special_op):
         terms[2] = special_op_simplified_term(
           [0,1], sol, t[2] - sol[0]*t[0] - sol[1]*t[1])
         return special_op_simplified(terms=terms)
-  for i_row in xrange(3):
+  for i_row in range(3):
     if (terms[i_row] is not None): continue
     terms[i_row] = special_op_simplified_term([i_row], [r1], r0)
-    for j_row in xrange(i_row+1,3):
+    for j_row in range(i_row+1,3):
       if (terms[j_row] is not None): continue
       m = matrix.linearly_dependent_pair_scaling_factor(
         vector_1=rows[i_row], vector_2=rows[j_row])
@@ -645,18 +651,18 @@ class _(boost.python.injector, ext.site_symmetry_table):
     assert [sites_frac_original, sites_cart_original].count(None) == 1
     assert [sites_frac_exact, sites_cart_exact].count(None) == 1
     if (out is None): out = sys.stdout
-    print >> out, prefix + "Number of sites at special positions:", \
-      self.special_position_indices().size()
+    print(prefix + "Number of sites at special positions:", \
+      self.special_position_indices().size(), file=out)
     if (self.special_position_indices().size() > 0):
       label_len = 5
       for i_seq in self.special_position_indices():
         label_len = max(label_len, len(site_labels[i_seq]))
       label_fmt = "%%-%ds"%label_len
-      print >> out, prefix \
+      print(prefix \
         + "  Minimum distance between symmetrically equivalent sites: %.4g" % (
-        special_position_settings.min_distance_sym_equiv())
-      print >> out, prefix + "  " + label_fmt%"Label" \
-        + "   Mult   Shift    Fractional coordinates"
+        special_position_settings.min_distance_sym_equiv()), file=out)
+      print(prefix + "  " + label_fmt%"Label" \
+        + "   Mult   Shift    Fractional coordinates", file=out)
       uc = special_position_settings.unit_cell()
       if (sites_frac_original is None):
         sites_frac_original = uc.fractionalize(sites_cart=sites_cart_original)
@@ -666,15 +672,15 @@ class _(boost.python.injector, ext.site_symmetry_table):
         so = sites_frac_original[i_seq]
         se = sites_frac_exact[i_seq]
         special_ops = self.get(i_seq=i_seq)
-        print >> out, prefix + "  " + label_fmt%site_labels[i_seq] \
+        print(prefix + "  " + label_fmt%site_labels[i_seq] \
           + "  %4d  %7.3f (%8.4f %8.4f %8.4f) original" % (
-          (special_ops.multiplicity(), uc.distance(so, se)) + so)
-        print >> out, prefix + label_fmt%"" \
+          (special_ops.multiplicity(), uc.distance(so, se)) + so), file=out)
+        print(prefix + label_fmt%"" \
           + "   site sym %-6s"%special_position_settings.site_symmetry(se) \
               .point_group_type() \
-          + "(%8.4f %8.4f %8.4f) exact"%se
+          + "(%8.4f %8.4f %8.4f) exact"%se, file=out)
         s = str(special_ops.special_op())
-        print >> out, prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s
+        print(prefix + label_fmt%"" + " "*(18+max(0,(26-len(s))//2)), s, file=out)
 
   def discard_symmetry(self):
     assert len(self.table())>0
@@ -744,7 +750,7 @@ class _(boost.python.injector, wyckoff_table):
     while 1:
       run_away_counter += 1
       assert run_away_counter < 1000
-      site = position.special_op() * [random.random() for i in xrange(3)]
+      site = position.special_op() * [random.random() for i in range(3)]
       if (unit_shift_range is not None):
         site = [x + random.randrange(*unit_shift_range) for x in site]
       site_symmetry = special_position_settings.site_symmetry(site)
@@ -798,7 +804,7 @@ class symmetry_equivalent_pair_interactions(libtbx.slots_getstate_setstate):
         add(mi, rt_mx_ji_inv)
 
   def get(O):
-    result = O.registry.values()
+    result = list(O.registry.values())
     result.sort()
     return result
 

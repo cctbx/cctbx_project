@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 import libtbx.load_env
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -128,9 +132,9 @@ class ramachandran_manager(object):
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
-    print >> log, ""
-    print >> log, "  %d Ramachandran restraints generated." % (
-        self.get_n_proxies())
+    print("", file=log)
+    print("  %d Ramachandran restraints generated." % (
+        self.get_n_proxies()), file=log)
 
   def update_phi_psi_targets(self, sites_cart):
     if(self.params.rama_potential != "oldfield"): return None
@@ -197,7 +201,7 @@ class ramachandran_manager(object):
       by_value,
       sites_cart,
       site_labels=None):
-    class rama_for_show:
+    class rama_for_show(object):
       def __init__(self,
           labels,
           residual):
@@ -244,14 +248,14 @@ class ramachandran_manager(object):
       by_value=by_value,
       sites_cart=sites_cart,
       site_labels=site_labels)
-    print >> f, "Ramachandran plot restraints: %d"%len(sorted_proxies_for_show)
-    print >> f, "Sorted by %s:" % by_value
+    print("Ramachandran plot restraints: %d"%len(sorted_proxies_for_show), file=f)
+    print("Sorted by %s:" % by_value, file=f)
     for p in sorted_proxies_for_show:
-      print >> f, "phi-psi angles formed by             residual"
-      print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
+      print("phi-psi angles formed by             residual", file=f)
+      print("    %s            %5.2e" % (p.labels[0], p.residual), file=f)
       for i in range(1,5):
-        print >> f, "    %s" % p.labels[i]
-    print >> f, ""
+        print("    %s" % p.labels[i], file=f)
+    print("", file=f)
 
 
 def load_tables (params=None) :

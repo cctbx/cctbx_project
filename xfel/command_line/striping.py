@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.stripe_experiment
@@ -7,6 +8,9 @@ from __future__ import division
 # run group and then distrbute each run group's results into subgroups and run
 # dials.combine_experiments (optionally with clustering and selecting clusters).
 #
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from libtbx import easy_run
@@ -236,7 +240,7 @@ def allocate_chunks_per_rungroup(results_dir,
   refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
-  print "processing trial %s" % trial
+  print("processing trial %s" % trial)
   if rgs_selected:
     rg_condition = lambda rg: rg in rgs_selected
   else:
@@ -251,15 +255,15 @@ def allocate_chunks_per_rungroup(results_dir,
             if (trg[:6] == trial + "_rg") and rg_condition(trg[-5:])]
     if not trgs:
       continue
-    rungroups = set(map(lambda n: n.split("_")[1], trgs))
+    rungroups = set([n.split("_")[1] for n in trgs])
     for rg in rungroups:
-      if rg not in rgs.keys():
+      if rg not in list(rgs.keys()):
         rgs[rg] = [run]
       else:
         rgs[rg].append(run)
   rg_ch_nums_sizes = {}
   rg_contents = {}
-  for rg, runs in rgs.iteritems():
+  for rg, runs in rgs.items():
     n_img = 0
     trg = trial + "_" + rg
     rg_contents[rg] = []
@@ -267,7 +271,7 @@ def allocate_chunks_per_rungroup(results_dir,
       try:
         contents = os.listdir(os.path.join(results_dir, run, trg, "out"))
       except OSError:
-        print "skipping run %s missing out directory" % run
+        print("skipping run %s missing out directory" % run)
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
@@ -275,16 +279,16 @@ def allocate_chunks_per_rungroup(results_dir,
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
     if n_img == 0:
-      print "no images found for %s" % rg
+      print("no images found for %s" % rg)
       del rg_contents[rg]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
     chunk_size = int(math.ceil(n_img/n_chunks))
     rg_ch_nums_sizes[rg] = (n_chunks, chunk_size)
   if len(rg_contents) == 0:
-    raise Sorry, "no DIALS integration results found."
+    raise Sorry("no DIALS integration results found.")
   rg_chunks = {}
-  for rg, nst in rg_ch_nums_sizes.iteritems():
+  for rg, nst in rg_ch_nums_sizes.items():
     num, size = nst
     rg_chunks[rg] = []
     contents = rg_contents[rg]
@@ -292,19 +296,19 @@ def allocate_chunks_per_rungroup(results_dir,
     refls = [c for c in contents if c.endswith(refl_ending)]
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     if stripe:
-      for i in xrange(num):
+      for i in range(num):
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
         rg_chunks[rg].append((expts_stripe, refls_stripe))
-      print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
-        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
+      print("striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
+        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg])))
     else:
-      for i in xrange(num):
+      for i in range(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         rg_chunks[rg].append((expts_chunk, refls_chunk))
-      print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
-        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
+      print("chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
+        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg])))
   return rg_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
@@ -317,12 +321,12 @@ def parse_retaining_scope(args, master_scope=master_scope):
     if os.path.isfile(arg):
       try:
         file_phil.append(parse(file_name=arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized file: %s" % arg)
     else:
       try:
         cmdl_phil.append(parse(arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized argument: %s" % arg)
 
   run_scope = master_scope.fetch(sources=file_phil)
@@ -378,7 +382,7 @@ class Script(object):
     # Validation
     if self.params.reintegration.enable:
       if self.params.combine_experiments.output.delete_shoeboxes:
-        raise Sorry, ("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
+        raise Sorry("Keep shoeboxes during combine_experiments and joint refinement when reintegrating."+\
           "Set combine_experiments.output.delete_shoeboxes = False when using reintegration.")
 
     # Setup
@@ -415,9 +419,9 @@ class Script(object):
   def run(self):
     '''Execute the script.'''
     if self.params.striping.run:
-      print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
+      print("processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run]))
     if self.params.striping.rungroup:
-      print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
+      print("processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup]))
     rg_chunks = allocate_chunks_per_rungroup(self.params.striping.results_dir,
                                              self.params.striping.trial,
                                              rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
@@ -433,8 +437,8 @@ class Script(object):
         os.mkdir(d)
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
-    for rg, ch_list in rg_chunks.iteritems():
-      for idx in xrange(len(ch_list)):
+    for rg, ch_list in rg_chunks.items():
+      for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
         # reset for this chunk/stripe
@@ -485,7 +489,7 @@ class Script(object):
           submit_path = os.path.join(self.cwd, self.intermediates, "combine_%s.sh" % self.filename)
           submit_command = get_submit_command_chooser(command, submit_path, self.intermediates, self.params.mp,
             log_name=(submit_path.split(".sh")[0] + ".out"))
-          print "executing command: %s" % submit_command
+          print("executing command: %s" % submit_command)
           try:
             easy_run.fully_buffered(submit_command).raise_if_errors().show_stdout()
           except Exception as e:
@@ -497,7 +501,7 @@ if __name__ == "__main__":
   from dials.util import halraiser
   import sys
   if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
-    print helpstring
+    print(helpstring)
     exit()
   if "-c" in sys.argv[1:]:
     expert_level = int(sys.argv[sys.argv.index("-e") + 1]) if "-e" in sys.argv[1:] else 0

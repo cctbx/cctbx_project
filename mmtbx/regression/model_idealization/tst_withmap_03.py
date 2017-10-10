@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import libtbx.load_env
 import os.path
@@ -245,7 +246,7 @@ def exercise_03(prefix="tst_mi_map_test_03"):
       "n_macro=1",
       "debug=True",
       ">%s.log" % prefix])
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   assert os.path.isfile("%s_start.pdb_all_idealized.pdb" % prefix)
   res_log = open("%s.log" % prefix, "r")
@@ -263,8 +264,8 @@ def exercise_03(prefix="tst_mi_map_test_03"):
 if (__name__ == "__main__"):
   t0 = time.time()
   if (not libtbx.env.has_module(name="probe")):
-    print "Skipping: probe not configured"
+    print("Skipping: probe not configured")
   else:
     exercise_03()
-  print "Time: %.2f" % (time.time() - t0)
-  print "OK"
+  print("Time: %.2f" % (time.time() - t0))
+  print("OK")

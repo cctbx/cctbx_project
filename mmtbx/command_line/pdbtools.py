@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdbtools
 
 import mmtbx.pdbtools
@@ -44,9 +45,9 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def get_inputs(args, log, master_params):
   """
@@ -113,7 +114,7 @@ def run(args, out=sys.stdout, replace_stderr=True):
   # Show parameters
   broadcast(m="Complete set of parameters", log=log)
   master_params().format(inputs.params).show(out = log)
-  print >> log
+  print(file=log)
   # Run calcs
   broadcast(m="Performing manipulations", log=log)
   task_obj = mmtbx.pdbtools.modify(
@@ -124,7 +125,7 @@ def run(args, out=sys.stdout, replace_stderr=True):
   results = task_obj.get_results()
   #
   broadcast(m="Writing output model", log=log)
-  print >> log, "Output model file name: ", ofn
+  print("Output model file name: ", ofn, file=log)
   if(inputs.fake_crystal_symmetry):
     crystal_symmetry = None
   else:

@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import zip
+from builtins import next
+from builtins import range
+from builtins import object
 from fable \
   import unsigned_integer_scan, \
   identifier_scan, \
@@ -81,7 +87,7 @@ class source_line(raise_errors_mixin):
     return O, i
 
   def __init__(O, global_line_index_generator, file_name, line_number, text):
-    O.global_line_index = global_line_index_generator.next()
+    O.global_line_index = next(global_line_index_generator)
     O.file_name = file_name
     O.line_number = line_number
     O.text = text
@@ -458,14 +464,14 @@ def combine_continuation_lines_and_strip_spaces(source_lines):
       assert not sl.is_cont
       code_sls = [sl]
       k_sl = i_sl
-      for j_sl in xrange(i_sl+1, n_sl):
+      for j_sl in range(i_sl+1, n_sl):
         sl = source_lines[j_sl]
         if (sl.is_cont):
           code_sls.append(sl)
           k_sl = j_sl
         elif (sl.stmt_offs is not None):
           break
-      for j_sl in xrange(i_sl+1, k_sl):
+      for j_sl in range(i_sl+1, k_sl):
         sl = source_lines[j_sl]
         if (not sl.is_cont):
           rapp(strip_spaces_separate_strings(source_line_cluster=[sl]))
@@ -533,7 +539,7 @@ def tokenize_expression_impl(
       allow_commas,
       allow_equal_signs,
       tok_opening_parenthesis):
-  from tokenization import tk_seq, tk_parentheses
+  from .tokenization import tk_seq, tk_parentheses
   if (allow_commas):
     tlist = []
     tokens.append(tk_seq(ssl=tokenizer.ssl, i_code=tokenizer.i, value=tlist))
@@ -823,7 +829,7 @@ class executable_info(object):
     O.key = O.__class__.__name__[3:]
     O.ssl = ks["ssl"]
     O.start = ks["start"]
-    for k,v in ks.items():
+    for k,v in list(ks.items()):
       setattr(O, k, v)
 
   def s4it(O, callback, tokens):
@@ -2152,18 +2158,18 @@ class fproc(fproc_p_methods):
   def show_fdecl(O):
     "for debugging; not exercised"
     assert O.fdecl_by_identifier is not None
-    print O.name.value
+    print(O.name.value)
     for key in sorted(O.fdecl_by_identifier.keys()):
       fdecl = O.fdecl_by_identifier[key]
-      print " ", fdecl.id_tok.value
-      print "   ", fdecl.var_type
+      print(" ", fdecl.id_tok.value)
+      print("   ", fdecl.var_type)
       if (fdecl.var_storage is not None):
-        print "   ", fdecl.var_storage
+        print("   ", fdecl.var_storage)
       if (fdecl.data_type is not None):
-        print "   ", fdecl.data_type.value
+        print("   ", fdecl.data_type.value)
       if (fdecl.parameter_assignment_tokens is not None):
-        print "    parameter"
-    print
+        print("    parameter")
+    print()
 
   def build_fdecl_by_identifier(O):
     if (not O.body_lines_processed_already):
@@ -2448,7 +2454,7 @@ class fproc(fproc_p_methods):
       ei.set_is_modified(fdecl_by_identifier=O.fdecl_by_identifier)
     #
     O.uses_common = False
-    for tf in O.fdecl_by_identifier.values():
+    for tf in list(O.fdecl_by_identifier.values()):
       vt = tf.var_type
       vs = tf.var_storage
       if (   vt is vt_external
@@ -2563,7 +2569,7 @@ class fproc(fproc_p_methods):
     result = O._common_name_by_identifier
     if (result is None):
       result = {}
-      for common_name,fdecl_list in O.common.items():
+      for common_name,fdecl_list in list(O.common.items()):
         for fdecl in fdecl_list:
           identifier = fdecl.id_tok.value
           if (identifier in result):
@@ -2583,7 +2589,7 @@ class fproc(fproc_p_methods):
           key_cluster=[tok_seq.value[0].value for tok_seq in equiv_tok.value])
       cu.tidy()
       result = equivalence_info()
-      for i in xrange(len(cu.unions)):
+      for i in range(len(cu.unions)):
         result.equiv_tok_clusters.append([])
       for equiv_tok in O.equivalence:
         result.equiv_tok_clusters[
@@ -2626,7 +2632,7 @@ class fproc(fproc_p_methods):
     cei = O.classified_equivalence_info()
     O.uses_save = (len(O.data) != 0)
     if (not O.uses_save):
-      for fdecl in O.fdecl_by_identifier.values():
+      for fdecl in list(O.fdecl_by_identifier.values()):
         if (fdecl.is_save()):
          equiv_tok_cluster = cei.common.equiv_tok_cluster_by_identifier.get(
            fdecl.id_tok.value)
@@ -2884,9 +2890,9 @@ class split_fprocs(object):
 
   def show_counts_by_type(O, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "Counts by Fortran procedure type:"
+    print(prefix + "Counts by Fortran procedure type:", file=out)
     for attr in O.__slots__[:4]:
-      print >> out, prefix + "  %s: %s" % (attr, len(getattr(O, attr)))
+      print(prefix + "  %s: %s" % (attr, len(getattr(O, attr))), file=out)
 
   def process_body_lines(O):
     for fproc in O.all_in_input_order:
@@ -2947,7 +2953,7 @@ class build_bottom_up_fproc_list_following_calls(object):
     fprocs_by_name = O.all_fprocs.fprocs_by_name()
     #
     for fproc in O.all_fprocs.all_in_input_order:
-      for fdecl in fproc.fdecl_by_identifier.values():
+      for fdecl in list(fproc.fdecl_by_identifier.values()):
         if (    fdecl.is_user_defined_callable()
             and not fdecl.var_storage is vs_argument
             and len(fdecl.passed_as_arg_plain) != 0):
@@ -2956,7 +2962,7 @@ class build_bottom_up_fproc_list_following_calls(object):
                 procs_visited_already,
                 caller_fdecl):
             for called_name,i_arg_set in \
-                  caller_fdecl.passed_as_arg_plain.items():
+                  list(caller_fdecl.passed_as_arg_plain.items()):
               called_fproc = fprocs_by_name.get(called_name)
               if (called_fproc is None):
                 continue
@@ -2986,7 +2992,7 @@ class build_bottom_up_fproc_list_following_calls(object):
     external_fdecls = {}
     def get_dependencies(fproc):
       deps = set()
-      for primaries in fproc.externals_passed_by_arg_identifier.values():
+      for primaries in list(fproc.externals_passed_by_arg_identifier.values()):
         deps.update(primaries)
       for identifier in sorted(fproc.fdecl_by_identifier.keys()):
         if (identifier == fproc.name.value): continue
@@ -3060,8 +3066,8 @@ class build_bottom_up_fproc_list_following_calls(object):
   def each_fproc_update_is_modified(O):
     fprocs_by_name = O.all_fprocs.fprocs_by_name()
     for caller_fproc in O.bottom_up_list:
-      for caller_fdecl in caller_fproc.fdecl_by_identifier.values():
-        for called_identifier, i_args in caller_fdecl.passed_as_arg.items():
+      for caller_fdecl in list(caller_fproc.fdecl_by_identifier.values()):
+        for called_identifier, i_args in list(caller_fdecl.passed_as_arg.items()):
           primaries = caller_fproc.externals_passed_by_arg_identifier.get(
             called_identifier)
           if (primaries is None):

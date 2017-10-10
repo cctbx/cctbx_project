@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 import libtbx.forward_compatibility
 import sys, os
 
@@ -7,7 +10,7 @@ manual_date_stamp = 20090819
 def _STOP(exit_status=0):
   import sys
   f = sys._getframe(1)
-  print "STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno)
+  print("STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno))
   sys.exit(exit_status)
 __builtins__["STOP"] = _STOP
 
@@ -112,7 +115,7 @@ class slots_getstate_setstate(object):
     return dict([(name, getattr(self, name)) for name in mnames])
 
   def __setstate__(self, state):
-    for name,value in state.items(): setattr(self, name, value)
+    for name,value in list(state.items()): setattr(self, name, value)
 
 class mutable(slots_getstate_setstate):
   __slots__ = ["value"]
@@ -217,11 +220,11 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
   for param in exclude:
     del args[param]
   if (hide == False):
-    for key in args.keys():
+    for key in list(args.keys()):
       assert not hasattr(obj.__dict__, key)
     obj.__dict__.update(args)
   else:
-    for key in args.keys():
+    for key in list(args.keys()):
       _key = "_" + key
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
@@ -248,7 +251,7 @@ def adopt_optional_init_args(obj, kwds):
   >>> a = foo(z=10)
   >>> assert a.z == 10
   """
-  for k,v in kwds.iteritems():
+  for k,v in kwds.items():
     if not hasattr(obj.__class__, k):
       raise RuntimeError("%s must be a class attribute of %s to "
                          "be adopted as optional init argument "
@@ -299,7 +302,7 @@ class group_args(object):
     Overwrites matching fields!!!"""
     self.__dict__.update(other.__dict__)
 
-if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
+if ("LIBTBX_PRINT_TRACE" in os.environ):
   import libtbx.start_print_trace
 
 if (sys.platform == "cygwin"):

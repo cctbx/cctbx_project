@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.image_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -12,13 +13,13 @@ def run(args, command_name="distl.image_viewer"):
 """
 
   if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help","-help"]):
-    print "usage:   %s image_filename [parameter=value ...]" % command_name
-    print "example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0 distl.minimum_spot_area=8"%command_name
+    print("usage:   %s image_filename [parameter=value ...]" % command_name)
+    print("example: %s lysozyme_001.img distl.res.outer=2.0 distl.res.inner=6.0 distl.minimum_spot_area=8"%command_name)
     master_params.show(attributes_level=1,expert_level=1)
-    print help_str
+    print(help_str)
     return
 
-  print "%s: characterization of candidate Bragg spots"%command_name
+  print("%s: characterization of candidate Bragg spots"%command_name)
 
   phil_objects = []
   argument_interpreter = master_params.command_line_argument_interpreter(

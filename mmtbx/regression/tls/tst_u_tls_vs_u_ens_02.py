@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.tls import tools
 import time
 
@@ -31,12 +33,12 @@ def exercise_02():
   ys=[0,0,0]
   zs=[0,0,0]
   for pdb_str in [pdb_str_1, pdb_str_2, pdb_str_3, pdb_str_4]:
-    print pdb_str
+    print(pdb_str)
     for t in [[0.05,0.07,0.09], ]:
       tx,ty,tz = t
-      for x in xrange(3):
-        for y in xrange(3):
-          for z in xrange(3):
+      for x in range(3):
+        for y in range(3):
+          for z in range(3):
             if(x!=y and x!=z and y!=z):
               xs_ = xs[:]
               ys_ = ys[:]
@@ -47,10 +49,10 @@ def exercise_02():
               tools.u_tls_vs_u_ens(pdb_str=pdb_str,
                 tx=tx,ty=ty,tz=tz, vx=xs_,vy=ys_,vz=zs_,
                 n_models=1000)
-              print
+              print()
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_02()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

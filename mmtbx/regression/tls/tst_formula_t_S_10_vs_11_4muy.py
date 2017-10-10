@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.tls import tools
 import time
 import iotbx.pdb
@@ -245,7 +247,7 @@ def exercise_00(pdb_str, formula):
   log.close()
   #
   rs = flex.double()
-  for trial in xrange(10):
+  for trial in range(10):
     o = tools.u_tls_vs_u_ens(pdb_str=pdb_str,
       dx       = r.dx,
       dy       = r.dy,
@@ -274,8 +276,8 @@ def exercise_00(pdb_str, formula):
 if (__name__ == "__main__"):
   t0 = time.time()
   for formula in ["10","11"]:
-    print "formula:", formula
+    print("formula:", formula)
     r = exercise_00(pdb_str=pdb_str, formula=formula)
-    print "  ", r
+    print("  ", r)
     if(formula=="10"): r>0.55
     if(formula=="11"): r<0.06

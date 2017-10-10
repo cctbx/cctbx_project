@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
+from builtins import object
 import warnings
 
 from cctbx import uctbx, xray, sgtbx, crystal
@@ -67,8 +71,8 @@ class terminal_linear_ch_site_test_case(object):
     # Identity for independent parameters
     if self.with_special_position_pivot:
       jt0[self.y0, self.y0] = 1.
-    for i in xrange(3): jt0[self.x0 + i, self.x0 + i] = 1.
-    for i in xrange(3): jt0[self.x1 + i, self.x1 + i] = 1.
+    for i in range(3): jt0[self.x0 + i, self.x0 + i] = 1.
+    for i in range(3): jt0[self.x1 + i, self.x1 + i] = 1.
 
     # special position x0
     if self.with_special_position_pivot:
@@ -80,7 +84,7 @@ class terminal_linear_ch_site_test_case(object):
     if self.with_special_position_pivot:
       jt0[self.y0, self.x_h + 2] = 1.
     else:
-      for i in xrange(3): jt0[self.x0 + i, self.x_h + i] = 1.
+      for i in range(3): jt0[self.x0 + i, self.x_h + i] = 1.
 
     jt = self.reparam.jacobian_transpose
     assert sparse.approx_equal(self.eps)(jt, jt0)
@@ -120,8 +124,8 @@ class special_position_adp_test_case(object):
     jac_u_star_trans.reshape(flex.grid(
       self.site_symm.adp_constraints().n_independent_params(), 6))
     (m,n) = jac_u_star_trans.focus()
-    for i in xrange(m):
-      for j in xrange(n):
+    for i in range(m):
+      for j in range(n):
         jt0[i, j + 2] = jac_u_star_trans[i, j]
     jt = self.reparam.jacobian_transpose
     assert sparse.approx_equal(self.eps)(jt, jt0)
@@ -189,7 +193,7 @@ class c_oh_test_case(object):
     assert approx_equal(u_o1.angle(u_oh, deg=True), 109.47, 0.01)
 
     jt0 = sparse.matrix(3, 14)
-    for i in xrange(3):
+    for i in range(3):
       jt0[self.xo + i, self.xo + i] = 1.
       jt0[self.xo + i, self.xh + i] = 1.
     jt = self.reparam.jacobian_transpose
@@ -201,7 +205,7 @@ class c_oh_test_case(object):
       def differentiate(sc):
         eta = 1.e-4
         jac = []
-        for i in xrange(3):
+        for i in range(3):
           x0 = tuple(sc.site)
           x = list(x0)
           x[i] += eta
@@ -221,13 +225,13 @@ class c_oh_test_case(object):
       jac_o = differentiate(self.o)
       jac_1 = differentiate(self.c1)
       jac_2 = differentiate(self.c2)
-      print "staggered: %s" % self.staggered
-      print "J_o:"
-      print jac_o.mathematica_form()
-      print "J_1:"
-      print jac_1.mathematica_form()
-      print "J_2:"
-      print jac_2.mathematica_form()
+      print("staggered: %s" % self.staggered)
+      print("J_o:")
+      print(jac_o.mathematica_form())
+      print("J_1:")
+      print(jac_1.mathematica_form())
+      print("J_2:")
+      print(jac_2.mathematica_form())
 
 def exercise_symmetry_equivalent():
   xs = xray.structure(
@@ -295,7 +299,7 @@ def exercise_u_iso_proportional_to_pivot_u_eq():
   assert approx_equal(u_iso_1.value, 3, eps=1e-15)
   assert approx_equal(u_iso_3.value, 4, eps=1e-15)
   jt0 = sparse.matrix(m, n)
-  for i in xrange(m): jt0[i, i] = 1
+  for i in range(m): jt0[i, i] = 1
   p, q = u_0.argument(0).index, u_0.index
   jt0[p, q] = jt0[p+1, q+1] = jt0[p+2, q+2] = 1
   q = u_iso_1.index

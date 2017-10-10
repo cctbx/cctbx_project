@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
 from scitbx.rigid_body.proto import joint_lib
 from scitbx.rigid_body.proto.test_simulation import simulation
@@ -63,7 +67,7 @@ def simulation_zigzag(NB=5):
   vr = matrix.col((0,1,0))
   v = vu
   pivot = matrix.col((0,0,0))
-  for ib in xrange(1,NB):
+  for ib in range(1,NB):
     body = revolute_body(
       labels=[str(ib)],
       sites=[pivot + v*0.5],
@@ -309,23 +313,23 @@ def exercise_dynamics_quick(
     out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
   if (out is not sys.stdout):
     assert relative_range < 1.e-4
-  print >> out, "Sensitivity test (%d significant digits):" \
-    % sensitivity_n_significant_digits
+  print("Sensitivity test (%d significant digits):" \
+    % sensitivity_n_significant_digits, file=out)
   qdd = sim.sensitivity_test(
     n_significant_digits=sensitivity_n_significant_digits)
   flex.double(qdd).min_max_mean().show(out=out, prefix=" ")
-  print >> out
+  print(file=out)
 
 def exercise_minimization_quick(out, sim, max_iterations=3):
-  print >> out, "Minimization:"
-  print >> out, "  start e_pot:", sim.e_pot
+  print("Minimization:", file=out)
+  print("  start e_pot:", sim.e_pot, file=out)
   e_pot_start = sim.e_pot
   sim.minimization(max_iterations=max_iterations)
-  print >> out, "  final e_pot:", sim.e_pot
+  print("  final e_pot:", sim.e_pot, file=out)
   e_pot_final = sim.e_pot
   if (out is not sys.stdout):
     assert e_pot_final < e_pot_start * 0.9
-  print >> out
+  print(file=out)
 
 def run(args):
   assert len(args) in [0,1]
@@ -341,7 +345,7 @@ def run(args):
     exercise_dynamics_quick(
       out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
     exercise_minimization_quick(out=out, sim=sim)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

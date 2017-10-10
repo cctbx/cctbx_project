@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import cctbx.geometry_restraints
 from cctbx.array_family import flex
 import scitbx.graph.tardy_tree
@@ -36,7 +39,7 @@ def expand_bond_params_table(
   result = cctbx.geometry_restraints.bond_params_table(x_n_seq)
   for i_seq,bond_params_dict in enumerate(bond_params_table):
     x_i_seqs = related_x_i_seqs[i_seq]
-    for j_seq,bond_params in bond_params_dict.items():
+    for j_seq,bond_params in list(bond_params_dict.items()):
       x_j_seqs = related_x_i_seqs[j_seq]
       bond_params_scaled = bond_params.scale_weight(factor=1/
         (len(x_i_seqs)*len(x_j_seqs)))
@@ -57,7 +60,7 @@ def expand_pair_sym_table(
   result = cctbx.crystal.pair_sym_table(x_n_seq)
   for i_seq,pair_sym_dict in enumerate(pair_sym_table):
     x_i_seqs = related_x_i_seqs[i_seq]
-    for j_seq,sym_ops in pair_sym_dict.items():
+    for j_seq,sym_ops in list(pair_sym_dict.items()):
       x_j_seqs = related_x_i_seqs[j_seq]
       for x_i_seq in x_i_seqs:
         for x_j_seq in x_j_seqs:
@@ -177,10 +180,10 @@ class expand(object):
         orca_dof += 5
       else:
         orca_dof += 6
-    print "sites_cart.size():", sites_cart.size()
-    print "O.sites_cart.size():", O.sites_cart.size()
-    print "original Cartesian dof:", sites_cart.size()*3
-    print "orca dof:", orca_dof
+    print("sites_cart.size():", sites_cart.size())
+    print("O.sites_cart.size():", O.sites_cart.size())
+    print("original Cartesian dof:", sites_cart.size()*3)
+    print("orca dof:", orca_dof)
     for i_seq,x_i_seqs in enumerate(O.related_x_i_seqs):
       O.masses /= len(x_i_seqs)
     # XXX find more direct way to get x_edge_list

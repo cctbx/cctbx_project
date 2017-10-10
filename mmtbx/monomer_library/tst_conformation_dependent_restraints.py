@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.monomer_library import conformation_dependent_restraints
 import iotbx.pdb
 from cctbx.array_family import flex
@@ -175,9 +177,9 @@ ATOM     13  O   LEU A   5       1.246  -0.440   4.196  1.00  1.23           O
     cfd_list.append(cfd)
 
     for x in range(1, 4):
-        print
-        print 'Starting cycle', x
-        print
+        print()
+        print('Starting cycle', x)
+        print()
         for cfd in cfd_list:
             cfd.update_restraints(sites_cart, dihedral_proxies, angle_proxies)
 
@@ -186,8 +188,8 @@ def pdb_interpretation_run(args):
   all_processed_pdb_files = run(args=args, return_all_processed_pdb_files=True)
   for processed_pdb_file in all_processed_pdb_files:
     all_proxies = processed_pdb_file.all_chain_proxies
-    print "update_restraints:", \
-      len(all_proxies.conformation_dependent_restraints_list)
+    print("update_restraints:", \
+      len(all_proxies.conformation_dependent_restraints_list))
     for x in all_proxies.conformation_dependent_restraints_list:
       x.update_restraints(sites_cart=all_proxies.sites_cart,
         dihedral_proxies=all_proxies.geometry_proxy_registries.dihedral.proxies,
@@ -195,11 +197,11 @@ def pdb_interpretation_run(args):
 
 def exercise(args):
   if (not conformation_dependent_restraints.is_available):
-    print "Skipping mmtbx.monomer_library.tst_conformation_dependent_restraints"
+    print("Skipping mmtbx.monomer_library.tst_conformation_dependent_restraints")
     return
   read_pdb()
   pdb_interpretation_run(args=args)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(args=sys.argv[1:])

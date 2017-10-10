@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.Format import Format
 
@@ -14,7 +15,7 @@ class FormatDIP2030b(Format):
       rawheader = F.read(1024)
       eof = F.read(1)# end of file
       F.close()
-    except IOError,e:
+    except IOError as e:
       return False
 
     return eof == "" and rawheader[0:3] == "DIP"
@@ -80,4 +81,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatDIP2030b.understand(arg)
+    print(FormatDIP2030b.understand(arg))

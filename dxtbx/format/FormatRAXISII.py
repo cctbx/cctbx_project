@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.Format import Format
 
@@ -8,7 +9,7 @@ class FormatRAXISII(Format):
   def understand(image_file):
     try:
       tag = FormatRAXISII.open_file(image_file, 'rb').read(7)
-    except IOError,e:
+    except IOError as e:
       return False
 
     return tag == "R-AXIS2"
@@ -83,4 +84,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatRAXISII.understand(arg)
+    print(FormatRAXISII.understand(arg))

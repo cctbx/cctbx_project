@@ -6,13 +6,15 @@ sources in the specified repositories directory.
 """
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 import optparse
 import os.path as op
 import time
 import os
 import sys
-import package_defs
-from installer_utils import *
+from . import package_defs
+from .installer_utils import *
 
 def run (args) :
   datestamp = time.strftime("%Y_%m_%d", time.localtime())
@@ -37,7 +39,7 @@ def run (args) :
   else :
     assert (len(args) == 0)
     repositories = op.dirname(op.dirname(op.dirname(op.dirname(__file__))))
-  print "Using '%s' as repository directory" % repositories
+  print("Using '%s' as repository directory" % repositories)
   assert op.isdir(repositories)
   assert (repositories != op.abspath(options.tmp_dir))
   os.chdir(options.tmp_dir)
@@ -119,7 +121,7 @@ def run (args) :
   # create the archive
   call("tar -cvzf %s %s" % (options.tarfile, " ".join(have_modules)),
     log=sys.stdout)
-  print "Wrote %s" % options.tarfile
+  print("Wrote %s" % options.tarfile)
   if (options.destination is not None) :
     assert op.isdir(options.destination)
     if op.exists(op.join(options.destination, options.tarfile)) :
@@ -135,10 +137,10 @@ def run (args) :
 
 def copy_dist (dir_name, file_name) :
   if op.isfile(file_name) :
-    print "Untarring %s..." % file_name
+    print("Untarring %s..." % file_name)
     call("tar zxf %s" % file_name, log=sys.stdout)
   else :
-    print "Copying %s..." % dir_name
+    print("Copying %s..." % dir_name)
     archive_dist(dir_name, create_tarfile=False)
 
 if (__name__ == "__main__") :

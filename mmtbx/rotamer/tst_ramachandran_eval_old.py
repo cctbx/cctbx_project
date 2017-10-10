@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from mmtbx.rotamer.ramachandran_eval import RamachandranEval
 
@@ -11,7 +12,7 @@ from mmtbx.rotamer.ramachandran_eval import RamachandranEval
 
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise(): rotarama_data directory not available"
+    print("Skipping exercise(): rotarama_data directory not available")
   else:
     from mmtbx.command_line import rebuild_rotarama_cache
     rebuild_rotarama_cache.run()
@@ -133,20 +134,20 @@ def exercise(args):
     ]: #}}}
       r_eval = 100*r.evaluate(aminoAcid, phiPsi)
       if (verbose):
-        print aminoAcid, "%4.1f %4.1f %4.1f" % (
-          r_eval, molpValue, r_eval-molpValue)
+        print(aminoAcid, "%4.1f %4.1f %4.1f" % (
+          r_eval, molpValue, r_eval-molpValue))
       assert approx_equal(r_eval, molpValue, eps=0.9)
     #
     # check if tables are cleared from memory if all RamachandranEval instances
     # are gone
-    for aa,ndt_weakref in RamachandranEval.aaTables.items():
+    for aa,ndt_weakref in list(RamachandranEval.aaTables.items()):
       assert ndt_weakref() is not None
     del r
     del tbl
-    for aa,ndt_weakref in RamachandranEval.aaTables.items():
+    for aa,ndt_weakref in list(RamachandranEval.aaTables.items()):
       assert ndt_weakref() is None
     #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
     exercise(sys.argv[1:])

@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 import gltbx.gl_managed
 from gltbx.gl import *
 from libtbx import group_args

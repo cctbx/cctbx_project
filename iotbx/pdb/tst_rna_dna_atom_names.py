@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 import iotbx.pdb
 
 def exercise_rna_dna_atom_names():
@@ -84,7 +87,7 @@ def exercise_rna_dna_atom_names():
     assert info.reference_name is None
     assert info.compatible_residue_names() == "None"
   for a,r,f in iotbx.pdb.rna_dna_atom_name_aliases:
-    for i in xrange(len(a)):
+    for i in range(len(a)):
       info = iotbx.pdb.rna_dna_atom_names_info(atom_name=a[:i]+"X"+a[i+1:])
       assert info.reference_name is None
       assert info.compatible_residue_names() == "None"
@@ -118,7 +121,7 @@ mon_lib_rna_dna_names = {
 
 def exercise_mon_lib_names():
   n_problems = 0
-  for mon_code,mon_names in mon_lib_rna_dna_names.items():
+  for mon_code,mon_names in list(mon_lib_rna_dna_names.items()):
     mon_names = mon_names + ["O3T", "HO5*", "HO3*"]
     q = ""
     if (mon_code[0] in ["A", "C", "G"]): q = "?"
@@ -216,7 +219,7 @@ def apply_cns_3ter(atom_names, have_hydrogens): # 3-terminus (without phosphate)
   return result
 
 def exercise_cns_names(cns_names, have_hydrogens):
-  for residue_name,atom_names_base in cns_names.items():
+  for residue_name,atom_names_base in list(cns_names.items()):
     for deox in [False, True]:
       q = ""
       if (residue_name == "URI"):
@@ -272,7 +275,7 @@ def exercise():
     cns_names=cns_names_dna_rna_allatom_top, have_hydrogens=True)
   exercise_cns_names(
     cns_names=cns_names_dna_rna_top, have_hydrogens=False)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

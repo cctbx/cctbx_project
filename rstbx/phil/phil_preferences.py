@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from libtbx.phil.command_line import argument_interpreter as model_argument_interpreter
 from libtbx.utils import Sorry
 from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs # implicit import
@@ -321,7 +322,7 @@ libtbx_defs = indexing_defs + libtbx_misc_defs
 iotbx_defs = iotbx_defs_viewer + iotbx_defs_target
 indexing_api_defs = indexing_defs + iotbx_defs_target
 
-class EffectiveParamGenerator:
+class EffectiveParamGenerator(object):
   def __init__(self,libtbx_defs,iotbx_defs):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
@@ -363,7 +364,7 @@ class EffectiveParamGenerator:
         effective_params = effective_params.fetch(sources=[command_line_params,])
         consume.append(arg)
 
-      except Sorry,e:
+      except Sorry as e:
         pass
 
     for item in consume:

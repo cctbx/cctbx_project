@@ -2,6 +2,10 @@
 # TODO make this much more comprehensive
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from mmtbx.regression import model_1yjp
 import mmtbx.command_line
 from iotbx.scalepack import no_merge_original_index
@@ -13,7 +17,7 @@ from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 import random
 import os.path
 
@@ -172,7 +176,7 @@ def exercise_combine_symmetry () :
       process_pdb_file=False,
       create_fmodel=True,
       out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible space groups" in str(s))
   else :
     raise Exception_expected
@@ -192,7 +196,7 @@ def exercise_combine_symmetry () :
       process_pdb_file=False,
       create_fmodel=True,
       out=null_out())
-  except Sorry, s :
+  except Sorry as s :
     assert ("Unit cell mismatch" in str(s))
   else :
     raise Exception_expected
@@ -310,7 +314,7 @@ def exercise_load_unmerged () :
       create_fmodel=False,
       process_pdb_file=False,
       create_log_buffer=True)
-  except Sorry, s :
+  except Sorry as s :
     assert (str(s) == "Incompatible space groups in merged and unmerged data:P 1 21 1 versus P 1"), s
   else :
     raise Exception_expected
@@ -353,7 +357,7 @@ def exercise_load_unmerged () :
       create_fmodel=False,
       process_pdb_file=False,
       create_log_buffer=True)
-  except Sorry, s :
+  except Sorry as s :
     assert ("Incompatible symmetry definitions" in str(s)), s
   else :
     raise Exception_expected
@@ -364,4 +368,4 @@ if (__name__ == "__main__") :
   exercise_load_unmerged()
   exercise_combine_symmetry()
   exercise_example()
-  print "OK"
+  print("OK")

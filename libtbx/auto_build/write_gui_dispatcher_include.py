@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import division
+from __future__ import print_function
 from optparse import OptionParser
 import os.path
 import sys
@@ -72,7 +73,7 @@ def run (args, prologue=None, epilogue=None, out=sys.stdout) :
     else:
       f.write(open(options.prologue).read() + "\n")
   if sys.platform != "win32":
-    print >> f, """\
+    print("""\
 # include at start
 if [ "$LIBTBX_DISPATCHER_NAME" != "libtbx.scons" ] && \
    [ -z "$PHENIX_TRUST_OTHER_ENV" ]; then
@@ -128,10 +129,10 @@ if [ "$PHENIX_GUI_ENVIRONMENT" = "1" ]; then
     export PATH
   fi
 fi
-""" % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version)
+""" % (base_path, ":".join(ld_library_paths), ":".join(ld_library_paths), options.gtk_version), file=f)
   # QBio DivCon paths
   if sys.platform != "win32":
-    print >> f, """
+    print("""
  if [ ! -z "$QB_PYTHONPATH" ]; then
    export PYTHONPATH=$PYTHONPATH:$QB_PYTHONPATH
  fi
@@ -141,15 +142,15 @@ fi
  if [ ! -z "$QB_DYLD_LIBRARY_PATH" ]; then
    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$QB_DYLD_LIBRARY_PATH
  fi
-"""
+""", file=f)
   if (epilogue is not None) :
     f.write(epilogue + "\n")
   if (options.epilogue is not None) :
     f.write(open(options.epilogue).read() + "\n")
   f.close()
   if (not options.quiet) :
-    print >> out, "Wrote %s" % dispatcher
-    print >> out, "You should now run libtbx.refresh to regenerate dispatchers."
+    print("Wrote %s" % dispatcher, file=out)
+    print("You should now run libtbx.refresh to regenerate dispatchers.", file=out)
 
 # obsolete???
 pymol_paths = """

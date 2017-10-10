@@ -14,6 +14,7 @@ XXX mod_xes must be run as a single process--guard against it!
 """
 from __future__ import division
 
+from builtins import str
 __version__ = "$Revision$"
 
 import math

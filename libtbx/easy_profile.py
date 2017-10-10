@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 class easy_profile(object):
   """ cProfile.Profile easy-to-use wrapper """
 
@@ -10,19 +12,19 @@ class easy_profile(object):
     import cProfile
     self.prof = cProfile.Profile()
     self.func = func
-    self.file_name, self.func_name, self.line = file_name, func_name, line
+    self.file_name, self.__name__, self.line = file_name, func_name, line
     self.runs = runs
 
   def time(self, *args, **kwds):
     """ Time spent per-call in self.func(*args, **kwds) """
-    for i in xrange(self.runs):
+    for i in range(self.runs):
       self.prof.runcall(self.func, *args, **kwds)
     self.prof.create_stats()
-    for (file_name, line, func), data in self.prof.stats.iteritems():
+    for (file_name, line, func), data in self.prof.stats.items():
       if self.file_name is not None:
         if not file_name.endswith(self.file_name): continue
-      if self.func_name is not None:
-        if func != self.func_name: continue
+      if self.__name__ is not None:
+        if func != self.__name__: continue
       if self.line is not None:
         if line != self.line: continue
       break

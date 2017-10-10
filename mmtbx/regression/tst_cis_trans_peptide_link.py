@@ -1,5 +1,9 @@
 from __future__ import division
-import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+import io
 from libtbx import easy_run
 pdbs = ["""
 ATOM   3239  N   ASN A 411       8.430  37.928 107.306  1.00 14.13           N
@@ -90,19 +94,19 @@ def cis_trans_specification():
     f=file("%s.pdb" % preamble, "wb")
     f.write(pdb)
     f.close()
-    for param, results in params.items():
+    for param, results in list(params.items()):
       f=file("%s.params" % preamble, "wb")
       f.write(param)
       f.close()
       cmd = "phenix.geometry_minimization %(preamble)s.pdb %(preamble)s.params" % locals()
-      print cmd
+      print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO.StringIO()
+      out = io.StringIO()
       ero.show_stdout(out=out)
 
       lines = file("%(preamble)s_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
-      print geo_spec % results[0]
+      print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
         if lines.find(geo_spec % abs(results[0]))==1:
           assert 0, ".geo specification not found"
@@ -111,16 +115,16 @@ def trans_only_specification():
   # must be run after cis_trans_specification
   for i in range(len(pdbs)):
     preamble = "bad_cis_peptide_%02d" % i
-    for arg, results in cmd_args.items():
+    for arg, results in list(cmd_args.items()):
       cmd = "phenix.geometry_minimization %(preamble)s_minimized.pdb %(arg)s" % locals()
-      print cmd
+      print(cmd)
       ero = easy_run.fully_buffered(command=cmd)
-      out = StringIO.StringIO()
+      out = io.StringIO()
       ero.show_stdout(out=out)
 
       lines = file("%(preamble)s_minimized_minimized.geo" % locals(), "rb").read()
       geo_spec=geo_specs[i]
-      print geo_spec % results[0]
+      print(geo_spec % results[0])
       if lines.find(geo_spec % results[0])==1:
         if lines.find(geo_spec % abs(results[0]))==1:
           assert 0, ".geo specification not found"

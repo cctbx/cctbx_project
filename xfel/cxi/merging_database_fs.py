@@ -3,7 +3,11 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 
 
@@ -49,7 +53,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [repr(rows_frame)] + [MISSING_STRING] * 24
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_frame, ' '.join(items)
+        print(' '.join(items), file=stream_frame)
         rows_frame += 1
       lastrowid_value = rows_frame
 
@@ -58,7 +62,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [repr(rows_miller)] + [MISSING_STRING] * 3
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_miller, ' '.join(items)
+        print(' '.join(items), file=stream_miller)
         rows_miller += 1
       lastrowid_value = rows_miller
 
@@ -67,7 +71,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
         items = [MISSING_STRING] * 10
         for j in range(len(order)):
           items[order[j]] = repr(row[j])
-        print >> stream_observation, ' '.join(items)
+        print(' '.join(items), file=stream_observation)
         rows_observation += 1
       lastrowid_value = rows_observation
 
@@ -94,7 +98,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
   semaphore.release()
 
 
-class manager:
+class manager(object):
   # The manager
 
   def __init__(self, params):
@@ -116,11 +120,11 @@ class manager:
 
   def initialize_db(self, indices):
     from os import remove
-    print self.params.postrefinement.algorithm
+    print(self.params.postrefinement.algorithm)
     for suffix in '_frame.db', '_miller.db', '_observation.db':
       try:
         remove(self.params.output.prefix + suffix)
-      except OSError, e:
+      except OSError as e:
         pass # deliberate - file does not exist
 
     self._db_commands_queue.put(('miller', (1, 2, 3), indices, None))
@@ -264,9 +268,9 @@ class manager:
                   'wave_LE_ang': 22,
                   'domain_size_ang':23,
                   'unique_file_name': 24}
-    for key in kwargs.keys():
+    for key in list(kwargs.keys()):
       order.append(order_dict[key])
-    parameters = [kwargs.values()]
+    parameters = [list(kwargs.values())]
 
     # Pick up the index of the row just added.  The file name is
     # assumed to to serve as a unique key.
@@ -295,9 +299,9 @@ class manager:
                   'original_h': 7,
                   'original_k': 8,
                   'original_l': 9}
-    for key in kwargs.keys():
+    for key in list(kwargs.keys()):
       order.append(order_dict[key])
-    parameters = zip(*kwargs.values())
+    parameters = list(zip(*list(kwargs.values())))
     self._db_commands_queue.put(('observation', order, parameters, None))
 
 

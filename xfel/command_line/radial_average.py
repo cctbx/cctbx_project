@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.radial_average
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import str
+from builtins import range
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 import sys
@@ -74,12 +77,12 @@ def run (args, source_data = None) :
     if (not "=" in arg) :
       try :
         user_phil.append(libtbx.phil.parse("""file_path=%s""" % arg))
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Unrecognized argument '%s'" % arg)
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = master_phil.fetch(sources=user_phil).extract()
   if params.file_path is None or not os.path.isfile(params.file_path) and source_data is None:
@@ -160,7 +163,7 @@ def run (args, source_data = None) :
   if params.verbose:
     logger.write("Generating average...tile:")
     logger.flush()
-  for tile in xrange(len(the_tiles)//4):
+  for tile in range(len(the_tiles)//4):
     if params.verbose:
       logger.write(" %d"%tile)
       logger.flush()
@@ -179,13 +182,13 @@ def run (args, source_data = None) :
 
   # calculte standard devations
   std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
-              if counts[i] > 0 else 0 for i in xrange(len(sums))]
+              if counts[i] > 0 else 0 for i in range(len(sums))]
 
   xvals = flex.double(len(results))
   max_twotheta = float('-inf')
   max_result   = float('-inf')
 
-  for i in xrange(len(results)):
+  for i in range(len(results)):
     twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
 
@@ -211,7 +214,7 @@ def run (args, source_data = None) :
   return xvals, results
 
 def get_tile_id(tiles, x, y):
-    for tile in xrange(len(tiles)//4):
+    for tile in range(len(tiles)//4):
       x1,y1,x2,y2 = get_tile_coords(tiles, tile)
       if x <= x2 and x >= x1 and y <= y2 and y >= y1:
         return tile
@@ -284,17 +287,17 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
     h = y2-y1
     cx,cy = get_tile_center(the_tiles, tile)
 
-    print "tile %d, x1 %d, y1 %d, x2 %d, y2 %d, w %d, h %d, cx %s, cy %s"%(tile, x1, y1, x2, y2, w, h, cx, cy)
+    print("tile %d, x1 %d, y1 %d, x2 %d, y2 %d, w %d, h %d, cx %s, cy %s"%(tile, x1, y1, x2, y2, w, h, cx, cy))
 
     x = np.array([0]*(w*h))
     y = np.array([0]*(w*h))
     z = np.array([0]*(w*h))
 
-    for j in xrange(h):
-      for i in xrange(w):
+    for j in range(h):
+      for i in range(w):
         t_id = get_tile_id(the_tiles,x1+i,y1+j)
         if tile != t_id:
-          print "bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j)
+          print("bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j))
           return
         xt, yt = apply_sub_pixel_metrology(tile,x1+i,y1+j,cx,cy,phil,handedness)
         x[(j*w)+i] = xt

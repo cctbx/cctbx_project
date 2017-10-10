@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # see also xmlrpc_server_example.py
 
@@ -54,10 +55,15 @@ from __future__ import division
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx import adopt_init_args
 from libtbx.utils import to_str
-import xmlrpclib
-import httplib
+import xmlrpc.client
+import http.client
 import socket
 import subprocess
 import threading
@@ -68,9 +74,9 @@ import os
 import sys
 
 # http://stackoverflow.com/questions/372365/set-timeout-for-xmlrpclib-serverproxy
-class TimeoutTransport(xmlrpclib.Transport):
+class TimeoutTransport(xmlrpc.client.Transport):
   def __init__(self, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, *args, **kwargs):
-    xmlrpclib.Transport.__init__(self, *args, **kwargs)
+    xmlrpc.client.Transport.__init__(self, *args, **kwargs)
     self.timeout = timeout
 
   def make_connection (self, host) :
@@ -79,7 +85,7 @@ class TimeoutTransport(xmlrpclib.Transport):
     # create a HTTP connection object from a host descriptor
     chost, self._extra_headers, x509 = self.get_host_info(host)
     #store the host argument along with the connection object
-    self._connection = host, httplib.HTTPConnection(chost,
+    self._connection = host, http.client.HTTPConnection(chost,
       timeout=self.timeout)
     return self._connection[1]
 
@@ -94,17 +100,17 @@ class ServerProxy (object) :
     # establish a "logical" server connection
 
     # get the url
-    import urllib
-    type, uri = urllib.splittype(uri)
+    import urllib.request, urllib.parse, urllib.error
+    type, uri = urllib.parse.splittype(uri)
     if type not in ("http", "https"):
-      raise IOError, "unsupported XML-RPC protocol"
-    self.__host, self.__handler = urllib.splithost(uri)
+      raise IOError("unsupported XML-RPC protocol")
+    self.__host, self.__handler = urllib.parse.splithost(uri)
     if not self.__handler:
       self.__handler = "/RPC2"
 
     if transport is None:
       if type == "https":
-        transport = xmlrpclib.SafeTransport(use_datetime=use_datetime)
+        transport = xmlrpc.client.SafeTransport(use_datetime=use_datetime)
       else:
         transport = TimeoutTransport(timeout=timeout,
           use_datetime=use_datetime)
@@ -128,12 +134,12 @@ class ServerProxy (object) :
       (methodname, params) = self._pending.pop(0)
 
       # remove any unicode types in params
-      if (isinstance(params, unicode)):
+      if (isinstance(params, str)):
         params = to_str(params)
       elif (isinstance(params, list) or isinstance(params, tuple)):
         new_params = list(params)
-        for i in xrange(len(params)):
-          if (isinstance(params[i], unicode)):
+        for i in range(len(params)):
+          if (isinstance(params[i], str)):
             new_params[i] = to_str(params[i])
           else:
             new_params[i] = params[i]
@@ -143,7 +149,7 @@ class ServerProxy (object) :
 
       # call a method on the remote server
       try :
-        request = xmlrpclib.dumps(params, methodname,
+        request = xmlrpc.client.dumps(params, methodname,
                                   encoding=self.__encoding,
                                   allow_none=self.__allow_none)
 
@@ -158,7 +164,7 @@ class ServerProxy (object) :
           result = response[0]
       except KeyboardInterrupt :
         raise
-      except Exception, e :
+      except Exception as e :
         msg = to_str(e)
         if (hasattr(e, "errno")) :
           if (e.errno in [32,54,61,104,111,10054,10061]) :
@@ -167,7 +173,7 @@ class ServerProxy (object) :
             self._errors.append("%s -- %s" % (t, msg))
             break
         if ("timed out" in msg) :
-          print "XMLRPC timeout, ignoring request"
+          print("XMLRPC timeout, ignoring request")
           self._timeouts += 1
         elif msg.startswith("<ProtocolError ") :
           self._pending = []
@@ -179,7 +185,7 @@ class ServerProxy (object) :
           msg = "XMLRPC error: %s\nMethod: %s\nParams: %s\n" % \
             (msg, to_str(methodname), ", ".join([ to_str(p) for p in params ]))
           if (not self.raise_errors) :
-            print >> sys.stderr, msg
+            print(msg, file=sys.stderr)
           else :
             raise RuntimeError(msg)
     t2 = time.time()
@@ -201,7 +207,7 @@ class ServerProxy (object) :
 
   def __getattr__(self, name):
     # magic method dispatcher
-    return xmlrpclib._Method(self.__request, name)
+    return xmlrpc.client._Method(self.__request, name)
 
   def number_of_timeout_errors (self) :
     return self._timeouts
@@ -274,7 +280,7 @@ class external_program_server (object) :
       if self.cache_requests :
         proxy_class = ServerProxy
       else :
-        proxy_class = xmlrpclib.ServerProxy
+        proxy_class = xmlrpc.client.ServerProxy
       self._server = proxy_class(uri="http://127.0.0.1:%d/RPC2" %
                                              self._port)
 

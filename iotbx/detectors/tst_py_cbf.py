@@ -1,10 +1,15 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
 from cbflib_adaptbx import uncompress,assert_equal
 from iotbx.detectors.detectorbase import DetectorImageBase
 
-class cif_binary_section:
+class cif_binary_section(object):
   endline = "\r\n"
   pattern = "--CIF-BINARY-FORMAT-SECTION--"
   init_boundary = endline + pattern + endline
@@ -54,7 +59,7 @@ class cif_binary_section:
     return self.data
 
   def show(self):
-    print self.header_dic
+    print(self.header_dic)
 
 def get_binary_sections(raw):
   return_sections = []
@@ -87,7 +92,7 @@ def get_header_sections(raw,binary_sections):
     provisional_slices.append(last)
   return cif_binary_section.endline.join([raw[s[0]:s[1]] for s in provisional_slices])
 
-class Goniometer:
+class Goniometer(object):
   def __init__(self,model):
     #problem to report back to Richard Gildea; not possible to print model["_diffrn_measurement"]
     axis_id = model["_diffrn_measurement_axis.axis_id"]
@@ -160,7 +165,7 @@ class pyCBFImage(CBFImage):
     #  for the correct array_id
     array_mask = model["_array_structure_list.array_id"]==array_id
     precedence = [int(a) for a in model["_array_structure_list.precedence"]]
-    for i in xrange(len(array_mask)):
+    for i in range(len(array_mask)):
       if not array_mask[i]: precedence[i]=0
     idx = precedence.index(axis_number)
     axis_index = int( model["_array_structure_list.index"][idx] )
@@ -169,7 +174,7 @@ class pyCBFImage(CBFImage):
     #Now find the array element size for the given axis_index
     array_mask = model["_array_element_size.array_id"]==array_id
     index_array = [int(a) for a in model["_array_element_size.index"]]
-    for i in xrange(len(array_mask)):
+    for i in range(len(array_mask)):
       if not array_mask[i]: index_array[i]=0
     size_index = index_array.index(axis_index)
 
@@ -202,4 +207,4 @@ if (__name__ == "__main__"):
   for file_name in args:
     #print file_name
     run(file_name)
-  print "OK"
+  print("OK")

@@ -1,11 +1,15 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
 Last Changed: 09/20/2017
 Description : IOTA image-tracking GUI module
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -300,7 +304,7 @@ class TrackChart(wx.Panel):
     nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
     self.xdata = nref_x
     self.ydata = nref_y
-    nref_xy = zip(nref_x, nref_y)
+    nref_xy = list(zip(nref_x, nref_y))
     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
     all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
 
@@ -402,7 +406,7 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     return self.ctr
 
   def OnColClick(self, e):
-    print "column clicked"
+    print("column clicked")
     e.Skip()
 
   def instantiate_sorting(self, data):
@@ -697,7 +701,7 @@ class TrackerWindow(wx.Frame):
 
   def onAllView(self, e):
     listctrl = self.tracker_panel.image_list.image_list.ctr
-    idxs = range(listctrl.GetItemCount())
+    idxs = list(range(listctrl.GetItemCount()))
     self.view_images(idxs=idxs)
 
   def view_images(self, idxs):
@@ -740,7 +744,7 @@ class TrackerWindow(wx.Frame):
       try:
         os.remove(self.folder_file)
         os.remove(self.info_file)
-      except Exception, e:
+      except Exception as e:
         pass
     else:
       open_dlg.Destroy()
@@ -871,10 +875,10 @@ class TrackerWindow(wx.Frame):
       self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
       if self.obs_counts == [] and self.frame_count == []:
         self.obs_counts = [-1] * len(self.data_list)
-        self.frame_count = range(len(self.data_list))
+        self.frame_count = list(range(len(self.data_list)))
       else:
         self.obs_counts = self.obs_counts + ([-1] * len(self.data_list))
-        self.frame_count = self.frame_count + range(len(self.data_list))
+        self.frame_count = self.frame_count + list(range(len(self.data_list)))
       self.run_spotfinding()
 
   def onTimer(self, e):

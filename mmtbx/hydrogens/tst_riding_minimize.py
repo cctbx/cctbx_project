@@ -1,4 +1,6 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
+from builtins import object
 import time
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -100,15 +102,15 @@ class lbfgs(object):
 
   def callback_after_step(self, minimizer):
     if(self.verbose > 0):
-      print "refinement.minimization step: f,iter,nfun:",
-      print self.f,minimizer.iter(),minimizer.nfun()
+      print("refinement.minimization step: f,iter,nfun:", end=' ')
+      print(self.f,minimizer.iter(),minimizer.nfun())
 
   def compute_functional_and_gradients(self):
     self.apply_shifts()
     self.compute_target(compute_gradients = True)
     if(self.verbose > 1):
-      print "xray.minimization line search: f,rms(g):",
-      print self.f, math.sqrt(flex.mean_sq(self.g))
+      print("xray.minimization line search: f,rms(g):", end=' ')
+      print(self.f, math.sqrt(flex.mean_sq(self.g)))
     return self.f, self.g
 
 # distorted Tyrosine residue
@@ -190,10 +192,10 @@ def run():
   target_final = geometry_restraints.energies_sites(
     sites_cart = xray_structure.sites_cart(),
     compute_gradients = True).target
-  print 'final target', target_final
+  print('final target', target_final)
   assert (target_final < 1.5), 'Target of final riding model is too large'
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "OK. Time:", round(time.time()-t0, 2), "seconds"
+  print("OK. Time:", round(time.time()-t0, 2), "seconds")

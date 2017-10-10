@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from mmtbx.conformation_dependent_library.cdl_setup import \
   before_pro_groups, not_before_pro_groups
 

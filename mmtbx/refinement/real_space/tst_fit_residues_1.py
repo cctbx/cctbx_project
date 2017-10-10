@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -799,13 +801,13 @@ def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
   sites_cart_poor = xrs_poor.sites_cart()
   pdb_hierarchy_poor.write_pdb_file(file_name = "poor_%s.pdb"%prefix)
   dist = xrs_answer.mean_distance(other = xrs_poor)
-  print "start:", dist
+  print("start:", dist)
   ####
   grm = mmtbx.restraints.manager(
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
   for i in [1,2]:
-    print "-"*10
+    print("-"*10)
     result = mmtbx.refinement.real_space.fit_residues.run(
       pdb_hierarchy     = pdb_hierarchy_poor,
       crystal_symmetry  = xrs_poor.crystal_symmetry(),
@@ -831,7 +833,7 @@ if(__name__ == "__main__"):
   sin_cos_table = scitbx.math.sin_cos_table(n=10000)
   inputs = [(pdb_str_answer_1,pdb_str_poor_1), ]
   for i_test, inp in enumerate(inputs):
-    print "Test ", i_test, "*"*60
+    print("Test ", i_test, "*"*60)
     exercise(
       pdb_str_answer  = inp[0],
       pdb_str_poor    = inp[1],
@@ -839,4 +841,4 @@ if(__name__ == "__main__"):
       sin_cos_table   = sin_cos_table,
       d_min           = 1.0,
       prefix          = str(i_test))
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

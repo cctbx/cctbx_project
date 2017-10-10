@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 def run(args):
   assert len(args) == 0
   import libtbx.load_env
-  from cStringIO import StringIO
+  from io import StringIO
   import os
   op = os.path
   t_dir = libtbx.env.under_dist(
@@ -17,7 +20,7 @@ blockdata_unnamed.f
     sys.stdout = StringIO()
     show_calls.run(args=[op.join(t_dir, file_name)])
     sys.stdout = sys.__stdout__
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

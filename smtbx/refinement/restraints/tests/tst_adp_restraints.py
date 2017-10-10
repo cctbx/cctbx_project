@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from libtbx.test_utils import approx_equal
 from smtbx.refinement.restraints import adp_restraints
 from smtbx import development
@@ -139,7 +141,7 @@ def run():
   exercise_isotropic_adp()
   exercise_rigid_bond()
   exercise_adp_similarity()
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   run()

@@ -13,6 +13,9 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_statistics
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from libtbx.phil import parse
 import libtbx.load_env
 from libtbx.utils import Usage
@@ -70,17 +73,17 @@ class Script(object):
       "sensors, I.E. 2x1s",
       "ASICs, I.E. individual tiles"]
 
-    for i in xrange(3):
+    for i in range(3):
       c = command%(level_json%(params.tag, 1, i),
                    level_pickle%(params.tag, 1, i),
                    level_json%(params.tag, 2, i),
                    level_pickle%(params.tag, 2, i),
                    i)
 
-      print "*"*80
-      print "Showing statistics for detector at level %d (%s)"%(i, help_strs[i])
-      print "*"*80
-      print c
+      print("*"*80)
+      print("Showing statistics for detector at level %d (%s)"%(i, help_strs[i]))
+      print("*"*80)
+      print(c)
       result = easy_run.fully_buffered(c).raise_if_errors()
       result.show_stdout()
 

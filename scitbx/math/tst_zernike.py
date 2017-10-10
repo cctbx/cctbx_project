@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
 from scitbx import math
 from scitbx.array_family import flex
 from scitbx.array_family import shared
@@ -46,7 +50,7 @@ def tst_zernike_radial():
     for l in range(n):
       if (n-l)%2==0:
         rzfa = math.zernike_radial(n,l, lfg)
-        r = flex.double( flex.double(range(100000))/99999.0)
+        r = flex.double( flex.double(list(range(100000)))/99999.0)
         a = rzfa.f( r )
         tmp = a*a*r*r
         tmp = flex.sum( tmp )/100000.0
@@ -134,7 +138,7 @@ def tst_nl():
   assert result == expected_result
   coefs = this_nl_array.coefs()
   assert coefs.size() == nl.size()
-  new_coefs = flex.double( range(nl.size() ) )
+  new_coefs = flex.double( list(range(nl.size())) )
   assert this_nl_array.load_coefs( nl, new_coefs )
   new_nl = shared.tiny_int_2( [ (10,10) ] )
   new_coef = flex.double( [10.0] )
@@ -168,8 +172,8 @@ def tst_nss_spherical_harmonics():
 
   lm=[ (0,0), (3,3), (4,1) ]
 
-  theta = flex.double(range(100))*3.14/100.0
-  phi = flex.double(range(100))*6.28/100.0
+  theta = flex.double(list(range(100)))*3.14/100.0
+  phi = flex.double(list(range(100)))*6.28/100.0
   for tt in theta:
     for pp in phi:
       r  = nsssphe.spherical_harmonic(20,10,tt,pp)
@@ -190,4 +194,4 @@ if __name__ == "__main__":
   tst_zernike_radial()
   tst_zernike_grid()
 
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 def calc_k(fo, fc):
   "scale factor for (fo-k*fc)**2, only similar to factor for abs(fo-k*fc)"
   from scitbx.array_family import flex

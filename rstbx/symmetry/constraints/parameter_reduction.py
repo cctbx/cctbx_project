@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 from cctbx import sgtbx
 from cctbx.uctbx import unit_cell
 from rstbx.symmetry.constraints import AGconvert
@@ -84,7 +89,7 @@ class symmetrize_reduce_enlarge(object):
 
 if __name__=="__main__":
   try:
-    import cPickle as pickle
+    import pickle as pickle
   except ImportError:
     import pickle
   import os
@@ -106,7 +111,7 @@ if __name__=="__main__":
 
   for case in cases:
       orient,cs,symmetry = case
-      print orient,cs,symmetry.space_group().type().lookup_symbol()
+      print(orient,cs,symmetry.space_group().type().lookup_symbol())
       S = symmetrize_reduce_enlarge(space_group=symmetry.space_group())
       S.set_orientation(orientation=orient,length_unit=1.E-9)
       S.symmetrize()
@@ -122,4 +127,4 @@ if __name__=="__main__":
   reference_types = ["aP","mP","mC","oP","oC","oI","oF","tP","tI","hP","hR","cP","cI","cF"]
   encountered_types.sort(); reference_types.sort()
   assert encountered_types == reference_types
-  print "OK"
+  print("OK")

@@ -1,9 +1,15 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import boost.python
 from boost.python import streambuf, ostream
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
-import StringIO
-import cStringIO
+import io
+import io
 from libtbx.test_utils import Exception_expected
 from libtbx.option_parser import option_parser
 import libtbx.object_oriented_patterns as oop
@@ -32,7 +38,7 @@ class io_test_case(object):
 
   def run(self):
     m = streambuf.default_buffer_size
-    for n in xrange(50, 0, -1):
+    for n in range(50, 0, -1):
       streambuf.default_buffer_size = n
       self.exercise_read_failure()
       self.exercise_write_failure()
@@ -124,7 +130,7 @@ class io_test_case(object):
 
 class stringio_test_case(io_test_case):
 
-  stringio_type = StringIO.StringIO
+  stringio_type = io.StringIO
 
   def exercise_write_failure(self):
     pass
@@ -143,16 +149,16 @@ class stringio_test_case(io_test_case):
 
 class cstringio_test_case(stringio_test_case):
 
-  stringio_type = cStringIO.StringIO
+  stringio_type = io.StringIO
 
   def exercise_write_failure(self):
     self.create_file_object(mode='r')
     try:
       ext.test_write(ostream(self.file_object), "write")
-    except ValueError, err:
+    except ValueError as err:
       # That Python file object has no 'write' attribute
       assert str(err).find("write") > -1
-    except RuntimeError, err:
+    except RuntimeError as err:
       # Redhat 8.0: basic_ios::clear(iostate) caused exception
       assert str(err).find("clear") > -1
     else:
@@ -168,7 +174,7 @@ class mere_file_test_case(io_test_case):
     self.create_file_object(mode='r')
     try:
       ext.test_write(streambuf(self.file_object), "write")
-    except IOError, err:
+    except IOError as err:
       pass
     else:
       raise Exception_expected
@@ -192,7 +198,7 @@ class mere_file_test_case(io_test_case):
 def time_it(path, buffer_size):
   if (buffer_size is None):
     buffer_size = streambuf.default_buffer_size
-  print "Buffer is %i bytes" % buffer_size
+  print("Buffer is %i bytes" % buffer_size)
   path = os.path.expanduser(path)
   input = open(path, 'r')
   inp_buf = streambuf(python_file_obj=input, buffer_size=buffer_size)
@@ -213,16 +219,16 @@ def run(args):
               .option(None, '--buffer_size', type='int',
                       metavar="INT")
               ).process(args).options
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     stringio_test_case().run()
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     cstringio_test_case().run()
-  for i_trial in xrange(3):
+  for i_trial in range(3):
     mere_file_test_case().run()
   if options.time_on_file:
     time_it(options.time_on_file, options.buffer_size)
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   import sys

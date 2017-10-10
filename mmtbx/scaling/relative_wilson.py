@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import zip
+from builtins import range
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling
 from iotbx import data_plots

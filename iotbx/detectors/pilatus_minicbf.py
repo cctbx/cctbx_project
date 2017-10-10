@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
 import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException
@@ -58,12 +61,12 @@ class PilatusImage(DetectorImageBase):
 
     if PilatusImage.is_bz2(filename):
       if bz2 is None:
-        raise RuntimeError, 'bz2 file provided without bz2 module'
+        raise RuntimeError('bz2 file provided without bz2 module')
       fh_func = lambda: bz2.BZ2File(filename, mode)
 
     elif PilatusImage.is_gzip(filename):
       if gzip is None:
-        raise RuntimeError, 'gz file provided without gzip module'
+        raise RuntimeError('gz file provided without gzip module')
       fh_func = lambda: gzip.GzipFile(filename, mode)
 
     else:
@@ -92,7 +95,7 @@ class PilatusImage(DetectorImageBase):
              ).uncompress_data(self.size1,self.size2)
       self.bin_safe_set_data( data )
 
-    except Exception, e:
+    except Exception as e:
       raise ImageException(
           "unable to read miniCBF data; contact authors; error=\"%s\"" % \
           str(e).strip())
@@ -113,7 +116,7 @@ class PilatusImage(DetectorImageBase):
       headerclose= rawdata.index("_array_data.data")
       self.header = rawdata[headeropen+1:headerclose]
       self.headerlines = [x.strip() for x in self.header.split("#")]
-      for idx in xrange(len(self.headerlines)):
+      for idx in range(len(self.headerlines)):
         for character in '\r\n,();':
           self.headerlines[idx] = self.headerlines[idx].replace(character,'')
 
@@ -172,7 +175,7 @@ class PilatusImage(DetectorImageBase):
         header_lines.append(record)
       self.header = "\n".join(header_lines)
       self.headerlines = [x.strip() for x in self.header.split("\n")]
-      for idx in xrange(len(self.headerlines)):
+      for idx in range(len(self.headerlines)):
         for character in '\r\n,();':
           self.headerlines[idx] = self.headerlines[idx].replace(character,'')
 
@@ -197,6 +200,6 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = PilatusImage(i)
   a.read()
-  print a
-  print a.parameters
-  print a.rawdata, len(a.rawdata), a.size1*a.size2
+  print(a)
+  print(a.parameters)
+  print(a.rawdata, len(a.rawdata), a.size1*a.size2)

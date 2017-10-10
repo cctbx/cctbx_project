@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from libtbx.program_utils import statistics_info
 from libtbx import adopt_init_args
 import os

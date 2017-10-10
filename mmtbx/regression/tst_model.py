@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 import os
 import mmtbx.model
@@ -7,7 +13,7 @@ from libtbx import easy_pickle
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from cStringIO import StringIO
+from io import StringIO
 from mmtbx import utils
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal
@@ -887,7 +893,7 @@ def exercise_00(mon_lib_srv, ener_lib):
       force_symmetry = True)
     xray_structure = processed_pdb_file.xray_structure()
     assert xray_structure is not None
-    s = flex.bool(xray_structure.scatterers().size(),flex.size_t(range(40,504)))
+    s = flex.bool(xray_structure.scatterers().size(),flex.size_t(list(range(40,504))))
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = 5.0)
@@ -975,11 +981,11 @@ def exercise(mon_lib_srv, ener_lib):
 ################
 
   mol_other.geometry_statistics()
-  print
+  print()
   mol.geometry_statistics()
 
 #####
-  class iso: pass
+  class iso(object): pass
   iso.sphere_radius = 5.0
   iso.distance_power = 1.57
   iso.average_power = 0.58
@@ -991,7 +997,7 @@ def exercise(mon_lib_srv, ener_lib):
 #####
 
   mol.show_adp_statistics()
-  print
+  print()
   mol.show_adp_statistics()
 
   rm = mol.restraints_manager
@@ -1265,7 +1271,7 @@ END
 
 def exercise_h_counts():
   of = open("exercise_h_counts.pdb", "w")
-  print >> of, pdb_file_exercise_h_counts
+  print(pdb_file_exercise_h_counts, file=of)
   of.close()
   pdb_inp = iotbx.pdb.input(file_name = "exercise_h_counts.pdb")
   model = mmtbx.model.manager(
@@ -1290,7 +1296,7 @@ HETATM 2732  O  BHOH A 380      19.179  25.528  38.229  0.50 20.88           O
 ANISOU 2732  O  BHOH A 380     3169   2234   2532   1183    675   -168       O
 """
   of = open("exercise_5.pdb", "w")
-  print >> of, pdb_str
+  print(pdb_str, file=of)
   of.close()
   pdb_inp = iotbx.pdb.input(file_name = "exercise_5.pdb")
   model = mmtbx.model.manager(
@@ -1333,7 +1339,7 @@ def run():
   exercise_h_counts()
   exercise_5()
   exercise_6(mon_lib_srv, ener_lib)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

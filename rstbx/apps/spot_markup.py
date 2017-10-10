@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 def slip_callback(self,frame):
   #best_params=self.use_case_3_simulated_annealing()
   #best_params = self.use_case_3_grid_refine(frame)
@@ -12,7 +14,7 @@ def slip_callback(self,frame):
   # BLUE: predictions
   blue_data = []
   for ix,pred in enumerate(self.predicted):
-      if self.BSmasks[ix].keys()==[]:continue
+      if list(self.BSmasks[ix].keys())==[]:continue
       x,y = frame.pyslip.tiles.picture_fast_slow_to_map_relative(
         (pred[1]/self.pixel_size) +0.5,
         (pred[0]/self.pixel_size) +0.5)
@@ -25,20 +27,20 @@ def slip_callback(self,frame):
 
   bmask_data = []; foreground_data = []
   count_integrated = 0
-  for imsk in xrange(len(self.BSmasks)):
+  for imsk in range(len(self.BSmasks)):
     smask_keys = self.get_ISmask(imsk)
     bmask = self.BSmasks[imsk]
-    if len(bmask.keys())==0: continue
+    if len(list(bmask.keys()))==0: continue
     count_integrated+=1
 
     # foreground: integration mask
-    for ks in xrange(0,len(smask_keys),2):
+    for ks in range(0,len(smask_keys),2):
       foreground_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
          smask_keys[ks+1] + 0.5,smask_keys[ks] + 0.5))
 
     # background mask
-    for key in bmask.keys():
+    for key in list(bmask.keys()):
       bmask_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
           key[1] + 0.5 ,key[0] + 0.5))
@@ -48,7 +50,7 @@ def slip_callback(self,frame):
         renderer = frame.pyslip.LightweightDrawPointLayer,
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
   if normal:
-    print "BLUE: plotting %d integrated spots"%count_integrated
+    print("BLUE: plotting %d integrated spots"%count_integrated)
     self.bmask_layer = frame.pyslip.AddPointLayer(
         bmask_data, color="blue", name="<bmask_layer>",
         radius=1.5,
@@ -56,7 +58,7 @@ def slip_callback(self,frame):
         show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
   goodspots_data = []; refinedspots_data = []
-  print "RED: plotting %d spotfinder goodspots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"])
+  print("RED: plotting %d spotfinder goodspots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]))
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["goodspots"]:
     # goodspots: spotfinder spot pixels
     for pxl in spot.bodypixels:
@@ -69,7 +71,7 @@ def slip_callback(self,frame):
     #    frame.pyslip.tiles.picture_fast_slow_to_map_relative(
     #      spot.ctr_mass_y() + 0.5, spot.ctr_mass_x() + 0.5))
 
-  print "YELLOW: plotting %d refinement spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"])
+  print("YELLOW: plotting %d refinement spots"%len(self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]))
   for spot in self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"]:
     # RED: spotfinder spot pixels
     for pxl in spot.bodypixels:

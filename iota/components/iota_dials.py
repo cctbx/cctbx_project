@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import str
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
@@ -8,6 +10,7 @@ Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
 '''
+from __future__ import print_function
 
 import os
 import sys
@@ -49,7 +52,7 @@ class IOTADialsProcessor(Processor):
       Lfat = refined_settings_factory_from_refined_triclinic(
         sgparams, experiments, reflections,
         lepage_max_delta=5, nproc=1, refiner_verbosity=10)
-    except Exception, e:
+    except Exception as e:
       # If refinement fails, reset to P1 (experiments remain modified by Lfat
       # if there's a refinement failure, which causes issues down the line)
       for expt in experiments:
@@ -75,7 +78,7 @@ class IOTADialsProcessor(Processor):
       'tP': 75, 'tI': 79, 'hP': 143, 'hR': 146, 'cP': 195, 'cF': 196, 'cI': 197
     }
     filtered_lattices = {}
-    for key, value in lattice_to_sg_number.iteritems():
+    for key, value in lattice_to_sg_number.items():
       if key in possible_bravais_settings:
         filtered_lattices[key] = value
 
@@ -94,13 +97,13 @@ class IOTADialsProcessor(Processor):
 
     # Update space group / unit cell
     experiment = experiments[0]
-    print "Old crystal:"
-    print experiment.crystal
-    print
+    print("Old crystal:")
+    print(experiment.crystal)
+    print()
     experiment.crystal.update(solution.refined_crystal)
-    print "New crystal:"
-    print experiment.crystal
-    print
+    print("New crystal:")
+    print(experiment.crystal)
+    print()
 
     # Change basis
     cb_op = solution['cb_op_inp_best'].as_abc()
@@ -108,8 +111,8 @@ class IOTADialsProcessor(Processor):
     miller_indices = reflections['miller_index']
     non_integral_indices = change_of_basis_op.apply_results_in_non_integral_indices(miller_indices)
     if non_integral_indices.size() > 0:
-      print "Removing {}/{} reflections (change of basis results in non-integral indices)" \
-            "".format(non_integral_indices.size(), miller_indices.size())
+      print("Removing {}/{} reflections (change of basis results in non-integral indices)" \
+            "".format(non_integral_indices.size(), miller_indices.size()))
     sel = flex.bool(miller_indices.size(), True)
     sel.set_selected(non_integral_indices, False)
     miller_indices_reindexed = change_of_basis_op.apply(
@@ -294,32 +297,32 @@ class Integrator(object):
     with misc.Capturing() as output:
       e = None
       try:
-        print "{:-^100}\n".format(" SPOTFINDING: ")
+        print("{:-^100}\n".format(" SPOTFINDING: "))
         self.find_spots()
-        print "{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed)))
-      except Exception, e:
+        print("{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed))))
+      except Exception as e:
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img[0],
+          print(e.classname, "for %s:"%self.img[0], end=' ')
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Spotfinding error for %s:"%self.img[0],
+          print("Spotfinding error for %s:"%self.img[0], end=' ')
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print error_message
+        print(error_message)
         self.fail = 'failed spotfinding'
 
       if self.fail == None:
         try:
-          print "{:-^100}\n".format(" INDEXING: ")
+          print("{:-^100}\n".format(" INDEXING: "))
           self.index()
-          print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: ".format(len(self.indexed)))
-        except Exception, e:
+          print("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: ".format(len(self.indexed))))
+        except Exception as e:
           if hasattr(e, "classname"):
-            print e.classname, "for %s:"%self.img[0],
+            print(e.classname, "for %s:"%self.img[0], end=' ')
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Indexing error for %s:"%self.img[0],
+            print("Indexing error for %s:"%self.img[0], end=' ')
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print(error_message)
           self.fail = 'failed indexing'
 
       if (                                        self.fail is None and
@@ -327,32 +330,32 @@ class Integrator(object):
                              self.params.dials.determine_sg_and_reindex
           ):
         try:
-          print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
+          print("{:-^100}\n".format(" DETERMINING SPACE GROUP : "))
           self.refine_bravais_settings_and_reindex()
           lat = self.experiments[0].crystal.get_space_group().info()
           sg = str(lat).replace(' ', '')
           if sg != 'P1':
-            print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+            print("{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg)))
           else:
-            print "{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY ")
-        except Exception, e:
-          print "Bravais / Reindexing Error: ", e
+            print("{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY "))
+        except Exception as e:
+          print("Bravais / Reindexing Error: ", e)
 
       if self.fail == None:
         try:
           self.refine()
-          print "{:-^100}\n".format(" INTEGRATING: ")
+          print("{:-^100}\n".format(" INTEGRATING: "))
           self.integrate()
-          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
-                                      "".format(len(self.integrated)))
-        except Exception, e:
+          print("{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
+                                      "".format(len(self.integrated))))
+        except Exception as e:
           if hasattr(e, "classname"):
-            print e.classname, "for %s:"%self.img[0],
+            print(e.classname, "for %s:"%self.img[0], end=' ')
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Integration error for %s:"%self.img[0],
+            print("Integration error for %s:"%self.img[0], end=' ')
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print(error_message)
           self.fail = 'failed integration'
 
     if self.fail == None and self.params.dials.filter.flag_on:
@@ -495,7 +498,7 @@ if __name__ == "__main__":
   test = Integrator(sys.argv[1])
   test.find_spots()
 
-  print len(test.observed)
+  print(len(test.observed))
 
   test.index()
-  print len(test.indexed)
+  print(len(test.indexed))

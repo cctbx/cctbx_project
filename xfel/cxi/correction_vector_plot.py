@@ -1,11 +1,16 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import os,math
 from scitbx import matrix
 from cctbx.array_family import flex
 from xfel import correction_vector_store,get_correction_vector_xy
 from xfel import get_radial_tangential_vectors
 
-class manage_sql:
+class manage_sql(object):
   def __init__(self,params):
     self.params = params
     self.have_db = False
@@ -29,8 +34,8 @@ class manage_sql:
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-    import cStringIO
-    self.query = cStringIO.StringIO()
+    import io
+    self.query = io.StringIO()
     self.query.write("INSERT INTO %s_spotfinder VALUES "%self.params.mysql.runtag)
     self.firstcomma = ""
 
@@ -72,14 +77,14 @@ class lines(correction_vector_store):
     if self.params.run_numbers is None:
       path = self.params.outdir_template
       stream = open(path,"r")
-      print path
-      for line in stream.xreadlines():
+      print(path)
+      for line in stream:
         if line.find("XFEL processing:") == 0:
            tokens = line.strip().split("/")
            picklefile = line.strip().split()[2]
            frame_id = frame_dict.get(picklefile, None)
            if frame_id is not None:
-             print "FETCHED",frame_id
+             print("FETCHED",frame_id)
         if line.find("CV OBSCENTER")==0 and line.find("Traceback")==-1:
           potential_tokens = line.strip().split()
           if len(potential_tokens)==22 and \
@@ -89,7 +94,7 @@ class lines(correction_vector_store):
         if len(self.tiles)==0 and line.find("EFFEC")==0:
           self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
           assert len(self.tiles)==256
-          print list(self.tiles)
+          print(list(self.tiles))
           self.initialize_per_tile_sums()
       return
     for run in self.params.run_numbers:
@@ -98,8 +103,8 @@ class lines(correction_vector_store):
         for item in items:
           path = os.path.join(templ,item)
           stream = open(path,"r")
-          print path
-          for line in stream.xreadlines():
+          print(path)
+          for line in stream:
             if line.find("CV OBSCENTER")==0:
               potential_tokens = line.strip().split()
               if len(potential_tokens)==22 and \
@@ -109,7 +114,7 @@ class lines(correction_vector_store):
             if len(self.tiles)==0 and line.find("EFFEC")==0:
               self.tiles = flex.int([int(a) for a in line.strip().split()[2:]])
               assert len(self.tiles)==256
-              print list(self.tiles)
+              print(list(self.tiles))
               self.initialize_per_tile_sums()
 
   def vectors(self):
@@ -127,10 +132,10 @@ class lines(correction_vector_store):
         self.database.insert(run,itile,tokens)
       yield "OK"
      except ValueError:
-       print "Valueerror"
+       print("Valueerror")
 
     self.database.send_insert_command()
-    for x in xrange(64):
+    for x in range(64):
       if self.tilecounts[x]==0: continue
       self.radii[x]/=self.tilecounts[x]
       sum_cv = matrix.col(self.mean_cv[x])
@@ -160,7 +165,7 @@ def run_correction_vector_plot(working_phil):
   master_coords = L.master_coords
   master_cv = L.master_cv
   master_tiles = L.master_tiles
-  for idx in xrange(0,len(master_coords),10):
+  for idx in range(0,len(master_coords),10):
     if matrix.col(master_cv[idx]).length() < L.tile_rmsd[ master_tiles[idx] ]:
       pass
       #close_x.append(master_coords[idx][0])
@@ -182,57 +187,57 @@ def run_correction_vector_plot(working_phil):
   tile_rmsds = flex.double()
   radial_sigmas = flex.double(64)
   tangen_sigmas = flex.double(64)
-  for idx in xrange(64):
+  for idx in range(64):
     x = sort_radii[idx]
-    print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+    print("Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
       x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
       L.tile_rmsd[x]
-        ),
+        ), end=' ')
     if L.tilecounts[x] < 3:
-      print
+      print()
       radial = (0,0)
       tangential = (0,0)
       rmean,tmean,rsigma,tsigma=(0,0,1,1)
     else:
       wtaveg = L.weighted_average_angle_deg_from_tile(x)
-      print "Tile rotation %6.2f deg"%wtaveg,
+      print("Tile rotation %6.2f deg"%wtaveg, end=' ')
       radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
-      print "%6.2f %6.2f"%(rsigma,tsigma)
+      print("%6.2f %6.2f"%(rsigma,tsigma))
     radial_sigmas[x]=rsigma
     tangen_sigmas[x]=tsigma
   rstats = flex.mean_and_variance(radial_sigmas,L.tilecounts.as_double())
   tstats = flex.mean_and_variance(tangen_sigmas,L.tilecounts.as_double())
 
-  print "\nOverall                 %8d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
-      L.overall_N, L.overall_cv[0], L.overall_cv[1], L.overall_rmsd)
-  print "Average tile rmsd %5.2f"%flex.mean(flex.double(L.tile_rmsd))
-  print "Average tile displacement %5.2f"%(flex.mean(
-    flex.double([matrix.col(cv).length() for cv in L.mean_cv])))
-  print "Weighted average radial sigma %6.2f"%rstats.mean()
-  print "Weighted average tangential sigma %6.2f"%tstats.mean()
+  print("\nOverall                 %8d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+      L.overall_N, L.overall_cv[0], L.overall_cv[1], L.overall_rmsd))
+  print("Average tile rmsd %5.2f"%flex.mean(flex.double(L.tile_rmsd)))
+  print("Average tile displacement %5.2f"%(flex.mean(
+    flex.double([matrix.col(cv).length() for cv in L.mean_cv]))))
+  print("Weighted average radial sigma %6.2f"%rstats.mean())
+  print("Weighted average tangential sigma %6.2f"%tstats.mean())
 
   if working_phil.show_plots is True:
-    plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in xrange(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in xrange(64)],"go")
-    for x in xrange(64):
+    plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in range(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in range(64)],"go")
+    for x in range(64):
       plt.text(10+(L.tiles[4*x+0]+L.tiles[4*x+2])/2.,10+(L.tiles[4*x+1]+L.tiles[4*x+3])/2.,"%d"%x)
     plt.show()
 
-    for idx in xrange(64):
+    for idx in range(64):
       x = sort_radii[idx]
-      print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
+      print("Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
         x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
         L.tile_rmsd[x]
-        ),
+        ), end=' ')
       if L.tilecounts[x] < 3:
-        print
+        print()
         radial = (0,0)
         tangential = (0,0)
         rmean,tmean,rsigma,tsigma=(0,0,1,1)
       else:
         wtaveg = L.weighted_average_angle_deg_from_tile(x)
-        print "Tile rotation %6.2f deg"%wtaveg,
+        print("Tile rotation %6.2f deg"%wtaveg, end=' ')
         radial,tangential,rmean,tmean,rsigma,tsigma = get_radial_tangential_vectors(L,x)
-        print "%6.2f %6.2f"%(rsigma,tsigma)
+        print("%6.2f %6.2f"%(rsigma,tsigma))
 
       if working_phil.colormap:
         from pylab import imshow, axes, colorbar, show

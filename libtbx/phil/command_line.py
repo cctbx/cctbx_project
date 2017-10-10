@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import libtbx.phil
 from libtbx.utils import Sorry, format_exception
 import os
@@ -96,7 +99,7 @@ class argument_interpreter(object):
         max_score = max(scores)
         if (scores.count(max_score) > 1):
           raise Sorry("\n".join(error))
-        print "Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)]
+        print("Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)])
 
       complete_definitions += object.customized_copy(
         name=self.target_paths[scores.index(max_score)]).as_str()

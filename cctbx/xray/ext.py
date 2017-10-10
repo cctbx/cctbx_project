@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
 import boost.python
 ext = boost.python.import_ext("cctbx_xray_ext")
 from cctbx_xray_ext import *
@@ -11,7 +14,7 @@ class _(boost.python.injector, scattering_type_registry):
   def type_count_dict(self):
     result = {}
     unique_counts = list(self.unique_counts)
-    for t,i in self.type_index_pairs_as_dict().items():
+    for t,i in list(self.type_index_pairs_as_dict().items()):
       result[t] = unique_counts[i]
     return result
 
@@ -19,7 +22,7 @@ class _(boost.python.injector, scattering_type_registry):
     ugs = self.unique_gaussians_as_list()
     pairs = []
     sf0s = flex.double()
-    for t,i in self.type_index_pairs_as_dict().items():
+    for t,i in list(self.type_index_pairs_as_dict().items()):
       pairs.append((t,i))
       gaussian = ugs[i]
       if (gaussian is None):
@@ -41,9 +44,9 @@ class _(boost.python.injector, scattering_type_registry):
         gn = str(gaussian.n_terms())
         if (gaussian.c() != 0):
           gn += "+c"
-      print >> out, "%s%s:%s*%d" % (prefix, t, gn, unique_counts[i]),
+      print("%s%s:%s*%d" % (prefix, t, gn, unique_counts[i]), end=' ', file=out)
       prefix = ""
-    print >> out
+    print(file=out)
 
   def warning_if_any(self,std_lbl):
     if( self.last_table()=="neutron" ):
@@ -66,9 +69,9 @@ class _(boost.python.injector, scattering_type_registry):
     unique_counts = list(self.unique_counts)
     tips = self.sorted_type_index_pairs()
     if (header is not None):
-      print >> out, prefix + header, len(tips)
+      print(prefix + header, len(tips), file=out)
     if (len(tips) == 0):
-      print >> out, prefix + "  Empty scattering-type registry."
+      print(prefix + "  Empty scattering-type registry.", file=out)
     else:
       nt = max(3,max([len(t) for t,i in tips]))
       nt_fmt = "%%-%ds " % nt
@@ -77,7 +80,7 @@ class _(boost.python.injector, scattering_type_registry):
       line = prefix + "  Type%s %sNumber" % (" "*(nt-3), " "*(nc-5))
       if (show_sf0): line += "    sf(0)"
       if (show_gaussians): line += "   Gaussians"
-      print >> out, line
+      print(line, file=out)
       for t,i in tips:
         line = prefix + "   " \
              + nt_fmt%t \
@@ -94,10 +97,10 @@ class _(boost.python.injector, scattering_type_registry):
           else:
             line += " %7s" % str(gaussian.n_terms())
             if (gaussian.c() != 0): line += "+c"
-        print >> out, "%s%s" % (line.rstrip(), self.warning_if_any(t))
+        print("%s%s" % (line.rstrip(), self.warning_if_any(t)), file=out)
       if (show_sf0):
-        print >> out, prefix \
-          + "  sf(0) = scattering factor at diffraction angle 0."
+        print(prefix \
+          + "  sf(0) = scattering factor at diffraction angle 0.", file=out)
 
   def sum_of_scattering_factors_at_diffraction_angle_0(self):
     result = 0
@@ -115,7 +118,7 @@ class _(boost.python.injector, scattering_type_registry):
   def as_type_gaussian_dict(self):
     result = {}
     ugs = self.unique_gaussians_as_list()
-    for t,i in self.type_index_pairs_as_dict().items():
+    for t,i in list(self.type_index_pairs_as_dict().items()):
       result[t] = ugs[i]
     return result
 

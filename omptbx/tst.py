@@ -1,10 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import omptbx
 
 def exercise():
-  if (omptbx.have_omp_h): print "omptbx.have_omp_h"
-  if (omptbx.have_stubs_h): print "omptbx.have_stubs_h"
-  print "omtbx.omp_version:", omptbx.omp_version
+  if (omptbx.have_omp_h): print("omptbx.have_omp_h")
+  if (omptbx.have_stubs_h): print("omptbx.have_stubs_h")
+  print("omtbx.omp_version:", omptbx.omp_version)
   if (omptbx.have_omp_h):
     assert not omptbx.have_stubs_h
   else:
@@ -30,7 +32,7 @@ def exercise():
   #
   env.dynamic = False
   env.nested = False
-  for i in xrange(1,5):
+  for i in range(1,5):
     env.num_threads = i
     if (omptbx.have_omp_h):
       assert env.num_threads == i
@@ -43,7 +45,7 @@ def exercise():
   else:
     assert omptbx.ext.tst_environment() == (4,1, 4,1)
   #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

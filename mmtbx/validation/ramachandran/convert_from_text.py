@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import libtbx.load_env
 import os
 
@@ -89,14 +91,14 @@ def read_file_and_fill_arr(file_descr, arr):
 
 def run():
   dict_with_all_values = {}
-  for key in file_names.keys():
+  for key in list(file_names.keys()):
     dict_with_all_values[key] = [[0 for x in range(180)] for y in range(180)]
 
   # reading. Not much error-handling, because if we have a error, we should fix
   # it here and not produce corrupted .h file
 
-  for key, fname in file_names.iteritems():
-    print "converting file", os.path.join(path_to_files, fname)
+  for key, fname in file_names.items():
+    print("converting file", os.path.join(path_to_files, fname))
     inp_f = open(os.path.join(path_to_files, fname), 'r')
     read_file_and_fill_arr(inp_f, dict_with_all_values[key])
     inp_f.close()

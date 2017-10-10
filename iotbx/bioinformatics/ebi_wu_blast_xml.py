@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from iotbx.bioinformatics.xmlbuild import Single, Multiple, DataAttribute
 from iotbx.bioinformatics.xmlbuild import Text, TextWithDefault, Attribute, AttributeWithDefault, Value
 from iotbx.bioinformatics.xmlbuild import Parser

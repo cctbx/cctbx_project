@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx import miller
@@ -34,13 +37,13 @@ def as_normalised_array(miller_array,
   normalised_f_obs = flex.double()
   space_group = miller_array.space_group()
   tau = space_group.n_ltr()
-  for i in xrange(0,miller_array.size()):
+  for i in range(0,miller_array.size()):
     s_sq = stol_sq.data()[i]
     f_sq = math.pow(miller_array.data()[i], 2)
     epsilon = epsilons.data()[i]
 
     sum_fj_sq = 0
-    for chemical_type, n_atoms in asu_contents.items():
+    for chemical_type, n_atoms in list(asu_contents.items()):
       n_atoms *= space_group.order_z()
       f0 = gaussians[chemical_type].at_stol_sq(s_sq)
       sum_fj_sq += f0 * f0 * n_atoms
@@ -106,7 +109,7 @@ def exercise_normalised_amplitudes():
 
 def run():
   exercise_normalised_amplitudes()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

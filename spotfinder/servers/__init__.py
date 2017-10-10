@@ -1,7 +1,10 @@
 from __future__ import division
-import cStringIO as StringIO,sys
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
+import io as StringIO,sys
 
-class LoggingFramework:
+class LoggingFramework(object):
   def __init__(self):
     self.k = StringIO.StringIO()
     self.current_out = sys.stdout

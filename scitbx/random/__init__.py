@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import str
+from builtins import object
 import os
 import time
 import boost.optional # import dependency
@@ -57,7 +59,7 @@ class variate_factory(object):
     for variate in self.variate_functions():
       try:
         return variate(engine, distribution)
-      except Exception, e:
+      except Exception as e:
         if str(e.__class__).find('Boost.Python.ArgumentError') >= 0:
           exceptions.append(e)
           continue

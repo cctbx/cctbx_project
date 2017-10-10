@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
@@ -20,7 +26,7 @@ import numpy as np
 from collections import Counter
 import math
 
-import cPickle as pickle
+import pickle as pickle
 from libtbx import easy_pickle as ep
 from cctbx.uctbx import unit_cell
 
@@ -64,11 +70,11 @@ class Plotter(object):
     ic = Counter(ints)
 
     hm_data = np.zeros((ch, ca))
-    for i in ic.items():
+    for i in list(ic.items()):
       hm_data[i[0][0]-min(hlist), i[0][1]-min(alist)] = i[1]
 
-    rows = range(min(hlist), max(hlist) + 1)
-    cols = range(min(alist), max(alist) + 1)
+    rows = list(range(min(hlist), max(hlist) + 1))
+    cols = list(range(min(alist), max(alist) + 1))
     row_labels = [str(i) for i in rows]
     col_labels = [str(j) for j in cols]
 
@@ -116,7 +122,7 @@ class Plotter(object):
         info.append([i, beam['xbeam'], beam['ybeam'],
                     beam['wavelength'], beam['distance'],
                     beam['observations'][0].unit_cell().parameters()])
-      except IOError, e:
+      except IOError as e:
         pass
 
     # Calculate beam center coordinates and distances
@@ -469,7 +475,7 @@ class Analyzer(object):
           cluster_limit = len(self.pickles) / 10
 
         for cluster in clusters:
-          sorted_pg_comp = sorted(cluster.pg_composition.items(),
+          sorted_pg_comp = sorted(list(cluster.pg_composition.items()),
                                     key=lambda x: -1 * x[1])
           pg_nums = [pg[1] for pg in sorted_pg_comp]
           cons_pg = sorted_pg_comp[np.argmax(pg_nums)]

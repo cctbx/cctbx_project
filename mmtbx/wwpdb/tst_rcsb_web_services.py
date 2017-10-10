@@ -2,6 +2,7 @@
 # XXX depends on internet connectivity, so not run as part of standard tests
 
 from __future__ import division
+from __future__ import print_function
 
 def exercise () :
   from mmtbx.wwpdb import rcsb_web_services
@@ -15,7 +16,7 @@ def exercise () :
   ligand_info = rcsb_web_services.get_ligand_info_for_structures(['1mru'])
   assert (len(ligand_info) == 4)
   assert (ligand_info[1][-1] == u'[Mg+2]')
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

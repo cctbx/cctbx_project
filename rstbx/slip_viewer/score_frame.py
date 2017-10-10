@@ -3,7 +3,9 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
 import wx
 
 from collections import OrderedDict
@@ -87,7 +89,7 @@ class ScoreSettingsPanel(wx.Panel):
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdatePrevious, id=self._id_previous)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateText, id=self._id_text)
 
-    for i in xrange(self._root_frame.image_chooser.GetCount()):
+    for i in range(self._root_frame.image_chooser.GetCount()):
       _scores[self._root_frame.get_key(self._root_frame.image_chooser.GetClientData(i))] = None
 
   def OnNext(self, event):
@@ -116,13 +118,13 @@ class ScoreSettingsPanel(wx.Panel):
       path = dialog.GetPath()
       if (path != '') :
         stream = open(path, "w")
-        for (key, score) in _scores.iteritems():
+        for (key, score) in _scores.items():
           if score is None:
-            print >> stream, "%s None" % (key)
+            print("%s None" % (key), file=stream)
           else:
-            print >> stream, "%s %d" % (key, score)
+            print("%s %d" % (key, score), file=stream)
         stream.close()
-        print "Dumped scores to", path
+        print("Dumped scores to", path)
 
 
   def OnUpdateNext(self, event):

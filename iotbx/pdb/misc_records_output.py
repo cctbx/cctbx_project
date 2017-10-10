@@ -4,9 +4,11 @@
 # taking GRM and hierarchy/labels to produce links in various formats.
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 def link_record_output(all_chain_proxies):
   outl = ""
-  for key, item in all_chain_proxies.pdb_link_records.items():
+  for key, item in list(all_chain_proxies.pdb_link_records.items()):
     if key=="SSBOND":
       for ssi, (atom1, atom2, sym_op) in enumerate(item):
         #
@@ -19,7 +21,7 @@ def link_record_output(all_chain_proxies):
               )
         #
         if str(sym_op)!="x,y,z":
-          print 'none identity %s sym. op. not written' % key
+          print('none identity %s sym. op. not written' % key)
           continue
         outl += "SSBOND %3s %s   %s" % (
           ssi+1,
@@ -42,7 +44,7 @@ def link_record_output(all_chain_proxies):
             atom.parent().parent().icode,
             )
         if str(sym_op)!="x,y,z":
-          print 'none identity %s sym. op. not written' % key
+          print('none identity %s sym. op. not written' % key)
           continue
         outl += "LINK%s%s%s%s" % (
           ' '*8,

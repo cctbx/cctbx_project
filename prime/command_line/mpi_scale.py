@@ -1,8 +1,12 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.mpi_scale
+from builtins import str
+from builtins import zip
+from builtins import range
 """
 Find initial scaling factors for all integration results
 """
+from __future__ import print_function
 from mpi4py import MPI
 import sys, os
 from prime.postrefine.mod_input import process_input, read_pickles
@@ -20,7 +24,7 @@ assert size>1
 def master(frame_objects, iparams, activity):
   if activity == "scale":
     n_batch = 1
-    indices = range(0, len(frame_objects), n_batch)
+    indices = list(range(0, len(frame_objects), n_batch))
     for i in indices:
       i_end = i+n_batch if i+n_batch < len(frame_objects) else len(frame_objects)
       rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -28,7 +32,7 @@ def master(frame_objects, iparams, activity):
   if activity == "pre_merge":
     n_batch = int(len(frame_objects)/(size*3))
     if n_batch < 10: n_batch = 10
-    indices = range(0, len(frame_objects), n_batch)
+    indices = list(range(0, len(frame_objects), n_batch))
     for i in indices:
       i_end = i+n_batch if i+n_batch < len(frame_objects) else len(frame_objects)
       rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -39,8 +43,8 @@ def master(frame_objects, iparams, activity):
     #assign at least 100k reflections at a time
     n_batch = int(1e5/(len(cpo[1])/cpo[0]))
     if n_batch < 1: n_batch = 1
-    print "Merging with %d batch size"%(n_batch)
-    indices = range(0, cpo[0], n_batch)
+    print("Merging with %d batch size"%(n_batch))
+    indices = list(range(0, cpo[0], n_batch))
     for i in indices:
       rankreq = comm.recv(source=MPI.ANY_SOURCE)
       i_end = i+n_batch if i+n_batch < cpo[0] else cpo[0]
@@ -53,7 +57,7 @@ def master(frame_objects, iparams, activity):
       batch_prep.append(cpo[15].select(sel))
       batch_prep.append("")
       comm.send((activity, (tuple(batch_prep), iparams)), dest=rankreq)
-  print "Master for %s is completed. Time to stop all %d clients"%(activity, size-1)
+  print("Master for %s is completed. Time to stop all %d clients"%(activity, size-1))
   # stop clients
   for rankreq in range(size-1):
     rankreq = comm.recv(source=MPI.ANY_SOURCE)
@@ -95,7 +99,7 @@ def run(argv):
     iparams, txt_out_input = process_input(argv)
     iparams.flag_volume_correction = False
     iparams.flag_hush = True
-    print txt_out_input
+    print(txt_out_input)
     frame_files = read_pickles(iparams.data)
   else:
     iparams = None
@@ -112,7 +116,7 @@ def run(argv):
   #pre-merge task
   if rank == 0:
     results = sum(result, [])
-    print "Scaling is done on %d cores for %d frames"%(size, len(results))
+    print("Scaling is done on %d cores for %d frames"%(size, len(results)))
     master(results, iparams, "pre_merge")
     result = []
   else:
@@ -121,7 +125,7 @@ def run(argv):
   comm.Barrier()
   #merge task
   if rank == 0:
-    print "Pre-merge is done on %d cores"%(len(result))
+    print("Pre-merge is done on %d cores"%(len(result)))
     master(result, iparams, "merge")
     result = []
   else:
@@ -130,7 +134,7 @@ def run(argv):
   result = comm.gather(result, root=0)
   comm.Barrier()
   if rank == 0:
-    print "Merge completed on %d cores"%(len(result))
+    print("Merge completed on %d cores"%(len(result)))
     results = sum(result, [])
     mdh = merge_data_handler()
     txt_out_rejection = ""
@@ -142,14 +146,14 @@ def run(argv):
     mdh.reduce_by_selection(selections)
     its = intensities_scaler()
     mdh, txt_merge_mean_table = its.write_output(mdh, iparams, 'test', 'average')
-    print txt_merge_mean_table
+    print(txt_merge_mean_table)
   #collect time profile
   comm.Barrier()
   end_time = MPI.Wtime()
   txt_time = 'Elapsed Time (s):%10.2f\n'%(end_time-start_time)
   #write log output
   if rank == 0:
-    print txt_time
+    print(txt_time)
     with open(os.path.join(iparams.run_no, 'log.txt'), 'w') as f:
       f.write(txt_out_input+txt_merge_mean_table+txt_time)
     with open(os.path.join(iparams.run_no, 'rejections.txt'), 'w') as f:

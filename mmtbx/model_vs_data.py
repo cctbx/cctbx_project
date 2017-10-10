@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import object
 import sys, os, random, re
 from cctbx.array_family import flex
 from iotbx import pdb
@@ -12,7 +18,7 @@ import iotbx
 from mmtbx import utils
 from iotbx import pdb
 from libtbx import easy_pickle
-from cStringIO import StringIO
+from io import StringIO
 from mmtbx import model_statistics
 from libtbx import group_args
 import mmtbx.restraints
@@ -21,7 +27,7 @@ import mmtbx.masks
 import mmtbx.model
 from mmtbx.monomer_library import pdb_interpretation
 import iotbx.phil
-from cStringIO import StringIO
+from io import StringIO
 
 if (1):
   random.seed(0)
@@ -59,16 +65,16 @@ class mvd(object):
   def show(self, log = None):
     if(log is None): log = sys.stdout
     # crystal
-    print >> log, "  Unit cell:       ", self.crystal.uc
-    print >> log, "  Space group:     ", self.crystal.sg, \
-                  "number of symmetry operations:", self.crystal.n_sym_op
+    print("  Unit cell:       ", self.crystal.uc, file=log)
+    print("  Space group:     ", self.crystal.sg, \
+                  "number of symmetry operations:", self.crystal.n_sym_op, file=log)
     # models
-    print >> log, "  Number of models:", len(self.models)
+    print("  Number of models:", len(self.models), file=log)
     for i_seq, i_model in enumerate(self.models):
-      print >> log, "  Model #%s:"%str("%d"%(i_seq+1)).strip()
-      print >> log, "    Number of residues in alternative conformations:", \
-        i_model.n_residues_in_altlocs
-      print >> log, "    Residue content:"
+      print("  Model #%s:"%str("%d"%(i_seq+1)).strip(), file=log)
+      print("    Number of residues in alternative conformations:", \
+        i_model.n_residues_in_altlocs, file=log)
+      print("    Residue content:", file=log)
       len_max = 0
       for k in i_model.resname_classes:
         k = k.split()
@@ -76,10 +82,10 @@ class mvd(object):
       fmt = "      %-"+str(len_max)+"s : %s"
       for rc in i_model.resname_classes:
         k,v = rc.split()
-        print >> log, fmt%(k, v)
+        print(fmt%(k, v), file=log)
       x = i_model.xray_structure_stat
-      print >> log, "    Atoms:"
-      print >> log, "      content: %s"%x.all.n_atoms
+      print("    Atoms:", file=log)
+      print("      content: %s"%x.all.n_atoms, file=log)
       max_field_for_element_count = 1
       for element_occupancy_sum in x.all.atom_counts_str.split():
         individual_element_count_len = len(element_occupancy_sum.split(":")[1])
@@ -88,74 +94,74 @@ class mvd(object):
       for element_occupancy_sum in x.all.atom_counts_str.split():
         iecl = "%" + str(max_field_for_element_count)+"s"
         fmt = "        %s "+"count: %s "%iecl+"occupancy sum: %s"
-        print >> log, fmt%tuple(element_occupancy_sum.split(":"))
-      print >> log, "      ADP (min,max,mean):"
-      print >> log, "        all           (%s atoms): %s %s %s"%(x.all.n_atoms, x.all.b_min,x.all.b_max,x.all.b_mean)
+        print(fmt%tuple(element_occupancy_sum.split(":")), file=log)
+      print("      ADP (min,max,mean):", file=log)
+      print("        all           (%s atoms): %s %s %s"%(x.all.n_atoms, x.all.b_min,x.all.b_max,x.all.b_mean), file=log)
 
-      if(x.sidechain     is not None):print >> log, "        side chains   (%s atoms): %s %s %s"%(x.sidechain.n_atoms, x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean)
-      if(x.backbone      is not None):print >> log, "        main chains   (%s atoms): %s %s %s"%(x.backbone.n_atoms, x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean)
-      if(x.macromolecule is not None):print >> log, "        macromolecule (%s atoms): %s %s %s"%(x.macromolecule.n_atoms, x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean)
-      if(x.ligand        is not None):print >> log, "        ligands       (%s atoms): %s %s %s"%(x.ligand.n_atoms, x.ligand.b_min,x.ligand.b_max,x.ligand.b_mean)
-      if(x.solvent       is not None):print >> log, "        solvent       (%s atoms): %s %s %s"%(x.solvent.n_atoms, x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean)
+      if(x.sidechain     is not None):print("        side chains   (%s atoms): %s %s %s"%(x.sidechain.n_atoms, x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean), file=log)
+      if(x.backbone      is not None):print("        main chains   (%s atoms): %s %s %s"%(x.backbone.n_atoms, x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean), file=log)
+      if(x.macromolecule is not None):print("        macromolecule (%s atoms): %s %s %s"%(x.macromolecule.n_atoms, x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean), file=log)
+      if(x.ligand        is not None):print("        ligands       (%s atoms): %s %s %s"%(x.ligand.n_atoms, x.ligand.b_min,x.ligand.b_max,x.ligand.b_mean), file=log)
+      if(x.solvent       is not None):print("        solvent       (%s atoms): %s %s %s"%(x.solvent.n_atoms, x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean), file=log)
       if(i_model.rms_b_iso_or_b_equiv_bonded is not None):
-        print >> log, "      mean bonded (Bi-Bj) : %s"%format_value("%8.2f",i_model.rms_b_iso_or_b_equiv_bonded).strip()
-      print >> log, "      occupancies (min,max,mean)       : %s %s %s"%(x.all.o_min,x.all.o_max,x.all.o_mean)
-      print >> log, "      number_of_anisotropic            : "+format_value("%-7s",x.all.n_aniso)
-      print >> log, "      number_of_non_positive_definite  : %s"%x.all.n_npd
+        print("      mean bonded (Bi-Bj) : %s"%format_value("%8.2f",i_model.rms_b_iso_or_b_equiv_bonded).strip(), file=log)
+      print("      occupancies (min,max,mean)       : %s %s %s"%(x.all.o_min,x.all.o_max,x.all.o_mean), file=log)
+      print("      number_of_anisotropic            : "+format_value("%-7s",x.all.n_aniso), file=log)
+      print("      number_of_non_positive_definite  : %s"%x.all.n_npd, file=log)
       g = i_model.geometry_all
       if(g is not None):
         a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
           g.planarity(), g.nonbonded()
-        print >> log, "    Stereochemistry statistics (mean, max, count) - overall:"
-        print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-        print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-        print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-        print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-        print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-        print >> log, "      non-bonded (min) : %8.4f" % (n.min)
+        print("    Stereochemistry statistics (mean, max, count) - overall:", file=log)
+        print("      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n), file=log)
+        print("      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n), file=log)
+        print("      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n), file=log)
+        print("      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n), file=log)
+        print("      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n), file=log)
+        print("      non-bonded (min) : %8.4f" % (n.min), file=log)
       if([i_model.geometry_solvent,i_model.geometry_ligand].count(None)==0):
         g = i_model.geometry_macromolecule
         if(g is not None):
           a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
             g.planarity(), g.nonbonded()
-          print >> log, "    Stereochemistry statistics (mean, max, count) - macromolecule:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
+          print("    Stereochemistry statistics (mean, max, count) - macromolecule:", file=log)
+          print("      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n), file=log)
+          print("      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n), file=log)
+          print("      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n), file=log)
+          print("      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n), file=log)
+          print("      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n), file=log)
+          print("      non-bonded (min) : %8.4f" % (n.min), file=log)
         g = i_model.geometry_ligand
         if(g is not None):
           a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
             g.planarity(), g.nonbonded()
-          print >> log, "    Stereochemistry statistics (mean, max, count) - ligands:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
+          print("    Stereochemistry statistics (mean, max, count) - ligands:", file=log)
+          print("      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n), file=log)
+          print("      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n), file=log)
+          print("      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n), file=log)
+          print("      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n), file=log)
+          print("      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n), file=log)
+          print("      non-bonded (min) : %8.4f" % (n.min), file=log)
         g = i_model.geometry_solvent
         if(g is not None):
-          print >> log, "    Stereochemistry statistics - solvent:"
-          print >> log, "      non-bonded (min) : %8.4f" % (g.nonbonded().min)
+          print("    Stereochemistry statistics - solvent:", file=log)
+          print("      non-bonded (min) : %8.4f" % (g.nonbonded().min), file=log)
       if(i_model.molprobity is not None):
         outl = i_model.molprobity.ramalyze_outliers
         allo = i_model.molprobity.ramalyze_allowed
         favo = i_model.molprobity.ramalyze_favored
-        print >> log, "    Molprobity statistics:"
-        print >> log, "      Ramachandran plot, number of:"
-        print >> log, "        outliers : %-5.2f %s"%(outl,"%")
-        print >> log, "        allowed  : %-5.2f %s"%(allo,"%")
-        print >> log, "        favored  : %-5.2f %s"%(favo,"%")
-        print >> log, "      Rotamer outliers        : %s %s" %(
-          str("%6.2f"%(i_model.molprobity.rotalyze)).strip(),"%")
-        print >> log, "      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev
-        print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
-          i_model.molprobity.clashscore
+        print("    Molprobity statistics:", file=log)
+        print("      Ramachandran plot, number of:", file=log)
+        print("        outliers : %-5.2f %s"%(outl,"%"), file=log)
+        print("        allowed  : %-5.2f %s"%(allo,"%"), file=log)
+        print("        favored  : %-5.2f %s"%(favo,"%"), file=log)
+        print("      Rotamer outliers        : %s %s" %(
+          str("%6.2f"%(i_model.molprobity.rotalyze)).strip(),"%"), file=log)
+        print("      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev, file=log)
+        print("      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
+          i_model.molprobity.clashscore, file=log)
     #
-    print >> log, "  Data:"
+    print("  Data:", file=log)
     result = " \n    ".join([
       "data_label                           : %s"%                    self.data.data_label,
       "high_resolution                      : "+format_value("%-5.2f",self.data.high_resolution),
@@ -172,9 +178,9 @@ class mvd(object):
       "twinned                              : "+format_value("%-s",   self.data.twinned),
       "anomalous_flag                       : "+format_value("%-6s",  self.data.anomalous_flag)
       ])
-    print >> log, "   ", result
+    print("   ", result, file=log)
     #
-    print >> log, "  Model_vs_Data:"
+    print("  Model_vs_Data:", file=log)
     result = [
       "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
       "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
@@ -189,44 +195,44 @@ class mvd(object):
     result.append("solvent_content_estimated_via_mask : %-s %%"
       % format_value("%.1f", sc))
     result = " \n    ".join(result)
-    print >> log, "   ", result
+    print("   ", result, file=log)
     #
     if(self.pdb_header is not None):
-      print >> log, "  Information extracted from PDB file header:"
-      print >> log, "    program_name    : %-s"%format_value("%s",self.pdb_header.program_name)
-      print >> log, "    year            : %-s"%format_value("%s",self.pdb_header.year)
-      print >> log, "    r_work          : %-s"%format_value("%s",self.pdb_header.r_work)
-      print >> log, "    r_free          : %-s"%format_value("%s",self.pdb_header.r_free)
-      print >> log, "    high_resolution : %-s"%format_value("%s",self.pdb_header.high_resolution)
-      print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
-      print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
-      print >> log, "    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff)
+      print("  Information extracted from PDB file header:", file=log)
+      print("    program_name    : %-s"%format_value("%s",self.pdb_header.program_name), file=log)
+      print("    year            : %-s"%format_value("%s",self.pdb_header.year), file=log)
+      print("    r_work          : %-s"%format_value("%s",self.pdb_header.r_work), file=log)
+      print("    r_free          : %-s"%format_value("%s",self.pdb_header.r_free), file=log)
+      print("    high_resolution : %-s"%format_value("%s",self.pdb_header.high_resolution), file=log)
+      print("    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution), file=log)
+      print("    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff), file=log)
+      print("    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff), file=log)
       if(self.pdb_header.solvent_cont is not None):
-        print >> log, "    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont)
+        print("    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont), file=log)
       else:
-        print >> log, "    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont)
+        print("    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont), file=log)
       if(self.pdb_header.tls is not None):
-        print >> log, "    TLS             : %-s"%format_value("%s",
+        print("    TLS             : %-s"%format_value("%s",
           " ".join([str(self.pdb_header.tls.pdb_inp_tls.tls_present),
           "(number of groups: %s)"%
-          str(len(self.pdb_header.tls.tls_selections))]))
+          str(len(self.pdb_header.tls.tls_selections))])), file=log)
       else:
-        print >> log, "    TLS             : None"
+        print("    TLS             : None", file=log)
       if (self.pdb_header.exptl_method is not None) :
-        print >> log, "    exptl_method    : %-s"%format_value("%s",
-          self.pdb_header.exptl_method)
+        print("    exptl_method    : %-s"%format_value("%s",
+          self.pdb_header.exptl_method), file=log)
     #
-    print >> log, "  After applying resolution and sigma cutoffs:"
-    print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
-    print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip()
-    print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip()
+    print("  After applying resolution and sigma cutoffs:", file=log)
+    print("    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip(), file=log)
+    print("    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip(), file=log)
+    print("    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip(), file=log)
 
 def molprobity_stats(model_statistics_geometry, resname_classes):
   result = None
   need_ramachandran = False
   rc = resname_classes
   n_residues = 0
-  for k in rc.keys():
+  for k in list(rc.keys()):
     if(k.count('amino_acid')):
       need_ramachandran = True
       n_residues = int(rc[k])
@@ -269,7 +275,7 @@ def show_geometry(
   hd_sel_all = xray_structures.hd_selection()
   if(show_geometry_statistics):
     sctr_keys = \
-      xray_structures.scattering_type_registry().type_count_dict().keys()
+      list(xray_structures.scattering_type_registry().type_count_dict().keys())
     has_hd = "H" in sctr_keys or "D" in sctr_keys
     geometry = processed_pdb_file.geometry_restraints_manager(
       show_energies                = False,
@@ -292,8 +298,8 @@ def show_geometry(
       overall_counts_i_seq.n_alt_conf_improper
     #
     resname_classes = []
-    for k,v in zip(overall_counts_i_seq.resname_classes.keys(),
-                   overall_counts_i_seq.resname_classes.values()):
+    for k,v in zip(list(overall_counts_i_seq.resname_classes.keys()),
+                   list(overall_counts_i_seq.resname_classes.values())):
       resname_classes.append(" ".join([k.replace("common_",""), str(v)]))
     #
     xray_structure = xray_structures.select(model_selection)
@@ -398,7 +404,7 @@ def show_xray_structure_statistics(xray_structure, atom_selections, hd_sel = Non
     backbone      = None)
   if(hd_sel is not None):
     xray_structure = xray_structure.select(~hd_sel)
-  for key in atom_selections.__dict__.keys():
+  for key in list(atom_selections.__dict__.keys()):
     value = atom_selections.__dict__[key]
     if(value.count(True) > 0):
       if(hd_sel is not None):
@@ -555,10 +561,10 @@ n_bins = 20
 """
 
 def defaults(log, silent):
-  if(not silent): print >> log, "Default params::\n"
+  if(not silent): print("Default params::\n", file=log)
   parsed = iotbx.phil.parse(master_params_str)
   if(not silent): parsed.show(prefix="  ", out=log)
-  if(not silent): print >> log
+  if(not silent): print(file=log)
   return parsed
 
 def run(args,
@@ -572,7 +578,7 @@ def run(args,
         log                      = sys.stdout):
   import mmtbx.f_model.f_model_info
   if(len(args)==0) or (args == ["--help"]) :
-    print >> log, msg
+    print(msg, file=log)
     defaults(log=log, silent=False)
     return
   parsed = defaults(log=log, silent=True)
@@ -637,7 +643,7 @@ def run(args,
   try:
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
-  except ValueError, e :
+  except ValueError as e :
     raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
 
   pdb_interpretation_params = iotbx.phil.parse(
@@ -829,7 +835,7 @@ def run(args,
       maps_obj.write_mtz_file(file_name = file_name)
   # statistics in bins
   if(not fmodel.twin):
-    print >> log, "Statistics in resolution bins:"
+    print("Statistics in resolution bins:", file=log)
     mmtbx.f_model.f_model_info.r_work_and_completeness_in_resolution_bins(
       fmodel = fmodel, out = log, prefix="  ")
   # report map cc

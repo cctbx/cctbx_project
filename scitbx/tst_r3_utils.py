@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 
 def exercise_clash_detector_simple():
@@ -18,7 +19,7 @@ def exercise_clash_detector_simple():
 def run(args):
   assert len(args) == 0
   exercise_clash_detector_simple()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

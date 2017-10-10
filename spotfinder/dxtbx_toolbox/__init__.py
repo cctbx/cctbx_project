@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import spotfinder.array_family.flex # implicit import
 
 import boost.python
@@ -7,14 +10,14 @@ from spotfinder_dxtbx_ext import *
 
 from libtbx import adopt_init_args
 
-class Distl:
+class Distl(object):
 
   def __init__(self, params, detector, beam, data):
     adopt_init_args(self, locals())
 
     npanels = len(detector)
     self.finderlist = []
-    for n in xrange(npanels):
+    for n in range(npanels):
       SF = w_Distl(optionstring="",report_overloads=False)
 
       panel = detector[n]
@@ -31,7 +34,7 @@ class Distl:
           (1475,1679):"Pilatus-2M",
           (487,195):"Pilatus-300K",
         }.get(panel.get_image_size(),"")
-      print special_vendortype
+      print(special_vendortype)
       SF.set_tiling(special_vendortype)
 
       if params.distl.minimum_spot_area != None:

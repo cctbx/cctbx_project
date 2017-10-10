@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 import math
 from spotfinder.array_family import flex
 from spotfinder.applications.heuristic_tbx.method2_resolution\
@@ -9,7 +11,7 @@ from libtbx.development.timers import Timer
 #  adjacent non-ring bin population
 ring_threshold = 2.0
 
-class RingFinder:
+class RingFinder(object):
   def __init__(self,spot_resolutions,firstBinCount,fractionCalculator):
     self.ref_spots = spot_resolutions
     self.firstBinCount = firstBinCount
@@ -58,7 +60,7 @@ class RingFinder:
     # Get the signal from the central three bins:
     # ...___***___...
     # where .=ignored, _=background, *=signal, with x centered on middle *
-    for x in xrange(2,self.Shell.rows()-1):
+    for x in range(2,self.Shell.rows()-1):
       first_bk = x - 4
       last_bk = x + 4
       if first_bk < 0:
@@ -74,7 +76,7 @@ class RingFinder:
       nsignal = 3.0
 
       background = 0.0
-      for y in xrange(first_bk,last_bk+1):
+      for y in range(first_bk,last_bk+1):
         background += self.Shell.adjustPop[y]
       nbackground = 6
       background-=signal
@@ -97,7 +99,7 @@ class RingFinder:
     eps = 0.0#0.05 # angstroms
     #consolidate so that end product is a set of disjoint resolution rings
     #self.intervals is a list of rings of form (low res end,high res end)
-    for x in xrange(len(self.intervals)):
+    for x in range(len(self.intervals)):
       existing = self.intervals[x]
 
       # check for disjointness
@@ -136,7 +138,7 @@ class RingFinder:
     self.impact = flex.int([0]*len(self.intervals))
 
     limits_low_hi_res = flex.double();
-    for x in xrange(len(self.intervals)):
+    for x in range(len(self.intervals)):
       limits_low_hi_res.append(self.intervals[x][0]);
       limits_low_hi_res.append(self.intervals[x][1]);
 

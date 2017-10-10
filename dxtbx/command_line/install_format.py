@@ -10,6 +10,7 @@
 #  included in the root directory of this package.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 from libtbx.phil import parse
 
 phil_scope = parse(
@@ -65,5 +66,5 @@ if __name__ == '__main__':
   target = join(target, filename)
 
   # Copy the file
-  print "Copying %s -> %s" % (filename, target)
+  print("Copying %s -> %s" % (filename, target))
   copyfile(filename, target)

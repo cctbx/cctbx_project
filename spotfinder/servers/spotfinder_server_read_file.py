@@ -1,13 +1,17 @@
 from __future__ import division
-from BaseHTTPServer import BaseHTTPRequestHandler
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from http.server import BaseHTTPRequestHandler
 from scitbx.array_family import flex
 from libtbx.development.timers import Timer
-import StringIO, cgi, sys, copy
+import io, cgi, sys, copy
 from spotfinder.applications.stats_distl import optionally_add_saturation_webice,key_adaptor
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 #backward compatibility with Python 2.5
-try: from urlparse import parse_qs
+try: from urllib.parse import parse_qs
 except Exception: from cgi import parse_qs
 
 def module_safe_items(image):
@@ -42,18 +46,18 @@ def module_image_stats(S,key):
 
     for item in canonical_info:
       if item[2]==None:
-        print "%63s : None"%item[1]
+        print("%63s : None"%item[1])
       else:
-        print "%63s : %s"%(item[1],item[0]%item[2])
+        print("%63s : %s"%(item[1],item[0]%item[2]))
 
 class image_request_handler(BaseHTTPRequestHandler):
 
   def shutdown(self):
       def my_shutdown(arg1):
-        print "IN SHUTDOWN THREAD"
+        print("IN SHUTDOWN THREAD")
         arg1.server.shutdown()
-      import thread
-      thread.start_new_thread(my_shutdown,(self,))
+      import _thread
+      _thread.start_new_thread(my_shutdown,(self,))
       #must be called in a different thread or deadlock.
       log = ""
       self.send_response(200)
@@ -85,7 +89,7 @@ class image_request_handler(BaseHTTPRequestHandler):
         L.append(self.rfile.read(chunk_size))
         size_remaining -= len(L[-1])
     data = ''.join(L)
-    post_data = StringIO.StringIO(data)
+    post_data = io.StringIO(data)
 
     # Parse the multipart/form-data
     contentTypeHeader = self.headers.getheaders('content-type').pop()
@@ -99,11 +103,11 @@ class image_request_handler(BaseHTTPRequestHandler):
       {"boundary":boundary,
        "content-disposition":self.headers.getheaders('content-disposition')
       })
-    print "*****************************"
-    for item in parts.keys():
+    print("*****************************")
+    for item in list(parts.keys()):
       if len(parts[item][0])< 1000:
-        print item, parts[item]
-    print "*****************************"
+        print(item, parts[item])
+    print("*****************************")
 
     if parts["filename"][0].find("EXIT")>=0:
       self.shutdown()
@@ -115,24 +119,24 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     Files = ImageFiles(Spotspickle_argument_module(parts["filename"][0]),response_params)
 
-    print "Final image object:"
+    print("Final image object:")
     Files.images[0].show_header()
-    print "beam_center_convention",Files.images[0].beam_center_convention
-    print "beam_center_reference_frame",Files.images[0].beam_center_reference_frame
+    print("beam_center_convention",Files.images[0].beam_center_convention)
+    print("beam_center_reference_frame",Files.images[0].beam_center_reference_frame)
 
-    logfile = StringIO.StringIO()
+    logfile = io.StringIO()
     if response_params.distl.bins.verbose: sys.stdout = logfile
 
     from spotfinder.applications.wrappers import spotfinder_factory
     S = spotfinder_factory(None, Files, response_params)
-    print
+    print()
     sys.stdout = sys.__stdout__
 
     frames = Files.frames()
 
     sys.stdout = logfile
 
-    print "Image: %s"%parts["filename"][0]
+    print("Image: %s"%parts["filename"][0])
     from spotfinder.applications.stats_distl import pretty_image_stats,notes
     for frame in frames:
       #pretty_image_stats(S,frame)
@@ -141,7 +145,7 @@ class image_request_handler(BaseHTTPRequestHandler):
 
     sys.stdout = sys.__stdout__
     log = logfile.getvalue()
-    print log
+    print(log)
 
     ctype = 'text/plain'
     self.send_response(200)
@@ -184,7 +188,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     argument_interpreter = base_params.command_line_argument_interpreter()
     phil_objects = []
 
-    for key in qs.keys():
+    for key in list(qs.keys()):
       arg = "%s=%s"%(key,qs.get(key,"")[0])
       try: command_line_params = argument_interpreter.process(arg=arg)
       except Exception: return str(Sorry("Unknown file or keyword: %s" % arg))
@@ -196,7 +200,7 @@ class image_request_handler(BaseHTTPRequestHandler):
     if not os.path.isfile(params.distl.image):
       return  str(Sorry("%s is not a readable file" % params.distl.image))
 
-    print "Image: %s"%params.distl.image
+    print("Image: %s"%params.distl.image)
 
     logfile = LoggingFramework()
     from spotfinder.applications import signal_strength
@@ -204,7 +208,7 @@ class image_request_handler(BaseHTTPRequestHandler):
       signal_strength.run_signal_strength(params)
     except Exception:
       import traceback
-      logger = StringIO.StringIO()
+      logger = io.StringIO()
       logger.write(
       "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
       traceback.print_exc(file=logger)

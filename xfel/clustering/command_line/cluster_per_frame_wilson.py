@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.individual_frame_intensity
 from __future__ import division
+from builtins import object
 __author__ = 'zeldin'
 
 import logging
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 
-class Key_event:
+class Key_event(object):
   def __init__(self, ax, members, fig):
     self.image_index = 0
     self.ax = ax

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import fable.cout
 
 def compute_hexdigest(text):
@@ -63,7 +65,7 @@ class process(object):
   def __call__(O, file_names):
     import sys
     if (O.n_calls != 0):
-      print
+      print()
     O.n_calls += 1
     opts = O.options
     lines = fable.cout.process(
@@ -84,13 +86,13 @@ class process(object):
     if (opts.top_procedure is None or not opts.debug):
       sys.stdout.write(text)
     if (len(file_names) != 0 and opts.compile):
-      print
+      print()
       write_only_if_safe(file_name="fable_cout.cpp", text=text)
       from fable import simple_compilation
       comp_env = simple_compilation.environment()
       out_name = comp_env.build(
         link=opts.link, file_name_cpp="fable_cout.cpp", show_command=True)
-      print
+      print()
       if (opts.run):
         from libtbx import easy_run
         import os
@@ -98,7 +100,7 @@ class process(object):
         cmd = op.join(".", out_name)
         if (opts.valgrind):
           cmd = "valgrind " + cmd
-        print cmd
+        print(cmd)
         easy_run.call(command=cmd)
 
 def run(args):

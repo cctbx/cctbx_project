@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from iotbx.detectors.detectorbase import DetectorImageBase
 
 class NullAdaptor(object):

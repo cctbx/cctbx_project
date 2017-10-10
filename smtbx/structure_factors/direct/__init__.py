@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import boost.python
 ext = boost.python.import_ext("smtbx_structure_factors_direct_ext")
 

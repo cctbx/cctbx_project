@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from cctbx import  miller
 from cctbx import maptbx
@@ -481,7 +482,7 @@ if (__name__ == "__main__"):
         for randomize in [True, False]:
           result, b_result, cc = run(pdb_str=pdb_str, d_min=d_min, b=b,
             randomize=randomize)
-          print b, d_min, "<>", b_result, result, "<>", cc
+          print(b, d_min, "<>", b_result, result, "<>", cc)
           #XXX assert approx_equal(d_min, result, 0.11)
           #XXX assert cc>0.9
           #XXX if(not randomize):

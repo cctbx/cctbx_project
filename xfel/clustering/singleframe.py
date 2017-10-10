@@ -1,6 +1,10 @@
 """ Module for working with single images in a serial crystallography
 dataset"""
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
 from libtbx import easy_pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,7 +12,7 @@ from scipy.stats import linregress
 import math
 import logging
 from cctbx.array_family import flex
-import cPickle
+import pickle
 from prime.api import InputFrame
 logger = logging.getLogger('sf')
 
@@ -64,7 +68,7 @@ class SingleFrame(InputFrame):
     else:
       try:
         d = easy_pickle.load(path)
-      except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
+      except (pickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
         logger.warning("Could not read %s. It may not be a pickle file." % path)
     if 'observations' not in d:
@@ -175,10 +179,10 @@ class SingleFrame(InputFrame):
       .sin_theta_over_lambda_sq().data().as_numpy_array()
 
      # then plot them as negative in the linear fit.
-    inten, sinsqtheta_over_labmdasq = zip(*[i for i
+    inten, sinsqtheta_over_labmdasq = list(zip(*[i for i
                                             in zip(inten,
                                                    sinsqtheta_over_labmdasq)
-                                            if i[0] >= 0])
+                                            if i[0] >= 0]))
 
     if use_b_factor:
       minus_2B, G, r_val, _, std_err = linregress(sinsqtheta_over_labmdasq,

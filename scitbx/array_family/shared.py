@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import scitbx.stl.vector # import dependency
 
 import boost.python

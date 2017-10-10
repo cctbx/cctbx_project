@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import range
 def tst_intersection_at_origin(intersection, wavelength, origin):
 
   eps = 1e-7
@@ -15,7 +17,7 @@ def tst_intersection_at_origin(intersection, wavelength, origin):
   assert(abs(y) < eps)
 
   # Test Passed
-  print "OK"
+  print("OK")
 
 def tst_intersection_at_corners(intersection, panel, wavelength):
 
@@ -48,7 +50,7 @@ def tst_intersection_at_corners(intersection, panel, wavelength):
   assert(abs(x4 - image_size[0]) < eps and abs(y4 - image_size[1]) < eps)
 
   # Test Passed
-  print "OK"
+  print("OK")
 
 def tst_intersection_away_from_panel(intersection, panel, wavelength):
 
@@ -62,7 +64,7 @@ def tst_intersection_away_from_panel(intersection, panel, wavelength):
     intersection(s)
   except(RuntimeError):
     # Test Passed
-    print "OK"
+    print("OK")
     return
 
   # Test Failed
@@ -114,7 +116,7 @@ def tst_transform_at_origin(transform, panel):
   assert(abs(z - panel.get_origin()[2]) < eps)
 
   # Test Passed
-  print "OK"
+  print("OK")
 
 def tst_transform_at_corners(transform, panel):
   from scitbx import matrix
@@ -145,7 +147,7 @@ def tst_transform_at_corners(transform, panel):
   assert(abs(xyz44 - xyz4) < eps)
 
   # Test Passed
-  print "OK"
+  print("OK")
 
 def tst_plane_to_lab_transform():
   from dxtbx.model import Panel
@@ -205,7 +207,7 @@ def tst_fwd_rev_random(intersection, transform, panel):
     # Check the vectors are almost equal
     assert(abs(xy - matrix.col(xy_2)) < eps)
 
-  print "OK"
+  print("OK")
 
 def tst_forward_and_reverse_transform():
   from dxtbx.model import Panel

@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from mmtbx import monomer_library
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
@@ -9,7 +13,7 @@ import iotbx.phil
 import iotbx.pdb
 from libtbx.test_utils import show_diff
 import libtbx.load_env
-import cStringIO
+import io
 import sys, os, time
 from mmtbx.monomer_library.pdb_interpretation import process
 
@@ -92,7 +96,7 @@ ATOM   5497  CB  ALA C 271      17.151  68.239  29.297  1.00  8.10           C
 
 
 def exercise_reference_model(args, mon_lib_srv, ener_lib):
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
@@ -163,10 +167,10 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     assert rdp.limit == work_params.reference_model.limit
 
   r1 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
-  out1 = cStringIO.StringIO()
+  out1 = io.StringIO()
   r1.show_old_output(out=out1)
   r2 = rotalyze(pdb_hierarchy=ref_pdb_hierarchy, outliers_only=False)
-  out2 = cStringIO.StringIO()
+  out2 = io.StringIO()
   r2.show_old_output(out=out2)
 
   assert not show_diff(out1.getvalue(), """\
@@ -186,7 +190,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     quiet=True)
   pdb_h.adopt_xray_structure(xray_structure)
   r2 = rotalyze(pdb_hierarchy=pdb_h, outliers_only=False)
-  out3 = cStringIO.StringIO()
+  out3 = io.StringIO()
   r2.show_old_output(out=out3)
   assert not show_diff(out3.getvalue(), """\
  C 236  ASN:1.00:39.1:203.2:43.6:::Favored:t0
@@ -246,7 +250,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
       standard_weight += 1
   assert standard_weight == 1181, "Expecting 1181, got %d" % standard_weight
   if (not libtbx.env.has_module(name="ksdssp")):
-    print "Skipping KSDSSP tests: ksdssp module not available."
+    print("Skipping KSDSSP tests: ksdssp module not available.")
   else:
     work_pars = reference_model_params.extract()
     work_pars.reference_model.secondary_structure_only = True
@@ -583,7 +587,7 @@ TER
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref_minimized)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   # log = sys.stdout
   # orig_file = open("start.pdb", "w")
   # orig_file.write(pdb_str_original)
@@ -754,7 +758,7 @@ TER
   os.remove("ref_0.pdb")
 
   # reference on self and make sure it is chains A<->A, B<->B etc
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   def_pars = reference_model_params
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.enabled = True
@@ -954,7 +958,7 @@ TER
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   # log = sys.stdout
 
   def_pars = reference_model_params
@@ -1035,7 +1039,7 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_ref)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   # log = sys.stdout
   # orig_file = open("start.pdb", "w")
   # orig_file.write(pdb_str_original)
@@ -1256,7 +1260,7 @@ TER     490       DG B  24
   ref_file = open("ref.pdb", 'w')
   ref_file.write(pdb_str_original)
   ref_file.close()
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   # log = sys.stdout
   processed_pdb_file = process(
       mon_lib_srv=mon_lib_srv,
@@ -1538,7 +1542,7 @@ END
   # pdb_h.atoms().reset_i_seq()
   # ref_h.atoms().reset_i_seq()
 
-  log = cStringIO.StringIO()
+  log = io.StringIO()
   # log = sys.stdout
   def_pars = reference_model_params
   all_pars = def_pars.fetch().extract()
@@ -1583,7 +1587,7 @@ def run(args):
   exercise_cutted_residue(mon_lib_srv, ener_lib)
   exercise_dna(mon_lib_srv, ener_lib)
   exercise_3chains_self(mon_lib_srv, ener_lib)
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

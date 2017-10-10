@@ -1,9 +1,12 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 from libtbx.scheduling import result
 
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -29,7 +32,7 @@ class Server(object):
       try:
         response = command( server = self )
 
-      except Exception, e:
+      except Exception as e:
         pickle.dump( result.Error( exception = e ), self.outstream, 0 )
 
       else:

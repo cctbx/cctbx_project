@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 import libtbx
 import scitbx.math
 from cctbx.array_family import flex
@@ -243,12 +244,12 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     def fget(self):
       from smtbx.refinement.restraints import manager
       kwds = dict([ ("%s_proxies" % name, value)
-                    for name, value in self.proxies().iteritems() ])
+                    for name, value in self.proxies().items() ])
       return manager(**kwds)
 
   def proxies(self):
     return dict([
-      (proxy_type, proxies) for proxy_type, proxies in self._proxies.iteritems()
+      (proxy_type, proxies) for proxy_type, proxies in self._proxies.items()
       if len(proxies) != 0])
 
 class reflection_data_source_builder(object):

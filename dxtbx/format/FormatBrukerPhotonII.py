@@ -8,7 +8,9 @@
 #  included in the root directory of this package.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
 from scitbx import matrix
 
 from dxtbx.format.FormatBruker import FormatBruker
@@ -20,7 +22,7 @@ class FormatBrukerPhotonII(FormatBruker):
 
     try:
       header_lines = FormatBruker.read_header_lines(image_file)
-    except IOError,e:
+    except IOError as e:
       return False
 
     header_dic = {}
@@ -58,7 +60,7 @@ class FormatBrukerPhotonII(FormatBruker):
 
     try:
       header_lines = FormatBruker.read_header_lines(self._image_file)
-    except IOError,e:
+    except IOError as e:
       return False
 
     self.header_dict = {}
@@ -81,7 +83,7 @@ class FormatBrukerPhotonII(FormatBruker):
     # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
 
     from scitbx import matrix
-    angles = map(float, self.header_dict['ANGLES'].split())
+    angles = list(map(float, self.header_dict['ANGLES'].split()))
 
     beam = matrix.col((0, 0, 1))
     phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
@@ -118,7 +120,7 @@ class FormatBrukerPhotonII(FormatBruker):
     slow = matrix.col((0, 1, 0))
     beam = matrix.col((0, 0, 1))
     pixel_mm = 5.0 / float(self.header_dict['DETTYPE'].split()[1])
-    beam_pixel = map(float, self.header_dict['CENTER'].split()[:2])
+    beam_pixel = list(map(float, self.header_dict['CENTER'].split()[:2]))
     distance_mm = 10.0 * float(self.header_dict['DISTANC'].split()[1])
     origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[1] - \
       slow * pixel_mm * beam_pixel[0]
@@ -187,4 +189,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatBrukerPhotonII.understand(arg)
+    print(FormatBrukerPhotonII.understand(arg))

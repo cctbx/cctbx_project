@@ -3,7 +3,10 @@
 # $Id$
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 from dxtbx.format.FormatPY import FormatPY
 
 class FormatPYmultitile(FormatPY):
@@ -11,7 +14,7 @@ class FormatPYmultitile(FormatPY):
   @staticmethod
   def understand(image_file):
     try:
-      import cPickle as pickle
+      import pickle as pickle
       stream = FormatPYmultitile.open_file(image_file, 'rb')
       data = pickle.load(stream)
     except IOError:
@@ -187,4 +190,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatPYmultitile.understand(arg)
+    print(FormatPYmultitile.understand(arg))

@@ -1,7 +1,10 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import threading
-import Queue
+import queue
 
 
 class exception_capturing_thread(threading.Thread):
@@ -30,7 +33,7 @@ class exception_capturing_thread(threading.Thread):
     try:
       super( exception_capturing_thread, self ).run()
 
-    except Exception, e:
+    except Exception as e:
       self.exitcode = 1
       self.err = e
 
@@ -57,7 +60,7 @@ class qfactory(object):
   @staticmethod
   def create():
 
-    return Queue.Queue()
+    return queue.Queue()
 
 
   @staticmethod

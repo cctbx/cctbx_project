@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import cctbx.xray.targets
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -82,7 +84,7 @@ def exercise(mt, n_refl):
     eps = 1e-6
     g_fin = flex.double()
     c_fin = flex.double()
-    for ih in xrange(i_calc.size()):
+    for ih in range(i_calc.size()):
       fs = []
       gs = []
       c_orig = i_calc[ih]
@@ -104,7 +106,7 @@ def exercise(mt, n_refl):
     eps = 1e-6
     g_fin = flex.complex_double()
     c_fin = flex.vec3_double()
-    for ih in xrange(i_calc.size()):
+    for ih in range(i_calc.size()):
       c_orig = f_calc[ih]
       g_fin_ab = []
       c_fin_ab = []
@@ -140,9 +142,9 @@ def run(args):
   assert n_refl > 0
   assert n_trials > 0
   mt = flex.mersenne_twister(seed=0)
-  for i_trial in xrange(n_trials):
+  for i_trial in range(n_trials):
     exercise(mt, n_refl)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

@@ -1,5 +1,7 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.validation import residue, validation, atom
 from mmtbx.validation import graphics
 from iotbx import data_plots
@@ -251,8 +253,8 @@ class ramalyze (validation) :
     :param plot_file_base: file name prefix
     :param out: log filehandle
     """
-    print >> out, ""
-    print >> out, "Creating images of plots..."
+    print("", file=out)
+    print("Creating images of plots...", file=out)
     for pos in range(6) :
       stats = utils.get_rotarama_data(
         pos_type=res_types[pos],
@@ -267,7 +269,7 @@ class ramalyze (validation) :
         title=format_ramachandran_plot_title(pos, '*'),
         file_name=plot_file_name,
         show_labels=show_labels)
-      print >> out, "  wrote %s" % plot_file_name
+      print("  wrote %s" % plot_file_name, file=out)
 
   def display_wx_plots (self, parent=None,
       title="MolProbity - Ramachandran plots") :
@@ -278,11 +280,11 @@ class ramalyze (validation) :
     return frame
 
   def show_summary (self, out=sys.stdout, prefix="") :
-    print >> out, prefix + 'SUMMARY: %i Favored, %i Allowed, %i Outlier out of %i residues (altloc A where applicable)' % (self.n_favored, self.n_allowed, self.n_outliers, self.n_total)
-    print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
-      (self.out_percent, self.get_outliers_goal())
-    print >> out, prefix + 'SUMMARY: %.2f%% favored (Goal: %s)' % \
-      (self.fav_percent, self.get_favored_goal())
+    print(prefix + 'SUMMARY: %i Favored, %i Allowed, %i Outlier out of %i residues (altloc A where applicable)' % (self.n_favored, self.n_allowed, self.n_outliers, self.n_total), file=out)
+    print(prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
+      (self.out_percent, self.get_outliers_goal()), file=out)
+    print(prefix + 'SUMMARY: %.2f%% favored (Goal: %s)' % \
+      (self.fav_percent, self.get_favored_goal()), file=out)
 
   def get_plot_data (self, position_type=RAMA_GENERAL, residue_name="*",
       point_type=RAMALYZE_ANY) :

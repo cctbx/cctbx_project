@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import object
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -31,12 +35,12 @@ class model_content(object):
     if(pdb_deposition):
       prefix = "REMARK   3  "
     fmt = "   %5s               %10d        %8.2f"
-    print >> out, prefix+"MODEL CONTENT."
-    print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
+    print(prefix+"MODEL CONTENT.", file=out)
+    print(prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM", file=out)
     for item in self.scattering_types_counts_and_occupancy_sums:
-      print >> out, prefix+fmt % (item.scattering_type, item.count,
-        item.occupancy_sum)
-    print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)
+      print(prefix+fmt % (item.scattering_type, item.count,
+        item.occupancy_sum), file=out)
+    print(prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum), file=out)
 
 class adp(object):
   def __init__(self, model, wilson_b = None, n_histogram_slots = 10, file_name=None,
@@ -127,10 +131,10 @@ class adp(object):
     result1, result2 = result[:len(result)//2], result[len(result)//2:]
     fmt = "|"+pad_l+"   %d:%10.3f -%8.3f:%5d   |   %d:%10.3f -%8.3f:%5d    "+pad_r+"|"
     for r1, r2 in zip(result1, result2):
-      print >> out, fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3])
-    print >> out, "|"+pad_l+\
+      print(fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3]), file=out)
+    print("|"+pad_l+\
      "                            =>continue=>                              "+\
-     pad_r+"|"
+     pad_r+"|", file=out)
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(pdb_deposition):
@@ -207,34 +211,34 @@ class adp(object):
        s1 = "|-ADP statistics"
     if(padded): s1 = s1 + "-"*( 79-len(s1+"|") ) + "|"
     else: s1 = s1 + "-"*( 72-len(s1+"|") ) + "|"
-    print >> out, prefix+s1
+    print(prefix+s1, file=out)
     #
     pp = prefix+"|"+pad_l
-    print >> out, pp+" Atom    | Number of   | Isotropic or equivalent| Anisotropy lmin/max "+pad_r+"|"
-    print >> out, pp+" type    |iso    aniso | min     max     mean   | min   max    mean   "+pad_r+"|"
-    print >> out, pp+" - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - "+pad_r+"|"
+    print(pp+" Atom    | Number of   | Isotropic or equivalent| Anisotropy lmin/max "+pad_r+"|", file=out)
+    print(pp+" type    |iso    aniso | min     max     mean   | min   max    mean   "+pad_r+"|", file=out)
+    print(pp+" - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - "+pad_r+"|", file=out)
     #
-    print >> out, pp+" all     : "+self._fmtl(self.n_iso_a, self.n_aniso_a, self.b_min_a,self.b_max_a,self.b_mean_a,self.a_min_a,self.a_max_a,self.a_mean_a,pad_r)
-    print >> out, pp+" all(noH): "+self._fmtl(self.n_iso_a_noH,self.n_aniso_a_noH,self.b_min_a_noH,self.b_max_a_noH,self.b_mean_a_noH,self.a_min_a_noH,self.a_max_a_noH,self.a_mean_a_noH,pad_r)
-    print >> out, pp+" Sol.    : "+self._fmtl(self.n_iso_s_noH,self.n_aniso_s_noH,self.b_min_s_noH,self.b_max_s_noH,self.b_mean_s_noH,self.a_min_s_noH,self.a_max_s_noH,self.a_mean_s_noH,pad_r)
-    print >> out, pp+" Mac.    : "+self._fmtl(self.n_iso_m_noH,self.n_aniso_m_noH,self.b_min_m_noH,self.b_max_m_noH,self.b_mean_m_noH,self.a_min_m_noH,self.a_max_m_noH,self.a_mean_m_noH,pad_r)
-    print >> out, pp+" Hyd.    : "+self._fmtl(self.n_iso_h,self.n_aniso_h,self.b_min_h,self.b_max_h,self.b_mean_h,self.a_min_h,self.a_max_h,self.a_mean_h,pad_r)
-    print >> out, pp+" "+"- "*34+pad_r+" |"
+    print(pp+" all     : "+self._fmtl(self.n_iso_a, self.n_aniso_a, self.b_min_a,self.b_max_a,self.b_mean_a,self.a_min_a,self.a_max_a,self.a_mean_a,pad_r), file=out)
+    print(pp+" all(noH): "+self._fmtl(self.n_iso_a_noH,self.n_aniso_a_noH,self.b_min_a_noH,self.b_max_a_noH,self.b_mean_a_noH,self.a_min_a_noH,self.a_max_a_noH,self.a_mean_a_noH,pad_r), file=out)
+    print(pp+" Sol.    : "+self._fmtl(self.n_iso_s_noH,self.n_aniso_s_noH,self.b_min_s_noH,self.b_max_s_noH,self.b_mean_s_noH,self.a_min_s_noH,self.a_max_s_noH,self.a_mean_s_noH,pad_r), file=out)
+    print(pp+" Mac.    : "+self._fmtl(self.n_iso_m_noH,self.n_aniso_m_noH,self.b_min_m_noH,self.b_max_m_noH,self.b_mean_m_noH,self.a_min_m_noH,self.a_max_m_noH,self.a_mean_m_noH,pad_r), file=out)
+    print(pp+" Hyd.    : "+self._fmtl(self.n_iso_h,self.n_aniso_h,self.b_min_h,self.b_max_h,self.b_mean_h,self.a_min_h,self.a_max_h,self.a_mean_h,pad_r), file=out)
+    print(pp+" "+"- "*34+pad_r+" |", file=out)
     #
     name = "|"+pad_l+"    Distribution of isotropic (or equivalent) ADP for non-H atoms:    "+pad_r+"|"
-    print >> out, prefix+name
-    print >> out, prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
+    print(prefix+name, file=out)
+    print(prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|", file=out)
     self._histogram(histogram = self.b_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
     #
     if(self._show_anisotropy):
-       print >> out, prefix+"|"+pad_l+" "+"- "*34+pad_r+" |"
+       print(prefix+"|"+pad_l+" "+"- "*34+pad_r+" |", file=out)
        name = "|"+pad_l+"                     Distribution of anisotropy:                      "+pad_r+"|"
-       print >> out, prefix+name
-       print >> out, prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
+       print(prefix+name, file=out)
+       print(prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|", file=out)
        self._histogram(histogram = self.a_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
     #
-    if(padded): print >> out, prefix+"|"+"-"*77+"|"
-    else: print >> out, prefix+"|"+"-"*70+"|"
+    if(padded): print(prefix+"|"+"-"*77+"|", file=out)
+    else: print(prefix+"|"+"-"*70+"|", file=out)
     out.flush()
 
   def _fmtl2(self,a,b):
@@ -252,17 +256,17 @@ class adp(object):
       wilson_b = str(self.wilson_b)
     elif(str(self.wilson_b).count(".")):
       wilson_b = str("%8.2f"%self.wilson_b).strip()
-    print >> out, prefix+"ATOMIC DISPLACEMENT PARAMETERS."
-    print >> out, prefix+" WILSON B : %-s"%wilson_b
-    print >> out, prefix+" RMS(B_ISO_OR_EQUIVALENT_BONDED) : %-s"%format_value(
-      "%8.2f", self.rms_b_iso_or_b_equiv_bonded).strip()
-    print >> out, prefix+" ATOMS          NUMBER OF ATOMS"
-    print >> out, prefix+"                  ISO.  ANISO. "
-    print >> out, prefix+"  ALL         :"+self._fmtl2(self.n_iso_a    ,self.n_aniso_a    )
-    print >> out, prefix+"  ALL (NO H)  :"+self._fmtl2(self.n_iso_a_noH,self.n_aniso_a_noH)
-    print >> out, prefix+"  SOLVENT     :"+self._fmtl2(self.n_iso_s_noH,self.n_aniso_s_noH)
-    print >> out, prefix+"  NON-SOLVENT :"+self._fmtl2(self.n_iso_m_noH,self.n_aniso_m_noH)
-    print >> out, prefix+"  HYDROGENS   :"+self._fmtl2(self.n_iso_h    ,self.n_aniso_h    )
+    print(prefix+"ATOMIC DISPLACEMENT PARAMETERS.", file=out)
+    print(prefix+" WILSON B : %-s"%wilson_b, file=out)
+    print(prefix+" RMS(B_ISO_OR_EQUIVALENT_BONDED) : %-s"%format_value(
+      "%8.2f", self.rms_b_iso_or_b_equiv_bonded).strip(), file=out)
+    print(prefix+" ATOMS          NUMBER OF ATOMS", file=out)
+    print(prefix+"                  ISO.  ANISO. ", file=out)
+    print(prefix+"  ALL         :"+self._fmtl2(self.n_iso_a    ,self.n_aniso_a    ), file=out)
+    print(prefix+"  ALL (NO H)  :"+self._fmtl2(self.n_iso_a_noH,self.n_aniso_a_noH), file=out)
+    print(prefix+"  SOLVENT     :"+self._fmtl2(self.n_iso_s_noH,self.n_aniso_s_noH), file=out)
+    print(prefix+"  NON-SOLVENT :"+self._fmtl2(self.n_iso_m_noH,self.n_aniso_m_noH), file=out)
+    print(prefix+"  HYDROGENS   :"+self._fmtl2(self.n_iso_h    ,self.n_aniso_h    ), file=out)
     out.flush()
 
   def as_cif_block(self, cif_block=None):
@@ -303,52 +307,52 @@ class model(object):
     if(pdb_deposition): prefix="REMARK   3  "
     if(self.geometry is not None):
       self.geometry.show(log=out, prefix=prefix)
-    print >> out, prefix
+    print(prefix, file=out)
     self.adp.show(out=out, prefix=prefix, padded=padded,
       pdb_deposition=pdb_deposition)
     if(self.tls_groups is not None):
-      print >> out, prefix
+      print(prefix, file=out)
       tools.remark_3_tls(tlsos             = self.tls_groups.tlsos,
                          selection_strings = self.tls_groups.selection_strings,
                          out               = out)
     if(self.anomalous_scatterer_groups is not None):
-      print >> out, prefix
+      print(prefix, file=out)
       self.show_anomalous_scatterer_groups(out = out)
     if(self.ncs_groups is not None):
-      print >> out, prefix
+      print(prefix, file=out)
       self.show_ncs_groups(out = out)
     if(self.ncs_manager is not None):
-      print >> out, prefix
+      print(prefix, file=out)
       self.show_torsion_ncs_groups(out = out)
 
   def show_ncs_groups(self, out = None):
     if(out is None): out = sys.stdout
     pr = "REMARK   3  "
-    print >>out,pr+"NCS DETAILS."
-    print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups)
+    print(pr+"NCS DETAILS.", file=out)
+    print(pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups), file=out)
     for i_group, ncs_group in enumerate(self.ncs_groups):
-      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
+      print(pr+" NCS GROUP : %-6d"%(i_group+1), file=out)
       selection_strings = ncs_group.group.selection_strings
       for i_op,pair,mx,rms in zip(
           count(1),
           ncs_group.group.selection_pairs,
           ncs_group.matrices,
           ncs_group.rms):
-        print >> out,pr+"  NCS OPERATOR : %-d" % i_op
+        print(pr+"  NCS OPERATOR : %-d" % i_op, file=out)
         lines = line_breaker(selection_strings[0], width=34)
         for i_line, line in enumerate(lines):
           if(i_line == 0):
-            print >> out, pr+"   REFERENCE SELECTION: %s"%line
+            print(pr+"   REFERENCE SELECTION: %s"%line, file=out)
           else:
-            print >> out, pr+"                      : %s"%line
+            print(pr+"                      : %s"%line, file=out)
         lines = line_breaker(selection_strings[i_op], width=34)
         for i_line, line in enumerate(lines):
           if(i_line == 0):
-            print >> out, pr+"   SELECTION          : %s"%line
+            print(pr+"   SELECTION          : %s"%line, file=out)
           else:
-            print >> out, pr+"                      : %s"%line
-        print >> out,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
-        print >> out,pr+"   RMSD               : %-10.3f" % rms
+            print(pr+"                      : %s"%line, file=out)
+        print(pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0]), file=out)
+        print(pr+"   RMSD               : %-10.3f" % rms, file=out)
 
   def ncs_as_cif_block(self, cif_block=None):
     if cif_block is None:
@@ -444,35 +448,35 @@ class model(object):
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
     self.ncs_manager.get_torsion_rmsd(sites_cart=sites_cart)
     pr = "REMARK   3  "
-    print >>out,pr+"TORSION NCS DETAILS."
-    print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
+    print(pr+"TORSION NCS DETAILS.", file=out)
+    print(pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups), file=out)
     for i_group, ncs_group in enumerate(restraint_groups):
       count = 0
-      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
+      print(pr+" NCS GROUP : %-6d"%(i_group+1), file=out)
       selection_strings = ncs_group
       for selection in selection_strings:
         lines = line_breaker(selection, width=34)
         for i_line, line in enumerate(lines):
           if (i_line == 0):
-            print >> out, pr+"   SELECTION          : %s"%line
+            print(pr+"   SELECTION          : %s"%line, file=out)
           else:
-            print >> out, pr+"                      : %s"%line
+            print(pr+"                      : %s"%line, file=out)
         count += torsion_counts[selection]
-      print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
+      print(pr+"   RESTRAINED TORSIONS: %-d" % count, file=out)
       if self.ncs_manager.torsion_rmsd is not None:
-        print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
-          self.ncs_manager.torsion_rmsd
+        print(pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
+          self.ncs_manager.torsion_rmsd, file=out)
       if self.ncs_manager.all_torsion_rmsd is not None:
-        print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
-          self.ncs_manager.all_torsion_rmsd
+        print(pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
+          self.ncs_manager.all_torsion_rmsd, file=out)
     if self.ncs_manager.histogram_under_limit is not None:
-      print >> out, pr + "  Histogram of differences under limit:"
+      print(pr + "  Histogram of differences under limit:", file=out)
       self.ncs_manager.histogram_under_limit.show(
         f=out,
         prefix=pr+"  ",
         format_cutoffs="%8.3f")
     if self.ncs_manager.histogram_over_limit is not None:
-      print >> out, pr + "  Histogram of differences over limit:"
+      print(pr + "  Histogram of differences over limit:", file=out)
       self.ncs_manager.histogram_over_limit.show(
         f=out,
         prefix=pr+"  ",
@@ -481,21 +485,21 @@ class model(object):
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
     pr = "REMARK   3  "
-    print >>out,pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
-    print >>out,pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
-      len(self.anomalous_scatterer_groups)
+    print(pr+"ANOMALOUS SCATTERER GROUPS DETAILS.", file=out)
+    print(pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
+      len(self.anomalous_scatterer_groups), file=out)
     counter = 0
     for group in self.anomalous_scatterer_groups:
       counter += 1
-      print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
+      print(pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter, file=out)
       lines = line_breaker(group.selection_string, width=45)
       for i_line, line in enumerate(lines):
         if(i_line == 0):
-          print >> out, pr+"  SELECTION: %s"%line
+          print(pr+"  SELECTION: %s"%line, file=out)
         else:
-          print >> out, pr+"           : %s"%line
-      print >>out,pr+"  fp  : %-15.4f"%group.f_prime
-      print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
+          print(pr+"           : %s"%line, file=out)
+      print(pr+"  fp  : %-15.4f"%group.f_prime, file=out)
+      print(pr+"  fdp : %-15.4f"%group.f_double_prime, file=out)
       out.flush()
 
   def as_cif_block(self, cif_block=None):
@@ -555,15 +559,15 @@ class info(object):
     prefix = "REMARK   3  "
     if(out is None): out = sys.stdout
     if(self.data_n is not None):
-      print >> out, prefix+"X-RAY DATA."
-      print >> out, prefix
+      print(prefix+"X-RAY DATA.", file=out)
+      print(prefix, file=out)
     self.data_x.show_remark_3(out = out)
-    print >> out, prefix
+    print(prefix, file=out)
     if(self.data_n is not None):
-      print >> out, prefix+"NEUTRON DATA."
-      print >> out, prefix
+      print(prefix+"NEUTRON DATA.", file=out)
+      print(prefix, file=out)
       self.data_n.show_remark_3(out = out)
-      print >> out, prefix
+      print(prefix, file=out)
     self.model.show(out = out, pdb_deposition = True)
 
   def as_cif_block(self, cif_block=None):

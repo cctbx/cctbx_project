@@ -1,5 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.polder
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
 import time
 import os, sys
 import mmtbx.utils
@@ -10,7 +16,7 @@ from iotbx import file_reader
 #from iotbx import phil
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
-from cStringIO import StringIO
+from io import StringIO
 from cctbx import maptbx
 #from cctbx import miller
 from cctbx.array_family import flex
@@ -133,12 +139,12 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def print_legend_and_usage(log):
-  print >> log, "-"*79
-  print >> log, "                               phenix.polder"
-  print >> log, "-"*79
-  print >> log, legend
-  print >> log, "-"*79
-  print >> log, master_params().show()
+  print("-"*79, file=log)
+  print("                               phenix.polder", file=log)
+  print("-"*79, file=log)
+  print(legend, file=log)
+  print("-"*79, file=log)
+  print(master_params().show(), file=log)
 
 # validation for GUI
 def validate_params(params):
@@ -196,22 +202,22 @@ def obtain_cs_if_gui_input(model_file_name, reflection_file_name):
   return crystal_symmetry
 
 def format_print_rfactors(log, r_work, r_free):
-  print >> log, "R_work = %6.4f R_free = %6.4f" % (r_work, r_free)
-  print >> log, "*"*79
+  print("R_work = %6.4f R_free = %6.4f" % (r_work, r_free), file=log)
+  print("*"*79, file=log)
 
 def print_rfactors(debug, results, log):
   fmodel_input  = results.fmodel_input
   fmodel_biased = results.fmodel_biased
   fmodel_omit   = results.fmodel_omit
   fmodel_polder = results.fmodel_polder
-  print >> log, "R factors for unmodified input model and data:"
+  print("R factors for unmodified input model and data:", file=log)
   format_print_rfactors(log, fmodel_input.r_work(), fmodel_input.r_free())
   if (debug):
-    print >> log, "R factor when ligand is used for mask calculation (biased map):"
+    print("R factor when ligand is used for mask calculation (biased map):", file=log)
     format_print_rfactors(log, fmodel_biased.r_work(), fmodel_biased.r_free())
-  print >> log, "R factor for polder map"
+  print("R factor for polder map", file=log)
   format_print_rfactors(log, fmodel_polder.r_work(), fmodel_polder.r_free())
-  print >> log, "R factor for OMIT map (ligand is excluded for mask calculation):"
+  print("R factor for OMIT map (ligand is excluded for mask calculation):", file=log)
   format_print_rfactors(log, fmodel_omit.r_work(), fmodel_omit.r_free())
 
 def result_message(cc12, cc13, cc23):
@@ -243,31 +249,31 @@ def print_validation(log, results, debug, pdb_hierarchy_selected):
   b1 = box_1.map_box.select(sel).as_1d()
   b2 = box_2.map_box.select(sel).as_1d()
   b3 = box_3.map_box.select(sel).as_1d()
-  print >> log, "Map 1: calculated Fobs with ligand"
-  print >> log, "Map 2: calculated Fobs without ligand"
-  print >> log, "Map 3: real Fobs data"
+  print("Map 1: calculated Fobs with ligand", file=log)
+  print("Map 2: calculated Fobs without ligand", file=log)
+  print("Map 3: real Fobs data", file=log)
   cc12 = flex.linear_correlation(x=b1,y=b2).coefficient()
   cc13 = flex.linear_correlation(x=b1,y=b3).coefficient()
   cc23 = flex.linear_correlation(x=b2,y=b3).coefficient()
-  print >> log, "CC(1,2): %6.4f" % cc12
-  print >> log, "CC(1,3): %6.4f" % cc13
-  print >> log, "CC(2,3): %6.4f" % cc23
+  print("CC(1,2): %6.4f" % cc12, file=log)
+  print("CC(1,3): %6.4f" % cc13, file=log)
+  print("CC(2,3): %6.4f" % cc23, file=log)
   #### D-function
   b1 = maptbx.volume_scale_1d(map=b1, n_bins=10000).map_data()
   b2 = maptbx.volume_scale_1d(map=b2, n_bins=10000).map_data()
   b3 = maptbx.volume_scale_1d(map=b3, n_bins=10000).map_data()
-  print >> log, "Peak CC:"
-  print >> log, "CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient()
-  print >> log, "CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient()
-  print >> log, "CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient()
+  print("Peak CC:", file=log)
+  print("CC(1,2): %6.4f"%flex.linear_correlation(x=b1,y=b2).coefficient(), file=log)
+  print("CC(1,3): %6.4f"%flex.linear_correlation(x=b1,y=b3).coefficient(), file=log)
+  print("CC(2,3): %6.4f"%flex.linear_correlation(x=b2,y=b3).coefficient(), file=log)
   cutoffs = flex.double(
     [i/10. for i in range(1,10)]+[i/100 for i in range(91,100)])
   d12 = maptbx.discrepancy_function(map_1=b1, map_2=b2, cutoffs=cutoffs)
   d13 = maptbx.discrepancy_function(map_1=b1, map_2=b3, cutoffs=cutoffs)
   d23 = maptbx.discrepancy_function(map_1=b2, map_2=b3, cutoffs=cutoffs)
-  print >> log, "q    D(1,2) D(1,3) D(2,3)"
+  print("q    D(1,2) D(1,3) D(2,3)", file=log)
   for c,d12_,d13_,d23_ in zip(cutoffs,d12,d13,d23):
-    print >> log, "%4.2f %6.4f %6.4f %6.4f"%(c,d12_,d13_,d23_)
+    print("%4.2f %6.4f %6.4f %6.4f"%(c,d12_,d13_,d23_), file=log)
   ###
   if(debug):
     box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
@@ -277,9 +283,9 @@ def print_validation(log, results, debug, pdb_hierarchy_selected):
     pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
       crystal_symmetry=box_1.box_crystal_symmetry)
   #
-  print >> log, '*' * 79
+  print('*' * 79, file=log)
   message = result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
-  print >> log, message
+  print(message, file=log)
   return message
 
 def write_files(results, mask_output, debug, f_obs, prefix, log):
@@ -309,7 +315,7 @@ def write_files(results, mask_output, debug, f_obs, prefix, log):
   if (prefix is not None):
     polder_file_name = prefix + "_" + polder_file_name
   mtz_object.write(file_name = polder_file_name)
-  print >> log, 'File %s was written.' % polder_file_name
+  print('File %s was written.' % polder_file_name, file=log)
 
 def get_inputs(args, log, master_params, validated):
   inputs = mmtbx.utils.process_command_line_args(
@@ -317,7 +323,7 @@ def get_inputs(args, log, master_params, validated):
     master_params                    = master_params,
     suppress_symmetry_related_errors = True)
   params = inputs.params.extract()
-  print params.model_file_name
+  print(params.model_file_name)
   # Check model file
   if (len(inputs.pdb_file_names) == 0 and (params.model_file_name is None)):
     raise Sorry("No model file found.")
@@ -345,7 +351,7 @@ def get_inputs(args, log, master_params, validated):
     crystal_symmetry = obtain_cs_if_gui_input(
       model_file_name      = params.model_file_name,
       reflection_file_name = params.reflection_file_name)
-  print >> log, "Working crystal symmetry after inspecting all inputs:"
+  print("Working crystal symmetry after inspecting all inputs:", file=log)
   crystal_symmetry.show_summary(f=log, prefix="  ")
   #
   # Get data labels
@@ -374,19 +380,19 @@ def get_inputs(args, log, master_params, validated):
     params.reflection_file_name = parameters.file_name
   r_free_flags = determined_data_and_flags.r_free_flags
   assert f_obs is not None
-  print >> log,  "Input data:"
-  print >> log, "  Iobs or Fobs:", f_obs.info().labels
+  print("Input data:", file=log)
+  print("  Iobs or Fobs:", f_obs.info().labels, file=log)
   if (r_free_flags is not None):
-    print >> log, "  Free-R flags:", r_free_flags.info().labels
+    print("  Free-R flags:", r_free_flags.info().labels, file=log)
     params.r_free_flags_labels = r_free_flags.info().label_string()
   else:
-    print >> log, "  Free-R flags: Not present"
+    print("  Free-R flags: Not present", file=log)
   model_basename = os.path.basename(params.model_file_name.split(".")[0])
   if (len(model_basename) > 0 and
     params.output_file_name_prefix is None):
     params.output_file_name_prefix = model_basename
   new_params =  master_params.format(python_object = params)
-  print >> log, "*"*79
+  print("*"*79, file=log)
   new_params.show()
   if (not validated):
     validate_params(params)
@@ -431,8 +437,8 @@ def run(args, validated = False, out=sys.stdout):
   if len(args) == 0:
     print_legend_and_usage(log)
     return
-  print >> log, "phenix.polder is running..."
-  print >> log, "input parameters:\n", args
+  print("phenix.polder is running...", file=log)
+  print("input parameters:\n", args, file=log)
   #
   inputs = get_inputs(
     args          = args,
@@ -442,19 +448,19 @@ def run(args, validated = False, out=sys.stdout):
   params = inputs.params
   #
   # Check if selection syntax makes sense
-  print >> log, "*"*79
-  print >> log, "selecting atoms..."
-  print >> log, "Selection string:", params.solvent_exclusion_mask_selection
+  print("*"*79, file=log)
+  print("selecting atoms...", file=log)
+  print("Selection string:", params.solvent_exclusion_mask_selection, file=log)
   selection_bool = inputs.pdb_hierarchy.atom_selection_cache().selection(
     string = params.solvent_exclusion_mask_selection)
   n_selected = selection_bool.count(True)
   if(n_selected == 0):
     raise Sorry("No atoms where selected. Check selection syntax again.")
-  print >> log, "Number of atoms selected:", n_selected
+  print("Number of atoms selected:", n_selected, file=log)
   pdb_hierarchy_selected = inputs.pdb_hierarchy.select(selection_bool)
   ligand_str = pdb_hierarchy_selected.as_pdb_string()
-  print >> log, "Atoms selected:\n", ligand_str
-  print >> log, "*"*79
+  print("Atoms selected:\n", ligand_str, file=log)
+  print("*"*79, file=log)
   #
   # Calculate polder map
   polder_object = mmtbx.maps.polder_lib.compute_polder_map(
@@ -486,8 +492,8 @@ def run(args, validated = False, out=sys.stdout):
       results = results,
       debug   = params.debug)
   #
-  print >> log, '*' * 79
-  print >> log, "Finished."
+  print('*' * 79, file=log)
+  print("Finished.", file=log)
   # results object not returned because it contains maps
   return group_args(message=message)
 
@@ -509,4 +515,4 @@ class launcher (runtime_utils.target_with_save_result) :
 if __name__ == "__main__":
   t0 = time.time()
   run(args = sys.argv[1:])
-  print "Time:", round(time.time()-t0, 2)
+  print("Time:", round(time.time()-t0, 2))

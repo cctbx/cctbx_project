@@ -1,5 +1,10 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from past.builtins import basestring
 from dxtbx.format.FormatPY import FormatPY
 
 class FormatPYunspecified(FormatPY):
@@ -12,9 +17,9 @@ class FormatPYunspecified(FormatPY):
     _start() method and again in the detectorbase constructor."""
     try:
       stream = FormatPYunspecified.open_file(image_file, 'rb')
-      import cPickle as pickle
+      import pickle as pickle
       data = pickle.load(stream)
-    except IOError,e:
+    except IOError as e:
       return False
 
     wanted_header_items = ['SIZE1','SIZE2','TIMESTAMP']
@@ -40,7 +45,7 @@ class FormatPYunspecified(FormatPY):
     if isinstance(self._image_file, basestring) and os.path.isfile(self._image_file):
       stream = FormatPYunspecified.open_file(self._image_file, 'rb')
 
-      import cPickle as pickle
+      import pickle as pickle
       data = pickle.load(stream)
     else:
       data = self._image_file
@@ -84,7 +89,7 @@ class FormatPYunspecified(FormatPY):
     if is_file:
       I = NpyImage(file_name)
     else:
-      print "This is not a file; assume the data are in the defined dictionary format"
+      print("This is not a file; assume the data are in the defined dictionary format")
       I = NpyImage(file_name, source_data=self._image_file)
     I.readHeader(horizons_phil)
     I.translate_tiles(horizons_phil)
@@ -161,7 +166,7 @@ class FormatPYunspecified(FormatPY):
     mask = flex.bool(flex.grid(data.focus()))
 
     # set active areas to True so they are not masked
-    for i in xrange(len(tiling)//4):
+    for i in range(len(tiling)//4):
       x1,y1,x2,y2=tiling[4*i:(4*i)+4]
       sub_array = flex.bool(flex.grid(x2-x1,y2-y1),True)
       mask.matrix_paste_block_in_place(sub_array,x1,y1)
@@ -188,7 +193,7 @@ class FormatPYunspecifiedInMemory(FormatPYunspecified):
       wanted_header_items = ['SIZE1','SIZE2','TIMESTAMP']
 
       for header_item in wanted_header_items:
-        if not header_item in image_file.keys():
+        if not header_item in list(image_file.keys()):
           return False
 
       return True
@@ -209,4 +214,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatPYunspecified.understand(arg)
+    print(FormatPYunspecified.understand(arg))

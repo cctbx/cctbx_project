@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from scitbx.array_family import flex
 import scitbx.matrix
 

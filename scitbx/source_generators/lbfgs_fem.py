@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 op = os.path
 
@@ -46,13 +47,10 @@ def run(args=[]):
       assert op.isdir(result)
     return result
   target_dir = make_target_dir(path="include/scitbx")
-  print >> open(op.join(target_dir, "lbfgs_fem.hpp"), "w"), \
-    "\n".join(functions_hpp)
+  print("\n".join(functions_hpp), file=open(op.join(target_dir, "lbfgs_fem.hpp"), "w"))
   target_dir = make_target_dir(path="scitbx/lbfgs")
-  print >> open(op.join(target_dir, "lbfgs_fem.cpp"), "w"), \
-    "\n".join(functions_cpp)
-  print >> open(op.join(target_dir, "sdrive_fem.cpp"), "w"), \
-    "\n".join(sdrive_cpp)
+  print("\n".join(functions_cpp), file=open(op.join(target_dir, "lbfgs_fem.cpp"), "w"))
+  print("\n".join(sdrive_cpp), file=open(op.join(target_dir, "sdrive_fem.cpp"), "w"))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

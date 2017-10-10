@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import iotbx.phil
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
@@ -114,18 +119,18 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
       f=log,
       max_items=10)
   del pair_proxies
-  print >> log
+  print(file=log)
   log.flush()
   if (co.alternate_nonbonded_off_on and co.macro_cycles % 2 != 0):
     co.macro_cycles += 1
-    print >> log, "INFO: Number of macro cycles increased by one to ensure use of"
-    print >> log, "      nonbonded interactions in last macro cycle."
-    print >> log
-  for i_macro_cycle in xrange(co.macro_cycles):
+    print("INFO: Number of macro cycles increased by one to ensure use of", file=log)
+    print("      nonbonded interactions in last macro cycle.", file=log)
+    print(file=log)
+  for i_macro_cycle in range(co.macro_cycles):
     if (co.alternate_nonbonded_off_on):
       geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
-      print >> log, "Use nonbonded interactions this macro cycle:", \
-        geometry_restraints_flags.nonbonded
+      print("Use nonbonded interactions this macro cycle:", \
+        geometry_restraints_flags.nonbonded, file=log)
     minimized = lbfgs(
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
@@ -135,16 +140,16 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
       lbfgs_exception_handling_params=
         scitbx.lbfgs.exception_handling_parameters(
           ignore_line_search_failed_step_at_lower_bound=True))
-    print >> log, "Energies at start of minimization:"
+    print("Energies at start of minimization:", file=log)
     minimized.first_target_result.show(f=log)
-    print >> log
-    print >> log, "Number of minimization iterations:", minimized.minimizer.iter()
-    print >> log, "Root-mean-square coordinate difference: %.3f" % (
-      all_chain_proxies.sites_cart.rms_difference(sites_cart))
-    print >> log
-    print >> log, "Energies at end of minimization:"
+    print(file=log)
+    print("Number of minimization iterations:", minimized.minimizer.iter(), file=log)
+    print("Root-mean-square coordinate difference: %.3f" % (
+      all_chain_proxies.sites_cart.rms_difference(sites_cart)), file=log)
+    print(file=log)
+    print("Energies at end of minimization:", file=log)
     minimized.final_target_result.show(f=log)
-    print >> log
+    print(file=log)
     geometry_restraints_manager.pair_proxies(
       sites_cart=sites_cart,
       flags=geometry_restraints_flags) \
@@ -154,7 +159,7 @@ def run(processed_pdb_file, params=master_params().extract(), log=sys.stdout):
           site_labels=atom_labels,
           f=log,
           max_items=10)
-    print >> log
+    print(file=log)
   assert geometry_restraints_flags.nonbonded
   return sites_cart
 
@@ -260,8 +265,8 @@ class run2(object):
       ramachandran_restraints = True)
     self.update_cdl_restraints()
     self.show()
-    for i_macro_cycle in xrange(number_of_macro_cycles):
-      print >> self.log, "  macro-cycle:", i_macro_cycle
+    for i_macro_cycle in range(number_of_macro_cycles):
+      print("  macro-cycle:", i_macro_cycle, file=self.log)
       self.restraints_manager.geometry.update_ramachandran_restraints_phi_psi_targets(
         sites_cart=self.pdb_hierarchy.atoms().extract_xyz())
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
@@ -283,9 +288,9 @@ class run2(object):
       if (ncs_restraints_group_list is not None
           and len(ncs_restraints_group_list)) > 0:
         # do ncs minimization
-        print >> self.log, "Using NCS constraints."
+        print("Using NCS constraints.", file=self.log)
         xrs = self.pdb_hierarchy.extract_xray_structure().deep_copy_scatterers()
-        refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
+        refine_selection = flex.size_t(range(xrs.scatterers().size()))
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
             target_function_and_grads_geometry_minimization(
                 xray_structure=xrs,
@@ -359,7 +364,7 @@ class run2(object):
       log=self.log,
       verbose=False,
       )
-    print >> self.log, "="*79
+    print("="*79, file=self.log)
     return rc
 
   def show(self):
@@ -392,7 +397,7 @@ def minimize_wrapper_for_ramachandran(
   Ramachandran outliers.
   """
   try:
-    import cPickle as pickle
+    import pickle as pickle
   except ImportError:
     import pickle
   assert grm is not None

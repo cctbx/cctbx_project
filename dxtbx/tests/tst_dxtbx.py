@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 def tst_dxtbx():
   import libtbx.load_env
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
     return
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
-    print 'FAIL: dials_regression not configured'
+  except KeyError as e:
+    print('FAIL: dials_regression not configured')
     return
 
   import os
@@ -34,15 +35,15 @@ def tst_dxtbx():
     except IOError:
       pass
 
-  print 'OK'
+  print('OK')
 
 
 def tst_dxtbx_compressed():
   import libtbx.load_env
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
-    print 'FAIL: dials_regression not configured'
+  except KeyError as e:
+    print('FAIL: dials_regression not configured')
     return
 
   import os
@@ -58,7 +59,7 @@ def tst_dxtbx_compressed():
   import shutil
 
   tmp_dir = open_tmp_directory()
-  print tmp_dir
+  print(tmp_dir)
 
   for directory, image in get_all_working_images():
     file_path = os.path.join(dials_regression, 'image_examples',
@@ -67,16 +68,16 @@ def tst_dxtbx_compressed():
       compressed_path = os.path.join(tmp_dir, os.path.basename(file_path)) + ext
       with open(file_path, 'rb') as f_in, smart_open.for_writing(compressed_path) as f_out:
         shutil.copyfileobj(f_in, f_out)
-      print file_path, compressed_path
+      print(file_path, compressed_path)
       format = Registry.find(compressed_path)
       try:
         i = format(compressed_path)
-      except Exception, e:
-        print 'Error reading compressed file: %s' %compressed_path
+      except Exception as e:
+        print('Error reading compressed file: %s' %compressed_path)
         import traceback
         traceback.print_exc()
       else:
-        print 'Successfully read compressed file: %s' %compressed_path
+        print('Successfully read compressed file: %s' %compressed_path)
         det = i.get_detector()
         if det is not None:
           size = det[0].get_image_size()
@@ -88,7 +89,7 @@ def tst_dxtbx_compressed():
         except IOError:
           pass
 
-  print 'OK'
+  print('OK')
 
 def tst_dxtbx_models():
 
@@ -126,7 +127,7 @@ def tst_sweep():
     answer = template_regex(filename)
     assert answer[0] == questions_answers[filename]
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   tst_dxtbx()

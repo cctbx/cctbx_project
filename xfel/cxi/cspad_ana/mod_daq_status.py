@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # XXX Could include injector positions.  What about laser intensities
@@ -6,6 +7,7 @@ from __future__ import division
 #
 # $Id$
 
+from builtins import object
 import logging
 import threading
 import wx
@@ -192,7 +194,7 @@ class mod_daq_status (object) :
     # Hardcoded update frequency.
     if (self.nshots % 120 != 0) :
       self.update_plot()
-    print "END OF RUN"
+    print("END OF RUN")
     wx.PostEvent(self.window, status_plot.SaveImageEvent())
 
     # Uncomment to close the frame immediately.  Otherwise, wouldn't

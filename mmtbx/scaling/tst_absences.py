@@ -4,6 +4,8 @@ Regression tests for mmtbx.scaling.absences
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from mmtbx.scaling.absences import *
 from cctbx.development import random_structure
 from cctbx import sgtbx
@@ -114,7 +116,7 @@ def exercise_analyze_absences () :
       if (group == str(space_group_info)) :
         assert (n_abs_viol == 0), row
         if (n_pres_viol != 0) :
-          print group, n_pres_viol
+          print(group, n_pres_viol)
           psgc.show()
         # XXX Currently this fails for the following space groups:
         #     I 4
@@ -132,4 +134,4 @@ def exercise_2 () :
 if __name__ == "__main__":
   exercise_abs_list()
   exercise_analyze_absences()
-  print "OK"
+  print("OK")

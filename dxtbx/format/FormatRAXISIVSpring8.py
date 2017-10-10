@@ -10,6 +10,7 @@
 #
 
 from __future__ import absolute_import, division
+from builtins import map
 import struct
 import datetime
 
@@ -27,7 +28,7 @@ class FormatRAXISIVSPring8(Format):
   def understand(image_file):
     try:
       header = Format.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError as e:
       return False
 
     # A few items expected to be the same from image to image that we can use
@@ -120,7 +121,7 @@ class FormatRAXISIVSPring8(Format):
     format = self._scan_factory.format('RAXIS')
     exposure_time = struct.unpack(f, header[536:540])[0]
 
-    y, m, d = map(int, header[256:268].strip().split('-'))
+    y, m, d = list(map(int, header[256:268].strip().split('-')))
 
     epoch = calendar.timegm(datetime.datetime(y, m, d, 0, 0, 0).timetuple())
 

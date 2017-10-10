@@ -3,12 +3,15 @@
 # comprehensive.  Maybe remove this one?
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from mmtbx.scaling import twin_analyses
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from io import StringIO
 import sys
 
 def exercise_twin_detection (verbose=False) :
@@ -129,7 +132,7 @@ END
   tw2.l_test.show(out=out3)
   assert not show_diff(out2.getvalue(), out3.getvalue())
   if (verbose) :
-    print out.getvalue()
+    print(out.getvalue())
   # twin_results_interpretation object via cctbx.miller.array API extension
   # XXX I get slightly different numbers here versus running through the
   # twin_analyses call above - this seems to be caused by the resolution
@@ -144,4 +147,4 @@ END
 
 if (__name__ == "__main__") :
   exercise_twin_detection(verbose=("--verbose" in sys.argv))
-  print "OK"
+  print("OK")

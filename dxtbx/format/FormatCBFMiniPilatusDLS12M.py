@@ -9,7 +9,12 @@
 # An implementation of the CBF image reader for Pilatus images, for the P12M-DLS
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
@@ -19,7 +24,7 @@ def read_mask():
   global __mask
   if not __mask:
     import os
-    import cPickle as pickle
+    import pickle as pickle
     source_dir = os.path.split(__file__)[0]
     mask_file = os.path.join(source_dir, 'FormatCBFMiniPilatusDLS12M.pickle')
     __mask = pickle.load(open(mask_file, 'rb'))
@@ -367,4 +372,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDLS12M.understand(arg)
+    print(FormatCBFMiniPilatusDLS12M.understand(arg))

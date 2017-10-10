@@ -4,6 +4,7 @@ from __future__ import division
 # Removes all but the central sensors from a CSPAD CBF
 #
 
+from builtins import range
 import dxtbx, sys, os
 import libtbx.option_parser
 from xfel.cftbx.detector.cspad_cbf_tbx import cbf_file_to_basis_dict, write_cspad_cbf

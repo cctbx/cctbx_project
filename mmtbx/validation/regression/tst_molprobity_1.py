@@ -1,11 +1,15 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 from mmtbx.command_line import molprobity
 import iotbx.pdb.hierarchy
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from io import StringIO
 
 # test for corner cases (synthetic data okay)
 def exercise_synthetic () :
@@ -139,4 +143,4 @@ REMARK   3    GEOSTD + MON.LIB. + CDL v1.2
 if (__name__ == "__main__") :
   exercise_cdl()
   exercise_synthetic()
-  print "OK"
+  print("OK")

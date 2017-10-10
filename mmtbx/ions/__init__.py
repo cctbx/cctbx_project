@@ -12,6 +12,8 @@ Notes
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import iotbx.cif
 from libtbx import group_args, Auto, slots_getstate_setstate
 from libtbx.utils import Sorry
@@ -472,7 +474,7 @@ def check_supported (elements):
       "'Auto' or a comma-separated list of element symbols.")
   elif (elements is not Auto) :
     # XXX somehow comma-separation of phil strings fields doesn't work
-    if isinstance(elements, str) or isinstance(elements, unicode) :
+    if isinstance(elements, str) or isinstance(elements, str) :
       elements = elements.replace(",", " ").split()
     elif (isinstance(elements, list)) and (len(elements) == 1) :
       elements = elements[0].split(",")
@@ -565,15 +567,15 @@ class atom_type_flags (object) :
     """
     captions = self.get_flag_captions()
     if (len(captions) == 0) :
-      print >> out, prefix+"(No problems detected.)"
+      print(prefix+"(No problems detected.)", file=out)
     else :
-      print >> out, prefix+"The following problems were detected with %s:" %\
-        self.name
+      print(prefix+"The following problems were detected with %s:" %\
+        self.name, file=out)
       have_plus = have_minus = False
       for caption in caption :
-        print >> out, prefix+"  %s" % caption
+        print(prefix+"  %s" % caption, file=out)
         if ("---" in caption) : have_minus = True
         elif ("+++" in caption) : have_plus = True
       if (have_plus or have_minus) :
-        print >> out, prefix+\
-          "(+++ indicates a heavier element, --- indicates a lighter one)"
+        print(prefix+\
+          "(+++ indicates a heavier element, --- indicates a lighter one)", file=out)

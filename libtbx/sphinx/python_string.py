@@ -1,5 +1,6 @@
 from __future__ import division
 
+from past.builtins import basestring
 from docutils.parsers.rst import Directive
 #from docutils.parsers.rst import directives
 from docutils import nodes

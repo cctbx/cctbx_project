@@ -1,5 +1,6 @@
 
 from __future__ import division
+from builtins import object
 from libtbx.utils import null_out
 import os
 
@@ -68,7 +69,7 @@ END
   pdb_inp.write_pdb_file(file_name = "tst_exercise_2_map_utils.pdb")
   fc = iotbx.pdb.input(source_info=None,
     lines=pdb_str2).xray_structure_simple().structure_factors(d_min=2).f_calc()
-  class dummy:
+  class dummy(object):
     def amplitudes(self): return "2FOFCWT"
     def phases(self,root_label=None): return "PH2FOFCWT"
   mtz_dataset = fc.as_mtz_dataset(column_root_label=dummy().amplitudes(),

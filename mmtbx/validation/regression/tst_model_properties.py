@@ -1,5 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.monomer_library import server
 from mmtbx.validation import model_properties
@@ -7,7 +10,7 @@ import iotbx.pdb.hierarchy
 from libtbx.test_utils import show_diff, approx_equal
 from libtbx.easy_pickle import loads, dumps
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from io import StringIO
 
 def exercise_1 () :
   pdb_raw = """\
@@ -371,4 +374,4 @@ if (__name__ == "__main__") :
   exercise_3()
   test_zero_occupancy()
   test_partial_occupancy()
-  print "OK"
+  print("OK")

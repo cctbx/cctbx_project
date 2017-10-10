@@ -1,11 +1,16 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import range
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.distance_least_squares \
   import distance_and_repulsion_least_squares
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
 from cctbx.array_family import flex
-from cStringIO import StringIO
+from io import StringIO
 import libtbx.utils
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
@@ -19,14 +24,14 @@ from mmtbx.monomer_library import pdb_interpretation
 
 def exercise_with_zeolite(verbose):
   if (not libtbx.env.has_module("iotbx")):
-    print "Skipping exercise_with_zeolite(): iotbx not available"
+    print("Skipping exercise_with_zeolite(): iotbx not available")
     return
   from iotbx.kriber import strudat
   atlas_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/misc/strudat_zeolite_atlas",
     test=os.path.isfile)
   if (atlas_file is None):
-    print "Skipping exercise_with_zeolite(): input file not available"
+    print("Skipping exercise_with_zeolite(): input file not available")
     return
   strudat_contents = strudat.read_all_entries(open(atlas_file))
   strudat_entry = strudat_contents.get("YUG")
@@ -83,7 +88,7 @@ def exercise_with_zeolite(verbose):
 0^  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 0^... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="delta",
@@ -104,7 +109,7 @@ def exercise_with_zeolite(verbose):
 ...
 0^... (remaining 20 not shown)
 """,
-    selections=[range(6), [-1]])
+    selections=[list(range(6)), [-1]])
   site_labels_long = ["abc"+label+"def" for label in site_labels]
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
@@ -130,7 +135,7 @@ def exercise_with_zeolite(verbose):
 ^0  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 ^0... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -154,7 +159,7 @@ def exercise_with_zeolite(verbose):
 .=  3.071  3.216 -0.145 2.08e+00 2.31e-01 4.83e-03 -x+1/2,-y+1/2,-z+1
 .=... (remaining 20 not shown)
 """,
-    selections=[range(6), range(-5,0)])
+    selections=[list(range(6)), list(range(-5,0))])
   out = StringIO()
   pair_proxies.bond_proxies.show_sorted(
     by_value="residual",
@@ -201,7 +206,7 @@ def exercise_with_zeolite(verbose):
       asu_mappings=asu_mappings)
     while (not pair_generator.at_end()):
       p = geometry_restraints.nonbonded_asu_proxy(
-        pair=pair_generator.next(),
+        pair=next(pair_generator),
         vdw_distance=3)
       sorted_asu_proxies.process(p)
     out = StringIO()
@@ -227,7 +232,7 @@ d%          SI1
 d%   model   vdw sym.op.
 d%   3.216 3.000 -x+1/2,-y+1/2,-z+1
 """,
-      selections=[range(2), range(10,14), range(26,30)])
+      selections=[list(range(2)), list(range(10,14)), list(range(26,30))])
     out = StringIO()
     sorted_asu_proxies.show_sorted(
       by_value="delta",
@@ -251,7 +256,7 @@ d%   3.216 3.000 -x+1/2,-y+1/2,-z+1
 *j   3.130 3.000 -x+1,y,-z+1
 *j... (remaining 2 not shown)
 """,
-      selections=[range(2), range(-9,0)])
+      selections=[list(range(2)), list(range(-9,0))])
     out = StringIO()
     sorted_asu_proxies.show_sorted(
       by_value="delta",
@@ -320,11 +325,11 @@ END
 
 def exercise_with_pdb(verbose):
   if (not libtbx.env.has_module(name="mmtbx")):
-    print "Skipping exercise_with_pdb():", \
-      "mmtbx.monomer_library.pdb_interpretation not available"
+    print("Skipping exercise_with_pdb():", \
+      "mmtbx.monomer_library.pdb_interpretation not available")
     return
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping exercise_with_pdb(): chem_data directory not available"
+    print("Skipping exercise_with_pdb(): chem_data directory not available")
     return
   if (verbose):
     out = sys.stdout
@@ -463,8 +468,8 @@ nonbonded 1
 def exercise_na_restraints_output_to_geo(verbose=False):
   for dependency in ("chem_data", "ksdssp"):
     if not libtbx.env.has_module(dependency):
-      print "Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
-        dependency)
+      print("Skipping exercise_na_restraints_output_to_geo(): %s not available" %(
+        dependency))
       return
   pdb_str_1dpl_cutted="""\
 CRYST1   24.627   42.717   46.906  90.00  90.00  90.00 P 21 21 21    8
@@ -576,8 +581,8 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       strict_conflict_handling=False,
       log=out1)
   except MonomerLibraryServerError:
-    print "Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n"
-    print "Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?"
+    print("Skipping exercise_na_restraints_output_to_geo(): Encountered MonomerLibraryServerError.\n")
+    print("Is the CCP4 monomer library installed and made available through environment variables MMTBX_CCP4_MONOMER_LIB or CLIBD_MON?")
     return
   geo1 = processed_pdb_file.geometry_restraints_manager()
   hbp = geo1.get_n_hbond_proxies()
@@ -603,7 +608,7 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   for v in [v_out1, v_out2]:
     for portion in identical_portions:
       if not v.find(portion) > 0:
-        print "This portion was not found:\n%s\n=====End of portion." % portion
+        print("This portion was not found:\n%s\n=====End of portion." % portion)
         assert 0, "the portion above does not match expected portion."
   # check .geo output
   geo_identical_portions = ["Bond restraints: 87",
@@ -638,7 +643,7 @@ def exercise_all(args):
   exercise_with_pdb(verbose=verbose)
   exercise_non_crystallographic_conserving_bonds_and_angles()
   exercise_na_restraints_output_to_geo(verbose=verbose)
-  print libtbx.utils.format_cpu_times()
+  print(libtbx.utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise_all(sys.argv[1:])

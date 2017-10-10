@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 #
 # dxtbx.serialize.py
@@ -31,14 +32,14 @@ if __name__ == '__main__':
 
   # Print help if no arguments specified, otherwise call spot prediction
   if len(args) == 0:
-    print parser.print_help()
+    print(parser.print_help())
 
   else:
     imagesets = ImageSetFactory.new(args)
     if len(imagesets) == 0:
-      print "Error: no imagesets to serialize."
+      print("Error: no imagesets to serialize.")
     elif len(imagesets) > 1:
-      print "Error: more than 1 imageset has been specified"
+      print("Error: more than 1 imageset has been specified")
     else:
       dump.imageset(imagesets[0], options.output_file)
-      print "Serialized imageset to {0}".format(options.output_file)
+      print("Serialized imageset to {0}".format(options.output_file))

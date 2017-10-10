@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 
 import boost.python
@@ -86,7 +91,7 @@ class resconfid(object):
     return self.confs_eq(other=other)
 
   def confs_eq(self, other):
-    for altloc,resname in self.confs.items():
+    for altloc,resname in list(self.confs.items()):
       other_resname = other.confs.get(altloc)
       if (other_resname is None): continue
       if (other_resname != resname): return False
@@ -120,7 +125,7 @@ def match_atoms(
   r_resconfids = get_resconfids(model=reference_model)
   o_resconfids = get_resconfids(model=other_model)
   if (all_confs_eq(resconfids_i=r_resconfids, resconfids_j=o_resconfids)):
-    pairs_list = [(i,i) for i in xrange(len(r_resconfids))]
+    pairs_list = [(i,i) for i in range(len(r_resconfids))]
   else:
     pairs_list = match_ordered_chain_members(a=r_resconfids, b=o_resconfids)
   for i,j in pairs_list:
@@ -154,7 +159,7 @@ def match_atoms(
             if (not special_position_warnings_only):
               raise Sorry(msg)
             elif (log is not None):
-              print >> log, "WARNING:", msg
+              print("WARNING:", msg, file=log)
         if (msg is not None): continue
         i_seq_i = r_atom.i_seq
         i_seq_j = o_atom.i_seq
@@ -237,7 +242,7 @@ class pair_lists_generator(object):
     pdb_hierarchy = model.get_hierarchy()
     reference_hierarchy = pdb_hierarchy.select(
       atom_selection=self.selection_properties[0].iselection)
-    for j_ncs in xrange(1,n_ncs):
+    for j_ncs in range(1,n_ncs):
       other_hierarchy = pdb_hierarchy.select(
         atom_selection=self.selection_properties[j_ncs].iselection)
       r_models = reference_hierarchy.models()
@@ -411,16 +416,16 @@ class _energies_adp_iso(scitbx.restraints.energies):
       max_label_size = max(max_label_size, len(label))
     fmt = "  %%%ds: %%7.2f - %%7.2f = %%8.4f" % max_label_size
     def show_selection(i_ncs, pair):
-      print >> out, prefix + "NCS selection:", \
-        show_string(self.group.selection_strings[i_ncs])
-      print >> out, prefix + " "*(max_label_size+2) \
-        + "    B-iso   NCS ave  Difference"
+      print(prefix + "NCS selection:", \
+        show_string(self.group.selection_strings[i_ncs]), file=out)
+      print(prefix + " "*(max_label_size+2) \
+        + "    B-iso   NCS ave  Difference", file=out)
       u_isos_current = self.u_isos.select(pair[1])
       u_isos_average = self.u_isos_average.select(pair[0])
       for i,c,a in zip(pair[1], u_isos_current, u_isos_average):
         c = adptbx.u_as_b(c)
         a = adptbx.u_as_b(a)
-        print >> out, prefix + fmt % (site_labels[i], c, a, c-a)
+        print(prefix + fmt % (site_labels[i], c, a, c-a), file=out)
     sel = (self.u_isos_count != 0).iselection()
     show_selection(i_ncs=0, pair=[sel, sel])
     for i_ncs,pair in zip(count(1), self.group.selection_pairs):
@@ -455,28 +460,27 @@ class _operators(object):
           self.group.selection_pairs,
           self.matrices,
           self.rms):
-      print >> out, prefix + "NCS operator %d:" % i_op
-      print >> out, prefix + "  Reference selection:", \
-        show_string(selection_strings[0])
-      print >> out, prefix + "      Other selection:", \
-        show_string(selection_strings[i_op])
-      print >> out, prefix + "  Number of atom pairs:", len(pair[0])
-      print >> out, mx.r.mathematica_form(
+      print(prefix + "NCS operator %d:" % i_op, file=out)
+      print(prefix + "  Reference selection:", \
+        show_string(selection_strings[0]), file=out)
+      print(prefix + "      Other selection:", \
+        show_string(selection_strings[i_op]), file=out)
+      print(prefix + "  Number of atom pairs:", len(pair[0]), file=out)
+      print(mx.r.mathematica_form(
         label="Rotation", format="%.6g", one_row_per_line=True,
-        prefix=prefix+"  ")
-      print >> out, mx.t.mathematica_form(
-        label="Translation", format="%.6g", prefix=prefix+"  ")
+        prefix=prefix+"  "), file=out)
+      print(mx.t.mathematica_form(
+        label="Translation", format="%.6g", prefix=prefix+"  "), file=out)
       x = sites_cart.select(pair[0])
       y = mx * sites_cart.select(pair[1])
       d_sq = (x-y).dot()
       if (n_slots_difference_histogram is not None):
-        print >> out, prefix + "  Histogram of differences:"
+        print(prefix + "  Histogram of differences:", file=out)
         diff_histogram = flex.histogram(
           data=flex.sqrt(d_sq), n_slots=n_slots_difference_histogram)
         diff_histogram.show(
           f=out, prefix=prefix+"    ", format_cutoffs="%8.6f")
-      print >> out, \
-        prefix + "  RMS difference with respect to the reference: %8.6f" %(rms)
+      print(prefix + "  RMS difference with respect to the reference: %8.6f" %(rms), file=out)
 
   def energies_sites(self,
         sites_cart,
@@ -573,10 +577,10 @@ class _energies_sites(scitbx.restraints.energies):
       max_label_size = max(max_label_size, len(label))
     fmt = "  %%%ds: %%8.4f" % max_label_size
     def show_selection(i_ncs, pair, op):
-      print >> out, prefix + "NCS selection:", \
-        show_string(self.operators.group.selection_strings[i_ncs])
-      print >> out, prefix + " "*(max_label_size+2) \
-        + "  Distance to NCS average"
+      print(prefix + "NCS selection:", \
+        show_string(self.operators.group.selection_strings[i_ncs]), file=out)
+      print(prefix + " "*(max_label_size+2) \
+        + "  Distance to NCS average", file=out)
       sites_current = self.sites_cart.select(pair[1])
       if (op is None):
         sites_average = self.sites_average.select(pair[0])
@@ -585,12 +589,12 @@ class _energies_sites(scitbx.restraints.energies):
       n_excessive = 0
       for i,c,a in zip(pair[1], sites_current, sites_average):
         abs_diff = abs(matrix.col(c) - matrix.col(a))
-        print >> out, prefix + fmt % (site_labels[i], abs_diff),
+        print(prefix + fmt % (site_labels[i], abs_diff), end=' ', file=out)
         if (excessive_distance_limit is not None
             and abs_diff >= excessive_distance_limit):
-          print >> out, "EXCESSIVE",
+          print("EXCESSIVE", end=' ', file=out)
           n_excessive += 1
-        print >> out
+        print(file=out)
       return n_excessive
     sel = (self.sites_count != 0).iselection()
     n_excessive = show_selection(i_ncs=0, pair=[sel, sel], op=None)
@@ -617,8 +621,8 @@ class groups(object):
       log):
     ncs_groups = cls()
     for ncs_group in ncs_group_phil_params:
-      print >> log, "NCS restraint group %d:" % (
-        len(ncs_groups.members)+1)
+      print("NCS restraint group %d:" % (
+        len(ncs_groups.members)+1), file=log)
       gr = group.from_atom_selections(
         model                      = model,
         reference_selection_string = ncs_group.reference,
@@ -632,7 +636,7 @@ class groups(object):
       ncs_operators = gr.operators(sites_cart=sites_cart)
       ncs_operators.show(sites_cart=sites_cart, out=log, prefix="  ")
       ncs_groups.members.append(gr)
-      print >> log
+      print(file=log)
     return ncs_groups
 
   def register_additional_isolated_sites(self, number):
@@ -680,20 +684,19 @@ class groups(object):
          out=None,
          prefix=""):
     for i_group,group in enumerate(self.members):
-      print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
+      print(prefix + "NCS restraint group %d:" % (i_group+1), file=out)
       if (    group.b_factor_weight is not None
           and group.b_factor_weight > 0):
         energies_adp_iso = group.energies_adp_iso(
           u_isos=u_isos,
           average_power=1,
           compute_gradients=False)
-        print >> out, prefix + "  weight: %.6g" % energies_adp_iso.weight
+        print(prefix + "  weight: %.6g" % energies_adp_iso.weight, file=out)
         energies_adp_iso.show_differences_to_average(
           site_labels=site_labels, out=out, prefix=prefix+"  ")
       else:
-        print >> out, \
-          prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
-            str(group.b_factor_weight))
+        print(prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
+            str(group.b_factor_weight)), file=out)
 
   def compute_operators(self, sites_cart):
     self.operators = []
@@ -730,7 +733,7 @@ class groups(object):
 
   def show_operators(self, sites_cart, out=None, prefix=""):
     for i_group,group in enumerate(self.members):
-      print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
+      print(prefix + "NCS restraint group %d:" % (i_group+1), file=out)
       ncs_operators = group.operators(sites_cart=sites_cart)
       ncs_operators.show(sites_cart=sites_cart, out=out, prefix=prefix+"  ")
 
@@ -749,25 +752,24 @@ class groups(object):
          prefix=""):
     n_excessive = 0
     for i_group,group in enumerate(self.members):
-      print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
+      print(prefix + "NCS restraint group %d:" % (i_group+1), file=out)
       if (    group.coordinate_sigma is not None
           and group.coordinate_sigma > 0):
-        print >> out, prefix + "  coordinate_sigma: %.6g" % (
-          group.coordinate_sigma)
+        print(prefix + "  coordinate_sigma: %.6g" % (
+          group.coordinate_sigma), file=out)
         operators = group.operators(sites_cart=sites_cart)
         energies_sites = operators.energies_sites(
           sites_cart=sites_cart,
           compute_gradients=False)
-        print >> out, prefix + "  weight:  %.6g" % energies_sites.weight
+        print(prefix + "  weight:  %.6g" % energies_sites.weight, file=out)
         n_excessive += energies_sites.show_distances_to_average(
           site_labels=site_labels,
           excessive_distance_limit=excessive_distance_limit,
           out=out,
           prefix=prefix+"  ")
       else:
-        print >> out, \
-          prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
-            str(group.coordinate_sigma))
+        print(prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
+            str(group.coordinate_sigma)), file=out)
     return n_excessive
 
   def selection_restrained(self, n_seq=None):

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from mmtbx.alignment import align
 from mmtbx.alignment import amino_acid_codes, blosum62
 import sys
@@ -6,6 +7,7 @@ from scitbx.array_family import flex
 
 import operator
 import unittest
+from functools import reduce
 
 def exercise_align():
   #

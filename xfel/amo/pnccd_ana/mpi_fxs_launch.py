@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 import os
 import sys
 import glob
@@ -310,7 +312,7 @@ def launch(argv=None) :
   elif command_line.options.job == 'mask' :
      mpi_fxs_mask.compute_mask(cargs)
   else:
-     print "*** No recognizable job type chose: index | background | correlation ***"
+     print("*** No recognizable job type chose: index | background | correlation ***")
      command_line.parser.show_help()
      return
 

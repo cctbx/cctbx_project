@@ -4,6 +4,7 @@ Master script for making distributable installers on Linux and Mac.
 """
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.auto_build.installer_utils import *
 from libtbx.auto_build import setup_installer
 from libtbx.auto_build import create_mac_pkg
@@ -94,11 +95,11 @@ def run (args) :
     args=args,
     master_string=master_phil_str)
   params = phil_cmdline.work.extract()
-  print "This will be %s-%s" % (params.package_name, options.version)
+  print("This will be %s-%s" % (params.package_name, options.version))
   root_dir = op.dirname(op.dirname(libtbx.env.find_in_repositories(
     relative_path="cctbx_project",
     test=op.isdir)))
-  print "Root directory is %s" % root_dir
+  print("Root directory is %s" % root_dir)
   modules_dir = op.join(root_dir, "modules")
   build_dir = op.join(root_dir, "build")
   base_dir = op.join(root_dir, "base")
@@ -111,13 +112,13 @@ def run (args) :
     options.dist_dir = op.join(root_dir, "dist", options.version)
   if (not op.isdir(options.dist_dir)) :
     os.makedirs(options.dist_dir)
-  print "Distribution directory is %s" % options.dist_dir
+  print("Distribution directory is %s" % options.dist_dir)
 
   if (options.tmp_dir is None) :
     options.tmp_dir = op.join(root_dir, "tmp")
   if (not op.isdir(options.tmp_dir)) :
     os.makedirs(options.tmp_dir)
-  print "Temporary directory is %s" % options.tmp_dir
+  print("Temporary directory is %s" % options.tmp_dir)
 
   os.chdir(options.tmp_dir)
   installer_dir = "%s-installer-%s" % (params.pkg_prefix, options.version)
@@ -145,11 +146,11 @@ def run (args) :
     setup_args.append("--base-modules=%s" % ",".join(params.base_module))
   if (params.license) :
     setup_args.append("--license=%s" % full_path(params.license))
-  print "Arguments for setup_installer.py:"
+  print("Arguments for setup_installer.py:")
   for arg_ in setup_args :
-    print "  %s" % arg_
+    print("  %s" % arg_)
   setup_installer.run(args=setup_args + [ params.pkg_prefix ])
-  print "setup_installer.py done."
+  print("setup_installer.py done.")
 
   #############################
   # Bundle
@@ -169,11 +170,11 @@ def run (args) :
   if (len(params.base_module) > 0) :
     for module in params.base_module :
       bundle_args.append("--ignore=%s" % module)
-  print "Arguments for make_bundle.py:"
+  print("Arguments for make_bundle.py:")
   for arg_ in bundle_args :
-    print "  %s" % arg_
+    print("  %s" % arg_)
   make_bundle.run(args=bundle_args + [ root_dir ])
-  print "make_bundle.py done."
+  print("make_bundle.py done.")
 
   #############################
   # package the entire mess into the complete installer
@@ -181,33 +182,33 @@ def run (args) :
   os.chdir(options.tmp_dir)
   installer_tar = os.path.join(options.dist_dir, '%s-%s.tar.gz'%(installer_dir, suffix))
   call("tar czf %s %s" % (installer_tar, installer_dir))
-  print "Wrote %s" % installer_tar
+  print("Wrote %s" % installer_tar)
 
   #############################
   # Mac .pkg creation
   os.chdir(options.tmp_dir)
   if (sys.platform == "darwin") and (not getattr(options, "no_pkg", False)) :
     if (not os.access("/Applications", os.W_OK|os.X_OK)) :
-      print "Can't access /Applications - skipping .pkg build"
+      print("Can't access /Applications - skipping .pkg build")
     else :
       os.chdir(installer_dir)
       pkg_prefix = "/Applications"
       app_root_dir = pkg_prefix + "/" + "%s-%s" % (params.pkg_prefix,
         options.version)
 
-      print "Removing existing Applications directory:", app_root_dir
+      print("Removing existing Applications directory:", app_root_dir)
       try:
         shutil.rmtree(app_root_dir)
-      except Exception, e:
-        print e
+      except Exception as e:
+        print(e)
 
-      print "hide_mac_package_contents?", params.hide_mac_package_contents
+      print("hide_mac_package_contents?", params.hide_mac_package_contents)
       if params.hide_mac_package_contents :
         app_root_dir = "/Applications/%s-%s"%(params.package_name,
           options.version)
         pkg_prefix = app_root_dir + "/Contents"
         try: os.makedirs(pkg_prefix)
-        except Exception, e: pass
+        except Exception as e: pass
 
       call("./install --prefix=%s --compact --no-app" % pkg_prefix)
       install_dir = "%s/%s-%s" % (pkg_prefix,params.pkg_prefix,options.version)

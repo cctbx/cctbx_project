@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 import random
 from cctbx import miller
@@ -64,7 +67,7 @@ class weighted_average(object):
 def randomize_completeness2(map_coeffs, crystal_gridding, n_cycles=10):
   map_filter = None
   from mmtbx.maps import fem
-  for cycle in xrange(n_cycles):
+  for cycle in range(n_cycles):
     if(cycle>0):
       mc = map_coeffs.select(flex.random_bool(map_coeffs.size(), 0.99))
     else:
@@ -89,7 +92,7 @@ def randomize_completeness2(map_coeffs, crystal_gridding, n_cycles=10):
 def randomize_completeness(map_coeffs, crystal_gridding, n_cycles=10,
       thresholds=[0,0.1,0.2,0.3,0.4,0.5]):
   map_data = None
-  for cycle in xrange(n_cycles):
+  for cycle in range(n_cycles):
     if(cycle>0):
       mc = map_coeffs.select(flex.random_bool(map_coeffs.size(), 0.95))
     else:
@@ -103,7 +106,7 @@ def randomize_completeness(map_coeffs, crystal_gridding, n_cycles=10,
 
 def randomize_struture_factors(map_coeffs, number_of_kicks, phases_only=False):
   map_coeff_data = None
-  for kick in xrange(number_of_kicks):
+  for kick in range(number_of_kicks):
     rc, ar, pr = random.choice([(0.1, 0.10, 40),
                                 (0.2, 0.09, 40),
                                 (0.3, 0.08, 30),
@@ -141,8 +144,8 @@ def kick_map_coeffs(
       map_coeffs       = map_coeffs,
       crystal_gridding = crystal_gridding,
       map_data         = map_data)
-  for it in xrange(macro_cycles):
-    print "  %d"%it
+  for it in range(macro_cycles):
+    print("  %d"%it)
     if(number_of_kicks>0):
       mc = randomize_struture_factors(map_coeffs=map_coeffs,
         number_of_kicks=number_of_kicks, phases_only=phases_only)
@@ -192,8 +195,8 @@ def kick_fmodel(
     fmodel._r_free_flags._data = r_free_flags
     return fmodel
   map_data = None
-  for it in xrange(macro_cycles):
-    print "  %d"%it
+  for it in range(macro_cycles):
+    print("  %d"%it)
     f_model_kick = randomize_struture_factors(map_coeffs=f_model,
       number_of_kicks=number_of_kicks)
     fmodel_dc = recreate_r_free_flags(fmodel = fmodel_dc)

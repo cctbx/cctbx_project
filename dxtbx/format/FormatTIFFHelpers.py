@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # FormatTIFFHelpers.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -9,6 +10,7 @@ from __future__ import absolute_import, division
 # Helper code to assist with reading TIFF file headers, which are by their
 # nature binary so we need to mess with things like byte swapping.
 
+from builtins import range
 import struct
 
 LITTLE_ENDIAN = 1234
@@ -29,7 +31,7 @@ def tiff_byte_order(filename):
     assert(struct.unpack('>H', four_bytes[2:])[0] == 42)
     return BIG_ENDIAN
 
-  raise RuntimeError, '%s not recognised as TIFF' % filename
+  raise RuntimeError('%s not recognised as TIFF' % filename)
 
 def read_basic_tiff_header(filename):
   '''Read the TIFF header (assuming for the moment a 4k header...) and
@@ -140,13 +142,13 @@ if __name__ == '__main__':
 
     width, height, depth, header, order = read_basic_tiff_header(arg)
 
-    print '(%d x %d) @ %d + %d' % (width, height, depth, header)
+    print('(%d x %d) @ %d + %d' % (width, height, depth, header))
 
     tiff_header = Format.open_file(arg, 'rb').read(header)
 
     text = read_tiff_image_description(tiff_header, order)
 
     if text:
-      print text
+      print(text)
     else:
-      print 'No text found'
+      print('No text found')

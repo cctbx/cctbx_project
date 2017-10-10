@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import next
 from mmtbx.geometry import topology
 
 import unittest
@@ -37,7 +38,7 @@ class TestMolecule(unittest.TestCase):
     self.assertEqual( m.size(), 1 )
     self.assertEqual( m.atoms, [ a ] )
     self.assertEqual( len( m.atom_for ), 1 )
-    self.assertTrue( a in m.atom_for.values() )
+    self.assertTrue( a in list(m.atom_for.values()) )
     self.assertEqual( len( m.descriptor_for ), 1 )
     self.assertTrue( a in m.descriptor_for )
     self.assertEqual( len( list( m.graph.vertices() ) ), 1 )
@@ -54,14 +55,14 @@ class TestMolecule(unittest.TestCase):
     self.assertEqual( m.size(), 2 )
     self.assertEqual( set( m.atoms ), set( [ a1, a2 ] ) )
     self.assertEqual( len( m.atom_for ), 2 )
-    self.assertTrue( a1 in m.atom_for.values() )
-    self.assertTrue( a2 in m.atom_for.values() )
+    self.assertTrue( a1 in list(m.atom_for.values()) )
+    self.assertTrue( a2 in list(m.atom_for.values()) )
     self.assertEqual( len( m.descriptor_for ), 2 )
     self.assertTrue( a1 in m.descriptor_for )
     self.assertTrue( a2 in m.descriptor_for )
     self.assertEqual( len( list( m.graph.vertices() ) ), 2 )
     self.assertEqual( len( list( m.graph.edges() ) ), 1 )
-    edge = m.graph.edges().next()
+    edge = next(m.graph.edges())
     self.assertAlmostEqual( m.graph.edge_weight( edge = edge ), 1.73205, 5 )
 
 
@@ -83,7 +84,7 @@ class TestCompound(unittest.TestCase):
     m.add_atom( atom = a )
     self.assertEqual( m.atoms, [ a ] )
     self.assertEqual( len( m.atom_for ), 1 )
-    self.assertTrue( a in m.atom_for.values() )
+    self.assertTrue( a in list(m.atom_for.values()) )
     self.assertEqual( len( m.descriptor_for ), 1 )
     self.assertTrue( a in m.descriptor_for )
     self.assertEqual( len( list( m.graph.vertices() ) ), 1 )
@@ -101,8 +102,8 @@ class TestCompound(unittest.TestCase):
     m.add_atom( atom = a2 )
     self.assertEqual( set( m.atoms ), set( [ a1, a2 ] ) )
     self.assertEqual( len( m.atom_for ), 2 )
-    self.assertTrue( a1 in m.atom_for.values() )
-    self.assertTrue( a2 in m.atom_for.values() )
+    self.assertTrue( a1 in list(m.atom_for.values()) )
+    self.assertTrue( a2 in list(m.atom_for.values()) )
     self.assertEqual( len( m.descriptor_for ), 2 )
     self.assertTrue( a1 in m.descriptor_for )
     self.assertTrue( a2 in m.descriptor_for )
@@ -127,7 +128,7 @@ class TestCompound(unittest.TestCase):
 
     ss1 = m.subset( atoms = [ a1 ] )
     self.assertEqual( len( ss1.atom_for ), 1 )
-    self.assertTrue( a1 in ss1.atom_for.values() )
+    self.assertTrue( a1 in list(ss1.atom_for.values()) )
     self.assertEqual( len( ss1.descriptor_for ), 1 )
     self.assertTrue( a1 in ss1.descriptor_for )
     self.assertEqual( len( list( ss1.graph.vertices() ) ), 1 )
@@ -135,7 +136,7 @@ class TestCompound(unittest.TestCase):
 
     ss2 = m.subset( atoms = [ a2 ] )
     self.assertEqual( len( ss2.atom_for ), 1 )
-    self.assertTrue( a2 in ss2.atom_for.values() )
+    self.assertTrue( a2 in list(ss2.atom_for.values()) )
     self.assertEqual( len( ss2.descriptor_for ), 1 )
     self.assertTrue( a2 in ss2.descriptor_for )
     self.assertEqual( len( list( ss2.graph.vertices() ) ), 1 )

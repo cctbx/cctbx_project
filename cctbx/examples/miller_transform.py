@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -21,7 +23,7 @@ def exercise():
                   (1,1,1), (-1,1,1), (1,-1,1), (1,1,-1),
                   (-1,-1,-1), (1,-1,-1), (-1,1,-1), (-1,-1,1)])),
     data=flex.complex_double(flex.random_double(26), flex.random_double(26)))
-  f_at_h = dict(zip(ma.indices(), ma.data()))
+  f_at_h = dict(list(zip(ma.indices(), ma.data())))
   for op in ("-x, y+1/2, -z", "x+1/2, -y, z-1/2"):
     op = sgtbx.rt_mx(op)
     original, transformed = ma.common_sets(
@@ -35,7 +37,7 @@ def exercise():
 
 def run():
   exercise()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

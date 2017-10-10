@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # print_beam_centre.py
 #
@@ -25,7 +26,7 @@ def run(file_names):
     sweep = ImageSetFactory.new(file_names)[0]
   detector = sweep.get_detector()
   beam = sweep.get_beam()
-  print detector.get_ray_intersection(beam.get_s0())[1]
+  print(detector.get_ray_intersection(beam.get_s0())[1])
 
 if __name__ == '__main__':
   run(sys.argv[1:])

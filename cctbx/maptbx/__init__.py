@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import next
+from builtins import range
+from builtins import object
 import cctbx.sgtbx
 
 import boost.python
@@ -70,11 +75,11 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method="exp"):
     mmin = flex.min(map)
     assert mmin<1.e-6 and mmin>=0.0
     map_smooth = map.deep_copy()
-    for i in xrange(3):
+    for i in range(3):
       maptbx.map_box_average(
         map_data      = map_smooth,
         index_span    = 1)
-    for i in xrange(3):
+    for i in range(3):
       maptbx.map_box_average(
         map_data      = map_smooth,
         cutoff        = 0.99,
@@ -106,7 +111,7 @@ class d99(object):
   def show(self, log):
     fmt = "%12.6f %8.6f"
     for d_min, cc in zip(self.result.d_mins, self.result.ccs):
-      print >> log, fmt%(d_min, cc)
+      print(fmt%(d_min, cc), file=log)
 
 def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
   shift_needed = not \
@@ -252,10 +257,10 @@ class _(boost.python.injector, ext.statistics):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "max %.6g" % (self.max())
-    print >> f, prefix + "min %.6g" % (self.min())
-    print >> f, prefix + "mean %.6g" % (self.mean())
-    print >> f, prefix + "sigma %.6g" % (self.sigma())
+    print(prefix + "max %.6g" % (self.max()), file=f)
+    print(prefix + "min %.6g" % (self.min()), file=f)
+    print(prefix + "mean %.6g" % (self.mean()), file=f)
+    print(prefix + "sigma %.6g" % (self.sigma()), file=f)
 
 use_space_group_symmetry = sgtbx.search_symmetry_flags(
   use_space_group_symmetry=True)
@@ -505,7 +510,7 @@ class boxes_by_dimension(object):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
       result = []
-      for i in xrange(len(be)):
+      for i in range(len(be)):
         if(i==0):
           l = 0
           r = step
@@ -536,7 +541,7 @@ class boxes_by_dimension(object):
     for i in range(0, n_real_1d, step): limits.append(i)
     limits.append(n_real_1d)
     box_1d = []
-    for i in xrange(len(limits)):
+    for i in range(len(limits)):
       if(i==0):               box_1d.append([limits[0],  limits[1]])
       elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
     return box_1d
@@ -567,16 +572,16 @@ class boxes(object):
       i += 1
     assert n_boxes == len(self.starts)
     if(log):
-      print >> log, prefix, "n1,n2,n3 (n_real)  :", n_real
-      print >> log, prefix, "points per box edge:", ba,bb,bc
-      print >> log, prefix, "number of boxes    :", len(self.starts)
+      print(prefix, "n1,n2,n3 (n_real)  :", n_real, file=log)
+      print(prefix, "points per box edge:", ba,bb,bc, file=log)
+      print(prefix, "number of boxes    :", len(self.starts), file=log)
 
   def _generate_boxes(self, ba,bb,bc):
     def regroup(be):
       maxe = be[len(be)-1][1]
       step = int(maxe/len(be))
       result = []
-      for i in xrange(len(be)):
+      for i in range(len(be)):
         if(i==0):
           l = 0
           r = step
@@ -607,7 +612,7 @@ class boxes(object):
     for i in range(0, n_real_1d, step): limits.append(i)
     limits.append(n_real_1d)
     box_1d = []
-    for i in xrange(len(limits)):
+    for i in range(len(limits)):
       if(i==0):               box_1d.append([limits[0],  limits[1]])
       elif(i!=len(limits)-1): box_1d.append([limits[i],limits[i+1]])
     return box_1d
@@ -729,7 +734,7 @@ class peak_cluster_analysis(object):
     self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
 
-  def next(self):
+  def __next__(self):
     if (self._effective_resolution is not None):
       return self.next_with_effective_resolution()
     else:
@@ -743,7 +748,7 @@ class peak_cluster_analysis(object):
 
   def __iter__(self):
     while 1:
-      site_info = self.next()
+      site_info = next(self)
       if site_info is None: break
       yield site_info
 
@@ -892,7 +897,7 @@ class peak_cluster_analysis(object):
     sum_w_sites = matrix.col(orth(site)) * height
     sum_w = height
     height_cutoff = height * self._cluster_height_fraction
-    for i in xrange(self._peak_list_index, self._peak_list.size()):
+    for i in range(self._peak_list_index, self._peak_list.size()):
       if (self._is_processed[i]): continue
       other_height = self._peak_list.heights()[i]
       if (other_height < height_cutoff): break
@@ -941,7 +946,7 @@ def region_density_correlation(
   small_origin_in_large_grid = [0,0,0]
   small_abc = [0,0,0]
   sites_frac_shift = [0,0,0]
-  for i in xrange(3):
+  for i in range(3):
     grid_step = large_ucp[i] / large_n_real[i]
     buffer = large_d_min / grid_step
     grid_min = ifloor(large_frac_min[i] * large_n_real[i] - buffer)
@@ -1072,11 +1077,11 @@ class spherical_variance_around_point (object) :
 
   def show (self, out=None, prefix="") :
     if (out is None) : out = sys.stdout
-    print >> out, "%sMap values around point [%g, %g, %g], radius=%g:" % \
+    print("%sMap values around point [%g, %g, %g], radius=%g:" % \
       (prefix, self.site_cart[0], self.site_cart[1], self.site_cart[2],
-       self.radius)
-    print >> out, "%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
-      (prefix, self.min, self.max, self.mean, self.standard_deviation)
+       self.radius), file=out)
+    print("%s  min=%.2f  max=%.2f  mean=%.2f  stddev=%.2f" % \
+      (prefix, self.min, self.max, self.mean, self.standard_deviation), file=out)
 
 def principal_axes_of_inertia (
     real_map,
@@ -1167,8 +1172,8 @@ def map_peak_3d_as_2d(
     r = r/100.
     dist.append(r)
     rho = flex.double()
-    for s in xrange(0,360,s_angle_sampling_step):
-      for t in xrange(0,360,t_angle_sampling_step):
+    for s in range(0,360,s_angle_sampling_step):
+      for t in range(0,360,t_angle_sampling_step):
         xc,yc,zc = scitbx.math.point_on_sphere(r=r, s_deg=s, t_deg=t,
           center=center_cart)
         xf,yf,zf = unit_cell.fractionalize([xc,yc,zc])
@@ -1197,7 +1202,7 @@ class positivity_constrained_density_modification(object):
         max_prime               = 5,
         assert_shannon_sampling = True)
     self.f_mod = self.f.deep_copy()
-    for i in xrange(n_cycles):
+    for i in range(n_cycles):
       fft_map = miller.fft_map(
         crystal_gridding     = self.crystal_gridding,
         fourier_coefficients = self.f_mod,
@@ -1371,7 +1376,7 @@ Fourier image of specified resolution, etc.
     first_inflection_point=None
     size = image_values.size()
     second_derivatives = flex.double()
-    for i in xrange(size):
+    for i in range(size):
       if(i>0 and i<size-1):
         dxx = image_values[i-1]+image_values[i+1]-2*image_values[i]
       elif(i==0):
@@ -1397,10 +1402,10 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     xray_structure = xray_structure).f_calc()
   d_fsc_model = fc.d_min_from_fsc(
         other=fo, bin_width=100, fsc_cutoff=0.).d_min
-  print "d_fsc_model:", d_fsc_model
+  print("d_fsc_model:", d_fsc_model)
   #resolution = min(resolution, d_fsc_model)
   #resolution = d_fsc_model
-  print resolution, d_fsc_model
+  print(resolution, d_fsc_model)
   #
   xray_structure = xray_structure.set_b_iso(value=0)
   fc = fo.structure_factors_from_scatterers(
@@ -1419,7 +1424,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
       cc = cc_
       d_best = d
     #print "%8.1f %10.6f"%(d, cc_)
-  print "Best d:", d_best
+  print("Best d:", d_best)
   #
   fc1 = xray_structure.structure_factors(d_min=resolution).f_calc()
   fc2 = fc1.resolution_filter(d_min=d_best)
@@ -1442,7 +1447,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
       cc = cc_
       b = b_
     #print "%8.0f %10.6f"%(b_, cc_)
-  print "Best B:", b
+  print("Best B:", b)
   #
   fo_sharp = fo.resolution_filter(d_min = resolution)
   ss = 1./flex.pow2(fo_sharp.d_spacings().data()) / 4.
@@ -1562,7 +1567,7 @@ def loc_res(map,
       scale=20
       low_value=int(b_range_low/scale)
       high_value=max(low_value+1,int(b_range_high/scale))
-      for b_iso in  [ i*scale for i in xrange(low_value,high_value)]:
+      for b_iso in  [ i*scale for i in range(low_value,high_value)]:
         d_min, cc = maptbx.cc_complex_complex(
         f_1        = fc.data(), # note swapped from rscc f_1 is fixed
         f_2        = fo.data(),
@@ -1580,7 +1585,7 @@ def loc_res(map,
       b_iso=b_best
 
     if verbose: 
-      print >>log,"CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc)
+      print("CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc), file=log)
     results.append(d_min)
     results_b.append(b_iso)
 
@@ -1591,8 +1596,8 @@ def loc_res(map,
     else:
       bs = bs.set_selected(chunk_sel, d_min)  # d_min in B value
 
-  print >>log,flex.min(results), flex.max(results), flex.mean(results)
-  print >>log,flex.min(bs), flex.max(bs), flex.mean(bs)
+  print(flex.min(results), flex.max(results), flex.mean(results), file=log)
+  print(flex.min(bs), flex.max(bs), flex.mean(bs), file=log)
   pdb_hierarchy.atoms().set_b(bs)
   if (method=="rscc_d_min_b"):
      pdb_hierarchy.atoms().set_occ(occs)

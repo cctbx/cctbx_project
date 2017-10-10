@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from mmtbx.geometry import altloc
 
 import unittest

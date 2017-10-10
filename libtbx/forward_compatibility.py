@@ -1,5 +1,7 @@
 from __future__ import division
 from __future__ import generators
+from builtins import zip
+from builtins import object
 import sys, os
 
 def stdlib_import(name):
@@ -159,7 +161,7 @@ if (vers_info < (2,6)):
       fillers = itertools.repeat(fillvalue)
       iters = [itertools.chain(it, sentinel(), fillers) for it in args]
       try:
-        for tup in itertools.izip(*iters):
+        for tup in zip(*iters):
           yield tup
       except IndexError:
         pass
@@ -207,7 +209,7 @@ class _advertise_subprocess(object):
     self.target = target
 
   def __call__(self, *args, **kwargs):
-    if (os.environ.has_key("LIBTBX_BUILD")):
+    if ("LIBTBX_BUILD" in os.environ):
       import libtbx.load_env
       if (   libtbx.env.full_testing
           or libtbx.env.is_development_environment()):

@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx import sgtbx
 #from cctbx import crystal
 
@@ -182,7 +187,7 @@ class alternative_find_best_cell(object):
       assert fixed >= 0
       assert fixed <= 2
       tmp_abc = []
-      for ii in xrange(3):
+      for ii in range(3):
         if ii != fixed:
           tmp_abc.append( abc[ ii ] )
       if tmp_abc[0] <= tmp_abc[1]:
@@ -198,7 +203,7 @@ class alternative_find_best_cell(object):
       best_index = self.order_check_array.index( True )
     else: # there is more then one possible solution, use the first solution one encounters
       for order, ii in zip( self.order_check_array,
-                            range(len(self.order_check_array)) ) :
+                            list(range(len(self.order_check_array))) ) :
         if order:
           best_index = ii
           break
@@ -234,19 +239,19 @@ def exercise_alternative():
 
     abest = alternative_find_best_cell( xs.unit_cell(),
                                         sgi.group() )
-    print "Space group : ", sgi
-    print "Unit cell   : ", abest.return_best_cell().parameters()
-    print "cb op       : ", abest.return_change_of_basis_op_to_best_cell().as_xyz()
-    print "N cb op     : ", len( abest.allowed_cb_ops )
-    print
-    print
+    print("Space group : ", sgi)
+    print("Unit cell   : ", abest.return_best_cell().parameters())
+    print("cb op       : ", abest.return_change_of_basis_op_to_best_cell().as_xyz())
+    print("N cb op     : ", len( abest.allowed_cb_ops ))
+    print()
+    print()
 
 
 
 def exercise():
   from cctbx import crystal
   cb_op = sgtbx.change_of_basis_op("y,z,x")
-  for space_group_number in [1] + range(3,73):
+  for space_group_number in [1] + list(range(3,73)):
     sgi = sgtbx.space_group_info(symbol=space_group_number)
     uc = sgi.any_compatible_unit_cell(volume=1000)
 
@@ -254,10 +259,10 @@ def exercise():
 
     best = find_best_cell(xs,angular_tolerance=3)
     best.symmetry().show_summary()
-    print best.cb_op().as_xyz()
-    print best.cb_op().c()
-    print len(best.all_cells())
-    print
+    print(best.cb_op().as_xyz())
+    print(best.cb_op().c())
+    print(len(best.all_cells()))
+    print()
 
 if (__name__ == "__main__"):
   exercise_alternative()

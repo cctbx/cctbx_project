@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
@@ -36,14 +41,14 @@ def simple_and_slow(pair_asu_table, max_shell=10):
       i_seq=i_seq_pivot,
       rt_mx=sgtbx.rt_mx())]
     terms = [1]
-    for i_shell_minus_1 in xrange(max_shell):
+    for i_shell_minus_1 in range(max_shell):
       nodes_prev = nodes_middle
       nodes_middle = nodes_next
       nodes_next = []
       for node_m in nodes_middle:
         rt_mx_i = asu_mappings.get_rt_mx(i_seq=node_m.i_seq, i_sym=0)
         rt_mx_ni = node_m.rt_mx.multiply(rt_mx_i.inverse())
-        for j_seq,j_sym_groups in pair_asu_table.table()[node_m.i_seq].items():
+        for j_seq,j_sym_groups in list(pair_asu_table.table()[node_m.i_seq].items()):
           for j_sym_group in j_sym_groups:
             for j_sym in j_sym_group:
               rt_mx_j = asu_mappings.get_rt_mx(i_seq=j_seq, i_sym=j_sym)
@@ -71,25 +76,25 @@ def get_kriber_coseq_file(file_name):
 def show_terms(structure, term_table, coseq_dict=None):
   assert len(term_table) == structure.scatterers().size()
   for scatterer,terms in zip(structure.scatterers(), term_table):
-    print scatterer.label, list(terms),
+    print(scatterer.label, list(terms), end=' ')
     if (coseq_dict is not None):
       terms_to_match = list(terms[1:])
       have_match = False
-      tags = coseq_dict.keys()
+      tags = list(coseq_dict.keys())
       tags.sort()
       for tag in tags:
         for coseq_terms in coseq_dict[tag]:
           n = min(len(coseq_terms), len(terms_to_match))
           if (coseq_terms[:n] == terms_to_match[:n]):
-            print tag,
+            print(tag, end=' ')
             have_match = True
       if (not have_match):
-        print "Unknown",
-    print
+        print("Unknown", end=' ')
+    print()
   sums_terms = flex.double()
   multiplicities = flex.double()
   for scatterer,terms in zip(structure.scatterers(), term_table):
     sums_terms.append(flex.sum(flex.size_t(list(terms))))
     multiplicities.append(scatterer.multiplicity())
-  print "TD%d: %.2f" % (
-    len(terms)-1, flex.mean_weighted(sums_terms, multiplicities))
+  print("TD%d: %.2f" % (
+    len(terms)-1, flex.mean_weighted(sums_terms, multiplicities)))

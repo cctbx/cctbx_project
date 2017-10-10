@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from libtbx.phil import tokenizer
 
 def exercise_basic(verbose):
@@ -58,17 +61,17 @@ def exercise_basic(verbose):
   ]
   for input_string,expected_result in tests:
     show = verbose or expected_result is None
-    if (show): print input_string
+    if (show): print(input_string)
     result = [word.value
       for word in tokenizer.word_iterator(input_string=input_string)]
-    if (show): print result
+    if (show): print(result)
     if (expected_result is not None):
       assert result == expected_result
-    if (show): print
+    if (show): print()
 
 def exercise_pickle():
   import pickle
-  import cPickle
+  import pickle
   for p in [pickle, cPickle]:
     o = tokenizer.word(value="hello")
     l = p.loads(p.dumps(o))
@@ -85,7 +88,7 @@ def run(args):
   verbose = len(args) != 0
   exercise_basic(verbose=verbose)
   exercise_pickle()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

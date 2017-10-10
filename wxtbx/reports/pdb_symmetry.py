@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import str
 from wxtbx import reports
 import wx
 import sys
@@ -60,7 +61,7 @@ class PDBSymmList (wx.ListCtrl) :
   def SetResults (self, results) :
     self.DeleteAllItems()
     for result in results :
-      i = self.InsertStringItem(sys.maxint, result.pdb_id)
+      i = self.InsertStringItem(sys.maxsize, result.pdb_id)
       self.SetStringItem(i, 1, "%6.3f" % result.rmsd)
       self.SetStringItem(i, 2, "%g" % result.volume_ratio)
       self.SetStringItem(i, 3, str(result.pdb_symmetry.space_group_info()))

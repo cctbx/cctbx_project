@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 def run(args):
   assert len(args) == 0
   from libtbx import easy_run
@@ -39,7 +41,7 @@ def run(args):
       join_stdout_stderr = False
     if (command.find("%s") >= 0):
       command = command % (t_dir + os.sep)
-    print command
+    print(command)
     run_buffers = easy_run.fully_buffered(
       command=command,
       join_stdout_stderr=join_stdout_stderr)
@@ -47,30 +49,30 @@ def run(args):
     try:
       if (not join_stdout_stderr):
         run_buffers.raise_if_errors(Error=SpecificError)
-    except SpecificError, e:
+    except SpecificError as e:
       n_errors += 1
-      print "ERROR:"
-      print str(e)
-      print
+      print("ERROR:")
+      print(str(e))
+      print()
     else:
       stdout_buffer = "\n".join(run_buffers.stdout_lines)
       if (expected_output_fragment is None):
         if (len(stdout_buffer) != 0):
           n_errors += 1
-          print stdout_buffer
-          print "ERROR: unexpected output above."
-          print
+          print(stdout_buffer)
+          print("ERROR: unexpected output above.")
+          print()
       elif (stdout_buffer.find(expected_output_fragment) < 0):
         n_errors += 1
-        print stdout_buffer
-        print "ERROR: not found in output above:"
-        print [expected_output_fragment]
-        print
+        print(stdout_buffer)
+        print("ERROR: not found in output above:")
+        print([expected_output_fragment])
+        print()
   if (n_errors != 0):
-    print "Number of errors:", n_errors
-    print "Done."
+    print("Number of errors:", n_errors)
+    print("Done.")
   else:
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   import sys

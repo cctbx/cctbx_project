@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 import glob
 import os
 
@@ -11,10 +14,10 @@ from dxtbx.serialize import xds
 
 def exercise_to_xds():
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
     return
   if not libtbx.env.has_module("dials_regression"):
-    print "Skipping exercise_to_xds(): dials_regression not present"
+    print("Skipping exercise_to_xds(): dials_regression not present")
     return
 
   data_dir = libtbx.env.find_in_repositories(
@@ -56,7 +59,7 @@ def exercise_to_xds():
 
 def run():
   exercise_to_xds()
-  print 'OK'
+  print('OK')
 
 
 if __name__ == '__main__':

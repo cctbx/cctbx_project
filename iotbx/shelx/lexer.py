@@ -1,6 +1,7 @@
 """ Parsing of ins/res files """
 from __future__ import division
 
+from builtins import object
 import re
 
 from iotbx.shelx.errors import error as shelx_error
@@ -56,7 +57,7 @@ class command_stream(object):
       ([^!=]*)
       (=?)
     )
-    """ %(" | ".join(commands_allowing_atom_names.keys())),
+    """ %(" | ".join(list(commands_allowing_atom_names.keys()))),
         re.X | re.I)
 
   _continuation_pat = re.compile("""

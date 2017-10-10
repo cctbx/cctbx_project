@@ -9,6 +9,7 @@
 # 6M SN 119 currently on Diamond I24.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 
@@ -108,4 +109,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDLS6MSN119.understand(arg)
+    print(FormatCBFMiniPilatusDLS6MSN119.understand(arg))

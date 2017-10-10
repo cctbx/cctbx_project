@@ -1,10 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from scitbx import matrix
 from rstbx.dps_core import dps_core
 from rstbx.dps_core.sampling import hemisphere_shortcut
 from rstbx.dps_core.basis_choice import SelectBasisMetaprocedure
 
-class algorithm_parameters:
+class algorithm_parameters(object):
   max_cell_edge_for_dps_fft = 100.0 # in Angstroms.
                                     # 100 Angstrom should be suitable for small molecular work
                                     # use Bragg spot spacing to estimate the maximum
@@ -41,8 +43,8 @@ def do_index(reciprocal_space_vectors, verbose=True):
 
   if verbose:
     for subgroup in L:
-      print subgroup.short_digest()
-    print "\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume())
-    print "\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol()
+      print(subgroup.short_digest())
+    print("\ntriclinic cell=%s volume(A^3)=%.3f"%(triclinic,triclinic.volume()))
+    print("\nafter symmetrizing to %s:"%supergroup.reference_lookup_symbol())
     M.show_rms()
   return D,L

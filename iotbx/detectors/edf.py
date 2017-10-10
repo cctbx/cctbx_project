@@ -1,11 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import struct
 from scitbx.array_family import flex
 
 def file_object_from_file_name(filename):
  return open(filename,"rb")
 
-class EDFImage:
+class EDFImage(object):
  def __init__(self,filename):
    self.obj = file_object_from_file_name(filename)
    self.headersize=0
@@ -42,10 +45,10 @@ class EDFImage:
 
    #forced typing of attributes:
    for attribute in ['run','Image','Size','Dim_1','Dim_2']:
-     if self.parameters.has_key(attribute):
+     if attribute in self.parameters:
        self.parameters[attribute]=int(self.parameters[attribute])
    for attribute in ['count_time',]:
-     if self.parameters.has_key(attribute):
+     if attribute in self.parameters:
        self.parameters[attribute]=float(self.parameters[attribute])
 
    self.type_size = {'SignedInteger':4, 'UnsignedShort':2, 'Float':4}[self.parameters['DataType']]
@@ -73,11 +76,11 @@ if __name__=="__main__":
  P = EDFImage(sys.argv[1])
  P.readHeader()
  P.read()
- print "".join(P.header)
- print P.parameters
+ print("".join(P.header))
+ print(P.parameters)
  count=0
- for ii in xrange( P.parameters["Dim_2"] ):
-   for jj in xrange( P.parameters["Dim_1"] ):
-      print P.linearintdata[count]
+ for ii in range( P.parameters["Dim_2"] ):
+   for jj in range( P.parameters["Dim_1"] ):
+      print(P.linearintdata[count])
       count += 1
-   print
+   print()

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
 import spotfinder.array_family.flex # implicit import
 
 import boost.python
@@ -55,8 +58,8 @@ class Distl(w_Distl):
     self.get_underload()
     try:
       self.pxlclassify()
-    except Exception, e:
-      if str(e).find("cannot distinguish signal")>0: print e
+    except Exception as e:
+      if str(e).find("cannot distinguish signal")>0: print(e)
       else: raise e
     self.search_icerings()
     self.search_maximas()
@@ -81,20 +84,20 @@ class Distl(w_Distl):
       edge_count = 0
       nx,ny = graph.focus()
       # count the edges along x:
-      for xc in xrange(nx):
-        for yc in xrange(ny-1):
+      for xc in range(nx):
+        for yc in range(ny-1):
           if graph[(xc,yc)] and graph[(xc,yc+1)]:  edge_count+=1
       # count the edges along y:
-      for yc in xrange(ny):
-        for xc in xrange(nx-1):
+      for yc in range(ny):
+        for xc in range(nx-1):
           if graph[(xc,yc)] and graph[(xc+1,yc)]:  edge_count+=1
       # count forward diagonals:
-      for xc in xrange(nx-1):
-        for yc in xrange(ny-1):
+      for xc in range(nx-1):
+        for yc in range(ny-1):
           if graph[(xc,yc)] and graph[(xc+1,yc+1)]:  edge_count+=1
       # count backward diagonals:
-      for xc in xrange(nx-1):
-        for yc in xrange(1,ny):
+      for xc in range(nx-1):
+        for yc in range(1,ny):
           if graph[(xc,yc)] and graph[(xc+1,yc-1)]:  edge_count+=1
 
       vertex_count = spot.bodypixels.size()

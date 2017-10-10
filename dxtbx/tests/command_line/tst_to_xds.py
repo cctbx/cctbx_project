@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import glob
 import os
@@ -13,10 +14,10 @@ from dxtbx.imageset import ImageSetFactory
 
 def exercise_to_xds():
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
     return
   if not libtbx.env.has_module("dials_regression"):
-    print "Skipping exercise_to_xds(): dials_regression not present"
+    print("Skipping exercise_to_xds(): dials_regression not present")
     return
 
   data_dir = libtbx.env.find_in_repositories(
@@ -73,7 +74,7 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
   dump.imageset(sweep, f)
   f.close()
   cmd = " ".join(["dxtbx.to_xds", f.name])
-  print cmd
+  print(cmd)
   result = easy_run.fully_buffered(cmd)
 
   # allow extra lines to have been added (these may be comments)
@@ -83,7 +84,7 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
 
 def run():
   exercise_to_xds()
-  print "OK"
+  print("OK")
 
 
 if __name__ == '__main__':

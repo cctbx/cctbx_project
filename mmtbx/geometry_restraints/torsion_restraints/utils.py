@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import input
 from libtbx.utils import Sorry
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import amino_acid_codes, input
@@ -13,7 +18,7 @@ def process_reference_files(
     log = sys.stdout
   reference_hierarchy_list = []
   for file in reference_file_list:
-    pdb_io = input(file)
+    pdb_io = eval(input(file))
     cur_hierarchy = pdb_io.construct_hierarchy()
     cur_hierarchy.reset_i_seq_if_necessary()
     ter_indices = pdb_io.ter_indices()
@@ -66,7 +71,7 @@ def get_complete_dihedral_proxies(
           file_name,
           raw_records].count(None) == 2
   from mmtbx.monomer_library import server, pdb_interpretation
-  import cStringIO
+  import io
   if log is None:
     log = sys.stdout
   if mon_lib_srv is None:
@@ -93,7 +98,7 @@ def get_complete_dihedral_proxies(
       strict_conflict_handling=False,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=True,
-      log=cStringIO.StringIO(),
+      log=io.StringIO(),
       substitute_non_crystallographic_unit_cell_if_necessary=True)
   return get_dihedrals_and_phi_psi(processed_pdb_file_local)
 
@@ -309,9 +314,8 @@ def hierarchy_from_selection(pdb_hierarchy, selection, log):
         model.append_chain(chain.detached_copy())
         altloc = conformer.altloc
       else:
-        print >> log, \
-        "* Multiple alternate conformations found, using altid %s *" \
-        % altloc
+        print("* Multiple alternate conformations found, using altid %s *" \
+        % altloc, file=log)
         continue
   if len(model.chains()) != 1:
     raise Sorry("more than one chain in selection")
@@ -381,7 +385,7 @@ def check_for_internal_chain_ter_records(
 
   #find min/max for all chains with same id
   reduced_chain_ranges = {}
-  for key in chain_ranges.keys():
+  for key in list(chain_ranges.keys()):
     min_all = None
     max_all = None
     ranges = chain_ranges[key]
@@ -398,7 +402,7 @@ def check_for_internal_chain_ter_records(
         max_all = max
     reduced_chain_ranges[key] = (min_all, max_all)
   for ter_id in ter_indices:
-    for key in reduced_chain_ranges.keys():
+    for key in list(reduced_chain_ranges.keys()):
       min, max = reduced_chain_ranges[key]
       if ter_id > min and ter_id < max:
         raise Sorry("chain '%s' contains one or more "%(key)+

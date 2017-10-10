@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
@@ -108,4 +109,4 @@ def exercise():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "Time: %6.4f" % (time.time()-t0)
+  print("Time: %6.4f" % (time.time()-t0))

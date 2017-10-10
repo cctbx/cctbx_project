@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME cluster.42
 from __future__ import division
+from __future__ import print_function
 __author__ = 'zeldin'
 
 import logging
@@ -38,7 +39,7 @@ def run(_args):
   #plt.text("cluster.42 Plot Everything!")
   plt.tight_layout()
 
-  print unit_cell_info(clusters)
+  print(unit_cell_info(clusters))
   plt.show()
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_sequence
 
 import mmtbx.validation.sequence
@@ -39,8 +40,8 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
   params = cmdline.work.extract()
   try :
     validate_params(params)
-  except Sorry, e :
-    print e
+  except Sorry as e :
+    print(e)
     raise Usage("phenix.model_vs_sequence model.pdb sequence.fa")
   import mmtbx.validation.sequence
   from iotbx.file_reader import any_file

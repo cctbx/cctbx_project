@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
 
 if (getattr(sys, "api_version", 0) >= 1013):
@@ -21,7 +26,7 @@ else:
 
 def iiexps_mul(a, b):
   result = dict_with_default_0(a)
-  for ii,exp in b.items():
+  for ii,exp in list(b.items()):
     result[ii] += exp
   return result
 
@@ -30,7 +35,7 @@ def iiexps_as_tuples(iiexps):
     result = cmp(a[0], b[0])
     if (result != 0): return result
     return cmp(a[1], b[1])
-  result = iiexps.items()
+  result = list(iiexps.items())
   result.sort(cmp_iiexp)
   return tuple(result)
 
@@ -67,16 +72,16 @@ class elem(object):
     for t in terms:
       n[iiexps_as_tuples(t.iiexps)] += t.f
     terms = []
-    for ies,f in n.items():
+    for ies,f in list(n.items()):
       if (f != 0):
         terms.append(term(f=f, iiexps=dict_with_default_0(ies)))
     if (elem_common_factor_check):
       # assert that there are no common factors
       count_i = {}
       min_e = {}
-      for it in xrange(len(terms)):
+      for it in range(len(terms)):
         t = terms[it]
-        for i,e in t.iiexps.items():
+        for i,e in list(t.iiexps.items()):
           ci = count_i.get(i, 0)
           if (ci == it):
             if (ci == 0):
@@ -88,7 +93,7 @@ class elem(object):
           elif (ci != 0):
             del count_i[i]
             del min_e[i]
-      for i,c in count_i.items():
+      for i,c in list(count_i.items()):
         assert c != len(terms)
     self.terms = terms
 
@@ -123,7 +128,7 @@ def symbolic_row_echelon_form(m):
   piv_c = 0
   while (piv_c < n_cols):
     best_r = None
-    for i_row in xrange(piv_r, n_rows):
+    for i_row in range(piv_r, n_rows):
       if (m[i_row][piv_c] != 0):
         best_r = i_row
         break
@@ -131,10 +136,10 @@ def symbolic_row_echelon_form(m):
       if (best_r != piv_r):
         m[piv_r], m[best_r] = m[best_r], m[piv_r]
       fp = m[piv_r][piv_c]
-      for r in xrange(piv_r+1, n_rows):
+      for r in range(piv_r+1, n_rows):
         fr = m[r][piv_c]
         if (fr == 0): continue
-        for c in xrange(piv_c, n_cols):
+        for c in range(piv_c, n_cols):
           m[r][c] = m[r][c] * fp - m[piv_r][c] * fr
       piv_r += 1
     else:
@@ -150,11 +155,11 @@ def construct_symbolic_rigidity_matrix(n_dim, n_vertices, edge_list):
   for i,j in edge_list:
     assert i != j
     row = []
-    for ic in xrange(n_columns):
+    for ic in range(n_columns):
       row.append(elem([]))
     ci = i * n_dim
     cj = j * n_dim
-    for d in xrange(n_dim):
+    for d in range(n_dim):
       ei = {ci+d: 1}
       ej = {cj+d: 1}
       row[ci+d] = elem(terms=[term(1, ei), term(-1, ej)])
@@ -177,10 +182,10 @@ def compare_int_symb(n_vertices, edge_list):
   ds = determine_degrees_of_freedom(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list)
   if (0):
-    print "dof_int:", di, "dof_symb:", ds
+    print("dof_int:", di, "dof_symb:", ds)
   assert ds == di
   if (len(edge_list) > 1):
-    for i_delete in xrange(len(edge_list)):
+    for i_delete in range(len(edge_list)):
       el = list(edge_list)
       del el[i_delete]
       compare_int_symb(n_vertices, el)
@@ -210,4 +215,4 @@ if (__name__ == "__main__"):
     exercise()
   finally:
     t = os.times()
-    print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+    print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))

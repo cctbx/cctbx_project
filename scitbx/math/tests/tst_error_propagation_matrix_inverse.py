@@ -8,6 +8,9 @@
 #  included in the root directory of this package.
 
 from __future__ import division
+from __future__ import print_function
+from builtins import map
+from builtins import range
 from scitbx import matrix
 from scitbx.array_family import flex
 import random
@@ -33,10 +36,10 @@ def create_Bmat():
 
   from dxtbx.model import Crystal
 
-  vecs = map(random_vector_close_to,
+  vecs = list(map(random_vector_close_to,
              [(20, 0, 0),
               (0, 20, 0),
-              (0, 0, 20)])
+              (0, 0, 20)]))
 
   return matrix.sqr(Crystal(*vecs, space_group_symbol = "P 1").get_B())
 
@@ -189,8 +192,8 @@ if __name__ == '__main__':
 
   # run the Lefebvre paper test
   test_lefebvre()
-  print "OK"
+  print("OK")
 
   # run a similar test for a B matrix
   test_B_matrix()
-  print "OK"
+  print("OK")

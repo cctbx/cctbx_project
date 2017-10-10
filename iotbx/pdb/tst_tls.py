@@ -1,6 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 import os
-from cStringIO import StringIO
+from io import StringIO
 
 import libtbx.load_env
 from libtbx.test_utils import approx_equal, show_diff
@@ -16,7 +20,7 @@ def exercise_mmcif_tls():
     test=os.path.isfile)
 
   if pdb_file is None or mmcif_file is None:
-    print "Skipping exercise_mmcif_tls(): missing phenix_regression directory."
+    print("Skipping exercise_mmcif_tls(): missing phenix_regression directory.")
     return
 
   pdb_input = iotbx.pdb.input(file_name=pdb_file)
@@ -38,7 +42,7 @@ def exercise_mmcif_tls():
   cif_model = iotbx.cif.model.cif()
   cif_model["3orl"] = cif_block
   s = StringIO()
-  print >> s, cif_model
+  print(cif_model, file=s)
   s.seek(0)
   cif_hierarchy_recycled = iotbx.pdb.input(
     lines=s.readlines(), source_info=None).construct_hierarchy()
@@ -72,7 +76,7 @@ def exercise_mmcif_tls():
   cif_model = iotbx.cif.model.cif()
   cif_model["4g9h"] = cif_block
   s = StringIO()
-  print >> s, cif_model
+  print(cif_model, file=s)
   s.seek(0)
   cif_hierarchy_recycled = iotbx.pdb.input(
     lines=s.readlines(), source_info=None).construct_hierarchy()
@@ -107,7 +111,7 @@ def exercise_mmcif_tls():
   cif_model = iotbx.cif.model.cif()
   cif_model["2xw9"] = cif_block
   s = StringIO()
-  print >> s, cif_model
+  print(cif_model, file=s)
   s.seek(0)
   cif_hierarchy_recycled = iotbx.pdb.input(
     lines=s.readlines(), source_info=None).construct_hierarchy()
@@ -126,7 +130,7 @@ def check_tls_params(params1, params2):
 
 def run():
   exercise_mmcif_tls()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

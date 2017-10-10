@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
 from gltbx import gl
 from gltbx import glu
 from libtbx.test_utils import Exception_expected, show_diff
@@ -8,18 +11,18 @@ def exercise_converter():
   textures = []
   gl.glGenTextures(3, textures)
   assert textures == [0,0,0]
-  for i in xrange(10000):
+  for i in range(10000):
     textures = []
     gl.glGenTextures(3, textures)
     assert textures == [0,0,0]
-  for i in xrange(10000):
+  for i in range(10000):
     textures = [9,3,5]
     gl.glGenTextures(3, textures)
     assert textures == [9,3,5]
   try:
     textures = [9,3,5]
     gl.glGenTextures(4, textures)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 Argument "textures" has the wrong number of elements:
   expected size: 4
@@ -28,21 +31,21 @@ Argument "textures" has the wrong number of elements:
   try:
     textures = [9,"foo",5]
     gl.glGenTextures(3, textures)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert not show_diff(str(e), """\
 Argument "textures" has one or more elements of the wrong type.""")
   else: raise Exception_expected
 
 def exercise_all():
-  print "trying glGetError()...",
+  print("trying glGetError()...", end=' ')
   sys.stdout.flush()
   error = gl.glGetError()
-  print "OK:", error
+  print("OK:", error)
   sys.stdout.flush()
-  print "trying gluErrorString()...",
+  print("trying gluErrorString()...", end=' ')
   sys.stdout.flush()
   msg = glu.gluErrorString(error=error)
-  print "OK:", msg
+  print("OK:", msg)
   assert msg in ["no error", "invalid operation"]
   sys.stdout.flush()
   forever = "--forever" in sys.argv[1:]

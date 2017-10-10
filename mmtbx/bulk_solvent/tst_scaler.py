@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 import mmtbx.f_model
 import random, time
@@ -72,9 +73,9 @@ def run_0(symbol = "C 2"):
     try_expanal    = True,
     try_expmin     = True,
     verbose        = False)
-  print aso.r_final
-  print aso.r_low
-  print aso.r_high
+  print(aso.r_final)
+  print(aso.r_low)
+  print(aso.r_high)
   assert approx_equal(aso.r_final, 0.00037, 0.00001)
   assert approx_equal(aso.r_low,   0.00004, 0.00005)
   assert approx_equal(aso.r_high,  0.00006, 0.00001)
@@ -85,5 +86,5 @@ def run_0(symbol = "C 2"):
 if (__name__ == "__main__"):
   t0 = time.time()
   run_0()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

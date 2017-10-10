@@ -1,5 +1,9 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
@@ -8,6 +12,7 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
 '''
+from __future__ import print_function
 
 import os
 import sys
@@ -19,7 +24,7 @@ from spotfinder.array_family import flex
 import iota.components.iota_misc as misc
 from libtbx import easy_pickle, easy_run
 
-class Empty: pass
+class Empty(object): pass
 
 class Triage(object):
   """ Currently only runs a single DISTL instance with default parameters and accepts or
@@ -45,7 +50,7 @@ class Triage(object):
       Org = signal_strength.run_signal_strength(params)
 
     # Extract relevant spotfinding info
-    for frame in Org.S.images.keys():
+    for frame in list(Org.S.images.keys()):
       saturation = Org.Files.imageindex(frame).saturation
       Bragg_spots = [flex.sum(spot.wts) for spot in Org.S.images[frame]['inlier_spots']]
 
@@ -225,8 +230,8 @@ class Integrator(object):
       try:
         easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
         if not os.path.exists(tmppath):
-          print tmppath
-          print command
+          print(tmppath)
+          print(command)
           raise Exception("Indexing failed for an unknown reason")
 
         # iota.bulletproof saves the needed results from indexing in a tmp file
@@ -237,15 +242,15 @@ class Integrator(object):
         else:
           int_final = result
 
-      except Exception, e:
+      except Exception as e:
         int_final = None
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img,
+          print(e.classname, "for %s:"%self.img, end=' ')
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Integration error for %s:"%self.img,
+          print("Integration error for %s:"%self.img, end=' ')
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print e
+        print(e)
 
     # Output results of integration (from the "info" object returned by
     # run_one_index_core)
@@ -292,8 +297,8 @@ class Integrator(object):
                        'info':int_status,'ok':True}
       except ValueError:
         import traceback
-        print
-        print self.img
+        print()
+        print(self.img)
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
         sys.exit()
 
@@ -319,7 +324,7 @@ class Integrator(object):
     if self.single_image == True and self.tag == 'integrate':
       hklI_filename = "{}.{}".format(os.path.basename(self.out_img).split('.')[0], 'hkli')
       hklI_file = os.path.join(os.path.dirname(self.out_img), hklI_filename)
-      hklI = zip(obs.indices(), obs.data(), obs.sigmas())
+      hklI = list(zip(obs.indices(), obs.data(), obs.sigmas()))
       for i in hklI:
         with open(hklI_file, 'a') as f:
           entry = '{},{},{},{},{}'.format(i[0][0], i[0][1], i[0][2], i[1], i[2])

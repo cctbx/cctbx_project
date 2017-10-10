@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
 from mmtbx.command_line import density_modification
@@ -58,7 +59,7 @@ def exercise_density_modification():
       test=os.path.isfile)
 
   if pdb_path is None or reflection_path is None or phases_path is None:
-    print "Skipping exercise_density_modification(): phenix_regression is not available"
+    print("Skipping exercise_density_modification(): phenix_regression is not available")
     return
 
   from libtbx.test_utils import open_tmp_file
@@ -74,7 +75,7 @@ def exercise_density_modification():
   for arg in args:
     assert arg.find('"') < 0
   cmd = 'mmtbx.density_modification "%s" "%s"' % args
-  print cmd
+  print(cmd)
   result = easy_run.fully_buffered(command=cmd).raise_if_errors()
   assert result.stdout_lines[-5].startswith('Starting dm/model correlation:')
   assert result.stdout_lines[-4].startswith('Final dm/model correlation:')
@@ -86,4 +87,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

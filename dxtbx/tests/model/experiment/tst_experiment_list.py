@@ -1,7 +1,13 @@
 
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.model.experiment_list import ExperimentListFactory, \
   ExperimentListDumper
@@ -54,7 +60,7 @@ class TestExperiment(object):
     assert(c2 not in e)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_equality(self):
 
@@ -96,7 +102,7 @@ class TestExperiment(object):
     assert(e2 != e3)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_consistent(self):
 
@@ -132,7 +138,7 @@ class TestExperiment(object):
     #assert(not e.is_consistent())
 
     # Test passed
-    print 'OK'
+    print('OK')
 
 class TestExperimentList(object):
 
@@ -173,7 +179,7 @@ class TestExperimentList(object):
     assert(s not in self.el)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   # def tst_index(self):
 
@@ -212,7 +218,7 @@ class TestExperimentList(object):
     self.el[4].beam = b[4]
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_indices(self):
     from dxtbx.model import Beam, Detector, Goniometer, Scan
@@ -258,7 +264,7 @@ class TestExperimentList(object):
     assert(len(self.el.indices(Scan())) == 0)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_models(self):
 
@@ -292,7 +298,7 @@ class TestExperimentList(object):
     assert(s[2] == self.el[2].scan)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_to_dict(self):
 
@@ -324,7 +330,7 @@ class TestExperimentList(object):
       assert(eobj['scan'] == s[i])
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_where(self):
     for beam in self.el.beams():
@@ -344,7 +350,7 @@ class TestExperimentList(object):
       for i in self.el.where(detector=detector):
         assert self.el[i].detector is detector
 
-    print 'OK'
+    print('OK')
 
 
   def generate(self):
@@ -446,7 +452,7 @@ class TestExperimentListFactory(object):
         assert(e1.crystal == ee.crystal)
 
     # test passed
-    print 'OK'
+    print('OK')
 
   def tst_from_pickle(self):
     from os.path import join
@@ -483,7 +489,7 @@ class TestExperimentListFactory(object):
       assert(e1.crystal == e2.crystal)
 
     # test passed
-    print 'OK'
+    print('OK')
 
   def tst_from_args(self):
     from os.path import join
@@ -509,7 +515,7 @@ class TestExperimentListFactory(object):
       assert(experiments[i].scan is not None)
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_from_imageset(self):
     from dxtbx.imageset import ImageSet
@@ -534,7 +540,7 @@ class TestExperimentListFactory(object):
     assert(experiments[0].detector is not None)
     assert(experiments[0].crystal is not None)
 
-    print 'OK'
+    print('OK')
 
   def tst_from_sweep(self):
     from dxtbx.imageset import ImageSweep
@@ -565,7 +571,7 @@ class TestExperimentListFactory(object):
     assert(experiments[0].scan is not None)
     assert(experiments[0].crystal is not None)
 
-    print 'OK'
+    print('OK')
 
   def tst_from_datablock(self):
     from dxtbx.imageset import ImageSweep
@@ -600,15 +606,15 @@ class TestExperimentListFactory(object):
     assert(experiments[0].scan is not None)
     assert(experiments[0].crystal is not None)
 
-    print 'OK'
+    print('OK')
 
   def pickle_then_unpickle(self, obj):
     '''Pickle to a temp file then un-pickle.'''
-    import cPickle as pickle
-    import cStringIO
+    import pickle as pickle
+    import io
 
     # Create a temporary "file"
-    temp = cStringIO.StringIO()
+    temp = io.StringIO()
 
     # Pickle the object
     pickle.dump(obj, temp)
@@ -692,7 +698,7 @@ class TestExperimentListDumper(object):
                                                         check_format=False)
     self.check(experiments, experiments2)
 
-    print 'OK'
+    print('OK')
 
   def tst_dump_with_lookup(self):
     from dxtbx.imageset import ImageSweep
@@ -705,8 +711,8 @@ class TestExperimentListDumper(object):
 
     try:
       dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
+    except KeyError as e:
+      print('FAIL: dials_regression not configured')
       exit(0)
 
     filename = join(dials_regression, "centroid_test_data",
@@ -758,8 +764,8 @@ class TestExperimentListDumper(object):
 
     try:
       dials_regression = libtbx.env.dist_path('dials_regression')
-    except KeyError, e:
-      print 'FAIL: dials_regression not configured'
+    except KeyError as e:
+      print('FAIL: dials_regression not configured')
       exit(0)
 
     filename = join(dials_regression, "centroid_test_data",
@@ -793,7 +799,7 @@ class TestExperimentListDumper(object):
     assert imageset.external_lookup.gain.filename is not None
     assert imageset.external_lookup.pedestal.filename is not None
 
-    print "OK"
+    print("OK")
 
   def check(self, el1, el2):
 
@@ -815,17 +821,17 @@ class TestExperimentListDumper(object):
       assert(e1.goniometer == e2.goniometer)
       assert(e1.scan == e2.scan)
       assert(e1.crystal == e2.crystal)
-    print 'OK'
+    print('OK')
 
 class Test(object):
   def __init__(self):
     import libtbx
 
     if not libtbx.env.has_module("dials"):
-      print 'Skipping: dials_regresson not configured'
+      print('Skipping: dials_regresson not configured')
       exit(0)
     if not libtbx.env.has_module("dials_regression"):
-      print 'Skipping: dials_regresson not configured'
+      print('Skipping: dials_regresson not configured')
       exit(0)
 
     dials_regression = libtbx.env.dist_path('dials_regression')

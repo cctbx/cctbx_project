@@ -4,6 +4,7 @@ PDB web service API
 
 from __future__ import division
 
+from builtins import object
 from iotbx.pdb.download import openurl, NotFound, identity_encoding
 
 

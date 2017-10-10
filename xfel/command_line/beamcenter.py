@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME xpp.beamcenter
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import range
 import sys,os
 from scitbx.array_family import flex
 from scitbx.matrix import sqr, col
@@ -41,7 +43,7 @@ if (__name__ == "__main__"):
     powder rings.  The algorithm  scores based on self-correlation upon 45-degree rotation.
     Increments are determined ON TOP OF beam center value in image header.  Output is given in the form of
     delta to that value."""%file
-    print message
+    print(message)
 
     img = dxtbx.load(file)
     beam = img.get_beam()
@@ -55,7 +57,7 @@ if (__name__ == "__main__"):
       beam_center = col(panel.get_beam_centre_px(s0))
       data = raw_data[panel_id]
 
-      print "Assembling mask...",; sys.stdout.flush()
+      print("Assembling mask...", end=' '); sys.stdout.flush()
       mask = panel.get_trusted_range_mask(data)
       trusted_min = panel.get_trusted_range()[0]
 
@@ -66,14 +68,14 @@ if (__name__ == "__main__"):
       mask = mask[mask_center[0] - px_max:mask_center[0] + px_max, mask_center[1] - px_max:mask_center[1] + px_max]
       panel_origin = col((mask_center[0] - px_max,mask_center[1] - px_max))
 
-      for y in xrange(mask.focus()[1]):
-        for x in xrange(mask.focus()[0]):
+      for y in range(mask.focus()[1]):
+        for x in range(mask.focus()[0]):
           l = (col((x-px_max+mask_center[0],y-px_max+mask_center[1])) - mask_center).length()
           if l < px_min or l > px_max:
             mask[x,y] = False
 
       data.set_selected(~mask, trusted_min-1)
-      print "done"
+      print("done")
       if params.show_plots:
         from matplotlib import pyplot as plt
         plt.imshow(data.as_numpy_array())
@@ -81,14 +83,14 @@ if (__name__ == "__main__"):
 
       grid_radius = 20
       mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
-      print mapp.focus()
+      print(mapp.focus())
 
       gmax = 0.0
       coordmax = (0,0)
       for xi in range(-grid_radius, grid_radius+1):
         for yi in range(-grid_radius, grid_radius+1):
           test_bc = beam_center + col((xi,yi))
-          print "Testing beam center", test_bc.elems,
+          print("Testing beam center", test_bc.elems, end=' ')
           REF,ROT = quadrant_self_correlation(data,panel_origin,test_bc,rot45,trusted_min)
           CCRR = flex.linear_correlation(REF,ROT)
           VV = CCRR.coefficient()
@@ -96,9 +98,9 @@ if (__name__ == "__main__"):
             gmax = VV
             coordmax = col((xi,yi))
           mapp[(xi+grid_radius,yi+grid_radius)]=VV
-          print VV
+          print(VV)
 
-      print "max cc %7.4F is at "%gmax, (beam_center + coordmax).elems, "(slow, fast). Delta:", coordmax.elems
+      print("max cc %7.4F is at "%gmax, (beam_center + coordmax).elems, "(slow, fast). Delta:", coordmax.elems)
       if params.show_plots:
         npy = mapp.as_numpy_array()
         from matplotlib import pyplot as plt

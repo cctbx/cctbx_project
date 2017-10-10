@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from spotfinder.array_family import flex
 
 from spotfinder.applications.heuristic_tbx.ice2 import RingFinder
@@ -24,15 +25,15 @@ class RingFinder_nztt(RingFinder):
     self.nRings = len(self.rings)//self.col
 
     # add ellipses to existing list of rings
-    for i in xrange(self.nRings):
+    for i in range(self.nRings):
       res = radius_to_resol(self.rings[i*self.col+6]*image.pixel_size,
                             fractionCalculator.pd)
       RingFinder.add_interval(self,(res+0.015,res-0.015))
 
     # ensure that rings from hough are definitely ice rings
     self.impact = flex.int([0]*len(self.intervals))
-    for i in xrange(len(self.intervals)):
-      for j in xrange(self.nRings):
+    for i in range(len(self.intervals)):
+      for j in range(self.nRings):
         res = radius_to_resol(self.rings[j*self.col+6]*image.pixel_size,
                               fractionCalculator.pd)
         if (res <= self.intervals[i][0] and
@@ -45,7 +46,7 @@ class RingFinder_nztt(RingFinder):
     assert len(sorted_order)==len(self.ref_spots)
 
     limits_low_hi_res = flex.double();
-    for x in xrange(len(self.intervals)):
+    for x in range(len(self.intervals)):
       limits_low_hi_res.append(self.intervals[x][0]);
       limits_low_hi_res.append(self.intervals[x][1]);
 

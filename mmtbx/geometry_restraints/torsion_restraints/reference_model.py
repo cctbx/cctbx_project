@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 import cctbx.geometry_restraints
 from mmtbx.validation import rotalyze
 from mmtbx.utils import rotatable_bonds
@@ -126,12 +130,11 @@ def add_reference_dihedral_restraints_if_requested(
     reference_hierarchy_list = \
         [processed_pdb_file.all_chain_proxies.pdb_hierarchy]
     reference_file_list = None
-    print >> log, \
-      "*** Restraining model using starting model ***"
+    print("*** Restraining model using starting model ***", file=log)
   else:
     for file_name in params.file:
       reference_file_list.append(file_name)
-  print >> log, "*** Adding Reference Model Restraints (torsion) ***"
+  print("*** Adding Reference Model Restraints (torsion) ***", file=log)
   #test for inserted TER cards in working model
   ter_indices = processed_pdb_file.all_chain_proxies.pdb_inp.ter_indices()
   if ter_indices is not None:
@@ -238,7 +241,7 @@ class reference_model(object):
 
   def get_matching_from_self(self):
     """ Shortcut for the case when restraining on starting model """
-    if self.reference_file_list[0] not in self.match_map.keys():
+    if self.reference_file_list[0] not in list(self.match_map.keys()):
       self.match_map[self.reference_file_list[0]] = {}
     for chain in self.pdb_hierarchy.only_model().chains():
       for rg in chain.residue_groups():
@@ -301,7 +304,7 @@ class reference_model(object):
       len_ncs_rg = len(ncs_residue_groups[0])
       for ncs_rg in ncs_residue_groups:
         assert len(ncs_rg) == len_ncs_rg
-      if fn not in self.match_map.keys():
+      if fn not in list(self.match_map.keys()):
         self.match_map[fn] = {}
       ref_indeces = []
       for i in range(n_total_ncs_residue_groups):
@@ -385,8 +388,8 @@ class reference_model(object):
     if not self.is_reference_groups_provided():
       # only files are specified
       for fn in self.reference_file_list:
-        print >> log, "\nreference file: %s" % fn
-        print >> log, "Model:              Reference:"
+        print("\nreference file: %s" % fn, file=log)
+        print("Model:              Reference:", file=log)
         self._make_matching_and_fill_dictionaries(
             model_h=self.pdb_hierarchy,
             ref_h=self.pdb_hierarchy_ref[fn],
@@ -396,8 +399,8 @@ class reference_model(object):
       # We got reference_group section
       for rg in self.params.reference_group:
         file_name = rg.file_name
-        print >> log, "\nreference file: %s" % file_name
-        print >> log, "Model:              Reference:"
+        print("\nreference file: %s" % file_name, file=log)
+        print("Model:              Reference:", file=log)
         self._make_matching_and_fill_dictionaries(
             model_h=self.pdb_hierarchy,
             ref_h=self.pdb_hierarchy_ref[file_name],
@@ -462,7 +465,7 @@ class reference_model(object):
 
   def build_reference_dihedral_proxy_hash(self):
     self.reference_dihedral_proxy_hash = {}
-    for ref in self.dihedral_proxies_ref.keys():
+    for ref in list(self.dihedral_proxies_ref.keys()):
       self.reference_dihedral_proxy_hash[ref] = {}
       proxies = self.dihedral_proxies_ref[ref]
       for dp in proxies:
@@ -633,23 +636,23 @@ class reference_model(object):
   def show_reference_summary(self, log=None):
     if log is None:
       log = sys.stdout
-    print >> log, "--------------------------------------------------------"
-    print >> log, "Reference Model Matching Summary:"
-    keys = self.residue_match_hash.keys()
+    print("--------------------------------------------------------", file=log)
+    print("Reference Model Matching Summary:", file=log)
+    keys = list(self.residue_match_hash.keys())
     def get_key_chain_num(res):
       return res[4:]
     keys.sort(key=get_key_chain_num)
     for file in self.reference_file_list:
-      print >> log, "\nreference file: %s\n" % file
-      print >> log, "Model:              Reference:"
+      print("\nreference file: %s\n" % file, file=log)
+      print("Model:              Reference:", file=log)
       for key in keys:
         if self.residue_match_hash[key][0] == file:
-          print >> log, "%s  <=====>  %s" % \
-            (key, self.residue_match_hash[key][1])
-    print >> log, "\nTotal # of matched residue pairs: %d" % len(keys)
-    print >> log, "Total # of reference model restraints: %d" % \
-      len(self.reference_dihedral_proxies)
-    print >> log, "--------------------------------------------------------"
+          print("%s  <=====>  %s" % \
+            (key, self.residue_match_hash[key][1]), file=log)
+    print("\nTotal # of matched residue pairs: %d" % len(keys), file=log)
+    print("Total # of reference model restraints: %d" % \
+      len(self.reference_dihedral_proxies), file=log)
+    print("--------------------------------------------------------", file=log)
 
   def set_rotamer_to_reference(self,
                                xray_structure,
@@ -667,7 +670,7 @@ class reference_model(object):
     r = rotalyze.rotalyze(pdb_hierarchy=self.pdb_hierarchy)
     rot_list_reference = {}
     coot_reference = {}
-    for key in self.pdb_hierarchy_ref.keys():
+    for key in list(self.pdb_hierarchy_ref.keys()):
       hierarchy = self.pdb_hierarchy_ref[key]
       rot_list_reference[key] = \
         rotalyze.rotalyze(pdb_hierarchy=hierarchy)
@@ -681,12 +684,12 @@ class reference_model(object):
       if rot.rotamer_name == "OUTLIER":
         model_outliers += 1
 
-    for key in rot_list_reference.keys():
+    for key in list(rot_list_reference.keys()):
       reference_hash[key] = {}
       for rot in rot_list_reference[key].results:
         reference_hash[key][rot.id_str()] = rot.rotamer_name
 
-    print >> log, "** evaluating rotamers for working model **"
+    print("** evaluating rotamers for working model **", file=log)
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -704,18 +707,17 @@ class reference_model(object):
                           altloc=atom_group.altloc)
                   model_chis[key] = chis
               except Exception:
-                print >> log, \
-                  '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
+                print('  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                       chain.id, residue_group.resid(),
-                      atom_group.altloc+atom_group.resname)
+                      atom_group.altloc+atom_group.resname), file=log)
     if model_outliers == 0:
-      print >> log, "No rotamer outliers detected in working model"
+      print("No rotamer outliers detected in working model", file=log)
       return
     else:
-      print >> log, "Number of rotamer outliers: %d" % model_outliers
+      print("Number of rotamer outliers: %d" % model_outliers, file=log)
 
-    print >> log, "\n** evaluating rotamers for reference model **"
-    for file in self.pdb_hierarchy_ref.keys():
+    print("\n** evaluating rotamers for reference model **", file=log)
+    for file in list(self.pdb_hierarchy_ref.keys()):
       hierarchy = self.pdb_hierarchy_ref[file]
       reference_chis[file] = {}
       for model in hierarchy.models():
@@ -735,20 +737,19 @@ class reference_model(object):
                             altloc=atom_group.altloc)
                     reference_chis[file][key] = chis
                 except Exception:
-                  print >> log, \
-                    '  %s%5s %s is missing some sidechain atoms, **skipping**' % (
+                  print('  %s%5s %s is missing some sidechain atoms, **skipping**' % (
                         chain.id, residue_group.resid(),
-                        atom_group.altloc+atom_group.resname)
+                        atom_group.altloc+atom_group.resname), file=log)
 
-    print >> log, "\n** fixing outliers **"
+    print("\n** fixing outliers **", file=log)
     sites_cart_start = xray_structure.sites_cart()
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           if len(residue_group.conformers()) > 1:
-            print >> log, "  %s%5s %s has multiple conformations, **skipping**" % (
+            print("  %s%5s %s has multiple conformations, **skipping**" % (
               chain.id, residue_group.resid(),
-              " "+residue_group.atom_groups()[0].resname)
+              " "+residue_group.atom_groups()[0].resname), file=log)
             continue
           for conformer in residue_group.conformers():
             for residue in conformer.residues():
@@ -868,7 +869,7 @@ class reference_model(object):
         remaining_match_hash[key] = self.residue_match_hash[key]
     self.reference_dihedral_proxies = remaining_proxies
     self.residue_match_hash = remaining_match_hash
-    print >> log, "\n**Removed reference restraints that overlap "+ \
-                       "with torsion NCS restraints**\n"
-    print >> log, "Updated Reference Model Restraints:"
+    print("\n**Removed reference restraints that overlap "+ \
+                       "with torsion NCS restraints**\n", file=log)
+    print("Updated Reference Model Restraints:", file=log)
     self.show_reference_summary(log=log)

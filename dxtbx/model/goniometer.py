@@ -10,6 +10,9 @@ from __future__ import absolute_import, division
 # documented in internal ticket #1555. This is not designed to be used outside
 # of the XSweep classes.
 
+from builtins import map
+from builtins import range
+from builtins import object
 import pycbf
 from dxtbx_model_ext import KappaGoniometer # special import
 from dxtbx_model_ext import Goniometer, MultiAxisGoniometer
@@ -61,7 +64,7 @@ goniometer_phil_scope = libtbx.phil.parse('''
 ''')
 
 
-class GoniometerFactory:
+class GoniometerFactory(object):
   '''A factory class for goniometer objects, which will encapsulate
   some standard goniometer designs to make it a little easier to get
   started with all of this - for cases when we are not using a CBF.
@@ -231,7 +234,7 @@ class GoniometerFactory:
       if t == None: return None
       else: return from_dict(t, None)
     elif t != None:
-      d = dict(t.items() + d.items())
+      d = dict(list(t.items()) + list(d.items()))
 
     # Create the model from the dictionary
     if 'axes' in d and 'angles' in d and 'scan_axis' in d:

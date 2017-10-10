@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from mmtbx.secondary_structure import build as ssb
 import time
 
@@ -25,5 +26,5 @@ def exercise_process_params():
 if (__name__ == "__main__"):
   t0=time.time()
   exercise_process_params()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.make_mar_mask
@@ -11,6 +12,7 @@ from __future__ import division
 # to mask_pix_val.
 #
 
+from builtins import range
 from scitbx.array_family import flex
 import sys
 from libtbx import easy_pickle
@@ -142,8 +144,8 @@ def run(argv=None):
       if circle_y + radius > maxy: maxy = circle_y + radius
 
     sel = mask == command_line.options.mask_pix_val
-    for j in xrange(miny, maxy):
-      for i in xrange(minx, maxx):
+    for j in range(miny, maxy):
+      for i in range(minx, maxx):
         idx = j * mask.focus()[0] + i
         if not sel[idx]:
           if poly_mask is not None and point_in_polygon((i,j),poly_mask):
@@ -154,8 +156,8 @@ def run(argv=None):
 
   masked_out = len(mask.as_1d().select((mask == command_line.options.mask_pix_val).as_1d()))
 
-  print "Masked out %d pixels out of %d (%.2f%%)"% \
-    (masked_out,len(mask),(masked_out)*100/(len(mask)))
+  print("Masked out %d pixels out of %d (%.2f%%)"% \
+    (masked_out,len(mask),(masked_out)*100/(len(mask))))
 
   easy_pickle.dump(command_line.options.destpath, mask)
 

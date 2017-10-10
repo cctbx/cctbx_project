@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from libtbx import adopt_init_args, Auto
 import scitbx.lbfgs
 from cctbx import maptbx
@@ -352,7 +355,7 @@ class box_refinement_manager(object):
         rms_angles_limit = rms_angles_limit)
       self.weight_optimal = real_space_result.weight_final
       sites_cart_box_refined = real_space_result.sites_cart_result
-      shift_back = [-box.shift_cart[i] for i in xrange(3)]
+      shift_back = [-box.shift_cart[i] for i in range(3)]
       sites_cart_box_refined_shifted_back = \
         sites_cart_box_refined + shift_back # Sure + not - ?
       sites_cart_refined = sites_cart_box_refined_shifted_back.select(sel)
@@ -390,7 +393,7 @@ class box_refinement_manager(object):
 #      self.sites_cart = None     #XXX undefined
 
 
-class minimize_wrapper_with_map():
+class minimize_wrapper_with_map(object):
   def __init__(self,
       pdb_h,
       xrs,
@@ -414,7 +417,7 @@ class minimize_wrapper_with_map():
     self.cs = crystal.symmetry(
         unit_cell=self.xrs.crystal_symmetry().unit_cell(),
         space_group=1)
-    print >> self.log, "Minimizing using reference map..."
+    print("Minimizing using reference map...", file=self.log)
     self.log.flush()
     self.grm = grm
     # copy-paste from cctbx_project/mmtbx/refinement/geometry_minimization.py:
@@ -446,15 +449,15 @@ class minimize_wrapper_with_map():
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
     self.w = 1
-    print >> log, "number_of_cycles", number_of_cycles
-    print >> log, "Stats before minimization:"
+    print("number_of_cycles", number_of_cycles, file=log)
+    print("Stats before minimization:", file=log)
     ms = mmtbx.model.statistics(pdb_hierarchy=self.pdb_h)
     ms.show(log=log)
 
     while min_monitor.need_more_cycles():
       # for x in xrange(number_of_cycles):
-      print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()
-      print >> self.log, "  Updating rotamer restraints..."
+      print("Cycle number", min_monitor.get_current_cycle_n(), file=self.log)
+      print("  Updating rotamer restraints...", file=self.log)
       self.pdb_h, grm = add_rotamer_restraints(
         pdb_hierarchy      = self.pdb_h,
         restraints_manager = grm,
@@ -472,7 +475,7 @@ class minimize_wrapper_with_map():
         #No NCS
         if min_monitor.need_weight_optimization():
           # if self.w is None:
-          print >> self.log, "  Determining weight..."
+          print("  Determining weight...", file=self.log)
           self.log.flush()
           self.weight = mmtbx.refinement.real_space.weight.run(
               map_data                    = target_map,
@@ -490,8 +493,8 @@ class minimize_wrapper_with_map():
           # self.w = 0
           # self.w = self.weight.weight
           # print >> self.log, self.w
-        print >> self.log, "  Minimizing..."
-        print >> self.log, "     with weight %f" % self.w
+        print("  Minimizing...", file=self.log)
+        print("     with weight %f" % self.w, file=self.log)
         self.log.flush()
         refine_object = simple(
             target_map                  = target_map,
@@ -503,7 +506,7 @@ class minimize_wrapper_with_map():
             ncs_groups                  = ncs_groups)
         refine_object.refine(weight = self.w, xray_structure = self.xrs)
         self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
-        print >> log, "RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final
+        print("RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final, file=log)
         # print >> log, "sizes:", len(refine_object.sites_cart()), len(self.xrs.scatterers())
         self.xrs=self.xrs.replace_sites_cart(
             new_sites=refine_object.sites_cart(), selection=None)
@@ -519,7 +522,7 @@ class minimize_wrapper_with_map():
             d_min          = 3)
         if min_monitor.need_weight_optimization():
           # if self.w is None:
-          print >> self.log, "  Determining weight... (NCS)",
+          print("  Determining weight... (NCS)", end=' ', file=self.log)
           self.weight = mmtbx.refinement.real_space.weight.run(
               map_data                    = target_map,
               xray_structure              = self.xrs,#.select(sel_master),
@@ -531,8 +534,8 @@ class minimize_wrapper_with_map():
           # division supposed to put more weight onto restraints. Need checking.
           self.w = self.weight.weight/3.0
           for s in self.weight.msg_strings:
-            print >> self.log, s
-        print >> self.log, "  Minimizing... (NCS)"
+            print(s, file=self.log)
+        print("  Minimizing... (NCS)", file=self.log)
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
           target_function_and_grads_real_space(
             map_data                   = target_map,

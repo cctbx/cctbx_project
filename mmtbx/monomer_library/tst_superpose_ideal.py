@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, sys
 from libtbx import easy_run
 
@@ -59,7 +60,7 @@ def run():
     cmd = 'phenix.geometry_minimization %s superpose_ideal=%s' % (fn,
                                                                  superpose,
       )
-    print cmd
+    print(cmd)
     rc = easy_run.go(cmd)
     for line in rc.stdout_lines:
       #print line
@@ -83,20 +84,20 @@ def run():
     cmd = 'phenix.pdb_interpretation %s superpose_ideal=%s' % (fn,
                                                                superpose,
       )
-    print cmd
+    print(cmd)
     rc = easy_run.go(cmd)
     for line in rc.stdout_lines:
       #print line
       if line.find('bond_residual_sum')>-1:
         value = round(float(line.split()[-1]))
-        print 'value',value
+        print('value',value)
         assert value==results[fn][i][2], 'not matching %s to %s' % (
           value,
           results[fn][i][2],
           )
       if line.find('angle_residual_sum')>-1:
         value = round(float(line.split()[-1]))
-        print 'value',value
+        print('value',value)
         assert value==results[fn][i][3], 'not matching %s to %s' % (
           value,
           results[fn][i][4],
@@ -124,10 +125,10 @@ def run():
     'pdb="FE2  SF4 X1001 " - pdb=" SG  CYS X  48 "',
     ]
   cmd = 'phenix.pdb_interpretation %s link_all=True > %s.log' % (fn, fn)
-  print cmd
+  print(cmd)
   assert not easy_run.call(cmd)
   for line in lines:
-    print line
+    print(line)
     assert_lines_in_file(file_name='%s.log' % fn, lines=line)
   return 0
 

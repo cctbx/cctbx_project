@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys, os
 import re
 import libtbx.load_env
@@ -29,15 +30,15 @@ def run(modules):
         else:
           file_type = ext[1:]
         line_counts_in_files_of_type.setdefault(file_type, []).append(n_lines)
-  print "Lines of code in %s" % ', '.join(modules)
-  print "%-15s%8s" % ('extension', '#lines')
+  print("Lines of code in %s" % ', '.join(modules))
+  print("%-15s%8s" % ('extension', '#lines'))
   output = []
-  for file_type, line_counts in line_counts_in_files_of_type.iteritems():
+  for file_type, line_counts in line_counts_in_files_of_type.items():
     cnt = sum(line_counts)
     output.append((cnt, "%-15s%8d" % (file_type, cnt)))
   output.sort(reverse=True)
   output = [ entry[1] for entry in output ]
-  print '\n'.join(output)
+  print('\n'.join(output))
 
 
 if __name__ == '__main__':

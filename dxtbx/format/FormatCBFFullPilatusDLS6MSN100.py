@@ -8,9 +8,12 @@
 # Pilatus implementation of fullCBF format, for use with Dectris detectors.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 #import pycbf
 
+from builtins import zip
+from builtins import range
 from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
 #from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
@@ -28,7 +31,7 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
 
     try:
       from dials.util.masking import GoniometerShadowMaskGenerator
-    except ImportError, e:
+    except ImportError as e:
       return False
 
     header = FormatCBFFullPilatus.get_cbf_header(image_file)
@@ -219,12 +222,12 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
       radius = 20 # mm
 
       steps_per_degree = 1
-      theta = flex.double([range(360*steps_per_degree)]) * math.pi/180 * 1/steps_per_degree
+      theta = flex.double([list(range(360*steps_per_degree))]) * math.pi/180 * 1/steps_per_degree
       y = radius * flex.cos(theta) # x
       z = radius * flex.sin(theta) # y
       x = flex.double(theta.size(), height) # z
 
-      coords = flex.vec3_double(zip(x, y, z))
+      coords = flex.vec3_double(list(zip(x, y, z)))
       coords.insert(0, (0,0,0))
 
       if goniometer is None:
@@ -241,4 +244,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFFullPilatus.understand(arg)
+    print(FormatCBFFullPilatus.understand(arg))

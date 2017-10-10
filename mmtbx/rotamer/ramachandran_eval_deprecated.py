@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import mmtbx.rotamer
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
@@ -24,7 +25,7 @@ aminoAcids_8000 = {
     'isoleucine or valine' : 'ileval-nopreP',
 }
 
-class RamachandranEval:
+class RamachandranEval(object):
 
   # This is shared among all instances of RamachandranEval -- a class variable.
   # It holds a LOT of read-only data, so this helps save memory.
@@ -33,13 +34,13 @@ class RamachandranEval:
   def __init__(self):
     main_aaTables = RamachandranEval.aaTables
     self.aaTables = {}
-    for aa,ndt_weakref in main_aaTables.items():
+    for aa,ndt_weakref in list(main_aaTables.items()):
       # convert existing weak references to strong references
       self.aaTables[aa] = ndt_weakref()
     rama_data_dir = find_rotarama_data_dir()
     target_db = open_rotarama_dlite(rotarama_data_dir=rama_data_dir)
     no_update = os.path.exists(os.path.join(rama_data_dir, "NO_UPDATE"))
-    for aa, aafile in aminoAcids_8000.items():
+    for aa, aafile in list(aminoAcids_8000.items()):
       if (self.aaTables.get(aa) is not None): continue
       data_file = "rama8000-"+aafile+".data"
       pickle_file = "rama8000-"+aafile+".pickle"

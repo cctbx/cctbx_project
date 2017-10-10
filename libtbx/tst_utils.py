@@ -1,7 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
 from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-from cStringIO import StringIO
+from io import StringIO
 import warnings
 import random
 import time
@@ -19,7 +24,7 @@ def exercise_forward_compatibility():
 def exercise_misc():
   utils.host_and_user().show(prefix="### ")
   time_in_seconds = 1.1
-  for i_trial in xrange(55):
+  for i_trial in range(55):
     time_in_seconds = time_in_seconds**1.1
     time_units, time_unit = utils.human_readable_time(
       time_in_seconds=time_in_seconds)
@@ -41,7 +46,7 @@ def exercise_misc():
   nfs = utils.number_from_string
   for string in ["True", "False"]:
     try: nfs(string=string)
-    except ValueError, e:
+    except ValueError as e:
       assert str(e) == 'Error interpreting "%s" as a numeric expression.' % (
         string)
     else: raise Exception_expected
@@ -49,7 +54,7 @@ def exercise_misc():
   assert approx_equal(nfs(string="3.14"), 3.14)
   assert approx_equal(nfs(string="cos(0)"), 1)
   try: nfs(string="xxx(0)")
-  except ValueError, e:
+  except ValueError as e:
     assert str(e).startswith(
       'Error interpreting "xxx(0)" as a numeric expression: ')
   else: raise Exception_expected
@@ -59,7 +64,7 @@ def exercise_misc():
   s = "[0.1431391, -0.1251212, None, -0.3086073]"
   assert numstr7(values=eval(s)) == s
   #
-  for s,i in {"2000000" : 2000000,
+  for s,i in list({"2000000" : 2000000,
               "2k" : 2048,
               "2Kb" : 2048,
               "2 Kb" : 2048,
@@ -68,7 +73,7 @@ def exercise_misc():
               "1T": 1024*1024*1024*1024,
               10000 : 10000,
               5.5 : 5.5,
-              }.items():
+              }.items()):
     assert utils.get_memory_from_string(s) == i
   #
   assert utils.tupleize(1) == (1,)
@@ -90,20 +95,20 @@ def exercise_misc():
       == ["geese"]
   #
   nd1d = utils.n_dim_index_from_one_dim
-  for size in xrange(1,5):
-    for i1d in xrange(size):
+  for size in range(1,5):
+    for i1d in range(size):
       assert nd1d(i1d=i1d, sizes=(size,)) == [i1d]
   for sizes in [(1,1), (1,3), (3,1), (2,3)]:
     ni, nj = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
+    for i in range(ni):
+      for j in range(nj):
         i1d = i*nj+j
         assert nd1d(i1d=i1d, sizes=sizes) == [i,j]
   for sizes in [(1,1,1), (1,3,1), (3,2,1), (4,3,2)]:
     ni, nj, nk = sizes
-    for i in xrange(ni):
-      for j in xrange(nj):
-        for k in xrange(nk):
+    for i in range(ni):
+      for j in range(nj):
+        for k in range(nk):
           i1d = (i*nj+j)*nk+k
           assert nd1d(i1d=i1d, sizes=sizes) == [i,j,k]
   #
@@ -127,12 +132,12 @@ def exercise_misc():
   assert approx_equal([i/4. for i in range(4,8+1)], samples(1, 2, 0.25))
   assert approx_equal([0.2+i/3. for i in range(4)], frange(0.2, 1.3, 1./3))
   assert approx_equal([0.2+i/3. for i in range(4)], samples(0.2, 1.3, 1./3))
-  assert approx_equal(range(5) , frange(5))
-  assert approx_equal(range(5+1) , samples(5))
-  assert approx_equal(range(-5), frange(-5))
-  assert approx_equal(range(-5-1), samples(-5))
-  assert approx_equal(range(1,3), frange(1, 3))
-  assert approx_equal(range(1,3+1), samples(1, 3))
+  assert approx_equal(list(range(5)) , frange(5))
+  assert approx_equal(list(range(5+1)) , samples(5))
+  assert approx_equal(list(range(-5)), frange(-5))
+  assert approx_equal(list(range(-5-1)), samples(-5))
+  assert approx_equal(list(range(1,3)), frange(1, 3))
+  assert approx_equal(list(range(1,3+1)), samples(1, 3))
   assert approx_equal([i/10. for i in range(20,9,-2)], frange(2.0,0.9,-0.2))
   assert approx_equal([i/10. for i in range(20,9,-2)], samples(2.0,0.9,-0.2))
   #
@@ -145,17 +150,17 @@ def exercise_misc():
   assert ff(1.234, 0.196) == "1.2(2)"
   assert ff(1.234, 0.193) == "1.23(19)"
   #
-  for n in xrange(4):
+  for n in range(4):
     assert len(utils.random_hex_code(number_of_digits=n)) == n
   #
-  print "multiprocessing problem:", utils.detect_multiprocessing_problem()
+  print("multiprocessing problem:", utils.detect_multiprocessing_problem())
   #
-  print "base36_timestamp():", utils.base36_timestamp(), "now"
-  print "base36_timestamp():", utils.base36_timestamp(
-    seconds_since_epoch=115855*365.2425*24*60*60), "year 115855 CE"
+  print("base36_timestamp():", utils.base36_timestamp(), "now")
+  print("base36_timestamp():", utils.base36_timestamp(
+    seconds_since_epoch=115855*365.2425*24*60*60), "year 115855 CE")
   #
-  print "get_svn_revision():", utils.get_svn_revision()
-  print "get_build_tag():", utils.get_build_tag()
+  print("get_svn_revision():", utils.get_svn_revision())
+  print("get_build_tag():", utils.get_build_tag())
   # concatenate_python_script
   # XXX the string concatenation here is required to trick libtbx.find_clutter,
   # which will warn about repetition of the future division import.
@@ -195,10 +200,10 @@ def exercise_user_plus_sys_time():
 def exercise_indented_display():
   out = StringIO()
   level0 = utils.buffered_indentor(file_object=out)
-  print >> level0, "level0"
+  print("level0", file=level0)
   level0.flush()
   level1 = level0.shift_right()
-  print >> level1, "level1"
+  print("level1", file=level1)
   level1.flush()
   assert out.getvalue() == ""
   level1.write_buffer()
@@ -206,20 +211,20 @@ def exercise_indented_display():
 level0
   level1
 """)
-  print >> level1, "abc",
+  print("abc", end=' ', file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
   level1
   abc""")
-  print >> level1
+  print(file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
   level1
   abc
 """)
-  print >> level1, "def",
+  print("def", end=' ', file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
@@ -227,7 +232,7 @@ level0
   abc
   def""")
   level1.write("")
-  print >> level1, "hij"
+  print("hij", file=level1)
   level1.write_buffer()
   assert not show_diff(out.getvalue(), """\
 level0
@@ -306,7 +311,7 @@ def exercise_dir_utils () :
   assert utils.allow_delete_directory(target_dir)
 
 def exercise_retrieve_unless_exists():
-  import urllib
+  import urllib.request, urllib.parse, urllib.error
   filehandle, filename = tempfile.mkstemp(prefix='kings_of_france')
   # we will need to pass filename to functions which will open it
   # on Windows this causes a permission exception
@@ -327,7 +332,7 @@ def exercise_retrieve_unless_exists():
   targetname = os.path.join(d, 'target')
   try: os.remove(targetname)
   except Exception: pass
-  url = 'file:' + urllib.pathname2url(filename)
+  url = 'file:' + urllib.request.pathname2url(filename)
   assert (utils.retrieve_unless_exists(url=url, filename=targetname) ==
           "Downloaded")
   with open(filename) as source, open(targetname) as target:
@@ -346,7 +351,7 @@ def exercise_str_unicode():
 
 def exercise_group_args():
   from libtbx import group_args
-  from cStringIO import StringIO
+  from io import StringIO
   out = StringIO()
   a = group_args(
       a=1,
@@ -360,7 +365,7 @@ def exercise_group_args():
       e = 'e')
   assert b.d=='d'
   assert b.e=='e'
-  print >> out, a
+  print(a, file=out)
   v = out.getvalue()
   assert not show_diff(v, """group_args
   a                              : 1
@@ -389,7 +394,7 @@ def run(args):
   if '--exercise-retrieve-unless-exists' in args:
     exercise_retrieve_unless_exists()
   else:
-    print 'Skipping exercise_retrieve_unless_exists'
+    print('Skipping exercise_retrieve_unless_exists')
   exercise_forward_compatibility()
   exercise_misc()
   assert utils.sequence_index_dict(["a", "b"]) == {"a": 0, "b": 1}
@@ -416,7 +421,7 @@ def run(args):
   exercise_file_utils()
   exercise_dir_utils()
   exercise_group_args()
-  print utils.format_cpu_times()
+  print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

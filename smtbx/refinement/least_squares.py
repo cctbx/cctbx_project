@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from builtins import object
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 import math
 
@@ -35,7 +36,7 @@ def rotation_scattering(ra,rotation_vector,Amat,wavelength):
                 #print 'H1 wav %.3f %.3f' % (len_H1, 1.0 / wavelength)
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
-                    raise RuntimeError, 'length error for %d %d %d' % hkl
+                    raise RuntimeError('length error for %d %d %d' % hkl)
 
 def test_finite_differences(ra,rotation_vector,Amat,wavelength):
     beam_vector = matrix.col([0, 0, 1 / wavelength])
@@ -94,4 +95,4 @@ if __name__ == '__main__':
     rotation_scattering(calc,matrix.col((0.,1.,0.)),Amat,wavelength)
     test_finite_differences(calc,matrix.col((0.,1.,0.)),Amat,wavelength)
 
-    print "OK"
+    print("OK")

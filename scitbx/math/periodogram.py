@@ -11,6 +11,8 @@
 """Calculate the periodogram of real evenly-spaced data"""
 
 from __future__ import division
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from scitbx import fftpack
 

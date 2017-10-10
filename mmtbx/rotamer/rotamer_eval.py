@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import map
+from builtins import range
+from builtins import object
 import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
@@ -128,7 +133,7 @@ def eval_sidechain_completeness(pdb_hierarchy,
             missing_atom_list.append(item)
   return missing_atom_list
 
-class RotamerEval:
+class RotamerEval(object):
 
   # This is shared among all instances of RotamerEval -- a class variable.
   # It holds a LOT of read-only data, so this helps save memory.
@@ -158,13 +163,13 @@ class RotamerEval:
     self.rot_id = RotamerID()
     main_aaTables = RotamerEval.aaTables
     self.aaTables = {}
-    for aa,ndt_weakref in main_aaTables.items():
+    for aa,ndt_weakref in list(main_aaTables.items()):
         # convert existing weak references to strong references
         self.aaTables[aa] = ndt_weakref()
     rotamer_data_dir = find_rotarama_data_dir()
     no_update = os.path.exists(os.path.join(rotamer_data_dir, "NO_UPDATE"))
     target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
-    for aa, aafile in aminoAcids.items():
+    for aa, aafile in list(aminoAcids.items()):
       if (self.aaTables.get(aa) is not None): continue
       data_file = fileprefix+aafile+".data"
       pickle_file = fileprefix+aafile+".pickle"
@@ -306,7 +311,7 @@ class RotamerEval:
     return sites_cart_result
 
 #{{{ RotamerID (new for reading in rotamer names from rotamer_names.props)
-class RotamerID:
+class RotamerID(object):
 
   names = {}
 
@@ -354,8 +359,8 @@ Can't seem to find mmtbx/rotamer/ directory.
     rotaList = []
     try:
       f = open(fileLoc)
-    except ImportError, e:
-      print fileLoc+" file not found"
+    except ImportError as e:
+      print(fileLoc+" file not found")
       sys.exit()
     for line in f:
       if (line.startswith("#") or line == "\n"): continue
@@ -397,12 +402,12 @@ Can't seem to find mmtbx/rotamer/ directory.
 #}}}
 
 #{{{ NamedRot
-class NamedRot:
+class NamedRot(object):
 
   def __init__(self, aa, rotamer_name, bounds):
     self.aa_name = aa
     self.rotamer_name = rotamer_name
-    self.bounds = map(int, bounds.split(", "))
+    self.bounds = list(map(int, bounds.split(", ")))
 
   def __str__(self):
     return str(self.rotamer_name) + "=" + str(self.bounds)
@@ -417,7 +422,7 @@ class NamedRot:
 ########################################################################
 def exercise(args):
   if (find_rotarama_data_dir(optional=True) is None):
-    print "Skipping exercise(): rotarama_data directory not available"
+    print("Skipping exercise(): rotarama_data directory not available")
   else:
     from mmtbx.command_line import rebuild_rotarama_cache
     rebuild_rotarama_cache.run()
@@ -518,21 +523,21 @@ def exercise(args):
     ]:
       r_eval = 100*r.evaluate(aminoAcid, chiAngles)
       if (verbose):
-        print aminoAcid, "%4.1f %4.1f %4.1f" % (
-          r_eval, molpValue, r_eval-molpValue)
+        print(aminoAcid, "%4.1f %4.1f %4.1f" % (
+          r_eval, molpValue, r_eval-molpValue))
         #print '      ("%s",' % aminoAcid, chiAngles, ',', "%4.1f)," % r_eval
     # assert approx_equal(r_eval, molpValue, eps=0.9)
     #
     # check if tables are cleared from memory if all RotamerEval instances
     # are gone
-    for aa,ndt_weakref in RotamerEval.aaTables.items():
+    for aa,ndt_weakref in list(RotamerEval.aaTables.items()):
       assert ndt_weakref() is not None
     del r
     del tbl
-    for aa,ndt_weakref in RotamerEval.aaTables.items():
+    for aa,ndt_weakref in list(RotamerEval.aaTables.items()):
       assert ndt_weakref() is None
     #
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
     exercise(sys.argv[1:])

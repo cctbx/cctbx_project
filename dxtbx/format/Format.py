@@ -13,8 +13,16 @@
 # goniometers etc. from the headers and hence a format specific factory.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
+from future.utils import with_metaclass
 
 try:
   import bz2
@@ -132,14 +140,12 @@ class Masker(object):
     return self.paths()
 
 
-class Format(object):
+class Format(with_metaclass(_MetaFormat, object)):
   '''A base class for the representation and interrogation of diffraction
   image formats, from which all classes for reading the header should be
   inherited. This includes: autoregistration of implementation classes,
   stubs which need to be overridden and links to static factory methods
   which will prove to be useful in other implementations.'''
-
-  __metaclass__ = _MetaFormat
 
   @staticmethod
   def understand(image_file):
@@ -209,7 +215,7 @@ class Format(object):
       #assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
 
-    except exceptions.Exception, e:
+    except exceptions.Exception as e:
       # FIXME ideally should not squash the errors here...
       import traceback
       traceback.print_exc()
@@ -257,7 +263,7 @@ class Format(object):
     return "no dxtbx Format vendortype"
 
   def detectorbase_start(self):
-    print "Overload detectorbase_start"
+    print("Overload detectorbase_start")
     raise RuntimeError('Overload!')
 
   def get_detectorbase(self):
@@ -344,7 +350,7 @@ class Format(object):
     from os.path import abspath
 
     # Get filename absolute paths
-    filenames = map(abspath, filenames)
+    filenames = list(map(abspath, filenames))
 
     # Make it a dict
     if format_kwargs is None:
@@ -542,7 +548,7 @@ class Format(object):
   def is_url(path):
     '''See if the file is a URL.'''
 
-    from urlparse import urlparse
+    from urllib.parse import urlparse
 
     # Windows file paths can get caught up in this - check that the
     # first letter is one character (which I think should be safe: all
@@ -580,17 +586,17 @@ class Format(object):
        caching transparently if possible.'''
 
     if url and Format.is_url(filename):
-      import urllib2
-      fh_func = lambda: urllib2.urlopen(filename)
+      import urllib.request, urllib.error, urllib.parse
+      fh_func = lambda: urllib.request.urlopen(filename)
 
     elif Format.is_bz2(filename):
       if bz2 is None:
-        raise RuntimeError, 'bz2 file provided without bz2 module'
+        raise RuntimeError('bz2 file provided without bz2 module')
       fh_func = lambda: bz2.BZ2File(filename, mode)
 
     elif Format.is_gzip(filename):
       if gzip is None:
-        raise RuntimeError, 'gz file provided without gzip module'
+        raise RuntimeError('gz file provided without gzip module')
       fh_func = lambda: gzip.GzipFile(filename, mode)
 
     else:

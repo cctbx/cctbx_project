@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -15,6 +16,10 @@ from __future__ import division
 # Compute intersection angles for all reflections given UB matrix etc.
 # Determine which of those will be recorded on the detector.
 
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 import sys
 import math
 
@@ -66,7 +71,7 @@ def Py_remove_absent_indices(indices, space_group_number):
 def parse_xds_xparm_scan_info(xparm_file):
     '''Read an XDS XPARM file, get the scan information.'''
 
-    values = map(float, open(xparm_file).read().split())
+    values = list(map(float, open(xparm_file).read().split()))
 
     assert(len(values) == 42)
 
@@ -76,7 +81,7 @@ def parse_xds_xparm_scan_info(xparm_file):
 
     return img_start, osc_start, osc_range
 
-class python_reflection_prediction:
+class python_reflection_prediction(object):
     def __init__(self, axis, s0, ub, detector_origin,
                  detector_fast, detector_slow,
                  f_min, f_max, s_min, s_max):
@@ -122,7 +127,7 @@ class python_reflection_prediction:
 
         return observed_reflection_positions
 
-class make_prediction_list:
+class make_prediction_list(object):
 
   def __init__(self, configuration_file, img_range, dmin = None,
                rocking_curve = "none", mosaicity_deg = 0.0):
@@ -235,16 +240,16 @@ def test(configuration_file, img_range, dmin = None):
 
     r2d = 180.0 / math.pi
 
-    for iobs in xrange(len(obs_hkl)):
+    for iobs in range(len(obs_hkl)):
       hkl = obs_hkl[iobs]
       f = obs_fast[iobs]
       s = obs_slow[iobs]
       angle = obs_angle[iobs]
 
-      print '%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
+      print('%5d %5d %5d' % hkl, '%11.4f %11.4f %9.2f' % (
             f / mp.pixel_size_fast, s / mp.pixel_size_slow,
             (mp.img_start - 1) + ((angle * r2d) - mp.osc_start) / \
-             mp.osc_range)
+             mp.osc_range))
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:

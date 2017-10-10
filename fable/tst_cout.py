@@ -1,9 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from fable import cout
 from libtbx.test_utils import \
   Exception_expected, show_diff, anchored_block_show_diff as absd
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 import os
 op = os.path
 
@@ -28,7 +32,7 @@ def exercise_simple(verbose):
         arr_nd_size_max=None,
         inline_all=False):
     if (verbose):
-      print "exercise_simple:", file_name
+      print("exercise_simple:", file_name)
     file_names = [op.join(t_dir, file_name)]
     common_report_stringio = StringIO()
     return cout.process(
@@ -3097,11 +3101,11 @@ def exercise_syntax_error(verbose):
   from fable.read import Error
   def fail(file_name):
     if (verbose):
-      print "exercise_syntax_error:", file_name
+      print("exercise_syntax_error:", file_name)
     cout.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("bad_open_err_label.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid statement label:")
     assert str(e).endswith("""\
   |      open(1, file=name, err=1.3)|
@@ -3109,7 +3113,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("power_no_base.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      x = **3.4|
@@ -3117,7 +3121,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("power_no_exponent.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      x = 1.2**|
@@ -3130,11 +3134,11 @@ def exercise_semantic_error(verbose):
   from fable import SemanticError
   def fail(file_name):
     if (verbose):
-      print "exercise_semantic_error:", file_name
+      print("exercise_semantic_error:", file_name)
     cout.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("assignment_to_parameter.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Assignment to PARAMETER n:")
     assert str(e).endswith("""\
   |      n = 1|
@@ -3142,7 +3146,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("inquire_no_unit_no_file.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Missing UNIT or FILE in INQUIRE statement:")
     assert str(e).endswith("""\
   |      inquire(exist=lexist)|
@@ -3150,7 +3154,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("inquire_both_unit_and_file.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith(
       "Conflicting UNIT vs. FILE in INQUIRE statement"
       " (exactly one is needed):")
@@ -3160,7 +3164,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("recursion_in_declaration.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Recursion in declaration:")
     assert str(e).endswith("""\
   |      dimension nums(nums)|
@@ -3172,7 +3176,7 @@ def exercise_unsupported(verbose):
     module_name="fable", path="test/unsupported", test=op.isdir)
   def get(file_name):
     if (verbose):
-      print "exercise_unsupported:", file_name
+      print("exercise_unsupported:", file_name)
     return cout.process(file_names=[op.join(t_dir, file_name)])
   #
   assert not absd(get("goto_into_loop.f"), tail_off(1), """\
@@ -3189,7 +3193,7 @@ def exercise_dynamic_parameters(verbose):
     module_name="fable", path="test/valid", test=op.isdir)
   def get(file_name, dynamic_parameters):
     if (verbose):
-      print "exercise_dynamic_parameter:", file_name
+      print("exercise_dynamic_parameter:", file_name)
     file_names = [op.join(t_dir, file_name)]
     return cout.process(
       file_names=file_names,
@@ -3323,7 +3327,7 @@ def exercise_common_equivalence_simple(verbose):
     module_name="fable", path="test/valid", test=op.isdir)
   def get(file_name, common_names, expected_common_report=None):
     if (verbose):
-      print "exercise_common_equivalence_simple:", file_name
+      print("exercise_common_equivalence_simple:", file_name)
     file_names = [op.join(t_dir, file_name)]
     common_report_stringio = StringIO()
     lines = cout.process(
@@ -3439,7 +3443,7 @@ def run(args):
   exercise_unsupported(verbose=verbose)
   exercise_dynamic_parameters(verbose=verbose)
   exercise_common_equivalence_simple(verbose=verbose)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

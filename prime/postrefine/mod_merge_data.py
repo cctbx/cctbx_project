@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 from cctbx import miller
 import math
@@ -92,9 +95,9 @@ class merge_data_handler(object):
   def get_r_split(self):
     try:
       r_split_bin = (1/math.sqrt(2))*(flex.sum(flex.abs(self.I_even - self.I_odd))/(flex.sum(self.I_even + self.I_odd)*0.5))
-    except Exception, e:
-      print "Warning: R_split calculation failed."
-      print e
+    except Exception as e:
+      print("Warning: R_split calculation failed.")
+      print(e)
       r_split_bin =0
     return r_split_bin if self.get_size() else 0
 
@@ -151,7 +154,7 @@ class merge_data_handler(object):
       self.miller_array_merge = self.miller_array_merge.select(selections)
 
   def reduce_by_miller_index(self, miller_indices):
-    sequences = range(self.get_size())
+    sequences = list(range(self.get_size()))
     matches = miller.match_multi_indices(
                   miller_indices_unique=miller_indices,
                   miller_indices=self.miller_indices_merge)

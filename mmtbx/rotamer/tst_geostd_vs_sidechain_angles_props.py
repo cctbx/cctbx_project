@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.server
 import mmtbx.rotamer.sidechain_angles
 import sys, os
@@ -13,7 +14,7 @@ def run(args):
   assert SidechainAngles.get_rotamer_expectation_frequencies('CYS', 't')=='26.33%'
   assert SidechainAngles.get_rotamer_expectation_frequencies('CYS', 'w') is None
   for resname_dot_tor_id,atom_names_raw \
-        in SidechainAngles.atomsForAngle.items():
+        in list(SidechainAngles.atomsForAngle.items()):
     resname, tor_id = resname_dot_tor_id.split(".")
     resname = resname.upper()
     atom_names = tuple([atom_name.split(";")[-1].strip()
@@ -28,7 +29,7 @@ def run(args):
         break
     else:
       annotation = "MISSING"
-    print resname, tor_id, atom_names, annotation
+    print(resname, tor_id, atom_names, annotation)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

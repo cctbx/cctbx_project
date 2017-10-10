@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 import sys, os
 
 def run():
@@ -10,7 +12,7 @@ def run():
   assert len(results) == 2
   os.system("hostname")
   for x, y in zip(results[0], results[1]):
-    print x, y, x/y
+    print(x, y, x/y)
 
 if (__name__ == "__main__"):
   run()

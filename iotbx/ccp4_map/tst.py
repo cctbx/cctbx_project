@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 import iotbx
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 import sys, os
 
 def exercise_with_tst_input_map():
@@ -42,24 +45,24 @@ def exercise_crystal_symmetry_from_ccp4_map():
 def exercise(args):
   exercise_with_tst_input_map()
   for file_name in args:
-    print file_name
+    print(file_name)
     m = iotbx.ccp4_map.map_reader(file_name=file_name)
-    print "header_min: ", m.header_min
-    print "header_max: ", m.header_max
-    print "header_mean:", m.header_mean
-    print "header_rms: ", m.header_rms
-    print "unit cell grid:", m.unit_cell_grid
-    print "unit cell parameters:", m.unit_cell_parameters
-    print "space group number:  ", m.space_group_number
-    print "map origin:", m.data.origin()
-    print "map grid:  ", m.data.all()
+    print("header_min: ", m.header_min)
+    print("header_max: ", m.header_max)
+    print("header_mean:", m.header_mean)
+    print("header_rms: ", m.header_rms)
+    print("unit cell grid:", m.unit_cell_grid)
+    print("unit cell parameters:", m.unit_cell_parameters)
+    print("space group number:  ", m.space_group_number)
+    print("map origin:", m.data.origin())
+    print("map grid:  ", m.data.all())
     map_stats = maptbx.statistics(m.data)
     assert approx_equal(map_stats.min(), m.header_min)
     assert approx_equal(map_stats.max(), m.header_max)
     assert approx_equal(map_stats.mean(), m.header_mean)
     if (m.header_rms != 0):
       assert approx_equal(map_stats.sigma(), m.header_rms)
-    print
+    print()
 
 def exercise_writer () :
   from iotbx import file_reader
@@ -69,7 +72,7 @@ def exercise_writer () :
     relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
     test=os.path.isfile)
   if file_name is None :
-    print "Can't find map coefficients file, skipping."
+    print("Can't find map coefficients file, skipping.")
     return
   mtz_in = file_reader.any_file(file_name, force_type="hkl").file_object
   miller_arrays = mtz_in.as_miller_arrays()
@@ -122,7 +125,7 @@ def run(args):
   exercise(args=args)
   exercise_writer()
   exercise_crystal_symmetry_from_ccp4_map()
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

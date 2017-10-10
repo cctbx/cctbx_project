@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from xfel.ui.db.xfel_db import xfel_db_application
 from xfel.ui.db.experiment import Experiment, Event, Bin, Cell_Bin
 from scitbx.array_family import flex
@@ -21,7 +22,7 @@ def log_frame(experiments, reflections, params, run, n_strong, timestamp = None,
 
   if experiments is not None:
     if len(experiments) > 1:
-      print "Only logging first of %d experiments"%len(experiments)
+      print("Only logging first of %d experiments"%len(experiments))
     db_experiment = app.create_experiment(experiments[0])
     app.link_imageset_frame(db_experiment.imageset, db_event)
 

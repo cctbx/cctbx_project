@@ -1,5 +1,9 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import miller
 from cctbx import euclidean_model_matching as emma
@@ -10,12 +14,12 @@ import libtbx.utils
 from smtbx import masks
 from smtbx.refinement import constraints
 import smtbx.utils
-import cStringIO
+import io
 
 def exercise_masks():
   mt = flex.mersenne_twister(seed=0)
   xs_ref = structure.from_shelx(
-    file=cStringIO.StringIO(YAKRUY_ins))
+    file=io.StringIO(YAKRUY_ins))
   mi = xs_ref.crystal_symmetry().build_miller_set(
     d_min=0.5, anomalous_flag=False)
   fo = mi.structure_factors_from_scatterers(
@@ -40,7 +44,7 @@ def exercise_masks():
   assert mask.f_model() is None
   assert mask.modified_intensities() is None
   assert mask.f_000 is None
-  s = cStringIO.StringIO()
+  s = io.StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
 use_set_completion: False
@@ -91,7 +95,7 @@ gridding: (30,45,54)
     assert modified_fo.r1_factor(mask.f_calc.common_set(modified_fo), k) < 0.006
     assert fo.common_set(fo2).r1_factor(f_model.common_set(fo2), k) < 0.006
 
-  s = cStringIO.StringIO()
+  s = io.StringIO()
   mask.show_summary(log=s)
   assert not show_diff(s.getvalue(), """\
 use_set_completion: True

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import mmtbx.refinement.real_space.utils
 import mmtbx.refinement.utils
 from scitbx.array_family import flex
@@ -65,7 +68,7 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
     o = bulk_solvent.complex_f_kb_scaled(
       f1      = f_obs_box_complex.data(),
       f2      = f_calc.data(),
-      b_range = flex.double(range(5,505,5)),
+      b_range = flex.double(list(range(5,505,5))),
       ss      = 1./flex.pow2(f_calc.d_spacings().data()) / 4.)
     #
     xrs = xrs.set_b_iso(value=o.b())
@@ -110,6 +113,6 @@ class real_space_group_adp_refinery_via_reciprocal_space(object):
       for i, it in enumerate(stdout_and_results):
         so, b_isos_refined = it
         b_isos = b_isos.set_selected(self.chain_selections[i], b_isos_refined)
-        print >> self.log, so
+        print(so, file=self.log)
     self.xray_structure = self.xray_structure.set_b_iso(values = b_isos)
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)

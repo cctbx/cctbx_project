@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from dxtbx.model import Beam
 
 def tst_set_direction_wavelength():
@@ -25,7 +26,7 @@ def tst_set_direction_wavelength():
   assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
 
   # Test passed
-  print "OK"
+  print("OK")
 
 def tst_set_s0():
   """Test setting s0"""
@@ -53,7 +54,7 @@ def tst_set_s0():
   assert(abs(matrix.col(b.get_s0()) - s0) <= eps)
 
   # Test passed
-  print "OK"
+  print("OK")
 
 def tst_from_phil():
 
@@ -89,7 +90,7 @@ def tst_from_phil():
     passed = False
   assert passed == False
 
-  print 'OK'
+  print('OK')
 
 def run():
   """Test the beam object"""

@@ -1,6 +1,11 @@
 
 from __future__ import division
-import cPickle
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
+import pickle
 try :
   import gobject
 except ImportError :
@@ -201,6 +206,6 @@ def show_probe_dots (show_dots, overlaps_only) :
 
 def load_pkl (file_name) :
   pkl = open(file_name, "rb")
-  data = cPickle.load(pkl)
+  data = pickle.load(pkl)
   pkl.close()
   return data

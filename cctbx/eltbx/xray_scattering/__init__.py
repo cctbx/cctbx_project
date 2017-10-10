@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import scitbx.math.gaussian # base class for gaussian
 
 import boost.python
@@ -30,8 +33,8 @@ class _(boost.python.injector, ext.gaussian):
     if (f is None): f = sys.stdout
     if (format is None): format = "%.8g"
     for l,v in (("a:", self.array_of_a()), ("b:", self.array_of_b())):
-      print >> f, l, " ".join([format % x for x in v])
-    print >> f, "c:", format % self.c()
+      print(l, " ".join([format % x for x in v]), file=f)
+    print("c:", format % self.c(), file=f)
     return self
 
   def electron_density(self, r, b_iso):
@@ -109,5 +112,5 @@ class fitted_gaussian(gaussian):
       e = ""
     else:
       e = ", max_error: %.4f" % self.max_error
-    print >> f, "stol: %.2f # d_min: %.2f%s" % (self.stol, 1/(2*self.stol), e)
+    print("stol: %.2f # d_min: %.2f%s" % (self.stol, 1/(2*self.stol), e), file=f)
     return gaussian.show(self, f, format)

@@ -3,6 +3,7 @@ from __future__ import division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import zip
 usage = """Plot dxtbx detector models. Provide multiple json files if desired
 Example: dxtbx.plot_detector_models datablock1.json datablock2.json
 """
@@ -50,7 +51,7 @@ def run(args):
     else:
       try:
         user_phil.append(parse(arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources = user_phil).extract()
   if not params.orthographic:
@@ -86,7 +87,7 @@ def run(args):
       v1 = p1-p0
       v2 = p3-p0
       vcen = ((v2/2) + (v1/2)) + p0
-      z = zip(p0,p1,p2,p3,p0)
+      z = list(zip(p0,p1,p2,p3,p0))
 
       if orthographic:
         ax.plot(z[0], z[1], color=color)
@@ -107,7 +108,7 @@ def run(args):
     # read the data and get the detector models
     try:
       datablocks = DataBlockFactory.from_json_file(file_name, check_format=False)
-    except Exception, e:
+    except Exception as e:
       experiments = ExperimentListFactory.from_json_file(file_name, check_format=False)
       detectors = experiments.detectors()
     else:

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # TODO: move selection logic to separate module
 
@@ -214,7 +215,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     glLineWidth(line_width)
     glEnable(GL_LINE_SMOOTH)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in self.scene_objects.items() :
       if self.show_object[object_id] :
         scene.draw_selection(color=self.settings.selections.selection_color,
           use_global_color=self.settings.selections.use_global_selection_color)
@@ -223,12 +224,12 @@ class selection_editor_mixin (model_viewer_mixin) :
   def zoom_selections (self) :
     from scitbx.array_family import flex
     points = flex.vec3_double()
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in self.scene_objects.items() :
       if self.show_object[object_id] :
         for point in scene.get_selected_xyz() :
           points.append(point)
     if points.size() == 0 :
-      for object_id, scene in self.scene_objects.iteritems() :
+      for object_id, scene in self.scene_objects.items() :
         if self.show_object[object_id] :
           points.extend(scene.points)
     if points.size() != 0 :
@@ -248,7 +249,7 @@ class selection_editor_mixin (model_viewer_mixin) :
   def add_model (self, model_id, pdb_hierarchy, atomic_bonds,
       xray_structure=None,
       mmtbx_selection_function=None) :
-    assert isinstance(model_id, str) or isinstance(model_id, unicode)
+    assert isinstance(model_id, str) or isinstance(model_id, str)
     special_position_settings = None
     if (xray_structure is not None) :
       special_position_settings = xray_structure.special_position_settings()
@@ -282,7 +283,7 @@ class selection_editor_mixin (model_viewer_mixin) :
     #self.flag_show_all_selected_atoms = show
     for model_id, model in self.iter_models() :
       model.flag_show_all_selected_atoms = show
-    for object_id, scene in self.scene_objects.iteritems() :
+    for object_id, scene in self.scene_objects.items() :
       scene.flag_show_all_selected_atoms = show
     self.update_scene = True
 
@@ -423,6 +424,6 @@ class selection_editor_mixin (model_viewer_mixin) :
     pass
 
 def print_cb (selection_string, atom_selection) :
-  print "%s (%s)" % (selection_string, atom_selection.iselection().size())
+  print("%s (%s)" % (selection_string, atom_selection.iselection().size()))
 
 #---end

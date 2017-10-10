@@ -1,9 +1,10 @@
 """ A library of object-oriented patterns """
 from __future__ import division
 
+from builtins import object
 import new, weakref
 
-class injector:
+class injector(object):
   """ Injection of new methods into an existing class
 
   * synopsis *
@@ -39,7 +40,7 @@ class injector:
   class __metaclass__(type):
     def __init__(cls, classname, bases, classdict):
       for target_class in bases[1:]:
-        for name, attribute in classdict.items():
+        for name, attribute in list(classdict.items()):
           if name in ('__module__', '__doc__'): continue
           assert not hasattr(target_class, name), (
             "class %s already has attribute '%s'"
@@ -107,7 +108,7 @@ class null(object):
 
   def __repr__(self): return 'null()'
 
-  def __nonzero__(self): return False
+  def __bool__(self): return False
 
 
 class proxy(object):

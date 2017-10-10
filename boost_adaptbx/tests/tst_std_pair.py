@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.std_pair
 from libtbx.test_utils import Exception_expected
 
@@ -8,26 +9,26 @@ def run():
 
   try:
     boost.std_pair.exercise(1)
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected
 
   try:
     boost.std_pair.exercise((1,))
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected
 
   try:
     boost.std_pair.exercise((1,2,3,))
-  except Exception, err:
+  except Exception as err:
     assert err.__class__.__name__ == 'ArgumentError'
   else:
     raise Exception_expected
 
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

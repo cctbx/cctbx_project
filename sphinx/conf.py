@@ -16,6 +16,7 @@ from __future__ import division
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+from builtins import str
 import sys
 import os
 

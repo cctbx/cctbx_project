@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import next
 from itertools import count
 import sys, os
 
@@ -16,7 +19,7 @@ def run(args, command_name="libtbx.extract_code_from_txt"):
         destination = line[len(markup_extract_begin):].strip()
         buffer = [("  # ---- line %d " % (i_line+1) + "-"*75)[:79]]
         def check_next_is_empty_line():
-          i_line,line = i_line_lines.next()
+          i_line,line = next(i_line_lines)
           if (len(line) != 0):
             raise RuntimeError(
               "Markup must be followed by an empty line (line %d)" %
@@ -41,13 +44,13 @@ def run(args, command_name="libtbx.extract_code_from_txt"):
     if (file_rst.endswith(".txt")):
       file_rst = file_rst[:-4]
     file_rst += ".rst"
-    print "Writing: %s (%d lines)" % (file_rst, len(rst))
-    print >> open(file_rst, "w"), "\n".join(rst)
-  for destination,lines in outputs.items():
+    print("Writing: %s (%d lines)" % (file_rst, len(rst)))
+    print("\n".join(rst), file=open(file_rst, "w"))
+  for destination,lines in list(outputs.items()):
     lines.insert(0, 'if (__name__ == "__main__"):')
     lines.insert(1, "")
-    print "Writing: %s (%d lines)" % (destination, len(lines))
-    print >> open(destination, "w"), "\n".join(lines)
+    print("Writing: %s (%d lines)" % (destination, len(lines)))
+    print("\n".join(lines), file=open(destination, "w"))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

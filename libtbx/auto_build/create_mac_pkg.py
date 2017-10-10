@@ -5,7 +5,9 @@ Phenix (or any other derived software).
 """
 
 from __future__ import division
-from installer_utils import *
+from __future__ import print_function
+from __future__ import absolute_import
+from .installer_utils import *
 from optparse import OptionParser
 import os.path as op
 import shutil
@@ -19,7 +21,7 @@ if (not libtbx_path in sys.path) :
 
 def run (args, out=sys.stdout) :
   if (sys.platform != "darwin") :
-    print "ERROR: this program can only be run on Macintosh systems."
+    print("ERROR: this program can only be run on Macintosh systems.")
     return False
   # XXX this prevents tar on OS X from including resource fork files, which
   # break the object relocation.  thanks to Francis Reyes for pointing this out.
@@ -53,14 +55,14 @@ def run (args, out=sys.stdout) :
     system_type = "Intel Macs"
   system_type += " (OS %s or later)" % get_os_version()
   if (len(args) != 1) :
-    print "Usage: create_mac_pkg [options] PROGRAM_DIR"
+    print("Usage: create_mac_pkg [options] PROGRAM_DIR")
     return False
   program_dir = args[0]
   if (not program_dir.startswith("/")) :
-    print "ERROR: absolute path required"
+    print("ERROR: absolute path required")
     return False
   if (not op.isdir(program_dir)) :
-    print "ERROR: '%s' is not a directory" % program_dir
+    print("ERROR: '%s' is not a directory" % program_dir)
     return False
   dest_name = op.dirname(program_dir)
   if (dest_name == "/Applications") :
@@ -68,7 +70,7 @@ def run (args, out=sys.stdout) :
   pkg_root = "pkg_root"
   if (op.exists(pkg_root)) :
     if (not options.overwrite) :
-      print "ERROR: pkg_root already exists - run with --overwrite to ignore"
+      print("ERROR: pkg_root already exists - run with --overwrite to ignore")
       return False
     shutil.rmtree(pkg_root)
   os.mkdir(pkg_root)
@@ -180,7 +182,7 @@ our website).""" % { "package" : options.package_name,
         "misc_files" : "\n".join(misc_files) })
   distfile.close()
 
-  print >> out, "Fixing package permissions:", pkg_root
+  print("Fixing package permissions:", pkg_root, file=out)
   call(['chmod','-R','0755',pkg_root])
 
   # Run packaging commands
@@ -192,7 +194,7 @@ our website).""" % { "package" : options.package_name,
     "--component-plist", plist_file,
     base_pkg,
   ]
-  print >> out, "Calling pkgbuild:", pkg_args
+  print("Calling pkgbuild:", pkg_args, file=out)
   call(pkg_args, out)
   product_args = [
     "productbuild",
@@ -202,11 +204,11 @@ our website).""" % { "package" : options.package_name,
     "--version", options.version,
     pkg_name,
   ]
-  print >> out, "Calling productbuild:", product_args
+  print("Calling productbuild:", product_args, file=out)
   call(product_args, out)
   assert op.exists(pkg_name)
   if (not options.no_compression) :
-    print >> out, "  compressing installer. . ."
+    print("  compressing installer. . .", file=out)
     zip_args = [ "ditto", "-c", "-k", "-rsrc", pkg_name, pkg_name + ".zip" ]
     call(zip_args, out)
     assert op.isfile(pkg_name + ".zip")

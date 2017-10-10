@@ -1,6 +1,10 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
-class TestBeam:
+from builtins import zip
+from builtins import range
+from builtins import object
+class TestBeam(object):
   def __call__(self):
     from dxtbx.model import Beam
 
@@ -18,10 +22,10 @@ class TestBeam:
     b2 = Beam.from_dict(d)
     assert(b2 == b1)
 
-    print 'OK'
+    print('OK')
 
 
-class TestGonio:
+class TestGonio(object):
   def __call__(self):
     from dxtbx.model import Goniometer
 
@@ -35,10 +39,10 @@ class TestGonio:
     g2 = Goniometer.from_dict(d)
     assert(g2 == g1)
 
-    print 'OK'
+    print('OK')
 
 
-class TestScan:
+class TestScan(object):
   def __call__(self):
 
     from dxtbx.model import Scan
@@ -46,17 +50,17 @@ class TestScan:
     s1 = Scan(
       image_range=(1, 20),
       oscillation=(5.0, 0.1),
-      exposure_times=flex.double(range(20)),
-      epochs=flex.double(range(20,40)))
+      exposure_times=flex.double(list(range(20))),
+      epochs=flex.double(list(range(20,40))))
 
     d = s1.to_dict()
     s2 = Scan.from_dict(d)
     assert(s1 == s2)
 
-    print 'OK'
+    print('OK')
 
 
-class TestDetector:
+class TestDetector(object):
   def __call__(self):
 
     from dxtbx.model import Detector, Panel # import dependency
@@ -99,9 +103,9 @@ class TestDetector:
     assert(d1.hierarchy() == d2.hierarchy())
     assert(d1 == d2)
 
-    print 'OK'
+    print('OK')
 
-class Test:
+class Test(object):
 
   def __init__(self):
     self.tst_beam = TestBeam()

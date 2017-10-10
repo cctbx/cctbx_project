@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from iotbx import reflection_file_reader
 
 class mx_handler(object):

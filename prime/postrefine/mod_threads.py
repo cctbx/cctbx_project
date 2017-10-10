@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import map
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016

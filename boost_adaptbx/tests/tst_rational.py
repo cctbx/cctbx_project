@@ -1,8 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
 from boost import rational
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -82,19 +88,19 @@ def exercise_int():
   s = rational.int(4,3)
   assert hash(s) == hash(rational.int(4,3))
   assert hash(s) != hash(r)
-  for n in xrange(-100,100):
+  for n in range(-100,100):
     assert hash(n) == hash(rational.int(n))
-    for d in xrange(1,8):
+    for d in range(1,8):
       assert hash(rational.int(n,d)) == hash(rational.int(n,d))
       assert hash(rational.int(n,d)) == hash(rational.int(3*n,3*d))
       assert hash(rational.int(n,d)) == hash(rational.int(-3*n,-3*d))
   try: int(r)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "boost.rational: as_int() conversion error:" \
       " denominator is different from one."
   else: raise Exception_expected
-  for n in xrange(-5,6):
-    for d in xrange(1,10):
+  for n in range(-5,6):
+    for d in range(1,10):
       r = rational.int(n, d)
       p = pickle.dumps(r)
       l = pickle.loads(p)
@@ -105,10 +111,10 @@ def exercise_int():
   lhs = ri(1)
   for rhs in [ri(0), 0]:
     try: lhs / rhs
-    except RuntimeError, e: assert not show_diff(str(e), ee)
+    except RuntimeError as e: assert not show_diff(str(e), ee)
     else: raise Exception_expected
     try: lhs % rhs
-    except RuntimeError, e: assert not show_diff(str(e), ee)
+    except RuntimeError as e: assert not show_diff(str(e), ee)
     else: raise Exception_expected
   #
   try:
@@ -130,8 +136,8 @@ def exercise_int():
   check((2,3), (-1,2), (-1,3))
   check((-2,3), (1,2), (1,3))
   check((-2,3), (-1,2), (-1,6))
-  for ln in xrange(-7,7+1):
-    for rn in xrange(-9,9+1):
+  for ln in range(-7,7+1):
+    for rn in range(-9,9+1):
       if (rn == 0): continue
       check((ln,3), (rn,4))
   #
@@ -172,29 +178,29 @@ def exercise_int():
   check(2. / ri(4,5), 2.5)
   #
   try: ri(3,2) // 4.
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   try: 2. // ri(4,5)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   #
   try: ri(3,2) % 4.
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   try: 2. % ri(4,5)
-  except TypeError, e:
+  except TypeError as e:
     assert str(e).startswith("unsupported operand type(s)")
   else: raise Exception_expected
   #
   try: ri(1) / 0.
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     assert not show_diff(str(e), "float division by zero")
   else: raise Exception_expected
   try: 1. / ri(0)
-  except ZeroDivisionError, e:
+  except ZeroDivisionError as e:
     assert not show_diff(str(e), "float division by zero")
   else: raise Exception_expected
 
@@ -217,7 +223,7 @@ def run():
   exercise_int()
   exercise_functions()
   exercise_python_code()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

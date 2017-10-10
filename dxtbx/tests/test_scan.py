@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # test_scan.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -8,6 +9,7 @@ from __future__ import absolute_import, division
 #
 # Tests for the scan class, and it's helper classes.
 
+from builtins import range
 import os
 
 from dxtbx.model.scan import ScanFactory
@@ -69,9 +71,9 @@ def work_xScanFactory():
   xscans.reverse()
 
   try:
-    print sum(xscans[1:], xscans[0])
-    print 'I should not see this message'
-  except RuntimeError, e:
+    print(sum(xscans[1:], xscans[0]))
+    print('I should not see this message')
+  except RuntimeError as e:
     pass
 
   xscans.sort()
@@ -93,7 +95,7 @@ def work_xScanFactory():
 
   cbf = os.path.join(directory, 'phi_scan_001.cbf')
 
-  print 'OK'
+  print('OK')
 
 def test_scan():
   work_helper_image_files()

@@ -1,7 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import map
+from builtins import range
 def intify(a):
-    return tuple(map(int, map(round, a)))
+    return tuple(map(int, list(map(round, a))))
 
 def reference_map(sg, mi):
   from cctbx import sgtbx
@@ -70,4 +73,4 @@ def tst_map_to_asu_isym(anomalous_flag):
 if __name__ == '__main__':
   tst_map_to_asu_isym(True)
   tst_map_to_asu_isym(False)
-  print 'OK'
+  print('OK')

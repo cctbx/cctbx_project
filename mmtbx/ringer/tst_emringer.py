@@ -1,5 +1,7 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.ringer import em_scoring as score
 from mmtbx.command_line import emringer
 from iotbx.file_reader import any_file
@@ -90,7 +92,7 @@ def exercise_emringer_peakfinding(waves):
   for i in waves:
     list.append_lists(score.calculate_peaks(i,0.4))
   assert len(list) == 6
-  print list
+  print(list)
   assert [i.chi_value*5 for i in list.get_peaks()] == [305, 270, 270, 240, 310, 285]
 
 
@@ -105,8 +107,8 @@ def exercise_emringer_statistics():
   assert approx_equal(zscore, 2.570679)
 
   new_rotamer_ratio, new_zscore  = score.calc_ratio(peak_list)
-  print zscore
-  print new_zscore
+  print(zscore)
+  print(new_zscore)
   assert approx_equal(new_rotamer_ratio, rotamer_ratio)
   assert approx_equal(new_zscore,zscore)
 
@@ -115,7 +117,7 @@ if __name__=='__main__':
   try:
     import wx # special import
   except ImportError:
-    print "Required cctbx irrelevant dependencies are missing, skipping test."
+    print("Required cctbx irrelevant dependencies are missing, skipping test.")
     keep_going=False
   tstdir = libtbx.env.find_in_repositories("phenix_regression/mmtbx/em_ringer")
   if (tstdir is None) :
@@ -129,4 +131,4 @@ if __name__=='__main__':
       #exercise_emringer_out_of_bounds()
       #w, t = exercise_emringer_pickle_loading()
       #exercise_emringer_peakfinding(w)
-      print "OK"
+      print("OK")

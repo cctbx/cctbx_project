@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
 """Specialized version of xes_histograms.
 1) no support for background region of interest
 2) photon_counting method only; uses integrated area under 1-photon Gaussian
@@ -9,6 +12,7 @@ from __future__ import division
 7) Fixed constraints for ratio of 1-photon gain: 0-photon sigma
 8) 60-fold speed improvement over xes_histograms.py; takes 7 seconds.
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -50,7 +54,7 @@ Usage = """cctbx.python xes_faster_histograms.py output_dirname=[outdir] \
       0- and 1-photon Gaussians to histograms representing each pixel on the XES spectrometer."""
 
 def run(args):
-  if len(args)==0: print Usage; exit()
+  if len(args)==0: print(Usage); exit()
   processed = iotbx.phil.process_command_line(
     args=args, master_string=master_phil_str)
   args = processed.remaining_args
@@ -63,12 +67,12 @@ def run(args):
   gain_map_path = work_params.gain_map
   estimated_gain = work_params.estimated_gain
 
-  print output_dirname
+  print(output_dirname)
   if output_dirname is None:
     output_dirname = os.path.join(os.path.dirname(args[0]), "finalise")
-    print output_dirname
+    print(output_dirname)
   hist_d = easy_pickle.load(args[0])
-  if len(hist_d.keys())==2:
+  if len(list(hist_d.keys()))==2:
     hist_d = hist_d['histogram']
   pixel_histograms = faster_methods_for_pixel_histograms(
     hist_d, work_params)
@@ -95,7 +99,7 @@ class xes_from_histograms(object):
 
     start_row = 370
     end_row = 0
-    print len(pixel_histograms.histograms)
+    print(len(pixel_histograms.histograms))
 
     pixels = list(pixel_histograms.pixels())
     n_pixels = len(pixels)
@@ -126,13 +130,13 @@ class xes_from_histograms(object):
           if LEG: gaussians, two_photon_flag = pixel_histograms.fit_one_histogram(pixel)
           alt_gaussians = pixel_histograms.fit_one_histogram_two_gaussians(pixel)
       except ZeroDivisionError:
-          print "HEY DIVIDE BY ZERO"
+          print("HEY DIVIDE BY ZERO")
           #pixel_histograms.plot_combo(pixel, gaussians)
           mask[pixel] = 1
           continue
-      except RuntimeError, e:
-          print "Error fitting pixel %s" %str(pixel)
-          print str(e)
+      except RuntimeError as e:
+          print("Error fitting pixel %s" %str(pixel))
+          print(str(e))
           mask[pixel] = 1
           continue
 
@@ -148,7 +152,7 @@ class xes_from_histograms(object):
         total_photons = n_photons + multi_photons
 
         if False and n_photons< 0: # Generally, do not mask negative values; if fit is still OK
-          print "\n%d pixel %s altrn %d photons from curvefitting"%( i,pixel,n_photons )
+          print("\n%d pixel %s altrn %d photons from curvefitting"%( i,pixel,n_photons ))
           pixel_histograms.plot_combo(pixel, alt_gaussians,
                                       interpretation=fit_interpretation)
           mask[pixel]=1 # do not mask out negative pixels if the Gaussian fit is good
@@ -172,10 +176,10 @@ class xes_from_histograms(object):
           if fit_interpretation.chi_squared() > 50 or fit_interpretation.quality_factor < 30: suspect=True
 
         if suspect:
-          print "\n%d pixel %s Bad quality 0/1-photon fit"%(i,pixel),fit_interpretation.quality_factor
-          print "   with chi-squared %10.5f"%fit_interpretation.chi_squared()
-          print "   Suspect",suspect
-          print "%d fit photons, %d total photons"%(n_photons,total_photons)
+          print("\n%d pixel %s Bad quality 0/1-photon fit"%(i,pixel),fit_interpretation.quality_factor)
+          print("   with chi-squared %10.5f"%fit_interpretation.chi_squared())
+          print("   Suspect",suspect)
+          print("%d fit photons, %d total photons"%(n_photons,total_photons))
           #pixel_histograms.plot_combo(pixel, alt_gaussians,
           #                            interpretation=fit_interpretation)
           mask[pixel]=1
@@ -199,10 +203,10 @@ class xes_from_histograms(object):
 
     xes_finalise.filter_outlying_pixels(spectrum_focus, mask_focus)
 
-    print "Number of rows: %i" %spectrum_focus.all()[0]
-    print "Estimated no. photons counted: %i" %flex.sum(spectrum_focus)
-    print "Number of images used: %i" %flex.sum(
-      pixel_histograms.histograms.values()[0].slots())
+    print("Number of rows: %i" %spectrum_focus.all()[0])
+    print("Estimated no. photons counted: %i" %flex.sum(spectrum_focus))
+    print("Number of images used: %i" %flex.sum(
+      list(pixel_histograms.histograms.values())[0].slots()))
 
     d = cspad_tbx.dpack(
       address='CxiSc1-0|Cspad2x2-0',
@@ -221,8 +225,8 @@ class xes_from_histograms(object):
     self.spectrum = (plot_x, plot_y)
     self.spectrum_focus = spectrum_focus
     xes_finalise.output_matlab_form(spectrum_focus, "%s/sum%s.m" %(output_dirname,runstr))
-    print output_dirname
-    print "Average chi squared is",flex.mean(chi_squared_list),"on %d shots"%flex.sum(hist.slots())
+    print(output_dirname)
+    print("Average chi squared is",flex.mean(chi_squared_list),"on %d shots"%flex.sum(hist.slots()))
 
 SIGMAFAC = 1.15
 class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms):
@@ -241,7 +245,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     slots = histogram.slots().as_double()
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
-      print "normalising by factor: ", normalisation
+      print("normalising by factor: ", normalisation)
       slots /= normalisation
     bins, data = hist_outline(histogram)
     if log_scale:
@@ -257,7 +261,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
     pyplot.ylim(-10, 40)
     x = histogram.slot_centers()
     for g in gaussians:
-      print "Height %7.2f mean %4.1f sigma %3.1f"%(g.params)
+      print("Height %7.2f mean %4.1f sigma %3.1f"%(g.params))
       pyplot.plot(x, g(x), linewidth=2)
 
     if interpretation is not None:
@@ -268,7 +272,7 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
   @staticmethod
   def multiphoton_and_fit_residual(histogram,gaussians):
 
-    class per_pixel_analysis:
+    class per_pixel_analysis(object):
 
       def __init__(OO):
 
@@ -303,13 +307,13 @@ class faster_methods_for_pixel_histograms(view_pixel_histograms.pixel_histograms
         return int(round(OO.additional_photons,0))
 
       def plot_multiphoton_fit(OO,plotter):
-        print "counted %.0f multiphoton photons on this pixel"%OO.additional_photons
+        print("counted %.0f multiphoton photons on this pixel"%OO.additional_photons)
         plotter.plot(OO.fit_xresid, 10*OO.xweight, "b.")
         plotter.plot(OO.fit_xresid,OO.fit_yresid,"r.")
 
       def plot_quality(OO,plotter):
         plotter.plot(OO.qual_xresid,OO.qual_yresid/10.,"m.")
-        print OO.sumsq_signal,OO.sumsq_residual, OO.quality_factor, math.sqrt(OO.sumsq_signal)
+        print(OO.sumsq_signal,OO.sumsq_residual, OO.quality_factor, math.sqrt(OO.sumsq_signal))
 
       def chi_squared(OO):
         return flex.sum(OO.weighted_numerator)/len(OO.weighted_numerator)

@@ -3,6 +3,9 @@
 # index of all current phil parameters, and an easy way to change them.
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from libtbx import easy_pickle, str_utils, smart_open
 from libtbx import adopt_init_args, Auto
 from libtbx.phil import gui_objects
@@ -141,7 +144,7 @@ class index (object) :
         sub_name="LIBTBX_BASE_DIR")
     try :
       f = smart_open.for_writing(file_name, "w")
-    except IOError, e :
+    except IOError as e :
       raise Sorry(str(e))
     else :
       if (replace_path is not None) :
@@ -210,7 +213,7 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       return None
     else :
       return new_phil.extract()
@@ -311,7 +314,7 @@ class index (object) :
     regex_list = [ re.compile(word, re.I) for word in fields ]
     matching_defs = []
     n_words = len(regex_list)
-    for phil_name, phil_text in self._full_text_index.iteritems() :
+    for phil_name, phil_text in self._full_text_index.items() :
       (label, caption, help, is_def) = phil_text
       if (phil_name in self._hidden) or (not is_def) :
         continue
@@ -394,7 +397,7 @@ class index (object) :
     return files
 
   def get_job_title (self) :
-    for def_name in self._full_path_index.keys() :
+    for def_name in list(self._full_path_index.keys()) :
       if ((def_name in ["title", "job_title"]) or
           (def_name.endswith(".title") or def_name.endswith(".job_title"))) :
         phil_def = self._full_path_index[def_name]
@@ -485,14 +488,14 @@ class index (object) :
       phil_object = self.parse(file_name=file_name)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       raise Sorry("This parameter file could not be parsed correctly.")
     try :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
+    except Exception as e :
       self.log(e)
       self.log(open(file_name).read())
       raise Sorry("This file contains invalid parameters for this program. "+
@@ -507,10 +510,10 @@ class index (object) :
       new_phil = self.master_phil.fetch(source=phil_object)
     except KeyboardInterrupt :
       raise
-    except Exception, e :
-      print str(e)
-      print "bad string:"
-      print str(phil_string)
+    except Exception as e :
+      print(str(e))
+      print("bad string:")
+      print(str(phil_string))
       if (raise_sorry) :
         raise Sorry("An unknown error occurred parsing internal parameters. "+
           "This is probably a bug; if the program was launched with "+
@@ -576,15 +579,15 @@ class index (object) :
       if object.style is not None and phil_scope.is_template != -1 :
         style = self.create_style(object.style)
         if (style.selection) and (object.type.phil_type == "str") :
-          print "WARNING: deprecated 'str' type with 'selection' style"
-          print "   name: %s" % full_object_path
+          print("WARNING: deprecated 'str' type with 'selection' style")
+          print("   name: %s" % full_object_path)
         self.style[full_object_path] = style
         if style.hidden :
           self._hidden.append(full_object_path)
         if (style.output_dir) :
           self._output_dir_path = full_object_path
         if style.OnUpdate is not None :
-          print "OnUpdate is deprecated (%s)" % full_object_path
+          print("OnUpdate is deprecated (%s)" % full_object_path)
           self._update_handlers[full_object_path] = style.OnUpdate
         elif style.process_hkl :
           self._event_handlers[full_object_path] = "auto_extract_hkl_params"
@@ -632,7 +635,7 @@ class index (object) :
     if (file_type in self._file_type_mappings) :
       return self._file_type_mappings[file_type]
     param_info = []
-    for path_name, def_style in self.style.iteritems() :
+    for path_name, def_style in self.style.items() :
       def_types = []
       if (def_style.file_type is not None) :
         def_types = def_style.get_list("file_type")
@@ -659,7 +662,7 @@ class index (object) :
 
   def get_seq_file_def_name (self) :
     paths = []
-    for path_name, def_style in self.style.iteritems() :
+    for path_name, def_style in self.style.items() :
       if (def_style.seq_file) :
         paths.append(path_name)
     if (len(paths) == 0) :
@@ -845,7 +848,7 @@ def substitute_directory_name (phil_object, path_name, sub_name,
         py_object = object.extract()
         if (py_object is None) or (py_object is Auto) : continue
         if (not isinstance(py_object, str)) :
-          if isinstance(py_object, unicode) : # FIXME need to prevent this!
+          if isinstance(py_object, str) : # FIXME need to prevent this!
             py_object = str(py_object)
           else :
             raise RuntimeError("Disallowed type '%s' for path parameter '%s'." %

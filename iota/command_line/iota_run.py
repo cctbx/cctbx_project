@@ -1,12 +1,15 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iota.run
 
+from builtins import str
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 02/22/2017
 Description : IOTA command-line module.
 '''
+from __future__ import print_function
 
 from iota.components.iota_analysis import Analyzer
 from iota.components.iota_init import InitAll
@@ -47,7 +50,7 @@ beam stop shadow.
 
 
 
-class XTermIOTA():
+class XTermIOTA(object):
   ''' Main class that will initalize and run everything'''
 
   def __init__(self):
@@ -81,7 +84,7 @@ class XTermIOTA():
           img_object = img.SingleImage(input_entry, self.init)
           img_object.import_image()
         img_object.process()
-    except Exception, e:
+    except Exception as e:
       pass
 
     return img_object
@@ -182,7 +185,7 @@ class XTermIOTA():
     if len(final_objects) > 0:
       self.run_analysis()
     else:
-      print 'No images successfully integrated!'
+      print('No images successfully integrated!')
 
     # Exit IOTA
     misc.iota_exit()
@@ -226,7 +229,7 @@ class XTermIOTA():
     if len(final_objects) > 0:
       self.run_analysis()
     else:
-      print 'No images successfully integrated!'
+      print('No images successfully integrated!')
 
     # Exit IOTA
     misc.iota_exit()

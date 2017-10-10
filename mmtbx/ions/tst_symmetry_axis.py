@@ -1,9 +1,12 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 import os
 from libtbx.utils import null_out
 from libtbx import group_args
-from cStringIO import StringIO
+from io import StringIO
 
 def exercise () :
   from mmtbx.regression import make_fake_anomalous_data
@@ -144,4 +147,4 @@ TER
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

@@ -1,7 +1,12 @@
 """Specialization code for 2011 JCSG pilot experiment; not general use"""
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 import math
@@ -11,9 +16,9 @@ from labelit.dptbx.autoindex import index_and_refine
 from labelit.command_line.stats_index import best_character_to_IndexPrinter
 from labelit.command_line.stats_index import AutoIndexOrganizer
 
-class Empty:pass
+class Empty(object):pass
 
-class api:
+class api(object):
   def __init__(self,*args):
     #application programmer interface for screen, using identical inputs
     # to the command line interface
@@ -21,7 +26,7 @@ class api:
     labelit_phil.merge_command_line(args)
     E = Empty()
     E.argv=['Empty']
-    for x in xrange(len(args)):
+    for x in range(len(args)):
       E.argv.append(args[x])
     E.horizons_phil=labelit_commands
 
@@ -54,7 +59,7 @@ class api:
         best_compatibility_to_IndexPrinter
       M = best_compatibility_to_IndexPrinter(ai,P,pd,files,spotfinder_results,horizons_phil=self.horizons_phil)
     #------------------------------------------------------------
-    if labelit_commands.__dict__.has_key("writer"):
+    if "writer" in labelit_commands.__dict__:
       labelit_commands.writer.make_image_plots_detail(
         ai=ai,pd=pd,inframes=files,spotfinder_results=spotfinder_results)
     if not labelit_commands.index_only:
@@ -86,17 +91,17 @@ class api:
     ai.setBase(P)
     ai.setWavelength(float(inputpd['wavelength']))
     ai.setMaxcell(float(inputpd['ref_maxcel']))
-    print "Deltaphi is",float(inputpd['deltaphi'])
+    print("Deltaphi is",float(inputpd['deltaphi']))
     ai.setDeltaphi(float(inputpd['deltaphi'])*math.pi/180.)
     ai.setMosaicity(setting["mosaicity"])
     ai.setOrientation(setting["orient"])
     #why aren't hexagonal constraints applied here???
-    print inputpd["osc_start"]
+    print(inputpd["osc_start"])
 
-    image_centers = [(math.pi/180.)*float(x) for x in inputpd["osc_start"].values()]
+    image_centers = [(math.pi/180.)*float(x) for x in list(inputpd["osc_start"].values())]
 
     limiting_resolution = param.distl_highres_limit
-    print "Limiting resolution",limiting_resolution
+    print("Limiting resolution",limiting_resolution)
 
     #predict the spots
     spots = ai.predict_all(image_centers[0],limiting_resolution)
@@ -105,13 +110,13 @@ class api:
 
     hkllist = spots.hkl()
     cell = ai.getOrientation().unit_cell()
-    print cell
+    print(cell)
     for hkl in hkllist:
       #print "%25s %5.2f"%(str(hkl),cell.d(hkl))
       assert cell.d(hkl)>=limiting_resolution
-    print "Number of hkls:",(hkllist).size(),
-    print "all inside the %4.2f Angstrom limiting sphere."%limiting_resolution
-    print "The unit cell is",cell
+    print("Number of hkls:",(hkllist).size(), end=' ')
+    print("all inside the %4.2f Angstrom limiting sphere."%limiting_resolution)
+    print("The unit cell is",cell)
     self.solution_setting_ai = ai
     self.solution_pd = inputpd
     self.image_centers = image_centers
@@ -119,7 +124,7 @@ class api:
     return [ai.getOrientation().unit_cell(),hkllist]
 
   def parameters(self):
-    image_centers = [(math.pi/180.)*float(x) for x in self.solution_pd["osc_start"].values()]
+    image_centers = [(math.pi/180.)*float(x) for x in list(self.solution_pd["osc_start"].values())]
     P = dict( image_center_radians = image_centers,
               wavelength = float(self.solution_pd['wavelength']),
               deltaphi = float(self.solution_pd['deltaphi']),
@@ -147,20 +152,20 @@ class IntegrationMetaProcedure(base_class):
     self.inputframes = inputs.frames
     self.imagefiles = inputs.files
     self.spotfinder = inputs.spotfinder_results
-    self.frame_numbers = self.spotfinder.pd['osc_start'].keys()
+    self.frame_numbers = list(self.spotfinder.pd['osc_start'].keys())
     self.frame_numbers.sort()
 
     self.image_centers = inputs.image_centers
-    print "IMAGE CENTERS",self.image_centers
+    print("IMAGE CENTERS",self.image_centers)
 
     # initial resolution from DISTL
     resolution_est = float(self.inputpd['resolution_inspection'])
-    print "initial resolution from DISTL",resolution_est
+    print("initial resolution from DISTL",resolution_est)
 
     # resolution limit of the strong spots used for indexing
     resolution_str = self.indexing_ai.high().reciprocal_spacing
     resolution = max(resolution_est,resolution_str)
-    print "resolution limit of the strong spots used for indexing",resolution
+    print("resolution limit of the strong spots used for indexing",resolution)
     self.limiting_resolution = resolution
 
     #print "resolution: %.2f %.2f"%(resolution_est,resolution_str)

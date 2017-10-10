@@ -1,5 +1,8 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
@@ -11,7 +14,7 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 
 import sys
 import os
-from cStringIO import StringIO
+from io import StringIO
 
 import iotbx.phil as ip
 
@@ -335,7 +338,7 @@ def process_input(args,
       command_line_params = argument_interpreter.process(arg=arg)
       final_phil = final_phil.fetch(sources=[command_line_params,])
       consume.append(arg)
-    except Sorry,e:
+    except Sorry as e:
       pass
   for item in consume:
     phil_args.remove(item)

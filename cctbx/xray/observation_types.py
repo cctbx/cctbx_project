@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 class any(object):
 
   def __repr__(self):

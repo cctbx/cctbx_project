@@ -1,5 +1,10 @@
 from __future__ import division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import range
+from io import StringIO
 
 from libtbx.test_utils import approx_equal
 from libtbx.test_utils import Exception_expected
@@ -133,7 +138,7 @@ ATOM   20  O . THR A 1 2 1.00 3.70
 """
   cif_model = iotbx.cif.reader(input_string=input_missing_mandatory_items).model()
   try: pdb_hierarchy_builder(cif_model["1AB1"])
-  except AssertionError, e: pass
+  except AssertionError as e: pass
   else:
     # TODO: raise a better error here
     raise Exception_expected
@@ -234,7 +239,7 @@ model id="" #chains=2
   hierarchy_recycled.show(out=s1)
   assert not show_diff(s.getvalue(), s1.getvalue())
   for hierarchy in (hierarchy, hierarchy_recycled):
-    residue_group = hierarchy.residue_groups().next()
+    residue_group = next(hierarchy.residue_groups())
     assert residue_group.resseq == ' 108'
     assert residue_group.resseq_as_int() == 108
     atoms = hierarchy.atoms()
@@ -420,7 +425,7 @@ END
   cif_object = iotbx.cif.model.cif()
   cif_object["test"] = cif_block
   s = StringIO()
-  print >> s, cif_object
+  print(cif_object, file=s)
   s.seek(0)
   pdb_in2 = iotbx.pdb.input(lines=s.readlines(), source_info=None)
   pdb_hierarchy2 = pdb_in2.construct_hierarchy()
@@ -515,7 +520,7 @@ ATOM   2463 C CA  . LYS B 1 24  ? 22.588  1.723   -13.713 1.00 30.22  ? ? ? ? ? 
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == sequence_4ehz.sequence
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_4ehz.sequence
   assert cif_block['_entity_poly.pdbx_strand_id'] == 'A,B'
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 25))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 25)))
   assert cif_block['_entity_poly_seq.entity_id'].all_eq('1')
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     three_letter_given_one_letter.get(i) for i in sequence_4ehz.sequence]
@@ -540,7 +545,7 @@ ATOM   1473 C  CA  . SER A 1 185 ? -6.795  -21.356 10.148  1.00 91.03  ? ? ? ? ?
     crystal_symmetry=pdb_in.crystal_symmetry())
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code'][0] == 'NVS(PTR)ICSR'
   assert cif_block['_entity_poly.pdbx_seq_one_letter_code_can'][0] == sequence_3zdi.sequence
-  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), range(1, 9))
+  assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']), list(range(1, 9)))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'ASN', 'VAL', 'SER', 'PTR', 'ILE', 'CYS', 'SER', 'ARG']
   #
@@ -581,7 +586,7 @@ HETATM 2796 O O   . HOH G 3 .   ? 11.197  11.667 36.108  1.00 17.00 ? ? ? ? ? ? 
   assert list(cif_block['_entity.id']) == ['1', '2', '3']
   assert list(cif_block['_entity.type']) == ['polymer', 'polymer', 'water']
   assert approx_equal(flex.int(cif_block['_entity_poly_seq.num']),
-                      range(1, 11)+range(1, 10))
+                      list(range(1, 11))+list(range(1, 10)))
   assert list(cif_block['_entity_poly_seq.mon_id']) == [
     'DTH', 'DTY', 'DLY', 'DLE', 'DIL', 'DLE', 'DSG', 'GLY', 'DLY', 'DTH',
     'GLY', 'GLN', 'ASN', 'HIS', 'HIS', 'GLU', 'VAL', 'VAL', 'LYS']
@@ -776,4 +781,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

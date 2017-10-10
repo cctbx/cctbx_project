@@ -13,6 +13,12 @@ automatically.  This is superficially similar to the setup for phenix.refine
 """
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from past.builtins import basestring
+from builtins import object
 from cctbx import uctbx
 from iotbx import file_reader
 import iotbx.pdb
@@ -20,7 +26,7 @@ from libtbx.str_utils import make_header, make_sub_header
 from libtbx.utils import Sorry, Usage, multi_out, null_out
 from libtbx import Auto
 from scitbx.array_family import flex
-from cStringIO import StringIO
+from io import StringIO
 import sys
 
 cmdline_input_phil_base_str = """
@@ -354,8 +360,7 @@ class load_model_and_data (object) :
           (symm.unit_cell() is None)) :
         if (pdb_symm is not None) :
           from iotbx.reflection_file_utils import reflection_file_server
-          print >> self.log, \
-            "No symmetry in X-ray data file - using PDB symmetry:"
+          print("No symmetry in X-ray data file - using PDB symmetry:", file=self.log)
           pdb_symm.show_summary(f=out, prefix="  ")
           hkl_server = reflection_file_server(
             crystal_symmetry=pdb_symm,
@@ -405,15 +410,15 @@ class load_model_and_data (object) :
 
     if cs is None:
       if corrupted_cs:
-        print >> out, "Symmetry information is corrupted,",
+        print("Symmetry information is corrupted,", end=' ', file=out)
       else:
-        print >> out, "Symmetry information was not found,",
+        print("Symmetry information was not found,", end=' ', file=out)
 
       if (hkl_symm is not None):
-        print >> out, "using symmetry from data."
+        print("using symmetry from data.", file=out)
         cs = hkl_symm
       else:
-        print >> out, "putting molecule in P1 box."
+        print("putting molecule in P1 box.", file=out)
         pdb_combined = iotbx.pdb.combine_unique_pdb_files(
           file_names=self.pdb_file_names)
         pdb_structure = iotbx.pdb.input(
@@ -482,7 +487,7 @@ class load_model_and_data (object) :
     try:
       self.pdb_inp = iotbx.pdb.input(source_info = None,
                                 lines       = flex.std_string(pdb_raw_records))
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
 
     if (remove_unknown_scatterers):
@@ -530,8 +535,8 @@ class load_model_and_data (object) :
     if (set_wavelength_from_model_header and params.input.wavelength is None) :
       wavelength = self.pdb_inp.extract_wavelength()
       if (wavelength is not None) :
-        print >> self.log, ""
-        print >> self.log, "Using wavelength = %g from PDB header" % wavelength
+        print("", file=self.log)
+        print("Using wavelength = %g from PDB header" % wavelength, file=self.log)
         params.input.wavelength = wavelength
     # set scattering table
     if (data_and_flags is not None) :
@@ -555,7 +560,7 @@ class load_model_and_data (object) :
       elif (skip_twin_detection is not None) :
         twin_law = Auto
       if (twin_law is Auto) :
-        print >> self.log, "Twinning will be detected automatically."
+        print("Twinning will be detected automatically.", file=self.log)
         self.fmodel = mmtbx.utils.fmodel_simple(
           xray_structures=[self.xray_structure],
           scattering_table=params.input.scattering_table,
@@ -597,8 +602,8 @@ class load_model_and_data (object) :
           data_labels=params.input.unmerged_data.labels,
           log=self.log)
     self.params = params
-    print >> self.log, ""
-    print >> self.log, "End of input processing"
+    print("", file=self.log)
+    print("End of input processing", file=self.log)
 
   def start_log_file (self, file_name) :
     """
@@ -681,9 +686,9 @@ def load_and_validate_unmerged_data (f_obs, file_name, data_labels,
   return unmerged_i_obs
 
 def show_symmetry_error (file1, file2, symm1, symm2) :
-  import cStringIO
-  symm_out1 = cStringIO.StringIO()
-  symm_out2 = cStringIO.StringIO()
+  import io
+  symm_out1 = io.StringIO()
+  symm_out2 = io.StringIO()
   symm1.show_summary(f=symm_out1, prefix="  ")
   symm2.show_summary(f=symm_out2, prefix="  ")
   raise Sorry("Incompatible symmetry definitions:\n%s:\n%s\n%s\n%s" %

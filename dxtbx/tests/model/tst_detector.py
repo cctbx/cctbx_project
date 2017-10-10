@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import range
 from dxtbx.model import Panel, Detector
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -6,12 +8,12 @@ from scitbx.array_family import flex
 def tst_get_gain(detector):
   detector[0].set_gain(2.0)
   assert abs(detector[0].get_gain() - 2.0) < 1e-7
-  print 'OK'
+  print('OK')
 
 def tst_get_identifier(detector):
   detector[0].set_identifier("HELLO")
   assert detector[0].get_identifier() == "HELLO"
-  print 'OK'
+  print('OK')
 
 def tst_get_pixel_lab_coord(detector):
   from scitbx import matrix
@@ -27,7 +29,7 @@ def tst_get_pixel_lab_coord(detector):
   corner2 = (512 * 0.172, 512 * 0.172, 200)
   dcorner = abs(matrix.col(corner) - matrix.col(corner))
   assert(dcorner < eps)
-  print "OK"
+  print("OK")
 
 def tst_get_image_size_mm(detector):
   from scitbx import matrix
@@ -36,7 +38,7 @@ def tst_get_image_size_mm(detector):
   size2 = (512 * 0.172, 512 * 0.172)
   dsize = abs(matrix.col(size) - matrix.col(size2))
   assert(dsize < eps)
-  print "OK"
+  print("OK")
 
 def tst_is_value_in_trusted_range(detector):
   """Check values are either inside or outside trusted range."""
@@ -44,7 +46,7 @@ def tst_is_value_in_trusted_range(detector):
   assert(detector[0].is_value_in_trusted_range(0) == True)
   assert(detector[0].is_value_in_trusted_range(999) == True)
   assert(detector[0].is_value_in_trusted_range(1000) == False)
-  print "OK"
+  print("OK")
 
 def tst_is_coord_valid(detector):
   """Check points are either inside or outside detector range."""
@@ -54,7 +56,7 @@ def tst_is_coord_valid(detector):
   assert(detector[0].is_coord_valid((256, -1)) == False)
   assert(detector[0].is_coord_valid((256, 256)) == True)
   assert(detector[0].is_coord_valid((256, 513)) == False)
-  print "OK"
+  print("OK")
 
 def tst_pixel_to_millimeter_to_pixel(detector):
 
@@ -75,7 +77,7 @@ def tst_pixel_to_millimeter_to_pixel(detector):
     assert(abs(matrix.col(xy_px) - matrix.col(xy)) < eps)
 
   # Test Passed
-  print "OK"
+  print("OK")
 
 def tst_parallax_correction(detector):
   from random import uniform
@@ -89,23 +91,23 @@ def tst_parallax_correction(detector):
     mm2 = detector[0].pixel_to_millimeter(px)
     assert(abs(matrix.col(mm) - matrix.col(mm2)) < 1e-3)
 
-  print 'OK'
+  print('OK')
 
 def tst_get_names(detector):
   names = detector.get_names()
   assert(len(names) == 1)
   assert(names[0] == 'Panel')
-  print 'OK'
+  print('OK')
 
 def tst_get_thickness(detector):
   for panel in detector:
     assert(panel.get_thickness() == 0.1)
-  print 'OK'
+  print('OK')
 
 def tst_get_material(detector):
   for panel in detector:
     assert(panel.get_material() == 'Si')
-  print 'OK'
+  print('OK')
 
 def tst_set_mosflm_beam_centre(detector):
   from scitbx import matrix
@@ -133,17 +135,17 @@ def tst_set_mosflm_beam_centre(detector):
   assert (matrix.col(panel.get_beam_centre(beam.get_s0())) -
           matrix.col(tuple(reversed(new_mosflm_beam_centre)))).length() < 1e-6
 
-  print 'OK'
+  print('OK')
 
 def tst_detectors_are_same(detA, detB):
   '''Equality operator on detector objects must identify identical detectors'''
   assert(detA == detB)
-  print 'OK'
+  print('OK')
 
 def tst_detectors_are_different(detA, detB):
   '''Equality operator on detector objects must find differences in origin'''
   assert(detA != detB)
-  print 'OK'
+  print('OK')
 
 def tst_resolution(detector):
 
@@ -152,7 +154,7 @@ def tst_resolution(detector):
   d_min1 = detector.get_max_resolution(beam.get_s0())
   d_min2 = detector.get_max_inscribed_resolution(beam.get_s0())
   assert d_min1 < d_min2
-  print 'OK'
+  print('OK')
 
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy

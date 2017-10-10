@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
 from smtbx import development, utils
@@ -23,7 +24,7 @@ def exercise_connectivity_table():
 
 def run():
   exercise_connectivity_table()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

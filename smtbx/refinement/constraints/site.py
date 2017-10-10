@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 import smtbx.refinement.constraints as _
 
 class shared_site(object):
@@ -17,7 +19,7 @@ class shared_site(object):
   def add_to(self, reparametrisation):
     scatterers = reparametrisation.structure.scatterers()
     site = reparametrisation.add_new_site_parameter(self.indices[0])
-    for i in xrange(1, len(self.indices)):
+    for i in range(1, len(self.indices)):
       param = reparametrisation.add(
         _.shared_site,
         reference=site,

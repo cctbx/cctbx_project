@@ -1,8 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.xtc_process
 #
+from builtins import str
+from builtins import range
+from builtins import object
 from psana import *
 import os, sys, socket
 from libtbx.utils import Sorry
@@ -111,9 +115,9 @@ class Script(object):
   def run(self):
     """ Process all images assigned to this thread """
     if len(sys.argv) == 1 or "-h" in sys.argv or "--help" in sys.argv or "-c" in sys.argv:
-      print help_str
-      print "Showing phil parameters:"
-      print phil_scope.as_str(attributes_level = 2)
+      print(help_str)
+      print("Showing phil parameters:")
+      print(phil_scope.as_str(attributes_level = 2))
       return
 
     user_phil = []
@@ -123,7 +127,7 @@ class Script(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
     params = phil_scope.fetch(sources=user_phil).extract()
@@ -133,7 +137,7 @@ class Script(object):
     assert params.input.experiment is not None
     assert params.input.run_num is not None
 
-    print "Processing run %d of experiment %s using config file %s"%(params.input.run_num, params.input.experiment, params.input.cfg)
+    print("Processing run %d of experiment %s using config file %s"%(params.input.run_num, params.input.experiment, params.input.cfg))
 
     if params.mp.method == "mpi":
       from mpi4py import MPI
@@ -172,7 +176,7 @@ class Script(object):
 
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
-      max_events = sys.maxint
+      max_events = sys.maxsize
     else:
       max_events = params.dispatch.max_events
 
@@ -184,7 +188,7 @@ class Script(object):
       if params.mp.method == "mpi" and size > 2 and params.mp.mpi.method == 'client_server':
         # use a client/server approach to be sure every process is busy as much as possible
         # only do this if there are more than 2 processes, as one process will be a server
-        print "Using MPI client server"
+        print("Using MPI client server")
         if rank == 0:
           # server process
           for t in times[:nevents]:
@@ -206,10 +210,10 @@ class Script(object):
       else:
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
-        print "Striping events"
-        mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+        print("Striping events")
+        mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
 
-        for i in xrange(len(mytimes)):
+        for i in range(len(mytimes)):
           self.process_event(run, mytimes[i])
       run.end()
     ds.end()
@@ -229,15 +233,15 @@ class Script(object):
 
     if self.params.debug.use_debug_files:
       if not os.path.exists(ts_path):
-        print "Skipping event %s: no debug file found"%ts
+        print("Skipping event %s: no debug file found"%ts)
         return
 
       f = open(ts_path, "r")
       if len(f.readlines()) > 1:
-        print "Skipping event %s: processed successfully previously"%ts
+        print("Skipping event %s: processed successfully previously"%ts)
         return
       f.close()
-      print "Accepted", ts
+      print("Accepted", ts)
 
     if self.params.debug.write_debug_files:
       f = open(ts_path, "w")

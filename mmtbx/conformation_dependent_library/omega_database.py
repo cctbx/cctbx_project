@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
 omega_database = {
   "All" : {
     (-180, -180) : ['B', 9, 177.39, 4.57],
@@ -2844,11 +2846,11 @@ for res_type_group, res_type_db in sorted(omega_database.items()):
 
 
 def run():
-  print omega_database["Pro_nonxpro"][(-180,-180)]
-  print omega_database["Pro_nonxpro"][(-180,-170)]
-  print omega_database["Pro_nonxpro"][( -70, 150)]
+  print(omega_database["Pro_nonxpro"][(-180,-180)])
+  print(omega_database["Pro_nonxpro"][(-180,-170)])
+  print(omega_database["Pro_nonxpro"][( -70, 150)])
   for res_group_type in sorted(omega_database):
-    print res_group_type, len(omega_database[res_group_type])
+    print(res_group_type, len(omega_database[res_group_type]))
 
 if __name__=="__main__":
   run()

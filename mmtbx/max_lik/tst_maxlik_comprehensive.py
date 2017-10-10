@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import range
 from cctbx import xray
 from cctbx.array_family import flex
 import sys, random
-import maxlik
+from . import maxlik
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 
@@ -16,7 +19,7 @@ def exercise(space_group_info,
  #frm = (0.01,0.05,0.1,0.5,0.6) #,0.7,0.8,0.9)
  frm = (0.01,0.05,0.1,0.5,0.6)
  for fraction_missing in frm:
-   print ">>> FRACTION MISSING = ", fraction_missing
+   print(">>> FRACTION MISSING = ", fraction_missing)
 
    structure = random_structure.xray_structure(
       space_group_info=space_group_info,
@@ -36,7 +39,7 @@ def exercise(space_group_info,
    f_calc= abs(f_calc_partial)
 
    flags=flex.bool(f_calc_partial.indices().size(), True)
-   for i in xrange(f_calc_partial.indices().size()):
+   for i in range(f_calc_partial.indices().size()):
      if (random.random() < (1.0 - test_fraction)):
        flags[i]=False
      else:
@@ -90,7 +93,7 @@ def run_call_back(flags, space_group_info):
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

@@ -1,12 +1,17 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.ray_trace
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 """
 Author      : Uervirojnangkoorn, M.
 Created     : 11/1/2015
 Description : read integration pickles and view systemetic absences and beam X, Y position
 """
+from __future__ import print_function
 
-import cPickle as pickle
+import pickle as pickle
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 from scitbx.matrix import sqr
@@ -21,8 +26,8 @@ from prime.postrefine.mod_input import read_frame, read_pickles
 
 def read_input(args):
   if len(args) == 0:
-    print "prime.ray_trace: read integration pickles and ray trace the reflections"
-    print "usage: prime.ray_trace data=integrated.lst"
+    print("prime.ray_trace: read integration pickles and ray trace the reflections")
+    print("usage: prime.ray_trace data=integrated.lst")
     exit()
   data = []
   hklrefin = None
@@ -51,10 +56,10 @@ def read_input(args):
     if pair[0]=='d_max':
       d_max = float(pair[1])
   if len(data)==0:
-    print "Please provide data path. (eg. data=/path/to/pickle/)"
+    print("Please provide data path. (eg. data=/path/to/pickle/)")
     exit()
   if pixel_size_mm is None:
-    print "Please specify pixel size (eg. pixel_size_mm=0.079346)"
+    print("Please specify pixel size (eg. pixel_size_mm=0.079346)")
     exit()
   return data, hklrefin, pixel_size_mm, target_unit_cell, d_min, d_max
 
@@ -63,7 +68,7 @@ if (__name__ == "__main__"):
   uc_tol = 3
   ry, rz, re, rotx, roty = (0, 0, 0.008, 0, 0)
   flag_beam_divergence = False
-  lambda_template = flex.double(range(-50,50,1))/1000
+  lambda_template = flex.double(list(range(-50,50,1)))/1000
   #0 .read input parameters and frames (pickle files)
   data, hklrefin, pixel_size_mm, target_unit_cell, \
     d_min, d_max = read_input(args = sys.argv[1:])
@@ -108,7 +113,7 @@ if (__name__ == "__main__"):
       ph = partiality_handler()
       r0 = ph.calc_spot_radius(sqr(crystal_init_orientation.reciprocal_matrix()),
                                 observations.indices(), observations_pickle["wavelength"])
-      for lambda_now, i_lambda in zip(lambda_set, range(len(lambda_set))):
+      for lambda_now, i_lambda in zip(lambda_set, list(range(len(lambda_set)))):
         two_theta = observations.two_theta(wavelength=lambda_now).data()
         partiality, delta_xy, rs_set, rh_set = ph.calc_partiality_anisotropy_set(\
                                                 crystal_init_orientation.unit_cell(),

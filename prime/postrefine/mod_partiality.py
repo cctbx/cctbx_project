@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx.array_family import flex
 from scitbx.matrix import sqr, col
 from cctbx.crystal_orientation import crystal_orientation, basis_type

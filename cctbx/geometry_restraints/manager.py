@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.flags
 import cctbx.geometry_restraints.energies
@@ -9,7 +16,7 @@ from libtbx import introspection
 from libtbx import adopt_init_args
 from libtbx import dict_with_default_0
 from libtbx.utils import Sorry
-import sys, math, StringIO
+import sys, math, io
 import iotbx.pdb
 
 import boost.python
@@ -78,7 +85,7 @@ class manager(object):
         plain_pairs_radius=None,
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
-        log=StringIO.StringIO()):
+        log=io.StringIO()):
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -197,7 +204,7 @@ class manager(object):
       bond_params_table = self.bond_params_table
       for i,pair_sym_dict in enumerate(self.shell_sym_tables[0]):
         reduced_pair_sym_dict = result[i]
-        for j,sym_ops in pair_sym_dict.items():
+        for j,sym_ops in list(pair_sym_dict.items()):
           reduced_sym_ops = sgtbx.stl_vector_rt_mx()
           for sym_op in sym_ops:
             if (sym_op.is_unit_mx()):
@@ -298,7 +305,7 @@ class manager(object):
       new_site_symmetry_table = self.site_symmetry_table.deep_copy()
       new_site_symmetry_table.reserve(new_site_symmetry_table.indices().size()
                                     + n_additional_sites)
-      for i_seq in xrange(n_additional_sites):
+      for i_seq in range(n_additional_sites):
         new_site_symmetry_table.process(site_symmetry_table.get(i_seq))
       site_symmetry_table = new_site_symmetry_table
     bond_params_table = None
@@ -390,7 +397,7 @@ class manager(object):
         raise RuntimeError("Cannot determine n_seq.")
       if (len(n_seqs) != 1):
         raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
-      return n_seqs.keys()[0]
+      return list(n_seqs.keys())[0]
 
     n_seq = get_n_seq()
 
@@ -1129,7 +1136,7 @@ class manager(object):
     if i_seq > j_seq:
       i_s = j_seq
       j_s = i_seq
-    return j_s in self.shell_sym_tables[0][i_s].keys()
+    return j_s in list(self.shell_sym_tables[0][i_s].keys())
 
   def pair_proxies(self,
         sites_cart=None,
@@ -1519,7 +1526,7 @@ class manager(object):
       outf_descriptor = file_descriptor
     else:
       outf_descriptor = open(file_name, "w")
-    print >> outf_descriptor, header
+    print(header, file=outf_descriptor)
     self.show_sorted(
       sites_cart=sites_cart,
       site_labels=site_labels,
@@ -1544,12 +1551,12 @@ class manager(object):
           site_labels=site_labels,
           f=f,
           origin_id=0)
-      print >> f
+      print(file=f)
       for label, origin_id in [["Bond-like", 1],
                                ["Metal coordination", 2],
                                ["User supplied restraints", 3]
                                ]:
-        tempbuffer = StringIO.StringIO()
+        tempbuffer = io.StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
@@ -1557,7 +1564,7 @@ class manager(object):
             f=tempbuffer,
             prefix="",
             origin_id=origin_id)
-        print >> f, label, tempbuffer.getvalue()[5:]
+        print(label, tempbuffer.getvalue()[5:], file=f)
 
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
@@ -1566,11 +1573,11 @@ class manager(object):
         site_labels=site_labels,
         f=f,
         origin_id=0)
-      print >> f
+      print(file=f)
       for label, origin_id in [["SS restraints around h-bond", 1],
                                ["User supplied restraints", 3]
                                ]:
-        tempbuffer = StringIO.StringIO()
+        tempbuffer = io.StringIO()
         self.angle_proxies.show_sorted(
             by_value="residual",
             sites_cart=sites_cart,
@@ -1578,7 +1585,7 @@ class manager(object):
             f=tempbuffer,
             prefix="",
             origin_id=origin_id)
-        print >> f, label, tempbuffer.getvalue()[5:]
+        print(label, tempbuffer.getvalue()[5:], file=f)
 
     for p_label, proxies in [
         ("Dihedral angle", self.get_dihedral_proxies()),
@@ -1605,7 +1612,7 @@ class manager(object):
         by_value="delta",
         sites_cart=sites_cart, site_labels=site_labels, f=f,
         suppress_model_minus_vdw_greater_than=None)
-      print >> f
+      print(file=f)
 
   def nb_overlaps_info(
     self,
@@ -1696,7 +1703,7 @@ def format_distances_for_error_message(
   if (orthogonalization_matrix is not None):
     orthogonalization_matrix = sqr(orthogonalization_matrix)
   for i_seq,pair_sym_dict in enumerate(pair_sym_table):
-    for j_seq,sym_ops in pair_sym_dict.items():
+    for j_seq,sym_ops in list(pair_sym_dict.items()):
       for rt_mx_ji in sym_ops:
         if (sites_cart is not None):
           assert rt_mx_ji.is_unit_mx()

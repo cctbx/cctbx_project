@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -201,4 +202,4 @@ def exercise(d_min = 1.0, resolution_factor=0.2):
 if(__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

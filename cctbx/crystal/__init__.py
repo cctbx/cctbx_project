@@ -1,5 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 # -*- coding: utf-8 -*-
+from builtins import next
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 import boost.python
 ext = boost.python.import_ext("cctbx_crystal_ext")
@@ -138,11 +144,11 @@ class symmetry(object):
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
     if (self.unit_cell() is None):
-      print >> f, prefix + "Unit cell:", None
+      print(prefix + "Unit cell:", None, file=f)
     else:
       self.unit_cell().show_parameters(f=f, prefix=prefix+"Unit cell: ")
     if (self.space_group_info() is None):
-      print >> f, prefix + "Space group:", None
+      print(prefix + "Space group:", None, file=f)
     else:
       self.space_group_info().show_summary(f=f, prefix=prefix+"Space group: ")
 
@@ -384,7 +390,7 @@ class symmetry(object):
     if self.space_group() is not None:
       sym_loop = model.loop(data=OrderedDict((
         ('_space_group_symop'+separator+'id',
-         range(1, len(self.space_group())+1)),
+         list(range(1, len(self.space_group())+1))),
         ('_space_group_symop'+separator+'operation_xyz',
          [s.as_xyz() for s in self.space_group()]))))
       cif_block.add_loop(sym_loop)
@@ -768,7 +774,7 @@ class _(boost.python.injector, pair_asu_table):
     result = []
     for i_seq, j_seq_dict in enumerate(self.table()):
       i_seq_list = [i_seq]
-      for j_seq,j_sym_group in j_seq_dict.items():
+      for j_seq,j_sym_group in list(j_seq_dict.items()):
         j_seq_list = [j_seq]
         for j_syms in j_sym_group:
           j_seq_list.append(list(j_syms))
@@ -780,19 +786,19 @@ class _(boost.python.injector, pair_asu_table):
     if (f is None): f = sys.stdout
     if (site_labels is None):
       for i_seq, j_seq_dict in enumerate(self.table()):
-        print >> f, "i_seq:", i_seq
-        for j_seq,j_sym_group in j_seq_dict.items():
-          print >> f, "  j_seq:", j_seq
+        print("i_seq:", i_seq, file=f)
+        for j_seq,j_sym_group in list(j_seq_dict.items()):
+          print("  j_seq:", j_seq, file=f)
           for j_syms in j_sym_group:
-            print >> f, "    j_syms:", list(j_syms)
+            print("    j_syms:", list(j_syms), file=f)
     else:
       assert len(site_labels) == self.table().size()
       for i_seq, j_seq_dict in enumerate(self.table()):
-        print >> f, "%s(%d)" % (site_labels[i_seq], i_seq)
-        for j_seq,j_sym_group in j_seq_dict.items():
-          print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
+        print("%s(%d)" % (site_labels[i_seq], i_seq), file=f)
+        for j_seq,j_sym_group in list(j_seq_dict.items()):
+          print("  %s(%d)" % (site_labels[j_seq], j_seq), file=f)
           for j_syms in j_sym_group:
-            print >> f, "    j_syms:", list(j_syms)
+            print("    j_syms:", list(j_syms), file=f)
 
   def show_distances(self,
         site_labels=None,
@@ -842,9 +848,9 @@ class calculate_distances(object):
     self.pair_counts = flex.size_t()
 
   def __iter__(self):
-    return self.next()
+    return next(self)
 
-  def next(self):
+  def __next__(self):
 
     class distance(object):
       def __init__(self,
@@ -869,7 +875,7 @@ class calculate_distances(object):
       pair_count = 0
       dists = flex.double()
       j_seq_i_group = []
-      for j_seq,j_sym_groups in asu_dict.items():
+      for j_seq,j_sym_groups in list(asu_dict.items()):
         if self.skip_j_seq_less_than_i_seq and j_seq < i_seq: continue
         site_frac_j = self.sites_frac[j_seq]
         for i_group,j_sym_group in enumerate(j_sym_groups):
@@ -969,13 +975,13 @@ class show_distances(libtbx.slots_getstate_setstate):
             for x in unit_cell.orthogonalize(site_frac_i)]
         else:
           formatted_site = [" %7.4f" % x for x in site_frac_i]
-        print >> out, ("%%-%ds" % (label_len+23)) % s, \
-          "<<"+",".join(formatted_site)+">>"
+        print(("%%-%ds" % (label_len+23)) % s, \
+          "<<"+",".join(formatted_site)+">>", file=out)
       if (site_labels is None):
-        print >> out, " ", label_fmt % (j_seq+1) + ":",
+        print(" ", label_fmt % (j_seq+1) + ":", end=' ', file=out)
       else:
-        print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
-      print >> out, "%8.4f" % di.distance,
+        print(" ", label_fmt % (site_labels[j_seq] + ":"), end=' ', file=out)
+      print("%8.4f" % di.distance, end=' ', file=out)
       if di.i_j_sym != 0:
         s = "sym. equiv."
       else:
@@ -990,9 +996,9 @@ class show_distances(libtbx.slots_getstate_setstate):
       if (not rt_mx_ji.is_unit_mx()):
         s += " sym=" + str(rt_mx_ji)
         self.have_sym = True
-      print >> out, s
+      print(s, file=out)
       if first_time_i_seq and di.pair_count == 0:
-        print >> out, "  no neighbors"
+        print("  no neighbors", file=out)
 
 class calculate_angles(object):
 
@@ -1014,9 +1020,9 @@ class calculate_angles(object):
     self.pair_counts = flex.size_t()
 
   def __iter__(self):
-    return self.next()
+    return next(self)
 
-  def next(self):
+  def __next__(self):
 
     class angle(object):
       def __init__(self,
@@ -1039,14 +1045,14 @@ class calculate_angles(object):
       rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
       site_frac_i = self.sites_frac[i_seq]
       angles = flex.double()
-      for j_seq,j_sym_groups in asu_dict.items():
+      for j_seq,j_sym_groups in list(asu_dict.items()):
         site_frac_j = self.sites_frac[j_seq]
         for j_sym_group in j_sym_groups:
           for i_j_sym,j_sym in enumerate(j_sym_group):
             rt_mx_ji = rt_mx_i_inv.multiply(
               asu_mappings.get_rt_mx(j_seq, j_sym))
             site_frac_ji = rt_mx_ji * site_frac_j
-            for k_seq, k_sym_groups in asu_dict.items():
+            for k_seq, k_sym_groups in list(asu_dict.items()):
               if self.skip_j_seq_less_than_i_seq and j_seq < k_seq: continue
               if k_seq == j_seq and j_sym_group.size() <= 1: continue
               if k_seq > j_seq: continue
@@ -1145,13 +1151,13 @@ class show_angles(object):
           k_label += "*%s" %k
         s = label_fmt % (j_label, i_label, k_label)
       s += " %6.2f" % a.angle
-      print >> out, s
+      print(s, file=out)
 
     self.angles = angles.angles
     self.distance = angles.distances
     for i, rt_mx in enumerate(rt_mxs):
-      print >> out, "*%s" %(i+1),
-      print >> out, rt_mx
+      print("*%s" %(i+1), end=' ', file=out)
+      print(rt_mx, file=out)
 
 class sym_pair(libtbx.slots_getstate_setstate):
 
@@ -1169,14 +1175,14 @@ class _(boost.python.injector, pair_sym_table):
 
   def iterator(self):
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for rt_mx_ji in sym_ops:
           yield sym_pair(i_seq=i_seq, j_seq=j_seq, rt_mx_ji=rt_mx_ji)
 
   def tidy(self, site_symmetry_table):
     result = pair_sym_table(size=self.size())
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         sepi_objs = []
         for rt_mx_ji in sym_ops:
           if (i_seq <= j_seq):
@@ -1202,7 +1208,7 @@ class _(boost.python.injector, pair_sym_table):
     result = pair_sym_table(size=self.size())
     for i_seq,pair_sym_dict in enumerate(self):
       ri = result[i_seq]
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         rij = ri.get(j_seq)
         if (rij is None):
           ri[j_seq] = pair_sym_ops()
@@ -1247,29 +1253,29 @@ class _(boost.python.injector, pair_sym_table):
     if (f is None): f = sys.stdout
     def show_i():
       if (site_labels is None):
-        print >> f, "i_seq:", i_seq
+        print("i_seq:", i_seq, file=f)
       else:
-        print >> f, "%s(%d)" % (site_labels[i_seq], i_seq)
+        print("%s(%d)" % (site_labels[i_seq], i_seq), file=f)
     def show_j():
       if (site_labels is None):
-        print >> f, "  j_seq:", j_seq
+        print("  j_seq:", j_seq, file=f)
       else:
-        print >> f, "  %s(%d)" % (site_labels[j_seq], j_seq)
+        print("  %s(%d)" % (site_labels[j_seq], j_seq), file=f)
     for i_seq,pair_sym_dict in enumerate(self):
       show_i()
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         show_j()
         if (site_symmetry_table is None):
           if (sites_frac is None):
             for rt_mx_ji in sym_ops:
-              print >> f, "   ", rt_mx_ji
+              print("   ", rt_mx_ji, file=f)
           elif (len(sym_ops) > 0):
             max_len = max([len(str(_)) for _ in sym_ops])
             fmt = "    %%-%ds  %%8.4f" % max_len
             for rt_mx_ji in sym_ops:
               d = unit_cell.distance(
                 sites_frac[i_seq], rt_mx_ji * sites_frac[j_seq])
-              print >> f, fmt % (str(rt_mx_ji), d)
+              print(fmt % (str(rt_mx_ji), d), file=f)
         else:
           max_len = 0
           sepis = []
@@ -1287,7 +1293,7 @@ class _(boost.python.injector, pair_sym_table):
                 if (sites_frac is not None):
                   d = "  %8.4f" % unit_cell.distance(
                     sites_frac[i_seq], s * sites_frac[j_seq])
-                print >> f, (fmt % (str(s), d, e)).rstrip()
+                print((fmt % (str(s), d, e)).rstrip(), file=f)
                 e = "  sym. equiv."
 
   def show_distances(self,
@@ -1314,9 +1320,9 @@ class _(boost.python.injector, pair_sym_table):
     if (skip_j_seq_less_than_i_seq):
       back_interactions = None
     else:
-      back_interactions = [set() for _ in xrange(self.size())]
+      back_interactions = [set() for _ in range(self.size())]
       for i_seq,pair_sym_dict in enumerate(self):
-        for j_seq,sym_ops in pair_sym_dict.items():
+        for j_seq,sym_ops in list(pair_sym_dict.items()):
           if (j_seq != i_seq):
             assert i_seq < j_seq
             back_interactions[j_seq].add(i_seq)
@@ -1333,7 +1339,7 @@ class _(boost.python.injector, pair_sym_table):
           j_seq,
           rt_mx_ji,
           sepi])
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for rt_mx_ji in sym_ops:
           distance_info_append(j_seq, rt_mx_ji)
       if (back_interactions is not None):
@@ -1355,16 +1361,16 @@ class _(boost.python.injector, pair_sym_table):
           for x in unit_cell.orthogonalize(site_frac_i)]
       else:
         formatted_site = [" %7.4f" % x for x in site_frac_i]
-      print >> out, ("%%-%ds" % (label_len+23)) % s, \
-        "<<"+",".join(formatted_site)+">>"
+      print(("%%-%ds" % (label_len+23)) % s, \
+        "<<"+",".join(formatted_site)+">>", file=out)
       for distance,j_seq,_,sepi in distance_info:
         sym_equiv = "           "
         for rt_mx_ji_equiv in sepi:
           if (site_labels is None):
-            print >> out, " ", label_fmt % (j_seq+1) + ":",
+            print(" ", label_fmt % (j_seq+1) + ":", end=' ', file=out)
           else:
-            print >> out, " ", label_fmt % (site_labels[j_seq] + ":"),
-          print >> out, "%8.4f" % distance,
+            print(" ", label_fmt % (site_labels[j_seq] + ":"), end=' ', file=out)
+          print("%8.4f" % distance, end=' ', file=out)
           s = sym_equiv
           sym_equiv = "sym. equiv."
           site_frac_ji_equiv = rt_mx_ji_equiv * sites_frac[j_seq]
@@ -1376,18 +1382,18 @@ class _(boost.python.injector, pair_sym_table):
           s += " (" + ",".join(formatted_site) +")"
           if (not rt_mx_ji_equiv.is_unit_mx()):
             s += " sym=" + str(rt_mx_ji_equiv)
-          print >> out, s
+          print(s, file=out)
           if (skip_sym_equiv):
             break
       if (pair_count == 0):
-        print >> out, "  no neighbors"
+        print("  no neighbors", file=out)
       pair_counts.append(pair_count)
     return pair_counts
 
   def number_of_pairs_involving_symmetry(self):
     result = 0
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for sym_op in sym_ops:
           if (not sym_op.is_unit_mx()):
             result += 1
@@ -1396,7 +1402,7 @@ class _(boost.python.injector, pair_sym_table):
   def simple_edge_list(self):
     result = []
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for sym_op in sym_ops:
           if (sym_op.is_unit_mx()):
             result.append((i_seq, j_seq))
@@ -1406,7 +1412,7 @@ class _(boost.python.injector, pair_sym_table):
   def symmetry_edge_list(self):
     result = []
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for sym_op in sym_ops:
           if not (sym_op.is_unit_mx()):
             result.append((i_seq, j_seq, sym_op))
@@ -1416,7 +1422,7 @@ class _(boost.python.injector, pair_sym_table):
     simple = []
     sym = []
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for sym_op in sym_ops:
           if (sym_op.is_unit_mx()):
             simple.append((i_seq, j_seq))
@@ -1427,7 +1433,7 @@ class _(boost.python.injector, pair_sym_table):
   def full_simple_connectivity(self):
     result = shared.stl_set_unsigned(self.size())
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq,sym_ops in pair_sym_dict.items():
+      for j_seq,sym_ops in list(pair_sym_dict.items()):
         for sym_op in sym_ops:
           if (sym_op.is_unit_mx()):
             result[i_seq].insert(j_seq)
@@ -1446,7 +1452,7 @@ class _(boost.python.injector, pair_sym_table):
     sym_ops = sgtbx.space_group().all_ops()
     for i_seq,self_pair_sym_dict in enumerate(self):
       d = pair_sym_dict()
-      for j_seq in self_pair_sym_dict.keys():
+      for j_seq in list(self_pair_sym_dict.keys()):
         d[j_seq] = sym_ops
       result.append(d)
     return result
@@ -1455,7 +1461,7 @@ class _(boost.python.injector, pair_sym_table):
     self_size = self.size()
     assert other.size() <= self_size
     for self_pair_sym_dict,other_pair_sym_dict in zip(self, other):
-      for j_seq,other_sym_ops in other_pair_sym_dict.items():
+      for j_seq,other_sym_ops in list(other_pair_sym_dict.items()):
         assert j_seq < self_size
         self_pair_sym_dict.setdefault(j_seq)
         self_pair_sym_dict[j_seq].extend(other_sym_ops)
@@ -1535,9 +1541,9 @@ class incremental_clustering(_clustering_mix_in):
       if (scores is not None):
         scores = scores.select(selection)
     n_sites = sites_frac.size()
-    assignments = flex.size_t(xrange(n_sites))
+    assignments = flex.size_t(range(n_sites))
     n_clusters = n_sites
-    index_groups = [[i_seq] for i_seq in xrange(n_sites)]
+    index_groups = [[i_seq] for i_seq in range(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
     get_distance = unit_cell.distance
     for i_distance_cutoff,distance_cutoff in enumerate(distance_cutoffs):
@@ -1565,7 +1571,7 @@ class incremental_clustering(_clustering_mix_in):
         rt_mx_ip = asu_mappings.get_rt_mx(i_seq, 0)
         site_ip = rt_mx_ip * sites_frac[i_seq]
         j_seq_dict = pair_asu_tab.table()[i_seq]
-        for j_seq,j_sym_group in j_seq_dict.items():
+        for j_seq,j_sym_group in list(j_seq_dict.items()):
           j_cluster = assignments[j_seq]
           if (j_cluster == i_cluster): continue
           if (    i_distance_cutoff != 0
@@ -1638,9 +1644,9 @@ class distance_based_clustering(_clustering_mix_in):
       assert site_symmetry_table.n_special_positions() == 0
       sites_frac = sites_frac.select(selection)
     n_sites = sites_frac.size()
-    assignments = flex.size_t(xrange(n_sites))
+    assignments = flex.size_t(range(n_sites))
     n_clusters = n_sites
-    index_groups = [[i_seq] for i_seq in xrange(n_sites)]
+    index_groups = [[i_seq] for i_seq in range(n_sites)]
     symmetry_ops = [special_position_settings.space_group()(0)] * n_sites
     asu_mappings = special_position_settings.asu_mappings(
       buffer_thickness=distance_cutoff,
@@ -1711,7 +1717,7 @@ def cluster_erosion(sites_cart, box_size, fraction_to_be_retained):
   box_coordinates = (sites_cart - box_origin) * (1./box_size)
   box_grid = flex.grid(n_boxes)
   box_counts = flex.size_t(box_grid.size_1d(), 0)
-  box_members = [flex.size_t() for i in xrange(box_counts.size())]
+  box_members = [flex.size_t() for i in range(box_counts.size())]
   for i_seq,x in enumerate(box_coordinates):
     box_index_3d = [max(0, min(int(i), n)) for i,n in zip(x, n_boxes)]
     box_index_1d = box_grid(box_index_3d)

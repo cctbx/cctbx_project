@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.array_family.flex as flex# import dependency
 import sys
 
@@ -11,15 +12,15 @@ class _(boost.python.injector, ext.map_reader) :
 
   def show_summary (self, out=None, prefix="") :
     if (out is None) : out = sys.stdout
-    print >> out, prefix + "header_min: ", self.header_min
-    print >> out, prefix + "header_max: ", self.header_max
-    print >> out, prefix + "header_mean:", self.header_mean
-    print >> out, prefix + "header_rms: ", self.header_rms
-    print >> out, prefix + "unit cell grid:", self.unit_cell_grid
-    print >> out, prefix + "unit cell parameters:", self.unit_cell_parameters
-    print >> out, prefix + "space group number:  ", self.space_group_number
-    print >> out, prefix + "map origin:", self.data.origin()
-    print >> out, prefix + "map grid:  ", self.data.all()
+    print(prefix + "header_min: ", self.header_min, file=out)
+    print(prefix + "header_max: ", self.header_max, file=out)
+    print(prefix + "header_mean:", self.header_mean, file=out)
+    print(prefix + "header_rms: ", self.header_rms, file=out)
+    print(prefix + "unit cell grid:", self.unit_cell_grid, file=out)
+    print(prefix + "unit cell parameters:", self.unit_cell_parameters, file=out)
+    print(prefix + "space group number:  ", self.space_group_number, file=out)
+    print(prefix + "map origin:", self.data.origin(), file=out)
+    print(prefix + "map grid:  ", self.data.all(), file=out)
 
   def crystal_symmetry(self):
     from cctbx import crystal

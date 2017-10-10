@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from wxtbx.phil_controls import text_base
 from wxtbx import phil_controls
 import wxtbx.icons
@@ -87,7 +89,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
 
   def GetValue (self) :
     val = self._path_text.GetValue().strip()
-    if (isinstance(val, unicode)) and wxtbx.is_unicode_build() :
+    if (isinstance(val, str)) and wxtbx.is_unicode_build() :
       return to_str(val)
     else :
       assert isinstance(val, str)
@@ -117,7 +119,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
   def FormatValue (self, value) :
     if (value != "") :
       if (not os.path.isabs(value)) :
-        print "ABSPATH"
+        print("ABSPATH")
         return os.path.abspath(value)
       else :
         return value
@@ -175,7 +177,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (hasattr(tlp, "display_file")) :
       tlp.display_file(file_name)
     else :
-      print "NotImplemented"
+      print("NotImplemented")
 
   def OnDisplayFileMenu (self, event) :
     file_name = self.GetValue()
@@ -187,7 +189,7 @@ class PathCtrl (wx.PyPanel, phil_controls.PhilCtrl) :
     if (hasattr(tlp, "display_file_menu")) :
       tlp.display_file_menu(file_name)
     else :
-      print "NotImplemented"
+      print("NotImplemented")
 
   def OnEnter (self, event) :
     if (self._path_style & WXTBX_PHIL_PATH_DEFAULT_CWD) :
@@ -238,7 +240,7 @@ class PathValidator (text_base.TextCtrlValidator) :
         raise ValueError("file specified, but this parameter requires "+
           "a directory.")
       if (not os.path.isabs(value)) :
-        print "ABSPATH"
+        print("ABSPATH")
         return os.path.abspath(value)
       else :
         return value
@@ -252,7 +254,7 @@ class PathValidator (text_base.TextCtrlValidator) :
           raise ValueError("directory specified, but this parameter requires "+
             "a file.")
       if (not os.path.isabs(value)) :
-        print "ABSPATH"
+        print("ABSPATH")
         return os.path.abspath(value)
       else :
         return value
@@ -299,12 +301,12 @@ if (__name__ == "__main__") :
   path2.SetValue(pdb_out)
   button = wx.Button(panel, -1, "Process inputs", pos=(600,400))
   def OnProcess (event) :
-    print path1.GetPhilValue()
-    print path2.GetPhilValue()
-    print path3.GetPhilValue()
-    print path4.GetPhilValue()
+    print(path1.GetPhilValue())
+    print(path2.GetPhilValue())
+    print(path3.GetPhilValue())
+    print(path4.GetPhilValue())
   def OnPhilEvent (event) :
-    print "PhilEvent"
+    print("PhilEvent")
   frame.Bind(wx.EVT_BUTTON, OnProcess, button)
   frame.Bind(phil_controls.EVT_PHIL_CONTROL, OnPhilEvent)
   frame.Fit()

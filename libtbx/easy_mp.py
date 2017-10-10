@@ -1,8 +1,15 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.str_utils import show_string
 from libtbx.math_utils import ifloor
 from libtbx import Auto
-from cStringIO import StringIO
+from io import StringIO
 import traceback
 import os
 import sys
@@ -47,7 +54,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
       from libtbx.utils import Sorry
       raise Sorry("%s.  Please use nproc=1 or nproc=Auto." % str(problems))
   else :
-    print >> log, """
+    print("""
  ******************************************************************
  INFO: Some parts of this job will make use of multiple processors:
  ******************************************************************
@@ -56,7 +63,7 @@ def enable_multiprocessing_if_possible (nproc=Auto, log=None) :
 
  Please ask your system administrator for advice about this, in particular if
  you run this job through a queuing system.
-""" % str(nproc)
+""" % str(nproc), file=log)
     return nproc
 
 # FIXME should be more flexible on Windows
@@ -117,7 +124,7 @@ class Pool(multiprocessing_Pool):
       raise RuntimeError(mp_problem)
     self.processes = get_processes(processes)
     if (fixed_func is not None):
-      key = fixed_func_registry_key_generator.next()
+      key = next(fixed_func_registry_key_generator)
       self.fixed_func_proxy = fixed_func_proxy(key, fixed_func)
     else:
       self.fixed_func_proxy = None
@@ -149,7 +156,7 @@ class Pool(multiprocessing_Pool):
       chunksize=chunksize)
 
 def show_caught_exception(index, arg):
-  print "CAUGHT EXCEPTION: (argument #%d)" % index
+  print("CAUGHT EXCEPTION: (argument #%d)" % index)
   try:
     r = repr(arg)
   except: # intentional
@@ -157,7 +164,7 @@ def show_caught_exception(index, arg):
   else:
     if (len(r) > 256):
       r = r[:127] + "..." + r[-126:]
-    print "ARGUMENT LEADING TO EXCEPTION:", r
+    print("ARGUMENT LEADING TO EXCEPTION:", r)
   traceback.print_exc(file=sys.stdout)
 
 class func_wrapper_simple_impl(object):
@@ -249,7 +256,7 @@ class func_wrapper_sub_directories_impl(object):
 class func_wrapper_sub_directories(object):
   """Implementation detail"""
 
-  def __init__(O, sub_name_format="mp%03d", makedirs_mode=0777):
+  def __init__(O, sub_name_format="mp%03d", makedirs_mode=0o777):
     assert isinstance(sub_name_format, str)
     s = sub_name_format
     if (s.find("%") < 0):
@@ -372,7 +379,7 @@ def pool_map(
   if (index_args):
     iterable = enumerate(iterable)
   if (log is not None):
-    print >> log, "multiprocessing pool size:", processes
+    print("multiprocessing pool size:", processes, file=log)
     flush = getattr(log, "flush", None)
     if (flush is not None):
       flush()
@@ -570,8 +577,8 @@ def parallel_map (
       try:
         jfactory = technology.jfactory( platform = method, command = qsub_command )
 
-      except SetupError, e:
-        raise Sorry, e
+      except SetupError as e:
+        raise Sorry(e)
 
       from libtbx.scheduling import file_queue
       qfactory = file_queue.qfactory()
@@ -600,7 +607,7 @@ def parallel_map (
     sthandler = libtbx.scheduling.decorate
 
   else:
-    raise Sorry, "Unknown stacktrace handling method: %s" % stacktrace_handling
+    raise Sorry("Unknown stacktrace handling method: %s" % stacktrace_handling)
 
   from libtbx.scheduling import parallel_for
 
@@ -624,8 +631,8 @@ def parallel_map (
         results.append( result )
         callback( result )
 
-    except SetupError, e:
-      raise Sorry, e
+    except SetupError as e:
+      raise Sorry(e)
 
     manager.shutdown()
     manager.join()
@@ -712,7 +719,7 @@ def multi_core_run( myfunction, argstuples, nproc ):
     errstr =  None
     try:
       result = res()
-    except Exception, e:
+    except Exception as e:
       tracestr = ""
       if stacktrace.exc_info()[1]:
         for inf in stacktrace.exc_info()[1]:
@@ -762,20 +769,20 @@ def run_parallel(
   if nproc==1 or n<=1: # just run it for each case in list, no multiprocessing
     results=[]
     ra=run_anything(kw_list=kw_list,target_function=target_function)
-    for i in xrange(n):
+    for i in range(n):
       results.append(ra(i))
   elif 0:  #(method == "multiprocessing") and (sys.platform != "win32") :
     # XXX Can crash 2015-10-13 TT so don't use it
     from libtbx.easy_mp import  pool_map
     results = pool_map(
       func=run_anything(target_function=target_function,kw_list=kw_list),
-      iterable=xrange(n),
+      iterable=range(n),
       processes=nproc)
   else :
     from libtbx.easy_mp import parallel_map
     results=parallel_map(
       func=run_anything(target_function=target_function,kw_list=kw_list),
-      iterable=xrange(n),
+      iterable=range(n),
       method=method,
       processes=nproc,
       callback=None,

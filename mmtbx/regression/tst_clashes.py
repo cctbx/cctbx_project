@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.clashes
 
 pdb_good = """
@@ -56,7 +57,7 @@ def run():
   o = mmtbx.clashes.from_pdb(pdb_str=pdb_good, clash_threshold=2.3)
   o.show()
   assert o.clashing_pairs() == [(9, 10), (18, 19), (3, 11)]
-  print
+  print()
   o = mmtbx.clashes.from_pdb(pdb_str=pdb_poor, clash_threshold=1.5)
   o.show()
   assert o.clashing_pairs() == [(9, 18), (9, 19), (8, 18), (7, 18), (9, 17)]

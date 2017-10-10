@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_to_structure_factors
 
+from builtins import str
+from builtins import range
 import iotbx.ccp4_map
 from cctbx import miller, crystal
 from cctbx.array_family import flex
@@ -27,9 +30,9 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def get_hl(f_obs_cmpl, k_blur, b_blur):
   f_model_phases = f_obs_cmpl.phases().data()
@@ -72,15 +75,15 @@ def run(args, log=None, ccp4_map=None,
   if(m.space_group_number > 1):
     raise Sorry("Input map space group: %d. Must be P1."%m.space_group_number)
   broadcast(m="Input map information:", log=log)
-  print >>out,"m.all()   :", m.data.all()
-  print >>out,"m.focus() :", m.data.focus()
-  print >>out,"m.origin():", m.data.origin()
-  print >>out,"m.nd()    :", m.data.nd()
-  print >>out,"m.size()  :", m.data.size()
-  print >>out,"m.focus_size_1d():", m.data.focus_size_1d()
-  print >>out,"m.is_0_based()   :", m.data.is_0_based()
-  print >>out,"map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
-  print >>out,"unit cell:", m.unit_cell_parameters
+  print("m.all()   :", m.data.all(), file=out)
+  print("m.focus() :", m.data.focus(), file=out)
+  print("m.origin():", m.data.origin(), file=out)
+  print("m.nd()    :", m.data.nd(), file=out)
+  print("m.size()  :", m.data.size(), file=out)
+  print("m.focus_size_1d():", m.data.focus_size_1d(), file=out)
+  print("m.is_0_based()   :", m.data.is_0_based(), file=out)
+  print("map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data), file=out)
+  print("unit cell:", m.unit_cell_parameters, file=out)
   #
   map_data=m.data
   map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
@@ -122,7 +125,7 @@ def run(args, log=None, ccp4_map=None,
         use_scale      = True,
         anomalous_flag = False,
         use_sg         = False)
-    except Exception, e:
+    except Exception as e:
       if(str(e) == "cctbx Error: Miller index not in structure factor map."):
         msg = "Too high resolution requested. Try running with larger d_min."
         raise Sorry(msg)
@@ -146,9 +149,9 @@ def run(args, log=None, ccp4_map=None,
     broadcast(m="Convert phases into HL coefficients:", log=log)
     hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=params.b_blur)
     cc = get_cc(f = f_obs_cmpl, hl = hl)
-    print >>out, "cc:", cc
+    print("cc:", cc, file=out)
     if(abs(1.-cc)>1.e-3):
-      print >>out, "Supplied b_blur is not good. Attempting to find optimal b_blur."
+      print("Supplied b_blur is not good. Attempting to find optimal b_blur.", file=out)
       cc_best = 999.
       b_blur_best = params.b_blur
       for b_blur in range(1, 100):
@@ -161,8 +164,8 @@ def run(args, log=None, ccp4_map=None,
           b_blur_best = b_blur
           break
       hl = get_hl(f_obs_cmpl=f_obs_cmpl, k_blur=params.k_blur, b_blur=b_blur_best)
-      print >>out,"cc:", get_cc(f = f_obs_cmpl, hl = hl)
-      print >>out,"b_blur_best:", b_blur_best
+      print("cc:", get_cc(f = f_obs_cmpl, hl = hl), file=out)
+      print("b_blur_best:", b_blur_best, file=out)
     mtz_dataset.add_miller_array(
       miller_array      = hl,
       column_root_label = "HL")
@@ -173,10 +176,10 @@ def run(args, log=None, ccp4_map=None,
   else:
     # write output MTZ file with all the data
     broadcast(m="Writing output MTZ file:", log=log)
-    print >> log, "  file name:", params.output_file_name
+    print("  file name:", params.output_file_name, file=log)
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = params.output_file_name)
 
 if(__name__ == "__main__"):
   run(sys.argv[1:])
-  print "All done."
+  print("All done.")

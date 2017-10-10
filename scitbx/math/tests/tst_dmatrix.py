@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.math import dmatrix
 from stdlib import math as smath
 
@@ -31,4 +33,4 @@ def tst_dmatrix():
 
 if __name__ == "__main__":
   tst_dmatrix()
-  print "OK"
+  print("OK")

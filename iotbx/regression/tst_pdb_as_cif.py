@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from libtbx.utils import null_out
-from cStringIO import StringIO
+from io import StringIO
 import os.path
 
 def exercise_01():
@@ -92,4 +95,4 @@ ANISOUA0000  C4    U   367    20015  14160  16442  -1873  -2801  -1645  A16S C
 if (__name__ == "__main__"):
   exercise_01()
   exercise_02()
-  print "OK"
+  print("OK")

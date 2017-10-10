@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.source_generators.array_family import generate_algebras
 from scitbx.source_generators import utils
 
@@ -13,7 +14,7 @@ def one_type(target_dir, array_type_name):
   generic_include = "functors"
   if (generate_algebras.base_array_type_name(array_type_name) == "tiny"):
     generic_include = "operators"
-  print >> f, """\
+  print("""\
 #ifndef SCITBX_ARRAY_FAMILY_%s_APPLY_H
 #define SCITBX_ARRAY_FAMILY_%s_APPLY_H
 
@@ -25,15 +26,15 @@ def one_type(target_dir, array_type_name):
 
 namespace scitbx { namespace af {
 """ % ((array_type_name.upper(),) * 2 + (
-    include_array_type_name, generic_include))
+    include_array_type_name, generic_include)), file=f)
 
   generate_algebras.generate_unary_apply(f, array_type_name)
 
-  print >> f, """}} // namespace scitbx::af
+  print("""}} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
-#endif // SCITBX_ARRAY_FAMILY_%s_APPLY_H""" % (array_type_name.upper(),)
+#endif // SCITBX_ARRAY_FAMILY_%s_APPLY_H""" % (array_type_name.upper(),), file=f)
   f.close()
 
 def run(target_dir):

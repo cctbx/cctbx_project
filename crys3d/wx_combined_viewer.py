@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 from crys3d import wx_tools
 from crys3d.wx_selection_editor import selection_editor_mixin
 import iotbx.phil
@@ -293,7 +295,7 @@ class map_viewer_mixin (wxGLWindow) :
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST)
-    for map_id, scene in self.map_scenes.iteritems() :
+    for map_id, scene in self.map_scenes.items() :
       if self.show_object[map_id] :
         scene.draw_mesh()
 
@@ -327,7 +329,7 @@ class model_and_map_viewer (selection_editor_mixin, map_viewer_mixin) :
     vendor = glGetString(GL_VENDOR)
     #if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
     #  print vendor
-    if (wx.VERSION >= (2,9)) and ("GL_MULTISAMPLE" in globals().keys()) :
+    if (wx.VERSION >= (2,9)) and ("GL_MULTISAMPLE" in list(globals().keys())) :
       #print "glEnable(GL_MULTISAMPLE)"
       glEnable(GL_MULTISAMPLE) # FIXME doesn't actually work???
     glEnable(GL_POLYGON_SMOOTH)

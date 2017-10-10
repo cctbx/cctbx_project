@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 import mmtbx.refinement.real_space.individual_sites
 import random
@@ -47,8 +51,8 @@ of individual sites.
     # randomly pick chunks
     random_chunks = []
     if(len(result)>0):
-      for i in xrange(n_ranges):
-        random_chunks.append(random.choice(xrange(len(result))))
+      for i in range(n_ranges):
+        random_chunks.append(random.choice(range(len(result))))
     self.msg_strings.append("random chunks:"%random_chunks)
     # setup refinery
     xrs_dc = xray_structure.deep_copy_scatterers()
@@ -89,4 +93,4 @@ of individual sites.
 
   def show(self, log, prefix=""):
     for m in self.msg_strings:
-      print >> log, "%s %s"%(prefix, m)
+      print("%s %s"%(prefix, m), file=log)

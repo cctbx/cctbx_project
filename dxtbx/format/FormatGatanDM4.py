@@ -12,6 +12,10 @@
 # http://www.er-c.org/cbb/info/dmformat/
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
 import struct
@@ -247,8 +251,8 @@ class FormatGatanDM4(FormatMultiImage, Format):
     for tag in tag_list:
       name = tag['tname']
       if name == '': name = 'NONAME'
-      if tag.has_key('tags'): # tag directory
-        print prefix + "DIR: {0}".format(name)
+      if 'tags' in tag: # tag directory
+        print(prefix + "DIR: {0}".format(name))
         prefix += '  '
         self._print_tag_hierarchy(tag['tags'], prefix)
         prefix = prefix[:-2]
@@ -258,7 +262,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
           val = ': ' + str(val)
         else:
           val = ': ' + str(tag['info'])
-        print prefix + name + val
+        print(prefix + name + val)
 
   def _search_tag_hierarchy(self, name, tag_list):
     '''Search a list of tags for any with the given name.'''
@@ -267,7 +271,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
       if tag['tname'] == name:
         result.extend([tag])
       else:
-        if tag.has_key('tags'):
+        if 'tags' in tag:
           result.extend(self._search_tag_hierarchy(name, tag['tags']))
     return result
 
@@ -387,4 +391,4 @@ class FormatGatanDM4(FormatMultiImage, Format):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatGatanDM4.understand(arg)
+    print(FormatGatanDM4.understand(arg))

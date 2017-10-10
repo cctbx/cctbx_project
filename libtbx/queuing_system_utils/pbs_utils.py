@@ -1,6 +1,8 @@
 "Portable Batch System (PBS) utilities"
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 import sys, os
 
 def eval_env(variable_name):
@@ -23,15 +25,15 @@ class chunk_info(object):
   def show(O, out=None, prefix="", even_if_none=False):
     if (out is None): out = sys.stdout
     if (O.pbs_array_size is not None or even_if_none):
-      print >> out, prefix+"MY_PBS_ARRAY_SIZE =", O.pbs_array_size
+      print(prefix+"MY_PBS_ARRAY_SIZE =", O.pbs_array_size, file=out)
     if (O.pbs_arrayid_offset is not None or even_if_none):
-      print >> out, prefix+"MY_PBS_ARRAYID_OFFSET =", O.pbs_arrayid_offset
+      print(prefix+"MY_PBS_ARRAYID_OFFSET =", O.pbs_arrayid_offset, file=out)
     if (O.pbs_arrayid is not None or even_if_none):
-      print >> out, prefix+"PBS_ARRAYID =", O.pbs_arrayid
+      print(prefix+"PBS_ARRAYID =", O.pbs_arrayid, file=out)
     if (O.mpi_num_procs is not None or even_if_none):
-      print >> out, prefix+"OMPI_MCA_ns_nds_num_procs =", O.mpi_num_procs
+      print(prefix+"OMPI_MCA_ns_nds_num_procs =", O.mpi_num_procs, file=out)
     if (O.mpi_vpid is not None or even_if_none):
-      print >> out, prefix+"OMPI_MCA_ns_nds_vpid =", O.mpi_vpid
+      print(prefix+"OMPI_MCA_ns_nds_vpid =", O.mpi_vpid, file=out)
     return O
 
   def have_array(O):
@@ -91,5 +93,5 @@ def qstat_parse () :
 
 if (__name__ == "__main__"):
   n,i = chunk_info().show(prefix="*** ", even_if_none=True).as_n_i_pair()
-  print "n,i:", n,i
-  print "OK"
+  print("n,i:", n,i)
+  print("OK")

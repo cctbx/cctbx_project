@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import math,os
 from libtbx.path import norm_join
 from libtbx.test_utils import approx_equal
@@ -19,7 +20,7 @@ def parse_input(filename):
     l_buffer = line.rstrip()
     assert len(l_buffer)==132
     extended_q_nm = matrix.col(
-     [get_token(qvec[i],l_buffer) for i in xrange(3)]
+     [get_token(qvec[i],l_buffer) for i in range(3)]
     )
     checklength = math.sqrt(extended_q_nm.dot(extended_q_nm))
     assert approx_equal(1./checklength, get_token('dspacing',l_buffer), eps=0.0001)

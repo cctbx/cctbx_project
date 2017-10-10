@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -278,7 +280,7 @@ def add_arg_like_h(site_0,site_1,site_2,d,alpha,flag):
     return (xh1,yh1,zh1),(xh2,yh2,zh2)
 
 def run(file_name):
-  print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+  print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   processed = monomer_library.pdb_interpretation.process(
@@ -300,13 +302,13 @@ def run(file_name):
                               file)
     bond_list = monomer_mapping.monomer.bond_list
     angle_list = monomer_mapping.monomer.angle_list
-    missing_h = monomer_mapping.missing_hydrogen_atoms.keys()
+    missing_h = list(monomer_mapping.missing_hydrogen_atoms.keys())
     residue_name = monomer_mapping.monomer.chem_comp.three_letter_code
-    print
-    print "Residue name: ",
-    print monomer_mapping.residue_name, monomer_mapping.monomer.chem_comp.three_letter_code
-    print "Missing hydrogen atoms: ", missing_h
-    print
+    print()
+    print("Residue name: ", end=' ')
+    print(monomer_mapping.residue_name, monomer_mapping.monomer.chem_comp.three_letter_code)
+    print("Missing hydrogen atoms: ", missing_h)
+    print()
     total_missing += len(missing_h)
     unknown_h = []
     n_missed = len(missing_h)-1
@@ -317,17 +319,17 @@ def run(file_name):
         if(h == bl.atom_id_1 or h == bl.atom_id_2):
           for atom in (bl.atom_id_1,bl.atom_id_2):
             if(h != atom): target_atom_name = atom
-          for atom_name,atom in monomer_mapping.expected_atoms.items():
+          for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
             if(atom_name == target_atom_name):
               target_site = atom.xyz
           bond_dist = bl.value_dist
           format="missing %4s: bond: %4s %4s bond distance = %5.3f"
-          print format % (h, bl.atom_id_1, bl.atom_id_2, bl.value_dist)
+          print(format % (h, bl.atom_id_1, bl.atom_id_2, bl.value_dist))
       angles = []
       for al in angle_list:
         if(h == al.atom_id_1 or h == al.atom_id_2 or h == al.atom_id_3):
           format="        %4s: angle: %4s %4s %4s = %5.3f"
-          print format % (h, al.atom_id_1,al.atom_id_2,al.atom_id_3,al.value_angle)
+          print(format % (h, al.atom_id_1,al.atom_id_2,al.atom_id_3,al.value_angle))
           angles.append([al.value_angle,al.atom_id_1,al.atom_id_2,al.atom_id_3])
       bonded_to_target_site = []
       #for bl in bond_list:
@@ -360,14 +362,14 @@ def run(file_name):
          "HZ3":{"TRP":["CZ3","CH2","CE3"]},
          "HE" :{"ARG":["NE","CZ","CD"]}
                  }
-        if(h in ring_h.keys()):
-          if(residue_name in ring_h[h].keys()):
+        if(h in list(ring_h.keys())):
+          if(residue_name in list(ring_h[h].keys())):
             targets = ring_h[h][residue_name]
-            print "Building:", h, " ..."
+            print("Building:", h, " ...")
             site_0 = None
             site_1 = None
             site_2 = None
-            for atom_name,atom in monomer_mapping.expected_atoms.items():
+            for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
               if(atom_name == targets[0]):
                 site_0 = atom.xyz
               if(atom_name == targets[1]):
@@ -397,11 +399,11 @@ def run(file_name):
         assert build_one == True and build_two == False or \
                build_one == False and build_two == True
         if(build_two == True):
-          print "Building: HA1 and HA2"
+          print("Building: HA1 and HA2")
           site_0 = None
           site_1 = None
           site_2 = None
-          for atom_name,atom in monomer_mapping.expected_atoms.items():
+          for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
             if(atom_name == "CA"):
               site_0 = atom.xyz
             if(atom_name == "C"):
@@ -426,12 +428,12 @@ def run(file_name):
             missing_h.remove("HA1")
             missing_h.remove("HA2")
         if(build_one == True):
-          print "Building: ", h
+          print("Building: ", h)
           site_0 = None
           site_1 = None
           site_2 = None
           site_3 = None
-          for atom_name,atom in monomer_mapping.expected_atoms.items():
+          for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
             if(atom_name == "CA"):
               site_0 = atom.xyz
             if(atom_name == "C"):
@@ -466,7 +468,7 @@ def run(file_name):
        "HG" :[["CG","CB","CD1","CD2"],],
        "HB" :[["CB","CG2","CA","CG1"],["CB","CG2","CA","OG1"]]
                   }
-      if(h in cb_like_h.keys()):
+      if(h in list(cb_like_h.keys())):
         if(h in missing_h):
           targets_ = cb_like_h[h]
           for targets in targets_:
@@ -479,11 +481,11 @@ def run(file_name):
             if(build_one == True and build_two == False or \
                                          build_one == False and build_two == True):
               if(build_two == True):
-                print "Building: ", h," and ",targets[3]
+                print("Building: ", h," and ",targets[3])
                 site_0 = None
                 site_1 = None
                 site_2 = None
-                for atom_name,atom in monomer_mapping.expected_atoms.items():
+                for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
                   if(atom_name == targets[0]):
                     site_0 = atom.xyz
                   if(atom_name == targets[1]):
@@ -508,7 +510,7 @@ def run(file_name):
                   missing_h.remove(h)
                   missing_h.remove(targets[3])
               if(build_one == True):
-                print "Building: ", h
+                print("Building: ", h)
                 site_0 = None
                 site_1 = None
                 site_2 = None
@@ -516,7 +518,7 @@ def run(file_name):
                 alpha  = None
                 beta   = None
                 gamma  = None
-                for atom_name,atom in monomer_mapping.expected_atoms.items():
+                for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
                   if(atom_name == targets[0]):
                     site_0 = atom.xyz
                   if(atom_name == targets[1]):
@@ -561,12 +563,12 @@ def run(file_name):
        "HZ3" :[["NZ","CE","HZ1","HZ2"],]
                    }
       hhh_residues = ["ALA","LEU","ILE","VAL","THR","LYS"]
-      if(h in hhh_like_h.keys() and residue_name in hhh_residues and h in missing_h):
+      if(h in list(hhh_like_h.keys()) and residue_name in hhh_residues and h in missing_h):
         targets = hhh_like_h[h]
         for target in targets:
           site_0 = None
           site_1 = None
-          for atom_name,atom in monomer_mapping.expected_atoms.items():
+          for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
             if(atom_name == target[0]):
               site_0 = atom.xyz
             if(atom_name == target[1]):
@@ -574,7 +576,7 @@ def run(file_name):
           alpha = angles[0][0]
           beta  = angles[2][0]
           if(site_0 is not None and site_1 is not None):
-            print "Building:", h, " ..."
+            print("Building:", h, " ...")
             xyz = add_hhh(site_0,site_1,bond_dist,alpha,beta)
             for atom_name, coordinates in zip((h,target[2],target[3]),(xyz[0],xyz[1][0],xyz[1][1])):
               atom_number = write_atoms(monomer_mapping,
@@ -595,13 +597,13 @@ def run(file_name):
        "HH"  :[["OH","CZ","CE1","HH",1],]
                    }
       residue_names = ["ARG","SER","TYR","CYS"]
-      if(h in arg_like_h.keys() and residue_name in residue_names):
+      if(h in list(arg_like_h.keys()) and residue_name in residue_names):
         targets = arg_like_h[h]
         for target in targets:
           site_0 = None
           site_1 = None
           site_2 = None
-          for atom_name,atom in monomer_mapping.expected_atoms.items():
+          for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
             if(atom_name == target[0]):
               site_0 = atom.xyz
             if(atom_name == target[1]):
@@ -610,7 +612,7 @@ def run(file_name):
               site_2 = atom.xyz
           alpha = angles[0][0]
           if(site_0 is not None and site_1 is not None and site_2 is not None):
-            print "Building:", h, " ..."
+            print("Building:", h, " ...")
             xyz = add_arg_like_h(site_0,site_1,site_2,bond_dist,alpha,flag = target[4])
             if(target[4] == 1):
               atom_number = write_atoms(monomer_mapping,
@@ -634,22 +636,22 @@ def run(file_name):
 
 ### UNKNOWN H:
       if(h in missing_h):
-        print "Unknown hydrogen type: ", h
+        print("Unknown hydrogen type: ", h)
         missing_h.remove(h)
         unknown_h.append(h)
       n_missed = len(missing_h)
 
-    print
-    print "Still missing: ", residue_name,unknown_h
+    print()
+    print("Still missing: ", residue_name,unknown_h)
     still_missing_h.append((residue_name,unknown_h))
     still_missing += len(unknown_h)
 
-  print "Build ", int(total_missing - still_missing),
-  print " from ", int(total_missing), " % = ",
-  print (total_missing - still_missing)*100./total_missing
-  print
+  print("Build ", int(total_missing - still_missing), end=' ')
+  print(" from ", int(total_missing), " % = ", end=' ')
+  print((total_missing - still_missing)*100./total_missing)
+  print()
   for item in still_missing_h:
-    print item
+    print(item)
 
   file.close()
   file = open(file_name_,"r")
@@ -683,20 +685,20 @@ def write_atoms(monomer_mapping,
   assert new_atom_name is None and new_atom_coordinates is None or \
          new_atom_name is not None and new_atom_coordinates is not None
   if(crystal_symmetry is not None):
-    print >> file_object, pdb.format_cryst1_record(
-                                             crystal_symmetry=crystal_symmetry)
-    print >> file_object, pdb.format_scale_records(
-                                        unit_cell=crystal_symmetry.unit_cell())
+    print(pdb.format_cryst1_record(
+                                             crystal_symmetry=crystal_symmetry), file=file_object)
+    print(pdb.format_scale_records(
+                                        unit_cell=crystal_symmetry.unit_cell()), file=file_object)
   if(new_atom_name is None and new_atom_coordinates is None):
-    for atom_name,atom in monomer_mapping.expected_atoms.items():
+    for atom_name,atom in list(monomer_mapping.expected_atoms.items()):
       assert atom_name.strip() == atom.name.strip()
       atom_number += 1
       orig = atom.serial
       atom.serial = "%5d" % atom_number
-      print >> file_object, atom.format_atom_record()
+      print(atom.format_atom_record(), file=file_object)
       atom.serial = orig
   else:
-    atom = monomer_mapping.expected_atoms.values()[0]
+    atom = list(monomer_mapping.expected_atoms.values())[0]
     atom_number += 1
     orig = atom.serial, atom.name, atom.xyz, atom.occ, atom.b
     atom.serial = "%5d" % atom_number
@@ -704,7 +706,7 @@ def write_atoms(monomer_mapping,
     atom.xyz = new_atom_coordinates
     atom.occ = 1
     atom.b = 0
-    print >> file_object, atom.format_atom_record()
+    print(atom.format_atom_record(), file=file_object)
     atom.serial, atom.name, atom.xyz, atom.occ, atom.b = orig
   return atom_number
 
@@ -718,11 +720,11 @@ def regularize_model(xray_structure,
     lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
       max_iterations = max_iterations))
   xray_structure.set_sites_cart(sites_cart)
-  print
-  print "Energies at start of minimization:"
+  print()
+  print("Energies at start of minimization:")
   minimized.first_target_result.show()
-  print
-  print "Energies after minimization:"
+  print()
+  print("Energies after minimization:")
   minimized.final_target_result.show()
 
 
@@ -736,7 +738,7 @@ if (__name__ == "__main__"):
       relative_path="phenix_regression/hydrogens",
       test=os.path.isdir)
     if (pdb_dir is None):
-      print "Skipping build_hydrogens.run(): input files not available"
+      print("Skipping build_hydrogens.run(): input files not available")
     else:
       for file in files:
         run(os.path.join(pdb_dir, file))

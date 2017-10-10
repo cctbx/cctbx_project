@@ -13,6 +13,10 @@ Reference:
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx import adopt_init_args, Auto
 from libtbx.utils import Sorry
 from libtbx import easy_mp
@@ -226,16 +230,16 @@ class iterate_over_residues (object) :
         self.real_map = fft_map.real_map_unpadded()
     else :
       assert (ccp4_map is not None)
-      print >> self.log, "CCP4 map statistics:"
+      print("CCP4 map statistics:", file=self.log)
       ccp4_map.show_summary(out=self.log, prefix="  ")
       space_group_number = ccp4_map.space_group_number
       from cctbx import crystal
       crystal_symmetry_map = crystal.symmetry(ccp4_map.unit_cell().parameters(), space_group_number)
       if not crystal_symmetry_model:
-        print >> self.log, """Warning: the model does not contain symmetry information. Using map information."""
+        print("""Warning: the model does not contain symmetry information. Using map information.""", file=self.log)
       elif not crystal_symmetry_map.is_similar_symmetry(crystal_symmetry_model):
-        print >> self.log, """Warning: The map and model appear to have different crystal symmetry information.
-          EMRinger will assume the map symmetry data is correct and process."""
+        print("""Warning: The map and model appear to have different crystal symmetry information.
+          EMRinger will assume the map symmetry data is correct and process.""", file=self.log)
       # If map space group is P1, then check that model space group is also either not present or is P1.
       # If both are p1 or model symmetry is not present, then do the shift. Otherwise, no shift.
       if space_group_number == 1 and not (crystal_symmetry_model and crystal_symmetry_model.space_group() and crystal_symmetry_model.space_group().info().type().number() != 1):
@@ -245,12 +249,12 @@ class iterate_over_residues (object) :
         pdb_hierarchy = pdb_hierarchy,
         crystal_symmetry = crystal_symmetry_map)
         if not shift_manager.shift_cart == None:
-          print >> self.log, "Warning: Model and Map use different origin. Applying origin shift to compensate."
+          print("Warning: Model and Map use different origin. Applying origin shift to compensate.", file=self.log)
         pdb_hierarchy = shift_manager.pdb_hierarchy # gives you shifted model
 
         self.real_map = shift_manager.map_data # gives you shifted map
       else:
-        print >> self.log, """Warning: Structure is not P1, so automatic origin shifts cannot currently be applied"""
+        print("""Warning: Structure is not P1, so automatic origin shifts cannot currently be applied""", file=self.log)
         self.real_map = ccp4_map.data.as_double()
       # XXX assume that the map is already scaled properly (in the original
       # unit cell)
@@ -285,7 +289,7 @@ class iterate_over_residues (object) :
       results_ = easy_mp.pool_map(
         processes=params.nproc,
         fixed_func=self.__sample_density,
-        args=range(len(self.residue_groups)))
+        args=list(range(len(self.residue_groups))))
       # now flatten it out
       self.results = []
       for result_list in results_ : self.results.extend(result_list)
@@ -327,17 +331,17 @@ class iterate_over_residues (object) :
           n_chi=n_chi,
           xyz=xyz)
         if (verbose) :
-          print >> self.log, "  %s:" % residue.id_str()
+          print("  %s:" % residue.id_str(), file=self.log)
         for i in range(1, min(self.n_chi_max+1, n_chi+1)) :
           try :
             atoms = self.angle_lookup.extract_chi_atoms("chi%d" % i, residue)
           except AttributeError as e :
-            print >> self.log, "Warning: Could not load chi {} atoms".format(i)
+            print("Warning: Could not load chi {} atoms".format(i), file=self.log)
             pass
           else :
             try :
               if (atoms is None) :
-                print >> self.log, "Warning: No side chain atoms detected in model"
+                print("Warning: No side chain atoms detected in model", file=self.log)
                 break
               i_seqs = [ atom.i_seq for atom in atoms ]
               sites_chi = [ self.sites_cart[i_seq] for i_seq in i_seqs ]
@@ -347,7 +351,7 @@ class iterate_over_residues (object) :
                 angle_ideal=0,
                 weight=0)
               if (verbose) :
-                print >> self.log, "    chi%d = %.1f" % (i, chi.angle_model)
+                print("    chi%d = %.1f" % (i, chi.angle_model), file=self.log)
               densities, fofc_densities = sample_angle(
                 i_seqs=i_seqs,
                 sites_cart=sites_chi,

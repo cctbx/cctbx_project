@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import str
 from cctbx.array_family import flex
 import mmtbx.f_model
 from cctbx.development import random_structure

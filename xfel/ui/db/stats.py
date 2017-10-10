@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 
 class Stats(object):
@@ -78,7 +82,7 @@ class Stats(object):
     if len(results) == 0:
       return []
     cell_ids = set([str(r[0]) for r in results])
-    from experiment import Cell
+    from .experiment import Cell
     cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
     self.app.link_cell_bins(cells)
 
@@ -126,7 +130,7 @@ class HitrateStats(object):
         min_bin_index = d_mins.index(min(d_mins))
       else:
         d_maxes = [float(b.d_max) for b in bins]
-        qualified_bin_indices = [i for i in xrange(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
+        qualified_bin_indices = [i for i in range(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
         if len(qualified_bin_indices) == 0: continue
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))

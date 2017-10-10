@@ -1,7 +1,9 @@
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 
+from builtins import range
 if __name__ == '__main__':
   import sys
   from dxtbx.datablock import DataBlockFactory
@@ -14,8 +16,8 @@ if __name__ == '__main__':
   assert(len(detector) == 1)
   px_mm = detector[0].get_px_mm_strategy()
   assert(isinstance(px_mm, ParallaxCorrectedPxMmStrategy))
-  print "Mu: %f mm^-1 " % px_mm.mu()
-  print "t0: %f mm" % px_mm.t0()
+  print("Mu: %f mm^-1 " % px_mm.mu())
+  print("t0: %f mm" % px_mm.t0())
   from matplotlib import pylab
   from scitbx.array_family import flex
   image_size = detector[0].get_image_size()[::-1]

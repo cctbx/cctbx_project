@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import libtbx.load_env
 from libtbx.str_utils import show_string
 import sys, os
@@ -99,7 +102,7 @@ ENDCHAR
     for row in rows:
       v = int((row+padding)[:n_hex],16) & mask
       bytes = []
-      for i in xrange(n_bytes):
+      for i in range(n_bytes):
         bytes.append(v & 255)
         v >>= 8
       bytes.reverse()
@@ -234,19 +237,19 @@ def run(target_dir):
     raise RuntimeError("Cannot find ucs-fonts directory.")
   done_flag_file = op.join(target_dir, "FONTS_UCS_DONE_FLAG_FILE")
   if (op.isfile(done_flag_file)):
-    print "      Info: Re-using existing font cpp files."
-    print "      Hint: Remove %s" % op.join(
-      op.basename(target_dir), op.basename(done_flag_file))
-    print "            to force generation of new font files."
+    print("      Info: Re-using existing font cpp files.")
+    print("      Hint: Remove %s" % op.join(
+      op.basename(target_dir), op.basename(done_flag_file)))
+    print("            to force generation of new font files.")
     return
-  print "      fonts:",
+  print("      fonts:", end=' ')
   for font_info in font_infos:
-    print font_info.short_name,
+    print(font_info.short_name, end=' ')
     sys.stdout.flush()
     convert(
       ucs_fonts_dir=ucs_fonts_dir, target_dir=target_dir, font_info=font_info)
   open(done_flag_file, "w")
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1])

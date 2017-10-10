@@ -14,6 +14,7 @@ to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
 The detector itself has a 2x2 array of Timepix modules"""
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 import time
 from dxtbx.format.FormatSMV import FormatSMV
 from dxtbx.model.detector import Detector
@@ -250,13 +251,13 @@ class FormatSMVTimePix_SU(FormatSMV):
     try:
       date_str = self._header_dictionary['DATE']
       date_str = date_str.replace('PST', '').replace('PDT', '')
-    except KeyError, e:
+    except KeyError as e:
       date_str = ''
     for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
       try:
         epoch = calendar.timegm(time.strptime(date_str, format_string))
         break
-      except ValueError, e:
+      except ValueError as e:
         pass
 
     # assert(epoch)
@@ -304,4 +305,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVTimePix_SU.understand(arg)
+    print(FormatSMVTimePix_SU.understand(arg))

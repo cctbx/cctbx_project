@@ -17,22 +17,23 @@ See also:
     http://scripts.iucr.org/cgi-bin/paper?ba5111
 """
 from __future__ import division
+from __future__ import print_function
 
 from cctbx import sgtbx
 
 def run():
   for symbols in sgtbx.space_group_symbol_iterator():
     symbol = symbols.universal_hermann_mauguin()
-    print symbol
+    print(symbol)
     space_group_info = sgtbx.space_group_info(symbol=symbol)
     for s in space_group_info.group():
-      print s.as_xyz()
+      print(s.as_xyz())
     for s in space_group_info.group():
       sr = s.as_rational()
-      print sr.r.elems, sr.t.elems
+      print(sr.r.elems, sr.t.elems)
     for s in space_group_info.group():
-      print s.r().num(), s.r().den(), s.t().num(), s.t().den()
-    print
+      print(s.r().num(), s.r().den(), s.t().num(), s.t().den())
+    print()
 
 if (__name__ == "__main__"):
   run()

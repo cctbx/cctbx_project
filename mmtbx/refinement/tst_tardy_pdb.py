@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 import mmtbx.refinement.tardy
 from mmtbx.monomer_library import pdb_interpretation
 import iotbx.pdb
@@ -73,7 +77,7 @@ class potential_object(object):
         custom_nonbonded_function=O.custom_nonbonded_function,
         compute_gradients=True)
       if (0): # XXX orca_experiments
-        print "geo_energies:"
+        print("geo_energies:")
         geo_energies.show()
       if (0): # XXX orca_experiments
         O.geo_manager.show_sorted(site_labels=O.site_labels)
@@ -115,7 +119,7 @@ class potential_object(object):
 
 def cartesian_random_displacements(sites_cart, target_rmsd, max_trials=10):
   assert sites_cart.size() != 0
-  for i in xrange(max_trials):
+  for i in range(max_trials):
     shifts_cart = flex.vec3_double(flex.random_double(
       size=sites_cart.size()*3, factor=2) - 1)
     rmsd = (flex.sum(shifts_cart.dot()) / sites_cart.size()) ** 0.5
@@ -132,15 +136,15 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     flex.set_random_seed(value=params.random_seed)
   #
   if (len(pdb_files) != 0):
-    print >> log, "PDB files:"
+    print("PDB files:", file=log)
     for file_name in pdb_files:
-      print >> log, " ", file_name
-    print >> log
+      print(" ", file_name, file=log)
+    print(file=log)
   if (len(other_files) != 0):
-    print >> log, "Other files:"
+    print("Other files:", file=log)
     for file_name in other_files:
-      print >> log, " ", file_name
-    print >> log
+      print(" ", file_name, file=log)
+    print(file=log)
   #
   assert len(pdb_files) in [1, 2]
   #
@@ -155,7 +159,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     return_all_processed_pdb_files=True,
     log=log)
   assert len(processed_pdb_files) == 1
-  print >> log
+  print(file=log)
   #
   xs = processed_pdb_files[0].xray_structure()
   geo_manager = processed_pdb_files[0].geometry_restraints_manager()
@@ -203,12 +207,12 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
         * auto_params.rmsd_tolerance
       assert target_rmsd > 0
       assert target_rmsd_tol > 0
-      print >> log, "Random displacements (%s):" \
-        % params.tardy_displacements_auto.parameterization
-      print >> log, "  high resolution: %.6g" \
-        % params.structure_factors_high_resolution
-      print >> log, "  target rmsd: %.6g" % target_rmsd
-      print >> log, "  target rmsd tolerance: %.6g" % target_rmsd_tol
+      print("Random displacements (%s):" \
+        % params.tardy_displacements_auto.parameterization, file=log)
+      print("  high resolution: %.6g" \
+        % params.structure_factors_high_resolution, file=log)
+      print("  target rmsd: %.6g" % target_rmsd, file=log)
+      print("  target rmsd tolerance: %.6g" % target_rmsd_tol, file=log)
       log.flush()
       def raise_max_steps_exceeded(var_name, rmsd_history):
         msg = [
@@ -220,7 +224,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       if (params.tardy_displacements_auto.parameterization == "cartesian"):
         multiplier = 1.5
         rmsd_history = []
-        for i_step in xrange(auto_params.max_steps):
+        for i_step in range(auto_params.max_steps):
           sites = cartesian_random_displacements(
             sites_cart=ideal_sites_cart,
             target_rmsd=target_rmsd*multiplier)
@@ -230,8 +234,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           sites_moved = sites
           rmsd = rmsd_calculator(sites_moved, ideal_sites_cart)
           rmsd_history.append((multiplier, rmsd))
-          print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
-            % rmsd_history[-1]
+          print("    multiplier, rmsd: %13.6e, %13.6e" \
+            % rmsd_history[-1], file=log)
           log.flush()
           if (rmsd < target_rmsd - target_rmsd_tol):
             if (rmsd != 0):
@@ -248,8 +252,8 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
               sites_moved = sites
               rmsd = rmsd_calculator(sites_moved, ideal_sites_cart)
               rmsd_history.append((0, rmsd))
-              print >> log, "    multiplier, rmsd: %13.6e, %13.6e" \
-                % rmsd_history[-1]
+              print("    multiplier, rmsd: %13.6e, %13.6e" \
+                % rmsd_history[-1], file=log)
               log.flush()
               break
             multiplier *= max(0.5, target_rmsd/rmsd)
@@ -257,15 +261,15 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           raise_max_steps_exceeded(
             var_name="multiplier", rmsd_history=rmsd_history)
         del rmsd_history
-        print >> log, "  actual rmsd: %.6g" % rmsd
-        print >> log
+        print("  actual rmsd: %.6g" % rmsd, file=log)
+        print(file=log)
       elif (params.tardy_displacements_auto.parameterization == "constrained"):
         tardy_model = get_tardy_model_no_potential()
         tardy_model.assign_random_velocities()
         delta_t = auto_params.first_delta_t
         rmsd_history = []
         assert auto_params.max_steps > 0
-        for i_step in xrange(auto_params.max_steps):
+        for i_step in range(auto_params.max_steps):
           prev_q = tardy_model.pack_q()
           prev_qd = tardy_model.pack_qd()
           tardy_model.dynamics_step(delta_t=delta_t)
@@ -286,10 +290,10 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           raise_max_steps_exceeded(
             var_name="delta_t", rmsd_history=rmsd_history)
         del rmsd_history
-        print >> log, "  actual rmsd: %.6g" % rmsd
-        print >> log, "  tardy_displacements=%s" % ",".join(
-          ["%.6g" % v for v in tardy_model.pack_q()])
-        print >> log
+        print("  actual rmsd: %.6g" % rmsd, file=log)
+        print("  tardy_displacements=%s" % ",".join(
+          ["%.6g" % v for v in tardy_model.pack_q()]), file=log)
+        print(file=log)
         sites = tardy_model.sites_moved()
       else:
         raise AssertionError
@@ -297,7 +301,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
       tardy_model = get_tardy_model_no_potential()
       q = tardy_model.pack_q()
       if (len(params.tardy_displacements) != len(q)):
-        print >> log, "tardy_displacements:", params.tardy_displacements
+        print("tardy_displacements:", params.tardy_displacements, file=log)
         hinge_edges = tardy_model.tardy_tree.cluster_manager.hinge_edges
         assert len(hinge_edges) == tardy_model.bodies_size()
         dofej = tardy_model.degrees_of_freedom_each_joint()
@@ -306,11 +310,11 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
           if (i == -1): si = "root"
           else: si = tardy_model.labels[i]
           sj = tardy_model.labels[j]
-          print >> log, "%21s - %-21s: %d dof, %d q_size" % (
-            si, sj, dofej[ib], qsej[ib])
-        print >> log, "Zero displacements:"
-        print >> log, "  tardy_displacements=%s" % ",".join(
-          [str(v) for v in q])
+          print("%21s - %-21s: %d dof, %d q_size" % (
+            si, sj, dofej[ib], qsej[ib]), file=log)
+        print("Zero displacements:", file=log)
+        print("  tardy_displacements=%s" % ",".join(
+          [str(v) for v in q]), file=log)
         raise Sorry("Incompatible tardy_displacements.")
       tardy_model.unpack_q(q_packed=flex.double(params.tardy_displacements))
       sites = tardy_model.sites_moved()
@@ -321,9 +325,9 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     tardy_tree.build_tree()
   else:
     tardy_tree = tardy_tree_simple_connectivity
-  print >> log, "tardy_tree summary:"
+  print("tardy_tree summary:", file=log)
   tardy_tree.show_summary(vertex_labels=labels, out=log, prefix="  ")
-  print >> log
+  print(file=log)
   #
   if (len(pdb_files) == 2):
     ideal_pdb_inp = iotbx.pdb.input(file_name=pdb_files[0])
@@ -385,7 +389,7 @@ def run_test(params, pdb_files, other_files, callback=None, log=None):
     rmsd_calculator=rmsd_calculator,
     callback=callback,
     log=log)
-  print >> log
+  print(file=log)
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -455,13 +459,13 @@ minimization_max_iterations = None
       else: phil_objects.append(command_line_params)
   params = master_phil.fetch(sources=phil_objects).extract()
   master_phil.format(params).show()
-  print
+  print()
   run_test(
     params=params,
     pdb_files=pdb_files,
     other_files=other_files,
     callback=callback)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

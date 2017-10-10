@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import map
 from mmtbx.validation.clashscore import clashscore
 import libtbx.load_env
 import iotbx.pdb
@@ -108,7 +109,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_something']
-  suite = unittest.TestSuite(map(MyTestCase, tests))
+  suite = unittest.TestSuite(list(map(MyTestCase, tests)))
   return suite
 
 

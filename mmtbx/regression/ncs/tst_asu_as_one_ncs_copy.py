@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.ncs
 import iotbx.pdb
 import mmtbx.utils
@@ -57,10 +58,10 @@ TER
 def exercise_00():
   #
   of = open("ncs_1.pdb","w")
-  print >> of, ncs_1_copy
+  print(ncs_1_copy, file=of)
   of.close()
   of = open("full_asu.pdb","w")
-  print >> of, full_asu
+  print(full_asu, file=of)
   of.close()
   #
   xrs_1_copy = iotbx.pdb.input(source_info=None,

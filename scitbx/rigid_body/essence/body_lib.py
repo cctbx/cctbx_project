@@ -1,6 +1,9 @@
 from __future__ import division
-import joint_lib
-import spatial_lib
+from __future__ import absolute_import
+from builtins import zip
+from builtins import object
+from . import joint_lib
+from . import spatial_lib
 matrix = spatial_lib.matrix
 
 class mass_points(object):

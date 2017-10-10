@@ -4,6 +4,9 @@ crystallography images, treated as a graph problem.
 **Author:**   Oliver Zeldin <zeldin@stanford.edu>
 """
 from __future__ import division
+from builtins import zip
+from builtins import range
+from functools import reduce
 
 __author__ = 'zeldin'
 
@@ -116,7 +119,7 @@ class Graph(Cluster):
     logging.debug("Edges added to graph.")
 
     # Position vertices
-    if not kwargs.has_key('pos') :
+    if 'pos' not in kwargs :
       kwargs['pos'] = nx.spring_layout(nx_graph, iterations=1000)
 
     # Organise Edge colors
@@ -233,7 +236,7 @@ class Graph(Cluster):
     intensity_miller = self.merge_dict(estimate_fullies=estimate_fullies)
 
     # Remove miller indices that are only measured once.
-    multiple_millers = [values for values in intensity_miller.values()
+    multiple_millers = [values for values in list(intensity_miller.values())
                         if len(values[0]) > 1]
 
     # Sort, since we will be binning later
@@ -272,7 +275,7 @@ class Graph(Cluster):
     logging.info("Calculating CC1/2 by resolution bin. "
                  "{} miller indices per bin".format(bin_size))
     pretty_string = ''
-    for bin_id in reversed(range(nbins)):
+    for bin_id in reversed(list(range(nbins))):
       bin_cc, bin_p = pearsonr(first_half[bin_id], second_half[bin_id])
       bin_str = "{:6.3f} - {:6.3f}: {:4.3f}".format(bin_edges[bin_id + 1],
                                                     bin_edges[bin_id],

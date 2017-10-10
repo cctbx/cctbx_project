@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import os
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart
@@ -33,14 +35,14 @@ def get_spotfinder_url(file_object,host,port):
     ("adsc_data",file_object.filename,raw_string)
   ]
 
-  print "length of data in ints",stop_index
-  print "length of data in bytes",len(raw_string)
+  print("length of data in ints",stop_index)
+  print("length of data in bytes",len(raw_string))
   assert len(raw_string)/4==stop_index
 
   Response = post_multipart(host=testurl, selector=selector,
     fields = query_object, files = files)
 
-  print Response.getresponse().read()
+  print(Response.getresponse().read())
 
 def get_labelit_image_object(file,convention):
   Q = quick_image(file)
@@ -63,7 +65,7 @@ def do_main(filepath, force_binning, convention, host, port):
                         Q.vendor_specific_null_value
                       ).module_count()
 
-  for x in xrange(number_of_modules):
+  for x in range(number_of_modules):
     file = "file://%s?slice=%d"%(absfile,x)
     Q = get_labelit_image_object(file, convention)
     if force_binning:
@@ -79,7 +81,7 @@ if __name__=="__main__":
     port = int(port)
     convention = int(convention)
   except Exception:
-    print """
+    print("""
 Usage:
 libtbx.python adsc_client.py <filepath> <force_binning> <convention> <host> <port>
 Four mandatory arguments:
@@ -89,5 +91,5 @@ Four mandatory arguments:
   convention: beam_center_convention as defined on the spotfinder servers wiki
   host: usually "localhost"; in any case, must be machine with same endianness
   port: port number of image analyzer http service
-"""
+""")
   do_main(filepath, force_binning, convention, host, port)

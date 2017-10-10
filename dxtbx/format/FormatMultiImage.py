@@ -2,6 +2,10 @@ from __future__ import absolute_import, division
 
 
 
+from builtins import map
+from builtins import zip
+from builtins import range
+from builtins import object
 class Reader(object):
 
   _format_class_ = None
@@ -167,7 +171,7 @@ class FormatMultiImage(object):
       filenames = filenames[0:1]
 
     # Make filenames absolute
-    filenames = map(abspath, filenames)
+    filenames = list(map(abspath, filenames))
 
     # Make it a dictionary
     if format_kwargs is None:

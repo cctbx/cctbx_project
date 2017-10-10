@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.lbfgs import have_lbfgs_fem, fortran, raw_reference, raw
 from libtbx.utils import show_times
@@ -17,7 +20,7 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   diagco = 0
   eps = 1.0e-5
   xtol = 1.0e-16
-  for j in xrange(0, n, 2):
+  for j in range(0, n, 2):
     x[j] = -1.2
     x[j+1] = 1.
   size_w = n*(2*m+1)+2*m
@@ -26,7 +29,7 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   icall = 0
   while 1:
     f = 0.
-    for j in xrange(0, n, 2):
+    for j in range(0, n, 2):
       t1 = 1.e0 - x[j]
       t2 = 1.e1 * (x[j+1] - x[j] * x[j])
       g[j+1] = 2.e1 * t2
@@ -41,12 +44,12 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
     if (icall > 2000): break
 
 def run_cmd(cmd):
-  print cmd
+  print(cmd)
   sys.stdout.flush()
   out = easy_run.fully_buffered(command=cmd)
   err = "\n".join(out.stderr_lines)
   if (len(err) != 0):
-    print err
+    print(err)
     if (err.find("== ERROR SUMMARY: 0 errors from 0 contexts") < 0):
       raise AssertionError(
         "stderr output does not appear to be valgrind output")
@@ -112,7 +115,7 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     outputs.append(out)
   assert len(outputs) >= 2
   a = outputs[0]
-  for i in xrange(1, len(outputs)):
+  for i in range(1, len(outputs)):
     b = outputs[i]
     if show_diff(a, b):
       # We need this to cover up test failure with Xcode 7.3
@@ -146,7 +149,7 @@ def run(args):
     return
   assert args in [[], ["--once"], ["--endless"]]
   if (not have_lbfgs_fem):
-    print "Skipping some tests: lbfgs_fem.cpp not linked into scitbx_lbfgs_ext."
+    print("Skipping some tests: lbfgs_fem.cpp not linked into scitbx_lbfgs_ext.")
   once = "--once" in args
   endless = "--endless" in args
   if (once or endless):
@@ -159,7 +162,7 @@ def run(args):
   else:
     compare_implementations()
   timer()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

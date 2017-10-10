@@ -11,9 +11,10 @@
 
 from __future__ import absolute_import, division
 
+from builtins import object
 from dxtbx.format.RegistryHelpers import LoadFormatClasses
 
-class _Registry:
+class _Registry(object):
   '''A class to handle all of the recognised image formats within xia2
   working towards the generalization project in #1555 and specifically
   to address the requirements in #1573.'''
@@ -80,9 +81,9 @@ class _Registry:
       if format.understand(image_file):
         return recurse(format, image_file)
 
-    raise IOError, 'no format support found for %s' % image_file
+    raise IOError('no format support found for %s' % image_file)
 
-class Registry:
+class Registry(object):
   '''A class to turn the registry above into a singleton, so that we
   can work around some of the more knotty dependency loops which come
   out of things like this. This is something of a boiler plate.'''

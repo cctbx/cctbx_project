@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 cdl_database = {
   "Gly_nonxpro" : {
     (-180, -180) : ['B', 14, 120.86, 1.62, -1, -1, 110.42, 1.49, -1, -1, 121.63, 0.95, 114.72, 1.32, 123.61, 1.16, 1.327, 0.0115, 1.4508, 0.0113, -1, -1, 1.5117, 0.0124, 1.2356, 0.0123],
@@ -10456,9 +10457,9 @@ Gly_xpro[(-50, -40)][15]=1.000000 # sOCN
 
 def run(args):
   assert len(args) == 0
-  print cdl_database["Pro_nonxpro"][(-180,-180)]
+  print(cdl_database["Pro_nonxpro"][(-180,-180)])
   for res_group_type in cdl_database:
-    print res_group_type, len(cdl_database[res_group_type])
+    print(res_group_type, len(cdl_database[res_group_type]))
 
 if (__name__ == "__main__"):
   import sys

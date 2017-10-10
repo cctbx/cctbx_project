@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.phil
 from mmtbx import polygon
 from libtbx.test_utils import approx_equal
@@ -69,13 +70,13 @@ if (__name__ == "__main__"):
       relative_path = "chem_data/polygon_data/all_mvd.pickle",
       test = os.path.isfile)
   if(file_name is None):
-    print "Skip POLYGON test: database file is not available."
+    print("Skip POLYGON test: database file is not available.")
   else:
-    print "\nEXAMPLE 1:"
+    print("\nEXAMPLE 1:")
     example_1()
-    print "\nEXAMPLE 2:"
+    print("\nEXAMPLE 2:")
     example_2()
-    print "\nEXAMPLE 3:"
+    print("\nEXAMPLE 3:")
     example_3()
-    print "\nALL STATS:"
+    print("\nALL STATS:")
     test_all()

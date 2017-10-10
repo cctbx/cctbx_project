@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from stdlib import math
 from libtbx.utils import Sorry
@@ -241,4 +245,4 @@ def run():
 
 if __name__ == "__main__":
   run()
-  print "OK"
+  print("OK")

@@ -8,7 +8,9 @@
 #
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import range
 import struct, re
 
 from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
@@ -48,7 +50,7 @@ class FormatTIFFRayonixXPP(FormatTIFFRayonix):
       rawdata = f.read(typelen)
       return struct.unpack(si_format+ftype,rawdata)[0]
 
-    data = [get('c',1152+i,1) for i in xrange(128)]
+    data = [get('c',1152+i,1) for i in range(128)]
     filepath = "".join([c for c in data if c!=' ' and ord(c)<127 and ord(c)>32])
 
     pattern = re.compile(".*xpp[a-zA-Z][0-9][0-9][0-9][0-9].*")
@@ -115,4 +117,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixXPP.understand(arg)
+    print(FormatTIFFRayonixXPP.understand(arg))

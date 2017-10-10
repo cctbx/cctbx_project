@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx import object_oriented_patterns as oop
 from libtbx.test_utils import approx_equal, Exception_expected
 import libtbx
@@ -38,7 +42,7 @@ def exercise_injector():
     class d(a): pass
     class d_extension(oop.injector, d):
       def get_square(self): return 0
-  except AssertionError, err:
+  except AssertionError as err:
     assert str(err) == "class d already has attribute 'get_square'"
 
 def exercise_memoize():
@@ -61,7 +65,7 @@ def exercise_memoize():
   assert diagnostic == ['+']*2
   try:
     mf(x=1)
-  except TypeError, e:
+  except TypeError as e:
     pass
   else:
     raise Exception_expected
@@ -175,7 +179,7 @@ def exercise_journal():
 
   a = test1()
   assert a.x == 9
-  assert approx_equal(a.x_history, range(10))
+  assert approx_equal(a.x_history, list(range(10)))
   try: a.y
   except AttributeError: pass
   else: raise Exception_expected
@@ -187,8 +191,8 @@ def exercise_journal():
   except AttributeError: pass
   else: raise Exception_expected
   b = test2()
-  assert approx_equal(b.x_journal, range(10))
-  assert approx_equal(b.z_journal, range(5))
+  assert approx_equal(b.x_journal, list(range(10)))
+  assert approx_equal(b.z_journal, list(range(5)))
   del b.x
   try: b.x
   except AttributeError: pass
@@ -204,7 +208,7 @@ def run():
   exercise_memoize()
   exercise_null()
   exercise_easy_property()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

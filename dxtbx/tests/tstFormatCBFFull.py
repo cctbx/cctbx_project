@@ -1,14 +1,15 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 def exercise_multi_axis_goniometer():
   import libtbx.load_env
   from libtbx.test_utils import approx_equal
   import os
 
   if not libtbx.env.has_module("dials"):
-    print "Skipping tstFormatCBFFull.py: dials not present"
+    print("Skipping tstFormatCBFFull.py: dials not present")
     return
   if not libtbx.env.has_module("dials_regression"):
-    print "Skipping tstFormatCBFFull.py: dials_regression not present"
+    print("Skipping tstFormatCBFFull.py: dials_regression not present")
     return
 
   data_dir = libtbx.env.find_in_repositories(
@@ -43,10 +44,10 @@ def exercise_still():
   import os
 
   if not libtbx.env.has_module("dials"):
-    print "Skipping tstFormatCBFFull.py: dials not present"
+    print("Skipping tstFormatCBFFull.py: dials not present")
     return
   if not libtbx.env.has_module("dials_regression"):
-    print "Skipping tstFormatCBFFull.py: dials_regression not present"
+    print("Skipping tstFormatCBFFull.py: dials_regression not present")
     return
 
   data_dir = libtbx.env.find_in_repositories(
@@ -66,7 +67,7 @@ def exercise_still():
 def run():
   exercise_still()
   exercise_multi_axis_goniometer()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

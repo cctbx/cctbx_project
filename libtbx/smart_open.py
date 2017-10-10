@@ -1,8 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open
 from libtbx import easy_run
 from libtbx.str_utils import show_string
-from cStringIO import StringIO
+from io import StringIO
 import os
 
 def for_reading(file_name, mode="r", gzip_mode="rb"):
@@ -19,7 +23,7 @@ def for_reading(file_name, mode="r", gzip_mode="rb"):
     return bz2_open(file_name=file_name, mode=mode)
   try:
     return open(file_name, mode)
-  except IOError, e:
+  except IOError as e:
     raise IOError(
       "Cannot open file for reading: %s\n" % show_string(file_name)
       + "  "+str(e))
@@ -34,7 +38,7 @@ def for_writing(file_name, mode="w", gzip_mode="wb"):
     return bz2_open(file_name=file_name, mode=mode)
   try:
     return open(file_name, mode)
-  except IOError, e:
+  except IOError as e:
     raise IOError(
       "Cannot open file for writing: %s\n" % show_string(file_name)
       + "  "+str(e))
@@ -51,9 +55,9 @@ def exercise():
   for file_name in sys.argv[1:]:
     assert for_reading(file_name=file_name).read().splitlines() \
         == ["line 1", "line 2", "the end"]
-  print >> for_writing(file_name="tmp_plain"), "line 1"
-  print >> for_writing(file_name="tmp.gz"), "line 1"
-  print "OK"
+  print("line 1", file=for_writing(file_name="tmp_plain"))
+  print("line 1", file=for_writing(file_name="tmp.gz"))
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

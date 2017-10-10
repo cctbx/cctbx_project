@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex # import dependency
 from simtbx.nanoBragg import shapetype
 from simtbx.nanoBragg import convention
@@ -47,12 +48,12 @@ SIM.beamcenter_convention=convention.Custom
 SIM.beam_center_mm=( 160.53, 182.31 )
 SIM.dispersion_pct = 0.5
 SIM.dispsteps=6
-print "dispsteps=",SIM.dispsteps
+print("dispsteps=",SIM.dispsteps)
 SIM.divergence_hv_mrad = ( 0.02, 0.02 )
 SIM.divsteps_hv = ( 2 , 2 )
-print SIM.divsteps_hv
+print(SIM.divsteps_hv)
 SIM.round_div=True
-print SIM.divsteps_hv
+print(SIM.divsteps_hv)
 #SIM.detector_thick_mm = 0.037
 SIM.detector_thick_mm = 0.
 SIM.detector_thicksteps = 1
@@ -61,9 +62,9 @@ SIM.unit_cell_tuple = ( 68.78, 169.26, 287.42, 90, 90, 90 )
 #SIM.Ncells_abc = ( 1, 1, 1 )
 SIM.Ncells_abc = ( 14, 6, 4 )
 #SIM.Ncells_abc = ( 35, 15, 10 )
-print "Ncells_abc=",SIM.Ncells_abc
+print("Ncells_abc=",SIM.Ncells_abc)
 SIM.xtal_shape=shapetype.Tophat
-print "xtal_size_mm=",SIM.xtal_size_mm
+print("xtal_size_mm=",SIM.xtal_size_mm)
 SIM.interpolate=0
 SIM.progress_meter=True
 SIM.mosaic_spread_deg = 0.2
@@ -87,14 +88,14 @@ SIM.amorphous_sample_thick_mm = 0.1
 SIM.amorphous_density_gcm3 = 7e-7
 SIM.amorphous_sample_molecular_weight_Da = 18 # default
 
-print "dispsteps=",SIM.dispsteps
-print "divsteps=",SIM.divsteps_hv
-print "oversample=",SIM.oversample
+print("dispsteps=",SIM.dispsteps)
+print("divsteps=",SIM.divsteps_hv)
+print("oversample=",SIM.oversample)
 SIM.add_background(oversample=1)
-print "mid_sample=",SIM.raw[1782,1832]
-print "dispsteps=",SIM.dispsteps
-print "divsteps=",SIM.divsteps_hv
-print "oversample=",SIM.oversample
+print("mid_sample=",SIM.raw[1782,1832])
+print("dispsteps=",SIM.dispsteps)
+print("divsteps=",SIM.divsteps_hv)
+print("oversample=",SIM.oversample)
 SIM.to_smv_format(fileout="intimage_001.img",intfile_scale=1)
 
 # three clusters of mosaic domains
@@ -116,25 +117,25 @@ SIM.detector_psf_type=shapetype.Fiber
 
 # get same noise each time this test is run
 SIM.seed = 1
-print "seed=",SIM.seed
-print "calib_seed=",SIM.calib_seed
-print "quantum_gain=",SIM.quantum_gain
-print "adc_offset_adu=",SIM.adc_offset_adu
-print "detector_calibration_noise_pct=",SIM.detector_calibration_noise_pct
-print "flicker_noise_pct=",SIM.flicker_noise_pct
-print "readout_noise_adu=",SIM.readout_noise_adu
-print "detector_psf_type=",SIM.detector_psf_type
-print "detector_psf_fwhm_mm=",SIM.detector_psf_fwhm_mm
-print "detector_psf_kernel_radius_pixels=",SIM.detector_psf_kernel_radius_pixels
+print("seed=",SIM.seed)
+print("calib_seed=",SIM.calib_seed)
+print("quantum_gain=",SIM.quantum_gain)
+print("adc_offset_adu=",SIM.adc_offset_adu)
+print("detector_calibration_noise_pct=",SIM.detector_calibration_noise_pct)
+print("flicker_noise_pct=",SIM.flicker_noise_pct)
+print("readout_noise_adu=",SIM.readout_noise_adu)
+print("detector_psf_type=",SIM.detector_psf_type)
+print("detector_psf_fwhm_mm=",SIM.detector_psf_fwhm_mm)
+print("detector_psf_kernel_radius_pixels=",SIM.detector_psf_kernel_radius_pixels)
 SIM.show_params()
 SIM.add_noise()
 
-print "raw=",SIM.raw
+print("raw=",SIM.raw)
 SIM.to_smv_format(fileout="noiseimage_001.img",intfile_scale=1)
 
-print "mosaic_domains=",SIM.mosaic_domains
-print "mosaic_spread_deg=",SIM.mosaic_spread_deg
-print "dispersion_pct=",SIM.dispersion_pct
-print "dispsteps=",SIM.dispsteps
-print "divergence_hv_mrad=",SIM.divergence_hv_mrad
-print "divergence_hv=",SIM.divsteps_hv
+print("mosaic_domains=",SIM.mosaic_domains)
+print("mosaic_spread_deg=",SIM.mosaic_spread_deg)
+print("dispersion_pct=",SIM.dispersion_pct)
+print("dispsteps=",SIM.dispsteps)
+print("divergence_hv_mrad=",SIM.divergence_hv_mrad)
+print("divergence_hv=",SIM.divsteps_hv)

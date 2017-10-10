@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.array_family import flex
 from cbflib_adaptbx import uncompress,compress,assert_equal
 from libtbx.development.timers import Profiler
@@ -17,15 +19,15 @@ def basic_tests(verbose=True):
   #special deltas to test the compression algorithm
   addresses = [3,6,9,12,15,18]
   deltas = [-127,128,-32767,32768,-2147483647,2147483647]
-  for x in xrange(6):
+  for x in range(6):
     initial_intdata[addresses[x]-1]=0
     initial_intdata[addresses[x]]=deltas[x]
 
   if verbose: P=Profiler("compress")
   array_shape = initial_intdata.focus()
-  if verbose: print array_shape
+  if verbose: print(array_shape)
   compressed = compress(initial_intdata)
-  if verbose: print len(compressed)
+  if verbose: print(len(compressed))
   if verbose: P=Profiler("uncompress")
   decompressed_dat = uncompress(packed=compressed, fast=array_shape[1], slow=array_shape[0])
 
@@ -34,4 +36,4 @@ def basic_tests(verbose=True):
 
 if __name__=="__main__":
   basic_tests(False)
-  print "OK"
+  print("OK")

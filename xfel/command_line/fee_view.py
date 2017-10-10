@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.fee_view
 #
+from builtins import str
+from builtins import range
 import sys, os
 import psana
 from psmon import publish
@@ -43,14 +46,14 @@ def run(args):
     if os.path.isfile(arg):
       try:
         user_phil.append(parse(file_name=arg))
-      except Exception, e:
-        print str(e)
+      except Exception as e:
+        print(str(e))
         raise Sorry("Couldn't parse phil file %s"%arg)
     else:
       try:
         user_phil.append(parse(arg))
-      except Exception, e:
-        print str(e)
+      except Exception as e:
+        print(str(e))
         raise Sorry("Couldn't parse argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -59,7 +62,7 @@ def run(args):
 
   src = psana.Source(params.spectra_filter.detector_address)
   dataset_name = "exp=%s:run=%s:idx"%(params.experiment, params.runs)
-  print "Dataset string:", dataset_name
+  print("Dataset string:", dataset_name)
   ds = psana.DataSource(dataset_name)
   spf = spectra_filter(params)
 
@@ -70,10 +73,10 @@ def run(args):
 
   rank = 0
   size = 1
-  max_events = sys.maxint
+  max_events = sys.maxsize
 
   for run in ds.runs():
-    print "starting run", run.run()
+    print("starting run", run.run())
     # list of all events
     times = run.times()
 
@@ -84,7 +87,7 @@ def run(args):
 
     # chop the list into pieces, depending on rank.  This assigns each process
     # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
 
     for i, t in enumerate(mytimes):
       evt = run.event(t)
@@ -93,7 +96,7 @@ def run(args):
       if not accepted:
         continue
 
-      print cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), "Publishing data for event", i
+      print(cspad_tbx.evt_timestamp(cspad_tbx.evt_time(evt)), "Publishing data for event", i)
 
       #header = "Event %d, m/f: %7.7f, f: %d"%(i, peak_max/flux, flux)
       header = "Event %d"%(i)
@@ -102,7 +105,7 @@ def run(args):
         fee = Image(header, "FEE", data) # make a 2D plot
         publish.send("FEE", fee) # send to the display
 
-        spectrumplot = XYPlot(header, 'summed 1D trace', range(data.shape[1]), spectrum) # make a 1D plot
+        spectrumplot = XYPlot(header, 'summed 1D trace', list(range(data.shape[1])), spectrum) # make a 1D plot
         publish.send("SPECTRUM", spectrumplot) # send to the display
 
         fee = Image(header, "DC_OFFSET", dc_offset) # make a 2D plot

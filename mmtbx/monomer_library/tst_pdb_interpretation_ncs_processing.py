@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import map
 import mmtbx.monomer_library.pdb_interpretation as pdb_interpretation
 from libtbx.utils import null_out
 from datetime import datetime
@@ -127,7 +128,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['some_test_name']
-  suite = unittest.TestSuite(map(TestPDBinterpretationNCSSearch, tests))
+  suite = unittest.TestSuite(list(map(TestPDBinterpretationNCSSearch, tests)))
   return suite
 
 

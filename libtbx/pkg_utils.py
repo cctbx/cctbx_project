@@ -3,6 +3,7 @@
 # To let libtbx modules specify and satisfy their requirements.
 
 from __future__ import division, absolute_import
+from __future__ import print_function
 
 import os
 import sys
@@ -36,40 +37,40 @@ def require(pkgname, version=None):
     version = ''
   requirestring = pkgname + version
   try:
-    print "requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version)
+    print("requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version))
     return True
 
   except pkg_resources.DistributionNotFound:
     currentversion = '(not determined)'
     project_name = pkgname
     action = 'install'
-    print "requirement %s is not currently met, package not installed" % (requirestring)
+    print("requirement %s is not currently met, package not installed" % (requirestring))
 
   except pkg_resources.VersionConflict:
     currentversion = pkg_resources.require(pkgname)[0].version
     project_name = pkg_resources.require(pkgname)[0].project_name
     action = 'update'
-    print "requirement %s is not currently met, current version %s" % (requirestring, currentversion)
+    print("requirement %s is not currently met, current version %s" % (requirestring, currentversion))
 
   # Check if package can be updated
   for path_item in sys.path:
     egg_link = os.path.join(path_item, project_name + '.egg-link')
     if os.path.isfile(egg_link):
       with open(egg_link, 'r') as fh:
-        print ("=" * 80 + "\n\n"
+        print(("=" * 80 + "\n\n"
              + "     WARNING: Can not update package {package} automatically.\n"
              + "It is installed as editable package for development purposes. The currently\n"
              + "installed version, {currentversion}, is too old. The required version is {requirement}.\n"
              + "Please update the package manually in its installed location:\n\n"
              + "     {packagelocation}\n\n"
-             + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip())
+             + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip()))
         return False
 
-  print "attempting {action} of {package}...".format(action=action, package=pkgname)
+  print("attempting {action} of {package}...".format(action=action, package=pkgname))
   exit_code = pip.main(['install', requirestring])
   if exit_code == 0:
-    print "{action} successful".format(action=action)
+    print("{action} successful".format(action=action))
     return True
   else:
-    print "{action} failed. please check manually".format(action=action)
+    print("{action} failed. please check manually".format(action=action))
     return False

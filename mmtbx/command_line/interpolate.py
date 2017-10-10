@@ -1,7 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from libtbx.utils import Sorry, null_out
-from cStringIO import StringIO
+from io import StringIO
 import os
 import sys
 
@@ -82,7 +87,7 @@ def morph_models (params, out=None, debug=False) :
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   for cif_file in params.morph.cif_file :
-    print "Loading CIF file %s" % cif_file
+    print("Loading CIF file %s" % cif_file)
     cif_object = server.read_cif(file_name=cif_file)
     mon_lib_serv.process_cif_object(cif_object=cif_object, file_name=cif_file)
     ener_lib.process_cif_object(cif_object=cif_object, file_name=cif_file)
@@ -100,7 +105,7 @@ def morph_models (params, out=None, debug=False) :
     sites = pdb_inp.atoms().extract_xyz()
     static_coords.append(sites)
   if (params.morph.fitting.align_atoms is not None) :
-    print >> out, "Superposing on initial structure..."
+    print("Superposing on initial structure...", file=out)
     selection_cache = all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     selection = selection_cache.selection(params.morph.fitting.align_atoms)
     if (selection.count(True) == 0) :
@@ -127,7 +132,7 @@ def morph_models (params, out=None, debug=False) :
         assert (sites_moving_new.size() == sites_moving.size())
         static_coords[j] = sites_moving_new
       j += 1
-  print >> out, "Ready to morph"
+  print("Ready to morph", file=out)
   morphs = []
   restraints_manager = processed_pdb_file.geometry_restraints_manager()
   for i in range(len(params.morph.pdb_file) - 1) :
@@ -157,9 +162,9 @@ def morph_models (params, out=None, debug=False) :
   f = open("%s.pml" % output_base, "w")
   for i in range(1, serial) :
     format_base = "%s_%s" % (output_base, params.morph.serial_format)
-    print >> f, "load %s.pdb, morph" % (format_base % i)
+    print("load %s.pdb, morph" % (format_base % i), file=f)
   f.close()
-  print >> out, "PyMOL script is %s.pml" % output_base
+  print("PyMOL script is %s.pml" % output_base, file=out)
 
 def homogenize_structures (pdb_hierarchies,
                            delete_heteroatoms=False,
@@ -191,7 +196,7 @@ def homogenize_structures (pdb_hierarchies,
   n_atoms = len(common_set)
   if (n_atoms == 0) :
     raise RuntimeError("No atoms left in structure.")
-  print >> log, "%d atoms in common." % len(common_set)
+  print("%d atoms in common." % len(common_set), file=log)
   atom_lists = []
   for k, hierarchy in enumerate(pdb_hierarchies) :
     atom_set = set([])
@@ -203,7 +208,7 @@ def homogenize_structures (pdb_hierarchies,
       atom_info = (labels.chain_id, labels.resid(), atom.name, labels.altloc)
       if (not atom_info in common_set) :
         if (debug) :
-          print >> log, "deleting %s in model %d" % (atom.id_str(), k+1)
+          print("deleting %s in model %d" % (atom.id_str(), k+1), file=log)
         del atoms[i]
       else :
         i += 1
@@ -276,20 +281,20 @@ class morph (object) :
         self.pdb_hierarchy.atoms().set_xyz(self._frames[0])
         file_name = file_format % k
         self._write_pdb(file_name)
-        print >> log, "  wrote %s" % os.path.basename(file_name)
+        print("  wrote %s" % os.path.basename(file_name), file=log)
         k += 1
     for sites in self._frames :
       self.pdb_hierarchy.atoms().set_xyz(sites)
       file_name = file_format % k
       self._write_pdb(file_name)
-      print >> log, "  wrote %s" % os.path.basename(file_name)
+      print("  wrote %s" % os.path.basename(file_name), file=log)
       k += 1
     if (pause_at_end) and (pause != 0) :
       for j in range(pause) :
         self.pdb_hierarchy.atoms().set_xyz(self._frames[-1])
         file_name = file_format % k
         self._write_pdb(file_name)
-        print >> log, "  wrote %s" % os.path.basename(file_name)
+        print("  wrote %s" % os.path.basename(file_name), file=log)
         k += 1
     return k
 
@@ -348,9 +353,9 @@ def adiabatic_mapping (pdb_hierarchy,
   current_xyz = start_coords
   final_xyz = end_coords
   while n > 0 :
-    print >> out, "Interpolation step %d" % (nsteps - n)
+    print("Interpolation step %d" % (nsteps - n), file=out)
     if (verbose) :
-      print >> out, ""
+      print("", file=out)
     new_xyz = current_xyz.deep_copy()
     dxyz = (final_xyz - new_xyz) * (1. / n)
     new_xyz += dxyz
@@ -365,12 +370,12 @@ def adiabatic_mapping (pdb_hierarchy,
         lbfgs_termination_params=term_params)
       if (verbose) :
         n_iter = minimized.minimizer.iter()
-        print >> out, ""
-        print >> out, "Number of minimization iterations:", n_iter
-        print >> out, ""
-        print >> out, "Energies at end of minimization:"
+        print("", file=out)
+        print("Number of minimization iterations:", n_iter, file=out)
+        print("", file=out)
+        print("Energies at end of minimization:", file=out)
         minimized.final_target_result.show(f=out)
-    print >> out, "RMS coordinate change: %.3f" % current_xyz.rms_difference(new_xyz)
+    print("RMS coordinate change: %.3f" % current_xyz.rms_difference(new_xyz), file=out)
     m.add_frame(new_xyz)
     n -= 1
     current_xyz = new_xyz
@@ -385,7 +390,7 @@ def run (args, out=None) :
     params_out = StringIO()
     master_phil = iotbx.phil.parse(morph_params_str)
     master_phil.show(out=params_out)
-    print >> out, """
+    print("""
 mmtbx.interpolate - simple morphing with energy minimization
 
 Limitations:
@@ -400,7 +405,7 @@ Usage:
 
 Full parameter list:
   %s
-""" % (usage_str, params_out.getvalue())
+""" % (usage_str, params_out.getvalue()), file=out)
     return None
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
@@ -410,8 +415,8 @@ Full parameter list:
   working_phil = cmdline.work
   params = working_phil.extract()
   eff_out = open("%s.eff" % params.morph.output_prefix, "w")
-  print >> out, "Writing effective parameters to %s.eff" % \
-    params.morph.output_prefix
+  print("Writing effective parameters to %s.eff" % \
+    params.morph.output_prefix, file=out)
   working_phil.show(out=eff_out)
   #working_phil.show(out=sys.stdout)
   eff_out.close()

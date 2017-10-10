@@ -1,4 +1,6 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
+from builtins import object
 import atexit
 import libtbx.load_env
 import os
@@ -35,12 +37,12 @@ def discover(module, pytestargs=None):
     import mock
   except ImportError:
     def pytest_warning():
-      print "=" * 55
-      print " WARNING: Skipping some tests for %s\n" % module
-      print " To run all available tests you need to install pytest"
-      print " and the python mocking package, e.g. by running\n"
-      print "    libtbx.python -m pip install pytest mock"
-      print "=" * 55
+      print("=" * 55)
+      print(" WARNING: Skipping some tests for %s\n" % module)
+      print(" To run all available tests you need to install pytest")
+      print(" and the python mocking package, e.g. by running\n")
+      print("    libtbx.python -m pip install pytest mock")
+      print("=" * 55)
     pytest_warning()
     atexit.register(pytest_warning)
     return []
@@ -48,10 +50,10 @@ def discover(module, pytestargs=None):
   class L(list):
     """Subclass list so that it can accept additional attributes."""
 
-  print "Discovering pytest tests for %s:" % module
+  print("Discovering pytest tests for %s:" % module)
   test_list = []
   dist_dir = libtbx.env.dist_path(module)
-  class TestDiscoveryPlugin:
+  class TestDiscoveryPlugin(object):
     def pytest_itemcollected(self, item):
       testarray = L([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
         '"%s"' % (item.fspath + '::' + item.nodeid.split('::', 1)[1]) ])

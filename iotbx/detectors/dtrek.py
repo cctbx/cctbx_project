@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re,types,struct
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -44,19 +45,19 @@ class DTREKImage(DetectorImageBase):
     self.enf= [("SIZE1",int,1),
                ("SIZE2",int,1),
                ("SATURATED_VALUE",int,1),
-               ("DETECTOR_NAMES",types.StringType,0),
+               ("DETECTOR_NAMES",bytes,0),
                (r"\n([0-9A-Za-z]+_DETECTOR_DIMENSIONS)",float,2),
                (r"\n([0-9A-Za-z]+_DETECTOR_SIZE)",float,2),
                (r"\n(ROTATION)=",float,10),
-               (r"\n([0-9A-Za-z]+_GONIO_NAMES)",types.StringType,0),
-               (r"\n([0-9A-Za-z]+_GONIO_UNITS)",types.StringType,0),
+               (r"\n([0-9A-Za-z]+_GONIO_NAMES)",bytes,0),
+               (r"\n([0-9A-Za-z]+_GONIO_UNITS)",bytes,0),
                (r"\n([0-9A-Za-z]+_GONIO_VALUES)",float,0),
                ("SOURCE_WAVELENGTH",float,2), #must be one wavelength
-               (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_TYPE)",types.StringType,1),
+               (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_TYPE)",bytes,1),
                (r"\n([0-9A-Za-z]+_SPATIAL_DISTORTION_INFO)",float,4),
-               ("DETECTOR_TYPE",types.StringType,1),
-               ("DATA_TYPE",types.StringType,1),
-               ("BYTE_ORDER",types.StringType,1),
+               ("DETECTOR_TYPE",bytes,1),
+               ("DATA_TYPE",bytes,1),
+               ("BYTE_ORDER",bytes,1),
                ("RAXIS_COMPRESSION_RATIO",int,1),
                ("HEADER_BYTES",int,1),
               ]
@@ -64,7 +65,7 @@ class DTREKImage(DetectorImageBase):
       pattern = re.compile(mandate[0])
       matches = pattern.findall(self.header)
       for match in matches:
-        if verbose: print match,
+        if verbose: print(match, end=' ')
         if mandate[2]==1:
           self.keys[match] = mandate[1](self.keys[match])
         else:
@@ -73,8 +74,8 @@ class DTREKImage(DetectorImageBase):
           if mandate[2] > 1: assert len(all_values)==mandate[2]
           self.keys[match] = all_values
         if verbose:
-          print self.keys[match],
-          print
+          print(self.keys[match], end=' ')
+          print()
 
     for integer in ["SIZE1","SIZE2","SATURATED_VALUE"]:
       self.keys[integer]=int(self.keys[integer])
@@ -90,7 +91,7 @@ class DTREKImage(DetectorImageBase):
       self.parameters={}
       if verbose:
        for i in self.headerlines:
-        print "%29s"%i[0],self.keys[i[0]]
+        print("%29s"%i[0],self.keys[i[0]])
       # Note that SIZE1 is slow for ADSC/CBF but fast for RAXIS
       # Note that SIZE2 is fast for ADSC/CBF but slow for RAXIS
       self.parameters['SIZE1'] = self.keys["SIZE1"]
@@ -129,9 +130,9 @@ class DTREKImage(DetectorImageBase):
       tt_idx = self.keys[dname_prefix+"GONIO_NAMES"].index("2Theta")
       assert self.keys[dname_prefix+"GONIO_UNITS"][tt_idx]=="deg"
       self.parameters['TWOTHETA'] = self.keys[dname_prefix+"GONIO_VALUES"][tt_idx]
-      if self.keys.has_key("DETECTOR_TYPE"):
+      if "DETECTOR_TYPE" in self.keys:
         self.parameters['DETECTOR_SN'] = self.keys["DETECTOR_TYPE"]
-      elif self.keys.has_key(self.keys["DETECTOR_NAMES"][0] + "DETECTOR_IDENTIFICATION"):
+      elif self.keys["DETECTOR_NAMES"][0] + "DETECTOR_IDENTIFICATION" in self.keys:
         self.parameters['DETECTOR_SN'] = self.keys[self.keys["DETECTOR_NAMES"][0] + "DETECTOR_IDENTIFICATION"]
       else:
         self.parameters['DETECTOR_SN'] = "No serial number"

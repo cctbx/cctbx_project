@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import execfile
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import object
 import libtbx.path
 from libtbx.auto_build import regenerate_module_files
 from libtbx.path import relocatable_path, absolute_path
@@ -8,10 +15,10 @@ from libtbx import adopt_init_args
 import platform
 import shutil
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
-from cStringIO import StringIO
+from io import StringIO
 import re
 import site, sys, os
 op = os.path
@@ -98,7 +105,7 @@ def is_llvm_compiler(gcc='gcc') :
                            .raise_if_errors()
                            .stdout_lines[0].strip())
     return ("llvm" in gcc_version)
-  except Exception, e :
+  except Exception as e :
     return False
 
 def get_gcc_version(command_name="gcc"):
@@ -224,13 +231,13 @@ def patch_windows_dispatcher(
 def write_do_not_edit(f, win_bat=False):
   if (win_bat): s = "@rem"
   else:         s = "#"
-  print >> f, s+' THIS IS AN AUTOMATICALLY GENERATED FILE.'
-  print >> f, s+' DO NOT EDIT! CHANGES WILL BE LOST.'
+  print(s+' THIS IS AN AUTOMATICALLY GENERATED FILE.', file=f)
+  print(s+' DO NOT EDIT! CHANGES WILL BE LOST.', file=f)
 
 def open_info(path, mode="w", info="   "):
-  print info, path.basename()
+  print(info, path.basename())
   try: return path.open(mode)
-  except IOError, e:
+  except IOError as e:
     raise RuntimeError(str(e))
 
 class common_setpaths(object):
@@ -278,43 +285,42 @@ class unix_setpaths(common_setpaths):
 
   def setenv(self, var_name, val):
     if (self.shell == "sh"):
-      print >> self.s, '%s="%s"' % (var_name, val)
-      print >> self.s, 'export %s' % var_name
-      print >> self.u, 'unset %s' % var_name
+      print('%s="%s"' % (var_name, val), file=self.s)
+      print('export %s' % var_name, file=self.s)
+      print('unset %s' % var_name, file=self.u)
     else:
-      print >> self.s, 'setenv %s "%s"' % (var_name, val)
-      print >> self.u, 'unsetenv %s' % var_name
+      print('setenv %s "%s"' % (var_name, val), file=self.s)
+      print('unsetenv %s' % var_name, file=self.u)
 
   def update_path(self, var_name, val, var_name_in=None):
     if (var_name_in is None): var_name_in = var_name
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
       if (self.shell == "sh"):
-        print >> f, 'if [ -n "$%s" ]; then' % var_name_in
-        print >> f, '  LIBTBX_TMPVAL="$%s"' % var_name_in
-        print >> f, 'else'
-        print >> f, '  LIBTBX_TMPVAL='
-        print >> f, 'fi'
-        print >> f, 'export LIBTBX_TMPVAL'
+        print('if [ -n "$%s" ]; then' % var_name_in, file=f)
+        print('  LIBTBX_TMPVAL="$%s"' % var_name_in, file=f)
+        print('else', file=f)
+        print('  LIBTBX_TMPVAL=', file=f)
+        print('fi', file=f)
+        print('export LIBTBX_TMPVAL', file=f)
         fmt = \
           '''%s`libtbx.path_utility %s LIBTBX_TMPVAL "%s" < /dev/null`'''
       else:
-        print >> f, 'if ($?%s) then' % var_name_in
-        print >> f, '  setenv LIBTBX_TMPVAL "$%s"' % var_name_in
-        print >> f, 'else'
-        print >> f, '  unsetenv LIBTBX_TMPVAL'
-        print >> f, 'endif'
+        print('if ($?%s) then' % var_name_in, file=f)
+        print('  setenv LIBTBX_TMPVAL "$%s"' % var_name_in, file=f)
+        print('else', file=f)
+        print('  unsetenv LIBTBX_TMPVAL', file=f)
+        print('endif', file=f)
         fmt = \
           '''%s"`libtbx.path_utility %s LIBTBX_TMPVAL '%s' < /dev/null`"'''
-      print >> f, fmt % (self._setenv % var_name, action, val)
+      print(fmt % (self._setenv % var_name, action, val), file=f)
       if (self.shell == "sh"):
         if (f is self.s):
-          print >> f, 'export %s' % var_name
-        print >> f, \
-          'if [ "$%s" = "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
-          var_name, var_name)
+          print('export %s' % var_name, file=f)
+        print('if [ "$%s" = "L_I_B_T_B_X_E_M_P_T_Y" ]; then unset %s; fi' % (
+          var_name, var_name), file=f)
       else:
-        print >> f, 'if ("$%s" == "L_I_B_T_B_X_E_M_P_T_Y") unsetenv %s' % (
-          var_name, var_name)
+        print('if ("$%s" == "L_I_B_T_B_X_E_M_P_T_Y") unsetenv %s' % (
+          var_name, var_name), file=f)
 
 class windows_setpaths(common_setpaths):
 
@@ -325,21 +331,21 @@ class windows_setpaths(common_setpaths):
     return path_obj.bat_value()
 
   def setenv(self, var_name, val):
-    print >> self.s, '@set %s=%s' % (var_name, val)
-    print >> self.u, '@set %s=' % var_name
+    print('@set %s=%s' % (var_name, val), file=self.s)
+    print('@set %s=' % var_name, file=self.u)
 
   def update_path(self, var_name, val, var_name_in=None):
     if (var_name_in is None): var_name_in = var_name
     fmt = '''\
 @for /F "delims=" %%%%i in ('libtbx.path_utility %s %s "%s"') do @set %s=%%%%i'''
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
-      print >> f, fmt % (
+      print(fmt % (
         action,
         var_name_in,
         val,
-        var_name)
-      print >> f, '@if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" @set %s=' % (
-        var_name, var_name)
+        var_name), file=f)
+      print('@if "%%%s%%" == "L_I_B_T_B_X_E_M_P_T_Y" @set %s=' % (
+        var_name, var_name), file=f)
 
 def _windows_pathext():
   result = os.environ.get("PATHEXT", "").lower().split(os.pathsep)
@@ -398,7 +404,7 @@ shellrealpath() {
 
 # ----------------------------------------------------------------------------
 
-class environment:
+class environment(object):
 
   def __init__(self, build_path):
     self.python_version_major_minor = sys.version_info[:2]
@@ -520,7 +526,7 @@ class environment:
     return result
 
   def has_module(self, name):
-    return self.module_dist_paths.has_key(name)
+    return name in self.module_dist_paths
 
   def require_module(self, name, error=RuntimeError):
     if (not self.has_module(name)):
@@ -586,7 +592,7 @@ Wait for the command to finish, then try again.""" % vars())
     except IOError:
       raise RuntimeError(
         'Cannot write command_version_suffix file: "%s"' % path)
-    print >> f, self.command_version_suffix
+    print(self.command_version_suffix, file=f)
 
   def read_command_version_suffix(self):
     path = self.build_path / "command_version_suffix"
@@ -824,26 +830,26 @@ Wait for the command to finish, then try again.""" % vars())
 
   def write_dispatcher_include_template(self):
     if (os.name == "nt"):
-      print "    dispatcher_include_template.bat"
+      print("    dispatcher_include_template.bat")
       f = self.under_build("dispatcher_include_template.bat",
                            return_relocatable_path=True).open("w")
       cp = "@REM"
     else :
-      print "    dispatcher_include_template.sh"
+      print("    dispatcher_include_template.sh")
       f = self.under_build("dispatcher_include_template.sh",
                            return_relocatable_path=True).open("w")
       cp = "#"
-    print >> f, cp+" include at start"
-    print >> f, cp+"   Commands to be executed at the start of the"
-    print >> f, cp+"   auto-generated dispatchers in bin."
-    print >> f, cp+""
-    print >> f, cp+" include before command"
-    print >> f, cp+"   Commands to be executed before the target command"
-    print >> f, cp+"   is called by the auto-generated dispatchers in bin."
-    print >> f, cp+""
-    print >> f, cp+" To see how the dispatchers work, look at an example:"
-    print >> f, cp+"   %s" % show_string(self.under_build("bin/libtbx.help"))
-    print >> f, cp+""
+    print(cp+" include at start", file=f)
+    print(cp+"   Commands to be executed at the start of the", file=f)
+    print(cp+"   auto-generated dispatchers in bin.", file=f)
+    print(cp+"", file=f)
+    print(cp+" include before command", file=f)
+    print(cp+"   Commands to be executed before the target command", file=f)
+    print(cp+"   is called by the auto-generated dispatchers in bin.", file=f)
+    print(cp+"", file=f)
+    print(cp+" To see how the dispatchers work, look at an example:", file=f)
+    print(cp+"   %s" % show_string(self.under_build("bin/libtbx.help")), file=f)
+    print(cp+"", file=f)
     f.close()
 
   def reset_dispatcher_bookkeeping(self):
@@ -862,7 +868,7 @@ Wait for the command to finish, then try again.""" % vars())
         include_files.append(path)
     include_files.sort()
     for path in include_files:
-      print "Processing: %s" % show_string(abs(path))
+      print("Processing: %s" % show_string(abs(path)))
       lines = path.open().read().splitlines()
       lines_at_start = []
       lines_before_command = []
@@ -967,40 +973,40 @@ Wait for the command to finish, then try again.""" % vars())
 
     f = target_file.open("w")
     if (source_file is not None):
-      print >> f, '#! /bin/sh'
-      print >> f, '# LIBTBX_DISPATCHER DO NOT EDIT'
+      print('#! /bin/sh', file=f)
+      print('# LIBTBX_DISPATCHER DO NOT EDIT', file=f)
     else:
-      print >> f, '# LIBTBX_DISPATCHER_HEAD DO NOT EDIT'
-      print >> f, '#'
-      print >> f, '# This file is intended to be sourced from other scripts.'
-      print >> f, '# It is like the dispatcher scripts in the bin directory,'
-      print >> f, '# but only sets up the environment without calling a'
-      print >> f, '# command at the end.'
-    print >> f, '#'
+      print('# LIBTBX_DISPATCHER_HEAD DO NOT EDIT', file=f)
+      print('#', file=f)
+      print('# This file is intended to be sourced from other scripts.', file=f)
+      print('# It is like the dispatcher scripts in the bin directory,', file=f)
+      print('# but only sets up the environment without calling a', file=f)
+      print('# command at the end.', file=f)
+    print('#', file=f)
     write_do_not_edit(f=f)
-    print >> f, '# To customize this auto-generated script create'
-    print >> f, '#'
-    print >> f, '#   dispatcher_include*.sh'
-    print >> f, '#'
-    print >> f, '# files in %s and run' % show_string(abs(self.build_path))
-    print >> f, '#'
-    print >> f, '#   libtbx.refresh'
-    print >> f, '#'
-    print >> f, '# to re-generate the dispatchers (libtbx.refresh is a subset'
-    print >> f, '# of the functionality of the libtbx/configure.py command).'
-    print >> f, '#'
-    print >> f, '# See also:'
-    print >> f, '#   %s' \
-      % show_string(self.under_build("dispatcher_include_template.sh"))
-    print >> f, '#'
-    print >> f, _SHELLREALPATH_CODE
-    print >> f, 'unset PYTHONHOME'
-    print >> f, 'LC_ALL=' + LC_ALL
-    print >> f, 'export LC_ALL'
-    print >> f, 'LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"'
-    print >> f, 'export LIBTBX_BUILD'
-    print >> f, 'LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename()
-    print >> f, 'export LIBTBX_PYEXE_BASENAME'
+    print('# To customize this auto-generated script create', file=f)
+    print('#', file=f)
+    print('#   dispatcher_include*.sh', file=f)
+    print('#', file=f)
+    print('# files in %s and run' % show_string(abs(self.build_path)), file=f)
+    print('#', file=f)
+    print('#   libtbx.refresh', file=f)
+    print('#', file=f)
+    print('# to re-generate the dispatchers (libtbx.refresh is a subset', file=f)
+    print('# of the functionality of the libtbx/configure.py command).', file=f)
+    print('#', file=f)
+    print('# See also:', file=f)
+    print('#   %s' \
+      % show_string(self.under_build("dispatcher_include_template.sh")), file=f)
+    print('#', file=f)
+    print(_SHELLREALPATH_CODE, file=f)
+    print('unset PYTHONHOME', file=f)
+    print('LC_ALL=' + LC_ALL, file=f)
+    print('export LC_ALL', file=f)
+    print('LIBTBX_BUILD="$(shellrealpath "$0" && cd "$(dirname "$RESULT")/.." && pwd)"', file=f)
+    print('export LIBTBX_BUILD', file=f)
+    print('LIBTBX_PYEXE_BASENAME="%s"' % self.python_exe.basename(), file=f)
+    print('export LIBTBX_PYEXE_BASENAME', file=f)
     source_is_py = False
     if (source_file is not None):
       dispatcher_name = target_file.basename()
@@ -1009,12 +1015,12 @@ Wait for the command to finish, then try again.""" % vars())
           "Dispatcher target file name contains double-quote: %s\n"
             % dispatcher_name
           + "  source file: %s" % source_file)
-      print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % target_file.basename()
-      print >> f, 'export LIBTBX_DISPATCHER_NAME'
+      print('LIBTBX_DISPATCHER_NAME="%s"' % target_file.basename(), file=f)
+      print('export LIBTBX_DISPATCHER_NAME', file=f)
       if source_file.ext().lower() == ".py":
         source_is_py = True
     for line in self.dispatcher_include(where="at_start"):
-      print >> f, line
+      print(line, file=f)
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((
       ld_library_path_var_name(),
@@ -1022,32 +1028,32 @@ Wait for the command to finish, then try again.""" % vars())
     essentials.append(("PATH", [self.bin_path]))
 
     if (cert_file is not None):
-      print >> f, 'SSL_CERT_FILE="%s"' % cert_file.sh_value()
-      print >> f, 'export SSL_CERT_FILE'
+      print('SSL_CERT_FILE="%s"' % cert_file.sh_value(), file=f)
+      print('export SSL_CERT_FILE', file=f)
 
     pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
     if os.path.exists(pangorc):
-      print >> f, 'PANGO_RC_FILE="$LIBTBX_BUILD/../base/etc/pango/pangorc"'
-      print >> f, 'export PANGO_RC_FILE'
+      print('PANGO_RC_FILE="$LIBTBX_BUILD/../base/etc/pango/pangorc"', file=f)
+      print('export PANGO_RC_FILE', file=f)
     fontconfig = abs(self.build_path / '..' / 'base' / 'etc' / 'fonts')
     if os.path.exists(fontconfig):
-      print >> f, 'FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"'
-      print >> f, 'export FONTCONFIG_PATH'
+      print('FONTCONFIG_PATH="$LIBTBX_BUILD/../base/etc/fonts"', file=f)
+      print('export FONTCONFIG_PATH', file=f)
 
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ":".join([p.sh_value() for p in v])
-      print >> f, 'if [ -n "$%s" ]; then' % n
-      print >> f, '  %s="%s:$%s"' % (n, v, n)
-      print >> f, '  export %s' % n
-      print >> f, 'else'
-      print >> f, '  %s="%s"' % (n, v)
-      print >> f, '  export %s' % n
-      print >> f, 'fi'
+      print('if [ -n "$%s" ]; then' % n, file=f)
+      print('  %s="%s:$%s"' % (n, v, n), file=f)
+      print('  export %s' % n, file=f)
+      print('else', file=f)
+      print('  %s="%s"' % (n, v), file=f)
+      print('  export %s' % n, file=f)
+      print('fi', file=f)
     precall_commands = self.dispatcher_precall_commands()
     if (precall_commands is not None):
       for line in precall_commands:
-        print >> f, line
+        print(line, file=f)
     if (source_is_py):
       scan_for_dispatcher_includes = True
     elif source_file is None or not source_file.isfile():
@@ -1059,24 +1065,24 @@ Wait for the command to finish, then try again.""" % vars())
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
-        print >> f, line
+        print(line, file=f)
     for line in self.dispatcher_include(where="before_command"):
-      print >> f, line
+      print(line, file=f)
     if (scan_for_dispatcher_includes):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
-        print >> f, line
+        print(line, file=f)
     if (self.build_options.opt_resources):
       ldpl = self.opt_resources_ld_preload()
       if (ldpl is not None):
-        print >> f, 'if [ "${LIBTBX_NO_LD_PRELOAD-UNSET}" == UNSET ]; then'
-        print >> f, '  LD_PRELOAD="%s"' % ldpl
-        print >> f, '  export LD_PRELOAD'
-        print >> f, 'fi'
-    print >> f, 'LIBTBX_PYEXE="%s"' % (
-      self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value()
-    print >> f, 'export LIBTBX_PYEXE'
+        print('if [ "${LIBTBX_NO_LD_PRELOAD-UNSET}" == UNSET ]; then', file=f)
+        print('  LD_PRELOAD="%s"' % ldpl, file=f)
+        print('  export LD_PRELOAD', file=f)
+        print('fi', file=f)
+    print('LIBTBX_PYEXE="%s"' % (
+      self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value(), file=f)
+    print('export LIBTBX_PYEXE', file=f)
 
     # Since El Capitan, Apple Python does not allow relative rpath in shared
     # libraries. Thus any cctbx-based script will fail with an import error
@@ -1087,7 +1093,7 @@ Wait for the command to finish, then try again.""" % vars())
     # The former would make the cctbx build directory non-relocatable. Thus
     # we prefer the latter.
     if sys.platform == "darwin" and abs(self.python_exe).startswith("/usr/bin/"):
-      print >> f, """/usr/bin/perl <<'FIXRPATH'
+      print("""/usr/bin/perl <<'FIXRPATH'
         for $lib(<$ENV{LIBTBX_BUILD}/lib/*.so>) {
             open OTOOL, "-|", "otool", "-L", $lib;
             while(<OTOOL>) {
@@ -1100,8 +1106,8 @@ Wait for the command to finish, then try again.""" % vars())
                        "-change", $lib, "\@loader_path/../$lib", $so;
             }
         }
-      """
-      print >> f, "FIXRPATH"
+      """, file=f)
+      print("FIXRPATH", file=f)
     if (source_file is not None):
       def pre_cmd():
         return ['', '/usr/bin/arch -i386 '][self.build_options.force_32bit]
@@ -1119,22 +1125,22 @@ Wait for the command to finish, then try again.""" % vars())
           start_python = True
       if (not start_python and not source_is_python_exe):
         cmd += ' "%s"' % source_file.sh_value()
-      print >> f, 'if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then'
-      print >> f, "  exec $LIBTBX_VALGRIND"+cmd, '"$@"'
+      print('if [ -n "$LIBTBX__VALGRIND_FLAG__" ]; then', file=f)
+      print("  exec $LIBTBX_VALGRIND"+cmd, '"$@"', file=f)
       tmp_reloc = os.path.basename(source_file.relocatable)
       if tmp_reloc.endswith('.py') and cmd.find('-Qnew')>-1:
-        print >> f, 'elif [ -n "$LIBTBX__CPROFILE_FLAG__" ]; then'
-        print >> f, '  exec %s "$@"' % cmd.replace(
+        print('elif [ -n "$LIBTBX__CPROFILE_FLAG__" ]; then', file=f)
+        print('  exec %s "$@"' % cmd.replace(
           '-Qnew',
           '-Qnew -m cProfile -o %s.profile' % os.path.basename(target_file.relocatable),
-          )
-      print >> f, "elif [ $# -eq 0 ]; then"
-      print >> f, "  exec"+cmd
-      print >> f, "else"
-      print >> f, "  exec"+cmd, '"$@"'
-      print >> f, "fi"
+          ), file=f)
+      print("elif [ $# -eq 0 ]; then", file=f)
+      print("  exec"+cmd, file=f)
+      print("else", file=f)
+      print("  exec"+cmd, '"$@"', file=f)
+      print("fi", file=f)
     f.close()
-    target_file.chmod(0755)
+    target_file.chmod(0o755)
 
   def write_win32_dispatcher(self,
         source_file, target_file, source_is_python_exe=False):
@@ -1144,18 +1150,18 @@ Wait for the command to finish, then try again.""" % vars())
     # As a result, e.g. set PYTHONPATH=...; %PYTHONPATH% results in growing
     # PYTHONPATH each time a dispatcher script is run.
     # Thus setlocal essential (endlocal is implied)
-    print >>f, '@setlocal'
-    print >>f, '@set LIBTBX_BUILD=%~dp0'
-    print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-    print >>f, r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF'
-    print >>f, '@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%'
-    print >>f, '@set LIBTBX_DISPATCHER_NAME=%~nx0'
+    print('@setlocal', file=f)
+    print('@set LIBTBX_BUILD=%~dp0', file=f)
+    print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
+    print(r'@for %%F in ("%LIBTBX_BUILD%") do @set LIBTBX_BUILD=%%~dpF', file=f)
+    print('@set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%', file=f)
+    print('@set LIBTBX_DISPATCHER_NAME=%~nx0', file=f)
     def write_dispatcher_include(where):
       for line in self.dispatcher_include(where=where):
         if (line.startswith("@")) :
-          print >> f, line
+          print(line, file=f)
         else :
-          print >> f, "@" + line
+          print("@" + line, file=f)
     write_dispatcher_include(where="at_start")
     essentials = [("PYTHONPATH", self.pythonpath)]
     essentials.append((ld_library_path_var_name(), [self.lib_path]))
@@ -1163,19 +1169,19 @@ Wait for the command to finish, then try again.""" % vars())
     for n,v in essentials:
       if (len(v) == 0): continue
       v = ';'.join([ op.join('%LIBTBX_BUILD%', p.relocatable) for p in v ])
-      print >>f, '@set %s=%s;%%%s%%' % (n, v, n)
-    print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
+      print('@set %s=%s;%%%s%%' % (n, v, n), file=f)
+    print('@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value(), file=f)
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew
     if (self.build_options.old_division) :
       qnew_tmp = ""
     if source_file.ext().lower() == '.py':
-      print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
-        qnew_tmp, source_file.bat_value())
+      print('@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
+        qnew_tmp, source_file.bat_value()), file=f)
     elif source_file.basename().lower() == 'python.exe':
-      print >>f, '@"%%LIBTBX_PYEXE%%"%s %%*' % qnew_tmp
+      print('@"%%LIBTBX_PYEXE%%"%s %%*' % qnew_tmp, file=f)
     else:
-      print >>f, '@"%s" %%*' % source_file.bat_value()
+      print('@"%s" %%*' % source_file.bat_value(), file=f)
     f.close()
 
   def write_dispatcher(self,
@@ -1213,7 +1219,7 @@ Wait for the command to finish, then try again.""" % vars())
       target_file_ext += '.bat'
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext, source_is_python_exe)
-    except IOError, e: print "  Ignored:", e
+    except IOError as e: print("  Ignored:", e)
 
   def _write_dispatcher_in_bin(self,
         source_file, target_file, source_is_python_exe=False):
@@ -1230,7 +1236,7 @@ Wait for the command to finish, then try again.""" % vars())
 
   def write_lib_dispatcher_head(self, target_file="dispatcher_head.sh"):
     if (os.name == "nt"): return
-    print "   ", target_file
+    print("   ", target_file)
     self.write_bin_sh_dispatcher(
       source_file=None,
       target_file=self.under_build(target_file, return_relocatable_path=True))
@@ -1265,10 +1271,10 @@ ocwd=
 alias libtbx.setpaths_all=". \\"$LIBTBX_BUILD/setpaths_all.sh\\""
 alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
 """)
-    print >> u, 'unalias libtbx.unsetpaths > /dev/null 2>&1'
+    print('unalias libtbx.unsetpaths > /dev/null 2>&1', file=u)
     if (self.is_development_environment()):
-      print >> s, '''alias cdlibtbxbuild="cd \\"$LIBTBX_BUILD\\""'''
-      print >> u, 'unalias cdlibtbxbuild > /dev/null 2>&1'
+      print('''alias cdlibtbxbuild="cd \\"$LIBTBX_BUILD\\""''', file=s)
+      print('unalias cdlibtbxbuild > /dev/null 2>&1', file=u)
     setpaths.all_and_debug()
     setpaths.set_unset_vars()
     setpaths.update_path(
@@ -1276,10 +1282,10 @@ alias libtbx.unsetpaths=". \\"$LIBTBX_BUILD/unsetpaths.sh\\""
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
     for f in s, u:
-      print >> f, 'LIBTBX_TMPVAL='
-      print >> f, 'LIBTBX_OPATH='
+      print('LIBTBX_TMPVAL=', file=f)
+      print('LIBTBX_OPATH=', file=f)
       if (suffix == ""):
-        print >> f, 'LIBTBX_BUILD='
+        print('LIBTBX_BUILD=', file=f)
 
   def write_setpaths_csh(self, suffix):
     setpaths = unix_setpaths(self, "csh", suffix)
@@ -1304,10 +1310,10 @@ unset ocwd
 alias libtbx.setpaths_all "source '$LIBTBX_BUILD/setpaths_all.csh'"
 alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
 """)
-    print >> u, 'unalias libtbx.unsetpaths'
+    print('unalias libtbx.unsetpaths', file=u)
     if (self.is_development_environment()):
-      print >> s, '''alias cdlibtbxbuild "cd '$LIBTBX_BUILD'"'''
-      print >> u, 'unalias cdlibtbxbuild'
+      print('''alias cdlibtbxbuild "cd '$LIBTBX_BUILD'"''', file=s)
+      print('unalias cdlibtbxbuild', file=u)
     setpaths.all_and_debug()
     setpaths.set_unset_vars()
     setpaths.update_path(
@@ -1315,52 +1321,52 @@ alias libtbx.unsetpaths "source '$LIBTBX_BUILD/unsetpaths.csh'"
       val=self.bin_path.sh_value(),
       var_name_in="LIBTBX_OPATH")
     for f in s, u:
-      print >> f, 'unsetenv LIBTBX_TMPVAL'
-      print >> f, 'unsetenv LIBTBX_OPATH'
+      print('unsetenv LIBTBX_TMPVAL', file=f)
+      print('unsetenv LIBTBX_OPATH', file=f)
       if (suffix == ""):
-        print >> f, 'unsetenv LIBTBX_BUILD'
+        print('unsetenv LIBTBX_BUILD', file=f)
 
   def write_setpaths_bat(self, suffix):
     setpaths = windows_setpaths(self, suffix)
     s, u = setpaths.s, setpaths.u
     for f in s, u:
       write_do_not_edit(f=f, win_bat=True)
-      print >> f, r'''@set LIBTBX_BUILD=%~dp0
+      print(r'''@set LIBTBX_BUILD=%~dp0
 @set LIBTBX_BUILD=%LIBTBX_BUILD:~0,-1%
-@set LIBTBX_OPATH=%PATH%'''
-      print >> f, '@set PATH=%s;%%PATH%%' % self.bin_path.bat_value()
+@set LIBTBX_OPATH=%PATH%''', file=f)
+      print('@set PATH=%s;%%PATH%%' % self.bin_path.bat_value(), file=f)
     setpaths.all_and_debug()
     setpaths.update_path(
       var_name="PATH",
       val=self.bin_path.bat_value(),
       var_name_in="LIBTBX_OPATH")
     for command in ["setpaths_all", "unsetpaths"]:
-      print >> s, '@doskey libtbx.%s="%s\\%s.bat"' % (
-        command, "%LIBTBX_BUILD%", command)
-    print >> u, '@doskey libtbx.unsetpaths='
+      print('@doskey libtbx.%s="%s\\%s.bat"' % (
+        command, "%LIBTBX_BUILD%", command), file=s)
+    print('@doskey libtbx.unsetpaths=', file=u)
     if (self.is_development_environment()):
-      print >> s, '@doskey cdlibtbxbuild=cd "%LIBTBX_BUILD%"'
-      print >> u, '@doskey cdlibtbxbuild='
+      print('@doskey cdlibtbxbuild=cd "%LIBTBX_BUILD%"', file=s)
+      print('@doskey cdlibtbxbuild=', file=u)
     if (suffix == "_debug"):
-      print >> s, '@set PYTHONCASEOK=1' # no unset
+      print('@set PYTHONCASEOK=1', file=s) # no unset
     setpaths.set_unset_vars()
     for f in s, u:
-      print >> f, '@set LIBTBX_OPATH='
+      print('@set LIBTBX_OPATH=', file=f)
       if (suffix == ""):
-        print >> f, '@set LIBTBX_BUILD='
+        print('@set LIBTBX_BUILD=', file=f)
 
   def write_SConstruct(self):
     f = open_info(self.under_build("SConstruct",
                                    return_relocatable_path=True))
     write_do_not_edit(f=f)
-    print >> f, 'SConsignFile()'
+    print('SConsignFile()', file=f)
     for path in self.repository_paths:
-      print >> f, 'Repository(r"%s")' % abs(path)
+      print('Repository(r"%s")' % abs(path), file=f)
     for module in self.module_list:
       name,path  = list(module.name_and_dist_path_pairs())[-1]
       for script_name in ["libtbx_SConscript", "SConscript"]:
         if (path / script_name).isfile():
-          print >> f, 'SConscript("%s/%s")' % (name, script_name)
+          print('SConscript("%s/%s")' % (name, script_name), file=f)
           break
     f.close()
 
@@ -1420,13 +1426,13 @@ selfx:
     if (len(test_scripts) > 0):
       path = self.under_build("run_tests.csh", return_relocatable_path=True)
       f = open_info(path)
-      print >> f, "#! /bin/csh -f"
-      print >> f, "set noglob"
-      print >> f, "set verbose"
+      print("#! /bin/csh -f", file=f)
+      print("set noglob", file=f)
+      print("set verbose", file=f)
       for file_name in test_scripts:
-        print >> f, 'libtbx.python "%s" $*' % abs(file_name)
+        print('libtbx.python "%s" $*' % abs(file_name), file=f)
       f.close()
-      path.chmod(0755)
+      path.chmod(0o755)
 
   def pickle(self):
     self.reset_dispatcher_support()
@@ -1434,8 +1440,8 @@ selfx:
     pickle.dump(self, file_name.open("wb"), 0)
 
   def show_module_listing(self):
-    print "Relocatable paths anchored at: %s" % abs(self.build_path)
-    print "Top-down list of all modules involved:"
+    print("Relocatable paths anchored at: %s" % abs(self.build_path))
+    print("Top-down list of all modules involved:")
     top_down_module_list = list(self.module_list)
     top_down_module_list.reverse()
     labels = [module.names_for_module_listing()
@@ -1444,26 +1450,26 @@ selfx:
     fmt = "  %%-%ds  %%s" % max([len(label) for label in labels])
     for label,module in zip(labels,top_down_module_list):
       for dist_path in module.dist_paths_active():
-        print fmt % (label, show_string(abs(dist_path)))
+        print(fmt % (label, show_string(abs(dist_path))))
         label = ""
 
   def show_build_options_and_module_listing(self):
-    print "Python: %s %s" % (
-      sys.version.split()[0], show_string(sys.executable))
+    print("Python: %s %s" % (
+      sys.version.split()[0], show_string(sys.executable)))
     if (self.is_ready_for_build()):
       self.build_options.report()
-    print "command_version_suffix:", self.command_version_suffix
+    print("command_version_suffix:", self.command_version_suffix)
     self.show_module_listing()
     if (len(self.missing_for_use) > 0):
       raise RuntimeError("Missing modules: "
         + " ".join(sorted(self.missing_for_use)))
     if (not self.is_ready_for_build()):
       if (self.scons_dist_path is not None):
-        print "***********************************"
-        print "Warning: modules missing for build:"
+        print("***********************************")
+        print("Warning: modules missing for build:")
         for module_name in sorted(self.missing_for_build):
-          print " ", module_name
-        print "***********************************"
+          print(" ", module_name)
+        print("***********************************")
       remove_or_rename(self.under_build("SConstruct"))
 
   def write_setpath_files(self):
@@ -1478,7 +1484,7 @@ selfx:
     for path in [self.exe_path,
                  self.under_build("exe_dev", return_relocatable_path=True)]:
       if path.isdir():
-        print "Processing: %s" % show_string(abs(path))
+        print("Processing: %s" % show_string(abs(path)))
         for file_name in path.listdir():
           if (file_name.startswith(".")): continue
           target_file = file_name
@@ -1571,8 +1577,8 @@ selfx:
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
     self.reset_dispatcher_bookkeeping()
-    print "Creating files in build directory: %s" \
-      % show_string(abs(self.build_path))
+    print("Creating files in build directory: %s" \
+      % show_string(abs(self.build_path)))
     self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
     self.write_setpath_files()
@@ -1610,7 +1616,7 @@ selfx:
         [abs(p) for p in self.ld_library_path_additions()])
     regenerate_module_files.run(libtbx.env.under_base('.'), only_if_needed=True)
     self.pickle()
-    print >> completed_file_name.open("w"), "libtbx_refresh_is_completed"
+    print("libtbx_refresh_is_completed", file=completed_file_name.open("w"))
 
   def get_module(self, name, must_exist=True):
     result = self.module_dict.get(name, None)
@@ -1619,7 +1625,7 @@ selfx:
         show_string(name)))
     return result
 
-class module:
+class module(object):
 
   def __init__(self, env, name, dist_path=None, mate_suffix="adaptbx"):
     self.env = env
@@ -1804,9 +1810,9 @@ class module:
         if (not suppress_warning):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
             source_file)
-          print "*"*len(msg)
-          print msg
-          print "*"*len(msg)
+          print("*"*len(msg))
+          print(msg)
+          print("*"*len(msg))
         return
       for line in source_text.splitlines():
         flds = line.split()
@@ -1844,7 +1850,7 @@ class module:
 
   def process_command_line_directories(self):
     for source_dir in self.command_line_directory_paths():
-      print "Processing: %s" % show_string(abs(source_dir))
+      print("Processing: %s" % show_string(abs(source_dir)))
       def is_py_sh(file_name):
         return file_name.endswith(".sh") \
             or file_name.endswith(".py")
@@ -1872,7 +1878,7 @@ class module:
         target_file_name_infix="",
         scan_for_libtbx_set_dispatcher_name=False):
     source_dir = self.env.as_relocatable_path(source_dir)
-    print print_prefix+"Processing: %s" % show_string(abs(source_dir))
+    print(print_prefix+"Processing: %s" % show_string(abs(source_dir)))
     for file_name in source_dir.listdir():
       if (not file_name.endswith(".py")): continue
       self.write_dispatcher(
@@ -1887,7 +1893,7 @@ class module:
     for dist_path in self.dist_paths_active():
       custom_refresh = dist_path / "libtbx_refresh.py"
       if custom_refresh.isfile():
-        print "Processing: %s" % show_string(abs(custom_refresh))
+        print("Processing: %s" % show_string(abs(custom_refresh)))
         execfile(abs(custom_refresh), {}, {"self": self})
 
   def collect_test_scripts(self,
@@ -1905,7 +1911,7 @@ class module:
         path = dist_path / file_name
         if path.isfile(): path.remove()
 
-class build_options:
+class build_options(object):
 
   supported_modes = [
     "release",
@@ -1975,34 +1981,34 @@ class build_options:
 
   def report(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Compiler:", self.compiler
-    print >> f, "Build mode:", self.mode
-    print >> f, "Warning level:", self.warning_level
-    print >> f, "Precompiled Headers:", self.precompile_headers
-    print >> f, "Static libraries:", self.static_libraries
-    print >> f, "Static exe:", self.static_exe
-    print >> f, "Scan Boost headers:", self.scan_boost
-    print >> f, "Write full flex_fwd.h files:", self.write_full_flex_fwd_h
-    print >> f, "Build Boost.Python extensions:", \
-      self.build_boost_python_extensions
-    print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
-      self.boost_python_no_py_signatures
-    print >> f, "Define BOOST_PYTHON_BOOL_INT_STRICT:", \
-      self.boost_python_bool_int_strict
-    print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
-    print >> f, "Boost threads enabled:", self.enable_boost_threads
-    print >> f, "Enable CUDA:", self.enable_cuda
-    print >> f, "Use opt_resources if available:", self.opt_resources
-    print >> f, "Use environment flags:", self.use_environment_flags
-    print >> f, "Enable C++11:", self.enable_cxx11
-    print >> f, "Force true division:", (not self.old_division)
+    print("Compiler:", self.compiler, file=f)
+    print("Build mode:", self.mode, file=f)
+    print("Warning level:", self.warning_level, file=f)
+    print("Precompiled Headers:", self.precompile_headers, file=f)
+    print("Static libraries:", self.static_libraries, file=f)
+    print("Static exe:", self.static_exe, file=f)
+    print("Scan Boost headers:", self.scan_boost, file=f)
+    print("Write full flex_fwd.h files:", self.write_full_flex_fwd_h, file=f)
+    print("Build Boost.Python extensions:", \
+      self.build_boost_python_extensions, file=f)
+    print("Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
+      self.boost_python_no_py_signatures, file=f)
+    print("Define BOOST_PYTHON_BOOL_INT_STRICT:", \
+      self.boost_python_bool_int_strict, file=f)
+    print("Enable OpenMP if possible:", self.enable_openmp_if_possible, file=f)
+    print("Boost threads enabled:", self.enable_boost_threads, file=f)
+    print("Enable CUDA:", self.enable_cuda, file=f)
+    print("Use opt_resources if available:", self.opt_resources, file=f)
+    print("Use environment flags:", self.use_environment_flags, file=f)
+    print("Enable C++11:", self.enable_cxx11, file=f)
+    print("Force true division:", (not self.old_division), file=f)
     if( self.use_environment_flags ):
-      print >>f, "  CXXFLAGS = ", self.env_cxxflags
-      print >>f, "  CFLAGS = ", self.env_cflags
-      print >>f, "  CPPFLAGS = ", self.env_cppflags
-      print >>f, "  LDFLAGS = ", self.env_ldflags
+      print("  CXXFLAGS = ", self.env_cxxflags, file=f)
+      print("  CFLAGS = ", self.env_cflags, file=f)
+      print("  CPPFLAGS = ", self.env_cppflags, file=f)
+      print("  LDFLAGS = ", self.env_ldflags, file=f)
 
-class include_registry:
+class include_registry(object):
 
   def __init__(self):
     self._boost_dir_name = "boost"
@@ -2020,8 +2026,8 @@ class include_registry:
     if (not self._scan_boost
         and op.basename(path).lower() == self._boost_dir_name):
       if (not path in self._had_message):
-        print "libtbx.scons: implicit dependency scan disabled for directory",
-        print path
+        print("libtbx.scons: implicit dependency scan disabled for directory", end=' ')
+        print(path)
         self._had_message[path] = 1
       return False
     return True
@@ -2053,7 +2059,7 @@ class include_registry:
         env.Prepend(CXXFLAGS=[ipath])
         env.Prepend(SHCXXFLAGS=[ipath])
 
-class pre_process_args:
+class pre_process_args(object):
 
   def __init__(self, args, default_repositories=None):
     self.repository_paths = []
@@ -2230,7 +2236,7 @@ class pre_process_args:
         if (sys.platform != "darwin"):
           raise RuntimeError(
             "The --force_32bit option is only valid on Mac OS systems.")
-        if (sys.maxint > 2**31-1):
+        if (sys.maxsize > 2**31-1):
           raise RuntimeError(
             'The --force_32bit option can only be used with 32-bit Python.\n'
             '  See also: "man python"')
@@ -2419,4 +2425,4 @@ if (__name__ == "__main__"):
     unpickle().refresh()
   else:
     warm_start(sys.argv)
-  print "Done."
+  print("Done.")

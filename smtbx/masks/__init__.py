@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import sys
 
 import cctbx.masks
@@ -75,18 +79,18 @@ class solvent_accessible_volume(object):
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
-    print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
-    print >> log, "shrink_truncation_radius: %.2f" %(
-      self.mask.shrink_truncation_radius)
-    print >> log, "van der Waals radii:"
+    print("solvent_radius: %.2f" %(self.mask.solvent_radius), file=log)
+    print("shrink_truncation_radius: %.2f" %(
+      self.mask.shrink_truncation_radius), file=log)
+    print("van der Waals radii:", file=log)
     self.vdw_radii.show(log=log)
-    print >> log
-    print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
+    print(file=log)
+    print("Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
       self.solvent_accessible_volume,
       100 * self.solvent_accessible_volume /
-      self.xray_structure.unit_cell().volume())
+      self.xray_structure.unit_cell().volume()), file=log)
     n_voids = self.n_voids()
-    print >> log
+    print(file=log)
     self.flood_fill.show_summary(log=log)
 
 
@@ -287,25 +291,25 @@ class mask(object):
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
-    print >> log, "use_set_completion: %s" %self.use_set_completion
-    print >> log, "solvent_radius: %.2f" %(self.mask.solvent_radius)
-    print >> log, "shrink_truncation_radius: %.2f" %(
-      self.mask.shrink_truncation_radius)
-    print >> log, "van der Waals radii:"
+    print("use_set_completion: %s" %self.use_set_completion, file=log)
+    print("solvent_radius: %.2f" %(self.mask.solvent_radius), file=log)
+    print("shrink_truncation_radius: %.2f" %(
+      self.mask.shrink_truncation_radius), file=log)
+    print("van der Waals radii:", file=log)
     self.vdw_radii.show(log=log)
-    print >> log
-    print >> log, "Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
+    print(file=log)
+    print("Total solvent accessible volume / cell = %.1f Ang^3 [%.1f%%]" %(
       self.solvent_accessible_volume,
       100 * self.solvent_accessible_volume /
-      self.xray_structure.unit_cell().volume())
+      self.xray_structure.unit_cell().volume()), file=log)
     n_voids = self.n_voids()
     if n_voids > 0:
-      print >> log, "Total electron count / cell = %.1f" %(self.f_000_s)
-    print >> log
+      print("Total electron count / cell = %.1f" %(self.f_000_s), file=log)
+    print(file=log)
     self.flood_fill.show_summary(log=log)
     if n_voids == 0: return
-    print >> log
-    print >> log, "Void  Vol/Ang^3  #Electrons"
+    print(file=log)
+    print("Void  Vol/Ang^3  #Electrons", file=log)
     grid_points_per_void = self.flood_fill.grid_points_per_void()
     com = self.flood_fill.centres_of_mass_frac()
     electron_counts = self.electron_counts_per_void()
@@ -314,9 +318,9 @@ class mask(object):
         self.xray_structure.unit_cell().volume() * grid_points_per_void[i]) \
                / self.crystal_gridding.n_grid_points()
       formatted_site = ["%6.3f" % x for x in com[i]]
-      print >> log, "%4i" %(i+1),
-      print >> log, "%10.1f     " %void_vol,
-      print >> log, "%7.1f" %electron_counts[i]
+      print("%4i" %(i+1), end=' ', file=log)
+      print("%10.1f     " %void_vol, end=' ', file=log)
+      print("%7.1f" %electron_counts[i], file=log)
 
   def as_cif_block(self):
     from iotbx import cif

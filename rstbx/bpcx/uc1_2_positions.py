@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -7,6 +8,8 @@ from __future__ import division
 # by means of computing a correlaton coefficient between the two sets of
 # positions.
 
+from builtins import map
+from builtins import range
 import math
 import sys
 import random
@@ -78,9 +81,9 @@ def read_integrate_hkl(integrate_hkl):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkl = map(int, values[:3])
-        xyz = map(float, values[5:8])
-        isigma = map(float, values[3:5])
+        hkl = list(map(int, values[:3]))
+        xyz = list(map(float, values[5:8]))
+        isigma = list(map(float, values[3:5]))
 
         observations.append((hkl, xyz, isigma))
 
@@ -91,8 +94,8 @@ def read_uc1_2(uc1_2):
 
     for record in open(uc1_2):
         values = record.split()
-        hkl = map(int, values[:3])
-        xyz = map(float, values[3:])
+        hkl = list(map(int, values[:3]))
+        xyz = list(map(float, values[3:]))
 
         predictions.append((hkl, xyz))
 
@@ -136,7 +139,7 @@ def validate_predictions(integrate_hkl, uc1_2):
             dys.append(dy)
             dzs.append(dz)
 
-            print x, y, z, dx, dy, dz
+            print(x, y, z, dx, dy, dz)
 
     return meansd(dxs), meansd(dys), meansd(dzs)
 

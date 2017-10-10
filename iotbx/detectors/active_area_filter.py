@@ -1,7 +1,9 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 
-class active_area_filter:
+class active_area_filter(object):
   NEAR = 2
   def __init__(self,IT):
     from scitbx import matrix
@@ -10,7 +12,7 @@ class active_area_filter:
 
     reference = flex.double()
 
-    for i in xrange(len(IT)//4):
+    for i in range(len(IT)//4):
       UL = matrix.col((float(IT[4*i]),float(IT[4*i+1])))
       LR = matrix.col((float(IT[4*i+2]),float(IT[4*i+3])))
       center = (UL+LR)/2.
@@ -32,9 +34,9 @@ class active_area_filter:
       nearest_neighbours = self.adapt.nn
     selection = flex.bool()
     self.tile_id = flex.int()
-    for p in xrange(len(predictions)):
+    for p in range(len(predictions)):
       is_in_active_area = False
-      for n in xrange(self.NEAR):
+      for n in range(self.NEAR):
         itile = nearest_neighbours[p*self.NEAR+n]
         if self.IT[4*itile]<predictions[p][0]/pxlsz<self.IT[4*itile+2] and\
            self.IT[4*itile+1]<predictions[p][1]/pxlsz<self.IT[4*itile+3]:

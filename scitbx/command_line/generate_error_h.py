@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import write_this_is_auto_generated
 import sys, os
 
@@ -79,7 +80,7 @@ namespace %(mn)s {
 def run(args):
   this_command = os.environ["LIBTBX_DISPATCHER_NAME"]
   if (len(args) != 1):
-    print "usage: %s module_name > error.h" % this_command
+    print("usage: %s module_name > error.h" % this_command)
     return
   write_this_is_auto_generated(f=sys.stdout, file_name_generator=this_command)
   sys.stdout.write(as_string(module_name=args[0]))

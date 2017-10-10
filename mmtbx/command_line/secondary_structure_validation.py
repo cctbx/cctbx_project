@@ -1,12 +1,17 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_validation
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import object
 from mmtbx.secondary_structure import manager
 import iotbx.pdb
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry, safe_div
-import cStringIO
+import io
 import sys
 from libtbx import easy_mp
 import mmtbx
@@ -53,7 +58,7 @@ Usage examples:
 
 Full scope of parameters:
   """
-  print help_msg
+  print(help_msg)
   master_phil.show()
 
 class gather_ss_stats(object):
@@ -84,7 +89,7 @@ class gather_ss_stats(object):
     ss_params.secondary_structure.protein.helix=[]
     ss_params.secondary_structure.protein.sheet=[]
     ss_params.secondary_structure.nucleic_acid.enabled=False
-    ss_m_log = cStringIO.StringIO()
+    ss_m_log = io.StringIO()
 
     ss_manager = mmtbx.secondary_structure.manager(
         pdb_hierarchy=self.pdb_h,
@@ -191,12 +196,12 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
       work_params = master_phil.extract()
     pdb_h = pdb_hierarchy
   atoms = pdb_h.atoms()
-  ss_log = cStringIO.StringIO()
+  ss_log = io.StringIO()
   try:
     if(pdb_inp is not None): pdb_structure = pdb_inp
     ss_annot = pdb_structure.extract_secondary_structure(log=ss_log)
   except Sorry as e:
-    print >> out, " Syntax error in SS: %s" % e.message
+    print(" Syntax error in SS: %s" % e.message, file=out)
     return
   if work_params.nproc < 1:
     work_params.nproc = 1
@@ -205,25 +210,25 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   n_bad_helices = ss_log_cont.count("Bad HELIX")
   n_bad_sheets = ss_log_cont.count("Bad SHEET")
   if ss_annot is None or ss_annot.is_empty():
-    print >> out, "No SS annotation, nothing to analyze"
+    print("No SS annotation, nothing to analyze", file=out)
     return
   if n_bad_helices > 0:
-    print >> out, "Number of bad helices: %d" % n_bad_helices
+    print("Number of bad helices: %d" % n_bad_helices, file=out)
   if n_bad_helices > 0:
-    print >> out, "Number of bad sheets: %d" % n_bad_sheets
+    print("Number of bad sheets: %d" % n_bad_sheets, file=out)
   if len(pdb_h.models()) != 1 :
     raise Sorry("Multiple models not supported.")
   if not pdb_h.contains_protein():
-    print >> out, "Protein is not found in the model"
+    print("Protein is not found in the model", file=out)
     return
   if pdb_h.is_ca_only():
-    print >> out, "Error: CA-only model"
+    print("Error: CA-only model", file=out)
     return
   if is_ca_and_something(pdb_h):
-    print >> out, "CA-only and something model"
+    print("CA-only and something model", file=out)
     return
   if some_chains_are_ca(pdb_h):
-    print >> out, "some chains are CA-only"
+    print("some chains are CA-only", file=out)
     return
 
   corrupted_cs = False
@@ -237,10 +242,10 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
 
   if cs is None:
     if corrupted_cs:
-      print >> out, "Symmetry information is corrupted, "
+      print("Symmetry information is corrupted, ", file=out)
     else:
-      print >> out, "Symmetry information was not found, "
-    print >> out, "putting molecule in P1 box."
+      print("Symmetry information was not found, ", file=out)
+    print("putting molecule in P1 box.", file=out)
     from cctbx import uctbx
     atoms = pdb_structure.atoms()
     box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
@@ -257,15 +262,15 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   number_of_empty_sheets = empty_annots.get_n_sheets()
   n_bad_helix_sheet_records += (number_of_empty_helices+number_of_empty_sheets)
   if number_of_empty_helices > 0:
-    print >> out, "Helices without corresponding atoms in the model (%d):" % number_of_empty_helices
+    print("Helices without corresponding atoms in the model (%d):" % number_of_empty_helices, file=out)
     for h in empty_annots.helices:
-      print >> out, "  ", h.as_pdb_str()
+      print("  ", h.as_pdb_str(), file=out)
   if number_of_empty_sheets > 0:
-    print >> out, "Sheets without corresponding atoms in the model (%d):" % number_of_empty_sheets
+    print("Sheets without corresponding atoms in the model (%d):" % number_of_empty_sheets, file=out)
     for sh in empty_annots.sheets:
-      print >> out, "  ", sh.as_pdb_str()
+      print("  ", sh.as_pdb_str(), file=out)
 
-  print >> out, "Checking annotations thoroughly, use nproc=<number> if it is too slow..."
+  print("Checking annotations thoroughly, use nproc=<number> if it is too slow...", file=out)
 
   hsh_tuples = []
   for h in ss_annot.helices:
@@ -317,11 +322,11 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
         n_bad_helix_sheet_records += 1
       if n_bad_hbonds + n_mediocre_hbonds + n_outliers + n_wrong_region > 0:
         # this is bad annotation, printing it to log with separate stats:
-        print >> out, "Bad annotation found:"
-        print >> out, "%s" % ss_elem.as_pdb_str()
-        print >> out, "  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
-            n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region)
-        print >> out, "-"*80
+        print("Bad annotation found:", file=out)
+        print("%s" % ss_elem.as_pdb_str(), file=out)
+        print("  Total hb: %d, mediocre: %d, bad: %d, Rama outliers: %d, Rama wrong %d" % (
+            n_hbonds, n_mediocre_hbonds, n_bad_hbonds, n_outliers, n_wrong_region), file=out)
+        print("-"*80, file=out)
 
   # n1 = percentage of bad SS elements (per given model);
   # bad here means: n_bad_hbonds + n_outliers + n_wrong_region > 0
@@ -334,23 +339,23 @@ def run(args=None, pdb_inp=None, pdb_hierarchy=None, cs=None, params=None,
   n4 = safe_div(cumm_n_bad_hbonds,cumm_n_hbonds)*100. # No per SS element separation
   # percentage of SS elements that have at least one bad H bond (per given model)
   n5 = safe_div(n_elem_with_bad_hbond,n_total_helix_sheet_records)*100.
-  print >> out, "Overall info:"
-  print >> out, "  Total HELIX+SHEET recods       :", n_total_helix_sheet_records
-  print >> out, "  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records
-  print >> out, "  Total declared H-bonds         :", cumm_n_hbonds
-  print >> out, "  Total mediocre H-bonds (%.1f-%.1fA):" % (
+  print("Overall info:", file=out)
+  print("  Total HELIX+SHEET recods       :", n_total_helix_sheet_records, file=out)
+  print("  Total bad HELIX+SHEET recods   :", n_bad_helix_sheet_records, file=out)
+  print("  Total declared H-bonds         :", cumm_n_hbonds, file=out)
+  print("  Total mediocre H-bonds (%.1f-%.1fA):" % (
       work_params.mediocre_hbond_cutoff, work_params.bad_hbond_cutoff), \
-      cumm_n_mediocre_hbonds
-  print >> out, "  Total bad H-bonds (>%.1fA)      :" % work_params.bad_hbond_cutoff, \
-      cumm_n_bad_hbonds
-  print >> out, "  Total Ramachandran outliers    :", cumm_n_rama_out
-  print >> out, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
-  print >> out, "All done."
+      cumm_n_mediocre_hbonds, file=out)
+  print("  Total bad H-bonds (>%.1fA)      :" % work_params.bad_hbond_cutoff, \
+      cumm_n_bad_hbonds, file=out)
+  print("  Total Ramachandran outliers    :", cumm_n_rama_out, file=out)
+  print("  Total wrong Ramachandrans      :", cumm_n_wrong_reg, file=out)
+  print("All done.", file=out)
 
   if work_params.filter_annotation:
     filtered_ann = ss_annot.filter_annotation(hierarchy=pdb_h)
-    print >> out, "Filtered annotation:"
-    print >> out, filtered_ann.as_pdb_str()
+    print("Filtered annotation:", file=out)
+    print(filtered_ann.as_pdb_str(), file=out)
 
   return group_args(
     n_total_helix_sheet_records = n_total_helix_sheet_records,

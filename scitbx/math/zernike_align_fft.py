@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from scitbx.math import correlation
 from stdlib import math as smath
@@ -17,7 +20,7 @@ class align(object):
     self.nmax = nmax
     self.fixed = fixed
     self.moving = moving
-    self.beta = smath.pi*2.0/float(n_beta-1)*flex.double( range(n_beta) )
+    self.beta = smath.pi*2.0/float(n_beta-1)*flex.double( list(range(n_beta)) )
     self.nb = n_beta
     self.pad = max(0, (ngrid-1)//2 - nmax )
     self.ngrid = (self.pad+nmax) * 2 + 1
@@ -113,11 +116,11 @@ class align(object):
 
 # show the refined results
       if( self.show_result ):
-        print "refined results:"
+        print("refined results:")
         for ii in range( self.topn ):
           o = orders[ii]
           o = ii
-          print ii, ":", list( self.refined[o] ), ":", self.refined_score[o]
+          print(ii, ":", list( self.refined[o] ), ":", self.refined_score[o])
       ea = self.refined[ orders[0] ]
       self.best_ea = (ea[0], ea[1], ea[2] )
       self.moving_nlm = self.cc_obj.rotate_moving_obj( ea[0],ea[1], ea[2], self.inversion )

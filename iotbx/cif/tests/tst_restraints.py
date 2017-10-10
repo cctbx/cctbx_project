@@ -1,11 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from cctbx import crystal, sgtbx, xray
 from cctbx import geometry_restraints
 from cctbx.array_family import flex
 import iotbx.cif.restraints
 from libtbx.test_utils import show_diff
 
-from cStringIO import StringIO
+from io import StringIO
 
 def exercise_geometry_restraints_as_cif():
   quartz = xray.structure(
@@ -145,7 +148,7 @@ loop_
 def exercise_adp_restraints_as_cif():
   import libtbx.load_env
   if not libtbx.env.has_module("smtbx"):
-    print "Skipping exercise_adp_restraints_as_cif(): smtbx not available"
+    print("Skipping exercise_adp_restraints_as_cif(): smtbx not available")
     return
   from smtbx.refinement.restraints import adp_restraints as smtbx_adp_restraints
   import smtbx.development
@@ -196,7 +199,7 @@ loop_
 def run():
   exercise_adp_restraints_as_cif()
   exercise_geometry_restraints_as_cif()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

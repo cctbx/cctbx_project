@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 import boost.python
 import rstbx.dps_core # import dependency
 boost.python.import_ext("rstbx_indexing_api_ext")
@@ -35,7 +36,7 @@ class _(boost.python.injector, ext.dps_extended):
     reciprocal_space_vectors = flex.vec3_double()
 
     # tile surface to laboratory transformation
-    for n in xrange(len(raw_spot_input)):
+    for n in range(len(raw_spot_input)):
       pid = panelID[n]
       lab_direct = col(detector[pid].get_lab_coord(raw_spot_input[n][0:2]))
 
@@ -72,7 +73,7 @@ class _(boost.python.injector, ext.dps_extended):
     reciprocal_space_vectors = flex.vec3_double()
 
     # tile surface to laboratory transformation
-    for n in xrange(len(raw_spot_input)):
+    for n in range(len(raw_spot_input)):
       pid = panelID[n]
       lab_direct = col(detector[pid].get_lab_coord(raw_spot_input[n][0:2]))
 

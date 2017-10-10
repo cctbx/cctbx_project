@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_box
 
 import mmtbx.utils
@@ -101,7 +102,7 @@ or
 
 Parameters:"""%h
   if(len(args) == 0 and not pdb_hierarchy):
-    print default_message
+    print(default_message)
     master_phil.show(prefix="  ")
     return
   inputs = mmtbx.utils.process_command_line_args(args = args,
@@ -194,10 +195,9 @@ Parameters:"""%h
     string = params.selection)
   if selection.size():
     print_statistics.make_sub_header("atom selection", out=log)
-    print >> log, "Selection string: selection='%s'"%params.selection
-    print >> log, \
-        "  selects %d atoms from total %d atoms."%(selection.count(True),
-        selection.size())
+    print("Selection string: selection='%s'"%params.selection, file=log)
+    print("  selects %d atoms from total %d atoms."%(selection.count(True),
+        selection.size()), file=log)
   sites_cart_all = xray_structure.sites_cart()
   sites_cart = sites_cart_all.select(selection)
   selection = xray_structure.selection_within(
@@ -212,13 +212,13 @@ Parameters:"""%h
     "Extracting box around selected atoms and writing output files", out=log)
   #
   if params.value_outside_atoms=='mean':
-    print >>log,"\nValue outside atoms mask will be set to mean inside mask"
+    print("\nValue outside atoms mask will be set to mean inside mask", file=log)
   if params.get_half_height_width and params.density_select:
-    print >>log,"\nHalf width at half height will be used to id boundaries"
+    print("\nHalf width at half height will be used to id boundaries", file=log)
   if params.soft_mask and sites_cart_all.size()>0:
-    print >>log,"\nSoft mask will be applied to model-based mask"
+    print("\nSoft mask will be applied to model-based mask", file=log)
   if params.keep_map_size:
-    print >>log,"\nEntire map will be kept (not cutting out region)"
+    print("\nEntire map will be kept (not cutting out region)", file=log)
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,
     map_data         = map_data.as_double(),
@@ -235,14 +235,14 @@ Parameters:"""%h
     keep_map_size         = params.keep_map_size,
     )
   if box.shift_cart:
-    print >>log,"Final coordinate shift: (%.1f,%.1f,%.1f)" %(
-      tuple(box.shift_cart))
+    print("Final coordinate shift: (%.1f,%.1f,%.1f)" %(
+      tuple(box.shift_cart)), file=log)
 
-  print >>log,"Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
-      box.box_crystal_symmetry.unit_cell().parameters()[:3])
+  print("Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
+      box.box_crystal_symmetry.unit_cell().parameters()[:3]), file=log)
 
   if box.pdb_outside_box_msg:
-    print >> log, box.pdb_outside_box_msg
+    print(box.pdb_outside_box_msg, file=log)
 
 
   ph_box = pdb_hierarchy.select(selection)
@@ -264,19 +264,19 @@ Parameters:"""%h
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.ccp4"%output_prefix
     else: file_name = "%s.ccp4"%params.output_file_name_prefix
-    print >> log, "writing map to CCP4 formatted file:   %s"%file_name
+    print("writing map to CCP4 formatted file:   %s"%file_name, file=log)
     box.write_ccp4_map(file_name=file_name)
   if("xplor" in params.output_format):
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.xplor"%output_prefix
     else: file_name = "%s.xplor"%params.output_file_name_prefix
-    print >> log, "writing map to X-plor formatted file: %s"%file_name
+    print("writing map to X-plor formatted file: %s"%file_name, file=log)
     box.write_xplor_map(file_name=file_name)
   if("mtz" in params.output_format):
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.mtz"%output_prefix
     else: file_name = "%s.mtz"%params.output_file_name_prefix
-    print >> log, "writing map coefficients to MTZ file: %s"%file_name
+    print("writing map coefficients to MTZ file: %s"%file_name, file=log)
     if(map_coeff is not None): d_min = map_coeff.d_min()
     else:
       d_min = maptbx.d_min_from_map(map_data=box.map_box,
@@ -289,19 +289,19 @@ Parameters:"""%h
     if(params.output_file_name_prefix is None):
       output_ncs_file = "%s_box.ncs_spec"%output_prefix
     else: output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
-    print >>log,"\nOffsetting NCS in %s and writing to %s" %(
-       params.ncs_file,output_ncs_file)
+    print("\nOffsetting NCS in %s and writing to %s" %(
+       params.ncs_file,output_ncs_file), file=log)
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.read_ncs(params.ncs_file,log=log)
     ncs_object.display_all(log=log)
     if not ncs_object or ncs_object.max_operators()<1:
-      print >>log,"Skipping...no NCS available"
+      print("Skipping...no NCS available", file=log)
     elif box.shift_cart:
       from scitbx.math import  matrix
-      print >>log,"Shifting NCS operators "+\
+      print("Shifting NCS operators "+\
         "based on coordinate shift of (%7.1f,%7.1f,%7.1f)" %(
-        tuple(box.shift_cart))
+        tuple(box.shift_cart)), file=log)
       ncs_object=ncs_object.coordinate_offset(
        coordinate_offset=matrix.col(box.shift_cart))
       ncs_object.display_all(log=log)
@@ -310,7 +310,7 @@ Parameters:"""%h
     box.ncs_object=ncs_object
   else:
     box.ncs_object=None
-  print >> log
+  print(file=log)
   return box
 
 # =============================================================================

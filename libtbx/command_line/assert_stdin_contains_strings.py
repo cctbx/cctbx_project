@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME libtbx.assert_stdin_contains_strings
 # LIBTBX_SET_DISPATCHER_NAME libtbx.assert_stdin_does_not_contain_strings
 import libtbx.load_env
@@ -11,11 +12,11 @@ def run(args):
   for arg in args:
     s = "\n".join(arg.splitlines())
     if ((input.find(s) < 0) == does_not): continue
-    print "BEGIN OF INPUT (%s)" % dn
-    print "v" * 79
+    print("BEGIN OF INPUT (%s)" % dn)
+    print("v" * 79)
     sys.stdout.write(input)
-    print "^" * 79
-    print "END OF INPUT (%s)" % dn
+    print("^" * 79)
+    print("END OF INPUT (%s)" % dn)
     if (does_not): s = "found"
     else:          s = "not"
     raise AssertionError("String %s in input: %s" % (s, arg))

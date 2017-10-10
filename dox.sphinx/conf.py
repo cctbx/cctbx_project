@@ -13,6 +13,7 @@ from __future__ import division
 # serve to show the default.
 
 #from __future__ import absolute_import
+from builtins import range
 import sys, os, re
 
 # If extensions (or modules to document with autodoc) are in another directory,

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import sys
 
 items = [
@@ -31,5 +34,5 @@ def show(out=None, prefix="", show_zero_calls=False):
     max([len(s) for s in times]))
   for i,c,t in zip(items, calls, times):
     if (not show_zero_calls and c == "0"): continue
-    print >> out, prefix + (fmt % (i+":", c, t)).replace(
-      " 1 calls,", " 1 call, ")
+    print(prefix + (fmt % (i+":", c, t)).replace(
+      " 1 calls,", " 1 call, "), file=out)

@@ -6,6 +6,9 @@ file_name ends with .gz. Also provides functions to read that object back.
 
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 def _open(file_name, mode):
   """
   Wraps libtbx.smart_open.
@@ -44,8 +47,8 @@ def dump(file_name, obj):
   >>> print load("output.pkl.gz")
   [1, 2, 3]
   """
-  import cPickle
-  return cPickle.dump(obj, _open(file_name, "wb"), cPickle.HIGHEST_PROTOCOL)
+  import pickle
+  return pickle.dump(obj, _open(file_name, "wb"), pickle.HIGHEST_PROTOCOL)
 
 def dumps(obj):
   """
@@ -59,8 +62,8 @@ def dumps(obj):
   -------
   str
   """
-  import cPickle
-  return cPickle.dumps(obj, cPickle.HIGHEST_PROTOCOL)
+  import pickle
+  return pickle.dumps(obj, pickle.HIGHEST_PROTOCOL)
 
 def load(file_name, faster_but_using_more_memory=True):
   """
@@ -77,10 +80,10 @@ def load(file_name, faster_but_using_more_memory=True):
   -------
   object
   """
-  import cPickle
+  import pickle
   if (faster_but_using_more_memory):
-    return cPickle.loads(_open(file_name, "rb").read())
-  return cPickle.load(_open(file_name, "rb"))
+    return pickle.loads(_open(file_name, "rb").read())
+  return pickle.load(_open(file_name, "rb"))
 
 def loads(string) :
   """
@@ -100,8 +103,8 @@ def loads(string) :
   >>> print loads(dumps([1, 2, 3])
   [1, 2, 3]
   """
-  import cPickle
-  return cPickle.loads(string)
+  import pickle
+  return pickle.loads(string)
 
 def dump_args(*args, **keyword_args):
   """

@@ -10,7 +10,9 @@
 # Located in dxtbx/format
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
@@ -31,7 +33,7 @@ def get_adsc_timestamp(timestamp):
     except: # intentional
       pass
 
-  raise RuntimeError, 'timestamp %s not recognised' % timestamp
+  raise RuntimeError('timestamp %s not recognised' % timestamp)
 
 class FormatCBFMiniADSCHF4M(FormatCBFMini):
   '''A class for reading mini CBF format ADSC images for HF-4M @ NE-CAT.'''
@@ -92,12 +94,12 @@ class FormatCBFMiniADSCHF4M(FormatCBFMini):
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
-    beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = list(map(float, beam_xy))
 
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = list(map(float, pixel_xy))
 
     thickness = float(
       self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
@@ -225,4 +227,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniADSCHF4M.understand(arg)
+    print(FormatCBFMiniADSCHF4M.understand(arg))

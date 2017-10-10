@@ -1,7 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from scitbx.stl import set
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -44,7 +47,7 @@ def exercise_stl_string():
 def exercise():
   exercise_unsigned()
   exercise_stl_string()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import map
+from builtins import range
 from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -356,7 +358,7 @@ class Test_ncs_utils(unittest.TestCase):
     the portion of the protein we want to refine.
     """
     # print sys._getframe().f_code.co_name
-    refine_selection = flex.size_t(range(30))
+    refine_selection = flex.size_t(list(range(30)))
     result = nu.get_extended_ncs_selection(
       ncs_restraints_group_list=self.ncs_restraints_group_list,
       refine_selection=refine_selection)
@@ -622,7 +624,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_transform_update']
-  suite = unittest.TestSuite(map(Test_ncs_utils,tests))
+  suite = unittest.TestSuite(list(map(Test_ncs_utils,tests)))
   return suite
 
 if __name__=='__main__':

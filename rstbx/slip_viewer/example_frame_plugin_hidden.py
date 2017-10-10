@@ -3,6 +3,7 @@ from __future__ import division
 #
 # $Id: ring_frame.py 18950 2013-12-20 20:23:08Z phyy-nx $
 
+from builtins import object
 import wx
 
 ### Enable the plugin by renaming to end in "_frame_plugin.py"

@@ -9,7 +9,14 @@
 #  included in the root directory of this package.
 
 from __future__ import absolute_import, division
-import cPickle as pickle
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
+import pickle as pickle
 
 class DataBlock(object):
   ''' High level container for blocks of sweeps and imagesets. '''
@@ -102,13 +109,13 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_beam()] = None
       else:
-        for i in xrange(len(iset)):
+        for i in range(len(iset)):
           obj[iset.get_beam(i)] = None
-    return obj.keys()
+    return list(obj.keys())
 
   def unique_detectors(self):
     ''' Returns a list of detector objects. '''
-    return self._unique_detectors_dict().keys()
+    return list(self._unique_detectors_dict().keys())
 
   def _unique_detectors_dict(self):
     ''' Returns an ordered dictionary of detector objects. '''
@@ -119,10 +126,10 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_detector()] = None
       else:
-        for i in xrange(len(iset)):
+        for i in range(len(iset)):
           obj[iset.get_detector(i)] = None
     detector_id = 0
-    for detector in obj.keys():
+    for detector in list(obj.keys()):
       obj[detector] = detector_id
       detector_id = detector_id + 1
     return obj
@@ -136,14 +143,14 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_goniometer()] = None
       else:
-        for i in xrange(len(iset)):
+        for i in range(len(iset)):
           try:
             model = iset.get_goniometer(i)
             if model is not None:
               obj[model] = None
           except Exception:
             pass
-    return obj.keys()
+    return list(obj.keys())
 
   def unique_scans(self):
     ''' Iterate through unique scans. '''
@@ -154,14 +161,14 @@ class DataBlock(object):
       if isinstance(iset, ImageSweep):
         obj[iset.get_scan()] = None
       else:
-        for i in xrange(len(iset)):
+        for i in range(len(iset)):
           try:
             model = iset.get_scan(i)
             if model is not None:
               obj[model] = None
           except Exception:
             pass
-    return obj.keys()
+    return list(obj.keys())
 
   def to_dict(self):
     ''' Convert the datablock to a dictionary '''
@@ -226,7 +233,7 @@ class DataBlock(object):
         else:
           imageset['__id__'] = "ImageSet"
         image_list = []
-        for i in xrange(len(iset)):
+        for i in range(len(iset)):
           image_dict = OrderedDict()
           image_dict['filename'] = abspath(iset.get_path(i))
           image_dict["gain"] = abspath_or_none(iset.external_lookup.gain.filename)
@@ -310,7 +317,7 @@ class FormatChecker(object):
         self._format_class = Registry.find(filename)
       self._format_class = self.check_child_formats(filename)
       if self._verbose:
-        print 'Using %s for %s' % (self._format_class.__name__, filename)
+        print('Using %s for %s' % (self._format_class.__name__, filename))
     except Exception:
       return None
     return self._format_class
@@ -340,7 +347,7 @@ class FormatChecker(object):
         group_format = fmt
       if self._verbose:
         if fmt is not None:
-          print 'Using %s for %s' % (fmt.__name__, filename)
+          print('Using %s for %s' % (fmt.__name__, filename))
     if len(group_fnames) > 0:
       yield group_format, group_fnames
 
@@ -363,19 +370,19 @@ class DataBlockTemplateImporter(object):
       except Exception:
         self.datablocks.append(DataBlock([iset]))
       if verbose:
-        print 'Added imageset to datablock %d' % (len(self.datablocks) - 1)
+        print('Added imageset to datablock %d' % (len(self.datablocks) - 1))
 
     # For each template do an import
     for template in templates:
       template = normpath(template)
       paths = sorted(locate_files_matching_template_string(template))
       if verbose:
-        print 'The following files matched the template string:'
+        print('The following files matched the template string:')
         if len(paths) > 0:
           for p in paths:
-            print ' %s' % p
+            print(' %s' % p)
         else:
-          print ' No files found'
+          print(' No files found')
 
       # Check if we've matched any filenames
       if len(paths) == 0:
@@ -424,7 +431,7 @@ class DataBlockTemplateImporter(object):
 
     # Create the sweep
     imageset = ImageSetFactory.make_sweep(
-      template, range(*image_range),
+      template, list(range(*image_range)),
       format_class,
       b, d, g, s, format_kwargs=kwargs.get('format_kwargs'))
 
@@ -458,7 +465,7 @@ class DataBlockFilenameImporter(object):
       except Exception:
         self.datablocks.append(DataBlock([iset]))
       if verbose:
-        print 'Added imageset to datablock %d' % (len(self.datablocks) - 1)
+        print('Added imageset to datablock %d' % (len(self.datablocks) - 1))
 
     # Iterate through groups of files by format class
     find_format = FormatChecker(verbose=verbose)
@@ -470,7 +477,7 @@ class DataBlockFilenameImporter(object):
           imageset = self._create_single_file_imageset(fmt, filename,
                                                        format_kwargs=format_kwargs)
           append_to_datablocks(imageset)
-          if verbose: print 'Loaded file: %s' % filename
+          if verbose: print('Loaded file: %s' % filename)
       else:
         records = self._extract_file_metadata(
           fmt,
@@ -603,7 +610,7 @@ class DataBlockFilenameImporter(object):
 
       # Create the sweep
       imageset = ImageSetFactory.make_sweep(
-        abspath(records[0].template), range(*image_range),
+        abspath(records[0].template), list(range(*image_range)),
         format_class,
         records[0].beam, records[0].detector,
         records[0].goniometer, records[0].scan,
@@ -619,7 +626,7 @@ class DataBlockFilenameImporter(object):
 
       # make an imageset
       imageset = ImageSetFactory.make_imageset(
-        map(abspath, filenames),
+        list(map(abspath, filenames)),
         format_class,
         format_kwargs=format_kwargs)
       for i, r in enumerate(records):
@@ -720,7 +727,7 @@ class DataBlockDictImporter(object):
           template = load_path(imageset['template'])
           i0, i1 = scan.get_image_range()
           iset = ImageSetFactory.make_sweep(
-            template, range(i0, i1+1), None,
+            template, list(range(i0, i1+1)), None,
             beam, detector, gonio, scan, check_format,
             format_kwargs=format_kwargs)
           if 'mask' in imageset and imageset['mask'] is not None:
@@ -869,8 +876,8 @@ class DataBlockFactory(object):
     for filename in unhandled1:
       try:
         datablocks.extend(DataBlockFactory.from_serialized_format(filename))
-        if verbose: print 'Loaded datablocks(s) from %s' % filename
-      except Exception, e:
+        if verbose: print('Loaded datablocks(s) from %s' % filename)
+      except Exception as e:
         unhandled.append(filename)
 
     # Return the datablocks
@@ -898,10 +905,10 @@ class DataBlockFactory(object):
         subdir.sort()
         filelist.extend(subdir)
         if verbose:
-          print "Added %d files from %s" % (len(subdir), f)
+          print("Added %d files from %s" % (len(subdir), f))
       else:
         if verbose:
-          print "Could not import %s: not a valid file or directory name" % f
+          print("Could not import %s: not a valid file or directory name" % f)
         if unhandled is not None:
           unhandled.append(f)
 
@@ -977,7 +984,7 @@ class DataBlockFactory(object):
     # First try as JSON format
     try:
       return DataBlockFactory.from_json_file(filename, check_format)
-    except Exception, e:
+    except Exception as e:
       pass
 
     # Now try as pickle format
@@ -1139,10 +1146,10 @@ class GoniometerComparison(object):
 
 
 def all_equal(a, b):
-  return all(map(lambda x: x[0] == x[1], zip(a, b)))
+  return all([x[0] == x[1] for x in zip(a, b)])
 
 def all_approx_equal(a, b, tol):
-  return all(map(lambda x: abs(x[0] - x[1]) < tol, zip(a, b)))
+  return all([abs(x[0] - x[1]) < tol for x in zip(a, b)])
 
 class BeamDiff(object):
   '''

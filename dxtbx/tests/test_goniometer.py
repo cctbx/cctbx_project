@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # test_goniometer.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -8,6 +9,7 @@ from __future__ import absolute_import, division
 #
 # Tests for the goniometer class.
 
+from builtins import range
 import math
 
 from dxtbx.model.goniometer import Goniometer, MultiAxisGoniometer
@@ -19,7 +21,7 @@ def compare_tuples(a, b, tol = 1.0e-6):
 
   assert(len(a) == len(b))
 
-  for j in xrange(len(a)):
+  for j in range(len(a)):
     if math.fabs(b[j] - a[j]) > tol:
       return False
 
@@ -102,7 +104,7 @@ def test_goniometer():
   kappa2 = easy_pickle.loads(s)
   assert kappa == kappa2
 
-  print 'OK'
+  print('OK')
 
 def test_multi_axis_goniometer():
   from libtbx.test_utils import approx_equal
@@ -175,7 +177,7 @@ def test_multi_axis_goniometer():
 
   # Check exception is raised if scan axis is out range
   try: GoniometerFactory.multi_axis(axes, angles, names, 3)
-  except RuntimeError, e: pass
+  except RuntimeError as e: pass
   else: raise Exception_expected
 
   # Single axis is just a special case of a multi axis goniometer
@@ -185,7 +187,7 @@ def test_multi_axis_goniometer():
   assert single_axis.get_setting_rotation() == (1,0,0,0,1,0,0,0,1)
   assert single_axis.get_rotation_axis() == (1,0,0)
 
-  print 'OK'
+  print('OK')
 
 def test_goniometer_from_phil():
   from dxtbx.model.goniometer import GoniometerFactory
@@ -235,7 +237,7 @@ def test_goniometer_from_phil():
 
   assert tuple(g4.get_axes()) == ((0, 1, 0), (1, 0, 0), (0, 0, 1))
 
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
 

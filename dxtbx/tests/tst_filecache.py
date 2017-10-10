@@ -8,12 +8,16 @@
 # Tests for the filecache classes. This compares behaviour against StringIO.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 def test_filecache():
   import dxtbx.filecache
   import libtbx.load_env
   import os
-  from StringIO import StringIO # this is not cStringIO on purpose!
+  from io import StringIO # this is not cStringIO on purpose!
 
   dxtbx_dir = libtbx.env.dist_path('dxtbx')
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
@@ -85,7 +89,7 @@ def test_filecache():
   import random
 
   random_a, random_b = random.randint(0, 10000), random.randint(0,150000)
-  print "Running test for parameters %d %d" % (random_a, random_b)
+  print("Running test for parameters %d %d" % (random_a, random_b))
 
   actual   = (fh.readline(), \
               fh.read(random_a), \
@@ -104,8 +108,8 @@ def test_filecache_more():
 
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
-    print 'SKIP: dials_regression not configured'
+  except KeyError as e:
+    print('SKIP: dials_regression not configured')
     exit(0)
 
   filename = os.path.join(dials_regression, 'image_examples', 'MacScience', 'reallysurprise_001.ipf')

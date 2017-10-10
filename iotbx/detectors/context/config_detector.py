@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re,time,copy
 
 #------------------ALS-----------------------
@@ -167,7 +168,7 @@ def other_beamlines(iobj,passthru_convention):
   elif ADSC910_at_BioCARS(iobj):
     beam_center_convention = 0
   elif iobj.serial_number not in alld:
-    print "WARNING (possibly fatal): new beamline; coordinate system unknown. Please contact the authors"
+    print("WARNING (possibly fatal): new beamline; coordinate system unknown. Please contact the authors")
     beam_center_convention = passthru_convention
   else:
     beam_center_convention = passthru_convention

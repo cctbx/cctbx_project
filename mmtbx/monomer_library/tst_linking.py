@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import os
 from libtbx import easy_run
 
@@ -2307,7 +2309,7 @@ def run_and_test(cmd, pdb, i):
       break
   else :
     raise RuntimeError("Missing expected log output")
-  print "OK"
+  print("OK")
   # test .geo
   f=file(pdb.replace(".pdb", "_minimized.geo"), "rb")
   lines = f.readlines()
@@ -2320,7 +2322,7 @@ def run_and_test(cmd, pdb, i):
                       'User supplied restraints restraints:',
                       ]:
       if line.find(bond_like)>-1:
-        print 'Adding %s for %s' % (int(line.split()[-1]), bond_like)
+        print('Adding %s for %s' % (int(line.split()[-1]), bond_like))
         bonds += int(line.split()[-1])
   assert bonds == links[pdb][i], "found %d bonds but expected %s! File: %s" % (
     bonds,
@@ -2330,7 +2332,7 @@ def run_and_test(cmd, pdb, i):
   if (os.path.isfile(new_geo)) :
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
-  print "OK"
+  print("OK")
   # test links
   #if pdb in ["linking_test_LEU-CSY-VAL.pdb",
   #           ]:
@@ -2387,7 +2389,7 @@ def run(only_i=None):
     if pdb.find("CD_GHE")>-1: continue
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
-    print 'pdb',pdb
+    print('pdb',pdb)
     j+=1
     if only_i is not None and only_i!=j: continue
     for i in range(2):
@@ -2402,8 +2404,8 @@ def run(only_i=None):
           cmd += " secondary_structure.enabled=1"
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print "test number:",j
-      print cmd
+      print("test number:",j)
+      print(cmd)
       run_and_test(cmd, pdb,i)
 
   for pdb in sorted(pdbs):
@@ -2416,7 +2418,7 @@ def run(only_i=None):
         log_filename = "%s_%d_%d.log" % (pdb, i, ii)
         cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
         cmd += " link_all=%d link_carbohydrate=%d" % (i, ii)
-        print cmd
+        print(cmd)
         run_and_test(cmd, pdb,k)
         k+=1
 

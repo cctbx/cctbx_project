@@ -13,6 +13,8 @@ http://www.ncbi.nlm.nih.gov/pubmed/12557186
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from mmtbx.validation import residue, validation
 from scitbx.matrix import col, dihedral_angle, rotate_point_around_axis
 import sys
@@ -144,16 +146,16 @@ class cbetadev (validation) :
 
   def show_old_output (self, out, verbose=False, prefix="pdb") :
     if (verbose) :
-      print >> out, self.output_header
+      print(self.output_header, file=out)
     for result in self.results :
-      print >> out, prefix + " :" + result.format_old()
+      print(prefix + " :" + result.format_old(), file=out)
     if (verbose) :
       self.show_summary(out)
 
   def show_summary (self, out, prefix="") :
-    print >> out, prefix + \
+    print(prefix + \
       'SUMMARY: %d C-beta deviations >= 0.25 Angstrom (Goal: 0)' % \
-      self.n_outliers
+      self.n_outliers, file=out)
 
   #functions for internal access of summary statistics
   def get_outlier_count(self):
@@ -355,7 +357,7 @@ def extract_atoms_from_residue_group (residue_group) :
           if (atom.name in expected_names) :
             relevant_atoms[atom.name] = atom
         if (len(relevant_atoms) == 0) : continue
-        for atom_name in main_conf.keys() :
+        for atom_name in list(main_conf.keys()) :
           if (not atom_name in relevant_atoms) :
             relevant_atoms[atom_name] = main_conf[atom_name]
         if (len(relevant_atoms) != 0) :

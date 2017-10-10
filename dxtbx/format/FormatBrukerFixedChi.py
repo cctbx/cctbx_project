@@ -6,7 +6,10 @@
 #   included in the root directory of this package.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
+from builtins import range
 from scitbx import matrix
 
 from dxtbx.format.FormatBruker import FormatBruker
@@ -18,10 +21,10 @@ class FormatBrukerFixedChi(FormatBruker):
     #return False
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError as e:
       return False
     matches = []
-    for x in xrange(0,1024,80):
+    for x in range(0,1024,80):
       word = tag[x:x+16]
       if word[0:7].isupper() and word[7]==":":
         matches.append(word)
@@ -63,7 +66,7 @@ class FormatBrukerFixedChi(FormatBruker):
     # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
 
     from scitbx import matrix
-    angles = map(float, self.header_dict['ANGLES'])
+    angles = list(map(float, self.header_dict['ANGLES']))
 
     beam = matrix.col((0, 0, 1))
     phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
@@ -93,7 +96,7 @@ class FormatBrukerFixedChi(FormatBruker):
     slow = matrix.col((0, 1, 0))
     beam = matrix.col((0, 0, 1))
     pixel_mm = 5.0 / float(self.header_dict['DETTYPE'][1])
-    beam_pixel = map(float, self.header_dict['CENTER'][:2])
+    beam_pixel = list(map(float, self.header_dict['CENTER'][:2]))
     distance_mm = 10.0 * float(self.header_dict['DISTANC'][1])
     origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[1] - \
       slow * pixel_mm * beam_pixel[0]
@@ -136,4 +139,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatBrukerFixedChi.understand(arg)
+    print(FormatBrukerFixedChi.understand(arg))

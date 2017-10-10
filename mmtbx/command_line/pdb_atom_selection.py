@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_atom_selection
 
 import argparse
@@ -43,16 +44,16 @@ def run(args, command_name=libtbx.env.dispatcher_name):
   atoms = model.get_atoms()
   all_bsel = flex.bool(atoms.size(), False)
   for selection_string in co.inselections:
-    print selection_string
+    print(selection_string)
     isel = model.iselection(selstr=selection_string)
     all_bsel.set_selected(isel, True)
     if (not co.write_pdb_file):
-      print "  %d atom%s selected" % plural_s(isel.size())
+      print("  %d atom%s selected" % plural_s(isel.size()))
       for atom in atoms.select(isel):
-        print "    %s" % atom.format_atom_record()
-  print
+        print("    %s" % atom.format_atom_record())
+  print()
   if (co.write_pdb_file):
-    print "Writing file:", show_string(co.write_pdb_file)
+    print("Writing file:", show_string(co.write_pdb_file))
     selected_model = model.select(all_bsel)
     if (co.cryst1_replacement_buffer_layer is not None):
       import cctbx.crystal
@@ -64,7 +65,7 @@ def run(args, command_name=libtbx.env.dispatcher_name):
     f = open(co.write_pdb_file, 'w')
     f.write(pdb_str)
     f.close()
-    print
+    print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

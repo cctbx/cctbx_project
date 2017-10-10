@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import str
 from wxtbx import metallicbutton
 import wxtbx.bitmaps
 import wx
@@ -93,7 +94,7 @@ class ListEditor (wx.Panel) :
     return btn
 
   def AddItem (self, item) :
-    return self.list.InsertStringItem(sys.maxint, item)
+    return self.list.InsertStringItem(sys.maxsize, item)
 
   def OnAdd (self, event) :
     i = self.AddItem(self._default_label)

@@ -1,5 +1,6 @@
 """ Module for treating images as the vertices of a graph. Includes both Edge and Vertex (ImageNode) classes. """
 from __future__ import division
+from builtins import object
 from scitbx.matrix import sqr
 from cctbx.uctbx import unit_cell
 import numpy as np
@@ -154,7 +155,7 @@ class ImageNode(SingleFrame):
     return x0
 
 
-class Edge:
+class Edge(object):
   """
   .. note::
     Developmental code. Do not use without contacting zeldin@stanford.edu

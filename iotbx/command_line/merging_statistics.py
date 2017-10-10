@@ -2,6 +2,7 @@
 # LIBTBX_SET_DISPATCHER_NAME iotbx.merging_statistics
 
 from __future__ import division
+from __future__ import print_function
 import iotbx.merging_statistics
 import iotbx.phil
 from libtbx.str_utils import format_value
@@ -136,10 +137,10 @@ already be on a common scale, but with individual observations unmerged.
     result.show_estimated_cutoffs(out=out)
   if params.json.file_name is not None:
     result.as_json(file_name=params.json.file_name, indent=params.json.indent)
-  print >> out, ""
-  print >> out, "References:"
-  print >> out, citations_str
-  print >> out, ""
+  print("", file=out)
+  print("References:", file=out)
+  print(citations_str, file=out)
+  print("", file=out)
   return result
 
 #-----------------------------------------------------------------------

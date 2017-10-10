@@ -1,6 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.plotcv_parse
 
+from builtins import range
 import sys
 from scitbx.array_family import flex
 
@@ -20,33 +22,33 @@ def run (input=None) :
       if len(tile)==64: break
 
   order = flex.sort_permutation(tile)
-  for x in xrange(64):
+  for x in range(64):
     #print tile[order[x]], delx[order[x]], dely[order[x]]
     pass
 
-  for x in xrange(8):
-    for y in xrange(8):
-      print "%5.2f,"%delx[order[x*8+y]], "%5.2f,"%dely[order[x*8+y]],
-    print
-  print
+  for x in range(8):
+    for y in range(8):
+      print("%5.2f,"%delx[order[x*8+y]], "%5.2f,"%dely[order[x*8+y]], end=' ')
+    print()
+  print()
 
-  for x in xrange(8):
-    for y in xrange(8):
-      print "%5.2f,"%dely[order[x*8+y]], "%5.2f,"%delx[order[x*8+y]],
-    print
-  print
+  for x in range(8):
+    for y in range(8):
+      print("%5.2f,"%dely[order[x*8+y]], "%5.2f,"%delx[order[x*8+y]], end=' ')
+    print()
+  print()
 
-  for x in xrange(8):
-    for y in xrange(8):
-      print "%5.2f,"%-delx[order[x*8+y]], "%5.2f,"%-dely[order[x*8+y]],
-    print
-  print
+  for x in range(8):
+    for y in range(8):
+      print("%5.2f,"%-delx[order[x*8+y]], "%5.2f,"%-dely[order[x*8+y]], end=' ')
+    print()
+  print()
 
-  for x in xrange(8):
-    for y in xrange(8):
-      print "%5.2f,"%-dely[order[x*8+y]], "%5.2f,"%-delx[order[x*8+y]],
-    print
-  print
+  for x in range(8):
+    for y in range(8):
+      print("%5.2f,"%-dely[order[x*8+y]], "%5.2f,"%-delx[order[x*8+y]], end=' ')
+    print()
+  print()
 
 if (__name__ == "__main__") :
   run(sys.__stdin__)

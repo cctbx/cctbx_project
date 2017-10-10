@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -151,7 +152,7 @@ def exercise_00(prefix="tst_polder_box"):
     "output.file_name=%s.mtz" % prefix,
     "> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   #
   selection_string = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
@@ -165,7 +166,7 @@ def exercise_00(prefix="tst_polder_box"):
     'mask_output=True',
     "> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
   #
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
@@ -197,8 +198,8 @@ def exercise_00(prefix="tst_polder_box"):
   #
   mmm_mp = mp.min_max_mean().as_tuple()
   mmm_o = mo.min_max_mean().as_tuple()
-  print "Polder map : %7.3f %7.3f %7.3f"%mmm_mp
-  print "Omit       : %7.3f %7.3f %7.3f"%mmm_o
+  print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
+  print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
   #
   assert approx_equal(mmm_mp, [-2.397, 1.706, -0.208], eps=0.15)
   assert approx_equal(mmm_o,  [-0.708, 0.307, -0.118], eps=0.15)
@@ -207,4 +208,4 @@ def exercise_00(prefix="tst_polder_box"):
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_00()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from mmtbx.scaling import absolute_scaling, relative_scaling
 import iotbx.data_plots
 from cctbx import adptbx
@@ -10,7 +15,7 @@ from libtbx import adopt_init_args, Auto, group_args
 import libtbx
 import libtbx.load_env
 import math, sys
-from cStringIO import StringIO
+from io import StringIO
 
 if libtbx.env.has_module(name="solve_resolve"):
   from solve_resolve.resolve_python.ncs_average import ncs_average \
@@ -270,7 +275,7 @@ class density_modification(object):
         self.rms_solvent_density/self.rms_protein_density)
       summary += "F000/V: %.4f\n" %self.f000_over_v
       summary += "Mean FOM: %.4f\n" %flex.mean(fom.select(fom>0))
-      print >> self.log, summary
+      print(summary, file=self.log)
       libtbx.call_back(message="summary", data=summary)
     # XXX initialize printable statistics
     self.truncate_min = None
@@ -580,7 +585,7 @@ class density_modification(object):
       fom_binned=self.mean_fom_binned,
       skewness=self.more_statistics.skewness())
     summary = self._stats.format_summary()
-    print >> self.log, summary
+    print(summary, file=self.log)
     self.log.flush()
     if (not self.as_gui_program) :
       libtbx.call_back(message="summary",

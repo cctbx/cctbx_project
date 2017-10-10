@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 
 def integrate_one_image(data, **kwargs):
@@ -47,26 +48,26 @@ def integrate_one_image(data, **kwargs):
   from xfel.phil_preferences import load_cxi_phil
   horizons_phil = load_cxi_phil(data["xtal_target"], args)
   horizons_phil.indexing.data = data
-  print "XFEL processing: %s"%path
+  print("XFEL processing: %s"%path)
   try:
     return run_one_index_core(horizons_phil)
-  except NoAutoIndex,e:
-    print "NoAutoIndex", data['TIMESTAMP'], e
+  except NoAutoIndex as e:
+    print("NoAutoIndex", data['TIMESTAMP'], e)
     info = e.info
-  except AutoIndexError,e:
-    print "FailedAutoIndex", data['TIMESTAMP'], e
+  except AutoIndexError as e:
+    print("FailedAutoIndex", data['TIMESTAMP'], e)
     info = e.info
-  except Sorry,e:
-    print "Sorry", data['TIMESTAMP'], e
+  except Sorry as e:
+    print("Sorry", data['TIMESTAMP'], e)
     info = e.info
-  except ZeroDivisionError,e:
-    print "ZeroDivisionError", data['TIMESTAMP'], e
+  except ZeroDivisionError as e:
+    print("ZeroDivisionError", data['TIMESTAMP'], e)
     info = e.info
-  except SpotfinderError,e:
-    print "Too few spots from Spotfinder", data['TIMESTAMP'], e
+  except SpotfinderError as e:
+    print("Too few spots from Spotfinder", data['TIMESTAMP'], e)
     info = e.info
-  except Exception,e:
-    print "ANOTHER exception", data['TIMESTAMP'], e
+  except Exception as e:
+    print("ANOTHER exception", data['TIMESTAMP'], e)
     import traceback
     traceback.print_exc()
     info = e.info
@@ -74,8 +75,8 @@ def integrate_one_image(data, **kwargs):
   # return number of spotfinder spots
   try:
     return len(info.organizer.S.images[info.organizer.frames[0]]['spots_total'])
-  except Exception, e:
-    print "Couldn't find spotfinding results", data['TIMESTAMP']
+  except Exception as e:
+    print("Couldn't find spotfinding results", data['TIMESTAMP'])
 
 if __name__=="__main__":
   pass

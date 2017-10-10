@@ -1,6 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 
 import os, time
 
@@ -57,7 +58,7 @@ def exercise():
     out = null_out
     )
 
-  for atom_props in manager.atoms_to_props.values():
+  for atom_props in list(manager.atoms_to_props.values()):
     i_seq = atom_props.i_seq
     chem_env = ChemicalEnvironment(
       i_seq,
@@ -75,7 +76,7 @@ def exercise():
     assert vector is not None
     assert resname != ""
 
-  print "OK"
+  print("OK")
 
 
 if __name__ == "__main__":
@@ -85,12 +86,12 @@ if __name__ == "__main__":
     import svm     # test
     import svmutil # test
   except ImportError:
-    print "Required third-party dependencies are missing, skipping test."
+    print("Required third-party dependencies are missing, skipping test.")
     keep_going=False
   if (libtbx.env.find_in_repositories(relative_path="chem_data") is None):
-    print "Skipping tst_vector exercise(): chem_data directory not available"
+    print("Skipping tst_vector exercise(): chem_data directory not available")
   else:
     t0 = time.time()
     if(keep_going):
       exercise()
-    print "Time: %6.2f"%(time.time()-t0)
+    print("Time: %6.2f"%(time.time()-t0))

@@ -1,8 +1,9 @@
 from __future__ import division
+from builtins import object
 from libtbx import easy_pickle
 import logging
 
-class SingleFrame:
+class SingleFrame(object):
   """ Class that creates single-image agregate metrics/scoring that can then be
   used in downstream clustering or filtering procedures.
   """

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import sgtbx
@@ -119,4 +120,4 @@ def f_model_example():
 
 if (__name__ == "__main__" ):
   f_model_example()
-  print "OK"
+  print("OK")

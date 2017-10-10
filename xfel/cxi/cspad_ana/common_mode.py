@@ -7,12 +7,17 @@
 XXX Better named cspad_base?
 """
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
+from builtins import zip
+from builtins import str
+from builtins import range
 __version__ = "$Revision$"
 
 import numpy
-from parse_calib         import Section
-from parse_calib         import calib2sections
+from .parse_calib         import Section
+from .parse_calib         import calib2sections
 
 from libtbx import easy_pickle
 from scitbx.array_family import flex
@@ -403,7 +408,7 @@ class common_mode_correction(mod_event_info):
         self.cspad_img = cspad_tbx.image(
           self.address, cspad_tbx.getConfig(self.address, env),
           evt, env, self.sections)
-      except Exception, e:
+      except Exception as e:
         self.logger.error("Error reading image data: " + str(e))
         evt.put(skip_event_flag(), "skip_event")
         return
@@ -445,7 +450,7 @@ class common_mode_correction(mod_event_info):
           q_mask = 1
         else:
           q_mask = config.quadMask()
-        for q in xrange(len(self.sections)):
+        for q in range(len(self.sections)):
           if (not((1 << q) & q_mask)):
             continue
 
@@ -457,7 +462,7 @@ class common_mode_correction(mod_event_info):
             s_mask = config.roiMask()
           else:
             s_mask = config.roiMask(q)
-          for s in xrange(len(self.sections[q])):
+          for s in range(len(self.sections[q])):
             # XXX DAQ misconfiguration?  This mask appears not to work
             # reliably for the Sc1 detector.
 #            if (not((1 << s) & s_mask)):
@@ -550,9 +555,9 @@ class common_mode_correction(mod_event_info):
       env = obj2
 
     if 0 and self._dark_path is not None and self.nmemb > 1:
-      print self.sum_common_mode, self.sumsq_common_mode
+      print(self.sum_common_mode, self.sumsq_common_mode)
       self.mean_common_mode = self.sum_common_mode / self.nmemb
-      print self.mean_common_mode
+      print(self.mean_common_mode)
       self.stddev_commond_mode = math.sqrt((self.sumsq_common_mode
         - self.sum_common_mode * self.mean_common_mode) / (self.nmemb - 1))
 
@@ -577,7 +582,7 @@ class common_mode_correction(mod_event_info):
     if 0: # for debugging
       from matplotlib import pyplot
       hist_min, hist_max = flex.min(flex_cspad_img_sel.as_double()), flex.max(flex_cspad_img_sel.as_double())
-      print hist_min, hist_max
+      print(hist_min, hist_max)
       n_slots = 100
       n, bins, patches = pyplot.hist(flex_cspad_img_sel.as_1d().as_numpy_array(), bins=n_slots, range=(hist_min, hist_max))
       pyplot.show()
@@ -607,7 +612,7 @@ class common_mode_correction(mod_event_info):
     # we assume that both sections have the same variation
     y_obs = sum_y[:midpoint] + sum_y[midpoint:]
     y_obs /= (2 * columns)
-    x_obs = flex.double(range(y_obs.size()))
+    x_obs = flex.double(list(range(y_obs.size())))
     w_obs = flex.double(x_obs.size(), 1)
     # don't let the edge pixels influence the fit
     w_obs[0] = 1e16
@@ -638,7 +643,7 @@ class common_mode_correction(mod_event_info):
       # fit one polynome for both asics
       x_obs = sum_x[:194] + sum_x[197:]
       x_obs /= 2
-      y_obs = flex.double(range(x_obs.size()))
+      y_obs = flex.double(list(range(x_obs.size())))
       w_obs = flex.double(y_obs.size(), 1)
       # mask out the edges and the gap down the middle from the fit
       w_obs.set_selected(y_obs == 0, 1e16)

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 def exercise():
   from cctbx.web import change_basis
   from libtbx.utils import Sorry
@@ -20,7 +22,7 @@ def exercise():
   check("1/2,1/3,1/4", "a+1/2,b+1/3,c+1/4")
   try:
     change_basis.p_from_string("0")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == \
       'Uninterpretable expression for change-of-basis matrix'
   else: raise Exception_expected
@@ -30,7 +32,7 @@ def exercise():
   assert str(rt.t.elems) == "(1/2, 1/3, 1/4)"
   try:
     change_basis.w_from_string("0")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == \
       'Uninterpretable expression for symmetry matrix'
   else: raise Exception_expected
@@ -39,7 +41,7 @@ def exercise():
   assert str(xyz) == "(0.5, 1/3, 4)"
   try:
     change_basis.xyz_from_string("0")
-  except Sorry, e:
+  except Sorry as e:
     assert str(e) == \
       'Uninterpretable expression for coordinates'
   else: raise Exception_expected
@@ -47,7 +49,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

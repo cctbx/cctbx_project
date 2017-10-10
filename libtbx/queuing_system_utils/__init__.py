@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from libtbx import Auto
 import sys
 
@@ -57,11 +59,11 @@ class chunk_manager(object):
     if (out is Auto): out = sys.stdout
     if (out is not None):
       host_and_user().show(out=out)
-      print >> out, "chunk.n:", O.n
-      print >> out, "chunk.i:", O.i
+      print("chunk.n:", O.n, file=out)
+      print("chunk.i:", O.i, file=out)
       if (log_name is not None):
-        print >> out, "log_name:", log_name
-      print >> out
+        print("log_name:", log_name, file=out)
+      print(file=out)
     return O
 
 # XXX tested on SGE only so far (2012-12-19)
@@ -82,7 +84,7 @@ def qdel (job_id, platform) :
   assert (cmd is not None)
   qdel_out = easy_run.fully_buffered(
     command=cmd).raise_if_errors().stdout_lines
-  print "\n".join(qdel_out)
+  print("\n".join(qdel_out))
   # XXX this is specific to SGE - need error handling for other systems too
   for line in qdel_out :
     if "denied" in line :

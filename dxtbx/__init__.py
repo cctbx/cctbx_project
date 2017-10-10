@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from builtins import str
 from scitbx.array_family import flex # import dependency
 try:
   import boost.python

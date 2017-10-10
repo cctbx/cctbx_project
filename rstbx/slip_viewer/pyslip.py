@@ -48,11 +48,16 @@ from __future__ import division
 # POSSIBILITY OF SUCH DAMAGE.
 
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import os
 import sys
 import glob
 try:
-    import cPickle as pickle
+    import pickle as pickle
 except ImportError:
     import pickle
 import wx
@@ -441,7 +446,7 @@ class Resource(object):
         try:
             import json
             self.layers = json.load(open(fname))
-        except IOError, e:
+        except IOError as e:
             msg = 'Error opening %s: %s' % (fname, str(e))
             raise IOError(msg)
 
@@ -921,7 +926,7 @@ class PySlip(_BufferedCanvas):
         default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
 
         draw_data = []
-        for x in xrange(0,len(data),5):
+        for x in range(0,len(data),5):
           # Calculate ellipse center, major and minor axes.
           side1=col(( (data[x][0]+data[x+1][0])/2., (data[x][1]+data[x+1][1])/2.))
           side2=col(( (data[x+1][0]+data[x+2][0])/2., (data[x+1][1]+data[x+2][1])/2.))
@@ -1263,7 +1268,7 @@ class PySlip(_BufferedCanvas):
 
         # prepare the show_level value
         if show_levels is None:
-            show_levels = range(self.min_level, self.max_level + 1)[:]
+            show_levels = list(range(self.min_level, self.max_level + 1))[:]
 
         # create layer, add unique ID to Z order list
         l = _Layer(id=id, painter=render, data=data, map_rel=map_rel,
@@ -1331,7 +1336,7 @@ class PySlip(_BufferedCanvas):
 
             # prepare the show_level value
             if show_levels is None:
-                show_levels = range(self.min_level, self.max_level + 1)[:]
+                show_levels = list(range(self.min_level, self.max_level + 1))[:]
 
             layer.show_levels = show_levels
 
@@ -1497,7 +1502,7 @@ class PySlip(_BufferedCanvas):
             for (x, y, place, radius, colour, x_off, y_off, pdata) in data:
                 dc.SetPen(wx.Pen(colour))
                 dc.SetBrush(wx.Brush(colour))
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 if radius:
                     dc.DrawCircle(x, y, radius)
 
@@ -1558,7 +1563,7 @@ class PySlip(_BufferedCanvas):
                 place_exec = self.poly_view_placement[place]
                 pp = []
                 for (x, y) in p:
-                    exec place_exec
+                    exec(place_exec)
                     if closed:
                         pp.append((x, y))
                     else:
@@ -1596,7 +1601,7 @@ class PySlip(_BufferedCanvas):
                 pt = self.ConvertGeo2ViewMasked((lon, lat))
                 if pt:
                     (x, y) = pt
-                    exec self.image_map_placement[place]
+                    exec(self.image_map_placement[place])
                     dc.DrawBitmap(bmap, x, y, False)
         else:
             (dc_w, dc_h) = dc.GetSize()
@@ -1605,7 +1610,7 @@ class PySlip(_BufferedCanvas):
             for (x, y, bmap, w, h, place, x_off, y_off, idata) in images:
                 w2 = w / 2
                 h2 = h / 2
-                exec self.image_view_placement[place]
+                exec(self.image_view_placement[place])
                 dc.DrawBitmap(bmap, x, y, False)
 
     def DrawTextLayer(self, dc, text, map_rel):
@@ -1649,7 +1654,7 @@ class PySlip(_BufferedCanvas):
                     (w, h, _, _) = dc.GetFullTextExtent(tdata)
                     w2 = w / 2
                     h2 = h / 2
-                    exec self.text_map_placement[place]
+                    exec(self.text_map_placement[place])
                     dc.SetTextForeground(textcolour)
                     dc.DrawText(tdata, x, y)
         else:
@@ -1676,7 +1681,7 @@ class PySlip(_BufferedCanvas):
                 # draw hotpoint circle - do placement with x & y zero
                 (save_x, save_y) = (x, y)
                 (w, h, w2, h2, x, y) = (0, 0, 0, 0, 0, 0)
-                exec self.text_view_placement[place]
+                exec(self.text_view_placement[place])
                 if radius:
                     dc.DrawCircle(x, y, radius)
                 (x, y) = (save_x, save_y)
@@ -1685,7 +1690,7 @@ class PySlip(_BufferedCanvas):
                 (w, h, _, _) = dc.GetFullTextExtent(tdata)  # size of text
                 w2 = w / 2
                 h2 = h / 2
-                exec self.text_view_placement[place]
+                exec(self.text_view_placement[place])
                 dc.SetTextForeground(textcolour)
                 dc.DrawText(tdata, x, y)
 
@@ -2140,7 +2145,7 @@ class PySlip(_BufferedCanvas):
                 x_pix = (self.view_offset_x
                          + (tile_margin - 1) * self.tile_size_x)
             else:
-                col_list = range(0, self.tiles.num_tiles_x)
+                col_list = list(range(0, self.tiles.num_tiles_x))
                 x_pix = -self.view_offset_x
         else:
             # Map > View - determine layout in X direction
@@ -2150,7 +2155,7 @@ class PySlip(_BufferedCanvas):
             stop_x_tile = ((x_offset + self.view_width + self.tile_size_x - 1)
                            / self.tile_size_x)
             stop_x_tile = int(stop_x_tile)
-            col_list = range(start_x_tile, stop_x_tile)
+            col_list = list(range(start_x_tile, stop_x_tile))
             x_pix = start_x_tile * self.tile_size_y - x_offset
 
         if False:#self.view_offset_y < 0: # NKS No wrapping or hard boundaries
@@ -2167,7 +2172,7 @@ class PySlip(_BufferedCanvas):
                 y_pix_start = self.view_offset_y + \
                                   (tile_margin - 1) * self.tile_size_y
             else:
-                row_list = range(0, self.tiles.num_tiles_y)
+                row_list = list(range(0, self.tiles.num_tiles_y))
                 y_pix_start = -self.view_offset_y
         else:
             y_offset = self.view_offset_y + self.move_dy
@@ -2175,7 +2180,7 @@ class PySlip(_BufferedCanvas):
             stop_y_tile = ((y_offset + self.view_height
                             + self.tile_size_y - 1) / self.tile_size_y)
             stop_y_tile = int(stop_y_tile)
-            row_list = range(start_y_tile, stop_y_tile)
+            row_list = list(range(start_y_tile, stop_y_tile))
             y_pix_start = start_y_tile * self.tile_size_y - y_offset
 
         # start pasting tiles onto the view
@@ -2348,7 +2353,7 @@ class PySlip(_BufferedCanvas):
                 dc_h -= 1
                 dc_w -= 1
                 (x, y, place, _, _, x_off, y_off, pdata) = p
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 d = (x - ptx) * (x - ptx) + (y - pty) * (y - pty)
                 if d < dist:
                     dist = d
@@ -2399,7 +2404,7 @@ class PySlip(_BufferedCanvas):
                 dc_h -= 1
                 dc_w -= 1
                 (x, y, place, _, _, x_off, y_off, pdata) = p
-                exec self.point_view_placement[place]
+                exec(self.point_view_placement[place])
                 if lx <= x <= rx and by <= y <= ty:
                     result.append(((x, y), pdata))
 

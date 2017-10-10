@@ -2,11 +2,14 @@ from __future__ import division
 
 # Assorted info boxes for displaying essential file information
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 import wxtbx.plots
 import wxtbx.icons
 import wx
 import re
-import cStringIO
+import io
 import os
 import sys
 
@@ -89,7 +92,7 @@ class ReflectionFileInfo (InfoPanelBase) :
         array = array_
     assert (array is not None)
     self._current_array = array
-    info_out = cStringIO.StringIO()
+    info_out = io.StringIO()
     array.show_comprehensive_summary(f=info_out)
     array.show_comprehensive_summary()
     info_list = info_out.getvalue().splitlines()
@@ -276,7 +279,7 @@ class PDBChainBisoPanel (InfoPanelBase) :
       b_min = flex.min(b_iso)
       b_mean = flex.mean(b_iso)
       b_info = "%.2f (%.2f - %.2f)" % (b_mean, b_min, b_max)
-      item = chain_list.InsertStringItem(sys.maxint, chain_info)
+      item = chain_list.InsertStringItem(sys.maxsize, chain_info)
       chain_list.SetStringItem(item, 1, b_info)
     self.panel_sizer.Add(chain_list, 1, wx.EXPAND|wx.ALL, 5)
     self.panel.Layout()
@@ -313,7 +316,7 @@ class ImageFileInfo (InfoPanelBase) :
       raise_sorry_if_not_expected_format=True)
     img_in.assert_file_type("img")
     self._img_in = img_in
-    out = cStringIO.StringIO()
+    out = io.StringIO()
     img_in.file_object.show_header()
     img_in.file_object.show_header(out=out)
     self.SetTitle("Info for %s" % to_unicode(self.file_name))

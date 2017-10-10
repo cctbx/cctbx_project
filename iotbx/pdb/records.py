@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 class FormatError(RuntimeError): pass
 
 def chain_id_strip(id):

@@ -9,6 +9,12 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 from dxtbx.model import Experiment, ExperimentList
 
 class InvalidExperimentListError(RuntimeError):
@@ -127,7 +133,7 @@ class ExperimentListDict(object):
     ''' Helper function. Extract the experiments. '''
     from dxtbx.imageset import ImageSweep, ImageSet, ImageGrid
     from dxtbx.serialize.filename import load_path
-    import cPickle as pickle
+    import pickle as pickle
     from dxtbx.format.image import ImageBool, ImageDouble
 
     # Map of imageset/scan pairs
@@ -387,7 +393,7 @@ class ExperimentListDict(object):
       with temp_chdir(dirname(filename)):
         with open(filename, 'r') as infile:
           return json.loads(infile.read(), object_hook=_decode_dict)
-    except IOError, e:
+    except IOError as e:
       raise IOError('unable to read file, %s' % filename)
 
 
@@ -470,7 +476,7 @@ class ExperimentListDumper(object):
 
   def as_pickle(self, filename=None, **kwargs):
     ''' Dump experiment list as pickle. '''
-    import cPickle as pickle
+    import pickle as pickle
 
     # Get the pickle string
     text = pickle.dumps(self._experiment_list,
@@ -519,7 +525,7 @@ class ExperimentListFactory(object):
     for filename in args:
       try:
         experiments.extend(ExperimentListFactory.from_serialized_format(filename))
-        if verbose: print 'Loaded experiments from %s' % filename
+        if verbose: print('Loaded experiments from %s' % filename)
       except Exception:
         unhandled.append(filename)
 
@@ -554,7 +560,7 @@ class ExperimentListFactory(object):
 
     # Get a list of models for each image
     beam, detector, gonio, scan = ([], [], [], [])
-    for i in xrange(len(imageset)):
+    for i in range(len(imageset)):
       try:
         beam.append(imageset.get_beam(i))
       except Exception:
@@ -571,11 +577,11 @@ class ExperimentListFactory(object):
         scan.append(imageset.get_scan(i))
       except Exception:
         scan.append(None)
-    models = zip(beam, detector, gonio, scan)
+    models = list(zip(beam, detector, gonio, scan))
 
     # Find subsets where all the models are the same
     experiments = ExperimentList()
-    for m, indices in groupby(xrange(len(models)), lambda i: models[i]):
+    for m, indices in groupby(range(len(models)), lambda i: models[i]):
       indices = list(indices)
       experiments.append(Experiment(
         imageset=imageset[indices[0]: indices[-1]+1],
@@ -645,7 +651,7 @@ class ExperimentListFactory(object):
   @staticmethod
   def from_pickle_file(filename):
     ''' Decode an experiment list from a pickle file. '''
-    import cPickle as pickle
+    import pickle as pickle
     with open(filename, 'rb') as infile:
       obj = pickle.load(infile)
       assert(isinstance(obj, ExperimentList))
@@ -680,7 +686,7 @@ class ExperimentListFactory(object):
     # First try as a JSON file
     try:
       return ExperimentListFactory.from_json_file(filename, check_format)
-    except Exception, e:
+    except Exception as e:
       pass
 
     # Now try as a pickle file

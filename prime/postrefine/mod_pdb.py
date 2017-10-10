@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 class pdb_handler(object):
   '''
   Author      : Uervirojnangkoorn, M.
@@ -18,7 +20,7 @@ class pdb_handler(object):
   def print_file_content(self):
 
     for line in self.data_pdb:
-      print line
+      print(line)
 
   def atom_stats(self):
 

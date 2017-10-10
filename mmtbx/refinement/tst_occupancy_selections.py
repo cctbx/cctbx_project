@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import object
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel
@@ -10,7 +16,7 @@ import iotbx.phil
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import format_cpu_times, null_out, Sorry
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 import os
 import sys
 
@@ -27,7 +33,7 @@ def extract_serials(atoms, occ_groups):
 
 def make_up_other_constrained_groups_obj(selections):
   result = []
-  class foo:
+  class foo(object):
     def __init__(self, selection):
       self.selection=selection
   for sel in selections:
@@ -312,7 +318,7 @@ def exercise_10(verbose):
       other_constrained_groups = other_constrained_groups,
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: same atoms selected for individual and group occupancy refinement."
 
 def exercise_11(verbose):
@@ -329,7 +335,7 @@ def exercise_11(verbose):
       remove_selection = ['resseq 0'],
       other_individual_selection_strings = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
   e = None
   try:
@@ -340,7 +346,7 @@ def exercise_11(verbose):
       other_constrained_groups = other_constrained_groups,
       remove_selection = ['resseq 0'],
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert e.__str__() == "Duplicate selection: occupancies of same atoms selected to be fixed and to be refined."
 
 def exercise_12(verbose):
@@ -498,7 +504,7 @@ def exercise_19(verbose):
       model = model,
       other_constrained_groups = other_constrained_groups,
       as_flex_arrays    = False)
-  except Exception, e: pass
+  except Exception as e: pass
   assert str(e) == \
     'Selection string results in empty selection (selects no atoms): "%s"' \
       % tmp
@@ -1251,7 +1257,7 @@ def exercise_regroup_3d (verbose) :
         model = model,
         constrain_correlated_3d_groups=True,
         log=null_out())
-    except Sorry, s :
+    except Sorry as s :
       if (i_file == 0) :
         raise
       else :
@@ -1295,7 +1301,7 @@ def run():
   exercise_29(verbose=verbose)
   exercise_30(verbose=verbose)
   exercise_regroup_3d(verbose=verbose)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   run()

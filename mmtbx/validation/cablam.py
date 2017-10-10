@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
+from builtins import str
+from builtins import object
 from mmtbx.validation import residue, validation, atom
 from cctbx import geometry_restraints
 from iotbx import pdb, file_reader
@@ -262,7 +265,7 @@ def fetch_motif_contours():
 
 #{{{ cablam data storage classes
 #-------------------------------------------------------------------------------
-class cablam_geometry():
+class cablam_geometry(object):
   #holds cablam's geometry parameters for one residue
   def __init__(self, mu_in=None, mu_out=None, nu=None, ca_virtual=None, omega=None):
     self.mu_in = mu_in
@@ -271,7 +274,7 @@ class cablam_geometry():
     self.ca_virtual = ca_virtual
     self.omega=omega
 
-class cablam_score():
+class cablam_score(object):
   #holds cablam contour scores for one residue
   def __init__(self,cablam=None,c_alpha_geom=None,alpha=None,beta=None,threeten=None):
     self.cablam = cablam
@@ -280,7 +283,7 @@ class cablam_score():
     self.beta = beta
     self.threeten = threeten
 
-class cablam_feedback():
+class cablam_feedback(object):
   #holds outliers status and secondary structure identifications for one residue
   def __init__(self):
     self.cablam_outlier = None
@@ -293,20 +296,20 @@ class cablam_feedback():
 #cablam results are stored by chains and by conformers within chains, in
 #  parallel with the conformer organization of the pdb hierarchy.  These classes
 #  handle that organization of the results
-class cablam_chain():
+class cablam_chain(object):
   #chain-level organization for cablam results
   def __init__(self):
     self.conf_names = []
     self.confs = {}
 
-class cablam_conf():
+class cablam_conf(object):
   #conformer-level organization for cablam results
   def __init__(self):
     self.conf_name = None
     self.results = {}
     self.sec_struc_records = []
 
-class secondary_structure_segment():
+class secondary_structure_segment(object):
   #holds a secondary structure element identified by cablam
   def __init__(self, start, end, segment_type, segment_length):
     self.start = start
@@ -670,7 +673,7 @@ class cablam_result(residue):
     if not (self.measures.mu_in and self.measures.mu_out and self.measures.nu):
       return
     point_name = "{"+self.mp_id()+"}"
-    print >> out, point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu)
+    print(point_name, "%.2f %.2f %.2f" % (self.measures.mu_in, self.measures.mu_out, self.measures.nu), file=out)
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -885,7 +888,7 @@ class cablamalyze(validation):
         records = []
         record_start = None
         helix_in_progress = False
-        result_ids = conf.results.keys()
+        result_ids = list(conf.results.keys())
         result_ids.sort()
         for result_id in result_ids:
           result = conf.results[result_id]
@@ -978,7 +981,7 @@ class cablamalyze(validation):
     #should work without any arguments
     #populates self.results
     self.results = []
-    chains = self.all_results.keys()
+    chains = list(self.all_results.keys())
     chains.sort()
     for chain_id in chains:
       chain = self.all_results[chain_id]
@@ -991,7 +994,7 @@ class cablamalyze(validation):
           #set self.results id
         continue #go to next chain
       #else, combine results into single list
-      result_ids = conf.results.keys()
+      result_ids = list(conf.results.keys())
       result_ids.sort()
       #for result_id in conf.results:
       for result_id in result_ids:
@@ -1227,8 +1230,8 @@ class cablamalyze(validation):
   #{{{ as_pointcloud_kinemage
   #-----------------------------------------------------------------------------
   def as_pointcloud_kinemage(self):#, out=self.out):
-    print >> self.out, "@group {cablam-space points} dominant"
-    print >> self.out, "@dotlist (cablam-space points)"
+    print("@group {cablam-space points} dominant", file=self.out)
+    print("@dotlist (cablam-space points)", file=self.out)
     for result in self.results:
       result.as_kinemage_point()
   #-----------------------------------------------------------------------------
@@ -1248,7 +1251,7 @@ class cablamalyze(validation):
     helix_records = []
     strand_records = []
 
-    chain_list = self.all_results.keys()
+    chain_list = list(self.all_results.keys())
     chain_list.sort()
     for chain_id in chain_list:
       chain = self.all_results[chain_id]
@@ -1344,13 +1347,13 @@ class cablamalyze(validation):
   def show_summary(self, out=sys.stdout, prefix="  "):
     #print whole-model cablam summary
     if self.count_residues() == 0:
-      print >> out, "SUMMARY: CaBLAM found no evaluable protein residues."
+      print("SUMMARY: CaBLAM found no evaluable protein residues.", file=out)
     else:
-      print >> out,prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier."
-      print >> out,prefix+"SUMMARY: CaBLAM found %s evaluable residues." % (self.count_residues())
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_disfavored())+"% of these residues have disfavored conformations. (<=5% expected)"
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_outliers())+"% of these residues have outlier conformations. (<=1% expected)"
-      print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+      print(prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier.", file=out)
+      print(prefix+"SUMMARY: CaBLAM found %s evaluable residues." % (self.count_residues()), file=out)
+      print(prefix+"SUMMARY: %.1f" % (self.percent_disfavored())+"% of these residues have disfavored conformations. (<=5% expected)", file=out)
+      print(prefix+"SUMMARY: %.1f" % (self.percent_outliers())+"% of these residues have outlier conformations. (<=1% expected)", file=out)
+      print(prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)", file=out)
   #-----------------------------------------------------------------------------
   #}}}
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtriage
 
 import sys, time
@@ -58,9 +59,9 @@ master_params_str = """\
 master_params = iotbx.phil.parse(master_params_str, process_includes=True)
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def get_map(map_file):
   ccp4_map = iotbx.ccp4_map.map_reader(file_name=map_file)
@@ -117,16 +118,15 @@ def get_inputs(args, log, master_params):
 def show_histogram(map_histograms, log):
   if(map_histograms.h_half_map_1 is None):
     hm = map_histograms.h_map
-    print >> log, "                   Values                 Map"
+    print("                   Values                 Map", file=log)
     lc_1 = hm.data_min()
     s_1 = enumerate(hm.slots())
     for (i_1,n_1) in s_1:
       hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-      print >> log, "%15.4f - %-15.4f : %d" % (lc_1, hc_1, n_1)
+      print("%15.4f - %-15.4f : %d" % (lc_1, hc_1, n_1), file=log)
       lc_1 = hc_1
   else:
-    print >> log, \
-      "                   Values                 Map Half-map1 Half-map2"
+    print("                   Values                 Map Half-map1 Half-map2", file=log)
     h0 = map_histograms.h_map
     h1 = map_histograms.h_half_map_1
     h2 = map_histograms.h_half_map_2
@@ -137,8 +137,8 @@ def show_histogram(map_histograms, log):
     s_2 = h2.slots()
     for (i_1,n_1) in s_0:
       hc_1 = data_min + h0.slot_width() * (i_1+1)
-      print >> log, "%15.4f - %-15.4f : %9d %9d %9d" % (
-        lc_1, hc_1, n_1, s_1[i_1], s_2[i_1])
+      print("%15.4f - %-15.4f : %9d %9d %9d" % (
+        lc_1, hc_1, n_1, s_1[i_1], s_2[i_1]), file=log)
       lc_1 = hc_1
 
 def run(args, log=sys.stdout):
@@ -154,10 +154,10 @@ Feedback:
   PAfonine@lbl.gov
   phenixbb@phenix-online.org
   """
-  assert len(locals().keys()) == 2 # intentional
-  print >> log, "-"*79
-  print >> log, run.__doc__
-  print >> log, "-"*79
+  assert len(list(locals().keys())) == 2 # intentional
+  print("-"*79, file=log)
+  print(run.__doc__, file=log)
+  print("-"*79, file=log)
   # Get inputs
   inputs = get_inputs(
     args          = args,
@@ -170,7 +170,7 @@ Feedback:
   # Model
   broadcast(m="Input model:", log=log)
   if(inputs.pdb_hierarchy is None):
-    print >> log, "No model specified."
+    print("No model specified.", file=log)
   else:
     inputs.pdb_hierarchy.show(level_id="chain")
   # Crystal symmetry
@@ -193,55 +193,55 @@ Feedback:
   # Map statistics
   #
   broadcast(m="Map statistics:", log=log)
-  print >> log, "Map:"
-  print >> log, "  origin:      ", results.map_counts.origin
-  print >> log, "  last:        ", results.map_counts.last
-  print >> log, "  focus:       ", results.map_counts.focus
-  print >> log, "  all:         ", results.map_counts.all
-  print >> log, "  min,max,mean:", results.map_counts.min_max_mean
+  print("Map:", file=log)
+  print("  origin:      ", results.map_counts.origin, file=log)
+  print("  last:        ", results.map_counts.last, file=log)
+  print("  focus:       ", results.map_counts.focus, file=log)
+  print("  all:         ", results.map_counts.all, file=log)
+  print("  min,max,mean:", results.map_counts.min_max_mean, file=log)
   #
-  print >> log, "Half-maps:"
+  print("Half-maps:", file=log)
   if(inputs.half_map_data_1 is None):
-    print >> log, "  Half-maps are not provided."
+    print("  Half-maps are not provided.", file=log)
   else:
     for i, m in enumerate([results.half_map_1_counts,
                            results.half_map_2_counts]):
-      print >> log, "  half-map:", i+1
-      print >> log, "    origin:", m.origin
-      print >> log, "    last:  ", m.last
-      print >> log, "    focus: ", m.focus
-      print >> log, "    all:   ", m.all
-      print >> log, "    min,max,mean:", m.min_max_mean
+      print("  half-map:", i+1, file=log)
+      print("    origin:", m.origin, file=log)
+      print("    last:  ", m.last, file=log)
+      print("    focus: ", m.focus, file=log)
+      print("    all:   ", m.all, file=log)
+      print("    min,max,mean:", m.min_max_mean, file=log)
   #
-  print >> log, "Histogram(s) of map values:"
+  print("Histogram(s) of map values:", file=log)
   show_histogram(map_histograms = results.map_histograms, log = log)
   # show results
-  print >> log, "Map resolution estimates:"
-  print >> log, "  using map alone (d99)           :", results.d99
-  print >> log, "  comparing with model (d_model)  :", results.d_model
-  print >> log, "    b_iso_overall                 :", results.b_iso_overall
-  print >> log, "  d_fsc_model:"
-  print >> log, "    FSC(map,model map)=0          :", results.d_fsc_model_0
-  print >> log, "    FSC(map,model map)=0.143      :", results.d_fsc_model_0143
-  print >> log, "    FSC(map,model map)=0.5        :", results.d_fsc_model
-  print >> log, "  d99 (half map 1)                :", results.d99_1
-  print >> log, "  d99 (half map 2)                :", results.d99_2
-  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc) :", results.d_fsc
-  print >> log
+  print("Map resolution estimates:", file=log)
+  print("  using map alone (d99)           :", results.d99, file=log)
+  print("  comparing with model (d_model)  :", results.d_model, file=log)
+  print("    b_iso_overall                 :", results.b_iso_overall, file=log)
+  print("  d_fsc_model:", file=log)
+  print("    FSC(map,model map)=0          :", results.d_fsc_model_0, file=log)
+  print("    FSC(map,model map)=0.143      :", results.d_fsc_model_0143, file=log)
+  print("    FSC(map,model map)=0.5        :", results.d_fsc_model, file=log)
+  print("  d99 (half map 1)                :", results.d99_1, file=log)
+  print("  d99 (half map 2)                :", results.d99_2, file=log)
+  print("  FSC(half map 1,2)=0.143 (d_fsc) :", results.d_fsc, file=log)
+  print(file=log)
   #
-  print >> log, "Radius used for mask smoothing:", results.radius_smooth
-  print >> log
+  print("Radius used for mask smoothing:", results.radius_smooth, file=log)
+  print(file=log)
   #
   file_name = "%s.mtriage.log"%inputs.params.fsc_model_plot_file_name_prefix
   task_obj.write_fsc_curve_model_plot_data(file_name = file_name)
-  print >> log, "FSC(model map, map) is written to %s"%file_name
+  print("FSC(model map, map) is written to %s"%file_name, file=log)
   #
   file_name = "%s.mtriage.log"%inputs.params.fsc_half_maps_file_name_prefix
   task_obj.write_fsc_curve_plot_data(file_name = file_name)
-  print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
+  print("FSC(half map 1, half map 1) is written to %s"%file_name, file=log)
   #
   if(inputs.params.write_mask_file and results.mask is not None):
-    print >> log, "Mask is written to %s"%inputs.params.mask_file_name
+    print("Mask is written to %s"%inputs.params.mask_file_name, file=log)
     ccp4_map.write_ccp4_map(
       file_name   = inputs.params.mask_file_name,
       unit_cell   = inputs.crystal_symmetry.unit_cell(),

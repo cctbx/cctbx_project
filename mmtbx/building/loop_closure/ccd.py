@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 from libtbx import adopt_init_args
 import mmtbx.utils
 from mmtbx.building.loop_closure import utils
@@ -74,11 +78,11 @@ class _(boost.python.injector, ccd_cpp):
             # assert i == 0
             if i != 0:
               # this is a error, we should spot rama outliers on the first angle
-              print "i", i
-              print pair_info(phi_psi_pair)
-              print "rama_key", rama_key
-              print "before_rotation_rama_score", before_rotation_rama_score,
-              print ramalyze.evalScore(rama_key, before_rotation_rama_score)
+              print("i", i)
+              print(pair_info(phi_psi_pair))
+              print("rama_key", rama_key)
+              print("before_rotation_rama_score", before_rotation_rama_score, end=' ')
+              print(ramalyze.evalScore(rama_key, before_rotation_rama_score))
               break
 
             # correct it to the nearest non-outlier region
@@ -155,7 +159,7 @@ class _(boost.python.injector, ccd_cpp):
     # return rmsd_good, states, n_iter
 
 
-class ccd_python():
+class ccd_python(object):
   def __init__(self, fixed_ref_atoms, moving_h, moving_ref_atoms_iseqs,
       max_number_of_iterations=500, needed_rmsd=0.1):
     """
@@ -284,11 +288,11 @@ class ccd_python():
             # assert i == 0
             if i != 0:
               # this is a error, we should spot rama outliers on the first angle
-              print "i", i
-              print pair_info(phi_psi_pair)
-              print "rama_key", rama_key
-              print "before_rotation_rama_score", before_rotation_rama_score,
-              print ramalyze.evalScore(rama_key, before_rotation_rama_score)
+              print("i", i)
+              print(pair_info(phi_psi_pair))
+              print("rama_key", rama_key)
+              print("before_rotation_rama_score", before_rotation_rama_score, end=' ')
+              print(ramalyze.evalScore(rama_key, before_rotation_rama_score))
               break
 
             # correct it to the nearest non-outlier region

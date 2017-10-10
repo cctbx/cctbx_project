@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from cctbx import xray
 from cctbx import crystal
 from cctbx import miller
@@ -46,7 +48,7 @@ def run(args):
   weighting = xray.weighting_schemes.shelx_weighting(a=100, b=150)
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
-  print "OK"
+  print("OK")
 
 
 def exercise_core_LS(target_class, verbose):
@@ -62,7 +64,7 @@ def exercise_core_LS(target_class, verbose):
   gr_ana = r.derivatives()
   gr_fin = flex.complex_double()
   eps = 1.e-6
-  for i_refl in xrange(n_refl):
+  for i_refl in range(n_refl):
     gc = []
     for i_part in [0,1]:
       fc0 = f_calc[i_refl]
@@ -79,8 +81,8 @@ def exercise_core_LS(target_class, verbose):
       gc.append((ts[0]-ts[1])/(2*eps))
     gr_fin.append(complex(*gc))
   if (verbose):
-    print "ana:", list(gr_ana)
-    print "fin:", list(gr_fin)
+    print("ana:", list(gr_ana))
+    print("fin:", list(gr_fin))
   assert approx_equal(gr_fin, gr_ana)
 
 def exercise_py_LS(obs, f_calc, weighting, verbose):
@@ -115,7 +117,7 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
 
   gr_fin = flex.complex_double()
   eps = 1.e-6
-  for i_refl in xrange(obs.size()):
+  for i_refl in range(obs.size()):
     gc = []
     for i_part in [0,1]:
       fc0 = f_calc.data()[i_refl]
@@ -131,8 +133,8 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
       gc.append((ts[0]-ts[1])/(2*eps))
     gr_fin.append(complex(*gc))
   if (verbose):
-    print "ana:", list(gr_ana)
-    print "fin:", list(gr_fin)
+    print("ana:", list(gr_ana))
+    print("fin:", list(gr_fin))
   if dw_dfc is None:
     assert approx_equal(gr_fin, gr_ana)
   else:

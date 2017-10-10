@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatPYunspecified import FormatPYunspecified
 
@@ -19,4 +20,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatPYCXI32.understand(arg)
+    print(FormatPYCXI32.understand(arg))

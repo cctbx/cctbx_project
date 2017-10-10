@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx import math
 from scitbx.array_family import flex
 
@@ -6,7 +8,7 @@ def tst(N=3):
   weights = flex.double(N)*0.0+1.0
   mvo = math.multivariate_moments( weights )
   for ii in range(100000):
-    tmp = 0.1*(1.0-2.0*flex.random_double(N))+flex.double(range(N))*0.0+1.0
+    tmp = 0.1*(1.0-2.0*flex.random_double(N))+flex.double(list(range(N)))*0.0+1.0
     mvo.update(tmp)
   vcv = mvo.vcv_upper_triangle_packed()
   mean = mvo.mean()
@@ -21,4 +23,4 @@ def tst(N=3):
 
 if __name__ == "__main__":
   tst()
-  print "OK"
+  print("OK")

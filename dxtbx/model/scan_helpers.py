@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # scan_helpers.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -9,6 +10,7 @@ from __future__ import absolute_import, division
 # Helpers for the scan class, which are things for handling e.g. filenames,
 # templates and so on.
 
+from builtins import object
 import os
 import re
 import math
@@ -117,7 +119,7 @@ def template_directory_number2image(template, directory, number):
   # check that the number will fit in the template
 
   if (math.pow(10, length) - 1) < number:
-    raise RuntimeError, 'number too big for template'
+    raise RuntimeError('number too big for template')
 
   # construct a format statement to give the number part of the
   # template
@@ -138,7 +140,7 @@ def template_number2image(template, number):
   # check that the number will fit in the template
 
   if (math.pow(10, length) - 1) < number:
-    raise RuntimeError, 'number too big for template'
+    raise RuntimeError('number too big for template')
 
   format = '%%0%dd' % length
 
@@ -146,7 +148,7 @@ def template_number2image(template, number):
 
   return image
 
-class scan_helper_image_files:
+class scan_helper_image_files(object):
   '''A helper class which handles things like image names, making templates,
   finding matching images and so on. Currently this just provides aliases
   to existing functions elsewhere, but ultimately it would be good if they
@@ -186,7 +188,7 @@ class scan_helper_image_files:
     '''Construct the image file name from the template and file index.'''
     return template_number2image(template, index)
 
-class scan_helper_image_formats:
+class scan_helper_image_formats(object):
   '''A helper class which enxapsulates the allowed and supported image
   formats namely CBF, TIFF, SMV, RAXIS, MAR. N.B. there will be some
   crosstalk between this class and the _image_format classes.'''
@@ -205,5 +207,5 @@ class scan_helper_image_formats:
                   scan_helper_image_formats.FORMAT_RAXIS,
                   scan_helper_image_formats.FORMAT_MAR]:
       return True
-    print "Format %s may not be supported--contact Nick Sauter"%format
+    print("Format %s may not be supported--contact Nick Sauter"%format)
     return True

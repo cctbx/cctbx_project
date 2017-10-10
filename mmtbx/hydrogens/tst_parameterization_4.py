@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 import time
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -207,11 +209,11 @@ pdb_list_name = ['pdb_str_00', 'pdb_str_01', 'pdb_str_02', 'pdb_str_03',
 
 def run():
   for use_ideal_bonds_angles in [True, False]:
-    print 'use_ideal_bonds_angles =', use_ideal_bonds_angles
+    print('use_ideal_bonds_angles =', use_ideal_bonds_angles)
     for pdb_str, str_name in zip(pdb_list,pdb_list_name):
       exercise(pdb_str=pdb_str, use_ideal_bonds_angles=use_ideal_bonds_angles)
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

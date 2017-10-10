@@ -1,5 +1,6 @@
 """ Tools for the Python integrated development environment Wing IDE """
 from __future__ import division
+from __future__ import print_function
 
 def log(stop=False, **kwds):
   """ Helper to ease putting watchpoints
@@ -17,6 +18,6 @@ def log(stop=False, **kwds):
   Remark:
     Passing stop=True makes it a real breakpoint
   """
-  for k,v in kwds.iteritems():
-    print "%s = %s" % (k,v)
+  for k,v in kwds.items():
+    print("%s = %s" % (k,v))
   return stop

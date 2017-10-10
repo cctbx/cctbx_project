@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME boost_adaptbx.nested_cpp_loops_with_check_signals
 
 def run(args):
@@ -7,7 +8,7 @@ def run(args):
   count = boost.python.ext.nested_cpp_loops_with_check_signals(
     iterations_outer=int(args[0]),
     iterations_inner=int(args[1]))
-  print "actual iterations outer:", count
+  print("actual iterations outer:", count)
 
 if (__name__ == "__main__"):
   import sys

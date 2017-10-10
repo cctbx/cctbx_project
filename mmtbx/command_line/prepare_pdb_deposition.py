@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import os
 import sys
 
@@ -67,7 +68,7 @@ def run(args, out=None):
   cif_block = pdb_hierarchy.as_cif_block_with_sequence(
     sequences, crystal_symmetry=pdb_input.crystal_symmetry(),
     alignment_params=params)
-  block_name = cif_model.keys()[0]
+  block_name = list(cif_model.keys())[0]
 
   def float_or_none(string):
     try: return float(string)
@@ -89,10 +90,10 @@ def run(args, out=None):
 
   cif_model[block_name].update(cif_block)
   cif_model[block_name].sort(key=category_sort_function)
-  print >> out, "Writing updated CIF file:"
-  print >> out, "  " + params.output.cif_file
+  print("Writing updated CIF file:", file=out)
+  print("  " + params.output.cif_file, file=out)
   with open(params.output.cif_file, "wb") as f:
-    print >> f, cif_model
+    print(cif_model, file=f)
   return
 
 if __name__ == '__main__':

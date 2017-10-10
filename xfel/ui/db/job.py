@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from xfel.ui.db import db_proxy
 
 known_job_statuses = ["DONE", "ERR", "PEND", "RUN", "SUSP", "PSUSP", "SSUSP", "UNKWN", "EXIT", "DONE", "ZOMBI", "DELETED", "SUBMIT_FAIL", "SUBMITTED"]
@@ -20,7 +23,7 @@ class Job(db_proxy):
     import os, shutil
 
     if self.status not in finished_job_statuses:
-      print "Job is not finished (status = %s)"%self.status
+      print("Job is not finished (status = %s)"%self.status)
       return
 
     if self.status == "DELETED":
@@ -28,19 +31,19 @@ class Job(db_proxy):
 
     job_folder = get_run_path(self.app.params.output_folder, self.trial, self.rungroup, self.run)
     if os.path.exists(job_folder):
-      print "Deleting job folder for job", self.id
+      print("Deleting job folder for job", self.id)
       shutil.rmtree(job_folder)
     else:
-      print "Cannot find job folder (%s)"%job_folder
+      print("Cannot find job folder (%s)"%job_folder)
 
     # Have to be careful to delete from the tables in the right order
     tag = self.app.params.experiment_tag
 
     def delete_and_commit(query):
       cursor = self.app.execute_query(query, commit=True)
-      print "(%d)"%cursor.rowcount
+      print("(%d)"%cursor.rowcount)
 
-    print "Deleting cell_bin entries",
+    print("Deleting cell_bin entries", end=' ')
     query = """DELETE cell_bin FROM `%s_cell_bin` cell_bin
                JOIN `%s_crystal` crystal ON crystal.id = cell_bin.crystal_id
                JOIN `%s_experiment` expr ON expr.crystal_id = crystal.id
@@ -53,7 +56,7 @@ class Job(db_proxy):
 
     ids = {}
     for item in "crystal", "beam", "detector":
-      print "Listing %s ids"%item,
+      print("Listing %s ids"%item, end=' ')
       query = """SELECT %s.id FROM `%s_%s` %s
                  JOIN `%s_experiment` expr ON expr.%s_id = %s.id
                  JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
@@ -63,11 +66,11 @@ class Job(db_proxy):
                  item, tag, item, item, tag, item, item, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
       cursor = self.app.execute_query(query)
       item_ids = ["%d"%i[0] for i in cursor.fetchall()]
-      print "(%d)"%len(item_ids)
+      print("(%d)"%len(item_ids))
       ids[item] = ",".join(item_ids)
 
     if len(self.trial.isoforms) == 0:
-      print "Listing bin entries",
+      print("Listing bin entries", end=' ')
       query = """SELECT bin.id FROM `%s_bin` bin
                  JOIN `%s_cell` cell ON bin.cell_id = cell.id
                  JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
@@ -80,10 +83,10 @@ class Job(db_proxy):
                  tag, tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
       cursor = self.app.execute_query(query)
       item_ids = ["%d"%i[0] for i in cursor.fetchall()]
-      print "(%d)"%len(item_ids)
+      print("(%d)"%len(item_ids))
       bin_ids = ",".join(item_ids)
 
-      print "Listing cell entries",
+      print("Listing cell entries", end=' ')
       query = """SELECT cell.id FROM `%s_cell` cell
                  JOIN `%s_crystal` crystal ON crystal.cell_id = cell.id
                  JOIN `%s_experiment` expr ON expr.crystal_id = crystal.id
@@ -95,10 +98,10 @@ class Job(db_proxy):
                  tag, tag, tag, tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
       cursor = self.app.execute_query(query)
       item_ids = ["%d"%i[0] for i in cursor.fetchall()]
-      print "(%d)"%len(item_ids)
+      print("(%d)"%len(item_ids))
       cell_ids = ",".join(item_ids)
 
-    print "Deleting experiment entries",
+    print("Deleting experiment entries", end=' ')
     query = """DELETE expr FROM `%s_experiment` expr
                JOIN `%s_imageset` imgset ON imgset.id = expr.imageset_id
                JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
@@ -109,27 +112,27 @@ class Job(db_proxy):
 
     for item in "crystal", "beam", "detector":
       if len(ids[item]) > 0:
-        print "Deleting %s entries"%item,
+        print("Deleting %s entries"%item, end=' ')
         query = """DELETE %s FROM `%s_%s` %s
                    WHERE %s.id IN (%s)""" % (
                    item, tag, item, item, item, ids[item])
         delete_and_commit(query)
 
     if len(self.trial.isoforms) == 0 and len(bin_ids) > 0:
-      print "Deleting bin entries",
+      print("Deleting bin entries", end=' ')
       query = """DELETE bin FROM `%s_bin` bin
                  WHERE bin.id IN (%s)""" % (
                  tag, bin_ids)
       delete_and_commit(query)
 
     if len(self.trial.isoforms) == 0 and len(cell_ids) > 0:
-      print "Deleting cell entries",
+      print("Deleting cell entries", end=' ')
       query = """DELETE cell FROM `%s_cell` cell
                  WHERE cell.id IN (%s)""" % (
                  tag, cell_ids)
       delete_and_commit(query)
 
-    print "Listing imageset entries",
+    print("Listing imageset entries", end=' ')
     query = """SELECT imgset.id FROM `%s_imageset` imgset
                JOIN `%s_imageset_event` ie_e ON ie_e.imageset_id = imgset.id
                JOIN `%s_event` evt ON evt.id = ie_e.event_id
@@ -137,10 +140,10 @@ class Job(db_proxy):
                tag, tag, tag, self.run.id, self.trial.id, self.rungroup.id)
     cursor = self.app.execute_query(query)
     item_ids = ["%d"%i[0] for i in cursor.fetchall()]
-    print "(%d)"%len(item_ids)
+    print("(%d)"%len(item_ids))
     imageset_ids = ",".join(item_ids)
 
-    print "Deleting imageset_event entries",
+    print("Deleting imageset_event entries", end=' ')
     query = """DELETE is_e FROM `%s_imageset_event` is_e
                JOIN `%s_event` evt ON evt.id = is_e.event_id
                WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
@@ -148,13 +151,13 @@ class Job(db_proxy):
     delete_and_commit(query)
 
     if len(imageset_ids) > 0:
-      print "Deleting imageset entries",
+      print("Deleting imageset entries", end=' ')
       query = """DELETE imgset FROM `%s_imageset` imgset
                  WHERE imgset.id IN (%s)""" % (
                  tag, imageset_ids)
       delete_and_commit(query)
 
-    print "Deleting event entries",
+    print("Deleting event entries", end=' ')
     query = """DELETE evt FROM `%s_event` evt
                WHERE evt.run_id = %d AND evt.trial_id = %d AND evt.rungroup_id = %d""" % (
                tag, self.run.id, self.trial.id, self.rungroup.id)
@@ -165,13 +168,13 @@ class Job(db_proxy):
   def remove_from_db(self):
     assert self.status == "DELETED"
 
-    print "Removing job %d from the db"%self.id,
+    print("Removing job %d from the db"%self.id, end=' ')
     tag = self.app.params.experiment_tag
     query = """DELETE job FROM `%s_job` job
                WHERE job.id = %d""" % (
                tag, self.id)
     cursor = self.app.execute_query(query, commit=True)
-    print "(%d)"%cursor.rowcount
+    print("(%d)"%cursor.rowcount)
 
 # Support classes and functions for job submission
 
@@ -212,7 +215,7 @@ def submit_all_jobs(app):
     if job in submitted_jobs:
       continue
 
-    print "Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run)
+    print("Submitting job: trial %d, rungroup %d, run %d"%(job.trial.trial, job.rungroup.id, job.run.run))
 
     j = app.create_job(trial_id = job.trial.id,
                        rungroup_id = job.rungroup.id,
@@ -221,8 +224,8 @@ def submit_all_jobs(app):
     all_jobs.append(j)
     try:
       j.submission_id = submit_job(app, job)
-    except Exception, e:
-      print "Couldn't submit job:", str(e)
+    except Exception as e:
+      print("Couldn't submit job:", str(e))
       j.status = "SUBMIT_FAIL"
 
 def submit_job(app, job):

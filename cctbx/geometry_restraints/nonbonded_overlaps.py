@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
 from libtbx import easy_run
@@ -93,7 +98,7 @@ class compute(object):
           raise Sorry(e)
         else:
           nbo_list = [[],[]]
-          print e
+          print(e)
       except Sorry as e:
         raise Sorry(e)
       except Exception as e:
@@ -316,8 +321,8 @@ class compute(object):
           for j in range(i+1,n_overlaps):
             vec_i = overlap_atoms_dict[key][i][1]
             vec_j = overlap_atoms_dict[key][j][1]
-            u = map(float,vec_i.split(','))
-            v = map(float,vec_j.split(','))
+            u = list(map(float,vec_i.split(',')))
+            v = list(map(float,vec_j.split(',')))
             cos_angle = 0
             # test inline only if the two atoms, overlapping with the
             # common atom, are connected
@@ -348,7 +353,7 @@ class compute(object):
               temp_nbo_list.append(overlap_atoms_dict[key][j])
               temp_nbo_list.append(overlap_atoms_dict[key][i])
         overlap_atoms_dict[key] = temp_nbo_list
-    for (key,val) in overlaps_dict.iteritems():
+    for (key,val) in overlaps_dict.items():
       if key.split('::')[2] != '':
         # not to symmetry operation
         Overlapping_atoms_list[0].append(val[2])
@@ -538,7 +543,7 @@ class info(object):
       rec_list.append('1'*bool(d[5]) + ' '*(not bool(d[5])))
       out_list.append(out_str.format(*rec_list))
     out_string = '\n'.join(out_list)
-    print >> log,out_string
+    print(out_string, file=log)
     return out_string
 
 def get_macro_mol_sel(pdb_processed_file,selection='protein or dna or rna'):
@@ -594,7 +599,7 @@ def create_cif_file_using_ready_set(
   if not has_ready_set:
     msg = 'phenix.ready_set could not be detected on your system.\n'
     msg += 'Cannot process PDB file'
-    print >> log,msg
+    print(msg, file=log)
     return [False,False]
   if not file_name:
     file_name = 'input_pdb_file_for_ready_set.pdb'

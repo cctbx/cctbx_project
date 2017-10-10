@@ -5,7 +5,11 @@
 #
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
+from builtins import object
 import sys, dxtbx
 from scitbx.array_family import flex
 
@@ -27,7 +31,7 @@ def splitit(l, n):
   m = len(l) % (s*n) # remainder after n chunks of size s = how many chunks of size s+1 are needed
   r = [] # result
   p = 0 # pointer
-  for i in xrange(n):
+  for i in range(n):
     if i < m:
       r.append(l[p:p+s+1])
       p += s+1
@@ -52,8 +56,8 @@ class image_worker(object):
         #XXX This code assumes a monolithic detector!
         beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas = \
           self.read(item)
-      except Exception, e:
-        print str(e)
+      except Exception as e:
+        print(str(e))
         nfail += 1
         continue
 
@@ -97,7 +101,7 @@ class multi_image_worker(image_worker):
   def read(self, n):
     """ Read image at postion n"""
     if self.command_line.options.verbose:
-      print "Processing %s: %d" % (self.path, n)
+      print("Processing %s: %d" % (self.path, n))
 
     beam = self.imageset.get_beam(n)
     assert len(self.imageset.get_detector(n)) == 1
@@ -126,7 +130,7 @@ class single_image_worker(image_worker):
 
   def read(self, path):
     if self.command_line.options.verbose:
-      print "Processing %s" % path
+      print("Processing %s" % path)
 
     from dxtbx.format.Registry import Registry
     from dxtbx.format.FormatMultiImage import FormatMultiImage
@@ -226,9 +230,9 @@ def run(argv=None):
 
     worker = multi_image_worker(command_line, paths[0], imageset)
     if command_line.options.num_images_max is not None and command_line.options.num_images_max < len(imageset):
-      iterable = range(command_line.options.num_images_max)
+      iterable = list(range(command_line.options.num_images_max))
     else:
-      iterable = range(len(imageset))
+      iterable = list(range(len(imageset)))
   else:
     # Multiple images provided
     worker = single_image_worker(command_line)

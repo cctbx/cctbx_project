@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_run_stats_from_experiments
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import zip
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui.components.run_stats_plotter import plot_multirun_stats
@@ -54,7 +56,7 @@ def run(args):
       continue
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -75,15 +77,15 @@ def run(args):
       if len(split_fn) <= 0 or split_fn[-1] != "datablock.json":
         continue
       base = os.path.join(root, "_".join(split_fn[:-1]))
-      print filename
+      print(filename)
       strong_name = base + "_strong.pickle"
       if not os.path.exists(strong_name):
-        print "Couldn't log %s, strong pickle not found"%filename
+        print("Couldn't log %s, strong pickle not found"%filename)
         continue
 
       # Read the spotfinding results
       strong = easy_pickle.load(strong_name)
-      print "N strong reflections: %d"%len(strong)
+      print("N strong reflections: %d"%len(strong))
 
       timestamps.append(i)
       n_strong.append(len(strong))
@@ -94,7 +96,7 @@ def run(args):
       experiments_name = base + "_refined_experiments.json"
       indexed_name = base + "_indexed.pickle"
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
-        print "Frame didn't index"
+        print("Frame didn't index")
         average_i_sigi_low.append(0)
         average_i_sigi_high.append(0)
         continue

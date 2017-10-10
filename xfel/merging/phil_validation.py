@@ -1,7 +1,8 @@
 from __future__ import division
+from builtins import object
 from libtbx.utils import Sorry
 
-class application:
+class application(object):
   def __init__(self,param):
 
     self.param = param
@@ -16,7 +17,7 @@ class application:
        """+self.param.merging.reverse_lookup+""".  The reverse lookup table itself contains
        a reindexing operator for each image in the data set.""")
 
-class samosa:
+class samosa(object):
   def __init__(self,param,allow_model=False):
 
     self.param = param

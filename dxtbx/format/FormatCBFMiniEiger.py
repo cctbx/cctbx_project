@@ -9,7 +9,11 @@
 # FormatCBFMini.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
+from builtins import zip
+from builtins import range
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.format.FormatCBFMiniPilatusHelpers import \
      get_pilatus_timestamp
@@ -105,12 +109,12 @@ class FormatCBFMiniEiger(FormatCBFMini):
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
-    beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = list(map(float, beam_xy))
 
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = list(map(float, pixel_xy))
 
 
     # extract sensor thickness, assume < 10mm; default to 450 microns unfound
@@ -281,4 +285,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniEiger.understand(arg)
+    print(FormatCBFMiniEiger.understand(arg))

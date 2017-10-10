@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 import cctbx.eltbx.xray_scattering
 from cctbx import adptbx
 from cctbx import eltbx
@@ -10,17 +14,17 @@ import sys
 def tst_run_requiring_cns(args, call_back):
   import libtbx.path
   if (libtbx.path.full_command_path(command="cns") is None):
-    print "Skipping tests: cns not available."
+    print("Skipping tests: cns not available.")
   else:
     debug_utils.parse_options_loop_space_groups(
       argv=args, call_back=call_back, show_cpu_times=False)
   from libtbx.utils import format_cpu_times
-  print format_cpu_times()
+  print(format_cpu_times())
 
 def write(file_name, cns_input):
   f = open(file_name, "w")
   for line in cns_input:
-    print >> f, line
+    print(line, file=f)
   f.close()
 
 def topology(scatterers):
@@ -55,14 +59,14 @@ def coordinates(scatterers, xyz_only=False):
     gaussian = eltbx.xray_scattering.it1992(scatterer.scattering_type).fetch()
     fp = scatterer.fp
     fdp = scatterer.fdp
-    for i in xrange(3):
+    for i in range(3):
       a("do (%s=%.12g) (resid=%d)" % ("xyz"[i], x[i], resid))
     if (not xyz_only):
       a("do (q=%.12g) (resid=%d)" % (q, resid))
       a("do (b=%.12g) (resid=%d)" % (b, resid))
       a("xray")
       a("  scatter (chemical=%s)" % scatterer.label.replace(" ","")[-4:])
-      for i in xrange(4):
+      for i in range(4):
         a("    %.6g %.6g" %
           (gaussian.array_of_a()[i], gaussian.array_of_b()[i]))
       a("    %.6g" % (gaussian.c(),))

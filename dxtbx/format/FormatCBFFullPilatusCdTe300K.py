@@ -8,9 +8,11 @@
 # Pilatus implementation of fullCBF format, for use with Dectris detectors.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 #import pycbf
 
+from builtins import map
 from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
 #from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
@@ -79,12 +81,12 @@ class FormatCBFFullPilatusCdTe300K(FormatCBFFullPilatus):
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
-    beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = list(map(float, beam_xy))
 
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = list(map(float, pixel_xy))
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -154,4 +156,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFFullPilatus.understand(arg)
+    print(FormatCBFFullPilatus.understand(arg))

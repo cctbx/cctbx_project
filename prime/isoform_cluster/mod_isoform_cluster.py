@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
 from prime.postrefine import postref_handler
 from prime.index_ambiguity.mod_lbfgs import lbfgs_handler
 from cctbx.array_family import flex

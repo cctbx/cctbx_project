@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import object
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
@@ -21,7 +25,7 @@ class test_case(object):
 
   def check_reparametrisation_construction(self):
     warned_once = False
-    for sc, params in itertools.izip(
+    for sc, params in zip(
       self.reparametrisation.structure.scatterers(),
       self.reparametrisation.asu_scatterer_parameters
       ):
@@ -51,7 +55,7 @@ class test_case(object):
                   == [expected_pivot]), sc.label
         except KeyError:
           if not warned_once:
-            print "Warning: incomplete test coverage for H constraint types"
+            print("Warning: incomplete test coverage for H constraint types")
             warned_once = True
             continue
     self.check_reparametrisation_construction_more()
@@ -64,7 +68,7 @@ class test_case(object):
       assert (tuple(self.reparametrisation.mapping_to_grad_fc)
               == self.expected_mapping_to_grad_fc)
     else:
-      print "No mapping to grad Fc test"
+      print("No mapping to grad Fc test")
 
 
   def check_refinement_stability(self):
@@ -110,7 +114,7 @@ class test_case(object):
 
     if self.shall_refine_thermal_displacements:
       delta_u = []
-      for sc, sc0 in itertools.izip(xs.scatterers(), xs0.scatterers()):
+      for sc, sc0 in zip(xs.scatterers(), xs0.scatterers()):
         if not sc.flags.use_u_aniso() or not sc0.flags.use_u_aniso(): continue
         delta_u.extend(matrix.col(sc.u_star) - matrix.col(sc0.u_star))
       delta_u = flex.double(delta_u)
@@ -124,7 +128,7 @@ class test_case(object):
     display(xray_structure=self.xray_structure)
 
   def run(self):
-    print "[ %s ]" % self.__class__.__name__
+    print("[ %s ]" % self.__class__.__name__)
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
     for sc in self.xray_structure.scatterers():

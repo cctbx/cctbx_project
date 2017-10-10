@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 import sys, os
 from libtbx.utils import Usage
@@ -32,12 +33,12 @@ def run():
 
     root_path = libtbx.env.find_in_repositories(root)
     if root_path is None or not os.path.exists(root_path):
-      print indent, "Dependency not found", root
+      print(indent, "Dependency not found", root)
       return
 
     config_path = os.path.join(root_path, "libtbx_config")
     if not os.path.exists(config_path):
-      print indent, root, "has no libtbx_config"
+      print(indent, root, "has no libtbx_config")
       return
 
     f = open(config_path)
@@ -45,7 +46,7 @@ def run():
     f.close()
 
     all_mods = []
-    for key, mods in config.iteritems():
+    for key, mods in config.items():
       if "optional" in key: continue
       elif key == "exclude_from_binary_bundle": continue
       else:
@@ -54,9 +55,9 @@ def run():
             all_mods.append(mod)
 
     if len(all_mods) == 0:
-      print indent, root, "has no dependencies"
+      print(indent, root, "has no dependencies")
     else:
-      print indent, root, "depends on", " ".join(all_mods)
+      print(indent, root, "depends on", " ".join(all_mods))
       for mod in all_mods:
         show_dependencies(mod, depth+1)
 

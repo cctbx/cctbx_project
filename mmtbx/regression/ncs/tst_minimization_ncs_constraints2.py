@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import mmtbx.refinement.minimization_ncs_constraints
 from scitbx.array_family import flex
 from libtbx import group_args
@@ -212,12 +214,12 @@ def set_scattering_dictionary(xray_structure, d_min,
 def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
   pdb_file_name_answer = "answer_%s.pdb"%prefix
   of=open(pdb_file_name_answer, "w")
-  print >> of, pdb_answer
+  print(pdb_answer, file=of)
   of.close()
   #
   pdb_file_name_poor = "poor_%s.pdb"%prefix
   of=open(pdb_file_name_poor, "w")
-  print >> of, pdb_poor
+  print(pdb_poor, file=of)
   of.close()
   #
   pdb_inp_answer = iotbx.pdb.input(file_name=pdb_file_name_answer)
@@ -274,8 +276,8 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
       xray_structure               = xrs_poor,
       sf_and_grads_accuracy_params = params,
       target_name                  = "ls_wunit_k1")
-    if(1): print "d_min:", d_min
-    if(1): print "r_work(start):", fmodel.r_work()
+    if(1): print("d_min:", d_min)
+    if(1): print("r_work(start):", fmodel.r_work())
   return group_args(
     fmodel             = fmodel,
     map_data           = map_data,
@@ -296,7 +298,7 @@ def macro_cycle(
       refine_selection,
       actions):
   assert [fmodel, map_data].count(None) == 1
-  for cycle in xrange(100):
+  for cycle in range(100):
     #for action in actions:
     #  refine_sites, refine_transformations = action
     data_weight = 1
@@ -331,10 +333,10 @@ def macro_cycle(
     if(fmodel is not None):
       fmodel.update_xray_structure(
         xray_structure = xrs_poor, update_f_calc=True)
-      if(0): print cycle, fmodel.r_work()
+      if(0): print(cycle, fmodel.r_work())
   if(fmodel is not None):
     rf = fmodel.r_work()
-    print "R(final):", rf
+    print("R(final):", rf)
     return rf
   else:
     return None
@@ -368,7 +370,7 @@ def check_result(result_file_name):
   s1=iotbx.pdb.input(file_name=result_file_name).atoms().extract_xyz()
   s2=iotbx.pdb.input(file_name="answer_"+result_file_name).atoms().extract_xyz()
   r = flex.sqrt((s1 - s2).dot()).min_max_mean().as_tuple()
-  print r
+  print(r)
   return r
 
 def run():
@@ -378,9 +380,9 @@ def run():
   Real- and reciprocal-space refinement.
   THIS TEST NOW DOES NOT EXERCISE REFINEMENT OF NCS OPERATORS !!!
   """
-  refine_selection = flex.size_t(xrange(3,31))
+  refine_selection = flex.size_t(range(3,31))
   for real_space in [True, False]:
-    print "real_space:", real_space
+    print("real_space:", real_space)
     if(real_space):
       suffix = "Real"
       d_min  = 1.0
@@ -414,5 +416,5 @@ def run():
 if (__name__ == "__main__"):
   t0=time.time()
   run()
-  print "Time: %6.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.4f"%(time.time()-t0))
+  print("OK")

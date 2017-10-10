@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import sys
 import time
 
@@ -35,7 +37,7 @@ def update_restraints(hierarchy,
                                     verbose=False,
                                     ):
     count = 0
-    for i_seqs, values in lookup.items():
+    for i_seqs, values in list(lookup.items()):
       if len(i_seqs)!=2: continue
       bond=geometry.bond_params_table.lookup(*list(i_seqs))
       assert bond
@@ -47,7 +49,7 @@ def update_restraints(hierarchy,
         names = lookup.get(key, "")
         old_bond_ideal=bond.distance_ideal
         old_bond_weight=bond.weight
-        print >> log, " i_seqs %-15s %s initial %8.3f %8.3f %8.3f final %8.3f %8.3f %8.3f" % (
+        print(" i_seqs %-15s %s initial %8.3f %8.3f %8.3f final %8.3f %8.3f %8.3f" % (
           i_seqs,
           names,
           bond.distance_ideal,
@@ -56,9 +58,9 @@ def update_restraints(hierarchy,
           values[0],
           1/values[1]**2,
           values[1],
-        )
+        ), file=log)
         if bond.distance_ideal!=old_bond_ideal or bond.weight!=old_bond_weight:
-          print >> log, 'RESETTING'
+          print('RESETTING', file=log)
       bond.distance_ideal=values[0]
       if not ignore_esd:
         bond.weight = 1/values[1]**2
@@ -77,22 +79,22 @@ def update_restraints(hierarchy,
         if verbose:
           old_angle_ideal=angle_proxy.angle_ideal
           old_angle_weight=angle_proxy.weight
-          print >> log, " i_seqs %-15s initial %12.3f %12.3f" % (
+          print(" i_seqs %-15s initial %12.3f %12.3f" % (
             angle_proxy.i_seqs,
             angle_proxy.angle_ideal,
             angle_proxy.weight,
-            ),
+            ), end=' ', file=log)
         assert angle_proxy.angle_ideal<181
         angle_proxy.angle_ideal = lookup[angle_proxy.i_seqs][0]
         if not ignore_esd:
           angle_proxy.weight = esd_factor/lookup[angle_proxy.i_seqs][1]**2
         if verbose:
-          print >> log, "final   %12.3f %12.3f" % (
+          print("final   %12.3f %12.3f" % (
             angle_proxy.angle_ideal,
             angle_proxy.weight,
-          )
+          ), file=log)
           if old_angle_ideal!=angle_proxy.angle_ideal or old_angle_weight!=angle_proxy.weight:
-            print >> log, "RESETTING"
+            print("RESETTING", file=log)
         count += 1
     return count
   #
@@ -125,19 +127,19 @@ def update_restraints(hierarchy,
               s = "%s" % rc
             else:
               s = "%0.1f, %0.1f" % tuple(rc)
-            print >> log, '%satom group "%s" has %-22s (%s)' % (
+            print('%satom group "%s" has %-22s (%s)' % (
               ' '*6,
               atom_group.id_str(),
               protonation,
               s,
-            )
+            ), file=log)
             #interpret_his1_his2(*tuple(rc))
           counts.setdefault(protonation, 0)
           if protonation is None: continue
           counts[protonation]+=1
           count+=1
           restraints = hpdl_database[protonation]
-          for names, values in restraints.items():
+          for names, values in list(restraints.items()):
             i_seqs = []
             atoms = []
             for name in names:
@@ -167,11 +169,11 @@ def update_restraints(hierarchy,
                                            #verbose=verbose,
                                            )
   #
-  print >> log, "    Number of bonds, angles adjusted : %d, %d in %s HIS" % (
+  print("    Number of bonds, angles adjusted : %d, %d in %s HIS" % (
     count_b,
     count_a,
     count,
-    )
+    ), file=log)
   #return rdl_proxies
 
 def predict_protonation(ag, verbose=False):
@@ -201,7 +203,7 @@ his1>0
     }
   if verbose:
     for atom in ag.atoms():
-      print atom.quote()
+      print(atom.quote())
   for i, tmp_atom in enumerate(bonds):
     atoms = []
     for j in range(2):
@@ -226,7 +228,7 @@ his1>0
     if len(atoms)==3:
       angle=geometry.angle((atoms)).angle_model
       angles[tmp_atom]=angle
-  if None in bonds.values() or None in angles.values(): return None
+  if None in list(bonds.values()) or None in list(angles.values()): return None
   his1 =  17.30 - 0.64*angles[("CG", "ND1", "CE1")]
   his1 +=         0.76*angles[("CE1","NE2", "CD2")]
   his1 -=        37.35*bonds[("ND1", "CE1")]
@@ -236,8 +238,8 @@ his1>0
   his2 -=         2.61*bonds[("ND1", "CE1")]
   his2 -=         6.08*bonds[("NE2", "CE1")]
   if verbose:
-    print 'his1',his1
-    print 'his2',his2
+    print('his1',his1)
+    print('his2',his2)
   return (his1, his2)
 
 def interpret_his1_his2(his1, his2):
@@ -252,18 +254,18 @@ def interpret_his1_his2(his1, his2):
     else:
       return None
   limit = 1
-  print limit, _interpret_his1_his2(his1, his2, limit)
+  print(limit, _interpret_his1_his2(his1, his2, limit))
   limit = 0
-  print limit, _interpret_his1_his2(his1, his2, limit)
+  print(limit, _interpret_his1_his2(his1, his2, limit))
 
 def run(pdb_filename):
   from iotbx import pdb
-  print pdb_filename
+  print(pdb_filename)
   pdb_inp = pdb.input(pdb_filename)
   pdb_hieratchy = pdb_inp.construct_hierarchy()
   for residue_group in pdb_hieratchy.residue_groups():
     for atom_group in residue_groups.atom_groups():
-      print get_histidine_protonation(atom_group)
+      print(get_histidine_protonation(atom_group))
 
 if __name__=="__main__":
   run(sys.argv[1])

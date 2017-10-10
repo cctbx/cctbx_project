@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import object
 from dxtbx.serialize.filename import temp_chdir, load_path
 
 class Test(object):
@@ -19,7 +21,7 @@ class Test(object):
     with temp_chdir(new_path):
       assert(realpath(getcwd()) == new_path)
     assert(realpath(getcwd()) == cwd)
-    print 'OK'
+    print('OK')
 
   def tst_load_path(self):
     import os
@@ -31,7 +33,7 @@ class Test(object):
     new_path = join('$HELLO_WORLD', 'path')
     path = load_path(new_path)
     assert(path == abspath(join('EXPANDED', 'path')))
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
   test = Test()

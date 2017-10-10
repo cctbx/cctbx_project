@@ -1,5 +1,6 @@
 
 from __future__ import division
+from builtins import object
 import os.path
 
 from libtbx.utils import to_str

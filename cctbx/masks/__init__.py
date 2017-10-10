@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import boost.python
+from functools import reduce
 ext = boost.python.import_ext("cctbx_masks_ext")
 from cctbx_masks_ext import *
 
@@ -13,7 +17,7 @@ from scitbx import linalg
 def vdw_radii_from_xray_structure(xray_structure, table=None):
   return vdw_radii(xray_structure, table).atom_radii
 
-class vdw_radii:
+class vdw_radii(object):
 
   def __init__(self, xray_structure, table=None):
     # XXX use scattering dictionary and set_selected
@@ -39,14 +43,14 @@ class vdw_radii:
 
   def show(self, log=None):
     if log is None: log = sys.stdout
-    symbols = self.table.keys()
+    symbols = list(self.table.keys())
     symbols.sort()
     for symbol in symbols:
-      print >> log, "%5s" %symbol,
-    print >> log
+      print("%5s" %symbol, end=' ', file=log)
+    print(file=log)
     for symbol in symbols:
-      print >> log, "%5.2f" %self.table[symbol],
-    print >> log
+      print("%5.2f" %self.table[symbol], end=' ', file=log)
+    print(file=log)
 
 
 class _(boost.python.injector, flood_fill):
@@ -63,28 +67,28 @@ class _(boost.python.injector, flood_fill):
 
   def show_summary(self, log=None):
     if log is None: log = sys.stdout
-    print >> log, "gridding: (%i,%i,%i)" %self.gridding_n_real()
+    print("gridding: (%i,%i,%i)" %self.gridding_n_real(), file=log)
     n_voids = self.n_voids()
     n_grid_points = reduce(lambda x,y:x*y, self.gridding_n_real())
     grid_points_per_void = self.grid_points_per_void()
     centres_of_mass = self.centres_of_mass_frac()
     eigensystems = self.eigensystems_frac()
     if self.n_voids() == 0: return
-    print >> log, "Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)",
-    print >> log, "  Eigenvectors (frac)"
+    print("Void #Grid points Vol/A^3 Vol/%  Centre of mass (frac)", end=' ', file=log)
+    print("  Eigenvectors (frac)", file=log)
     for i in range(n_voids):
       void_vol = (
         self.unit_cell().volume() * grid_points_per_void[i]) / n_grid_points
       formatted_site = ["%6.3f" % x for x in centres_of_mass[i]]
-      print >> log, "%4i" %(i+1),
-      print >> log, "%12i" %(grid_points_per_void[i]),
-      print >> log, "%7.1f" %(void_vol),
-      print >> log, "%5.1f" %(100*void_vol/self.unit_cell().volume()),
-      print >> log, " (%s)" %(','.join(formatted_site)),
+      print("%4i" %(i+1), end=' ', file=log)
+      print("%12i" %(grid_points_per_void[i]), end=' ', file=log)
+      print("%7.1f" %(void_vol), end=' ', file=log)
+      print("%5.1f" %(100*void_vol/self.unit_cell().volume()), end=' ', file=log)
+      print(" (%s)" %(','.join(formatted_site)), end=' ', file=log)
       for j in range(3):
         formatted_eigenvector = [
           "%6.3f" % x for x in eigensystems[i].vectors()[3*j:3*j+3]]
         if j == 0: sep = ""
         else: sep = " "*56
-        print >> log, sep, "%i" %(j+1),
-        print >> log, " (%s)" %(','.join(formatted_eigenvector))
+        print(sep, "%i" %(j+1), end=' ', file=log)
+        print(" (%s)" %(','.join(formatted_eigenvector)), file=log)

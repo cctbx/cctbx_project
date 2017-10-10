@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import math
 import scitbx.math
 from scitbx import lbfgs
@@ -36,7 +39,7 @@ class fit_cdf(object):
     self.x_data = flex.double(x_data)
     self.y_data = flex.double(y_data)
     if (flex.max(self.y_data) > 1.0):
-      print "The cumulative distribution function (y_data) should only have values be between 0 and 1."
+      print("The cumulative distribution function (y_data) should only have values be between 0 and 1.")
       exit()
 
     # intialize distribution with guess
@@ -55,16 +58,16 @@ class fit_cdf(object):
     # caculate difference between predicted and observed values
     self.distribution.set_parameters(p=self.x)
     predicted = flex.double(self.n)
-    for i in xrange(self.n):
+    for i in range(self.n):
       predicted[i] = self.distribution.cdf(x=self.x_data[i])
     difference = predicted - self.y_data
 
     # target function for minimization is sum of rmsd
     f = flex.sum(flex.sqrt(difference*difference))
     gradients = flex.double(len(self.x))
-    for i in xrange(self.n):
+    for i in range(self.n):
       g_i = self.distribution.cdf_gradients(x=self.x_data[i])
-      for j in xrange(len(self.x)):
+      for j in range(len(self.x)):
         gradients[j] = gradients[j] + difference[i]*g_i[j]
     gradients = 2.0*gradients
     return f,gradients
@@ -127,7 +130,7 @@ class rayleigh(object):
     # sigma is the mode of the distribution
     # approximate with the median (cdf = 0.5)
     midpoint = None
-    for i in xrange(len(x_data)):
+    for i in range(len(x_data)):
       if (y_data[i] > 0.5):
         midpoint = i
         break

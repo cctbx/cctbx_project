@@ -1,12 +1,18 @@
 
 from __future__ import division
-import cStringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import object
+import io
 import sys, os, re
 
 def check_bin_format (bin) :
   try :
     d_max, d_min = float(bin[0]), float(bin[1])
-  except ValueError, e :
+  except ValueError as e :
     raise RuntimeError("%s\nOffending values: %s, %s"%(str(e),bin[0],bin[1]))
 
 def float_or_none (n) :
@@ -173,7 +179,7 @@ class processing_info (object) :
       wavelength = getattr(i, "wavelength", None)
     synchrotron = "NULL"
     if (wavelength is not None) :
-      out = cStringIO.StringIO()
+      out = io.StringIO()
       if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
           not approx_equal(wavelength, 0.7107, eps=0.01, out=out)) :
         synchrotron = "Y"
@@ -449,8 +455,8 @@ def parse_xscale (lines) :
         (d_max_file, d_min_file) = (float(fields[-2]), float(fields[-1]))
       except ValueError :
         pass
-      except Exception, e :
-        print line
+      except Exception as e :
+        print(line)
         raise
       else :
         if (d_max_file > d_max) :
@@ -537,7 +543,7 @@ def exercise () :
     relative_path="phenix_regression/tracking/scalepack.log",
     test=os.path.isfile)
   if (denzo_log is None) :
-    print "DENZO log not found, skipping test."
+    print("DENZO log not found, skipping test.")
     return False
   info = parse_all_files([denzo_log, scalepack_log])
   output = info.format_remark_200().splitlines()
@@ -563,4 +569,4 @@ if __name__ == "__main__" :
   #info = parse_all_files(sys.argv[1:])
   #print info.format_remark_200()
   exercise()
-  print "OK"
+  print("OK")

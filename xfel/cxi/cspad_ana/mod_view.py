@@ -14,10 +14,12 @@ XXX Known issues, wishlist:
 """
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
 __version__ = "$Revision$"
 
 import multiprocessing
-import thread
+import _thread
 import threading
 import time
 
@@ -277,13 +279,13 @@ def _xray_frame_process(queue, linger=True, wait=None):
   has exited.
   """
 
-  from Queue import Empty
+  from queue import Empty
   import rstbx.viewer
 
   # Start the viewer's main loop in its own thread, and get the
   # interface for sending updates to the frame.
   thread = _XrayFrameThread()
-  send_data = thread.send_data
+  send_data = _thread.send_data
 
   while True:
     try:
@@ -291,13 +293,13 @@ def _xray_frame_process(queue, linger=True, wait=None):
 
       if payload is None:
         if linger:
-          thread.join()
+          _thread.join()
         else:
-          thread.stop()
+          _thread.stop()
         return
 
-      if not thread.isAlive():
-        thread.join()
+      if not _thread.isAlive():
+        _thread.join()
         return
 
       if wait is not None:

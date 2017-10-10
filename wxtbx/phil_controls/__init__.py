@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from libtbx.utils import Sorry
 from libtbx import Auto
 import wx

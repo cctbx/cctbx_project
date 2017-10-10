@@ -9,7 +9,11 @@
 # 6M SN 100 currently on Diamond I04.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
+from builtins import zip
+from builtins import range
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
@@ -142,7 +146,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     beam_xy = self._cif_header_dictionary['Beam_xy'].replace(
         '(', '').replace(')', '').replace(',', '').split()[:2]
 
-    beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = list(map(float, beam_xy))
 
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
@@ -150,7 +154,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = list(map(float, pixel_xy))
 
     thickness = float(
       self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
@@ -271,12 +275,12 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     radius = 20 # mm
 
     steps_per_degree = 1
-    theta = flex.double([range(360*steps_per_degree)]) * math.pi/180 * 1/steps_per_degree
+    theta = flex.double([list(range(360*steps_per_degree))]) * math.pi/180 * 1/steps_per_degree
     y = radius * flex.cos(theta) # x
     z = radius * flex.sin(theta) # y
     x = flex.double(theta.size(), height) # z
 
-    coords = flex.vec3_double(zip(x, y, z))
+    coords = flex.vec3_double(list(zip(x, y, z)))
     coords.insert(0, (0,0,0))
 
     if goniometer is None:
@@ -350,4 +354,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDLS6MSN100.understand(arg)
+    print(FormatCBFMiniPilatusDLS6MSN100.understand(arg))

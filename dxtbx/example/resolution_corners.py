@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # resolution_corners.py
 #
@@ -9,6 +10,7 @@ from __future__ import absolute_import, division
 #
 # Print out the resolution (two-theta) of the corners of the detector
 
+from builtins import map
 def resolution_corners(frame):
   '''Compute the resolution limit corresponding to the corners of the detector
   surface.'''
@@ -19,7 +21,7 @@ def resolution_corners(frame):
   detector = frame.get_detector()
   beam = frame.get_beam()
 
-  nfast, nslow = map(int, detector.get_image_size())
+  nfast, nslow = list(map(int, detector.get_image_size()))
   dfast, dslow = detector.get_pixel_size()
   F = matrix.col(detector.get_fast_axis())
   S = matrix.col(detector.get_slow_axis())
@@ -31,7 +33,7 @@ def resolution_corners(frame):
     for df in 0, 1:
       corner = origin + nfast * dfast * F * df + nslow * dslow * S * ds
       theta = 0.5 * corner.angle(s0)
-      print '%.3f' % (beam.get_wavelength() / (2 * math.sin(theta)))
+      print('%.3f' % (beam.get_wavelength() / (2 * math.sin(theta))))
 
 if __name__ == '__main__':
 

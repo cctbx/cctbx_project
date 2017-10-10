@@ -1,4 +1,7 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 import random
 
 import libtbx.load_env
@@ -25,7 +28,7 @@ def exercise_polynomial_fit():
     fit = curve_fitting.univariate_polynomial_fit(x, y, degree=n_terms-1)
     assert approx_equal(params, fit.params, eps=1e-4)
 
-  x = flex.double(range(-50,50))
+  x = flex.double(list(range(-50,50)))
   do_polynomial_fit(x, (2,3,5)) # y = 2 + 3x + 5x^2
   do_polynomial_fit(x, (-0.0002, -1000)) # y = -0.0002 -1000x
 
@@ -185,4 +188,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
+  print("OK")

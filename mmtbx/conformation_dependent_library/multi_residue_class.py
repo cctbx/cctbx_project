@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import range
 import copy
 
 from scitbx.math import dihedral_angle
@@ -14,7 +17,7 @@ class RestraintsRegistry(dict):
 
   def __repr__(self):
     outl = "RestraintsRegistry"
-    outl += "\n  %s(%d)" % (self.keys(), len(self))
+    outl += "\n  %s(%d)" % (list(self.keys()), len(self))
     outl += "\n  %s" % self.n
     return outl
 
@@ -114,8 +117,8 @@ class ThreeProteinResidues(list):
       cis_peptide_bond = True
     if verbose:
       if cis_peptide_bond:
-        print 'cis peptide bond', cis_peptide_bond, omega
-        print self
+        print('cis peptide bond', cis_peptide_bond, omega)
+        print(self)
     return cis_peptide_bond
 
   def trans_group(self,
@@ -130,7 +133,7 @@ class ThreeProteinResidues(list):
 
   def is_pure_main_conf(self):
     tmp = [rg.is_pure_main_conf for rg in self]
-    return len(filter(None, tmp))==self.length
+    return len([_f for _f in tmp if _f])==self.length
 
   def are_linked(self,
                  return_value=False,
@@ -274,9 +277,9 @@ class ThreeProteinResidues(list):
         atoms.append(phi_atoms)
     if 0:
       for dihedral in atoms:
-        print '-'*80
+        print('-'*80)
         for atom in dihedral:
-          print atom.quote()
+          print(atom.quote())
     return atoms
 
   def get_phi_psi_angles(self,
@@ -296,7 +299,7 @@ class ThreeProteinResidues(list):
       dihedrals.append(phi_or_psi)
     if verbose:
       for phi_or_psi in dihedrals:
-        print 'phi_or_psi',phi_or_psi
+        print('phi_or_psi',phi_or_psi)
     return dihedrals
 
   def get_cdl_key(self,
@@ -366,7 +369,7 @@ class ThreeProteinResidues(list):
                     ):
     if not average:
       if restraint_values[0]=="I":
-        print restraint_values
+        print(restraint_values)
         assert 0
         return
     atoms = self.get_i_seqs()
@@ -410,13 +413,13 @@ class ThreeProteinResidues(list):
 
   Check:%s""" % outl)
         if verbose:
-          print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+          print(" i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             angle_proxy.i_seqs,
             angle_proxy.angle_ideal,
             angle_proxy.weight,
             restraint_values[i],
             1/restraint_values[i+1]**2,
-            )
+            ))
         names.sort()
         self.registry[tuple(names)] = restraint_values[i]
         if ideal: angle_proxy.angle_ideal = restraint_values[i]
@@ -433,13 +436,13 @@ class ThreeProteinResidues(list):
             )
           raise Sorry(outl)
         if verbose:
-          print " i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
+          print(" i_seqs %-15s initial %12.3f %12.3f final %12.3f %12.3f" % (
             names,
             bond.distance_ideal,
             bond.weight,
             restraint_values[i],
             1/restraint_values[i+1]**2,
-            )
+            ))
         names.sort()
         self.registry[tuple(names)] = restraint_values[i]
         #print "BOND", 1/restraint_values[i+1]**2/bond.weight,1/restraint_values[i+1]**2, bond.weight
@@ -451,10 +454,10 @@ class ThreeProteinResidues(list):
 
   def apply_average_updates(self, averages, verbose=False):
     if verbose:
-      print averages
-      print averages.n
+      print(averages)
+      print(averages.n)
     if not averages.n: return
-    keys = averages.n.keys()
+    keys = list(averages.n.keys())
     for key in keys:
       if len(key)==2:
         bond=self.bond_params_table.lookup(*key)
@@ -472,7 +475,7 @@ class ThreeProteinResidues(list):
 if __name__=="__main__":
   import sys
   from iotbx import pdb
-  from test_rdl import get_geometry_restraints_manager
+  from .test_rdl import get_geometry_restraints_manager
   filename=sys.argv[1]
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -483,10 +486,10 @@ if __name__=="__main__":
                                         geometry_restraints_manager,
                                         #verbose=verbose,
                                         ):
-    print threes
-    print '  omega   %5.1f' % threes.get_omega_value()
-    print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-    print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-    print "  rama    %s" % threes.get_ramalyze_key()
-    print '  conf    %s' % threes.is_pure_main_conf()
-  print "OK"
+    print(threes)
+    print('  omega   %5.1f' % threes.get_omega_value())
+    print("  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30)))
+    print("  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30)))
+    print("  rama    %s" % threes.get_ramalyze_key())
+    print('  conf    %s' % threes.is_pure_main_conf())
+  print("OK")

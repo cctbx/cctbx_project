@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint
 import math
@@ -130,7 +133,7 @@ class idealised_fragment(object):
       "Ph"  : (1.39,),
       "Naphthalene" : (1.39,)
       }
-  class point:  #helper class
+  class point(object):  #helper class
     def __init__(self, x, y):
       self.x = x
       self.y = y
@@ -151,7 +154,7 @@ class idealised_fragment(object):
     sa = math.sin(angle)
     result = []
     p = idealised_fragment.point(ca, -sa)
-    for i in xrange(0, edges):
+    for i in range(0, edges):
       result.append(p*r)
       x = p.x
       p.x = ca*x + sa*p.y
@@ -178,10 +181,10 @@ class idealised_fragment(object):
     if fragment == "Naphthalene":
       res = self.generate_ring(6, lengths[0])
       res.append(res[0])
-      for i in xrange(3,6):  res.append(res[i]);
+      for i in range(3,6):  res.append(res[i]);
       p = res[4]+res[5]
       p = p * (lengths[0]*2*math.cos(math.pi/6)/p.length())
-      for i in xrange(6, len(res)):
+      for i in range(6, len(res)):
         res[i] = res[i] + p
       p = res[7]
       res[7] = res[9]
@@ -195,7 +198,7 @@ class idealised_fragment(object):
     coordinates. returns coordinates of the trasformed fragment
     """
     if not control_point_indices:
-      control_point_indices = range(0, len(fragment))
+      control_point_indices = list(range(0, len(fragment)))
     to_fit = [
       (fragment[i].x, fragment[i].y, 0) for i in control_point_indices]
     lsf = superpose.least_squares_fit(
@@ -279,7 +282,7 @@ class same_group(object):
         flex.vec3_double(crds), flex.vec3_double(src_crds))
       #create a list of inverted coordinates if needed
       if len(inv_src_crds) == 0:
-        for i in xrange(0, len(g)):
+        for i in range(0, len(g)):
           inv_src_crds.append(
             2*matrix.col(lsf.other_shift)-matrix.col(src_crds[i]))
       rm = lsf.r

@@ -4,6 +4,7 @@
 
 from __future__ import division
 
+from builtins import range
 import sys
 
 from libtbx import easy_pickle
@@ -58,14 +59,14 @@ def sections2phil(sections, verbose):
   # coordinates is still needed.
   t_d = [0, 0, 0]
   nmemb = 0
-  for p in xrange(len(sections)):
-    for s in xrange(len(sections[p])):
+  for p in range(len(sections)):
+    for s in range(len(sections[p])):
       t_d[0] += +sections[p][s].center[1]
       t_d[1] += -sections[p][s].center[0]
       t_d[2] += 0
       nmemb += 1
   if (nmemb > 0):
-    for i in xrange(3):
+    for i in range(3):
       t_d[i] /= nmemb
   metrology_str += "translation = 0, 0, 0\n"
 
@@ -74,18 +75,18 @@ def sections2phil(sections, verbose):
   metrology_str += "orientation = %s, %s, %s, %s\n" % \
       tuple(repr(c) for c in o_d)
 
-  for p in xrange(len(sections)):
+  for p in range(len(sections)):
     # Loop over quadrants (panels).  XXX Translation of panels is
     # wrongly set to to centre of sections in the quadrant
     # w.r.t. center of the detector.
     metrology_str += "panel { serial = %d\n" % p
     metrology_str += "translation = "
     t_p = [0, 0, 0]
-    for s in xrange(len(sections[p])):
+    for s in range(len(sections[p])):
       t_p[0] += +sections[p][s].center[1] - t_d[0]
       t_p[1] += -sections[p][s].center[0] - t_d[1]
       t_p[2] +=  0                        - t_d[2]
-    for i in xrange(3):
+    for i in range(3):
       t_p[i] /= len(sections[p])
       metrology_str += "%s" % repr(t_p[i] * pixel_size)
       if (i < 2):
@@ -99,7 +100,7 @@ def sections2phil(sections, verbose):
     metrology_str += "orientation = %s, %s, %s, %s\n" % \
         tuple(repr(c) for c in o_p)
 
-    for s in xrange(len(sections[p])):
+    for s in range(len(sections[p])):
       # Loop over sensors (sections or two-by-one:s).  Note that
       # sensors are rotated by -90 degrees in the SLAC metrology
       # convention w.r.t. their appearance in the XTC stream.
@@ -110,7 +111,7 @@ def sections2phil(sections, verbose):
 
       metrology_str += "sensor { serial = %d\n" % s
       metrology_str += "translation = "
-      for i in xrange(3):
+      for i in range(3):
         metrology_str += "%s" % repr(s_t[i] * pixel_size)
         if (i < 2):
           metrology_str += ", "
@@ -122,7 +123,7 @@ def sections2phil(sections, verbose):
       metrology_str += "orientation = %s, %s, %s, %s\n" % \
           tuple(repr(c) for c in s_o)
 
-      for a in xrange(2):
+      for a in range(2):
         # The ASIC:s of the CSPad are 185 rows by 194 columns.  The
         # ASIC:s are horizontally aligned within a section, with a
         # three-column gap between them.

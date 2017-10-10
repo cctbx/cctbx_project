@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.math import orthonormal_basis
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
@@ -6,7 +8,7 @@ from scitbx.array_family import flex
 
 def input_pairs():
   yield matrix.col((1, 0, 1)), matrix.col((1, 1, 1))
-  for i in xrange(10):
+  for i in range(10):
     yield matrix.col(flex.random_double(3)), matrix.col(flex.random_double(3))
 
 def exercise_orthonormal_basis(eps=1e-12):
@@ -32,7 +34,7 @@ def exercise_orthonormal_basis(eps=1e-12):
 
 def run():
   exercise_orthonormal_basis()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

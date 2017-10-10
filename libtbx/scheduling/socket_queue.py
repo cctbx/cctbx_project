@@ -1,5 +1,10 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 class MultiQueue(object):
 
   def __init__(self):
@@ -9,8 +14,8 @@ class MultiQueue(object):
 
   def create(self, name):
 
-    import Queue
-    self.queue_for[ name ] = Queue.Queue()
+    import queue
+    self.queue_for[ name ] = queue.Queue()
 
 
   def remove(self, name):

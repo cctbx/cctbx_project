@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from scitbx.math import superpose
 import scitbx.matrix
@@ -34,7 +37,7 @@ class asu_ncs_converter(object):
           n_atoms_per_chain.append(chain.atoms_size())
           if(sites_cart_chain_0 is None and i_chain==0):
             sites_cart_chain_0 = chain.atoms().extract_xyz()
-            sel = flex.size_t(xrange(sites_cart_chain_0.size()))
+            sel = flex.size_t(range(sites_cart_chain_0.size()))
             self.ph_first_chain = pdb_hierarchy.select(sel)
             if(add_identity):
               um = scitbx.matrix.sqr((
@@ -91,12 +94,12 @@ class asu_ncs_converter(object):
     of = open(file_name, "w")
     if(mode=="ncs"):
       import iotbx.mtrix_biomt
-      print >> of, iotbx.mtrix_biomt.format_MTRIX_pdb_string(
+      print(iotbx.mtrix_biomt.format_MTRIX_pdb_string(
         rotation_matrices   = self.back_rotation_matrices,
-        translation_vectors = self.back_translation_vectors)
-      print >> of, self.ph_first_chain.as_pdb_string(
-        crystal_symmetry = crystal_symmetry)
+        translation_vectors = self.back_translation_vectors), file=of)
+      print(self.ph_first_chain.as_pdb_string(
+        crystal_symmetry = crystal_symmetry), file=of)
     else:
-      print >> of, self.pdb_hierarchy.as_pdb_string(
-        crystal_symmetry = crystal_symmetry)
+      print(self.pdb_hierarchy.as_pdb_string(
+        crystal_symmetry = crystal_symmetry), file=of)
     of.close()

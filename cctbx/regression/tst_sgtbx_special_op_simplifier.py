@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import zip
+from builtins import range
 test_cases = """\
 P 1
 -0.13463, 0.5133, 0.41428
@@ -175,7 +179,7 @@ def test_case_generator():
   from cctbx.sgtbx import space_group_info
   lines = test_cases.splitlines()
   assert len(lines) % 4 == 0
-  for i in xrange(0, len(lines), 4):
+  for i in range(0, len(lines), 4):
     assert len(lines[i+3]) == 0
     expr = lines[i+2]
     j = expr.find(" NO_FVAR")
@@ -208,18 +212,18 @@ def exercise():
     expr = str(sos)
     assert not show_diff(expr, expected_expr)
     def check(site):
-      ns = dict(zip("xyz", site))
+      ns = dict(list(zip("xyz", site)))
       expr_site = eval(expr, ns, {})
       assert approx_equal(expr_site, site, 1e-4)
       #
       shifted_site = (
         matrix.col(site) + matrix.col(mt.random_double_point_on_sphere()))
-      ns = dict(zip("xyz", shifted_site))
+      ns = dict(list(zip("xyz", shifted_site)))
       expr_shifted_site = eval(expr, ns, {})
       expr_shifted_site_exact = ss.special_op() * expr_shifted_site
       assert approx_equal(expr_shifted_site, expr_shifted_site_exact)
     check(site)
-    for i_trial in xrange(3):
+    for i_trial in range(3):
       shifted_site = ss.special_op() * (
         matrix.col(site) + matrix.col(mt.random_double_point_on_sphere()))
       check(shifted_site)
@@ -240,7 +244,7 @@ def exercise():
 def run(args):
   assert len(args) == 0
   exercise()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

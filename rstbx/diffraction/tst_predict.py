@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from rstbx.diffraction import rotation_angles
 from cctbx.crystal_orientation import crystal_orientation,basis_type
 from libtbx.test_utils import approx_equal
@@ -1983,9 +1985,9 @@ def test_ewald_sphere_model():
   maxl = MM[2];
 
   ptr=0
-  for h in xrange(-maxh, maxh+1):
-    for k in xrange(-maxk, maxk+1):
-      for l in xrange(-maxl, maxl+1):
+  for h in range(-maxh, maxh+1):
+    for k in range(-maxk, maxk+1):
+      for l in range(-maxl, maxl+1):
         if RA((h,k,l)):
           assert test_results[ptr][0]==(h,k,l)
           assert approx_equal(
@@ -1997,4 +1999,4 @@ def test_ewald_sphere_model():
 if __name__=="__main__":
 
   test_ewald_sphere_model()
-  print "OK"
+  print("OK")

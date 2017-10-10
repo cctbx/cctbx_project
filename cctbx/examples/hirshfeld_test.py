@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 from cctbx import crystal, adp_restraints, xray
 
 def run(structure_file_path):
@@ -22,7 +24,7 @@ def run(structure_file_path):
   for bond, delta in zip(rigid_bonds, deltas):
     i, j = bond.i_seqs
     sc_1, sc_2 = scatterer[i], scatterer[j]
-    print "%s <-> %s: %.3g" % (sc_1.label, sc_2.label, delta)
+    print("%s <-> %s: %.3g" % (sc_1.label, sc_2.label, delta))
 
 
 

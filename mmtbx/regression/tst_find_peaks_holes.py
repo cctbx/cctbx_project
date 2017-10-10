@@ -1,8 +1,11 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from libtbx.utils import null_out
 from libtbx import easy_pickle
-from cStringIO import StringIO
+from io import StringIO
 import os
 
 def exercise () :
@@ -42,4 +45,4 @@ def exercise () :
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

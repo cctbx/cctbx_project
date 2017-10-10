@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx import crystal
 from cctbx import sgtbx
 

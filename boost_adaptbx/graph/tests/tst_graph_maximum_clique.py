@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from boost_adaptbx import graph
 from graph import maximum_clique
 

@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
 import math
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -26,11 +30,11 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       average_profile = self.inputpd['masks'][frame][2]
       if verbose:
         box = self.inputpd['masks'][frame][3]
-        print average_profile.focus()
-        print box.focus()
-        print "Average Profile:"
+        print(average_profile.focus())
+        print(box.focus())
+        print("Average Profile:")
         show_profile( average_profile )
-        print "Box:"
+        print("Box:")
         show_profile( box )
       self.mask_focus.append( average_profile.focus() )
 
@@ -44,21 +48,21 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       if cb_op_to_primitive==None:
         raise Sorry("Can't use model_3 simulated annealing for non-primitive cells, contact authors.")
       if self.horizons_phil.integration.model=="use_case_3_simulated_annealing":
-        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+        self.best_params = dict(list(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
          "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad"),
-         self.use_case_3_simulated_annealing(self.horizons_phil.integration.use_subpixel_translations))
+         self.use_case_3_simulated_annealing(self.horizons_phil.integration.use_subpixel_translations)))
         )
       elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_7":
-        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+        self.best_params = dict(list(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
          "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad",
          "domain_size_ang"),
-         self.use_case_3_simulated_annealing_7(self.horizons_phil.integration.use_subpixel_translations))
+         self.use_case_3_simulated_annealing_7(self.horizons_phil.integration.use_subpixel_translations)))
         )
       elif self.horizons_phil.integration.model=="use_case_3_simulated_annealing_9":
-        self.best_params = dict(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
+        self.best_params = dict(list(zip(("half_mosaicity_deg","wave_HE_ang","wave_LE_ang",
          "reserve_orientation","rotation100_rad","rotation010_rad","rotation001_rad",
          "domain_size_ang","ab_factor","c_factor"),
-         self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations))
+         self.use_case_3_simulated_annealing_9(self.horizons_phil.integration.use_subpixel_translations)))
         )
       self.current_orientation = self.best_params["reserve_orientation"]
       self.current_cb_op_to_primitive = cb_op_to_primitive
@@ -142,7 +146,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                                       self.predicted,self.hkllist,self.pixel_size)
       if self.block_counter < 2:
          down = self.inputai.getMosaicity()/KLUDGE
-         print "Readjusting mosaicity back down to ",down
+         print("Readjusting mosaicity back down to ",down)
          self.inputai.setMosaicity(down)
       return
 
@@ -181,7 +185,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       plt.show()
 
   def get_observations_with_outlier_removal(self):
-    print "Using spotfinder subset",self.horizons_phil.integration.spotfinder_subset
+    print("Using spotfinder subset",self.horizons_phil.integration.spotfinder_subset)
     spots = self.spotfinder.images[self.frame_numbers[self.image_number]][self.horizons_phil.integration.spotfinder_subset]
     if getattr(slip_callbacks.slip_callback,"requires_refinement_spots",False):
       from spotfinder.array_family import flex
@@ -215,18 +219,18 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     IS_adapt = AnnAdaptor(data=reference,dim=2,k=NEAR)
     IS_adapt.query(query)
-    print "Calculate correction vectors for %d observations & %d predictions"%(len(spots),len(self.predicted))
+    print("Calculate correction vectors for %d observations & %d predictions"%(len(spots),len(self.predicted)))
     indexed_pairs_provisional = []
     correction_vectors_provisional = []
     c_v_p_flex = flex.vec3_double()
     idx_cutoff = float(min(self.mask_focus[image_number]))
     if verbose:
-      print "idx_cutoff distance in pixels",idx_cutoff
+      print("idx_cutoff distance in pixels",idx_cutoff)
     if not self.horizons_phil.integration.enable_one_to_one_safeguard:
      # legacy code, no safeguard against many-to-one predicted-to-observation mapping
-     for i in xrange(len(self.predicted)): # loop over predicteds
+     for i in range(len(self.predicted)): # loop over predicteds
       #for n in xrange(NEAR): # loop over near spotfinder spots
-      for n in xrange(1): # only consider the nearest spotfinder spot
+      for n in range(1): # only consider the nearest spotfinder spot
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
           indexed_pairs_provisional.append(Match)
@@ -238,15 +242,15 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           c_v_p_flex.append((vector[0],vector[1],0.))
     else:
       one_to_one = {}
-      for i in xrange(len(self.predicted)): # loop over predicteds
+      for i in range(len(self.predicted)): # loop over predicteds
         annresultidx = i*NEAR
         obsidx = IS_adapt.nn[annresultidx]
         this_distancesq = IS_adapt.distances[annresultidx]
-        if not one_to_one.has_key(obsidx) or \
+        if obsidx not in one_to_one or \
            this_distancesq < one_to_one[obsidx]["distancesq"]:
            if math.sqrt(this_distancesq) < idx_cutoff:
              one_to_one[obsidx] = dict(spot=obsidx,pred=i,distancesq=this_distancesq)
-      for key,value in one_to_one.items():
+      for key,value in list(one_to_one.items()):
         indexed_pairs_provisional.append(value)
         vector = matrix.col(
             [spots[value["spot"]].ctr_mass_x() - self.predicted[value["pred"]][0]/pxlsz,
@@ -254,8 +258,8 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         correction_vectors_provisional.append(vector)
         c_v_p_flex.append((vector[0],vector[1],0.))
 
-    print "... %d provisional matches"%len(correction_vectors_provisional),
-    print "r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex))))
+    print("... %d provisional matches"%len(correction_vectors_provisional), end=' ')
+    print("r.m.s.d. in pixels: %5.2f"%(math.sqrt(flex.mean(c_v_p_flex.dot(c_v_p_flex)))))
 
     if self.horizons_phil.integration.enable_residual_scatter:
       from matplotlib import pyplot as plt
@@ -298,7 +302,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         raise Sorry("Not enough indexed spots to reject outliers; have %d need >%d" % (limit, ACCEPTABLE_LIMIT))
 
       y_data = flex.double(len(sorted_cl))
-      for i in xrange(len(y_data)):
+      for i in range(len(y_data)):
         y_data[i] = float(i)/float(len(y_data))
 
       # ideas are explained in Sauter & Poon (2010) J Appl Cryst 43, 611-616.
@@ -313,7 +317,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       indexed_pairs = []
       correction_vectors = []
       self.correction_vectors = []
-      for icand in xrange(len(sorted_cl)):
+      for icand in range(len(sorted_cl)):
         # somewhat arbitrary sigma = 1.0 cutoff for outliers
         if (sorted_cl[icand]-inv_cdf[icand])/fitted_rayleigh.distribution.sigma > 1.0:
           break
@@ -323,19 +327,19 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           self.spotfinder.images[self.frame_numbers[self.image_number]]["refinement_spots"].append(
           spots[indexed_pairs[-1]["spot"]])
         if kwargs.get("verbose_cv")==True:
-            print "CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
+            print("CV OBSCENTER %7.2f %7.2f REFINEDCENTER %7.2f %7.2f"%(
               float(self.inputpd["size1"])/2.,float(self.inputpd["size2"])/2.,
-              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz),
-            print "OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
+              self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz), end=' ')
+            print("OBSSPOT %7.2f %7.2f PREDSPOT %7.2f %7.2f"%(
               spots[indexed_pairs[-1]["spot"]].ctr_mass_x(),
               spots[indexed_pairs[-1]["spot"]].ctr_mass_y(),
               self.predicted[indexed_pairs[-1]["pred"]][0]/pxlsz,
-              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz),
+              self.predicted[indexed_pairs[-1]["pred"]][1]/pxlsz), end=' ')
             the_hkl = self.hkllist[indexed_pairs[-1]["pred"]]
-            print "HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id,
+            print("HKL %4d %4d %4d"%the_hkl,"%2d"%self.setting_id, end=' ')
             radial, azimuthal = spots[indexed_pairs[-1]["spot"]].get_radial_and_azimuthal_size(
               self.inputai.xbeam()/pxlsz, self.inputai.ybeam()/pxlsz)
-            print "RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal)
+            print("RADIALpx %5.3f AZIMUTpx %5.3f"%(radial,azimuthal))
 
         # Store a list of correction vectors in self.
         radial, azimuthal = spots[indexed_pairs[-1]['spot']].get_radial_and_azimuthal_size(
@@ -356,10 +360,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                radial=radial,
                azimuthal=azimuthal))
 
-      print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
+      print("After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs))
       if False:
         rayleigh_cdf = [
-          fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in xrange(len(sorted_cl))]
+          fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in range(len(sorted_cl))]
         from matplotlib import pyplot as plt
         plt.plot(sorted_cl,y_data,"r+")
         #plt.plot(sorted_cl,rayleigh_cdf,"g.")
@@ -406,9 +410,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
 
     correction_lengths=flex.double([v.length() for v in correction_vectors])
     if verbose:
-      print "average correction %5.2f over %d vectors"%(flex.mean(correction_lengths),
-      len(correction_lengths)),
-      print "or %5.2f mm."%(pxlsz*flex.mean(correction_lengths))
+      print("average correction %5.2f over %d vectors"%(flex.mean(correction_lengths),
+      len(correction_lengths)), end=' ')
+      print("or %5.2f mm."%(pxlsz*flex.mean(correction_lengths)))
     self.r_residual = pxlsz*flex.mean(correction_lengths)
 
     #assert len(indexed_pairs)>NEAR # must have enough indexed spots
@@ -474,10 +478,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                           predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
-    for i in xrange(len(self.predicted)): # loop over predicteds
+    for i in range(len(self.predicted)): # loop over predicteds
       B_S_mask = {}
       keys = self.get_bsmask(i)
-      for k in xrange(0,len(keys),2):
+      for k in range(0,len(keys),2):
         B_S_mask[(keys[k],keys[k+1])]=True
       self.BSmasks.append(B_S_mask)
     #print "Done"
@@ -487,7 +491,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     miller = self.get_rejected_miller()
     messag = self.get_rejected_reason()
     for i,j in zip(self.get_rejected_miller(),self.get_rejected_reason()):
-      print i,j
+      print(i,j)
 
   def integration_proper(self):
     image_obj = self.imagefiles.imageindex(self.frame_numbers[self.image_number])
@@ -504,7 +508,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
     for correction_type in self.horizons_phil.integration.absorption_correction:
       if correction_type.apply:
         if correction_type.algorithm=="fuller_kapton":
-          print "Absorption correction with %d reflections to correct"%(len(self.detector_xy))
+          print("Absorption correction with %d reflections to correct"%(len(self.detector_xy)))
           from cxi_xdr_xes import absorption
           C = absorption.correction()
           if correction_type.fuller_kapton.smart_sigmas:

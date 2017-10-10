@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.expand_ncs
 
 import libtbx.phil
@@ -49,7 +50,7 @@ def run (args=(), params=None, out=None) :
   f = open(params.expand_ncs.output_file, "w")
   f.write(hierarchy_new.as_pdb_string(pdb_in.crystal_symmetry()))
   f.close()
-  print >> out, "Wrote %s" % params.expand_ncs.output_file
+  print("Wrote %s" % params.expand_ncs.output_file, file=out)
   if (params.expand_ncs.clash_limit is not None) :
     n_bad_pairs = iotbx.pdb.quick_clash_check(
       file_name=params.expand_ncs.output_file)

@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from past.builtins import basestring
+from builtins import object
 import scitbx.array_family.flex
 from scitbx.array_family import flex
 
@@ -129,21 +134,21 @@ class align(object):
 
   def make_matrix(self,m,n):
     R = []
-    for i in xrange(m):
+    for i in range(m):
       R.append([0]*n)
     return R
 
   def show_matrix(self, data, label=None, out=None):
     if (out is None): out = sys.stdout
     if (label is not None):
-      print >> out, label
-    for a in '  '+self.seq_b: print >> out, "%5c" % a,
-    print >> out
+      print(label, file=out)
+    for a in '  '+self.seq_b: print("%5c" % a, end=' ', file=out)
+    print(file=out)
     seq = ' '+self.seq_a
     for i,row in enumerate(data):
-      print >> out, "%5c" % seq[i],
-      for x in row: print >> out, "%5.1f" % x,
-      print >> out
+      print("%5c" % seq[i], end=' ', file=out)
+      for x in row: print("%5.1f" % x, end=' ', file=out)
+      print(file=out)
 
   def show_matrices(self, out=None):
     for label, data in [("D", self.D),
@@ -163,17 +168,17 @@ class align(object):
 
     elif self.style=="local":
       (best,ii,jj) = (self.M[0][0],0,0)
-      for i in xrange(self.m+1):
-        for j in xrange(self.n+1):
+      for i in range(self.m+1):
+        for j in range(self.n+1):
           if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
       return (ii,jj)
 
     else: # NO_END_GAPS, search edges of matrix
       (best,ii,jj) = (self.M[0][0],0,0)
-      for i in xrange(self.m+1):
+      for i in range(self.m+1):
         j = self.n
         if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
-      for j in xrange(self.n+1):
+      for j in range(self.n+1):
         i = self.m
         if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
       return (ii,jj)
@@ -198,14 +203,14 @@ class align(object):
         elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
       while i>0: mcap('d'); i -= 1
       while j>0: mcap('i'); j -= 1
-      F,G = range(len(self.seq_a)), range(len(self.seq_b))
+      F,G = list(range(len(self.seq_a))), list(range(len(self.seq_b)))
     else:
       (p,q) = (i,j)
       while M[i][j]>0:
         if E[i][j]==-1: mcap('i'); j -= 1
         elif E[i][j]==1: mcap('d'); i -= 1
         elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
-      F,G = range(i,p+1),range(j,q+1) # sub-sequences
+      F,G = list(range(i,p+1)),list(range(j,q+1)) # sub-sequences
     match_codes.reverse()
     match_codes = "".join(match_codes)
 
@@ -317,18 +322,18 @@ class alignment(object):
     bot_str = (bottom_name+" "*8)[0:8]
     ruler = ""
     count=0
-    for ii in xrange(n_block):
-      for jj in xrange(block_size):
+    for ii in range(n_block):
+      for jj in range(block_size):
         count += 1
         ruler += "%s"%( count%10 )
       ruler+="     "
-    print >> out
-    print >> out
+    print(file=out)
+    print(file=out)
     if comment is not None:
-      print >> out, comment
+      print(comment, file=out)
     if (show_ruler) :
-      print >> out, "              "+ruler
-      print >> out
+      print("              "+ruler, file=out)
+      print(file=out)
 
     done=False
     n=len(self.a)
@@ -338,42 +343,42 @@ class alignment(object):
       offset=count*block_size*n_block
 
       # top
-      print >> out, top_str+"     ",
-      for ii in xrange(n_block):
+      print(top_str+"     ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=self.a[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
 
       #middle
-      print >> out, "             ",
-      for ii in xrange(n_block):
+      print("             ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=matches[start:stop]
-          print >> out, tmp, "   ",
+          print(tmp, "   ", end=' ', file=out)
       count += 1
-      print >> out
+      print(file=out)
 
       # bottom
-      print >> out, bot_str+"     ",
-      for ii in xrange(n_block):
+      print(bot_str+"     ", end=' ', file=out)
+      for ii in range(n_block):
         start=offset+ii*block_size
         stop=offset+(ii+1)*block_size
         if stop > n:
           stop = n
         if start < n:
           tmp=self.b[start:stop]
-          print >> out, tmp, "   ",
-      print >> out
-      print >> out
+          print(tmp, "   ", end=' ', file=out)
+      print(file=out)
+      print(file=out)
       if count*block_size*n_block>n:
         done=True
 
@@ -523,26 +528,26 @@ def exercise():
   obj = align(A,B)
   obj.show_matrices()
 
-  print "score=%.1f" % obj.score()
+  print("score=%.1f" % obj.score())
   alignment = obj.extract_alignment()
-  print alignment.match_codes
-  print alignment.a
-  print alignment.identity_matches()
-  print alignment.b
+  print(alignment.match_codes)
+  print(alignment.a)
+  print(alignment.identity_matches())
+  print(alignment.b)
 
   # 1rra vs. 1bli
   A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP".lower()
   obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function=dayhoff,style="global")
 
-  print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
-  print "score=%.1f" % obj.score()
+  print("\n1rra vs. 1bli; GLOBAL allignment; mdm78")
+  print("score=%.1f" % obj.score())
   alignment = obj.extract_alignment()
 
-  print alignment.match_codes
-  print alignment.a
-  print alignment.dayhoff_matches()
-  print alignment.b
+  print(alignment.match_codes)
+  print(alignment.a)
+  print(alignment.dayhoff_matches())
+  print(alignment.b)
   assert approx_equal(alignment.calculate_sequence_identity(), 0.330645)
 
 
@@ -551,14 +556,14 @@ def exercise():
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
   obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function="dayhoff",style="local")
 
-  print "\n1rra vs. 1bli; LOCAL allignment; mdm78"
-  print "score=%.1f" % obj.score()
+  print("\n1rra vs. 1bli; LOCAL allignment; mdm78")
+  print("score=%.1f" % obj.score())
   alignment = obj.extract_alignment()
 
-  print alignment.match_codes
-  print alignment.a
-  print alignment.dayhoff_matches()
-  print alignment.b
+  print(alignment.match_codes)
+  print(alignment.a)
+  print(alignment.dayhoff_matches())
+  print(alignment.b)
   assert approx_equal(alignment.calculate_sequence_identity(), 0.341880)
 
 
@@ -568,14 +573,14 @@ def exercise():
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
   obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function=blosum50,style="global")
 
-  print "\n1rra vs. 1bli; GLOBAL allignment; blosum50"
-  print "score=%.1f" % obj.score()
+  print("\n1rra vs. 1bli; GLOBAL allignment; blosum50")
+  print("score=%.1f" % obj.score())
   alignment = obj.extract_alignment()
 
-  print alignment.match_codes
-  print alignment.a
-  print alignment.matches()
-  print alignment.b
+  print(alignment.match_codes)
+  print(alignment.a)
+  print(alignment.matches())
+  print(alignment.b)
   assert approx_equal(alignment.calculate_sequence_identity(), 0.362903)
 
   # 1rra vs. 1bli
@@ -583,16 +588,16 @@ def exercise():
   B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
   obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function="blosum50",style="local")
 
-  print "\n1rra vs. 1bli; LOCAL allignment; blosum50"
-  print "score=%.1f" % obj.score()
+  print("\n1rra vs. 1bli; LOCAL allignment; blosum50")
+  print("score=%.1f" % obj.score())
   alignment = obj.extract_alignment()
 
-  print alignment.match_codes
-  print alignment.a
-  print alignment.matches(similarity_function=blosum50, is_similar_threshold=0)
-  print alignment.b
+  print(alignment.match_codes)
+  print(alignment.a)
+  print(alignment.matches(similarity_function=blosum50, is_similar_threshold=0))
+  print(alignment.b)
   assert approx_equal(alignment.calculate_sequence_identity(), 0.368852)
-  print
+  print()
   alignment.pretty_print(
     matches = None,
     out = None,
@@ -611,7 +616,7 @@ def exercise():
   assert alignment.a == '-----------GTLIRVTPEQPTHAVCVLGTLTQLDICSSAPXXXTSFSINASPGVVVDI'
   assert alignment.b == 'GPLGSPEFMAQGTLIRVTPEQPTHAVCVLGTLTQLDICSSAPEDCTSFSINASPGVVVDI'
 
-  print "OK" # necessary for auto_build checking
+  print("OK") # necessary for auto_build checking
 
 class pairwise_global (ext.pairwise_global) :
   def __init__ (self, seq1, seq2) :

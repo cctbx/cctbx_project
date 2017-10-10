@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import warnings
 import shutil
 import time
@@ -15,8 +16,8 @@ import tarfile
 # installation on older systems as well
 def check_python_version (major=None, minor=None) :
   if major and minor:
-    print '\nChecking python version of %s' % sys.executable
-    print '  - %s.%s.%s' % sys.version_info[:3]
+    print('\nChecking python version of %s' % sys.executable)
+    print('  - %s.%s.%s' % sys.version_info[:3])
     if sys.version_info <= (major,minor) :
       raise Exception(
         "Python version %s.%s or greater required to run this script." % (
@@ -69,7 +70,7 @@ def call (args, log=sys.stdout, shell=True, cwd=None, verbose=False) :
       # this will cause a deadlock if process is writing to stderr
       # stderr is redirected to stdout, so this cannot happen
       if line:
-        print ": " + line.strip()
+        print(": " + line.strip())
         log.write(line)
   #o, e = p.communicate()
   #log.write(o)
@@ -159,7 +160,7 @@ def copy_tree (src_path, dest_path, verbose=False, log=sys.stdout) :
     assert os.path.isdir(src_path), src_path
     assert not os.path.exists(dest_path), dest_path
     if (verbose) :
-      print >> log, "creating %s" % dest_path
+      print("creating %s" % dest_path, file=log)
     os.makedirs(dest_path)
     for path_name in os.listdir(src_path) :
       node_src_path = os.path.join(src_path, path_name)
@@ -169,13 +170,13 @@ def copy_tree (src_path, dest_path, verbose=False, log=sys.stdout) :
         os.symlink(target_path, node_dest_path)
       elif os.path.isfile(node_src_path) :
         if (verbose) :
-          print >> log, "  copy %s -> %s" % (node_src_path, node_dest_path)
+          print("  copy %s -> %s" % (node_src_path, node_dest_path), file=log)
         copy_file(node_src_path, node_dest_path)
       elif os.path.isdir(node_src_path) :
         copy_tree(node_src_path, node_dest_path)
       else :
         if (verbose) :
-          print >> log, "  skipping %s" % node_src_path
+          print("  skipping %s" % node_src_path, file=log)
 
 def get_os_version () :
   uname = os.uname()
@@ -244,7 +245,7 @@ def regenerate_relative_symlinks (dir_name, log=sys.stdout) :
       else :
         parent_dir = "."
       new_path = op.join(parent_dir, rel_path_target) # ../../cctbx/bin/cmd
-      print >> log, "  creating symlink to %s" % new_path
+      print("  creating symlink to %s" % new_path, file=log)
       os.remove(file_name)
       os.symlink(new_path, file_name)
 
@@ -288,8 +289,8 @@ def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
     try :
       call("svnversion %s > %s/.svnversion" % (module_name, module_name),
         log=sys.stdout)
-    except RuntimeError, e :
-      print e
+    except RuntimeError as e :
+      print(e)
   find_and_delete_files(local_path, file_ext=".pyc")
   find_and_delete_files(local_path, file_ext=".pyo")
   find_and_delete_files(local_path, file_ext=".swp")

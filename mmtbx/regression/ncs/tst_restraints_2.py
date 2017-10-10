@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
 from mmtbx import ncs
 import mmtbx.ncs.restraints
 from mmtbx import monomer_library
@@ -8,7 +14,7 @@ from cctbx.array_family import flex
 from libtbx.utils import Sorry, format_cpu_times
 from libtbx.test_utils import Exception_expected, eps_eq, show_diff
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 import sys, os
 import iotbx.pdb
 import mmtbx.model
@@ -22,7 +28,7 @@ def finite_difference_site_gradients(
   gradients = []
   for i_site,site in enumerate(sites_cart):
     grad = []
-    for i_x in xrange(3):
+    for i_x in range(3):
       t = []
       for signed_eps in [eps, -eps]:
         site_mod = list(site)
@@ -145,7 +151,7 @@ def exercise_two_models_with_holes(model):
 #^  " N   THR D   6 ":   0.3724
 #^  " CA  THR D   6 ":   0.4129
 #^  " C   THR D   6 ":   0.4017
-""", selections=[range(5),range(56,62),range(-5,0)])
+""", selections=[list(range(5)),list(range(56,62)),list(range(-5,0))])
   for ag,fg in zip(energies_sites.gradients,
                    finite_difference_site_gradients(
                      ncs_operators=ncs_operators,
@@ -192,11 +198,11 @@ Y$  " CA BSER D   4 ":    5.23 -    7.00 =  -1.7667
 Y$  " N   THR D   6 ":    4.55 -    8.69 =  -4.1425
 Y$  " CA  THR D   6 ":    8.78 -    7.65 =   1.1250
 Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
-""", selections=[range(5),range(32,37),range(-5,0)])
+""", selections=[list(range(5)),list(range(32,37)),list(range(-5,0))])
   for average_power in [1, 0.69, 0.35]:
     finite_difference_gradients = flex.double()
     eps = 1.e-6
-    for i_u_iso in xrange(u_isos.size()):
+    for i_u_iso in range(u_isos.size()):
       rs = []
       for signed_eps in [eps, -eps]:
         u_isos_eps = u_isos.deep_copy()
@@ -269,7 +275,7 @@ W@    " N   GLN A   1 ":   11.77 -   12.08 =  -0.3133
 W@    " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
 W@NCS restraint group 3:
 W@  b_factor_weight: None  =>  restraints disabled
-""", selections=[range(5),range(-3,0)])
+""", selections=[list(range(5)),list(range(-3,0))])
   out = StringIO()
   groups.show_operators(sites_cart=sites_cart, out=out, prefix="K&")
   assert not show_diff(out.getvalue(), """\
@@ -287,7 +293,7 @@ K&    Number of atom pairs: 32
 K&      0.845124 - 0.988659: 2
 K&      0.988659 - 1.132195: 3
 K&    RMS difference with respect to the reference: 0.724248
-""", selections=[range(3),range(15,21),range(-3,0)])
+""", selections=[list(range(3)),list(range(15,21)),list(range(-3,0))])
   out = StringIO()
   groups.show_sites_distances_to_average(
     sites_cart=sites_cart, site_labels=site_labels, out=out, prefix="[")
@@ -310,7 +316,7 @@ K&    RMS difference with respect to the reference: 0.724248
 [    " N   GLN A   1 ":   0.4263
 ...
 [    " C   THR D   6 ":   0.4017
-""", selections=[range(6),range(120,129),range(-1,0)])
+""", selections=[list(range(6)),list(range(120,129)),list(range(-1,0))])
   #
   selection = groups.selection_restrained()
   assert selection.size() == 132
@@ -383,7 +389,7 @@ def exercise(args):
     relative_path="phenix_regression/ncs",
     test=os.path.isdir)
   if (ncs_dir is None):
-    print "Skipping exercise(): input files not available"
+    print("Skipping exercise(): input files not available")
   else:
     for file_name in ["simple.pdb", "ambiguous_alignment.pdb"]:
       model = get_model(os.path.join(ncs_dir, file_name))
@@ -409,7 +415,7 @@ def exercise(args):
         coordinate_sigma=None,
         b_factor_weight=None,
         special_position_warnings_only=False)
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), '''\
 NCS restraints selections do not produce any pairs of matching atoms:
   Reference selection: "chain A"
@@ -423,7 +429,7 @@ NCS restraints selections do not produce any pairs of matching atoms:
         coordinate_sigma=None,
         b_factor_weight=None,
         special_position_warnings_only=False)
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), '''\
 NCS restraints selections produce only one pair of matching atoms:
   Reference selection: "chain A"
@@ -443,7 +449,7 @@ NCS restraints selections produce only one pair of matching atoms:
         coordinate_sigma=None,
         b_factor_weight=None,
         special_position_warnings_only=False)
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), '''\
 NCS selection includes an atom on a special position:
   Selection: "chain A"
@@ -481,7 +487,7 @@ WARNING: NCS selection includes an atom on a special position:
         coordinate_sigma=None,
         b_factor_weight=None,
         special_position_warnings_only=False)
-    except Sorry, e:
+    except Sorry as e:
       assert not show_diff(str(e), '''\
 Two different NCS operators applied to same pair of atoms:
        Reference selection: "chain A"
@@ -490,7 +496,7 @@ Two different NCS operators applied to same pair of atoms:
     "ATOM      7  N   SER A   4 .*.     N  "
     "ATOM     23  N   SER B   4 .*.     N  "''')
     exercise_two_models_with_holes(model=model)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

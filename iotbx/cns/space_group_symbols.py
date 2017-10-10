@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 # CNS 1.1 spacegroup.lib symbols
+from builtins import str
 sgtbx_lookup_symbol_as_cns_symbol = {
 "P1": "P1",
 "P-1": "P-1",
@@ -247,10 +249,10 @@ def cns_format(space_group_info):
 
 def _regression_test():
   from cctbx import sgtbx
-  for symbol in sgtbx_lookup_symbol_as_cns_symbol.values():
+  for symbol in list(sgtbx_lookup_symbol_as_cns_symbol.values()):
     cns_symbol = cns_format(sgtbx.space_group_info(symbol))
     assert cns_symbol == symbol, (cns_symbol, symbol)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   _regression_test()

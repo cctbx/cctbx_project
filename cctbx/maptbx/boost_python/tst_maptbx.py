@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
 from cctbx import maptbx
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -45,14 +49,14 @@ def exercise_copy():
     assert approx_equal(tuple(m), tuple(n))
     #
     m = flex_type()
-    for i in xrange(2):
-      for j in xrange(3):
-        for k in xrange(5):
+    for i in range(2):
+      for j in range(3):
+        for k in range(5):
           m.append(i*100+j*10+k)
     m.resize(flex.grid(2,3,5).set_focus((2,3,4)))
-    for i in xrange(-5,5):
-      for j in xrange(-5,5):
-        for k in xrange(-5,5):
+    for i in range(-5,5):
+      for j in range(-5,5):
+        for k in range(-5,5):
           c = maptbx.copy(map_unit_cell=m, first=(i,j,k), last=(i,j,k))
           assert c.size() == 1
           assert c[(i,j,k)] == m[(i%2,j%3,k%4)]
@@ -63,9 +67,9 @@ def exercise_copy():
     m2 = m.deep_copy()
     grid = flex.grid( (-1,-1,-1), (1,2,4) ).set_focus( (1,2,3) )
     m2.resize(grid)
-    for i in xrange(-1,1):
-      for j in xrange(-1,2):
-        for k in xrange(-1,3):
+    for i in range(-1,1):
+      for j in range(-1,2):
+        for k in range(-1,3):
           # aperiodic copy
           c = maptbx.copy_box(map=m2, first=(i,j,k), last=(i,j,k))
           assert c.size() == 1
@@ -75,12 +79,12 @@ def exercise_copy():
     assert list(c) == [10, 11, 12, 13, 20, 21,  22,  23,  110,
                        111, 112, 113, 120, 121, 122, 123]
     #
-    for n0 in xrange(4):
-      for n1 in xrange(4):
-        for n2 in xrange(4):
-          for d2 in xrange(3):
+    for n0 in range(4):
+      for n1 in range(4):
+        for n2 in range(4):
+          for d2 in range(3):
             g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
-            map1 = flex_type(range(1,1+g.size_1d()))
+            map1 = flex_type(list(range(1,1+g.size_1d())))
             map1.resize(g)
             map2 = map1.deep_copy()
             maptbx.unpad_in_place(map=map2)
@@ -91,7 +95,7 @@ def exercise_copy():
                 assert map2[i] == map1[i]
     n0,n1,n2,d2 = 2,3,4,1
     g = flex.grid((n0,n1,n2+d2)).set_focus((n0,n1,n2))
-    map1 = flex_type(range(1,1+g.size_1d()))
+    map1 = flex_type(list(range(1,1+g.size_1d())))
     map1.resize(g)
     map2 = map1.deep_copy()
     maptbx.unpad_in_place(map=map2)
@@ -115,7 +119,7 @@ def exercise_statistics():
     assert s.mean() == 0
     assert s.mean_sq() == 0
     assert s.sigma() == 0
-    a = flex_type([random.random() for i in xrange(3*5)])
+    a = flex_type([random.random() for i in range(3*5)])
     a.resize(flex.grid((3,5)))
     s = maptbx.statistics(a)
     assert approx_equal(flex.min(a), s.min())
@@ -124,8 +128,8 @@ def exercise_statistics():
     assert approx_equal(flex.mean_sq(a), s.mean_sq())
     assert approx_equal(flex.mean_sq(a)-flex.mean(a)**2, s.sigma()**2)
     b = flex_type(flex.grid((4,6)).set_focus((3,5)))
-    for i in xrange(3):
-      for j in xrange(5):
+    for i in range(3):
+      for j in range(5):
         b[(i,j)] = a[(i,j)]
     b[(3,5)] = -1
     b[(2,5)] = 2
@@ -161,8 +165,8 @@ def exercise_statistics():
   assert approx_equal(s.skewness(), reference.skew)
   assert approx_equal(s.kurtosis(), reference.kurtosis)
   b = flex.double(flex.grid((6,4)).set_focus((5,3)))
-  for i in xrange(5):
-    for j in xrange(3):
+  for i in range(5):
+    for j in range(3):
       b[(i,j)] = a[(i,j)]
   b[(5,3)] = -1
   b[(5,2)] = 2
@@ -181,7 +185,7 @@ def exercise_grid_tags():
   assert not t.is_valid()
   assert t.tag_array().all() == (8,10,12)
   s = sgtbx.space_group_info("P 21")
-  for i_flags in xrange(8):
+  for i_flags in range(8):
     f = sgtbx.search_symmetry_flags(
       use_space_group_symmetry=i_flags % 2 != 0,
       use_space_group_ltr=0,
@@ -209,7 +213,7 @@ def exercise_grid_tags():
     else:
       assert t.n_independent() < t.tag_array().size()
       for flex_type in flex_types():
-        d = flex_type([random.random() for x in xrange(t.tag_array().size())])
+        d = flex_type([random.random() for x in range(t.tag_array().size())])
         d.resize(t.tag_array().accessor())
         assert not t.verify(d)
         t.sum_sym_equiv_points(d)
@@ -421,10 +425,10 @@ def exercise_eight_point_interpolation():
       x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
       assert approx_equal(maptbx.eight_point_interpolation(map, x_frac), 10)
       assert maptbx.closest_grid_point(map.accessor(), x_frac) == index
-  for i in xrange(100):
-    x_frac = [3*random.random()-1 for i in xrange(3)]
+  for i in range(100):
+    x_frac = [3*random.random()-1 for i in range(3)]
     assert approx_equal(map.eight_point_interpolation(x_frac), 10)
-  map = flex.double(range(30))
+  map = flex.double(list(range(30)))
   map.resize(flex.grid(2,3,5))
   for shift in [0,1,-1]:
     v = 0
@@ -436,7 +440,7 @@ def exercise_eight_point_interpolation():
       assert approx_equal(map.value_at_closest_grid_point(x_frac), v)
       v += 1
   map = flex.double()
-  for i in xrange(48): map.append(i%2)
+  for i in range(48): map.append(i%2)
   map.resize(flex.grid(2,4,6))
   for shift in [0,1,-1]:
     for offs in [.0,.5,.25,.75]:
@@ -495,7 +499,7 @@ def exercise_real_space_gradients_simple(timing):
       assert approx_equal(grads, [(0.3,0.5,0.7)])
   for grid_point in [(0,0,0), (3,4,5), (-3,15,20)]:
     check()
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     grid_point = [random.randrange(-100,100) for i in [0,1,2]]
     check()
   if (timing): n = 1000000
@@ -513,7 +517,7 @@ def exercise_real_space_gradients_simple(timing):
   tm = time.time() - t0
   msg = "real_space_gradients_simple: %.2f s / %d sites" % (tm, n)
   if (tm >= 0.01): msg += ", %.0f sites / s" % (n / tm)
-  if (timing): print msg
+  if (timing): print(msg)
 
 test_map  = flex.double([
   -0.069785, -0.109740, -0.172220, -0.209010, -0.255220, -0.285670,
@@ -616,7 +620,7 @@ def exercise_non_crystallographic_eight_point_interpolation():
   try:
     val = maptbx.non_crystallographic_eight_point_interpolation(
       map, grid_mat, (5,5,5))
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "cctbx Error: non_crystallographic_eight_point_interpolation:" \
       " point required for interpolation is out of bounds."
@@ -665,9 +669,9 @@ def exercise_grid_indices_around_sites():
   sites_cart = flex.vec3_double([(1.5,1.5,1.5)])
   assert get() == [31, 32, 36, 37, 56, 57, 61, 62]
   def sample():
-    for i in xrange(-2,7):
-      for j in xrange(-2,7):
-        for k in xrange(-2,7):
+    for i in range(-2,7):
+      for j in range(-2,7):
+        for k in range(-2,7):
           sites_cart = flex.vec3_double([(i+.5,j+.5,k+.5)])
           assert len(get()) == 8
   sample()
@@ -691,7 +695,7 @@ def exercise_grid_indices_around_sites():
   unit_cell = uctbx.unit_cell((18,26,27))
   fft_n_real = (18,26,27)
   fft_m_real = (18,27,28)
-  for ish in xrange(5):
+  for ish in range(5):
     x = 2*ish+.5
     sites_cart = flex.vec3_double([[x]*3])
     sh = 3**0.5*(ish+0.5)
@@ -727,7 +731,7 @@ def exercise_grid_indices_around_sites():
     maptbx.grid_indices_around_sites(
       unit_cell=unit_cell, fft_n_real=fft_n_real, fft_m_real=fft_m_real,
       sites_cart=sites_cart, site_radii=site_radii)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith("product of fft_m_real")
   else: raise Exception_expected
 
@@ -798,7 +802,7 @@ def exercise_boxing():
 def exercise_hoppe_gassman_modification__and__convert_to_non_negative():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
   random.choice([0,1,2,3,4,5,6,7,8,9,10,11])
-  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in range(10*20*30)]
   a = flex.double(av)
   a.resize(flex.grid((10,20,30)))
   # inefficient, but transparent way
@@ -827,9 +831,9 @@ def exercise_set_box():
     space_group_symbol="P1")
   be = maptbx.boxes(n_real = n_real, fraction=0.1)
   #
-  m1 = flex.double([-1 for i in xrange(n)])
+  m1 = flex.double([-1 for i in range(n)])
   m1.resize(flex.grid(n_real))
-  m2 = flex.double([1 for i in xrange(n)])
+  m2 = flex.double([1 for i in range(n)])
   m2.resize(flex.grid(n_real))
   #
   for s,e in zip(be.starts, be.ends):
@@ -854,7 +858,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = b1.all(),
       end         = b1.all())
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 1: transform entire unit cell
@@ -889,7 +893,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [1,2,3],
       end         = [2,2,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 5: another slice
@@ -900,7 +904,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [-1,0,2],
       end         = [0,0,3])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 6: one point changed
@@ -945,7 +949,7 @@ def exercise_set_box_0():
       map_data_to = b1,
       start       = [0,0,0],
       end         = [9,0,0])
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).endswith("CCTBX_ASSERT(end[i] > start[i]) failure.")
   else: raise Exception_expected
   # test 11: box within unit cell one period apart
@@ -967,7 +971,7 @@ def exercise_set_box_0():
   # TEST 13: Reset map values in a box within a unit cell
   n_real = (100, 60, 80)
   n = n_real[0]*n_real[1]*n_real[2]
-  m1 = flex.double([1 for i in xrange(n)])
+  m1 = flex.double([1 for i in range(n)])
   m1.resize(flex.grid(n_real))
   maptbx.set_box(
     value       = -1,
@@ -978,7 +982,7 @@ def exercise_set_box_0():
   # TEST 14: reset map values in a box crossing the border of the unit cell
   n_real = (60, 100, 80)
   n = n_real[0]*n_real[1]*n_real[2]
-  m2 = flex.double([1 for i in xrange(n)])
+  m2 = flex.double([1 for i in range(n)])
   m2.resize(flex.grid(n_real))
   maptbx.set_box(
     value       = -1,
@@ -989,14 +993,14 @@ def exercise_set_box_0():
 
 def exercise_median_filter():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
-  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in range(10*20*30)]
   a = flex.double(av)
   a.resize(flex.grid((10,20,30)))
   maptbx.median_filter(map_data=a, index_span=1)
 
 def exercise_kuwahara_filter():
   values = [-2,-1,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,3,4]
-  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in xrange(10*20*30)]
+  av = [values[random.choice([0,1,2,3,4,5,6,7])] for i in range(10*20*30)]
   a = flex.double(av)
   a.resize(flex.grid((10,20,30)))
   maptbx.kuwahara_filter(map_data=a, index_span=2)
@@ -1004,7 +1008,7 @@ def exercise_kuwahara_filter():
 def exercise_intersection():
   thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5, 0.6,0.7,0.8,0.8, 1.0])
   def get_map():
-    av = [random.random() for i in xrange(10*20*30)]
+    av = [random.random() for i in range(10*20*30)]
     m = flex.double(av)
     m.resize(flex.grid((10,20,30)))
     return m
@@ -1020,7 +1024,7 @@ def exercise_intersection():
 def exercise_binarize():
   thresholds = flex.double([0,0.1,0.2,0.3,0.4,0.5, 0.6,0.7,0.8,0.8, 1.0])
   def get_map():
-    av = [random.random() for i in xrange(10*20*30)]
+    av = [random.random() for i in range(10*20*30)]
     m = flex.double(av)
     m.resize(flex.grid((10,20,30)))
     return m
@@ -1068,11 +1072,11 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     for i, t_ in enumerate(points):
       a = to_int(t_)
       As.append(a)
-      if(show): print "%2d: %8.4f %3d"%(i, t_, a)
-    if(show): print list(As)
+      if(show): print("%2d: %8.4f %3d"%(i, t_, a))
+    if(show): print(list(As))
     #
     R  = flex.double([0,]*256)
-    Rx = flex.int(xrange(256))
+    Rx = flex.int(range(256))
     assert R.size()==Rx.size()
     #
     hit_l = False
@@ -1085,14 +1089,14 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
     #
     if(show):
       for i, rx in enumerate(R):
-        print "%4d %10.7f"%(i, rx)
+        print("%4d %10.7f"%(i, rx))
     #
     return R
   ### Python prototype END
   def get_ma(n1,n2,n3, points):
     ma = maptbx.map_accumulator(n_real = (n1,n2,n3), use_max_map=False)
     for value in points:
-      m = [value for i in xrange(n1*n2*n3)]
+      m = [value for i in range(n1*n2*n3)]
       m = flex.double(m)
       m.resize(flex.grid((n1,n2,n3)))
       ma.add(map_data=m)
@@ -1112,7 +1116,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
   ma = get_ma(n1,n2,n3, points)
   assert approx_equal(mmm(ma.as_median_map()),(129,129,129))
   # case 4
-  points = flex.double([i/16. for i in xrange(16)])
+  points = flex.double([i/16. for i in range(16)])
   ma = get_ma(n1,n2,n3, points)
   assert approx_equal(mmm(ma.as_median_map()),(0,0,0))
   # case 5
@@ -1190,7 +1194,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
   #
   Rs = []
   results = []
-  for points in d.values():
+  for points in list(d.values()):
     ma = get_ma(n1,n2,n3, points)
     r = mmm(ma.as_median_map())
     #print r
@@ -1205,7 +1209,7 @@ def exercise_map_accumulator(n1=2, n2=2, n3=2):
 
 def exercise_cc_peak():
   def get_map():
-    av = [random.random() for i in xrange(10*20*30)]
+    av = [random.random() for i in range(10*20*30)]
     m = flex.double(av)
     m = m-flex.min(m)
     m = m/flex.max(m)
@@ -1253,7 +1257,7 @@ def exercise_cc_peak():
 
 def exercise_gamma_compression():
   def get_map():
-    av = [random.random() for i in xrange(10*20*30)]
+    av = [random.random() for i in range(10*20*30)]
     m = flex.double(av)
     m = (m-flex.min(m))*10
     m.resize(flex.grid((10,20,30)))
@@ -1322,7 +1326,7 @@ def run(args):
   exercise_region_density_correlation()
   exercise_hoppe_gassman_modification__and__convert_to_non_negative()
   exercise_sample_all_mask_regions()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

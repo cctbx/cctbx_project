@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # Compare intensities and positions of measurements from XDS INTEGRATE (which
 # are not necessarily correctly LP corrected) and from Mosflm via sortmtz and
 # scala to sum partials but not merge or scale e.g.
@@ -24,6 +25,9 @@ from __future__ import division
 # and degrees (perhaps small differences in postrefinement are affecting
 # things?)
 
+from builtins import zip
+from builtins import map
+from builtins import range
 import sys
 import math
 from iotbx import mtz
@@ -108,10 +112,10 @@ def read_xds_integrate(xds_integrate_file):
             r = float(record.split()[-1])
 
     if not sg_num:
-        raise RuntimeError, 'spacegroup missing'
+        raise RuntimeError('spacegroup missing')
 
     if not r:
-        raise RuntimeError, 'rotation missing'
+        raise RuntimeError('rotation missing')
 
     sg = space_group(space_group_symbols(sg_num).hall())
 
@@ -125,9 +129,9 @@ def read_xds_integrate(xds_integrate_file):
         if '!' in record[:1]:
             continue
         values = record.split()
-        hkls.append(map(int, values[:3]))
+        hkls.append(list(map(int, values[:3])))
         xyzs.append((float(values[5]), float(values[6]), float(values[7])))
-        isigmas.append(map(float, values[3:5]))
+        isigmas.append(list(map(float, values[3:5])))
 
     map_to_asu(sg.type(), False, hkls)
 
@@ -139,12 +143,12 @@ def read_xds_integrate(xds_integrate_file):
 def main(mtz_file, xds_integrate_file):
     mos_hkl_xyz_isigi = get_hkl_xyz_isigi(mtz_file)
 
-    print 'Read %d observations from %s' % (len(mos_hkl_xyz_isigi), mtz_file)
+    print('Read %d observations from %s' % (len(mos_hkl_xyz_isigi), mtz_file))
 
     xds_hkl_xyz_isigi = read_xds_integrate(xds_integrate_file)
 
-    print 'Read %d observations from %s' % \
-          (len(xds_hkl_xyz_isigi), xds_integrate_file)
+    print('Read %d observations from %s' % \
+          (len(xds_hkl_xyz_isigi), xds_integrate_file))
 
     # treat XDS as reference, mosflm as query (arbitrary)
 
@@ -173,9 +177,9 @@ def main(mtz_file, xds_integrate_file):
             i_s_mos.append(mos_hkl_xyz_isigi[j][2][0])
             i_s_xds.append(xds_hkl_xyz_isigi[c][2][0])
 
-    print 'Matched %d observations' % len(i_s_mos)
+    print('Matched %d observations' % len(i_s_mos))
 
-    print cc(i_s_mos, i_s_xds)
+    print(cc(i_s_mos, i_s_xds))
 
 if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2])

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_submit
@@ -8,6 +9,9 @@ from __future__ import division
 # an appropiate trial directory in the requested location and copying and modifying
 # the given psana config files and cctbx.xfel phil files
 #
+from builtins import str
+from builtins import range
+from builtins import object
 import os, sys, shutil
 from libtbx.utils import Sorry
 from libtbx.phil import parse
@@ -189,9 +193,9 @@ class Script(object):
       argv = sys.argv[1:]
 
     if len(argv) == 0 or "-h" in argv or "--help" in argv or "-c" in argv:
-      print help_str
-      print "Showing phil parameters:"
-      print phil_scope.as_str(attributes_level = 2)
+      print(help_str)
+      print("Showing phil parameters:")
+      print(phil_scope.as_str(attributes_level = 2))
       return
 
     user_phil = []
@@ -202,7 +206,7 @@ class Script(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           dispatcher_args.append(arg)
     scope, unused = phil_scope.fetch(sources=user_phil, track_unused_definitions=True)
     params = scope.extract()
@@ -211,7 +215,7 @@ class Script(object):
     assert params.input.experiment is not None
     assert params.input.run_num is not None
 
-    print "Submitting run %d of experiment %s"%(params.input.run_num, params.input.experiment)
+    print("Submitting run %d of experiment %s"%(params.input.run_num, params.input.experiment))
 
     if not os.path.exists(params.output.output_dir):
        os.makedirs(params.output.output_dir)
@@ -223,7 +227,7 @@ class Script(object):
     # If a trial number wasn't included, find the next available, up to 999 trials
     if params.input.trial is None:
       found_one = False
-      for i in xrange(1000):
+      for i in range(1000):
         trialdir = os.path.join(rundir, "%03d"%i)
         if params.input.rungroup is not None:
           trialdir += "_rg%03d"%params.input.rungroup
@@ -241,14 +245,14 @@ class Script(object):
       if os.path.exists(trialdir):
         raise Sorry("Trial %d already in use"%params.input.trial)
 
-    print "Using trial", params.input.trial
+    print("Using trial", params.input.trial)
     os.mkdir(trialdir)
 
     # log file will live here
     stdoutdir = os.path.join(trialdir, "stdout")
     os.mkdir(stdoutdir)
     if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
-      for i in xrange(params.mp.nproc):
+      for i in range(params.mp.nproc):
         error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
         log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
         open(log_files,'a').close()
@@ -326,21 +330,21 @@ class Script(object):
       command = " ".join(parts + [run_command])
     else:
       command = submit_command
-    print command
+    print(command)
 
     if params.dry_run:
-      print "Dry run: job not submitted. Trial directory created here:", trialdir
-      print "Execute this command to submit the job:"
-      print submit_command
+      print("Dry run: job not submitted. Trial directory created here:", trialdir)
+      print("Execute this command to submit the job:")
+      print(submit_command)
     else:
       try:
         result = easy_run.fully_buffered(command=submit_command)
         result.raise_if_errors()
-      except Exception, e:
+      except Exception as e:
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
 
-      print "Job submitted.  Output in", trialdir
+      print("Job submitted.  Output in", trialdir)
 
       if params.mp.method == "mpi" or params.mp.method == "lsf":
         submission_id = None

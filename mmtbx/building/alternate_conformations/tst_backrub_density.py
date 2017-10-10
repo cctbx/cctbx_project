@@ -1,7 +1,11 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx import easy_run
-from cStringIO import StringIO
+from io import StringIO
 import os
 
 def exercise () :
@@ -97,7 +101,7 @@ def exercise () :
         backrub=False,
         out=out)
       if (i_res == 1) :
-        print len(confs)
+        print(len(confs))
   new_hierarchy = iotbx.pdb.hierarchy.root()
   for i_model, conf in enumerate(models) :
     conf.id = str(i_model + 1)
@@ -222,4 +226,4 @@ END
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

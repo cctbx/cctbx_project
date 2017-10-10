@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 import math
 import os
 import sys
@@ -57,9 +60,9 @@ def run(args):
     assert work_params.fourier_filter_cutoff is not None
 
   for i, filename in enumerate(args):
-    print filename
+    print(filename)
     f = open(filename, 'rb')
-    x, y = zip(*[line.split() for line in f.readlines() if not line.startswith("#")])
+    x, y = list(zip(*[line.split() for line in f.readlines() if not line.startswith("#")]))
     x = flex.double(flex.std_string(x))
     y = flex.double(flex.std_string(y))
     x = x[:-2]
@@ -89,10 +92,10 @@ def run(args):
 
     filename = os.path.join(os.path.dirname(filename), "smoothed_spectrum.txt")
     f = open(filename, "wb")
-    print >> f, "\n".join(["%i %f" %(xi, yi)
-                           for xi, yi in zip(x, y_smoothed)])
+    print("\n".join(["%i %f" %(xi, yi)
+                           for xi, yi in zip(x, y_smoothed)]), file=f)
     f.close()
-    print "Smoothed spectrum written to %s" %filename
+    print("Smoothed spectrum written to %s" %filename)
 
     x_interp_size = x.size()
     for i, x_i in enumerate(reversed(x)):
@@ -130,7 +133,7 @@ def interpolate(x, y, half_window=10):
       # fit a 2nd order polynomial through the missing points
       polynomial = curve_fitting.univariate_polynomial(1, 1)
       fit = curve_fitting.lbfgs_minimiser([polynomial], x_,y_).functions[0]
-      missing_x = flex.double(range(int(x[i]+1), int(x[i+1])))
+      missing_x = flex.double(list(range(int(x[i]+1), int(x[i+1]))))
       x_all.extend(missing_x)
       y_all.extend(fit(missing_x))
 

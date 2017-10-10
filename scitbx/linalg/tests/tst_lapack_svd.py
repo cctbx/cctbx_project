@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 def exercise_impl(svd_impl_name, use_fortran):
   import scitbx.linalg
   svd_impl = getattr(scitbx.linalg, "lapack_%s" % svd_impl_name)
@@ -7,15 +9,15 @@ def exercise_impl(svd_impl_name, use_fortran):
   from libtbx.test_utils import approx_equal
   #
   for diag in [0, 1]:
-    for n in xrange(1, 11):
+    for n in range(1, 11):
       a = flex.double(flex.grid(n,n), 0)
-      for i in xrange(n):
+      for i in range(n):
         a[(i,i)] = diag
       a_inp = a.deep_copy()
       svd = svd_impl(a=a, use_fortran=use_fortran)
       if (svd is None):
         if (not use_fortran):
-          print "Skipping tests: lapack_%s not available." % svd_impl_name
+          print("Skipping tests: lapack_%s not available." % svd_impl_name)
         return
       assert svd.info == 0
       assert approx_equal(svd.s, [diag]*n)
@@ -23,8 +25,8 @@ def exercise_impl(svd_impl_name, use_fortran):
       assert svd.vt.all() == (n,n)
 
   mt = flex.mersenne_twister(seed=0)
-  for m in xrange(1,11):
-    for n in xrange(1,11):
+  for m in range(1,11):
+    for n in range(1,11):
       a = matrix.rec(elems=tuple(mt.random_double(m*n)*4-2), n=(m,n))
       svd = svd_impl(
         a=a.transpose().as_flex_double_matrix(), use_fortran=use_fortran)
@@ -72,7 +74,7 @@ def compare_times(
         samples.append((m, n))
   else:
     if comprehensive == "timing-1":
-      dims = range(100, 600, 100)
+      dims = list(range(100, 600, 100))
       for m in dims:
         for n in dims:
           samples.append((m, n))
@@ -111,18 +113,18 @@ def compare_times(
       time_dgesvd = time.time() - t0
       if not comprehensive:
         if (header is not None):
-          print header
+          print(header)
           header = None
-        print "%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd)
+        print("%3d %3d %4.2f %4.2f" % (m, n, time_svd_real, time_dgesvd))
       else:
         handwritten_wrt_lapack.append((m, n, time_svd_real/time_dgesvd))
   finally:
     if comprehensive:
-      print "handwrittenwrtlapack%s%s={" % (svd_impl_name,
-                                            ['', 'fortran'][use_fortran])
-      print ",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
-                       for (m, n, t) in handwritten_wrt_lapack ])
-      print "}"
+      print("handwrittenwrtlapack%s%s={" % (svd_impl_name,
+                                            ['', 'fortran'][use_fortran]))
+      print(",".join([ "{%3d, %3d, %4.2f}" % (m, n, t)
+                       for (m, n, t) in handwritten_wrt_lapack ]))
+      print("}")
 
 def run(args):
   from libtbx.option_parser import option_parser
@@ -150,7 +152,7 @@ def run(args):
       compare_times(svd_impl_name=svd_impl_name,
                     use_fortran=use_fortran,
                     comprehensive=comprehensive)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

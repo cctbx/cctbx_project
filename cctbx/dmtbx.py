@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import str
 import cctbx.array_family.flex # import dependency
 
 import boost.python

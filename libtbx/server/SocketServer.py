@@ -100,8 +100,12 @@ XXX Open problems:
 
 """
 from __future__ import division
+from __future__ import print_function
 
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 __version__ = "0.2"
 
 
@@ -110,7 +114,7 @@ import sys
 import os
 
 
-class TCPServer:
+class TCPServer(object):
 
     """Base class for various socket-based server classes.
 
@@ -250,12 +254,12 @@ class TCPServer:
         The default is to print a traceback and continue.
 
         """
-        print '-'*40
-        print 'Exception happened during processing of request from',
-        print client_address
+        print('-'*40)
+        print('Exception happened during processing of request from', end=' ')
+        print(client_address)
         import traceback
         traceback.print_exc()
-        print '-'*40
+        print('-'*40)
 
 
 class UDPServer(TCPServer):
@@ -275,7 +279,7 @@ class UDPServer(TCPServer):
         pass
 
 
-class ForkingMixIn:
+class ForkingMixIn(object):
 
     """Mix-in class to handle each request in a new process."""
 
@@ -312,13 +316,13 @@ class ForkingMixIn:
                     os._exit(1)
 
 
-class ThreadingMixIn:
+class ThreadingMixIn(object):
 
     """Mix-in class to handle each request in a new thread."""
 
     def process_request(self, request, client_address):
         """Start a new thread to process the request."""
-        import thread, threading
+        import _thread, threading
 
         t=threading.Thread(target=self.finish_request,
                                 args=(request, client_address))
@@ -343,7 +347,7 @@ if hasattr(socket, 'AF_UNIX'):
 
     class ThreadingUnixDatagramServer(ThreadingMixIn, UnixDatagramServer): pass
 
-class BaseRequestHandler:
+class BaseRequestHandler(object):
 
     """Base class for request handler classes.
 
@@ -370,7 +374,7 @@ class BaseRequestHandler:
             self.handle()
             self.finish()
         finally:
-            sys.exc_traceback = None    # Help garbage collection
+            sys.exc_info()[2] = None    # Help garbage collection
 
     def setup(self):
         pass
@@ -413,10 +417,10 @@ class DatagramRequestHandler(BaseRequestHandler):
     """Define self.rfile and self.wfile for datagram sockets."""
 
     def setup(self):
-        import StringIO
+        import io
         self.packet, self.socket = self.request
-        self.rfile = StringIO.StringIO(self.packet)
-        self.wfile = StringIO.StringIO(self.packet)
+        self.rfile = io.StringIO(self.packet)
+        self.wfile = io.StringIO(self.packet)
 
     def finish(self):
         self.socket.sendto(self.wfile.getvalue(), self.client_address)

@@ -1,6 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.chains_as_models
 
+from builtins import str
 import sys
 import iotbx.pdb
 from libtbx.utils import Sorry

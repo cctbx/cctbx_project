@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import numpy as np
 from mpi4py import MPI
 comm = MPI.COMM_WORLD

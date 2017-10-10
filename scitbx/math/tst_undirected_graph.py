@@ -42,7 +42,7 @@ class TestGraph(unittest.TestCase):
     self.assertEqual( set( graph.edges ), set( self.edges ) )
     self.assertEqual( set( graph.vertices ), self.vertices )
 
-    for ( vertex, edges ) in self.edges_from.items():
+    for ( vertex, edges ) in list(self.edges_from.items()):
       self.assertEqual( set( graph.edges_from( vertex = vertex ) ), edges )
 
 

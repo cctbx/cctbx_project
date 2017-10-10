@@ -6,7 +6,14 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import os
 import wx
 
@@ -66,7 +73,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     for name in plugin_names:
       self.plugins[name] = imp.load_source(name, os.path.join(slip_viewer_dir, name + ".py"))
     if len(plugin_names) > 0:
-      print "Loaded plugins: " + ", ".join(plugin_names)
+      print("Loaded plugins: " + ", ".join(plugin_names))
 
     wx.Frame.__init__(self,*args,**kwds)
     self.settings = rv_settings()
@@ -237,7 +244,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
       """
 
       key = self.get_key(file_name_or_data)
-      for i in xrange(self.image_chooser.GetCount()) :
+      for i in range(self.image_chooser.GetCount()) :
         if (key == str(self.image_chooser.GetClientData(i))) :
           return i
       if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
@@ -266,7 +273,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     try:
       # determine if the beam intersects one of the panels
       panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
-    except RuntimeError, e:
+    except RuntimeError as e:
       if not ("DXTBX_ASSERT(" in str(e) and ") failure" in str(e)):
         # unknown exception from dxtbx
         raise e
@@ -290,7 +297,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         # ill posed.
         try:
           x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
-        except RuntimeError, e:
+        except RuntimeError as e:
           if 'DXTBX_ASSERT' in str(e):
             x_mm, y_mm = 0.0, 0.0
           else:
@@ -328,7 +335,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     try:
       title = file_name_or_data.full_path
-    except AttributeError, e:
+    except AttributeError as e:
       title = str(file_name_or_data)
     self.SetTitle(title)
 
@@ -640,7 +647,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     self.update_statusbar("Writing " + file_name + "...")
     if dialog.GetFilterIndex() == 0:
-        from cStringIO import StringIO
+        from io import StringIO
 
         # XXX Copied from tile_generation.py; all its disclaimers
         # apply.
@@ -650,14 +657,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
         if not isinstance(data, tuple): # XXX should not need this test
           data = (data,)
         if len(detector) > 1:
-          from tile_generation import _get_flex_image_multipanel
+          from .tile_generation import _get_flex_image_multipanel
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
             raw_data=data,
             beam=raw_img.get_beam())
         else:
-          from tile_generation import _get_flex_image
+          from .tile_generation import _get_flex_image
           flex_img = _get_flex_image(
             brightness=self.settings.brightness / 100,
             data=data[0],
@@ -678,14 +685,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
             start_x_tile = int(math.floor(x_offset / self.pyslip.tile_size_x))
             stop_x_tile = ((x2 + self.pyslip.tile_size_x - 1)/ self.pyslip.tile_size_x)
             stop_x_tile = int(stop_x_tile)
-            col_list = range(start_x_tile, stop_x_tile)
+            col_list = list(range(start_x_tile, stop_x_tile))
             x_pix = start_x_tile * self.pyslip.tile_size_y - x_offset
 
             y_offset = y1
             start_y_tile = int(math.floor(y_offset / self.pyslip.tile_size_y))
             stop_y_tile = ((y2 + self.pyslip.tile_size_y - 1) / self.pyslip.tile_size_y)
             stop_y_tile = int(stop_y_tile)
-            row_list = range(start_y_tile, stop_y_tile)
+            row_list = list(range(start_y_tile, stop_y_tile))
             y_pix_start = start_y_tile * self.pyslip.tile_size_y - y_offset
 
             bitmap = wx.EmptyBitmap(x2-x1, y2-y1)
@@ -745,14 +752,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
         if not isinstance(data, tuple): # XXX should not need this test
           data = (data,)
         if len(detector) > 1:
-          from tile_generation import _get_flex_image_multipanel
+          from .tile_generation import _get_flex_image_multipanel
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
             raw_data=data,
             beam=raw_img.get_beam())
         else:
-          from tile_generation import _get_flex_image
+          from .tile_generation import _get_flex_image
           flex_img = _get_flex_image(
             brightness=self.settings.brightness / 100,
             data=data[0],
@@ -880,7 +887,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
                  radius, colour, textcolour, fontname, fontsize,
                  offset_x, offset_y, data) in layer.data:
               if placement != 'cc':
-                print Warning("Only centered placement available when drawing text on pdf")
+                print(Warning("Only centered placement available when drawing text on pdf"))
               if layer.map_rel:
                 fs = self.pyslip.tiles.map_relative_to_picture_fast_slow(
                   lon, lat)

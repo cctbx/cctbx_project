@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.display_metrology
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 # $Id
 #
 
+from builtins import str
+from builtins import range
 import sys, os
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
@@ -28,7 +31,7 @@ if (__name__ == "__main__") :
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -53,7 +56,7 @@ if (__name__ == "__main__") :
         experiments = ExperimentListFactory.from_json_file(params.metrology)
         assert len(experiments) == 1
         detector = experiments[0].detector
-      except Exception, e:
+      except Exception as e:
         detector = None
 
     if detector is None:
@@ -62,7 +65,7 @@ if (__name__ == "__main__") :
       try:
         from PSCalib.GeometryAccess import GeometryAccess
         geometry = GeometryAccess(params.metrology)
-      except Exception, e:
+      except Exception as e:
         geometry = None
 
       if geometry is None:
@@ -75,7 +78,7 @@ if (__name__ == "__main__") :
         if len(panels) != 64:
           raise Sorry("Can't parse this metrology file")
 
-        print "Ginn metrology file"
+        print("Ginn metrology file")
         for panel_id, panel in enumerate(panels):
           PANEL, x1, y1, x2, y2, shiftX, shiftY, tiltX, tiltY, _ = panel.split()
           x1 = float(x1) + float(shiftX)
@@ -169,7 +172,7 @@ if (__name__ == "__main__") :
           ax.set_xlim((-100, 100))
           ax.set_ylim((-100, 100))
         else:
-          for quad_id in xrange(4):
+          for quad_id in range(4):
             for sensor_id, sensor in enumerate(root.get_list_of_children()[quad_id*8:(quad_id+1)*8]):
               sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
               #transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
@@ -234,7 +237,7 @@ if (__name__ == "__main__") :
     for asic_number, (y1, x1, y2, x2) in enumerate([(active_areas[(i*4)+0]+1,
                                                      active_areas[(i*4)+1]+1,
                                                      active_areas[(i*4)+2]-1,
-                                                     active_areas[(i*4)+3]-1) for i in xrange(len(active_areas)//4)]):
+                                                     active_areas[(i*4)+3]-1) for i in range(len(active_areas)//4)]):
       ax.add_patch(Rectangle((x1,y1), x2-x1, y2-y1, color="grey"))
       ax.annotate(asic_number, (x1+(x2-x1)/2,y1+(y2-y1)/2))
 

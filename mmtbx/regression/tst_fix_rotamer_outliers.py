@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from mmtbx.utils import fix_rotamer_outliers
 import mmtbx.monomer_library.server
@@ -166,4 +167,4 @@ if (__name__ == "__main__"):
   rotamer_manager = RotamerEval()
   exercise_1(mon_lib_srv, ener_lib, rotamer_manager)
   exercise_2(mon_lib_srv, ener_lib, rotamer_manager)
-  print "OK"
+  print("OK")

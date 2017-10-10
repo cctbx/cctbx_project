@@ -1,17 +1,20 @@
 from __future__ import division
-import cStringIO as StringIO
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
+import io as StringIO
 from iotbx.detectors.adsc_module import ADSCModule
 from iotbx.detectors.pilatus_slice import PilatusSlice
 
-class attributes_from_dict:
+class attributes_from_dict(object):
   def __init__(self,parentdict):
-    for key in parentdict.keys():
+    for key in list(parentdict.keys()):
       self.__dict__[key]=parentdict[key]
 
 def module_or_slice_from_http_request(request):
   # edit out data from list
   tags = {}
-  for item in request.keys():
+  for item in list(request.keys()):
     assert len(request[item])==1 #list with one element
     tags[item]=request[item][0]
     if len(tags[item]) < 1000:  #short items could be converted to numbers

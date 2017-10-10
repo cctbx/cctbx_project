@@ -13,6 +13,10 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence2
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from dials.array_family import flex
 from scitbx.matrix import col, sqr
 from matplotlib import pyplot as plt
@@ -208,7 +212,7 @@ class Script(object):
 
     # Verify inputs
     if len(detectors) != 2:
-      print "Please provide two experiments and or datablocks for comparison"
+      print("Please provide two experiments and or datablocks for comparison")
       return
 
     # These lines exercise the iterate_detector_at_level and iterate_panels functions
@@ -229,12 +233,12 @@ class Script(object):
     """
     tmp = []
     for refls in reflections:
-      print "N reflections total:", len(refls)
+      print("N reflections total:", len(refls))
       sel = refls.get_flags(refls.flags.used_in_refinement)
       if sel.count(True) > 0:
         refls = refls.select(sel)
-        print "N reflections used in refinement", len(refls)
-        print "Reporting only on those reflections used in refinement"
+        print("N reflections used in refinement", len(refls))
+        print("Reporting only on those reflections used in refinement")
 
       refls['difference_vector_norms'] = (refls['xyzcal.mm']-refls['xyzobs.mm.value']).norms()
       tmp.append(refls)
@@ -243,7 +247,7 @@ class Script(object):
     s0 = col(flex.vec3_double([col(b.get_s0()) for b in experiments.beams()]).mean())
 
     # Compute a set of radial and transverse displacements for each reflection
-    print "Setting up stats..."
+    print("Setting up stats...")
     tmp_refls = []
     for refls, expts in zip(reflections, [wrapper.data for wrapper in params.input.experiments]):
       tmp = flex.reflection_table()
@@ -356,7 +360,7 @@ class Script(object):
         pg1_refls += r1
         pg2_refls += r2
       if pg1_refls == 0 and pg2_refls == 0:
-        print "No reflections on panel group", pg_id
+        print("No reflections on panel group", pg_id)
         continue
       all_refls_count.append(total_refls)
       all_weights.append(pg1_refls)
@@ -633,15 +637,15 @@ class Script(object):
       lab_table_data.append(r2)
 
     from libtbx import table_utils
-    print "Detector statistics relative to lab origin"
-    print table_utils.format(lab_table_data,has_header=3,justify='center',delim=" ")
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
-    print "Radial dist: distance from center of panel group to the beam center"
-    print "Lab X, Y and Z: mean coordinate in lab space"
-    print "Rot X, Y and Z: rotation of panel group around lab X, Y and Z axes"
-    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-    print "All: weighted mean of the values shown"
-    print
+    print("Detector statistics relative to lab origin")
+    print(table_utils.format(lab_table_data,has_header=3,justify='center',delim=" "))
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments.")
+    print("Radial dist: distance from center of panel group to the beam center")
+    print("Lab X, Y and Z: mean coordinate in lab space")
+    print("Rot X, Y and Z: rotation of panel group around lab X, Y and Z axes")
+    print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+    print("All: weighted mean of the values shown")
+    print()
 
     # Next, deltas in lab space
     table_d = {d:row for d, row in zip(pg_bc_dists, lab_delta_table_data)}
@@ -683,18 +687,18 @@ class Script(object):
       lab_delta_table_data.append(r2)
       lab_delta_table_data.append(r3)
 
-    print "Detector deltas in lab space"
-    print table_utils.format(lab_delta_table_data,has_header=3,justify='center',delim=" ")
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
-    print "Radial dist: distance from center of panel group to the beam center"
-    print "Lab dX, dY and dZ: delta between X, Y and Z coordinates in lab space"
-    print "Lab dR, dT and dZ: radial and transverse components of dXY in lab space"
-    print "Lab dNorm: angle between normal vectors in lab space"
-    print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-    print "WMean: weighted mean of the values shown"
-    print "WStddev: weighted standard deviation of the values shown"
-    print "Mean: mean of the values shown"
-    print
+    print("Detector deltas in lab space")
+    print(table_utils.format(lab_delta_table_data,has_header=3,justify='center',delim=" "))
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments.")
+    print("Radial dist: distance from center of panel group to the beam center")
+    print("Lab dX, dY and dZ: delta between X, Y and Z coordinates in lab space")
+    print("Lab dR, dT and dZ: radial and transverse components of dXY in lab space")
+    print("Lab dNorm: angle between normal vectors in lab space")
+    print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+    print("WMean: weighted mean of the values shown")
+    print("WStddev: weighted standard deviation of the values shown")
+    print("Mean: mean of the values shown")
+    print()
 
     if params.hierarchy_level > 0:
       # Local table
@@ -733,15 +737,15 @@ class Script(object):
         local_table_data.append(r1)
         local_table_data.append(r2)
 
-      print "Detector statistics in local frame of each panel group"
-      print table_utils.format(local_table_data,has_header=3,justify='center',delim=" ")
-      print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
-      print "Radial dist: distance from center of panel group to the beam center"
-      print "Lab X, Y and Z: mean coordinate in relative to parent panel group"
-      print "Rot X, Y and Z: rotation of panel group around parent panel group X, Y and Z axes"
-      print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-      print "All: weighted mean of the values shown"
-      print
+      print("Detector statistics in local frame of each panel group")
+      print(table_utils.format(local_table_data,has_header=3,justify='center',delim=" "))
+      print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments.")
+      print("Radial dist: distance from center of panel group to the beam center")
+      print("Lab X, Y and Z: mean coordinate in relative to parent panel group")
+      print("Rot X, Y and Z: rotation of panel group around parent panel group X, Y and Z axes")
+      print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+      print("All: weighted mean of the values shown")
+      print()
 
       # Next, deltas in local space
       table_d = {d:row for d, row in zip(pg_bc_dists, local_delta_table_data)}
@@ -777,21 +781,21 @@ class Script(object):
         local_delta_table_data.append(r2)
         local_delta_table_data.append(r3)
 
-      print "Detector deltas relative to panel group origin"
-      print table_utils.format(local_delta_table_data,has_header=3,justify='center',delim=" ")
-      print "PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments."
-      print "Radial dist: distance from center of panel group to the beam center"
-      print "Local dX, dY and dZ: delta between X, Y and Z coordinates in the local frame of the panel group"
-      print "N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations."
-      print "All: weighted mean of the values shown"
-      print
+      print("Detector deltas relative to panel group origin")
+      print(table_utils.format(local_delta_table_data,has_header=3,justify='center',delim=" "))
+      print("PanelG Id: panel group id or panel id, depending on hierarchy_level. For each panel group, weighted means and weighted standard deviations (Sigmas) for the properties listed below are computed using the matching panel groups between the input experiments.")
+      print("Radial dist: distance from center of panel group to the beam center")
+      print("Local dX, dY and dZ: delta between X, Y and Z coordinates in the local frame of the panel group")
+      print("N refls: number of reflections summed between both matching panel groups. This number is used as a weight when computing means and standard deviations.")
+      print("All: weighted mean of the values shown")
+      print()
 
     #RMSD table
     table_d = {d:row for d, row in zip(pg_bc_dists, rmsds_table_data)}
     table_header = ["PanelG"]
     table_header2 = ["Id"]
     table_header3 = [""]
-    for i in xrange(len(detectors)):
+    for i in range(len(detectors)):
       table_header.extend(["D%d"%i]*4)
       table_header2.extend(["RMSD", "rRMSD", "tRMSD", "N refls"])
       table_header3.extend(["(microns)"]*3)
@@ -807,13 +811,13 @@ class Script(object):
       row.append("%8d"%len(refls))
     rmsds_table_data.append(row)
 
-    print "RMSDs by detector number"
-    print table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" ")
-    print "PanelG Id: panel group id or panel id, depending on hierarchy_level"
-    print "RMSD: root mean squared deviation between observed and predicted spot locations"
-    print "rRMSD: RMSD of radial components of the observed-predicted vectors"
-    print "tRMSD: RMSD of transverse components of the observed-predicted vectors"
-    print "N refls: number of reflections"
+    print("RMSDs by detector number")
+    print(table_utils.format(rmsds_table_data,has_header=3,justify='center',delim=" "))
+    print("PanelG Id: panel group id or panel id, depending on hierarchy_level")
+    print("RMSD: root mean squared deviation between observed and predicted spot locations")
+    print("rRMSD: RMSD of radial components of the observed-predicted vectors")
+    print("tRMSD: RMSD of transverse components of the observed-predicted vectors")
+    print("N refls: number of reflections")
 
     if params.tag is None:
       tag = ""
@@ -833,7 +837,7 @@ class Script(object):
     @param units_str string with a formatting statment for units on each panel
     """
     # initialize the color map
-    values = flex.double(data.values())
+    values = flex.double(list(data.values()))
     norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
     if reverse_colormap:
       cmap = plt.cm.get_cmap(self.params.colormap + "_r")
@@ -841,7 +845,7 @@ class Script(object):
       cmap = plt.cm.get_cmap(self.params.colormap)
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
     if len(values) == 0:
-      print "no values"
+      print("no values")
       return
     elif len(values) == 1:
       sm.set_array(np.arange(values[0], values[0], 1)) # needed for colorbar

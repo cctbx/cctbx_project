@@ -1,8 +1,11 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from mmtbx.disorder import backbone
 import iotbx.pdb.hierarchy
-from cStringIO import StringIO
+from io import StringIO
 
 pdb_raw = """
 CRYST1   21.937    6.000   23.477  90.00 107.08  90.00 P 1 21 1      2
@@ -115,4 +118,4 @@ def exercise () :
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

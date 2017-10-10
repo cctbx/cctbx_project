@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import map
+from builtins import range
 from dials.array_family import flex
 from matplotlib import pyplot as plt
 from xfel.ui.components.timeit import duration
@@ -31,7 +34,7 @@ def get_multirun_should_have_indexed_timestamps(stats_by_run,
                                                 n_strong_cutoff=40,
                                                 indexed=False):
   timestamps = []
-  for idx in xrange(len(stats_by_run)):
+  for idx in range(len(stats_by_run)):
     r = stats_by_run[idx]
     if len(r[0]) > 0:
       timestamps.append(
@@ -68,7 +71,7 @@ def get_string_from_timestamp(ts, long_form=False):
 def get_strings_from_timestamps(timestamps, long_form=False):
   import os
   get_strings = lambda ts: get_string_from_timestamp(ts, long_form=long_form)
-  names = map(get_strings, timestamps)
+  names = list(map(get_strings, timestamps))
   return names
 
 def get_paths_from_timestamps(timestamps,
@@ -84,7 +87,7 @@ def get_paths_from_timestamps(timestamps,
       timestamp_string,
       ext)
     return name
-  names = map(convert, timestamps)
+  names = list(map(convert, timestamps))
   paths = [os.path.join(prepend, name) for name in names]
   return paths
 
@@ -101,7 +104,7 @@ def get_run_stats(timestamps,
                    n_strong_cutoff=40,
                    i_sigi_cutoff=1,
                    ):
-  iterator = xrange(len(isigi_low))
+  iterator = range(len(isigi_low))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
   # set the numerator value to 0 whenever either the numerator or denominator is -1
@@ -182,11 +185,11 @@ def plot_run_stats(stats,
     return None
   n_runs = len(boundaries)//2
   if len(run_tags) != n_runs:
-    run_tags = [[] for i in xrange(n_runs)]
+    run_tags = [[] for i in range(n_runs)]
   if len(run_statuses) != n_runs:
-    run_statuses = [None for i in xrange(n_runs)]
+    run_statuses = [None for i in range(n_runs)]
   if minimalist:
-    print "Minimalist mode activated."
+    print("Minimalist mode activated.")
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
     axset = (ax1, ax2, ax3)
   else:
@@ -233,7 +236,7 @@ def plot_run_stats(stats,
   run_ends = boundaries[1::2]
   start = 0
   end = -1
-  for idx in xrange(len(run_numbers)):
+  for idx in range(len(run_numbers)):
     start_t = run_starts[idx]
     end_t = run_ends[idx]
     if start_t is None or end_t is None: continue
@@ -281,7 +284,7 @@ def plot_run_stats(stats,
       ts = event.xdata
       diffs = flex.abs(t - ts)
       ts = t[flex.first_index(diffs, flex.min(diffs))]
-      print get_paths_from_timestamps([ts], tag="shot", ext=ext)[0]
+      print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
 
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
@@ -318,7 +321,7 @@ def plot_multirun_stats(runs,
   lengths = []
   runs_with_data = []
   offset = 0
-  for idx in xrange(len(runs)):
+  for idx in range(len(runs)):
     r = runs[idx]
     if len(r[0]) > 0:
       if compress_runs:

@@ -9,6 +9,8 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
+from builtins import range
+from builtins import object
 import boost.python
 import dxtbx.format.image
 ext = boost.python.import_ext("dxtbx_ext")
@@ -604,7 +606,7 @@ class FilenameAnalyser(object):
 
     # Label each group as either an imageset or a sweep.
     file_groups = []
-    for template, indices in filelist_per_imageset.iteritems():
+    for template, indices in filelist_per_imageset.items():
 
       # Check if this imageset is a sweep
       is_sweep = self._is_imageset_a_sweep(template, indices)
@@ -671,7 +673,7 @@ class ImageSetFactory(object):
     elif isinstance(filenames, str):
       filenames = [filenames]
     else:
-      raise RuntimeError, 'unknown argument passed to ImageSetFactory'
+      raise RuntimeError('unknown argument passed to ImageSetFactory')
 
     # Analyse the filenames and group the images into imagesets.
     analyse_files = FilenameAnalyser()
@@ -688,7 +690,7 @@ class ImageSetFactory(object):
         else:
           iset = ImageSetFactory._create_imageset(filelist, check_headers)
         imagesetlist.append(iset)
-      except Exception, e:
+      except Exception as e:
         if not ignore_unknown:
           raise
 
@@ -942,7 +944,7 @@ class ImageSetFactory(object):
       template      = template,
       as_sweep      = True,
       check_format  = check_format,
-      single_file_indices = range(*array_range))
+      single_file_indices = list(range(*array_range)))
 
     # Return the sweep
     return sweep

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from cctbx.development import random_structure
 from cctbx import crystal, xray
 from cctbx.array_family import flex
@@ -28,7 +30,7 @@ class random_xray_structure(random_structure.xray_structure):
       assert n_scatterers is not None
       normalisation = sum(proportion_of_elements.values())
       from_smallest = sorted(
-        (p, elt) for elt, p in proportion_of_elements.items())
+        (p, elt) for elt, p in list(proportion_of_elements.items()))
       populations = {}
       p0, elt0 = from_smallest[0]
       populations[elt0] = max(n_scatterers*p0//normalisation, 1)
@@ -44,7 +46,7 @@ class random_xray_structure(random_structure.xray_structure):
         _, elt = from_smallest[-1]
         populations[elt] += n_scatterers - total
       elements = []
-      for elt, p in populations.items():
+      for elt, p in list(populations.items()):
         elements.extend([elt]*p)
     super(random_xray_structure, self).__init__(
       space_group_info=space_group_info,
@@ -67,7 +69,7 @@ class test_case(object):
           exercises.extend(base.exercises)
         except AttributeError:
           pass
-      for name, attr in classdict.items():
+      for name, attr in list(classdict.items()):
         if callable(attr) and name.startswith('exercise'):
           exercises.append(attr)
       dsu = [ (ex.__name__, ex) for ex in exercises ]
@@ -75,12 +77,12 @@ class test_case(object):
       cls.exercises = [ ex for foo, ex in dsu ]
 
   def run(cls, verbose=False, *args, **kwds):
-    if verbose: print cls.__name__
+    if verbose: print(cls.__name__)
     for exercise in cls.exercises:
-      if verbose: print "\t%s ... " % exercise.__name__,
+      if verbose: print("\t%s ... " % exercise.__name__, end=' ')
       o = cls(*args, **kwds)
       exercise(o)
-      if verbose: print "OK"
+      if verbose: print("OK")
   run = classmethod(run)
 
 def generate_hydrogen_constraints(structure, connectivity_table):
@@ -101,7 +103,7 @@ def generate_hydrogen_constraints(structure, connectivity_table):
     h_count = 0
     constrained_site_indices = []
     pivot_neighbour_count = 0
-    for j_seq, sym_ops in j_seq_dict.items():
+    for j_seq, sym_ops in list(j_seq_dict.items()):
       if not (   conformer_i == 0
               or conformer_indices[j_seq] == 0
               or conformer_i == conformer_indices[j_seq]):

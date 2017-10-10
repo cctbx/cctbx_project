@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import range
+from builtins import object
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import body_lib
 import scitbx.lbfgs
@@ -109,7 +112,7 @@ class model(featherstone.system_model):
       O.__sites_moved = [None] * len(O.sites)
       n_done = 0
       clusters = O.tardy_tree.cluster_manager.clusters
-      for ib in xrange(len(O.bodies)):
+      for ib in range(len(O.bodies)):
         aja = O_aja[ib]
         for i_seq in clusters[ib]:
           assert O.__sites_moved[i_seq] is None

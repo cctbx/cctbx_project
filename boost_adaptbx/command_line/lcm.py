@@ -1,5 +1,6 @@
 from __future__ import division
-import gcd
+from __future__ import absolute_import
+from . import gcd
 from boost.rational import lcm
 import sys
 

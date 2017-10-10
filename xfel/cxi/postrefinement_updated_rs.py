@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -108,7 +110,7 @@ class updated_rs(legacy_rs):
       SWC = simple_weighted_correlation(I_weight.select(~non_positive),
             I_reference.select(~non_positive), I_observed.select(~non_positive))
 
-    print >> out, "CORR: Old correlation is", SWC.corr
+    print("CORR: Old correlation is", SWC.corr, file=out)
     if params.postrefinement.algorithm=="rs2":
       Rhall = flex.double()
       for mill in MILLER:
@@ -129,7 +131,7 @@ class updated_rs(legacy_rs):
 
     func = refinery.fvec_callable(parameterization_class(current))
     functional = flex.sum(func*func)
-    print >> out, "functional",functional
+    print("functional",functional, file=out)
     self.current = current; self.parameterization_class = parameterization_class
     self.refinery = refinery; self.out=out; self.params = params;
     self.miller_set = miller_set
@@ -167,9 +169,9 @@ class updated_rs(legacy_rs):
     #avoid empty database INSERT, if insufficient centrally-located Bragg spots:
     # in samosa, handle this at a higher level, but handle it somehow.
     if fat_count < 3:
-      raise ValueError, "< 3 near-fulls after refinement"
-    print >> self.out, "On total %5d the fat selection is %5d"%(
-      len(self.observations_pair1_selected.indices()), fat_count)
+      raise ValueError("< 3 near-fulls after refinement")
+    print("On total %5d the fat selection is %5d"%(
+      len(self.observations_pair1_selected.indices()), fat_count), file=self.out)
     observations_original_index = \
       self.observations_original_index_pair1_selected.select(fat_selection)
 
@@ -187,7 +189,7 @@ class updated_rs(legacy_rs):
     I_invalid = flex.bool([self.i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
     I_weight.set_selected(I_invalid,0.)
     SWC = simple_weighted_correlation(I_weight, I_reference, observations.data())
-    print >> self.out, "CORR: NEW correlation is", SWC.corr
+    print("CORR: NEW correlation is", SWC.corr, file=self.out)
     self.final_corr = SWC.corr
     self.refined_mini = self.MINI
     #another range assertion
@@ -280,9 +282,9 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     self.f = functional
     jacobian = self.refinery.jacobian_callable(values)
     self.g = flex.double(self.n)
-    for ix in xrange(self.n):
+    for ix in range(self.n):
       self.g[ix] = flex.sum(2. * self.refinery.WEIGHTS * self.func * jacobian[ix])
-    print >> self.out, "rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
-                                              flex.sum(self.refinery.WEIGHTS)),
+    print("rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
+                                              flex.sum(self.refinery.WEIGHTS)), end=' ', file=self.out)
     values.show(self.out)
     return self.f, self.g

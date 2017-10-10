@@ -8,6 +8,8 @@ from __future__ import division
 # $Id$
 
 # XXX Move imports into functions?
+from builtins import range
+from builtins import object
 import glob
 import math
 import numpy
@@ -82,7 +84,7 @@ class Section(object):
     s = math.sin(a)
 
     # Apply plane rotation, and translation.
-    for i in xrange(len(coords)):
+    for i in range(len(coords)):
       p         = coords[i]
       coords[i] = [c * p[0] - s * p[1] + self.center[0],
                    s * p[0] + c * p[1] + self.center[1]]
@@ -273,10 +275,10 @@ def v2calib2sections(filename):
   d_basis = metro[(d,)]
 
   sections = []
-  for q in xrange(4):
+  for q in range(4):
     sections.append([])
     q_basis = metro[(d,q)]
-    for s in xrange(8):
+    for s in range(8):
       if not (d,q,s) in metro:
         continue
 
@@ -343,9 +345,9 @@ def calib2sections(dirname):
   # The third coordinate is ignored for now, even though optical
   # measurement gives a variation in Z up to 0.6 mm.
   sections = []
-  for q in xrange(s_cen.shape[0]):
+  for q in range(s_cen.shape[0]):
     sections.append([])
-    for s in xrange(s_cen.shape[1]):
+    for s in range(s_cen.shape[1]):
       sec = Section()
       sec.translate((s_mgs[0, 0] + s_cen[q, s, 0],
                      s_mgs[1, 0] + s_cen[q, s, 1]))

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from rstbx.diffraction.fastbragg import detector,standard_camera,crystal_structure
 from rstbx.simulation.constants import electron_radius
 from rstbx.simulation import xfel1
@@ -24,7 +25,7 @@ I_beam = 2E12 #number of photons per LCLS pulse
 I_beam_flux = I_beam/(square_focus_edge**2)
 darwin_numerator = I_beam_flux * (electron_radius**2) * vol_crystal
 
-class Params:pass
+class Params(object):pass
 Sim = Params()
 Sim.mosaicity = 0.10 #degrees
 Sim.bandpass = 0.002

@@ -1,5 +1,9 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/30/2016
@@ -385,7 +389,7 @@ class PopUpCharts(object):
 
     ax = fig.add_subplot(111, projection='3d')
 
-    for ia in xrange(len(a)):
+    for ia in range(len(a)):
       ax.scatter(a[ia],b[ia],c[ia],c='r',marker='+')
 
     ax.set_xlabel(AA)

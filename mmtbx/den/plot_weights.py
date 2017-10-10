@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 def _plot_weights (figure, gamma, weight, z) :
   from matplotlib import cm
   assert (len(z[0]) == len(gamma)) and (len(z) == len(weight))
@@ -8,8 +9,8 @@ def _plot_weights (figure, gamma, weight, z) :
   cset = p.contourf(z, 20, cmap=cm.YlGnBu, interpolation='bilinear')
   p.contour(z, 20, colors=[(0.5,0.5,0.5)], linewidth=1)
   figure.colorbar(cset, ax=p)
-  p.set_xticks(range(len(gamma)))
-  p.set_yticks(range(len(weight)))
+  p.set_xticks(list(range(len(gamma))))
+  p.set_yticks(list(range(len(weight))))
   p.set_xticklabels([ "%g" % x for x in gamma ])
   p.set_yticklabels([ "%g" % x for x in weight ])
   p.set_xlabel("gamma")

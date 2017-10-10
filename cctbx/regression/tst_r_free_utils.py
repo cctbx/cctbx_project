@@ -1,5 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from cctbx.r_free_utils import *
 from cctbx import miller
 from cctbx import crystal
@@ -8,7 +11,7 @@ from cctbx import uctbx
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import Sorry
-from cStringIO import StringIO
+from io import StringIO
 from itertools import count
 import random
 
@@ -88,4 +91,4 @@ def exercise () :
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # detector.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -12,6 +13,10 @@ from __future__ import absolute_import, division
 # flat detectors, or composite detectors constructed from a number of flat
 # elements.
 
+from builtins import str
+from builtins import map
+from builtins import range
+from builtins import object
 import pycbf
 from scitbx import matrix
 from dxtbx_model_ext import Panel, Detector
@@ -177,7 +182,7 @@ detector_phil_scope = libtbx.phil.parse('''
 ''')
 
 
-class DetectorFactory:
+class DetectorFactory(object):
   '''A factory class for detector objects, which will encapsulate standard
   detector designs to make it a little easier to get started with these. In
   cases where a CBF image is provided a full description can be used, in
@@ -456,7 +461,7 @@ class DetectorFactory:
     elif t != None:
       if isinstance(d, list):
         d = { 'panels' : d }
-      d2 = dict(t.items() + d.items())
+      d2 = dict(list(t.items()) + list(d.items()))
     else:
       if isinstance(d, list):
         d = { 'panels' : d }
@@ -491,8 +496,8 @@ class DetectorFactory:
       p.set_identifier(identifier)
       if gain is not None:
         p.set_gain(gain)
-    except Exception, e:
-      print e
+    except Exception as e:
+      print(e)
       raise e
     return d
 
@@ -670,4 +675,4 @@ class DetectorFactory:
     elif name.upper() == 'UNKNOWN':
       return detector_helper_sensors.SENSOR_UNKNOWN
 
-    raise RuntimeError, 'name %s not known' % name
+    raise RuntimeError('name %s not known' % name)

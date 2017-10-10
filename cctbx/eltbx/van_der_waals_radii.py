@@ -11,6 +11,7 @@ from __future__ import division
 #    C, O, N, S, P
 #
 
+from builtins import object
 class vdw(object):
   table = {
      "H":  1.20 , #wiki 1.2

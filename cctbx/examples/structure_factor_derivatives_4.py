@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import next
+from builtins import object
 from scitbx.math import tensor_rank_2_gradient_transform_matrix
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -7,7 +10,7 @@ import math
 
 mtps = -2 * math.pi**2
 
-class structure_factor:
+class structure_factor(object):
 
   def __init__(self, xray_structure, hkl):
     self.unit_cell = xray_structure.unit_cell()
@@ -383,7 +386,7 @@ class structure_factor:
                 + dbb * di.imag * dj.imag \
                 + dab * (di.real * dj.imag + di.imag * dj.real)
             if (di0 is dj0):
-              d2ij = d2ij_iter.next()
+              d2ij = next(d2ij_iter)
               sum += da * d2ij.real + db * d2ij.imag
             row.append(sum)
         result.append(row)
@@ -404,7 +407,7 @@ class structure_factor:
         result.append(sum)
     return result
 
-class structure_factors:
+class structure_factors(object):
 
   def __init__(self, xray_structure, miller_set):
     assert xray_structure.is_similar_symmetry(miller_set)

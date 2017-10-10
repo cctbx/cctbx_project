@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs

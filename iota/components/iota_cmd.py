@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
@@ -10,7 +12,7 @@ Description : Progress bar. Adapted from DIALS progress bar (nearly a copy
 
 import sys
 
-class ProgressBarTimer:
+class ProgressBarTimer(object):
   """ A simple timer for the progress bar. """
 
   def __init__(self):
@@ -46,7 +48,7 @@ class ProgressBarTimer:
     return self._n_seconds_left
 
 
-class ProgressBar:
+class ProgressBar(object):
   """ A command line progress bar. """
 
   def __init__(self, title=None, ticker=True, bar=True, estimate_time=False,

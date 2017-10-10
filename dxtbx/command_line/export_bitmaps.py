@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 import iotbx.phil
 
 master_phil_scope = iotbx.phil.parse("""
@@ -31,7 +34,7 @@ def run(args):
   from libtbx.utils import Sorry, Usage
 
   if len(args) == 0:
-    from cStringIO import StringIO
+    from io import StringIO
     s = StringIO()
     master_phil_scope.show(out=s)
     raise Usage("""\
@@ -118,7 +121,7 @@ dxtbx.export_bitmaps image_files [options]
       path = os.path.join(
         output_dir, basename + '.' + params.format)
 
-      print "Exporting %s" %path
+      print("Exporting %s" %path)
       tmp_stream = open(path, 'wb')
       pil_img.save(tmp_stream, format=params.format)
       tmp_stream.close()

@@ -2,10 +2,12 @@ from __future__ import division
 
 # TODO: TESTS!, manage CIF files better, detect duplicates
 
+from future import standard_library
+standard_library.install_aliases()
 import iotbx.gui_tools
 from iotbx import file_reader
 from libtbx.utils import Sorry
-import cStringIO
+import io
 import os, tempfile
 
 model_file_types = {"pdb" : "PDB", "mmcif" : "mmCIF", }
@@ -71,7 +73,7 @@ class model_handler (iotbx.gui_tools.manager) :
     if (file_param_name is not None) :
       file_names = self.get_param_files(file_param_name)
     else :
-      file_names = self._cached_input_files.keys()
+      file_names = list(self._cached_input_files.keys())
     if (len(file_names) == 1) :
       return file_names[0]
     elif (len(file_names) != 0) :
@@ -108,7 +110,7 @@ class model_handler (iotbx.gui_tools.manager) :
 
   def combine_pdb_files (self, file_names) :
     symm = None
-    pdb_str = cStringIO.StringIO()
+    pdb_str = io.StringIO()
     hierarchies = []
     for file_name in file_names :
       pdb_file = self._cached_input_files[file_name]
@@ -134,7 +136,7 @@ class model_handler (iotbx.gui_tools.manager) :
         xray_structure = self.get_xray_structure(file_names[0])
         return (hierarchy, xray_structure)
     else :
-      file_names = self._cached_input_files.keys()
+      file_names = list(self._cached_input_files.keys())
     if (len(file_names) == 0) :
       raise Sorry("No PDB files loaded.")
     pdb_str = self.combine_pdb_files(file_names)

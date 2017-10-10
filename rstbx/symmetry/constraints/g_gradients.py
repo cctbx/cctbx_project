@@ -1,8 +1,10 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 from math import sqrt,cos,sin
 from cctbx.array_family import flex
 
-class g_gradients:
+class g_gradients(object):
   """Use the chain rule to convert from Aij gradients to gi gradients"""
 
   def __init__(self, agadaptor, symred):
@@ -218,14 +220,14 @@ class g_gradients:
     dB_dg = self.get_all_da()[3:9]
     values=[]
     Nindep = self.symred_constraints.n_independent_params()
-    for n in xrange(Nindep):
+    for n in range(Nindep):
       values.append(flex.double(9))
     # Now convert to partial derivatives with respect to the independent
-    for x in xrange(9):  # loop over the 9 elements of B
+    for x in range(9):  # loop over the 9 elements of B
       all_gradients = [t[x] for t in dB_dg]
       g_indep = self.symred_constraints.independent_gradients(
               all_gradients=tuple(all_gradients))
-      for a in xrange(Nindep):
+      for a in range(Nindep):
         values[a][x] = g_indep[a]
     return values
 
@@ -234,16 +236,16 @@ class g_gradients:
     #df_dgi, Use chain rule to calculate total derivative of functional
     # with respect to the 3 angles and 6 metrical matrix elements
     df_dgi_full = flex.double((0,0,0,0,0,0,0,0,0))
-    for x in xrange(9):
-      for y in xrange(9):
+    for x in range(9):
+      for y in range(9):
         df_dgi_full[x] += df_dAij[y] * self.all_da[x][y]
 
     g_indep = self.symred_constraints.independent_gradients(
               all_gradients=tuple(df_dgi_full[3:9]))
 
     value = flex.double()
-    for i in xrange(3): value.append(df_dgi_full[i])
-    for i in xrange(len(g_indep)): value.append(g_indep[i])
+    for i in range(3): value.append(df_dgi_full[i])
+    for i in range(len(g_indep)): value.append(g_indep[i])
     return value
 
 """Input file to Mathematica for calculating the above...

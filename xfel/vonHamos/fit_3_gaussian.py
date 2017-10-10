@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 import h5py
 import math
 from matplotlib import pyplot as plt
@@ -75,7 +78,7 @@ class derived_class(faster_methods_for_pixel_histograms):
     low_idx = self.work_params.fit_limits[0]
     high_idx = self.work_params.fit_limits[1]
 
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     free_x = slot_centers[low_idx:high_idx]
     #print list(free_x)
@@ -103,7 +106,7 @@ class derived_class(faster_methods_for_pixel_histograms):
           non_linear_ls = helper,
           n_max_iterations = 7,
           gradient_threshold = 1.E-3)
-    print "current values after iterations", list(helper.x),
+    print("current values after iterations", list(helper.x), end=' ')
 
     fitted_gaussians = helper.as_gaussians()
     for item in fitted_gaussians: item.params = (item.params[0] * zero_amplitude,
@@ -119,9 +122,9 @@ class derived_class(faster_methods_for_pixel_histograms):
     slots = flex.double(histogram.astype(np.float64))
     if normalise:
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
-      print "normalising by factor: ", normalisation
+      print("normalising by factor: ", normalisation)
       slots /= normalisation
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     bins, data = hist_outline(slot_width=1,slots=slots,slot_centers=slot_centers)
     if log_scale:
@@ -137,7 +140,7 @@ class derived_class(faster_methods_for_pixel_histograms):
     pyplot.ylim(-10, 40)
     x = slot_centers
     for g in gaussians:
-      print "Height %7.2f mean %4.1f sigma %3.1f"%(g.params)
+      print("Height %7.2f mean %4.1f sigma %3.1f"%(g.params))
       pyplot.plot(x, g(x), linewidth=2)
 
     if interpretation is not None:
@@ -147,12 +150,12 @@ class derived_class(faster_methods_for_pixel_histograms):
 
   def multiphoton_and_fit_residual(self,histogram,gaussians):
 
-    class per_pixel_analysis:
+    class per_pixel_analysis(object):
 
       def __init__(OO):
 
         slots = flex.double(histogram.astype(np.float64))
-        slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+        slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
         x = slot_centers
         y_calc = flex.double(x.size(), 0)
@@ -160,9 +163,9 @@ class derived_class(faster_methods_for_pixel_histograms):
           y_calc += g(x)
 
         #figure a good window for plotting the residual, taken as 5 sigma away from extreme gaussian
-        ceilings = [gaussians[n].params[1] + 5.*gaussians[n].params[2] for n in xrange(len(gaussians))]
+        ceilings = [gaussians[n].params[1] + 5.*gaussians[n].params[2] for n in range(len(gaussians))]
         ceiling = max(ceilings)
-        floors = [gaussians[n].params[1] - 5.*gaussians[n].params[2] for n in xrange(len(gaussians))]
+        floors = [gaussians[n].params[1] - 5.*gaussians[n].params[2] for n in range(len(gaussians))]
         floor = min(floors)
         #print floors
         #print ceilings
@@ -194,7 +197,7 @@ class derived_class(faster_methods_for_pixel_histograms):
         return int(round(OO.additional_photons,0))
 
       def plot_multiphoton_fit(OO,plotter):
-        print "counted %.0f multiphoton photons on this pixel"%OO.additional_photons
+        print("counted %.0f multiphoton photons on this pixel"%OO.additional_photons)
         #plotter.plot(OO.fit_xresid, 10*OO.xweight, "b.")
         plotter.plot(OO.fit_xresid,OO.fit_yresid,"r.")
 
@@ -202,7 +205,7 @@ class derived_class(faster_methods_for_pixel_histograms):
         #plotter.plot(OO.qual_xresid,OO.qual_yresid/5.,"m.")
         plotter.plot(OO.qual_xresid,OO.qual_y_fit,"k-")
         plotter.plot(OO.qual_xresid,OO.qual_yresid,"m.")
-        print OO.sumsq_signal,OO.sumsq_residual, OO.quality_factor, math.sqrt(OO.sumsq_signal)
+        print(OO.sumsq_signal,OO.sumsq_residual, OO.quality_factor, math.sqrt(OO.sumsq_signal))
 
       def chi_squared(OO):
         return flex.sum(OO.weighted_numerator)/len(OO.weighted_numerator)
@@ -216,7 +219,7 @@ class derived_class(faster_methods_for_pixel_histograms):
     low_idx = self.work_params.fit_limits[0]
     high_idx = self.work_params.fit_limits[1]
 
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     free_x = slot_centers[low_idx:high_idx]
 
@@ -359,7 +362,7 @@ def test_fit(histo_data,plot=True):
   multi_photons = fit_interpretation.get_multiphoton_count()
   total_photons = n_photons + n_photons3
   if plot:
-    print "%d single + %d elastic = %d total"%(n_photons,n_photons3, total_photons)
+    print("%d single + %d elastic = %d total"%(n_photons,n_photons3, total_photons))
     pixel_histograms.plot_combo(histo_data, alt_gaussians,
                               interpretation=fit_interpretation)
   return n_photons
@@ -381,7 +384,7 @@ if __name__=="__main__":
   histograms = f['mydata/histograms']
   cspad = f['mydata/cspad_sum']
 
-  print histograms
+  print(histograms)
 
   image = cspad[:,:,1]
   fig=False
@@ -401,7 +404,7 @@ if __name__=="__main__":
   #exit()
 
   histo2 = histograms[i2*388+j2,:]
-  print histo1.sum(), histo2.sum()
+  print(histo1.sum(), histo2.sum())
 
   x = np.arange(-50,histo1.shape[0]-50)
   if fig:
@@ -413,7 +416,7 @@ if __name__=="__main__":
     plt.show()
 
   test_fit(histo1)
-  for i1 in xrange(80, 150):
-    print "Pair i j ",i1,j1
+  for i1 in range(80, 150):
+    print("Pair i j ",i1,j1)
     histo1 = histograms[i1*388+j1,:]
     test_fit(histo1)

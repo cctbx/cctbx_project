@@ -5,6 +5,7 @@ that best fits from a set of built in shapes.
 """
 
 from __future__ import division
+from builtins import zip
 from scitbx.matrix import col
 from collections import OrderedDict, Iterable
 from math import sqrt
@@ -808,7 +809,7 @@ SUPPORTED_GEOMETRIES = OrderedDict([
   ])
 
 SUPPORTED_GEOMETRY_NAMES = \
-  [lst_i[0] for vals in SUPPORTED_GEOMETRIES.values() for lst_i in vals]
+  [lst_i[0] for vals in list(SUPPORTED_GEOMETRIES.values()) for lst_i in vals]
 
 def _angles_deviation(vectors_a, vectors_b):
   """
@@ -910,7 +911,7 @@ def find_coordination_geometry(nearby_atoms, minimizer_method=False,
       geometries.sort(key=lambda x: x[-1])
       geometries = [geometries[0]]
   else:
-    for name, func in SUPPORTED_GEOMETRIES_OLD.items():
+    for name, func in list(SUPPORTED_GEOMETRIES_OLD.items()):
       val = func(filtered)
       if val:
         deviation = val[0]

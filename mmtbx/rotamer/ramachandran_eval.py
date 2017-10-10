@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
@@ -25,7 +26,7 @@ aminoAcids_8000 = {
 # They should be defined either here (preferably) and used everywhere or there.
 #
 
-class RamachandranEval:
+class RamachandranEval(object):
   def __init__(self):
     self.rama_eval = rama_eval()
 

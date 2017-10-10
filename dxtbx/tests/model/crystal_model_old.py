@@ -1,4 +1,11 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 from scitbx import matrix
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import space_group as SG
@@ -120,10 +127,10 @@ class crystal_model_old(object):
           msg.append("    A = UB:    " + amat[0])
           msg.append("               " + amat[1])
           msg.append("               " + amat[2])
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from io import StringIO
     s = StringIO()
     msg = self.show(out=s)
     s.seek(0)

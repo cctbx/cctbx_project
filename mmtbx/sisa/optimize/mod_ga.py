@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 12/1/2014
@@ -43,7 +45,7 @@ class ga_handler(object):
     child2=parent2[:]
 
     ''' unicross '''
-    cross_template=random.sample(range(len(parent1)),num_point_cross)
+    cross_template=random.sample(list(range(len(parent1))),num_point_cross)
 
     for i_cross in range(num_point_cross):
       child1[cross_template[i_cross]]=parent2[cross_template[i_cross]]
@@ -67,7 +69,7 @@ class ga_handler(object):
 
     child=parent[:];
     if random.random() < prob_of_mut:
-      mut_template=random.sample(range(len(parent)),num_point_mut);
+      mut_template=random.sample(list(range(len(parent))),num_point_mut);
 
       for i_mut in range(num_point_mut):
         tmp_rand=random.random();

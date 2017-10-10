@@ -1,12 +1,17 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 import math
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
-class sb_wrapper:
+class sb_wrapper(object):
   def __init__(self,working_phil):
       self.working_phil = working_phil
       self.two_theta_experimental = flex.double([
@@ -71,8 +76,8 @@ class pdb_code_wrapper(sb_wrapper):
       self.uc = intensities.unit_cell()
       spacings = self.uc.d(self.hkl_list)
       rev_order = flex.sort_permutation(spacings,reverse = True)
-      for x in xrange(len(rev_order)):
-        print self.hkl_list[rev_order[x]], spacings[rev_order[x]]
+      for x in range(len(rev_order)):
+        print(self.hkl_list[rev_order[x]], spacings[rev_order[x]])
       self.experimental_d =  spacings.select(rev_order)
 
   def user_callback(self,dc,panel,wx):
@@ -107,7 +112,7 @@ class unit_cell_wrapper(sb_wrapper):
     self.hkl_list = cctbx.miller.build_set(self.uc, False, d_min=working_phil.viewer.calibrate_unitcell.d_min)
 
     spacings = list(self.hkl_list.d_spacings())
-    print "Printing spacings, len: %s"%len(spacings)
+    print("Printing spacings, len: %s"%len(spacings))
 
     def cmp(a,b):
       if a[1] > b[1]: return 1
@@ -117,7 +122,7 @@ class unit_cell_wrapper(sb_wrapper):
     spacings = sorted(spacings, cmp=cmp, reverse=True)
 
     for d in spacings:
-      print d
+      print(d)
 
   def user_callback(self,dc,panel,wx):
     if not hasattr(panel.settings, "distance"): return # fixes a crash on exit

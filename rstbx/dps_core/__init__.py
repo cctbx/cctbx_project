@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from cctbx.array_family import flex # import dependency
 
 import boost.python
@@ -70,9 +72,9 @@ def combocmp(a,b):
   return 1
 
 def directional_show(direction,message):
-  print message,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(
+  print(message,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(
     direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
-    direction.kmax, direction.kval,direction.kval2,direction.kval3)
+    direction.kmax, direction.kval,direction.kval2,direction.kval3))
 
 class _(boost.python.injector, ext.dps_core):
 
@@ -83,11 +85,11 @@ class _(boost.python.injector, ext.dps_core):
     comfortable increasing this parameter if needed to index a difficult case"""
     nc = self.n_candidates()
     MAXINDEX=basis
-    bases = range(min(MAXINDEX,nc))
+    bases = list(range(min(MAXINDEX,nc)))
     comb=[]
-    for pp in xrange(len(bases)-2):
-      for qq in xrange(pp+1,len(bases)-1):
-        for rr in xrange(qq+1, len(bases)):
+    for pp in range(len(bases)-2):
+      for qq in range(pp+1,len(bases)-1):
+        for rr in range(qq+1, len(bases)):
           comb.append((bases[pp],bases[qq],bases[rr]))
     comb.sort(combocmp)
     return comb

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -140,4 +142,4 @@ if(__name__ == "__main__"):
       rotamer_manager = rotamer_manager,
       sin_cos_table   = sin_cos_table,
       i_pdb           = i_pdb)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 import rstbx.viewer.display
 import wxtbx.plots
 from wxtbx import bitmaps
@@ -131,20 +132,20 @@ class XrayFrame (wx.Frame) :
 
     try:
       return file_name_or_data["TIMESTAMP"]
-    except TypeError, e: pass
+    except TypeError as e: pass
 
     try:
       return file_name_or_data.get_image_file()
-    except AttributeError, e: pass
+    except AttributeError as e: pass
 
     try:
       return os.path.abspath(file_name_or_data)
-    except TypeError, e: pass
+    except TypeError as e: pass
 
     try:
       return os.path.abspath(file_name_or_data.encode("ascii"))
-    except TypeError, e: pass
-    except AttributeError, e: pass
+    except TypeError as e: pass
+    except AttributeError as e: pass
 
     return None
 
@@ -201,7 +202,7 @@ class XrayFrame (wx.Frame) :
     """
 
     key = self.get_key(file_name_or_data)
-    for i in xrange(self.image_chooser.GetCount()) :
+    for i in range(self.image_chooser.GetCount()) :
       if (key == self.image_chooser.GetClientData(i)) :
         return i
     if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
@@ -543,7 +544,7 @@ class LinePlot (wxtbx.plots.plot_container) :
   def show_plot (self, line) :
     self.figure.clear()
     ax = self.figure.add_subplot(111)
-    x_data = range(len(line.values))
+    x_data = list(range(len(line.values)))
     ax.plot(x_data, line.values, 'b-', linewidth=1)
     ax.set_ylabel("Intensity")
     if (line.lattice_length is not None) :

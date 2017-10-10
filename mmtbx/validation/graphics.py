@@ -4,6 +4,8 @@ Base classes for visualization of MolProbity analysis using matplotlib.
 """
 
 from __future__ import division
+from builtins import range
+from builtins import object
 from libtbx import slots_getstate_setstate
 
 class rotarama_plot_mixin (object) :
@@ -100,7 +102,7 @@ class residue_bin (slots_getstate_setstate) :
     return "%s - %s" % (bin_start, bin_end)
 
   def x_values (self) :
-    return range(len(self.residues))
+    return list(range(len(self.residues)))
 
   def get_selected (self, index) :
     return self.residues[index]

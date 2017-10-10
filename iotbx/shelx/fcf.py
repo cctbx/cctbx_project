@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import next
+from builtins import range
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -19,20 +23,20 @@ def miller_export_as_shelx_fcf(self, f_calc, file_object=None):
   fo = self.data()
   fc = f_calc.data()
   f = file_object
-  print >> f, """
+  print("""
 loop
 _symmetry_equiv_pos_as_xyz
-"""
+""", file=f)
   for op in self.space_group():
-    print >> f, "'%s'" % op.as_xyz()
+    print("'%s'" % op.as_xyz(), file=f)
 
-  print >> f
+  print(file=f)
   cell_labels = [ "_cell_length_%s" % s for s in ('a', 'b', 'c') ]\
               + [ "_cell_angle_%s" % s for s in ('alpha', 'beta', 'gamma') ]
   for lbl, param in zip(cell_labels, self.unit_cell().parameters()):
-    print >> f, "%s\t%f" % param
+    print("%s\t%f" % param, file=f)
 
-  print >> f, """
+  print("""
 loop_
  _refln_index_h
  _refln_index_k
@@ -41,7 +45,7 @@ loop_
  _refln_F_squared_sigma
  _refln_F_calc
  _refln_phase_calc
-"""
+""", file=f)
 
 miller.array.export_as_shelx_fcf = miller_export_as_shelx_fcf
 
@@ -68,7 +72,7 @@ def list_6_as_miller_arrays(file_name):
             if not li: break
             space_group.expand_smx(li[1:-1])
         else:
-          for i in xrange(6): fcf.next()
+          for i in range(6): next(fcf)
           for li in fcf:
             items = li.split()
             if not items: break

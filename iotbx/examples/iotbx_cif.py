@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # Command to run this example:
 #   iotbx.python iotbx_cif.py
@@ -44,14 +45,14 @@ loop_
   quartz_structure = iotbx.cif.reader(
     input_string=quartz_as_cif).build_crystal_structures()["quartz"]
   quartz_structure.show_summary().show_scatterers()
-  print
+  print()
 
   # Examine the site symmetry of each scatterer
   for scatterer in quartz_structure.scatterers():
-    print "%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site
+    print("%s:" % scatterer.label, "%8.4f %8.4f %8.4f" % scatterer.site)
     site_symmetry = quartz_structure.site_symmetry(scatterer.site)
-    print "  point group type:", site_symmetry.point_group_type()
-    print "  special position operator:", site_symmetry.special_op_simplified()
+    print("  point group type:", site_symmetry.point_group_type())
+    print("  special position operator:", site_symmetry.special_op_simplified())
 
   # Let's use scattering factors from the International Tables
   quartz_structure.scattering_type_registry(table="it1992")
@@ -102,7 +103,7 @@ loop_
   cif["quartz"] = cif_block
 
   # print the cif object to standard output
-  print cif
+  print(cif)
 
   from iotbx.cif import validation
 
@@ -114,7 +115,7 @@ loop_
   cif_model["quartz"].add_loop(symop_loop)
 
   cif_core_dic = validation.smart_load_dictionary(name="cif_core.dic")
-  print "validation"
+  print("validation")
   cif_model.validate(cif_core_dic, show_warnings=True)
 
 if __name__ == "__main__":

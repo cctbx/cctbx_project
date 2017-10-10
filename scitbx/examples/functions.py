@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 import math as m
 
 def Function(name):
@@ -114,7 +118,7 @@ def _easom(coords):
     x2 = coords[1]
     return -m.cos(x1) * m.cos(x2) * m.exp((-(x1 - m.pi)**2.0) - ((x2 - m.pi)**2.0))
 
-class ObjFunc:
+class ObjFunc(object):
     ''' This is our objective function.
         It contains the function as well as its bounds
     '''
@@ -139,13 +143,13 @@ if __name__ == "__main__":
              'rastrigin',
              'easom']
 
-    x = range(-40,41)
-    y = range(-40,41)
+    x = list(range(-40,41))
+    y = list(range(-40,41))
     for xx in x:
       for yy in y:
         tmp = [xx/10.0,yy/10.0]
-        print xx/10.0,yy/10.0,
+        print(xx/10.0,yy/10.0, end=' ')
         for name in funcs:
-          print Function(name)(2).eval( tmp ),
-        print
-      print
+          print(Function(name)(2).eval( tmp ), end=' ')
+        print()
+      print()

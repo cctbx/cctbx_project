@@ -9,6 +9,7 @@
 # FormatTIFF.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 import time
 import datetime
@@ -196,7 +197,7 @@ class FormatTIFFRayonix(FormatTIFF):
     if distance != 0:
       return distance * 0.001
 
-    raise RuntimeError, 'cannot find distance in header'
+    raise RuntimeError('cannot find distance in header')
 
   def _get_rayonix_beam_xy(self):
     '''Get the beam x, y positions which are defined in the standard
@@ -321,4 +322,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonix.understand(arg)
+    print(FormatTIFFRayonix.understand(arg))

@@ -1,18 +1,22 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import map
+from builtins import object
 import math
 import sys
 
 from scitbx import matrix
 from cctbx import uctbx
 
-from coordinate_frame_helpers import is_xds_xparm, import_xds_xparm
-from coordinate_frame_helpers import is_xds_inp, import_xds_inp
-from coordinate_frame_helpers import is_xds_integrate_hkl, \
+from .coordinate_frame_helpers import is_xds_xparm, import_xds_xparm
+from .coordinate_frame_helpers import is_xds_inp, import_xds_inp
+from .coordinate_frame_helpers import is_xds_integrate_hkl, \
     import_xds_integrate_hkl
-from coordinate_frame_helpers import is_xds_ascii_hkl, \
+from .coordinate_frame_helpers import is_xds_ascii_hkl, \
     import_xds_ascii_hkl
 
-class coordinate_frame_converter:
+class coordinate_frame_converter(object):
     '''A class which is instantiated from a supported file (initially an
     imgCIF image or an XDS XPARM / INTEGRATE.HKL / XDS_ASCII.HKL file) and
     will make available the rotation axis, beam vector, detector position
@@ -43,8 +47,8 @@ class coordinate_frame_converter:
                 configuration_file)
 
         else:
-            raise RuntimeError, 'unknown configuration file %s' % \
-                  configuration_file
+            raise RuntimeError('unknown configuration file %s' % \
+                  configuration_file)
 
         return
 
@@ -78,8 +82,8 @@ class coordinate_frame_converter:
             R = self._coordinate_frame_information.R_to_Mosflm()
             return R * parameter_value
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError('convention %s not currently supported' % \
+                  convention)
 
         return
 
@@ -109,8 +113,8 @@ class coordinate_frame_converter:
             R = self._coordinate_frame_information.R_to_Mosflm()
             return R * vector
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError('convention %s not currently supported' % \
+                  convention)
 
         return
 
@@ -121,7 +125,7 @@ class coordinate_frame_converter:
 
         if not cfi.get_real_space_a() or not cfi.get_real_space_b() or \
            not cfi.get_real_space_c():
-            raise RuntimeError, 'orientation matrix information missing'
+            raise RuntimeError('orientation matrix information missing')
 
         axis_a = cfi.get_real_space_a()
         axis_b = cfi.get_real_space_b()
@@ -150,8 +154,8 @@ class coordinate_frame_converter:
         elif convention == coordinate_frame_converter.MOSFLM:
             R = cfi.R_to_Mosflm()
         else:
-            raise RuntimeError, 'convention %s not currently supported' % \
-                  convention
+            raise RuntimeError('convention %s not currently supported' % \
+                  convention)
 
         return R * U, B
 
@@ -162,7 +166,7 @@ class coordinate_frame_converter:
 
         if not cfi.get_real_space_a() or not cfi.get_real_space_b() or \
            not cfi.get_real_space_c():
-            raise RuntimeError, 'orientation matrix information missing'
+            raise RuntimeError('orientation matrix information missing')
 
         axis_a = cfi.get_real_space_a()
         axis_b = cfi.get_real_space_b()
@@ -198,7 +202,7 @@ class coordinate_frame_converter:
         detector_normal = detector_fast.cross(detector_slow)
 
         if not sample_to_source.dot(detector_normal):
-            raise RuntimeError, 'beam parallel to detector'
+            raise RuntimeError('beam parallel to detector')
 
         distance = detector_origin.dot(detector_normal)
 
@@ -258,16 +262,16 @@ class coordinate_frame_converter:
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        raise RuntimeError, '%s configuration-file mosflm-matrix' % sys.argv[0]
+        raise RuntimeError('%s configuration-file mosflm-matrix' % sys.argv[0])
 
     configuration_file = sys.argv[1]
 
     cfc = coordinate_frame_converter(configuration_file)
 
-    print 'Maximum resolution: %.2f' % cfc.derive_detector_highest_resolution()
+    print('Maximum resolution: %.2f' % cfc.derive_detector_highest_resolution())
 
     mosflm_matrix = matrix.sqr(
-        map(float, open(sys.argv[2]).read().split()[:9]))
+        list(map(float, open(sys.argv[2]).read().split()[:9])))
 
     u, b = cfc.get_u_b(convention = cfc.MOSFLM)
 
@@ -277,5 +281,5 @@ if __name__ == '__main__':
 
     matrix_format = '%8.5f %8.5f %8.5f\n%8.5f %8.5f %8.5f\n%8.5f %8.5f %8.5f'
 
-    print matrix_format % mosflm_matrix.elems
-    print matrix_format % (u * b).elems
+    print(matrix_format % mosflm_matrix.elems)
+    print(matrix_format % (u * b).elems)

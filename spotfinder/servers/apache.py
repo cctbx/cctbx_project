@@ -1,12 +1,16 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from mod_python import apache
-import StringIO
+import io
 
 def handler(req):
   req.content_type = "text/plain"
   from mod_python.util import FieldStorage
   FS = FieldStorage(req)
-  logfile = StringIO.StringIO()
+  logfile = io.StringIO()
 
   if req.filename.find("distl.signal_strength_bcsb")>=0:
     from spotfinder.servers.apache_bcsb import run as run_command
@@ -36,7 +40,7 @@ def run(args, verbose=False):
   argument_interpreter = master_params.command_line_argument_interpreter(
     home_scope="distl")
 
-  for key in args.keys():
+  for key in list(args.keys()):
       arg = "%s=%s"%(key,args.get(key,""))
       try: command_line_params = argument_interpreter.process(arg=arg)
       except Exception: return str(Sorry("Unknown file or keyword: %s" % arg))
@@ -49,14 +53,14 @@ def run(args, verbose=False):
   if not os.path.isfile(params.distl.image):
     return str(Sorry("%s is not a readable file" % params.distl.image))
 
-  print "Image: %s"%params.distl.image
+  print("Image: %s"%params.distl.image)
 
   from spotfinder.applications import signal_strength
   try:
     signal_strength.run_signal_strength(params)
   except Exception:
     import traceback
-    logger = StringIO.StringIO()
+    logger = io.StringIO()
     logger.write(
     "Sorry, can't process %s.  Please contact authors.\n"% params.distl.image)
     traceback.print_exc(file=logger)

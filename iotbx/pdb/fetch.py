@@ -19,13 +19,17 @@
 # ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
 from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
-from cStringIO import StringIO
-import urllib2
+from io import StringIO
+import urllib.request, urllib.error, urllib.parse
 import re
 import os
 
@@ -41,7 +45,7 @@ def validate_pdb_ids (id_list) :
   for id in id_list :
     try :
       validate_pdb_id(id)
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry(str(e))
 
 def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
@@ -77,8 +81,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
           if (file_id.lower() == id) :
             if (guess_file_type(file_name) == "pdb") :
               file_name = os.path.join(local_cache, file_name)
-              print >> log, "Reading from cache directory:"
-              print >> log, "  " + file_name
+              print("Reading from cache directory:", file=log)
+              print("  " + file_name, file=log)
               f = smart_open.for_reading(file_name)
               return f
     # try local mirror for PDB and X-ray data files first, if it exists
@@ -88,8 +92,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)) :
         file_name = os.path.join(subdir, "pdb%s.ent.gz" % id)
         if (os.path.isfile(file_name)) :
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
     if (data_type == "pdb") and (format == "cif") and \
@@ -98,8 +102,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)) :
         file_name = os.path.join(subdir, "%s.cif.gz" % id)
         if (os.path.isfile(file_name)) :
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
     if ((data_type == "xray") and
@@ -109,8 +113,8 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       if (os.path.isdir(subdir)) :
         file_name = os.path.join(subdir, "r%ssf.ent.gz" % id)
         if (os.path.isfile(file_name)) :
-          print >> log, "Reading from local mirror:"
-          print >> log, "  " + file_name
+          print("Reading from local mirror:", file=log)
+          print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
   # No mirror found (or out of date), default to HTTP download
@@ -148,7 +152,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = "http://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib.error.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :
@@ -158,7 +162,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib.error.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
       else :
@@ -171,7 +175,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         url = url_base + id + "." + format
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib.error.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
       else :
@@ -211,24 +215,24 @@ def get_pdb (id, data_type, mirror, log, quiet=False, format="pdb") :
   """
   try :
     data = fetch(id, data_type, mirror=mirror, format=format, log=log)
-  except RuntimeError, e :
+  except RuntimeError as e :
     raise Sorry(str(e))
   file_name = None
   if data_type == "xray" :
     file_name = os.path.join(os.getcwd(), "%s-sf.cif" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Structure factors saved to %s" % file_name
+      print("Structure factors saved to %s" % file_name, file=log)
   elif (data_type in ["fasta", "seq"]) :
     file_name = os.path.join(os.getcwd(), "%s.fa" % id)
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Sequence saved to %s" % file_name
+      print("Sequence saved to %s" % file_name, file=log)
   else :
     file_name = os.path.join(os.getcwd(), "%s.%s" %(id, format))
     open(file_name, "w").write(data.read())
     if not quiet :
-      print >> log, "Model saved to %s" % file_name
+      print("Model saved to %s" % file_name, file=log)
   return file_name
 
 def get_chemical_components_cif (code, return_none_if_already_present=False) :
@@ -246,7 +250,7 @@ def get_chemical_components_cif (code, return_none_if_already_present=False) :
     url = "http://www.rcsb.org/pdb/files/ligand/%s.cif" % code
     try :
       data = libtbx.utils.urlopen(url)
-    except urllib2.HTTPError, e :
+    except urllib.error.HTTPError as e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download sequence for %s." % id)
       else :

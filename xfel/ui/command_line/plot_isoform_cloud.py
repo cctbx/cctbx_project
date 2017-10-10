@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from libtbx.phil import parse
 from libtbx.utils import Sorry
 from xfel.ui.db.xfel_db import xfel_db_application
@@ -25,7 +27,7 @@ def run(args):
   for arg in args:
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -53,13 +55,13 @@ def run(args):
 
   isoforms = app.get_trial_isoforms(trial_i.id)
 
-  print "Reading data..."
+  print("Reading data...")
   info_list = []
   legend_list = []
   for isoform in isoforms:
     events_i = app.get_all_events(trial = trial_i, runs = runs_i, isoform=isoform)
     if len(events_i) == 0:
-      print "No events of isoform %s found"%isoform.name
+      print("No events of isoform %s found"%isoform.name)
       continue
     legend_list.append(isoform.name)
     events_i_str = "(%s)"%(", ".join(["'%s'"%e.timestamp for e in events_i]))
@@ -80,7 +82,7 @@ def run(args):
       from xfel.ui.db.experiment import Cell
       cells = app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
 
-    print len(cells)
+    print(len(cells))
     info = []
     for cell in cells:
       info.append({'a':cell.cell_a,

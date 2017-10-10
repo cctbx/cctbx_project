@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 def range_parser( txt ):
   splitter = " "
   if "," in txt:
@@ -20,7 +25,7 @@ def range_to_list(range):
     if len(item)==1:
       result.append( item[0] )
     if len(item)==2:
-      for ii in xrange(item[0],item[1]+1):
+      for ii in range(item[0],item[1]+1):
         result.append( ii )
   return result
 
@@ -128,4 +133,4 @@ def tst_ranges():
 if __name__ == "__main__":
   tst_ranges()
   tst_file_names()
-  print "OK"
+  print("OK")

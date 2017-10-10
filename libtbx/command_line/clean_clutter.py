@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import input
+from builtins import range
 import sys
 import os.path
 from fileinput import input, isfirstline, filename, isstdin
@@ -11,16 +14,16 @@ def clean_clutter_in(files, tabsize=8):
   n_empty = 0
   for fname in files:
     if not os.path.isdir(fname):
-      for line in input(fname, inplace=1):
+      for line in eval(input(fname, inplace=1)):
         if (isfirstline()):
           if (not isstdin()):
-            print >> sys.__stdout__, filename() + ':'
+            print(filename() + ':', file=sys.__stdout__)
           n_empty = 0
         clean_line = line.expandtabs(tabsize).rstrip()
         if (len(clean_line) == 0):
           n_empty += 1
         else:
-          for i in xrange(n_empty): sys.stdout.write("\n")
+          for i in range(n_empty): sys.stdout.write("\n")
           n_empty = 0
           sys.stdout.write(clean_line)
           sys.stdout.write("\n")
@@ -64,8 +67,8 @@ by running svn commit.""")
   if co.committing:
     try:
       files = list(subversion.marked_for_commit())
-    except RuntimeError, err:
-      print err
+    except RuntimeError as err:
+      print(err)
       exit(1)
   else:
     if len(files) <= 1:

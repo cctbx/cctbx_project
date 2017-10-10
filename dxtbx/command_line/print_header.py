@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 def print_header():
   import sys
   from dxtbx.format.Registry import Registry
@@ -8,30 +9,30 @@ def print_header():
   # if all frames are from the same instrument
 
   for arg in sys.argv[1:]:
-    print '=== %s ===' % arg
+    print('=== %s ===' % arg)
     format_class = Registry.find(arg)
-    print 'Using header reader: %s' % format_class.__name__
+    print('Using header reader: %s' % format_class.__name__)
     i = format_class(arg)
     beam = i.get_beam()
     goniometer = i.get_goniometer()
     detector = i.get_detector()
     scan = i.get_scan()
     if beam is None:
-      print 'No beam model found'
+      print('No beam model found')
     else:
-      print beam
+      print(beam)
     if detector is None:
-      print 'No detector model found'
+      print('No detector model found')
     else:
-      print detector
+      print(detector)
     if goniometer is None:
-      print 'No goniometer model found'
+      print('No goniometer model found')
     else:
-      print goniometer
+      print(goniometer)
     if scan is None:
-      print 'No scan model found'
+      print('No scan model found')
     else:
-      print scan
+      print(scan)
     from dxtbx.format.FormatMultiImage import FormatMultiImage
     if not issubclass(format_class, FormatMultiImage):
       try:
@@ -39,9 +40,9 @@ def print_header():
         if not isinstance(raw_data, tuple):
           raw_data = (raw_data,)
         d = [p.as_1d() for p in raw_data]
-        print 'Total Counts: %d' % sum([flex.sum(p.select(p >= 0)) for p in d])
-      except AttributeError, e:
-        print "Could not read image data"
+        print('Total Counts: %d' % sum([flex.sum(p.select(p >= 0)) for p in d]))
+      except AttributeError as e:
+        print("Could not read image data")
 
 if __name__ == '__main__':
   print_header()

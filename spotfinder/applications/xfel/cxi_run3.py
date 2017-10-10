@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from scitbx import matrix
 """Standalone program gives tile translations for the CXI pad detector;
@@ -16,7 +21,7 @@ init_ctr_slow = 850
 init_ctr_fast = 850
 init_ctr = matrix.col([init_ctr_slow,init_ctr_fast])
 
-class quadrant:
+class quadrant(object):
   def __init__(self,arcs):
     self.arcs = arcs
 
@@ -58,7 +63,7 @@ class quadrant:
     g = flex.double()
     g.reserve(len(self.x))
     eps = 1e-6
-    for i in xrange(len(self.x)):
+    for i in range(len(self.x)):
       xi = self.x[i]
       self.x[i] = xi+eps
       f_eps = get_f()
@@ -67,8 +72,8 @@ class quadrant:
     return f, g
 
   def show_summary(self):
-    print "The center is %7.2f %7.2f; "%(self.x[0],self.x[1]),
-    print "radii are",[round(xx,2) for xx in self.x[2:]]
+    print("The center is %7.2f %7.2f; "%(self.x[0],self.x[1]), end=' ')
+    print("radii are",[round(xx,2) for xx in self.x[2:]])
 
   def get_tile_translation(self):
     slow_translation = int(float(init_ctr_slow) - self.x[0])
@@ -78,14 +83,14 @@ class quadrant:
 def parse(string):
   words = string.split()
   values = []
-  for x in xrange(len(words)//2):
+  for x in range(len(words)//2):
     values.append((int(words[2*x]),int(words[2*x+1])))
   return values
 
-class powder_arc:
+class powder_arc(object):
   def __init__(self,points):
     self.points = flex.vec2_double(parse(points))
-    print list(self.points)
+    print(list(self.points))
 
 def lysozyme_calibration():
   quad_1_UL= quadrant([
@@ -239,7 +244,7 @@ def derive_tile_translations(quads):
   tile_list=[]
   tile_translations=[]
   tile_flags=[]
-  for itile in xrange(len(params.distl.detector_tiling)//4):
+  for itile in range(len(params.distl.detector_tiling)//4):
     corner_UL = matrix.col([params.distl.detector_tiling[itile*4],
                             params.distl.detector_tiling[itile*4+1]])
     corner_LR = matrix.col([params.distl.detector_tiling[itile*4+2],
@@ -270,11 +275,11 @@ def derive_tile_translations(quads):
     else: tile_flags.append(0)
   TT = "distl.tile_translations=%s"%(",".join([str(t) for t in tile_translations]))
   TF = "distl.tile_flags=%s"%(",".join([str(t) for t in tile_flags]))
-  print TT
-  print TF
+  print(TT)
+  print(TF)
   return [TT,TF]
 
-class run3_cxi_limits:
+class run3_cxi_limits(object):
   # Tile limits (ULx,ULy) (LRx,LRy) determined from a Feb 2011 Lysozyme test
   # set, using the program distl.find_active_area
   limits="""(1479, 1515) (1672, 1699)
@@ -361,4 +366,4 @@ def get_initial_cxi_scope():
 
 if __name__=="__main__":
   lysozyme_calibration()
-  print "OK"
+  print("OK")

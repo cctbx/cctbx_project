@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from libtbx.utils import Abort, Sorry
 from traceback import format_exception
 import wx
@@ -17,8 +19,8 @@ def wx_excepthook (type, value, traceback) :
   else :
     message = process_exception(type, value, traceback)
     if (message is None) :
-      print str(type.__name__) + ": " + str(value)
-      print "".join(format_exception(type, value, traceback))
+      print(str(type.__name__) + ": " + str(value))
+      print("".join(format_exception(type, value, traceback)))
     else :
       assert isinstance(message, str)
       show_sorry(message)

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from scitbx.rigid_body.proto.utils import \
   center_of_mass_from_sites, \
   T_as_X

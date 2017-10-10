@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from fable import read
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
@@ -57,7 +62,7 @@ def exercise_strip_spaces_separate_strings():
   for cmbnd,q,nd in [("'abc", "'", 9), ('x="', '"', 11)]:
     try:
       strip_spaces_separate_strings(source_line_cluster=slc(cmbnd))
-    except Error, e:
+    except Error as e:
       assert not show_diff(str(e), """\
 Missing terminating %s character:
   at str(1):
@@ -72,7 +77,7 @@ def exercise_valid(verbose):
   read_already = set()
   def get_fprocs(file_name):
     if (verbose):
-      print "exercise_valid:", file_name
+      print("exercise_valid:", file_name)
     read_already.add(file_name)
     return read.process(file_names=[op.join(t_dir, file_name)])
   #
@@ -110,7 +115,7 @@ def exercise_lenient(verbose):
   #
   def get(file_name):
     if (verbose):
-      print "exercise_lenient:", file_name
+      print("exercise_lenient:", file_name)
     return read.process(file_names=[op.join(t_dir, file_name)])
   #
   get("str_blank_str.f")
@@ -121,12 +126,12 @@ def exercise_syntax_error(verbose):
     module_name="fable", path="test/syntax_error", test=op.isdir)
   def fail(file_name):
     if (verbose):
-      print "exercise_syntax_error:", file_name
+      print("exercise_syntax_error:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   from fable.read import Error
   try:
     fail("label_cont_char.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith(
       "A continuation character is illegal on a line with a statement label:")
     assert str(e).endswith("""\
@@ -135,7 +140,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("label_empty.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Labelled statement is empty:")
     assert str(e).endswith("""\
   |    1  |
@@ -143,7 +148,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("not_an_identifier.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      external a, x%z|
@@ -151,13 +156,13 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bare_integer_i.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Missing END for PROGRAM:")
     assert str(e).endswith("  |      integer i|")
   else: raise Exception_expected
   try:
     fail("closing_parenthesis_without_matching.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith(
       'Closing ")" without a matching opening parenthesis:')
     assert str(e).endswith("""\
@@ -166,7 +171,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("opening_parenthesis_without_matching.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith(
       'Missing a closing ")":')
     assert str(e).endswith("""\
@@ -175,7 +180,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("dot_e.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |        x       =       .e0|
@@ -183,14 +188,14 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("x_assign_dot.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Expression unexpectedly ends with a dot:")
     assert str(e).endswith("""\
   |      x = .|
 -------------^""")
   try:
     fail("x_assign_dot_2.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Expression unexpectedly ends with a dot:")
     assert str(e).endswith("""\
   |        x = .|
@@ -198,7 +203,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("x_assign_1ex.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid floating-point literal:")
     assert str(e).endswith("""\
   |      x = 1ex|
@@ -206,7 +211,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("x_assign_1dotd.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      x = 1.d|
@@ -214,7 +219,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_false.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = .fals.|
@@ -222,7 +227,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_true.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = .true|
@@ -230,7 +235,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_not.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = .not b|
@@ -238,7 +243,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_not_2.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = 1 .not. b|
@@ -246,7 +251,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_gt.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = 1 .gt 2|
@@ -254,7 +259,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_after_dot.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = 1 .2et. 2|
@@ -262,7 +267,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("j_assign_i_percent_5.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      j = i % 5|
@@ -270,7 +275,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_and.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = b .ad. c|
@@ -278,7 +283,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_or.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      a = b .or c|
@@ -286,7 +291,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("exclamation_mark_syndrome.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Missing terminating ' character:")
     assert str(e).endswith("""\
   |     !ef'|
@@ -294,7 +299,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("common_with_data_size.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      common /com/ vals(2), nums*4(2)|
@@ -302,19 +307,19 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("dimension_with_data_size.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("  |      dimension strings*4(2)|")
   else: raise Exception_expected
   try:
     fail("save_with_dims.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("  |      save nums(2)|")
   else: raise Exception_expected
   try:
     fail("sub_no_name.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      subroutine|
@@ -322,7 +327,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("sub_percent_3.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      subroutine sub % 3|
@@ -330,7 +335,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("sub_open_parenthesis.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith('Missing a closing ")":')
     assert str(e).endswith("""\
   |      subroutine sub(|
@@ -338,7 +343,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("sub_bad_comma.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      subroutine sub(a,)|
@@ -346,7 +351,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("fun_star.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      function fun(a,*)|
@@ -354,7 +359,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("sub_bad_trailing.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      subroutine sub(a,b) x|
@@ -362,7 +367,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("save_bad_comma.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      save num,|
@@ -370,7 +375,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("save_num_comma_colon.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      save num, :|
@@ -378,7 +383,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("save_num_val_colon.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      save num, val :|
@@ -386,7 +391,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bare_external.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      external|
@@ -394,7 +399,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("save_slash_slash.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      save //|
@@ -402,14 +407,14 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bare_data.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      data|""")
   else: raise Exception_expected
   try:
     fail("data_plus_repetition.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      data nums /+2*3/|
@@ -417,7 +422,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_format_1.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith('Format string must start with "("')
     assert str(e).endswith("""\
   |      write(6, '') num|
@@ -425,7 +430,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_format_2.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith('Format string must end with ")"')
     assert str(e).endswith("""\
   |      write(6, '(') num|
@@ -433,7 +438,7 @@ def exercise_syntax_error(verbose):
   else: raise Exception_expected
   try:
     fail("bad_format_3.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("""\
 Missing terminating ' within character format specifier "(')":""")
     assert str(e).endswith("""\
@@ -442,7 +447,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_format_4.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid FORMAT specification:")
     assert str(e).endswith("""\
   |      write(6, '(+2x)')|
@@ -450,7 +455,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_format_5.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid FORMAT specification:")
     assert str(e).endswith("""\
   |      write(6, '(i2.)')|
@@ -458,7 +463,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_format_6.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid FORMAT specification:")
     assert str(e).endswith("""\
   |      write(6, '(tx)')|
@@ -466,7 +471,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_format_7.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Invalid FORMAT specification:")
     assert str(e).endswith("""\
   |      write(6, '(tl)')|
@@ -474,7 +479,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("format_without_label.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith(
       "FORMAT without a statement label in columns 1-5:")
     assert str(e).endswith("""\
@@ -482,7 +487,7 @@ Missing terminating ' within character format specifier "(')":""")
 -----------^""")
   try:
     fail("duplicate_format_label.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith(
       "Duplicate statement label in columns 1-5:")
     assert str(e).endswith("""\
@@ -491,7 +496,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_1.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) (i,i=1)|
@@ -499,7 +504,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_2.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) (i=1,2)|
@@ -507,7 +512,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_3.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) i,i=1,2|
@@ -515,7 +520,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_4.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) (i,i=1,j=2)|
@@ -523,7 +528,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_5.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) (i,0=1,2)|
@@ -531,7 +536,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_implied_do_6.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      write(6, *) (i,i+j=1,2)|
@@ -539,7 +544,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bad_data.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      data (nums(i),i) /1,2/|
@@ -547,7 +552,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("read_star_comma_empty.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      read *,|
@@ -555,7 +560,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("read_star_name.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      read * name|
@@ -563,7 +568,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("read_plus_name.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      read + name|
@@ -571,7 +576,7 @@ Missing terminating ' within character format specifier "(')":""")
   else: raise Exception_expected
   try:
     fail("bare_print.f")
-  except Error, e:
+  except Error as e:
     assert str(e).startswith("Syntax error:")
     assert str(e).endswith("""\
   |      print|
@@ -584,11 +589,11 @@ def exercise_semantic_error(verbose):
   from fable import SemanticError
   def fail(file_name):
     if (verbose):
-      print "exercise_semantic_error:", file_name
+      print("exercise_semantic_error:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("missing_include.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Missing include file:")
     assert str(e).endswith("""\
   |      include '/bin/sh/should/never/exist'|
@@ -596,7 +601,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("real_declared_twice.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: val:")
     assert str(e).endswith("""\
   |      real val|
@@ -604,7 +609,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("external_array.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: f2:")
     assert str(e).endswith("""\
   |      external f2|
@@ -612,7 +617,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("dimension_unknown_data_type.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Unknown data type: nums:")
     assert str(e).endswith("""\
   |      write(6, *) nums(1)|
@@ -620,7 +625,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("dims_repeated_in_dimension.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated dimension: num:")
     assert str(e).endswith("""\
   |      dimension num(2)|
@@ -628,7 +633,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("dims_repeated_in_common.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated dimension: num:")
     assert str(e).endswith("""\
   |      common /com/ num(2)|
@@ -636,7 +641,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("parameter_array.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: nums:")
     assert str(e).endswith("""\
   |      integer nums(2)|
@@ -644,7 +649,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("parameter_in_common.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: num:")
     assert str(e).endswith("""\
   |      common /com/ num|
@@ -652,7 +657,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("parameter_save.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: num:")
     assert str(e).endswith("""\
   |      save num|
@@ -660,7 +665,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("parameter_in_sub_args.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: num:")
     assert str(e).endswith("""\
   |      parameter(num=0)|
@@ -668,7 +673,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("twice_in_sub_args.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: val:")
     assert str(e).endswith("""\
   |      subroutine sub(val, val)|
@@ -676,7 +681,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("subroutine_name_is_also_arg.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: sub:")
     assert str(e).endswith("""\
   |      subroutine sub(sub)|
@@ -684,7 +689,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("function_name_is_also_arg.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: fun:")
     assert str(e).endswith("""\
   |      function fun(fun)|
@@ -692,7 +697,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("unknown_intrinsic.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Unknown intrinsic: unk:")
     assert str(e).endswith("""\
   |      write(6, *) unk(0)|
@@ -700,7 +705,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("intrinsic_common.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: abs:")
     assert str(e).endswith("""\
   |      intrinsic abs|
@@ -708,7 +713,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("external_common.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: nums:")
     assert str(e).endswith("""\
   |      external nums|
@@ -716,7 +721,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("calling_array.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting declaration: nums:")
     assert str(e).endswith("""\
   |      call nums(3)|
@@ -724,7 +729,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("calling_dimension.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting declaration: nums:")
     assert str(e).endswith("""\
   |      call nums(2)|
@@ -732,7 +737,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("function_data_type_decl_twice.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: fun:")
     assert str(e).endswith("""\
   |      integer fun|
@@ -740,7 +745,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("intrinsic_dimension.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting or repeated declaration: nint:")
     assert str(e).endswith("""\
   |      intrinsic nint|
@@ -748,7 +753,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("sub_fun_2.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Conflicting declaration: fun:")
     assert str(e).endswith("""\
   |      y = fun(x)|
@@ -756,7 +761,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("write_without_unit.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Required UNIT information is not defined:")
     assert str(e).endswith("""\
   |      write(fmt='(i3)') num|
@@ -764,7 +769,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("write_end.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("END is invalid for WRITE statements:")
     assert str(e).endswith("""\
   |      write(10, end=20) num|
@@ -772,7 +777,7 @@ def exercise_semantic_error(verbose):
   else: raise Exception_expected
   try:
     fail("equivalence_external.f")
-  except SemanticError, e:
+  except SemanticError as e:
     assert str(e).startswith("Invalid EQUIVALENCE:")
     assert str(e).endswith("""\
   |      equivalence (ne, nl)|
@@ -784,11 +789,11 @@ def exercise_unsupported(verbose):
     module_name="fable", path="test/unsupported", test=op.isdir)
   def fail(file_name):
     if (verbose):
-      print "exercise_unsupported:", file_name
+      print("exercise_unsupported:", file_name)
     read.process(file_names=[op.join(t_dir, file_name)])
   try:
     fail("hollerith_cont_lines.f")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith(
       "FATAL: Not supported:"
       " FORMAT Hollerith edit descriptor spanning continuation lines:")
@@ -798,7 +803,7 @@ def exercise_unsupported(verbose):
   else: raise Exception_expected
   try:
     fail("hollerith_with_quotes.f")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e).startswith(
       "FATAL: Not supported:"
       " FORMAT Hollerith edit descriptor with quotes:")
@@ -810,30 +815,30 @@ def exercise_unsupported(verbose):
 def exercise_tokens_as_string(verbose):
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
-  from tokenization import tokens_as_string
+  from .tokenization import tokens_as_string
   for file_name in sorted(os.listdir(t_dir)):
     if (not file_name.endswith(".f")): continue
     if (verbose):
-      print "exercise_tokens_as_string:", file_name
+      print("exercise_tokens_as_string:", file_name)
     all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
     for fproc in all_fprocs.all_in_input_order:
       for ei in fproc.executable:
         if (ei.key == "write"):
           s = tokens_as_string(tokens=ei.iolist)
           if (verbose):
-            print s
-      for tokens in fproc.format.values():
+            print(s)
+      for tokens in list(fproc.format.values()):
         s = tokens_as_string(tokens=tokens)
         if (verbose):
-          print s
+          print(s)
       if (verbose):
-        print
+        print()
 
 def exercise_show():
   t_dir = libtbx.env.under_dist(
     module_name="fable", path="test/valid", test=op.isdir)
   all_fprocs = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
-  from cStringIO import StringIO
+  from io import StringIO
   cio = StringIO()
   all_fprocs.show_counts_by_type(out=cio, prefix="$ ")
   assert not show_diff(cio.getvalue(), """\
@@ -855,7 +860,7 @@ def exercise_build_fprocs_by_name():
     from libtbx.utils import Sorry
     try:
       all_fprocs.fprocs_by_name()
-    except Sorry, e:
+    except Sorry as e:
       if (pair[0] == "subroutine_3.f"):
         assert str(e).startswith("Fortran procedure name conflict:")
         assert str(e).endswith("  -----------------^")
@@ -912,7 +917,7 @@ def run(args):
   exercise_show()
   exercise_build_fprocs_by_name()
   exercise_eval_const_expression_simple(verbose=verbose)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

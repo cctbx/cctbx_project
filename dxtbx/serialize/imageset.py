@@ -10,6 +10,9 @@
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
 
+from builtins import str
+from builtins import map
+from builtins import range
 def filename_to_absolute(filename):
   ''' Convert filenames to absolute form. '''
   from os.path import abspath
@@ -97,7 +100,7 @@ def basic_imageset_from_dict(d):
   from dxtbx.serialize.filename import load_path
 
   # Get the filename list and create the imageset
-  filenames = map(lambda p: load_path(p), map(str, d['filenames']))
+  filenames = [load_path(p) for p in list(map(str, d['filenames']))]
   imageset = ImageSetFactory.new(filenames)[0]
 
   # Set some external lookups
@@ -158,7 +161,7 @@ def imagesweep_from_dict(d, check_format=True):
       scan=scan,
       check_format=check_format)[0]
   except Exception:
-    indices = range(image_range[0], image_range[1] + 1)
+    indices = list(range(image_range[0], image_range[1] + 1))
     sweep = ImageSetFactory.make_sweep(
       template, indices, check_format=False)
 

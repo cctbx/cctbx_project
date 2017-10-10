@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import object
 from cctbx.array_family import flex
 
 mysql_master_phil = """
@@ -42,7 +47,7 @@ mysql {
 }
 """
 
-class manager:
+class manager(object):
   def __init__(self,params):
     self.params = params
 
@@ -64,7 +69,7 @@ class manager:
 
   def initialize_db(self, indices):
     db = self.connection()
-    print "testing for tables"
+    print("testing for tables")
     cursor = db.cursor()
     cursor.execute("SHOW TABLES from %s;"%self.params.mysql.database)
     all_tables = cursor.fetchall()
@@ -74,8 +79,8 @@ class manager:
     for table in new_tables:
       cursor.execute("DROP TABLE IF EXISTS %s;"%table[0])
       cursor.execute("CREATE TABLE %s "%table[0]+table[1].replace("\n"," ")+" ;")
-    import cStringIO
-    query = cStringIO.StringIO()
+    import io
+    query = io.StringIO()
     query.write("INSERT INTO `%s_miller` (h,k,l) VALUES "%self.params.mysql.runtag)
     firstcomma = ""
     for item in indices:
@@ -91,16 +96,16 @@ class manager:
 
     # Note MySQL uses "%s", whereas SQLite uses "?".
     sql = ("INSERT INTO %s (" % table) \
-          + ", ".join(kwargs.keys()) + ") VALUES (" \
-          + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+          + ", ".join(list(kwargs.keys())) + ") VALUES (" \
+          + ", ".join(["%s"] * len(list(kwargs.keys()))) + ")"
 
     # If there are more than one rows to insert, "unpack" the keyword
     # argument iterables and zip them up.  This effectively rearranges
     # a list of columns into a list of rows.
     try:
-      parameters = zip(*kwargs.values())
+      parameters = list(zip(*list(kwargs.values())))
     except TypeError:
-      parameters = [kwargs.values()]
+      parameters = [list(kwargs.values())]
 
     return (sql, parameters)
 
@@ -129,12 +134,12 @@ class manager:
     #
     # See also merging_database_sqlite3._insert()
     query = ("INSERT INTO `%s_observation` (" % self.params.mysql.runtag) \
-            + ", ".join(kwargs.keys()) + ") values (" \
-            + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+            + ", ".join(list(kwargs.keys())) + ") values (" \
+            + ", ".join(["%s"] * len(list(kwargs.keys()))) + ")"
     try:
-      parameters = zip(*kwargs.values())
+      parameters = list(zip(*list(kwargs.values())))
     except TypeError:
-      parameters = [kwargs.values()]
+      parameters = [list(kwargs.values())]
     cursor.executemany(query, parameters)
 
 

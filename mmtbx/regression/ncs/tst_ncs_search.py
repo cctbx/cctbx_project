@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import map
 from mmtbx.ncs.ncs_search import mmtbx_res_alignment
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
@@ -85,7 +86,7 @@ class TestSimpleAlignment(unittest.TestCase):
       ph=no_water_h,
       chain_similarity_threshold=0.70)
 
-    chain_a_id, chain_b_id = match_dict.keys()[0]
+    chain_a_id, chain_b_id = list(match_dict.keys())[0]
     sel_a,sel_b,r1,r2,_,_,_ = match_dict[chain_a_id, chain_b_id]
     #
     self.assertEqual(chain_a_id,'A')
@@ -281,7 +282,7 @@ class TestSimpleAlignment(unittest.TestCase):
     #
     # group_dict = ncs_search.build_group_dict(
     #   transform_to_group,match_dict,chains_info)
-    self.assertEqual(group_dict.keys(),[('A',), ('B',)])
+    self.assertEqual(list(group_dict.keys()),[('A',), ('B',)])
 
   def test_split_groups_to_spec(self):
     # print sys._getframe().f_code.co_name
@@ -1378,7 +1379,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_update_atom_selections']
-  suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
+  suite = unittest.TestSuite(list(map(TestSimpleAlignment,tests)))
   return suite
 
 if __name__=='__main__':

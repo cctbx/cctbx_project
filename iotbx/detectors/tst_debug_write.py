@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import os,math
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -29,12 +31,12 @@ def exercise_debug_write():
     return 0
   D.getEndian = getEndian
   sindata = flex.int()
-  for x in xrange(filesize):
+  for x in range(filesize):
     sindata.append(min(255,abs(int(256*sinfunc(x)))))
   moddata = flex.int()
   accum = 0
-  for x in xrange(filesize):
-    for y in xrange(filesize):
+  for x in range(filesize):
+    for y in range(filesize):
       value = sindata[x]*sindata[y]
       moddata.append(value)
       accum+=value
@@ -49,16 +51,16 @@ def exercise_debug_write():
   assert approx_equal(a.pixel_size, 0.1)
   assert approx_equal(a.osc_start, 0)
   checkaccum = 0
-  for x in xrange(a.npixels):
+  for x in range(a.npixels):
     if moddata[x]!=a.linearintdata[x]:
-      print x,moddata[x],a.linearintdata[x]
+      print(x,moddata[x],a.linearintdata[x])
     checkaccum+=a.linearintdata[x]
   assert accum == checkaccum
   os.remove(filename)
 
 def run():
   exercise_debug_write()
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

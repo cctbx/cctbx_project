@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import miller
 from cctbx import crystal
 from cctbx.development import make_cns_input
@@ -44,14 +45,14 @@ def verify(crystal_symmetry, anomalous_flag, reflection_file):
       assert e_i == e, 'epsilon mismatch'
       assert c_i == c, 'centric mismatch'
       assert p_i == p, 'restricted phase mismatch'
-    except AssertionError, exc:
-      print crystal_symmetry.space_group_info()
-      print 'index=', h
-      print 'm:', m_i, m
-      print 'e:', e_i, e
-      print 'c:', c_i, c
-      print 'p:', p_i, p
-      raise AssertionError, exc
+    except AssertionError as exc:
+      print(crystal_symmetry.space_group_info())
+      print('index=', h)
+      print('m:', m_i, m)
+      print('e:', e_i, e)
+      print('c:', c_i, c)
+      print('p:', p_i, p)
+      raise AssertionError(exc)
 
     assert (not space_group.is_sys_absent(h))
     assert (e == space_group.order_p() // space_group.multiplicity(h, True))
@@ -86,7 +87,7 @@ def write_cns_input(crystal_symmetry, anomalous_flag, d_min):
   l("stop")
   f = open("tmp_cns_input.cns", "w")
   for l in cns_input:
-    print >> f, l
+    print(l, file=f)
   f.close()
 
 def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
@@ -104,7 +105,7 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   reflection_file = reflection_reader.cns_reflection_file(f)
   f.close()
   if (0 or verbose):
-    print reflection_file.show_summary()
+    print(reflection_file.show_summary())
   verify(crystal_symmetry, anomalous_flag, reflection_file)
 
 def run_call_back(flags, space_group_info):

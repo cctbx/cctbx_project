@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #! /usr/bin/python
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -6,6 +7,7 @@ from __future__ import division
 #
 # $Id$
 
+from builtins import range
 import numpy
 import sys
 
@@ -35,8 +37,8 @@ def display_calib(dirname, right, verbose):
   colours  = []
   patches  = []
   sections = calib2sections(dirname)
-  for q in xrange(len(sections)):
-    for s in xrange(len(sections[q])):
+  for q in range(len(sections)):
+    for s in range(len(sections[q])):
 
       # Get the vertices of the section s in quadrant q, and round
       # rotation angles to integer multiples of 90 degrees by default.
@@ -46,7 +48,7 @@ def display_calib(dirname, right, verbose):
       # increases downwards.  Ensure that the eight sections within
       # the quadrants are coloured consistently.
       vertices = sections[q][s].corners(right)
-      for i in xrange(len(vertices)):
+      for i in range(len(vertices)):
         vertices[i] = [vertices[i][1], vertices[i][0]]
 
       art = mpatches.Circle(vertices[0], 10)
@@ -70,10 +72,10 @@ def display_calib(dirname, right, verbose):
       # right = True.
       if (verbose):
         vertices = sections[q][s].corners_asic()
-        print "(%4d, %4d, %4d, %4d)" % \
-            (vertices[0][0], vertices[0][1], vertices[0][2], vertices[0][3])
-        print "(%4d, %4d, %4d, %4d)" % \
-            (vertices[1][0], vertices[1][1], vertices[1][2], vertices[1][3])
+        print("(%4d, %4d, %4d, %4d)" % \
+            (vertices[0][0], vertices[0][1], vertices[0][2], vertices[0][3]))
+        print("(%4d, %4d, %4d, %4d)" % \
+            (vertices[1][0], vertices[1][1], vertices[1][2], vertices[1][3]))
 
   collection = PatchCollection(patches, cmap = matplotlib.cm.jet, alpha = 0.4)
   collection.set_array(numpy.array(colours))

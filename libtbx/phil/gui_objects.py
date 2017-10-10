@@ -1,7 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
 # various containers for gui directives and objects
 
+from builtins import object
 class menu_hierarchy (object) :
   is_menu_item = False
   is_submenu = True
@@ -165,13 +167,13 @@ class style (object) :
                     int_value = int(value)
                     setattr(self, kwd, int_value)
                   except ValueError :
-                    print "Ignoring incorrect .style keyword '%s'"%style_word
+                    print("Ignoring incorrect .style keyword '%s'"%style_word)
                 else :
                   setattr(self, kwd, value)
               else :
                 setattr(self, kwd, value_words)
-          except Exception, e :
-            print e
+          except Exception as e :
+            print(e)
             pass
             #wxGUI2.DEBUG2("Unrecognized style keyword(s): %s" % style_string)
             #wxGUI2.DEBUG2(style_string)
@@ -233,14 +235,14 @@ class file_type_map (object) :
         assert (len(args) == 2)
         count = 1
       self._counts[name] = count
-    assert (default_label is None) or (default_label in self._names.keys())
+    assert (default_label is None) or (default_label in list(self._names.keys()))
 
   def get_params_and_labels (self) :
     return [ (args[0], args[1]) for args in self.param_info ]
 
   def get_overall_max_count (self) :
     n = 0
-    for name, count in self._counts.iteritems() :
+    for name, count in self._counts.items() :
       if (count is None) :
         return None
       n += count
@@ -251,12 +253,12 @@ class file_type_map (object) :
 
   def get_default_label (self) :
     if (len(self._names) == 1) :
-      return self._names.keys()[0]
+      return list(self._names.keys())[0]
     return self.default_label
 
   def get_default_param (self) :
     if (len(self._labels) == 1) :
-      return self._labels.keys()[0]
+      return list(self._labels.keys())[0]
     if (self.default_label is not None) :
       return self._names[self.default_label]
     return None
@@ -266,7 +268,7 @@ class file_type_map (object) :
 
   def get_multiple_params (self) :
     names = []
-    for name, count in self._counts.iteritems() :
+    for name, count in self._counts.items() :
       if count is None :
         names.append(name)
     return names

@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import str
 from libtbx.test_utils import approx_equal
 import iotbx.ccp4_map
 import iotbx.pdb
@@ -407,7 +410,7 @@ def tst_0():
 
   b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
-  print "\nBvalues (resolutions): for %s: %s" %(method,str(b_values))
+  print("\nBvalues (resolutions): for %s: %s" %(method,str(b_values)))
 
   assert  approx_equal(b_values,[5.8, 3.0])
 
@@ -422,7 +425,7 @@ def tst_0():
      fsc_cutoff       = 0.143)
   b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
-  print "\nBvalues (resolutions): for %s: %s" %(method,str(b_values))
+  print("\nBvalues (resolutions): for %s: %s" %(method,str(b_values)))
   assert  approx_equal(b_values,[8.286411404892835, 2.1497394511476364],eps=.05)
 
 
@@ -437,7 +440,7 @@ def tst_1():
      set_b_iso=set_b_iso)
 
     method = "rscc_d_min_b"
-    print "Running test of rscc_d_min_b"
+    print("Running test of rscc_d_min_b")
     pdb_hierarchy_new  = maptbx.loc_res(
      map              = map_data,
      pdb_hierarchy    = ph,
@@ -451,10 +454,10 @@ def tst_1():
  
     b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
-    print "Bvalues (b_sharpen)  expected: %s     found: %s " %(
-      str(expected_b_values),str(b_values))
-    print "Occ values(d_min)  expected: %s     found: %s " %(
-      str(expected_occs),str(occs))
+    print("Bvalues (b_sharpen)  expected: %s     found: %s " %(
+      str(expected_b_values),str(b_values)))
+    print("Occ values(d_min)  expected: %s     found: %s " %(
+      str(expected_occs),str(occs)))
     assert approx_equal(expected_b_values,b_values)
     assert approx_equal(expected_occs,occs)
 
@@ -463,4 +466,4 @@ def tst_1():
 if (__name__ == "__main__"):
   tst_0()
   tst_1()
-  print "OK"
+  print("OK")

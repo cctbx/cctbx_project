@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division
+from builtins import map
+from builtins import range
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.format.FormatStill import FormatStill
 
@@ -74,7 +76,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
 
     if 'MPCCD_GEOMETRY' in os.environ:
       try:
-        tmp = map(float, os.environ['MPCCD_GEOMETRY'].split(","))
+        tmp = list(map(float, os.environ['MPCCD_GEOMETRY'].split(",")))
         if len(tmp) != 24:
           raise
         for i in range(8):
@@ -277,7 +279,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         else:
           raise "Panel angle deviation is too large! Do not use reconst mode!"
 
-    self.active_areas = map(int, self.active_areas)
+    self.active_areas = list(map(int, self.active_areas))
     return det
 
   def get_detector(self, index=None):

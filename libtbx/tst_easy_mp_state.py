@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from libtbx import easy_mp
 import os
 import random
@@ -6,7 +9,7 @@ import string
 import threading
 import time
 
-class state_object():
+class state_object(object):
   ''' A simple thread-safe object keeping an internal state. '''
   def __init__(self):
     self._lock = threading.Lock()
@@ -16,17 +19,17 @@ class state_object():
     with self._lock:
       oldstate = self._state
       self._state = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
-      print "(%s-%5s) changing state from %s to %s" % (format(id(self), "#x"), os.getpid(), oldstate, self._state)
+      print("(%s-%5s) changing state from %s to %s" % (format(id(self), "#x"), os.getpid(), oldstate, self._state))
       return self._state
 
   def get_state(self):
     with self._lock:
-      print "(%s-%5s) object in state %s" % (format(id(self), "#x"), os.getpid(), self._state)
+      print("(%s-%5s) object in state %s" % (format(id(self), "#x"), os.getpid(), self._state))
       return self._state
 
 def exercise_multiprocessing(mp_nproc=1, mp_threads=1, mp_method="multiprocessing", tasks=3):
-  print "Running %s test with %d processes, %d threads, %d tasks" % \
-    (mp_method, mp_nproc, mp_threads, tasks)
+  print("Running %s test with %d processes, %d threads, %d tasks" % \
+    (mp_method, mp_nproc, mp_threads, tasks))
 
   # Create one shared instance of the state object and extract its initial state
   master_state_object = state_object()
@@ -39,7 +42,7 @@ def exercise_multiprocessing(mp_nproc=1, mp_threads=1, mp_method="multiprocessin
 
   # Call the state-changing function in parallel
   easy_mp.parallel_map(
-    iterable=range(tasks),
+    iterable=list(range(tasks)),
     func=change_stored_state,
     processes=mp_nproc,
     method=mp_method)
@@ -52,13 +55,13 @@ def exercise_multiprocessing(mp_nproc=1, mp_threads=1, mp_method="multiprocessin
 
 def run():
   exercise_multiprocessing(mp_nproc=1, mp_method="threading")
-  print "OK"
+  print("OK")
 
   exercise_multiprocessing(mp_nproc=2, mp_method="threading")
-  print "OK"
+  print("OK")
 
   exercise_multiprocessing(mp_nproc=1, mp_method="multiprocessing")
-  print "OK"
+  print("OK")
 
   #exercise_multiprocessing(mp_nproc=2, mp_method="multiprocessing")
   #

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from spotfinder.array_family import flex
 import types,math
 from spotfinder.exception import SpotfinderError
@@ -8,6 +11,7 @@ from spotfinder.math_support import scitbx_stats
 from spotfinder.applications.heuristic_tbx.spotreporter import spotreporter
 from libtbx.development.timers import Timer, Profiler
 from libtbx.utils import Sorry
+from functools import reduce
 
 TALLY2=0
 OVERLAY = 1
@@ -31,7 +35,7 @@ def resol_to_radius(resolution,pd):
 
 from spotfinder.diffraction.geometry import radius_to_resol
 
-class pSpot:
+class pSpot(object):
   def __init__(self,x,y,intensity):
     self.mx = x
     self.my = y
@@ -58,7 +62,7 @@ class SaturationMeasure(object):
   def format2(self):
     return "%d"%(self.OverCount)
 
-class ListNode:
+class ListNode(object):
   def __init__(self,nodelist,nodekey,parent=0):
     self.data = nodelist
     self.descriptor = nodekey
@@ -84,7 +88,7 @@ class ListManager(dict):
     #parent
     parent = self.key[oldkey]
     if parent == 1:
-      parentselection = xrange(self.master.size())
+      parentselection = range(self.master.size())
     else:
       parentselection = self.nodes[parent].data
     nextkey = max(self.nodes.keys())+1
@@ -98,7 +102,7 @@ class ListManager(dict):
   def c_spot_filter(self,oldkey,newkey,apfunction,arguments=[]):
     parent = self.key[oldkey]
     if parent == 1:
-      parentselection = xrange(self.master.size())
+      parentselection = range(self.master.size())
     else:
       parentselection = self.nodes[parent].data
     nextkey = max(self.nodes.keys())+1
@@ -115,7 +119,7 @@ class ListManager(dict):
   def single_mask(self,oldkey,phil_params):
     parent = self.key[oldkey]
     if parent == 1:
-      parentselection = xrange(self.master.size())
+      parentselection = range(self.master.size())
     else:
       parentselection = self.nodes[parent].data
     Mask = SingleMask(master=self.master,selection=parentselection,
@@ -147,7 +151,7 @@ class ListManager(dict):
     return self.nodes[max(self.nodes.keys())].descriptor
 
   def get_indices(self,key):
-    if self.key[key]==1: return xrange(len(self.master))
+    if self.key[key]==1: return range(len(self.master))
     return self.nodes[self.key[key]].data
 
   def get_indices_without(self,key,subtractive_key):
@@ -178,7 +182,7 @@ class ListManager(dict):
   def get_parentselection(self,key):
     parent = self.key[key]
     if parent == 1:
-      parentselection = xrange(self.master.size())
+      parentselection = range(self.master.size())
     else:
       parentselection = self.nodes[parent].data
     return parentselection
@@ -194,7 +198,7 @@ class ListManager(dict):
       for number in self.nodes[self.key[key]].data:
         spotlist.append(self.master[number])
       return spotlist
-    if key in self.key.keys():
+    if key in list(self.key.keys()):
       if self.key[key]==1: return self.master
       spotlist = flex.distl_spot()
       for number in self.nodes[self.key[key]].data:
@@ -203,17 +207,17 @@ class ListManager(dict):
     return dict.__getitem__(self,key)
 
   def __delitem__(self,key):
-    if key in self.key.keys(): pass
+    if key in list(self.key.keys()): pass
     else:
       dict.__delitem__(self,key)
 
   def keys(self):
     builtin = dict.keys(self)
-    for key in self.key.keys():
+    for key in list(self.key.keys()):
       builtin.append(key); builtin.append("N_"+key)
     return builtin
 
-  def has_key(self,key): return key in self.keys()
+  def has_key(self,key): return key in list(self.keys())
 
 def pickle_safe_spotcenter(spot,algorithm):
   #Image overlays and autoindexing maintain backward compatibility
@@ -241,11 +245,11 @@ class heuristics_base(object):
     self.force_detail = False #flag indicates whether percent_overlap > force_detail cutoff
 
   def register_frames(self,frameinfo,imagefilesinstance):
-    if type(frameinfo) in [types.IntType,types.LongType]:
+    if type(frameinfo) in [int,int]:
       frames = [int(frameinfo),]
-    elif type(frameinfo) in [types.TupleType,types.ListType]:
+    elif type(frameinfo) in [tuple,list]:
       frames = frameinfo
-    for x in xrange(len(frames)):
+    for x in range(len(frames)):
       self.images[frames[x]] = self.oneImage(frames[x],self.pd,
                                        imagefilesinstance.imageindex(frames[x]))
       self.determine_maxcell(frames[x],self.pd)
@@ -257,7 +261,7 @@ class heuristics_base(object):
     pimage = image
     pimage.read()
     #print "Detector type",type(pimage)
-    if not pd.has_key('endstation'):
+    if 'endstation' not in pd:
       from iotbx.detectors.context import endstation
       pd['endstation']=endstation.EndStation_from_ImageObject(pimage,self.phil_params)
       for key in pd['endstation'].mosflm():
@@ -271,13 +275,13 @@ class heuristics_base(object):
     self.size1       = float(pd['size1'])
     pd['size2']      = "%d"%pimage.size2
     self.size2       = float(pd['size2'])
-    if not pd.has_key('osc_start'): pd['osc_start'] = {}
+    if 'osc_start' not in pd: pd['osc_start'] = {}
     pd['osc_start'][framenumber] = "%f"%pimage.osc_start
-    if not pd.has_key('file'): pd['file'] = {}
+    if 'file' not in pd: pd['file'] = {}
     pd['file'][framenumber] = pimage.filename
     self.two_theta_degrees = float(pd['twotheta'])
 
-    if not pd.has_key('xbeam') or not pd.has_key('ybeam'):
+    if 'xbeam' not in pd or 'ybeam' not in pd:
       raise SpotfinderError("Deprecation warning: inputs had no beam position",pd)
     self.complex_nominal_center = complex(float(pd["xbeam"]),float(pd["ybeam"]))
 
@@ -294,9 +298,9 @@ class heuristics_base(object):
     try: sf = Distl(arguments,pimage,pd,
             report_overloads=self.phil_params.distl_report_overloads,
             params=self.phil_params)
-    except Sorry, e:
+    except Sorry as e:
       raise e
-    except Exception, e:
+    except Exception as e:
       raise SpotfinderError("Spotfinder cannot analyze image %s :"%pimage.filename + e.message)
 
     #To support sublattice detection, make pixel-wise Z-scores persistent
@@ -339,12 +343,12 @@ class heuristics_base(object):
     # 1. Get all spots
 
     fstats.alias(oldkey = 'spots_total',newkey = 'goodspots')
-    if VERBOSE_COUNT: print "total DISTL spots",fstats['N_spots_total']
+    if VERBOSE_COUNT: print("total DISTL spots",fstats['N_spots_total'])
 
     fstats.c_spot_filter('goodspots','spots_non-ice','ice_ring_test')
     fstats['ice-ring_impact'] = sf.nicerings()
     fstats['ice-ring_bounds'] = [(sf.icerings[i].lowerresol,sf.icerings[i].upperresol)
-      for i in xrange(fstats['ice-ring_impact']) ]
+      for i in range(fstats['ice-ring_impact']) ]
 
     #**********************************************************************
     #  Known parts of code that are inefficient: use 35000-spot HK97 example
@@ -369,7 +373,7 @@ class heuristics_base(object):
 
 
     if VERBOSE_COUNT:
-      print "after lowres filter",fstats["N_hi_pass_resolution_spots"]
+      print("after lowres filter",fstats["N_hi_pass_resolution_spots"])
 #start here.
 #In the end, make sure these work:
 #interface with mosflm: "TWOTHETA" keyword fails; "TILT" fix works with fudge factor
@@ -448,8 +452,8 @@ class heuristics_base(object):
       #*************************the filtering of existing spots
 
       if VERBOSE_COUNT:
-       print "after spot_based ice-ring filter",fstats[
-             'N_ice_free_resolution_spots']
+       print("after spot_based ice-ring filter",fstats[
+             'N_ice_free_resolution_spots'])
 
       if fstats['N_ice_free_resolution_spots'] < targetBinNumber:
         # So few spots that there is only one bin
@@ -476,7 +480,7 @@ class heuristics_base(object):
           ShellR.total_signal(fstats,fstats.get_indices('ice_free_resolution_spots'))
           ShellR.background(sf)
           ShellR.sigma_analysis()
-          print
+          print()
           ShellR.show(message="Analysis of spots after ice removal, but prior to resolution cutoff, for image \n%s"%pimage.filename)
           self.reporters[framenumber].append(ShellR)
 
@@ -489,7 +493,7 @@ class heuristics_base(object):
           lowerCutoffBinNumber = Shell.Population[1] / cutoff_ratio
 
         # first determination of cutoff ignoring corner effect
-        for x in xrange(Shell.rows()):
+        for x in range(Shell.rows()):
           idx = Shell.rows()-x-1
           if Shell.Population[idx] > lowerCutoffBinNumber:
             lastshell = idx
@@ -526,7 +530,7 @@ class heuristics_base(object):
         #option for overriding the resolution analysis based on falloff
         # of spot count.  Force spots at least this far out
         if self.phil_params.force_method2_resolution_limit is not None:
-          for x in xrange(Shell.rows()):
+          for x in range(Shell.rows()):
             if Shell.Limit[x]<self.phil_params.force_method2_resolution_limit and lastshell<x:
               lastshell = x
               break
@@ -543,8 +547,8 @@ class heuristics_base(object):
            fstats['resolution']=max(fstats['resolution'],
              self.phil_params.distl_highres_limit)
 
-        for x in xrange(lastshell+1):
-          if self.phil_params.spotfinder_verbose: print "(%.2f,%d)"%(Shell.Limit[x],Shell.Population[x])
+        for x in range(lastshell+1):
+          if self.phil_params.spotfinder_verbose: print("(%.2f,%d)"%(Shell.Limit[x],Shell.Population[x]))
 
         if self.two_theta_degrees==0.0:
           fstats.c_spot_filter(          #hi-resolution radius
@@ -560,12 +564,12 @@ class heuristics_base(object):
           arguments=[fstats['resolution'],])
 
         if VERBOSE_COUNT:
-          print "ice_free_resolution_spots ",fstats['N_ice_free_resolution_spots']
+          print("ice_free_resolution_spots ",fstats['N_ice_free_resolution_spots'])
 
         fstats['shells']=Shell
 
         if VERBOSE_COUNT:
-          print "after resolution-shell cutoff",fstats['N_lo_pass_resolution_spots']
+          print("after resolution-shell cutoff",fstats['N_lo_pass_resolution_spots'])
         fstats['resolution_mm']=resol_to_radius(fstats['resolution'],pd)
 
     fstats['saturation'] = self.calculate_saturation(fstats,image)
@@ -578,7 +582,7 @@ class heuristics_base(object):
       ShellR.total_signal(fstats,fstats.get_indices('lo_pass_resolution_spots'))
       ShellR.background(sf)
       ShellR.sigma_analysis()
-      print
+      print()
       ShellR.show(message="Analysis of spots after resolution filtering, but prior to spot quality heuristics, for image \n%s"%pimage.filename)
       self.reporters[framenumber].append(ShellR)
 
@@ -594,7 +598,7 @@ class heuristics_base(object):
                  self.phil_params.distl.minimum_spot_area or sf.spotbasesize()])
       # parameters are bumpiness(max number of local maxima in peak),minimum pixels
 
-    if VERBOSE_COUNT: print "not bumpy & not punctate",fstats['N_spots_unimodal']
+    if VERBOSE_COUNT: print("not bumpy & not punctate",fstats['N_spots_unimodal'])
 
     # 6. Compute distributions for outlier rejection
     #Y = Timer("Inliers")#try to get this down from 232 seconds to 8 seconds
@@ -642,7 +646,7 @@ class heuristics_base(object):
       # The assumption may be wrong; e.g. the high resid may be due to very low
       # background instead of high s/n; or due to some geometrical distortion.
       #This breaks encapsulation and will have to be re-organized in the future.
-      if not pd.has_key('special_resid'): pd['special_resid']=''
+      if 'special_resid' not in pd: pd['special_resid']=''
       if fstats['intensity'][0]>160.: pd['special_resid']='RESID 10.0 #High s/n'
       #The most unusual thing about the procrun0000077831/TMC114_WT2_run77831_1_001
       #dataset is its large differential between spot areas of the largest spots
@@ -672,7 +676,7 @@ class heuristics_base(object):
       sep_input_indices = fstats.get_indices(fstats.most_recent_child())
 
       overlapping_count = 0
-      for idx in xrange(len(sep_input_spots)):
+      for idx in range(len(sep_input_spots)):
         try:
           if float(pd['pixel_size'])*sep_input_spots[idx].majoraxis() * \
              self.phil_params.overlapping_spot_criterion > neighbors[idx]:
@@ -699,8 +703,8 @@ class heuristics_base(object):
         #  spaced spots in autoindexing, if it appears that they truly
         #  reflect lattice spacing.
         if self.phil_params.spotfinder_verbose:
-          print len(sep_input_spots),"spot count before close neighbor analysis;",
-          print overlapping_count,"(%2.0f%%) rejected on neighbors;"%(percent_overlap)
+          print(len(sep_input_spots),"spot count before close neighbor analysis;", end=' ')
+          print(overlapping_count,"(%2.0f%%) rejected on neighbors;"%(percent_overlap))
 
         pmax = NV.vectors()
         #filter out spots that are potentially large enough to contain
@@ -710,7 +714,7 @@ class heuristics_base(object):
 
         if 0<len(pmax)<=3:
           sq_vectors = [v[0]*v[0] + v[1]*v[1] for v in pmax]
-          for idx in xrange(len(sep_input_spots)):
+          for idx in range(len(sep_input_spots)):
             spot_compact = True
             for iv,vector in enumerate(pmax):
               thisspot = sep_input_spots[idx]
@@ -737,8 +741,8 @@ class heuristics_base(object):
             if spot_compact: compact_idx.append(idx)
             else: pass #print "eliminate the spot at",thisspot.x(),thisspot.y()
         else:
-          compact_idx = xrange(len(sep_input_spots))
-        if self.phil_params.spotfinder_verbose: print len(sep_input_spots)-len(compact_idx),"large spots rejected"
+          compact_idx = range(len(sep_input_spots))
+        if self.phil_params.spotfinder_verbose: print(len(sep_input_spots)-len(compact_idx),"large spots rejected")
 
         # finally, allow certain close spots (but not all of them) to be included
         for idx in compact_idx:
@@ -765,13 +769,13 @@ class heuristics_base(object):
           except Exception:pass
 
         if self.phil_params.spotfinder_verbose:
-          print len(compact_idx)-len(inlier_idx_raw),"close spots rejected"
-          print len(sep_input_spots),"input for spot separation analysis;",
+          print(len(compact_idx)-len(inlier_idx_raw),"close spots rejected")
+          print(len(sep_input_spots),"input for spot separation analysis;", end=' ')
           jj = len(sep_input_spots)-len(inlier_idx_raw)
-          print jj,"(%2.0f%%) rejected on special criteria;"%(100.*jj/len(sep_input_spots))
+          print(jj,"(%2.0f%%) rejected on special criteria;"%(100.*jj/len(sep_input_spots)))
 
       else: #normal procedure, assuming not too many close spots
-        for idx in xrange(len(sep_input_spots)):
+        for idx in range(len(sep_input_spots)):
           try:
             if math.fabs(intensities[idx]-i_ave) <= 5.0*i_std and \
                intensities[idx]<image.saturation and \
@@ -784,7 +788,7 @@ class heuristics_base(object):
             pass #sometimes throw an error when majoraxis is requested (edge spots)
 
         if len(inlier_idx_raw)<self.NspotMin:
-          for idx in xrange(len(sep_input_spots)):
+          for idx in range(len(sep_input_spots)):
             try:
               proximal_radius = 2.0 * self.phil_params.overlapping_spot_criterion * float(pd['pixel_size'])*sep_input_spots[idx].majoraxis()
               if math.fabs(intensities[idx]-i_ave) <= 5.0*i_std and \
@@ -795,12 +799,12 @@ class heuristics_base(object):
                  inlier_idx_raw.append(sep_input_indices[idx])
                  inlier_neigh.append(neighbors[idx])
             except Exception:
-              print "REJECT spot on exception"
+              print("REJECT spot on exception")
               pass #sometimes throw an error when majoraxis is requested (edge spots)
 
-    if fstats.has_key('lo_pass_resolution_spots'):
+    if 'lo_pass_resolution_spots' in fstats:
       fstats.alias('lo_pass_resolution_spots','spots_resolution')
-    elif fstats.has_key('ice_free_resolution_spots'):
+    elif 'ice_free_resolution_spots' in fstats:
       fstats.alias('ice_free_resolution_spots','spots_resolution')
     else:
       fstats.alias('hi_pass_resolution_spots','spots_resolution')
@@ -819,21 +823,21 @@ class heuristics_base(object):
       ShellR.total_signal(fstats,fstats.get_indices('inlier_spots'))
       ShellR.background(sf)
       ShellR.sigma_analysis()
-      print
+      print()
       ShellR.show(message="Analysis of good Bragg spots after quality heuristics, for image \n%s"%pimage.filename)
       self.reporters[framenumber].append(ShellR)
 
      except Exception:
       pass #if there aren't enough spots, just skip the tabular printout
 
-    if not pd.has_key('masks'):  pd['masks']={}
+    if 'masks' not in pd:  pd['masks']={}
     pd['masks'][framenumber] = None
     if fstats['N_spots_inlier'] > ( #guard against C++ hard-coded minimum
       self.phil_params.codecamp.minimum_spot_count or 25):
       Msk = fstats.single_mask('inlier_spots',self.phil_params)
       pd['masks'][framenumber] = [Msk.x,Msk.y]
 
-    if VERBOSE_COUNT: print "inlier spots",fstats["N_inlier_spots"]
+    if VERBOSE_COUNT: print("inlier spots",fstats["N_inlier_spots"])
 
     #need this for later calculation of maxcell
     fstats['neighbors'] = flex.double(inlier_neigh)
@@ -846,7 +850,7 @@ class heuristics_base(object):
     S.n_resolution_spots = len(resolution_spots)
     S.n_goodspots = fstats['N_goodspots']
     ispots = flex.int()
-    for i in xrange(S.n_resolution_spots):
+    for i in range(S.n_resolution_spots):
       spt = resolution_spots[i]
       ispots.append( image.linearintdata[(spt.max_pxl_x(),spt.max_pxl_y())] )
     S.OverCount = (ispots >= int(image.saturation)).count(True)
@@ -863,17 +867,17 @@ class heuristics_base(object):
     return S
 
   def show(self):
-    for frame in self.images.keys():
+    for frame in list(self.images.keys()):
       for key in ['N_spots_total','N_spots_non-ice','N_spots_resolution','N_spots_unimodal',
                   'N_spots_inlier','intensity','area',
                   'neighbor','maxcel','resolution',
                   'distl_resolution','ice-ring_impact']:
-        if self.images[frame].has_key(key):
-          print "\t"+key,self.images[frame][key]
+        if key in self.images[frame]:
+          print("\t"+key,self.images[frame][key])
       for key in ['eccen']:
-        if self.images[frame].has_key('eccen'):
-          if self.images[frame].has_key(key):
-            print "\t"+key,self.images[frame][key]
+        if 'eccen' in self.images[frame]:
+          if key in self.images[frame]:
+            print("\t"+key,self.images[frame][key])
 
   def determine_maxcell(self,frame,pd):
     if self.phil_params.codecamp.maxcell != None:
@@ -888,7 +892,7 @@ class heuristics_base(object):
       NNBIN = self.NspotMin//2 # recommended bin size for nearest neighbor histogram
       peak_of_interest = n_ave
 
-      for pss in xrange(1):  #make two passes thru histo
+      for pss in range(1):  #make two passes thru histo
 
         fineness = max( [self.pixel_size / 2.,
           peak_of_interest / (1.0+float(len(neighbors))/float(NNBIN))] )
@@ -905,18 +909,18 @@ class heuristics_base(object):
             histogram[ibin]+=1
 
         if TALLY2:
-          for row in xrange(len(histogram)):
+          for row in range(len(histogram)):
             low = histo_index_to_mm(row)
             hi  = histo_index_to_mm(row+1)
-            print "%.2f to %.2f, %5.1f Ang"%(low,hi,radius_to_resol(histo_index_to_mm(row+.5),pd)),
-            print "*"*histogram[row],
-            print
+            print("%.2f to %.2f, %5.1f Ang"%(low,hi,radius_to_resol(histo_index_to_mm(row+.5),pd)), end=' ')
+            print("*"*histogram[row], end=' ')
+            print()
 
         most_probable_neighbor = histo_index_to_mm(0.5 + histogram.index(max(histogram)))
 
         #Compute yet another measure of unit cell--first peak in histogram
         peak1 = 0; peak1i = 0
-        for peakpt in xrange(len(histogram)):
+        for peakpt in range(len(histogram)):
           if histogram[peakpt]>peak1i:
             peak1=peakpt; peak1i=histogram[peakpt]
           if histogram[peakpt]<0.5*peak1i and peak1i> 0.1*(max(histogram)):
@@ -949,7 +953,7 @@ class heuristics_base(object):
     if self.errormessage == None: self.errormessage=newmessage
 
   def get_resolution_inspection(self):
-    all_frames = self.images.keys()
+    all_frames = list(self.images.keys())
     all_resolutions=flex.double([self.images[f]['resolution'] for f in all_frames])
     ave_resolution=flex.mean(all_resolutions)
     self.pd['resolution_inspection']='%f'%(ave_resolution)

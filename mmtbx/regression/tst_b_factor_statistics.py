@@ -1,6 +1,9 @@
 
 from __future__ import division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 
 def exercise () :
   from mmtbx.command_line import b_factor_statistics
@@ -18,7 +21,7 @@ def exercise () :
   assert ("""\
 | all(noH): 1      0      15.00   15.00   15.00    None  None   None   |""" in
     out.getvalue())
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

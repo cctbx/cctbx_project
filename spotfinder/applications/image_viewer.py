@@ -1,7 +1,8 @@
 from __future__ import division
+from builtins import object
 from spotfinder.applications.wrappers import DistlOrganizer
 
-class Empty: pass
+class Empty(object): pass
 
 "Later go back and refactor this module and signal_strength to avoid code duplication."
 class run_signal_strength_class(DistlOrganizer):

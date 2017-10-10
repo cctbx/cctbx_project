@@ -1,5 +1,7 @@
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 from mmtbx.command_line import massage_data
 from iotbx import file_reader
 from cctbx.development import random_structure
@@ -72,4 +74,4 @@ def exercise_twin_detwin () :
 
 if (__name__ == "__main__") :
   exercise_twin_detwin()
-  print "OK"
+  print("OK")

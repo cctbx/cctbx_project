@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import object
 import libtbx.load_env
 import os
 
@@ -35,10 +37,10 @@ class Test(object):
     assert(abs(b3.get_divergence() - 0.2) <= 1e-7)
     assert(abs(b3.get_sigma_divergence() - 0.1) <= 1e-7)
     assert(b2 != b3)
-    print 'OK'
+    print('OK')
 
   def tst_detector(self):
-    print 'OK'
+    print('OK')
 
   def tst_goniometer(self):
     from dxtbx.model import Goniometer, GoniometerFactory
@@ -56,7 +58,7 @@ class Test(object):
     assert(g3.get_fixed_rotation() == (1, 0, 0, 0, 1, 0, 0, 0, 1))
     assert(g2 != g3)
 
-    print 'OK'
+    print('OK')
 
   def tst_scan(self):
     from dxtbx.model import Scan, ScanFactory
@@ -85,7 +87,7 @@ class Test(object):
     assert(abs(s4.get_epochs()[2] - 0.3) < 1e-7)
     assert(abs(s4.get_epochs()[9] - 1.0) < 1e-7)
 
-    print 'OK'
+    print('OK')
 
   # def tst_sweep(self):
   #   from dxtbx.serialize import load
@@ -179,4 +181,4 @@ if __name__ == '__main__':
     test = Test()
     test.run()
   else:
-    print "Skipping test: dials or dials_regression not present"
+    print("Skipping test: dials or dials_regression not present")

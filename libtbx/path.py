@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import locale
 import shutil
 import os
@@ -126,7 +131,7 @@ def move_old_create_new_directory(path, serial_sep="_", serial_fmt="%03d"):
   os.makedirs(path)
 
 def canonical_path(file_name, effective_current_working_directory=None):
-  if not isinstance(file_name, (str, unicode)):
+  if not isinstance(file_name, (str, str)):
     file_name = abs(file_name)
   if (not op.isabs(file_name)):
     if (effective_current_working_directory is None):
@@ -200,7 +205,7 @@ def walk_source_tree(top, arg=None):
 
 def random_new_directory_name(prefix="tmp_dir_", number_of_hex_code_digits=8):
   from libtbx.utils import random_hex_code
-  for i_trial in xrange(10**6):
+  for i_trial in range(10**6):
     name = prefix + random_hex_code(number_of_digits=number_of_hex_code_digits)
     if (not op.exists(name)):
       return name
@@ -213,7 +218,7 @@ def makedirs (path) :
   """
   try :
     os.makedirs(path)
-  except OSError, e :
+  except OSError as e :
     from libtbx.utils import Sorry
     raise Sorry(str(e))
 
@@ -225,7 +230,7 @@ def makedirs_race(
   if (path is None):
     path = random_new_directory_name()
   import time
-  for i_trial in xrange(max_trials):
+  for i_trial in range(max_trials):
     if (op.exists(path)):
       if (delay_if_exists is not None):
         # in case the OS needs time to finalize makedirs from another process
@@ -291,7 +296,7 @@ class path_mixin(object):
     return (self.dirname(), self.basename())
 
   def samefile(self, other):
-    if isinstance(other, str) or isinstance(other, unicode):
+    if isinstance(other, str) or isinstance(other, str):
       return op.samefile(abs(self), other)
     else:
       return op.samefile(abs(self), abs(other))
@@ -343,6 +348,7 @@ class relocatable_path(path_mixin):
   def __init__(self, anchor, relocatable):
     assert isinstance(anchor, absolute_path)
     self._anchor = anchor
+    self.tpl = (anchor, relocatable) # Python3: must define __hash__ when __eq__ is defined
     if op.isabs(relocatable):
       relocatable = relpath(
         path=op.realpath(abs(absolute_path(relocatable))),
@@ -390,6 +396,11 @@ class relocatable_path(path_mixin):
   def __eq__(self, other):
     return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
+
+  def __hash__(self): # Python3: must define __hash__ when __eq__ is defined
+    return hash(self.tpl)
+
+
 
 class clean_out_directory (object) :
   """
@@ -451,7 +462,7 @@ class clean_out_directory (object) :
 
   def run (self, out=sys.stdout) :
     self.show(out=out)
-    print >> out, "Deleting all selected files and directories..."
+    print("Deleting all selected files and directories...", file=out)
     for file_name in self.file_paths :
       os.remove(file_name)
     for dir_name in self.dir_paths :
@@ -467,17 +478,17 @@ class clean_out_directory (object) :
 
   def show (self, out=sys.stdout) :
     if (self.n_dirs > 0) :
-      print >> out, "The following %d directories will deleted:" % \
-        self.n_dirs
+      print("The following %d directories will deleted:" % \
+        self.n_dirs, file=out)
       for dir_name in sorted(self.dir_paths) :
-        print >> out, "  %s" % dir_name
+        print("  %s" % dir_name, file=out)
     if (self.n_files > 0) :
-      print >> out, "The following %d files will be deleted:" % \
-        self.n_files
+      print("The following %d files will be deleted:" % \
+        self.n_files, file=out)
       for file_name in sorted(self.file_paths) :
-        print >> out, "  %s" % file_name
+        print("  %s" % file_name, file=out)
     if (self.n_bytes > 0) :
-      print >> out, "%s of disk space will be freed." % self.get_freed_space()
+      print("%s of disk space will be freed." % self.get_freed_space(), file=out)
 
 # http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
 def directory_size(path):

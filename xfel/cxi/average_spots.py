@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # The average_spots jiffy calculates average pickled images of either
@@ -7,6 +8,7 @@ from __future__ import division
 #
 # $Id$
 
+from builtins import range
 import numpy, os, sys
 
 from libtbx import easy_pickle
@@ -141,7 +143,7 @@ def spot_add(path, spot_sum, dist_sum, nrg_sum, nmemb):
 
   # XXX Note that x and y are flipped in the summation.
   for spot in info.S.images[info.frames[0]]["spots_inlier"]:
-    for i in xrange(len(spot.bodypixels)):
+    for i in range(len(spot.bodypixels)):
       spot_sum[spot.bodypixels[i].x, spot.bodypixels[i].y] += spot.wts[i]
 
   return (spot_sum, dist_sum, nrg_sum, nmemb)
@@ -176,7 +178,7 @@ def main(argv = None):
                         distance = 1.0 / nmemb * dist_sum,
                         image    = 1.0 / nmemb * img_sum), # XXX implicit cast?
                    )
-  print "Wrote average of %d images to '%s'" % (nmemb, outpath)
+  print("Wrote average of %d images to '%s'" % (nmemb, outpath))
   return (0)
 
 

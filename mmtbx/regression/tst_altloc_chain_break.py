@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import sys
 
@@ -64,12 +65,12 @@ def exercise(args):
     line = line.strip()
     if (line.startswith("target: ")):
       target_values.append(float(line.split()[-1]))
-  print target_values
+  print(target_values)
 
   assert len(target_values) == 6
   assert target_values[0] > 100
   assert target_values[5] < 7
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

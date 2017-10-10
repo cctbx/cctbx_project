@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 import os
 import sys
 
@@ -21,9 +23,9 @@ def run(args):
   assert len(args) == 2
   xy_pairs = []
   for i, filename in enumerate(args):
-    print "Reading data from: %s" %filename
+    print("Reading data from: %s" %filename)
     f = open(filename, 'rb')
-    x, y = zip(*[line.split() for line in f.readlines() if not line.startswith("#")])
+    x, y = list(zip(*[line.split() for line in f.readlines() if not line.startswith("#")]))
     x = flex.double(flex.std_string(x))
     y = flex.double(flex.std_string(y))
     xy_pairs.append((x,y))
@@ -34,10 +36,10 @@ def run(args):
   signal_x, background_subtracted = subtract_background(signal, background, plot=True)
   filename = os.path.join(output_dirname, "background_subtracted.txt")
   f = open(filename, "wb")
-  print >> f, "\n".join(["%i %f" %(x, y)
-                         for x, y in zip(signal_x, background_subtracted)])
+  print("\n".join(["%i %f" %(x, y)
+                         for x, y in zip(signal_x, background_subtracted)]), file=f)
   f.close()
-  print "Background subtracted spectrum written to %s" %filename
+  print("Background subtracted spectrum written to %s" %filename)
 
 
 def subtract_background(signal, background, plot=False):

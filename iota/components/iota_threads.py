@@ -1,11 +1,13 @@
 from __future__ import division
 
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
 Last Changed: 09/20/2017
 Description : IOTA GUI Threads and PostEvents
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -59,7 +61,7 @@ class AllDone(wx.PyCommandEvent):
   def GetValue(self):
     return self.image_objects
 
-class ProcessImage():
+class ProcessImage(object):
   ''' Wrapper class to do full processing of an image '''
   def __init__(self, init, input_entry, input_type = 'image', abort=False):
     self.init = init
@@ -106,9 +108,9 @@ class ProcThread(Thread):
         img_objects = parallel_map(iterable=self.iterable,
                                    func = self.full_proc_wrapper,
                                    processes=self.init.params.n_processors)
-      except SpfTermination, e:
+      except SpfTermination as e:
         self.aborted = True
-        print e
+        print(e)
         return
     else:
       # write iterable
@@ -129,16 +131,16 @@ class ProcThread(Thread):
                    ''.format(init_path, iter_path, self.type, self.term_file)
           command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
                     ''.format(self.init.params.output, params)
-        print command
+        print(command)
         easy_run.fully_buffered(command, join_stdout_stderr=True)
-      except SpfTermination, e:
-        print e
+      except SpfTermination as e:
+        print(e)
 
     # Send "all done" event to GUI
     try:
       evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
       wx.PostEvent(self.parent, evt)
-    except TypeError, e:
+    except TypeError as e:
       pass
 
   def full_proc_wrapper(self, input_entry):
@@ -152,7 +154,7 @@ class ProcThread(Thread):
                                          abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except SpfTermination, e:
+    except SpfTermination as e:
       raise e
 
 class ImageFinderThread(Thread):
@@ -305,14 +307,14 @@ class SpotFinderThread(Thread):
                    func=self.spf_wrapper,
                    callback=self.callback,
                    processes=None)
-    except SpfTermination, e:
+    except SpfTermination as e:
       self.terminated = True
-      print e
+      print(e)
 
     # Signal that this batch is finished
     try:
       if self.terminated:
-        print 'RUN TERMINATED!'
+        print('RUN TERMINATED!')
       info = self.data_list
       evt = SpotFinderOneDone(tp_EVT_SPFALLDONE, -1, info=info)
       wx.PostEvent(self.parent, evt)

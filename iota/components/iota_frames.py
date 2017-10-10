@@ -1,11 +1,14 @@
 from __future__ import division
 
+from builtins import str
+from builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
 Last Changed: 09/20/2017
 Description : IOTA GUI Windows / frames
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -663,7 +666,7 @@ class ProcessingTab(wx.Panel):
                            frameon=False, handlelength=1)
       self.proc_canvas.draw()
 
-    except ValueError, e:
+    except ValueError as e:
       pass
 
   def draw_plots(self):
@@ -826,7 +829,7 @@ class ProcessingTab(wx.Panel):
                 wavelengths.append(beam['wavelength'])
                 distances.append(beam['distance'])
                 cells.append(beam['observations'][0].unit_cell().parameters())
-              except IOError, e:
+              except IOError as e:
                 pass
 
         # Calculate beam center coordinates and distances
@@ -881,8 +884,8 @@ class ProcessingTab(wx.Panel):
 
         self.int_canvas.draw()
 
-      except ValueError, e:
-        print e
+      except ValueError as e:
+        print(e)
 
 
     self.Layout()
@@ -922,7 +925,7 @@ class ProcessingTab(wx.Panel):
             search = False
           else:
             search = True
-      except IndexError, e:
+      except IndexError as e:
         search = False
         self.pick['index'] = idx
         self.pick['image'] = None
@@ -932,7 +935,7 @@ class ProcessingTab(wx.Panel):
   def on_pick(self, event):
     idx = event.mouseevent.xdata
     img = self.finished_objects[int(idx) - 1].conv_img
-    print '{}: {}'.format(int(idx), img)
+    print('{}: {}'.format(int(idx), img))
     self.pick['image'] = img
     self.pick['index'] = int(idx) - 1
 
@@ -1663,7 +1666,7 @@ class ProcWindow(wx.Frame):
         try:
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
-        except Exception, e:
+        except Exception as e:
           raise e
           pass
 

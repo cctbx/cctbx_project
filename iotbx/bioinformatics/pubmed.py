@@ -1,10 +1,13 @@
 
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx.utils import Sorry
 import libtbx.utils
 from libtbx import slots_getstate_setstate
 from xml.dom.minidom import parseString
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 def get_node_data (xml_node, node_name) :
   child_nodes = xml_node.getElementsByTagName(node_name)
@@ -17,7 +20,7 @@ def get_pubmed_xml (pmid) :
     except ValueError :
       raise Sorry("PubMed IDs must be integers.")
   url = "http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-  params = urllib.urlencode({
+  params = urllib.parse.urlencode({
     "id" : str(pmid),
     "rettype" : "full",
     "db" : "PubMed",

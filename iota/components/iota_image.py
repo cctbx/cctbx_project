@@ -1,5 +1,9 @@
 from __future__ import division
 
+from builtins import str
+from builtins import filter
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
@@ -12,6 +16,7 @@ Description : Creates image object. If necessary, converts raw image to pickle
               for diffraction. Creates and runs instances of integrator (and selector,
               in case of cctbx.xfel) objects.
 '''
+from __future__ import print_function
 
 import os
 import math
@@ -143,8 +148,8 @@ class SingleImage(object):
     try:
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
-    except Exception, e:
-      print e
+    except Exception as e:
+      print(e)
       loaded_img = None
       pass
 
@@ -201,7 +206,7 @@ class SingleImage(object):
           datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
           imageset = datablock.extract_imagesets()[0]
           self.gain = estimate_gain(imageset)
-        except Exception, e:
+        except Exception as e:
           self.gain = 1.0
     else:
       self.gain = 1.0
@@ -225,9 +230,9 @@ class SingleImage(object):
       for spot_height in range (h_min, h_max + 1):
         if self.params.cctbx.grid_search.sig_height_search:
           if spot_height >= 1 + h_std:
-            sigs = range(spot_height - h_std, spot_height + 1)
+            sigs = list(range(spot_height - h_std, spot_height + 1))
           elif spot_height < 1 + h_std:
-            sigs = range(1, spot_height + 1)
+            sigs = list(range(1, spot_height + 1))
           elif spot_height == 1:
             sigs = [1]
         else:

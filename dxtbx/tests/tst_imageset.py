@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 import libtbx.load_env
 
 class TestFormat(object):
@@ -80,7 +86,7 @@ class TestFormat(object):
 
     from os.path import join
 
-    images = map(lambda f: join(dials_regression, f), images)
+    images = [join(dials_regression, f) for f in images]
 
     return images
 
@@ -89,7 +95,7 @@ class TestFormat(object):
 
     db_fail_count = 0
     for image in self.get_images():
-      print image
+      print(image)
       format_class = Registry.find(image)
       reader = format_class.get_reader()([image])
       masker = format_class.get_masker()([image])
@@ -102,7 +108,7 @@ class TestFormat(object):
 
       iset = format_class.get_imageset([image])
 
-    print 'OK'
+    print('OK')
 
 
 class TestImageTile(object):
@@ -124,7 +130,7 @@ class TestImageTile(object):
     assert tile.name() == name
     assert tile.empty() == False
 
-    print "OK"
+    print("OK")
 
 class TestImage(object):
 
@@ -152,7 +158,7 @@ class TestImage(object):
       tile = image.tile(i)
       assert tile.name() == "TileName%d" % i
 
-    print "OK"
+    print("OK")
 
 
 class TestImageBuffer(object):
@@ -176,7 +182,7 @@ class TestImageBuffer(object):
     assert b.is_double() == False
     assert b.is_empty() == False
 
-    print 'OK'
+    print('OK')
 
 
 class TestExternalLookup(object):
@@ -209,7 +215,7 @@ class TestExternalLookup(object):
     assert gain2.all_eq(gain)
     assert pedestal2.all_eq(pedestal)
 
-    print 'OK'
+    print('OK')
 
 
 class TestImageSetData(object):
@@ -288,7 +294,7 @@ class TestImageSetData(object):
     assert gain2.all_eq(gain)
     assert pedestal2.all_eq(pedestal)
 
-    print 'OK'
+    print('OK')
 
 class TestImageSet(object):
   def get_file_list(self):
@@ -299,7 +305,7 @@ class TestImageSet(object):
 
     # Non-sequential Filenames and image indices
     filenames = []
-    image_indices = range(1, 10)
+    image_indices = list(range(1, 10))
     for i in image_indices:
       filenames.append(os.path.join(path, 'centroid_000{0}.cbf'.format(i)))
 
@@ -323,8 +329,8 @@ class TestImageSet(object):
     self.tst_len(imageset, len(filenames))
     self.tst_iter(imageset)
     self.tst_paths(imageset, filenames)
-    self.tst_get_detectorbase(imageset, range(len(filenames)), 9)
-    self.tst_get_models(imageset, range(len(filenames)), 9)
+    self.tst_get_detectorbase(imageset, list(range(len(filenames))), 9)
+    self.tst_get_models(imageset, list(range(len(filenames))), 9)
 
   def tst_get_item(self, imageset):
     image = imageset[0]
@@ -343,8 +349,8 @@ class TestImageSet(object):
       pass
 
     self.tst_len(imageset2, 4)
-    self.tst_get_detectorbase(imageset2, range(0, 4), 5)
-    self.tst_get_models(imageset2, range(0, 4), 5)
+    self.tst_get_detectorbase(imageset2, list(range(0, 4)), 5)
+    self.tst_get_models(imageset2, list(range(0, 4)), 5)
     self.tst_paths(imageset2, imageset.paths()[3:7])
     self.tst_iter(imageset2)
 
@@ -357,27 +363,27 @@ class TestImageSet(object):
       pass
 
     self.tst_len(imageset2, 2)
-    self.tst_get_detectorbase(imageset2, range(0, 2), 2)
-    self.tst_get_models(imageset2, range(0, 2), 2)
+    self.tst_get_detectorbase(imageset2, list(range(0, 2)), 2)
+    self.tst_get_models(imageset2, list(range(0, 2)), 2)
     self.tst_paths(imageset2, imageset.paths()[3:5])
     self.tst_iter(imageset2)
 
-    print 'OK'
+    print('OK')
 
   def tst_len(self, imageset, length):
     assert(len(imageset) == length)
-    print 'OK'
+    print('OK')
 
   def tst_iter(self, imageset):
     for image in imageset:
       pass
-    print 'OK'
+    print('OK')
 
   def tst_paths(self, imageset, filenames1):
     filenames2 = imageset.paths()
     for f1, f2 in zip(filenames1, filenames2):
       assert(f1 == f2)
-    print 'OK'
+    print('OK')
 
   def tst_get_detectorbase(self, imageset, indices, outside_index):
     for i in indices:
@@ -388,7 +394,7 @@ class TestImageSet(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
+    print('OK')
 
   def tst_get_models(self, imageset, indices, outside_index):
     for i in indices:
@@ -399,7 +405,7 @@ class TestImageSet(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
+    print('OK')
 
   def tst_get_models_index(self, imageset, index=None):
     imageset.get_detector(index)
@@ -468,8 +474,8 @@ class TestImageSweep(object):
     self.tst_len(sweep, len(filenames))
     self.tst_iter(sweep)
     self.tst_paths(sweep, filenames)
-    self.tst_get_detectorbase(sweep, range(len(filenames)), 9)
-    self.tst_get_models(sweep, range(len(filenames)), 9)
+    self.tst_get_detectorbase(sweep, list(range(len(filenames))), 9)
+    self.tst_get_models(sweep, list(range(len(filenames))), 9)
     self.tst_get_array_range(sweep, (0, 9))
     self.tst_set_models(sweep)
 
@@ -490,8 +496,8 @@ class TestImageSweep(object):
       pass
 
     self.tst_len(sweep2, 4)
-    self.tst_get_detectorbase(sweep2, range(0, 4), 5)
-    self.tst_get_models(sweep2, range(0, 4), 5)
+    self.tst_get_detectorbase(sweep2, list(range(0, 4)), 5)
+    self.tst_get_models(sweep2, list(range(0, 4)), 5)
     self.tst_paths(sweep2, sweep.paths()[3:7])
     self.tst_iter(sweep2)
     self.tst_get_array_range(sweep2, (3, 7))
@@ -502,22 +508,22 @@ class TestImageSweep(object):
     except IndexError:
       pass
 
-    print 'OK'
+    print('OK')
 
   def tst_len(self, sweep, length):
     assert(len(sweep) == length)
-    print 'OK'
+    print('OK')
 
   def tst_iter(self, sweep):
     for image in sweep:
       pass
-    print 'OK'
+    print('OK')
 
   def tst_paths(self, sweep, filenames1):
     filenames2 = sweep.paths()
     for f1, f2 in zip(filenames1, filenames2):
       assert(f1 == f2)
-    print 'OK'
+    print('OK')
 
 
   def tst_get_detectorbase(self, sweep, indices, outside_index):
@@ -529,14 +535,14 @@ class TestImageSweep(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
+    print('OK')
 
   def tst_get_models(self, sweep, indices, outside_index):
     self.tst_get_models_index(sweep)
     for i in indices:
       self.tst_get_models_index(sweep, i)
 
-    print 'OK'
+    print('OK')
 
   def tst_get_models_index(self, sweep, index=None):
     if index is not None:
@@ -557,11 +563,11 @@ class TestImageSweep(object):
     sweep[len(sweep)-1]
     scan2 = sweep.get_scan()
     assert(scan1 == scan2)
-    print 'OK'
+    print('OK')
 
   def tst_get_array_range(self, sweep, array_range):
     assert(sweep.get_array_range() == array_range)
-    print 'OK'
+    print('OK')
 
   def tst_set_models(self, sweep):
     from dxtbx.model import Beam, Detector, Panel
@@ -645,7 +651,7 @@ class TestNexusFile(object):
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
 
-    print 'OK'
+    print('OK')
 
     iset = format_class.get_imageset([self.filename], single_file_indices=[1])
     assert len(iset) == 1
@@ -658,7 +664,7 @@ class TestNexusFile(object):
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
 
-    print 'OK'
+    print('OK')
 
 
 
@@ -671,7 +677,7 @@ class TestImageSetFactory(object):
 
     # Non-sequential Filenames and image indices
     filenames = []
-    image_indices = range(1, 10)
+    image_indices = list(range(1, 10))
     for i in image_indices:
       filenames.append(os.path.join(path, 'centroid_000{0}.cbf'.format(i)))
 
@@ -687,7 +693,7 @@ class TestImageSetFactory(object):
 
     assert(isinstance(sweep[0], ImageSweep) == True)
 
-    print 'OK'
+    print('OK')
 
     template = join(dials_regression, "centroid_test_data", "centroid_####.cbf")
     image_range = (3, 6)
@@ -699,33 +705,33 @@ class TestImageSetFactory(object):
     assert sweep[0].paths()[0].endswith("3.cbf")
     assert sweep[0].paths()[-1].endswith("6.cbf")
 
-    print 'OK'
+    print('OK')
 
     imageset = ImageSetFactory.make_imageset(filenames)
     assert len(imageset) == 9
 
-    print 'OK'
+    print('OK')
 
     imageset = ImageSetFactory.make_imageset(
       filenames,
       check_format=False)
     assert len(imageset) == 9
 
-    print 'OK'
+    print('OK')
 
     sweep = ImageSetFactory.make_sweep(
       template,
       list(range(1, 9+1)))
     assert len(sweep) == 9
 
-    print 'OK'
+    print('OK')
 
     sweep = ImageSetFactory.make_sweep(
       template,
       list(range(3, 6+1)))
     assert len(sweep) == 4
 
-    print 'OK'
+    print('OK')
 
 
 class TestPickleImageSet(object):
@@ -737,7 +743,7 @@ class TestPickleImageSet(object):
 
     # Non-sequential Filenames and image indices
     filenames = []
-    image_indices = range(1, 10)
+    image_indices = list(range(1, 10))
     for i in image_indices:
       filenames.append(os.path.join(path, 'centroid_000{0}.cbf'.format(i)))
 
@@ -746,11 +752,11 @@ class TestPickleImageSet(object):
 
   def pickle_then_unpickle(self, obj):
     '''Pickle to a temp file then un-pickle.'''
-    import cPickle as pickle
-    import cStringIO
+    import pickle as pickle
+    import io
 
     # Create a temporary "file"
-    temp = cStringIO.StringIO()
+    temp = io.StringIO()
 
     # Pickle the object
     pickle.dump(obj, temp)
@@ -780,7 +786,7 @@ class TestPickleImageSet(object):
     sweep4.get_detectorbase(0)
     sweep4[0]
 
-    print 'OK'
+    print('OK')
 
 def run():
 
@@ -799,9 +805,9 @@ def run():
 
 if __name__ == '__main__':
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
   elif not libtbx.env.has_module("dials_regression"):
-    print "Skipping test: dials_regression not present"
+    print("Skipping test: dials_regression not present")
   else:
     dials_regression = libtbx.env.dist_path('dials_regression')
     run()

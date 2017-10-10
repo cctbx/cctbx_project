@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from cctbx.development import random_structure
 from cctbx.sgtbx import space_group_info
 from cctbx_asymmetric_map_ext import *
@@ -33,9 +35,9 @@ def run_group(symbol):
   result.append(r)
 
 def run():
-  for i in xrange(1,231):
+  for i in range(1,231):
     run_group(i);
 
 if (__name__ == "__main__"):
   run()
-  print result.min_max_mean().as_tuple() # XXX why they are so different ?
+  print(result.min_max_mean().as_tuple()) # XXX why they are so different ?

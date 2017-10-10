@@ -6,14 +6,18 @@ module (Queue and Job), with certain restrictions placed by the pickle module
 """
 from __future__ import division
 
-import cPickle as pickle
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import object
+import pickle as pickle
 import subprocess
 import os
 import time
 import itertools
 import glob
 import re
-from Queue import Empty as QueueEmptyException
+from queue import Empty as QueueEmptyException
 
 import libtbx.load_env
 
@@ -25,7 +29,7 @@ class InstantTimeout(object):
 
   def delay(self, waittime):
 
-    raise QueueEmptyException, "No data found in queue"
+    raise QueueEmptyException("No data found in queue")
 
 
 class TimedTimeout(object):
@@ -45,7 +49,7 @@ class TimedTimeout(object):
       time.sleep( waittime )
 
     else:
-      raise QueueEmptyException, "No data found in queue within timeout"
+      raise QueueEmptyException("No data found in queue within timeout")
 
 
 class NoTimeout(object):
@@ -77,7 +81,7 @@ class Queue(object):
 
   def put(self, obj):
 
-    index = self.count.next()
+    index = next(self.count)
     # Writing a tempfile and renaming it may prevent reading incomplete files
     tmp_name = "%s.%d.tmp" % ( self.root, index )
     assert not os.path.exists( tmp_name )
@@ -102,7 +106,7 @@ class Queue(object):
         predicate = NoTimeout()
 
     while True:
-      fname = self.next()
+      fname = next(self)
 
       if fname is not None:
         break
@@ -115,7 +119,7 @@ class Queue(object):
     return data
 
 
-  def next(self):
+  def __next__(self):
 
     if not self.waiting:
       self.read_waiting()
@@ -187,7 +191,7 @@ EOF
   def start(self):
 
     if self.process is not None:
-      raise RuntimeError, "start called second time"
+      raise RuntimeError("start called second time")
 
     self.write_input_data()
 
@@ -205,11 +209,11 @@ EOF
           stderr = subprocess.STDOUT
           )
 
-    except OSError, e:
-        raise RuntimeError, "Error while executing: '%s': %s" % (
+    except OSError as e:
+        raise RuntimeError("Error while executing: '%s': %s" % (
             " ".join( cmd ),
             e,
-            )
+            ))
 
     self.process.stdin.write( self.SCRIPT % ( self.SETPATHS, self.name ) )
     self.process.stdin.close()
@@ -223,7 +227,7 @@ EOF
   def is_alive(self):
 
     if self.process is None:
-      raise RuntimeError, "job has not been submitted yet"
+      raise RuntimeError("job has not been submitted yet")
 
     return self.process.poll() is None
 
@@ -237,7 +241,7 @@ EOF
       error = open( self.err_file() ).read()
 
       if error:
-        raise RuntimeError, error
+        raise RuntimeError(error)
 
     for fname in [ self.target_file(), self.out_file(), self.err_file() ]:
       if os.path.exists( fname ):
@@ -295,7 +299,7 @@ class PBSJob(Job):
   def start(self):
 
     if self.jobid is not None:
-      raise RuntimeError, "start called second time"
+      raise RuntimeError("start called second time")
 
     self.write_input_data()
 
@@ -313,18 +317,18 @@ class PBSJob(Job):
           stderr = subprocess.PIPE
           )
 
-    except OSError, e:
-        raise RuntimeError, "Error while executing: '%s': %s" % (
+    except OSError as e:
+        raise RuntimeError("Error while executing: '%s': %s" % (
             " ".join( cmd ),
             e,
-            )
+            ))
 
     ( out, err ) = process.communicate(
       input = self.SCRIPT % ( self.SETPATHS, self.name )
       )
 
     if err:
-      raise RuntimeError, err
+      raise RuntimeError(err)
 
     assert out is not None
     self.jobid = out.strip()
@@ -338,7 +342,7 @@ class PBSJob(Job):
   def job_status(self):
 
     if self.jobid is None:
-      raise RuntimeError, "job has not been submitted yet"
+      raise RuntimeError("job has not been submitted yet")
 
     process = subprocess.Popen(
       ( "qstat", "-f", self.jobid ),
@@ -349,12 +353,12 @@ class PBSJob(Job):
 
     if err:
       # may be better to indicate finish, in case job has already been deleted
-      raise RuntimeError, "Jobid: %s\nPBS error: %s" % ( self.jobid, err )
+      raise RuntimeError("Jobid: %s\nPBS error: %s" % ( self.jobid, err ))
 
     m = self.REGEX.search( out )
 
     if not m:
-      raise RuntimeError, "Incorrect qstat output: %s" % out
+      raise RuntimeError("Incorrect qstat output: %s" % out)
 
     return m.group( 1 )
 

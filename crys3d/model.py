@@ -5,6 +5,8 @@ from __future__ import division
 # these are approximations based on my (probably faulty) memory.
 # feel free to change to something more reasonable.
 # note: carbon is assigned the base color.
+from builtins import range
+from builtins import object
 element_shades = {'H'  : (0.95, 0.95, 0.95), # very light grey
                   #'C'  : (0.8, 0.8, 0.8),    # light grey
                   'N'  : (0.0, 0.0, 1.0),    # blue
@@ -257,7 +259,7 @@ class model_data (object) :
     else :
       from scitbx.array_family import flex
       self.atom_colors = flex.vec3_double(
-        [ self.base_color for i in xrange(0, self.atoms.size()) ]
+        [ self.base_color for i in range(0, self.atoms.size()) ]
       )
       self._color_cache["mono"] = self.atom_colors
 

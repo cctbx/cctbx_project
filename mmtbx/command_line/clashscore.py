@@ -1,6 +1,7 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.clashscore
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation.clashscore import clashscore
 from libtbx.utils import Usage
 import iotbx.phil
@@ -85,7 +86,7 @@ def run (args, out=sys.stdout, quiet=None) :
   if params.verbose:
     result.show_old_output(out=out)
   else:
-    print >> out,round(result.get_clashscore(),2)
+    print(round(result.get_clashscore(),2), file=out)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

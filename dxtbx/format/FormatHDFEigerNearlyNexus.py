@@ -10,7 +10,11 @@
 #  included in the root directory of this package.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
+from builtins import object
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
 from dxtbx.model import Detector # import dependency
@@ -32,9 +36,9 @@ def find_entries(nx_file):
   '''
   if 'entry' in nx_file:
     entry = nx_file['entry']
-    if 'NX_class' in entry.attrs.keys():
+    if 'NX_class' in list(entry.attrs.keys()):
       if entry.attrs['NX_class'] == 'NXentry':
-        if 'definition' not in entry.keys():
+        if 'definition' not in list(entry.keys()):
           return entry
   return None
 
@@ -134,10 +138,10 @@ class EigerNXmxFixer(object):
     # cope with badly structured chunk information i.e. many more data
     # entries than there are in real life...
     delete = []
-    for k in sorted(handle_orig['/entry/data'].iterkeys()):
+    for k in sorted(handle_orig['/entry/data'].keys()):
       try:
         shape = handle_orig['/entry/data/%s' % k].shape
-      except KeyError, e:
+      except KeyError as e:
         delete.append('/entry/data/%s' % k)
 
     for d in delete:
@@ -229,7 +233,7 @@ class EigerNXmxFixer(object):
       # print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
       # Get the number of images
       num_images = 0
-      for name in sorted(handle['/entry/data'].iterkeys()):
+      for name in sorted(handle['/entry/data'].keys()):
         num_images += len(handle_orig['/entry/data/%s' % name])
       dataset = group.create_dataset('omega', (num_images,), dtype="float32")
       dataset.attrs['units'] = 'degree'
@@ -254,7 +258,7 @@ class EigerNXmxFixer(object):
         str(dataset.name))
 
     # Change relative paths to absolute paths
-    for name in handle['/entry/data'].iterkeys():
+    for name in handle['/entry/data'].keys():
       del handle['entry/data'][name]
       filename = handle_orig['entry/data'][name].file.filename
       handle['entry/data'][name] = h5py.ExternalLink(filename, 'entry/data/data')
@@ -275,7 +279,7 @@ class FormatEigerNearlyNexus(FormatHDF5):
   def understand(image_file):
     try:
       is_nexus = is_eiger_nearly_nexus_file(image_file)
-    except IOError, e:
+    except IOError as e:
       return False
     return is_nexus
 
@@ -386,4 +390,4 @@ if __name__ == '__main__':
 
   f = FormatEigerNearlyNexus(sys.argv[1])
   for i in range(10):
-    print f.get_raw_data(i)
+    print(f.get_raw_data(i))

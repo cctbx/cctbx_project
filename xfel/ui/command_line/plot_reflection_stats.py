@@ -1,7 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_reflection_stats
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
+from builtins import range
+from builtins import object
 from matplotlib import pyplot as plt
 from xfel.command_line.detector_residuals import setup_stats
 from dials.array_family import flex
@@ -84,8 +87,8 @@ class Script(object):
       reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
       reflections = setup_stats(detector, experiments, reflections, two_theta_only=True) # add two theta to reflection table
       sorted_two_theta = flex.sorted(reflections['two_theta_obs'])
-      bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in xrange(n_bins)]
-      bin_high = [bin_low[i+1] for i in xrange(n_bins-1)]
+      bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in range(n_bins)]
+      bin_high = [bin_low[i+1] for i in range(n_bins-1)]
       bin_high.append(sorted_two_theta[-1]+arbitrary_padding)
 
       x_centers = flex.double()
@@ -97,10 +100,10 @@ class Script(object):
       p25i = flex.double()
       p50i = flex.double()
       p75i = flex.double()
-      print "# 2theta Res N dXY IsigI"
+      print("# 2theta Res N dXY IsigI")
 
       # Compute stats for each bin
-      for i in xrange(n_bins):
+      for i in range(n_bins):
         refls = reflections.select((reflections['two_theta_obs'] >= bin_low[i]) & (reflections['two_theta_obs'] < bin_high[i]))
         # Only compute deltaXY stats on reflections with I/sigI at least 5
         i_sigi = refls['intensity.sum.value']/flex.sqrt(refls['intensity.sum.variance'])
@@ -123,7 +126,7 @@ class Script(object):
         d = beam.get_wavelength()/(2*math.sin(math.pi*c/(2*180)))
         x_centers.append(c)
         rmsds.append(rmsds_)
-        print "%d % 5.1f % 5.1f % 8d %.1f %.1f"%(i, c, d, n, med_r, med_i)
+        print("%d % 5.1f % 5.1f % 8d %.1f %.1f"%(i, c, d, n, med_r, med_i))
         p25r.append(q1_r)
         p50r.append(med_r)
         p75r.append(q3_r)
@@ -152,7 +155,7 @@ class Script(object):
     assert len(params.input.experiments) == len(params.input.reflections)
 
     # Plotit!
-    for i in xrange(len(params.input.experiments)):
+    for i in range(len(params.input.experiments)):
       plotit(params.input.reflections[i].data, params.input.experiments[i].data)
 
     # Set up labels

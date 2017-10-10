@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import math
 from iotbx import pdb
 from libtbx.test_utils import approx_equal
@@ -39,7 +41,7 @@ def test_direct_summation():
   h = flex.vec3_double(len(indices))
   fm = matrix.sqr(p.crystal_symmetry().unit_cell().fractionalization_matrix())
   om = matrix.sqr(p.crystal_symmetry().unit_cell().orthogonalization_matrix())
-  for i in xrange(len(indices)):
+  for i in range(len(indices)):
     h[i] = fm * indices[i]
   sr = x.scattering_type_registry()
   st = x.scattering_types()
@@ -47,7 +49,7 @@ def test_direct_summation():
   sg = p.crystal_symmetry().space_group()
   r = flex.double()
   t = flex.vec3_double(len(sg))
-  for i in xrange(len(sg)):
+  for i in range(len(sg)):
     r_i = om * matrix.sqr(sg[i].r().as_double())
     for a in r_i:
       r.append(a)
@@ -62,7 +64,7 @@ def test_direct_summation():
   gpu_i = flex.norm(amplitudes)
 
   mean = 0.0
-  for i in xrange(len(cpu_i)):
+  for i in range(len(cpu_i)):
     e = math.fabs(cpu_i[i] - gpu_i[i])/cpu_i[i]
     mean += e
   mean = mean/(len(cpu_i))
@@ -77,7 +79,7 @@ def test_saxs():
   blsf = flex.double(len(xyz),0.0)
   sr = x.scattering_type_registry()
   st = x.scattering_types()
-  q = flex.double(range(101))/200.0
+  q = flex.double(list(range(101)))/200.0
 
   t_w = flex.double(len(t_x),1.0)
 
@@ -103,4 +105,4 @@ if (__name__ == '__main__'):
     test_direct_summation()
     test_saxs()
 
-  print 'Ok'
+  print('Ok')

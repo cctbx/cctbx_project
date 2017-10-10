@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import map
+from builtins import range
 from iotbx.ncs import format_80
 from libtbx.utils import null_out
 from datetime import datetime
@@ -62,7 +66,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       self.assertEqual(pdb_inp_1.atoms().size(),8)
       self.assertEqual(pdb_inp_2.atoms().size(),8)
     else:
-      print "phenix not available, skipping test_create_ncs_domain_pdb_files()"
+      print("phenix not available, skipping test_create_ncs_domain_pdb_files()")
       pass
 
   def test_phil_param_read(self):
@@ -111,9 +115,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
                                        "chain 'H' or chain 'I'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
     # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.values()]
+    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.values()}
+    group_keys = {x for x in trans_obj.ncs_transform.keys()}
     #
     self.assertEqual(len(group_ids),6)
     self.assertEqual(set(group_ids),{1,2})
@@ -142,9 +146,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
                 "chain 'B'": ["chain 'D'", "chain 'F'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
     # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.values()]
+    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.values()}
+    group_keys = {x for x in trans_obj.ncs_transform.keys()}
     r1 = trans_obj.ncs_transform['0000000004'].r
     r2 = trans_obj.ncs_transform['0000000002'].r
     #
@@ -157,7 +161,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected_r = matrix.sqr(
       [0.309017,-0.809017,0.5,0.809017,0.5,0.309017,-0.5,0.309017,0.809017])
     d = r2 - expected_r
-    d = map(abs,d)
+    d = list(map(abs,d))
     self.assertTrue(max(d)<0.01)
 
     # test that ncs_asu does not contain the identity transforms
@@ -181,7 +185,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         buffer_size=8)
       self.ph.adopt_xray_structure(xrs_unit_cell)
       of = open("test_ncs_spec.pdb", "w")
-      print >> of, self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry())
+      print(self.ph.as_pdb_string(crystal_symmetry=xrs.crystal_symmetry()), file=of)
       of.close()
       # create a spec file
       ncs_from_pdb=simple_ncs_from_pdb.run(
@@ -213,9 +217,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
       # check ncs_transform
-      group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-      tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-      group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+      group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.values()]
+      tran_sn = {x.serial_num for x in trans_obj.ncs_transform.values()}
+      group_keys = {x for x in trans_obj.ncs_transform.keys()}
       r1 = trans_obj.ncs_transform['0000000004'].r
       r2 = trans_obj.ncs_transform['0000000002'].r
       #
@@ -228,10 +232,10 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       expected_r = matrix.sqr(
         [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
       d = r2 - expected_r.transpose()
-      d = map(abs,d)
+      d = list(map(abs,d))
       self.assertTrue(max(d)<0.01)
     else:
-      print "phenix not available, skipping test_spec_reading()"
+      print("phenix not available, skipping test_spec_reading()")
       pass
 
   def test_processing_of_asu_2(self):
@@ -257,9 +261,9 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
     # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.values()]
+    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.values()}
+    group_keys = {x for x in trans_obj.ncs_transform.keys()}
     r1 = trans_obj.ncs_transform['0000000004'].r
     r2 = trans_obj.ncs_transform['0000000002'].r
     #
@@ -273,7 +277,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
     # the transformation in the spec files are from the copy to the master
     d = r2 - expected_r.transpose()
-    d = map(abs,d)
+    d = list(map(abs,d))
     self.assertTrue(max(d)<0.01)
 
     # Verify that spec object are produced properly
@@ -834,7 +838,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_spec_reading']
-  suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
+  suite = unittest.TestSuite(list(map(TestNcsGroupPreprocessing,tests)))
   return suite
 
 if __name__=='__main__':

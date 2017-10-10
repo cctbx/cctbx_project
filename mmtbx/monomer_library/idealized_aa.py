@@ -811,7 +811,7 @@ def residue_dict():
   from mmtbx.monomer_library import idealized_aa as iaa
   aac = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
   result = {}
-  for aa_name in aac.keys():
+  for aa_name in list(aac.keys()):
     aanl = aa_name.lower()
     aanlh= aanl+"_h"
     for aanl_ in [aanl, aanlh]:

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import iotbx.pdb
 from cctbx import crystal
 from cctbx import sgtbx
@@ -61,9 +62,9 @@ special = {
 }
 
 _all = {}
-for sym in rhombohedral.keys(): _all[sym] = rhombohedral
+for sym in list(rhombohedral.keys()): _all[sym] = rhombohedral
 for sym in short_mono: _all[sym] = short_mono
-for sym in special.keys(): _all[sym] = special
+for sym in list(special.keys()): _all[sym] = special
 
 class categorize(object):
 

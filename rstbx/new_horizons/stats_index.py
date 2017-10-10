@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import os
 from labelit.command_line.imagefiles import ImageFiles
 
-class spotfinder_proxy:
+class spotfinder_proxy(object):
   def __init__(self,old_spotfinder,phil,frames):
     self.frames = frames
     self.phil = phil
@@ -37,33 +39,33 @@ class spotfinder_proxy:
     old_count = len(pd["indexing"])
     from rstbx.new_horizons.speckfinder import speckfinder
     self.pd["indexing"]=[] # zero out the old spotfinder spots; use speckfinder spots instead
-    for key in self.images.keys():
+    for key in list(self.images.keys()):
       self.specks = speckfinder(imgobj = self.frames.imageindex(key),
                        phil = self.phil,
                        inputpd = self.pd)
       self.pd["indexing"] += self.specks.get_active_data()
     new_count = len(pd["indexing"])
-    print "Comparing old count %d new count %d, difference %d"%(old_count,new_count,new_count-old_count)
-    print self.specks
+    print("Comparing old count %d new count %d, difference %d"%(old_count,new_count,new_count-old_count))
+    print(self.specks)
     return self.pd
 
-class AutoIndexOrganizer:
+class AutoIndexOrganizer(object):
 
   def __init__(self,verbose = 0,**kwargs):
     self.rundir = os.getcwd()
     self.verbose = verbose
     self.horizons_phil = kwargs["horizons_phil"]
     #self.horizons_phil.persist.show()
-    assert kwargs.has_key('argument_module')
+    assert 'argument_module' in kwargs
     self.setCommandInput(kwargs['argument_module'])
-    if self.verbose: print "Process frames in directory:",self.Files.filenames.FN[0].cwd
+    if self.verbose: print("Process frames in directory:",self.Files.filenames.FN[0].cwd)
 
-    if kwargs.has_key('delegate'):
+    if 'delegate' in kwargs:
       self.setIndexingDelegate(kwargs['delegate'])
     self.exception_passthru = 0
-    if kwargs.has_key('exception_passthru'):
+    if 'exception_passthru' in kwargs:
       self.exception_passthru = kwargs['exception_passthru']
-    print '\n'.join(self.Files.filenames())
+    print('\n'.join(self.Files.filenames()))
 
   def setCommandInput(self,argument_module):
     self.Files = ImageFiles(argument_module,self.horizons_phil)
@@ -91,7 +93,7 @@ class AutoIndexOrganizer:
       from labelit.command_line.stats_distl import pretty_image_stats,notes
       pretty_image_stats(S,frame)
       notes(S,self.frames[0])
-    print
+    print()
     NEW.get_aitbx_inputs()
 
   def setIndexingDelegate(self,function):
@@ -102,12 +104,12 @@ class AutoIndexOrganizer:
 
   def pickle_the_results(self):
       for key in ['best_integration','triclinic']:
-        if self.info.has_key(key):
-         if self.info[key].has_key('minimizer'): #not attained when best==tri
+        if key in self.info:
+         if 'minimizer' in self.info[key]: #not attained when best==tri
           del self.info[key]['minimizer'] # Must remove
 
          # temporary section pending an analysis of which data need to be persistent
-         if self.info[key]["integration"].has_key('results'):
+         if 'results' in self.info[key]["integration"]:
           #future options 1) make the whole object picklable--write test script
           #2) just pickle the data needed for the GUI
           del self.info[key]["integration"]['results']
@@ -117,6 +119,6 @@ class AutoIndexOrganizer:
   def process(self):
     self.printSpots()
     self.executeDelegate()
-    if self.__dict__.has_key('info'): #if indexing worked
+    if 'info' in self.__dict__: #if indexing worked
       self.pickle_the_results()
       return self.info

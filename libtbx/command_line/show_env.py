@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 """
 Reads a libtbx_env file and dumps the entire contents.
 Some structures e.g. module dictionaries refer to the same object in multiple
@@ -10,6 +11,7 @@ path anyway).
 Usage:
   read_env.py <libtbx_env>
 """
+from __future__ import print_function
 
 import pickle
 import yaml
@@ -26,14 +28,14 @@ def _read_obj(obj, prev=None):
   prev = list(prev) + [obj]
 
   if isinstance(obj, prop_object):
-    return {name: _read_obj(val, prev) for name, val in obj.__dict__.items()}
+    return {name: _read_obj(val, prev) for name, val in list(obj.__dict__.items())}
   elif isinstance(obj, list):
     p = []
     for i in obj:
       p.append(_read_obj(i, prev))
     return p
   elif isinstance(obj, dict):
-    return {a: _read_obj(b, prev) for a, b in obj.items()}
+    return {a: _read_obj(b, prev) for a, b in list(obj.items())}
   else:
     return obj
 

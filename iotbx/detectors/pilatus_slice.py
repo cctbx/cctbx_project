@@ -1,23 +1,26 @@
 from __future__ import division
-import copy,cPickle
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+import copy,pickle
 from iotbx.detectors.pilatus_minicbf import PilatusImage
 from iotbx.detectors import ImageException
 from scitbx.array_family import flex
 
 def pilatus_slice_from_http_url(url):
   #backward compatibility with Python 2.5
-  try: from urlparse import parse_qs
+  try: from urllib.parse import parse_qs
   except Exception: from cgi import parse_qs
 
-  from urlparse import urlparse
+  from urllib.parse import urlparse
   parsed = urlparse(url)
   assert parsed.scheme in ["http","https"]
-  from urllib2 import urlopen
+  from urllib.request import urlopen
   Response = urlopen(url)
   info = Response.info()
   #print info
   P = PilatusSlice()
-  if "Image-slice" in info.keys():
+  if "Image-slice" in list(info.keys()):
     sliceindex = int(info["Image-slice"])
     assert 0 <= sliceindex <= 11 # slow slice section, possible index range
     P.sliceindex = sliceindex
@@ -37,10 +40,10 @@ def pilatus_slice_from_http_url(url):
 
 def pilatus_slice_from_file_url(url):
   #backward compatibility with Python 2.5
-  try: from urlparse import parse_qs
+  try: from urllib.parse import parse_qs
   except Exception: from cgi import parse_qs
 
-  from urlparse import urlparse
+  from urllib.parse import urlparse
   parsed = urlparse(url)
   assert parsed.scheme == "file"
   file = parsed.path.split("?")[0]
@@ -86,7 +89,7 @@ class PilatusSlice(PilatusImage):
     return result
 
   def slice_callback_with_portable_http_data(self):
-    linearintdata = cPickle.load(self.object)
+    linearintdata = pickle.load(self.object)
     del self.object #once the data are copied, close the stream
     return linearintdata
 
@@ -122,12 +125,12 @@ if __name__=='__main__':
   full_path_to_file = sys.argv[1]
   a = PilatusImage(testing_file)
   a.read()
-  print a
-  print a.parameters
-  print a.rawdata, len(a.rawdata), a.size1*a.size2
+  print(a)
+  print(a.parameters)
+  print(a.rawdata, len(a.rawdata), a.size1*a.size2)
   for dataitem in ['bin', 'filename', 'header', 'headerlines', 'linearintdata', 'parameters', 'vendortype']:
-    print dataitem,
+    print(dataitem, end=' ')
     exec("print a.%s"%dataitem)
-  print pilatus_slice_from_object_and_slicenumber(a,5)
+  print(pilatus_slice_from_object_and_slicenumber(a,5))
 
   P = pilatus_slice_from_file_url(url="file://%s?slice=5"%full_path_to_file)

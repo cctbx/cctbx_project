@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import boost.optional # import dependency
 import boost.std_pair # import dependency
 
@@ -24,10 +31,10 @@ class _(boost.python.injector, grid):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "origin:", self.origin()
-    print >> f, "last:", self.last()
-    print >> f, "focus:", self.focus()
-    print >> f, "all:", self.all()
+    print("origin:", self.origin(), file=f)
+    print("last:", self.last(), file=f)
+    print("focus:", self.focus(), file=f)
+    print("all:", self.all(), file=f)
     return self
 
 def sorted(data, reverse=False, stable=False):
@@ -42,14 +49,14 @@ def as_scitbx_matrix(a):
   return scitbx.matrix.rec(tuple(a), a.focus())
 
 def show(a):
-  print as_scitbx_matrix(a).mathematica_form(one_row_per_line=True)
+  print(as_scitbx_matrix(a).mathematica_form(one_row_per_line=True))
 
 def rows(a):
   assert a.nd() == 2
   assert a.is_0_based()
   assert not a.is_padded()
   nr,nc = a.focus()
-  for ir in xrange(nr):
+  for ir in range(nr):
     yield a[ir*nc:(ir+1)*nc]
 
 def upper_bidiagonal(d, f):
@@ -113,7 +120,7 @@ def to_list(array):
   """Workaround for C++ exception handling bugs
      (list(array) involves C++ exceptions)"""
   result = []
-  for i in xrange(array.size()):
+  for i in range(array.size()):
     result.append(array[i])
   return result
 
@@ -146,12 +153,12 @@ class _(boost.python.injector, ext.min_max_mean_double):
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
     if (out is None): out = sys.stdout
     if (show_n):
-      print >> out, prefix + "n:", self.n
+      print(prefix + "n:", self.n, file=out)
     def f(v):
       return format_value(format=format, value=v)
-    print >> out, prefix + "min: ", f(self.min)
-    print >> out, prefix + "max: ", f(self.max)
-    print >> out, prefix + "mean:", f(self.mean)
+    print(prefix + "min: ", f(self.min), file=out)
+    print(prefix + "max: ", f(self.max), file=out)
+    print(prefix + "mean:", f(self.mean), file=out)
 
   def as_tuple(self):
     return (self.min, self.max, self.mean)
@@ -247,12 +254,12 @@ class py_object(object):
     assert [value, values, value_factory].count(None) >= 2
     self._accessor = accessor
     if (value_factory is not None):
-      self._data = [value_factory() for i in xrange(accessor.size_1d())]
+      self._data = [value_factory() for i in range(accessor.size_1d())]
     elif (values is not None):
       assert len(values) == accessor.size_1d()
       self._data = values[:]
     else:
-      self._data = [value for i in xrange(accessor.size_1d())]
+      self._data = [value for i in range(accessor.size_1d())]
 
   def accessor(self):
     return self._accessor
@@ -270,9 +277,9 @@ class _(boost.python.injector, ext.linear_regression_core):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"is_well_defined:", self.is_well_defined()
-    print >> f, prefix+"y_intercept:", self.y_intercept()
-    print >> f, prefix+"slope:", self.slope()
+    print(prefix+"is_well_defined:", self.is_well_defined(), file=f)
+    print(prefix+"y_intercept:", self.y_intercept(), file=f)
+    print(prefix+"slope:", self.slope(), file=f)
 
 class _(boost.python.injector, ext.double):
 
@@ -288,10 +295,10 @@ class _(boost.python.injector, ext.linear_correlation):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"is_well_defined:", self.is_well_defined()
-    print >> f, prefix+"mean_x:", self.mean_x()
-    print >> f, prefix+"mean_y:", self.mean_y()
-    print >> f, prefix+"coefficient:", self.coefficient()
+    print(prefix+"is_well_defined:", self.is_well_defined(), file=f)
+    print(prefix+"mean_x:", self.mean_x(), file=f)
+    print(prefix+"mean_y:", self.mean_y(), file=f)
+    print(prefix+"coefficient:", self.coefficient(), file=f)
 
 class histogram_slot_info(object):
 
@@ -324,7 +331,7 @@ class _(boost.python.injector, ext.histogram):
     if (f is None): f = sys.stdout
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+      print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def show_count_stats(
       counts,
@@ -334,7 +341,7 @@ def show_count_stats(
       prefix=""):
   assert counts.size() != 0
   if (out is None): out = sys.stdout
-  from __builtin__ import int, max
+  from builtins import int, max
   counts_sorted = sorted(counts, reverse=True)
   threshold = max(1, int(counts_sorted[0] / group_size) * group_size)
   n = counts_sorted.size()
@@ -346,13 +353,13 @@ def show_count_stats(
     if (count >= threshold): continue
     assert count >= 0
     if (i > 0):
-      print >> out, fmt_val % (threshold, i, i/n)
+      print(fmt_val % (threshold, i, i/n), file=out)
     if (count == 0):
-      print >> out, fmt_zero % (n-i, 1-i/n)
+      print(fmt_zero % (n-i, 1-i/n), file=out)
       break
     threshold = max(1, threshold-group_size)
   else:
-    print >> out, fmt_val % (threshold, n, 1)
+    print(fmt_val % (threshold, n, 1), file=out)
 
 class weighted_histogram_slot_info(object):
 
@@ -385,10 +392,10 @@ class _(boost.python.injector, ext.weighted_histogram):
     if (f is None): f = sys.stdout
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+      print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def permutation_generator(size):
-  result = size_t(xrange(size))
+  result = size_t(range(size))
   yield result
   while (result.next_permutation()): yield result
 
@@ -472,16 +479,16 @@ class smart_selection(object):
 
   def show_summary(self, out=None, prefix="", label="selected elements: "):
     if (out is None): out = sys.stdout
-    print >> out, prefix + label + self.format_summary()
+    print(prefix + label + self.format_summary(), file=out)
 
 
 def __show_sizes(f):
   typename_n_size = f()
-  from __builtin__ import max
+  from builtins import max
   l = max([ len(typename) for typename, size in typename_n_size ])
   fmt = "%%%is : %%i" % l
   for typename, size in typename_n_size:
-    print fmt % (typename, size)
+    print(fmt % (typename, size))
 
 show_sizes_int = lambda: __show_sizes(empty_container_sizes_int)
 show_sizes_double = lambda: __show_sizes(empty_container_sizes_double)
@@ -489,7 +496,7 @@ show_sizes_double = lambda: __show_sizes(empty_container_sizes_double)
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
   try:
-    import cPickle as pickle
+    import pickle as pickle
   except ImportError:
     import pickle
   a = flex_triple()
@@ -512,7 +519,7 @@ def exercise_triple(flex_triple, flex_order=None, as_double=False):
     assert tuple(a) == tuple(b)
 
 def compare_derivatives(more_reliable, less_reliable, eps=1e-6):
-  from __builtin__ import max
+  from builtins import max
   scale = max(1, ext.max(ext.abs(more_reliable)))
   if (not (more_reliable/scale).all_approx_equal( # fast
              other=less_reliable/scale, tolerance=eps)):

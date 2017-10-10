@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.array_family import flex
 import iotbx.phil
 import mmtbx.polygon
@@ -158,7 +160,7 @@ def convert_to_numeric(values):
 
 def select_dict(database_dict, selection):
   result = {}
-  for key in database_dict.keys():
+  for key in list(database_dict.keys()):
     result.setdefault(key, database_dict[key].select(selection))
   return result
 
@@ -235,10 +237,10 @@ def show_histogram(data, n_slots, smooth = True):
   for i, s in enumerate(histogram.slots()):
     r = histogram.data_min() + histogram.slot_width() * (i+1)
     triplets.append( [l, r, s] )
-    print "%8.4f %8.4f %d" % (l, r, s)
+    print("%8.4f %8.4f %d" % (l, r, s))
     l = r
   if(smooth):
-    print "... smooth histogram"
+    print("... smooth histogram")
     triplets_smooth = []
     for i, t in enumerate(triplets):
       values = flex.double()
@@ -247,7 +249,7 @@ def show_histogram(data, n_slots, smooth = True):
           values.append(float(triplets[i+j][2]))
       triplets_smooth.append((t[0],t[1],flex.mean(values)))
     for t in triplets_smooth:
-      print "%8.4f %8.4f %d" % (t[0], t[1], int("%.0f"%t[2]))
+      print("%8.4f %8.4f %d" % (t[0], t[1], int("%.0f"%t[2])))
   return histogram
 
 def convert_to_histogram(data, n_slots) :
@@ -267,26 +269,26 @@ def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
   i_l = max(0, i_min-max_models_for_default_filter//2)
   i_r = min(values.size()-1, i_min+max_models_for_default_filter//2)
   #
-  print "apply_default_filter:"
-  print "  found data points dmin->higher =", abs(i_l-i_min)
-  print "  found data points dmin->lower  =", abs(i_r-i_min)
+  print("apply_default_filter:")
+  print("  found data points dmin->higher =", abs(i_l-i_min))
+  print("  found data points dmin->lower  =", abs(i_r-i_min))
   imm = min(abs(i_l-i_min), abs(i_r-i_min))
   i_l, i_r = i_min-imm, i_min+imm
   if (imm == 0) :
     if (i_l == 0) :
       i_r = 100
-      print "  used data points dmin->higher =", 0
-      print "  used data points dmin->lower  =", i_r
+      print("  used data points dmin->higher =", 0)
+      print("  used data points dmin->lower  =", i_r)
     elif (i_l == i_r == len(values) - 1) :
       i_l -= 100
-      print "  used data points dmin->higher =", i_l
-      print "  used data points dmin->lower  =", 0
+      print("  used data points dmin->higher =", i_l)
+      print("  used data points dmin->lower  =", 0)
   else :
-    print "  used data points dmin->higher =", imm
-    print "  used data points dmin->lower  =", imm
+    print("  used data points dmin->higher =", imm)
+    print("  used data points dmin->lower  =", imm)
   #
   selection = flex.bool(values.size(), False)
-  for i in xrange(i_l,i_r): selection[i] = True
+  for i in range(i_l,i_r): selection[i] = True
   return select_dict(database_dict = database_dict, selection = selection)
 
 def load_db (file_name=None) :
@@ -334,8 +336,8 @@ def polygon(params = master_params.extract(), d_min = None,
   elif(show_histograms):
     for selected_key in params.polygon.keys_to_show:
       data = convert_to_numeric(values=result[selected_key])
-      print "%s data_points=%d" % (selected_key, data.size()), \
-        "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple()
+      print("%s data_points=%d" % (selected_key, data.size()), \
+        "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple())
       n_slots = params.polygon.number_of_histogram_slots
       if(n_slots is None):
         n_slots = data.size()//50
@@ -355,10 +357,10 @@ def get_statistics_percentiles (d_min, stats) :
   to other crystal structures at similar resolution.
   """
   if (d_min is None) :
-    return dict([ (s, None) for s in stats.keys()  ])
+    return dict([ (s, None) for s in list(stats.keys())  ])
   try :
     db = load_db()
-  except Exception, e :
+  except Exception as e :
     return {}
   d_min_mvd = flex.double([ float(x) for x in db['high_resolution'] ])
   sel_perm = flex.sort_permutation(d_min_mvd)
@@ -391,7 +393,7 @@ def get_statistics_percentiles (d_min, stats) :
     index_tmp += 1
   #print "%d structures around %g" % (sel_around.count(True), d_min)
   percentiles = {}
-  for stat_name in stats.keys() :
+  for stat_name in list(stats.keys()) :
     stat = stats[stat_name]
     if (not stat_name in db) :
       percentiles[stat_name] = None

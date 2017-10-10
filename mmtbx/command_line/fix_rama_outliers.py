@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import sys
 from scitbx.array_family import flex
@@ -38,12 +39,12 @@ def run(args, log=sys.stdout):
       log=log)
   loop_ideal.resulting_pdb_h.write_pdb_file(
       file_name="%s_very_final.pdb" % work_params.loop_idealization.output_prefix)
-  print >> log, "Outlier percentages: initial, after ccd, after minimization, berkeley after ccd, berkeley after minimization:"
-  print >> log, loop_ideal.p_initial_rama_outliers,
-  print >> log, loop_ideal.p_before_minimization_rama_outliers,
-  print >> log, loop_ideal.p_after_minimiaztion_rama_outliers,
-  print >> log, loop_ideal.berkeley_p_before_minimization_rama_outliers,
-  print >> log, loop_ideal.berkeley_p_after_minimiaztion_rama_outliers
+  print("Outlier percentages: initial, after ccd, after minimization, berkeley after ccd, berkeley after minimization:", file=log)
+  print(loop_ideal.p_initial_rama_outliers, end=' ', file=log)
+  print(loop_ideal.p_before_minimization_rama_outliers, end=' ', file=log)
+  print(loop_ideal.p_after_minimiaztion_rama_outliers, end=' ', file=log)
+  print(loop_ideal.berkeley_p_before_minimization_rama_outliers, end=' ', file=log)
+  print(loop_ideal.berkeley_p_after_minimiaztion_rama_outliers, file=log)
 
 
 

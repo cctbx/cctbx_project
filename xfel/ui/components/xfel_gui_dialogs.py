@@ -1,11 +1,16 @@
 from __future__ import division
 
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/04/2016
 Last Changed: 06/04/2016
 Description : XFEL UI Custom Dialogs
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -609,18 +614,18 @@ class CalibrationDialog(BaseDialog):
     os.makedirs(working_dir)
     os.chdir(working_dir)
 
-    print "Submitting metrology refinement. Command:"
-    print command
+    print("Submitting metrology refinement. Command:")
+    print(command)
     try:
       results = easy_run.fully_buffered(command=command)
       results.show_stdout()
       results.show_stderr()
       results.raise_if_errors()
-    except Exception, exc:
+    except Exception as exc:
       if not "Warning: job being submitted without an AFS token." in str(exc):
         raise exc
     os.chdir(cwd)
-    print "Output will be in", working_dir
+    print("Output will be in", working_dir)
 
     e.Skip()
 
@@ -901,13 +906,13 @@ class MultiRunTagDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onRunChoice(self, e):
-    run_numbers_selected = map(int, self.select_runs.ctr.GetCheckedStrings())
+    run_numbers_selected = list(map(int, self.select_runs.ctr.GetCheckedStrings()))
     self.selected = {}
     for r in self.db_runs:
       if r.run in run_numbers_selected:
         self.selected[r.run] = [r]
     for b in self.parent.all_tag_buttons:
-      if b.run.run in self.selected.keys():
+      if b.run.run in list(self.selected.keys()):
         self.selected[b.run.run].append(b)
 
   def onSortDefault(self, e):
@@ -930,7 +935,7 @@ class MultiRunTagDialog(BaseDialog):
       runs_with_tags_buttons = self.parent.all_tag_buttons
 
       for tag in add_tags:
-        for run_number in self.selected.keys():
+        for run_number in list(self.selected.keys()):
           run, button = self.selected[run_number]
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
@@ -952,7 +957,7 @@ class MultiRunTagDialog(BaseDialog):
       remove_tags = [t for t in self.db_tags if self.db_tag_names.index(t.name) in tag_indices]
 
       for tag in remove_tags:
-        for run_number in self.selected.keys():
+        for run_number in list(self.selected.keys()):
           run, button = self.selected[run_number]
           run_tags = run.app.get_run_tags(run.run_id)
           run_tag_ids = [t.tag_id for t in run_tags]
@@ -1097,8 +1102,8 @@ class TagDialog(BaseDialog):
           elif item[0] == -1:
             self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
 
-    except Exception, exception:
-      print str(exception)
+    except Exception as exception:
+      print(str(exception))
 
     e.Skip()
 
@@ -1431,7 +1436,7 @@ class RunBlockDialog(BaseDialog):
       self.first_run = first
       startrun = self.db.get_run(run_number=first).run
     except (ValueError, AssertionError) as e:
-      print "Please select a run between %d and %d." % (self.first_avail, self.last_avail)
+      print("Please select a run between %d and %d." % (self.first_avail, self.last_avail))
       raise e
     if self.end_type.specify.GetValue() == 1:
       try:
@@ -1440,7 +1445,7 @@ class RunBlockDialog(BaseDialog):
         self.last_run = last
         endrun = self.db.get_run(run_number=int(last)).run
       except (ValueError, AssertionError) as e:
-        print "Please select a run between %d and %d." % (self.first_run, self.last_avail)
+        print("Please select a run between %d and %d." % (self.first_run, self.last_avail))
         raise e
     elif self.end_type.specify.GetValue() == 0:
       endrun = None
@@ -1468,7 +1473,7 @@ class RunBlockDialog(BaseDialog):
                    two_theta_low=self.two_thetas.two_theta_low.GetValue(),
                    two_theta_high=self.two_thetas.two_theta_high.GetValue(),
                    comment=self.comment.ctr.GetValue())
-    for key, value in rg_dict.iteritems():
+    for key, value in rg_dict.items():
       if str(value) == 'None' or str(value) == '':
         rg_dict[key] = None
       elif type(value) == bool:
@@ -1820,7 +1825,7 @@ class TrialDialog(BaseDialog):
       msg = None
       try:
         trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-      except Exception, e:
+      except Exception as e:
         msg = '\nParameters incompatible with %s:\n%s\n' % (backend, str(e))
       else:
         if len(unused) > 0:
@@ -1830,7 +1835,7 @@ class TrialDialog(BaseDialog):
 
         try:
           params = trial_params.extract()
-        except Exception, e:
+        except Exception as e:
           if msg is None: msg = ""
           msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
 

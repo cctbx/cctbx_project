@@ -1,7 +1,9 @@
 from __future__ import division
+from builtins import zip
+from builtins import object
 import cmath
 
-class parameters:
+class parameters(object):
 
   def __init__(self, alpha, g, ffp, fdp):
     self.alpha = alpha
@@ -14,7 +16,7 @@ class parameters:
 
 class gradients(parameters): pass
 
-class curvatures:
+class curvatures(object):
 
   def __init__(self, alpha_alpha, alpha_g, alpha_ffp, alpha_fdp, g_ffp, g_fdp):
     self.alpha_alpha = alpha_alpha
@@ -33,7 +35,7 @@ def pack_parameters(params):
 def pack_gradients(grads):
   return pack_parameters(grads)
 
-class g_exp_i_alpha_sum:
+class g_exp_i_alpha_sum(object):
 
   def __init__(self, params):
     self.params = params

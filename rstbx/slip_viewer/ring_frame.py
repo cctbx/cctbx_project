@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id$
 
+from builtins import range
 import wx
 
 
@@ -184,8 +186,8 @@ class RingSettingsPanel(wx.Panel):
             best = total
             bestc = [self._center[0]+i,self._center[1]+j]
             bestr = self._radius+r
-          print "r: % 3.1f, i: % 3.1f, j: % 3.1f, best: %f"%(r, i, j, best)
-    print "DONE", bestc, bestr
+          print("r: % 3.1f, i: % 3.1f, j: % 3.1f, best: %f"%(r, i, j, best))
+    print("DONE", bestc, bestr)
     self._radius = bestr
     self._center = bestc
 

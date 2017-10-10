@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from scitbx.array_family import flex
 
 """The mapper_unmapper class solves the problem of selecting a subset of the data
@@ -11,7 +13,7 @@ def mapper_factory(base_class):
   class mapper_unmapper(base_class):
     def __init__(self,Ibase,Gbase,I_visited,G_visited,FSIM,**kwargs):
       g_counter=0; forward_map_G=flex.size_t(len(G_visited)); backward_map_G=flex.size_t()
-      for s in xrange(len(G_visited)):
+      for s in range(len(G_visited)):
         #print s, G_visited[s], c[len_I + s], c[len_I + len(Gbase) + s]
         if G_visited[s]:
           forward_map_G[s] = g_counter
@@ -22,7 +24,7 @@ def mapper_factory(base_class):
       remapped_frame = forward_map_G.select(FSIM.frame)
 
       i_counter=0; forward_map_I=flex.size_t(len(I_visited)); backward_map_I=flex.size_t()
-      for s in xrange(len(I_visited)):
+      for s in range(len(I_visited)):
         #print s,I_visited[s], c[s]
         if I_visited[s]:
           forward_map_I[s] = i_counter
@@ -40,12 +42,12 @@ def mapper_factory(base_class):
       remapped_FSIM.frame   = remapped_frame
       remapped_FSIM.miller  = remapped_miller
 
-      if kwargs.has_key('experiments'):
+      if 'experiments' in kwargs:
         # XXX seems like we need to implement a proper select statement for ExperimentList
         # kwargs["experiments"] = kwargs["experiments"].select(G_visited==1)
         from dxtbx.model import ExperimentList
         new_experiments = ExperimentList()
-        for idx in xrange(len(G_visited)):
+        for idx in range(len(G_visited)):
           if G_visited[idx]==1:
             new_experiments.append(kwargs["experiments"][idx])
         kwargs["experiments"] = new_experiments
@@ -56,23 +58,23 @@ def mapper_factory(base_class):
 
       def help_expand_data(data):
         result = {}
-        for key in data.keys():
+        for key in list(data.keys()):
           if key=="I":
             ex = flex.double(len(Ibase))
-            for s in xrange(len(I_visited)):
+            for s in range(len(I_visited)):
               if I_visited[s]:
                 ex[s] = data[key][forward_map_I[s]]
             result[key]=ex
           elif key in ["G", "B", "D", "Ax", "Ay"]:
             ex = flex.double(len(Gbase))
-            for s in xrange(len(G_visited)):
+            for s in range(len(G_visited)):
               if G_visited[s]:
                 ex[s] = data[key][forward_map_G[s]]
             result[key]=ex
         return result
       self.expanded = help_expand_data(fitted)
       self.expanded_stddev = help_expand_data(fitted_stddev)
-      print "DONE UNMAPPING HERE"
+      print("DONE UNMAPPING HERE")
 
     def e_unpack(self):
       return self.expanded
@@ -86,7 +88,7 @@ def mapper_factory_with_explicit_B(base_class):
   class mapper_unmapper(base_class):
     def __init__(self,Ibase,Gbase,Bbase,I_visited,G_visited,FSIM,**kwargs):
       g_counter=0; forward_map_G=flex.size_t(len(G_visited)); backward_map_G=flex.size_t()
-      for s in xrange(len(G_visited)):
+      for s in range(len(G_visited)):
         #print s, G_visited[s], c[len_I + s], c[len_I + len(Gbase) + s]
         if G_visited[s]:
           forward_map_G[s] = g_counter
@@ -98,7 +100,7 @@ def mapper_factory_with_explicit_B(base_class):
       remapped_frame = forward_map_G.select(FSIM.frame)
 
       i_counter=0; forward_map_I=flex.size_t(len(I_visited)); backward_map_I=flex.size_t()
-      for s in xrange(len(I_visited)):
+      for s in range(len(I_visited)):
         #print s,I_visited[s], c[s]
         if I_visited[s]:
           forward_map_I[s] = i_counter
@@ -120,17 +122,17 @@ def mapper_factory_with_explicit_B(base_class):
 
       self.expanded_G = flex.double(len(Gbase))
       self.expanded_B = flex.double(len(Gbase))
-      for s in xrange(len(G_visited)):
+      for s in range(len(G_visited)):
         if G_visited[s]:
           self.expanded_G[s]=fitted_G[ forward_map_G[s] ]
           self.expanded_B[s]=fitted_B[ forward_map_G[s] ]
 
       self.expanded_I = flex.double(len(Ibase))
-      for s in xrange(len(I_visited)):
+      for s in range(len(I_visited)):
         if I_visited[s]:
           self.expanded_I[s]=fitted_I[ forward_map_I[s] ]
 
-      print "DONE UNMAPPING HERE"
+      print("DONE UNMAPPING HERE")
 
     def e_unpack(self): return (self.expanded_I, self.expanded_G,self.expanded_B)
 

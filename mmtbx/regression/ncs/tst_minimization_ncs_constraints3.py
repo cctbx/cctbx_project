@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import zip
+from builtins import map
 from mmtbx.refinement.minimization_ncs_constraints import grads_one_ncs_to_asu
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
@@ -108,7 +110,7 @@ def run_selected_tests():
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
   tests = ['test_split_groups_to_spec']
-  suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
+  suite = unittest.TestSuite(list(map(TestSimpleAlignment,tests)))
   return suite
 
 if __name__=='__main__':

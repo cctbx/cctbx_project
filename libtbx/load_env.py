@@ -14,7 +14,7 @@ if not libtbx.env.dispatcher_name:
     _sourcefile = os.path.realpath(_module.__file__)
     for _dist_path in [os.path.realpath(_d) for _d in libtbx.env.dist_paths()]:
       if _sourcefile.startswith(_dist_path):
-        _command = '.'.join([ _dist_path.split(os.path.sep)[-1] ] + list(filter(lambda x: x and x != 'command_line', _sourcefile[len(_dist_path):].split(os.path.sep))))
+        _command = '.'.join([ _dist_path.split(os.path.sep)[-1] ] + list([x for x in _sourcefile[len(_dist_path):].split(os.path.sep) if x and x != 'command_line']))
         for _ext in ('.pyo', '.pyc', '.py'):
           if _command.endswith(_ext):
             _command = _command[:-len(_ext)]

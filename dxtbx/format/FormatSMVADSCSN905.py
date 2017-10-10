@@ -10,6 +10,7 @@
 # day which had it's own way of recording beam centre.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -101,5 +102,5 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print(FormatSMVADSC.understand(arg))
 

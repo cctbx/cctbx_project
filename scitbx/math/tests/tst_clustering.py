@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.math import clustering
 from scitbx.array_family import flex
 
@@ -44,7 +45,7 @@ def exercise_two_medians_clustering():
 def run():
   exercise_two_means_clustering()
   exercise_two_medians_clustering()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

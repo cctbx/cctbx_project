@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import chr
+from builtins import range
 def exercise():
   import boost.python
   csr = boost.python.ext.string_representation
@@ -12,7 +15,7 @@ def exercise():
     assert c == p
     r = eval(c)
     assert r == s
-  iset = range(130) + range(250,256)
+  iset = list(range(130)) + list(range(250,256))
   for i in iset:
     s = chr(i)
     check(s)
@@ -26,7 +29,7 @@ def run(args):
     exercise()
     if (len(args) == 0):
       break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

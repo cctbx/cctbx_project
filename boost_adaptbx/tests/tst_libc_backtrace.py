@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 import sys
 
@@ -8,7 +9,7 @@ def run(args):
     boost.python.ext.libtbx_introspection_show_stack()
     boost.python.ext.boost_adaptbx_libc_backtrace(0)
     if (not forever): break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

@@ -2,6 +2,11 @@
 # TODO handle existing alternate conformations more sensibly
 
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import zip
+from builtins import str
+from builtins import object
 from mmtbx.building import alternate_conformations as alt_confs
 import mmtbx.building
 from libtbx import adopt_init_args, Auto, slots_getstate_setstate
@@ -90,8 +95,8 @@ class fragment_refinement_driver (object) :
             continue
           if (len(atom_groups) != 1) :
             if (self.verbose) :
-              print >> out, "  residue %s already has multiple conformations"%\
-                residue_id
+              print("  residue %s already has multiple conformations"%\
+                residue_id, file=out)
             continue
           ag_i_seqs_no_hd = flex.size_t()
           for atom in main_conf.atoms() :
@@ -104,7 +109,7 @@ class fragment_refinement_driver (object) :
               selection=ag_i_seqs)
             if (n_outliers > 0) :
               if (self.verbose) :
-                print >> out, "  residue %s is a rotamer outlier" % residue_id
+                print("  residue %s is a rotamer outlier" % residue_id, file=out)
               continue
           if (self.params.prefilter.use_difference_map) :
             map_stats = building.local_density_quality(
@@ -116,7 +121,7 @@ class fragment_refinement_driver (object) :
             if ((map_stats.number_of_atoms_in_difference_holes() == 0) and
                 (map_stats.fraction_of_nearby_grid_points_above_cutoff()==0)) :
               if (self.verbose) :
-                print >> out, "  no difference density for %s" % residue_id
+                print("  no difference density for %s" % residue_id, file=out)
               continue
           window_selection = flex.size_t()
           offset = - self.params.window_radius
@@ -134,7 +139,7 @@ class fragment_refinement_driver (object) :
       raise Sorry("No peptide segments meeting the filtering criteria could "+
         "be extracted from the selected atoms.")
     else :
-      print >> out, "%d fragments will be refined." % len(windows)
+      print("%d fragments will be refined." % len(windows), file=out)
     if (self.mp_params.nproc == 1) :
       pass
     elif (self.mp_params.technology == "multiprocessing") :
@@ -152,7 +157,7 @@ class fragment_refinement_driver (object) :
       self.nproc_1 = self.mp_params.nproc
       self.out = null_out()
       self.processed_pdb_file = None
-    print >> out, ""
+    print("", file=out)
     alt_confs.print_trial_header(out)
     ensembles = []
     if (self.nproc_1 == 1) :
@@ -169,10 +174,10 @@ class fragment_refinement_driver (object) :
         method=mp_params.technology)
     self._ensembles = [ e for e in ensembles if (e is not None) ]
     # XXX reassert order
-    print >> out, ""
+    print("", file=out)
     if (len(self._ensembles) == 0) :
-      print >> out, "WARNING: no ensembles passed filtering step"
-      print >> out, ""
+      print("WARNING: no ensembles passed filtering step", file=out)
+      print("", file=out)
     self._ensembles.sort(lambda a,b: a.selection[0] < b.selection[0])
     self.processed_pdb_file = processed_pdb_file
     if (debug) :
@@ -180,7 +185,7 @@ class fragment_refinement_driver (object) :
         pdb_out = ens.dump_pdb_file(
           pdb_hierarchy=pdb_hierarchy,
           crystal_symmetry=fmodel.f_obs())
-        print >> out, "wrote %s" % pdb_out
+        print("wrote %s" % pdb_out, file=out)
 
   def n_ensembles (self) :
     return len(self._ensembles)
@@ -224,7 +229,7 @@ class fragment_refinement_driver (object) :
       min_dev=self.min_required_deviation)
     if (n_keep > 0) :
       if (self.asynchronous_output) :
-        print >> self.out, result
+        print(result, file=self.out)
       return result
     return None
 
@@ -287,20 +292,20 @@ class ensemble (residue_window) :
 
   def show_summary (self, out=None, comprehensive=False) :
     if (out is None) : out = sys.stdout
-    print >> out, str(self)
+    print(str(self), file=out)
     rmsds = []
     ccs = []
     for trial in self.sites_trials :
       rmsds.append(trial.rmsd)
       ccs.append(trial.cc)
-    print >> out, "  %d conformation(s) generated" % len(self.sites_trials)
+    print("  %d conformation(s) generated" % len(self.sites_trials), file=out)
     if (len(rmsds) > 0) :
-      print >> out, "    max. rmsd:  %7.3f" % max(rmsds)
-      print >> out, "    min. rmsd:  %7.3f" % min(rmsds)
-      print >> out, "    best CC:    %7.3f" % max(ccs)
+      print("    max. rmsd:  %7.3f" % max(rmsds), file=out)
+      print("    min. rmsd:  %7.3f" % min(rmsds), file=out)
+      print("    best CC:    %7.3f" % max(ccs), file=out)
       if (comprehensive) :
         for k, trial in enumerate(self.sites_trials) :
-          print >> out, "    trial %d:" % (k+1)
+          print("    trial %d:" % (k+1), file=out)
           trial.show_summary(out=out, prefix="      ")
 
   def __str__ (self) :
@@ -405,10 +410,10 @@ class ensemble_group (object) :
     return min([ e.n_confs() for e in self.ensembles ])
 
   def show_summary (self, out=sys.stdout) :
-    print >> out, "Fragment (%d ensembles):" % len(self.ensembles)
-    print >> out, "   %s --> %s" % (self.ensembles[0].residue_id_str,
-      self.ensembles[-1].residue_id_str) # FIXME assumes sorting!
-    print >> out, "   %d conformations" % self.n_confs_max()
+    print("Fragment (%d ensembles):" % len(self.ensembles), file=out)
+    print("   %s --> %s" % (self.ensembles[0].residue_id_str,
+      self.ensembles[-1].residue_id_str), file=out) # FIXME assumes sorting!
+    print("   %d conformations" % self.n_confs_max(), file=out)
 
   def get_central_residues_selection (self) :
     from scitbx.array_family import flex

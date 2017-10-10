@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx import scaling
 from cctbx.array_family import flex
 import mmtbx.scaling
@@ -26,18 +28,18 @@ def tst_sigmaa():
 
   N=100000
   start = time.time()
-  for ii in xrange(N):
+  for ii in range(N):
     tmp_a.target(0.5, 0.5)
     tmp_a.dtarget(0.5, 0.5)
 
   end = time.time()
-  print end-start
+  print(end-start)
 
   start = time.time()
-  for ii in xrange(N):
+  for ii in range(N):
     tmp_a.target_and_gradient(0.5, 0.5)
   end = time.time()
-  print end-start
+  print(end-start)
 
   tmp_c = scaling.sigmaa_estimator(
     e_obs     = eo,
@@ -67,11 +69,11 @@ def tst_sigmaa():
     width=0.1)
 
   start = time.time()
-  for trial in xrange(100):
+  for trial in range(100):
     a = tmp_large.target(0.5,0.5)
     a = tmp_large.dtarget(0.5,0.5)
   end = time.time()
-  print  end-start
+  print(end-start)
 
   tmp_large = scaling.sigmaa_estimator(
     e_obs     = eo,
@@ -82,10 +84,10 @@ def tst_sigmaa():
 
 
   start = time.time()
-  for trial in xrange(100):
+  for trial in range(100):
     a = tmp_large.target_and_gradient(0.5,0.5)
   end = time.time()
-  print  end-start
+  print(end-start)
 
 
 
@@ -95,7 +97,7 @@ def tst_sigmaa():
 
   h=0.5
   d=0.000001
-  for a in flex.double(range(20))/20.0:
+  for a in flex.double(list(range(20)))/20.0:
     fa  = tmp_a.target(h,a)
     fa1 = tmp_a.target(h,a+d)
     ga  = tmp_a.dtarget(h,a)
@@ -111,7 +113,7 @@ def tst_sigmaa():
 
 def run():
   tst_sigmaa()
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   run()

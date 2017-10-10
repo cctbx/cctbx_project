@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import object
 from libtbx.utils import Sorry
 
 class fmodels(object):
@@ -156,7 +159,7 @@ class fmodels(object):
       self.fmodel_xray().info().show_rfactors_targets_scales_overall(
         header = prefix, out = log)
     if(self.fmodel_n is not None):
-      print >> self.log
+      print(file=self.log)
       self.fmodel_neutron().info().show_rfactors_targets_scales_overall(
         header = "neutron data", out = log)
 
@@ -198,7 +201,7 @@ class fmodels(object):
       msg = None
       if(self.fmodel_n is not None):
         msg = "X-ray:"
-        print >> log, msg
+        print(msg, file=log)
       self.fmodel_xray().update_all_scales(
         update_f_part1       = update_f_part1,
         remove_outliers      = remove_outliers,
@@ -213,7 +216,7 @@ class fmodels(object):
       self.fmodel_x.show(log = log, suffix = msg)
     if(self.fmodel_n is not None):
       msg = "Neutron:"
-      print >> log, msg
+      print(msg, file=log)
       self.fmodel_neutron().update_all_scales(
         update_f_part1       = update_f_part1,
         remove_outliers      = remove_outliers,

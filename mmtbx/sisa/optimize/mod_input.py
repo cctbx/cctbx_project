@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from cctbx.array_family import flex
 import iotbx.phil
 from libtbx.utils import Sorry
@@ -170,20 +174,20 @@ def process_input(argv=None):
       else:
         try:
           user_phil.append(iotbx.phil.parse(open(arg).read()))
-        except RuntimeError, e :
-          print 'Error reading input: run phenix.sisa -h for help'
+        except RuntimeError as e :
+          print('Error reading input: run phenix.sisa -h for help')
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
     else :
-      print arg
+      print(arg)
       if arg == '--help' or arg == '-h':
-        print txt_help
+        print(txt_help)
         master_phil.show(attributes_level=1)
         exit()
       else:
         try :
           user_phil.append(iotbx.phil.parse(arg))
-        except RuntimeError, e :
-          print 'Error reading input: run phenix.sisa -h for help'
+        except RuntimeError as e :
+          print('Error reading input: run phenix.sisa -h for help')
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   working_phil = master_phil.fetch(sources=user_phil)
@@ -192,15 +196,15 @@ def process_input(argv=None):
   #check dry-run
   if len(user_phil) == 0:
     master_phil.show()
-    print 'Use the above list of parameters to generate your input file (.phil). For more information, run phenix.sisa -h.'
+    print('Use the above list of parameters to generate your input file (.phil). For more information, run phenix.sisa -h.')
     exit()
 
   if params.data is None:
-    print 'MTZ file with amplitudes, HL coefficients, and PHIB is required. For more information, run phenix.sisa -h.'
+    print('MTZ file with amplitudes, HL coefficients, and PHIB is required. For more information, run phenix.sisa -h.')
     exit()
 
   #capture input read out by phil
-  from cStringIO import StringIO
+  from io import StringIO
   class Capturing(list):
     def __enter__(self):
       self._stdout = sys.stdout
@@ -217,7 +221,7 @@ def process_input(argv=None):
   for one_output in output:
     txt_out += one_output + '\n'
 
-  print txt_out
+  print(txt_out)
 
 
   if params.autodm:

@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import zip
 from mmtbx.geometry import volume
 from mmtbx.geometry.primitive import sphere, box, bsphere
 

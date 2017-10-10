@@ -91,6 +91,7 @@ install with a single command, is to download the phenix package from:
 Send questions to: cctbx@cci.lbl.gov or cctbxbb@phenix-online.org
 """
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.utils import copy_file, remove_files
 from libtbx import easy_run
@@ -132,9 +133,9 @@ def run(args):
     command="docutils.rst2html README.txt > README.html")\
       .raise_if_errors()
   remove_files("README.txt")
-  print >> open(".htaccess", "w").write("""\
+  print(file=open(".htaccess", "w").write("""\
 Options Indexes
-""")
+"""))
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

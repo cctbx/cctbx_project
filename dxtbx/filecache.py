@@ -41,11 +41,16 @@
 # Any further access attempts will then result in an exception.
 
 from __future__ import absolute_import, division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
+from io import StringIO
 import os
 from threading import Lock
 
-class lazy_file_cache():
+class lazy_file_cache(object):
   '''An object providing shared cached access to files'''
 
   def __init__(self, file_object):
@@ -87,7 +92,7 @@ class lazy_file_cache():
     pass
 
   def _debug_enable(self, string):
-    print "%s: %s" % (format(id(self), '#x'), string)
+    print("%s: %s" % (format(id(self), '#x'), string))
 
   def __del__(self):
     '''Close file handles and drop cache on garbage collection.'''
@@ -318,7 +323,7 @@ class lazy_file_cache():
         return line_candidate + self._file.readline(maxbytes - foundbytes), self._file.tell()
 
 
-class pseudo_file():
+class pseudo_file(object):
   '''A file-like object that serves as frontend to a dxtbx lazy file cache.'''
 
   def __init__(self, lazy_cache_object):
@@ -353,7 +358,7 @@ class pseudo_file():
   def flush(self):
     self._check_not_closed()
 
-  def next(self):
+  def __next__(self):
     data = self.readline()
     if data == "":
       raise StopIteration()

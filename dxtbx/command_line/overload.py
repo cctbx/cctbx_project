@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import zip
 def overload(image_file):
   from dxtbx import load
   i = load(image_file)
@@ -17,4 +19,4 @@ if __name__ == '__main__':
 
   for image_file in sys.argv[1:]:
     if overload(image_file):
-      print image_file
+      print(image_file)

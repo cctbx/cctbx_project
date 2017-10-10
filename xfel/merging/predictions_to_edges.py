@@ -1,11 +1,15 @@
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from dials.array_family import flex # implicit dependency
 import libtbx.load_env # implicit dependency
-import cPickle as pickle
+import pickle as pickle
 from cctbx.crystal import symmetry
 from scitbx.matrix import col
 from rstbx.bandpass import parameters_bp3, use_case_bp3
-import cPickle as pickle
+import pickle as pickle
 from libtbx import easy_pickle
 from libtbx.phil import parse
 from spotfinder.applications.xfel.cxi_phil import cxi_basic_start
@@ -17,7 +21,7 @@ from dials.algorithms.spot_prediction import StillsReflectionPredictor
 def load_pickle(pickle_path):
   return pickle.load(open(pickle_path, "rb"))
 
-class ImageInfo:
+class ImageInfo(object):
   def __init__(self, img_path, detector_phil=None):
     self.img_path = img_path
     self.img_data = load_pickle(img_path)
@@ -62,7 +66,7 @@ def extend_predictions(pdata, int_pickle_path, image_info, dmin=1.5, dump=False,
   ybeam = pdata['ybeam']
   wavelength = pdata['wavelength']
 
-  if 'effective_tiling' in pdata.keys():
+  if 'effective_tiling' in list(pdata.keys()):
     tm_int = pdata['effective_tiling']
   else:
     tiling = image_info.tiling_from_image(detector_phil=detector_phil)
@@ -128,7 +132,7 @@ def extend_predictions(pdata, int_pickle_path, image_info, dmin=1.5, dump=False,
 
   # return predictions without re-applying an active area filter
   newpreds = flex.vec2_double()
-  for i in xrange(len(predicted)):
+  for i in range(len(predicted)):
     newpreds.append((predicted[i][0]/pixel_size, img_size-predicted[i][1]/pixel_size))
   # finally, record new predictions as member data
   pdata['mapped_predictions_to_edge'] = newpreds

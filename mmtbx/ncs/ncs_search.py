@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from scitbx.math import superpose
@@ -6,7 +12,7 @@ from libtbx.utils import Sorry
 from scitbx import matrix
 import math
 import sys
-from cStringIO import StringIO
+from io import StringIO
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 from time import time
@@ -96,13 +102,13 @@ class Chains_info(object):
   def __str__(self):
     assert 0
     res = StringIO()
-    print >> res, "res_names:", self.res_names
-    print >> res, "self.resid", self.resid
-    print >> res, "self.atom_names", self.atom_names
-    print >> res, "self.atom_selection", self.atom_selection
-    print >> res, "self.chains_atom_number", self.chains_atom_number
-    print >> res, "self.no_altloc", self.no_altloc
-    print >> res, "self.center_of_coordinates", self.center_of_coordinates
+    print("res_names:", self.res_names, file=res)
+    print("self.resid", self.resid, file=res)
+    print("self.atom_names", self.atom_names, file=res)
+    print("self.atom_selection", self.atom_selection, file=res)
+    print("self.chains_atom_number", self.chains_atom_number, file=res)
+    print("self.no_altloc", self.no_altloc, file=res)
+    print("self.center_of_coordinates", self.center_of_coordinates, file=res)
     return res.getvalue()
 
 
@@ -336,7 +342,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # will be always possible though
     # also, we should try to determine the smallest selection for the master
     # chain straight away
-    all_pairs = prel_gr_dict.values()
+    all_pairs = list(prel_gr_dict.values())
     left = set(all_pairs[0])
     # print "left", left
     # print "all_pairs", all_pairs
@@ -364,7 +370,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # selecting smallest master key - for no reason actually
     key_with_smallest_selection = None
     len_of_smallest_selection = 1e100
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in prel_gr_dict.items():
       # print "ch, master, key:", ch, master, key
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
@@ -382,7 +388,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # Let's do intersection of all master selection to determine
     # the minimum selection suitable to all copies.
     min_master_selection = None
-    for ch, key in prel_gr_dict.iteritems():
+    for ch, key in prel_gr_dict.items():
       if master in key:
         master_sel, master_res, master_rmsd = get_info_from_match_dict(
                 match_dict, key, master)
@@ -498,7 +504,7 @@ def get_copy_master_selections_from_match_dict(
   # in prel_gr_dict we want to find value with both master and ch_copy
   # return copy_sel, copy_res, m_sel
   key = None
-  for v in prel_gr_dict.itervalues():
+  for v in prel_gr_dict.values():
     if v == (master, ch_copy) or v == (ch_copy, master):
       key = v
       break
@@ -716,7 +722,7 @@ def remove_far_atoms(list_a, list_b,
   sel_a = flex.size_t([])
   sel_b = flex.size_t([])
   current_pos = 0
-  for i in xrange(len(res_list_a)):
+  for i in range(len(res_list_a)):
     # find the matching atoms form each residue (work on small sections)
     res_len = list_a[i].size()
     res_ref_sites = ref_sites[current_pos:current_pos+res_len]
@@ -759,7 +765,7 @@ def find_same_transform(r,t,transforms):
 
   is_transpose = False
   tr_num = None
-  for k,v in transforms.iteritems():
+  for k,v in transforms.items():
     if hasattr(v,'r'):
       rr = v.r
       tt = v.t
@@ -824,7 +830,7 @@ def search_ncs_relations(ph=None,
   n_chains = len(sorted_ch)
   chains_in_copies = set()
   match_dict = {}
-  for i in xrange(n_chains-1):
+  for i in range(n_chains-1):
     m_ch_id = sorted_ch[i]
 
     if m_ch_id in chains_in_copies:
@@ -835,7 +841,7 @@ def search_ncs_relations(ph=None,
     if master_n_res == 0:
       continue
     # get residue lists for master
-    for j in xrange(i+1,n_chains):
+    for j in range(i+1,n_chains):
       c_ch_id = sorted_ch[j]
       copy_n_res = len(chains_info[c_ch_id].res_names)
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
@@ -872,7 +878,7 @@ def search_ncs_relations(ph=None,
           # print "  good"
   # loop over all chains
   if msg:
-    print >> log,msg
+    print(msg, file=log)
   if (chain_similarity_threshold == 1) and msg:
     # must be identical
     raise Sorry('NCS copies are not identical')
@@ -884,7 +890,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
-  if seq_a == seq_b: return range(a), range(a), 1.0
+  if seq_a == seq_b: return list(range(a)), list(range(a)), 1.0
   norm_seq_a = seq_a
   norm_seq_b = seq_b
   if not atomnames:
@@ -1046,7 +1052,7 @@ def get_chains_info(ph, selection_list=None):
   for ch in model.chains():
     # print "ch_id", ch.id
     gr = True
-    if not chains_info.has_key(ch.id):
+    if ch.id not in chains_info:
       chains_info[ch.id] = Chains_info()
       gr = False
       # This is very time-consuming
@@ -1103,7 +1109,7 @@ def get_rotation_vec(r):
   """ get the eigen vector associated with the eigen value 1"""
   eigen = eigensystem.real_symmetric(r.as_sym_mat3())
   eigenvectors = eigen.vectors()
-  eigenvalues = eigen.values()
+  eigenvalues = list(eigen.values())
   i = list(eigenvalues.round(4)).index(1)
   return eigenvectors[i:(i+3)]
 

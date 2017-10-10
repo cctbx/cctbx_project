@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 import os, sys
-import StringIO
+import io
 
 from libtbx import easy_run
 
@@ -233,24 +236,24 @@ pdb_interpretation {
 }
 
 def run():
-  for name, text in files.items():
+  for name, text in list(files.items()):
     f=file(name, 'wb')
     f.write(text)
     f.close()
   cmd = 'phenix.geometry_minimization %(preamble)s.pdb %(preamble)s_01.cif' % {'preamble' : preamble}
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = io.StringIO()
   ero.show_stderr(out=err)
   assert err.getvalue()
-  print 'ok'
+  print('ok')
   cmd += ' %(preamble)s.eff' % {'preamble' : preamble}
-  print cmd
+  print(cmd)
   ero = easy_run.fully_buffered(command=cmd)
-  err = StringIO.StringIO()
+  err = io.StringIO()
   ero.show_stderr(out=err)
   assert not err.getvalue()
-  print 'ok'
+  print('ok')
   return err.getvalue()
 
 if __name__=="__main__":

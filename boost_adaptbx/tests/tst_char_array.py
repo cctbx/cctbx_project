@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost_adaptbx_char_array_ext as ext
 import sys
 
@@ -16,7 +17,7 @@ def run(args):
   while (iterations == 0 or i < iterations):
     exercise_char_n()
     i += 1
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

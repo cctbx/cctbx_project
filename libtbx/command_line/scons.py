@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from libtbx.utils import Sorry, show_times_at_exit
 from libtbx.str_utils import show_string
 import libtbx.load_env
@@ -30,17 +32,17 @@ def run():
   def show_traceback():
     if (debug_import):
       import traceback
-      print >> sys.stderr
+      print(file=sys.stderr)
       traceback.print_exc()
-      print >> sys.stderr
+      print(file=sys.stderr)
   engine_path = find_scons_engine_path()
   if (engine_path is not None):
     sys.path.insert(0, engine_path)
-    try: import SCons
+    try: from . import SCons
     except ImportError:
       show_traceback()
       del sys.path[0]
-  try: import SCons.Script
+  try: from . import SCons.Script
   except ImportError:
     show_traceback()
     msg = ["SCons is not available.",
@@ -54,7 +56,7 @@ def run():
       "  It may be necessary to rename the unpacked distribution, e.g.:",
       "    mv scons-0.96.1 scons"])
     raise Sorry("\n".join(msg))
-  import SCons.Script.Main
+  from . import SCons.Script.Main
   if (hasattr(SCons.Script.Main, "fetch_win32_parallel_msg")):
     SCons.Script.Main.fetch_win32_parallel_msg = dummy_fetch_win32_parallel_msg
   show_times_at_exit()

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.test_utils import open_tmp_file
 from libtbx.test_utils import approx_equal
@@ -64,4 +65,4 @@ def run():
 
 if __name__ == '__main__':
   run()
-  print "OK"
+  print("OK")

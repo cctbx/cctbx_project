@@ -1,10 +1,12 @@
 from __future__ import division
+from builtins import object
 from abc import ABCMeta, abstractmethod
 import cctbx
 import scitbx_array_family_flex_ext
 import cctbx_orientation_ext
+from future.utils import with_metaclass
 
-class InputFrame():
+class InputFrame(object):
   """ Wrapper class for describing single images to be refined, created from an input dictionary of schema:
         - `miller_array`: the cctbx.miller miller array of spot intensities.
         - `mapped_predictions`: the mapped_predictions locations
@@ -45,10 +47,8 @@ def refine_many(frame_lst, input_file):
 
   pass
 
-class CustomMicrocycle():
+class CustomMicrocycle(with_metaclass(ABCMeta, object)):
   """ Abstract class for using the Prime microcycle algorithm to refine a single frame. Implement `func` to specify a target function."""
-
-  __metaclass__ = ABCMeta
 
   def __init__(self, frame, input_file):
     """

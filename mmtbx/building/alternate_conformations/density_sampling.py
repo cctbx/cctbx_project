@@ -1,5 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import range
 import libtbx.phil
 import time
 import sys
@@ -134,7 +137,7 @@ def screen_residue (
   xrs.set_occupancies(occ_start)
   t_end = time.time()
   if (verbose) :
-    print >> out, "time to sample residue: %.2fs" % (t_end - t_start)
+    print("time to sample residue: %.2fs" % (t_end - t_start), file=out)
   return good_confs
 
 def score_density (self, two_fofc_map, fofc_map, unit_cell, params,
@@ -145,9 +148,9 @@ def score_density (self, two_fofc_map, fofc_map, unit_cell, params,
   if (sidechain_only) :
     sum_fofc = 0
     sum_2fofc = 0
-    min_fofc = sys.maxint
-    min_2fofc = sys.maxint
-    min_cbeta_2fofc = sys.maxint
+    min_fofc = sys.maxsize
+    min_2fofc = sys.maxsize
+    min_cbeta_2fofc = sys.maxsize
     min_2fofc_atom_name = None
     n_atoms = 0
     for atom in self.residue.atoms() :

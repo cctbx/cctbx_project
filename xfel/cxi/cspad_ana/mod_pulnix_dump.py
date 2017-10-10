@@ -5,11 +5,13 @@
 """XXX"""
 
 from __future__ import division
+from __future__ import absolute_import
 
+from builtins import object
 import os
 import logging
 
-import cspad_tbx
+from . import cspad_tbx
 
 
 class mod_pulnix_dump(object):

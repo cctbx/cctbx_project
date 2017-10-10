@@ -1,5 +1,8 @@
 from __future__ import division
 #import sys
+from builtins import zip
+from builtins import range
+from builtins import object
 import mmtbx.f_model
 import mmtbx.utils
 import mmtbx.masks
@@ -41,7 +44,7 @@ polder {
 def master_params():
   return phil.parse(master_params_str, process_includes = False)
 
-class compute_polder_map():
+class compute_polder_map(object):
   def __init__(self,
                f_obs,
                r_free_flags,

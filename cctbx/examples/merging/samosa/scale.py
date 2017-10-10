@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import os,sys
 import libtbx
 import iotbx.phil
@@ -16,17 +22,17 @@ class execute_case(object):
  def __init__(self,datadir,work_params,plot=False,esd_plot=False,half_data_flag=0):
   casetag = work_params.output.prefix
   # read the ground truth values back in
-  import cPickle as pickle
+  import pickle as pickle
   # it is assumed (for now) that the reference millers contain a complete asymmetric unit
   # of indices, within the (d_max,d_min) region of interest and possibly outside the region.
   reference_millers = pickle.load(open(os.path.join(datadir,casetag+"_miller.pickle"),"rb"))
   experiment_manager = read_experiments(work_params)
 
   obs = pickle.load(open(os.path.join(datadir,casetag+"_observation.pickle"),"rb"))
-  print "Read in %d observations"%(len(obs["observed_intensity"]))
+  print("Read in %d observations"%(len(obs["observed_intensity"])))
   reference_millers.show_summary(prefix="Miller index file ")
 
-  print len(obs["frame_lookup"]),len(obs["observed_intensity"]), flex.max(obs['miller_lookup']),flex.max(obs['frame_lookup'])
+  print(len(obs["frame_lookup"]),len(obs["observed_intensity"]), flex.max(obs['miller_lookup']),flex.max(obs['frame_lookup']))
   max_frameno = flex.max(obs["frame_lookup"])
 
   from iotbx import mtz
@@ -44,9 +50,9 @@ class execute_case(object):
       miller_indices_unique=reference_millers.indices(),
       miller_indices=I_sim.indices())
 
-  print "original unique",len(reference_millers.indices())
-  print "isomorphous set",len(I_sim.indices())
-  print "pairs",len(matches.pairs())
+  print("original unique",len(reference_millers.indices()))
+  print("isomorphous set",len(I_sim.indices()))
+  print("pairs",len(matches.pairs()))
   iso_data = flex.double(len(reference_millers.indices()))
 
   for pair in matches.pairs():
@@ -62,7 +68,7 @@ class execute_case(object):
                                           half_data_flag=half_data_flag)
 
   I,I_visited,G,G_visited = I_and_G_base_estimate(FOBS,params=work_params)
-  print "I length",len(I), "G length",len(G), "(Reference set; entire asymmetric unit)"
+  print("I length",len(I), "G length",len(G), "(Reference set; entire asymmetric unit)")
   assert len(reference_data.data()) == len(I)
 
   #presumably these assertions fail when half data are taken for CC1/2 or d_min is cut
@@ -79,10 +85,10 @@ class execute_case(object):
 
   Fit = minimizer.e_unpack()
   Gstats=flex.mean_and_variance(Fit["G"].select(G_visited==1))
-  print "G mean and standard deviation:",Gstats.mean(),Gstats.unweighted_sample_standard_deviation()
+  print("G mean and standard deviation:",Gstats.mean(),Gstats.unweighted_sample_standard_deviation())
   if "Bfactor" in work_params.levmar.parameter_flags:
     Bstats=flex.mean_and_variance(Fit["B"].select(G_visited==1))
-    print "B mean and standard deviation:",Bstats.mean(),Bstats.unweighted_sample_standard_deviation()
+    print("B mean and standard deviation:",Bstats.mean(),Bstats.unweighted_sample_standard_deviation())
   show_correlation(Fit["I"],model_I,I_visited,"Correlation of I:")
   Fit_stddev = minimizer.e_unpack_stddev()
 
@@ -94,7 +100,7 @@ class execute_case(object):
     if "Rxy" in work_params.levmar.parameter_flags:
       show_histogram(Fit["Ax"],"Histogram of x rotation (degrees)")
       show_histogram(Fit["Ay"],"Histogram of y rotation (degrees)")
-  print
+  print()
 
   if esd_plot:
     minimizer.esd_plot()
@@ -143,7 +149,7 @@ def run(show_plots,args):
       mtz_obj = mtz_out.mtz_object()
       mtz_obj.write(outfile)
       written_files.append(outfile)
-      print "OK s%1d"%half_data_flag
+      print("OK s%1d"%half_data_flag)
       #raw_input("OK?")
 
     """Guest code to retrieve the modified orientations after rotational fitting is done"""
@@ -157,12 +163,12 @@ def run(show_plots,args):
       x_axis = matrix.col((1.,0.,0.))
       y_axis = matrix.col((0.,1.,0.))
       out = open("aaaaa","w")
-      for x in xrange(len(all_A)):
+      for x in range(len(all_A)):
         Rx = x_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_x[x], deg=True)
         Ry = y_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_y[x], deg=True)
         modified_A = Rx * Ry * all_A[x]
         filename = all_files[x]
-        print >>out, filename, " ".join([str(a) for a in modified_A.elems])
+        print(filename, " ".join([str(a) for a in modified_A.elems]), file=out)
 
 
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from math import sqrt,pi,sin,atan
 from scitbx.array_family import flex
 from scitbx.matrix import col,sqr
@@ -9,8 +10,8 @@ def specific_libann_cluster(data,intensity_cutoff = 25,distance_cutoff=17):
   #input data structure is a flex array
   info = {}
   shape = data.accessor().focus()
-  for slow in xrange(shape[0]):
-    for fast in xrange(shape[1]):
+  for slow in range(shape[0]):
+    for fast in range(shape[1]):
       if data[(slow,fast)] > intensity_cutoff:
         info[(slow,fast)] = data[(slow,fast)]
 
@@ -18,8 +19,8 @@ def specific_libann_cluster(data,intensity_cutoff = 25,distance_cutoff=17):
   Sq_cut = distance_cutoff*distance_cutoff # distance < distance_cutoff => the two points are clustered
 
   all_pixels = flex.double()
-  all_keys = info.keys()
-  for key in info.keys():
+  all_keys = list(info.keys())
+  for key in list(info.keys()):
     all_pixels.append(key[0]); all_pixels.append(key[1])
 
   distance_tree = AnnAdaptor(data=all_pixels,dim=2,k=Ktree)
@@ -27,10 +28,10 @@ def specific_libann_cluster(data,intensity_cutoff = 25,distance_cutoff=17):
   clusters = []
   membership_lookup = {}
 
-  for i_query_pt in xrange(len(all_keys)):
+  for i_query_pt in range(len(all_keys)):
       query_coords = all_keys[i_query_pt]
       query_ok = True
-      for i_target_pt in xrange(Ktree):
+      for i_target_pt in range(Ktree):
         target_coords = all_keys[distance_tree.nn[Ktree*i_query_pt+i_target_pt]]
         if distance_tree.distances[Ktree*i_query_pt+i_target_pt] < Sq_cut:
           if info[query_coords] < info[target_coords]:
@@ -59,13 +60,13 @@ def index_wrapper(positions,info,pdb_object):
   camdata = flex.vec3_double()
   auxbeam = col((info.C.Ybeam,info.C.Zbeam,0.0));
   film_2_camera = sqr((-1,0,0,0,-1,0,0,0,1)).inverse();
-  for x in xrange(len(raw_spot_input)):
+  for x in range(len(raw_spot_input)):
     camdata.append( auxbeam + film_2_camera * col(raw_spot_input[x]) )
 
   #convert camera to reciprocal space xyz coordinates
   xyzdata = flex.vec3_double()
 
-  for x in xrange(len(camdata)):
+  for x in range(len(camdata)):
     cam = col(camdata[x])
     auxpoint = col((cam[0],cam[1],info.C.distance));
     xyz = ( auxpoint / (info.C.lambda0*1E10 * auxpoint.length()) );

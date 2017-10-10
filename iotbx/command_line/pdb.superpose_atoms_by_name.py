@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   assert len(args) == 2
   import iotbx.pdb
@@ -27,10 +28,10 @@ def run(args):
     reference_sites=reference_sites,
     other_sites=other_sites)
   rmsd = fit.other_sites_best_fit().rms_difference(reference_sites)
-  print "Number of atoms first pdb: ", lists_of_atoms[0].size()
-  print "Number of atoms second pdb:", lists_of_atoms[1].size()
-  print "Number of superposed atoms:", reference_sites.size()
-  print "RMSD: %.3f" % rmsd
+  print("Number of atoms first pdb: ", lists_of_atoms[0].size())
+  print("Number of atoms second pdb:", lists_of_atoms[1].size())
+  print("Number of superposed atoms:", reference_sites.size())
+  print("RMSD: %.3f" % rmsd)
 
 if (__name__ == "__main__"):
   import sys

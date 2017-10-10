@@ -1,12 +1,14 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME iota.process
 
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/26/2014
 Last Changed: 04/26/2017
 Description : IOTA image processing submission module
 '''
+from __future__ import print_function
 
 import os
 from libtbx.easy_mp import parallel_map
@@ -14,7 +16,7 @@ from libtbx import easy_pickle as ep
 
 import iota.components.iota_image as img
 
-class ProcessImage():
+class ProcessImage(object):
   ''' Wrapper class to do full processing of an image '''
   def __init__(self, init, input_entry, input_type = 'image', abort=False):
     self.init = init
@@ -40,7 +42,7 @@ class ProcessImage():
         img_object.process()
         return img_object
 
-class ProcessAll():
+class ProcessAll(object):
   def __init__(self,
                init,
                iterable,
@@ -61,7 +63,7 @@ class ProcessAll():
       end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
       with open(end_filename, 'w') as ef:
         ef.write('')
-    except Exception, e:
+    except Exception as e:
       raise e
 
   # def callback(self, result):
@@ -73,10 +75,10 @@ class ProcessAll():
   def full_proc_wrapper(self, input_entry):
     abort = os.path.isfile(self.abort_file)
     try:
-      print 'Processing {}'.format(input_entry[2])
+      print('Processing {}'.format(input_entry[2]))
       proc_image_instance = ProcessImage(self.init, input_entry, self.type, abort)
       proc_image_instance.run()
-    except Exception, e:
+    except Exception as e:
       raise e
 
 

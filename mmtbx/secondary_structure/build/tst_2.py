@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from iotbx.pdb import secondary_structure as ioss
@@ -1039,9 +1041,9 @@ def get_distances(h, n_neighbours=None):
   for i, a in enumerate(h.atoms()):
     #for j in range(i, min(len(h.atoms()), i+10)):
     if n_neighbours is not None:
-      r = range(i, min(len(h.atoms()), i+10))
+      r = list(range(i, min(len(h.atoms()), i+10)))
     else:
-      r = range(i, len(h.atoms()))
+      r = list(range(i, len(h.atoms())))
     for j in r:
       d.append(a.distance(h.atoms()[j]))
   return d
@@ -1076,7 +1078,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   d2 = get_distances(test_h)
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   assert dmmm[1] < 0.5, dmmm[1]
   assert dmmm[2] < 0.15, dmmm[2]
   assert dist.standard_deviation_of_the_sample() < 0.15, dist.standard_deviation_of_the_sample()
@@ -1135,7 +1137,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
   dmmm = abs(d2-d1).min_max_mean().as_tuple()
-  print "minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample()
+  print("minmaxmean sd", dmmm, abs(d2-d1).standard_deviation_of_the_sample())
   # assert dmmm[1] < 0.8
   assert dmmm[2] < 0.2, dmmm[2]
   assert dist.standard_deviation_of_the_sample() < 0.25, dist.standard_deviation_of_the_sample()
@@ -1233,7 +1235,7 @@ def exercise():
   exercise_02()
   exercise_03()
   exercise_04()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,10 +1,14 @@
 from __future__ import division
+from __future__ import print_function
 
 #-----------------------------------------------------------------------
 # more-or-less real-time plotting of Bragg peak count and XES detector
 # skewness.
 #-----------------------------------------------------------------------
 
+from builtins import str
+from builtins import range
+from builtins import object
 from xfel.cxi.gfx import status_plot
 import wxtbx.plots
 from scitbx.array_family import flex
@@ -192,7 +196,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
         self.timelockCheck.newly_checked = False
         self.show_plot()
       else:
-        print "No new data"
+        print("No new data")
 
   def OnZoom(self, event):
     self.zoom = 100-event.GetPosition()
@@ -212,7 +216,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
   # Returns true if new data was loaded, otherwise false
   def load_data (self):
     ttop = time.time()
-    print "Loading data..."
+    print("Loading data...")
     assert (self.trial_id is not None)
 
     import cxi_xdr_xes.cftbx.cspad_ana.db as cxidb
@@ -253,18 +257,18 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
             run = runtest
             break
         if not foundit:
-          print "New run: %s"%runId
+          print("New run: %s"%runId)
           run = Run(int(runId[0]))
           self.runs.append(run)
 
       #t1 = time.time()
       #print "Loading data from run %s" % (run.runId)
       if self.full_data_load or not hasattr(run, "latest_entry_id"):
-        print "Full load"
+        print("Full load")
         cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
           WHERE trial = %s AND run = %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId))
       else:
-        print "Partial load"
+        print("Partial load")
         cursor.execute("SELECT id, eventstamp, hitcount, distance, sifoil, wavelength, indexed FROM %s \
           WHERE trial = %s AND run = %s AND id > %s ORDER BY eventstamp"%(cxidb.table_name,self.trial_id,run.runId,run.latest_entry_id ))
 
@@ -302,7 +306,7 @@ class TrialsPlotFrame (wxtbx.plots.plot_frame) :
     #self.full_data_load = False #always do a full load
     self.runs.sort(key=operator.attrgetter('runId'))
     tbot = time.time()
-    print "Data loaded in %.2fs" % (tbot - ttop)
+    print("Data loaded in %.2fs" % (tbot - ttop))
     return new_data
 
   def cull_braggs(self):
@@ -453,7 +457,7 @@ class TrialsPlot (wxtbx.plots.plot_container) :
     self.parent.Refresh()
 
     t2 = time.time()
-    print "Plotted in %.2fs" % (t2 - t1)
+    print("Plotted in %.2fs" % (t2 - t1))
 
 def run (args) :
   user_phil = []
@@ -466,12 +470,12 @@ def run (args) :
     if (not "=" in arg) :
       try :
         user_phil.append(libtbx.phil.parse("""trial_id=%d""" % int(arg)))
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Unrecognized argument '%s'" % arg)
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = master_phil.fetch(sources=user_phil).extract()
   if (params.trial_id is None) :

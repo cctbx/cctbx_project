@@ -8,6 +8,8 @@
 # Tests for the beamline definition database
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import str
 import dxtbx.data.beamline_defs as dxbd
 
 def test_lookup_unknown_detector():
@@ -17,7 +19,7 @@ def test_lookup_unknown_detector():
   assert n.CIF_block().__module__ == 'iotbx.cif.model'
   assert str(n.mmCIF_block()) == ''
   assert n.mmCIF_block().__module__ == 'iotbx.cif.model'
-  print 'OK'
+  print('OK')
 
 def test_lookup_known_detector():
   n = dxbd.get_beamline_definition('PILATUS 2M, S/N 24-0107 Diamond')
@@ -29,7 +31,7 @@ def test_lookup_known_detector():
   cif = n.mmCIF_block()
   assert cif.__module__ == 'iotbx.cif.model'
   assert '_diffrn_radiation.type' in str(cif), cif
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   test_lookup_unknown_detector()

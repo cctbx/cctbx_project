@@ -11,7 +11,9 @@
 #
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 import os, sys
 import iotbx.phil
 from libtbx import adopt_init_args
@@ -31,7 +33,7 @@ class cl_app(object):
     self.cl_args = cl_args
     self.new_master_par_str = self.master_params_str
     self.pdbf_def = None
-    for k, v in self.needed_info.iteritems():
+    for k, v in self.needed_info.items():
       setattr(self, v, None)
       # adjust params_str for files
       if k == "model":
@@ -42,8 +44,8 @@ class cl_app(object):
         pass
 
   def parse_cl(self):
-    print "In parent, running parse_cl"
-    print "  ", self.needed_info
+    print("In parent, running parse_cl")
+    print("  ", self.needed_info)
     # processing and parsing cl_args
     self.new_master_par = iotbx.phil.parse(self.new_master_par_str, process_includes=True)
     self.params = self.new_master_par.extract()
@@ -64,12 +66,12 @@ class cl_app(object):
     return 0
 
   def show_help(self):
-    print >> self.log, self.help_message
+    print(self.help_message, file=self.log)
     self.new_master_par.show(self.log)
 
   def read_and_validate_inputs(self):
     # some generic validation, read model and data
-    print "In parent, running validate inputs"
+    print("In parent, running validate inputs")
     if self.pdbf_def is not None:
       self.read_model_file()
     return 0

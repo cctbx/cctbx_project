@@ -7,13 +7,18 @@ module
 """
 from __future__ import division
 from __future__ import with_statement
+from __future__ import print_function
 
-import cPickle as pickle
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import object
+import pickle as pickle
 import os
 import time
 import itertools
 import glob
-from Queue import Empty as QueueEmptyException
+from queue import Empty as QueueEmptyException
 
 class InstantTimeout(object):
   """
@@ -22,7 +27,7 @@ class InstantTimeout(object):
 
   def delay(self, waittime):
 
-    raise QueueEmptyException, "No data found in queue"
+    raise QueueEmptyException("No data found in queue")
 
 
 class TimedTimeout(object):
@@ -43,7 +48,7 @@ class TimedTimeout(object):
       time.sleep( waittime )
 
     else:
-      raise QueueEmptyException, "No data found in queue within timeout"
+      raise QueueEmptyException("No data found in queue within timeout")
 
 
 class NoTimeout(object):
@@ -73,7 +78,7 @@ class Queue(object):
 
   def put(self, obj):
 
-    index = self.count.next()
+    index = next(self.count)
     # Writing a tempfile and renaming it may prevent reading incomplete files
     tmp_name = "tmp_%s.%d" % ( self.root, index )
     assert not os.path.exists( tmp_name )
@@ -100,7 +105,7 @@ class Queue(object):
 
     while True:
       try:
-        data = self.next()
+        data = next(self)
 
       except StopIteration:
         predicate.delay( waittime = self.waittime )
@@ -111,7 +116,7 @@ class Queue(object):
     return data
 
 
-  def next(self):
+  def __next__(self):
 
     waiting = []
 
@@ -176,7 +181,7 @@ class Job(object):
   def start(self):
 
     if self.status.is_submitted():
-      raise RuntimeError, "start called second time"
+      raise RuntimeError("start called second time")
 
     data = self.qinterface.input(
       name = self.name,
@@ -212,7 +217,7 @@ class Job(object):
     self.status = outcome
 
     if self.status.stdout:
-      print self.status.stdout
+      print(self.status.stdout)
 
     if self.status.stderr and self.qinterface.display_stderr:
       import sys
@@ -423,7 +428,7 @@ def PBS(
       )
 
   else:
-    raise RuntimeError, "PBS does not support synchronous submission"
+    raise RuntimeError("PBS does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -469,7 +474,7 @@ def PBSPro(
       )
 
   else:
-    raise RuntimeError, "Synchronous submission for PBSPro is not supported"
+    raise RuntimeError("Synchronous submission for PBSPro is not supported")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -515,7 +520,7 @@ def Condor(
       )
 
   else:
-    raise RuntimeError, "Condor does not support synchronous submission"
+    raise RuntimeError("Condor does not support synchronous submission")
 
   if input is None:
     from libtbx.queuing_system_utils.processing import transfer
@@ -677,7 +682,7 @@ def qsub (
   assert hasattr(target, "__call__")
 
   if platform not in INTERFACE_FOR:
-    raise RuntimeError, "Unknown platform: %s" % platform
+    raise RuntimeError("Unknown platform: %s" % platform)
 
   ( factory, poller_factory ) = INTERFACE_FOR[ platform ]
 

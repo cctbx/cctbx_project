@@ -12,6 +12,8 @@ before it can be tarred.
 """
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from optparse import OptionParser
 import os.path as op
 import shutil
@@ -23,8 +25,8 @@ import sys
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
-from installer_utils import *
-from package_defs import *
+from .installer_utils import *
+from .package_defs import *
 
 def run (args) :
   parser = OptionParser()
@@ -76,7 +78,7 @@ def run (args) :
 
   # setup directory structure
   installer_dir = "%s-installer-%s" % (package_name, options.version)
-  print "Installer will be %s" % installer_dir
+  print("Installer will be %s" % installer_dir)
   os.mkdir(installer_dir)
   os.chdir(installer_dir)
   os.mkdir("bin")
@@ -105,7 +107,7 @@ def run (args) :
     for file_name in options.readme :
       if op.isfile(file_name) :
         base_name = op.basename(file_name)
-        print "copying %s" % base_name
+        print("copying %s" % base_name)
         open(base_name, "w").write(open(file_name).read())
   else : # fallback to CCTBX copyright
     file_name = op.join(libtbx_path, "COPYRIGHT_2_0.txt")
@@ -119,7 +121,7 @@ def run (args) :
     assert op.isfile(options.install_script)
     open("bin/install.py", "w").write(open(options.install_script).read())
   else :
-    print "WARNING: using default installation script"
+    print("WARNING: using default installation script")
     # default stub.  this is pretty minimal but it will work for simple
     # packages.
     modules_list = []
@@ -192,21 +194,21 @@ $PYTHON_EXE ./bin/install.py $@
       dist_dir = op.join(pkg_dir, module_name)
       tarfile = op.join(pkg_dir, module_name + "_hot.tar.gz")
       if op.exists(tarfile) :
-        print "using module '%s' from %s" % (module_name, tarfile)
+        print("using module '%s' from %s" % (module_name, tarfile))
         copy_file(tarfile, module_name + ".tar.gz")
         have_modules.append(module_name)
         break
       elif op.isdir(dist_dir) :
-        print "using module '%s' from %s" % (module_name, dist_dir)
+        print("using module '%s' from %s" % (module_name, dist_dir))
         archive_dist(dist_dir)
         assert op.isfile(module_name + ".tar.gz")
         have_modules.append(module_name)
         break
 
   if (not options.binary) :
-    print ""
-    print "********** FETCHING DEPENDENCIES **********"
-    print ""
+    print("")
+    print("********** FETCHING DEPENDENCIES **********")
+    print("")
     fetch_all_dependencies(
       dest_dir=op.join(options.dest, installer_dir, "dependencies"),
       log=sys.stdout,
@@ -229,9 +231,9 @@ $PYTHON_EXE ./bin/install.py $@
       assert op.isfile(options.cctbx_bundle)
       copy_file(options.cctbx_bundle, "cctbx_bundle.tar.gz")
     if (module_list is not None) :
-      print ""
-      print "********** FETCHING MODULES **********"
-      print ""
+      print("")
+      print("********** FETCHING MODULES **********")
+      print("")
       module_list = re.sub(",", " ", module_list)
       for module_name in module_list.split() :
         get_module(module_name)

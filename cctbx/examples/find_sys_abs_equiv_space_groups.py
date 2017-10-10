@@ -7,7 +7,10 @@ From first principles; inelegant theoretically, but compact and practical.
 See also: International Tables for Crystallography, Volume A, section 3.
 """
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
 def run(args):
   assert args in [[], ["python"], ["c++"]]
   #
@@ -39,8 +42,8 @@ def run(args):
     sgno_list_by_index_list.setdefault(index_list, []).append(sgno)
   from scitbx.graph import tardy_tree
   cluster_manager = tardy_tree.cluster_manager(n_vertices=231)
-  for cs,sgno_list_by_index_list in sgno_list_by_index_list_by_cs.items():
-    for sgno_list in sgno_list_by_index_list.values():
+  for cs,sgno_list_by_index_list in list(sgno_list_by_index_list_by_cs.items()):
+    for sgno_list in list(sgno_list_by_index_list.values()):
       i = sgno_list[0]
       for j in sgno_list[1:]:
         cluster_manager.connect_vertices(i=i, j=j, optimize=True)
@@ -51,7 +54,7 @@ def run(args):
   if (args == []):
     for cluster in cluster_manager.clusters:
       if (len(cluster) == 1): break
-      print cluster
+      print(cluster)
   else:
     note = ("""\
 Output of: cctbx/examples/find_sys_abs_equiv_space_groups.py %s
@@ -59,33 +62,33 @@ If you have to edit this table, please send email to: cctbx@cci.lbl.gov
 """ % args[0]).splitlines()
     #
     if (args == ["python"]):
-      print "space_group_numbers = ["
+      print("space_group_numbers = [")
       for line in note:
-        print "  #", line
+        print("  #", line)
       ci = cluster_manager.cluster_indices
       cl = cluster_manager.clusters
-      for sgno in xrange(231):
+      for sgno in range(231):
         cluster = list(cl[ci[sgno]])
         cluster.remove(sgno)
         if (len(cluster) == 0): s = "None"
         else:                   s = str(tuple(cluster))
         if (sgno == 230): comma = ""
         else:             comma = ","
-        print "  %s%s" % (s, comma)
-      print "]"
+        print("  %s%s" % (s, comma))
+      print("]")
     else:
-      print """\
+      print("""\
 #ifndef CCTBX_SGTBX_SYS_ABS_EQUIV_H
 #define CCTBX_SGTBX_SYS_ABS_EQUIV_H
 
 namespace cctbx { namespace sgtbx { namespace sys_abs_equiv {
-"""
+""")
       data = []
       ci = cluster_manager.cluster_indices
       cl = cluster_manager.clusters
       for line in note:
-        print "  //", line
-      for sgno in xrange(231):
+        print("  //", line)
+      for sgno in range(231):
         cluster = list(cl[ci[sgno]])
         cluster.remove(sgno)
         if (len(cluster) == 0):
@@ -93,17 +96,17 @@ namespace cctbx { namespace sgtbx { namespace sys_abs_equiv {
         else:
           cid = "data_%03d" % sgno
           data.append(cid)
-          print "  static const unsigned %s[] = {%d, %s};" % (
-            cid, len(cluster), ", ".join([str(i) for i in cluster]))
-      print ""
-      print "  static const unsigned* space_group_numbers[] = {"
-      print "   ", ",\n    ".join(data)
-      print """\
+          print("  static const unsigned %s[] = {%d, %s};" % (
+            cid, len(cluster), ", ".join([str(i) for i in cluster])))
+      print("")
+      print("  static const unsigned* space_group_numbers[] = {")
+      print("   ", ",\n    ".join(data))
+      print("""\
     };
 
 }}}
 
-#endif // GUARD"""
+#endif // GUARD""")
 
 if (__name__ == "__main__"):
   import sys

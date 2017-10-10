@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
 def exercise_cubicles_max_memory():
   import scitbx.cubicle_neighbors as cn
   assert cn.cubicles_max_memory_allocation_get() != 0
@@ -36,7 +38,7 @@ def run(args):
     cn = cubicle_neighbors(main_sites_cart=main_sites_cart, cubicle_edge=5)
     nb = cn.neighbors_of(other_sites_cart=main_sites_cart, distance_cutoff_sq=1)
     assert nb.size() == 1
-    assert nb.keys() == [0]
+    assert list(nb.keys()) == [0]
     assert list(nb[0]) == [0]
     nb = cn.neighbors_of(
       other_sites_cart=flex.vec3_double([(2,2,2)]), distance_cutoff_sq=1)
@@ -47,14 +49,14 @@ def run(args):
   mt = flex.mersenne_twister(seed=0)
   for nm in [3,5,8]:
     for no in [1,7,9]:
-      main_sites_cart = flex.vec3_double(zip(
+      main_sites_cart = flex.vec3_double(list(zip(
         mt.random_double(size=nm)*2-1,
         mt.random_double(size=nm)*2-1,
-        mt.random_double(size=nm)*2-1))
-      other_sites_cart = flex.vec3_double(zip(
+        mt.random_double(size=nm)*2-1)))
+      other_sites_cart = flex.vec3_double(list(zip(
         mt.random_double(size=no)*2-1,
         mt.random_double(size=no)*2-1,
-        mt.random_double(size=no)*2-1))
+        mt.random_double(size=no)*2-1)))
       for distance_cutoff in [0.5, 1]:
         distance_cutoff_sq = distance_cutoff**2
         cn = cubicle_neighbors(main_sites_cart=main_sites_cart, cubicle_edge=1)
@@ -66,10 +68,10 @@ def run(args):
           other_sites_cart=other_sites_cart,
           distance_cutoff_sq=distance_cutoff_sq)
         assert sorted(nb.keys()) == sorted(nb_simple.keys())
-        for j_seq,i_seqs_simple in nb_simple.items():
+        for j_seq,i_seqs_simple in list(nb_simple.items()):
           i_seqs = nb[j_seq]
           assert sorted(i_seqs) == sorted(i_seqs_simple)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

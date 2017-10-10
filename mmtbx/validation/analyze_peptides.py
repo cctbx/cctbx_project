@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import sys
 import mmtbx.rotamer
 from libtbx.utils import Sorry, Usage
@@ -146,10 +147,10 @@ def show(
   print_list.sort(key=get_sort_key)
   if log is None:
     log = sys.stdout
-  print >> log, "#\n#peptide geometry analysis\n#"
-  print >> log, "residue1:residue2:classification"
+  print("#\n#peptide geometry analysis\n#", file=log)
+  print("residue1:residue2:classification", file=log)
   for line in print_list:
-    print >> log, line
+    print(line, file=log)
 
 def run(args):
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):

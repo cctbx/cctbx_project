@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from past.builtins import basestring
+from builtins import object
 from libtbx import str_utils
 from libtbx import group_args, adopt_init_args
 import os
@@ -107,9 +111,9 @@ class manager (object) :
     else :
       log = sys.stdout
     msg = "WARNING: %s\n" % message
-    print >> log, ""
+    print("", file=log)
     for line in str_utils.line_breaker(msg, 72) :
-      print >> log, "  " + line
+      print("  " + line, file=log)
     #print >> log, str_utils.wordwrap(msg, 79)
 
 class piped_callback (object) :

@@ -8,6 +8,7 @@
 # Set up for Soleil PX1, with full kappa goniometer
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 #from dxtbx.model import ParallaxCorrectedPxMmStrategy
@@ -103,4 +104,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusSOLEILPX16MSN106.understand(arg)
+    print(FormatCBFMiniPilatusSOLEILPX16MSN106.understand(arg))

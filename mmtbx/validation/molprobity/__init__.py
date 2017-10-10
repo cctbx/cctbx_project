@@ -7,6 +7,9 @@ mmtbx.validation, which use the same APIs for storing and displaying results.
 # TODO combine with some parts of mmtbx.kinemage.validation
 
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import str
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.validation import validation, residue
 from mmtbx.validation import model_properties
@@ -138,7 +141,7 @@ class molprobity (slots_getstate_setstate) :
 
   # backwards compatibility with saved results
   def __setstate__(self, state):
-    for name,value in state.items(): setattr(self, name, value)
+    for name,value in list(state.items()): setattr(self, name, value)
     for name in self.__slots__ :
       if not hasattr(self, name) : setattr(self, name, None)
 
@@ -457,8 +460,8 @@ class molprobity (slots_getstate_setstate) :
         ignore_hydrogens=True,
         report_whole_res=True,
         return_ca_pos=True)
-    except Exception, e :
-      print >> out, to_str(e)
+    except Exception as e :
+      print(to_str(e), file=out)
     else :
       for (res_info, missing_atoms, xyz) in missing_list :
         if len(missing_atoms) == 0 :
@@ -467,9 +470,9 @@ class molprobity (slots_getstate_setstate) :
         try :
           resseq = int(res_info[2:6])
         except ValueError : # FIXME use hybrid36?
-          print >> out, "  warning: indecipherable residue number '%s'" % \
-            res_info[2:6]
-          print res_info
+          print("  warning: indecipherable residue number '%s'" % \
+            res_info[2:6], file=out)
+          print(res_info)
           continue
         alt = res_info[-4]
         resname = res_info[-3:]
@@ -742,8 +745,8 @@ class summary (slots_getstate_setstate_default_initializer) :
         format += "%s"
       value = getattr(self, name)
       if (value is not None) :
-        print >> out, format % (prefix, self.labels[k], fs(self.formats[k],
-          value), percentile_info)
+        print(format % (prefix, self.labels[k], fs(self.formats[k],
+          value), percentile_info), file=out)
     return self
 
   def iter_molprobity_gui_fields (self) :
@@ -801,22 +804,22 @@ class pdb_header_info (slots_getstate_setstate) :
   def show (self, out=sys.stdout, prefix="", include_r_factors=True,
       include_rms_geom=True) :
     if (self.refinement_program is not None) :
-      print >> out, "%sRefinement program    = %s" % (prefix,
-        self.refinement_program)
+      print("%sRefinement program    = %s" % (prefix,
+        self.refinement_program), file=out)
     if (include_r_factors) :
       if (self.d_min is not None) :
-        print >> out, "%sHigh resolution       = %6.2f" % (prefix, self.d_min)
+        print("%sHigh resolution       = %6.2f" % (prefix, self.d_min), file=out)
       if (self.r_work is not None) :
-        print >> out, "%sR-work                = %8.4f" % (prefix, self.r_work)
+        print("%sR-work                = %8.4f" % (prefix, self.r_work), file=out)
       if (self.r_free is not None) :
-        print >> out, "%sR-free                = %8.4f" % (prefix, self.r_free)
+        print("%sR-free                = %8.4f" % (prefix, self.r_free), file=out)
     if (include_rms_geom) :
       if (self.rms_bonds is not None) :
-        print >> out, "%sRMS(bonds)            = %8.4f" % (prefix,
-          self.rms_bonds)
+        print("%sRMS(bonds)            = %8.4f" % (prefix,
+          self.rms_bonds), file=out)
       if (self.rms_angles is not None) :
-        print >> out, "%sRMS(angles)           = %6.2f" % (prefix,
-          self.rms_angles)
+        print("%sRMS(angles)           = %6.2f" % (prefix,
+          self.rms_angles), file=out)
 
 class residue_multi_criterion (residue) :
   """
@@ -956,7 +959,7 @@ class multi_criterion_view (slots_getstate_setstate) :
         if (id_str in self.residues) :
           self.residues[id_str].add_outlier(outlier)
         else :
-          print >> log, "missing residue group '%s'" % id_str
+          print("missing residue group '%s'" % id_str, file=log)
       else :
         have_ids = set([])
         for atom in outlier.atoms_info :
@@ -966,7 +969,7 @@ class multi_criterion_view (slots_getstate_setstate) :
             self.residues[id_str].add_outlier(outlier)
             have_ids.add(id_str)
           else :
-            print >> log, "missing residue group '%s'" % id_str
+            print("missing residue group '%s'" % id_str, file=log)
 
   def get_residue_group_data (self, residue_group) :
     residue_validation = self.residues.get(residue_group.id_str(), None)

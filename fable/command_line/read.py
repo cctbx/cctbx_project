@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def process_each(process, file_names, report_success=False):
   import traceback
   n_fail = 0
@@ -8,16 +9,16 @@ def process_each(process, file_names, report_success=False):
       process(file_names=[file_name])
     except Exception:
       n_fail += 1
-      print "FAILING:", file_name
-      print traceback.format_exc(limit=None)
+      print("FAILING:", file_name)
+      print(traceback.format_exc(limit=None))
     else:
       if (report_success):
-        print "SUCCESS:", file_name
+        print("SUCCESS:", file_name)
       n_succ += 1
   if (n_fail != 0):
-    print "Failing:", n_fail
+    print("Failing:", n_fail)
   if (n_succ != 0):
-    print "Success:", n_succ
+    print("Success:", n_succ)
 
 def report_equivalence_clusters_with_mixed_data_types(fproc):
   for equiv_tok_cluster in fproc.equivalence_info().equiv_tok_clusters:
@@ -32,11 +33,11 @@ def report_equivalence_clusters_with_mixed_data_types(fproc):
           data_types_list.append((identifier,dt.value))
           data_types_set.add(dt.value)
     if (len(data_types_set) > 1):
-      print equiv_tok_cluster[0].value[0].value[0].format_error(
+      print(equiv_tok_cluster[0].value[0].value[0].format_error(
         msg="Warning: EQUIVALENCE cluster with mixed data types: %s" %
-          ", ".join(sorted(data_types_set)))
+          ", ".join(sorted(data_types_set))))
       for identifier,dtv in data_types_list:
-        print "  %s: %s" % (identifier, dtv)
+        print("  %s: %s" % (identifier, dtv))
 
 def run(args):
   if (len(args) == 0): args = ["--help"]

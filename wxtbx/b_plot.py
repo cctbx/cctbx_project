@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import object
 from wxtbx import plots
 import wx
 import libtbx.phil
@@ -58,7 +61,7 @@ class analyze (object) :
       is_na = main_conf.is_na()
       is_protein = main_conf.is_protein()
       if (not is_protein) and (not is_na) :
-        print >> out, "Skipping chain '%s' - not protein or DNA/RNA." %chain.id
+        print("Skipping chain '%s' - not protein or DNA/RNA." %chain.id, file=out)
         continue
       self.chains.append(chain.id)
       self.residues.append([])

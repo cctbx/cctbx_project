@@ -10,6 +10,8 @@
 # pairs.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import map
 import os
 
 from dxtbx.format.FormatCBF import FormatCBF
@@ -116,12 +118,12 @@ class FormatCBFMini(FormatCBF):
     wavelength = float(
         self._cif_header_dictionary['Wavelength'].split()[0])
 
-    beam_x, beam_y = map(float, beam_xy)
+    beam_x, beam_y = list(map(float, beam_xy))
 
     pixel_xy = self._cif_header_dictionary['Pixel_size'].replace(
         'm', '').replace('x', '').split()
 
-    pixel_x, pixel_y = map(float, pixel_xy)
+    pixel_x, pixel_y = list(map(float, pixel_xy))
 
     thickness = float(
       self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
@@ -368,4 +370,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMini.understand(arg)
+    print(FormatCBFMini.understand(arg))

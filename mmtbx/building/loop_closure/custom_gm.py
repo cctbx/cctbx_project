@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 import sys
 import mmtbx.utils
@@ -7,10 +8,10 @@ from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachan
 
 
 def run(args):
-  print args
-  print args[0]
-  print args[1]
-  print args[2]
+  print(args)
+  print(args[0])
+  print(args[1])
+  print(args[2])
   pdb_inp = iotbx.pdb.input(source_info=None, file_name=args[0])
   pdb_h = pdb_inp.construct_hierarchy()
   ref_h = iotbx.pdb.input(source_info=None, file_name=args[1]).construct_hierarchy()
@@ -39,5 +40,5 @@ def run(args):
 
 
 if (__name__ == "__main__"):
-  print "__name__", __name__
+  print("__name__", __name__)
   run(sys.argv[1:])

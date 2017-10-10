@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.array_family import flex
 from cctbx import uctbx, xray, crystal
 from smtbx.refinement import constraints
@@ -48,7 +49,7 @@ def exercise_direction():
 
 def run():
   exercise_direction()
-  print 'OK'
+  print('OK')
 
 if __name__ == '__main__':
   run()

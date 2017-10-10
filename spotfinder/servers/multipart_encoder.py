@@ -26,7 +26,10 @@ THE SOFTWARE.
 """
 from __future__ import division
 
-import httplib, mimetypes
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+import http.client, mimetypes
 
 def post_multipart(host, selector, fields, files):
     """
@@ -36,7 +39,7 @@ def post_multipart(host, selector, fields, files):
     Return the server's response page.
     """
     content_type, body = encode_multipart_formdata(fields, files)
-    h = httplib.HTTPConnection(host)
+    h = http.client.HTTPConnection(host)
     h.putrequest('POST', selector)
     h.putheader('content-type', content_type)
     h.putheader('content-length', str(len(body)))

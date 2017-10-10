@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from wxtbx import phil_controls
 import wx
 
@@ -10,9 +12,9 @@ class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl) :
     self.Bind(wx.EVT_CHOICE, self.OnChoose)
 
   def SetLabel (self, label) :
-    print label
-    print type(label)
-    assert (isinstance(label, str) or isinstance(label, unicode) or
+    print(label)
+    print(type(label))
+    assert (isinstance(label, str) or isinstance(label, str) or
             (label is None))
     if (label is None) :
       self.SetSelection(0)
@@ -40,7 +42,7 @@ class ArrayLabelCtrl (wx.Choice, phil_controls.PhilCtrl) :
 
   def OnChoose (self, event) :
     label = self.GetPhilValue()
-    print label
+    print(label)
 
 class ArrayLabelsCtrl (ArrayLabelCtrl) :
   def SetLabel (self, label) :

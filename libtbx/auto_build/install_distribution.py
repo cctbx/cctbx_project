@@ -55,6 +55,9 @@ able to correctly detect the base installer directory.
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from optparse import OptionParser
 import os.path as op
 import os
@@ -188,10 +191,10 @@ class installer(object):
     if sys.platform != "win32":
       self.print_banner()
       if not os.path.exists('build'):
-        print >> self.out, "No build directory exists; trying source installation."
+        print("No build directory exists; trying source installation.", file=self.out)
         self.options.source = True
       if self.options.source:
-        print >> self.out, "Source installation specified."
+        print("Source installation specified.", file=self.out)
         self.install_from_source()
       else:
         self.install_from_binary()
@@ -267,7 +270,7 @@ class installer(object):
     os.environ["%s_BUILD" % self.product_name] = self.build_dir
 
   def print_banner(self):
-    print >> self.out, """
+    print("""
     ==========================================================================
                           %(product)s Installation
 
@@ -283,7 +286,7 @@ class installer(object):
             "os"      : get_os_version(),
             "dest"    : self.dest_dir,
             "nproc"   : self.options.nproc,
-      }
+      }, file=self.out)
 
   def machine_type(self):
     """
@@ -315,7 +318,7 @@ class installer(object):
     self.product_specific_binary_install(log=log)
 
     os.chdir(self.build_dir)
-    print >> self.out, "Configuring %s components..."%(self.product_name)
+    print("Configuring %s components..."%(self.product_name), file=self.out)
     self.reconfigure(log=log)
 
   #---------------------------------------------------------------------
@@ -334,7 +337,7 @@ class installer(object):
     self.install_from_binary()
 
   def show_installation_paths (self) :
-    print >> self.out, """
+    print("""
 %(product)s installation target directory <%(product)s_LOC> set to:
    %(dest_dir)s
 %(product)s installation source directory set to:
@@ -347,7 +350,7 @@ class installer(object):
         "dest_dir" : self.dest_dir,
         "build_dir" : self.build_dir,
         "inst_dir" : self.installer_dir,
-        "tmp_dir" : self.tmp_dir, }
+        "tmp_dir" : self.tmp_dir, }, file=self.out)
 
   #---------------------------------------------------------------------
   # NON-COMPILED COMPONENTS AND FINAL SETUP
@@ -372,8 +375,8 @@ class installer(object):
     args += self.configure_modules
 
     if self.options.verbose:
-      print self.build_dir
-      print args
+      print(self.build_dir)
+      print(args)
 
     if 1: #try :
       call(args=args, log=log, verbose=self.options.verbose)
@@ -386,7 +389,7 @@ class installer(object):
     """
     self.print_header('Finalizing %s installation'%self.product_name)
     log_path = op.join(self.tmp_dir, "install_finalize.log")
-    print >> self.out, "Log file: %s"%log_path
+    print("Log file: %s"%log_path, file=self.out)
     log = open(log_path, "w")
 
     # Write environment files.
@@ -401,8 +404,8 @@ class installer(object):
         out=self.out)
 
     # Write dispatcher_include file.
-    print >> self.out, "Generating %s environment additions for dispatchers..." % \
-      self.product_name
+    print("Generating %s environment additions for dispatchers..." % \
+      self.product_name, file=self.out)
     fnsuffix = '.sh'
     envcmd = "export"
     if sys.platform == "win32":
@@ -431,10 +434,10 @@ class installer(object):
       dispatcher_opts.append("--ignore_missing_dirs")
     # FIXME this will happen regardless of whether the GUI modules are being
     # distributed or not - will this be problematic?
-    print 'Calling write_gui_dispatcher_include'
-    print '  args %s' % dispatcher_opts
-    print '  prologue %s' % prologue
-    print '  epilogue %s' % epilogue
+    print('Calling write_gui_dispatcher_include')
+    print('  args %s' % dispatcher_opts)
+    print('  prologue %s' % prologue)
+    print('  epilogue %s' % epilogue)
     write_gui_dispatcher_include.run(
       args=dispatcher_opts,
       prologue=prologue,
@@ -443,7 +446,7 @@ class installer(object):
     assert op.isfile(dispatcher)
 
     # Run configure.py to generate dispatchers
-    print >> self.out, "Configuring %s components..." % self.product_name
+    print("Configuring %s components..." % self.product_name, file=self.out)
     os.chdir(self.build_dir)
     # ???
     if (op.exists("libtbx_refresh_is_completed")) :
@@ -458,7 +461,7 @@ class installer(object):
 
     if not self.options.nopycompile:
       # Compile .py files
-      print >> self.out, "Precompiling .py files..."
+      print("Precompiling .py files...", file=self.out)
       os.chdir(self.modules_dir)
       call(args="libtbx.py_compile_all", log=log)
 
@@ -486,18 +489,18 @@ class installer(object):
           "--dest=%s" % self.dest_dir,
           "--alias_build"
         ]
-        print >> self.out, "Generating Mac app launcher for %s..."%app_name
+        print("Generating Mac app launcher for %s..."%app_name, file=self.out)
         try :
           call(args=" ".join(args), log=log)
-        except RuntimeError, e :
-          print "  ERROR:"
-          print "  " + str(e)
-          print "  installation will continue anyway."
+        except RuntimeError as e :
+          print("  ERROR:")
+          print("  " + str(e))
+          print("  installation will continue anyway.")
         else :
           app_file = op.join(self.dest_dir, "%s-%s.app" %
             (app_name, self.version))
           if (not op.exists(app_file)) :
-            print >> self.out, " failed."
+            print(" failed.", file=self.out)
             app_file = None
           else :
             apps_built = True
@@ -526,7 +529,7 @@ class installer(object):
     if apps_built and (not "SSH_CLIENT" in os.environ):
       try:
         call(args=["open", self.dest_dir], log=self.out)
-      except Exception, e:
+      except Exception as e:
         # Will fail in non-interactive environments.
         pass
 
@@ -541,7 +544,7 @@ class installer(object):
     have their own needs.
     """
     # csh/tcsh/bat environment setup file
-    print >> self.out, "Generating %s environment setup scripts..."%self.product_name
+    print("Generating %s environment setup scripts..."%self.product_name, file=self.out)
     env_prefix = self.product_name.upper() # e.g. "Phenix" -> "PHENIX"
     if sys.platform == "win32":
       f = open(os.path.join(self.dest_dir, '%s_env.bat'%self.dest_dir_prefix), 'w')
@@ -587,7 +590,7 @@ class installer(object):
     recommended for purely user-facing packages, but may make it more difficult
     to use packages for development purposes.
     """
-    print >> self.out, "Removing unnecessary files to reduce disk usage...",
+    print("Removing unnecessary files to reduce disk usage...", end=' ', file=self.out)
     # XXX should this include .o files?
     remove_extensions = [".cpp", ".cc", ".hpp", ".h", ".hh"]
     n_deleted = 0
@@ -598,15 +601,15 @@ class installer(object):
             full_path = op.join(dirname, file_name)
             try :
               os.remove(full_path)
-            except Exception, e :
-              print >> self.out, "  WARNING: error removing %s" % full_path
-              print >> self.out, str(e)
+            except Exception as e :
+              print("  WARNING: error removing %s" % full_path, file=self.out)
+              print(str(e), file=self.out)
             else :
               n_deleted += 1
     n_deleted_other = self.product_specific_reduce_installation_size()
     if (n_deleted_other is not None) :
       n_deleted += n_deleted_other
-    print >> self.out, "%d files deleted" % n_deleted
+    print("%d files deleted" % n_deleted, file=self.out)
 
   def add_product_specific_options (self, parser) :
     """
@@ -672,8 +675,8 @@ class installer(object):
     pass
 
   def print_header(self, msg):
-    print >> self.out, ""
-    print >> self.out, "*"*(len(msg) + 4)
-    print >> self.out, "* %s *"%msg
-    print >> self.out, "*"*(len(msg) + 4)
-    print >> self.out, ""
+    print("", file=self.out)
+    print("*"*(len(msg) + 4), file=self.out)
+    print("* %s *"%msg, file=self.out)
+    print("*"*(len(msg) + 4), file=self.out)
+    print("", file=self.out)

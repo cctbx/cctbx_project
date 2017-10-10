@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from builtins import object
 import logging
 
 import libtbx
@@ -38,7 +39,7 @@ class mod_event_info(object):
     # unhandled arguments at the end of the inheritance chain.
     if len(kwds) > 0:
       self.logger.warning("Ignored unknown arguments: " +
-                          ", ".join(kwds.keys()))
+                          ", ".join(list(kwds.keys())))
 
     # This is for messages that are picked up by Nat's monitoring program
     self.stats_logger = logging.getLogger("stats logger")

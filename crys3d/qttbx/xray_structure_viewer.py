@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
 from PyQt4 import QtGui
 from PyQt4.QtCore import Qt
 from crys3d import qttbx
@@ -97,7 +100,7 @@ class xray_structure_viewer(qttbx.widget):
     self.ellipsoid_to_sphere_transforms = {}
     self.scatterer_indices = flex.std_string()
     self.scatterer_labels = flex.std_string()
-    for i, (sc, site, u_cart) in enumerate(itertools.izip(xs.scatterers(),
+    for i, (sc, site, u_cart) in enumerate(zip(xs.scatterers(),
                                                           sites_cart,
                                                           thermal_tensors)):
       t = quadrics.ellipsoid_to_sphere_transform(site, u_cart)
@@ -135,7 +138,7 @@ class xray_structure_viewer(qttbx.widget):
     for i, neighbours in enumerate(pair_sym_table):
       x0 = sites_cart[i]
       sc0 = scatt[i]
-      for j, ops in neighbours.items():
+      for j, ops in list(neighbours.items()):
         sc1 = scatt[j]
         if sc0.scattering_type == 'H' and sc1.scattering_type == 'H':
           continue
@@ -172,14 +175,14 @@ class xray_structure_viewer(qttbx.widget):
 
   def draw_object_in_cartesian_coordinates(self):
     self.principal_ellipses_tex.bind()
-    for element, transforms in self.ellipsoid_to_sphere_transforms.iteritems():
+    for element, transforms in self.ellipsoid_to_sphere_transforms.items():
       material = self.material_for.get(element, self.default_material)
       material.execute()
       transforms.draw(self.ellipsoid_proto)
     self.principal_ellipses_tex.unbind()
 
     self.bond_material.execute()
-    for i in xrange(0, len(self.bonds), 2):
+    for i in range(0, len(self.bonds), 2):
       start, end = self.bonds[i], self.bonds[i+1]
       self.cylindre_proto.draw(start, end, base_radius=0.05)
 
@@ -190,7 +193,7 @@ class xray_structure_viewer(qttbx.widget):
       glDisable(GL_DEPTH_TEST)
       glColor3f(1, 1, 1)
       e = 0.1
-      for x, lbl in itertools.izip(self.sites_cart, self.labels):
+      for x, lbl in zip(self.sites_cart, self.labels):
         self.renderText(x[0]-e, x[1]+e, x[2]-e,
                         lbl,
                         self.label_font)

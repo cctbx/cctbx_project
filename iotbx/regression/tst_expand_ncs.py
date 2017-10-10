@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import libtbx.load_env
 from libtbx.utils import null_out
@@ -6,7 +7,7 @@ import os
 
 def exercise () :
   if (not libtbx.env.has_module("phenix_regression")) :
-    print "phenix_regression not configured, skipping test"
+    print("phenix_regression not configured, skipping test")
     return False
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1x9t.pdb.gz",
@@ -22,4 +23,4 @@ def exercise () :
   return True
 
 if (__name__ == "__main__") :
-  if (exercise()) : print "OK"
+  if (exercise()) : print("OK")

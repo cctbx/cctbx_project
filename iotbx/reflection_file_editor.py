@@ -2,6 +2,11 @@
 # TODO: confirm old_test_flag_value if ambiguous
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import iotbx.phil
 from libtbx.utils import Sorry, null_out, check_if_output_directory_exists
 from libtbx import adopt_init_args, slots_getstate_setstate
@@ -346,9 +351,9 @@ class process_arrays (object) :
       shown_files = []
       for file_name, miller_array in zip(file_names, miller_arrays) :
         if not file_name in shown_files :
-          print >> log, "%s:" % file_name
+          print("%s:" % file_name, file=log)
           shown_files.append(file_name)
-        print >> log, "  %s" % miller_array.info().label_string()
+        print("  %s" % miller_array.info().label_string(), file=log)
       return
 
     labels = ["H", "K", "L"]
@@ -368,16 +373,16 @@ class process_arrays (object) :
             if (info.wavelength is not None) :
               try :
                 file_wavelengths[info.source] = float(info.wavelength)
-              except ValueError, e :
-                print >> log, "Warning: bad wavelength '%s'" % info.wavelength
-      all_wavelengths = set([ w for f, w in file_wavelengths.iteritems() ])
+              except ValueError as e :
+                print("Warning: bad wavelength '%s'" % info.wavelength, file=log)
+      all_wavelengths = set([ w for f, w in file_wavelengths.items() ])
       if (len(all_wavelengths) == 1) :
         self.wavelength = all_wavelengths.pop()
       elif (len(all_wavelengths) > 1) :
         filtered_wavelengths = set([])
         # MTZ files typically have the wavelength set to 1.0 if it was not
         # previously specified, so we ignore these.
-        for file_name, wavelength in file_wavelengths.iteritems() :
+        for file_name, wavelength in file_wavelengths.items() :
           if (file_name.endswith(".mtz") and wavelength in [0.0, 1.0]) :
             continue
           filtered_wavelengths.add(wavelength)
@@ -404,7 +409,7 @@ class process_arrays (object) :
       change_symmetry = True
       if (pg_number_out != pg_number_in) :
         change_point_group = True
-        print >> log, "Will expand to P1 symmetry before merging."
+        print("Will expand to P1 symmetry before merging.", file=log)
     else :
       output_sg = params.mtz_file.crystal_symmetry.space_group.group()
     if params.mtz_file.crystal_symmetry.output_unit_cell is not None :
@@ -503,9 +508,9 @@ class process_arrays (object) :
         miller_array = miller_array.merge_equivalents().array()
 
       if DEBUG :
-        print >> log, "  Adjusted size:  %d" % miller_array.data().size()
+        print("  Adjusted size:  %d" % miller_array.data().size(), file=log)
         if miller_array.sigmas() is not None :
-          print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+          print("         sigmas:  %d" % miller_array.sigmas().size(), file=log)
 
       #-----------------------------------------------------------------
       # CHANGE OF BASIS
@@ -548,7 +553,7 @@ class process_arrays (object) :
         elif output_array.is_xray_intensity_array() :
           array_types[i] = re.sub("F", "J", array_types[i])
         if len(default_types) == len(array_types[i]) :
-          print >> log, "Recovering original column types %s" % array_types[i]
+          print("Recovering original column types %s" % array_types[i], file=log)
           column_types = array_types[i]
       if (output_array.data().size() == 0) :
         raise Sorry("The array %s:%s ended up empty.  Please check the "+
@@ -561,9 +566,9 @@ class process_arrays (object) :
           array_params.column_root_label, file_name))
       else :
         if DEBUG :
-          print >> log, "  Final size:    %d" % output_array.data().size()
+          print("  Final size:    %d" % output_array.data().size(), file=log)
           if output_array.sigmas() is not None :
-            print >> log, "      sigmas:    %d" % output_array.sigmas().size()
+            print("      sigmas:    %d" % output_array.sigmas().size(), file=log)
         self.add_array_to_mtz_dataset(
           output_array=output_array,
           default_label=default_label,
@@ -652,8 +657,7 @@ class process_arrays (object) :
           r_free_flags = r_free_flags.merge_equivalents().array()
         if (r_free_flags.anomalous_flag()) :
           if (r_free_params.remediate_mismatches) :
-            print >> log, \
-              "Remediating any mismatched flags for Friedel mates..."
+            print("Remediating any mismatched flags for Friedel mates...", file=log)
             r_free_flags = r_free_utils.remediate_mismatches(
               array=r_free_flags,
               log=log)
@@ -664,7 +668,7 @@ class process_arrays (object) :
             # r-free flags later
             generate_bijvoet_mates = True
         if (r_free_params.adjust_fraction) :
-          print >> log, "Resizing test set in %s" % array_name
+          print("Resizing test set in %s" % array_name, file=log)
           r_free_as_bool = get_r_free_as_bool(r_free_flags,
             test_flag_value)
           r_free_flags = r_free_utils.adjust_fraction(
@@ -689,7 +693,7 @@ class process_arrays (object) :
           for hkl in params.mtz_file.exclude_reflection :
             output_array = output_array.delete_index(hkl)
         if (r_free_params.export_for_ccp4) :
-          print >> log, "%s: converting to CCP4 convention" % array_name
+          print("%s: converting to CCP4 convention" % array_name, file=log)
           output_array = export_r_free_flags(
             miller_array=output_array,
             test_flag_value=True)
@@ -752,7 +756,7 @@ class process_arrays (object) :
       if r_free_params.new_label is None or r_free_params.new_label == "" :
         r_free_params.new_label = "FreeR_flag"
       if r_free_params.export_for_ccp4 :
-        print >> log, "%s: converting to CCP4 convention" % array_name
+        print("%s: converting to CCP4 convention" % array_name, file=log)
         output_array = export_r_free_flags(
           miller_array=new_r_free_array,
           test_flag_value=True)
@@ -776,7 +780,7 @@ class process_arrays (object) :
     self.label_changes = []
     self.mtz_object = mtz_object
     if not len(labels) == mtz_object.n_columns() :
-      print >> log, "\n".join([ "LABEL: %s" % label for label in labels ])
+      print("\n".join([ "LABEL: %s" % label for label in labels ]), file=log)
       self.show(out=log)
       raise Sorry("The number of output labels does not match the final "+
         "number of labels in the MTZ file.  Details have been printed to the "+
@@ -807,7 +811,7 @@ class process_arrays (object) :
               "own choice of labels.") % labels[i])
         try :
           column.set_label(label)
-        except RuntimeError, e :
+        except RuntimeError as e :
           if ("new_label is used already" in str(e)) :
             col_names = [ col.label() for col in mtz_object.columns() ]
             raise RuntimeError(("Duplicate column label '%s': current labels "+
@@ -841,10 +845,10 @@ class process_arrays (object) :
 
   def show (self, out=sys.stdout) :
     if self.mtz_object is not None :
-      print >> out, ""
-      print >> out, ("=" * 20) + " Summary of output file " + ("=" * 20)
+      print("", file=out)
+      print(("=" * 20) + " Summary of output file " + ("=" * 20), file=out)
       self.mtz_object.show_summary(out=out, prefix="  ")
-      print >> out, ""
+      print("", file=out)
 
   def finish (self) :
     assert self.mtz_object is not None
@@ -880,7 +884,7 @@ def get_best_resolution (miller_arrays, input_symm=None) :
         best_d_max = d_max
       if best_d_min is None or d_min < best_d_min :
         best_d_min = d_min
-    except Exception, e :
+    except Exception as e :
       pass
   return (best_d_max, best_d_min)
 
@@ -902,7 +906,7 @@ def get_original_array_types (input_file, original_labels) :
   mtz_file = input_file.file_object.file_content()
   mtz_columns = mtz_file.column_labels()
   mtz_types = mtz_file.column_types()
-  mtz_crossref = dict(zip(mtz_columns, mtz_types))
+  mtz_crossref = dict(list(zip(mtz_columns, mtz_types)))
   for label in original_labels :
     array_types += mtz_crossref[label]
   return array_types
@@ -959,11 +963,11 @@ def modify_array (
     raise Sorry("The parameters remove_negatives and massage_intensities "+
       "are mutually exclusive.")
   if debug :
-    print >> log, "  Starting size:  %d" % miller_array.data().size()
+    print("  Starting size:  %d" % miller_array.data().size(), file=log)
     if miller_array.sigmas() is not None :
-      print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+      print("         sigmas:  %d" % miller_array.sigmas().size(), file=log)
   if verbose :
-    print >> log, "Processing %s" % array_name
+    print("Processing %s" % array_name, file=log)
   if array_params.d_max is not None and array_params.d_max <= 0 :
     array_params.d_max = None
   if array_params.d_min is not None and array_params.d_min <= 0 :
@@ -982,27 +986,27 @@ def modify_array (
     raise Sorry("The parameters remove_negatives and massage_intensities "+
       "are mutually exclusive.")
   if debug :
-    print >> log, "  Starting size:  %d" % miller_array.data().size()
+    print("  Starting size:  %d" % miller_array.data().size(), file=log)
     if miller_array.sigmas() is not None :
-      print >> log, "         sigmas:  %d" % miller_array.sigmas().size()
+      print("         sigmas:  %d" % miller_array.sigmas().size(), file=log)
   if debug :
-    print >> log, "  Resolution before resolution filter: %.2f - %.2f" % (
-      miller_array.d_max_min())
+    print("  Resolution before resolution filter: %.2f - %.2f" % (
+      miller_array.d_max_min()), file=log)
   # go ahead and perform the array-specific cutoff
   miller_array = miller_array.resolution_filter(
     d_min=array_params.d_min,
     d_max=array_params.d_max)
   if debug :
-    print >> log, "              after resolution filter: %.2f - %.2f" % (
-      miller_array.d_max_min())
-    print >> log, "  Truncated size: %d" % miller_array.data().size()
+    print("              after resolution filter: %.2f - %.2f" % (
+      miller_array.d_max_min()), file=log)
+    print("  Truncated size: %d" % miller_array.data().size(), file=log)
     if miller_array.sigmas() is not None :
       frint >> log, "          sigmas: %d" % miller_array.sigmas().size()
   # anomalous manipulation
   if (miller_array.anomalous_flag() and
       array_params.anomalous_data == "merged") :
-    print >> log, ("Converting array %s from anomalous to non-anomalous." %
-                   array_name)
+    print(("Converting array %s from anomalous to non-anomalous." %
+                   array_name), file=log)
     if (not miller_array.is_xray_intensity_array()) :
       miller_array = miller_array.average_bijvoet_mates()
       if miller_array.is_xray_reconstructed_amplitude_array() :
@@ -1014,16 +1018,16 @@ def modify_array (
       miller_array.set_observation_type_xray_intensity()
   elif ((not miller_array.anomalous_flag()) and
         (array_params.anomalous_data == "anomalous")) :
-    print >> log, "Generating Bijvoet mates for %s" % array_name
+    print("Generating Bijvoet mates for %s" % array_name, file=log)
     miller_array = miller_array.generate_bijvoet_mates()
   # scale factors
   if (array_params.scale_max is not None) :
-    print >> log, ("Scaling %s such that the maximum value is: %.6g" %
-                   (array_name, array_params.scale_max))
+    print(("Scaling %s such that the maximum value is: %.6g" %
+                   (array_name, array_params.scale_max)), file=log)
     miller_array = miller_array.apply_scaling(target_max=array_params.scale_max)
   elif (array_params.scale_factor is not None) :
-    print >> log, ("Multiplying data in %s with the factor: %.6g" %
-                   (array_name, array_params.scale_factor))
+    print(("Multiplying data in %s with the factor: %.6g" %
+                   (array_name, array_params.scale_factor)), file=log)
     miller_array = miller_array.apply_scaling(factor=array_params.scale_factor)
   # Since this function has many built-in consistency checks, we always run
   # it even for non-experimental arrays
@@ -1036,7 +1040,7 @@ def modify_array (
   # would be used on experimental data, but there is no reason why they can't
   # be applied to other array types.
   if (array_params.shuffle_values) :
-    print >> log, "Shuffling values for %s" % array_name
+    print("Shuffling values for %s" % array_name, file=log)
     combined_array = None
     tmp_array = miller_array.deep_copy()
     tmp_array.setup_binner(n_bins=min(100, tmp_array.indices().size()//10))
@@ -1062,8 +1066,8 @@ def modify_array (
         not miller_array.is_integer_array()) :
       raise Sorry("Resetting the values for %s is not permitted." %
         array_name)
-    print >> log, "Resetting values for %s to %g" % (array_name,
-      array_params.reset_values_to)
+    print("Resetting values for %s to %g" % (array_name,
+      array_params.reset_values_to), file=log)
     data = miller_array.data().deep_copy()
     new_value = array_params.reset_values_to
     if miller_array.is_integer_array() :
@@ -1104,7 +1108,7 @@ def modify_experimental_data_array (
   # negative intensity/amplitude remediation
   if (array_params.remove_negatives) :
     if (miller_array.is_real_array()) :
-      print >> log, "Removing negatives from %s" % array_name
+      print("Removing negatives from %s" % array_name, file=log)
       miller_array = miller_array.select(miller_array.data() > 0)
       if (miller_array.sigmas() is not None) :
         miller_array = miller_array.select(miller_array.sigmas() > 0)
@@ -1340,12 +1344,12 @@ def check_and_warn_about_incomplete_r_free_flags (combined_set) :
       (100 * (1-completeness)), UserWarning)
 
 def usage (out=sys.stdout, attributes_level=0) :
-  print >> out, """
+  print("""
 # usage: iotbx.reflection_file_editor [file1.mtz ...] [parameters.eff]
 #            --help      (print this message)
 #            --details   (show parameter help strings)
 # Dumping default parameters:
-"""
+""", file=out)
   master_phil.show(out=out, attributes_level=attributes_level)
 
 def generate_params (file_name, miller_array, include_resolution=False) :
@@ -1484,13 +1488,13 @@ def run (args, out=sys.stdout) :
   params.mtz_file.output_file = os.path.abspath(params.mtz_file.output_file)
   process = process_arrays(params, input_files=input_files, log=out)
   if params.dry_run :
-    print >> out, "# showing final parameters"
+    print("# showing final parameters", file=out)
     master_phil.format(python_object=params).show(out=out)
     if params.verbose :
       process.show(out=out)
     return process
   process.finish()
-  print >> out, "Data written to %s" % params.mtz_file.output_file
+  print("Data written to %s" % params.mtz_file.output_file, file=out)
   return process
 
 if __name__ == "__main__" :

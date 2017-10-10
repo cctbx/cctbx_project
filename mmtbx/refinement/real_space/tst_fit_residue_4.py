@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -95,7 +96,7 @@ def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
   dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
     result.pdb_hierarchy.atoms().extract_xyz()).dot()))
   #assert dist < 0.47, dist
-  print "Test disabled since current protocol cannot do what test asks for."
+  print("Test disabled since current protocol cannot do what test asks for.")
 
 if(__name__ == "__main__"):
   t0 = time.time()
@@ -106,4 +107,4 @@ if(__name__ == "__main__"):
   exercise(
     rotamer_manager = rotamer_manager,
     sin_cos_table   = sin_cos_table)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

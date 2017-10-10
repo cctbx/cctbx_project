@@ -1,5 +1,6 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
+from builtins import object
 from libtbx import slots_getstate_setstate
 
 import os.path
@@ -38,7 +39,7 @@ class server (object) :
         The information associated with that screen.
     """
     screen_name = screen_name.lower().replace(" ", "_")
-    keys = self._cif_model.keys()
+    keys = list(self._cif_model.keys())
     data = None
     if screen_name in keys:
       data = self._cif_model[screen_name]

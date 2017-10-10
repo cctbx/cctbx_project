@@ -1,9 +1,12 @@
 from __future__ import division
 
+from builtins import next
+from builtins import object
 from boost_adaptbx.graph import min_cut_max_flow
 from boost_adaptbx.graph import utility
 
 import operator
+from functools import reduce
 
 
 def no_heap_element_limit(heap):
@@ -185,7 +188,7 @@ class stirling_tree_sw_node(stirling_tree_node):
   def immediate_offpath_children(self):
 
     if self.is_terminal_leaf():
-      raise RuntimeError, "No more children"
+      raise RuntimeError("No more children")
 
     ( contracted, label ) = copy_graph_and_merge_vertices(
       graph = self.graph,
@@ -378,13 +381,13 @@ class TerminalRoute(object):
   @staticmethod
   def onpath_child(node):
 
-    raise RuntimeError, "No more children"
+    raise RuntimeError("No more children")
 
 
   @staticmethod
   def offpath_child(node):
 
-    raise RuntimeError, "No more children"
+    raise RuntimeError("No more children")
 
 
 class BKRoute(object):
@@ -546,7 +549,7 @@ def find_vertex_by_label(graph, label):
     if graph.vertex_label( vertex = vertex ) == label:
       return vertex
 
-  raise KeyError, "vertex not found"
+  raise KeyError("vertex not found")
 
 
 def find_two_vertices_by_label(graph, label1, label2):
@@ -569,7 +572,7 @@ def find_two_vertices_by_label(graph, label1, label2):
       if vertex1 is not None:
         return ( vertex1, vertex2 )
 
-  raise KeyError, "vertices not found"
+  raise KeyError("vertices not found")
 
 
 def calculate_vertex_by_label_dict(graph):

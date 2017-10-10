@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from libtbx import easy_pickle
 import libtbx.load_env
 import math

@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 import mmtbx.refinement.minimization_ncs_constraints
 from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 from scitbx.array_family import flex
@@ -79,7 +80,7 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
       xray_structure=xrs,
       log=null_out())
   tmp_xrs = xrs.deep_copy_scatterers()
-  refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
+  refine_selection = flex.size_t(range(xrs.scatterers().size()))
 
   # print "refining sites"
   cycle = 0
@@ -107,7 +108,7 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
   new_ncs_obj = iotbx.ncs.input(hierarchy=refined_pdb_h)
   new_ncs_transform = new_ncs_obj.ncs_transform
   spec =  new_ncs_obj.get_ncs_info_as_spec()
-  for k, v in original_ncs_transform.iteritems():
+  for k, v in original_ncs_transform.items():
     assert approx_equal(v.r.elems, new_ncs_transform[k].r.elems)
     assert approx_equal(v.t, new_ncs_transform[k].t)
   overall_rmsd_after = spec.overall_rmsd()

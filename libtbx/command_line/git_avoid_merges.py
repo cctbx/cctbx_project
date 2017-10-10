@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.auto_build.bootstrap import Toolbox
 import libtbx.easy_run
 import libtbx.load_env
@@ -44,7 +45,7 @@ def find_all_git_modules():
 def set_all_git_module_branches_to_rebase():
   t = Toolbox()
   for module, config in find_all_git_modules():
-    print "Git repository found:", module
+    print("Git repository found:", module)
     t.set_git_repository_config_to_rebase(config)
 
 def set_git_defaults_to_rebase():
@@ -63,18 +64,18 @@ def set_git_defaults_to_rebase():
       if name in expected:
         del(expected[name])
   if expected:
-    print "Updating global git settings:"
-    for attribute, value in expected.iteritems():
-      print "  %s = %s" % (attribute, value)
+    print("Updating global git settings:")
+    for attribute, value in expected.items():
+      print("  %s = %s" % (attribute, value))
       libtbx.easy_run.fully_buffered("git config --global \"%s\" \"%s\"" % (attribute, value))
 
 def run():
   set_all_git_module_branches_to_rebase()
   set_git_defaults_to_rebase()
-  print "\nAll done."
+  print("\nAll done.")
 
 if __name__ == "__main__":
   if len(sys.argv) != 1:
-    print what_is_this
+    print(what_is_this)
   else:
     run()

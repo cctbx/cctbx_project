@@ -1,13 +1,18 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 import math
 from math import exp,pi,log,pow
-import cPickle as pickle
-import cStringIO as StringIO
+import pickle as pickle
+import io as StringIO
 from scitbx.lbfgs import run,termination_parameters,exception_handling_parameters,core_parameters
 
 
-class minimizer:
+class minimizer(object):
   def __init__(self, d_i, psi_i, eta_rad, Deff):
     import sys
     self.safelog = -1. + math.log(sys.float_info.max)
@@ -48,7 +53,7 @@ class minimizer:
   def functional_only(self,alpha,eta):
 
     #print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     if False:
       from matplotlib import pyplot as plt
@@ -67,12 +72,12 @@ class minimizer:
 
       if abs(expBarg) > self.safelog or abs(expBnegarg) > self.safelog:
 
-        print "XXescalate",self.escalate
-        print "XXpsi_model",psi_model
-        print "XXexp",B,expBarg
-        print "XXeta",eta
-        print "XXDeff",1./alpha
-        print self.S.getvalue()
+        print("XXescalate",self.escalate)
+        print("XXpsi_model",psi_model)
+        print("XXexp",B,expBarg)
+        print("XXeta",eta)
+        print("XXDeff",1./alpha)
+        print(self.S.getvalue())
         raise ValueError("max likelihood exp argument outside of math domain %f %f"%(expBarg,expBnegarg))
 
       fx = (0.5/psi_model)/(1+exp(expBarg ) ) * (1+exp(self.escalate))
@@ -94,7 +99,7 @@ class minimizer:
     alpha = exp(self.x[0])
     eta = exp(self.x[1])
     #print "alpha",alpha, "eta",eta
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     partf_partP0 = 0.
     partf_partP1 = 0.
@@ -202,7 +207,7 @@ class minimizer:
     eplus = exp(self.x[1]+EPSILON)
     eminu = exp(self.x[1]-EPSILON)
 
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     partf_partalpha = 0.
     partf_parteta = 0.
@@ -216,8 +221,8 @@ class minimizer:
     fd_partf_parteta = (self.functional_only(alpha,eplus) -
                           self.functional_only(alpha,eminu)) / (2.*EPSILON)
 
-    print f, [fd_partf_partalpha,fd_partf_parteta],"finite diff"
-    print
+    print(f, [fd_partf_partalpha,fd_partf_parteta],"finite diff")
+    print()
 
 
     return (f, flex.double([fd_partf_partalpha,fd_partf_parteta]))

@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 from cctbx.array_family import flex
 
 def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
@@ -22,7 +27,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     if table == 'frame':
       items = [0]*len(order_dict)
-      for key,val in data.items():
+      for key,val in list(data.items()):
         items[order_dict[key]]=val
       characters = ' '.join([str(i) for i in items])+'\n'
       X["xtal_proxy"].get_obj()[rows_frame*600:rows_frame*600+len(characters)]=characters
@@ -31,7 +36,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     elif table == 'observation':
       rows_observation = X["rows"].get_obj()[0]
-      new_rows_observation = rows_observation+len(data[data.keys()[0]])
+      new_rows_observation = rows_observation+len(data[list(data.keys())[0]])
       X["intensity_proxy"].get_obj()[rows_observation:new_rows_observation]=data["i"]
       X["sigma_proxy"].get_obj()[rows_observation:new_rows_observation]=data["sigi"]
       X["miller_proxy"].get_obj()[rows_observation:new_rows_observation]=data["hkl_id_0_base"]
@@ -44,7 +49,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
 
     else:
       raise RuntimeError("Unknown table '%s'" % command[0])
-    print "FRAME",rows_frame,"OBS",X['rows'].get_obj()[0]
+    print("FRAME",rows_frame,"OBS",X['rows'].get_obj()[0])
     if lastrowid_key is not None:
       db_results_queue.put((lastrowid_key, lastrowid_value))
     db_commands_queue.task_done()
@@ -55,7 +60,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore, X):
   db_commands_queue.join()
   semaphore.release()
 
-class manager:
+class manager(object):
   # The manager
 
   def __init__(self, params, data_proxy):
@@ -81,7 +86,7 @@ class manager:
     for suffix in '_frame.pickle', '_miller.pickle', '_observation.pickle':
       try:
         remove(self.params.output.prefix + suffix)
-      except OSError, e:
+      except OSError as e:
         pass # deliberate - file does not exist
 
     self.miller = indices
@@ -103,7 +108,7 @@ class manager:
         self._db_results_queue.put(item)
 
   def insert_observation(self, **kwargs):
-    print "inserting obs:"
+    print("inserting obs:")
     self._db_commands_queue.put(('observation', kwargs, None))
 
   def join(self,data_dict):
@@ -116,7 +121,7 @@ class manager:
     self._db_results_queue.join()
     self._semaphore.acquire()
     nrows = data_dict["rows"].get_obj()[0]
-    print "writing observation pickle with %d rows"%nrows
+    print("writing observation pickle with %d rows"%nrows)
     kwargs = dict(
       miller_lookup =      flex.size_t(data_dict["miller_proxy"].get_obj()[:nrows]),
       observed_intensity = flex.double(data_dict["intensity_proxy"].get_obj()[:nrows]),
@@ -126,7 +131,7 @@ class manager:
       original_K =         flex.int   (data_dict["K_proxy"].get_obj()[:nrows]),
       original_L =         flex.int   (data_dict["L_proxy"].get_obj()[:nrows]),
     )
-    import cPickle as pickle
+    import pickle as pickle
     pickle.dump(kwargs, open(self.params.output.prefix+"_observation.pickle","wb"),
                 pickle.HIGHEST_PROTOCOL)
     pickle.dump(self.miller, open(self.params.output.prefix+"_miller.pickle","wb"),
@@ -153,7 +158,7 @@ order_dict = {'wavelength': 0,
                   'unique_file_name': 15}
 class read_experiments(object):
   def __init__(self,params):
-    import cPickle as pickle
+    import pickle as pickle
     from dxtbx.model import BeamFactory
     from dxtbx.model import DetectorFactory
     from dxtbx.model.crystal import crystal_model
@@ -214,18 +219,18 @@ class read_experiments(object):
   def show_summary(self):
     w = flex.double([e.beam.get_wavelength() for e in self.experiments])
     stats=flex.mean_and_variance(w)
-    print "Wavelength mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Wavelength mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     uc = [e.crystal.get_unit_cell().parameters() for e in self.experiments]
     a = flex.double([u[0] for u in uc])
     stats=flex.mean_and_variance(a)
-    print "Unit cell a mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell a mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     b = flex.double([u[1] for u in uc])
     stats=flex.mean_and_variance(b)
-    print "Unit cell b mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell b mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     c = flex.double([u[2] for u in uc])
     stats=flex.mean_and_variance(c)
-    print "Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
+    print("Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation())
     d = flex.double([e.crystal.domain_size for e in self.experiments])
     stats=flex.mean_and_variance(d)
     # NOTE XXX FIXME:  cxi.index seems to record the half-domain size; report here the full domain size
-    print "Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation()
+    print("Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation())

@@ -1,6 +1,7 @@
 from __future__ import division
 ## This file conatins some usefull transformations
 ## for the generation of specific random variables
+from builtins import range
 import random
 import math
 from scitbx.array_family import flex

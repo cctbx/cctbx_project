@@ -1,6 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reindex
 
+from builtins import str
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 import string
@@ -75,14 +77,14 @@ Change-of-basis operator: h,k,l or x,y,z or
     base,ext = os.path.splitext(params.reindex.hkl_file)
     params.reindex.output_file = base + "_reindex.mtz"
   mtz_obj.write(file_name=params.reindex.output_file)
-  print >> out, "Reindex reflections written to %s" % params.reindex.output_file
+  print("Reindex reflections written to %s" % params.reindex.output_file, file=out)
   return params.reindex.output_file
 
 def convert_operator (change_of_basis) :
   from cctbx import sgtbx
   try :
     c_o_b = sgtbx.change_of_basis_op(change_of_basis)
-  except RuntimeError, e :
+  except RuntimeError as e :
     raise Sorry(str(e))
   else :
     return c_o_b

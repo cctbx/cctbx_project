@@ -1,5 +1,8 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 from scitbx.array_family import flex
 from iotbx.detectors import generic_flex_image
 
@@ -17,7 +20,7 @@ class GenericDetector(object):
 
   def readHeader(self):
     return
-    import cPickle as pickle
+    import pickle as pickle
     G = open(self.filename,"rb")
     phil_stuff=pickle.load(G)
     data_stuff=pickle.load(G)

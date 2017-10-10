@@ -1,6 +1,10 @@
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 from libtbx import adopt_init_args
@@ -101,7 +105,7 @@ class metric_subgroups(base_subgroups):
         cb_op_corr = cb_op_inp_best.inverse()
         try:
           best_subsym_corr = best_subsym.change_basis(cb_op_corr)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).find("Unsuitable value for rational rotation matrix.") < 0):
             raise
         else:

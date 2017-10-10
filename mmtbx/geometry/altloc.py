@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 def Empty(data, coordinates, processor):
   """
   An object without an altloc identifier
@@ -128,7 +129,7 @@ class Aggregator(object):
 
     self.ranges.append( self.indexer.regular.close_to( centre = coordinates ) )
 
-    for indexer in self.indexer.altlocs.values():
+    for indexer in list(self.indexer.altlocs.values()):
       self.ranges.append( indexer.close_to( centre = coordinates ) )
 
 

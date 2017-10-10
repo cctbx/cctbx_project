@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from libtbx.utils import format_cpu_times, Sorry
 import mmtbx
 
@@ -102,7 +104,7 @@ def exercise():
   def check_expected_error(s):
     cntr = 0
     try: r = mmtbx.map_names(map_name_string = s)
-    except Sorry, e:
+    except Sorry as e:
       assert str(e).count("Wrong map type requested: %s"%s)==1
       cntr += 1
     assert cntr == 1
@@ -126,4 +128,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  print format_cpu_times()
+  print(format_cpu_times())

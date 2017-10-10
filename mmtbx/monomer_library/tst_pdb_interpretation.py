@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
 from iotbx import pdb
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
@@ -8,7 +13,7 @@ from libtbx.test_utils import Exception_expected, block_show_diff, approx_equal
 import libtbx.load_env
 import iotbx.phil
 from libtbx import Auto
-from cStringIO import StringIO
+from io import StringIO
 import os
 import sys
 from cctbx.array_family import flex
@@ -880,7 +885,7 @@ def exercise_rna(
     relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print 'Skipping exercise_rna("%s"): input file not available' % file_name
+    print('Skipping exercise_rna("%s"): input file not available' % file_name)
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -1010,8 +1015,8 @@ def exercise_hydrogen_deuterium_aliases():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_hydrogen_deuterium_aliases():", \
-        "input file not available:", file_name
+      print("Skipping exercise_hydrogen_deuterium_aliases():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1034,14 +1039,14 @@ def exercise_corrupt_cif_link():
       relative_path="phenix_regression/misc/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_corrupt_cif_link():", \
-        "input file not available:", file_name
+      print("Skipping exercise_corrupt_cif_link():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
   try:
     monomer_library.pdb_interpretation.run(args=file_paths, log=log)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith("Corrupt CIF link definition:")
   else: raise Exception_expected
 
@@ -1054,8 +1059,8 @@ def exercise_dna_cns_cy5_th6():
       relative_path="phenix_regression/misc/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_dna_cns_cy5_th6():", \
-        "input file not available:", file_name
+      print("Skipping exercise_dna_cns_cy5_th6():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1075,8 +1080,8 @@ def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
     relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_sym_excl_indices():", \
-      "input file not available:", file_name
+    print("Skipping exercise_sym_excl_indices():", \
+      "input file not available:", file_name)
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1114,8 +1119,8 @@ def exercise_auto_alias_h_h1():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_auto_alias_h_h1():", \
-        "input file not available:", file_name
+      print("Skipping exercise_auto_alias_h_h1():", \
+        "input file not available:", file_name)
       return
     file_paths.append(file_path)
   log = StringIO()
@@ -1129,8 +1134,8 @@ def exercise_d_aa_resnames():
     relative_path="phenix_regression/pdb/dpn.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: dpn.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: dpn.pdb")
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1144,8 +1149,8 @@ def exercise_d_amino_acid_chain_perfect_in_box_peptide_plane():
     relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb")
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1163,8 +1168,8 @@ def exercise_d_amino_acid_chain_perfect_in_box():
     relative_path="phenix_regression/pdb/d_amino_acid_chain_perfect_in_box.pdb",
     test=os.path.isfile)
   if (file_path is None):
-    print "Skipping exercise_d_aa_resnames():", \
-      "input file not available: d_amino_acid_chain_perfect_in_box.pdb"
+    print("Skipping exercise_d_aa_resnames():", \
+      "input file not available: d_amino_acid_chain_perfect_in_box.pdb")
     return
   log = StringIO()
   pdb_interpretation_params = monomer_library.pdb_interpretation.master_params.extract()
@@ -1315,8 +1320,8 @@ def exercise_asp_glu_acid():
       relative_path="phenix_regression/pdb/"+file_name,
       test=os.path.isfile)
     if (file_path is None):
-      print "Skipping exercise_asp_glu_acid():", \
-        "input file not available:", file_name
+      print("Skipping exercise_asp_glu_acid():", \
+        "input file not available:", file_name)
     else:
       log = StringIO()
       processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1339,7 +1344,7 @@ def exercise_rna_dna_synonyms () :
     relative_path="phenix_regression/cif_files/PGP.cif",
     test=os.path.isfile)
   if (None in [pdb_file, cif_file]) :
-    print "Skipping exercise_rna_dna_synonyms() - input file(s) unavailable."
+    print("Skipping exercise_rna_dna_synonyms() - input file(s) unavailable.")
   else :
     log = StringIO()
     processed_pdb_file = monomer_library.pdb_interpretation.run(
@@ -1902,7 +1907,7 @@ ATOM     10  CA  VAL A  10      50.711  63.858  50.117  1.00  0.00           C
       file_name=None,
       raw_records=raw_records,
       force_symmetry=True)
-  except Sorry, e:
+  except Sorry as e:
     assert str(e).startswith(
       "Unit cell volume is incompatible with number of atoms")
   else: raise Exception_expected
@@ -2114,7 +2119,7 @@ END
       file_name=None,
       raw_records=raw_records,
       log=log)
-  except Exception, e:
+  except Exception as e:
     pass
   assert str(e)=="""Bad ATOM record:
 ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00"""
@@ -2303,7 +2308,7 @@ def run(args):
   exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib)
   exercise_edits_parallelity(mon_lib_srv, ener_lib)
   exercise_edits_planarity(mon_lib_srv, ener_lib)
-  print format_cpu_times()
+  print(format_cpu_times())
 
 if (__name__ == "__main__"):
   import sys

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 import iotbx.pdb
 from cctbx import maptbx
@@ -125,7 +126,7 @@ END
       found_two += 1
     assert approx_equal(a, s[0], 0.1)
     t1=time.time()
-    print "#%2d: answer: %5.3f sphericity: %5.3f" % (i+1, a, s[0])
+    print("#%2d: answer: %5.3f sphericity: %5.3f" % (i+1, a, s[0]))
   #
   assert found_two == 1
 

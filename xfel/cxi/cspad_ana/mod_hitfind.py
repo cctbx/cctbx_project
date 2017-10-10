@@ -7,7 +7,9 @@
 XXX
 """
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
 __version__ = "$Revision$"
 
 from scitbx.array_family import flex
@@ -175,7 +177,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                                       # this is not set or is zero or less
         db.create_tables(dbobj, self.m_db_table_name)
 
-      except Exception,e:
+      except Exception as e:
         self.logger.info("Couldn't create root tables: %s"%(e))
       dbobj.close()
 
@@ -380,8 +382,8 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
               c.assemble_reflections()
               log_frame(c.experiment_list, c.reflections, self.db_params, evt.run(), n_spots, self.timestamp, tt_low, tt_high)
             else:
-              print "Not logging %s, wrong bravais setting (expecting %d, got %d)" % (
-                self.timestamp, known_setting, indexed_setting)
+              print("Not logging %s, wrong bravais setting (expecting %d, got %d)" % (
+                self.timestamp, known_setting, indexed_setting))
           else:
             log_frame(None, None, self.db_params, evt.run(), n_spots, self.timestamp, tt_low, tt_high)
 
@@ -540,7 +542,7 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
 
   def commit_progress_entries(self):
     if len(self.buffered_progress_entries) > 0:
-      print "Commiting %d entries to the db"%len(self.buffered_progress_entries)
+      print("Commiting %d entries to the db"%len(self.buffered_progress_entries))
 
       from cxi_xdr_xes.cftbx.cspad_ana import db
       dbobj = db.dbconnect(self.m_db_host, self.m_db_name, self.m_db_user, self.m_db_password)
@@ -557,12 +559,12 @@ cell_a,cell_b,cell_c,cell_alpha,cell_beta,cell_gamma,resolution,tags) VALUES "%(
         kwargs['frames_id'] = [frame_id] * len(kwargs['frames_id'])
 
         query = ("INSERT INTO `%s_observations` (" % self.m_db_experiment_tag) \
-                + ", ".join(kwargs.keys()) + ") values (" \
-                + ", ".join(["%s"] * len(kwargs.keys())) + ")"
+                + ", ".join(list(kwargs.keys())) + ") values (" \
+                + ", ".join(["%s"] * len(list(kwargs.keys()))) + ")"
         try:
-          parameters = zip(*kwargs.values())
+          parameters = list(zip(*list(kwargs.values())))
         except TypeError:
-          parameters = [kwargs.values()]
+          parameters = [list(kwargs.values())]
         cursor.executemany(query, parameters)
 
       dbobj.commit()

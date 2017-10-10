@@ -8,7 +8,10 @@
 # An implementation of the SMV image reader for CMOS1 images, from ALS 4.2.2
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import map
+from builtins import range
 from dxtbx.format.FormatSMV import FormatSMV
 
 class FormatSMVCMOS1(FormatSMV):
@@ -82,26 +85,26 @@ class FormatSMVCMOS1(FormatSMV):
     detector_name = self._header_dictionary[
         'DETECTOR_NAMES'].split()[0].strip()
 
-    detector_axes = map(float, self._header_dictionary[
-        '%sDETECTOR_VECTORS' % detector_name].split())
+    detector_axes = list(map(float, self._header_dictionary[
+        '%sDETECTOR_VECTORS' % detector_name].split()))
 
     detector_fast = matrix.col(tuple(detector_axes[:3]))
     detector_slow = matrix.col(tuple(detector_axes[3:]))
 
-    beam_pixels = map(float, self._header_dictionary[
-        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2])
-    pixel_size = map(float, self._header_dictionary[
-        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:])
-    image_size = map(int, self._header_dictionary[
-        '%sDETECTOR_DIMENSIONS' % detector_name].split())
+    beam_pixels = list(map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2]))
+    pixel_size = list(map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:]))
+    image_size = list(map(int, self._header_dictionary[
+        '%sDETECTOR_DIMENSIONS' % detector_name].split()))
 
     detector_origin = - (beam_pixels[0] * pixel_size[0] * detector_fast + \
                          beam_pixels[1] * pixel_size[1] * detector_slow)
 
-    gonio_axes = map(float, self._header_dictionary[
-        '%sGONIO_VECTORS' % detector_name].split())
-    gonio_values = map(float, self._header_dictionary[
-        '%sGONIO_VALUES' % detector_name].split())
+    gonio_axes = list(map(float, self._header_dictionary[
+        '%sGONIO_VECTORS' % detector_name].split()))
+    gonio_values = list(map(float, self._header_dictionary[
+        '%sGONIO_VALUES' % detector_name].split()))
     gonio_units = self._header_dictionary[
         '%sGONIO_UNITS' % detector_name].split()
     gonio_num_axes = int(self._header_dictionary[
@@ -122,7 +125,7 @@ class FormatSMVCMOS1(FormatSMV):
                                      0.0, 0.0, 1.0)))
         translations.append(gonio_values[j] * axis)
       else:
-        raise RuntimeError, 'unknown axis unit %s' % unit
+        raise RuntimeError('unknown axis unit %s' % unit)
 
     rotations.reverse()
     translations.reverse()
@@ -141,11 +144,11 @@ class FormatSMVCMOS1(FormatSMV):
         detector_slow.elems, pixel_size, image_size, (underload, overload))
 
   def _beam(self):
-    beam_direction = map(float, self._header_dictionary[
-        'SOURCE_VECTORS'].split()[:3])
+    beam_direction = list(map(float, self._header_dictionary[
+        'SOURCE_VECTORS'].split()[:3]))
 
-    polarization = map(float, self._header_dictionary[
-        'SOURCE_POLARZ'].split())
+    polarization = list(map(float, self._header_dictionary[
+        'SOURCE_POLARZ'].split()))
 
     p_fraction = polarization[0]
     p_plane = polarization[1:]
@@ -159,7 +162,7 @@ class FormatSMVCMOS1(FormatSMV):
     import calendar
     import time
 
-    rotation = map(float, self._header_dictionary['ROTATION'].split())
+    rotation = list(map(float, self._header_dictionary['ROTATION'].split()))
 
     format = self._scan_factory.format('SMV')
 
@@ -201,4 +204,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVCMOS1.understand(arg)
+    print(FormatSMVCMOS1.understand(arg))

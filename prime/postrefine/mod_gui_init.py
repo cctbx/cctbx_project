@@ -1,5 +1,8 @@
 from __future__ import division
 
+from builtins import map
+from builtins import str
+from builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016

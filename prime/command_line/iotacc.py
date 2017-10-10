@@ -1,17 +1,22 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME prime.iotacc
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
 '''
 Author      : Uervirojnangkoorn, M.
 Created     : 11/25/2014
 Description : iotacc selects iota integration results base on CC with ref. set.
 '''
+from __future__ import print_function
 import os, sys
 import numpy as np
 import math
 from iotbx import reflection_file_reader
 from cctbx.array_family import flex
 from cctbx import miller
-import cPickle as pickle
+import pickle as pickle
 from cctbx.crystal import symmetry
 from scitbx.matrix import sqr
 import shutil
@@ -189,7 +194,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
       if os.path.isdir(data):
         frame_files = read_pickles(data)
       if len(frame_files)==0:
-        print data, ' - no pickle file found.'
+        print(data, ' - no pickle file found.')
       else:
         for pickle_filename in frame_files:
           pickle_filename_split = pickle_filename.split('/')
@@ -258,7 +263,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
 
     cc_list_sel = cc_list.select(i_sel)
     n_refl_list_sel = n_refl_list.select(i_sel)
-    i_seq_sel = flex.int(range(len(cc_list))).select(i_sel)
+    i_seq_sel = flex.int(list(range(len(cc_list)))).select(i_sel)
     pickle_filename_list_sel = [pickle_filename_list[ii_sel] for ii_sel in i_seq_sel]
 
     #sort by n_refl and select the first
@@ -286,7 +291,7 @@ def select_best_by_cc_mproc(shot_no, cryst_id, iparams):
 
 if __name__=="__main__":
   iparams, txt_out_input = read_input(sys.argv[:1])
-  print txt_out_input
+  print(txt_out_input)
 
   if iparams.iotacc.set_id is not None:
     data_dir = iparams.data[0] + '/' +iparams.iotacc.set_id
@@ -297,7 +302,7 @@ if __name__=="__main__":
   for cryst_id in os.listdir(data_dir):
     cryst_ids.append(cryst_id)
 
-  shot_nos = range(iparams.iotacc.n_shots)
+  shot_nos = list(range(iparams.iotacc.n_shots))
   run_no = iparams.run_no
 
   if os.path.exists(run_no):
@@ -323,7 +328,7 @@ if __name__=="__main__":
         pickle_filename_sel, txt_out = result
         txt_out_log += txt_out
         txt_out_pickle_filename_sel += pickle_filename_sel + '\n'
-        print txt_out
+        print(txt_out)
 
   f = open(run_no+'/pickle_selected.txt', 'w')
   f.write(txt_out_pickle_filename_sel)

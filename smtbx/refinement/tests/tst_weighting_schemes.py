@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import str
+from builtins import range
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 import libtbx.utils
@@ -75,7 +77,7 @@ def exercise_weighting_schemes():
     "w=1/[\s^2^(Fo^2^)+(0.1234P)^2^+0.5678P] where P=(Fo^2^+2Fc^2^)/3")
   try:
     shelx_weighting(fo_sq=1, sigma=1, fc_sq=1, scale_factor=None)
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert 'SMTBX_ASSERT' in str(e)
   else:
     raise Exception_expected("scale_factor must have a definite value")

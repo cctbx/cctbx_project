@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 #
 # dxtbx.serialize.xds.py
@@ -10,6 +11,8 @@ from __future__ import absolute_import, division
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
+from builtins import map
+from builtins import object
 import sys
 from scitbx import matrix
 from rstbx.cftbx.coordinate_frame_helpers import align_reference_frame
@@ -153,7 +156,7 @@ def xds_detector_name(dxtbx_name):
   if 'mar' in dxtbx_name:
     return 'MAR'
 
-  raise RuntimeError, 'detector %s unknown' % dxtbx_name
+  raise RuntimeError('detector %s unknown' % dxtbx_name)
 
 
 class to_xds(object):
@@ -163,12 +166,12 @@ class to_xds(object):
     self._sweep = sweep
 
     # detector dimensions in pixels
-    self.detector_size = map(
+    self.detector_size = list(map(
       int,
       (max(panel.get_raw_image_offset()[0]+panel.get_image_size()[0]
            for panel in self.get_detector()),
        max(panel.get_raw_image_offset()[1]+panel.get_image_size()[1]
-           for panel in self.get_detector())))
+           for panel in self.get_detector()))))
     self.fast, self.slow = self.detector_size
 
     if len(self.get_detector()) > 1:
@@ -269,7 +272,7 @@ class to_xds(object):
   def get_template(self):
     try:
       return self._sweep.get_template()
-    except AttributeError, e:
+    except AttributeError as e:
       return 'FIXME####.h5'
 
 
@@ -294,91 +297,91 @@ class to_xds(object):
         detector_helpers_types.get(sensor, fast, slow, df, ds))
     trusted = self.get_detector()[0].get_trusted_range()
 
-    print >> out, 'DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
-          (detector, trusted[0] + 1, trusted[1])
+    print('DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
+          (detector, trusted[0] + 1, trusted[1]), file=out)
 
     if detector == 'PILATUS':
-      print >> out, 'SENSOR_THICKNESS= %.3f' % \
-        self.get_detector()[0].get_thickness()
+      print('SENSOR_THICKNESS= %.3f' % \
+        self.get_detector()[0].get_thickness(), file=out)
       if self.get_detector()[0].get_material():
         from cctbx.eltbx import attenuation_coefficient
         material = self.get_detector()[0].get_material()
         table = attenuation_coefficient.get_table(material)
         mu = table.mu_at_angstrom(self.wavelength) / 10.0
-        print >> out, '!SENSOR_MATERIAL / THICKNESS %s %.3f' % \
-          (material, self.get_detector()[0].get_thickness())
-        print >> out, '!SILICON= %f' % mu
+        print('!SENSOR_MATERIAL / THICKNESS %s %.3f' % \
+          (material, self.get_detector()[0].get_thickness()), file=out)
+        print('!SILICON= %f' % mu, file=out)
 
-    print >> out, 'DIRECTION_OF_DETECTOR_X-AXIS= %.5f %.5f %.5f' % \
-          self.detector_x_axis
+    print('DIRECTION_OF_DETECTOR_X-AXIS= %.5f %.5f %.5f' % \
+          self.detector_x_axis, file=out)
 
-    print >> out, 'DIRECTION_OF_DETECTOR_Y-AXIS= %.5f %.5f %.5f' % \
-          self.detector_y_axis
+    print('DIRECTION_OF_DETECTOR_Y-AXIS= %.5f %.5f %.5f' % \
+          self.detector_y_axis, file=out)
 
-    print >> out, 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
+    print('NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s), file=out)
 
-    print >> out, 'DETECTOR_DISTANCE= %.6f' % self.detector_distance
-    print >> out, 'ORGX= %.2f ORGY= %.2f' % self.detector_origin
-    print >> out, 'ROTATION_AXIS= %.5f %.5f %.5f' % \
-          self.rotation_axis
-    print >> out, 'STARTING_ANGLE= %.3f' % \
-          self.starting_angle
-    print >> out, 'OSCILLATION_RANGE= %.3f' % \
-          self.oscillation_range
-    print >> out, 'X-RAY_WAVELENGTH= %.5f' % \
-          self.wavelength
-    print >> out, 'INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
-          tuple([b / self.wavelength for b in self.beam_vector])
+    print('DETECTOR_DISTANCE= %.6f' % self.detector_distance, file=out)
+    print('ORGX= %.2f ORGY= %.2f' % self.detector_origin, file=out)
+    print('ROTATION_AXIS= %.5f %.5f %.5f' % \
+          self.rotation_axis, file=out)
+    print('STARTING_ANGLE= %.3f' % \
+          self.starting_angle, file=out)
+    print('OSCILLATION_RANGE= %.3f' % \
+          self.oscillation_range, file=out)
+    print('X-RAY_WAVELENGTH= %.5f' % \
+          self.wavelength, file=out)
+    print('INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
+          tuple([b / self.wavelength for b in self.beam_vector]), file=out)
 
     # FIXME LATER
     if hasattr(self.get_beam(), "get_polarization_fraction"):
-      print >> out, 'FRACTION_OF_POLARIZATION= %.3f' % \
-          self.get_beam().get_polarization_fraction()
-      print >> out, 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-          self.get_beam().get_polarization_normal()
-    print >> out, 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
-        self.get_template().replace('#', '?')
-    print >> out, 'TRUSTED_REGION= 0.0 1.41'
+      print('FRACTION_OF_POLARIZATION= %.3f' % \
+          self.get_beam().get_polarization_fraction(), file=out)
+      print('POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
+          self.get_beam().get_polarization_normal(), file=out)
+    print('NAME_TEMPLATE_OF_DATA_FRAMES= %s' % \
+        self.get_template().replace('#', '?'), file=out)
+    print('TRUSTED_REGION= 0.0 1.41', file=out)
     for f0, s0, f1, s1 in self.get_detector()[0].get_mask():
-      print >> out, 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
-            (f0 - 1, f1 + 1, s0 - 1, s1 + 1)
+      print('UNTRUSTED_RECTANGLE= %d %d %d %d' % \
+            (f0 - 1, f1 + 1, s0 - 1, s1 + 1), file=out)
 
     start_end = self.get_scan().get_image_range()
 
     if start_end[0] == 0:
       start_end = (1, start_end[1])
 
-    print >> out, 'DATA_RANGE= %d %d' % start_end
-    print >> out, 'JOB=%s' %job_card
+    print('DATA_RANGE= %d %d' % start_end, file=out)
+    print('JOB=%s' %job_card, file=out)
     if space_group_number is not None:
-      print >> out, 'SPACE_GROUP_NUMBER= %i' %space_group_number
+      print('SPACE_GROUP_NUMBER= %i' %space_group_number, file=out)
     if [real_space_a, real_space_b, real_space_c].count(None) == 0:
       R = self.imagecif_to_xds_transformation_matrix
       unit_cell_a_axis = R * matrix.col(real_space_a)
       unit_cell_b_axis = R * matrix.col(real_space_b)
       unit_cell_c_axis = R * matrix.col(real_space_c)
-      print >> out, "UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems
-      print >> out, "UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems
-      print >> out, "UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems
+      print("UNIT_CELL_A-AXIS= %.6f %.6f %.6f" %unit_cell_a_axis.elems, file=out)
+      print("UNIT_CELL_B-AXIS= %.6f %.6f %.6f" %unit_cell_b_axis.elems, file=out)
+      print("UNIT_CELL_C-AXIS= %.6f %.6f %.6f" %unit_cell_c_axis.elems, file=out)
 
     if len(self.panel_x_axis) > 1:
       for panel_id, panel_x_axis in enumerate(self.panel_x_axis):
 
-        print >> out
-        print >> out, "!"
-        print >> out, "! SEGMENT %d" %(panel_id+1)
-        print >> out, "!"
-        print >> out, 'SEGMENT= %d %d %d %d' % self.panel_limits[panel_id]
-        print >> out, 'DIRECTION_OF_SEGMENT_X-AXIS= %.5f %.5f %.5f' % \
-              panel_x_axis
+        print(file=out)
+        print("!", file=out)
+        print("! SEGMENT %d" %(panel_id+1), file=out)
+        print("!", file=out)
+        print('SEGMENT= %d %d %d %d' % self.panel_limits[panel_id], file=out)
+        print('DIRECTION_OF_SEGMENT_X-AXIS= %.5f %.5f %.5f' % \
+              panel_x_axis, file=out)
 
-        print >> out, 'DIRECTION_OF_SEGMENT_Y-AXIS= %.5f %.5f %.5f' % \
-              self.panel_y_axis[panel_id]
+        print('DIRECTION_OF_SEGMENT_Y-AXIS= %.5f %.5f %.5f' % \
+              self.panel_y_axis[panel_id], file=out)
 
-        print >> out, 'SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id]
+        print('SEGMENT_DISTANCE= %.3f' % self.panel_distance[panel_id], file=out)
 
-        print >> out, 'SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id]
-        print >> out
+        print('SEGMENT_ORGX= %.2f SEGMENT_ORGY= %.2f' % self.panel_origin[panel_id], file=out)
+        print(file=out)
 
 
   def xparm_xds(self, real_space_a, real_space_b, real_space_c,

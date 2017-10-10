@@ -9,6 +9,7 @@ Sophia-Antipolis by the TROPICS team.
 http://www-sop.inria.fr/tropics/tapenade.html
 """
 from __future__ import division
+from __future__ import print_function
 
 def run(args):
   file_names = []
@@ -41,12 +42,12 @@ C  Hint: nbdirsmax should be the maximum number of differentiation directions
       if (line == "      END"):
         replacement_dict = dict(default_replacement_dict)
       else:
-        for old,new in replacement_dict.items():
+        for old,new in list(replacement_dict.items()):
           line = line.replace(old, new)
       output_lines.append(line)
   while (len(output_lines) != 0 and len(output_lines[-1]) == 0):
     output_lines.pop()
-  print "\n".join(output_lines)
+  print("\n".join(output_lines))
 
 if (__name__ == "__main__"):
   import sys

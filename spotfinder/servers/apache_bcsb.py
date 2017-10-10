@@ -1,5 +1,8 @@
 from __future__ import division
-import StringIO
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+import io
 
 def run(args, verbose=False):
   from libtbx.utils import Sorry
@@ -16,11 +19,11 @@ def run(args, verbose=False):
   from spotfinder.servers.apache_utils import LongLineSimpleNode as SimpleNode
   from spotfinder.applications import signal_strength
 
-  logger = StringIO.StringIO()
+  logger = io.StringIO()
   top = SimpleNode("spotfinder")
 
   try:
-    for key in args.keys():
+    for key in list(args.keys()):
         arg = "%s=%s"%(key,args.get(key,""))
         command_line_params = argument_interpreter.process(arg=arg)
         phil_objects.append(command_line_params)
@@ -34,25 +37,25 @@ def run(args, verbose=False):
       raise Sorry("%s not a readable file"%params.distl.image)
 
     Org = signal_strength.run_signal_strength(params)
-    assert len(Org.S.images.keys())==1 # there is only one image
-    key = Org.S.images.keys()[0]
+    assert len(list(Org.S.images.keys()))==1 # there is only one image
+    key = list(Org.S.images.keys())[0]
 
     # List of spots between specified high- and low-resolution limits
-    if Org.S.images[key].has_key('lo_pass_resolution_spots'):
+    if 'lo_pass_resolution_spots' in Org.S.images[key]:
       spots = Org.S.images[key]['lo_pass_resolution_spots']
-    elif Org.S.images[key].has_key('inlier_spots'):
+    elif 'inlier_spots' in Org.S.images[key]:
       spots = Org.S.images[key]['inlier_spots']
     else:
       spots = []
 
-    if Org.S.images[key].has_key('N_spots_total'):
+    if 'N_spots_total' in Org.S.images[key]:
       total = "%d"%Org.S.images[key]["N_spots_total"]
     else:
       total = "0"
 
-    if Org.S.images[key].has_key('resolution'):
+    if 'resolution' in Org.S.images[key]:
       resolution = Org.S.images[key]['resolution']
-    elif Org.S.images[key].has_key('distl_resolution'):
+    elif 'distl_resolution' in Org.S.images[key]:
       resolution = Org.S.images[key]['distl_resolution']
     else:
       resolution = 0.0
@@ -68,13 +71,13 @@ def run(args, verbose=False):
       reporter = Org.S.reporters[key][-1]
       normalizer = reporter.weights.sum()
       summation = 0;
-      for x in xrange(reporter.S_table_rows):
+      for x in range(reporter.S_table_rows):
         summation += reporter.weights[x] * reporter.MeanIsigI[x]
       top.child(SimpleNode(tag="mean_isigi",contents="%.3f"%(summation/normalizer)))
       integrated = reporter.Integrated.sum()
       top.child(SimpleNode(tag="integrated",contents="%.3f"%integrated))
 
-  except Exception,e:
+  except Exception as e:
     top.child(SimpleNode(tag="status",contents=repr(e)))
     top.emit(logger)
     return logger.getvalue()

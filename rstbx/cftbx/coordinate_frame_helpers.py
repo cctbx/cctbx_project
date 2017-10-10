@@ -1,10 +1,15 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 import math
 import random
 from scitbx import matrix
 from cctbx import sgtbx
 
-class coordinate_frame_information:
+class coordinate_frame_information(object):
     '''A bucket class to store coordinate frame information.'''
 
     def __init__(self, detector_origin, detector_fast, detector_slow,
@@ -90,7 +95,7 @@ class coordinate_frame_information:
 
     def get(self, parameter_name):
         if not hasattr(self, '_%s' % parameter_name):
-            raise RuntimeError, 'no parameter %s' % parameter_name
+            raise RuntimeError('no parameter %s' % parameter_name)
         return getattr(self, '_%s' % parameter_name)
 
     def R_to_CBF(self):
@@ -262,25 +267,25 @@ def import_xds_integrate_hkl(integrate_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])
@@ -375,25 +380,25 @@ def import_xds_ascii_hkl(xds_ascii_hkl_file):
 
     for record in header:
         if record.startswith('!ROTATION_AXIS='):
-            axis = map(float, record.split()[-3:])
+            axis = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!INCIDENT_BEAM_DIRECTION='):
-            beam = map(float, record.split()[-3:])
+            beam = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_X-AXIS='):
-            x = map(float, record.split()[-3:])
+            x = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!DIRECTION_OF_DETECTOR_Y-AXIS='):
-            y = map(float, record.split()[-3:])
+            y = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_A-AXIS='):
-            a = map(float, record.split()[-3:])
+            a = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_B-AXIS='):
-            b = map(float, record.split()[-3:])
+            b = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!UNIT_CELL_C-AXIS='):
-            c = map(float, record.split()[-3:])
+            c = list(map(float, record.split()[-3:]))
             continue
         if record.startswith('!X-RAY_WAVELENGTH='):
             wavelength = float(record.split()[-1])
@@ -753,10 +758,10 @@ def test_align_reference_frame_dw():
 
     R = align_reference_frame(pa,pt,sa,st)
 
-    print R * pa
-    print pt
-    print R * sa
-    print st
+    print(R * pa)
+    print(pt)
+    print(R * sa)
+    print(st)
 
 def random_orthogonal_vectors():
     v1 = matrix.col((random.random(), random.random(),
@@ -802,7 +807,7 @@ def find_closest_matrix(moving, target):
 def work():
     import sys
     import_xds_integrate_hkl(sys.argv[1])
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
     work()

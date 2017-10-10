@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.tls_analysis
 
 import sys
@@ -21,12 +22,12 @@ How to run:
 
 def run(args):
   t0 = time.time()
-  print "-"*79
-  print legend
-  print "-"*79
+  print("-"*79)
+  print(legend)
+  print("-"*79)
   if(len(args) != 1): raise Sorry("PDB file must be provided.")
   mmtbx.tls.analysis.cmd_driver(pdb_file_name = args[0])
-  print "Time: %-10.3f"%(time.time()-t0)
+  print("Time: %-10.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

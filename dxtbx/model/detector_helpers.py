@@ -8,6 +8,8 @@ from __future__ import absolute_import, division
 #
 # Helpers for the detector class...
 
+from builtins import map
+from builtins import object
 import math
 from scitbx import matrix
 
@@ -15,7 +17,7 @@ def read_xds_xparm(xds_xparm_file):
   '''Parse the XDS XPARM file, which contains a description of the detector
   and experimental geometry, to a dictionary.'''
 
-  data = map(float, open(xds_xparm_file, 'r').read().split())
+  data = list(map(float, open(xds_xparm_file, 'r').read().split()))
 
   assert(len(data) == 42)
 
@@ -26,7 +28,7 @@ def read_xds_xparm(xds_xparm_file):
   wavelength = data[6]
   beam = data[7:10]
 
-  nx, ny = map(int, data[10:12])
+  nx, ny = list(map(int, data[10:12]))
   px, py = data[12:14]
 
   distance = data[14]
@@ -101,7 +103,7 @@ def find_undefined_value(cbf_handle):
   cbf_handle.find_column('undefined_value')
   return cbf_handle.get_doublevalue()
 
-class detector_helper_sensors:
+class detector_helper_sensors(object):
   '''A helper class which allows enumeration of detector sensor technologies
   which should help in identifying specific detectors when needed. These are
   currently limited to IMAGE_PLATE CCD PAD.'''

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import libtbx.load_env
 import os
 
@@ -13,7 +14,7 @@ def run():
       else: break
   if (version is None):
     version = libtbx.env.command_version_suffix
-  print version
+  print(version)
 
 if (__name__ == "__main__"):
   run()

@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import object
 import fable.cout
 
 file_names_disable_warnings = set("""\
@@ -56,8 +62,8 @@ def check_intrinsics_extra(text):
     if (lines[5] != "           0"): return False
     return True
   if (not check()):
-    print "Unexpected output:"
-    print text
+    print("Unexpected output:")
+    print(text)
     raise AssertionError
 
 class file_name_and_expected_cout_info(object):
@@ -112,7 +118,7 @@ def read_file_names_and_expected_cout(test_valid):
 
 def regex_select(keyed_lists, regex_patterns):
   result = []
-  for key,list in keyed_lists.items():
+  for key,list in list(keyed_lists.items()):
     def key_matches_regex():
       if (len(regex_patterns) == 0):
         return True
@@ -138,13 +144,13 @@ class process_file_info(object):
     from libtbx import easy_run
     from libtbx.str_utils import show_string
     from libtbx.test_utils import show_diff
-    from cStringIO import StringIO
+    from io import StringIO
     import os.path as op
     import sys
     opts = O.opts
     file_name, io_infos = file_info
     if (opts.verbose):
-      print file_name
+      print(file_name)
     file_path = op.join(O.test_valid, file_name)
     top_procedures = top_procedures_by_file_name.get(file_name)
     common_equivalence_simple_list = [set(
@@ -163,7 +169,7 @@ class process_file_info(object):
           common_report_stringio=common_report_stringio)
       except Exception:
         if (not opts.keep_going): raise
-        print "\nEXCEPTION: fable.cout.process([%s])\n" % file_name
+        print("\nEXCEPTION: fable.cout.process([%s])\n" % file_name)
         return 1
       have_simple_equivalence = (
         "\n".join(lines).find(" // SIMPLE EQUIVALENCE") >= 0)
@@ -177,7 +183,7 @@ class process_file_info(object):
         base_name += "_alt%d" % i_ces
       fem_cpp = base_name + "_fem.cpp"
       fem_exe_name = fem_cpp[:-4] + O.comp_env.exe_suffix
-      print >> open(fem_cpp, "w"), "\n".join(lines)
+      print("\n".join(lines), file=open(fem_cpp, "w"))
       if (opts.ifort):
         ifort_exe_name = base_name + "_ifort"
         ifort_cmd = "ifort -diag-disable 7000 -o %s %s" % (
@@ -192,9 +198,9 @@ class process_file_info(object):
       def handle_exception(e):
         n_failures[0] += 1
         if (not opts.keep_going): raise
-        print
-        print str(e)
-        print
+        print()
+        print(str(e))
+        print()
         sys.stdout.flush()
       #
       class BuildError(RuntimeError): pass
@@ -206,27 +212,27 @@ class process_file_info(object):
           disable_warnings=(file_name in file_names_disable_warnings),
           show_command=opts.verbose,
           Error=BuildError)
-      except BuildError, e:
+      except BuildError as e:
         handle_exception(e)
         fem_exe_name = None
       #
       if (ifort_cmd is not None):
         if (opts.verbose):
-          print ifort_cmd
+          print(ifort_cmd)
         buffers = easy_run.fully_buffered(command=ifort_cmd)
         try:
           buffers.raise_if_errors_or_output(Error=BuildError)
-        except BuildError, e:
+        except BuildError as e:
           handle_exception(e)
           ifort_exe_name = None
       #
       for info in io_infos:
         if (info.skip_run):
           if (opts.verbose):
-            print "Skipping run:", file_name
+            print("Skipping run:", file_name)
           continue
         if (len(info.inp_lines) != 0 and opts.verbose):
-          print "  number of input lines:", len(info.inp_lines)
+          print("  number of input lines:", len(info.inp_lines))
         sys.stdout.flush()
         for exe_name in [fem_exe_name, ifort_exe_name]:
           if (exe_name is None): continue
@@ -234,7 +240,7 @@ class process_file_info(object):
           if (opts.valgrind):
             cmd = "valgrind " + cmd
           if (opts.verbose):
-            print cmd
+            print(cmd)
             sys.stdout.flush()
           join_stdout_stderr = (
                opts.valgrind
@@ -247,13 +253,13 @@ class process_file_info(object):
             class ExeError(RuntimeError): pass
             try:
               buffers.raise_if_errors(Error=ExeError)
-            except ExeError, e:
+            except ExeError as e:
               handle_exception(e)
               buffers = None
           if (buffers is not None):
             text = "\n".join(buffers.stdout_lines)
             if (opts.valgrind):
-              print text
+              print(text)
             else:
               def check(text):
                 if (file_name == "intrinsics_extra.f"):
@@ -273,7 +279,7 @@ class process_file_info(object):
                 have_diffs = show_diff(text, "\n".join(info.out_lines))
                 def assert_not_have_diffs():
                   if (opts.keep_going):
-                    print "WARNING: --keep-going after show_diff:", exe_name
+                    print("WARNING: --keep-going after show_diff:", exe_name)
                   else:
                     assert not have_diffs
                 if (have_diffs):
@@ -289,18 +295,18 @@ class process_file_info(object):
           def run_with_args(args):
             cmda = cmd0 + " " + args
             if (opts.verbose):
-              print cmda
+              print(cmda)
               sys.stdout.flush()
             result = easy_run.fully_buffered(
               command=cmda, join_stdout_stderr=True)
             if (opts.valgrind):
               cmda = "valgrind " + cmda
               if (opts.verbose):
-                print cmda
+                print(cmda)
                 sys.stdout.flush()
               buffers = easy_run.fully_buffered(
                 command=cmda, join_stdout_stderr=True)
-              print "\n".join(buffers.stdout_lines)
+              print("\n".join(buffers.stdout_lines))
             return result
           if (file_name == "read_lines.f"):
             exercise_end_of_line(exe_name=exe_name, verbose=opts.verbose)
@@ -350,7 +356,7 @@ klmno
   for vers,expected in zip(["unix", "dos", "dos2", "mac"], expected_outputs):
     remove_files(paths=["read_lines_out"])
     cmd = "%s < %s.txt > read_lines_out" % (op.join(".", exe_name), vers)
-    if (verbose): print cmd
+    if (verbose): print(cmd)
     easy_run.fully_buffered(command=cmd).raise_if_errors_or_output()
     assert op.isfile("read_lines_out")
     result = open("read_lines_out", "rb").read()
@@ -361,8 +367,8 @@ def exercise_compile_valid(regex_patterns, opts):
   from fable import simple_compilation
   comp_env = simple_compilation.environment()
   if (comp_env.compiler_path is None):
-    print "Skipping exercise_compile_valid(): %s not available." % \
-      comp_env.compiler
+    print("Skipping exercise_compile_valid(): %s not available." % \
+      comp_env.compiler)
     return
   import libtbx.load_env
   import os.path as op
@@ -380,7 +386,7 @@ def exercise_compile_valid(regex_patterns, opts):
       pch_name="fem.hpp",
       show_command=True)
     comp_env.set_have_pch()
-    print
+    print()
   #
   processor = process_file_info(
     opts=opts, comp_env=comp_env, test_valid=test_valid)
@@ -394,7 +400,7 @@ def exercise_compile_valid(regex_patterns, opts):
   n_proc = min(
     len(selected_file_names_and_expected_cout),
     opts.max_proc)
-  print "Number of processors:", n_proc
+  print("Number of processors:", n_proc)
   import multiprocessing
   mp_pool = multiprocessing.Pool(processes=n_proc)
   return sum(mp_pool.map(processor, selected_file_names_and_expected_cout))
@@ -429,9 +435,9 @@ def run(args):
     regex_patterns=command_line.args,
     opts=command_line.options)
   if (n_failures != 0):
-    print "Done."
+    print("Done.")
   else:
-    print "OK"
+    print("OK")
 
 if (__name__ == "__main__"):
   import sys

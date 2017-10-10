@@ -1,10 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import scitbx.math
 from scitbx.array_family import flex
 import math
 
 def test_resample(seed=0):
-  obs_ori=flex.double(range(20))
+  obs_ori=flex.double(list(range(20)))
 
   npb_draw = scitbx.math.non_parametric_bootstrap( obs_ori, -seed-1 )
   obs = npb_draw.draw( 100 )
@@ -50,7 +52,7 @@ def test_resample(seed=0):
 def run():
   for ii in range(10):
     test_resample(ii)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

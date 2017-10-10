@@ -1,7 +1,10 @@
 from __future__ import division
 from __future__ import with_statement
 
-import cPickle as pickle
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
+import pickle as pickle
 
 class TemporaryFile(object):
   """

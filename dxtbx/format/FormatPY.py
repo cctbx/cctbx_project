@@ -1,7 +1,9 @@
 # Implementation of a base class to read a pickled Python dictionary.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import chr
 from dxtbx.format.Format import Format
 
 class FormatPY(Format):
@@ -15,7 +17,7 @@ class FormatPY(Format):
   def understand(image_file):
     try:
       tag = FormatPY.open_file(image_file, 'rb').read(4)
-    except IOError,e:
+    except IOError as e:
       return False
 
     return tag[0:2]=="(d" or tag[0:2]=="}q" or \
@@ -33,4 +35,4 @@ class FormatPY(Format):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatPY.understand(arg)
+    print(FormatPY.understand(arg))

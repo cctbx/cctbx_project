@@ -8,6 +8,7 @@ As an aside, this script also exercises space_group.multiplicity(site).
 """
 
 from __future__ import division
+from builtins import zip
 from cctbx import maptbx
 from cctbx import miller
 from cctbx import sgtbx

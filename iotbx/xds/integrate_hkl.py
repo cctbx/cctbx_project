@@ -8,7 +8,11 @@
 #
 from __future__ import division
 
-class reader:
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
+class reader(object):
   """A class to read the INTEGRATE.HKL file used in XDS"""
 
   def __init__(self):
@@ -176,7 +180,7 @@ class reader:
     """
     # Split the tokens
     tokens = line.split()
-    tokens = map(int, tokens[0:3]) + map(float, tokens[3:])
+    tokens = list(map(int, tokens[0:3])) + list(map(float, tokens[3:]))
 
     # Get the reflection information and append to the lists
     self.hkl.append(tuple(tokens[0:3]))

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # Change the hand of a set of coordinates (useful in heavy atom location).
 
 from cctbx import crystal
@@ -18,7 +19,7 @@ def interpret_form_data(form):
   return inp
 
 def run(server_info, inp, status):
-  print "<pre>"
+  print("<pre>")
   # check input to prevent XSS
   try:
     unit_cell = uctbx.unit_cell(inp.ucparams)
@@ -26,8 +27,8 @@ def run(server_info, inp, status):
       symbol=inp.sgsymbol,
       table_id=inp.convention)
   except Exception:
-    print "Please check your inputs."
-    print "</pre>"
+    print("Please check your inputs.")
+    print("</pre>")
     return
 
   io_utils.show_input_symbol(inp.sgsymbol, inp.convention)
@@ -37,16 +38,16 @@ def run(server_info, inp, status):
         symbol=inp.sgsymbol,
         table_id=inp.convention))
   crystal_symmetry.show_summary()
-  print
+  print()
 
   change_of_hand_op \
     = crystal_symmetry.space_group_info().type().change_of_hand_op()
-  print "Change-of-hand matrix:", change_of_hand_op.c()
-  print "              Inverse:", change_of_hand_op.c_inv()
-  print
+  print("Change-of-hand matrix:", change_of_hand_op.c())
+  print("              Inverse:", change_of_hand_op.c_inv())
+  print()
 
-  print inp.coor_type, "coordinates:"
-  print
+  print(inp.coor_type, "coordinates:")
+  print()
 
   skip_columns = io_utils.interpret_skip_columns(inp.skip_columns)
 
@@ -58,6 +59,6 @@ def run(server_info, inp, status):
     if (inp.coor_type != "Fractional"):
       flipped_coordinates \
         = crystal_symmetry.unit_cell().orthogonalize(flipped_coordinates)
-    print skipped, "%.6g %.6g %.6g" % tuple(flipped_coordinates)
+    print(skipped, "%.6g %.6g %.6g" % tuple(flipped_coordinates))
 
-  print "</pre>"
+  print("</pre>")

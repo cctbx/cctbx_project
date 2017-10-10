@@ -3,11 +3,14 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
+from builtins import object
 import os, sys, copy
 from iotbx.detectors.npy import NpyImage
 
-class empty:
+class empty(object):
   pass
 
 parameters=empty()
@@ -21,7 +24,7 @@ def ImageFactory(filename):
     I = FormatPYunspecified(filename).get_detectorbase()
 
   else:
-    print "This is not a file; assume the data are in the defined dictionary format"
+    print("This is not a file; assume the data are in the defined dictionary format")
     I = NpyImage(filename, source_data=parameters.horizons_phil.indexing.data)
   I.readHeader(parameters.horizons_phil)
 
@@ -113,7 +116,7 @@ class wrapper_of_callback(object):
 
       dc.SetPen(wx.Pen('orange'))
       dc.SetBrush(wx.Brush('red', wx.TRANSPARENT))
-      for i in xrange(0, len(aa), 4):
+      for i in range(0, len(aa), 4):
         p = wxpanel._img.image_coords_as_screen_coords(aa[i + 1], aa[i + 0])
         p2 = wxpanel._img.image_coords_as_screen_coords(aa[i + 3]-1, aa[i + 2]-1)
         dc.DrawRectangle(x=p[0], y=p[1], width=p2[0]-p[0],height=p2[1]-p[1])
@@ -185,7 +188,7 @@ def run_one_index_core(horizons_phil):
 
   try:
     info.process()
-  except Exception, e:
+  except Exception as e:
     e.info = info
     raise e
 

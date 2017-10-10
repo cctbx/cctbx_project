@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from crys3d.hklview.frames import *
 from crys3d.hklview import view_2d
 import wx
@@ -20,7 +22,7 @@ class twin_settings_window (settings_window) :
     sizer.Add(self.value_info_2, 0, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
 
   def update_reflection_info (self, hkl, d_min, value_1, value_2) :
-    print hkl, value_1, value_2
+    print(hkl, value_1, value_2)
     if (hkl is None) :
       self.hkl_info.SetValue("")
       self.d_min_info.SetValue("")

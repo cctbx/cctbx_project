@@ -8,7 +8,8 @@
 #
 from __future__ import division
 
-class reader:
+from builtins import object
+class reader(object):
   """A class to read the CBF files used in XDS"""
   def __init__(self):
     pass

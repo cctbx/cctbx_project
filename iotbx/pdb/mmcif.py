@@ -1,4 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import map
+from builtins import range
+from past.builtins import basestring
+from builtins import object
 import sys
 from cctbx.array_family import flex
 from libtbx.containers import OrderedDict
@@ -80,7 +87,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if adps is not None:
         try:
           adps = [flex.double(adp) for adp in adps]
-        except ValueError, e:
+        except ValueError as e:
           raise CifBuilderError("Error interpreting ADPs: " + str(e))
         adps = flex.sym_mat3_double(*adps)
     py_adps = {}
@@ -93,7 +100,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     current_residue_id = None
     current_ins_code = None
 
-    for i_atom in xrange(atom_labels.size()):
+    for i_atom in range(atom_labels.size()):
       # model(s)
       last_model_id = current_model_id
       current_model_id = model_ids[i_atom]
@@ -130,7 +137,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           current_label_asym_id != last_label_asym_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
-        except ValueError, e:
+        except ValueError as e:
           resseq = current_residue_id
           assert len(resseq)==4
         residue_group = hierarchy.residue_group(
@@ -392,7 +399,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       self.cif_model = cif_object
     if len(self.cif_model) == 0:
       raise Sorry("mmCIF file must contain at least one data block")
-    self.cif_block = self.cif_model.values()[0]
+    self.cif_block = list(self.cif_model.values())[0]
     self.builder = pdb_hierarchy_builder(self.cif_block)
     self.hierarchy = self.builder.hierarchy
     self._source_info = "file %s" %file_name
@@ -441,7 +448,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return self.builder.crystal_symmetry
 
   def extract_cryst1_z_columns(self):
-    return self.cif_model.values()[0].get("_cell.Z_PDB")
+    return list(self.cif_model.values())[0].get("_cell.Z_PDB")
 
   def connectivity_section(self):
     # XXX Should we extract something from the CIF and return a PDB-like
@@ -474,7 +481,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def deposition_date(self):
     # date format: yyyy-mm-dd
-    cif_block = self.cif_model.values()[0]
+    cif_block = list(self.cif_model.values())[0]
     rev_num = cif_block.get('_database_PDB_rev.num')
     if rev_num is not None:
       date_original = cif_block.get('_database_PDB_rev.date_original')
@@ -565,10 +572,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
         r = [(self.cif_block.get('_pdbx_struct_oper_list.matrix[%s][%s]' %(x,y))[i])
           for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        t_rots.append(matrix.sqr(map(float,r)))
+        t_rots.append(matrix.sqr(list(map(float,r))))
         t = [(self.cif_block.get('_pdbx_struct_oper_list.vector[%s]' %x)[i])
           for x in '123']
-        t_trans.append(matrix.col(map(float,t)))
+        t_trans.append(matrix.col(list(map(float,t))))
 
     # filter everything for X0 and P here:
     trans = []
@@ -593,7 +600,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -634,10 +641,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
           self.cif_block.get('_struct_ncs_oper.code')[i] == 'given')
         r = [(self.cif_block.get('_struct_ncs_oper.matrix[%s][%s]' %(x,y))[i])
           for x,y in ('11', '12', '13', '21', '22', '23', '31','32', '33')]
-        rots.append(matrix.sqr(map(float,r)))
+        rots.append(matrix.sqr(list(map(float,r))))
         t = [(self.cif_block.get('_struct_ncs_oper.vector[%s]' %x)[i])
           for x in '123']
-        trans.append(matrix.col(map(float,t)))
+        trans.append(matrix.col(list(map(float,t))))
     # sort records by serial number
     serial_number.sort()
     items_order = [i for (_,i) in serial_number]
@@ -652,7 +659,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         if error_handle:
           raise Sorry('Rotation matrices are not proper! ')
         else:
-          print Sorry('Rotation matrices are not proper! ')
+          print(Sorry('Rotation matrices are not proper! '))
       ignore_transform = r.is_r3_identity_matrix() and t.is_col_zero()
       result.add(
         r=r, t=t,
@@ -689,7 +696,7 @@ class _cif_get_r_rfree_sigma_object(object):
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
-    print >> log, self.formatted_string()
+    print(self.formatted_string(), file=log)
 
 
 def extract_f_model_core_constants(cif_block):

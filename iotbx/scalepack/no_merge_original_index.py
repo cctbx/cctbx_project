@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -113,13 +117,13 @@ class reader(object):
     assert n_sym_ops_from_file > 0
     self.space_group_symbol = line[6:].strip()
     self.space_group_from_ops = sgtbx.space_group()
-    for i in xrange(n_sym_ops_from_file):
+    for i in range(n_sym_ops_from_file):
       line = f.readline().rstrip()
       assert len(line) == 27
-      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in xrange(9)], 1)
+      r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in range(9)], 1)
       line = f.readline().rstrip()
       assert len(line) == 9
-      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
+      t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in range(3)], 12)
       self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     f.close()
     if (header_only):
@@ -143,9 +147,9 @@ class reader(object):
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "File name:", show_string(self.file_name)
-    print >> out, prefix + "Space group symbol:", \
-      show_string(self.space_group_symbol)
+    print(prefix + "File name:", show_string(self.file_name), file=out)
+    print(prefix + "Space group symbol:", \
+      show_string(self.space_group_symbol), file=out)
     try: space_group_info = self.space_group_info()
     except KeyboardInterrupt: raise
     except Exception: pass
@@ -153,8 +157,8 @@ class reader(object):
       space_group_info.show_summary(
         f=out, prefix=prefix+"Space group from operations: ")
     if (self.original_indices is not None):
-      print >> out, prefix + "Number of original indices:", \
-        self.original_indices.size()
+      print(prefix + "Number of original indices:", \
+        self.original_indices.size(), file=out)
 
   def crystal_symmetry(self):
     return crystal.symmetry(
@@ -323,30 +327,30 @@ def quick_test(file_name):
   from libtbx.utils import user_plus_sys_time
   t = user_plus_sys_time()
   s = reader(file_name)
-  print "Time read:", t.delta()
+  print("Time read:", t.delta())
   s.show_summary()
-  print tuple(s.original_indices[:3])
-  print tuple(s.unique_indices[:3])
-  print tuple(s.batch_numbers[:3])
-  print tuple(s.centric_tags[:3])
-  print tuple(s.spindle_flags[:3])
-  print tuple(s.asymmetric_unit_indices[:3])
-  print tuple(s.i_obs[:3])
-  print tuple(s.sigmas[:3])
-  print tuple(s.original_indices[-3:])
-  print tuple(s.unique_indices[-3:])
-  print tuple(s.batch_numbers[-3:])
-  print tuple(s.centric_tags[-3:])
-  print tuple(s.spindle_flags[-3:])
-  print tuple(s.asymmetric_unit_indices[-3:])
-  print tuple(s.i_obs[-3:])
-  print tuple(s.sigmas[-3:])
+  print(tuple(s.original_indices[:3]))
+  print(tuple(s.unique_indices[:3]))
+  print(tuple(s.batch_numbers[:3]))
+  print(tuple(s.centric_tags[:3]))
+  print(tuple(s.spindle_flags[:3]))
+  print(tuple(s.asymmetric_unit_indices[:3]))
+  print(tuple(s.i_obs[:3]))
+  print(tuple(s.sigmas[:3]))
+  print(tuple(s.original_indices[-3:]))
+  print(tuple(s.unique_indices[-3:]))
+  print(tuple(s.batch_numbers[-3:]))
+  print(tuple(s.centric_tags[-3:]))
+  print(tuple(s.spindle_flags[-3:]))
+  print(tuple(s.asymmetric_unit_indices[-3:]))
+  print(tuple(s.i_obs[-3:]))
+  print(tuple(s.sigmas[-3:]))
   m = s.as_miller_array(merge_equivalents=False).merge_equivalents()
-  print "min redundancies:", flex.min(m.redundancies().data())
-  print "max redundancies:", flex.max(m.redundancies().data())
-  print "mean redundancies:", flex.mean(m.redundancies().data().as_double())
+  print("min redundancies:", flex.min(m.redundancies().data()))
+  print("max redundancies:", flex.max(m.redundancies().data()))
+  print("mean redundancies:", flex.mean(m.redundancies().data().as_double()))
   s.as_miller_arrays()[0].show_summary()
-  print
+  print()
 
 def run(args):
   exercise_combine_symops_and_symbol()
@@ -371,9 +375,9 @@ bnl_2003/karen/shelxd/pk1234-unmerged.sca""".split()
     for root_dir in args:
       fn = root_dir + "/" + file_name
       if (os.path.isfile(fn)):
-        print "File name:", fn
+        print("File name:", fn)
         quick_test(fn)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

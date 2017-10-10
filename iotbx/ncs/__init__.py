@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import chr
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from iotbx.pdb.atom_selection import selection_string_from_selection, convert_wildcards_in_chain_id
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
@@ -265,11 +271,11 @@ class input(object):
     # error handling
     self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
     if self.found_ncs_transforms == 0:
-      print >> self.log,'========== WARNING! ============\n'
-      print >> self.log,'  No NCS relation were found !!!\n'
-      print >> self.log,'================================\n'
+      print('========== WARNING! ============\n', file=self.log)
+      print('  No NCS relation were found !!!\n', file=self.log)
+      print('================================\n', file=self.log)
     if self.messages != '':
-      print >> self.log, self.messages
+      print(self.messages, file=self.log)
 
   def pdb_h_into_chain(self, pdb_h, ch_id="A"):
 
@@ -321,10 +327,10 @@ class input(object):
       to_show.show(out=self.log)
 
     def show_empty_selection_error_message(ng, where="reference"):
-      print >> self.log, "  Missing or corrupted %s field:" % where
-      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      print >> self.log, "      _ALL_ user-supplied groups will be ignored"
-      print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      print("  Missing or corrupted %s field:" % where, file=self.log)
+      print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
+      print("      _ALL_ user-supplied groups will be ignored", file=self.log)
+      print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
       show_particular_ncs_group(ng)
 
     # Massage NCS groups
@@ -345,7 +351,7 @@ class input(object):
       # Not a big deal.
       return None
     if(ncs_phil_groups is not None):
-      print >> self.log, "Validating user-supplied NCS groups..."
+      print("Validating user-supplied NCS groups...", file=self.log)
       empty_cntr = 0
       for ng in ncs_phil_groups:
         if ng.reference is None or len(ng.reference.strip())==0:
@@ -356,9 +362,9 @@ class input(object):
             show_empty_selection_error_message(ng, where="selection")
             empty_cntr += 1
       if(empty_cntr>0):
-        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-        print >> self.log, "      _ALL_ user-supplied groups are ignored."
-        print >> self.log, "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
+        print("      _ALL_ user-supplied groups are ignored.", file=self.log)
+        print("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=self.log)
         ncs_phil_groups=None
         return None
     # Verify NCS selections
@@ -371,7 +377,7 @@ class input(object):
       msg="Empty selection in NCS group definition: %s"
       asc = pdb_h.atom_selection_cache()
       for ncs_group in ncs_phil_groups:
-        print >> self.log, "  Validating:"
+        print("  Validating:", file=self.log)
         show_particular_ncs_group(ncs_group)
         selection_list = []
         # first, check for selections producing 0 atoms
@@ -471,13 +477,13 @@ class input(object):
           rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
           "Try to revise selections or adjust chain_similarity_threshold or \n" + \
           "chain_max_rmsd parameters."
-          print >> self.log, rejected_msg
+          print(rejected_msg, file=self.log)
           continue
         # User triggered the fail of this assert!
         # print "  N found ncs_groups:", len(group_dict)
         # assert len(group_dict) == 1, "Got %d" % len(group_dict)
         selections_were_modified = False
-        for key, ncs_gr in group_dict.iteritems():
+        for key, ncs_gr in group_dict.items():
           # print "dir ncs_gr:", dir(ncs_gr)
           new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
           # print "  new reference:", new_ncs_group.reference
@@ -536,9 +542,9 @@ class input(object):
         "    3. Residue mismatch in requested copies.\n" + \
         "  Please check the validated selection further down.\n"
         if selections_were_modified:
-          print >> self.log, modified_msg
+          print(modified_msg, file=self.log)
         else:
-          print >> self.log, ok_msg
+          print(ok_msg, file=self.log)
     # print "len(validated_ncs_groups)", len(validated_ncs_groups)
     # for ncs_gr in validated_ncs_groups:
     #   print "  reference:", ncs_gr.reference
@@ -595,7 +601,7 @@ class input(object):
         r = self.ncs_transform[tr_id].r
         t = self.ncs_transform[tr_id].t
         if not is_identity(r,t):
-          if group_by_tr.has_key(tr_id):
+          if tr_id in group_by_tr:
             if not(key in group_by_tr[tr_id][0]):
               group_by_tr[tr_id][0].append(key)
               group_by_tr[tr_id][1].append(selection_str)
@@ -607,8 +613,8 @@ class input(object):
       gk = list(group_key)[0]
       self.ncs_to_asu_selection[gk] = group_val
       # add the identity case to tr_id_to_selection
-      for key in  self.ncs_copies_chains_names.iterkeys():
-        if not self.tr_id_to_selection.has_key(key):
+      for key in  self.ncs_copies_chains_names.keys():
+        if key not in self.tr_id_to_selection:
           sel = key.split('_')[0]
           self.tr_id_to_selection[key] = (sel,sel)
       self.number_of_ncs_groups = 1
@@ -704,7 +710,7 @@ class input(object):
           ncs_group_id = ncs_group_id,
           selection_ids = gns,
           transform_id = key)
-        assert not self.ncs_transform.has_key(key)
+        assert key not in self.ncs_transform
         self.ncs_transform[key] = tr
         self.selection_ids.add(gns)
         self.update_ncs_copies_chains_names(
@@ -806,12 +812,12 @@ class input(object):
           atom_selection_cache=asc)
       self.ncs_to_asu_selection[all_m_select_str] = []
       #
-      for i in xrange(len(ncs_gr.copies)):
+      for i in range(len(ncs_gr.copies)):
         # iterate of ncs copies in group
         tr = ncs_gr.transforms[i]
         tr_id = format_num_as_str(tr.serial_num)
         self.ncs_transform[tr_id] = tr
-        for j in xrange(len(ncs_gr.copies[i])):
+        for j in range(len(ncs_gr.copies[i])):
           # iterate over chains in ncs copy
           m_isel = ncs_gr.iselections[0][j]
           m_ch_id = ncs_gr.copies[0][j]
@@ -939,7 +945,7 @@ class input(object):
             ncs_group_id = ncs_group_id,
             selection_ids = gs,
             transform_id = key)
-          assert not self.ncs_transform.has_key(key)
+          assert key not in self.ncs_transform
           self.ncs_transform[key] = tr
           self.selection_ids.add(gs)
           self.update_ncs_copies_chains_names(
@@ -973,7 +979,7 @@ class input(object):
     gr_t_list = gr_new.translations_orth()
     # in spec files transforms are inverted
     gr_new_list = [inverse_transform(r,t) for (r,t) in zip(gr_r_list,gr_t_list)]
-    for k,[_, tr_set] in self.ncs_group_map.iteritems():
+    for k,[_, tr_set] in self.ncs_group_map.items():
       # all transforms need to be the same to join
       if len(gr_r_list) != len(tr_set): continue
       same_transforms = [-1,]*len(tr_set)
@@ -1125,7 +1131,7 @@ class input(object):
         for k in self.transform_chain_assignment:
           key =  k.split('_')[0]
           ncs_selection = temp.selection(key)
-          if not self.asu_to_ncs_map.has_key(key):
+          if key not in self.asu_to_ncs_map:
             copy_count[key] = 0
             selection_ref = (selection_ref | ncs_selection)
             self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
@@ -1155,7 +1161,7 @@ class input(object):
           for transform_key in v:
             key =  transform_key.split('_')[0]
             ncs_selection =flex.bool(self.total_asu_length,temp.iselection(key))
-            if not self.asu_to_ncs_map.has_key(key):
+            if key not in self.asu_to_ncs_map:
               self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
             # make the selection at the proper location at the ASU
             temp_iselection = self.asu_to_ncs_map[key] + ((i + 1) * ncs_length)
@@ -1225,7 +1231,7 @@ class input(object):
           selection_ids = self.ncs_chain_selection,
           transform_id = key)
         # if ncs selection was not provided in phil parameter
-        assert not self.ncs_transform.has_key(key)
+        assert key not in self.ncs_transform
         self.ncs_transform[key] = tr
 
   def build_transform_dict(self,
@@ -1309,11 +1315,11 @@ class input(object):
     dictionary_values = nu.make_unique_chain_names(
       unique_chain_names,total_chains_number)
     # create the dictionary
-    zippedlists = zip(transform_assignment,dictionary_values)
+    zippedlists = list(zip(transform_assignment,dictionary_values))
     new_names_dictionary = {x:y for (x,y) in zippedlists}
     # add the master NCS to dictionary
     tr_set  = {format_num_as_str(x) for x in self.transform_to_be_used}
-    for k,v in self.ncs_group_map.iteritems():
+    for k,v in self.ncs_group_map.items():
       tr_str = (v[1] - tr_set)
       assert len(tr_str) == 1
       tr_str = tr_str.pop()
@@ -1336,11 +1342,11 @@ class input(object):
       # for k, v in self.asu_to_ncs_map.iteritems():
       #   print "  ", k, list(v)
       if self.old_i_seqs is not None:
-        for k, v in self.ncs_to_asu_map.iteritems():
+        for k, v in self.ncs_to_asu_map.items():
           for i in range(len(v)):
             # print v[i], "-->", self.old_i_seqs[v[i]]
             v[i] = self.old_i_seqs[v[i]]
-        for k, v in self.asu_to_ncs_map.iteritems():
+        for k, v in self.asu_to_ncs_map.items():
           for i in range(len(v)):
             # print v[i], "-->", self.old_i_seqs[v[i]]
             v[i] = self.old_i_seqs[v[i]]
@@ -1348,10 +1354,10 @@ class input(object):
       # self.truncated_hierarchy = pdb_h
       # self.set_common_res_dict()
     # add group selection to ncs_group_map
-    for gr_num in self.ncs_group_map.iterkeys():
+    for gr_num in self.ncs_group_map.keys():
       gr = self.ncs_group_map[gr_num]
       chains_in_master = chains_in_string(gr[0])
-      for sel_str in self.ncs_to_asu_selection.iterkeys():
+      for sel_str in self.ncs_to_asu_selection.keys():
         chains_in_sel_str = chains_in_string(sel_str)
         if chains_in_master == chains_in_sel_str:
           gr.append(sel_str)
@@ -1448,14 +1454,14 @@ class input(object):
       # Iterate over sorted master selection strings, collect master selection
       # print "sorted v0, v1", sorted(v[0]), sorted(v[1])
       for key in sorted(v[0]):
-        if self.asu_to_ncs_map.has_key(key):
+        if key in self.asu_to_ncs_map:
           master_isel.extend(self.asu_to_ncs_map[key])
       new_nrg = NCS_restraint_group(flex.sorted(master_isel))
       # print "master isel ", list(master_isel)
       # iterate over transform numbers in the group, collect copies selections
       for tr in sorted(v[1]):
         # print "  tr", tr
-        if self.transform_to_ncs.has_key(tr):
+        if tr in self.transform_to_ncs:
           r = self.ncs_transform[tr].r
           t = self.ncs_transform[tr].t
           ncs_isel = flex.size_t([])
@@ -1499,7 +1505,7 @@ class input(object):
       v = self.ncs_group_map[k]
       nrg = ncs_restraints_group_list.pop(0)
       for tr in sorted(list(v[1])):
-        if self.transform_to_ncs.has_key(tr):
+        if tr in self.transform_to_ncs:
           ncs_copy = nrg.copies.pop(0)
           self.ncs_transform[tr].r = ncs_copy.r
           self.ncs_transform[tr].t = ncs_copy.t
@@ -1590,14 +1596,14 @@ class input(object):
     if write:
       if file_name:
         f = open(file_name,'w')
-        print >> f, pdb_header_str
-        print >> f, transform_rec
-        print >> f, new_ph_str
+        print(pdb_header_str, file=f)
+        print(transform_rec, file=f)
+        print(new_ph_str, file=f)
         f.close()
       else:
-        print >> log,pdb_header_str
-        print >> log,transform_rec
-        print >> log,new_ph_str
+        print(pdb_header_str, file=log)
+        print(transform_rec, file=log)
+        print(new_ph_str, file=log)
     return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
   def get_ncs_info_as_spec(
@@ -1675,7 +1681,7 @@ class input(object):
       gr = self.ncs_group_map[k]
       for gr_chains in gr[0]:
         # the same chain can be part of the master NCS in several groups
-        if ncs_groups_by_chains.has_key(gr_chains):
+        if gr_chains in ncs_groups_by_chains:
           gr_dict = ncs_groups_by_chains[gr_chains]
         else:
           gr_dict = {}
@@ -1769,7 +1775,7 @@ class input(object):
     """
     if not log: log = sys.stdout
     groups = []
-    for master, copies in self.ncs_to_asu_selection.iteritems():
+    for master, copies in self.ncs_to_asu_selection.items():
       master = format_80(master)
       groups.append('ncs_group {')
       groups.append("  reference = {}".format(master))
@@ -1780,7 +1786,7 @@ class input(object):
     gr = '\n'.join(groups)
     gr += '\n'
     if write:
-      print >> log,gr
+      print(gr, file=log)
     return gr
 
   def get_array_of_selections(self):
@@ -1790,7 +1796,7 @@ class input(object):
     [['(Chain A)','(chain C)','(chain E)'],['(chain B)','(chain D)','(chain F)']]
     """
     result = []
-    for master, copies in self.ncs_to_asu_selection.iteritems():
+    for master, copies in self.ncs_to_asu_selection.items():
       group = [master]
       for cp in copies:
         group.append(cp)
@@ -1912,18 +1918,18 @@ class input(object):
     # assert 0
     if (not format) or (format.lower() == 'cctbx'):
       out_str = self.__repr__(prefix)
-      print >> log, out_str
+      print(out_str, file=log)
       if verbose:
-        print >> log, self.show_ncs_selections(prefix)
+        print(self.show_ncs_selections(prefix), file=log)
     elif format.lower() == 'phil':
       out_str = self.show_phil_format(prefix=prefix,header=header)
-      print >> log, out_str
+      print(out_str, file=log)
     elif format.lower() == 'spec':
       # Does not add prefix in SPEC format
       out_str = self.show_search_parameters_values(prefix) + '/n'
       out_str += self.show_chains_info(prefix) + '\n'
       out_str += '\n' + prefix + 'NCS object "display_all"'
-      print >> log, out_str
+      print(out_str, file=log)
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
     elif format.lower() == 'summary':
@@ -1931,7 +1937,7 @@ class input(object):
       out_str.append(self.show_ncs_headers(prefix))
       out_str.append(self.show_transform_info(prefix))
       out_str = '\n'.join(out_str)
-      print >> log, out_str
+      print(out_str, file=log)
     return out_str
 
   def show_phil_format(self,prefix='',header=True,group_prefix=''):
@@ -2119,7 +2125,7 @@ def chains_in_string(s):
   return sorted(chain_set)
 
 def add_to_dict(d,k,v):
-  if d.has_key(k):
+  if k in d:
     d[k].append(v)
   else:
     d[k] = [v]
@@ -2350,7 +2356,7 @@ def uniqueness_test(unique_selection_set,new_item):
     unique_selection_set: updated set
   """
   if new_item in unique_selection_set:
-    raise IOError,'Phil selection strings are not unique !!!'
+    raise IOError('Phil selection strings are not unique !!!')
   else:
     unique_selection_set.add(new_item)
     return unique_selection_set
@@ -2404,7 +2410,7 @@ def update_ncs_group_map(
    selections]
   """
   if isinstance(selection_ids, str): selection_ids = [selection_ids]
-  if ncs_group_map.has_key(ncs_group_id):
+  if ncs_group_id in ncs_group_map:
     ncs_group_map[ncs_group_id][0].update(set(selection_ids))
     ncs_group_map[ncs_group_id][1].add(transform_id)
   else:
@@ -2431,7 +2437,7 @@ def insure_identity_is_in_transform_info(transform_info):
   if transform_info is None:
     return None
   ti = transform_info
-  ti_zip =  zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present)
+  ti_zip =  list(zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present))
   identity_sn = []
   t_r = []
   t_t = []
@@ -2463,7 +2469,7 @@ def insure_identity_is_in_transform_info(transform_info):
   return ti
 
 
-class NCS_copy():
+class NCS_copy(object):
 
   def __init__(self,copy_iselection, rot, tran):
     """

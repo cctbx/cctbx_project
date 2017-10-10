@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import str
+from builtins import object
 import os, time
 import libtbx.load_env
 from libtbx.utils import Sorry
@@ -143,7 +147,7 @@ class xfel_db_application(object):
 
     if verify_tables and not self.verify_tables():
       self.create_tables()
-      print 'Creating experiment tables...'
+      print('Creating experiment tables...')
       if not self.verify_tables():
         raise Sorry("Couldn't create experiment tables")
 
@@ -169,20 +173,20 @@ class xfel_db_application(object):
         if self.params.db.verbose:
           et = time() - st
           if et > 1:
-            print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)]
+            print('Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)])
         return cursor
-      except OperationalError, e:
+      except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
           raise e
         retry_count += 1
-        print "Couldn't connect to MYSQL, retry", retry_count
+        print("Couldn't connect to MYSQL, retry", retry_count)
         time.sleep(sleep_time)
         sleep_time *= 2
-      except Exception, e:
-        print "Couldn't execute MYSQL query.  Query:"
-        print query
-        print "Exception:"
-        print str(e)
+      except Exception as e:
+        print("Couldn't execute MYSQL query.  Query:")
+        print(query)
+        print("Exception:")
+        print(str(e))
         raise e
     raise Sorry("Couldn't execute MYSQL query. Too many reconnects. Query: %s"%query)
 
@@ -220,7 +224,7 @@ class xfel_db_application(object):
         assert False
       if len(isoforms) > 0:
         for isoform in isoforms:
-          print "Creating isoform", isoform.name
+          print("Creating isoform", isoform.name)
           db_isoform = Isoform(self,
                                name = isoform.name,
                                trial_id = trial.id)
@@ -243,7 +247,7 @@ class xfel_db_application(object):
       elif backend == 'dials':
         if trial_params.indexing.known_symmetry.unit_cell is not None and \
             trial_params.indexing.known_symmetry.space_group is not None:
-          print "Creating target cell"
+          print("Creating target cell")
           unit_cell = trial_params.indexing.known_symmetry.unit_cell
           symbol = str(trial_params.indexing.known_symmetry.space_group)
           a, b, c, alpha, beta, gamma = unit_cell.parameters()
@@ -303,7 +307,7 @@ class xfel_db_application(object):
 
     # Get all the bin ids for bins associated with these cells and assemble the bin objects
     if where is None:
-      cell_ids = ", ".join([str(key) for key in cells_d.keys()])
+      cell_ids = ", ".join([str(key) for key in list(cells_d.keys())])
       where = """ WHERE bin.cell_id IN (%s)""" % (cell_ids)
     bins = self.get_all_x(Bin, 'bin', where=where)
 
@@ -411,7 +415,7 @@ class xfel_db_application(object):
       _id = d.pop("id")
       d["%s_id"%name] = _id
       results.append(cls(self, **d)) # instantiate the main class
-      for sub_d_n, sub_d in sub_ds.iteritems():
+      for sub_d_n, sub_d in sub_ds.items():
         _id = sub_d[1].pop("id")
         sub_d[1]["%s_id"%sub_d_n] = _id
         setattr(results[-1], sub_d_n, sub_d[0](self, **sub_d[1])) # instantiate the sub items

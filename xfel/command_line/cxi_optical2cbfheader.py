@@ -1,10 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.optical2cbfheader
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 # $Id
 #
 
+from builtins import str
 import sys, os
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
@@ -41,7 +43,7 @@ if (__name__ == "__main__") :
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -52,7 +54,7 @@ if (__name__ == "__main__") :
   assert params.plot is not None
   assert params.out is not None
 
-  print params.metrology_file, params.detector
+  print(params.metrology_file, params.detector)
 
   from xfel.cftbx.detector.cspad_cbf_tbx import pixel_size
 

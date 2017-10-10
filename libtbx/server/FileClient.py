@@ -1,13 +1,19 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 import socket
 import sys
 import os
 
-class FileClient:
+class FileClient(object):
 
   def __init__(self,
                host='',
@@ -175,7 +181,7 @@ def LockReadPickleProcessWritePickleUnlock(client, file, id, func):
 
 if __name__=="__main__":
 
-  import FileServer
+  from . import FileServer
   import time
   import libtbx.load_env
 
@@ -195,7 +201,7 @@ if __name__=="__main__":
 
   client = FileServer.GetServerClient()
 
-  print client
+  print(client)
   if client:
-    print client.tester()
+    print(client.tester())
     #client.shutdown()

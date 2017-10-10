@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from scitbx import lbfgs
 from cctbx.array_family import flex
 from prime import index_ambiguity

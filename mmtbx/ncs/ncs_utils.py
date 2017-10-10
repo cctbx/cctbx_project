@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
@@ -240,7 +243,7 @@ def shake_transformations(x,
     new_x (flex.double): The shaken x
   """
   new_x = flex.double([])
-  for i in xrange(0,len(x),6):
+  for i in range(0,len(x),6):
     new_x.append(random.gauss(x[i+0],shake_angles_sigma))
     new_x.append(random.gauss(x[i+1],shake_angles_sigma))
     new_x.append(random.gauss(x[i+2],shake_angles_sigma))
@@ -831,7 +834,7 @@ def get_list_of_best_ncs_copy_map_correlation(
     r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
     t = nrg.copies[c_i].t = -(nrg.copies[c_i].r * nrg.copies[c_i].t)
     # change all other rotations and translations to the new master
-    for i in xrange(len(nrg.copies)):
+    for i in range(len(nrg.copies)):
       if i == c_i: continue
       # change translation before rotation
       nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
@@ -842,7 +845,7 @@ def get_refine_selection(refine_selection=None,number_of_atoms=None):
   if not bool(refine_selection):
       # select to refine all atoms
       assert bool(number_of_atoms)
-      selection_list = range(number_of_atoms)
+      selection_list = list(range(number_of_atoms))
       refine_selection = flex.size_t(selection_list)
   return refine_selection
 
@@ -911,7 +914,7 @@ def check_ncs_group_list(
       rmsd = copy_xyz.rms_difference(xyz)
       nrgl_ok &= (rmsd <= chain_max_rmsd)
       if (rmsd > chain_max_rmsd):
-        print >>log,'Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd)
+        print('Allowed rmsd : {}, rmsd: {}'.format(chain_max_rmsd,rmsd), file=log)
   return nrgl_ok
 
 def make_unique_chain_names(unique_chain_names,number_of_names=1):

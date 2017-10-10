@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 import sys
 from cctbx import uctbx
@@ -24,11 +25,11 @@ def run(args):
     sites_cart=atoms.extract_xyz(),
     buffer_layer=command_line.options.buffer_layer)
   atoms.set_xyz(new_xyz=box.sites_cart)
-  print >> log, 'REMARK %s --buffer-layer=%.6g %s' % (
+  print('REMARK %s --buffer-layer=%.6g %s' % (
     libtbx.env.dispatcher_name,
     command_line.options.buffer_layer,
-    show_string(command_line.args[0]))
-  print >> log, 'REMARK %s' % date_and_time()
+    show_string(command_line.args[0])), file=log)
+  print('REMARK %s' % date_and_time(), file=log)
   iotbx.pdb.write_whole_pdb_file(
       output_file=log,
       pdb_hierarchy=pdb_inp.construct_hierarchy(),

@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from mmtbx.validation.molprobity import mp_geo
 from iotbx import pdb
 import time
@@ -177,4 +178,4 @@ def exercise_mp_geo():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_mp_geo()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

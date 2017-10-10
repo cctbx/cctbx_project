@@ -9,6 +9,7 @@
 # FormatCBFMini.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
@@ -152,4 +153,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniEigerPhotonFactory.understand(arg)
+    print(FormatCBFMiniEigerPhotonFactory.understand(arg))

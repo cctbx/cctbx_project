@@ -6,6 +6,7 @@ from __future__ import division
 # TODO better tests!  major functionality is tested as part of the handlers
 # specific to HKL/PDB formats, but not every method yet
 
+from builtins import object
 from iotbx import file_reader
 from libtbx.utils import hashlib_md5
 from libtbx import adopt_init_args
@@ -52,7 +53,7 @@ class manager (object) :
     pass
 
   def input_files (self) :
-    for (file_name, file_object) in self._cached_input_files.iteritems() :
+    for (file_name, file_object) in self._cached_input_files.items() :
       yield (file_name, file_object)
 
   def open_file (self, file_name) :
@@ -109,7 +110,7 @@ class manager (object) :
       else :
         self._file_mtimes.pop(file_name)
       if (self.allowed_param_names is not None) :
-        for param_name, param_file in self._param_files.iteritems() :
+        for param_name, param_file in self._param_files.items() :
           if self.allow_multiple(param_name) :
             if (file_name in param_file) :
               param_file.remove(file_name)
@@ -143,7 +144,7 @@ class manager (object) :
     return False
 
   def get_current_file_names (self) :
-    file_names = self._cached_input_files.keys()
+    file_names = list(self._cached_input_files.keys())
     file_names.sort()
     return file_names
 

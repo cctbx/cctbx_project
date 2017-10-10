@@ -1,9 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import object
 from libtbx.utils import Sorry
 
 try:
   import MySQLdb
-except ImportError, e:
+except ImportError as e:
   pass
 
 def get_run_path(rootpath, trial, rungroup, run):
@@ -23,13 +27,13 @@ def get_db_connection(params, block=True):
     try:
       dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
       return dbobj
-    except Exception,e:
+    except Exception as e:
       retry_count += 1
       if not block: raise e
       if "Too many connections" in str(e):
-        print "Too many connections, retry", retry_count
+        print("Too many connections, retry", retry_count)
       elif  "Can't connect to MySQL server" in str(e):
-        print "Couldn't connect to MYSQL, retry", retry_count
+        print("Couldn't connect to MYSQL, retry", retry_count)
       else:
         raise e
       import time
@@ -49,7 +53,7 @@ class db_proxy(object):
       query = "INSERT INTO `%s` " % self.table_name
       keys = []
       vals = []
-      for key, value in kwargs.iteritems():
+      for key, value in kwargs.items():
         assert key in app.columns_dict[table_name]
         keys.append(key)
         self._db_dict[key] = value
@@ -85,7 +89,7 @@ class db_proxy(object):
     # Called if the property is not found
     assert hasattr(self, '_db_dict')
     if key not in self._db_dict:
-      print self.table_name, key, 'error!', self._db_dict
+      print(self.table_name, key, 'error!', self._db_dict)
       raise AttributeError(key)
 
     return self._db_dict[key]

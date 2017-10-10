@@ -1,5 +1,12 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 from cctbx import sgtbx, xray, crystal, miller, eltbx
 import cctbx.eltbx.wavelengths
@@ -11,7 +18,7 @@ from libtbx.test_utils import approx_equal
 from scitbx.math import approx_equal_relatively
 import libtbx.utils
 import random
-from itertools import islice, izip
+from itertools import islice
 from scitbx import matrix
 from scitbx.math import median_statistics
 
@@ -80,7 +87,7 @@ class consistency_test_cases(test_case):
       eta = eta_norm * direction
 
       i = 0
-      for sc_forward, sc in izip(xs_forward.scatterers(), xs.scatterers()):
+      for sc_forward, sc in zip(xs_forward.scatterers(), xs.scatterers()):
         eta_site = matrix.col(eta[i:i+3])
         eta_iso = eta[i+3]
         eta_aniso = matrix.col(eta[i+4:i+10])
@@ -182,12 +189,12 @@ class custom_vs_std_test_case(test_case):
     stats = median_statistics(deltas)
     if verbose:
       if not self.has_printed_header:
-        print "f_calc and sin/cos: |tabulated - std|/|std|"
-        print "median & median absolute deviation"
+        print("f_calc and sin/cos: |tabulated - std|/|std|")
+        print("median & median absolute deviation")
         self.has_printed_header = True
-      print "%s: %.12g +/- %.12g" % (xs.space_group_info().type().hall_symbol(),
+      print("%s: %.12g +/- %.12g" % (xs.space_group_info().type().hall_symbol(),
                                      stats.median,
-                                     stats.median_absolute_deviation)
+                                     stats.median_absolute_deviation))
     assert stats.median < 0.01, (str(xs.space_group_info()), stats.median)
     assert stats.median_absolute_deviation < 0.005, (
       str(xs.space_group_info()), stats.median_absolute_deviation)
@@ -217,7 +224,7 @@ def exercise_trigonometric_ff():
   cs = sgi.any_compatible_crystal_symmetry(volume=1000)
   miller_set = miller.build_set(cs, anomalous_flag=False, d_min=1)
   miller_set = miller_set.select(flex.random_double(miller_set.size()) < 0.2)
-  for i in xrange(5):
+  for i in range(5):
     sites = flex.random_double(9)
     x1, x2, x3 = (matrix.col(sites[:3]),
                   matrix.col(sites[3:6]),

@@ -1,6 +1,7 @@
 from __future__ import division
 
 
+from builtins import object
 class ProgressError(Exception):
   """
   Module exception
@@ -64,7 +65,7 @@ def wait(condition, waittime = 2, timeout = 600, callback = lambda: None):
 
   while not condition():
     if timeout < time.time() - start:
-      raise TimeoutError, "Timeout (%s s) exceeded" % timeout
+      raise TimeoutError("Timeout (%s s) exceeded" % timeout)
 
     time.sleep( 2 )
     callback()

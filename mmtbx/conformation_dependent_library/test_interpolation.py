@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import sys
 
 
@@ -9,11 +11,11 @@ def run():
       grid = get_grid_values("Gly_nonxpro", float(i),float(j))
       print_grid(grid, i, j)
       index = get_index(float(i), float(j))
-      print index,
+      print(index, end=' ')
       r = interpolate_2d(grid, index)
-      print r
+      print(r)
       outl += " %f %f\n" % (j, r)
-    print outl
+    print(outl)
     outl += "\n"
     for j in range(-180, 181, 10):
       outl += " %f %f\n" % (j,
@@ -29,14 +31,14 @@ def exercise () :
     [0.2, 2.2, 2.3, 1.5],
     [1.4, 1.5, 3.1, 1.6],
     [1.7, 2, 3, 0] ]
-  print values
+  print(values)
   answers = [2.2,1.5,2.3,3.1]
   i=0
   for x in range(2):
     for y in range(2):
       #x, y = (0, 0)
       r = interpolate_2d(values, (x, y))
-      print x,y,r,answers[i]
+      print(x,y,r,answers[i])
       assert abs(r-answers[i])<0.01
       i+=1
 

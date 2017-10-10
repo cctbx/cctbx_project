@@ -8,7 +8,11 @@
 #
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import str
+from builtins import map
+from builtins import range
 import pycbf
 
 from dxtbx.format.FormatCBFFull import FormatCBFFull
@@ -44,7 +48,7 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
     """
     try:
       self.find_category("array_structure_list_section")
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" not in str(e): raise e
       return False
     return True
@@ -60,14 +64,14 @@ class FormatCBFMultiTile(FormatCBFFull):
     try:
       cbf_handle = pycbf.cbf_handle_struct()
       cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
     #check if multiple arrays
     try:
       return cbf_handle.count_elements() > 1
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
@@ -106,7 +110,7 @@ class FormatCBFMultiTile(FormatCBFFull):
 
     d = Detector()
 
-    for i in xrange(cbf.count_elements()):
+    for i in range(cbf.count_elements()):
       ele_id = cbf.get_element_id(i)
       cbf.find_category("diffrn_data_frame")
       cbf.find_column("detector_element_id")
@@ -156,7 +160,7 @@ class FormatCBFMultiTile(FormatCBFFull):
     return self._beam_factory.imgCIF_H(self._get_cbf_handle())
 
   def get_raw_data(self):
-    print "hLL"
+    print("hLL")
     if self._raw_data is None:
       self._raw_data = []
 
@@ -167,7 +171,7 @@ class FormatCBFMultiTile(FormatCBFFull):
       while cbf.category_name().lower() != "array_data":
         try:
           cbf.next_category()
-        except Exception, e:
+        except Exception as e:
           return None
       cbf.select_column(0)
       cbf.select_row(0)
@@ -197,7 +201,7 @@ class FormatCBFMultiTile(FormatCBFFull):
 
         try:
           cbf.next_row()
-        except Exception, e:
+        except Exception as e:
           break
       assert len(d) == len(self._raw_data)
 
@@ -208,4 +212,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMultiTile.understand(arg)
+    print(FormatCBFMultiTile.understand(arg))

@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import range
+from builtins import object
 import math
 from cctbx import geometry_restraints
 #from libtbx.utils import Sorry
@@ -435,7 +438,7 @@ class determine_connectivity(object):
         i_second_max = max(altloc_dict_temp, key=lambda k: altloc_dict_temp[k])
         alt_conf_neighbors_reduced.append(i_second_max)
         # Store "used" atoms in temp list --> avoids going through atoms twice
-        for index in altloc_dict_temp.keys():
+        for index in list(altloc_dict_temp.keys()):
           alt_conf_neighbors_temp.append(index)
     return alt_conf_neighbors_reduced
 

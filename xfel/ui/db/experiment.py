@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import zip
+from builtins import range
 from xfel.ui.db import db_proxy
 from scitbx.array_family import flex
 
@@ -64,7 +66,7 @@ class Crystal(db_proxy):
     assert [crystal_id, crystal].count(None) == 1
     if crystal is not None:
       u = matrix.sqr(crystal.get_U())  # orientation matrix
-      for i in xrange(len(u)):
+      for i in range(len(u)):
         kwargs['ori_%d' % (i + 1)] = u[i]
       try:
         kwargs['mosaic_block_rotation'] = crystal.get_half_mosaicity_deg()

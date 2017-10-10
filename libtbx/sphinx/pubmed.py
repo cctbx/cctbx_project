@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
 from docutils import statemachine
@@ -40,7 +41,7 @@ class PubMedDirective(Directive):
 
     raw_directives = []
 
-    for i in xrange(len(XML)):
+    for i in range(len(XML)):
       # Title/doi link:
       possible_doi = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="doi" ]

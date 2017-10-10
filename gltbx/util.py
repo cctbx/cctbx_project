@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import object
 import scitbx.array_family.flex # import dependency
 import scitbx.matrix
 from libtbx import easy_run
@@ -11,17 +14,17 @@ def show_versions():
   from gltbx import gl
   from gltbx import glu
   if (hasattr(gl, "GL_VENDOR")):
-    print "GL_VENDOR:", gl.glGetString(gl.GL_VENDOR)
+    print("GL_VENDOR:", gl.glGetString(gl.GL_VENDOR))
   if (hasattr(gl, "GL_RENDERER")):
-    print "GL_RENDERER:", gl.glGetString(gl.GL_RENDERER)
+    print("GL_RENDERER:", gl.glGetString(gl.GL_RENDERER))
   if (hasattr(gl, "GL_VERSION")):
-    print "GL_VERSION:", gl.glGetString(gl.GL_VERSION)
+    print("GL_VERSION:", gl.glGetString(gl.GL_VERSION))
   if (hasattr(gl, "GL_EXTENSIONS")):
-    print "GL_EXTENSIONS:", gl.glGetString(gl.GL_EXTENSIONS)
+    print("GL_EXTENSIONS:", gl.glGetString(gl.GL_EXTENSIONS))
   if (hasattr(glu, "GLU_VERSION")):
-    print "GLU_VERSION:", glu.gluGetString(glu.GLU_VERSION)
+    print("GLU_VERSION:", glu.gluGetString(glu.GLU_VERSION))
   if (hasattr(glu, "GLU_EXTENSIONS")):
-    print "GLU_EXTENSIONS:", glu.gluGetString(glu.GLU_EXTENSIONS)
+    print("GLU_EXTENSIONS:", glu.gluGetString(glu.GLU_EXTENSIONS))
 
 # this is essential for Linux - if the X server does not support GLX,
 # attempting to use OpenGL will crash the entire program.  this usually
@@ -44,9 +47,9 @@ class version(object):
     if not self._shared_state:
       vers_pat = re.compile("^((\d+)\.(\d+))(?:\.(\d+))?(?: (.*))?$")
       m = vers_pat.search(gl.glGetString(gl.GL_VERSION))
-      self.__dict__.update(dict(zip(
+      self.__dict__.update(dict(list(zip(
         ["principal", "major_number", "minor_number", "release_number",
-         "vendor_info"], m.groups())))
+         "vendor_info"], m.groups()))))
       self.principal = float(self.principal)
 
 class extensions(set):

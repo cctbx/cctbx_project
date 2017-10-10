@@ -1,6 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 import sys
@@ -39,7 +40,7 @@ def exercise():
     assert scatter_env is not None
     for name in chem_env.__slots__:
       if getattr(chem_env, name) is None:
-        print "Error: chem_env.{} is not set".format(name)
+        print("Error: chem_env.{} is not set".format(name))
         sys.exit()
     for name in scatter_env.__slots__:
       # f' is not set by phaser
@@ -48,10 +49,10 @@ def exercise():
       # Only check f'' for heavy metals
       if name != "fpp" or ion_class(chem_env) != "HOH":
         if getattr(scatter_env, name) is None:
-          print "Error: scatter_env.{} is not set".format(name)
+          print("Error: scatter_env.{} is not set".format(name))
           sys.exit()
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

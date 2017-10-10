@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
-from cStringIO import StringIO
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 from mmtbx.validation.chain_comparison import run
 
 def remove_blank(text):
@@ -486,7 +489,7 @@ ATOM    135  CA  LYS B 138     533.895 440.931 424.718  1.00 36.89      P9
 ATOM    136  CA  GLY B 139     531.242 441.878 427.264  0.67 38.21      P9
 """
 def tst_01():
-  print "Comparing mixed model with target..."
+  print("Comparing mixed model with target...")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -513,21 +516,21 @@ Residues far from target:    2  RMSD:   4.27"""
 
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    raise AssertionError("FAILED")
   from libtbx.test_utils import approx_equal
-  print r.get_values("forward")
+  print(r.get_values("forward"))
   assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
-  print r.get_values("reverse")
+  print(r.get_values("reverse"))
   assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
-  print r.get_values("close")
+  print(r.get_values("close"))
   assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
-  print r.get_values("all_far")
+  print(r.get_values("all_far"))
   assert approx_equal(r.get_values("all_far"),(0,0))
-  print "OK"
+  print("OK")
 
 def tst_02():
-  print "Comparing mixed model with target with 2 chains..."
+  print("Comparing mixed model with target with 2 chains...")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -554,22 +557,22 @@ Residues far from target:    2  RMSD:   3.31"""
 
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    raise AssertionError("FAILED")
 
   from libtbx.test_utils import approx_equal
-  print r.get_values("forward")
+  print(r.get_values("forward"))
   assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
-  print r.get_values("reverse")
+  print(r.get_values("reverse"))
   assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
-  print r.get_values("close")
+  print(r.get_values("close"))
   assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
-  print r.get_values("all_far")
+  print(r.get_values("all_far"))
   assert approx_equal(r.get_values("all_far"),(0,0))
-  print "OK"
+  print("OK")
 
 def tst_03():
-  print "Comparing mixed model with target with 2 chains...as group"
+  print("Comparing mixed model with target with 2 chains...as group")
   import iotbx.pdb
   from cctbx.array_family import flex
   model_pdb_inp=iotbx.pdb.input(source_info='model',
@@ -583,11 +586,11 @@ def tst_03():
     os.mkdir("files")
 
   ff=open(os.path.join("files","query.pdb"),'w')
-  print >>ff,"CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4"
-  print >>ff,query_hierarchy.as_pdb_string()
+  print("CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4", file=ff)
+  print(query_hierarchy.as_pdb_string(), file=ff)
   ff.close()
   ff=open("model.pdb",'w')
-  print >>ff,model_hierarchy.as_pdb_string()
+  print(model_hierarchy.as_pdb_string(), file=ff)
   ff.close()
 
   f=StringIO()
@@ -605,9 +608,9 @@ SEQ SCORE is fraction (close and matching target sequence).
      query.pdb 1.52   59    3.3    2     16      31      12   21.7   0.14     6.8        0.01"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
-    raise AssertionError, "FAILED"
-  print "OK"
+    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    raise AssertionError("FAILED")
+  print("OK")
 
 
 if __name__=="__main__":

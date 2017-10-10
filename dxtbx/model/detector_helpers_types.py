@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # detector_helpers_types.py
 #
@@ -11,13 +12,15 @@ from __future__ import absolute_import, division
 # detector types, hashed by the sensor type, image dimensions and pixel
 # dimensions.
 
+from builtins import map
+from builtins import object
 import os
 import sys
 
 from dxtbx.model.detector_helpers import detector_helper_sensors
 from dxtbx.model.detector import DetectorFactory
 
-class detector_helpers_types:
+class detector_helpers_types(object):
   '''A singleton class to help with identifying specific detectors used for
   macromolecular crystallography.'''
 
@@ -29,7 +32,7 @@ class detector_helpers_types:
                                 'data', 'detectors.lib')
 
     if not os.path.exists(detector_lib):
-      raise RuntimeError, 'detector library not found'
+      raise RuntimeError('detector library not found')
 
     self._detectors = { }
 
@@ -49,7 +52,7 @@ class detector_helpers_types:
       assert(len(tokens) == 6)
 
       sensor = DetectorFactory.sensor(tokens[0])
-      fast, slow, df, ds = map(int, tokens[1:5])
+      fast, slow, df, ds = list(map(int, tokens[1:5]))
 
       self._detectors[(sensor, fast, slow, df, ds)] = tokens[5]
 
@@ -71,8 +74,8 @@ class detector_helpers_types:
         except: # intentional
           pass
 
-      raise RuntimeError, 'detector %s %d %d %d %d unknown' % \
-            (sensor, fast, slow, df, ds)
+      raise RuntimeError('detector %s %d %d %d %d unknown' % \
+            (sensor, fast, slow, df, ds))
 
     if (sensor, fast, slow, df, ds) in self._detectors:
       return self._detectors[(sensor, fast, slow, df, ds)]
@@ -85,13 +88,13 @@ class detector_helpers_types:
           return self._detectors[
               (sensor, fast, slow, df + ddf, ds + dds)]
 
-    raise RuntimeError, 'detector %s %d %d %d %d unknown' % \
-          (sensor, fast, slow, df, ds)
+    raise RuntimeError('detector %s %d %d %d %d unknown' % \
+          (sensor, fast, slow, df, ds))
 
 detector_helpers_types = detector_helpers_types()
 
 if __name__ == '__main__':
   sensor = sys.argv[1]
-  fast, slow, df, ds = map(int, sys.argv[2:6])
+  fast, slow, df, ds = list(map(int, sys.argv[2:6]))
 
-  print detector_helpers_types.get(sensor, fast, slow, df, ds)
+  print(detector_helpers_types.get(sensor, fast, slow, df, ds))

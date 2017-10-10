@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 from libtbx.phil import parse
 from libtbx.utils import Sorry
@@ -30,7 +31,7 @@ def run(args):
   for arg in args:
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
@@ -60,7 +61,7 @@ def run(args):
 
   trial = app.get_trial(trial_number=params.trial)
   info = []
-  print "Reading data..."
+  print("Reading data...")
   cells = app.get_stats(trial=trial, tags=tags, isigi_cutoff = 1.0, tag_selection_mode = params.tag_selection_mode, selected_runs = runs, selected_rungroup = rungroup)()
   for cell in cells:
     info.append({'a':cell.cell_a,

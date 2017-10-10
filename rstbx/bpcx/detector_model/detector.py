@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
 
+from builtins import range
+from builtins import object
 from scitbx import matrix
 from rstbx.bpcx import sensor
 
-class detector:
+class detector(object):
     '''An abstract class definition for X-ray detectors which are assumed to
     be composed of one or more flat rectangular sensor areas. Will initially
     assume that sensor areas to not shadow one another.'''
@@ -17,7 +20,7 @@ class detector:
     def sensors(self):
         return self._sensors
 
-class reflection_predictor:
+class reflection_predictor(object):
     '''A class to convert supplied diffraction vectors and detector surfaces
     to impact positions as sensor number and mm in the coordinate frame
     attached to that sensor. Need to return number of sensor and coordinate.
@@ -65,7 +68,7 @@ class reflection_predictor:
     def intersect(self, ray, sensor):
         '''Compute intersection of sensor with ray from frame origin, returning
         none if intersection not within limits.'''
-        raise RuntimeError, 'overload me'
+        raise RuntimeError('overload me')
 
 class reflection_predictor_thomas(reflection_predictor):
     '''Implementation of reflection_predictor using David Thomas' matrix
@@ -136,7 +139,7 @@ def test_all():
         # the closest intersection should be on panel3
         assert rpi[0][0] == 3
 
-    print 'OK'
+    print('OK')
 
 def test_work():
     '''Test all features of the module using a detector composed of four
@@ -172,7 +175,7 @@ def test_work():
         intersection_vector = rpi['vector'][j]
         assert(intersection_matrix[0] == intersection_vector[0])
 
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
     test_work()

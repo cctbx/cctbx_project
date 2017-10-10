@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import str
+from builtins import range
 import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -25,24 +27,24 @@ def echelon_constraints(group,reciprocal_space = 1):
     R = Rm.elems
     Rt = Rm.transpose()
     e = (R[0]*R[0]-1, 2*R[0]*R[1],            2*R[0]*R[2],            R[1]*R[1],2*R[1]*R[2],           R[2]*R[2])
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
     e = (R[0]*R[3],     R[1]*R[3]+R[0]*R[4]-1,  R[2]*R[3]+R[0]*R[5],  R[1]*R[4],  R[2]*R[4]+R[1]*R[5], R[2]*R[5])
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
     e = (R[0]*R[6],     R[1]*R[6]+R[0]*R[7],    R[2]*R[6]+R[0]*R[8]-1,R[1]*R[7],  R[2]*R[7]+R[1]*R[8], R[2]*R[8])
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
     e = (R[3]*R[3],   2*R[3]*R[4],            2*R[3]*R[5],            R[4]*R[4]-1,2*R[4]*R[5],         R[5]*R[5])
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
     e = (R[3]*R[6],     R[4]*R[6]+R[3]*R[7],    R[5]*R[6]+R[3]*R[8],  R[4]*R[7],  R[5]*R[7]+R[4]*R[8]-1,R[5]*R[8])
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
     e = (R[6]*R[6],   2*R[6]*R[7],            2*R[6]*R[8],            R[7]*R[7],2*R[7]*R[8],         R[8]*R[8]-1)
-    for x in xrange(6): m[i] = int(e[x]); i+=1
+    for x in range(6): m[i] = int(e[x]); i+=1
   mnew = scitbx.math.row_echelon_form(m)
   i = 0
   #Rearrange row echelon changing coefficient order AFEBDC to ABCDEF
   n0 = mnew
   i=0
   C = flex.int(flex.grid(n0,n1))
-  for x in xrange(mnew):
+  for x in range(mnew):
     C[i]=m[i]; C[i+1]=m[i+3]; C[i+2]=m[i+5]; C[i+3]=m[i+4]; C[i+4]=m[i+2]; C[i+5]=m[i+1]
     i+=6
   i=0

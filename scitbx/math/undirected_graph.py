@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 class Graph(object):
   """
   Basic graph implementation
@@ -57,7 +58,7 @@ class VertexIndexedGraph(object):
   def edges(self):
 
     result = set()
-    result.update( *self._edges_from.values() )
+    result.update( *list(self._edges_from.values()) )
     return result
 
 

@@ -3,6 +3,9 @@ from __future__ import absolute_import, division
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import zip
+from builtins import str
+from builtins import range
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 from libtbx import easy_pickle
@@ -63,12 +66,12 @@ def run (args, image = None):
       if (not "=" in arg) :
         try :
           user_phil.append(libtbx.phil.parse("""file_path=%s""" % arg))
-        except ValueError, e :
+        except ValueError as e :
           raise Sorry("Unrecognized argument '%s'" % arg)
       else :
         try :
           user_phil.append(libtbx.phil.parse(arg))
-        except RuntimeError, e :
+        except RuntimeError as e :
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
     params = master_phil.fetch(sources=user_phil).extract()
   if image is None:
@@ -171,9 +174,9 @@ def run (args, image = None):
 
     # calculate standard devations
     std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
-                if counts[i] > 0 else 0 for i in xrange(len(sums))]
+                if counts[i] > 0 else 0 for i in range(len(sums))]
 
-    twotheta = flex.double(xrange(len(results)))*extent_two_theta/params.n_bins
+    twotheta = flex.double(range(len(results)))*extent_two_theta/params.n_bins
     q_vals = 4*math.pi*flex.sin(math.pi*twotheta/360)/beam.get_wavelength()
 
     if params.low_max_two_theta_limit is None:
@@ -190,7 +193,7 @@ def run (args, image = None):
       xvals = q_vals
       max_x = q_vals[flex.first_index(results, max_result)]
 
-    for i in xrange(len(results)):
+    for i in range(len(results)):
       val = xvals[i]
       if params.output_bins and "%.3f"%results[i] != "nan":
        #logger.write("%9.3f %9.3f\n"%     (val,results[i]))        #.xy  format for Rex.cell.

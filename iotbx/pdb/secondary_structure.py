@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 # Implemented based on PDB v3.2 specification at:
 #   http://www.wwpdb.org/documentation/format32/sect5.html
@@ -47,6 +48,10 @@ from __future__ import division
 #    of code.
 #
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args
@@ -75,7 +80,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h1=hierarchy.deep_copy().select(sel)  # keep original hierarchy too
       number_self=h1.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     asc=hierarchy.atom_selection_cache()
@@ -83,7 +88,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h2=hierarchy.deep_copy().select(sel)
       number_other=h2.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     if maximum_length_difference is not None and \
@@ -96,7 +101,7 @@ def segments_are_similar(atom_selection_1=None,
     try:
       h12=hierarchy.deep_copy().select(sel)
       number_both=h12.overall_counts().n_residues
-    except Exception, e:
+    except Exception as e:
       return False
 
     if number_both<minimum_overlap:
@@ -114,7 +119,7 @@ def choose_correct_cif_record(cif_dict, key1, key2, mandatory=True):
   else:
     return cif_dict.get(key2, '.')
 
-class one_strand_pair_registration_atoms:
+class one_strand_pair_registration_atoms(object):
   def __init__(self,
       strand_a_atom=None,
       strand_b_atom=None,
@@ -155,13 +160,13 @@ class one_strand_pair_registration_atoms:
        (strand_a_atom=="N" and strand_b_atom != "O") or \
        (strand_a_atom!="N" and strand_b_atom != "N") or \
        (strand_a_atom!="O" and strand_b_atom != "O"):
-          print >>log,"Cannot interpret H-bonding of %s to %s " %(
-            strand_a_atom,strand_b_atom)
+          print("Cannot interpret H-bonding of %s to %s " %(
+            strand_a_atom,strand_b_atom), file=log)
           ok=False
           return
 
     if not sense in [-1,1]:
-      print >>log,"Cannot interpret bonding with sense not -1 or 1:"
+      print("Cannot interpret bonding with sense not -1 or 1:", file=log)
       self.ok=False
       return
 
@@ -209,7 +214,7 @@ class one_strand_pair_registration_atoms:
 
     return True # all ok
 
-class registration_atoms:
+class registration_atoms(object):
   def __init__(self,hierarchy=None,
       strand_1a=None,strand_1b=None,
       strand_2a=None,strand_2b=None,
@@ -404,7 +409,7 @@ class structure_base (object) :
     "Count residues in this secondary structure"
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for count_residues"
+      raise AssertionError("Require hierarchy for count_residues")
 
     atom_selection=self.combine_atom_selections(self.as_atom_selections())
     if not atom_selection:
@@ -420,7 +425,7 @@ class structure_base (object) :
     "Count good and poor H-bonds in this secondary structure"
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for count_h_bonds"
+      raise AssertionError("Require hierarchy for count_h_bonds")
 
     atom_selection=self.combine_atom_selections(self.as_atom_selections())
     if not atom_selection:
@@ -449,7 +454,7 @@ class structure_base (object) :
     if self.is_same_as(other=other): return True  # always quicker
 
     if hierarchy is None:
-      raise AssertionError,"Require hierarchy for is_similar_to"
+      raise AssertionError("Require hierarchy for is_similar_to")
 
     # Check for different objects
     if type(self) != type(other): return False
@@ -524,16 +529,16 @@ class annotation(structure_base):
       try:
         h = pdb_helix.from_pdb_record(line)
       except ValueError:
-        print >> log, "Bad HELIX record, was skipped:\n%s" % line
+        print("Bad HELIX record, was skipped:\n%s" % line, file=log)
       else:
         helices.append(h)
     for sh_lines in cls.filter_and_split_sheet_records(records):
       try:
         sh = pdb_sheet.from_pdb_records(sh_lines)
-      except ValueError, e:
-        print >> log, "Bad SHEET records, were skipped:\n"
+      except ValueError as e:
+        print("Bad SHEET records, were skipped:\n", file=log)
         for l in sh_lines:
-          print >> log, "  %s" % l
+          print("  %s" % l, file=log)
       else:
         sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
@@ -550,7 +555,7 @@ class annotation(structure_base):
           h = pdb_helix.from_cif_row(helix_row, serial)
           serial += 1
         except ValueError:
-          print >> log, "Bad HELIX records!"
+          print("Bad HELIX records!", file=log)
         else:
           helices.append(h)
     sheets = []
@@ -571,7 +576,7 @@ class annotation(structure_base):
               struct_sheet_order_loop, struct_sheet_range_loop,
               struct_sheet_hbond_loop)
         except ValueError as e:
-          print >> log, "Bad sheet records.\n"
+          print("Bad sheet records.\n", file=log)
         else:
           sheets.append(sh)
     return cls(helices=helices, sheets=sheets)
@@ -900,7 +905,7 @@ class annotation(structure_base):
     new_sheets = []
     new_h_serial = 1
     new_sheet_id = 1
-    for n_copy in xrange(1, n_copies+2):
+    for n_copy in range(1, n_copies+2):
       for helix in self.helices:
         new_helix = copy.deepcopy(helix)
         new_helix.erase_hbond_list()
@@ -1091,7 +1096,7 @@ class annotation(structure_base):
     for helix in self.helices :
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     for sheet in self.sheets :
       selections.extend(sheet.as_atom_selections(add_segid=add_segid))
@@ -1102,12 +1107,12 @@ class annotation(structure_base):
     for helix in self.helices:
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     for sheet in self.sheets:
       try:
         selections.extend(sheet.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
@@ -1124,7 +1129,7 @@ class annotation(structure_base):
         if helix.get_n_maximum_hbonds()<n_hbonds_selection: continue
       try :
         selections.extend(helix.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
@@ -1133,7 +1138,7 @@ class annotation(structure_base):
     for sheet in self.sheets:
       try:
         selections.extend(sheet.as_atom_selections(add_segid=add_segid))
-      except RuntimeError, e :
+      except RuntimeError as e :
         pass
     return "(" + ") or (".join(selections) + ")"
 
@@ -1207,8 +1212,8 @@ class annotation(structure_base):
       for strand in all_strands:
         key=strand.as_atom_selections()
         if key in used_strand_selections: continue
-        if key in sheet_pointer_0.keys() and (
-            iter==1 or not key in sheet_pointer_1.keys()):
+        if key in list(sheet_pointer_0.keys()) and (
+            iter==1 or not key in list(sheet_pointer_1.keys())):
           used_strand_selections.append(key)
           working_sheet=deepcopy(sheet_pointer_0.get(key))
           new_sheets.append(working_sheet)  # now we will extend this sheet
@@ -1752,7 +1757,7 @@ class pdb_helix (structure_base) :
   @classmethod
   def from_phil_params(cls, helix_params, pdb_hierarchy, cache, serial=0, log=None):
     if helix_params.selection is None :
-      print >> log, "Empty helix at serial %d." % (serial)
+      print("Empty helix at serial %d." % (serial), file=log)
       # continue
     # No evidence that this is really necessary
     # sele_str = ("(%s) and (name N) and (altloc 'A' or altloc ' ')" %
@@ -1771,10 +1776,10 @@ class pdb_helix (structure_base) :
     hbonds = []
     for hb in helix_params.hbond:
       if hb.donor is None:
-        print >> log, "Donor selection in hbond cannot be None"
+        print("Donor selection in hbond cannot be None", file=log)
         continue
       if hb.acceptor is None:
-        print >> log, "Acceptor selection in hbond cannot be None"
+        print("Acceptor selection in hbond cannot be None", file=log)
         continue
       hbonds.append((hb.donor, hb.acceptor))
     return cls(
@@ -1843,8 +1848,8 @@ class pdb_helix (structure_base) :
   def as_restraint_group(self, log=sys.stdout, prefix_scope="",
       add_segid=None, show_hbonds=False):
     if self.start_chain_id != self.end_chain_id :
-      print >> log, "Helix chain ID mismatch: starts in %s, ends in %s" % (
-        self.start_chain_id, self.end_chain_id)
+      print("Helix chain ID mismatch: starts in %s, ends in %s" % (
+        self.start_chain_id, self.end_chain_id), file=log)
       return None
     sele = self.as_atom_selections(add_segid=add_segid)[0]
     if prefix_scope != "" and not prefix_scope.endswith(".") :
@@ -2491,10 +2496,10 @@ class pdb_sheet(structure_base):
     hbonds = []
     for hb in sheet_params.hbond:
       if hb.donor is None:
-        print >> log, "Donor selection in hbond cannot be None"
+        print("Donor selection in hbond cannot be None", file=log)
         continue
       if hb.acceptor is None:
-        print >> log, "Acceptor selection in hbond cannot be None"
+        print("Acceptor selection in hbond cannot be None", file=log)
         continue
       hbonds.append((hb.donor, hb.acceptor))
     return cls(sheet_id=sheet_id,
@@ -2649,7 +2654,7 @@ class pdb_sheet(structure_base):
     result['_pdbx_struct_sheet_hbond.range_2_label_seq_id'] = []
     result['_pdbx_struct_sheet_hbond.range_2_PDB_ins_code'] = []
 
-    for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
+    for i, strand, registration in zip(list(range(self.n_strands)), self.strands, self.registrations):
       # _struct_sheet_order
       if i != 0:
         result['_struct_sheet_order.sheet_id'].append(self.sheet_id)

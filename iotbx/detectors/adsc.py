@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import re
 from iotbx.detectors.detectorbase import DetectorImageBase
 
@@ -67,7 +68,7 @@ class ADSCImage(DetectorImageBase):
           if len(matches)>0:
             if matches[-1] not in [None,"None","unknown"]:
               self.parameters[tag] = datatype(matches[-1])
-      if not self.parameters.has_key("TWOTHETA"):
+      if "TWOTHETA" not in self.parameters:
         self.parameters["TWOTHETA"]=0.0
 
 
@@ -90,9 +91,9 @@ if __name__=='__main__':
   i = sys.argv[1]
   a = ADSCImage(i)
   a.read()
-  print a.linearintdata
-  print a.linearintdata.size()
-  print a.linearintdata.accessor().grid()
+  print(a.linearintdata)
+  print(a.linearintdata.size())
+  print(a.linearintdata.accessor().grid())
   from labelit.detectors.jpeg import JPEGImage
   j = JPEGImage(a)
   j.calcimage()

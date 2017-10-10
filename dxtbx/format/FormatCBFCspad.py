@@ -8,6 +8,9 @@
 
 from __future__ import absolute_import, division
 
+from builtins import zip
+from builtins import str
+from builtins import range
 from dxtbx.format.FormatCBFMultiTileHierarchy import FormatCBFMultiTileHierarchy
 from dxtbx.format.FormatCBFFull import FormatCBFFullStill
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
@@ -39,7 +42,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
     try:
       # a header only CBF file will not have a beam object
       beam = self._beam()
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" not in str(e): raise e
       return d
 
@@ -161,16 +164,16 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
       in the table array_structure list, which maps an array_section_id to axis_set_id,
       which can then be matchedup with the axes of the object returned by construct_detector
       """
-      all_cbfdetectors = [cbf.construct_detector(i) for i in xrange(len(detector))]
+      all_cbfdetectors = [cbf.construct_detector(i) for i in range(len(detector))]
       all_panelnames = [panel.get_name() for panel in detector]
 
       # map the array_section_ids, which match the panel names, to their root axis names
       panel_name_mapping = {}
       cbf.find_category("array_structure_list")
-      for i in xrange(cbf.count_rows()):
+      for i in range(cbf.count_rows()):
         cbf.find_column("array_section_id")
         name = cbf.get_value()
-        if name in all_panelnames and name not in panel_name_mapping.values():
+        if name in all_panelnames and name not in list(panel_name_mapping.values()):
           cbf.find_column("axis_set_id")
           panel_name_mapping[cbf.get_value()] = name
         cbf.next_row()
@@ -220,7 +223,7 @@ class FormatCBFFullStillInMemory(FormatCBFFullStill):
       assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
-    except Exception, e:
+    except Exception as e:
     #except exceptions.Exception, e:
       # FIXME ideally should not squash the errors here...
       pass

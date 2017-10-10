@@ -1,8 +1,10 @@
 from __future__ import division
+from builtins import zip
+from builtins import object
 import cmath
 import math
 
-class least_squares:
+class least_squares(object):
 
   def __init__(self, obs, calc):
     self.obs = obs
@@ -49,7 +51,7 @@ class least_squares:
       return 1.e160
     return (2*self.calc.real*self.calc.imag*self.obs)/ac/ac/ac
 
-class exp_i_alpha_sum:
+class exp_i_alpha_sum(object):
 
   def __init__(self, alphas):
     self.alphas = alphas

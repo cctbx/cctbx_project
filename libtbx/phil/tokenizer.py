@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import str
+from builtins import next
 from libtbx import slots_getstate_setstate
 
 def escape_python_str(quote_char, string):
@@ -46,7 +48,7 @@ class character_iterator(slots_getstate_setstate):
     if (O.input_string[O.i_char] == "\n"): O.line_number += 1
     O.i_char += 1
 
-  def next(O):
+  def __next__(O):
     result = O.look_ahead_1()
     if (result is not None):
       O.i_char += 1
@@ -206,7 +208,7 @@ class word_iterator(slots_getstate_setstate):
     char_iter = O.char_iter
     char_iter.mark_for_backup()
     while True:
-      c = char_iter.next()
+      c = next(char_iter)
       if (c is None): break
       if (c.isspace()): continue
       if (c in settings.comment_characters
@@ -214,7 +216,7 @@ class word_iterator(slots_getstate_setstate):
                or char_iter.look_ahead(n=len(settings.meta_comment))
                   != settings.meta_comment)):
         while True:
-          c = char_iter.next()
+          c = next(char_iter)
           if (c is None or c == "\n"): break
       elif (c in ['"', "'"]):
         quote_char = c
@@ -227,7 +229,7 @@ class word_iterator(slots_getstate_setstate):
         else:
           quote_token = quote_char
         while True:
-          c = char_iter.next()
+          c = next(char_iter)
           if (c == quote_char):
             if (quote_token is quote_char): break
             if (char_iter.look_ahead(n=2) == quote_char+quote_char):
@@ -239,7 +241,7 @@ class word_iterator(slots_getstate_setstate):
             if (_ == "\\"):
               char_iter.skip_ahead_1()
             elif (_ == quote_char):
-              c = char_iter.next()
+              c = next(char_iter)
             elif (_ == "\n"):
               char_iter.skip_ahead_1()
               continue

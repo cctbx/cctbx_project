@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 import wx
 
 __default_border__ = 5
@@ -215,7 +217,7 @@ class SizerContainer (object) :
   def show_sizers (self) :
     indent = 0
     for sizer in self._sizer_stack :
-      print "%s%s" % (" "*indent, type(sizer).__name__)
+      print("%s%s" % (" "*indent, type(sizer).__name__))
       indent += 2
 
 ########################################################################

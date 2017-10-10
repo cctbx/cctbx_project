@@ -1,11 +1,14 @@
 from __future__ import absolute_import, division
 
+from builtins import str
+from past.builtins import basestring
+from builtins import object
 def get_beamline_definition(detector_id, **kwargs):
   import unicodedata
   import string
   import types
-  if not isinstance(detector_id, types.UnicodeType):
-    detector_id = unicode(detector_id, 'utf-8', 'ignore')
+  if not isinstance(detector_id, str):
+    detector_id = str(detector_id, 'utf-8', 'ignore')
 
   valid_chars = frozenset("_.%s%s" % (string.ascii_letters, string.digits))
   filename = unicodedata.normalize('NFKD', detector_id).encode('ASCII', 'ignore')

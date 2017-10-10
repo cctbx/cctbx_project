@@ -1,11 +1,15 @@
 from __future__ import division
 
+from builtins import map
+from builtins import str
+from builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
 Last Changed: 09/07/2017
 Description : PRIME GUI dialogs module
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -247,7 +251,7 @@ class PRIMEPreferences(wx.Dialog):
       self.custom_queue.cqueue.SetValue(queue)
 
     # Set method to default value
-    print "method: ", method
+    print("method: ", method)
     inp_method = self.mp_methods.ctr.FindString(str(method))
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)

@@ -32,6 +32,7 @@
 #
 
 from __future__ import division
+from builtins import object
 import os, sys
 import iotbx.phil
 from libtbx import group_args
@@ -56,7 +57,7 @@ cutter {
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
-class cutter():
+class cutter(object):
   """ This class is for cutting out pieces of chain out of hierarchy provided
   chain id, start resid and end resid."""
   def __init__(self, pdb_h, params, log):

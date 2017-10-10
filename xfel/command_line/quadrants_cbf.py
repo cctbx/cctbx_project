@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cspad.quadrants_cbf
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -26,7 +27,7 @@ if (__name__ == "__main__"):
     powder rings on the inner four sensors.  The algorithm treats each quadrant
     independently and scores based on self-correlation upon 45-degree rotation.
     """%file
-    print message
+    print(message)
 
     image = dxtbx.load(file)
     detector = image.get_detector()
@@ -60,7 +61,7 @@ if (__name__ == "__main__"):
           smallest_dist = dist
           key_panel = panel
 
-      print "Doing cross-correlation on panel", key_panel.get_name()
+      print("Doing cross-correlation on panel", key_panel.get_name())
       Q = one_panel(image,key_panel,i_quad,quad,plot)
       delta = panel.pixel_to_millimeter((Q.coordmax[0], Q.coordmax[1]))
 
@@ -68,11 +69,11 @@ if (__name__ == "__main__"):
                      quad.get_slow_axis(),
                      col(quad.get_origin())-col((delta[0],delta[1],0)))
       ccs.append(Q.ccmax)
-    print "Average CC: %7.4f"%flex.mean(ccs)
+    print("Average CC: %7.4f"%flex.mean(ccs))
 
     import pycbf
     image.sync_detector_to_cbf()
     dest_path = os.path.splitext(file)[0]+"_cc.cbf"
-    print "Saving result to", dest_path
+    print("Saving result to", dest_path)
     image._cbf_handle.write_widefile(dest_path,pycbf.CBF,\
         pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatHDF5 import FormatHDF5
 
@@ -12,7 +13,7 @@ class FormatHDF5Dectris(FormatHDF5):
     return False
     try:
       tag = FormatHDF5Dectris.open_file(image_file, 'rb').read(8)
-    except IOError,e:
+    except IOError as e:
       return False
 
     return tag == "\211HDF\r\n\032\n"
@@ -99,4 +100,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatHDF5Dectris.understand(arg)
+    print(FormatHDF5Dectris.understand(arg))

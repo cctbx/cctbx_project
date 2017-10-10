@@ -1,11 +1,14 @@
 from __future__ import division
 
+from builtins import str
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
 Last Changed: 07/21/2017
 Description : IOTA GUI controls
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -159,14 +162,14 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
   def InitializeDataMap(self, data):
     self.data = data
     self.itemDataMap = self.data
-    self.itemIndexMap = self.data.keys()
+    self.itemIndexMap = list(self.data.keys())
     self.SetItemCount(len(self.data))
 
   def GetListCtrl(self):
     return self
 
   def OnColClick(self, e):
-    print "column clicked"
+    print("column clicked")
     e.Skip()
 
   def OnGetItemToolTip(self, item, col):
@@ -254,7 +257,7 @@ class FileListItem(object):
     self.warning = False
 
     if items is not None:
-      for key, value in items.iteritems():
+      for key, value in items.items():
         self.__setattr__(key, value)
 
 # --------------------------------- Controls --------------------------------- #

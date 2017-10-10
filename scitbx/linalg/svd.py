@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import libtbx
 import scitbx.linalg
 from scitbx.array_family import flex

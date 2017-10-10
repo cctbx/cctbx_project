@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 import sys
 
 class dict_with_add(dict):
@@ -25,7 +28,7 @@ class interpreter(object):
     for expected_pattern in expected_patterns:
       expected_patterns_set.add(expected_pattern)
     assert len(expected_patterns_set) == len(expected_patterns)
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       assert expected_pattern in expected_patterns_set
     for mep in mutually_exclusive_pairs:
       assert len(mep) == 3
@@ -51,11 +54,11 @@ class interpreter(object):
     for expected_pattern in expected_patterns:
       alt = alternative_hydrogen_pattern(expected_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       alt = alternative_hydrogen_pattern(synonym_pattern)
       if (alt is not None): synonym_patterns[alt] = expected_pattern
     synonyms = {}
-    for synonym_pattern,expected_pattern in synonym_patterns.items():
+    for synonym_pattern,expected_pattern in list(synonym_patterns.items()):
       for h in ["H", "D"]:
         name = synonym_pattern.replace("h", h)
         if (name in synonyms):
@@ -111,7 +114,7 @@ class matched_atom_names(object):
 
   def expected_patterns_with_multiple_matches(self):
     result = {}
-    for expected_pattern,names in self.expected.items():
+    for expected_pattern,names in list(self.expected.items()):
       if (len(names) != 1):
         result[expected_pattern] = names
     return result
@@ -128,16 +131,16 @@ class matched_atom_names(object):
     result = 0
     if (out is None): out = sys.stdout
     if (len(self.unexpected) != 0):
-      print >> out, prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
-        for name in self.unexpected])
+      print(prefix+"unexpected atom names:", ", ".join(['"'+name+'"'
+        for name in self.unexpected]), file=out)
       result += 1
     for expected_pattern,names in \
-          self.expected_patterns_with_multiple_matches().items():
-      print >> out, prefix+"multiple matches: expected pattern=%s  names=%s" \
-        % (expected_pattern, ", ".join(['"'+name+'"' for name in names]))
+          list(self.expected_patterns_with_multiple_matches().items()):
+      print(prefix+"multiple matches: expected pattern=%s  names=%s" \
+        % (expected_pattern, ", ".join(['"'+name+'"' for name in names])), file=out)
       result += 1
     for pair in self.mutually_exclusive_pairs():
-      print >> out, prefix+"mutually exclusive: %s" % " ".join(pair)
+      print(prefix+"mutually exclusive: %s" % " ".join(pair), file=out)
       result += 1
     return result
 
@@ -154,7 +157,7 @@ class matched_atom_names(object):
       else:
         mep_transl[mep[0]] = mep[0]
         mep_transl[mep[1]] = mep[1]
-    for expected_pattern,names in self.expected.items():
+    for expected_pattern,names in list(self.expected.items()):
       expected_pattern = mep_transl.get(expected_pattern, expected_pattern)
       mon_lib_name = expected_pattern.upper()
       if (mon_lib_name[0] in "123456789"):

@@ -52,6 +52,9 @@ symmetry.  MTZ, XDS, and (usually) CIF files will be more complete.
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from iotbx import mtz
 from iotbx.scalepack import merge as scalepack_merge
 from iotbx.scalepack import no_merge_original_index as scalepack_no_merge
@@ -121,7 +124,7 @@ def try_all_readers(file_name):
   try:
     content = cif_reader(file_path=file_name)
     looks_like_a_reflection_file = False
-    for block in content.model().values():
+    for block in list(content.model().values()):
       if '_refln_index_h' in block or '_refln.index_h' in block:
         looks_like_a_reflection_file = True
         break
@@ -189,7 +192,7 @@ class any_reflection_file(object):
     file_name = self._file_name
     try:
       open(file_name) # test read access
-    except IOError, e:
+    except IOError as e:
       if (ensure_read_access):
         raise Sorry(str(e))
       return
@@ -369,13 +372,13 @@ def collect_arrays(
     result = []
   for file_name in file_names:
     if (verbose > 0):
-      print >> report_out
-      print >> report_out, "file_name:", file_name
+      print(file=report_out)
+      print("file_name:", file_name, file=report_out)
       report_out.flush()
     reflection_file = any_reflection_file(file_name)
     if (verbose > 0):
-      print >> report_out, "file_type:", reflection_file.file_type()
-      print >> report_out
+      print("file_type:", reflection_file.file_type(), file=report_out)
+      print(file=report_out)
     miller_arrays = reflection_file.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
@@ -388,7 +391,7 @@ def collect_arrays(
           miller_array.show_summary(f=report_out)
         if (verbose > 2):
           miller_array.show_array(f=report_out)
-        print >> report_out
+        print(file=report_out)
     if (not discard_arrays):
       result.extend(miller_arrays)
   return result
@@ -439,7 +442,7 @@ def run(args):
         raise Sorry("Input file is already a pickle file.")
     if (not pickle_file_name.lower().endswith(".pickle")):
       pickle_file_name += ".pickle"
-    print
-    print "Writing all Miller arrays to file:", pickle_file_name
+    print()
+    print("Writing all Miller arrays to file:", pickle_file_name)
     easy_pickle.dump(pickle_file_name, all_miller_arrays)
-    print
+    print()

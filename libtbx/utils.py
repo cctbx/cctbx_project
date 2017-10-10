@@ -1,4 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import input
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx.queuing_system_utils import sge_utils, pbs_utils
 from libtbx.str_utils import show_string
 try: import gzip
@@ -56,7 +64,7 @@ def xfrange(start, stop=None, step=None, tolerance=None):
   if (    tolerance is not None
       and abs(start + count * step - stop) < abs(step * tolerance)):
     count += 1
-  for i in xrange(count):
+  for i in range(count):
     yield start + i * step
 
 def safe_div(a,b):
@@ -296,21 +304,22 @@ def warn_if_unexpected_md5_hexdigest(
       False if md5 hash of file does not appear in expected_md5_hexdigests.
   """
   m = hashlib_md5()
-  m.update("\n".join(open(path).read().splitlines()))
+  m.update("\n".join(open(path).read().splitlines()).encode("UTF-8"))
   current_md5_hexdigest = m.hexdigest()
+  #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
   if (m.hexdigest() in expected_md5_hexdigests): return False
   warning = "Warning: unexpected md5 hexdigest:"
   file_name = "  File: %s" % show_string(path)
   new_hexdigest = "  New md5 hexdigest: %s" % m.hexdigest()
   width = max([len(s) for s in [warning, file_name, new_hexdigest]])
   if (out is None): out = sys.stdout
-  print >> out, "*"*width
-  print >> out, warning
-  print >> out, file_name
-  print >> out, new_hexdigest
+  print("*"*width, file=out)
+  print(warning, file=out)
+  print(file_name, file=out)
+  print(new_hexdigest, file=out)
   for hint in hints:
-    print >> out, hint
-  print >> out, "*"*width
+    print(hint, file=out)
+  print("*"*width, file=out)
   return True
 
 def md5_hexdigest(filename=None, blocksize=256):
@@ -364,7 +373,7 @@ def get_memory_from_string(mem_str):
     if num_str is not None:
       try:
         num = float(num_str)
-      except ValueError, e:
+      except ValueError as e:
         raise RuntimeError("""
    The numerical portion of %s is not a valid float
 """ % mem_str)
@@ -373,7 +382,7 @@ def get_memory_from_string(mem_str):
   else:
     try:
       num = int(mem_str)
-    except ValueError, e:
+    except ValueError as e:
       raise RuntimeError("""
    There is no memory unit or valid float in %s
 """ % mem_str)
@@ -693,8 +702,8 @@ def detect_multiprocessing_problem():
     try:
       import multiprocessing
       pool = multiprocessing.Pool(processes=2)
-      pool.map(func=abs, iterable=range(2), chunksize=1)
-    except ImportError, e:
+      pool.map(func=abs, iterable=list(range(2)), chunksize=1)
+    except ImportError as e:
       if (not str(e).startswith(sem_open_msg)):
         raise
       return "multiprocessing import error: " + sem_open_msg
@@ -745,7 +754,7 @@ def show_exception_info_if_full_testing(prefix="EXCEPTION_INFO: "):
       and not disable_tracebacklimit):
     return
   from libtbx import introspection
-  from cStringIO import StringIO
+  from io import StringIO
   sio = StringIO()
   introspection.show_stack(out=sio)
   traceback.print_exc(file=sio)
@@ -867,7 +876,7 @@ class timer_base(object):
     out : file, optional
     """
     if (out == None): out = sys.stdout
-    print >> out, prefix+"%.2f s" % self.elapsed()
+    print(prefix+"%.2f s" % self.elapsed(), file=out)
 
   def show_delta(self, prefix="", out=None):
     """
@@ -879,7 +888,7 @@ class timer_base(object):
     out : file, optional
     """
     if (out == None): out = sys.stdout
-    print >> out, prefix+"%.2f s" % self.delta()
+    print(prefix+"%.2f s" % self.delta(), file=out)
 
 
 class user_plus_sys_time(timer_base):
@@ -1122,9 +1131,9 @@ def show_total_time(
   try: python_ticker = sys.gettickeraccumulation()
   except AttributeError: pass
   else:
-    print >> out, "Time per interpreted Python bytecode instruction:",
-    print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
-  print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
+    print("Time per interpreted Python bytecode instruction:", end=' ', file=out)
+    print("%.3f micro seconds" % (total_time / python_ticker * 1.e6), file=out)
+  print("Total CPU time: %.2f %s" % human_readable_time(total_time), file=out)
 
 def show_wall_clock_time(seconds, out=None):
   """
@@ -1143,19 +1152,19 @@ def show_wall_clock_time(seconds, out=None):
   wall clock time: 20.00 seconds
   """
   if (out is None): out = sys.stdout
-  print >> out, "wall clock time:",
+  print("wall clock time:", end=' ', file=out)
   if (seconds < 120):
-    print >> out, "%.2f seconds" % seconds
+    print("%.2f seconds" % seconds, file=out)
   else:
     m = int(seconds / 60 + 1.e-6)
     s = seconds - m * 60
-    print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
-      m, s, seconds)
+    print("%d minutes %.2f seconds (%.2f seconds total)" % (
+      m, s, seconds), file=out)
   out_flush = getattr(out, "flush", None)
   if (out_flush is not None):
     out_flush()
 
-class show_times:
+class show_times(object):
   """
   Class to track the time past an instance's initialization.
   """
@@ -1188,7 +1197,7 @@ class show_times:
       s += ", ticks: %d" % ticks
       if (ticks != 0):
         s += ", micro-seconds/tick: %.3f" % (usr_plus_sys*1.e6/ticks)
-    print >> out, s
+    print(s, file=out)
     show_wall_clock_time(seconds=time.time()-self.time_start, out=out)
 
 def show_times_at_exit(time_start=None, out=None):
@@ -1206,7 +1215,7 @@ def show_times_at_exit(time_start=None, out=None):
   """
   atexit.register(show_times(time_start=time_start, out=out))
 
-class host_and_user:
+class host_and_user(object):
 
   def __init__(self):
     self.host = os.environ.get("HOST")
@@ -1253,38 +1262,38 @@ class host_and_user:
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     if (self.host is not None):
-      print >> out, prefix + "HOST =", self.host
+      print(prefix + "HOST =", self.host, file=out)
     if (    self.hostname is not None
         and self.hostname != self.host):
-      print >> out, prefix + "HOSTNAME =", self.hostname
+      print(prefix + "HOSTNAME =", self.hostname, file=out)
     if (    self.computername is not None
         and self.computername != self.host):
-      print >> out, prefix + "COMPUTERNAME =", self.computername
+      print(prefix + "COMPUTERNAME =", self.computername, file=out)
     if (self.hosttype is not None):
-      print >> out, prefix + "HOSTTYPE =", self.hosttype
+      print(prefix + "HOSTTYPE =", self.hosttype, file=out)
     if (self.processor_architecture is not None):
-      print >> out, prefix + "PROCESSOR_ARCHITECTURE =", \
-        self.processor_architecture
+      print(prefix + "PROCESSOR_ARCHITECTURE =", \
+        self.processor_architecture, file=out)
     if (   self.hosttype is None
         or self.machtype is None
         or self.ostype is None
         or "-".join([self.machtype, self.ostype]) != self.hosttype):
       if (self.machtype is not None):
-        print >> out, prefix + "MACHTYPE =", \
-          self.machtype
+        print(prefix + "MACHTYPE =", \
+          self.machtype, file=out)
       if (self.ostype is not None):
-        print >> out, prefix + "OSTYPE =", \
-          self.ostype
+        print(prefix + "OSTYPE =", \
+          self.ostype, file=out)
     if (self.vendor is not None and self.vendor != "unknown"):
-      print >> out, prefix + "VENDOR =", \
-        self.vendor
+      print(prefix + "VENDOR =", \
+        self.vendor, file=out)
     if (self.user is not None):
-      print >> out, prefix + "USER =", self.user
+      print(prefix + "USER =", self.user, file=out)
     if (    self.username is not None
         and self.username != self.user):
-      print >> out, prefix + "USERNAME =", self.username
+      print(prefix + "USERNAME =", self.username, file=out)
     if (self.pid is not None):
-      print >> out, prefix + "PID =", self.pid
+      print(prefix + "PID =", self.pid, file=out)
     self.sge_info.show(out=out, prefix=prefix)
     self.pbs_info.show(out=out, prefix=prefix)
 
@@ -1537,7 +1546,7 @@ def write_this_is_auto_generated(f, file_name_generator):
   file_name_generator : str
       Name of source generator.
   """
-  print >> f, """\
+  print("""\
 /* *****************************************************
    THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT.
    *****************************************************
@@ -1545,9 +1554,9 @@ def write_this_is_auto_generated(f, file_name_generator):
    Generated by:
      %s
  */
-""" % file_name_generator
+""" % file_name_generator, file=f)
 
-class import_python_object:
+class import_python_object(object):
 
   def __init__(self, import_path, error_prefix, target_must_be, where_str):
     path_elements = import_path.split(".")
@@ -1581,7 +1590,7 @@ class input_with_prompt(object):
     except Exception: self.previous_tracebacklimit = None
     if (tracebacklimit is not None):
       sys.tracebacklimit = tracebacklimit
-    self.input = raw_input(prompt)
+    self.input = input(prompt)
 
   def __del__(self):
     if (self.previous_tracebacklimit is None):
@@ -1790,7 +1799,7 @@ def random_hex_code(number_of_digits):
   """
   import random
   digits = []
-  for i_digit in xrange(number_of_digits):
+  for i_digit in range(number_of_digits):
     i = random.randrange(16)
     digits.append("0123456789abcdef"[i])
   return "".join(digits)
@@ -1853,7 +1862,7 @@ def getcwd_safe () :
   """
   try :
     cwd = os.getcwd()
-  except OSError, e :
+  except OSError as e :
     if (e.errno == 2) :
       raise Sorry("Could not determine the current working directory because "+
         "it has been deleted or unmounted.")
@@ -1882,7 +1891,7 @@ def getcwd_or_default (default=None) :
       default = os.environ.get("HOME", "/")
   try :
     cwd = os.getcwd()
-  except OSError, e:
+  except OSError as e:
     if (e.errno == 2) :
       cwd = default
     else :
@@ -1935,19 +1944,19 @@ class tmp_dir_wrapper (object) :
     else :
       if (not os.path.isdir(dest_dir)) :
         raise Sorry("The destination directory %s does not exist." % dest_dir)
-      print >> out, "Changing working directory to %s" % tmp_dir
-      print >> out, "Ultimate destination is %s" % dest_dir
+      print("Changing working directory to %s" % tmp_dir, file=out)
+      print("Ultimate destination is %s" % dest_dir, file=out)
       os.chdir(tmp_dir)
 
   def transfer_files (self, out=sys.stdout) :
     if (self.tmp_dir is None) : return False
     assert os.path.isdir(self.dest_dir)
     files = os.listdir(self.tmp_dir)
-    print >> out, "Copying all output files to %s" % self.dest_dir
+    print("Copying all output files to %s" % self.dest_dir, file=out)
     for file_name in files :
-      print >> out, "  ... %s" % file_name
+      print("  ... %s" % file_name, file=out)
       shutil.copy(os.path.join(self.tmp_dir, file_name), self.dest_dir)
-    print >> out, ""
+    print("", file=out)
     return True
 
 def show_development_warning (out=sys.stdout) :
@@ -1958,7 +1967,7 @@ def show_development_warning (out=sys.stdout) :
   ----------
   out : file, optional
   """
-  print >> out, """
+  print("""
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!                  WARNING - EXPERIMENTAL PROGRAM                        !!
   !!                                                                        !!
@@ -1966,7 +1975,7 @@ def show_development_warning (out=sys.stdout) :
   !! missing and/or untested.  Use at your own risk!  For bug reports, etc. !!
   !! email bugs@phenix-online.org.                                          !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-"""
+""", file=out)
 
 def check_if_output_directory_exists (file_name=None, dir_name=None) :
   if (file_name is not None) :
@@ -1995,15 +2004,15 @@ def concatenate_python_script (out, file_name) :
   but is required for some of our Coot-related scripts to work.)
   """
   data = open(file_name, "r").read()
-  print >> out, ""
-  print >> out, "#--- script copied from %s" % os.path.basename(file_name)
+  print("", file=out)
+  print("#--- script copied from %s" % os.path.basename(file_name), file=out)
   for line in data.splitlines() :
     if line.startswith("from __future__") :
       continue
     else :
-      print >> out, line
-  print >> out, "#--- end"
-  print >> out, ""
+      print(line, file=out)
+  print("#--- end", file=out)
+  print("", file=out)
 
 def greek_time(secs):
   """
@@ -2039,19 +2048,19 @@ libtbx_urllib_proxy = None
 
 def install_urllib_http_proxy (server, port=80, user=None, password=None) :
   global libtbx_urllib_proxy
-  import urllib2
+  import urllib.request, urllib.error, urllib.parse
   if (user is None) :
-    proxy = urllib2.ProxyHandler({'http': '%s:%d' % (server, port) })
-    opener = urllib2.build_opener(proxy)
+    proxy = urllib.request.ProxyHandler({'http': '%s:%d' % (server, port) })
+    opener = urllib.request.build_opener(proxy)
   else :
-    proxy = urllib2.ProxyHandler({
+    proxy = urllib.request.ProxyHandler({
       'http': 'http://%s:%s@%s:%s' % (user, password, server, port),
     })
-    auth = urllib2.HTTPBasicAuthHandler()
-    opener = urllib2.build_opener(proxy, auth, urllib2.HTTPHandler)
+    auth = urllib.request.HTTPBasicAuthHandler()
+    opener = urllib.request.build_opener(proxy, auth, urllib.request.HTTPHandler)
   libtbx_urllib_proxy = proxy
-  urllib2.install_opener(opener)
-  print "Installed urllib2 proxy at %s:%d" % (server, port)
+  urllib.request.install_opener(opener)
+  print("Installed urllib2 proxy at %s:%d" % (server, port))
   return proxy
 
 def urlopen (*args, **kwds) :
@@ -2073,8 +2082,8 @@ def urlopen (*args, **kwds) :
       port=port,
       user=user,
       password=password)
-  import urllib2
-  return urllib2.urlopen(*args, **kwds)
+  import urllib.request, urllib.error, urllib.parse
+  return urllib.request.urlopen(*args, **kwds)
 
 def retrieve_unless_exists(url, filename, digests=None):
   """ Download the file at the given url to the given local filename,
@@ -2090,16 +2099,16 @@ def retrieve_unless_exists(url, filename, digests=None):
       If digests is None, then the url of the digest file is expected to be
       named 'digests.txt' and to be next to the downloaded file.
   """
-  import urlparse
+  import urllib.parse
   from os import path
-  import urllib
+  import urllib.request, urllib.parse, urllib.error
   if digests is None:
-    digests = urlparse.urljoin(url, 'digests.txt')
-  digest_of = dict(tuple(li.split()) for li in urllib.urlopen(digests))
-  src_name = os.path.basename(urlparse.urlparse(url).path)
+    digests = urllib.parse.urljoin(url, 'digests.txt')
+  digest_of = dict(tuple(li.split()) for li in urllib.request.urlopen(digests))
+  src_name = os.path.basename(urllib.parse.urlparse(url).path)
   if (not os.path.isfile(filename)
       or md5_hexdigest(filename) != digest_of[src_name]):
-    urllib.urlretrieve(url, filename)
+    urllib.request.urlretrieve(url, filename)
     return "Downloaded"
   else:
     return "Cached"
@@ -2222,16 +2231,16 @@ class download_target (object) :
     if (progress_meter is None) :
       progress_meter = download_progress(log=log)
     from libtbx import easy_run
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
     file_name = self.file_name # return value
     if (not self.use_curl) :
       if (not None in [self.user, self.password]) :
-        passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        passman = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         passman.add_password(None, self.base_url, self.user, self.password)
-        authhandler = urllib2.HTTPBasicAuthHandler(passman)
-        opener = urllib2.build_opener(authhandler)
-        urllib2.install_opener(opener)
-      req = urllib2.urlopen(self.url)
+        authhandler = urllib.request.HTTPBasicAuthHandler(passman)
+        opener = urllib.request.build_opener(authhandler)
+        urllib.request.install_opener(opener)
+      req = urllib.request.urlopen(self.url)
       info = req.info()
       n_kb_total = int(info['Content-length']) / 1024
       progress_meter.set_total_size(n_kb_total)
@@ -2327,7 +2336,7 @@ def to_unicode(text, codec=None):
     if (sys.platform == 'win32'):
       codec = 'mbcs'
 
-  if (isinstance(text, unicode)):
+  if (isinstance(text, str)):
     return text
   elif (isinstance(text, str)):
     new_text = text
@@ -2338,7 +2347,7 @@ def to_unicode(text, codec=None):
     finally:
       return new_text
   elif (text is not None):
-    return unicode(text)
+    return str(text)
   else:
     return None
 
@@ -2365,7 +2374,7 @@ def to_str(text, codec=None):
 
   if (isinstance(text, str)):
     return text
-  elif (isinstance(text, unicode)):
+  elif (isinstance(text, str)):
     new_text = text
     try:
       new_text = text.encode(codec, errors='replace')

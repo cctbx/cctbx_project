@@ -1,12 +1,15 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
 def get_image_examples():
   from os.path import join
   import libtbx.load_env
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
-    print 'SKIP: dials_regression not configured'
+  except KeyError as e:
+    print('SKIP: dials_regression not configured')
     exit(0)
 
 
@@ -84,7 +87,7 @@ def get_image_examples():
     "./image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5"             : "hdf5",
   }
 
-  return dict((join(dials_regression, k), v) for k, v in images.iteritems())
+  return dict((join(dials_regression, k), v) for k, v in images.items())
 
 IMAGE_EXAMPLES = get_image_examples()
 
@@ -212,7 +215,7 @@ def read_multitile_cbf_image(cbf_image):
   cbf.find_column('encoding_type')
   cbf.select_row(0)
   types = []
-  for i in xrange(cbf.count_rows()):
+  for i in range(cbf.count_rows()):
     types.append(cbf.get_value())
     cbf.next_row()
   assert len(types) == cbf.count_rows()
@@ -220,7 +223,7 @@ def read_multitile_cbf_image(cbf_image):
   # read the data
   data = {}
   cbf.find_category("array_data")
-  for i in xrange(cbf.count_rows()):
+  for i in range(cbf.count_rows()):
     cbf.find_column("array_id")
     name = cbf.get_value()
 
@@ -252,7 +255,7 @@ def read_multitile_cbf_image(cbf_image):
     has_sections = False
   if has_sections:
     section_shapes = {}
-    for i in xrange(cbf.count_rows()):
+    for i in range(cbf.count_rows()):
       cbf.find_column("id")
       section_name = cbf.get_value()
       if not section_name in section_shapes:
@@ -300,7 +303,7 @@ def tst_smv(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
+  print('OK')
 
 
 
@@ -319,7 +322,7 @@ def tst_tiff(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
+  print('OK')
 
 
 def tst_cbf_fast(filename):
@@ -336,7 +339,7 @@ def tst_cbf_fast(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
+  print('OK')
 
 
 def tst_cbf(filename):
@@ -349,7 +352,7 @@ def tst_cbf(filename):
 
   try:
     data2 = read_multitile_cbf_image(filename)
-  except Exception, e:
+  except Exception as e:
     data2 = (read_cbf_image(filename),)
 
   assert len(data1) == len(data2)
@@ -358,7 +361,7 @@ def tst_cbf(filename):
     diff = flex.abs(d1 - d2)
     assert flex.max(diff) < 1e-7
 
-  print 'OK'
+  print('OK')
 
 def tst_hdf5(filename):
   from dxtbx.format.image import HDF5Reader
@@ -391,12 +394,12 @@ def tst_hdf5(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
+  print('OK')
 
 
 
 def tst_all():
-  for k, v in IMAGE_EXAMPLES.iteritems():
+  for k, v in IMAGE_EXAMPLES.items():
     #if v == 'smv':
     #  tst_smv(k)
     #elif v == 'tiff':

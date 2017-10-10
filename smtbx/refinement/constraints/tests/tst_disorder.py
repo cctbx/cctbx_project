@@ -1,8 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 from smtbx import refinement
 import smtbx.refinement.constraints as core
 from iotbx import shelx
-from cStringIO import StringIO
+from io import StringIO
 import itertools
 
 def exercise_with_disorder():
@@ -25,7 +29,7 @@ def exercise_with_disorder():
       pivot_letter = 'A' if s < 'D' else 'B'
       expected_reparametrisation_for["H%i%s" % (i,s)] = (
         core.terminal_tetrahedral_xh3_sites, "C%i%s" % (i,pivot_letter))
-  for sc, params in itertools.izip(
+  for sc, params in zip(
     ls.reparametrisation.structure.scatterers(),
     ls.reparametrisation.asu_scatterer_parameters):
     if sc.scattering_type != 'H':
@@ -100,7 +104,7 @@ HKLF 4
 
 def run():
   exercise_with_disorder()
-  print 'OK'
+  print('OK')
 
 
 if __name__ == '__main__':

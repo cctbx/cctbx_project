@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -311,7 +313,7 @@ def exercise():
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
   except: # intentional
-    print "Can not initialize monomer_library, skipping test."
+    print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None and ener_lib is not None:
     exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib)
     exercise_single_atom(mon_lib_srv, ener_lib)

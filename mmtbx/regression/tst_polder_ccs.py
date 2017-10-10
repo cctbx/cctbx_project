@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx import easy_run
 import time
 from libtbx.test_utils import approx_equal
@@ -135,7 +136,7 @@ def exercise(prefix="tst_polder_ccs"):
     "output.file_name=%s.mtz" % prefix,
     "> %s.log" % prefix
   ])
-  print cmd
+  print(cmd)
   easy_run.call(cmd)
 
   # get params.polder
@@ -221,4 +222,4 @@ def exercise(prefix="tst_polder_ccs"):
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))

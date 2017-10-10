@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
@@ -204,7 +208,7 @@ class test_function(object):
                                   evaluator = self,
                                   tolerance=1e-10)
     self.x = self.optimizer.get_solution()
-    for ii in xrange(self.n):
+    for ii in range(self.n):
       assert approx_equal(self.x[ii],ii+1,1e-5)
 
   def target(self, vector):
@@ -241,7 +245,7 @@ class test_rosenbrock_function(object):
 
 def run():
   flex.set_random_seed(0)
-  for ii in xrange(10):
+  for ii in range(10):
     test_rosenbrock_function(1)
     test_function(1)
     test_function(2)
@@ -250,4 +254,4 @@ def run():
 
 if __name__ == "__main__":
   run()
-  print "OK"
+  print("OK")

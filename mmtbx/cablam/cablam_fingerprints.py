@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 # (jEdit options) :folding=explicit:collapseFolds=1:
 #
 #cablam_fingerprints
@@ -15,6 +16,8 @@ from __future__ import division
 #  objects.  This allows more robust and varied handling downstream (eg output),
 #  but required substantial rewrite of the functions in this file.
 
+from builtins import str
+from builtins import object
 import os, sys
 import libtbx.load_env
 from libtbx import easy_pickle
@@ -102,7 +105,7 @@ class motif_instance(object):
 
   #a check before printing that all residues have all values needed to print
   def has_all_measures(self, kinorder):
-    for residue in self.residues.values():
+    for residue in list(self.residues.values()):
       for needed_measure in kinorder:
         if needed_measure not in residue.measures:
           return False
@@ -141,7 +144,7 @@ def check_protein(protein, motif_name_list):
   debug = False
   found_motifs = {}
   motif_list = fetch_fingerprints(motif_name_list)
-  reslist = protein.keys()
+  reslist = list(protein.keys())
   reslist.sort()
   for motif in motif_list:
     found_motifs[motif.motif_name] = []
@@ -153,7 +156,7 @@ def check_protein(protein, motif_name_list):
       failed = check_for_motif(motif,residue,candidate)#returns either False or debug info
       if failed:
         candidate = None
-        if debug==True: print failed
+        if debug==True: print(failed)
         continue
       else:
         #print candidate.needed_length, candidate.residues, len(candidate.residues)
@@ -301,7 +304,7 @@ def fail_required_bond_check(check_bond, active_residue, candidate):
 def fail_forbidden_bond_check(check_bond, active_residue):
   if not check_bond.banned:
     return 0
-  if check_bond.src_atom not in active_residue.probe.keys():
+  if check_bond.src_atom not in list(active_residue.probe.keys()):
     return 0
   src_atom = check_bond.src_atom
   for bond_name in active_residue.probe[src_atom]:
@@ -335,7 +338,7 @@ def fail_forbidden_bond_check(check_bond, active_residue):
 #-------------------------------------------------------------------------------
 def fail_index_match(index, residue, motif_in_progress):
   if not index: return 0 #i.e. the dafault index of ''
-  for observed_index in motif_in_progress.residues.keys():
+  for observed_index in list(motif_in_progress.residues.keys()):
     if index == observed_index and motif_in_progress.residues[index] != residue:
       return "Index "+index+" already identified, does not match new residue "+residue.id_with_resname()
     if motif_in_progress.residues[observed_index] == residue and observed_index != index:
@@ -356,9 +359,9 @@ def make_pickle(motif):
 Problem locating cablam fingerprints dir""")
   os.chdir(fingerprints_dir)
   filename = motif.motif_name + ".pickle"
-  print "Converting", motif.motif_name, "to pickle file . . ."
+  print("Converting", motif.motif_name, "to pickle file . . .")
   easy_pickle.dump(file_name=filename,obj=motif)
-  print ". . . Done"
+  print(". . . Done")
   os.chdir(pwd)
 #-------------------------------------------------------------------------------
 #}}}
@@ -389,7 +392,7 @@ def get_all_labels(motif_name_list):
   motifs = fetch_fingerprints(motif_name_list)
   label_list = []
   for motif in motifs:
-    for residue_name in motif.residue_names.values():
+    for residue_name in list(motif.residue_names.values()):
       label_list.append(residue_name)
   return label_list
 #-------------------------------------------------------------------------------

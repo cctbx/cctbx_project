@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import exceptions,math,types
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
@@ -8,7 +13,7 @@ from rstbx_ext import Direction
 
 diagnostic = False
 
-class AbsenceHandler:
+class AbsenceHandler(object):
   def __init__(self):
     self.recursion_limit=8
 
@@ -38,7 +43,7 @@ class AbsenceHandler:
 
         #print "transformation",invS.transpose().elems,{True:"is",False:"not"}[idx_possible],"possible"
         if idx_possible:
-          print "There are systematic absences. Applying transformation",invS.transpose().elems
+          print("There are systematic absences. Applying transformation",invS.transpose().elems)
           self.cb_op = invS.transpose().inverse()  # not sure if transpose.inverse or just inverse
           self.flag = True
           return 1
@@ -46,16 +51,16 @@ class AbsenceHandler:
     return 0
 
   def correct(self,orientation):
-    print "before", orientation.unit_cell(),orientation.unit_cell().volume()
-    print [float(i) for i in self.cb_op.elems]
+    print("before", orientation.unit_cell(),orientation.unit_cell().volume())
+    print([float(i) for i in self.cb_op.elems])
     corrected = orientation.change_basis([float(i) for i in self.cb_op.elems])
-    print "after", corrected.unit_cell(),orientation.unit_cell().volume()
+    print("after", corrected.unit_cell(),orientation.unit_cell().volume())
     unit_cell_too_small(corrected.unit_cell(),cutoff=25.)
     return corrected
 
 class FewSpots(exceptions.Exception): pass
 
-class SolutionTracker:
+class SolutionTracker(object):
   def __init__(self):
     self.all_solutions=[]
     self.volume_filtered=[]
@@ -85,7 +90,7 @@ class SolutionTracker:
 
 unphysical_cell_cutoff_small_molecule_regime = 25. # Angstrom^3
 
-class HandleCombo:
+class HandleCombo(object):
   def __init__(self,ai,combo,cutoff=unphysical_cell_cutoff_small_molecule_regime):
     self.ai = ai
     self.combo = combo
@@ -105,11 +110,11 @@ class HandleCombo:
   def setA(self,solns):
     from scitbx import matrix as vector # to clarify role of column vector
     # set the orientation matrix based on list of three rstbx basis Directions
-    assert type(solns) == types.ListType
+    assert type(solns) == list
     assert not 0 in [isinstance(x,Direction) for x in solns]
     self.ai.combo_state = solns # for derived feature in LABELIT
     realaxis=[]
-    for i in xrange(3):
+    for i in range(3):
       realaxis.append(  vector.col(solns[i].dvec) * solns[i].real )
     matA = [  realaxis[0].elems[0],realaxis[0].elems[1],realaxis[0].elems[2],
               realaxis[1].elems[0],realaxis[1].elems[1],realaxis[1].elems[2],
@@ -130,7 +135,7 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
   try_counter = 0
   solutions = SolutionTracker()
   if diagnostic:
-    for x in xrange(ai.n_candidates()):
+    for x in range(ai.n_candidates()):
       directional_show(ai[x],message="BC%d"%x)
 
   for combo in C:
@@ -146,24 +151,24 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
                           'volume':ai.getOrientation().unit_cell().volume()}
         solutions.append(this_solution)
       try_counter+=1
-    except (FewSpots),f:
+    except (FewSpots) as f:
       #print "COMBO: (%d,%d,%d) rejected on too few spots"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except (SmallUnitCellVolume),f:
+    except (SmallUnitCellVolume) as f:
       #print "Small COMBO: (%d,%d,%d) rejected on small cell volume"%(combo[0],combo[1],combo[2])
       continue
-    except (KGerror),f:
+    except (KGerror) as f:
       #print "KG COMBO: (%d,%d,%d) rejected on Krivy-Gruber iterations"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except ValueError, f :
+    except ValueError as f :
       if str(f).find("Corrupt metrical matrix")>=0: continue # colinear or coplanar
-    except (RuntimeError),f:
+    except (RuntimeError) as f:
       if str(f).find("Iteration limit exceeded")>0: continue
       if str(f).find("Matrix is not invertible")>=0: continue# colinear or coplanar
-      print "Report this problem to LABELIT developers:"
-      print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
+      print("Report this problem to LABELIT developers:")
+      print("COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2]))
       #printcombo(ai,combo)
       continue
     except Exception:
@@ -174,7 +179,7 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
     if try_counter == maxtry: break
   return solutions
 
-class SelectBasisMetaprocedure:
+class SelectBasisMetaprocedure(object):
   def __init__(self,input_index_engine):
     self.input_index_engine = input_index_engine
 
@@ -196,13 +201,13 @@ class SelectBasisMetaprocedure:
     HC.handle_absences()
 
   def show_rms(self):
-    print "+++++++++++++++++++++++++++++++"
+    print("+++++++++++++++++++++++++++++++")
     cell = self.input_index_engine.getOrientation().unit_cell()
-    print "cell=%s volume(A^3)=%.3f"%(cell,cell.volume())
-    print "RMSDEV: %5.3f"%self.input_index_engine.rmsdev()
-    print "-------------------------------"
+    print("cell=%s volume(A^3)=%.3f"%(cell,cell.volume()))
+    print("RMSDEV: %5.3f"%self.input_index_engine.rmsdev())
+    print("-------------------------------")
 
     for hkl,obs in zip(self.input_index_engine.hklobserved(),self.input_index_engine.observed()):
       displace = matrix.col(hkl) - matrix.col(obs)
       diff = math.sqrt(displace.dot(displace))
-      print "%-15s %5.3f"%(hkl,diff)
+      print("%-15s %5.3f"%(hkl,diff))

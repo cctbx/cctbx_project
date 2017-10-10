@@ -19,6 +19,7 @@ with the latest source, which should speed up installer generation.
 """
 
 from __future__ import division
+from __future__ import print_function
 from optparse import OptionParser
 import os.path as op
 import shutil
@@ -29,7 +30,7 @@ import sys
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(op.dirname(__file__))))
 if (not libtbx_path in sys.path) :
-  print libtbx_path
+  print(libtbx_path)
   sys.path.append(libtbx_path)
 from libtbx.auto_build.installer_utils import *
 from libtbx.auto_build import rpath
@@ -72,9 +73,9 @@ def run (args, out=sys.stdout) :
   if (not options.verbose) :
     f = open("rpath.log", "w")
     sys.stdout = f
-  print >> out, "Setting rpath in base packages..."
+  print("Setting rpath in base packages...", file=out)
   rpath.run([base_dir])
-  print >> out, "Setting rpath in shared libraries..."
+  print("Setting rpath in shared libraries...", file=out)
   rpath.run([build_dir])
   sys.stdout = stdout_old
 
@@ -87,10 +88,10 @@ def run (args, out=sys.stdout) :
   os.chdir(tmp_dir)
 
   # base and build/lib directories
-  print >> out, "Copying dependencies..."
+  print("Copying dependencies...", file=out)
   copy_tree(op.join(target_dir, "base"), op.join(tmp_dir, "base"))
 
-  print >> out, "Copying shared libraries..."
+  print("Copying shared libraries...", file=out)
   tmp_build_dir = op.join(tmp_dir, "build")
   os.makedirs(tmp_build_dir)
 
@@ -99,13 +100,13 @@ def run (args, out=sys.stdout) :
   copy_tree(op.join(build_dir, "lib"), op.join(tmp_build_dir, "lib"))
 
   # copy over non-compiled files
-  print >> out, "Copying base modules..."
+  print("Copying base modules...", file=out)
   for file_name in os.listdir(modules_dir) :
     if (file_name in ["build", "base"]) or (file_name in options.ignore) :
       continue
     full_path = op.join(modules_dir, file_name)
     if op.isdir(full_path) :
-      print >> out, "  copying %s..." % file_name
+      print("  copying %s..." % file_name, file=out)
       copy_tree(full_path, op.join(tmp_dir, file_name))
       call("chmod -R a+rX %s" % op.join(tmp_dir, file_name))
 
@@ -131,14 +132,14 @@ def run (args, out=sys.stdout) :
   # XXX what about base/include?
 
   # copy over build executable directories
-  print >> out, "Copying standalone executables..."
+  print("Copying standalone executables...", file=out)
   # for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir,i,"exe"))]:
   for j in [i for i in os.listdir(build_dir) if os.path.isdir(os.path.join(build_dir, i, "exe"))]:
-    print >> out, "->", op.join(build_dir, j, "exe")
+    print("->", op.join(build_dir, j, "exe"), file=out)
     copy_tree(op.join(build_dir, j, "exe"), op.join(tmp_build_dir, j, "exe"))
 
   # delete unnecessary files
-  print >> out, "Deleting unnecessary files."
+  print("Deleting unnecessary files.", file=out)
   find_and_delete_files(tmp_dir, file_ext=".pyc")
   find_and_delete_files(tmp_dir, file_ext=".o")
   find_and_delete_files(tmp_dir, file_ext=".pyo")
@@ -167,7 +168,7 @@ def run (args, out=sys.stdout) :
   if (options.dest is not None) :
     shutil.move(base_tarfile, options.dest)
     base_tarfile = op.join(options.dest, op.basename(base_tarfile))
-  print >> out, "  created base bundle %s" % base_tarfile
+  print("  created base bundle %s" % base_tarfile, file=out)
 
   # create the product bundle
   build_tarfile = "../build-%(version)s-%(mtype)s.tar.gz" % \
@@ -187,8 +188,8 @@ def run (args, out=sys.stdout) :
     build_tarfile = op.join(options.dest, op.basename(build_tarfile))
     shutil.move(modules_tarfile, options.dest)
     modules_tarfile = op.join(options.dest, op.basename(modules_tarfile))
-  print >> out, "  created bundle %s" % build_tarfile
-  print >> out, "  created bundle %s" % modules_tarfile
+  print("  created bundle %s" % build_tarfile, file=out)
+  print("  created bundle %s" % modules_tarfile, file=out)
   shutil.rmtree(tmp_dir)
 
 if (__name__ == "__main__") :

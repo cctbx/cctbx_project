@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.array_family import flex
 
 def find_delta(rho_map, tol):
@@ -30,9 +31,9 @@ def write_sorted_moduli_as_mathematica_plot(f, filename):
   sorted = abs_f.select(flex.sort_permutation(abs_f))
   sorted /= flex.max(sorted)
   mf = open(os.path.expanduser(filename), 'w')
-  print >> mf, 'fp1 = {'
+  print('fp1 = {', file=mf)
   for f in sorted:
-    print >> mf, "%f, " % f
-  print >> mf, "1 };"
-  print >> mf, "ListPlot[fp1]"
+    print("%f, " % f, file=mf)
+  print("1 };", file=mf)
+  print("ListPlot[fp1]", file=mf)
   mf.close()

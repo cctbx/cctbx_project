@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import xray
 from cctbx import crystal
 from cctbx import miller
@@ -26,11 +27,11 @@ ls_against_f = xray.unified_least_squares_residual(f_obs)
 ls_against_f_square = xray.unified_least_squares_residual(f_obs_square)
 
 residuals = ls_against_f(f_ideal, compute_derivatives=True)
-print "against F: value=%.3f, scale=%.3f" % (residuals.target(),
-                                             residuals.scale_factor())
+print("against F: value=%.3f, scale=%.3f" % (residuals.target(),
+                                             residuals.scale_factor()))
 residuals = ls_against_f_square(f_ideal, compute_derivatives=True)
-print "against F^2: value=%.3f, scale=%.3f" % (residuals.target(),
-                                               residuals.scale_factor())
+print("against F^2: value=%.3f, scale=%.3f" % (residuals.target(),
+                                               residuals.scale_factor()))
 
 perturbed_structure = structure.random_shift_sites(max_shift_cart=0.2)
 for s in perturbed_structure.scatterers():
@@ -41,9 +42,9 @@ optimiser = xray.lbfgs(
     target_functor=ls_against_f_square,
     xray_structure=refining_structure,
     structure_factor_algorithm="direct")
-print "Initial L.S. residual:%.3f" % optimiser.first_target_value
+print("Initial L.S. residual:%.3f" % optimiser.first_target_value)
 structure.show_scatterers()
-print "Final L.S. residual:%.3f" % optimiser.final_target_value
+print("Final L.S. residual:%.3f" % optimiser.final_target_value)
 refining_structure.show_scatterers()
 
 weighting = xray.weighting_schemes.shelx_weighting()
@@ -54,7 +55,7 @@ optimiser = xray.lbfgs(
     target_functor=ls_against_f_square,
     xray_structure=refining_structure,
     structure_factor_algorithm="direct")
-print "Initial L.S. residual:%.3f" % optimiser.first_target_value
+print("Initial L.S. residual:%.3f" % optimiser.first_target_value)
 structure.show_scatterers()
-print "Final L.S. residual:%.3f" % optimiser.final_target_value
+print("Final L.S. residual:%.3f" % optimiser.final_target_value)
 refining_structure.show_scatterers()

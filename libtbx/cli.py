@@ -1,11 +1,13 @@
 from __future__ import division
 
+from builtins import str
+from builtins import object
 try:
   import argparse
 
 except ImportError:
   from libtbx.utils import Sorry
-  raise Sorry, "The argparse module is not available. Check Python version >= 2.7"
+  raise Sorry("The argparse module is not available. Check Python version >= 2.7")
 
 import libtbx.phil
 
@@ -16,7 +18,7 @@ def phil_from_string(string):
     return libtbx.phil.parse( string )
 
   except RuntimeError:
-    raise ValueError, "Incorrect PHIL format"
+    raise ValueError("Incorrect PHIL format")
 
 
 def phil_from_file(file_name):
@@ -47,7 +49,7 @@ class PhilArgumentFactory(object):
       try:
         return self.interpreter.process( arg = argument )
 
-      except Exception, e:
+      except Exception as e:
         raise argparse.ArgumentTypeError( "Cannot interpret assignment '%s': %s" % ( argument, e ) )
 
     import os.path
@@ -87,7 +89,7 @@ class ExtensionFileHandler(object):
     if os.path.splitext( argument )[1] in self.extensions:
       return phil_from_string( string = "%s=%s" % ( self.philpath, argument ) )
 
-    raise ValueError, "Unrecognized file: %s" % argument
+    raise ValueError("Unrecognized file: %s" % argument)
 
 
 # Parser actions
@@ -213,7 +215,7 @@ class Parser(argparse.ArgumentParser):
     try:
       merged = self.master_phil.fetch( sources = args.phils )
 
-    except Exception, e:
+    except Exception as e:
       self.error( "Error while merging arguments: %s" % e )
 
     delattr( args, "phils" )
@@ -222,7 +224,7 @@ class Parser(argparse.ArgumentParser):
     try:
       args.phil_extract = args.phil.extract()
 
-    except RuntimeError, e:
+    except RuntimeError as e:
       self.error( str( e ) )
 
     return args

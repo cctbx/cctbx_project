@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 
 # find_ss_from_ca.py
 # a tool to find helices, strands, non-helices/strands in segments of
@@ -6,6 +7,12 @@ from __future__ import division
 #
 
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from libtbx import adopt_init_args
 from iotbx.pdb import resseq_encode
 import iotbx.phil
@@ -260,11 +267,11 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       break
 
   if verbose:
-    print >>out,"Models after splitting:"
+    print("Models after splitting:", file=out)
     for m in model_list:
-      print >>out,"Chain: %d  Residues: %d" %(
+      print("Chain: %d  Residues: %d" %(
         m.info.get('chain_number'),
-        m.hierarchy.overall_counts().n_residues)
+        m.hierarchy.overall_counts().n_residues), file=out)
   return model_list
 
 def sort_models_and_sequences(models,sequences):
@@ -273,9 +280,9 @@ def sort_models_and_sequences(models,sequences):
   for m,s in zip(models,sequences):
     if not m or not m.hierarchy: continue
     chain_type=str(m.info.get('chain_type'))
-    if not chain_type in sort_dict.keys(): sort_dict[chain_type]=[]
+    if not chain_type in list(sort_dict.keys()): sort_dict[chain_type]=[]
     sort_dict[chain_type].append([m,s])
-  keys=sort_dict.keys()
+  keys=list(sort_dict.keys())
   if len(keys)<2:
     return models,sequences # do nothing if only one chain type
 
@@ -386,7 +393,7 @@ def get_average_direction(diffs=None, i=None,j=None):
       j=len(diffs)-1
     average_direction=col(diffs[i])
     nn=1.
-    for j in xrange(i+1,j):
+    for j in range(i+1,j):
       nn+=1.
       average_direction+=col(diffs[j])
     average_direction/=nn
@@ -626,8 +633,8 @@ def remove_bad_annotation(annotation,hierarchy=None,
     try:
         verify_existence(hierarchy=ph,helix=helix)
         new_helices.append(helix)
-    except Exception,e: # the helix needs to be deleted
-        print >>out,"%s\nDeleting this helix" %(str(e))
+    except Exception as e: # the helix needs to be deleted
+        print("%s\nDeleting this helix" %(str(e)), file=out)
         deleted_something=True
   if deleted_something:
     new_annotation.helices=new_helices
@@ -645,15 +652,15 @@ def remove_bad_annotation(annotation,hierarchy=None,
       try:
         verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
          strand=strand)
-      except Exception,e: # the strand needs to be deleted
-        print >>out,"%s\nDeleting this strand" %(str(e))
+      except Exception as e: # the strand needs to be deleted
+        print("%s\nDeleting this strand" %(str(e)), file=out)
         strands_ok=False
         deleted_something=True
       try:
         verify_existence(hierarchy=ph,prev_hierarchy=prev_hierarchy,
          registration=registration)
-      except Exception,e: # the registration needs to be deleted
-        print >>out,"Deleting registration\n%s" %(str(e))
+      except Exception as e: # the registration needs to be deleted
+        print("Deleting registration\n%s" %(str(e)), file=out)
         registrations_ok=False
         deleted_something=True
       prev_hierarchy=ph
@@ -666,10 +673,10 @@ def remove_bad_annotation(annotation,hierarchy=None,
   if deleted_something:
     new_annotation.merge_sheets()
     if new_annotation.as_pdb_str():
-      print >>out, "User annotation after removing bad parts:"
-      print >>out, new_annotation.as_pdb_str()
+      print("User annotation after removing bad parts:", file=out)
+      print(new_annotation.as_pdb_str(), file=out)
     else:
-      print >>out,"No annotation left after removing bad parts"
+      print("No annotation left after removing bad parts", file=out)
       return None
 
   if not remove_overlaps:
@@ -685,9 +692,9 @@ def remove_bad_annotation(annotation,hierarchy=None,
     minimum_overlap=minimum_overlap)
 
   if not no_overlap_annotation.is_same_as(other=new_annotation):
-    print >>out,"Edited annotation without overlaps:"
-    print >>out,no_overlap_annotation.as_pdb_str()
-    print >>out
+    print("Edited annotation without overlaps:", file=out)
+    print(no_overlap_annotation.as_pdb_str(), file=out)
+    print(file=out)
 
   return no_overlap_annotation
 
@@ -698,7 +705,7 @@ def get_string_or_first_element_of_list(something):
   else:
     return something
 
-class model_info: # mostly just a holder
+class model_info(object): # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
       find_alpha=None,find_beta=None,find_other=None,
       find_three_ten=None,find_pi=None):
@@ -712,11 +719,11 @@ class model_info: # mostly just a holder
     self.find_other=find_other
 
   def show_summary(self,out=sys.stdout):
-    keys=self.info.keys()
+    keys=list(self.info.keys())
     keys.sort()
-    print >>out,"\nModel %d" %(self.id)
+    print("\nModel %d" %(self.id), file=out)
     for key in keys:
-      print >>out,"%s: %s" %(key,str(self.info[key]))
+      print("%s: %s" %(key,str(self.info[key])), file=out)
 
   def has_n(self):
     return has_atom(self.hierarchy,name="N")
@@ -733,7 +740,7 @@ class model_info: # mostly just a holder
   def length(self):
     return self.last_residue()-self.first_residue()+1
 
-class segment:  # object for holding a helix or a strand or other
+class segment(object):  # object for holding a helix or a strand or other
 
   def setup(self,sites=None,start_resno=None,hierarchy=None,
      segment_class=None,
@@ -805,7 +812,7 @@ class segment:  # object for holding a helix or a strand or other
     if return_text:
       return text
     else:
-      print >>self.out, text
+      print(text, file=self.out)
 
   def get_diffs_and_norms_3(self):
     # report distances between i and i+3
@@ -896,7 +903,7 @@ class segment:  # object for holding a helix or a strand or other
     if not diffs: return 0.
     average_direction=get_average_direction(diffs=diffs)
     cosines=flex.double()
-    for j in xrange(len(diffs)):
+    for j in range(len(diffs)):
       dot=col(diffs[j]).dot(average_direction)
       cosines.append(dot)
     mean_dot=cosines.min_max_mean().mean
@@ -904,7 +911,7 @@ class segment:  # object for holding a helix or a strand or other
     # now get mean cross product and dot with average_direction...
     diffs_single=self.get_diffs_single()
     cosines=flex.double()
-    for j in xrange(len(diffs_single)):
+    for j in range(len(diffs_single)):
       dot=col(diffs_single[j]).dot(average_direction)
       cosines.append(dot)
     self.mean_dot_single=cosines.min_max_mean().mean
@@ -967,7 +974,7 @@ class segment:  # object for holding a helix or a strand or other
       dd=max(1,sub_segment_length//2)
       start=0
       end=len(self.sites)-sub_segment_length
-      for i in xrange(start,end+dd,dd):
+      for i in range(start,end+dd,dd):
         ii=min(i,end)
         h=self.segment_class(params=self.params,
           sites=self.sites[ii:ii+sub_segment_length])
@@ -1046,12 +1053,12 @@ class segment:  # object for holding a helix or a strand or other
     asc=hierarchy.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
     assert sele.overall_counts().n_residues  # should not be None
-    from cStringIO import StringIO
+    from io import StringIO
     f=StringIO()
     for atom in sele.atoms_with_labels():
       new_xyz=lsq_fit_obj.r * matrix.col(atom.xyz) + lsq_fit_obj.t
       atom.set_xyz(new_xyz)
-      print >>f,atom.format_atom_record()
+      print(atom.format_atom_record(), file=f)
     return get_pdb_hierarchy(text=f.getvalue())
 
   def get_site(self,resno=None):
@@ -1279,7 +1286,7 @@ class other(segment):
         self.orientation_points_end=end_res
     return self.orientation_points
 
-class find_segment: # class to look for a type of segment
+class find_segment(object): # class to look for a type of segment
 
   def setup(self,params=None,model=None,segment_type='helix',
       extract_segments_from_pdb=None,
@@ -1351,7 +1358,7 @@ class find_segment: # class to look for a type of segment
     # create segment object (helix,strand) for each segment
     # If longer than the standard length, make a series of shorter segments
 
-    keys=segment_dict.keys()
+    keys=list(segment_dict.keys())
     keys.sort()
     # Specify which residues are in each segment
     #    (self.last_residue_offset past start)
@@ -1383,7 +1390,7 @@ class find_segment: # class to look for a type of segment
       if (not self.cut_up_segments) or overall_length<=self.standard_length:
         start_end_list.append([overall_start_res,overall_end_res])
       else:
-        for start_res_use in xrange(
+        for start_res_use in range(
            overall_start_res,
            overall_start_res+overall_length-self.standard_length+1):
           start_end_list.append(
@@ -1400,19 +1407,18 @@ class find_segment: # class to look for a type of segment
   def show_summary(self,out=None):
     if not out: out=self.out
     for h in self.segments:
-      print >>out,\
-       "Class: %12s  N: %d Start: %d End: %d " %(
+      print("Class: %12s  N: %d Start: %d End: %d " %(
           self.name,h.get_end_resno()-h.get_start_resno()+1,
            h.get_start_resno(),h.get_end_resno(),
          ) +" Rise:%5.2f A Dot:%5.2f" %(
-          h.get_rise(),h.get_cosine())
+          h.get_rise(),h.get_cosine()), file=out)
 
   def get_used_residues_list(self,end_buffer=1):
     # just return a list of used residues
     used_residues=[]
     if hasattr(self,'segment_dict'):
-      for i in self.segment_start_end_dict.keys():
-        for j in xrange(
+      for i in list(self.segment_start_end_dict.keys()):
+        for j in range(
              i+end_buffer,self.segment_start_end_dict[i]+1-end_buffer):
           # Note this segment_start_end_dict lists exact residues used,
           #  not starting points as in segment_dict
@@ -1504,13 +1510,13 @@ class find_segment: # class to look for a type of segment
       segment_dict[0]=n-1
       return diffs,norms,segment_dict
 
-    for i in xrange(n):
+    for i in range(n):
       if i in used_residues or abs(norms[i]-target)>tol: continue
       if i in self.previously_used_residues: continue
       # i is start of segment
       segment_dict[i]=i  # lists end of segment
       used_residues.append(i)
-      for j in xrange(i+1,n):
+      for j in range(i+1,n):
         if abs(norms[j]-target)>tol: break
         if target_i_ip3 is not None and tol_i_ip3 is not None and \
            j<len(norms_3) and abs(norms_3[j]-target_i_ip3)>tol_i_ip3: break
@@ -1520,7 +1526,7 @@ class find_segment: # class to look for a type of segment
         segment_dict[i]=j
         used_residues.append(j)
     # skip if only as long as a single span (requires 2 to be sure)
-    for i in segment_dict.keys():
+    for i in list(segment_dict.keys()):
       segment_length=segment_dict[i]+1+self.last_residue_offset-i
       if segment_length<minimum_length:
         del segment_dict[i]
@@ -1549,10 +1555,10 @@ class find_segment: # class to look for a type of segment
     # merge any segments that can be combined
     found=True
     n_cycles=0
-    while found and n_cycles <=len(segment_dict.keys()):
+    while found and n_cycles <=len(list(segment_dict.keys())):
       found=False
       n_cycles+=1
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()  # sorted on start
       for i1,i2 in zip(keys[:-1],keys[1:]):
         if found: break
@@ -1575,13 +1581,13 @@ class find_segment: # class to look for a type of segment
     while still_changing and n_cycles < max_cycles:
       still_changing=False
       new_segment_dict={}
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()
       for i in keys:
         average_direction=get_average_direction(
           diffs=diffs,i=i,j=segment_dict[i])
         segment_start=None
-        for j in xrange(i,segment_dict[i]+1):
+        for j in range(i,segment_dict[i]+1):
           dot=col(diffs[j]).dot(average_direction)
           if dot >= dot_min:
             if segment_start is None:
@@ -1591,7 +1597,7 @@ class find_segment: # class to look for a type of segment
             segment_start=None
             still_changing=True
       segment_dict=new_segment_dict
-      for i in segment_dict.keys():
+      for i in list(segment_dict.keys()):
         segment_length=segment_dict[i]+1+self.last_residue_offset-i
         if segment_length<minimum_length:
           del segment_dict[i] # not long enough
@@ -1601,10 +1607,10 @@ class find_segment: # class to look for a type of segment
   def trim_short_linkages(self,params=None,segment_dict=None,sites=None):
     found=True
     n_cycles=0
-    while found and n_cycles <=len(segment_dict.keys()):
+    while found and n_cycles <=len(list(segment_dict.keys())):
       found=False
       n_cycles+=1
-      keys=segment_dict.keys()
+      keys=list(segment_dict.keys())
       keys.sort()  # sorted on start
       for i1,i2 in zip(keys[:-1],keys[1:]):
         if found: break
@@ -1650,7 +1656,7 @@ class find_segment: # class to look for a type of segment
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
 
-    keys=segment_dict.keys()
+    keys=list(segment_dict.keys())
     keys.sort()
 
     # get average distance i to i+3/i+4 for this segment (to see if it is
@@ -1673,10 +1679,9 @@ class find_segment: # class to look for a type of segment
       optimal_delta_length_dict[i]=optimal_length-segment_length
       norm_dict[i]=mean_norm
       if self.verbose:
-        print >>self.out,\
-       "Chain start: %d  end: %d  N: %d  Rise: %7.2f  Optimal length: %d" %(
+        print("Chain start: %d  end: %d  N: %d  Rise: %7.2f  Optimal length: %d" %(
          i+self.start_resno,i+segment_length-1+self.start_resno,
-         segment_length,segment_rise,optimal_length)
+         segment_length,segment_rise,optimal_length), file=self.out)
 
     return optimal_delta_length_dict,norm_dict
 
@@ -1712,7 +1717,7 @@ class find_helix(find_segment):
     k=last_id
     for s in segment_list:
       if not s.hierarchy: continue
-      from cStringIO import StringIO
+      from io import StringIO
       f=StringIO()
       all_h_bonds,n_good,n_poor=self.list_h_bonds(
           segment=s,helix_type=helix_type,
@@ -1724,7 +1729,7 @@ class find_helix(find_segment):
             maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
           continue
 
-      print >>out,f.getvalue(),
+      print(f.getvalue(), end=' ', file=out)
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
       start=get_first_residue(s.hierarchy)
@@ -1769,7 +1774,7 @@ class find_helix(find_segment):
     number_of_good_h_bonds=0
     number_of_poor_h_bonds=0
 
-    for i in xrange(segment.length()-next_i):
+    for i in range(segment.length()-next_i):
 
       cur_residue=get_indexed_residue(
         segment.hierarchy,index=i)
@@ -1912,7 +1917,7 @@ class find_beta_strand(find_segment):
     for sheet in sheet_list:
       good_in_sheet=0
       poor_in_sheet=0
-      from cStringIO import StringIO
+      from io import StringIO
       f=StringIO()
 
       sheet_id+=1
@@ -1938,8 +1943,8 @@ class find_beta_strand(find_segment):
       first_strand = self.get_pdb_strand(sheet_id=sheet_id,strand_id=strand_id,
         segment=s,sense=0,start_index=start_dict[k],end_index=end_dict[k])
       if first_strand is None:
-        print >>out,"Note: failed to identify strand %s in sheet %s index %s" %(
-          k,strand_id,sheet_id)
+        print("Note: failed to identify strand %s in sheet %s index %s" %(
+          k,strand_id,sheet_id), file=out)
         ok=False
         continue # found nothing (something went wrong in get_pdb_strand)
 
@@ -1968,8 +1973,8 @@ class find_beta_strand(find_segment):
         next_strand = self.get_pdb_strand(sheet_id=sheet_id,strand_id=strand_id,
           segment=s,sense=sense,start_index=start_dict[j],end_index=end_dict[j])
         if next_strand is None:
-          print >>out,"Note: failed to "+\
-            "identify strand %s in sheet %s index %s" %(j,strand_id,sheet_id)
+          print("Note: failed to "+\
+            "identify strand %s in sheet %s index %s" %(j,strand_id,sheet_id), file=out)
           ok=False
           continue# found nothing (something went wrong in get_pdb_strand)
 
@@ -1998,7 +2003,7 @@ class find_beta_strand(find_segment):
             maximum_poor_h_bonds is not None and n_poor>maximum_poor_h_bonds):
           sheet_id-=1
           continue
-      print >>out,f.getvalue(),
+      print(f.getvalue(), end=' ', file=out)
       number_of_good_h_bonds+=good_in_sheet
       number_of_poor_h_bonds+=poor_in_sheet
       records.append(current_sheet)
@@ -2078,7 +2083,7 @@ class find_beta_strand(find_segment):
     first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index=\
            first_last_1_and_2
 
-    for i in xrange(previous_segment.length()):
+    for i in range(previous_segment.length()):
       if i_index is None or j_index is None: continue
       if not self.is_even(i-i_index): continue
 
@@ -2168,7 +2173,7 @@ class find_beta_strand(find_segment):
         all_h_bonds.append(new_h_bond)
     return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
-class h_bond:  # holder for a pair of atoms
+class h_bond(object):  # holder for a pair of atoms
   def __init__(self,
              prev_atom=None,
              prev_resname=None,
@@ -2197,7 +2202,7 @@ class h_bond:  # holder for a pair of atoms
 
   def show_summary(self,show_non_existent=False,out=sys.stdout):
     if self.dist is not None:
-      print >>out," %4s%4s%4s%5s%s : %4s%4s%4s%5s%s :: %5.2f   %s" %(
+      print(" %4s%4s%4s%5s%s : %4s%4s%4s%5s%s :: %5.2f   %s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,
@@ -2209,9 +2214,9 @@ class h_bond:  # holder for a pair of atoms
              self.cur_resseq,
              self.cur_icode,
              self.dist,
-             self.bad_one)
+             self.bad_one), file=out)
     elif self.bad_one is not None:
-      print >>out," %4s%4s%4s%5s%s : %4s%4s%4s%5s%s" %(
+      print(" %4s%4s%4s%5s%s : %4s%4s%4s%5s%s" %(
              self.prev_atom,
              self.prev_resname,
              self.prev_chain_id,
@@ -2221,7 +2226,7 @@ class h_bond:  # holder for a pair of atoms
              self.cur_resname,
              self.cur_chain_id,
              self.cur_resseq,
-             self.cur_icode,)
+             self.cur_icode,), file=out)
 
 
 class find_other_structure(find_segment):
@@ -2246,7 +2251,7 @@ class find_other_structure(find_segment):
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
     # always zero
-    keys=segment_dict.keys()
+    keys=list(segment_dict.keys())
     optimal_delta_length_dict={}
     norm_dict={}
     for i in keys:
@@ -2287,7 +2292,7 @@ class find_other_structure(find_segment):
     n_buf=params.buffer_residues
     used_residues=n*[False]
     used_residues=[]
-    for i in xrange(n+1):
+    for i in range(n+1):
       if i in self.previously_used_residues:
         used_residues.append(True)
       else:
@@ -2296,7 +2301,7 @@ class find_other_structure(find_segment):
     segment_dict={}
     segment_start=None
     segment_end=None
-    for i,used in zip(xrange(n),used_residues):
+    for i,used in zip(range(n),used_residues):
       if not used: # use it
         segment_end=i
         if segment_start is None:
@@ -2316,7 +2321,7 @@ class find_other_structure(find_segment):
 
     return None,None,segment_dict
 
-class helix_strand_segments:
+class helix_strand_segments(object):
   def __init__(self):
     self.h_bond_text=""
     self.all_strands=[]
@@ -2348,8 +2353,8 @@ class helix_strand_segments:
      min_sheet_length=4,
      include_single_strands=None):
     if not self.all_strands: return
-    print >>out,"\nFinding sheets from %d strands" %(len(
-        self.all_strands))
+    print("\nFinding sheets from %d strands" %(len(
+        self.all_strands)), file=out)
     self.get_strand_pairs(tol=max_sheet_ca_ca_dist,
         min_sheet_length=min_sheet_length)
     # pair_dict is list of all the strands that each strand matches with
@@ -2387,7 +2392,7 @@ class helix_strand_segments:
     # any pairs remaining? Create specialized "sheet" for each one
     existing_pairs_in_sheets=self.get_existing_pairs_in_sheets()
     missing_pairs=[]
-    for i in xrange(len(self.all_strands)):
+    for i in range(len(self.all_strands)):
       for j in self.pair_dict.get(i,[]):
         if not [i,j] in existing_pairs_in_sheets and \
            not [i,j] in missing_pairs and not [j,i] in missing_pairs:
@@ -2444,7 +2449,7 @@ class helix_strand_segments:
     return strand_list
 
   def get_unused_strand(self,n=None,used_strands=None,pairs=None):
-    for i in xrange(n):
+    for i in range(n):
       if i in used_strands: continue
       if pairs is None or len(self.pair_dict.get(i,[]))==pairs:
         return i
@@ -2453,10 +2458,10 @@ class helix_strand_segments:
   def get_strand_pairs(self,tol=None,min_sheet_length=None):
     self.info_dict={}
     self.pair_dict={}
-    for i in xrange(len(self.all_strands)):
+    for i in range(len(self.all_strands)):
       self.pair_dict[i]=[]
-    for i in xrange(len(self.all_strands)):
-      for j in xrange(i+1,len(self.all_strands)):
+    for i in range(len(self.all_strands)):
+      for j in range(i+1,len(self.all_strands)):
         self.ca1=None
         self.ca2=None
         if self.ca_pair_is_close(self.all_strands[i],self.all_strands[j],
@@ -2607,7 +2612,7 @@ class helix_strand_segments:
     n_dot=0.
     sum_dot=0.
     last_offset_index=len(strand_i.get_sites())-i_index-2
-    for i in xrange(last_offset_index//2+1):
+    for i in range(last_offset_index//2+1):
       offset=2*i
       delta=col(strand_i.get_sites()[i_index+1+offset])- \
             col(strand_i.get_sites()[i_index+offset])
@@ -2706,7 +2711,7 @@ class helix_strand_segments:
     if dd<=tol**2: # plausible at least
       start_offset=max(-center1,-center2)
       end_offset=min(len(sites1)-(center1+1),len(sites2)-(center2+1))
-      for offset in xrange(start_offset,end_offset+1):
+      for offset in range(start_offset,end_offset+1):
         i1=center1+offset
         i2=center2+offset
         dd=(col(sites1[i1])-col(sites2[i2])).norm_sq()
@@ -2732,8 +2737,8 @@ class helix_strand_segments:
     sites2=s2.get_sites()
     while jump > 0:
       # see if it is even close
-      for i in xrange(jump//2,len(sites1),jump):
-        for j in xrange(jump//2,len(sites2),jump):
+      for i in range(jump//2,len(sites1),jump):
+        for j in range(jump//2,len(sites2),jump):
           dd=(col(sites1[i])-col(sites2[j])).norm_sq()
           if best_dist_sq is None or dd < best_dist_sq:
             best_dist_sq=dd
@@ -2771,14 +2776,12 @@ class helix_strand_segments:
     # If not, set allow_ca_only_model=True
     allow_ca_only_model=(not have_n_or_o(models))
 
-    from cStringIO import StringIO
+    from io import StringIO
     f=StringIO()
-    print >>f,\
-       "\nList of H-bonds expected from helices and from strand pairings"
-    print >>f,"Distances > %3.1f A indicated by **" %(max_h_bond_length)
-    print >>f,\
-      "H-bonds not included in HELIX/SHEET records marked 'Not included'"
-    print >>f,"\n      ATOM 1               ATOM 2           Dist (A)\n"
+    print("\nList of H-bonds expected from helices and from strand pairings", file=f)
+    print("Distances > %3.1f A indicated by **" %(max_h_bond_length), file=f)
+    print("H-bonds not included in HELIX/SHEET records marked 'Not included'", file=f)
+    print("\n      ATOM 1               ATOM 2           Dist (A)\n", file=f)
     def get_fa(find_what='find_alpha',models=None):
        for model in models:
         if getattr(model,find_what):
@@ -2839,28 +2842,28 @@ class helix_strand_segments:
       number_of_good_h_bonds+=n_good
       number_of_poor_h_bonds+=n_poor
     text=f.getvalue()
-    print >>out,text
+    print(text, file=out)
     self.h_bond_text=text
     return number_of_good_h_bonds,number_of_poor_h_bonds
 
   def save_pdb_records_as_string(self):
-    from cStringIO import StringIO
+    from io import StringIO
     all_pdb_records=StringIO()
     self.all_selection_records=[]
     for helix in self.pdb_alpha_helix_list:
-      print >>all_pdb_records,helix.as_pdb_str()
+      print(helix.as_pdb_str(), file=all_pdb_records)
       self.all_selection_records+=helix.as_atom_selections()
 
     for helix in self.pdb_three_ten_helix_list:
-      print >>all_pdb_records,helix.as_pdb_str()
+      print(helix.as_pdb_str(), file=all_pdb_records)
       self.all_selection_records+=helix.as_atom_selections()
 
     for helix in self.pdb_pi_helix_list:
-      print >>all_pdb_records,helix.as_pdb_str()
+      print(helix.as_pdb_str(), file=all_pdb_records)
       self.all_selection_records+=helix.as_atom_selections()
 
     for sheet in self.pdb_sheet_list:
-      print >>all_pdb_records,sheet.as_pdb_str()
+      print(sheet.as_pdb_str(), file=all_pdb_records)
       self.all_selection_records+=sheet.as_atom_selections()
 
     self.all_pdb_records=all_pdb_records.getvalue()
@@ -2904,7 +2907,7 @@ class helix_strand_segments:
     text+='"'
     return text
 
-class find_secondary_structure: # class to look for secondary structure
+class find_secondary_structure(object): # class to look for secondary structure
 
   def __init__(self,params=None,args=None,hierarchy=None,models=None,
       user_annotation_text=None,max_h_bond_length=None,
@@ -3033,22 +3036,21 @@ class find_secondary_structure: # class to look for secondary structure
           force_secondary_structure_input=force_secondary_structure_input,
           allow_ca_only_model=params.beta.allow_ca_only_model,out=local_out)
         self.h_bond_text=self.helix_strand_segments.h_bond_text
-        print >>local_out,\
-          "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
-          self.number_of_good_h_bonds,self.number_of_poor_h_bonds)
+        print("\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
+          self.number_of_good_h_bonds,self.number_of_poor_h_bonds), file=local_out)
 
       # get annotation:
-      print >>out,"\nNew working annotation:"
+      print("\nNew working annotation:", file=out)
       working_annotation=self.helix_strand_segments.get_annotation()
-      print >>out,working_annotation.as_pdb_str()
+      print(working_annotation.as_pdb_str(), file=out)
 
       if params.find_ss_structure.combine_annotations and \
           composite_user_annotation:
-        print >>out,"\nMerging edited input annotation and working annotation"
+        print("\nMerging edited input annotation and working annotation", file=out)
         working_annotation=composite_user_annotation.combine_annotations(
           hierarchy=hierarchy, other=working_annotation)
-        print >>out,"\nMerged annotation:\n"
-        print >>out,working_annotation.as_pdb_str()
+        print("\nMerged annotation:\n", file=out)
+        print(working_annotation.as_pdb_str(), file=out)
 
 
     # Now get final values of H-bonds etc with our final annotation
@@ -3070,8 +3072,8 @@ class find_secondary_structure: # class to look for secondary structure
 
     if self.helix_strand_segments and not secondary_structure_input:
       # Use analysis from working annotation (no user input)
-      if remove_text: print >>out,remove_text
-      print >>out,"\nGetting H-bonds from working annotation"
+      if remove_text: print(remove_text, file=out)
+      print("\nGetting H-bonds from working annotation", file=out)
       self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
          self.helix_strand_segments.set_up_pdb_records(models=self.models,
          max_h_bond_length=params.find_ss_structure.max_h_bond_length,
@@ -3088,7 +3090,7 @@ class find_secondary_structure: # class to look for secondary structure
         not params.find_ss_structure.combine_annotations:
       # use analysis of user input (as is)
       if remove_text and not force_secondary_structure_input:
-        print >>out,remove_text
+        print(remove_text, file=out)
         require_h_bonds=params.find_ss_structure.require_h_bonds
         minimum_h_bonds=params.find_ss_structure.minimum_h_bonds
         maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
@@ -3098,7 +3100,7 @@ class find_secondary_structure: # class to look for secondary structure
         minimum_h_bonds=None
         maximum_poor_h_bonds=None
 
-      print >>out,"\nGetting H-bonds from user annotation"
+      print("\nGetting H-bonds from user annotation", file=out)
       self.number_of_good_h_bonds,self.number_of_poor_h_bonds=\
          self.user_helix_strand_segments.set_up_pdb_records(
          models=self.user_models,
@@ -3114,8 +3116,8 @@ class find_secondary_structure: # class to look for secondary structure
 
     else: # need to redo it from the beginning with our new annotation
       # user annotation combined with new annotation
-      if remove_text: print >>out,remove_text
-      print >>out,"\nRunning analysis with new annotation"
+      if remove_text: print(remove_text, file=out)
+      print("\nRunning analysis with new annotation", file=out)
       if working_annotation and working_annotation.as_pdb_str():
         fss=find_secondary_structure(hierarchy=hierarchy,
           user_annotation_text=working_annotation.as_pdb_str(),
@@ -3126,7 +3128,7 @@ class find_secondary_structure: # class to look for secondary structure
           minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
           maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
           out=local_out)
-        print >>out,fss.h_bond_text
+        print(fss.h_bond_text, file=out)
         self.number_of_good_h_bonds=fss.number_of_good_h_bonds
         self.number_of_poor_h_bonds=fss.number_of_poor_h_bonds
         working_annotation=fss.get_annotation()
@@ -3134,9 +3136,8 @@ class find_secondary_structure: # class to look for secondary structure
         self.number_of_good_h_bonds=0
         self.number_of_poor_h_bonds=0
 
-    print >>out,\
-         "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
-          self.number_of_good_h_bonds,self.number_of_poor_h_bonds)
+    print("\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
+          self.number_of_good_h_bonds,self.number_of_poor_h_bonds), file=out)
 
     self.annotation=working_annotation
 
@@ -3147,9 +3148,9 @@ class find_secondary_structure: # class to look for secondary structure
 
     for model in self.models:
       if verbose:
-        print >>out,"\nModel %d  N: %d  Start: %d End: %d" %(
+        print("\nModel %d  N: %d  Start: %d End: %d" %(
           model.info.get('chain_number',0),
-          model.length(),model.first_residue(),model.last_residue())
+          model.length(),model.first_residue(),model.last_residue()), file=out)
       if verbose:
         if model.find_alpha:
           model.find_alpha.show_summary(out=out)
@@ -3162,17 +3163,17 @@ class find_secondary_structure: # class to look for secondary structure
         if model.find_other:
           model.find_other.show_summary(out=out)
     if self.annotation and self.annotation.as_pdb_str():
-      print >>out,"\nFINAL PDB RECORDS:"
-      print >>out,self.annotation.as_pdb_str()
-      print >>out,"\n\nFINAL PDB selections:"
-      print >>out,'"%s"' %(self.annotation.overall_selection())
+      print("\nFINAL PDB RECORDS:", file=out)
+      print(self.annotation.as_pdb_str(), file=out)
+      print("\n\nFINAL PDB selections:", file=out)
+      print('"%s"' %(self.annotation.overall_selection()), file=out)
 
     if pdb_records_file and self.annotation:
       f=open(pdb_records_file,'w')
-      print >>f,self.annotation.as_pdb_str()
+      print(self.annotation.as_pdb_str(), file=f)
       f.close()
-      print >>out,"\nRecords written to %s\n" %(
-         pdb_records_file)
+      print("\nRecords written to %s\n" %(
+         pdb_records_file), file=out)
 
 
   def get_annotation(self):
@@ -3189,27 +3190,24 @@ class find_secondary_structure: # class to look for secondary structure
          str(file_name)))
 
       # Read ss structure from this file now
-      print >>out,"\nReading secondary structure records from %s\n" %(file_name)
+      print("\nReading secondary structure records from %s\n" %(file_name), file=out)
       user_annotation_text=open(file_name).read()
 
     import iotbx.pdb.secondary_structure as ioss
     user_annotation=ioss.annotation.from_records(
         records=flex.split_lines(user_annotation_text))
 
-    print >>out,"\nUser helix/strand records as input:\n"
-    print >>out,user_annotation.as_pdb_str()
+    print("\nUser helix/strand records as input:\n", file=out)
+    print(user_annotation.as_pdb_str(), file=out)
     if params.input_files.force_secondary_structure_input:
       if params.find_ss_structure.combine_annotations:
-        print >>out,\
-         "\nThis secondary structure annotation will be taken as is and"+\
-         " then will be \ncombined with an edited version (updating H-bonding)"
+        print("\nThis secondary structure annotation will be taken as is and"+\
+         " then will be \ncombined with an edited version (updating H-bonding)", file=out)
       else:
-        print >>out,\
-         "\nThis secondary structure annotation will be used as is.\n"
+        print("\nThis secondary structure annotation will be used as is.\n", file=out)
       remove_overlaps=False
     else:
-      print >>out,\
-       "\nThis secondary structure annotation will be modified if necessary\n"
+      print("\nThis secondary structure annotation will be modified if necessary\n", file=out)
       remove_overlaps=True
 
     # Remove any parts of this annotation that do not exist in the hierarchy
@@ -3304,10 +3302,10 @@ class find_secondary_structure: # class to look for secondary structure
           last_ca_2=current_strand_as_segment.length()-1
 
           if not prev_strand_id in \
-              self.user_helix_strand_segments.pair_dict.keys():
+              list(self.user_helix_strand_segments.pair_dict.keys()):
             self.user_helix_strand_segments.pair_dict[prev_strand_id]=[]
           if not current_strand_id in \
-              self.user_helix_strand_segments.pair_dict.keys():
+              list(self.user_helix_strand_segments.pair_dict.keys()):
             self.user_helix_strand_segments.pair_dict[current_strand_id]=[]
 
           # identify residues i_index,j_index that are next to each other
@@ -3351,33 +3349,32 @@ class find_secondary_structure: # class to look for secondary structure
          force_secondary_structure_input=\
                 params.input_files.force_secondary_structure_input,
          allow_ca_only_model=params.beta.allow_ca_only_model,out=local_out)
-    print >>out,\
-         "\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
-          self.user_number_of_good_h_bonds,self.user_number_of_poor_h_bonds)
+    print("\nNumber of good H-bonds: %d  Number of poor H-bonds: %d" %(
+          self.user_number_of_good_h_bonds,self.user_number_of_poor_h_bonds), file=out)
     edited_annotation=self.user_helix_strand_segments.get_annotation()
 
 
     if self.user_helix_strand_segments.get_all_pdb_records():
       if params.input_files.force_secondary_structure_input:
-        print >>out,"\nWorking PDB RECORDS (equivalent to input records):"
+        print("\nWorking PDB RECORDS (equivalent to input records):", file=out)
       else:
-        print >>out,"\nInput PDB RECORDS as modified:"
-      print >>out,edited_annotation.as_pdb_str()
+        print("\nInput PDB RECORDS as modified:", file=out)
+      print(edited_annotation.as_pdb_str(), file=out)
 
     if params.find_ss_structure.combine_annotations:
-      print >>out,"\nMerging input and edited annotation"
+      print("\nMerging input and edited annotation", file=out)
       edited_annotation=self.user_helix_strand_segments.get_annotation()
-      print >>out,"\nEdited annotation:"
-      print >>out,edited_annotation.as_pdb_str()
+      print("\nEdited annotation:", file=out)
+      print(edited_annotation.as_pdb_str(), file=out)
 
-      print >>out,"\nUser annotation:"
-      print >>out,user_annotation.as_pdb_str()
+      print("\nUser annotation:", file=out)
+      print(user_annotation.as_pdb_str(), file=out)
 
       combined_annotation=edited_annotation.combine_annotations(
         hierarchy=hierarchy, other=user_annotation) # will take edited if equal
       if combined_annotation:
-        print >>out,"\nMerged annotation (input and edited input annotation):\n"
-        print >>out,combined_annotation.as_pdb_str()
+        print("\nMerged annotation (input and edited input annotation):\n", file=out)
+        print(combined_annotation.as_pdb_str(), file=out)
 
       return combined_annotation
     else:
@@ -3478,7 +3475,7 @@ class find_secondary_structure: # class to look for secondary structure
             continue
 
         # mark used residues
-        for i in xrange(first_pos+new_start,first_pos+new_end+1):
+        for i in range(first_pos+new_start,first_pos+new_end+1):
           is_used_list[i]=True
 
         #save it
@@ -3490,7 +3487,7 @@ class find_secondary_structure: # class to look for secondary structure
     # goes from first available to end of available (not necessarily optimal)
     new_start=None
     new_end=None
-    for i in xrange(len(already_used)):
+    for i in range(len(already_used)):
       if already_used[i]:
         if new_end is not None:
           return new_start,new_end
@@ -3511,7 +3508,7 @@ class find_secondary_structure: # class to look for secondary structure
       pdb_file_def="input_files.pdb_in")
 
     params = command_line.work.extract()
-    print >>out,"\nFind secondary structure in hierarchy"
+    print("\nFind secondary structure in hierarchy", file=out)
     master_phil.format(python_object=params).show(out=out)
     return params
 

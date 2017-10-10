@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 #
 #   Copyright (C) 2017 Diamond Light Source, Markus Gerstel
 #
@@ -45,6 +46,8 @@ from __future__ import division
 
 # The following imports are all libraries that will be loaded by python in any
 # case, so unconditionally importing them comes with little additional cost.
+from builtins import str
+from builtins import object
 import imp
 import os
 import sys

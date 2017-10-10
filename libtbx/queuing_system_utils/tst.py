@@ -1,8 +1,11 @@
 from __future__ import division
+from __future__ import print_function
 
 # XXX this is intended to be a simple template for debugging queueing system
 # support issues, not a full regression test.
 
+from builtins import range
+from builtins import object
 class target (object) :
   def __init__ (self, x) :
     self.x = x
@@ -12,7 +15,7 @@ class target (object) :
     results = []
     for n in range(x) :
       nn = math.sqrt(n**3)
-      print nn
+      print(nn)
       results.append(nn)
 
 def exercise () :
@@ -25,7 +28,7 @@ def exercise () :
   assert (isinstance(job.jobid, int))
   while job.is_alive() :
     pass
-  print "done"
+  print("done")
 
 if (__name__ == "__main__") :
   exercise()

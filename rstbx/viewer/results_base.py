@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from past.builtins import cmp
+from builtins import zip
+from builtins import object
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
 import re
@@ -35,7 +39,7 @@ class result (object) :
   def get_image_id (self, file_name) :
     assert (self._labelit is not None)
     files = self._labelit['file']
-    for id, fn in files.iteritems() :
+    for id, fn in files.items() :
       if (fn == file_name) :
         return id
     return None
@@ -99,7 +103,7 @@ def load_integration_results (dir_name, base_name, image_id=1) :
     sol_id_, img_id_ = suffix.split("_")
     if (int(img_id_) != image_id) :
       continue
-    print "integration file: %s" % file_path
+    print("integration file: %s" % file_path)
     result = easy_pickle.load(file_path)
     results.append(result)
     summary = get_integration_summary(result, int(sol_id_))

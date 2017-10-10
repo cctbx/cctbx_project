@@ -1,6 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 
 import os
 from pickle import loads, dumps
@@ -59,7 +60,7 @@ def exercise():
   fo_map = manager.get_map("mFo")
   fofc_map = manager.get_map("mFo-DFc")
 
-  for atom_props in manager.atoms_to_props.values():
+  for atom_props in list(manager.atoms_to_props.values()):
     chem_env = environment.ChemicalEnvironment(
       atom_props.i_seq,
       manager.find_nearby_atoms(atom_props.i_seq, far_distance_cutoff = 3.5),
@@ -87,7 +88,7 @@ def exercise():
   del fo_map
   del fofc_map
 
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   exercise()

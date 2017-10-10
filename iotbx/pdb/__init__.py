@@ -1,4 +1,12 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import input
+from builtins import str
+from builtins import zip
+from builtins import object
 from cctbx.array_family import flex
 
 import boost.python
@@ -17,7 +25,7 @@ from libtbx import smart_open
 from libtbx.str_utils import show_string
 from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
 from libtbx import Auto
-from cStringIO import StringIO
+from io import StringIO
 import sys
 import os
 op = os.path
@@ -63,10 +71,10 @@ def is_pdb_file(file_name):
 def is_pdb_mmcif_file(file_name):
   try:
     cif_model = iotbx.cif.reader(file_path=file_name).model()
-    cif_block = cif_model.values()[0]
+    cif_block = list(cif_model.values())[0]
     if "_atom_site" in cif_block:
       return True
-  except Exception, e:
+  except Exception as e:
     return False
 
 def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
@@ -584,24 +592,24 @@ class combine_unique_pdb_files(object):
     for file_name in sorted(self.file_name_registry.keys()):
       n = self.file_name_registry[file_name]
       if (n != 1):
-        print >> out, prefix+"INFO: PDB file name appears %d times: %s" % (
-          n, show_string(file_name))
+        print(prefix+"INFO: PDB file name appears %d times: %s" % (
+          n, show_string(file_name)), file=out)
         n_ignored += (n-1)
     if (n_ignored != 0):
-      print >> out, prefix+"  %d repeated file name%s ignored." % \
-        plural_s(n=n_ignored)
+      print(prefix+"  %d repeated file name%s ignored." % \
+        plural_s(n=n_ignored), file=out)
     n_identical = 0
-    for file_names in self.md5_registry.values():
+    for file_names in list(self.md5_registry.values()):
       if (len(file_names) != 1):
-        print >> out, prefix+"INFO: PDB files with identical content:"
+        print(prefix+"INFO: PDB files with identical content:", file=out)
         for file_name in file_names:
-          print >> out, prefix+"  %s" % show_string(file_name)
+          print(prefix+"  %s" % show_string(file_name), file=out)
         n_identical += len(file_names)-1
     if (n_identical != 0):
-      print >> out, prefix+"%d file%s with repeated content ignored." % \
-        plural_s(n=n_identical)
+      print(prefix+"%d file%s with repeated content ignored." % \
+        plural_s(n=n_identical), file=out)
     if (n_ignored != 0 or n_identical != 0):
-      print >> out, prefix.rstrip()
+      print(prefix.rstrip(), file=out)
 
 class header_date(object):
 
@@ -677,7 +685,7 @@ class pdb_input_from_any(object):
           lines=lines,
           pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
-      except Exception, e:
+      except Exception as e:
         # store the first error encountered and re-raise later if can't
         # interpret as any file type
         if exc_info is None: exc_info = sys.exc_info()
@@ -725,7 +733,7 @@ def pdb_input(
       return ext.input(
         source_info="file " + str(file_name), # XXX unicode hack - dangerous
         lines=flex.split_lines(smart_open.for_reading(file_name).read()))
-    except ValueError, e :
+    except ValueError as e :
       if (raise_sorry_if_format_error) :
         raise Sorry("Format error in %s:\n%s" % (str(file_name), str(e)))
       else :
@@ -737,7 +745,7 @@ def pdb_input(
     lines = flex.std_string(lines)
   try :
     return ext.input(source_info=source_info, lines=lines)
-  except ValueError, e :
+  except ValueError as e :
     if (raise_sorry_if_format_error) :
       raise Sorry("Format error:\n%s" % str(e))
     else :
@@ -864,18 +872,18 @@ class pdb_input_mixin(object):
       return_cstringio = True
     if 0:
       if (link_records is Auto):
-        print >> cstringio, format_link_records(self.get_link_records())
+        print(format_link_records(self.get_link_records()), file=cstringio)
       elif (link_records is not None):
-        print >> cstringio, format_link_records(link_records)
+        print(format_link_records(link_records), file=cstringio)
     if (crystal_symmetry is Auto):
       crystal_symmetry = self.crystal_symmetry()
     if (cryst1_z is Auto):
       cryst1_z = self.extract_cryst1_z_columns()
     if (crystal_symmetry is not None or cryst1_z is not None):
-      print >> cstringio, format_cryst1_and_scale_records(
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
+        write_scale_records=write_scale_records), file=cstringio)
     self._as_pdb_string_cstringio(
       cstringio=cstringio,
       append_end=append_end,
@@ -905,10 +913,10 @@ class pdb_input_mixin(object):
     if (crystal_symmetry is not None or cryst1_z is not None):
       if (open_append): mode = "ab"
       else:             mode = "wb"
-      print >> open(file_name, mode), format_cryst1_and_scale_records(
+      print(format_cryst1_and_scale_records(
         crystal_symmetry=crystal_symmetry,
         cryst1_z=cryst1_z,
-        write_scale_records=write_scale_records)
+        write_scale_records=write_scale_records), file=open(file_name, mode))
       open_append = True
     self._write_pdb_file(
       file_name=file_name,
@@ -1031,13 +1039,13 @@ class pdb_input_mixin(object):
     special_position_settings = crystal_symmetry.special_position_settings(
       min_distance_sym_equiv=min_distance_sym_equiv)
     try :
-      while (loop.next()):
+      while (next(loop)):
         result.append(xray.structure(
           special_position_settings=special_position_settings,
           scatterers=loop.scatterers,
           non_unit_occupancy_implies_min_distance_sym_equiv_zero=
             non_unit_occupancy_implies_min_distance_sym_equiv_zero))
-    except ValueError, e :
+    except ValueError as e :
       raise Sorry(str(e))
     return result
 
@@ -1080,7 +1088,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         d.setdefault(chid, []).extend(rns)
     result = []
     ott = amino_acid_codes.one_letter_given_three_letter
-    for k, vs in zip(d.keys(), d.values()):
+    for k, vs in zip(list(d.keys()), list(d.values())):
       result.append(">chain %s"%k)
       result.append("".join([ott.get(v,"?") for v in vs]))
     return "\n".join(result)
@@ -1383,10 +1391,9 @@ class rewrite_normalized(object):
         output_file_name,
         keep_original_crystallographic_section=False,
         keep_original_atom_serial=False):
-    self.input = input(file_name=input_file_name)
+    self.input = eval(input(file_name=input_file_name))
     if (keep_original_crystallographic_section):
-      print >> open(output_file_name, "wb"), \
-        "\n".join(self.input.crystallographic_section())
+      print("\n".join(self.input.crystallographic_section()), file=open(output_file_name, "wb"))
       crystal_symmetry = None
     else:
       crystal_symmetry = self.input.crystal_symmetry()
@@ -1517,7 +1524,7 @@ def merge_files_and_check_for_overlap (file_names, output_file,
 
 def quick_clash_check (file_name, site_clash_cutoff=0.5, out=sys.stdout,
     show_outliers=5) :
-  pdb_inp = input(file_name=file_name)
+  pdb_inp = eval(input(file_name=file_name))
   pdb_atoms = pdb_inp.atoms_with_labels()
   xray_structure = pdb_inp.xray_structure_simple(
     cryst1_substitution_buffer_layer=10,
@@ -1864,7 +1871,7 @@ def show_file_summary (pdb_in, hierarchy=None, out=None) :
   label_width = max([ len(l) for l,v in info ]) + 2
   format = "%%-%ds %%s" % label_width
   for label, value in info :
-    print >> out, format % (label + ":", str(value))
+    print(format % (label + ":", str(value)), file=out)
   return info
 
 # MARKED_FOR_DELETION_OLEG

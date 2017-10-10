@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 def array_alignment(members_size, i_mbr_byte_offset_pairs):
   n = members_size
   diff_matrix = [None] * (n*(n-1))
@@ -22,12 +24,12 @@ def array_alignment(members_size, i_mbr_byte_offset_pairs):
         diff_matrix[i] = d
       elif (dd != d):
         raise RuntimeError(msg_directly_conflicting)
-  cluster_indices = range(n)
+  cluster_indices = list(range(n))
   clusters = []
-  for i in xrange(n):
+  for i in range(n):
     clusters.append([])
-  for i0 in xrange(n-1):
-    for i1 in xrange(i0+1,n):
+  for i0 in range(n-1):
+    for i1 in range(i0+1,n):
       i = i0 * n + i1
       d = diff_matrix[i]
       if (d is not None):
@@ -63,8 +65,8 @@ def array_alignment(members_size, i_mbr_byte_offset_pairs):
     assert i != 0
     assert diffs0[i] is None
     diffs0[i] = o
-  for i0 in xrange(n-1):
-    for i1 in xrange(i0+1,n):
+  for i0 in range(n-1):
+    for i1 in range(i0+1,n):
       i = i0 * n + i1
       d = diff_matrix[i]
       if (    d is not None

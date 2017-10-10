@@ -1,5 +1,11 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import zip
+from builtins import range
+from builtins import object
 from libtbx.scheduling import result
 
 import time
@@ -110,7 +116,7 @@ class RetrieveProcessor(object):
 
   def finalize(self, job):
 
-    from Queue import Empty
+    from queue import Empty
 
     try:
       job_result = self.queue.get( block = self.block, timeout = self.timeout )
@@ -120,13 +126,13 @@ class RetrieveProcessor(object):
 
       if self.request_timeout is None:
         self.request_timeout = now
-        raise ProcessingException, "Timeout on %s" % self.queue
+        raise ProcessingException("Timeout on %s" % self.queue)
 
       if ( now - self.request_timeout ) <= self.grace:
-        raise ProcessingException, "Timeout on %s" % self.queue
+        raise ProcessingException("Timeout on %s" % self.queue)
 
       self.reset()
-      raise RuntimeError, "Timeout on %s" % self.queue
+      raise RuntimeError("Timeout on %s" % self.queue)
 
     self.request_timeout = None
 
@@ -295,7 +301,7 @@ class WorkerMaintenance(object):
     if process.is_alive():
       outqueue.put( None )
 
-      from Queue import Empty
+      from queue import Empty
 
       try:
         inqueue.get( timeout = self.grace )
@@ -370,7 +376,7 @@ class Worker(object):
     except Exception:
       if not self.functional():
         self.restart()
-        raise TerminatedException, "Worker died"
+        raise TerminatedException("Worker died")
 
       else:
         raise
@@ -409,7 +415,7 @@ class WorkerJob(object):
   def poll(self, block):
 
     if self.exitcode is None:
-      from Queue import Empty
+      from queue import Empty
 
       try:
         self.result = self.worker.get( block = block )
@@ -418,7 +424,7 @@ class WorkerJob(object):
       except Empty:
         return True
 
-      except Exception, e:
+      except Exception as e:
         self.result = result.error( exception = e )
         self.exitcode = 1
         self.err = e
@@ -499,7 +505,7 @@ class PostprocessingState(object):
 
   def initiate_postprocessing(self, job):
 
-    raise RuntimeError, "initiate_postprocess called second time"
+    raise RuntimeError("initiate_postprocess called second time")
 
 
   def perform_postprocessing(self, job):
@@ -507,10 +513,10 @@ class PostprocessingState(object):
     try:
       value = result.success( value = job.unit.finalize( job = self.job ) )
 
-    except ProcessingException, e:
+    except ProcessingException as e:
       raise
 
-    except Exception, e:
+    except Exception as e:
       value = result.error( exception = e )
 
     job.status = ValueState( value = value )
@@ -544,7 +550,7 @@ class ValueState(object):
 
   def initiate_postprocessing(self, job):
 
-    raise RuntimeError, "initiate_postprocess called second time"
+    raise RuntimeError("initiate_postprocess called second time")
 
 
   def perform_postprocessing(self, job):
@@ -805,7 +811,7 @@ class Scheduler(object):
   def wait_for(self, identifier):
 
     if identifier not in self.known_jobs:
-      raise RuntimeError, "Job identifier not known"
+      raise RuntimeError("Job identifier not known")
 
     while identifier not in self.completed_jobs and not self.is_empty():
       self.poll()
@@ -952,7 +958,7 @@ class Adapter(object):
 
     if identifier not in self.completed_jobs:
       if identifier not in self.known_jobs:
-        raise RuntimeError, "Job identifier not known"
+        raise RuntimeError("Job identifier not known")
 
       assert identifier in self.manager.known_jobs
       self.manager.wait_for( identifier = identifier )
@@ -1014,7 +1020,7 @@ class MainthreadJob(object):
     try:
       self.target( *self.args, **self.kwargs )
 
-    except Exception, e:
+    except Exception as e:
       self.exitcode = 1
       self.err = e
 
@@ -1131,7 +1137,7 @@ class MainthreadManager(object):
   def wait_for(self, identifier):
 
     if identifier not in self.known_jobs:
-      raise RuntimeError, "Job identifier not known"
+      raise RuntimeError("Job identifier not known")
 
     while identifier not in self.completed_jobs and not self.is_empty():
       self.poll()
@@ -1301,7 +1307,7 @@ def pool_process_cycle(pid, inqueue, outqueue, waittime, lifeman, sentinel):
   manager = lifeman()
   outqueue.put( ( worker_startup_event, pid ) )
 
-  from Queue import Empty
+  from queue import Empty
 
   while manager.is_alive():
     try:
@@ -1348,7 +1354,7 @@ class ProcessRegister(object):
   def record_process_startup(self, pid):
 
     if pid in self.running_on:
-      raise RuntimeError, "Existing worker with identical processID"
+      raise RuntimeError("Existing worker with identical processID")
 
     self.running_on[ pid ] = None
 
@@ -1356,10 +1362,10 @@ class ProcessRegister(object):
   def record_job_start(self, jobid, pid):
 
     if pid not in self.running_on:
-      raise RuntimeError, "Unknown processID"
+      raise RuntimeError("Unknown processID")
 
     if self.running_on[ pid ] is not None:
-      raise RuntimeError, "Attempt to start process on busy worker"
+      raise RuntimeError("Attempt to start process on busy worker")
 
     self.running_on[ pid ] = jobid
 
@@ -1367,10 +1373,10 @@ class ProcessRegister(object):
   def record_job_finish(self, jobid, pid, value):
 
     if pid not in self.running_on:
-      raise RuntimeError, "Unknown processID"
+      raise RuntimeError("Unknown processID")
 
     if self.running_on[ pid ] != jobid:
-      raise RuntimeError, "Inconsistent register information: jobid/pid mismatch"
+      raise RuntimeError("Inconsistent register information: jobid/pid mismatch")
 
     self.running_on[ pid ] = None
     self.results.append( ( jobid, result.success( value = value ) ) )
@@ -1389,10 +1395,10 @@ class ProcessRegister(object):
   def record_process_exit(self, pid, container):
 
     if pid not in self.running_on:
-      raise RuntimeError, "Unknown processID"
+      raise RuntimeError("Unknown processID")
 
     if self.running_on[ pid ] is not None:
-      raise RuntimeError, "Shutdown of busy worker"
+      raise RuntimeError("Shutdown of busy worker")
 
     container.append( pid )
     del self.running_on[ pid ]
@@ -1401,7 +1407,7 @@ class ProcessRegister(object):
   def record_process_crash(self, pid, exception):
 
     if pid not in self.running_on:
-      raise RuntimeError, "Unknown processID"
+      raise RuntimeError("Unknown processID")
 
     jobid = self.running_on[ pid ]
 
@@ -1581,7 +1587,7 @@ class ProcessPool(object):
   @property
   def known_jobs(self):
 
-    return self.identifier_for.values() + self.completed_jobs
+    return list(self.identifier_for.values()) + self.completed_jobs
 
 
   @property
@@ -1630,7 +1636,7 @@ class ProcessPool(object):
 
   def poll(self):
 
-    for ( pid, process ) in self.process_numbered_as.items():
+    for ( pid, process ) in list(self.process_numbered_as.items()):
       if not process.is_alive():
         process.join()
 
@@ -1647,7 +1653,7 @@ class ProcessPool(object):
         self.terminatings.add( pid )
         del self.process_numbered_as[ pid ]
 
-    from Queue import Empty, Full
+    from queue import Empty, Full
 
     while self.unreporteds:
       try:
@@ -1726,7 +1732,7 @@ class ProcessPool(object):
     time.sleep( self.waittime )
     self.poll()
 
-    for ( pid,  process ) in self.process_numbered_as.items():
+    for ( pid,  process ) in list(self.process_numbered_as.items()):
       if process.is_alive():
         if hasattr( process, "terminate" ): # Thread has no terminate
           try:
@@ -1749,7 +1755,7 @@ class ProcessPool(object):
       pid = self.recycleds.popleft()
 
     except IndexError:
-      pid = self.pid_assigner.next()
+      pid = next(self.pid_assigner)
 
     process = self.job_factory(
       target = pool_process_cycle,
@@ -1867,7 +1873,7 @@ class MainthreadPool(object):
       try:
         value = current.target( *current.args, **current.kwargs )
 
-      except Exception, e:
+      except Exception as e:
         res = result.error( exception = e )
 
       else:
@@ -1903,7 +1909,7 @@ class RechargeableIterator(object):
     self.intermittent = deque()
 
 
-  def next(self):
+  def __next__(self):
 
     try:
       return self.intermittent.popleft()
@@ -1935,7 +1941,7 @@ class NoPooler(object):
   @classmethod
   def pack(cls, calcsiter, manager):
 
-    ( target, args, kwargs ) = calcsiter.next() # raise StopIteration
+    ( target, args, kwargs ) = next(calcsiter) # raise StopIteration
     identifier = manager.submit(
       target = target,
       args = args,
@@ -1968,7 +1974,7 @@ class PooledRun(object):
       try:
         res = iden.target( *iden.args, **iden.kwargs )
 
-      except Exception, e:
+      except Exception as e:
         results.append( ( True, e ) )
 
       else:
@@ -1984,7 +1990,7 @@ class PooledRun(object):
     try:
       res = raw()
 
-    except Exception, e:
+    except Exception as e:
       results.extend(
         [
           Result(
@@ -2030,7 +2036,7 @@ class Pooler(object):
     identifiers = [
       Identifier( target = target, args = args, kwargs = kwargs )
       for ( index, ( target, args, kwargs ) )
-      in zip( range( self.size ), calcsiter )
+      in zip( list(range( self.size)), calcsiter )
       ]
 
     if not identifiers:
@@ -2059,7 +2065,7 @@ def get_pooler(size):
     return Pooler( size = size )
 
   else:
-    raise ValueError, "Invalid pool size: %s" % size
+    raise ValueError("Invalid pool size: %s" % size)
 
 
 
@@ -2105,12 +2111,12 @@ class ParallelForIterator(object):
   def next(self, orderer):
 
     if not self.resiter.has_next():
-      result = self.manager.results.next() # raise StopIteration
+      result = next(self.manager.results) # raise StopIteration
       self.pooler.unpack( result = result, resiter = self.resiter )
 
     self.process( orderer = orderer )
     assert self.resiter.has_next()
-    r = self.resiter.next()
+    r = next(self.resiter)
     return ( r.identifier, r )
 
 
@@ -2166,7 +2172,7 @@ class FinishingOrder(Ordering):
     pass
 
 
-  def next(self):
+  def __next__(self):
 
     ( identifier, result ) = self.parallel_for.next( orderer = self )
     return ( ( identifier.target, identifier.args, identifier.kwargs ), result )
@@ -2189,7 +2195,7 @@ class SubmissionOrder(Ordering):
     self.submitteds.append( identifier )
 
 
-  def next(self):
+  def __next__(self):
 
     while not self.submitteds or self.submitteds[0] not in self.result_for:
       ( identifier, result ) = self.parallel_for.next( orderer = self )

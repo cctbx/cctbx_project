@@ -3,7 +3,9 @@ from __future__ import division
 # requires LABELIT and Python Image Library
 # future: remove the LABELIT dependency
 
-import StringIO,sys
+from future import standard_library
+standard_library.install_aliases()
+import io,sys
 
 if (__name__ == "__main__") :
   from labelit.command_line.overlay_distl import OverlayDriverClass
@@ -16,7 +18,7 @@ if (__name__ == "__main__") :
           'ybeam':ODC.I.a.parameters['BEAM_CENTER_Y'],
           'pixel_size':ODC.I.a.parameters['PIXEL_SIZE']}
   ODC.beam_overlay()
-  ioout = StringIO.StringIO()
+  ioout = io.StringIO()
   ODC.I.output(ioout)
   g = open(out,"wb")
   g.write(ioout.getvalue())

@@ -5,6 +5,8 @@ Generic job scheduling
 from __future__ import division
 
 
+from builtins import str
+from builtins import object
 class SchedulingError(Exception):
   """
   Package exception

@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from libtbx.test_utils import show_diff
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints
@@ -7,7 +10,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 import cctbx.geometry_restraints
-from cStringIO import StringIO
+from io import StringIO
 import sys
 
 def exercise_manager(verbose=0):
@@ -130,11 +133,11 @@ scatterer O3
 ... (remaining 21 not shown)
 
 """)
-  if (0 or verbose): print sio.getvalue()
+  if (0 or verbose): print(sio.getvalue())
 
 def run(verbose=0):
   exercise_manager(verbose=verbose)
-  print "OK"
+  print("OK")
 
 if __name__ == "__main__":
   run(verbose=("--verbose" in sys.argv[1:]))

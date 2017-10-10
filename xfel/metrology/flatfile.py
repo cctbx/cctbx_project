@@ -25,7 +25,10 @@ Other open issues:
 """
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
+from builtins import object
 import copy
 import math
 import sys
@@ -325,8 +328,8 @@ def _find_long_short(quadrants,
   l_N = 0
   s_N = 0
 
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in quadrants.items():
+    for (s, vertices) in sensors.items():
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       l = (vertices[1] - vertices[0]).length()
@@ -368,8 +371,8 @@ def _find_long_short(quadrants,
   # Compute all the side lengths from all the sensors in all quadrants
   # using every pair of successive vertices.
   d = []
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in quadrants.items():
+    for (s, vertices) in sensors.items():
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       for i in range(len(vertices)):
@@ -416,8 +419,8 @@ def _find_aspect_ratio(quadrants, r_int=(-float('inf'), +float('inf'))):
   r_sum = r_ssq = 0
   r_N = 0
 
-  for (q, sensors) in quadrants.iteritems():
-    for (s, vertices) in sensors.iteritems():
+  for (q, sensors) in quadrants.items():
+    for (s, vertices) in sensors.items():
       if len(vertices) != 4:
         raise RuntimeError("Sensor in quadrant does not have four vertices")
       s = (vertices[2] - vertices[1]).length() + (vertices[0] - vertices[3]).length()
@@ -494,8 +497,8 @@ def _order_sensors(sensors):
 
   # Sort x-major sensors by increasing y-value of the center, and
   # y-major sensors by increasing x-value of the center.
-  sorted(sensors_x, key=lambda (v, m): m.elems[1])
-  sorted(sensors_y, key=lambda (v, m): m.elems[0])
+  sorted(sensors_x, key=lambda v_m: v_m[1].elems[1])
+  sorted(sensors_y, key=lambda v_m1: v_m1[1].elems[0])
 
   # Write a dictionary with the sensors in the correct order, and
   # discard the sensor centers and convert to deque.  Now remains only
@@ -514,7 +517,7 @@ def _order_sensors(sensors):
     6: deque(sensors_y[3][0]), 7: deque(sensors_y[2][0])}
 
   # Reshuffle vertices in sensors by cyclic permutation.
-  for (i, v) in sensors_dict.iteritems():
+  for (i, v) in sensors_dict.items():
     assert len(v) >= 3 # XXX
     d1 = v[1] - v[0]
     d2 = v[2] - v[1]
@@ -548,7 +551,7 @@ def _find_weight(p0, p1, p2, l, s):
   if r.length() > 0:
     R = r.axis_and_angle_as_r3_rotation_matrix(angle=math.acos(n(2, 0)))
   else:
-    print "TOOK funny branch"
+    print("TOOK funny branch")
     R = matrix.identity(3)
 
   # Rotate, and make p1 the origin.  This is now a 2D-problem.
@@ -894,11 +897,11 @@ def _fit_angles(vertices):
     a1 = (vertices[1] - vertices[0]).angle(vertices[3] - vertices[2], deg=True)
     a2 = (vertices[3] - vertices[0]).angle(vertices[2] - vertices[1], deg=True)
     if a1 < ANGLE_THRESHOLD:
-      print "IN FIX 0a"
+      print("IN FIX 0a")
       return (vertices, 0)
 
     elif a2 < ANGLE_THRESHOLD:
-      print "IN FIX 0b"
+      print("IN FIX 0b")
       return (vertices, 0)
 
   elif good_angles.count(True) == 1:
@@ -1042,8 +1045,8 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
       (s, x, y, z) = [int(i) for i in line.split()[0:4]]
       p = matrix.col((x, y, z))
-      if q in quadrants.keys():
-        if s in quadrants[q].keys():
+      if q in list(quadrants.keys()):
+        if s in list(quadrants[q].keys()):
           raise RuntimeError("Multiple definitions for sensor")
         quadrants[q][s] = p
       else:
@@ -1065,16 +1068,16 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
           avg += c
       return avg / len(coords)
 
-    print "Showing un-adjusted, parsed metrology"
+    print("Showing un-adjusted, parsed metrology")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
     ax = fig.add_subplot(111, aspect='equal')
     cents = []
 
-    for q_id, quadrant in quadrants.iteritems():
+    for q_id, quadrant in quadrants.items():
       s = []
-      for s_id, sensor_pt in quadrant.iteritems():
+      for s_id, sensor_pt in quadrant.items():
         s.append(sensor_pt)
         if len(s) == 4:
           ax.add_patch(Polygon([p[0:2] for p in s], closed=True, color='green', fill=False, hatch='/'))
@@ -1092,10 +1095,10 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   s_diff = []
   l_len = []
   s_len = []
-  for (q, s) in quadrants.iteritems():
+  for (q, s) in quadrants.items():
     # Sort the sensor vertices and ensure every sensor has four
     # vertices.
-    s_sorted = copy.deepcopy(s.keys())
+    s_sorted = copy.deepcopy(list(s.keys()))
     s_sorted.sort()
     if len(s_sorted) % 4 != 0:
       raise RuntimeError(
@@ -1147,20 +1150,20 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   l_diff_stat = flex.mean_and_variance(flex.double(l_diff))
   s_diff_stat = flex.mean_and_variance(flex.double(s_diff))
-  print "Difference between opposing long  sides: " \
+  print("Difference between opposing long  sides: " \
     "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
       l_diff_stat.mean(),
       l_diff_stat.unweighted_sample_standard_deviation(),
       min(l_diff),
       max(l_diff),
-      len(l_diff))
-  print "Difference between opposing short sides: " \
+      len(l_diff)))
+  print("Difference between opposing short sides: " \
     "%.3f+/-%.3f [%.3f, %.3f] (N = %d)" % (
       s_diff_stat.mean(),
       s_diff_stat.unweighted_sample_standard_deviation(),
       min(s_diff),
       max(s_diff),
-      len(s_diff))
+      len(s_diff)))
 
 
   # Get side length distribution parameters with outlier rejection,
@@ -1177,15 +1180,15 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       quadrants, l_int, s_int)
     if l_N >= l_N_old and s_N >= s_N_old:
       break
-  print "Long  side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
-    (l_mu, l_sigma, min(l_len), max(l_len), l_N)
-  print "Short side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
-    (s_mu, s_sigma, min(s_len), max(s_len), s_N)
+  print("Long  side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (l_mu, l_sigma, min(l_len), max(l_len), l_N))
+  print("Short side: %.3f+/-%.3f [%.3f, %.3f] (N = %d)" % \
+    (s_mu, s_sigma, min(s_len), max(s_len), s_N))
 
   # XXX Would really expect this to be (2 * 194 + 3) / 185 = 2.11, but
   # it ain't.  Hart et al. (2012) says this should be 20.9 mm by 43.5 mm
   (r_mu, r_sigma, r_N) = _find_aspect_ratio(quadrants)
-  print "Aspect ratio: %.3f+/-%.3f (N = %d)" % (r_mu, r_sigma, r_N)
+  print("Aspect ratio: %.3f+/-%.3f (N = %d)" % (r_mu, r_sigma, r_N))
 
 
   # Corrections appear to be necessary for 2011-06-20 Ds1 metrology,
@@ -1195,10 +1198,10 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   # For each sensor in each quadrant, determine least-squares fit
   # rectangle with sides (l_mu, s_mu) to the four vertices.
   quadrants_lsq = {}
-  for (q, sensors) in quadrants.iteritems():
-    print "Q: %1d" % q
+  for (q, sensors) in quadrants.items():
+    print("Q: %1d" % q)
     quadrants_lsq[q] = {}
-    for (s, vertices) in sensors.iteritems():
+    for (s, vertices) in sensors.items():
 
       #if q != 0 or s != 3:
       #  continue
@@ -1219,7 +1222,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 #      (vertices_lsq, rss) = _fit_rectangle(vertices, l_mu, s_mu)
       (vertices_lsq, rss) = _fit_rectangle(vertices_lsq, l_mu, s_mu)
       quadrants_lsq[q][s] = vertices_lsq
-      print "Q: %1d S: %1d r.m.s.d. = %8.3f" % (q, s, math.sqrt(0.25 * rss))
+      print("Q: %1d S: %1d r.m.s.d. = %8.3f" % (q, s, math.sqrt(0.25 * rss)))
 
   # XXX What is aspect ratio after fitting rectangles?
 #  (r_mu, r_sigma, r_N) = _find_aspect_ratio(quadrants_lsq)
@@ -1227,10 +1230,9 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   # This is a measure of success.
   (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N) = _find_long_short(quadrants_lsq)
-  print \
-      "Long  side: %.3f+/-%.3f (N = %d)\n" \
+  print("Long  side: %.3f+/-%.3f (N = %d)\n" \
       "Short side: %.3f+/-%.3f (N = %d)" % \
-      (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N)
+      (l_mu, l_sigma, l_N, s_mu, s_sigma, s_N))
 
 
   if old_style_diff_path is None:
@@ -1251,35 +1253,35 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     #
     # There is no global origin for the CSPAD:s at CXI, because all
     # four quadrants are measured independently.
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in quadrants_lsq.items():
       quadrants_trans[q] = {}
 
       if q == 0:
         # Q0:
         #   x -> -slow
         #   y -> -fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((-v[0], -v[1]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((-v[1], +v[0]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((+v[0], +v[1]))
                                    for v in quadrants_lsq[q][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((+v[1], -v[0]))
                                    for v in quadrants_lsq[q][s]]
       else:
@@ -1298,15 +1300,15 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
     # four quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in quadrants_lsq.items():
       for v in sensors[1]:
         o += v
         N += 1
     o /= N
 
-    for (q, sensors) in quadrants_lsq.iteritems():
+    for (q, sensors) in quadrants_lsq.items():
       quadrants_trans[q] = {}
-      for (s, vertices) in sensors.iteritems():
+      for (s, vertices) in sensors.items():
         quadrants_trans[q][s] = [matrix.col((-v[1] - (-o[1]), +v[0] - (+o[0])))
                                  for v in quadrants_lsq[q][s]]
   else:
@@ -1337,7 +1339,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
   sign_hack_s = (1, 1)
   sign_hack_l = sign_hack_s
 
-  for (q, sensors) in quadrants_trans.iteritems():
+  for (q, sensors) in quadrants_trans.items():
     corrections[q] = {}
 
     # Figure out quadrant offset from old-style data.  Get bottom ASIC
@@ -1359,7 +1361,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       elif q == 3:
         offset = (c[0] - 3, c[3] + 3)
 
-    for (s, vertices) in sensors.iteritems():
+    for (s, vertices) in sensors.items():
       corrections[q][s] = {}
 
       # Compute differences against old-style metrology.
@@ -1416,7 +1418,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
       elif l.elems[1] > +0.5:
         l = matrix.col((0, +1))
       else:
-        print "This should not happen!"
+        print("This should not happen!")
 
       # According to Henrik Lemke, the XPP detector is actually
       # rotated by 180 degrees with respect to the optical metrology
@@ -1463,7 +1465,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
         corrections[q][s][0] = corrections_tl
 
         if q == 0 and s == 0:
-          print "HATTNE diag PRUTT #0", corrections_tl
+          print("HATTNE diag PRUTT #0", corrections_tl)
 
         if plot:
           v_new = ((corners_new[0], corners_new[1]),
@@ -1503,7 +1505,7 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
         corrections[q][s][1] = corrections_tl
 
         if q == 0 and s == 0:
-          print "HATTNE diag PRUTT #1", corrections_tl
+          print("HATTNE diag PRUTT #1", corrections_tl)
 
 
         if plot:
@@ -1613,13 +1615,13 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
   # Build list and output differences to old-style metrology.
   corrections_list = flex.int(4 * 8 * 2 * 2)
-  for (q, sensors) in corrections.iteritems():
-    for (s, correction) in sensors.iteritems():
+  for (q, sensors) in corrections.items():
+    for (s, correction) in sensors.items():
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 0] = correction[0][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 0 * 2 + 1] = correction[0][1]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 0] = correction[1][0]
       corrections_list[q * 8 * 2 * 2 + s * 2 * 2 + 1 * 2 + 1] = correction[1][1]
-  print "corrected_auxiliary_translations =", list(corrections_list)
+  print("corrected_auxiliary_translations =", list(corrections_list))
 
   for i in range(len(aa_new)):
     if detector == 'XppDs1':
@@ -1628,11 +1630,11 @@ def parse_metrology(path, detector = 'CxiDs1', plot = True, do_diffs = True, old
 
     assert aa_new[i] >= 0 and aa_new[i] <= 1765
 
-  print "new active areas", len(aa_new), aa_new
+  print("new active areas", len(aa_new), aa_new)
 
 
   if plot:
-    print "Showing active areas"
+    print("Showing active areas")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()

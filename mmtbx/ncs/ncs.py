@@ -1,5 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # from mmtbx.ncs.ncs_utils import convert_phil_format
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import sys, os, string
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
@@ -48,17 +53,17 @@ def remove_single_quotes(text):
 def is_identity(r,t,tol=1.e-2):
   identity_r=[1,0,0,0,1,0,0,0,1]
   identity_t=[0,0,0]
-  for i in xrange(9):
+  for i in range(9):
     if abs(r[i]-identity_r[i])>tol: return False
-  for i in xrange(3):
+  for i in range(3):
     if abs(t[i]-identity_t[i])>tol: return False
   return True
 
 def is_same_transform(r1,t1,r2,t2,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     # require everything to be very similar
-    for i in xrange(9):
+    for i in range(9):
       if abs(r1[i]-r2[i])>tol_r: return False
-    for i in xrange(3):
+    for i in range(3):
       dd=abs(t1[i]-t2[i])
       dd2=0.5*(abs(t1[i])+abs(t2[i]))
       if dd>abs_tol_t and dd>rel_tol_t*dd2: # definitely does not match
@@ -171,11 +176,11 @@ def get_helical_symmetry(helical_rot_deg=None,
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
   trans.append(matrix.col((0,0,0,)))
 
-  for i in xrange(n):
+  for i in range(n):
     rots=[rot*rots[0]]+rots[:]
     trans=[trans[0]-trans_along_z]+trans[:]
 
-  for i in xrange(n):
+  for i in range(n):
     rots.append(rot_inv*rots[-1])
     trans.append(trans[-1]+trans_along_z)
 
@@ -215,7 +220,7 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
   trans.append(matrix.col((0,0,0,)))
 
-  for i in xrange(n-1):
+  for i in range(n-1):
     rots.append(oper_inv*rots[-1])
     trans.append(matrix.col((0,0,0,)))
 
@@ -238,7 +243,7 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
   ncs_object.ncs_from_import(rot_list=rots,trans_list=trans)
   return ncs_object
 
-class ncs_group:  # one group of NCS operators and center and where it applies
+class ncs_group(object):  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
       ncs_domain_pdb=None,
@@ -459,7 +464,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new_residue_range_list=[]
     new_group=[]
     
-    for i in xrange(self._n_ncs_oper):
+    for i in range(self._n_ncs_oper):
       if i in ops_to_keep:
         new._n_ncs_oper+=1
         new._rota_matrices.append(self.rota_matrices()[i])
@@ -677,7 +682,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      count+=1
      text+='new_operator\n'
      if center is not None:
-       for j in xrange(3):
+       for j in range(3):
          text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr.elems[j*3:j*3+3])
        text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
@@ -738,7 +743,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       i+=1
       if i==1 and skip_identity_if_first and \
         is_identity(ncs_rota_matr,trans_orth): continue
-      for j in xrange(3):
+      for j in range(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
       text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
@@ -923,7 +928,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     n=len(self.rota_matrices_inv())
     z_translations=[]
     sort_z_translations=[]
-    for i1 in xrange(n): # figure out if translation is along z
+    for i1 in range(n): # figure out if translation is along z
       z_translations.append(self.translations_orth_inv()[i1][2])
       sort_z_translations.append([self.translations_orth_inv()[i1][2],i1])
     from copy import deepcopy
@@ -956,7 +961,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # Reorder the operators:
     self._rota_matrices=len(rota_matrices_sav)*[None]
     self._translations_orth=len(rota_matrices_sav)*[None]
-    for i1,i2 in zip(sorted_indices,xrange(n)):
+    for i1,i2 in zip(sorted_indices,range(n)):
       self._rota_matrices[i2]=rota_matrices_sav[i1]
       self._translations_orth[i2]=translations_orth_sav[i1]
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
@@ -993,7 +998,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.helix_oper_forwards=None
     self.helix_oper_reverse=None
     self.helix_oper_identity=None
-    for i1 in xrange(n): # figure out offset made by this self.helix_operator
+    for i1 in range(n): # figure out offset made by this self.helix_operator
       offset,n_missing=self.oper_adds_offset(i1,tol_r=tol_r,
           abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t)
       offset_list.append(offset)
@@ -1013,14 +1018,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         is_helical=False
 
     if is_helical:
-      for i1 in xrange(n):
+      for i1 in range(n):
         if n_missing_list[i1] != abs(i1-ii):
           is_helical=False
           break
     if is_helical:
       offset_list.sort()
       start_value=offset_list[0]
-      expected_list=list(xrange(start_value,start_value+n))
+      expected_list=list(range(start_value,start_value+n))
       if offset_list != expected_list:
         is_helical=False
     # restore
@@ -1210,13 +1215,13 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     t1=self.translations_orth_inv()[i1]
     offset_list=[]
     missing_list=[]
-    for i in xrange(n): # apply i1+i and see what k we get (k-i should be const)
+    for i in range(n): # apply i1+i and see what k we get (k-i should be const)
       r=self.rota_matrices_inv()[i]
       t=self.translations_orth_inv()[i]
       new_r = r1 * r
       new_t = (r1 * t) + t1
       match_offset=None
-      for j in xrange(n):
+      for j in range(n):
         r2=self.rota_matrices_inv()[j]
         t2=self.translations_orth_inv()[j]
         if is_same_transform(new_r,new_t,r2,t2,
@@ -1277,7 +1282,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._centers=new_centers
     self._translations_orth=new_translations_orth
 
-class ncs:
+class ncs(object):
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
     self.source_info=None
@@ -1373,7 +1378,7 @@ class ncs:
      invert_matrices=True):
     p=pdb_inp.process_BIOMT_records()
     if not p:
-      print >>log, "No BIOMT records available"
+      print("No BIOMT records available", file=log)
       return
 
     self.ncs_from_import(rot_list=p.r,trans_list=p.t,invert_matrices=invert_matrices)
@@ -1412,9 +1417,9 @@ class ncs:
     if not log: log=sys.stdout
     if not quiet:
       if file_name:
-        print >>log,"Reading NCS information from: ",file_name
+        print("Reading NCS information from: ",file_name, file=log)
     if source_info:
-       print >>log," based on ",source_info
+       print(" based on ",source_info, file=log)
        self.source_info=source_info
     else:
        self.source_info=str(file_name)
@@ -1479,7 +1484,7 @@ class ncs:
       try:
         pdb_inp = iotbx.pdb.input(lines=lines,source_info=file_name)
         self.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=log,quiet=quiet)
-      except Exception,e:
+      except Exception as e:
         pass
 
   def save_existing_group_info(self):
@@ -1604,11 +1609,11 @@ class ncs:
      list_length=None
      for lst in [trans_orth,ncs_rota_matr,center_orth]:
        if not lst or len(lst)<1:
-         print "Length too short:",type(lst),lst,len(lst)
+         print("Length too short:",type(lst),lst,len(lst))
          raise Sorry("The NCS operators in this file appear incomplete?")
        if not list_length: list_length=len(lst)
        if list_length!=len(lst):
-         print "Length of list incorrect:",type(lst),lst,len(lst),list_length
+         print("Length of list incorrect:",type(lst),lst,len(lst),list_length)
          raise Sorry("The NCS operators in this file appear incomplete?")
      ncs_group_object=ncs_group(
        ncs_rota_matr=ncs_rota_matr,
@@ -1631,11 +1636,11 @@ class ncs:
          self._residues_in_common_list,self._rmsd_list]:
         if lst and self._n_ncs_oper and \
            len(lst) != self._n_ncs_oper:
-          print "Lengh of list does not match number of operators:",\
-             type(lst),lst,self._n_ncs_oper
+          print("Lengh of list does not match number of operators:",\
+             type(lst),lst,self._n_ncs_oper)
           raise Sorry("The NCS operators in this file appear incomplete?")
         if lst is not None and len(lst)<1:
-          print "Length of operators too short:",lst,len(lst)
+          print("Length of operators too short:",lst,len(lst))
           raise Sorry("The NCS operators in this file appear incomplete?")
         if lst is not None: have_something=True
      if not have_something: return
@@ -1677,8 +1682,8 @@ class ncs:
     if log==None:
       log=sys.stdout
     else:
-      print >>log,"NCS written as ncs object information to:"\
-        ,out.name
+      print("NCS written as ncs object information to:"\
+        ,out.name, file=log)
     all_text=""
     text="Summary of NCS information\n"
     import time,os
@@ -1703,7 +1708,7 @@ class ncs:
     if log==None:
       log=sys.stdout
     else:
-      print >>log,"\n\nNCS operators written in format for resolve to:",out.name
+      print("\n\nNCS operators written in format for resolve to:",out.name, file=log)
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_resolve(crystal_number=crystal_number,
@@ -1734,7 +1739,7 @@ class ncs:
       # all_text = convert_phil_format(all_text,to_type=prefix)
       if all_text:
         if not quiet:
-          print >> out, all_text + '\n'
+          print(all_text + '\n', file=out)
       return all_text
     else:
       # this is only being used when only a spec file is provided
@@ -1765,7 +1770,7 @@ class ncs:
       log=sys.stdout
     else:
       msg  = "NCS phil selection written in ncs selection format to:"
-      print>>log,msg,out.name
+      print(msg,out.name, file=log)
     phil_str = self._ncs_obj.show(format='phil',log=null_out(),header=False)
     if phil_str:
       if not quiet: out.write(phil_str + '\n')
@@ -1961,12 +1966,12 @@ if __name__=="__main__":
     text=ncs_object.format_all_for_group_specification(file_name=file2)
 
     if not text or text != test_ncs_info:
-     print "NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)"
+     print("NOT OK ...please compare TEST.NCS (std) vs TEST2.NCS (output)")
      ff=open('txt.dat','w')
      ff.write(text)
      ff.close()
     else:
-     print "OK"
+     print("OK")
   elif len(args)>0 and args[0] and os.path.isfile(args[0]):
     ncs_object=ncs()
     ncs_object.read_ncs(args[0],source_info=args[0])
@@ -1974,18 +1979,18 @@ if __name__=="__main__":
     if 1:
       file2='OUTPUT.NCS'
       text=ncs_object.format_all_for_group_specification(file_name=file2)
-      print "IS point-group: ",
-      print ncs_object.is_point_group_symmetry()
-      print "IS helical:",
-      print ncs_object.is_helical_along_z()
+      print("IS point-group: ", end=' ')
+      print(ncs_object.is_point_group_symmetry())
+      print("IS helical:", end=' ')
+      print(ncs_object.is_helical_along_z())
     if 1:
       file3='OUTPUT2.NCS'
       new_ncs_object=ncs_object.deep_copy(ops_to_keep=[0,1,6])
       text=new_ncs_object.format_all_for_group_specification(file_name=file3)
-      print text
-      print "IS point-group: ",
-      print new_ncs_object.is_point_group_symmetry()
-      print "IS helical:",
-      print new_ncs_object.is_helical_along_z()
+      print(text)
+      print("IS point-group: ", end=' ')
+      print(new_ncs_object.is_point_group_symmetry())
+      print("IS helical:", end=' ')
+      print(new_ncs_object.is_helical_along_z())
 
   

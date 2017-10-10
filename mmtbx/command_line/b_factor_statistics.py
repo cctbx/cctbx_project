@@ -3,6 +3,7 @@
 # see also wxtbx/adp_statistics.py
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import Sorry
 from libtbx.str_utils import make_sub_header
 import os
@@ -77,9 +78,9 @@ including TLS contribution if present.""")
       raise Sorry("No atoms in selection!")
     else :
       model = model.select(selection)
-      print >> out, "Extracted %d atoms in selection:" % n_sel
-      print >> out, "  %s" % params.adp_statistics.selection
-      print >> out, ""
+      print("Extracted %d atoms in selection:" % n_sel, file=out)
+      print("  %s" % params.adp_statistics.selection, file=out)
+      print("", file=out)
   stats = model.adp_statistics()
   stats.file_name = params.adp_statistics.pdb_file
   stats.selection = params.adp_statistics.selection

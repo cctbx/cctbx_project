@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import boost.python
 from boost.python import streambuf
 ext = boost.python.import_ext("boost_adaptbx_python_streambuf_test_ext")
@@ -23,7 +24,7 @@ def read_from_stdin():
 def run(core):
   if not core:
     exercise()
-    print 'OK'
+    print('OK')
   else:
     read_from_stdin()
 

@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from scitbx import matrix
 import math
 import random
@@ -18,7 +22,7 @@ from mmtbx_tls_ext import *
 
 def print_step(s, log):
   n = 50-len(s)
-  print >> log, s, "*"*n
+  print(s, "*"*n, file=log)
 
 def run(pdb_file_name,
         n_models,
@@ -73,16 +77,16 @@ def run(pdb_file_name,
     pdb_hierarchy_from_ens = pdb_hierarchy_sel.deep_copy()
     u_from_ens = tools.u_cart_from_ensemble(
       models = ensemble_generator_obj.states.root.models())
-    for i in xrange(xrs.sites_cart().size()):
-      print "atom %d:"%i
-      print "  Ucart(from TLS):", ["%8.5f"%u for u in u_from_tls[i]]
-      print "  Ucart(from ens):", ["%8.5f"%u for u in u_from_ens[i]]
+    for i in range(xrs.sites_cart().size()):
+      print("atom %d:"%i)
+      print("  Ucart(from TLS):", ["%8.5f"%u for u in u_from_tls[i]])
+      print("  Ucart(from ens):", ["%8.5f"%u for u in u_from_ens[i]])
     #
     u1, u2 = u_from_tls.as_double(), u_from_ens.as_double()
     cc = flex.linear_correlation(x=u1, y=u2).coefficient()
     r = flex.sum(flex.abs(u1-u2))/\
         flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
-    print "%6.4f %6.4f"%(cc, r)
+    print("%6.4f %6.4f"%(cc, r))
     #
     pdb_hierarchy_from_tls.atoms().set_uij(u_from_tls)
     pdb_hierarchy_from_ens.atoms().set_uij(u_from_ens)
@@ -112,11 +116,11 @@ class ensemble_generator(object):
         xray_structure = xray_structure,
         pdb_hierarchy  = pdb_hierarchy)
     r = tls_from_motions_object
-    print >> log
-    print >> log, "Generating ensemble of %d models:"%n_models
+    print(file=log)
+    print("Generating ensemble of %d models:"%n_models, file=log)
     self.sites_cart_ens = []
-    for trial in xrange(n_models):
-      print >> log, "model #%d"%trial
+    for trial in range(n_models):
+      print("model #%d"%trial, file=log)
       dx0,dy0,dz0 = step_i__get_dxdydz(r=r, log = log)
       d_r_M_V  = formula_49(r=r, log = log)
       sites_cart_new = apply_tls_shifts(

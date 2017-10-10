@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from scitbx.array_family import flex
 from mmtbx.geometry_restraints import ramachandran
 import mmtbx.geometry_restraints
@@ -13,7 +17,7 @@ import boost.python
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
-from cStringIO import StringIO
+from io import StringIO
 import sys
 import os
 
@@ -47,7 +51,7 @@ def exercise_basic () :
       residue_name="ALA",
       residue_type="general"))
   selected = proxies.proxy_select(n_seq=13,
-    iselection=flex.size_t(range(9)))
+    iselection=flex.size_t(list(range(9))))
   assert (selected.size() == 2)
   assert list(selected[0].get_i_seqs()) == [0,1,2,3,4]
   assert selected[0].residue_name == "ALA"
@@ -183,7 +187,7 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
     # print "comparing", residual_an
     assert approx_equal(residual_an, residuals[i], eps=0.001)
   if verbose :
-    print ""
+    print("")
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
@@ -195,21 +199,21 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
     r1 = o.r1.results[0].score
     r2 = o.r2.results[0].score
     if verbose :
-      print "peptide %d" % (i+1)
-      print " before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi0, psi0, r0)
-      print " simple: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b1,o.a1)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi1, psi1, r1)
-      print " + Rama: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b2,o.a2)
-      print "         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2)
-      print ""
+      print("peptide %d" % (i+1))
+      print(" before: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b0,o.a0))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi0, psi0, r0))
+      print(" simple: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b1,o.a1))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi1, psi1, r1))
+      print(" + Rama: rmsd_bonds=%-6.4f rmsd_angles=%-6.3f" % (o.b2,o.a2))
+      print("         phi=%-6.1f psi=%-6.1f score=%-.2f" % (phi2, psi2, r2))
+      print("")
 
 def exercise_lbfgs_big (verbose=False) :
   file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
   if (file_name is None) :
-    print "Skipping big test."
+    print("Skipping big test.")
     return
   pdb_in = iotbx.pdb.input(source_info="peptide",
     file_name=file_name)
@@ -218,14 +222,14 @@ def exercise_lbfgs_big (verbose=False) :
     show_results(o, "3mhk")
 
 def show_results (o, structure_name) :
-  print structure_name
-  print " before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored)
-  print " simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b1, o.a1, o.r1.percent_outliers, o.r1.percent_favored)
-  print " + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
-    % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored)
-  print ""
+  print(structure_name)
+  print(" before: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b0, o.a0, o.r0.percent_outliers, o.r0.percent_favored))
+  print(" simple: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b1, o.a1, o.r1.percent_outliers, o.r1.percent_favored))
+  print(" + Rama: bonds=%-6.4f angles=%-6.3f outliers=%.1f%% favored=%.1f%%"\
+    % (o.b2, o.a2, o.r2.percent_outliers, o.r2.percent_favored))
+  print("")
 
 def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
   params = pdb_interpretation.master_params.extract()
@@ -481,7 +485,7 @@ def exercise_other (mon_lib_srv, ener_lib) :
     relative_path="phenix_regression/pdb/3mku.pdb",
     test=os.path.isfile)
   if (file_name is None) :
-    print "Skipping test."
+    print("Skipping test.")
     return
   params = pdb_interpretation.master_params.fetch().extract()
   params.peptide_link.ramachandran_restraints = True
@@ -508,7 +512,7 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
     relative_path="phenix_regression/pdb/fab_a_cut.pdb",
     test=os.path.isfile)
   if (file_name is None) :
-    print "Skipping test."
+    print("Skipping test.")
     return
   params = pdb_interpretation.master_params.fetch().extract()
   params.peptide_link.ramachandran_restraints = True
@@ -671,6 +675,6 @@ if __name__ == "__main__" :
   t5 = time.time()
   exercise_acs(mon_lib_srv, ener_lib)
   t6 = time.time()
-  print "Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
-      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t6-t0)
-  print "OK"
+  print("Times: %.3f, %.3f, %.3f, %.3f, %.3f, %.3f. Total: %.3f" % (
+      t1-t0, t2-t1, t3-t2, t4-t3, t5-t4, t6-t5, t6-t0))
+  print("OK")

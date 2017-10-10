@@ -5,6 +5,7 @@ a simple keyword syntax and boolean operators.
 """
 
 from __future__ import division
+from builtins import range
 from iotbx import simple_parser
 from iotbx import wildcard
 from cctbx import crystal
@@ -48,7 +49,7 @@ def _get_map_string(
     if (unconditionally_case_insensitive): pattern = pattern.upper()
   result = []
   def match():
-    for key,value in map.items():
+    for key,value in list(map.items()):
       if (not pattern_was_quoted): key = key.strip()
       if (unconditionally_case_insensitive): key = key.upper()
       if (wildcard.is_match(
@@ -61,7 +62,7 @@ def _get_map_string(
       and not pattern_was_quoted
       and not unconditionally_case_insensitive
       and _character_case_id(strings=[pattern]) != 0):
-    keys_case_id = _character_case_id(strings=map.keys())
+    keys_case_id = _character_case_id(strings=list(map.keys()))
     if (keys_case_id != 0):
       if (keys_case_id > 0):
         pattern = pattern.upper()
@@ -85,7 +86,7 @@ def _get_serial_range(sel_keyword, map, start, stop):
       "range with first index > last index: %s %s:%s" % (
         sel_keyword, start, stop))
   result = []
-  for s,iselection in map.items():
+  for s,iselection in list(map.items()):
     os = o(s)
     if (o_start is not None and os < o_start): continue
     if (o_stop  is not None and os > o_stop): continue
@@ -256,7 +257,7 @@ class cache(slots_getstate_setstate):
       raise RuntimeError(
         "range with first index > last index: resid %s:%s" % (start, stop))
     result = []
-    for s,iselection in self.resid.items():
+    for s,iselection in list(self.resid.items()):
       os = o(s)
       if (o_start is not None and os < o_start): continue
       if (o_stop  is not None and os > o_stop): continue
@@ -895,7 +896,7 @@ def selection_string_from_selection(pdb_h,
 
       first_resid = chains_info[ch_id].resid[0]
       last_resid = None
-      for i in xrange(res_len):
+      for i in range(res_len):
         cur_resid = chains_info[ch_id].resid[i]
         # test that all atoms in residue are included in selection
         a_sel = set(chains_info[ch_id].atom_selection[i])

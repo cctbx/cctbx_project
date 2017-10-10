@@ -1,9 +1,15 @@
 from __future__ import division
+from __future__ import print_function
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id: cspad_cbf_tbx.py
 #
 
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 import pycbf, os
 from scitbx import matrix
 from scitbx.array_family import flex
@@ -199,7 +205,7 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
     try:
       from PSCalib.GeometryAccess import GeometryAccess
       geometry = GeometryAccess(path)
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Can't parse this metrology file")
 
   metro = {}
@@ -254,10 +260,10 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
       for sensor_id, sensor in enumerate(quad.get_list_of_children()):
         add_sensor(quad_id, sensor_id, sensor)
   elif len(root.get_list_of_children()) == 32:
-    for quad_id in xrange(4):
+    for quad_id in range(4):
       metro[(0,quad_id)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
       sensors = root.get_list_of_children()
-      for sensor_id in xrange(8):
+      for sensor_id in range(8):
         add_sensor(quad_id, sensor_id, sensors[quad_id*4+sensor_id])
   else:
     assert False
@@ -276,7 +282,7 @@ def get_calib_file_path(env, address, run):
     # try to get it from the detector interface
     psana_det = Detector(address, run.env())
     return psana_det.pyda.geoaccess(run).path
-  except Exception, e:
+  except Exception as e:
     pass
 
   # try to get it from the calib store directly
@@ -299,7 +305,7 @@ def env_dxtbx_from_slac_metrology(run, address):
     # try to load the geometry from the detector interface
     psana_det = Detector(address, run.env())
     geometry = psana_det.pyda.geoaccess(run)
-  except Exception, e:
+  except Exception as e:
     geometry = None
 
   if geometry is None:
@@ -363,7 +369,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
 
   # Get the data and add it to the cbf handle. Split it out by quads.
   tiles = {}
-  for i in xrange(4):
+  for i in range(4):
     tiles[(0,i)] = data[i:i+1,:,:,:]
     tiles[(0,i)].reshape(flex.grid((8,185,388)))
   add_tiles_to_cbf(cbf,tiles)
@@ -411,7 +417,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
   quadrants_trans = {}
   if detector == "CxiDs1":
     # rotate sensors 6 and 7 180 degrees
-    for q_id, quadrant in quadrants.iteritems():
+    for q_id, quadrant in quadrants.items():
       six = quadrant[6]
       svn = quadrant[7]
       assert len(six) == 4 and len(svn) == 4
@@ -421,7 +427,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
 
     # apply transformations: bring to order (slow, fast) <=> (column,
      # row).  This takes care of quadrant rotations
-    for (q, sensors) in quadrants.iteritems():
+    for (q, sensors) in quadrants.items():
       quadrants_trans[q] = {}
 
       q_apa = q
@@ -430,28 +436,28 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
         # Q0:
         #   x -> -slow
         #   y -> -fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((-v[1]/1000, +v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 1:
         # Q1:
         #   x -> +fast
         #   y -> -slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((+v[0]/1000, +v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 2:
         # Q2:
         #   x -> +slow
         #   y -> +fast
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((+v[1]/1000, -v[0]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       elif q == 3:
         # Q3:
         #   x -> -fast
         #   y -> +slow
-        for (s, vertices) in sensors.iteritems():
+        for (s, vertices) in sensors.items():
           quadrants_trans[q][s] = [matrix.col((-v[0]/1000, -v[1]/1000, v[2]/1000))
                                    for v in quadrants[q_apa][s]]
       else:
@@ -470,10 +476,10 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     # quadrants.
     o = matrix.col((0, 0, 0))
     N = 0
-    slen = len(quadrants[quadrants.keys()[0]])
-    for (q, sensors) in quadrants.iteritems():
+    slen = len(quadrants[list(quadrants.keys())[0]])
+    for (q, sensors) in quadrants.items():
       assert len(sensors) == slen
-      for s, sensor in sensors.iteritems():
+      for s, sensor in sensors.items():
         o += center(sensor)
         N += 1
     o /= N
@@ -481,9 +487,9 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     rot_mat = matrix.col((0,0,1)).axis_and_angle_as_r3_rotation_matrix(180,deg=True)
     sensors_to_rotate = [4,5,10,11,12,13,14,15,16,17,18,19,22,23,24,25]
 
-    for (q, quadrant) in quadrants.iteritems():
+    for (q, quadrant) in quadrants.items():
       quadrants_trans[q] = {}
-      for (s, vertices) in quadrant.iteritems():
+      for (s, vertices) in quadrant.items():
         # move to origin, rotate 180 degrees around origin, and scale
         vertices = [rot_mat*(v-o)/1000 for v in vertices]
 
@@ -502,13 +508,13 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
 
     a = []; b = []; c = []; d = []; cents = {}
 
-    for q_id, q in quadrants_trans.iteritems():
+    for q_id, q in quadrants_trans.items():
       q_c = matrix.col((0,0,0))
-      for s_id, s in q.iteritems():
+      for s_id, s in q.items():
         q_c += center(s)
       q_c /= len(q)
       cents["Q%d"%q_id] = q_c
-      for s_id, s in q.iteritems():
+      for s_id, s in q.items():
         sensor = ((s[0][0], s[0][1]),
                   (s[1][0], s[1][1]),
                   (s[2][0], s[2][1]),
@@ -521,27 +527,27 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
     ax.set_xlim((-100, 100))
     ax.set_ylim((-100, 100))
     plt.scatter([v[0] for v in a], [v[1] for v in a], c = 'black')
-    for i, v in cents.iteritems():
+    for i, v in cents.items():
         ax.annotate(i, (v[0],v[1]))
     plt.scatter([v[0] for v in b], [v[1] for v in b], c = 'yellow')
     #plt.scatter([v[0] for v in c], [v[1] for v in c], c = 'yellow')
     plt.scatter([v[0] for v in d], [v[1] for v in d], c = 'yellow')
-    plt.scatter([v[0] for v in cents.values()], [v[1] for v in cents.values()], c = 'red')
+    plt.scatter([v[0] for v in list(cents.values())], [v[1] for v in list(cents.values())], c = 'red')
     plt.show()
 
   null_ori = matrix.col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
   metro = { (0,): basis(null_ori, matrix.col((0,0,0))) }
 
-  for q_id, q in quadrants_trans.iteritems():
+  for q_id, q in quadrants_trans.items():
     # calculate the center of the quadrant
     q_c = matrix.col((0,0,0))
-    for s_id, s in q.iteritems():
+    for s_id, s in q.items():
       q_c += center(s)
     q_c /= len(q)
 
     metro[(0,q_id)] = basis(null_ori,q_c)
 
-    for s_id, s in q.iteritems():
+    for s_id, s in q.items():
       sensorcenter_wrt_detector = center(s)
       sensorcenter_wrt_quadrant = sensorcenter_wrt_detector - q_c
 
@@ -561,7 +567,7 @@ def read_optical_metrology_from_flat_file(path, detector, pixel_size, asic_dimen
       metro[(0,q_id,s_id,1)] = basis(null_ori,matrix.col((+w,0,0)))
 
   if plot:
-    print "Validating transofmation matrices set up correctly"
+    print("Validating transofmation matrices set up correctly")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     fig = plt.figure()
@@ -721,7 +727,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
       cbf.find_column("array_id")
       array_names.append(cbf.get_value())
       cbf.next_row()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
 
@@ -740,7 +746,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       cbf.find_column("array_id")
       array_names.append(cbf.get_value())
       cbf.next_row()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
 
@@ -768,7 +774,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
   if verbose:
-    print "Compressing tiles...",
+    print("Compressing tiles...", end=' ')
 
   for i, (tilekey, array_name) in enumerate(zip(sorted(tiles.keys()), array_names)):
     focus = tiles[tilekey].focus()
@@ -842,16 +848,16 @@ def copy_cbf_header(src_cbf, skip_sections = False):
   for cat in categories:
     src_cbf.find_category(cat)
     columns = []
-    for i in xrange(src_cbf.count_columns()):
+    for i in range(src_cbf.count_columns()):
       src_cbf.select_column(i)
       columns.append(src_cbf.column_name())
 
     dst_cbf.add_category(cat, columns)
 
-    for i in xrange(src_cbf.count_rows()):
+    for i in range(src_cbf.count_rows()):
       src_cbf.select_row(i)
       row = []
-      for j in xrange(src_cbf.count_columns()):
+      for j in range(src_cbf.count_columns()):
         src_cbf.select_column(j)
         row.append(src_cbf.get_value())
       dst_cbf.add_row(row)
@@ -865,7 +871,7 @@ def write_cspad_cbf(tiles, metro, metro_style, timestamp, cbf_root, wavelength, 
       pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
   if verbose:
-    print "%s written"%cbf_root
+    print("%s written"%cbf_root)
 
 def get_cspad_cbf_handle(tiles, metro, metro_style, timestamp, cbf_root, wavelength, distance, verbose = True, header_only = False):
   assert metro_style in ['calibdir','flatfile','cbf']

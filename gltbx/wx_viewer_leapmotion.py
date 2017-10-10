@@ -12,6 +12,7 @@ https://github.com/BradLarson/MoleculesMac
 """
 
 from __future__ import division
+from builtins import object
 import wx
 
 leap_enabled = False

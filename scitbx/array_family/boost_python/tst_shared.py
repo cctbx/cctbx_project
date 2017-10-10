@@ -1,8 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 from scitbx.array_family import shared
 from libtbx.test_utils import approx_equal
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -104,16 +109,16 @@ def exercise_mat3_int():
   from scitbx.array_family import flex
   a = shared.mat3_int()
   assert a.size() == 0
-  a = shared.mat3_int([range(9)])
+  a = shared.mat3_int([list(range(9))])
   assert a.size() == 1
-  assert list(a[0]) == range(9)
+  assert list(a[0]) == list(range(9))
 
 def exercise():
   exercise_stl_vector_unsigned()
   exercise_stl_vector_double()
   exercise_stl_set_unsigned()
   exercise_mat3_int()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import range
 from cctbx.sgtbx.direct_space_asu import direct_space_asu
 from cctbx.sgtbx.direct_space_asu.short_cuts import *
 
@@ -173,5 +174,5 @@ def get_asu(point_group_number):
   return eval("asu_%02d" % point_group_number)()
 
 if (__name__ == "__main__"):
-  for i in xrange(1,17+1):
+  for i in range(1,17+1):
     get_asu(i).show_summary()

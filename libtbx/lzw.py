@@ -52,6 +52,9 @@ True
 """
 from __future__ import division
 
+from builtins import next
+from builtins import range
+from builtins import object
 __author__ = "Joe Bowers"
 __license__ = "MIT License"
 __version__ = "0.01.01"
@@ -618,7 +621,7 @@ class PagingDecoder(object):
 
         try:
             while 1:
-                cp = codepoints.next()
+                cp = next(codepoints)
                 if cp != END_OF_INFO_CODE:
                     yield cp
                 else:

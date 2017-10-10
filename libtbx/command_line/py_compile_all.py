@@ -1,14 +1,16 @@
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
 import compileall
-import cStringIO
+import io
 import sys, os
 
 def run():
   dirs = sys.argv[1:]
   if (len(dirs) == 0):
     dirs = [os.getcwd()]
-  sys.stdout = cStringIO.StringIO()
-  sys.stderr = cStringIO.StringIO()
+  sys.stdout = io.StringIO()
+  sys.stderr = io.StringIO()
   for dir in dirs:
     compileall.compile_dir(dir, 100)
 

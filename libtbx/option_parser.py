@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from libtbx.utils import Sorry
 from libtbx.queuing_system_utils import chunk_manager
 import copy
@@ -26,12 +29,12 @@ make_option = Option
 def run_multi(cmd):
   from libtbx import easy_run
   import traceback
-  print cmd
+  print(cmd)
   try:
     easy_run.call(command=cmd)
   except: # intentional
     sys.stdout.flush()
-    print >> sys.stderr, "CAUGHT EXCEPTION: run_multi(%s)" % cmd
+    print("CAUGHT EXCEPTION: run_multi(%s)" % cmd, file=sys.stderr)
     traceback.print_exc()
     sys.stderr.flush()
 
@@ -55,7 +58,7 @@ class processed_options(object):
       if (self.chunk.n == 1):
         from libtbx.utils import escape_sh_double_quoted
         cmds = []
-        for i in xrange(n):
+        for i in range(n):
           cmd = command_call \
               + self.options_and_args \
               + ["--chunk=%d,%d" % (n,i)]

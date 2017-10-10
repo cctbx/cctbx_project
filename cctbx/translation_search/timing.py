@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.development import random_structure
 from cctbx import miller
 from cctbx import translation_search
@@ -15,7 +16,7 @@ def run():
     use_u_aniso=True,
   )
   shift = tuple(flex.random_double(3))
-  print "shift to be found: (%.3f, %.3f, %.3f)" % shift
+  print("shift to be found: (%.3f, %.3f, %.3f)" % shift)
   target_structure_in_p1 = target_structure.expand_to_p1().apply_shift(shift)
   miller_indices = miller.build_set(
     crystal_symmetry=target_structure,
@@ -48,16 +49,16 @@ def run():
     f_part=flex.complex_double(), ## no sub-structure is already fixed
     miller_indices_p1_f_calc=f_calc.indices(),
     p1_f_calc=f_calc.data()).target_map()
-  print
-  print "Fast translation function"
+  print()
+  print("Fast translation function")
   t_fast_tf()
   t_cross_corr = show_times()
   for op in target_structure.space_group():
     f, op_times_f = f_calc.original_and_transformed(op)
     cross_corr_map = miller.fft_map(crystal_gridding,
                                     f * op_times_f.conjugate().data())
-  print
-  print "Traditional cross-correlation"
+  print()
+  print("Traditional cross-correlation")
   t_cross_corr()
 
 

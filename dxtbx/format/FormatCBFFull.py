@@ -10,7 +10,10 @@
 # but will allow for extension for specific implementations of CBF.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
 import pycbf
 
 from dxtbx.format.FormatCBF import FormatCBF
@@ -129,14 +132,14 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     try:
       cbf_handle = pycbf.cbf_handle_struct()
       cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
     #check if multiple arrays
     try:
       return cbf_handle.count_elements() == 1
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
@@ -156,7 +159,7 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     cbf.find_column('encoding_type')
     cbf.select_row(0)
     types = []
-    for i in xrange(cbf.count_rows()):
+    for i in range(cbf.count_rows()):
       types.append(cbf.get_value())
       cbf.next_row()
     assert len(types) == cbf.count_rows() == 1 # multi-tile data read by different class
@@ -167,7 +170,7 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     while cbf.category_name().lower() != "array_data":
       try:
         cbf.next_category()
-      except Exception, e:
+      except Exception as e:
         return None
     cbf.select_column(0)
     cbf.select_row(0)
@@ -204,4 +207,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFFull.understand(arg)
+    print(FormatCBFFull.understand(arg))

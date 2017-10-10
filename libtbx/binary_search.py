@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 class true_false_bad_biased_up(object):
   """
 Example application: binary search in svn history, with handling

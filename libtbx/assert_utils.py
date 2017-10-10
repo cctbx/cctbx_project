@@ -1,6 +1,8 @@
 """ Functions useful to write assertions, especially preconditions """
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 def is_numeric(x):
   try: x+1.
   except KeyboardInterrupt: raise
@@ -38,8 +40,8 @@ if __name__ == '__main__':
     from scitbx.array_family import flex
   except ImportError:
     import sys
-    print >> sys.stderr, "scitbx library not available:" \
-                         "some tests were skipped"
+    print("scitbx library not available:" \
+                         "some tests were skipped", file=sys.stderr)
   else:
     assert is_numeric(flex.double((1,2,3)))
 
@@ -48,4 +50,4 @@ if __name__ == '__main__':
   assert shall_raise(f, ZeroDivisionError)(1,1,1)
   assert not shall_raise(f, ZeroDivisionError)(x=1, y=0, z=0)
 
-  print 'OK'
+  print('OK')

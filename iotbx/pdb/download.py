@@ -1,6 +1,11 @@
 from __future__ import division
 
 # Storage methods
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import str
+from builtins import object
 def no_storage(stream):
 
   return stream
@@ -8,8 +13,8 @@ def no_storage(stream):
 
 def memory_storage(stream):
 
-  import cStringIO
-  return cStringIO.StringIO( stream.read() )
+  import io
+  return io.StringIO( stream.read() )
 
 
 class named_storage(object):
@@ -113,9 +118,9 @@ class coupled_stream(object):
     return self.primary.readlines()
 
 
-  def next(self):
+  def __next__(self):
 
-    return self.primary.next()
+    return next(self.primary)
 
 
   def __iter__(self):
@@ -194,8 +199,8 @@ class deflate_encoding_small(encoding):
     data = zlib.decompress( storage.read() )
     storage.close()
 
-    import cStringIO
-    return cStringIO.StringIO( data )
+    import io
+    return io.StringIO( data )
 
 
 #Exceptions
@@ -257,9 +262,9 @@ class urlopener(object):
 
   def __call__(self, url, data = None):
 
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
 
-    request = urllib2.Request(
+    request = urllib.request.Request(
       url = url,
       data = data,
       headers = {
@@ -268,16 +273,16 @@ class urlopener(object):
       )
 
     try:
-      stream = urllib2.urlopen( request )
+      stream = urllib.request.urlopen( request )
 
-    except urllib2.HTTPError, e:
+    except urllib.error.HTTPError as e:
       raise http_error_to_exception( error = e )
 
     used = stream.info().get( "Content-Encoding" )
     encoding = self.encoding_for.get( used, self.identity )
 
     if not encoding.accept( header = used ):
-      raise UnexpectedResponse, "Unknown encoding: %s" % used
+      raise UnexpectedResponse("Unknown encoding: %s" % used)
 
     return encoding.process( stream = stream )
 

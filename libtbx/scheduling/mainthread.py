@@ -16,6 +16,7 @@ Methods:
 
 from __future__ import division
 
+from builtins import object
 from collections import deque
 
 from libtbx.scheduling import identifier
@@ -99,7 +100,7 @@ class manager(object):
       try:
         value = target( *args, **kwargs )
 
-      except Exception, e:
+      except Exception as e:
         res = result.error( exception = e, traceback = result.get_traceback_info() )
 
       else:

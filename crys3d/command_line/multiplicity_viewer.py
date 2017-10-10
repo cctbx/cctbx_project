@@ -3,6 +3,9 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
 from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
 from crys3d.hklview.frames import *
 from wxtbx import icons
 import wxtbx.app
@@ -98,14 +101,14 @@ class MultiplicityViewFrame(HKLViewFrame):
 
   def load_reflections_file (self, file_name, set_array=True,
       data_only=True) :
-    if (isinstance(file_name, unicode)) :
+    if (isinstance(file_name, str)) :
       file_name = str(file_name)
     if (file_name != "") :
       from iotbx.reflection_file_reader import any_reflection_file
       from iotbx.gui_tools.reflections import get_array_description
       try :
         hkl_file = any_reflection_file(file_name)
-      except Exception, e :
+      except Exception as e :
         raise Sorry(str(e))
       arrays = hkl_file.as_miller_arrays(merge_equivalents=False,
         )#observation_type_callback=misc_dialogs.get_shelx_file_data_type)

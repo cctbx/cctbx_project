@@ -1,5 +1,7 @@
 
 from __future__ import division
+from builtins import str
+from builtins import range
 import wxtbx.plots
 from wxtbx.phil_controls import strctrl, floatctrl
 from libtbx.utils import Sorry
@@ -33,14 +35,14 @@ class AnomPlot (wxtbx.plots.plot_container) :
       from cctbx.eltbx import henke as table_module
     assert (table_module is not None)
     increment = (x_max - x_min) / n_points
-    x_points = [ x_min + increment*x for x in xrange(n_points+1) ]
+    x_points = [ x_min + increment*x for x in range(n_points+1) ]
     self.figure.clear()
     ax = self.figure.add_subplot(111)
     labels = []
     for element in elements :
       try :
         scatt_table = table_module.table(element.upper())
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry(str(e))
       fp = []
       fdp = []

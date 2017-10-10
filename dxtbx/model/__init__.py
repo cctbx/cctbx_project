@@ -1,4 +1,10 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
+from builtins import range
 import boost.python
 from cctbx import sgtbx # import dependency
 from cctbx.crystal_orientation import crystal_orientation # import dependency
@@ -104,10 +110,10 @@ class CrystalAux(boost.python.injector, Crystal):
           msg.append("    A = UB:    " + amat[0])
           msg.append("               " + amat[1])
           msg.append("               " + amat[2])
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from io import StringIO
     s = StringIO()
     msg = self.show(out=s)
     s.seek(0)
@@ -233,10 +239,10 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
     msg = []
     msg.append("    Mosaicity:  %.6f"%self.get_mosaicity())
 
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from io import StringIO
     s = StringIO()
     msg = self.show(out=s)
     s.seek(0)
@@ -303,10 +309,10 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
     msg.append("    Half mosaic angle (degrees):  %.6f"%self.get_half_mosaicity_deg())
     msg.append("    Domain size (Angstroms):  %.6f"%self.get_domain_size_ang())
 
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from io import StringIO
     s = StringIO()
     msg = self.show(out=s)
     s.seek(0)

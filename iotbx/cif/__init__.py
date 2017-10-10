@@ -10,7 +10,11 @@ http://cctbx.sourceforge.net/iotbx_cif
 
 """
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import boost.python
 ext = boost.python.import_ext("iotbx_cif_ext")
 
@@ -78,9 +82,9 @@ class reader(object):
   def show_errors(self, max_errors=50, out=None):
     if out is None: out = sys.stdout
     for msg in self.parser.lexer_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
     for msg in self.parser.parser_errors()[:max_errors]:
-      print >> out, msg
+      print(msg, file=out)
 
   def build_crystal_structures(self, data_block_name=None):
     xray_structures = cctbx_data_structures_from_cif(
@@ -116,13 +120,13 @@ class reader(object):
       base_array_info = miller.array_info(
         source=self.file_path, source_type="cif")
     if data_block_name is not None:
-      arrays = self.build_miller_arrays(
+      arrays = list(self.build_miller_arrays(
         data_block_name=data_block_name,
-        base_array_info=base_array_info).values()
+        base_array_info=base_array_info).values())
     else:
       arrays = flat_list([
-        arrays.values() for arrays in
-        self.build_miller_arrays(base_array_info=base_array_info).values()])
+        list(arrays.values()) for arrays in
+        list(self.build_miller_arrays(base_array_info=base_array_info).values())])
     other_symmetry=crystal_symmetry
     for i, array in enumerate(arrays):
       if crystal_symmetry is not None:
@@ -179,7 +183,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
     disp_source = xray_structure.inelastic_form_factors_source
   if disp_source is None:
     disp_source = "."
-  for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().iteritems():
+  for atom_type, gaussian in scattering_type_registry.as_type_gaussian_dict().items():
     scat_source = sources.get(params.table)
     if params.custom_dict and atom_type in params.custom_dict:
       scat_source = "Custom %i-Gaussian" %gaussian.n_terms()
@@ -215,7 +219,7 @@ def miller_indices_as_cif_loop(indices, prefix='_refln_'):
     return refln_loop
 
 
-class miller_arrays_as_cif_block():
+class miller_arrays_as_cif_block(object):
 
   def __init__(self, array, array_type=None,
                column_name=None, column_names=None,
@@ -321,7 +325,7 @@ class miller_arrays_as_cif_block():
         # cif loop, therefore need to add rows of '?' values
         single_indices = other_indices.select(match.single_selection(1))
         self.indices.extend(single_indices)
-        n_data_columns = len(self.refln_loop.keys()) - 3
+        n_data_columns = len(list(self.refln_loop.keys())) - 3
         for hkl in single_indices:
           row = list(hkl) + ['?'] * n_data_columns
           self.refln_loop.add_row(row)
@@ -333,7 +337,7 @@ class miller_arrays_as_cif_block():
 
     if self.refln_loop is None:
       self.refln_loop = miller_indices_as_cif_loop(self.indices, prefix=self.prefix)
-    columns = OrderedDict(zip(column_names, data))
+    columns = OrderedDict(list(zip(column_names, data)))
     for key in columns:
       assert key not in self.refln_loop
     self.refln_loop.add_columns(columns)
@@ -372,7 +376,7 @@ class cctbx_data_structures_from_cif(object):
       raise RuntimeError(msg)
     errors = []
     wavelengths = {}
-    for key, block in cif_model.items():
+    for key, block in list(cif_model.items()):
       if data_block_name is not None and key != data_block_name: continue
       for builder in data_structure_builders:
         if builder == builders.crystal_structure_builder:
@@ -431,7 +435,7 @@ def category_sort_function(key):
   key_category = key.split('.')[0]
   try:
     return category_order.index(key_category)
-  except ValueError, e:
+  except ValueError as e:
     # any categories we don't know about will end up at the end of the file
     return key_category
 
@@ -493,9 +497,9 @@ def write_whole_cif_file(
       processed_pdb_file.all_chain_proxies.cif is not None):
     # should writing ALL restraints be optional?
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-    skip_residues = one_letter_given_three_letter.keys() + ['HOH']
+    skip_residues = list(one_letter_given_three_letter.keys()) + ['HOH']
     restraints = processed_pdb_file.all_chain_proxies.cif
-    keys = restraints.keys()
+    keys = list(restraints.keys())
     for key in keys:
       # need more control
       assert key.find('UNK')==-1

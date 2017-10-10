@@ -12,10 +12,15 @@ where [list of commands]) is
 "python run.py modelN.pdb dataN.mtz" ]
 """
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
 import os
 import re
 import subprocess
-import StringIO
+import io
 import sys
 import time
 import stat
@@ -164,21 +169,21 @@ end
 def run_sh(cmd):
   t0=time.time()
   rc = easy_run.call(cmd)
-  print 'done "%s" in %0.1f' % (cmd.strip(),
-                                time.time()-t0)
+  print('done "%s" in %0.1f' % (cmd.strip(),
+                                time.time()-t0))
 
 def test_easy_qsub():
   def _clean():
     for filename in os.listdir(os.getcwd()):
       if filename.startswith("commands"):
-        print 'remove',filename
+        print('remove',filename)
         os.remove(filename)
   def _write_cmds(number_of_cmds):
-    print "\n  test list of commands"
+    print("\n  test list of commands")
     outl = ""
     for i in range(number_of_cmds):
       outl += "echo %d\n" % (i+101)
-    print outl
+    print(outl)
     f=file("commands.txt", "wb")
     f.write(outl[:-1])
     f.close()
@@ -190,7 +195,7 @@ def test_easy_qsub():
       running=False
       for line in os.popen("qstat"):
         if line.find("commands")>-1:
-          print 'running',line
+          print('running',line)
           running=True
           break
   def _check(number_of_output_files,
@@ -213,9 +218,9 @@ def test_easy_qsub():
     assert not number_of_output_files
     assert not number_of_runs
 
-  print '#'*80
-  print '# testing easy_qsub'
-  print '#'*80
+  print('#'*80)
+  print('# testing easy_qsub')
+  print('#'*80)
   cmd = 'libtbx.easy_qsub phenix_source="/net/cci/xp/phenix/phenix_env" commands=commands.txt'
   old_cmd = cmd
   for cmds, new_cmd, number_of_output_files, number_of_runs in [
@@ -245,13 +250,13 @@ def process_args(args):
   kwds = {}
   for t in args:
     if t in ["--help", "-h"]:
-      print """
+      print("""
   Program to sumbit jobs easily to a SGE queue
     e.g.
 
     libtbx.easy_qsub phenix_source="/net/cci/xp/phenix/phenix_env" commands=commands.txt
 
-  """
+  """)
       sys.exit()
     elif t=="--test":
       test_easy_qsub()
@@ -265,14 +270,14 @@ def process_args(args):
         break
     else:
       if t not in ["--dry"]:
-        print '\n  failed to process "%s"\n' % t
+        print('\n  failed to process "%s"\n' % t)
         assert 0
   return kwds
 
 def get_queue_machine_details():
   cmd = "qstat -f"
   ero = easy_run.fully_buffered(command = cmd)
-  out = StringIO.StringIO()
+  out = io.StringIO()
   ero.show_stdout(out = out)
   rc = {}
   for line in out.getvalue().split("\n"):
@@ -333,16 +338,16 @@ def run(phenix_source=None,
     libtbx.easy_qsub --help
   """
   if not phenix_source:
-    print '-'*80
+    print('-'*80)
     if not os.environ.get("PHENIX", ""):
-      print help
+      print(help)
       return
-    print "\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n"
+    print("\n  Automatically setting phenix_source to current $PHENIX/phenix_env\n")
     phenix_source = "%s/phenix_env" % os.environ.get("PHENIX", "")
 
   if not (commands or python_script):
-    print '-'*80
-    print "\n  Generating a test run script and queuing 10 times\n"
+    print('-'*80)
+    print("\n  Generating a test run script and queuing 10 times\n")
     f=file("easy_qsub_test_script.py", "wb")
     f.write(test_run_script)
     f.close()
@@ -356,20 +361,20 @@ def run(phenix_source=None,
         )
 
 
-  print '-'*80
-  print '  Inputs'
-  print '    phenix_source',phenix_source
+  print('-'*80)
+  print('  Inputs')
+  print('    phenix_source',phenix_source)
   if phenix_source.find("phenix_env")==-1 and phenix_source.find("setpath")==-1:
-    print '  Need to supply file to source. e.g. phenix_env'
+    print('  Need to supply file to source. e.g. phenix_env')
     return False
   if not os.path.exists(phenix_source):
     raise Sorry('source file for PHENIX environment not found "%s"' % phenix_source)
-  print '    where',where
+  print('    where',where)
   if type(commands)==type([]):
     if code is None: code = "easy_qsub"
-    print '    commands',len(commands),
+    print('    commands',len(commands), end=' ')
     if len(commands)>1:
-      print 'similar to\n\n> %s\n' % (commands[0])
+      print('similar to\n\n> %s\n' % (commands[0]))
 
   elif commands is not None and os.path.exists(commands):
     if code is None: code = commands[:10]
@@ -379,12 +384,12 @@ def run(phenix_source=None,
 
   code = code.replace("/", "")
 
-  print '    size_of_chunks',size_of_chunks
-  print '    number_of_chunks',number_of_chunks
+  print('    size_of_chunks',size_of_chunks)
+  print('    number_of_chunks',number_of_chunks)
   if number_of_chunks==1:
-    print '\n  Need to choose number_of_chunks>1'
+    print('\n  Need to choose number_of_chunks>1')
     return
-  print '-'*80
+  print('-'*80)
   old_where = os.getcwd()
   if where is None:
     where = old_where
@@ -407,7 +412,7 @@ def run(phenix_source=None,
       lines.append("%s %s %d" % (phenix_python_bin, python_script, i))
 
   number_of_jobs = len(lines)
-  print '\n  Number of lines in command file',number_of_jobs
+  print('\n  Number of lines in command file',number_of_jobs)
   number_of_chunks = min(number_of_chunks, number_of_jobs)
   if number_of_chunks is None:
     if size_of_chunks==1:
@@ -422,12 +427,12 @@ def run(phenix_source=None,
 
   number_of_jobs = number_of_chunks
 
-  print '\n  Number of queue jobs',number_of_jobs
-  print '  Number of command in each queue job',size_of_chunks
+  print('\n  Number of queue jobs',number_of_jobs)
+  print('  Number of command in each queue job',size_of_chunks)
 
   if fake_queue:
-    print '\nCreating fake queue with %s parallel nodes' % parallel_nodes
-    print commands
+    print('\nCreating fake queue with %s parallel nodes' % parallel_nodes)
+    print(commands)
     f=file(commands, 'rb')
     lines = f.readlines()
     f.close()
@@ -445,7 +450,7 @@ def run(phenix_source=None,
     #
     assert number_of_jobs==1, "Only one job can be run in parallel"
     details = get_queue_machine_details()
-    keys = details.keys()
+    keys = list(details.keys())
     keys.sort(_cmp_gap)
     for queue_name in keys:
       if parallel_nodes<=details[queue_name][1]-details[queue_name][0]:
@@ -456,9 +461,9 @@ def run(phenix_source=None,
         os.chmod("qblock.csh", stat.S_IREAD|stat.S_IWRITE|stat.S_IXUSR)
         qsub_cmd += " -q %s" % queue_name
         cmd = "%s -t 1-%d qblock.csh" % (qsub_cmd, parallel_nodes-1)
-        print "  Blocking %d slots on %s" % (parallel_nodes-1, queue_name)
-        print "    Need to remove them manually"
-        print "   ",cmd
+        print("  Blocking %d slots on %s" % (parallel_nodes-1, queue_name))
+        print("    Need to remove them manually")
+        print("   ",cmd)
         easy_run.call(cmd)
         break
     else:
@@ -468,7 +473,7 @@ def run(phenix_source=None,
   os.chdir(where)
 
   if host_scratch_dir:
-    print '\n  Setting up scratch directories on queue hosts'
+    print('\n  Setting up scratch directories on queue hosts')
     pre = host_scratch_dir_pre % (host_scratch_dir, host_scratch_dir)
     post = host_scratch_dir_post
   else:
@@ -483,13 +488,13 @@ def run(phenix_source=None,
     if line[-1]=="\n": line = line[:-1]
     outl += "  '''%s ''',\n" % line
   python_run_filename = os.path.join(os.getcwd(), python_run_filename)
-  print "  Writing queue python script:\n    %s" % python_run_filename
+  print("  Writing queue python script:\n    %s" % python_run_filename)
   f=file(python_run_filename, "wb")
   f.write(script_file % outl)
   f.close()
 
   qsub_run_filename = os.path.join(os.getcwd(), qsub_run_filename)
-  print "  Writing queue command script:\n    %s" % qsub_run_filename
+  print("  Writing queue command script:\n    %s" % qsub_run_filename)
   f=file(qsub_run_filename, "wb")
   f.write(run_file % (
     code,
@@ -515,14 +520,14 @@ def run(phenix_source=None,
     js,
     qsub_run_filename,
     )
-  print '\n  Queue command\n'
-  print "> %s\n" % cmd
+  print('\n  Queue command\n')
+  print("> %s\n" % cmd)
   if dry_run:
-    print '  Skipping run...'
+    print('  Skipping run...')
 
   # Run the command, and then find the job id in the output
   ero = easy_run.fully_buffered(command = cmd)
-  out = StringIO.StringIO()
+  out = io.StringIO()
   ero.show_stdout(out = out)
   # Line looks like:
   # "Your job-array 5436256.1-122:1 ("easy_qsub") has been submitted"

@@ -1,10 +1,14 @@
 from __future__ import division
+from __future__ import absolute_import
 
+from builtins import str
+from builtins import range
+from builtins import object
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
-import math
+from . import math
 
 import boost.python
 ext = boost.python.import_ext("cctbx_statistics_ext")
@@ -12,7 +16,7 @@ from cctbx_statistics_ext import *
 
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
 
-class empty: pass
+class empty(object): pass
 
 class wilson_plot(object):
 
@@ -45,14 +49,14 @@ class wilson_plot(object):
       use_multiplicities=True).data[1:-1])
     # cache scattering factor info
     gaussians = {}
-    for chemical_type in asu_contents.keys():
+    for chemical_type in list(asu_contents.keys()):
       gaussians[chemical_type] = eltbx.xray_scattering.wk1995(
         chemical_type).fetch()
     # compute expected f_calc^2 in resolution shells
     self.expected_f_sq = flex.double()
     for stol_sq in self.mean_stol_sq:
       sum_fj_sq = 0
-      for chemical_type, n_atoms in asu_contents.items():
+      for chemical_type, n_atoms in list(asu_contents.items()):
         f0 = gaussians[chemical_type].at_stol_sq(stol_sq)
         sum_fj_sq += f0 * f0 * n_atoms
       self.expected_f_sq.append(sum_fj_sq)

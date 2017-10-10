@@ -11,6 +11,7 @@ from __future__ import division
 # A reworked base dependency installer.
 # This is a work in progress!
 
+from builtins import object
 class Package(object):
   def __init__(self, python_exe=None):
     self.python_exe = python_exe

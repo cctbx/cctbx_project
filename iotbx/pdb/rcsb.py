@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 from iotbx.pdb.web_service_api import FTPService
 from iotbx.pdb.download import openurl, urlopener, gzip_encoding
 

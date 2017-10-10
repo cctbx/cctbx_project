@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 #!/usr/bin/env python
 # test_detector.py
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
@@ -8,6 +9,7 @@ from __future__ import absolute_import, division
 #
 # Tests for the detector class.
 
+from builtins import range
 from scitbx import matrix
 
 from dxtbx.model.detector import DetectorFactory
@@ -33,7 +35,7 @@ def test_detector():
   c = DetectorFactory.imgCIF(image, 'CCD')
   #x = DetectorFactory.XDS(xparm)
 
-  print 'OK'
+  print('OK')
 
 def work_detector():
 

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from libtbx import easy_pickle
 from cctbx import miller # import dependency
 import os
@@ -31,7 +33,7 @@ for runroot in os.listdir("."):
       if os.path.splitext(picklename)[1] != ".pickle":
         continue
       picklepath = os.path.join(intpath, picklename)
-      print picklepath
+      print(picklepath)
       destpath_l = os.path.join(destroot_l, os.path.splitext(picklename)[0] + "_l.pickle")
       destpath_r = os.path.join(destroot_r, os.path.splitext(picklename)[0] + "_r.pickle")
       destpath_m = os.path.join(destroot_m, os.path.splitext(picklename)[0] + "_m.pickle")
@@ -39,8 +41,8 @@ for runroot in os.listdir("."):
       #if os.path.exists(destpath_l): continue
       try:
         data = easy_pickle.load(picklepath)
-      except Exception, e:
-        print "Pickle failed to load", picklepath
+      except Exception as e:
+        print("Pickle failed to load", picklepath)
         continue
       if not "fuller_kapton_absorption_correction" in data:
         continue
@@ -61,7 +63,7 @@ for runroot in os.listdir("."):
       sel_nomid = []
 
       all_good = True
-      for i in xrange(len(preds)):
+      for i in range(len(preds)):
         # all preds left of the beam center
         p1_sel = preds[i].parts()[1] < bx
         # mostly will be preds right of the beam center, but includes a few to the left of middle strip
@@ -92,7 +94,7 @@ for runroot in os.listdir("."):
         sel_nomid.append(nomid_sel)
 
       if not all_good:
-        print "Weird one", picklepath
+        print("Weird one", picklepath)
         continue
 
       dl = {}
@@ -120,7 +122,7 @@ for runroot in os.listdir("."):
         try:
           assert len(data[key]) == len(sel_l)
           islist = True
-        except TypeError, e:
+        except TypeError as e:
           islist = False
 
         if islist:

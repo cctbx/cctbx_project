@@ -1,5 +1,8 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
 def show_pickle_sizes (obj, indent="",
     display_if_size_greater_than=10000) :
   """
@@ -8,18 +11,18 @@ def show_pickle_sizes (obj, indent="",
   misleading since child objects may appear to be larger than their parents,
   probably for some reason involving duplicated references.
   """
-  from cPickle import dumps
+  from pickle import dumps
   if hasattr(obj, "__slots__") :
     attr_names = obj.__slots__
   else :
-    attr_names = obj.__dict__.keys()
+    attr_names = list(obj.__dict__.keys())
   for attr in attr_names :
     child_obj = getattr(obj, attr, None)
     if (child_obj is not None) :
       pkl = dumps(child_obj)
       n_bytes = len(pkl)
       if (n_bytes > display_if_size_greater_than) :
-        print indent+attr, n_bytes
+        print(indent+attr, n_bytes)
         if isinstance(child_obj, object) and hasattr(child_obj, "__dict__") :
           show_pickle_sizes(child_obj, indent+"  ",
             display_if_size_greater_than=display_if_size_greater_than)
@@ -27,7 +30,7 @@ def show_pickle_sizes (obj, indent="",
           for item in child_obj :
             n_bytes_item = len(dumps(item))
             if (n_bytes_item > display_if_size_greater_than) :
-              print indent+"  "+type(item).__name__, n_bytes_item
+              print(indent+"  "+type(item).__name__, n_bytes_item)
               if isinstance(item, object) and hasattr(item, "__dict__") :
                 show_pickle_sizes(item, indent+"    ",
                   display_if_size_greater_than=display_if_size_greater_than)

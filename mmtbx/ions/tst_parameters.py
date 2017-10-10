@@ -1,6 +1,8 @@
 # -*- coding: utf-8; py-indent-offset: 2 -*-
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 def exercise () :
   from mmtbx.ions import server as s
   import iotbx.pdb.hierarchy
@@ -49,7 +51,7 @@ def exercise () :
       mlq = mon_lib_query(resn, mon_lib_srv)
       if mlq is None:
         continue
-      for atom in mlq.atom_dict().values():
+      for atom in list(mlq.atom_dict().values()):
         elem, charge = s._get_charge_params(resname = resn,
                                             element = atom.type_symbol)
         from libtbx import group_args
@@ -76,7 +78,7 @@ def exercise () :
     assert s.get_element(resn) == "O"
     assert s.get_charge(resn) == -2
 
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

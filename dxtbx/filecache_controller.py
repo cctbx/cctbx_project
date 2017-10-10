@@ -8,11 +8,13 @@
 # A simple cache controller. Caching only one file at a time.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import object
 import dxtbx.filecache
 import os
 import threading
 
-class simple_controller():
+class simple_controller(object):
   '''A simple cache controller. Caching one file at a time.'''
 
   def __init__(self):
@@ -62,12 +64,12 @@ class simple_controller():
 #       print "(%5s) Controller %s reporting cache hit on %s" % (os.getpid(), format(id(self), '#x'), self._cache_tag)
       return self._cache.open()
 
-class non_caching_controller():
+class non_caching_controller(object):
   '''A controller that does not do any caching.'''
   @staticmethod
   def check(tag, open_method):
     '''Open the file. No caching required.'''
-    print "Caching disabled for", tag
+    print("Caching disabled for", tag)
     return open_method()
 
 # To disable all caching uncomment the following line:

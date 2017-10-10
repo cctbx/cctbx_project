@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
 import math
 from scitbx.matrix import col,sqr
 from scitbx.math import unimodular_generator
@@ -37,9 +40,9 @@ def get_triangle(lines):
 def force_cell(index_engine,target_cell,verbose=False):
 
     if verbose:
-      print "N candidates:",index_engine.n_candidates()
+      print("N candidates:",index_engine.n_candidates())
       from rstbx.dps_core import directional_show
-      for x in xrange(index_engine.n_candidates()):
+      for x in range(index_engine.n_candidates()):
         directional_show( index_engine[x], "vector %d:"%x )
     Ns = index_engine.n_candidates()
     best = {"score":1.E100}
@@ -51,8 +54,8 @@ def force_cell(index_engine,target_cell,verbose=False):
                  "b":{"match":[],"length":working_cell.parameters()[1]},
                  "c":{"match":[],"length":working_cell.parameters()[2]},
                 }
-      for key in vectors.keys():
-        for ns in xrange(Ns):
+      for key in list(vectors.keys()):
+        for ns in range(Ns):
           if is_length_match(vectors[key]["length"],index_engine[ns].real):
             vectors[key]["match"].append(ns)
         #print key, vectors[key]
@@ -61,11 +64,11 @@ def force_cell(index_engine,target_cell,verbose=False):
                 "beta":{"match":[],"points":("c","a"),"angle":working_cell.parameters()[4],"hit":False},
                "gamma":{"match":[],"points":("a","b"),"angle":working_cell.parameters()[5],"hit":False},
               }
-      for key in lines.keys():
+      for key in list(lines.keys()):
         xmatch = len(vectors[lines[key]["points"][0]]["match"])
         ymatch = len(vectors[lines[key]["points"][1]]["match"])
-        for xi in xrange(xmatch):
-          for yi in xrange(ymatch):
+        for xi in range(xmatch):
+          for yi in range(ymatch):
             xkey = vectors[lines[key]["points"][0]]["match"][abs(xi)]
             ykey = vectors[lines[key]["points"][1]]["match"][abs(yi)]
             #print key,xkey,ykey,
@@ -103,5 +106,5 @@ def force_cell(index_engine,target_cell,verbose=False):
         #print "score %.1f"%score,tri
         if score<best["score"]:
           best = {"score":score,"triangle":tri,"orientation":ori.change_basis(sqr(cb_op.inverse().c().r().as_double()).transpose())}
-    if verbose: print "Best score %.1f, triangle %12s"%(best["score"],str(best["triangle"])),best["orientation"].unit_cell()
+    if verbose: print("Best score %.1f, triangle %12s"%(best["score"],str(best["triangle"])),best["orientation"].unit_cell())
     return best

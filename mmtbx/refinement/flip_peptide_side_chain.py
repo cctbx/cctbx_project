@@ -1,7 +1,9 @@
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
 from scitbx.matrix import rotate_point_around_axis
 from scitbx.math import dihedral_angle
-from cStringIO import StringIO
+from io import StringIO
 
 # flippable_sidechains:
 #   key: flippable residue name

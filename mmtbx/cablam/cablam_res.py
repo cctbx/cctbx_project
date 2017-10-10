@@ -16,6 +16,8 @@ from __future__ import division
 #Next: added mp_id() to produce MolPribity-friendly resids
 
 
+from builtins import str
+from builtins import object
 import sys
 from mmtbx.cablam.cablam_math import veclen, vectorize
 
@@ -262,7 +264,7 @@ class linked_residue(object):
 #  improve performance if their three-letter codes are known.
 #-------------------------------------------------------------------------------
 def prunerestype(resdata, restype):
-  reslist = resdata.keys()
+  reslist = list(resdata.keys())
   for residue in reslist:
     for alt in resdata[residue].alts:
       if resdata[residue].alts[alt]['resname'].strip() == restype:

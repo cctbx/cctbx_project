@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from stdlib import math
 from stdlib import random
 
@@ -29,7 +31,7 @@ def exercise_convolve():
   try:
     import numpy
   except ImportError:
-    print "Skipping numpy compatibility..."
+    print("Skipping numpy compatibility...")
     return
 
   # convolution of two rectangles gives a triangle
@@ -120,4 +122,4 @@ if __name__ == '__main__':
   exercise_convolve()
   exercise_savitzky_golay_smoothing()
   exercise_savitzky_golay_coefficients()
-  print "OK"
+  print("OK")

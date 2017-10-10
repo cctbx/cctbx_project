@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from mmtbx.utils import rotatable_bonds
 from scitbx.matrix import rotate_point_around_axis
 from cctbx.array_family import flex
@@ -151,7 +153,7 @@ def rotatable(pdb_hierarchy, mon_lib_srv, restraints_manager, log):
               iselection = atoms.extract_i_seq()
               sites_cart = atoms.extract_xyz()
               masses     = [1]*sites_cart.size()
-              labels     = range(sites_cart.size())
+              labels     = list(range(sites_cart.size()))
               grm_i = restraints_manager.select(iselection)
               bps, asu = grm_i.geometry.get_all_bond_proxies(
                 sites_cart = sites_cart)
@@ -254,15 +256,15 @@ def run_fit_rotatable(
   rotatable_h_selection_1d_bool = flex.bool(xrs.scatterers().size(),
     rotatable_h_selection_1d)
   if(log is not None):
-    print >> log, "Real-space grid search fit H (or D) atoms:"
-    print >> log, "  start:  r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
-      fmodel.r_free())
+    print("Real-space grid search fit H (or D) atoms:", file=log)
+    print("  start:  r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
+      fmodel.r_free()), file=log)
   if(use_h_omit_map):
     xrs_omit = fmodel.xray_structure.select(~rotatable_h_selection_1d_bool)
     fmodel.update_xray_structure(xray_structure = xrs_omit, update_f_calc= True)
     if(log is not None):
-      print >> log, "  H omit: r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
-        fmodel.r_free())
+      print("  H omit: r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
+        fmodel.r_free()), file=log)
   fft_map = fmodel.electron_density_map().fft_map(
     resolution_factor = 1./4.,
     map_type          = map_type,
@@ -277,5 +279,5 @@ def run_fit_rotatable(
   fmodel.update_xray_structure(xray_structure = xrs, update_f_calc=True)
   ref_model.xray_structure = xrs
   if(log is not None):
-    print >> log, "  final:  r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
-      fmodel.r_free())
+    print("  final:  r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(),
+      fmodel.r_free()), file=log)

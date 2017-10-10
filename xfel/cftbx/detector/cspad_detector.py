@@ -4,6 +4,7 @@
 
 from __future__ import division
 
+from builtins import range
 import math
 
 from iotbx.detectors import generic_flex_image
@@ -52,11 +53,11 @@ class CSPadDetector(GenericDetector):
       self._metrology_params)
 
     self._tiles = d["TILES"]
-    self._keylist = self._tiles.keys() #for later use by get_pixel_intensity()
+    self._keylist = list(self._tiles.keys()) #for later use by get_pixel_intensity()
 
     # Assert that all ASIC:s are the same size, and that there are
     # transformation matrices for each ASIC.
-    for (key, asic) in self._tiles.iteritems():
+    for (key, asic) in self._tiles.items():
       if not hasattr(self, "_asic_focus"):
         self._asic_focus = asic.focus()
       else:
@@ -142,7 +143,7 @@ class CSPadDetector(GenericDetector):
     # simultaneously, it will be assigned to the ASIC defined first.
     # XXX Use a Z-buffer instead?
     nmemb = 0
-    for key, asic in self._tiles.iteritems():
+    for key, asic in self._tiles.items():
       # Create my_flex_image and rawdata on the first iteration.
       if ("rawdata" not in locals()):
         rawdata = flex.double(flex.grid(self.size1, self.size2))
@@ -217,7 +218,7 @@ class CSPadDetector(GenericDetector):
     # XXX Should use per-ASIC pixel size from the phil object.
     dx, dy = fast * self._pixel_size[0], -slow * self._pixel_size[1]
 
-    for key, (Tf, Tb) in self._matrices.iteritems():
+    for key, (Tf, Tb) in self._matrices.items():
       if (len(key) == 4 and key[1] == serial):
         Tb_new = sqr(
           [Tb(0, 0), Tb(0, 1), Tb(0, 2), Tb(0, 3) + dx,
@@ -277,21 +278,21 @@ class CSPadDetector(GenericDetector):
     metrology_str += "serial = %d\n" % 0
     metrology_str += self._matrix_as_string(Tb_d)
 
-    for p in [k[1] for k in self._matrices.keys()
+    for p in [k[1] for k in list(self._matrices.keys())
               if (len(k) == 2 and k[0:1] == (0,))]:
       (Tf_p, Tb_p) = self._matrices[(0, p)]
       metrology_str += "panel {\n"
       metrology_str += "serial = %d\n" % p
       metrology_str += self._matrix_as_string(Tf_d * Tb_p)
 
-      for s in[k[2] for k in self._matrices.keys()
+      for s in[k[2] for k in list(self._matrices.keys())
                if (len(k) == 3 and k[0:2] == (0, p))]:
         (Tf_s, Tb_s) = self._matrices[(0, p, s)]
         metrology_str += "sensor {\n"
         metrology_str += "serial = %d\n" % s
         metrology_str += self._matrix_as_string(Tf_p * Tb_s)
 
-        for a in [k[3] for k in self._matrices.keys()
+        for a in [k[3] for k in list(self._matrices.keys())
                   if (len(k) == 4 and k[0:3] == (0, p, s))]:
           (Tf_a, Tb_a) = self._matrices[(0, p, s, a)]
           metrology_str += "asic {\n"
@@ -385,7 +386,7 @@ class CSPadDetector(GenericDetector):
   def get_raw_data(self):
     # Not intended for production; simply a means to marshall all same-size tile
     # data together to report it out as a single array; used for testing dxtbx.
-    keys = self._tiles.keys()
+    keys = list(self._tiles.keys())
     keys.sort()
     raw = flex.double(flex.grid(len(keys)*self._tiles[keys[0]].focus()[0],
                                           self._tiles[keys[0]].focus()[1]))

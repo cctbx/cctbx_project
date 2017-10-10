@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import iotbx.pdb
@@ -62,18 +64,15 @@ class run(object):
       self.target_map = self.prepare_target_map()
     else:
       self.target_map = map_data
-    print >> self.log, \
-      "outliers start: %d (percent: %6.2f)"%self.count_outliers()
+    print("outliers start: %d (percent: %6.2f)"%self.count_outliers(), file=self.log)
     #
     if(not self.tune_up_only):
       self.loop(function = self.one_residue_iteration)
       self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
-      print >> self.log, \
-        "outliers after map fit: %d (percent: %6.2f)"%self.count_outliers()
-    print >> self.log, "tune up"
+      print("outliers after map fit: %d (percent: %6.2f)"%self.count_outliers(), file=self.log)
+    print("tune up", file=self.log)
     self.loop(function = self.one_residue_tune_up)
-    print >> self.log, \
-      "outliers final: %d (percent: %6.2f)"%self.count_outliers()
+    print("outliers final: %d (percent: %6.2f)"%self.count_outliers(), file=self.log)
 
   def get_special_position_indices(self):
     site_symmetry_table = \
@@ -151,7 +150,7 @@ class run(object):
     mask = self.compute_negate_mask(residue=residue, radius=negate_rad)
     target_map_ = self.target_map + mask
     if 0:
-      print r.residue.resseq, i_res
+      print(r.residue.resseq, i_res)
       iotbx.ccp4_map.write_ccp4_map(
         file_name      = "AMap.map",
         unit_cell      = self.crystal_symmetry.unit_cell(),

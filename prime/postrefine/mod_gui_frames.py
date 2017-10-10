@@ -1,11 +1,15 @@
 from __future__ import division
 
+from builtins import str
+from builtins import map
+from builtins import range
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
 Last Changed: 09/08/2017
 Description : PRIME GUI frames module
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -327,7 +331,7 @@ class RuntimeTab(wx.Panel):
 
     # Plot mean CC1/2
     meanCC = info['total_cc12']
-    cycles = range(len(meanCC))
+    cycles = list(range(len(meanCC)))
     self.cc_axes.clear()
     self.cc_axes.set_xlim(0, total_cycles)
     self.cc_axes.set_ylim(0, 100)
@@ -337,7 +341,7 @@ class RuntimeTab(wx.Panel):
     # Plot mean completeness and multiplicity
     mean_comp = info['total_completeness']
     mean_mult = info['total_n_obs']
-    cycles = range(len(mean_comp))
+    cycles = list(range(len(mean_comp)))
     self.comp_axes.clear()
     self.mult_axes.clear()
     self.comp_axes.set_xlim(0, total_cycles)
@@ -612,7 +616,7 @@ class PRIMERunWindow(wx.Frame):
       self.pids = [i for i in self.pids if i not in self.prev_pids]
       for i in self.pids:
         easy_run.fully_buffered('kill -9 {}'.format(i))
-        print 'killing PID {}'.format(i)
+        print('killing PID {}'.format(i))
 
     self.aborted = True
 
@@ -818,8 +822,8 @@ class FileListCtrl(ct.CustomListCtrl):
       try:
         file_string = ' '.join(file_list)
         easy_run.fully_buffered('cctbx.image_viewer {}'.format(file_string))
-      except Exception, e:
-        print e
+      except Exception as e:
+        print(e)
 
     else:
       wx.MessageBox('No data found', 'Error', wx.OK | wx.ICON_ERROR)

@@ -3,6 +3,8 @@
 # $Id: common_mode.py 17569 2013-06-11 07:58:18Z phyy-nx $
 
 from __future__ import division
+from builtins import range
+from builtins import object
 import numpy
 import math
 
@@ -80,7 +82,7 @@ class distl_hitfinder(object):
     data = imgobj.linearintdata
 
     active_data = flex.double()
-    for tile in xrange(len(active_areas)//4):
+    for tile in range(len(active_areas)//4):
       block = data.matrix_copy_block(
           i_row=active_areas[4*tile+0],i_column=active_areas[4*tile+1],
           n_rows=active_areas[4*tile+2]-active_areas[4*tile+0],

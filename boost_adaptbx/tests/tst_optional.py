@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from libtbx.test_utils import Exception_expected
 import boost.optional
 import sys
@@ -13,16 +15,16 @@ def exercise(args):
     assert boost.optional.exercise(1.5) == 4
     try:
       boost.optional.exercise("")
-    except Exception, e:
+    except Exception as e:
       assert str(e).splitlines()[2] == "did not match C++ signature:"
     else:
       raise Exception_expected
     exercise_wstring = getattr(boost.optional, "exercise_wstring", None)
-    if (not forever): print "exercise_wstring:", exercise_wstring
+    if (not forever): print("exercise_wstring:", exercise_wstring)
     if (exercise_wstring is not None):
       assert boost.optional.exercise_wstring(u"abc") == u"abcabc"
     if (not forever): break
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

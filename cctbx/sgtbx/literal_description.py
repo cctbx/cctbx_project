@@ -1,8 +1,10 @@
 from __future__ import division
+from builtins import str
+from builtins import object
 def str_ev(ev):
   return "[%d,%d,%d]" % ev
 
-class literal_description:
+class literal_description(object):
 
   def __init__(self,symop):
     self.symop = symop # an instance of rt_mx
@@ -65,4 +67,4 @@ class literal_description:
           self.long_form())
 
   def select(self,format):
-    return apply(literal_description.__dict__[format],[self])
+    return literal_description.__dict__[format](*[self])

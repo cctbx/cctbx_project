@@ -6,6 +6,8 @@
 
 from __future__ import division
 
+from builtins import zip
+from builtins import range
 import sys, copy
 
 def run(argv=None):
@@ -98,7 +100,7 @@ def run(argv=None):
       else:
         detector = img.get_detector()
 
-      data = [img.get_raw_data()[i].as_1d().as_double() for i in xrange(len(detector))]
+      data = [img.get_raw_data()[i].as_1d().as_double() for i in range(len(detector))]
       wavelength = img.get_beam().get_wavelength()
       distance = flex.mean(flex.double([d.get_directed_distance() for d in detector]))
 
@@ -149,10 +151,10 @@ def run(argv=None):
     tiles = {}
     s, f = 185, 194
 
-    for q_id in xrange(4):
+    for q_id in range(4):
       tiles[0,q_id] = flex.double((flex.grid(s*8, f*2)))
-      for s_id in xrange(8):
-        for a_id in xrange(2):
+      for s_id in range(8):
+        for a_id in range(2):
           asic_idx = (q_id*16) + (s_id*2) + a_id
           asic = data[asic_idx]
           asic.reshape(flex.grid((s, f)))

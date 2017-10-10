@@ -4,9 +4,12 @@ cctbx.xfel pickle files.
 """
 
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 import re
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 from cctbx.array_family import flex

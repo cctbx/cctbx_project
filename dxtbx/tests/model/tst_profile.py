@@ -1,6 +1,8 @@
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import object
 from dxtbx.model import ProfileModelBaseIface, ProfileModelFactory
 
 class NullProfile(ProfileModelBaseIface):
@@ -33,7 +35,7 @@ class Test(object):
     dictionary = profile1.to_dict()
     profile2 = ProfileModelFactory.from_dict(dictionary)
     assert(profile1.parameter == profile2.parameter)
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
   test = Test()

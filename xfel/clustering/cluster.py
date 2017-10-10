@@ -9,6 +9,11 @@ on an existing cluster, e.g. to plot the unit cell distributions.
 """
 
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 import os
 import math
@@ -19,7 +24,7 @@ import numpy as np
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
 
-class SingleMiller():
+class SingleMiller(object):
   """ Class for representing multiple measurements of a single miller index. """
   def __init__(self, index, resolution):
     self.index = index
@@ -48,7 +53,7 @@ class SingleMiller():
 
 
 
-class Cluster:
+class Cluster(object):
   """Class for operation on groups of single XFEL images (here described by
   SingleFrame objects) as cluster objects.
 
@@ -101,7 +106,7 @@ class Cluster:
     for i, member in enumerate(self.members):
       unit_cells[i, :] = member.orientation.unit_cell().parameters()
       # Calculate point group composition
-      if member.pg in self.pg_composition.keys():
+      if member.pg in list(self.pg_composition.keys()):
         self.pg_composition[member.pg] += 1
       else:
         self.pg_composition[member.pg] = 1
@@ -148,7 +153,7 @@ class Cluster:
           for filename in filenames:
             path = os.path.join(dirpath, filename)
             if path.endswith(".pickle"):
-              print path, "ends with .pickle"
+              print(path, "ends with .pickle")
               pickles.append(path)
 
     return Cluster.from_files(pickle_list=pickles, dials_refls=dials_refls,
@@ -204,7 +209,7 @@ class Cluster:
       dials_expts_ids = [os.path.join(os.path.dirname(e), os.path.basename(e).split("_")[0])
                          for e in dials_expts]
       matches = [(dials_refls[i], dials_expts[dials_expts_ids.index(dials_refls_ids[i])])
-                  for i in xrange(len(dials_refls_ids)) if dials_refls_ids[i] in dials_expts_ids]
+                  for i in range(len(dials_refls_ids)) if dials_refls_ids[i] in dials_expts_ids]
       for (r, e) in matches:
         this_frame = SingleDialsFrameFromFiles(refls_path=r, expts_path=e, **kwargs)
         if hasattr(this_frame, 'miller_array'):
@@ -628,7 +633,7 @@ class Cluster:
       #                                    bins=[range(-90, 91), range(0, 361)])
       # No symmetry mates until we can verify what the cctbx libs are doing
       density_hist = np.histogram2d(lat, lon,
-                                    bins=[range(-90, 91), range(0, 361)])
+                                    bins=[list(range(-90, 91)), list(range(0, 361))])
       smoothed = ndi.gaussian_filter(density_hist[0], (15, 15), mode='wrap')
       local_intensity = []
       x_for_plot = []
@@ -748,8 +753,8 @@ class Cluster:
     plotting_data = sorted(zip(all_logi, all_one_over_d_squared),
                            key = lambda x: x[1])
 
-    log_i, one_over_d_square = zip(*[i for i in plotting_data
-                                     if i[0] >=0])
+    log_i, one_over_d_square = list(zip(*[i for i in plotting_data
+                                     if i[0] >=0]))
     minus_2B, G, r_val, _, std_err = linregress(one_over_d_square, log_i)
     fit_info = "G: {:.2f}, -2B: {:.2f}, r: {:.2f}, std_err: {:.2f}".format(G, minus_2B,
                                                             r_val, std_err)
@@ -823,9 +828,9 @@ class Cluster:
               space_group_info=self.members[0].miller_array.space_group_info())
     # Find mean_Iobs
     mil_dict = self.merge_dict(use_fullies=use_fullies)
-    single_millers = mil_dict.values()
+    single_millers = list(mil_dict.values())
     indices = [md.index for md in single_millers]
-    iobs, sig_iobs = zip(*[md.weighted_mean_and_std() for md in single_millers])
+    iobs, sig_iobs = list(zip(*[md.weighted_mean_and_std() for md in single_millers]))
     all_obs = miller.array(miller_set=self.members[0] \
                                           .miller_array \
                                           .customized_copy(
@@ -858,7 +863,7 @@ class Cluster:
   def uc_feature_vector(self):
     """ Return a len(cluster) * 6 numpy array of features for use in ML algos"""
     ucs = [c.uc for c in self.members]
-    return  np.array(zip(*ucs))
+    return  np.array(list(zip(*ucs)))
 
 
   def prime_postrefine(self, inputfile):

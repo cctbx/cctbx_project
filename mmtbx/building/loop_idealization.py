@@ -1,4 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx.rotamer.rotamer_eval import RotamerEval
@@ -12,7 +18,7 @@ from mmtbx.secondary_structure.build import side_chain_placement, \
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from cctbx import maptbx
 from scitbx.array_family import flex
-from cStringIO import StringIO
+from io import StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
 from libtbx import easy_pickle, Auto
@@ -82,7 +88,7 @@ loop_idealization
 
 master_phil = iotbx.phil.parse(loop_idealization_master_phil_str)
 
-class loop_idealization():
+class loop_idealization(object):
   def __init__(self,
                pdb_hierarchy,
                params=None,
@@ -124,7 +130,7 @@ class loop_idealization():
     self.p_after_minimiaztion_rama_outliers = None
     n_inputs = [reference_map, crystal_symmetry].count(None)
     if not (n_inputs == 0 or n_inputs == 2):
-      print >> log, "Need to have both map and symmetry info. Not using map."
+      print("Need to have both map and symmetry info. Not using map.", file=log)
       self.reference_map = None
 
     # here we are recording what CCD solutions were used to fix particular
@@ -148,23 +154,23 @@ class loop_idealization():
     # print "berkeley before rama out:", self.berkeley_p_before_minimization_rama_outliers
     if (self.berkeley_p_before_minimization_rama_outliers <= 0.001 and
         (n_bad_omegas<1 and self.params.make_all_trans)):
-      print >> self.log, "No ramachandran outliers, skipping CCD step."
-    print "n_bad_omegas", n_bad_omegas
-    print "self.params.make_all_trans",self.params.make_all_trans
+      print("No ramachandran outliers, skipping CCD step.", file=self.log)
+    print("n_bad_omegas", n_bad_omegas)
+    print("self.params.make_all_trans",self.params.make_all_trans)
     if not self.params.enabled:
-      print >> self.log, "Loop idealization is not enabled, use 'enabled=True'."
+      print("Loop idealization is not enabled, use 'enabled=True'.", file=self.log)
     while (self.number_of_ccd_trials < self.params.number_of_ccd_trials
         and (self.berkeley_p_after_minimiaztion_rama_outliers > 0.001 or
             (n_bad_omegas>=1 and self.params.make_all_trans))
         and self.params.enabled):
-      print >> self.log, "CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
+      print("CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers, file=self.log)
       processed_chain_ids = []
       for chain in self.resulting_pdb_h.only_model().chains():
-        if chain.id not in self.tried_rama_angles.keys():
+        if chain.id not in list(self.tried_rama_angles.keys()):
           self.tried_rama_angles[chain.id] = {}
-        if chain.id not in self.tried_final_rama_angles.keys():
+        if chain.id not in list(self.tried_final_rama_angles.keys()):
           self.tried_final_rama_angles[chain.id] = {}
-        print >> self.log, "Idealizing chain %s" % chain.id
+        print("Idealizing chain %s" % chain.id, file=self.log)
         if chain.id not in processed_chain_ids:
           processed_chain_ids.append(chain.id)
         else:
@@ -179,8 +185,8 @@ class loop_idealization():
           if i == 0:
             cutted_chain_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(c)
           else:
-            print >> self.log, "WARNING!!! Duplicating chain ids! Only the first chain will be processed."
-            print >> self.log, "  Removing chain %s with %d residues" % (c.id, len(c.residues()))
+            print("WARNING!!! Duplicating chain ids! Only the first chain will be processed.", file=self.log)
+            print("  Removing chain %s with %d residues" % (c.id, len(c.residues())), file=self.log)
             m.remove_chain(c)
           i += 1
         exclusions, ch_h = self.idealize_chain(
@@ -195,8 +201,8 @@ class loop_idealization():
           for resnum in exclusions:
             selection += " and not resseq %s" % resnum
         self.ref_exclusion_selection += "(%s) or " % selection
-        print "self.tried_rama_angles", self.tried_rama_angles
-        print "self.tried_final_rama_angles", self.tried_final_rama_angles
+        print("self.tried_rama_angles", self.tried_rama_angles)
+        print("self.tried_final_rama_angles", self.tried_final_rama_angles)
       #
       # dumping and reloading hierarchy to do proper rounding of coordinates
       self.resulting_pdb_h = iotbx.pdb.input(
@@ -212,18 +218,18 @@ class loop_idealization():
 
       duke_count = ram.get_outliers_count_and_fraction()[0]
       if berkeley_count != duke_count:
-        print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
+        print("Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count, file=self.log)
         self.resulting_pdb_h.write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       if self.params.debug:
         self.resulting_pdb_h.write_pdb_file(
             file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
                 self.params.output_prefix))
       if self.params.minimize_whole:
-        print >> self.log, "minimizing whole chain..."
-        print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
+        print("minimizing whole chain...", file=self.log)
+        print("self.ref_exclusion_selection", self.ref_exclusion_selection, file=self.log)
         # print >> sel
         # XXX but first let's check and fix rotamers...
-        print >> self.log, "Fixing/checking rotamers in loop idealization..."
+        print("Fixing/checking rotamers in loop idealization...", file=self.log)
         excl_sel = self.ref_exclusion_selection
         if len(excl_sel) == 0:
           excl_sel = None
@@ -272,10 +278,10 @@ class loop_idealization():
       self.berkeley_p_after_minimiaztion_rama_outliers = \
           berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
       if berkeley_count != duke_count:
-        print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
+        print("Discrepancy between berkeley and duke after min:", berkeley_count, duke_count, file=self.log)
       else:
-        print >> self.log, "Number of Rama outliers after min:", berkeley_count
-      print >> self.log, "Number of bad omegas:", n_bad_omegas
+        print("Number of Rama outliers after min:", berkeley_count, file=self.log)
+      print("Number of bad omegas:", n_bad_omegas, file=self.log)
       self.number_of_ccd_trials += 1
     # return new_h
     # return self.tried_rama_angles, self.tried_final_rama_angles
@@ -308,7 +314,7 @@ class loop_idealization():
     working_h.reset_atom_i_seqs()
     rama_results = []
     ranges_for_idealization = []
-    print >> self.log, "rama outliers for input hierarchy:"
+    print("rama outliers for input hierarchy:", file=self.log)
     rama_out_resnums = self.get_resnums_of_chain_rama_outliers(
         working_h)
     if len(rama_out_resnums) == 0:
@@ -334,10 +340,10 @@ class loop_idealization():
         # separate
         comb_rama_out_resnums.append([r_out_resnum])
 
-    print >> self.log, "Combined outliers for fixing:", comb_rama_out_resnums
+    print("Combined outliers for fixing:", comb_rama_out_resnums, file=self.log)
     for rama_out_resnum in comb_rama_out_resnums:
-      print >> self.log
-      print >> self.log, "Fixing outlier:", rama_out_resnum
+      print(file=self.log)
+      print("Fixing outlier:", rama_out_resnum, file=self.log)
       self.log.flush()
 
       new_h = self.fix_rama_outlier(
@@ -348,9 +354,9 @@ class loop_idealization():
         ss_annotation=chain_ss_annot,
         tried_rama_angles_for_chain=tried_rama_angles_for_chain,
         tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)
-      print >> self.log, "listing outliers after loop minimization"
+      print("listing outliers after loop minimization", file=self.log)
       outp = utils.list_rama_outliers_h(new_h, self.r)
-      print >> self.log, outp
+      print(outp, file=self.log)
       utils.list_omega_outliers(new_h, self.log)
       self.log.flush()
       working_h = new_h
@@ -375,10 +381,10 @@ class loop_idealization():
       tried_final_rama_angles_for_chain):
     # first checking for repeated solutions:
     for rn, angles in final_angles:
-      if rn in tried_final_rama_angles_for_chain.keys():
+      if rn in list(tried_final_rama_angles_for_chain.keys()):
         for previous_angles in tried_final_rama_angles_for_chain[rn]:
           if self.rangle_decart_dist(angles, previous_angles) < 20:
-            print "Rejecting the same solution:", angles, previous_angles
+            print("Rejecting the same solution:", angles, previous_angles)
             return True
     return False
 
@@ -508,9 +514,9 @@ class loop_idealization():
     for ccd_radius, change_all, change_radius, direction_forward in decided_variants:
     # while ccd_radius <= 3:
       fixing_omega = False
-      print >> self.log, "  Starting optimization with radius=%d, " % ccd_radius,
-      print >> self.log, "change_all=%s, change_radius=%d, " % (change_all, change_radius),
-      print >> self.log, "direction=forward" if direction_forward else "direction=backwards"
+      print("  Starting optimization with radius=%d, " % ccd_radius, end=' ', file=self.log)
+      print("change_all=%s, change_radius=%d, " % (change_all, change_radius), end=' ', file=self.log)
+      print("direction=forward" if direction_forward else "direction=backwards", file=self.log)
       self.log.flush()
       #
       (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms,
@@ -525,7 +531,7 @@ class loop_idealization():
               direction_forward=direction_forward,
               log=self.log)
       # print "  moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
-      print "  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()]
+      print("  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()])
       moving_h_set = []
       all_angles_combination_f = starting_conformations.get_all_starting_conformations(
           moving_h,
@@ -542,7 +548,7 @@ class loop_idealization():
 
       # print "len(all_angles_combination_f)", len(all_angles_combination_f)
       if len(all_angles_combination_f) == 0:
-        print "In starting conformations - outlier was fixed?"
+        print("In starting conformations - outlier was fixed?")
         # return result
       else:
         # here we should filter  first ones that in
@@ -551,12 +557,12 @@ class loop_idealization():
         for three in generate_protein_threes(
             hierarchy=moving_h,
             geometry=None):
-          if three[1].resseq in tried_rama_angles_for_chain.keys():
+          if three[1].resseq in list(tried_rama_angles_for_chain.keys()):
             filter_out.append(tried_rama_angles_for_chain[three[1].resseq])
           else:
             filter_out.append((None, None))
         ff_all_angles = []
-        print "filter_out", filter_out
+        print("filter_out", filter_out)
         for comb in all_angles_combination_f:
           good = True
           for comb_pair, bad_pairs in zip(comb, filter_out):
@@ -570,12 +576,12 @@ class loop_idealization():
               break
           if good:
             ff_all_angles.append(comb)
-        print "len(all_angles_combination_f)", len(all_angles_combination_f)
-        print "len(ff_all_angles)", len(ff_all_angles)
+        print("len(all_angles_combination_f)", len(all_angles_combination_f))
+        print("len(ff_all_angles)", len(ff_all_angles))
         n_added = 0
         n_all_combination = len(ff_all_angles)
         if n_all_combination == 0:
-          print >> self.log, "Strange - got 0 combinations."
+          print("Strange - got 0 combinations.", file=self.log)
         i_max = min(self.params.variant_number_cutoff, n_all_combination)
         # assert i_max > 0
         step = 0
@@ -594,8 +600,8 @@ class loop_idealization():
           moving_h_set.append(setted_h)
           # print >> self.log, "Model %d, angles:" % i, comb
           if self.params.make_all_trans and utils.n_bad_omegas(moving_h_set[-1]) != 0:
-            print "Model_%d_angles_%s.pdb" % (i, comb),
-            print "got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas"
+            print("Model_%d_angles_%s.pdb" % (i, comb), end=' ')
+            print("got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas")
             moving_h_set[-1].write_pdb_file("Model_%d_angles_%s.pdb" % (i, comb))
             utils.list_omega(moving_h_set[-1], self.log)
             assert 0
@@ -603,11 +609,11 @@ class loop_idealization():
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
         # or there's a bug in get_starting_conformations
-        print >> self.log, "outlier was fixed before somehow"
+        print("outlier was fixed before somehow", file=self.log)
         return original_pdb_h
-      print "self.tried_rama_angles inside", self.tried_rama_angles
-      print "tried_rama_angles_for_chain", tried_rama_angles_for_chain
-      print "checking values", ccd_radius, change_all, change_radius, direction_forward
+      print("self.tried_rama_angles inside", self.tried_rama_angles)
+      print("tried_rama_angles_for_chain", tried_rama_angles_for_chain)
+      print("checking values", ccd_radius, change_all, change_radius, direction_forward)
       for i, h in enumerate(moving_h_set):
         # if [x in tried_rama_angles_for_chain.keys() for x in out_res_num_list].count(True) > 0:
         #   print >> self.log, "Warning!!! make something here (check angles or so)"
@@ -641,8 +647,8 @@ class loop_idealization():
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
         if self.verbose:
-          print >> self.log, "Resulting anchor and backbone RMSDs, mapcc, n_iter for model %d:" % i,
-          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", map_target, ",", n_iter
+          print("Resulting anchor and backbone RMSDs, mapcc, n_iter for model %d:" % i, end=' ', file=self.log)
+          print(resulting_rmsd, ",", mc_rmsd, ",", map_target, ",", n_iter, file=self.log)
           self.log.flush()
         #
         # setting new coordinates
@@ -713,24 +719,24 @@ class loop_idealization():
             change_radius=change_radius,
             contains_ss_element=contains_ss_element,
             fixing_omega=fixing_omega):
-          print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
+          print("Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter)
           # Save to tried_ccds
           for rn, angles in start_angles:
-            if rn not in tried_rama_angles_for_chain.keys():
+            if rn not in list(tried_rama_angles_for_chain.keys()):
               tried_rama_angles_for_chain[rn] = []
             tried_rama_angles_for_chain[rn].append(angles)
           # Save final angles
           for rn, angles in final_angles:
-            if rn not in tried_final_rama_angles_for_chain.keys():
+            if rn not in list(tried_final_rama_angles_for_chain.keys()):
               tried_final_rama_angles_for_chain[rn] = []
             tried_final_rama_angles_for_chain[rn].append(angles)
-          print >> self.log, "Ended up with", final_angles
-          print >> self.log, "Updated tried_rama_angles_for_chain:", tried_rama_angles_for_chain
-          print >> self.log, "Updated tried_final_rama_angles_for_chain:", tried_final_rama_angles_for_chain
+          print("Ended up with", final_angles, file=self.log)
+          print("Updated tried_rama_angles_for_chain:", tried_rama_angles_for_chain, file=self.log)
+          print("Updated tried_final_rama_angles_for_chain:", tried_final_rama_angles_for_chain, file=self.log)
 
           self.log.flush()
           if minimize:
-            print >> self.log, "minimizing..."
+            print("minimizing...", file=self.log)
             # moved_with_side_chains_h.write_pdb_file(
             #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
             if self.reference_map is None:
@@ -753,36 +759,36 @@ class loop_idealization():
           #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
               original_pdb_h, placing_range)
-          print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+          print("FINAL RMSD after minimization:", final_rmsd, file=self.log)
           return moved_with_side_chains_h
 
 
     all_results.sort(key=lambda tup: tup[1])
     if self.verbose:
-      print >> self.log, "ALL RESULTS:"
+      print("ALL RESULTS:", file=self.log)
       i = 0
       for ar in all_results:
-        print >> self.log, ar[1:],
+        print(ar[1:], end=' ', file=self.log)
         if ar[2] < 0.4:
           # fn = "variant_%d.pdb" % i
           # ar[0].write_pdb_file(file_name=fn)
           # print fn
           i += 1
         else:
-          print >> self.log, "  no output"
+          print("  no output", file=self.log)
     if self.params.force_rama_fixes:
       # find and apply the best varian from all_results. This would be the one
       # with the smallest rmsd given satisfactory closure
-      print >> self.log, "Applying the best found variant:",
+      print("Applying the best found variant:", end=' ', file=self.log)
       i = 0
       while i < len(all_results) and all_results[i][2] > 1.5:
         i += 1
       # apply
       # === duplication!!!!
       if i < len(all_results):
-        print >> self.log, all_results[i][1:]
+        print(all_results[i][1:], file=self.log)
         if minimize:
-          print >> self.log, "minimizing..."
+          print("minimizing...", file=self.log)
           # all_results[i][0].write_pdb_file(
           #     file_name="%s_result_before_min_%d.pdb" % (prefix, i))
           if self.reference_map is None:
@@ -805,19 +811,19 @@ class loop_idealization():
         #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
         final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
             original_pdb_h, placing_range)
-        print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+        print("FINAL RMSD after minimization:", final_rmsd, file=self.log)
         return all_results[i][0]
       else:
-        print >> self.log, " NOT FOUND!"
+        print(" NOT FOUND!", file=self.log)
         for i in all_results:
-          print >> self.log, i[1:]
+          print(i[1:], file=self.log)
       # === end of duplication!!!!
 
     else:
-      print >> self.log, "Epic FAIL: failed to fix rama outlier:", out_res_num_list
-      print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
+      print("Epic FAIL: failed to fix rama outlier:", out_res_num_list, file=self.log)
+      print("  Options were: (mc_rmsd, resultign_rmsd, n_iter)", file=self.log)
       for i in all_results:
-        print >> self.log, i[1:]
+        print(i[1:], file=self.log)
     return original_pdb_h
 
   def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
@@ -830,7 +836,7 @@ class loop_idealization():
     # print >> self.log, "rama outliers for input hierarchy:"
     list_of_reference_exclusion = []
     outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
-    print >> self.log, outp
+    print(outp, file=self.log)
     for phi_psi_pair, rama_key, omega in phi_psi_atoms:
       if phi_psi_pair[0] is not None and phi_psi_pair[1] is not None:
         # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
@@ -842,7 +848,7 @@ class loop_idealization():
         if ev == ramalyze.RAMALYZE_OUTLIER:
           result.append(resnum)
         if omega is not None and abs(abs(omega)-180) > 30:
-          print >> self.log, "Spotted twisted/cis peptide:", resnum, omega
+          print("Spotted twisted/cis peptide:", resnum, omega, file=self.log)
           result.append(resnum)
     # STOP()
     return result
@@ -905,13 +911,13 @@ def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previo
   if not include_intermediate:
     # return residue_list[max(0,center_index-n_previous)].resseq, \
     #     residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
-    print "center_index, resnum list", center_index, center_resnum_list
+    print("center_index, resnum list", center_index, center_resnum_list)
     # assert len(center_index) == len(center_resnum_list)
     start_res_num = residue_list[max(0,center_index[0]-n_previous)].resseq_as_int()
     end_res_num = residue_list[min(len(residue_list)-1,center_index[-1]+n_following)].resseq_as_int()
     srn, ern = get_loop_borders(pdb_hierarchy, center_resnum_list, working_ss_annot)
-    print "start_res_num, end_res_num", start_res_num, end_res_num
-    print "srn, ern", srn, ern
+    print("start_res_num, end_res_num", start_res_num, end_res_num)
+    print("srn, ern", srn, ern)
     # srn, ern = -9999, 9999999
     # So now we have borders of the loop: srn, ern, center_resnum,
     # n_following, n_previous.
@@ -928,13 +934,13 @@ def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previo
 
     f_start_res_num = start_res_num
     f_end_res_num = end_res_num
-    print "srn, ern", srn, ern
-    print "f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
+    print("srn, ern", srn, ern)
+    print("f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num)
     if f_end_res_num == hy36decode(4, center_resnum_list[-1]):
       f_end_res_num += 1
     if f_start_res_num == hy36decode(4,center_resnum_list[0]):
       f_start_res_num -= 1
-    print "after f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
+    print("after f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num)
     return hy36encode(4, f_start_res_num), hy36encode(4, f_end_res_num)
   else:
     res = []
@@ -952,7 +958,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
   # print >> log, "  out_res_num, n_following, n_previous", out_res_num_list, n_following, n_previous
   start_res_num, end_res_num = get_res_nums_around(pdb_hierarchy, out_res_num_list,
       n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation)
-  print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
+  print("  start_res_num, end_res_num", start_res_num, end_res_num, file=log)
   xrs = original_pdb_h.extract_xray_structure()
   pdb_hierarchy.truncate_to_poly_gly()
   cache = pdb_hierarchy.atom_selection_cache()
@@ -972,8 +978,8 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
     intersect = flex.size_t(sorted(list(set(ss_selection) & set(m_selection))))
     if intersect.size() > 0:
       intersect_h = pdb_hierarchy.select(intersect)
-      print >> log, "Hitting SS element"
-      print >> log, intersect_h.as_pdb_string()
+      print("Hitting SS element", file=log)
+      print(intersect_h.as_pdb_string(), file=log)
       contains_ss_element = False
       assert intersect_h.atoms_size() > 0, "Wrong atom count in SS intersection"
       # assert 0, "hitting SS element!"
@@ -1014,7 +1020,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
     else:
       anchor_present = False
     # print "  ", atoms[0].id_str()
-  print "anchor_present", anchor_present
+  print("anchor_present", anchor_present)
   return (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection,
       contains_ss_element, anchor_present)
 

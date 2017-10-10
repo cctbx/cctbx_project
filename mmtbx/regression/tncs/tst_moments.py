@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import cctbx.array_family.flex # import dependency
 import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_ext")
@@ -30,10 +31,10 @@ def exercise_01(reflections_per_bin=150):
   M2_corr = f_obs.second_moments_centric_acentric(
     reflections_per_bin = reflections_per_bin,
     eps_fac = result.epsfac)
-  print "%s %4.2f"%M2[0], "%s %4.2f"%M2_corr[0]
+  print("%s %4.2f"%M2[0], "%s %4.2f"%M2_corr[0])
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_01()
-  print "Time: %6.3f"%(time.time()-t0)
-  print "OK"
+  print("Time: %6.3f"%(time.time()-t0))
+  print("OK")

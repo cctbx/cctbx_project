@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args):
   import fable.read
   out_names_used = set()
@@ -15,7 +16,7 @@ def run(args):
         i += 1
       out_names_used.add(out_name)
       out = open(out_name+".f", "w")
-      print out.name
+      print(out.name)
       first_line = True
       empty_lines = []
       for ssl in fproc.all_ssl():
@@ -26,8 +27,8 @@ def run(args):
           else:
             if (not first_line):
               for prev_line in empty_lines:
-                print >> out, prev_line
-            print >> out, line
+                print(prev_line, file=out)
+            print(line, file=out)
             first_line = False
             empty_lines = []
       del out

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import math
 import mmtbx.command_line.fmodel
 import mmtbx.utils
@@ -64,18 +66,18 @@ def superimpose_powder_arcs(image,params):
     eps = 0.01
     beamx = eps+image.beamx/pxlsz
     beamy = eps+image.beamy/pxlsz
-    print beamx,beamy
+    print(beamx,beamy)
 
     image.read()
     data = image.linearintdata
     detector_d = flex.double()
     detector_radius = flex.double()
 
-    for x in xrange(data.focus()[0]):
+    for x in range(data.focus()[0]):
       dx = x-beamx
       dx_sq = dx*dx;
 
-      for y in xrange(data.focus()[1]):
+      for y in range(data.focus()[1]):
         dy = y-beamy
         radius = math.sqrt(dx_sq+dy*dy)*pxlsz
         detector_radius.append(radius)
@@ -86,7 +88,7 @@ def superimpose_powder_arcs(image,params):
           detector_d.append(resol_d)
         else:
           detector_d.append(0.0)
-    print detector_d.size()
+    print(detector_d.size())
     d_order_image = flex.sort_permutation(detector_d,reverse=True)
 
     #code = "2oh5"
@@ -104,7 +106,7 @@ def superimpose_powder_arcs(image,params):
     spot_radius = distance * flex.tan(spot_two_theta)
 
     d_order_spots = flex.sort_permutation(spot_d,reverse=True)
-    print list(d_order_spots)
+    print(list(d_order_spots))
 
     spot_ptr_min = 0
     spot_ptr_max = 1
@@ -112,8 +114,8 @@ def superimpose_powder_arcs(image,params):
     THREESIGMA=1.5
     SIGMA = 0.20
     SCALE = 0.003
-    for x in xrange(50000):#len(detector_d)):
-      if x%10000==0: print x
+    for x in range(50000):#len(detector_d)):
+      if x%10000==0: print(x)
       if detector_d[d_order_image[x]]>2.1:
         pxl_radius = detector_radius[d_order_image[x]]
         #print "pixel radius",pxl_radius,"resolution",detector_d[d_order_image[x]]
@@ -122,11 +124,11 @@ def superimpose_powder_arcs(image,params):
           # increase spot_ptr_max???
           while spot_radius[d_order_spots[spot_ptr_max]]-THREESIGMA < pxl_radius:
             spot_ptr_max += 1
-            print x, pxl_radius,"increase spot_ptr_max" , spot_ptr_max, spot_radius[d_order_spots[spot_ptr_max]]-THREESIGMA
+            print(x, pxl_radius,"increase spot_ptr_max" , spot_ptr_max, spot_radius[d_order_spots[spot_ptr_max]]-THREESIGMA)
           while spot_radius[d_order_spots[spot_ptr_min]]+THREESIGMA < pxl_radius:
             spot_ptr_min += 1
-            print x, pxl_radius,"increase spot_ptr_min" , spot_ptr_min
-          for sidx in xrange(spot_ptr_min,spot_ptr_max):
+            print(x, pxl_radius,"increase spot_ptr_min" , spot_ptr_min)
+          for sidx in range(spot_ptr_min,spot_ptr_max):
             spot_rad = spot_radius[d_order_spots[sidx]]
             delta_rad = spot_rad-pxl_radius
             #gaussian distribution with SIGMA=1 (1 pixel sigma)

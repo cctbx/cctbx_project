@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from cctbx.array_family import flex
 from cctbx import crystal
 from cctbx import adp_restraints
@@ -23,7 +24,7 @@ class adp_similarity_restraints(object):
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
       if i_seqs is not None and i_seq not in i_seqs: continue
-      for j_seq, sym_ops in j_seq_dict.items():
+      for j_seq, sym_ops in list(j_seq_dict.items()):
         if i_seqs is not None and j_seq not in i_seqs: continue
         for sym_op in sym_ops:
           if sym_op.is_unit_mx():

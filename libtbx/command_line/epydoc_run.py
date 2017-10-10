@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import epydoc
 import epydoc.docwriter
 import epydoc.docwriter.xlink
@@ -34,7 +35,7 @@ root directory shall be in the same directory on the server.
 """
 
 def help():
-  print help_text
+  print(help_text)
   exit(1)
 
 # create our own custom external link classes

@@ -3,6 +3,7 @@
 """
 from __future__ import division
 
+from builtins import object
 def get_cif_number(type, s):
   s = s.strip()
   if (s == "."): return None

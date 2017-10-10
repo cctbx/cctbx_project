@@ -1,6 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import range
 def tst_glm():
   from scitbx.glmtbx import glm
   from scitbx.array_family import flex
@@ -23,7 +25,7 @@ def tst_glm():
     assert(abs(c - exp(result.parameters()[0])) < 0.1*c)
 
 
-  print 'OK'
+  print('OK')
 
 def tst_robust_glm():
   from scitbx.glmtbx import robust_glm
@@ -57,7 +59,7 @@ def tst_robust_glm():
     result = robust_glm(X, Y, B, family="poisson", max_iter=100)
     assert(abs(c - exp(result.parameters()[0])) < 0.1*c)
 
-  print 'OK'
+  print('OK')
 
 def run():
   tst_glm()

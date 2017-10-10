@@ -1,10 +1,15 @@
 from __future__ import division
-import cPickle as pickle
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
+import pickle as pickle
 import subprocess
 #import sys
 import os
 
-class Job:
+class Job(object):
   def __init__(self, name, execObj, modules=[], pythonExec='python'):
     '''name must be unique, execObj must be pickle_able and have a run method
         pythonExec is the python command to use e.g. phenix.python'''
@@ -22,16 +27,16 @@ class Job:
     pickleFile.close()
     self.scriptFileName=self.name+'.py'
     scriptFile=open(self.scriptFileName,'w')
-    print >> scriptFile, 'import pickle'
+    print('import pickle', file=scriptFile)
     for m in self.modules:
-      print >> scriptFile, 'from %s import *' % m
-    print >> scriptFile, 'f=open("%s","rb")' % self.pickleInputFileName
-    print >> scriptFile, 'execObj=pickle.load(f)'
-    print >> scriptFile, 'f.close()'
-    print >> scriptFile, 'result=execObj.run()'
-    print >> scriptFile, 'f=open("%s","wb")' % self.pickleOutputFileName
-    print >> scriptFile, 'pickle.dump(result,f)'
-    print >> scriptFile, 'f.close()'
+      print('from %s import *' % m, file=scriptFile)
+    print('f=open("%s","rb")' % self.pickleInputFileName, file=scriptFile)
+    print('execObj=pickle.load(f)', file=scriptFile)
+    print('f.close()', file=scriptFile)
+    print('result=execObj.run()', file=scriptFile)
+    print('f=open("%s","wb")' % self.pickleOutputFileName, file=scriptFile)
+    print('pickle.dump(result,f)', file=scriptFile)
+    print('f.close()', file=scriptFile)
     scriptFile.close()
     cmd='bsub -K %s %s' % (
       self.pythonExec,
@@ -58,7 +63,7 @@ class Job:
     os.remove(self.scriptFileName)
     return result
 
-class testObj:
+class testObj(object):
   def __init__(self):
     self.data=1
     self.result=[]
@@ -74,9 +79,9 @@ if __name__=='__main__':
   o=testObj()
   j=Job('j1',o,modules=['lsf'],pythonExec='phenix.python')
   j.start()
-  print j.isAlive()
+  print(j.isAlive())
   while j.isAlive():
     time.sleep(10)
   r=j.get()
-  print r.result[0]
-  print len(r.result)
+  print(r.result[0])
+  print(len(r.result))

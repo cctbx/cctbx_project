@@ -4,6 +4,8 @@
 
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 from cctbx.array_family import flex
 
 
@@ -41,7 +43,7 @@ def _execute(db_commands_queue, db_results_queue, db, semaphore):
   semaphore.release()
 
 
-class manager:
+class manager(object):
   # The manager
 
   def __init__(self, params):
@@ -80,16 +82,16 @@ class manager:
     """
 
     sql = ("INSERT INTO %s (" % table) \
-          + ", ".join(kwargs.keys()) + ") VALUES (" \
-          + ", ".join(["?"] * len(kwargs.keys())) + ")"
+          + ", ".join(list(kwargs.keys())) + ") VALUES (" \
+          + ", ".join(["?"] * len(list(kwargs.keys()))) + ")"
 
     # If there are more than one rows to insert, "unpack" the keyword
     # argument iterables and zip them up.  This effectively rearranges
     # a list of columns into a list of rows.
     try:
-      parameters = zip(*kwargs.values())
+      parameters = list(zip(*list(kwargs.values())))
     except TypeError:
-      parameters = [kwargs.values()]
+      parameters = [list(kwargs.values())]
 
     return (sql, parameters)
 

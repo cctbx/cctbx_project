@@ -45,11 +45,11 @@ class EIGERImage(DetectorImageBase):
       self.parameters['OSC_START'] = S.get_oscillation()[0] + self.img_number*osc_range
 
       #these parameters have to be set here due to the call to image_coords_as_detector_cords below.  they are normally set later.
-      if self.parameters.has_key("SIZE2"):
+      if "SIZE2" in self.parameters:
         self.image_size_fast = self.size2
-      if self.parameters.has_key("SIZE1"):
+      if "SIZE1" in self.parameters:
         self.image_size_slow = self.size1
-      if self.parameters.has_key("PIXEL_SIZE"):
+      if "PIXEL_SIZE" in self.parameters:
         self.pixel_resolution = self.pixel_size
 
       if self.size1==4371 and self.size2==4150:

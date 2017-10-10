@@ -3,7 +3,10 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
 import wx
 from scitbx.matrix import col
 
@@ -44,7 +47,7 @@ class SBSettingsPanel(wx.Panel):
     img = self.GetParent().GetParent().pyslip.tiles.raw_image
     d = img.get_detector()
     self._quad_spinners = []
-    for serial in xrange(4):
+    for serial in range(4):
       fast, slow = d.hierarchy()[serial].get_origin()[0:2]
       name_quadrant = ["Q0", "Q1", "Q2", "Q3"][serial]
       box = wx.BoxSizer(wx.HORIZONTAL)
@@ -93,7 +96,7 @@ class SBSettingsPanel(wx.Panel):
 
 
   def OnRestoreMetrology(self, event):
-    print "Not implemented"
+    print("Not implemented")
     return
 
     dialog = wx.FileDialog(
@@ -139,7 +142,7 @@ class SBSettingsPanel(wx.Panel):
 
         # Update the controls, remember to reset the default values
         # for the spinners.
-        for serial in xrange(4):
+        for serial in range(4):
           fast, slow = img.get_panel_fast_slow(serial)
           name_quadrant = ["Q0", "Q1", "Q2", "Q3"][serial]
 
@@ -185,7 +188,7 @@ class SBSettingsPanel(wx.Panel):
         cbf.write_widefile(path,pycbf.CBF,\
               pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
-        print "Saved cbf header to", path
+        print("Saved cbf header to", path)
 
 
   def OnUpdateQuad(self, event):

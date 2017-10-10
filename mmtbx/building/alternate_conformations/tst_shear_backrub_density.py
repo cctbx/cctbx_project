@@ -2,8 +2,12 @@
 # FIXME test passes but way too slow - need to reduce runtime to 180s or less
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx import easy_run
-from cStringIO import StringIO
+from io import StringIO
 import os
 
 def exercise () :
@@ -172,4 +176,4 @@ END
 
 if (__name__ == "__main__") :
   exercise()
-  print "OK"
+  print("OK")

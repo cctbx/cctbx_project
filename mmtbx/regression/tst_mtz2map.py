@@ -1,8 +1,12 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 from libtbx.test_utils import Exception_expected
 from libtbx.utils import null_out, Sorry
-from cStringIO import StringIO
+from io import StringIO
 import os.path
 
 def exercise () :
@@ -97,7 +101,7 @@ def exercise () :
   try :
     file_info = mtz2map.run([pdb_file, map_file, "selection=\"resname ZN\""],
       log=null_out())
-  except Sorry, s  :
+  except Sorry as s  :
     assert (str(s) == "No atoms found matching the specified selection.")
   else :
     raise Exception_expected
@@ -106,7 +110,7 @@ def exercise () :
   mtz2map.run([pdb_file, "tst_mmtbx_mtz2map_map_coeffs.mtz",
     "r_free_flags.remove=True"], log=out)
   assert (out.getvalue().count("R-free flagged reflections")==4)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

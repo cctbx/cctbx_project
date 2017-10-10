@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import object
 from mmtbx.cablam import cablam_validate
 from libtbx.test_utils import show_diff
 from iotbx import pdb
@@ -162,7 +165,7 @@ ref_cablam_give_text = """residue : outlier_type : contour_level : ca_contour_le
 ref_cablam_give_oneline = """pdb103l.ent:151:3.3:1.3:0.00
 """
 
-class cablam_test_string():
+class cablam_test_string(object):
   #I wrote the regression test to use a class with a custom .write() method as a
   #  proof of principle for learning OOP and to see if I could. Possible because
   #  all my print functions accept an optional writeto= variable.
@@ -176,7 +179,7 @@ def exercise_cablam():
     relative_path="phenix_regression/pdb/pdb103l.ent",
     test=os.path.isfile) #This is the same file used for tst_kinemage.py
   if (regression_pdb is None):
-    print "Skipping exercise_cablam(): input pdb (pdb103l.ent) not available"
+    print("Skipping exercise_cablam(): input pdb (pdb103l.ent) not available")
     return
   #-----
   pdb_io = pdb.input(regression_pdb)
@@ -213,7 +216,7 @@ def run():
   ##  exercise_kinemage()
   ##print "OK"
   exercise_cablam()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

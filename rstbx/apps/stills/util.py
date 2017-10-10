@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import zip
 from dials.array_family import flex
 import math
 

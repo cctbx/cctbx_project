@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -118,7 +119,7 @@ def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
   xrs_answer = pdb_inp.xray_structure_simple()
   dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
     result_hierarchy.atoms().extract_xyz()).dot()))
-  print dist
+  print(dist)
   assert dist < 0.4, dist
 
 if(__name__ == "__main__"):
@@ -130,4 +131,4 @@ if(__name__ == "__main__"):
   exercise(
     rotamer_manager = rotamer_manager,
     sin_cos_table   = sin_cos_table)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

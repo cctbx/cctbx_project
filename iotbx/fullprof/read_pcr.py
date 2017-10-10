@@ -1,6 +1,10 @@
 from __future__ import division
 from __future__ import print_function
 
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 class pcr_parser(object):
 
   def __init__(self, inputstring=None, pcrfile=None, enforce_valid_comments=True):
@@ -22,9 +26,7 @@ class pcr_parser(object):
       print(line) # for debugging
     if not self.lines[1].startswith("!"):
       if self.enforce_valid_comments:
-        raise(ValueError("""\
-        This function only works with correctly commented FullProf files!
-        Please run fp2k on your input file first."""))
+        raise ValueError
       else:
         for line in self.lines.copy():
           if line.startswith("!"):
@@ -60,8 +62,7 @@ class pcr_parser(object):
       self.LO += 1
       line = self.lines[self.LO]
       if not line.startswith(expected_comment):
-        raise(ValueError("Expected to find comment '{comm}',\
-                         but found '{line}'".format(expected_comment, line)))
+        raise ValueError
 
   def extract_structures(self):
     structures = {}
@@ -87,7 +88,7 @@ class pcr_parser(object):
                     unit_cell=unit_cell,
                     space_group_symbol=p['SYMB']))
     scatterers = []
-    for k, a in atoms.iteritems():
+    for k, a in atoms.items():
       scatterers.append(xray.scatterer(label=a['LABEL'],
                                        scattering_type=a['NTYP'],
                                        site=(a['X'], a['Y'], a['Z']),
@@ -114,7 +115,7 @@ class pcr_parser(object):
       'JOBTYP, NPROF, NPHASE, NBCKGD, NEXCRG, NSCAT, NORI, IDUM, IWGT,\
       ILOR, IASG, IRESO, ISTEP, NRELL, ICRYG, IXUNIT, ICORR', "i")
     if self.cfg['IRESO'] != 0:
-      raise(ValueError("IRESO<>0 not supported (yet)! IRESO={}".format(self.cfg['IRESO'])))
+      raise ValueError
     check_comment("!")
     check_comment("!Ipr ")
     parse_line(self.cfg,

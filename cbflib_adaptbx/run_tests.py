@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 def run(args):
   assert len(args) == 0
   import libtbx.load_env
@@ -9,7 +12,7 @@ def run(args):
     path="examples/fit2d_data.cbf")
   assert op.isfile(cbf)
   from cbflib_adaptbx.command_line import dump
-  from cStringIO import StringIO
+  from io import StringIO
   sio = StringIO()
   dump.process(file_name=cbf, out=sio)
   from libtbx.test_utils import show_diff
@@ -32,7 +35,7 @@ Number of blocks: 1
     Category name: array_data
 
 """ % cbf)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

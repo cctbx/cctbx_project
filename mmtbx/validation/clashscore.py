@@ -4,6 +4,10 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 """
 
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import str
+from builtins import object
 from mmtbx.validation import validation, atoms, atom_info, residue
 from libtbx.utils import Sorry
 from libtbx import easy_run
@@ -90,9 +94,9 @@ class clashscore(validation):
         "http://kinemage.biochem.duke.edu/")
     if verbose:
       if not nuclear:
-        print "\nUsing electron cloud x-H distances and vdW radii"
+        print("\nUsing electron cloud x-H distances and vdW radii")
       else:
-        print "\nUsing nuclear cloud x-H distances and vdW radii"
+        print("\nUsing nuclear cloud x-H distances and vdW radii")
     import iotbx.pdb.hierarchy
     from scitbx.array_family import flex
     from mmtbx.validation import utils
@@ -150,38 +154,38 @@ class clashscore(validation):
     if self.clashscore is None:
       raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
     elif (len(self.clash_dict) == 1) :
-      print >> out, prefix + "clashscore = %.2f" % self.clash_dict['']
+      print(prefix + "clashscore = %.2f" % self.clash_dict[''], file=out)
       if self.clash_dict_b_cutoff[''] is not None:
-        print >> out, "clashscore (B factor cutoff = %d) = %f" % \
+        print("clashscore (B factor cutoff = %d) = %f" % \
           (self.b_factor_cutoff,
-           self.clash_dict_b_cutoff[''])
+           self.clash_dict_b_cutoff['']), file=out)
     else:
       for k in sorted(self.clash_dict.keys()) :
-        print >> out, prefix + "MODEL %s clashscore = %.2f" % (k,
-          self.clash_dict[k])
+        print(prefix + "MODEL %s clashscore = %.2f" % (k,
+          self.clash_dict[k]), file=out)
         if self.clash_dict_b_cutoff[k] is not None:
-          print >> out, "MODEL%s clashscore (B factor cutoff = %d) = %f" % \
-            (k, self.b_factor_cutoff, self.clash_dict_b_cutoff[k])
+          print("MODEL%s clashscore (B factor cutoff = %d) = %f" % \
+            (k, self.b_factor_cutoff, self.clash_dict_b_cutoff[k]), file=out)
 
   def print_clashlist_old (self, out=sys.stdout):
-    for k in self.list_dict.keys():
+    for k in list(self.list_dict.keys()):
       if k == '':
-        print >> out, "Bad Clashes >= 0.4 Angstrom:"
+        print("Bad Clashes >= 0.4 Angstrom:", file=out)
         for result in self.list_dict[k] :
-          print >> out, result.format_old()
+          print(result.format_old(), file=out)
       else:
-        print >> out, "Bad Clashes >= 0.4 Angstrom MODEL%s" % k
+        print("Bad Clashes >= 0.4 Angstrom MODEL%s" % k, file=out)
         for result in self.list_dict[k] :
-          print >> out, result.format_old()
+          print(result.format_old(), file=out)
 
   def show (self, out=sys.stdout, prefix="", outliers_only=None, verbose=None) :
     if (len(self.clash_dict) == 1) :
       for result in self.list_dict[''] :
-        print >> out, prefix + str(result)
+        print(prefix + str(result), file=out)
     else :
-      for k in self.list_dict.keys():
+      for k in list(self.list_dict.keys()):
         for result in self.list_dict[k] :
-          print >> out, prefix + str(result)
+          print(prefix + str(result), file=out)
     self.show_summary(out=out, prefix=prefix)
 
   def as_coot_data (self) :
@@ -285,7 +289,7 @@ class probe_clashscore_manager(object):
             ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     if verbose:
-      print "\nUsing input model H/D atoms...\n"
+      print("\nUsing input model H/D atoms...\n")
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
 
@@ -310,7 +314,7 @@ class probe_clashscore_manager(object):
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
-    for k,v in new_clash_hash.iteritems():
+    for k,v in new_clash_hash.items():
       if k not in new_hbond_hash:
         temp.append(v.as_clash_obj(self.use_segids))
     return temp
@@ -497,7 +501,7 @@ def check_and_add_hydrogen(
       has_hd = False
     if not has_hd:
       if verbose:
-        print >> log,"\nNo H/D atoms detected - forcing hydrogen addition!\n"
+        print("\nNo H/D atoms detected - forcing hydrogen addition!\n", file=log)
       keep_hydrogens = False
   import libtbx.load_env
   has_reduce = libtbx.env.has_module(name="reduce")
@@ -527,7 +531,7 @@ def check_and_add_hydrogen(
     if not has_reduce:
       msg = 'phenix.reduce could not be detected on your system.\n'
       msg += 'Cannot add hydrogen to PDB file'
-      print >> log,msg
+      print(msg, file=log)
     return r.as_pdb_string(cryst_sym),False
 
 #-----------------------------------------------------------------------
@@ -578,7 +582,7 @@ class nqh_flips (validation) :
 
   def show (self, out=sys.stdout, prefix="") :
     if (self.n_outliers == 0) :
-      print >> out, prefix+"No backwards Asn/Gln/His sidechains found."
+      print(prefix+"No backwards Asn/Gln/His sidechains found.", file=out)
     else :
       for flip in self.results :
-        print >> out, prefix+flip.as_string()
+        print(prefix+flip.as_string(), file=out)

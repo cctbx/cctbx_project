@@ -1,11 +1,14 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from cctbx import crystal, sgtbx, xray
 from cctbx.eltbx import covalent_radii
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 from iotbx.cif import geometry
 from scitbx import matrix
-from cStringIO import StringIO
+from io import StringIO
 
 def exercise_cif_from_cctbx():
   quartz = xray.structure(
@@ -21,7 +24,7 @@ def exercise_cif_from_cctbx():
     quartz.pair_asu_table(distance_cutoff=2),
     site_labels=quartz.scatterers().extract_labels(),
     sites_frac=quartz.sites_frac()).loop
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_bond_atom_site_label_1
@@ -39,7 +42,7 @@ loop_
     quartz.pair_asu_table(distance_cutoff=2),
     site_labels=quartz.scatterers().extract_labels(),
     sites_frac=quartz.sites_frac()).loop
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_angle_atom_site_label_1
@@ -69,7 +72,7 @@ loop_
     sites_frac=quartz.sites_frac(),
     covariance_matrix=vcv_matrix,
     parameter_map=quartz.parameter_map()).loop
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_bond_atom_site_label_1
@@ -89,7 +92,7 @@ loop_
     sites_frac=quartz.sites_frac(),
     covariance_matrix=vcv_matrix,
     parameter_map=quartz.parameter_map()).loop
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_angle_atom_site_label_1
@@ -117,7 +120,7 @@ loop_
     covariance_matrix=vcv_matrix,
     cell_covariance_matrix=cell_vcv,
     parameter_map=quartz.parameter_map()).loop
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_bond_atom_site_label_1
@@ -158,7 +161,7 @@ def exercise_hbond_as_cif_loop():
     hbonds, pair_asu_table, xs.scatterers().extract_labels(),
     sites_frac=xs.sites_frac()).loop
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_hbond_atom_site_label_D
@@ -189,7 +192,7 @@ loop_
     covariance_matrix=vcv_matrix,
     parameter_map=xs.parameter_map()).loop
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_hbond_atom_site_label_D
@@ -218,7 +221,7 @@ loop_
     cell_covariance_matrix=cell_vcv,
     parameter_map=xs.parameter_map()).loop
   s = StringIO()
-  print >> s, loop
+  print(loop, file=s)
   assert not show_diff(s.getvalue(), """\
 loop_
   _geom_hbond_atom_site_label_D
@@ -454,4 +457,4 @@ def sucrose():
 if __name__ == '__main__':
   exercise_hbond_as_cif_loop()
   exercise_cif_from_cctbx()
-  print "OK"
+  print("OK")

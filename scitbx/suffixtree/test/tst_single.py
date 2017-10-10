@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import range
 from scitbx import suffixtree
 from scitbx.suffixtree import single
 
@@ -64,7 +65,7 @@ class TestEdge(unittest.TestCase):
     self.assertFalse( self.root.is_leaf() )
 
     self.assertTrue( self.root.is_empty() )
-    self.assertEqual( self.root.keys(), [] )
+    self.assertEqual( list(self.root.keys()), [] )
     self.assertFalse( 1 in self.root )
     self.assertTrue( 1 not in self.root )
     self.assertRaises( KeyError, self.root.__getitem__, 1 )
@@ -99,8 +100,8 @@ class TestEdge(unittest.TestCase):
     self.assertFalse( cr.is_leaf() )
 
     self.assertTrue( cr.is_empty() )
-    self.assertEqual( cr.keys(), [] )
-    self.assertEqual( cr.values(), [] )
+    self.assertEqual( list(cr.keys()), [] )
+    self.assertEqual( list(cr.values()), [] )
     self.assertFalse( 1 in cr )
     self.assertTrue( 1 not in cr )
     self.assertRaises( KeyError, cr.__getitem__, 1 )
@@ -128,7 +129,7 @@ class TestEdge(unittest.TestCase):
     self.assertFalse( self.branch.is_leaf() )
 
     self.assertTrue( self.branch.is_empty() )
-    self.assertEqual( self.branch.keys(), [] )
+    self.assertEqual( list(self.branch.keys()), [] )
     self.assertFalse( 1 in self.branch )
     self.assertTrue( 1 not in self.branch )
     self.assertRaises( KeyError, self.branch.__getitem__, 1 )
@@ -171,8 +172,8 @@ class TestEdge(unittest.TestCase):
     self.assertFalse( cb.is_leaf() )
 
     self.assertTrue( cb.is_empty() )
-    self.assertEqual( cb.keys(), [] )
-    self.assertEqual( cb.values(), [] )
+    self.assertEqual( list(cb.keys()), [] )
+    self.assertEqual( list(cb.values()), [] )
     self.assertFalse( 1 in cb )
     self.assertTrue( 1 not in cb )
     self.assertRaises( KeyError, cb.__getitem__, 1 )
@@ -203,8 +204,8 @@ class TestEdge(unittest.TestCase):
     self.assertTrue( self.leaf.is_leaf() )
 
     self.assertTrue( self.leaf.is_empty() )
-    self.assertEqual( self.leaf.keys(), [] )
-    self.assertEqual( self.leaf.values(), [] )
+    self.assertEqual( list(self.leaf.keys()), [] )
+    self.assertEqual( list(self.leaf.values()), [] )
     self.assertFalse( 1 in self.leaf )
     self.assertTrue( 1 not in self.leaf )
     self.assertRaises( RuntimeError, self.leaf.__getitem__, 1 )
@@ -242,8 +243,8 @@ class TestEdge(unittest.TestCase):
     self.assertTrue( cl.is_leaf() )
 
     self.assertTrue( cl.is_empty() )
-    self.assertEqual( cl.keys(), [] )
-    self.assertEqual( cl.values(), [] )
+    self.assertEqual( list(cl.keys()), [] )
+    self.assertEqual( list(cl.values()), [] )
     self.assertFalse( 1 in cl )
     self.assertTrue( 1 not in cl )
     self.assertRaises( KeyError, cl.__getitem__, 1 )
@@ -339,7 +340,7 @@ class TestPreOrder(unittest.TestCase):
     self.assertEqual( result[0], self.edge_named[ "r_b2" ] )
     result.pop( 0 )
 
-    for key in self.edge_named[ "r_b2" ].keys():
+    for key in list(self.edge_named[ "r_b2" ].keys()):
       action_for[ key ]( result = result )
 
 
@@ -353,7 +354,7 @@ class TestPreOrder(unittest.TestCase):
     self.assertEqual( result[0], self.edge_named[ "r_b1_b1" ] )
     result.pop( 0 )
 
-    for key in self.edge_named[ "r_b1_b1" ].keys():
+    for key in list(self.edge_named[ "r_b1_b1" ].keys()):
       action_for[ key ]( result = result )
 
 
@@ -367,7 +368,7 @@ class TestPreOrder(unittest.TestCase):
     self.assertEqual( result[0], self.edge_named[ "r_b1" ] )
     result.pop( 0 )
 
-    for key in self.edge_named[ "r_b1" ].keys():
+    for key in list(self.edge_named[ "r_b1" ].keys()):
       action_for[ key ]( result = result )
 
 
@@ -382,7 +383,7 @@ class TestPreOrder(unittest.TestCase):
     self.assertEqual( result[0], self.root )
     result.pop( 0 )
 
-    for key in self.root.keys():
+    for key in list(self.root.keys()):
       action_for[ key ]( result = result )
 
 
@@ -516,7 +517,7 @@ class TestPostOrder(unittest.TestCase):
       "r_b2_l2": lambda result: self.check_leaf_named( result, "r_b2_l2" ),
       }
 
-    for key in self.edge_named[ "r_b2" ].keys():
+    for key in list(self.edge_named[ "r_b2" ].keys()):
       action_for[ key ]( result = result )
 
     self.assertEqual( result[0], self.edge_named[ "r_b2" ] )
@@ -530,7 +531,7 @@ class TestPostOrder(unittest.TestCase):
       "r_b1_b1_l2": lambda result: self.check_leaf_named( result, "r_b1_b1_l2" ),
       }
 
-    for key in self.edge_named[ "r_b1_b1" ].keys():
+    for key in list(self.edge_named[ "r_b1_b1" ].keys()):
       action_for[ key ]( result = result )
 
     self.assertEqual( result[0], self.edge_named[ "r_b1_b1" ] )
@@ -544,7 +545,7 @@ class TestPostOrder(unittest.TestCase):
       "r_b1_l1": lambda result: self.check_leaf_named( result, "r_b1_l1" ),
       }
 
-    for key in self.edge_named[ "r_b1" ].keys():
+    for key in list(self.edge_named[ "r_b1" ].keys()):
       action_for[ key ]( result = result )
 
     self.assertEqual( result[0], self.edge_named[ "r_b1" ] )
@@ -559,7 +560,7 @@ class TestPostOrder(unittest.TestCase):
       "r_l1": lambda result: self.check_leaf_named( result, "r_l1" ),
       }
 
-    for key in self.root.keys():
+    for key in list(self.root.keys()):
       action_for[ key ]( result = result )
 
     self.assertEqual( result[0], self.root )
@@ -620,7 +621,7 @@ class TestTree(unittest.TestCase):
     self.assertEqual( w.length_descriptor()(), 0 )
     r = tree.root
     self.assertTrue( isinstance( r, single.const_edge ) )
-    self.assertEqual( r.keys(), [] )
+    self.assertEqual( list(r.keys()), [] )
 
 
   def test_ukkonen1(self):
@@ -863,7 +864,7 @@ class TestLeafIndices(unittest.TestCase):
     self.assertEqual( leaf_indices_below[ leaf_5 ], [ 5 ] )
 
     self.assertEqual( sorted( leaf_indices_below[ branch_t ] ), [ 0, 1 ] )
-    self.assertEqual( sorted( leaf_indices_below[ root ] ), range( 6 ) )
+    self.assertEqual( sorted( leaf_indices_below[ root ] ), list(range( 6)) )
 
 
 suite_word = unittest.TestLoader().loadTestsFromTestCase(

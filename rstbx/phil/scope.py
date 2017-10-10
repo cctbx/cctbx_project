@@ -1,3 +1,4 @@
 from __future__ import division
-class scope:
+from builtins import object
+class scope(object):
   value = 'iotbx' #highest-level package needed to define phil preferences

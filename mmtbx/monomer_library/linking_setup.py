@@ -1,5 +1,6 @@
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I
 from __future__ import division
+from __future__ import print_function
 
 ad_hoc_single_metal_residue_element_types = """\
 ZN CA MG NA MN K FE CU CD HG NI CO SR CS PT BA TL PB SM AU RB YB LI
@@ -131,5 +132,5 @@ skip_if_longer = update_skip_if_longer(amino_acid_bond_cutoff,
                                        )
 
 if __name__=="__main__":
-  print skip_if_both
-  print skip_if_longer
+  print(skip_if_both)
+  print(skip_if_longer)

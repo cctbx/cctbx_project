@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
 import mmtbx.monomer_library.server
 import iotbx.pdb.amino_acid_codes
 import cctbx.geometry_restraints
@@ -54,7 +58,7 @@ def report_tors(
       verbose):
   n_mismatches = 0
   i_seq_by_atom_name = sequence_index_dict(seq=mon_lib_atom_names)
-  for tor_id,atom_ids in tor_atom_ids_by_tor_id.items():
+  for tor_id,atom_ids in list(tor_atom_ids_by_tor_id.items()):
     js = [i_seq_by_atom_name.get(ai) for ai in atom_ids]
     if (js.count(None) != 0):
       angle_model = None
@@ -72,7 +76,7 @@ def report_tors(
         annotation = "OK_target"
     else:
       annotation = "no_target"
-    if (verbose): print tor_id, atom_ids, angle_model, annotation
+    if (verbose): print(tor_id, atom_ids, angle_model, annotation)
   assert n_mismatches == 0, n_mismatches
 
 def remove_atom_ids_not_handled(pdb_hierarchy, atom_ids_not_handled):
@@ -135,8 +139,8 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
           unused_rotamer_info_tor_ids.append(tor_id)
       if (len(unused_rotamer_info_tor_ids) != 0):
         if (verbose):
-          print "Info: unused rotamer_info.tor_ids:", \
-            " ".join(unused_rotamer_info_tor_ids)
+          print("Info: unused rotamer_info.tor_ids:", \
+            " ".join(unused_rotamer_info_tor_ids))
         assert strip_hydrogens
       if (strip_hydrogens):
         rotamers_sub_dir = "rotamers_no_h"
@@ -156,9 +160,9 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
           sites_cart=rotamer_sites_cart,
           tor_atom_ids_by_tor_id
             =rotamer_iterator.rotamer_tor_atom_ids_by_tor_id,
-          target_angles=dict(zip(
+          target_angles=dict(list(zip(
             rotamer_iterator.rotamer_info.tor_ids,
-            rotamer.angles)),
+            rotamer.angles))),
           verbose=verbose)
         #
         pdb_hierarchy_work = pdb_hierarchy.deep_copy()
@@ -167,9 +171,9 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
         pdb_atoms_work.reset_serial(first_value=1)
         file_name = "%s/%s_%s.pdb" % (
           rotamers_sep_sub_dir, resname, rotamer.id)
-        if (verbose): print "Writing file:", file_name
+        if (verbose): print("Writing file:", file_name)
         f = open(file_name, "w")
-        print >> f, "REMARK %s %s" % (resname, rotamer.id)
+        print("REMARK %s %s" % (resname, rotamer.id), file=f)
         f.write(pdb_hierarchy_work.as_pdb_string(append_end=True))
         del f
         #
@@ -184,13 +188,13 @@ def exercise_server_rotamer_iterator(mon_lib_srv, pdb_hierarchy, verbose):
           "REMARK %s %s = chain %s" % (resname, rotamer.id, chain_id))
         atom_strings.append(pdb_hierarchy_work.as_pdb_string(append_end=False))
       file_name = "%s/%s.pdb" % (rotamers_sub_dir, resname)
-      if (verbose): print "Writing file:", file_name
+      if (verbose): print("Writing file:", file_name)
       f = open(file_name, "w")
       for s in remark_strings:
-        print >> f, s
+        print(s, file=f)
       for s in atom_strings:
         f.write(s)
-      print >> f, "END"
+      print("END", file=f)
       del f
 
 def compare_dihedrals(
@@ -209,7 +213,7 @@ def compare_dihedrals(
     if (rotamer_info is None): continue
     for rotamer in rotamer_info.rotamer:
       file_name = "%s_%s%s" % (resname, rotamer.id, file_name_extension)
-      if (verbose): print file_name
+      if (verbose): print(file_name)
       path = op.join(pdb_dir, file_name)
       pdb_inp = iotbx.pdb.input(file_name=path)
       pdb_hierarchy = pdb_inp.construct_hierarchy()
@@ -228,7 +232,7 @@ def compare_dihedrals(
       angle_start_by_tor_id = rotamer_iterator.angle_start_by_tor_id
       for tor_id,angle_tab in zip(rotamer_info.tor_ids, rotamer.angles):
         angle_pdb = angle_start_by_tor_id[tor_id]
-        if (verbose): print tor_id, angle_tab, angle_pdb
+        if (verbose): print(tor_id, angle_tab, angle_pdb)
         if (cctbx.geometry_restraints.angle_delta_deg(
               angle_1=angle_tab,
               angle_2=angle_pdb) > 0.5):
@@ -236,10 +240,10 @@ def compare_dihedrals(
               or resname not in ["ARG", "ASN", "GLN"]):
             # Keeping all hydrogen dihedrals in ARG, ASN, GLN at 180
             # after discussions.
-            print "Mismatch", resname, rotamer.id, tor_id, \
+            print("Mismatch", resname, rotamer.id, tor_id, \
               "pdb: %.0f" % angle_pdb, \
-              "tab: %.0f" % angle_tab
-      if (verbose): print
+              "tab: %.0f" % angle_tab)
+      if (verbose): print()
 
 def exercise_termini(mon_lib_srv, pdb_file_name):
   pdb_inp = iotbx.pdb.input(file_name=pdb_file_name)
@@ -299,7 +303,7 @@ def run(args):
   amino_acid_resnames = sorted(
     iotbx.pdb.amino_acid_codes.one_letter_given_three_letter.keys())
   for resname in amino_acid_resnames:
-    if (verbose): print "resname:", resname
+    if (verbose): print("resname:", resname)
     if resname == "UNK":
       # skipping UNK residue because there is no rotamers available for it
       continue
@@ -311,12 +315,12 @@ def run(args):
       mon_lib_srv=mon_lib_srv,
       pdb_hierarchy=pdb_hierarchy,
       verbose=verbose)
-    if (verbose): print
+    if (verbose): print()
   if (len(semi_emp_rotamer_pdb_dirs) == 0):
     pdb_dir = libtbx.env.find_in_repositories(
       relative_path="phenix_regression/semi_emp_rotamer_pdb")
     if (pdb_dir is None):
-      print "Skipping compare_dihedrals(): semi_emp_rotamer_pdb not available."
+      print("Skipping compare_dihedrals(): semi_emp_rotamer_pdb not available.")
     else:
       semi_emp_rotamer_pdb_dirs.append(pdb_dir)
   for pdb_dir in semi_emp_rotamer_pdb_dirs:
@@ -328,14 +332,14 @@ def run(args):
       verbose=verbose)
   for file_name in os.listdir(protein_pdb_files):
     if (not file_name.endswith(".ent")): continue
-    if (verbose): print file_name
+    if (verbose): print(file_name)
     exercise_termini(
       mon_lib_srv=mon_lib_srv,
       pdb_file_name=op.join(protein_pdb_files, file_name))
-    if (verbose): print
+    if (verbose): print()
   exercise_pro_missing_hd1(mon_lib_srv=mon_lib_srv)
-  print format_cpu_times()
-  print "OK"
+  print(format_cpu_times())
+  print("OK")
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

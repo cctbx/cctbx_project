@@ -4,9 +4,13 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME cxi.print_pickle
 #
 
+from builtins import zip
+from builtins import str
+from builtins import range
 """
 Simple utility for printing the contents of a cctbx.xfel pickle file
 """
+from __future__ import print_function
 
 from libtbx import easy_pickle
 import sys, os
@@ -31,17 +35,17 @@ else:
 
 for path in args:
   if not os.path.isfile(path):
-    print "Not a file:", path
+    print("Not a file:", path)
     continue
 
   data = easy_pickle.load(path)
   if not isinstance(data, dict):
-    print "Not a dictionary pickle"
+    print("Not a dictionary pickle")
     continue
 
-  print "Printing contents of", path
+  print("Printing contents of", path)
 
-  if data.has_key('TIMESTAMP'):
+  if 'TIMESTAMP' in data:
     # this is how FormatPYunspecified guesses the address
     if not "DETECTOR_ADDRESS" in data:
       # legacy format; try to guess the address
@@ -54,27 +58,27 @@ for path in args:
 
     detector_format_version = detector_format_function(
       LCLS_detector_address, reverse_timestamp(data['TIMESTAMP'])[0])
-    print "Detector format version:", detector_format_version
+    print("Detector format version:", detector_format_version)
     image_pickle = True
   else:
-    print "Not an image pickle"
+    print("Not an image pickle")
     image_pickle = False
 
   for key in data:
     if key == 'ACTIVE_AREAS':
-      print int(len(data[key])/4), "active areas, first one: ", list(data[key][0:4])
+      print(int(len(data[key])/4), "active areas, first one: ", list(data[key][0:4]))
     elif key == 'observations':
-      print key, data[key], "Showing unit cell/spacegroup:"
+      print(key, data[key], "Showing unit cell/spacegroup:")
       obs = data[key][0]
       uc = obs.unit_cell()
       uc.show_parameters()
       obs.space_group().info().show_summary()
       d = uc.d(obs.indices())
-      print "Number of observations:", len(obs.indices())
-      print "Max resolution: %f"%flex.min(d)
-      print "Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas())
-      print "I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True)
-      print "I <= 0:", len(obs.data().select(obs.data() <= 0))
+      print("Number of observations:", len(obs.indices()))
+      print("Max resolution: %f"%flex.min(d))
+      print("Mean I/sigma:", flex.mean(obs.data())/flex.mean(obs.sigmas()))
+      print("I/sigma > 1 count:", (obs.data()/obs.sigmas() > 1).count(True))
+      print("I <= 0:", len(obs.data().select(obs.data() <= 0)))
 
       from cctbx.crystal import symmetry
       sym = symmetry(unit_cell = uc, space_group = obs.space_group())
@@ -94,7 +98,7 @@ for path in args:
         acceptable_resolution_bins.append(avg_i_sigi >= 1.0)
 
       acceptable_resolution_bins = [acceptable_resolution_bins[i] if False not in acceptable_resolution_bins[:i+1] else False
-                                    for i in xrange(len(acceptable_resolution_bins))]
+                                    for i in range(len(acceptable_resolution_bins))]
       best_res = None
       for i, ok in zip(binner.range_used(), acceptable_resolution_bins):
         d_max, d_min = binner.bin_d_range(i)
@@ -103,23 +107,23 @@ for path in args:
         else:
           break
       if best_res is None:
-        print "Highest resolution with I/sigI >= 1.0: None"
+        print("Highest resolution with I/sigI >= 1.0: None")
       else:
-        print "Highest resolution with I/sigI >= 1.0: %f"%d_min
+        print("Highest resolution with I/sigI >= 1.0: %f"%d_min)
 
     elif key == 'mapped_predictions':
-      print key, data[key][0][0], "(only first shown of %d)"%len(data[key][0])
+      print(key, data[key][0][0], "(only first shown of %d)"%len(data[key][0]))
     elif key == 'correction_vectors' and data[key] is not None and data[key][0] is not None:
       if data[key][0] is None:
-        print key, "None"
+        print(key, "None")
       else:
-        print key, data[key][0][0], "(only first shown)"
+        print(key, data[key][0][0], "(only first shown)")
     elif key == "DATA":
-      print key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus()))
+      print(key,"len=%d max=%f min=%f dimensions=%s"%(data[key].size(),flex.max(data[key]),flex.min(data[key]),str(data[key].focus())))
     elif key == "WAVELENGTH":
-      print "WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key]
+      print("WAVELENGTH", data[key], ", converted to eV:", 12398.4187/data[key])
     elif key == "fuller_kapton_absorption_correction":
-      print key, data[key]
+      print(key, data[key])
       if doplots:
         c = data[key][0]
         hist = flex.histogram(c, n_slots=30)
@@ -137,17 +141,17 @@ for path in args:
         plt.show()
 
     else:
-      print key, data[key]
+      print(key, data[key])
 
   if image_pickle:
     import dxtbx
     image = dxtbx.load(path)
     tile_manager = image.detectorbase.get_tile_manager(image.detectorbase.horizons_phil_cache)
     tiling = tile_manager.effective_tiling_as_flex_int(reapply_peripheral_margin = True)
-    print int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4])
+    print(int(len(tiling)/4), "translated active areas, first one: ", list(tiling[0:4]))
 
   if dobreak:
-    print "Entering break. The pickle is loaded in the variable 'data'"
+    print("Entering break. The pickle is loaded in the variable 'data'")
     try:
       from IPython import embed
     except ImportError:

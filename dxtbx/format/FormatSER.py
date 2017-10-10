@@ -12,6 +12,8 @@
 # http://www.er-c.org/cbb/info/TIAformat/
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import range
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
 import struct
@@ -31,7 +33,7 @@ class FormatSER(FormatMultiImage, Format):
 
     try:
       tag = FormatSER.open_file(image_file, 'rb').read(14)
-    except IOError,e:
+    except IOError as e:
       return False
 
     # File should be little endian
@@ -174,4 +176,4 @@ class FormatSER(FormatMultiImage, Format):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatSER.understand(arg)
+    print(FormatSER.understand(arg))

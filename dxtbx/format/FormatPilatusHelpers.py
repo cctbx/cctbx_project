@@ -9,6 +9,7 @@ from __future__ import absolute_import, division
 # Helper methods for class for working with Pilatus images, for instance for
 # identifying the regions to be masked.
 
+from builtins import range
 def pilatus_6M_mask():
   '''Hard coded mask regions for a Pilatus 6M instrument.'''
   # FIX me, the paramters are listed here as f0, f1, s0, s1 but the prototype specifies f0, s0, f1, s1

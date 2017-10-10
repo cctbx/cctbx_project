@@ -1,6 +1,9 @@
 
 from __future__ import division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from io import StringIO
 
 def exercise () :
   open("tmp_interpolation_start.pdb", "w").write("""\
@@ -42,7 +45,7 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
   ]
   out = StringIO()
   result = interpolate.run(args=args, out=out)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

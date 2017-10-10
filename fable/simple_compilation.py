@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 import os
 op = os.path
 
@@ -156,7 +158,7 @@ class environment(object):
       file_names=[file_name_cpp],
       out_name=out_name)
     if (show_command):
-      print cmd
+      print(cmd)
     from libtbx import easy_run
     buffers = easy_run.fully_buffered(command=cmd)
     if (O.compiler != "cl" or buffers.stderr_lines != [file_name_cpp]):

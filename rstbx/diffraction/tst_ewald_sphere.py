@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 #!/usr/bin/env python
+from builtins import range
 import math
 
 from cctbx.uctbx import unit_cell
@@ -43,7 +45,7 @@ def rotation_scattering(reflections, UB_mat, rotation_vector,
                                    (H1[2] * H1[2]))
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
-                    raise RuntimeError, 'length error for %d %d %d' % hkl
+                    raise RuntimeError('length error for %d %d %d' % hkl)
 
 def scattering_prediction(reflections, UB_mat, rotation_vector,
                           wavelength, resolution,
@@ -86,7 +88,7 @@ def scattering_prediction(reflections, UB_mat, rotation_vector,
                                    (H1[2] * H1[2]))
 
                 if math.fabs(len_H1 - 1.0 / wavelength) > 0.0001:
-                    raise RuntimeError, 'length error for %d %d %d' % hkl
+                    raise RuntimeError('length error for %d %d %d' % hkl)
 
                 if rp(hkl, omegas[omegaidx]):
                     x, y = rp.get_prediction()
@@ -164,4 +166,4 @@ if __name__ == '__main__':
 
     scattering_prediction(indices, bmat, second_rotation_vector,
                           wavelength, resolution)
-    print "OK"
+    print("OK")

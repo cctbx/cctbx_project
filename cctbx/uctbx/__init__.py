@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import object
 import cctbx.array_family.flex # import dependency
 import scitbx.array_family.shared # import dependency
 
@@ -120,7 +124,7 @@ class _(boost.python.injector, ext.unit_cell):
 
   def show_parameters(self, f=None, prefix="Unit cell: "):
     if (f is None): f = sys.stdout
-    print >> f, prefix + str(self)
+    print(prefix + str(self), file=f)
 
   def is_conventional_hexagonal_basis(self,
         absolute_length_tolerance=1e-3,

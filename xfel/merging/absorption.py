@@ -1,7 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from cctbx.array_family import flex
 
-class show_observations:
+class show_observations(object):
   def __init__(self,obs,unobstructed,params,out=None, n_bins=12):
     if out==None:
       import sys
@@ -74,10 +77,10 @@ class show_observations:
         )
         self.result.append(bin)
     self.set_limits(unobstructed)
-    print >>out, "\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)> Unobstructed <I>     <I/sig(I)> Obstructed <I>     <I/sig(I)>"
+    print("\n Bin  Resolution Range  Compl.         <I>     <I/sig(I)> Unobstructed <I>     <I/sig(I)> Obstructed <I>     <I/sig(I)>", file=out)
     for bin in self.result:
       fmt = " %s %s    %s  %s%s   %s   %s  %s%s   %s  %s   %s%s"
-      print >>out,fmt%(
+      print(fmt%(
         format_value("%3d",   bin.i_bin),
         format_value("%-17s", bin.d_range),
         format_value("%8.1f", bin.mean_I),
@@ -91,19 +94,19 @@ class show_observations:
         format_value("%8.1f", bin.atten_mean_I),
         format_value("%8.2f", bin.atten_mean_I_sigI),
         format_value("%1s",   getattr(bin,"atten_limit"," ")),
-        )
+        ), file=out)
 
   def set_limits(self, unobstructed):
     acceptable_resolution_bins = [
       bin.mean_I_sigI > self.params.significance_filter.sigma for bin in self.result]
-    acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+    acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                        if False not in acceptable_resolution_bins[:i+1]]
 
     N_acceptable_bins = max(acceptable_nested_bin_sequences)
     self.result[N_acceptable_bins].limit="*"
 
     unatten_acceptable = N_acceptable_bins
-    for x in xrange(N_acceptable_bins,len(self.result)):
+    for x in range(N_acceptable_bins,len(self.result)):
       if self.result[x].unatten_mean_I_sigI > self.params.significance_filter.sigma:
         unatten_acceptable = x
       else:
@@ -112,7 +115,7 @@ class show_observations:
     self.result[unatten_acceptable].unatten_limit="*"
 
     atten_acceptable = N_acceptable_bins
-    for x in xrange(N_acceptable_bins,1,-1):
+    for x in range(N_acceptable_bins,1,-1):
       if self.result[x].atten_mean_I_sigI < self.params.significance_filter.sigma:
         atten_acceptable = x - 1
 
@@ -121,8 +124,8 @@ class show_observations:
     # Now compute the appropriate selections
     unattenuated_res_limit = float(self.result[unatten_acceptable].d_range.split()[2])
     attenuated_res_limit = float(self.result[atten_acceptable].d_range.split()[2])
-    print >> self.out, "New combination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
-    attenuated_res_limit)
+    print("New combination resolution filter at %7.2f and %7.2f"%(unattenuated_res_limit,
+    attenuated_res_limit), file=self.out)
 
     unattenuated_res_selection = self.obs.resolution_filter_selection(
             d_min=unattenuated_res_limit)
@@ -135,7 +138,7 @@ class show_observations:
 class resolution_bin(object):
   def __init__(self,
                **kwargs):
-    for key in kwargs.keys():
+    for key in list(kwargs.keys()):
       assert not hasattr(self.__dict__, key)
       self.__dict__[key] = kwargs[key]
     #similar funtionality: from libtbx import adopt_init_args

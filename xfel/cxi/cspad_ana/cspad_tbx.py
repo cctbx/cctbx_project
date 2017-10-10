@@ -11,6 +11,10 @@ XXX Read out detector temperature (see Hart et al., 2012)?
 """
 from __future__ import division
 
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
 import math
 import numpy
 import os
@@ -139,8 +143,8 @@ def cbcaa(config, sections):
     # lower-right corner is exclusive.  XXX Should subtract one from
     # x, y on lower-right corner and verify with zoom.  XXX All this
     # should probably go by now
-    for q in xrange(4): # loop over quadrants
-      for i in xrange(8): # loop over two-by-one:s XXX variable name!
+    for q in range(4): # loop over quadrants
+      for i in range(8): # loop over two-by-one:s XXX variable name!
 
         # Skip this two-by-one if it is missing.
         if not (config.roiMask(q) & 0x1 << i):
@@ -224,7 +228,7 @@ def cbcaa(config, sections):
   else:
     q_mask = config.quadMask()
 
-  for q in xrange(len(sections)):
+  for q in range(len(sections)):
     if (not((1 << q) & q_mask)):
       continue
 
@@ -245,7 +249,7 @@ def cbcaa(config, sections):
       s_mask = config.roiMask()
     else:
       s_mask = config.roiMask(q)
-    for s in xrange(len(sections[q])):
+    for s in range(len(sections[q])):
       if (not((1 << s) & s_mask)):
         continue
       c = sections[q][s].corners_asic()
@@ -281,7 +285,7 @@ def CsPad2x2Image(data, config, sections):
 
   # For this detector, the quadrant index is always zero.
   q_idx = 0
-  for s in xrange(2):
+  for s in range(2):
     # XXX DAQ misconfiguration?  This mask appears not to work
     # reliably for the Sc1 detector.
 #    if (s not in mask[q_idx]):
@@ -306,7 +310,7 @@ def evt_get_quads(address, evt, env):
     cspad = evt.get(CsPad.DataV2, src)
     if cspad is None:
       return None
-    quads = [cspad.quads(i) for i in xrange(cspad.quads_shape()[0])]
+    quads = [cspad.quads(i) for i in range(cspad.quads_shape()[0])]
   return quads
 
 def CsPadDetector(address, evt, env, sections, right=True, quads=None):
@@ -370,7 +374,7 @@ def CsPadDetector(address, evt, env, sections, right=True, quads=None):
       # psana
       # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
       # x, y times, and & is the bitwise AND operator
-      q_mask = [i for i in xrange(len(sections[q_idx])) if 1 << i & config.roiMask(q_idx)]
+      q_mask = [i for i in range(len(sections[q_idx])) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, assert that there is data for each unmasked
     # section.
@@ -405,15 +409,15 @@ def CsPadElement(data3d, qn, config):
   """
 
   # If any sections are missing, insert zeros.
-  mask = map(config.sections, xrange(4))
+  mask = list(map(config.sections, range(4)))
   if (len(data3d) < 8):
     zsec = numpy.zeros((185, 388), dtype = data3d.dtype)
-    for i in xrange(8) :
+    for i in range(8) :
       if (i not in mask[qn]):
         data3d = numpy.insert(data3d, i, zsec, axis = 0)
 
   pairs = []
-  for i in xrange(8) :
+  for i in range(8) :
     # Insert gap between ASIC:s in the 2x1.
     asics = numpy.hsplit(data3d[i], 2)
     gap   = numpy.zeros((185, 4), dtype = data3d.dtype)
@@ -429,7 +433,7 @@ def CsPadElement(data3d, qn, config):
 
   # Make the array for this quadrant, and insert the 2x1 sections.
   quadrant = numpy.zeros((npix_quad, npix_quad), dtype = data3d.dtype)
-  for sec in xrange(8):
+  for sec in range(8):
     nrows, ncols = pairs[sec].shape
 
     # x,y  in quadrant coordinate system
@@ -575,7 +579,7 @@ def hdf5pack(hdf5_file,
 
   grp_event = hdf5_file.create_group(d['TIMESTAMP'])
   grp_detector = grp_event.create_group(address)
-  for (key, value) in d.iteritems():
+  for (key, value) in d.items():
     if key == 'ACTIVE_AREAS':
       grp_detector.create_dataset(key, data=value.as_numpy_array())
     elif key == 'DATA':
@@ -828,7 +832,7 @@ def get_ebeam(evt):
   try:
     # pyana
     ebeam = evt.getEBeam()
-  except AttributeError, e:
+  except AttributeError as e:
     from psana import Source, Bld
     src = Source('BldInfo(EBeam)')
     ebeam = evt.get(Bld.BldDataEBeamV6, src)
@@ -999,7 +1003,7 @@ def env_sifoil(env):
           "XRT:DIA:MMS:11.RBV": 10240 }
 
   si_tot = 0
-  for pvname, si_len in dia.iteritems():
+  for pvname, si_len in dia.items():
     pv = env.epicsStore().value(pvname)
 
     # XXX Why is this an EpicsPvTime object?  The absorption
@@ -1313,7 +1317,7 @@ def getConfig(address, env):
   if hasattr(env, 'configStore'):
     good_key = None
     address = old_address_to_new_address(address)
-    for key in env.configStore().keys():
+    for key in list(env.configStore().keys()):
       if address in str(key.src()) and key.type() is not None:
         good_key = key
         break
@@ -1526,7 +1530,7 @@ def image_xpp(address, evt, env, aa, quads = None):
       # psana
       # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
       # x, y times, and & is the bitwise AND operator
-      q_mask = [i for i in xrange(config.numSect()//config.numQuads()) if 1 << i & config.roiMask(q_idx)]
+      q_mask = [i for i in range(config.numSect()//config.numQuads()) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, one could/should verify that len(q_data) is
     # equal to len(sections[q_idx]).
@@ -1606,8 +1610,8 @@ def iplace(dst, src, angle, center):
     # components in coordinate system of the untransformed source
     # image, (xp, yp).  Then do bilinear interpolation based on the
     # four pixels with integer coordinates around (xp, yp).
-    for x in xrange(xlim[0], xlim[1]):
-        for y in xrange(ylim[0], ylim[1]):
+    for x in range(xlim[0], xlim[1]):
+        for y in range(ylim[0], ylim[1]):
             xp =  c * x + s * y + 0.5 * src.shape[0]
             yp = -s * x + c * y + 0.5 * src.shape[1]
             if (xp >= 0 and math.ceil(xp) < src.shape[0] and

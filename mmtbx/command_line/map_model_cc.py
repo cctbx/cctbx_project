@@ -1,7 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_model_cc
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_map_cc
 
+from builtins import zip
 import sys
 import iotbx.pdb
 from libtbx import group_args, easy_pickle
@@ -29,9 +31,9 @@ def master_params():
 
 
 def broadcast(m, log):
-  print >> log, "-"*79
-  print >> log, m
-  print >> log, "*"*len(m)
+  print("-"*79, file=log)
+  print(m, file=log)
+  print("*"*len(m), file=log)
 
 def get_inputs(args,
                log,
@@ -86,10 +88,10 @@ Feedback:
   PAfonine@lbl.gov
   phenixbb@phenix-online.org
   """
-  assert len(locals().keys()) == 2 # intentional
-  print >> log, "-"*79
-  print >> log, run.__doc__
-  print >> log, "-"*79
+  assert len(list(locals().keys())) == 2 # intentional
+  print("-"*79, file=log)
+  print(run.__doc__, file=log)
+  print("-"*79, file=log)
   # Get inputs
   inputs = get_inputs(
     args          = args,
@@ -97,7 +99,7 @@ Feedback:
     master_params = master_params())
   # Model
   broadcast(m="Input PDB:", log=log)
-  print >> log, inputs.pdb_file_name # ideally this should not be available here
+  print(inputs.pdb_file_name, file=log) # ideally this should not be available here
   inputs.pdb_hierarchy.show(level_id="chain")
   # Crystal symmetry
   broadcast(m="Box (unit cell) info:", log=log)
@@ -125,31 +127,31 @@ Feedback:
       ))
   #
   broadcast(m="Map resolution:", log=log)
-  print >> log, "  Resolution:", inputs.params.map_model_cc.resolution
+  print("  Resolution:", inputs.params.map_model_cc.resolution, file=log)
   broadcast(m="Map-model CC (overall):", log=log)
-  print >> log, "  CC_mask  : %s" % format_value("%6.4f", results.cc_mask)
-  print >> log, "  CC_volume: %s" % format_value("%6.4f", results.cc_volume)
-  print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
+  print("  CC_mask  : %s" % format_value("%6.4f", results.cc_mask), file=log)
+  print("  CC_volume: %s" % format_value("%6.4f", results.cc_volume), file=log)
+  print("  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks), file=log)
   if results.fsc is not None:
     broadcast(m="Model-map FSC:", log=log)
-    print >> log, "    1/resolution    CC"
+    print("    1/resolution    CC", file=log)
     for a,b in zip(results.fsc.d_inv, results.fsc.fsc):
-      print >> log, "%15.9f %15.9f"%(a,b)
+      print("%15.9f %15.9f"%(a,b), file=log)
   if len(results.cc_per_chain) + len(results.cc_per_residue) > 0:
     broadcast(m="Map-model CC (local):", log=log)
   # Per chain
   if len(results.cc_per_chain) > 0:
-    print >> log, "Per chain:"
-    print >> log, "chain ID  CC       <B>    <occ>   N atoms"
+    print("Per chain:", file=log)
+    print("chain ID  CC       <B>    <occ>   N atoms", file=log)
     fmt = "%s        %7.4f %8.3f %4.2f    %d"
     for r in results.cc_per_chain:
-      print fmt%(r.chain_id, r.cc, r.b_iso_mean, r.occ_mean, r.n_atoms)
+      print(fmt%(r.chain_id, r.cc, r.b_iso_mean, r.occ_mean, r.n_atoms))
   # Per residue
   if len(results.cc_per_residue) > 0:
-    print >> log, "Per residue:"
+    print("Per residue:", file=log)
     fmt = "%s %s %s %7.4f %8.3f %4.2f"
     for r in results.cc_per_residue:
-      print fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
+      print(fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean))
   return None
 
 if (__name__ == "__main__"):

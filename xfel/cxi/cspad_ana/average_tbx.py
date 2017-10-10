@@ -3,7 +3,11 @@
 # $Id$
 
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 import math
 import multiprocessing
 import numpy
@@ -130,7 +134,7 @@ class average_mixin(common_mode.common_mode_correction):
     # Assuming an average run length of ten minutes, five minutes past
     # the start of a run is a good base time.
     self._lock.acquire()
-    if 'time_base' not in self._metadata.keys():
+    if 'time_base' not in list(self._metadata.keys()):
       self._metadata['time_base'] = (cspad_tbx.evt_time(evt)[0] + 5 * 60, 500)
     self._lock.release()
 
@@ -176,7 +180,7 @@ class average_mixin(common_mode.common_mode_correction):
       if 0:
         from matplotlib import pyplot
         hist_min, hist_max = flex.min(flex_cspad_img.as_double()), flex.max(flex_cspad_img.as_double())
-        print hist_min, hist_max
+        print(hist_min, hist_max)
         n_slots = 100
         n, bins, patches = pyplot.hist(flex_cspad_img.as_1d().as_numpy_array(), bins=n_slots, range=(hist_min, hist_max))
         pyplot.show()
@@ -224,7 +228,7 @@ class average_mixin(common_mode.common_mode_correction):
 
     if ("output" in self.flags):
       try:
-        import cPickle as pickle
+        import pickle as pickle
       except ImportError:
         import pickle
       import os
@@ -260,7 +264,7 @@ class average_mixin(common_mode.common_mode_correction):
       # contribute a partial sum.
       if env.subprocess() >= 0:
         self._lock.acquire()
-        if 'peers' in self._metadata.keys():
+        if 'peers' in list(self._metadata.keys()):
           self._metadata['peers'] |= (1 << env.subprocess())
         else:
           self._metadata['peers'] = (1 << env.subprocess())
@@ -319,7 +323,7 @@ class average_mixin(common_mode.common_mode_correction):
     else:
       evt = obj1
       env = obj2
-    from Queue import Empty
+    from queue import Empty
 
     super(average_mixin, self).endjob(env)
 
@@ -339,7 +343,7 @@ class average_mixin(common_mode.common_mode_correction):
       queue_nmemb = self._metadata['nmemb']
       queue_time = self._metadata['time']
       queue_wavelength = self._metadata['wavelength']
-    except Empty, KeyError:
+    except Empty as KeyError:
       pass
 
     # If a complete set of items could be retrieved from the shared

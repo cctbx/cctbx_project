@@ -1,5 +1,7 @@
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 from boost_adaptbx import graph
 
 import math
@@ -11,7 +13,7 @@ class Atom(object):
 
   def __init__(self, **kwargs):
 
-    for ( name, value ) in kwargs.items():
+    for ( name, value ) in list(kwargs.items()):
       setattr( self, name, value )
 
 
@@ -34,13 +36,13 @@ class Molecule(object):
   @property
   def descriptor_for(self):
 
-    return dict( zip( self.atom_for.values(), self.atom_for.keys() ) )
+    return dict( list(zip( list(self.atom_for.values()), list(self.atom_for.keys()) )) )
 
 
   @property
   def atoms(self):
 
-    return self.atom_for.values()
+    return list(self.atom_for.values())
 
 
   def add(self, atom, xyz):
@@ -49,7 +51,7 @@ class Molecule(object):
     ( x2, y2, z2 ) = xyz
     assert d2 not in self.xyz_for
 
-    for ( d1, ( x1, y1, z1 ) ) in self.xyz_for.items():
+    for ( d1, ( x1, y1, z1 ) ) in list(self.xyz_for.items()):
       self.graph.add_edge(
         vertex1 = d1,
         vertex2 = d2,
@@ -83,19 +85,19 @@ class Compound(object):
   @property
   def atom_for(self):
 
-    return dict( zip( self.descriptor_for.values(), self.descriptor_for.keys() ) )
+    return dict( list(zip( list(self.descriptor_for.values()), list(self.descriptor_for.keys()) )) )
 
 
   @property
   def atoms(self):
 
-    return self.descriptor_for.keys()
+    return list(self.descriptor_for.keys())
 
 
   @property
   def descriptors(self):
 
-    return self.descriptor_for.values()
+    return list(self.descriptor_for.values())
 
 
   @property
@@ -133,7 +135,7 @@ class Compound(object):
   def distances_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from graph import breadth_first_search as bfs
 
@@ -155,7 +157,7 @@ class Compound(object):
   def subset(self, atoms):
 
     if not all( a in self.descriptor_for for a in atoms ):
-      raise ValueError, "Unknown atoms: %s" % atoms
+      raise ValueError("Unknown atoms: %s" % atoms)
 
     from graph import maximum_clique
     subgraph = maximum_clique.selected_subgraph(
@@ -178,7 +180,7 @@ class Compound(object):
   def connected_segment_from(self, atom):
 
     if atom not in self.descriptor_for:
-      raise ValueError, "Unknown atom: %s" % atom
+      raise ValueError("Unknown atom: %s" % atom)
 
     from graph import breadth_first_search as bfs
 

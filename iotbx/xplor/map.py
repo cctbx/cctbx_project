@@ -28,7 +28,11 @@ That is:
 ...map average and standard deviation
 """
 from __future__ import division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import iotbx.xplor.ext as ext
 from cctbx import miller
 from cctbx import maptbx
@@ -75,17 +79,17 @@ class reader(object):
     self.title_lines = []
     ntitle = int(f.readline().strip().split("!")[0])
     self.title_lines=[]
-    for x in xrange(ntitle):
+    for x in range(ntitle):
       line = f.readline().rstrip()
       self.title_lines.append(line)
     line = f.readline()
-    values = [int(line[i:i+8]) for i in xrange(0,72,8)]
+    values = [int(line[i:i+8]) for i in range(0,72,8)]
     self.gridding = gridding(
-      n     = [values[i] for i in xrange(0,9,3)],
-      first = [values[i] for i in xrange(1,9,3)],
-      last  = [values[i] for i in xrange(2,9,3)])
+      n     = [values[i] for i in range(0,9,3)],
+      first = [values[i] for i in range(1,9,3)],
+      last  = [values[i] for i in range(2,9,3)])
     line = f.readline()
-    params = [float(line[i:i+12]) for i in xrange(0,72,12)]
+    params = [float(line[i:i+12]) for i in range(0,72,12)]
     self.unit_cell = uctbx.unit_cell(params)
     order = f.readline().strip()
     assert order == "ZYX"
@@ -105,20 +109,20 @@ class reader(object):
 
   def show_summary(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix+"Title lines:", len(self.title_lines)
+    print(prefix+"Title lines:", len(self.title_lines), file=out)
     for line in self.title_lines:
-      print >> out, prefix+"  "+line.rstrip()
+      print(prefix+"  "+line.rstrip(), file=out)
     g = self.gridding
-    print >> out, prefix+"Gridding:"
-    print >> out, prefix+"  n:    ", g.n
-    print >> out, prefix+"  first:", g.first
-    print >> out, prefix+"  last: ", g.last
-    print >> out, prefix+"Total number of data points:", self.data.size()
+    print(prefix+"Gridding:", file=out)
+    print(prefix+"  n:    ", g.n, file=out)
+    print(prefix+"  first:", g.first, file=out)
+    print(prefix+"  last: ", g.last, file=out)
+    print(prefix+"Total number of data points:", self.data.size(), file=out)
     stats = maptbx.statistics(self.data)
-    print >> out, prefix+"  min:   %.6g" % stats.min()
-    print >> out, prefix+"  max:   %.6g" % stats.max()
-    print >> out, prefix+"  mean:  %.6g" % stats.mean()
-    print >> out, prefix+"  sigma: %.6g" % stats.sigma()
+    print(prefix+"  min:   %.6g" % stats.min(), file=out)
+    print(prefix+"  max:   %.6g" % stats.max(), file=out)
+    print(prefix+"  mean:  %.6g" % stats.mean(), file=out)
+    print(prefix+"  sigma: %.6g" % stats.sigma(), file=out)
 
 def writer(file_name, title_lines, unit_cell, gridding,
            data, is_p1_cell=False,

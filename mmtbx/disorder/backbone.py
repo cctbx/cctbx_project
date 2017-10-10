@@ -7,6 +7,8 @@ structures.
 # derived from BackrubFinder2.java by Ian Davis
 
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from libtbx import slots_getstate_setstate
 import math
 import sys
@@ -94,8 +96,8 @@ class backrub_residue (slots_getstate_setstate) :
     self.xyz = calpha.xyz
 
   def show (self, out=sys.stdout, prefix="") :
-    print >> out, prefix+"backrub %s (%s,%s): angle=%.1f" % \
-      (self.id_str, self.i_mod, self.j_mod, self.backrub_angle)
+    print(prefix+"backrub %s (%s,%s): angle=%.1f" % \
+      (self.id_str, self.i_mod, self.j_mod, self.backrub_angle), file=out)
 
 def evaluate_backrub_pair_impl (
     calphas_A,

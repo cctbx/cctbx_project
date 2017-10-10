@@ -10,6 +10,7 @@ timestamps are always skipped.
 """
 from __future__ import division
 
+from builtins import object
 __version__ = "$Revision$"
 
 import logging

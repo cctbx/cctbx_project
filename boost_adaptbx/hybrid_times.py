@@ -1,12 +1,15 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from boost_python_hybrid_times_ext import run_c_plus_plus
 import sys, os
 
 if (not hasattr(sys, "gettickeraccumulation")):
-  print "***************************************************"
-  print "WARNING: sys.gettickeraccumulation() not available."
-  print "***************************************************"
-  print
+  print("***************************************************")
+  print("WARNING: sys.gettickeraccumulation() not available.")
+  print("***************************************************")
+  print()
   def gettickeraccumulation():
     return 1000000
   sys.gettickeraccumulation = gettickeraccumulation
@@ -64,9 +67,9 @@ class time_per_python_tick(object):
     self.time_diff = usr_and_sys() - time_0
 
   def report(self, label):
-    print "%-6s %6.3f %10d %10.3f" % (
+    print("%-6s %6.3f %10d %10.3f" % (
       label, self.time_diff, self.ticks_diff,
-      self.time_diff/max(1,self.ticks_diff)*1.e6)
+      self.time_diff/max(1,self.ticks_diff)*1.e6))
     return self
 
 def forever(n_terms, n=200):
@@ -82,41 +85,41 @@ def forever(n_terms, n=200):
     run_c_plus_plus(n, n_terms)
     sum_cpp += usr_and_sys() - time_0
     n_ratios += 1
-    print "mean Python: %6.3f" % (sum_py/n_ratios)
-    print "mean C++:    %6.3f" % (sum_cpp/n_ratios)
+    print("mean Python: %6.3f" % (sum_py/n_ratios))
+    print("mean C++:    %6.3f" % (sum_cpp/n_ratios))
     if (sum_cpp != 0):
-      print "iteration %d: ratio %6.3f" % (n_ratios, sum_py/sum_cpp)
+      print("iteration %d: ratio %6.3f" % (n_ratios, sum_py/sum_cpp))
     else:
-      print "iteration %d: ratio infinity" % n_ratios
-    print
+      print("iteration %d: ratio infinity" % n_ratios)
+    print()
 
 def end_points(n_terms):
-  print "         time      ticks  time/tick"
+  print("         time      ticks  time/tick")
   n = 1
   while (n <= 128):
-    print "n:", n
+    print("n:", n)
     py = time_per_python_tick(run_python, n, n_terms).report("Python")
     cpp = time_per_python_tick(run_c_plus_plus, n, n_terms).report("C++")
     if (cpp.time_diff != 0):
-      print "ratio %6.3f" % (py.time_diff / cpp.time_diff)
+      print("ratio %6.3f" % (py.time_diff / cpp.time_diff))
     else:
-      print "ratio infinity"
+      print("ratio infinity")
     assert abs(py.result - cpp.result) < 1.e-8
-    print
+    print()
     n *= 2
 
 def plot(n_terms):
   for n,m in [(100,100), (1000, 100), (10000, 100), (100000, 100)]:
-    print "                 time      ticks  time/tick"
+    print("                 time      ticks  time/tick")
     reference_result = None
-    for n_python in xrange(0, m+1, m/10):
+    for n_python in range(0, m+1, m/10):
       hy = time_per_python_tick(hybrid(n_python), n, n_terms).report(
         "%6.2f%% Python" % (100.*n_python/n))
       if (reference_result is None):
         reference_result = hy.result
       else:
         assert abs(hy.result - reference_result) < 1.e-10*n
-    print
+    print()
 
 def run():
   n_terms = 6 # larger values lead to integer overflows in factorial()

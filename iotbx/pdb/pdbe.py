@@ -4,6 +4,8 @@ PDBe web services
 
 from __future__ import division
 
+from builtins import zip
+from builtins import object
 from iotbx.pdb.web_service_api import FTPService, RESTService
 from iotbx.pdb.download import openurl, NotFound
 
@@ -161,7 +163,7 @@ class Redirections(object):
 
     blocks = PDB_ENTRY_STATUS.multiple( identifiers = identifiers )
 
-    for ( code, data ) in itertools.izip( identifiers, blocks ):
+    for ( code, data ) in zip( identifiers, blocks ):
       if not data:
         continue
 

@@ -1,5 +1,9 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 class Test(object):
 
   def __init__(self):
@@ -44,7 +48,7 @@ class Test(object):
     if mosaic:
       assert(d['mosaicity'] == 0.1)
     assert(c1 == c2)
-    print 'OK'
+    print('OK')
 
   def tst_crystal_with_scan_points(self):
     from dxtbx.model import Crystal, CrystalFactory
@@ -70,7 +74,7 @@ class Test(object):
       for e1, e2 in zip(A, Acomp):
         assert(abs(e1 - e2) <= eps)
     assert(c1 == c2)
-    print 'OK'
+    print('OK')
 
 if __name__ == '__main__':
   test = Test()

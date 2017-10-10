@@ -55,7 +55,7 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.wxplot :
     try :
       import wxtbx.app
-    except ImportError, e :
+    except ImportError as e :
       raise Sorry("wxPython not available.")
     else :
       app = wxtbx.app.CCTBXApp(0)

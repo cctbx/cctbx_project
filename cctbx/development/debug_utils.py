@@ -1,4 +1,7 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import execfile
+from builtins import range
 from cctbx import sgtbx
 from scitbx.python_utils.command_line import parse_options
 from libtbx.utils import format_cpu_times
@@ -19,7 +22,7 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
     return [symbols.universal_hermann_mauguin()
             for symbols in sgtbx.space_group_symbol_iterator()]
   if (flag_AllSpaceGroups):
-    sg_numbers = xrange(1, 231)
+    sg_numbers = range(1, 231)
   elif (flag_ChiralSpaceGroups):
     sg_numbers = (1, 3, 4, 5, 16, 17, 18, 19, 20, 21, 22, 23, 24, 75,
                   76, 77, 78, 79, 80, 89, 90, 91, 92, 93, 94, 95, 96,
@@ -34,7 +37,7 @@ def get_test_space_group_symbols(flag_AllSpaceGroups,
 
 def random_origin_shift(space_group_info, grid=12):
   xyz = []
-  for i in xrange(3):
+  for i in range(3):
     xyz.append("%s+%d/%d" % ("xyz"[i], random.randrange(grid), grid))
   xyz = ",".join(xyz)
   return space_group_info.change_basis(sgtbx.change_of_basis_op(xyz))
@@ -57,7 +60,7 @@ def loop_space_groups(
   assert chunk_size > 0 and chunk_member < chunk_size
   n_threads = int(flags.Threads)
   if n_threads > 1:
-    print "** Warning: multi-threaded space-group looping disabled **"
+    print("** Warning: multi-threaded space-group looping disabled **")
   if (not flags.RandomSeed): random.seed(0)
   if (len(argv) > 0 + flags.n):
     symbols = argv
@@ -75,10 +78,10 @@ def loop_space_groups(
     space_group_info = sgtbx.space_group_info(symbol)
     sys.stdout.flush()
     if symbols_to_stderr:
-      print >> sys.stderr, space_group_info
+      print(space_group_info, file=sys.stderr)
     sys.stderr.flush()
     if (symbols_to_stdout):
-      print space_group_info
+      print(space_group_info)
       sys.stdout.flush()
     call_back_result = call_back(flags, space_group_info, **kwds)
     sys.stdout.flush()
@@ -89,7 +92,7 @@ def loop_space_groups(
     call_back_results.append(call_back_result)
     if (continue_flag == False): break
   if (show_cpu_times):
-    print format_cpu_times()
+    print(format_cpu_times())
   sys.stdout.flush()
   return call_back_results
 

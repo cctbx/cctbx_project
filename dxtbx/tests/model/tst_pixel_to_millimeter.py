@@ -1,4 +1,9 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import libtbx.load_env
 
 class Test(object):
@@ -41,7 +46,7 @@ class Test(object):
     self.tst_inverted_axis()
 
     # Test passed
-    print 'OK'
+    print('OK')
 
   def tst_single(self, xy):
     from scitbx import matrix
@@ -65,7 +70,7 @@ class Test(object):
     assert approx_equal(xy_corr, xy_corr_gold)
     assert approx_equal(xy_corr_panel, xy_corr_gold)
 
-    print 'OK'
+    print('OK')
 
   def tst_inverted_axis(self):
 
@@ -113,7 +118,7 @@ class Test(object):
     assert abs(v12[0] - v22[0]) < 1e-7
     assert abs(v12[1] - v22[1]) < 1e-7
 
-    print 'OK'
+    print('OK')
 
   def correct_gold(self, xy):
     from scitbx import matrix
@@ -148,7 +153,7 @@ class TestOffsetPxMmStrategy(object):
     from dxtbx.model import Panel
     from dxtbx.model import OffsetParallaxCorrectedPxMmStrategy
     from scitbx.array_family import flex
-    import cPickle as pickle
+    import pickle as pickle
 
     # for future reference this is the array the same shape
     # as the image in pixels with offsets in pixels
@@ -174,14 +179,14 @@ class TestOffsetPxMmStrategy(object):
 
     assert pnew == p
 
-    print 'OK'
+    print('OK')
 
 
 if __name__ == '__main__':
   if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
+    print("Skipping test: dials not present")
   elif not libtbx.env.has_module("dials_regression"):
-    print "Skipping test: dials_regression not present"
+    print("Skipping test: dials_regression not present")
   else:
     Test().run()
     TestOffsetPxMmStrategy().run()

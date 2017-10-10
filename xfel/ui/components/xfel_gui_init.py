@@ -1,11 +1,18 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 06/02/2016
 Last Changed: 02/09/2017
 Description : XFEL UI Initialization module
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -102,7 +109,7 @@ class RunSentinel(Thread):
           for r in new_runs:
             for t in tags:
               r.add_tag(t)
-        print "%d new runs" % len(unknown_runs)
+        print("%d new runs" % len(unknown_runs))
         self.post_refresh()
       time.sleep(10)
 
@@ -152,7 +159,7 @@ class JobMonitor(Thread):
       jobs = db.get_all_jobs(active = self.only_active_jobs)
       jobs = {t.trial:[j for j in jobs if j.trial.id == t.id] for t in trials}
 
-      for js in jobs.values():
+      for js in list(jobs.values()):
         for job in js:
           if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
             continue
@@ -438,7 +445,7 @@ class RunStatsSentinel(Thread):
             self.run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
-      for idx in xrange(len(self.run_numbers)):
+      for idx in range(len(self.run_numbers)):
         run_no = self.run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
@@ -485,7 +492,7 @@ class RunStatsSentinel(Thread):
 
     image_paths_by_run = []
     timestamps_and_params_by_run = []
-    for i in xrange(len(runs)):
+    for i in range(len(runs)):
       run = runs[i]
       ts = timestamps[i]
       outdir = "out" if indexed else "all"
@@ -551,7 +558,7 @@ class ImageDumpThread(Thread):
     self.command = command
 
   def run(self):
-    print self.command
+    print(self.command)
     easy_run.fully_buffered(command=self.command).show_stderr()
 
 # ----------------------------- Unit Cell Sentinel ----------------------------- #
@@ -659,12 +666,12 @@ class FramesSentinel(Thread):
     while self.active:
       trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
       runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
-      print "Total events in trial", trial.trial,
+      print("Total events in trial", trial.trial, end=' ')
       if len(runs) == 0:
         runs = None
       else:
-        print "runs", ", ".join(sorted([str(r.run) for r in runs])),
-      print ":", len(db.get_all_events(trial, runs))
+        print("runs", ", ".join(sorted([str(r.run) for r in runs])), end=' ')
+      print(":", len(db.get_all_events(trial, runs)))
       self.post_refresh()
       time.sleep(2)
 
@@ -683,7 +690,7 @@ class ClusteringResult(wx.PyCommandEvent):
   def GetValue(self):
     return self.result
 
-class Clusterer():
+class Clusterer(object):
   def __init__(self, trial, runblocks, tags, output, sample_size, threshold):
     self.trial = trial
     self.runblocks = runblocks
@@ -719,12 +726,12 @@ class Clusterer():
         pickles = [os.path.join(path, i) for i in os.listdir(path) if
                    i.endswith('pickle') and 'int-' in i]
         all_pickles = all_pickles + pickles
-      except OSError, error:
-        print 'Folder not found!'
-        print error
+      except OSError as error:
+        print('Folder not found!')
+        print(error)
 
     if len(all_pickles) == 0:
-      print 'No images integrated (yet)'
+      print('No images integrated (yet)')
       return
 
     # If clustering button was pressed, do clustering
@@ -1355,7 +1362,7 @@ class JobsTab(BaseTab):
                   self.trial_choice.ctr.GetSelection())
 
   def GetSelectedJobIds(self):
-    return [self.job_list.GetItemData(i) for i in xrange(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
+    return [self.job_list.GetItemData(i) for i in range(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
 
   def onStopJob(self, e):
     if self.all_jobs is None:
@@ -1437,7 +1444,7 @@ class JobsTab(BaseTab):
         if job.id in jobs_to_restart:
           job.delete()
           if job.status != "DELETED":
-            print "Couldn't restart job", job.id, "job is not deleted"
+            print("Couldn't restart job", job.id, "job is not deleted")
             continue
           job.remove_from_db()
 
@@ -1453,7 +1460,7 @@ class JobsTab(BaseTab):
     if e.jobs is not None:
       self.all_jobs = e.jobs
       if str(self.filter).lower() == 'all jobs':
-        selected_trials = e.jobs.keys()
+        selected_trials = list(e.jobs.keys())
       else:
         selected_trials = [int(self.filter.split()[-1])]
 
@@ -1480,7 +1487,7 @@ class JobsTab(BaseTab):
           self.data[job.id] = [t, r, rg, sid, s]
           found_it = False
           # Look to see if item already in list
-          for i in xrange(self.job_list.GetItemCount()):
+          for i in range(self.job_list.GetItemCount()):
             if self.job_list.GetItemData(i) == job.id:
               self.job_list.SetStringItem(i, 3, sid)
               self.job_list.SetStringItem(i, 4, s)
@@ -1494,7 +1501,7 @@ class JobsTab(BaseTab):
 
       # Remove items not sent in the event or otherwise filtered out
       # Need to do it in reverse order to avoid list re-ordering when deleting items
-      for i in reversed(xrange(self.job_list.GetItemCount())):
+      for i in reversed(range(self.job_list.GetItemCount())):
         if self.job_list.GetItemData(i) not in self.data:
           self.job_list.DeleteItem(i)
 
@@ -1503,7 +1510,7 @@ class JobsTab(BaseTab):
       self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
 
       # Restore selected items
-      for i in xrange(self.job_list.GetItemCount()):
+      for i in range(self.job_list.GetItemCount()):
         job_id = self.job_list.GetItemData(i)
         if job_id in selected_jobs:
           self.job_list.Select(i)
@@ -1518,7 +1525,7 @@ class JobsTab(BaseTab):
     self.job_list_sort_flag = self.job_list._colSortFlag
 
   def find_trials(self):
-    print "Found trials"
+    print("Found trials")
     if self.main.db is not None:
       choices = ['All jobs'] + \
                 ['trial {}'.format(i.trial) for i in self.main.db.get_all_trials()]
@@ -1642,7 +1649,7 @@ class StatusTab(BaseTab):
 
   def onHistogram(self, e):
     if self.info != {}:
-      info = [self.info[i] for i in self.info.keys()]
+      info = [self.info[i] for i in list(self.info.keys())]
     else:
       info = []
 
@@ -1678,12 +1685,12 @@ class StatusTab(BaseTab):
     self.iso_box_sizer.DeleteWindows()
 
     if e.GetValue() is None:
-      print 'Nothing to cluster!'
+      print('Nothing to cluster!')
     else:
       counter = 0
       clusters = sorted(e.GetValue(), key=lambda x: len(x.members), reverse=True)
       for cluster in clusters:
-        sorted_pg_comp = sorted(cluster.pg_composition.items(),
+        sorted_pg_comp = sorted(list(cluster.pg_composition.items()),
                                 key=lambda x: -1 * x[1])
         pg_nums = [pg[1] for pg in sorted_pg_comp]
         cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
@@ -1784,7 +1791,7 @@ class StatusTab(BaseTab):
     # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
     #isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
     #isoforms = all([key[:3] == "iso" for key in self.info.keys()])
-    isokeys = self.info.keys()
+    isokeys = list(self.info.keys())
     if "noiso" in isokeys:
       isokeys.remove("noiso")
     isoforms = len(isokeys) > 0
@@ -1802,7 +1809,7 @@ class StatusTab(BaseTab):
         xmax = self.multiplicity_goal
 
       if isoforms:
-        for iso, values in self.info.iteritems():
+        for iso, values in self.info.items():
           if not self.redraw_windows:
             row = self.rows[values['isoform']]['row']
 
@@ -1814,7 +1821,7 @@ class StatusTab(BaseTab):
                           xmax=xmax,
                           n_img=values['n_img'])
       else:
-        for cell, values in self.info.iteritems():
+        for cell, values in self.info.items():
           if not self.redraw_windows:
             #row = self.rows[
             pass
@@ -2060,7 +2067,7 @@ class RunStatsTab(BaseTab):
   def onRunChoice(self, e):
     self.tag_last_five = False
     self.entire_expt = False
-    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    run_numbers_selected = list(map(int, self.run_numbers.ctr.GetCheckedStrings()))
     if self.trial is not None:
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.runstats_light.change_status('idle')
@@ -2154,7 +2161,7 @@ class RunStatsTab(BaseTab):
       image_paths = '\n'.join(paths)
       self.strong_indexed_list.SetValue(image_paths)
     except TypeError:
-      print "Error getting list of best indexed images"
+      print("Error getting list of best indexed images")
       pass
 
   def print_should_have_indexed_paths(self):
@@ -2166,7 +2173,7 @@ class RunStatsTab(BaseTab):
         image_paths = '\n'.join(paths)
         self.should_have_indexed_list.SetValue(image_paths)
       except TypeError:
-        print "Error getting list of images that should have indexed"
+        print("Error getting list of images that should have indexed")
         pass
 
   def select_last_n_runs(self, n):
@@ -2254,13 +2261,13 @@ class RunStatsTab(BaseTab):
     thread.start()
 
   def onDumpImages(self, e):
-    for idx in xrange(len(self.should_have_indexed_timestamps)):
+    for idx in range(len(self.should_have_indexed_timestamps)):
       params, ts_list = self.should_have_indexed_timestamps[idx]
       imgs = self.should_have_indexed_image_paths[idx]
       self.dump_timestamps(params, ts_list, imgs)
 
   def onOpenImages(self, e):
-    for idx in xrange(len(self.strong_indexed_image_timestamps)):
+    for idx in range(len(self.strong_indexed_image_timestamps)):
       params, ts_list = self.strong_indexed_image_timestamps[idx]
       ext = '.' + params['format']
       image_paths = self.strong_indexed_image_paths[idx][:self.n_dump]
@@ -2698,8 +2705,8 @@ class MergeTab(BaseTab):
         pickles = [os.path.join(path, i) for i in os.listdir(path) if
                    i.endswith('pickle') and 'int-' in i]
         self.all_pickles = self.all_pickles + pickles
-      except OSError, error:
-        print 'Folder not found: {}'.format(path)
+      except OSError as error:
+        print('Folder not found: {}'.format(path))
         continue
 
     self.input_number.SetLabel('{} images in {} folders:'
@@ -2799,7 +2806,7 @@ class MergeTab(BaseTab):
       list_prefix = 'prime'
     self.pickle_path_file = os.path.join(self.working_dir,
                            '{}_trial_{}.lst'.format(list_prefix, self.trial_no))
-    print 'Saving list of pickles to ', self.pickle_path_file
+    print('Saving list of pickles to ', self.pickle_path_file)
 
     with open(self.pickle_path_file, 'w') as lfile:
       for pickle in self.all_pickles:
@@ -2870,8 +2877,8 @@ class MergeTab(BaseTab):
       self.prime_run_window.Show(True)
 
     elif e.GetId() == self.tb_btn_cmd.GetId():
-      print 'Submission command:'
-      print command
+      print('Submission command:')
+      print(command)
 
     # Try and write files to created folder
 

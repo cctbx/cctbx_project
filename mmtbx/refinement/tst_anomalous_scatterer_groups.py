@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import zip
 import mmtbx.refinement.anomalous_scatterer_groups
 import mmtbx.f_model
 from cctbx.development import random_structure

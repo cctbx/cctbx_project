@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from psana import *
 import numpy as np
 from libtbx import easy_pickle
@@ -97,7 +99,7 @@ def run(args):
   size = comm.Get_size() # size: number of processes running in this job
 
   if params.dispatch.max_events is None:
-    max_events = sys.maxint
+    max_events = sys.maxsize
   else:
     max_events = params.dispatch.max_events
   if params.input.dark is not None:
@@ -115,14 +117,14 @@ def run(args):
     nevents = min(len(times),max_events)
   # chop the list into pieces, depending on rank.  This assigns each process
   # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
-    print len(mytimes)
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
+    print(len(mytimes))
     #mytimes = mytimes[len(mytimes)-1000:len(mytimes)]
     totals = np.array([0.0])
-    print "initial totals", totals
+    print("initial totals", totals)
 
     for i, t in enumerate(mytimes):
-      print "Event", i, "of", len(mytimes),
+      print("Event", i, "of", len(mytimes), end=' ')
       evt = run.event(t)
       if params.dispatch.events_accepted or params.dispatch.events_all:
         if evt.get("skip_event")==True:
@@ -132,11 +134,11 @@ def run(args):
           continue
       try:
         data = evt.get(Camera.FrameV1,src)
-      except ValueError,e:
+      except ValueError as e:
         src = Source('BldInfo(%s)'%params.input.address)
         data = evt.get(Bld.BldDataSpectrometerV1, src)
       if data is None:
-        print "No data"
+        print("No data")
         continue
       #set default to determine FEE data type
       two_D=False
@@ -144,7 +146,7 @@ def run(args):
       try:
         data = np.array(data.data16().astype(np.int32))
         two_D=True
-      except AttributeError,e:
+      except AttributeError as e:
         data = np.array(data.hproj().astype(np.float64))
 
       if two_D:
@@ -154,7 +156,7 @@ def run(args):
         two_D_data = np.double(data)
       else:
       #used to fix underflow problem that was present in earlier release of psana and pressent for LH80
-        for i in xrange(len(data)):
+        for i in range(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
         if 'dark' in locals():
@@ -162,7 +164,7 @@ def run(args):
         one_D_data = data
 
       totals[0] += 1
-      print "total good:", totals[0]
+      print("total good:", totals[0])
 
       if not 'fee_one_D' in locals():
         fee_one_D = one_D_data
@@ -177,12 +179,12 @@ def run(args):
     acceptedfee1 = np.zeros((fee_one_D.shape))
     if 'fee_two_D' in locals():
       acceptedfee2 = np.zeros((fee_two_D.shape))
-    print "Synchronizing rank", rank
+    print("Synchronizing rank", rank)
   comm.Reduce(fee_one_D,acceptedfee1)
   comm.Reduce(totals,acceptedtotals)
   if 'acceptedfee2' in locals():
     comm.Reduce(fee_two_D,acceptedfee2)
-  print "number averaged", acceptedtotals[0]
+  print("number averaged", acceptedtotals[0])
   if rank == 0:
     if acceptedtotals[0] > 0:
       acceptedfee1 /= acceptedtotals[0]
@@ -215,18 +217,18 @@ def run(args):
       if 'acceptedfee2' in locals():
         easy_pickle.dump(os.path.join(params.output.output_dir,"fee_avg_2_D_"+'r%s'%params.input.run_num+"_rejected.pickle"), acceptedfee2)
         pp2 = PdfPages(os.path.join(params.output.output_dir,"fee_avg_2_D_"+'r%s'%params.input.run_num+"_rejected.pdf"))
-    print "Done"
+    print("Done")
    #plotting result
    # matplotlib needs a different backend when run on the cluster nodes at SLAC
     # these two lines not needed when working interactively at SLAC, or on mac or on viper
 
     if params.input.pixel_to_eV.energy_per_px is not None:
-      xvals = (np.array(range(acceptedfee1.shape[0]))-params.input.pixel_to_eV.x_coord_one)*params.input.pixel_to_eV.energy_per_px+params.input.pixel_to_eV.y_coord_one
+      xvals = (np.array(list(range(acceptedfee1.shape[0])))-params.input.pixel_to_eV.x_coord_one)*params.input.pixel_to_eV.energy_per_px+params.input.pixel_to_eV.y_coord_one
       xvals = xvals[::-1]
 
     if params.input.pixel_to_eV.x_coord_two is not None:
       eV_per_px = (params.input.pixel_to_eV.y_coord_two-params.input.pixel_to_eV.y_coord_one)/(params.input.pixel_to_eV.x_coord_two-params.input.pixel_to_eV.x_coord_one)
-      xvals = (np.array(range(acceptedfee1.shape[0]))-params.input.pixel_to_eV.x_coord_one)*eV_per_px+params.input.pixel_to_eV.y_coord_one
+      xvals = (np.array(list(range(acceptedfee1.shape[0])))-params.input.pixel_to_eV.x_coord_one)*eV_per_px+params.input.pixel_to_eV.y_coord_one
       xvals = xvals[::-1]
 
     if params.input.pixel_to_eV.x_coord_two is None and params.input.pixel_to_eV.energy_per_px is None:

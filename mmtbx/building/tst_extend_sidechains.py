@@ -1,5 +1,9 @@
 from __future__ import division
-from cStringIO import StringIO
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from io import StringIO
 import os.path
 
 def exercise_model_only () :
@@ -101,4 +105,4 @@ if (__name__ == "__main__") :
   exercise_model_only()
   exercise_correct_sequence()
   exercise_cmdline()
-  print "OK"
+  print("OK")

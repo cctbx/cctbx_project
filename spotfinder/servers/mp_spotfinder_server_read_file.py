@@ -1,11 +1,14 @@
 from __future__ import division
-from BaseHTTPServer import HTTPServer
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from http.server import HTTPServer
 import cgi, sys
 from multiprocessing import Process, current_process
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 #backward compatibility with Python 2.5
-try: from urlparse import parse_qs
+try: from urllib.parse import parse_qs
 except Exception: from cgi import parse_qs
 
 def note(format, *args):

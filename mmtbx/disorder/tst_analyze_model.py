@@ -1,11 +1,14 @@
 
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
 from mmtbx.disorder import analyze_model
 from mmtbx.validation import molprobity
 import iotbx.pdb.hierarchy
 from libtbx.utils import null_out
 import libtbx.load_env
-from cStringIO import StringIO
+from io import StringIO
 
 def analyze_fragment (pdb_str) :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
@@ -57,7 +60,7 @@ END
 
 if (__name__ == "__main__") :
   if (not libtbx.env.has_module("probe")) :
-    print "Probe not configured, skipping test"
+    print("Probe not configured, skipping test")
   else :
     exercise()
-    print "OK"
+    print("OK")

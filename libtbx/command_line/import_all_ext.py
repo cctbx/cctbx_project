@@ -1,6 +1,10 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import zip
+from builtins import range
 prios = ["boost", "scitbx", "cctbx", "rstbx", "labelit"]
-prios = dict(zip(prios, range(len(prios))))
+prios = dict(list(zip(prios, list(range(len(prios))))))
 priority_modules = ['dials_algorithms_profile_model_modeller_ext']
 
 def cmp_so(a, b):
@@ -46,10 +50,10 @@ def import_modules():
         full_module = root_module.name + ".".join(dirpath.split(root_path)[-1].split(os.path.sep))
         if full_module in failing_modules:
           continue
-        print full_module
+        print(full_module)
         try:
           exec("import %s" % full_module)
-        except ImportError, e:
+        except ImportError as e:
           if full_module not in ok_to_fail:
             raise e
 
@@ -61,9 +65,9 @@ def run(args):
   from libtbx import introspection
   import os
   import sysconfig
-  print "After script imports:"
-  print "  wall clock time: %.2f" % (time.time() - t_start)
-  print
+  print("After script imports:")
+  print("  wall clock time: %.2f" % (time.time() - t_start))
+  print()
   mb = 1024 * 1024
   lib = os.path.join(
     os.environ["LIBTBX_BUILD"], # intentionally not using libtbx.env for speed
@@ -74,13 +78,13 @@ def run(args):
     if (node.endswith("_ext" + pylibext)):
       ext_so.append(node.split(".")[0])
   ext_so.sort(cmp_so)
-  print "Before importing extensions:"
+  print("Before importing extensions:")
   vmi = introspection.virtual_memory_info()
   vmi.show(prefix="  ")
   prev_vms = vmi.get_bytes('VmSize:')
   prev_rss = vmi.get_bytes('VmRSS:')
-  print "  wall clock time: %.2f" % (time.time() - t_start)
-  print
+  print("  wall clock time: %.2f" % (time.time() - t_start))
+  print()
   for so in ext_so:
     t0 = time.time()
     exec("import %s" % so)
@@ -88,18 +92,18 @@ def run(args):
     vms = vmi.get_bytes('VmSize:')
     rss = vmi.get_bytes('VmRSS:')
     if (vms is not None) : # won't work on Mac
-      print "%.2f %3.0f %3.0f %s" % (
-        time.time()-t0, (vms-prev_vms)/mb, (rss-prev_rss)/mb, so)
+      print("%.2f %3.0f %3.0f %s" % (
+        time.time()-t0, (vms-prev_vms)/mb, (rss-prev_rss)/mb, so))
     else :
       assert (sys.platform in ["darwin", "win32"])
-      print "%.2f %s" % (time.time()-t0, so)
+      print("%.2f %s" % (time.time()-t0, so))
     prev_vms = vms
     prev_rss = rss
-  print
-  print "After importing all extensions:"
+  print()
+  print("After importing all extensions:")
   introspection.virtual_memory_info().show(prefix="  ")
-  print "  wall clock time: %.2f" % (time.time() - t_start)
-  print
+  print("  wall clock time: %.2f" % (time.time() - t_start))
+  print()
 
 if (__name__ == "__main__"):
   import sys

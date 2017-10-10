@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import range
 from dxtbx.model import Scan
 
 def tst_is_angle_valid(scan):
@@ -12,7 +14,7 @@ def tst_is_angle_valid(scan):
     assert(scan.is_angle_valid(i) == True)
   for i in range(os2+1, 360):
     assert(scan.is_angle_valid(i) == False)
-  print "OK"
+  print("OK")
 
 def tst_is_frame_valid(scan):
   """Check that the is_frame_valid function behaves properly."""
@@ -23,7 +25,7 @@ def tst_is_frame_valid(scan):
     assert(scan.is_image_index_valid(i) == True)
   for i in range(image_range[1]+1, image_range[1] + 100):
     assert(scan.is_image_index_valid(i) == False)
-  print "OK"
+  print("OK")
 
 def tst_get_angle_from_frame(scan):
   pass
@@ -39,7 +41,7 @@ def tst_scan_oscillation_recycle(scan):
     oscillation = scan.get_oscillation(deg=deg)
     scan.set_oscillation(oscillation, deg=deg)
     assert scan.get_oscillation(deg=deg) == oscillation
-  print 'OK'
+  print('OK')
 
 def tst_scan_360_append():
 
@@ -52,7 +54,7 @@ def tst_scan_360_append():
   assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
   assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
   assert(scan.get_image_range() == (1, 720))
-  print 'OK'
+  print('OK')
 
   scan1 = Scan((1, 360), (0.0, 1.0))
   scan2 = Scan((361, 720), (360.0, 1.0))
@@ -63,7 +65,7 @@ def tst_scan_360_append():
   assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
   assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
   assert(scan.get_image_range() == (1, 720))
-  print 'OK'
+  print('OK')
 
 def tst_swap():
 
@@ -74,7 +76,7 @@ def tst_swap():
   assert(scan1.get_image_range() == (40, 60))
   assert(scan2.get_oscillation() == (0.0, 1.0))
   assert(scan1.get_oscillation() == (10.0, 2.0))
-  print 'OK'
+  print('OK')
 
 def tst_from_phil():
   from dxtbx.model.scan import ScanFactory, scan_phil_scope
@@ -106,7 +108,7 @@ def tst_from_phil():
   assert s2.get_image_range() == (1, 20)
   assert s2.get_oscillation() == (20, 0.01)
 
-  print 'OK'
+  print('OK')
 
 def run():
   image_range = (0, 1000)

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 def run(args, distance_cutoff=3.5):
   from iotbx.option_parser import option_parser
   command_line = (option_parser(
@@ -49,8 +50,8 @@ def run(args, distance_cutoff=3.5):
     for entry in strudat_entries.entries:
       if (co.tag is not None and co.tag != entry.tag):
         continue
-      print "strudat tag:", entry.tag
-      print
+      print("strudat tag:", entry.tag)
+      print()
       dls.distance_and_repulsion_least_squares(
         si_structure=entry.as_xray_structure(),
         distance_cutoff=distance_cutoff,

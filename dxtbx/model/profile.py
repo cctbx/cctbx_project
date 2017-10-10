@@ -9,17 +9,17 @@
 #
 from __future__ import absolute_import, division
 
+from builtins import object
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
-class ProfileModelBaseIface(object):
+class ProfileModelBaseIface(with_metaclass(ABCMeta, object)):
   '''
   A basic profile model class. This assumes no interface other than
   serialization methods. Classes inheriting from this class can
   then be serialized via a simple registry
 
   '''
-
-  __metaclass__ = ABCMeta
 
   @abstractmethod
   def to_dict(self):

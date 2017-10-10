@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 from cctbx import crystal
 import cctbx.crystal.direct_space_asu
 from cctbx.array_family import flex
@@ -21,7 +23,7 @@ def exercise_non_crystallographic():
     (5.216, 5.927, 6.782),
     (7.000, 7.000, 7.000)])
   have_one_unsorted = False
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial > 0):
       sites_cart = sites_cart.select(
         flex.random_permutation(size=sites_cart.size()))
@@ -78,7 +80,7 @@ def exercise_crystallographic():
     (0.1, 0.3, 0.0),
     (0.9, 0.1, 0.0),
     (0.8, 0.2, 0.0)])
-  for i_trial in xrange(10):
+  for i_trial in range(10):
     if (i_trial > 0):
       sites_frac = sites_frac.select(
         flex.random_permutation(size=sites_frac.size()))
@@ -102,7 +104,7 @@ def exercise_crystallographic():
 def exercise():
   exercise_non_crystallographic()
   exercise_crystallographic()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

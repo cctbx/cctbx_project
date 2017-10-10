@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 import libtbx.load_env
 if(not libtbx.env.has_module(name="phaser")):
   phaser = None

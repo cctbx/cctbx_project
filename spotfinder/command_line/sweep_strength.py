@@ -1,6 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME distl.sweep_strength
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
+from builtins import range
+from builtins import object
 import spotfinder
 import libtbx.phil
 from libtbx.utils import Sorry
@@ -107,7 +110,7 @@ def print_table(spotfinder_result, keys, out=None):
     out = sys.stdout
   from libtbx import table_utils
   rows = table(spotfinder_result, keys)
-  print >> out, table_utils.format(rows, has_header=True)
+  print(table_utils.format(rows, has_header=True), file=out)
 
 def as_columns(spotfinder_results):
   d = {}
@@ -135,7 +138,7 @@ def plot(spotfinder_results, file_name):
   columns = as_columns(spotfinder_results)
   n_spots = columns.get('N_spots_inlier')
   resolution = columns.get('resolution')
-  i_image = range(1, len(n_spots)+1)
+  i_image = list(range(1, len(n_spots)+1))
   fig = pyplot.figure()
   ax1 = fig.add_subplot(111)
   sc1 = ax1.scatter(i_image, n_spots, s=20, color='blue', marker='o', alpha=0.5)
@@ -162,7 +165,7 @@ def as_csv(spotfinder_results, out=None):
     out = sys.stdout
   columns = as_columns(spotfinder_results)
   from iotbx import csv_utils
-  csv_utils.writer(out, columns.values(), field_names=columns.keys())
+  csv_utils.writer(out, list(columns.values()), field_names=list(columns.keys()))
 
 
 def run(args, command_name="distl.sweep_strength"):
@@ -173,13 +176,13 @@ plots of number of spots and resolution with image number.
 """
 
   if (len(args) == 0 or args[0] in ["H","h","-H","-h","help","--help","-help"]):
-    print "usage:   %s image_prefix_*.img [parameter=value ...]" % command_name
-    print "example: %s lysozyme_*.img distl.minimum_spot_area=8 plot.file_name=lysozyme.pdf"%command_name
+    print("usage:   %s image_prefix_*.img [parameter=value ...]" % command_name)
+    print("example: %s lysozyme_*.img distl.minimum_spot_area=8 plot.file_name=lysozyme.pdf"%command_name)
     master_params.show(attributes_level=1,expert_level=1)
-    print help_str
+    print(help_str)
     return
 
-  print "%s: characterization of candidate Bragg spots"%command_name
+  print("%s: characterization of candidate Bragg spots"%command_name)
 
   phil_objects = []
   argument_interpreter = master_params.command_line_argument_interpreter(
@@ -205,14 +208,14 @@ plots of number of spots and resolution with image number.
   params = working_params.extract()
 
   if params.distl.verbosity > 0:
-    print "#Parameters used:"
-    print "#phil __ON__"
-    print
+    print("#Parameters used:")
+    print("#phil __ON__")
+    print()
     working_params = master_params.format(python_object=params)
     working_params.show(expert_level=1)
-    print
-    print "#phil __OFF__"
-    print
+    print()
+    print("#phil __OFF__")
+    print()
 
   from spotfinder.applications import signal_strength
 

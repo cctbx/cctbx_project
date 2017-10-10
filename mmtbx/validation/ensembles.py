@@ -2,6 +2,9 @@
 # TODO tests
 
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 from libtbx import slots_getstate_setstate_default_initializer
@@ -43,7 +46,7 @@ class ensemble_validation (object) :
           self.residue_ensembles[i_res].append(residue)
     self.validations = easy_mp.pool_map(
       fixed_func=self.validate_single_model,
-      iterable=range(len(pdb_hierarchies)),
+      iterable=list(range(len(pdb_hierarchies))),
       processes=nproc)
     rama_by_residue = combine_model_validation_results(
       validation_objects=[ rama for rama, rota in self.validations ],
@@ -120,7 +123,7 @@ class residue_analysis (slots_getstate_setstate_default_initializer) :
   __slots__ = ["id_str", "rama", "rota", "residues"]
   def show (self, out=sys.stdout, prefix="") :
     if (self.rota is not None) :
-      print >> out, prefix + self.rota.as_string()
+      print(prefix + self.rota.as_string(), file=out)
 
 def combine_model_validation_results (
     validation_objects,
@@ -146,7 +149,7 @@ def combine_model_validation_results (
       if (not id_str in results_dict) :
         msg = "The residue ID '%s' was not found in the expected list."%id_str
         if (ignore_unexpected_residues) :
-          print >> log, "  " + msg
+          print("  " + msg, file=log)
         else :
           raise RuntimeError(msg)
       else :

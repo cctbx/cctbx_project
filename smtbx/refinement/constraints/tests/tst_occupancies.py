@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 import os
 import smtbx.refinement
 from libtbx.test_utils import approx_equal
@@ -77,7 +79,7 @@ digraph dependencies {
 
 def run():
   exercise_simple_disorder()
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   run()

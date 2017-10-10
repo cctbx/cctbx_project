@@ -1,6 +1,10 @@
 "Transfer of CNS reflection files to flex arrays."
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
+from builtins import range
+from builtins import object
 from iotbx.cns.crystal_symmetry_utils import \
   re_sg_uc, re_uc_sg, crystal_symmetry_from_re_match
 from cctbx import crystal
@@ -110,8 +114,8 @@ class cns_reciprocal_space_object(object):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "name=%s type=%s len(data)=%d" % (
-      self.name, self.type, self.data.size())
+    print(prefix + "name=%s type=%s len(data)=%d" % (
+      self.name, self.type, self.data.size()), file=f)
 
   def append(self, h, value):
     self.indices.append(h)
@@ -191,7 +195,7 @@ class CNS_xray_reflection_Reader(CNS_input):
           self.raiseError("unrecognized keyword")
         self.level = self.level - 1
       elif (word == "END"):
-        if (xray_objects.has_key(name)):
+        if (name in xray_objects):
           self.raiseError("duplicate declaration of NAME=" + name)
         if (domain != "reciprocal"):
           self.raiseError("real space objects are not supported")
@@ -215,7 +219,7 @@ class CNS_xray_reflection_Reader(CNS_input):
       elif (word == "OBJE"):
         self.level = self.level + 1
         name = self.getNextWord()
-        if (not xray_objects.has_key(name)):
+        if (name not in xray_objects):
           self.raiseError("reciprocal space object " + name
                           + " does not exist")
         if (xray_objects[name].type != "real"):
@@ -256,7 +260,7 @@ class CNS_xray_reflection_Reader(CNS_input):
         if (word == "INDE"):
           self.level = self.level + 1
           h = [None] * 3
-          for i in xrange(3):
+          for i in range(3):
             word = gNW()
             try:
               h[i] = int(word)
@@ -282,7 +286,7 @@ class CNS_xray_reflection_Reader(CNS_input):
           name = word
           n = 1
           if (type == "complex"): n = 2
-          for i in xrange(n):
+          for i in range(n):
             word = gNW()
             if (type == "integer"):
               try:
@@ -390,18 +394,18 @@ class cns_reflection_file(object):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix + "nreflections=%d" % self.nreflections
-    print >> f, prefix + "anomalous=" + str(self.anomalous)
-    for rso in self.reciprocal_space_objects.values():
+    print(prefix + "nreflections=%d" % self.nreflections, file=f)
+    print(prefix + "anomalous=" + str(self.anomalous), file=f)
+    for rso in list(self.reciprocal_space_objects.values()):
       rso.show_summary(f=f, prefix=prefix)
     for g in self.groups:
-      print >> f, prefix + "group: " + str(g)
+      print(prefix + "group: " + str(g), file=f)
 
   def optimize(self):
-    rsos = self.reciprocal_space_objects.values()
-    for i in xrange(len(rsos)-1):
+    rsos = list(self.reciprocal_space_objects.values())
+    for i in range(len(rsos)-1):
       h_i = rsos[i].indices
-      for j in xrange(i+1, len(rsos)):
+      for j in range(i+1, len(rsos)):
         h_j = rsos[j].indices
         if (flex.order(h_i, h_j) == 0):
           rsos[j].indices = h_i
@@ -426,9 +430,9 @@ class cns_reflection_file(object):
       assert not match.have_singles()
       matches.append(match)
     hl = flex.hendrickson_lattman()
-    for ih in xrange(miller_indices.size()):
+    for ih in range(miller_indices.size()):
       coeff = []
-      for ic in xrange(4):
+      for ic in range(4):
         ih0, ih1 = matches[ic].pairs()[ih]
         assert ih0 == ih
         coeff.append(rsos[ic].data[ih1])
@@ -468,7 +472,7 @@ class cns_reflection_file(object):
       base_array_info = miller.array_info(source_type="cns_reflection_file")
     result = []
     done = set()
-    for group_index in xrange(len(self.groups)):
+    for group_index in range(len(self.groups)):
       names, miller_indices, hl = self.join_hl_group(group_index)
       result.append(self._as_miller_array(
         crystal_symmetry, miller_indices, hl).set_info(
@@ -476,7 +480,7 @@ class cns_reflection_file(object):
       for name in names:
         done.add(name)
     real_arrays = {}
-    for rso in self.reciprocal_space_objects.values():
+    for rso in list(self.reciprocal_space_objects.values()):
       if (rso.name in done): continue
       if (not rso.is_real()): continue
       real_arrays[rso.name.lower()] = rso
@@ -487,7 +491,7 @@ class cns_reflection_file(object):
           base_array_info.customized_copy(labels=[obs.name, sigma.name])))
       done.add(obs.name)
       done.add(sigma.name)
-    for rso in self.reciprocal_space_objects.values():
+    for rso in list(self.reciprocal_space_objects.values()):
       if (rso.name in done): continue
       result.append(self._as_miller_array(
         crystal_symmetry, rso.indices, rso.data).set_info(
@@ -507,7 +511,7 @@ def group_obs_sigma(real_arrays):
         done.add(i.name)
         done.add(s.name)
         break
-  for name,f in real_arrays.items():
+  for name,f in list(real_arrays.items()):
     if (f.name in done): continue
     rest = None
     for prefix in ("fobs", "f_obs", "f", ""):
@@ -536,7 +540,7 @@ def run(args):
   to_pickle = "--pickle" in args
   for file_name in args:
     if (file_name.startswith("--")): continue
-    print file_name + ":"
+    print(file_name + ":")
     f = open(file_name, "r")
     t0 = os.times()
     reflection_file = cns_reflection_file(f)
@@ -544,12 +548,12 @@ def run(args):
     t_parse = tn[0]+tn[1]-t0[0]-t0[1]
     f.close()
     reflection_file.show_summary()
-    print
+    print()
     crystal_symmetry = crystal.symmetry((), "P 1")
     miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry)
     for miller_array in miller_arrays:
       miller_array.show_summary()
-      print
+      print()
     if (to_pickle):
       pickle_file_name = os.path.split(file_name)[1] + ".pickle"
       t0 = os.times()
@@ -560,7 +564,7 @@ def run(args):
       easy_pickle.load(pickle_file_name)
       tn = os.times()
       t_load = tn[0]+tn[1]-t0[0]-t0[1]
-      print "parse: %.2f, dump: %.2f, load: %.2f" % (t_parse, t_dump, t_load)
-    print
+      print("parse: %.2f, dump: %.2f, load: %.2f" % (t_parse, t_dump, t_load))
+    print()
   t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  print("u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1]))

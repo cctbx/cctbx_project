@@ -11,6 +11,8 @@
 # Experimental format for TIA .ser files used by FEI microscope at eBIC.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
+from builtins import zip
 from dxtbx.format.FormatSER import FormatSER
 
 class FormatSEReBIC(FormatSER):
@@ -90,5 +92,5 @@ class FormatSEReBIC(FormatSER):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatSEReBIC.understand(arg)
+    print(FormatSEReBIC.understand(arg))
 

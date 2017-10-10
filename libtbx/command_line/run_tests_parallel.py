@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
@@ -55,7 +56,7 @@ def run (args, return_list_of_tests=None) :
   if params.run_in_tmp_dir:
     from libtbx.test_utils import open_tmp_directory
     run_dir = open_tmp_directory()
-    print 'Running tests in %s' % run_dir
+    print('Running tests in %s' % run_dir)
     os.chdir(run_dir)
   elif return_list_of_tests:
     pass # don't need to check anything
@@ -70,9 +71,9 @@ def run (args, return_list_of_tests=None) :
   all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
-      print 'DANGER '*10
-      print 'Using the directory option in cctbx_project can be very time consuming'
-      print 'DANGER '*10
+      print('DANGER '*10)
+      print('Using the directory option in cctbx_project can be very time consuming')
+      print('DANGER '*10)
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
@@ -90,18 +91,18 @@ def run (args, return_list_of_tests=None) :
     "phenix_regression/model_vs_data/tst_00.py",
     ]
   if ptime>time.time():
-    print '\n%s' % ('='*80)
-    print '\n  POSTPONING THE FOLLOWING TESTS FOR %0.1f HOURS' % (
-      (ptime-time.time())/(60*60))
+    print('\n%s' % ('='*80))
+    print('\n  POSTPONING THE FOLLOWING TESTS FOR %0.1f HOURS' % (
+      (ptime-time.time())/(60*60)))
     while plist:
       for s in plist:
         for i, t in enumerate(all_tests):
           if t.find(s)>-1:
-            print '    %s' % t
+            print('    %s' % t)
             del all_tests[i]
             break
         plist.remove(s)
-    print '\n%s' % ('='*80)
+    print('\n%s' % ('='*80))
   #
   #
   #
@@ -120,14 +121,14 @@ def run (args, return_list_of_tests=None) :
     verbosity=params.verbosity,
     max_time=params.max_time)
   log.close()
-  print """\nSee run_tests_parallel_zlog for full output.\n"""
+  print("""\nSee run_tests_parallel_zlog for full output.\n""")
   if (result.failure > 0) :
-    print ""
-    print "*" * 80
-    print "ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
-      result.failure
-    print "*" * 80
-    print ""
+    print("")
+    print("*" * 80)
+    print("ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
+      result.failure)
+    print("*" * 80)
+    print("")
   return result.failure
 
 if (__name__ == "__main__") :

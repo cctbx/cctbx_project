@@ -1,4 +1,7 @@
 from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
 from libtbx import slots_getstate_setstate
 from scitbx import matrix
 from boost import rational
@@ -129,7 +132,7 @@ class cut(cut_expr_ops):
     n = tuple(self.n)
     minus_n = tuple([-e for e in n])
     matching_n = None
-    for key,value in short_cuts.__dict__.items():
+    for key,value in list(short_cuts.__dict__.items()):
       if (isinstance(value, cut)):
         if (value.n == n):
           if (value.c == self.c):
@@ -217,7 +220,7 @@ class cut(cut_expr_ops):
 
   def evaluate(self, point):
     result = self.c
-    for i in xrange(3):
+    for i in range(3):
       result += self.n[i] * point[i]
     return result
 
@@ -255,7 +258,7 @@ class cut(cut_expr_ops):
 
   def get_point_in_plane(self):
     result = [0,0,0]
-    for i in xrange(3):
+    for i in range(3):
       if (self.n[i] != 0):
         result[i] = -rational.int(self.c) / self.n[i]
         return result

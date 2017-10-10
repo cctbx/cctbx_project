@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx.eltbx import xray_scattering
 import scitbx.math.gaussian_fit
 import cctbx.eltbx.gaussian_fit
@@ -73,7 +74,7 @@ def run():
     table_2_o2minus,
     table_2_sigmas,
     wk.fetch())
-  print "max error:", flex.max(gaussian_fit.significant_relative_errors())
+  print("max error:", flex.max(gaussian_fit.significant_relative_errors()))
   cctbx.eltbx.gaussian_fit.write_plots(
     plots_dir="rez_plots",
     label=wk.label(),

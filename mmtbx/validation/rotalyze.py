@@ -1,5 +1,8 @@
 
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
+from builtins import object
 from mmtbx.validation import residue, validation
 from mmtbx.validation import graphics
 from iotbx import data_plots
@@ -154,8 +157,8 @@ class rotalyze (validation) :
               if show_errors:
                 kwargs['incomplete'] = True
                 result = rotamer(**kwargs)
-                print >> out, '%s is missing some sidechain atoms' % \
-                  result.id_str()
+                print('%s is missing some sidechain atoms' % \
+                  result.id_str(), file=out)
                 self.results.append(result)
               continue
             if (chis is not None):
@@ -205,8 +208,8 @@ class rotalyze (validation) :
       return "OUTLIER"
 
   def show_summary (self, out=sys.stdout, prefix="") :
-    print >> out, prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
-      (self.out_percent, self.get_outliers_goal())
+    print(prefix + 'SUMMARY: %.2f%% outliers (Goal: %s)' % \
+      (self.out_percent, self.get_outliers_goal()), file=out)
 
   def get_outliers_goal(self):
 #   if self.data_version == '500' : return "< 1%"

@@ -5,6 +5,8 @@ chemical environments.
 """
 
 from __future__ import division
+from builtins import str
+from builtins import range
 from mmtbx import ions
 from iotbx.pdb import common_residue_names_get_class as get_class
 from cctbx.eltbx import sasaki
@@ -28,7 +30,7 @@ chem_carboxy, \
   chem_chloride, \
   chem_oxygen, \
   chem_nitrogen, \
-  chem_sulfur = range(N_SUPPORTED_ENVIRONMENTS)
+  chem_sulfur = list(range(N_SUPPORTED_ENVIRONMENTS))
 
 CHEM_ENV_LABELS = [
   "Coordinating carboxy group",
@@ -532,7 +534,7 @@ def find_nearby_atoms (
   rt_mx_i_inv = asu_mappings.get_rt_mx(i_seq, 0).inverse()
   atom_i = pdb_atoms[i_seq]
   # Create the primary list of contacts
-  for j_seq, j_sym_groups in asu_dict.items():
+  for j_seq, j_sym_groups in list(asu_dict.items()):
     site_j = sites_frac[j_seq]
     atom_j = pdb_atoms[j_seq]
     # Filter out hydrogens

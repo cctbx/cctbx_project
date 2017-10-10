@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.mtz
 from cctbx.array_family import flex
@@ -124,7 +125,7 @@ def exercise(rotamer_manager, sin_cos_table,
     geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
     normalization = True)
   for i in [1,2]:
-    print "-"*10
+    print("-"*10)
     result = mmtbx.refinement.real_space.fit_residues.run(
       pdb_hierarchy     = pdb_hierarchy_poor,
       crystal_symmetry  = xrs_poor.crystal_symmetry(),
@@ -151,4 +152,4 @@ if(__name__ == "__main__"):
   exercise(
     rotamer_manager = rotamer_manager,
     sin_cos_table   = sin_cos_table)
-  print "Time: %6.4f"%(time.time()-t0)
+  print("Time: %6.4f"%(time.time()-t0))

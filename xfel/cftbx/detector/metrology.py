@@ -304,7 +304,7 @@ def regularize_transformation_matrices(matrices, key=(0,)):
   next_depth = len(key) + 1
 
   # Base case: return if at the maximum depth.
-  keys = [k for k in matrices.keys()
+  keys = [k for k in list(matrices.keys())
           if (len(k) == next_depth and k[0:next_depth - 1] == key)]
   if (len(keys) == 0):
     return

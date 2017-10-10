@@ -1,10 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import chr
+from builtins import str
 import fable
 from libtbx.test_utils import Exception_expected
 
 def try_code_none(f):
   try: f(code=None)
-  except TypeError, e: pass
+  except TypeError as e: pass
   else: raise Exception_expected
 
 def exercise_unsigned_integer_scan(f):
@@ -102,7 +105,7 @@ def exercise_fem_utils_int_types():
   expected = [1, 2, 4, 8]
   if (int_sizes != expected):
     hpp = "fem/utils/int_sizes.hpp"
-    print "FATAL: %s: sizes are" % hpp, int_sizes, "but should be", expected
+    print("FATAL: %s: sizes are" % hpp, int_sizes, "but should be", expected)
     raise RuntimeError(
       "%s needs to be adjusted for this platform." % hpp)
 
@@ -111,8 +114,8 @@ def exercise_fem_real_types():
   expected = [4, 8]
   if (real_sizes[:2] != expected):
     hpp = "fem/data_types_star.hpp"
-    print "FATAL: %s: sizes are" % hpp, real_sizes[:2], \
-      "but should be", expected
+    print("FATAL: %s: sizes are" % hpp, real_sizes[:2], \
+      "but should be", expected)
     raise RuntimeError(
       "%s needs to be adjusted for this platform." % hpp)
   assert real_sizes[2] >= real_sizes[1]
@@ -120,43 +123,43 @@ def exercise_fem_real_types():
 def exercise_fem_format_tokenizer():
   f = fable.exercise_fem_format_tokenizer
   try: f("")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: empty string"
   else: raise Exception_expected
   try: f("(")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: ("
   else: raise Exception_expected
   try: f("x")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: x"
   else: raise Exception_expected
   try: f("  x  ")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: x"
   else: raise Exception_expected
   try: f("'")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: '"
   else: raise Exception_expected
   try: f("''")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: ''"
   else: raise Exception_expected
   try: f("'''")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: '''"
   else: raise Exception_expected
   try: f("''''")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: ''''"
   else: raise Exception_expected
   try: f("' '")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: ' '"
   else: raise Exception_expected
   try: f('" "')
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == 'Invalid FORMAT specification: " "'
   else: raise Exception_expected
   assert f("()") == []
@@ -180,11 +183,11 @@ def exercise_fem_format_tokenizer():
   assert f(" ( + 1 P ) ") == [("format", "+1p")]
   assert f(" ( - 2 3 p ) ") == [("format", "-23p")]
   try: f(" ( + 1 X ) ")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: (+1x)"
   else: raise Exception_expected
   try: f(" ( 8 H ) ")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == \
       "FATAL: Not supported: FORMAT Hollerith edit descriptor: (8h)"
   else: raise Exception_expected
@@ -200,7 +203,7 @@ def exercise_fem_format_tokenizer():
   assert f("(D20)") == [("format", "d20")]
   assert f("(D30.10)") == [("format", "d30.10")]
   try: f("(D30.)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: (d30.)"
   else: raise Exception_expected
   assert f("(A)") == [("format", "a")]
@@ -213,11 +216,11 @@ def exercise_fem_format_tokenizer():
   assert f("( S P )") == [("format", "sp")]
   assert f("( s S )") == [("format", "ss")]
   try: f("(T)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: (t)"
   else: raise Exception_expected
   try: f("(TL)")
-  except RuntimeError, e:
+  except RuntimeError as e:
     assert str(e) == "Invalid FORMAT specification: (tl)"
   else: raise Exception_expected
   assert f("(T12)") == [("format", "t12")]
@@ -463,7 +466,7 @@ def run(args):
     exercise_fem_format_tokenizer()
     exercise_fem_utils_string_to_double()
     exercise_fem_utils_string_to_double_fmt()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   import sys

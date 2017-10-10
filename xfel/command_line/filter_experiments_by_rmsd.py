@@ -13,6 +13,9 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.filter_experiments_by_rmsd
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import range
+from builtins import object
 from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
@@ -86,7 +89,7 @@ class Script(object):
 
     assert len(reflections) == 1
     reflections = reflections[0]
-    print "Found", len(reflections), "reflections", "and", len(experiments), "experiments"
+    print("Found", len(reflections), "reflections", "and", len(experiments), "experiments")
 
     difference_vector_norms = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
 
@@ -97,7 +100,7 @@ class Script(object):
 
     data = flex.double()
     counts = flex.double()
-    for i in xrange(len(experiments)):
+    for i in range(len(experiments)):
       dvns = difference_vector_norms.select(reflections['id']==i)
       counts.append(len(dvns))
       if len(dvns) == 0:
@@ -107,7 +110,7 @@ class Script(object):
       data.append(rmsd)
     data *= 1000
     subset = data.select(counts > 0)
-    print len(subset), "experiments with > 0 reflections"
+    print(len(subset), "experiments with > 0 reflections")
 
     if params.show_plots:
       h = flex.histogram(subset, n_slots=40)
@@ -123,7 +126,7 @@ class Script(object):
 
     outliers = counts == 0
     min_x, q1_x, med_x, q3_x, max_x = five_number_summary(subset)
-    print "Five number summary of RMSDs (microns): min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x)
+    print("Five number summary of RMSDs (microns): min %.1f, q1 %.1f, med %.1f, q3 %.1f, max %.1f"%(min_x, q1_x, med_x, q3_x, max_x))
     iqr_x = q3_x - q1_x
     cut_x = params.iqr_multiplier * iqr_x
     outliers.set_selected(data > q3_x + cut_x, True)
@@ -131,7 +134,7 @@ class Script(object):
 
     filtered_reflections = flex.reflection_table()
     filtered_experiments = ExperimentList()
-    for i in xrange(len(experiments)):
+    for i in range(len(experiments)):
       if outliers[i]:
         continue
       refls = reflections.select(reflections['id']==i)
@@ -141,11 +144,11 @@ class Script(object):
 
     zeroes = counts == 0
     n_zero = len(counts.select(zeroes))
-    print "Removed %d bad experiments and %d experiments with zero reflections, out of %d (%%%.1f)"%(
+    print("Removed %d bad experiments and %d experiments with zero reflections, out of %d (%%%.1f)"%(
       len(experiments)-len(filtered_experiments)-n_zero,
       n_zero,
       len(experiments),
-      100*((len(experiments)-len(filtered_experiments))/len(experiments)))
+      100*((len(experiments)-len(filtered_experiments))/len(experiments))))
     from dxtbx.model.experiment_list import ExperimentListDumper
     dump = ExperimentListDumper(filtered_experiments)
     dump.as_json(params.output.filtered_experiments)

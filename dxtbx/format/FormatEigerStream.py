@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import, division
+from builtins import str
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
 from dxtbx.model import Beam # import dependency

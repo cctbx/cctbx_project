@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from iotbx import crystal_symmetry_from_any
 
 def exercise():
@@ -49,7 +51,7 @@ def exercise():
   cs = crystal_symmetry_from_any.from_string(killer4)
   assert(cs is None)
 
-  print "OK"
+  print("OK")
 
 if __name__=="__main__":
   exercise()

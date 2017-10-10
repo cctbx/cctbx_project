@@ -1,16 +1,21 @@
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
 Last Changed: 09/07/2017
 Description : Module with miscellaneous useful functions and classes
 '''
+from __future__ import print_function
 
 import os
 import sys
 import wx
-from cStringIO import StringIO
+from io import StringIO
 
 from datetime import datetime
 from iota import iota_version
@@ -41,14 +46,14 @@ def noneset(value):
   else:
     return value
 
-class UnicodeCharacters():
+class UnicodeCharacters(object):
   def __init__(self):
     self.alpha = u'\N{GREEK SMALL LETTER ALPHA}'.encode('utf-8')
     self.beta = u'\N{GREEK SMALL LETTER BETA}'.encode('utf-8')
     self.gamma = u'\N{GREEK SMALL LETTER GAMMA}'.encode('utf-8')
     self.sigma = u'\N{GREEK SMALL LETTER SIGMA}'.encode('utf-8')
 
-class WxFlags():
+class WxFlags(object):
   def __init__(self):
     self.stack = wx.TOP | wx.RIGHT | wx.LEFT
     self.expand = wx.TOP | wx.RIGHT | wx.LEFT | wx.EXPAND
@@ -88,7 +93,7 @@ def main_log(logfile, entry, print_tag=False):
       lf.write('{}\n'.format(entry))
 
   if print_tag:
-    print entry
+    print(entry)
 
 def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   """ Generates a base folder for converted pickles and/or grid search and/or
@@ -166,6 +171,6 @@ def make_image_path(raw_img, input_base, base_path):
 
 def iota_exit(silent=False):
   if not silent:
-    print '\n\nIOTA version {0}'.format(iota_version)
-    print '{}\n'.format(now)
+    print('\n\nIOTA version {0}'.format(iota_version))
+    print('{}\n'.format(now))
   sys.exit()

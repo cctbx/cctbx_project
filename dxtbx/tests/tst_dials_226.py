@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 from dxtbx.datablock import DataBlockFactory
 import libtbx.load_env
 import os
@@ -6,7 +7,7 @@ import os
 def run():
   # https://github.com/dials/dials/issues/226
   if not libtbx.env.has_module("dials_regression"):
-    print "Skipping tst_dials_226.py: dials_regression not present"
+    print("Skipping tst_dials_226.py: dials_regression not present")
     return
   dials_regression = libtbx.env.dist_path('dials_regression')
   h5_path = os.path.join(
@@ -22,4 +23,4 @@ def run():
 
 if __name__ == '__main__':
   #run() # disabled 2016/OCT/17 to enable nightly builds to pass
-  print 'OK'
+  print('OK')

@@ -1,11 +1,15 @@
 from __future__ import division
 
+from builtins import str
+from builtins import range
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
 Last Changed: 04/13/2017
 Description : IOTA GUI Initialization module
 '''
+from __future__ import print_function
 
 import os
 import wx
@@ -193,7 +197,7 @@ class MainWindow(wx.Frame):
               self.input_window.input)
 
   def onItemInserted(self, e):
-    print self.input_window.input.all_data_images
+    print(self.input_window.input.all_data_images)
 
   def onReset(self, e):
     self.reset_settings()

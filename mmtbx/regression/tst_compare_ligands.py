@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 
@@ -31,7 +32,7 @@ HETATM    7  H3  ACT X   1       0.183  -0.460  -1.277  1.00 20.00      A    H
     out=null_out())
   assert (len(rmsds) == 1)
   assert approx_equal(rmsds[0][0], 0.444, eps=0.0001)
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__") :
   exercise()

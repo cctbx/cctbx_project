@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 import multiprocessing
 
 class stderr_capturing_process(multiprocessing.Process):

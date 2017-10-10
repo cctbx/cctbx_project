@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
@@ -113,7 +114,7 @@ class fab_elbow_angle(object):
     Get the eigen vector for eigen value 1 and normalize it
     '''
     v = eigen.vectors()
-    e = eigen.values()
+    e = list(eigen.values())
     indx = None
     # select eigenvector that corespondes to a real egienvalue == 1
     for i,x in enumerate(e):

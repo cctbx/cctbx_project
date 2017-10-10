@@ -1,26 +1,31 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 from mmtbx.refinement import tst_tardy_pdb
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import show_times_at_exit
 from libtbx.queuing_system_utils import chunk_manager
 from libtbx import Auto
-from cStringIO import StringIO
+from io import StringIO
 import pprint
 import traceback
 import sys, os
 op = os.path
 
 def report_exception(context_info):
-  print ">Begin exception"
-  print "Exception:", context_info
+  print(">Begin exception")
+  print("Exception:", context_info)
   sys.stdout.flush()
   sys.stderr.flush()
   traceback.print_exc()
-  print ">End exception"
+  print(">End exception")
   sys.stdout.flush()
   sys.stderr.flush()
-  print
+  print()
 
 class collector(object):
 
@@ -61,7 +66,7 @@ def number_of_trials(table):
 
 def set_parameters(params, trial_table, cp_i_trial):
   rest = cp_i_trial
-  for i in reversed(range(len(trial_table))):
+  for i in reversed(list(range(len(trial_table)))):
     name, values = trial_table[i]
     n = len(values)
     j = rest % n
@@ -111,7 +116,7 @@ def run(args):
     n=local_params.chunk[0],
     i=local_params.chunk[1]).easy_all()
   local_master_phil.format(local_params).show()
-  print
+  print()
   #
   assert local_params.pdb_file is not None
   assert op.isfile(local_params.pdb_file)
@@ -128,21 +133,21 @@ def run(args):
   else:
     raise AssertionError
   cp_n_trials = number_of_trials(table=parameter_trial_table)
-  print "Number of parameter trials:", cp_n_trials
-  print "parameter_trial_table:"
+  print("Number of parameter trials:", cp_n_trials)
+  print("parameter_trial_table:")
   pprint.pprint(parameter_trial_table)
-  print
+  print()
   #
   show_times_at_exit()
   #
   params_shown_once_already = False
   tst_tardy_pdb_log_shown_once_already = False
-  for cp_i_trial in xrange(cp_n_trials):
+  for cp_i_trial in range(cp_n_trials):
     if (chunk.skip_iteration(i=cp_i_trial)): continue
-    print "cp_i_trial: %d / %d = %.2f %%" % (
-      cp_i_trial, cp_n_trials, 100 * (cp_i_trial+1) / cp_n_trials)
+    print("cp_i_trial: %d / %d = %.2f %%" % (
+      cp_i_trial, cp_n_trials, 100 * (cp_i_trial+1) / cp_n_trials))
     if (local_params.verbose):
-      print
+      print()
     sys.stdout.flush()
     set_parameters(
       params=tst_tardy_pdb_params,
@@ -163,14 +168,14 @@ def run(args):
       tst_tardy_pdb_params.minimization_max_iterations = 0
     else:
       raise AssertionError
-    for random_seed in xrange(local_params.number_of_random_trials):
+    for random_seed in range(local_params.number_of_random_trials):
       tst_tardy_pdb_params.random_seed = random_seed
       tst_tardy_pdb_params.dihedral_function_type \
         = local_params.dihedral_function_type
       if (local_params.verbose or not params_shown_once_already):
         params_shown_once_already = True
         tst_tardy_pdb_master_phil.format(tst_tardy_pdb_params).show()
-        print
+        print()
         sys.stdout.flush()
       if (local_params.hot):
         if (local_params.verbose):
@@ -187,11 +192,11 @@ def run(args):
             log=tst_tardy_pdb_log)
         except KeyboardInterrupt: raise
         except Exception:
-          print
-          print "tst_tardy_pdb_params leading to exception:"
-          print
+          print()
+          print("tst_tardy_pdb_params leading to exception:")
+          print()
           tst_tardy_pdb_master_phil.format(tst_tardy_pdb_params).show()
-          print
+          print()
           if (not local_params.verbose):
             sys.stdout.write(tst_tardy_pdb_log.getvalue())
           sys.stdout.flush()
@@ -205,12 +210,12 @@ def run(args):
               and not tst_tardy_pdb_log_shown_once_already):
             tst_tardy_pdb_log_shown_once_already = True
             sys.stdout.write(tst_tardy_pdb_log.getvalue())
-          print "RESULT_cp_i_trial_random_seed_rmsd:", \
-            cp_i_trial, random_seed, list(coll.rmsd)
+          print("RESULT_cp_i_trial_random_seed_rmsd:", \
+            cp_i_trial, random_seed, list(coll.rmsd))
           sys.stdout.flush()
       first_pass = False
     if (local_params.hot):
-      print
+      print()
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

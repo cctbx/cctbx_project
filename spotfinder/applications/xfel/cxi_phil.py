@@ -1,6 +1,7 @@
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 
 from __future__ import division
+from __future__ import print_function
 #Phil parameters required to process data from Stanford LCLS CXI instrument
 
 def cxi_basic_start():
@@ -73,7 +74,7 @@ def cxi_versioned_extract_detail(args):
   cxi_version = working_phil.phil_scope.get("distl.detector_format_version"
                 ).extract().detector_format_version
 
-  print "cxi_versioned_extract()::cxi_version:", cxi_version
+  print("cxi_versioned_extract()::cxi_version:", cxi_version)
 
   if cxi_version in ["CXI 3.1","CXI 3.2"]:
     working_extract = working_phil.command_extractor
@@ -143,7 +144,7 @@ def cxi_versioned_extract_detail(args):
     #TT = [0]*128
     working_extract.distl.tile_translations = TT
 
-    print "IN CXI %>! WITH ",working_extract.distl.tile_translations
+    print("IN CXI %>! WITH ",working_extract.distl.tile_translations)
 
     # Order: UL x, UL y, UR x, UR y, LL x, LL y, LR x, LR y
     working_extract.distl.quad_translations = [-3,-1,-1,-5,-13,2,-7,-4]
@@ -666,7 +667,7 @@ def cxi_versioned_extract_detail(args):
                                                -3, -2,
                                                 0,  8,
                                                 0,  4]
-    print len(working_extract.distl.tile_translations)
+    print(len(working_extract.distl.tile_translations))
 
     return working_extract
 

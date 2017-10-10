@@ -1,9 +1,13 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import chr
+from builtins import range
+from builtins import object
 import os.path
 
 def encode(data):
   edata = ""
-  for i in xrange(len(data)):
+  for i in range(len(data)):
     edata += "%.2x" % ord(data[i])
   return edata
 
@@ -17,12 +21,12 @@ def create_encoded(image_file_name):
      % (name, w, h))
   encoded = encode(img.GetData())
   while (len(encoded) > 0):
-    print encoded[:78]+"\\"
+    print(encoded[:78]+"\\")
     encoded = encoded[78:]
-  print '""")'
-  print
+  print('""")')
+  print()
 
-class img_data:
+class img_data(object):
 
   def __init__(self, width, height, mask, encoded_data):
     self.width = width
@@ -42,7 +46,7 @@ class img_data:
                  "8":  8, "9":  9, "a": 10, "b": 11,
                  "c": 12, "d": 13, "e": 14, "f": 15}
     data = ""
-    for i in xrange(0, len(edata), 2):
+    for i in range(0, len(edata), 2):
       data += chr(hex_chars[edata[i]] * 16 + hex_chars[edata[i+1]])
     return data
 
@@ -60,7 +64,7 @@ class img_data:
 
 if (__name__ == "__main__"):
   import sys
-  print 'from gltbx.images import img_data\n'
+  print('from gltbx.images import img_data\n')
   for arg in sys.argv[1:]:
     create_encoded(arg)
 

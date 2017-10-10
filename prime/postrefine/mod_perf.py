@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import object
 from datetime import datetime
 
-class perf_handler():
+class perf_handler(object):
 
   def __init__(self, module_name):
     self.module_name = module_name
@@ -11,4 +13,4 @@ class perf_handler():
   def get_elapsed_times(self):
     self.t_en = datetime.now()
     self.t_spent =  self.t_en - self.t_st
-    print self.module_name, self.t_st.strftime("%d/%m/%Y %H:%M:%S"), self.t_en.strftime("%d/%m/%Y %H:%M:%S"), self.t_spent.microseconds
+    print(self.module_name, self.t_st.strftime("%d/%m/%Y %H:%M:%S"), self.t_en.strftime("%d/%m/%Y %H:%M:%S"), self.t_spent.microseconds)

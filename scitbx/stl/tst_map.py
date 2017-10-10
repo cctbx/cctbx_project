@@ -1,7 +1,11 @@
 from __future__ import division
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 from scitbx.stl import map
 try:
-  import cPickle as pickle
+  import pickle as pickle
 except ImportError:
   import pickle
 
@@ -12,27 +16,27 @@ def exercise_long_long():
   m[3] = 0
   assert m.size() == 1
   assert len(m) == 1
-  assert m.items() == [(3, 0)]
+  assert list(m.items()) == [(3, 0)]
   m[3] += 1
   assert m[3] == 1
   m[3] += 3
   assert m[3] == 4
   m[-5] = -8
-  assert m.items() == [(-5, -8), (3, 4)]
+  assert list(m.items()) == [(-5, -8), (3, 4)]
 
 def exercise_stl_string_double():
   m = map.stl_string_double()
   assert m.size() == 0
   assert len(m) == 0
   assert not "a" in m
-  assert not m.has_key("a")
+  assert "a" not in m
   assert m.get("a", -1) == -1
   assert m.size() == 0
   assert m.setdefault("a", -2) == -2
   assert m.size() == 1
   assert len(m) == 1
   assert "a" in m
-  assert m.has_key("a")
+  assert "a" in m
   assert m["a"] == -2
   assert m.setdefault("a", -3) == -2
   assert m.size() == 1
@@ -60,29 +64,29 @@ def exercise_stl_string_double():
   assert m.size() == 0
   m = map.stl_string_double({})
   assert m.size() == 0
-  assert m.keys() == []
-  assert m.values() == []
-  assert m.items() == []
+  assert list(m.keys()) == []
+  assert list(m.values()) == []
+  assert list(m.items()) == []
   m = map.stl_string_double({"b": 2, "a": 1, "c": 3})
   assert m.size() == 3
-  assert m.keys() == ["a", "b", "c"]
+  assert list(m.keys()) == ["a", "b", "c"]
   assert [k for k in m] == ["a", "b", "c"]
-  assert m.values() == [1, 2, 3]
-  assert m.items() == zip(["a", "b", "c"], [1, 2, 3])
-  d = dict(m.items())
+  assert list(m.values()) == [1, 2, 3]
+  assert list(m.items()) == list(zip(["a", "b", "c"], [1, 2, 3]))
+  d = dict(list(m.items()))
   assert len(d) == 3
   ld = list(d)
   ld.sort()
   assert ld == list(m)
   m.update(map.stl_string_double({"x": -1, "y": -2}))
-  assert m.items() == zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2])
+  assert list(m.items()) == list(zip(["a", "b", "c", "x", "y"], [1, 2, 3, -1, -2]))
   m.update({"r": 9, "s": 8})
-  assert m.items() == zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2])
+  assert list(m.items()) == list(zip(["a","b","c","r","s","x","y"], [1,2,3,9,8,-1,-2]))
   assert m.popitem() == ("a", 1)
   assert m.popitem() == ("b", 2)
   d = pickle.dumps(m)
   l = pickle.loads(d)
-  assert l.items() == zip(["c","r","s","x","y"], [3,9,8,-1,-2])
+  assert list(l.items()) == list(zip(["c","r","s","x","y"], [3,9,8,-1,-2]))
 
 def exercise_stl_string_stl_map_stl_string_double():
   mm = map.stl_string_stl_map_stl_string_double()
@@ -111,7 +115,7 @@ def exercise_stl_string_stl_vector_unsigned():
   assert v.size() == 2
   d = pickle.dumps(sv)
   l = pickle.loads(d)
-  assert l.keys() == ["a"]
+  assert list(l.keys()) == ["a"]
   assert list(l["a"]) == [10,20]
 
 def exercise_int_stl_vector_unsigned():
@@ -124,17 +128,17 @@ def exercise_int_stl_vector_unsigned():
   assert v.size() == 2
   d = pickle.dumps(sv)
   l = pickle.loads(d)
-  assert l.keys() == [-1]
+  assert list(l.keys()) == [-1]
   assert list(l[-1]) == [10,20]
   #
   v = sv.get(-1)
   v.append(30)
   assert list(v) == [10,20,30]
   assert list(sv[-1]) == [10,20,30]
-  l = sv.values()
+  l = list(sv.values())
   l[0].append(40)
   assert list(sv[-1]) == [10,20,30,40]
-  l = sv.items()
+  l = list(sv.items())
   l[0][1].append(50)
   assert list(sv[-1]) == [10,20,30,40,50]
 
@@ -144,7 +148,7 @@ def exercise():
   exercise_stl_string_stl_map_stl_string_double()
   exercise_stl_string_stl_vector_unsigned()
   exercise_int_stl_vector_unsigned()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

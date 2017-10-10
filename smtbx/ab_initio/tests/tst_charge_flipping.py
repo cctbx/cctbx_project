@@ -1,5 +1,9 @@
 from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 import sys
 import random
 
@@ -13,7 +17,7 @@ from cctbx import euclidean_model_matching as emma
 from libtbx import group_args
 
 import scitbx.matrix as mat
-from cStringIO import StringIO
+from io import StringIO
 
 from smtbx.ab_initio import charge_flipping
 
@@ -84,7 +88,7 @@ def exercise_one_structure(target_structure,
   s = StringIO()
   charge_flipping.loop(solving, verbose="highly", out=s)
   if verbose:
-    print s.getvalue()
+    print(s.getvalue())
 
   # check whether a phase transition has occured
   assert solving.had_phase_transition
@@ -131,13 +135,13 @@ def exercise_one_structure(target_structure,
       break
     else:
       if verbose == "more":
-        print "++ Incorrect peak: shift=(%.3f, %.3f, %.3f), height=%.2f"\
-              % (tuple(shift)+(cc_peak_height,))
-        print "   Reference shift=(%.3f, %.3f, %.3f)" % tuple(reference_shift)
+        print("++ Incorrect peak: shift=(%.3f, %.3f, %.3f), height=%.2f"\
+              % (tuple(shift)+(cc_peak_height,)))
+        print("   Reference shift=(%.3f, %.3f, %.3f)" % tuple(reference_shift))
   assert first_correct_correlation_peak is not None
   if verbose and first_correct_correlation_peak != 0:
-      print "** First correct correlation peak: #%i (%.3f) **"\
-            % (first_correct_correlation_peak, cc_peak_height)
+      print("** First correct correlation peak: #%i (%.3f) **"\
+            % (first_correct_correlation_peak, cc_peak_height))
 
   # check Euclidean matching in the original space-group
   search_parameters = maptbx.peak_search_parameters(
@@ -165,7 +169,7 @@ def exercise_one_structure(target_structure,
 
   # success!
   if verbose:
-    print "@@ Success @@"
+    print("@@ Success @@")
 
 def exercise_sucrose(flipping_type,
                      anomalous_flag,
@@ -175,7 +179,7 @@ def exercise_sucrose(flipping_type,
   from smtbx import development
   target_structure = development.sucrose()
 
-  print "Sucrose"
+  print("Sucrose")
   exercise_one_structure(target_structure,
                          flipping_type,
                          anomalous_flag,
@@ -194,22 +198,22 @@ def exercise(flags, space_group_info):
     flex.set_random_seed(1)
 
   n = len(space_group_info.group())
-  print space_group_info.type().hall_symbol(),
+  print(space_group_info.type().hall_symbol(), end=' ')
   if not flags.high_symmetry and n > 24:
-    print '  [ skipped ]'
-    if flags.Verbose: print
+    print('  [ skipped ]')
+    if flags.Verbose: print()
     return
   else:
-    print
+    print()
   n_C = 12//n or 1
   n_O = 6//n
   n_N = 3//n
   if flags.Verbose:
-    print "unit cell content: C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
-    print "asu content: C%i O%i N%i" % (n_C, n_O, n_N)
-    print "on %s's with %s" % (flags.on, flags.algo)
+    print("unit cell content: C%i O%i N%i" % (n_C*n, n_O*n, n_N*n))
+    print("asu content: C%i O%i N%i" % (n_C, n_O, n_N))
+    print("on %s's with %s" % (flags.on, flags.algo))
   flipping_type = eval("charge_flipping.%s_iterator" % flags.algo)
-  for i in xrange(int(flags.repeats)):
+  for i in range(int(flags.repeats)):
     randomly_exercise(
       flipping_type=flipping_type,
       space_group_info=space_group_info,
@@ -219,7 +223,7 @@ def exercise(flags, space_group_info):
       verbose=flags.Verbose,
       amplitude_type=flags.on
     )
-  if flags.Verbose: print
+  if flags.Verbose: print()
 
 def exercise_charge_flipping():
   #exercise_sucrose(flipping_type=charge_flipping.weak_reflection_improved_iterator,

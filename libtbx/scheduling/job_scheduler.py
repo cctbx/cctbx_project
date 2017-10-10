@@ -21,9 +21,12 @@ Scheduler methods:
 
 from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import time
 from collections import deque
-from Queue import Empty
+from queue import Empty
 
 from libtbx.scheduling import result
 from libtbx.scheduling import identifier
@@ -63,7 +66,7 @@ def job_cycle(outqueue, jobid, target, args, kwargs):
   try:
     value = target( *args, **kwargs )
 
-  except Exception, e:
+  except Exception as e:
     res = result.error( exception = e, traceback = result.get_traceback_info() )
 
   else:
@@ -167,7 +170,7 @@ class manager(object):
 
     self.shutdown()
 
-    for process in self.process_data_for.values():
+    for process in list(self.process_data_for.values()):
       if process.is_alive():
         if hasattr( process, "terminate" ): # Thread has no terminate
           try:
@@ -188,7 +191,7 @@ class manager(object):
   def poll(self):
 
     # Check existing jobs
-    for jobid in self.process_data_for.keys():
+    for jobid in list(self.process_data_for.keys()):
       process = self.process_data_for[ jobid ]
 
       if not process.is_alive():

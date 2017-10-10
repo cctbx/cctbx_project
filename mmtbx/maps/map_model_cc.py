@@ -1,4 +1,5 @@
 from __future__ import division
+from builtins import object
 from scitbx.array_family import flex
 import sys
 from libtbx import group_args

@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016

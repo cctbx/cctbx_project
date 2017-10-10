@@ -1,4 +1,8 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import range
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx.array_family import flex
@@ -90,17 +94,17 @@ def exercise_interface():
   assert adptbx.is_positive_definite(u, 1.22)
   up = (0.534, 0.812, 0.613, 0.0166, 0.134, -0.0124)
   s = adptbx.eigensystem(up)
-  assert approx_equal(s.values(), (0.813132, 0.713201, 0.432668))
-  for i in xrange(3):
-    check_eigenvector(up, s.values()[i], s.vectors(i))
+  assert approx_equal(list(s.values()), (0.813132, 0.713201, 0.432668))
+  for i in range(3):
+    check_eigenvector(up, list(s.values())[i], s.vectors(i))
   c = (1,2,3, 3,-4,5, 4,5,6)
   v = (198,18,1020,116,447,269)
   assert approx_equal(adptbx.c_u_c_transpose(c, u), v)
-  assert approx_equal(adptbx.eigensystem(u).values(),
+  assert approx_equal(list(adptbx.eigensystem(u).values()),
     (14.279201519086316, 2.9369143826320214, -1.2161159017183376))
   s = adptbx.eigensystem(up)
   try: s.vectors(4)
-  except RuntimeError, e: assert str(e).endswith("Index out of range.")
+  except RuntimeError as e: assert str(e).endswith("Index out of range.")
   else: raise Exception_expected
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,
@@ -109,9 +113,9 @@ def exercise_interface():
   assert approx_equal(uf, (2.7430890, 1.0378360, 2.1559895,
                            0.6193215, -0.3921632, 1.2846854))
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0, u_max=3)
-  assert approx_equal(scitbx.linalg.eigensystem.real_symmetric(u).values(),
+  assert approx_equal(list(scitbx.linalg.eigensystem.real_symmetric(u).values()),
                       (14.2792015, 2.9369144, -1.2161159))
-  assert approx_equal(scitbx.linalg.eigensystem.real_symmetric(uf).values(),
+  assert approx_equal(list(scitbx.linalg.eigensystem.real_symmetric(uf).values()),
                       (3, 2.9369144, 0))
   uf = adptbx.eigenvalue_filtering(up)
   assert approx_equal(uf, up)
@@ -130,7 +134,7 @@ def u_star_minus_u_iso_ralf(unit_cell, u_star):
   return adptbx.u_cart_as_u_star(unit_cell, u_cart_minus_u_iso)
 
 def exercise_factor_u_star_u_iso():
-  for i_trial in xrange(100):
+  for i_trial in range(100):
     a = flex.random_double(size=9, factor=3)
     a.resize(flex.grid(3,3))
     u = a.matrix_transpose().matrix_multiply(a) # always positive-definite
@@ -207,25 +211,25 @@ def exercise_eigen_core(diag):
   ev = list(adptbx.eigenvalues(u))
   diag.sort()
   ev.sort()
-  for i in xrange(3):
+  for i in range(3):
     check_eigenvalue(u, ev[i])
-  for i in xrange(3):
+  for i in range(3):
     assert abs(diag[i] - ev[i]) < 1.e-4
   if (adptbx.is_positive_definite(ev)):
     es = adptbx.eigensystem(u)
     ev = list(es.values())
     ev.sort()
-    for i in xrange(3):
+    for i in range(3):
       check_eigenvalue(u, ev[i])
-    for i in xrange(3):
+    for i in range(3):
       assert abs(diag[i] - ev[i]) < 1.e-4
     evec = []
-    for i in xrange(3):
-      check_eigenvector(u, es.values()[i], es.vectors(i))
+    for i in range(3):
+      check_eigenvector(u, list(es.values())[i], es.vectors(i))
       evec.extend(es.vectors(i))
     return # XXX following tests disabled for the moment
            # sometimes fail if eigenvalues are very similar but not identical
-    sqrt_eval = matrix.diag(flex.sqrt(flex.double(es.values())))
+    sqrt_eval = matrix.diag(flex.sqrt(flex.double(list(es.values()))))
     evec = matrix.sqr(evec).transpose()
     sqrt_u = evec * sqrt_eval * evec.transpose()
     u_full = matrix.sym(sym_mat3=u).elems
@@ -246,10 +250,10 @@ def exercise_eigen_core(diag):
 
 def exercise_eigen(n_trials=100):
   exercise_eigen_core([0,0,0])
-  for n_equal in xrange(3):
-    for i_trial in xrange(n_trials):
+  for n_equal in range(3):
+    for i_trial in range(n_trials):
       if (n_equal == 0):
-        diag = [random.random() for i in xrange(3)]
+        diag = [random.random() for i in range(3)]
       if (n_equal == 1):
         i = random.randrange(3)
         diag[i] = random.random()
@@ -319,7 +323,7 @@ def run():
   exercise_grad_u_transformations()
   exercise_eigen()
   exercise_random_traceless_symmetry_constrained_b_cart()
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

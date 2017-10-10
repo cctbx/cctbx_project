@@ -1,7 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME prime.compare_solution_pickles
 
-import cPickle as pickle
+from future import standard_library
+standard_library.install_aliases()
+import pickle as pickle
 import argparse
 
 def main(sol_fname, ind_fname):
@@ -13,8 +16,8 @@ def main(sol_fname, ind_fname):
       if sol_pickle[key] == ind_pickle[key]:
         cn_match += 1
       else:
-        print key, sol_pickle[key], ind_pickle[key]
-  print 'Found %d images with %d matches'%(len(sol_pickle.keys()), cn_match)
+        print(key, sol_pickle[key], ind_pickle[key])
+  print('Found %d images with %d matches'%(len(list(sol_pickle.keys())), cn_match))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -31,5 +34,5 @@ if __name__ == '__main__':
     help='Path to the second solution pickle'
   )
   args = parser.parse_args()
-  print "Compare two solution pickles."
+  print("Compare two solution pickles.")
   main(args.pickle1, args.pickle2)

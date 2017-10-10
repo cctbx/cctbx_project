@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import str
 from mmtbx.tls import analysis
 import os
 import libtbx.load_env
@@ -90,9 +92,9 @@ def run():
       T, L, S = extract(fn_)
       r = analysis.run(T=T, L=L, S=S, log=of)
       of.close()
-      print fn, "OK"
-    except Exception, e:
-      print fn, str(e)
+      print(fn, "OK")
+    except Exception as e:
+      print(fn, str(e))
 
 
 if (__name__ == "__main__"):

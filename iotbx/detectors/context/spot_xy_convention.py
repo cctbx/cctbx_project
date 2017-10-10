@@ -26,7 +26,8 @@ of the detector is at the right edge of the image.
 '''
 from __future__ import division
 
-class spot_xy_convention:
+from builtins import object
+class spot_xy_convention(object):
   def __init__(self,W1,W2):
     self.W1 = W1; self.W2=W2
 

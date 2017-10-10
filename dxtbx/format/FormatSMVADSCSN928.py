@@ -10,6 +10,7 @@
 # which has reversed phi.
 
 from __future__ import absolute_import, division
+from __future__ import print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -66,9 +67,9 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSCSN928.understand(arg)
-    print FormatSMVADSCSN928(arg).get_scan()
-    print FormatSMVADSCSN928(arg).get_goniometer()
-    print FormatSMVADSCSN928(arg).get_detector()
-    print FormatSMVADSCSN928(arg).get_beam()
+    print(FormatSMVADSCSN928.understand(arg))
+    print(FormatSMVADSCSN928(arg).get_scan())
+    print(FormatSMVADSCSN928(arg).get_goniometer())
+    print(FormatSMVADSCSN928(arg).get_detector())
+    print(FormatSMVADSCSN928(arg).get_beam())
 

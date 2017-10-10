@@ -15,6 +15,9 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 from __future__ import division
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
@@ -223,7 +226,7 @@ include scope xfel.command_line.cspad_detector_congruence.phil_scope
 
 def setup_stats(detector, experiments, reflections, two_theta_only = False):
   # Compute a set of radial and transverse displacements for each reflection
-  print "Setting up stats..."
+  print("Setting up stats...")
   tmp = flex.reflection_table()
   # Need to construct a variety of vectors
   for panel_id, panel in enumerate(detector):
@@ -241,10 +244,10 @@ def setup_stats(detector, experiments, reflections, two_theta_only = False):
       beam_centre = panel.get_beam_centre_lab(s0)
       bcl.extend(flex.vec3_double(len(expt_refls), beam_centre))
       cal_x, cal_y, _ = expt_refls['xyzcal.px'].parts()
-      ttc.extend(flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in xrange(len(expt_refls))]))
+      ttc.extend(flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in range(len(expt_refls))]))
       if 'xyzobs.px.value' in expt_refls:
         obs_x, obs_y, _ = expt_refls['xyzobs.px.value'].parts()
-        tto.extend(flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in xrange(len(expt_refls))]))
+        tto.extend(flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in range(len(expt_refls))]))
     panel_refls['beam_centre_lab'] = bcl
     panel_refls['two_theta_cal'] = ttc * (180/math.pi) #+ (0.5*panel_refls['delpsical.rad']*panel_refls['two_theta_obs'])
     if 'xyzobs.px.value' in expt_refls:
@@ -271,10 +274,10 @@ def get_unweighted_rmsd(reflections):
   weights = 1/reflections['xyzobs.mm.variance'].norms()
 
   un_rmsd = math.sqrt( flex.sum(reflections['difference_vector_norms']**2)/n)
-  print "Uweighted RMSD (mm)", un_rmsd
+  print("Uweighted RMSD (mm)", un_rmsd)
 
   w_rmsd = math.sqrt( flex.sum( weights*(reflections['difference_vector_norms']**2) )/flex.sum(weights))
-  print "Weighted RMSD (mm)", w_rmsd
+  print("Weighted RMSD (mm)", w_rmsd)
 
   return un_rmsd
 
@@ -283,7 +286,7 @@ def reflection_wavelength_from_pixels(experiments, reflections):
   if 'shoebox' not in reflections:
     return reflections
 
-  print "Computing per-reflection wavelengths from shoeboxes"
+  print("Computing per-reflection wavelengths from shoeboxes")
 
   from dials.algorithms.shoebox import MaskCode
   valid_code = MaskCode.Valid | MaskCode.Foreground
@@ -298,7 +301,7 @@ def reflection_wavelength_from_pixels(experiments, reflections):
     unit_cell = expt.crystal.get_unit_cell()
     d = unit_cell.d(refls['miller_index'])
 
-    for i in xrange(len(refls)):
+    for i in range(len(refls)):
       sb = refls['shoebox'][i]
       # find the coordinates with signal
       mask = flex.bool([(m & valid_code) != 0 for m in sb.mask])
@@ -526,7 +529,7 @@ class Script(DCScript):
       data.extend(flex.vec2_double([(i, 0), (i, flex.max(h.slots()))]))
     data = self.get_bounded_data(data, bounds)
     tmp = [data[:n]]
-    for i in xrange(len(colors)):
+    for i in range(len(colors)):
       tmp.append(data[n+(i*2):n+((i+1)*2)])
     data = tmp
 
@@ -545,11 +548,11 @@ class Script(DCScript):
     x_extent = max(r)
     y_extent = len(r)
     xobs = [i/x_extent for i in sorted(r)]
-    yobs = [i/y_extent for i in xrange(y_extent)]
+    yobs = [i/y_extent for i in range(y_extent)]
     obs = [(x, y) for x, y in zip(xobs, yobs)]
 
     ncalc = 100
-    xcalc = [i/ncalc for i in xrange(ncalc)]
+    xcalc = [i/ncalc for i in range(ncalc)]
     ycalc = [1-math.exp((-i**2)/(2*(sigma**2))) for i in xcalc]
     calc = [(x, y) for x, y in zip(xcalc, ycalc)]
 
@@ -634,7 +637,7 @@ class Script(DCScript):
     data_scale_y = data_max_y - data_min_y
 
     if data_scale_x == 0 or data_scale_y == 0:
-      print "WARNING bad scale"
+      print("WARNING bad scale")
       return data
 
     xscale = scale/abs(data_scale_x)
@@ -664,7 +667,7 @@ class Script(DCScript):
       # case for passing in multiple images on the command line
       assert len(params.input.reflections) == len(detectors)
       reflections = flex.reflection_table()
-      for expt_id in xrange(len(detectors)):
+      for expt_id in range(len(detectors)):
         subset = params.input.reflections[expt_id].data
         subset['id'] = flex.int(len(subset), expt_id)
         reflections.extend(subset)
@@ -678,31 +681,31 @@ class Script(DCScript):
     ref_predictor = ExperimentsPredictor(experiments, force_stills=experiments.all_stills())
     reflections = ref_predictor(reflections)
 
-    print "N reflections total:", len(reflections)
+    print("N reflections total:", len(reflections))
     if params.residuals.exclude_outliers_from_refinement:
       reflections = reflections.select(reflections.get_flags(reflections.flags.used_in_refinement))
-      print "N reflections used in refinement:", len(reflections)
-      print "Reporting only on those reflections used in refinement"
+      print("N reflections used in refinement:", len(reflections))
+      print("Reporting only on those reflections used in refinement")
 
     if params.residuals.recompute_outliers:
-      print "Performing outlier rejection on %d reflections"%len(reflections)
+      print("Performing outlier rejection on %d reflections"%len(reflections))
       from dials.algorithms.refinement.outlier_detection.sauter_poon import SauterPoon
       outlier = SauterPoon(px_sz=experiments[0].detector[0].get_pixel_size(), separate_panels=False)
       rejection_occured = outlier(reflections)
       if rejection_occured:
         reflections = reflections.select(~reflections.get_flags(reflections.flags.centroid_outlier))
-        print "N reflections after outlier rejection:", len(reflections)
+        print("N reflections after outlier rejection:", len(reflections))
       else:
-        print "No rejections found"
+        print("No rejections found")
 
     if self.params.residuals.i_sigi_cutoff is not None:
       sel = (reflections['intensity.sum.value']/flex.sqrt(reflections['intensity.sum.variance'])) >= self.params.residuals.i_sigi_cutoff
       reflections = reflections.select(sel)
-      print "After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections))
+      print("After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections)))
 
     reflections = reflection_wavelength_from_pixels(experiments, reflections)
     stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
-    print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+    print("Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
     self.min_energy = stats.mean() - stats.unweighted_sample_standard_deviation()
     self.max_energy = stats.mean() + stats.unweighted_sample_standard_deviation()
 
@@ -739,8 +742,8 @@ class Script(DCScript):
 
       if params.repredict.refine_mode == 'per_experiment':
         refined_reflections = flex.reflection_table()
-        for expt_id in xrange(len(experiments)):
-          print "*"*80, "EXPERIMENT", expt_id
+        for expt_id in range(len(experiments)):
+          print("*"*80, "EXPERIMENT", expt_id)
           refls = reflections.select(reflections['id']==expt_id)
           refls['id'] = flex.int(len(refls), 0)
           refls = refine_wavelengths(experiments[expt_id:expt_id+1], refls, init_mp, tag, dest,
@@ -755,7 +758,7 @@ class Script(DCScript):
         reflections = func(experiments, reflections, init_mp)
       reflections = predictions_from_per_reflection_energies(experiments, reflections, tag, dest)
       stats = flex.mean_and_variance(12398.4/reflections[tag])
-      print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+      print("Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
       reflections['delpsical.rad'] = reflections['delpsical.rad.%s'%dest]
       reflections['xyzcal.mm'] = reflections['xyzcal.mm.%s'%dest]
       reflections['xyzcal.px'] = reflections['xyzcal.px.%s'%dest]
@@ -764,7 +767,7 @@ class Script(DCScript):
 
     n = len(reflections)
     rmsd = get_unweighted_rmsd(reflections)
-    print "Dataset RMSD (microns)", rmsd * 1000
+    print("Dataset RMSD (microns)", rmsd * 1000)
 
     if params.tag is None:
       tag = ''
@@ -913,8 +916,8 @@ class Script(DCScript):
     table_data.append(["Mean", "", "", "", "%8.1f"%flex.mean(pg_refls_count.as_double())])
 
     from libtbx import table_utils
-    print "Detector statistics.  Angles in degrees, RMSDs in microns"
-    print table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+    print("Detector statistics.  Angles in degrees, RMSDs in microns")
+    print(table_utils.format(table_data,has_header=2,justify='center',delim=" "))
 
     self.histogram(reflections, r"%s$\Delta$XY histogram (mm)"%tag, plots = params.show_plots and params.plots.deltaXY_histogram)
 
@@ -973,7 +976,7 @@ class Script(DCScript):
         bin_low = []
         bin_high = []
         data = flex.sorted(reflections['two_theta_obs'])
-        for i in xrange(n_bins):
+        for i in range(n_bins):
           bin_low = data[i*bin_size]
           if (i+1)*bin_size >= len(reflections):
             bin_high = data[-1]
@@ -1009,7 +1012,7 @@ class Script(DCScript):
 
         # calc the trendline
         z = np.polyfit(a.select(sel), b.select(sel), 1)
-        print 'y=%.7fx+(%.7f)'%(z[0],z[1])
+        print('y=%.7fx+(%.7f)'%(z[0],z[1]))
 
       if params.plots.grouped_stats:
         # Plots with single values per panel
@@ -1029,7 +1032,7 @@ class Script(DCScript):
         for k in pg_bc_dists:
           vdict[pg_bc_dists[k]] = k
         sorted_keys = [vdict[v] for v in sorted_values if vdict[v] in rmsds]
-        x = [sorted_values[i] for i in xrange(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
+        x = [sorted_values[i] for i in range(len(sorted_values)) if list(pg_bc_dists.keys())[i] in rmsds]
 
         self.plot_multi_data(x,
                              [[pg_refls_count_d[k] for k in sorted_keys],
@@ -1102,8 +1105,8 @@ class Script(DCScript):
     n_bins = 30
     arbitrary_padding = 1
     sorted_two_theta = flex.sorted(reflections['two_theta_obs'])
-    bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in xrange(n_bins)]
-    bin_high = [bin_low[i+1] for i in xrange(n_bins-1)]
+    bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in range(n_bins)]
+    bin_high = [bin_low[i+1] for i in range(n_bins-1)]
     bin_high.append(sorted_two_theta[-1]+arbitrary_padding)
 
     title = "%sBinned data by two theta (n reflections per bin: %.1f)"%(tag, len(sorted_two_theta)/n_bins)
@@ -1118,7 +1121,7 @@ class Script(DCScript):
     #delta_two_theta = flex.double()
     rmsd_delta_two_theta = flex.double()
 
-    for i in xrange(n_bins):
+    for i in range(n_bins):
       x_centers.append(((bin_high[i]-bin_low[i])/2) + bin_low[i])
       refls = reflections.select((reflections['two_theta_obs'] >= bin_low[i]) & (reflections['two_theta_obs'] < bin_high[i]))
       n = len(refls)
@@ -1155,19 +1158,19 @@ class Script(DCScript):
     sigma = mode = h.slot_centers()[list(h.slots()).index(flex.max(h.slots()))]
     mean = flex.mean(data)
     median = flex.median(data)
-    print "RMSD (microns)", rmsd * 1000
-    print "Histogram mode (microns):", mode * 1000
-    print "Overall mean (microns):", mean * 1000
-    print "Overall median (microns):", median * 1000
+    print("RMSD (microns)", rmsd * 1000)
+    print("Histogram mode (microns):", mode * 1000)
+    print("Overall mean (microns):", mean * 1000)
+    print("Overall median (microns):", median * 1000)
     mean2 = math.sqrt(math.pi/2)*sigma
     rmsd2 = math.sqrt(2)*sigma
-    print "Rayleigh Mean (microns)", mean2 * 1000
-    print "Rayleigh RMSD (microns)", rmsd2 * 1000
+    print("Rayleigh Mean (microns)", mean2 * 1000)
+    print("Rayleigh RMSD (microns)", rmsd2 * 1000)
 
     r = reflections['radial_displacements']
     t = reflections['transverse_displacements']
-    print "Overall radial RMSD (microns)", math.sqrt(flex.sum_sq(r)/len(r)) * 1000
-    print "Overall transverse RMSD (microns)", math.sqrt(flex.sum_sq(t)/len(t)) * 1000
+    print("Overall radial RMSD (microns)", math.sqrt(flex.sum_sq(r)/len(r)) * 1000)
+    print("Overall transverse RMSD (microns)", math.sqrt(flex.sum_sq(t)/len(t)) * 1000)
 
     if not plots: return
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx import minpack
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
@@ -43,7 +44,7 @@ def exercise_interface():
 def exercise():
   exercise_interface()
   # more comprehensive tests: scitbx/examples/immoptibox_ports.py
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise()

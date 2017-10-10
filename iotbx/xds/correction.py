@@ -8,7 +8,9 @@
 #
 from __future__ import division
 
-class reader:
+from builtins import range
+from builtins import object
+class reader(object):
   """A class to read the X/Y-CORRECTIONS.CBF files used in XDS"""
   def __init__(self):
     pass
@@ -67,8 +69,8 @@ class reader:
     correction = numpy.zeros(dim, dtype=numpy.float64)
 
     # Loop through all pixels and get the correction
-    i1 = numpy.array([range(dim[1])] * dim[0], dtype=numpy.int32)
-    j1 = numpy.array([range(dim[0])] * dim[1], dtype=numpy.int32).transpose()
+    i1 = numpy.array([list(range(dim[1]))] * dim[0], dtype=numpy.int32)
+    j1 = numpy.array([list(range(dim[0]))] * dim[1], dtype=numpy.int32).transpose()
     i2 = numpy.divide(i1, 4)
     j2 = numpy.divide(j1, 4)
     correction[j1,i1] = raw_array[j2,i2] / 10.0

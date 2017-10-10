@@ -1,5 +1,6 @@
 
 from __future__ import division
+from builtins import range
 from mmtbx.validation import ramalyze
 from mmtbx.validation import rotalyze
 from mmtbx.validation import graphics
@@ -248,7 +249,7 @@ class rotalyze_frame (rotarama_frame) :
           point_type=pt_type)
         # shift chi2 values by 180 to fit in contours
         if (res_type.lower() in ["asp", "phe", "tyr"]) :
-          for i in xrange(len(points)):
+          for i in range(len(points)):
             if (points[i][1] > 180.0):
               point = list(points[i])
               point[1] -= 180.0

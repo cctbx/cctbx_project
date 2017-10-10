@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 # Utility functions for the Rayonix Detector.
+from builtins import str
 from scitbx.array_family import flex
 
 # given value of rayonix detector saturation xppi6115
@@ -111,7 +113,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
   cbf.add_row(["FRAME1","ELE_Rayonix","ARRAY_Rayonix","1"])
 
   if not header_only:
-    add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].trusted_range for k in metro.keys()])
+    add_frame_specific_cbf_tables(cbf, wavelength, timestamp, [metro[k].trusted_range for k in list(metro.keys())])
 
   """Data items in the AXIS category record the information required
      to describe the various goniometer, detector, source and other
@@ -189,7 +191,7 @@ def get_rayonix_cbf_handle(tiles, metro, timestamp, cbf_root, wavelength, distan
      The relationship to physical axes may be given."""
 
   # find the asic sizes
-  for tilekey in metro.keys():
+  for tilekey in list(metro.keys()):
     b = metro[tilekey]
     if not "x_dim" in locals():
       x_dim = b.dimension[0]
@@ -320,7 +322,7 @@ def add_data_to_cbf(cbf, data, verbose = False):
       cbf.find_column("array_id")
       array_name = cbf.get_value()
       cbf.next_row()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
 
@@ -345,7 +347,7 @@ def add_data_to_cbf(cbf, data, verbose = False):
   cbf.add_category("array_data",["array_id","binary_id","data"])
 
   if verbose:
-    print "Compressing tiles...",
+    print("Compressing tiles...", end=' ')
 
   focus = data.focus()
 

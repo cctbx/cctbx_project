@@ -2,6 +2,9 @@
 ## Peter Zwart, April 18, 2005
 
 from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
 from mmtbx import scaling
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
@@ -321,7 +324,7 @@ class scattering_information(object):
     if d_star_sq is not None:
       self.sigma_tot_sq = flex.double( d_star_sq.size() )
       gaussians = {}
-      for chemical_type, n_atoms in self.asu_contents.items():
+      for chemical_type, n_atoms in list(self.asu_contents.items()):
         gaussians[chemical_type] = xray_scattering.wk1995(
           chemical_type).fetch()
         f0 = gaussians[chemical_type].at_d_star_sq(d_star_sq)
@@ -664,7 +667,7 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
                                           self.u_star)
       #get eigenvalues of B-cart
       eigen = eigensystem.real_symmetric( self.b_cart )
-      self.eigen_values = eigen.values()
+      self.eigen_values = list(eigen.values())
       self.eigen_vectors = eigen.vectors()
 
       self.work_array  = work_array # i need this for further analyses
@@ -743,7 +746,7 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
       0.066276397961476205, -0.064575726062529232, -0.0063025873711609016,
       0.0749945566688624, 0.14803702885155121, 0.154284467861286])
     fit_e = scitbx.math.chebyshev_polynome(11,0,1.0,coefs)
-    x = flex.double( range(1000) )/999.0
+    x = flex.double( list(range(1000)) )/999.0
     start = int(rat*1000)
     norma = flex.sum(flex.exp(fit_e.f(x)))/x[1]
     x = x*(1-rat)+rat

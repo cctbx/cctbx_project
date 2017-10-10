@@ -1,5 +1,6 @@
 from __future__ import division
 
+from builtins import object
 class hydrogen_toggle (object) :
   def __init__ (self, separator=False) :
     import coot # import dependency

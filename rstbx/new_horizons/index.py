@@ -1,17 +1,19 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import object
 from labelit.command_line.stats_index import best_character_to_IndexPrinter
 from labelit.command_line.default_param import establish_dict_for_refinement
 from labelit.dptbx.autoindex import index_and_refine
 
-class new_horizons_state:
+class new_horizons_state(object):
   def __init__(self,horizons_phil,args):
     self.last_saved_best = None
     self.horizons_phil = horizons_phil
     if self.horizons_phil.spotfinder=="distl":
-      print "Importing DISTL"
+      print("Importing DISTL")
       from labelit.command_line.stats_index import AutoIndexOrganizer
     elif self.horizons_phil.spotfinder=="speck":
-      print "Importing SPECK"
+      print("Importing SPECK")
       from rstbx.new_horizons.stats_index import AutoIndexOrganizer
 
     self.organizer = AutoIndexOrganizer(
@@ -43,7 +45,7 @@ class new_horizons_state:
       M = best_compatibility_to_IndexPrinter(ai,P,self.pd,files,
           spotfinder_results)
     #------------------------------------------------------------
-    if self.horizons_phil.__dict__.has_key("writer"):
+    if "writer" in self.horizons_phil.__dict__:
       self.horizons_phil.writer.make_image_plots_detail(
         ai=ai,pd=self.pd,inframes=files,spotfinder_results=spotfinder_results)
 
@@ -73,7 +75,7 @@ def pre_indexing_validation(horizons_phil):
     # codecamp.maxcell
 
 def pack_names(horizons_phil):
-  class Empty:pass
+  class Empty(object):pass
   E = Empty()
   E.argv=['Empty']
   if not isinstance(horizons_phil.indexing.data, list):
@@ -84,7 +86,7 @@ def pack_names(horizons_phil):
 
 def pack_dictionary(info):
   #print "special interface; CXI data passed in as dictionary"
-  class Empty:pass
+  class Empty(object):pass
   E = Empty()
   E.argv=['Empty','data_in_object']
   E.data = info.indexing.data

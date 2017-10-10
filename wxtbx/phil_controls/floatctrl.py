@@ -1,5 +1,7 @@
 from __future__ import division
+from __future__ import print_function
 
+from builtins import str
 from wxtbx.phil_controls.text_base import ValidatedTextCtrl, TextCtrlValidator
 from libtbx.utils import Sorry
 from libtbx import Auto
@@ -9,8 +11,8 @@ import sys
 class FloatCtrl (ValidatedTextCtrl) :
   def __init__ (self, *args, **kwds) :
     super(FloatCtrl, self).__init__(*args, **kwds)
-    self.min = float(-sys.maxint)
-    self.max = float(sys.maxint)
+    self.min = float(-sys.maxsize)
+    self.max = float(sys.maxsize)
 
   def SetMin (self, min) :
     assert isinstance(min, float) or isinstance(min, int)
@@ -87,8 +89,8 @@ if (__name__ == "__main__") :
   def OnOkay (evt) :
     float1 = float_ctrl.GetPhilValue()
     float2 = float_ctrl2.GetPhilValue()
-    print type(float1).__name__, str(float1)
-    print type(float2).__name__, str(float2)
+    print(type(float1).__name__, str(float1))
+    print(type(float2).__name__, str(float2))
   frame.Bind(wx.EVT_BUTTON, OnOkay, btn)
   frame.Fit()
   frame.Show()

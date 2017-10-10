@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import iotbx.pdb
 from cctbx import crystal
 from libtbx.test_utils import approx_equal
@@ -73,7 +74,7 @@ def run(prefix="iotbx_tst_xray_scale"):
   if(crystal_symmetry is not None): self._scale_matrix = None
   """
   fo = open("%s.cif" % prefix,"w")
-  print >> fo, cif_str
+  print(cif_str, file=fo)
   fo.close()
   # crystal symmetry from map
   cs = crystal.symmetry((419., 419., 419., 90.0, 90.0, 90.0), 1)
@@ -97,7 +98,7 @@ def run(prefix="iotbx_tst_xray_scale"):
   xrs_pdb = pdb_inp.xray_structure_simple(crystal_symmetry = cs)
   #
   assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
-  print "OK"
+  print("OK")
 
 if (__name__ == "__main__"):
   run()

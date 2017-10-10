@@ -1,4 +1,9 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from builtins import object
 import time
 from cctbx import sgtbx
 from cctbx import geometry_restraints
@@ -6,7 +11,7 @@ from cctbx import geometry_restraints
 from mmtbx.monomer_library import linking_setup
 from mmtbx.monomer_library import linking_utils
 from mmtbx.monomer_library import glyco_utils
-import bondlength_defaults
+from . import bondlength_defaults
 from libtbx.utils import Sorry
 
 hydrogens = ["H", "D", "T"]
@@ -217,11 +222,11 @@ def possible_cyclic_peptide(atom1,
                             verbose=False,
                             ):
   if verbose:
-    print atom1.quote(),atom2.quote()
+    print(atom1.quote(),atom2.quote())
   chain1 = atom1.parent().parent().parent()
   chain2 = atom1.parent().parent().parent()
   if not chain1.id == chain2.id:
-    if verbose: print 'chain id differs', chain1.id, chain2.id
+    if verbose: print('chain id differs', chain1.id, chain2.id)
     return False
   fl = {}
   rgs = chain1.residue_groups()
@@ -331,7 +336,7 @@ class linking_mixins(object):
           "bonds.bond_distance_cutoff \nis greater than 15A. Please check and"+
           " correct these parameters.")
     if verbose and log is not None:
-      print >> log,"""
+      print("""
       metal_coordination_cutoff %s
       amino_acid_bond_cutoff    %s
       carbohydrate_bond_cutoff  %s
@@ -342,7 +347,7 @@ class linking_mixins(object):
               carbohydrate_bond_cutoff,
               inter_residue_bond_cutoff,
               second_row_buffer,
-              )
+              ), file=log)
     from cctbx import crystal
     from cctbx.array_family import flex
     #
@@ -393,7 +398,7 @@ class linking_mixins(object):
         yield item
     #
     if(log is not None):
-      print >> log, """
+      print("""
   Automatic linking
     Parameters for automatic linking
       Linking & cutoffs
@@ -411,7 +416,7 @@ class linking_mixins(object):
              link_ligands,
              ligand_bond_cutoff,
              link_amino_acid_rna_dna,
-             )
+             ), file=log)
     t0=time.time()
     atoms = self.pdb_hierarchy.atoms()
     bond_data = []
@@ -496,9 +501,9 @@ class linking_mixins(object):
              atom2.parent().resname in moved
              ): continue
       if verbose:
-        print i_seq, j_seq, atom1.quote(),
-        print atom2.quote(),
-        print "Distance: %0.2f" % distance, rt_mx_ji, sym_op
+        print(i_seq, j_seq, atom1.quote(), end=' ')
+        print(atom2.quote(), end=' ')
+        print("Distance: %0.2f" % distance, rt_mx_ji, sym_op)
 
       # don't link atoms not in the same conformer (works for models also)...
       if not atom1.is_in_same_conformer_as(atom2):
@@ -518,11 +523,11 @@ class linking_mixins(object):
       classes2 = linking_utils.get_classes(atom2)
       use_only_bond_cutoff = False
       if verbose:
-        print """
+        print("""
 Residue classes
 
 %s
-%s """ % (classes1, classes2)
+%s """ % (classes1, classes2))
       # why was this commented out???
       if not link_ligands and (classes1.other or classes2.other): continue
       # is_proxy_set between any of the atoms ????????
@@ -579,8 +584,8 @@ Residue classes
           verbose=verbose,
           ):
         if verbose:
-          print "is not linked", atom1.quote(),atom2.quote(),key
-          print 'link_metals',link_metals
+          print("is not linked", atom1.quote(),atom2.quote(),key)
+          print('link_metals',link_metals)
         if ( atom1.element.strip().upper() in hydrogens or
              atom2.element.strip().upper() in hydrogens):
           pass
@@ -591,10 +596,10 @@ Residue classes
       # check some valences...
       if not (classes1.common_element or classes2.common_element):
         if not linking_utils.check_valence(self.pdb_hierarchy, atom1):
-          print >> log, "  Atom %s rejected from bonding due to valence issues." % atom1.quote()
+          print("  Atom %s rejected from bonding due to valence issues." % atom1.quote(), file=log)
           continue
         if not linking_utils.check_valence(self.pdb_hierarchy, atom2):
-          print >> log, "  Atom %s rejected from bonding due to valence issues." % atom2.quote()
+          print("  Atom %s rejected from bonding due to valence issues." % atom2.quote(), file=log)
           continue
       # got a link....
 
@@ -607,7 +612,7 @@ Residue classes
       class_key = [class1, class2]
       class_key.sort()
       class_key = tuple(class_key)
-      if verbose: print 'class_key',class_key
+      if verbose: print('class_key',class_key)
       #
       if not link_metals and "metal" in class_key: continue
       #atoms_must_be = {}
@@ -627,7 +632,7 @@ Residue classes
           continue
       #
       names = [atom1.name, atom2.name]
-      if verbose: print 'names',names
+      if verbose: print('names',names)
       names.sort()
       atom1_key = None
       atom2_key = None
@@ -636,13 +641,13 @@ Residue classes
       if class2 in linking_setup.maximum_per_atom_links: # is one
         atom2_key = atom2.id_str()
       if verbose:
-        print '-'*80
-        print 'class_key',class_key
-        print 'done'
-        for k, item in done.items():
-          print "> %s : %s" % (k, item)
-        print 'key',key
-        print 'atom keys',atom1_key, atom2_key
+        print('-'*80)
+        print('class_key',class_key)
+        print('done')
+        for k, item in list(done.items()):
+          print("> %s : %s" % (k, item))
+        print('key',key)
+        print('atom keys',atom1_key, atom2_key)
       # exclude duplicate symmetry op.
       if key in done:
         if names in done[key]: continue
@@ -659,7 +664,7 @@ Residue classes
          linking_setup.maximum_inter_residue_links.get(class_key, 1)
          ):
         if verbose:
-          print "too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key
+          print("too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key)
         continue
       #
       done[key].append(names)
@@ -680,7 +685,7 @@ Residue classes
       # check that a link not already made
       link_found = False
       if verbose:
-        print 'len simple bond proxies',len(geometry_proxy_registries.bond_simple.proxies)
+        print('len simple bond proxies',len(geometry_proxy_registries.bond_simple.proxies))
 
       # Consistency check - debugging only
       # for bsp in geometry_proxy_registries.bond_simple.proxies:
@@ -691,7 +696,7 @@ Residue classes
       # Proposed fast loop: Time building additional restraints for
       # ribosome went from 5272 to 204 seconds.
       for p in ij_seqs:
-        if p[1] in initial_pair_asu_table_table[p[0]].keys():
+        if p[1] in list(initial_pair_asu_table_table[p[0]].keys()):
           link_found = True
           break
       # VERY SLOW !!! - original loop
@@ -708,9 +713,9 @@ Residue classes
         self.mon_lib_srv,
         )
       if verbose:
-        print 'link',link
-        print 'swap',swap
-        print 'key',key
+        print('link',link)
+        print('swap',swap)
+        print('key',key)
       if swap:
         tmp = atom_group2
         atom_group2 = atom_group1
@@ -735,12 +740,12 @@ Residue classes
         )
         if len(bond_i_seqs)==0:
           if verbose:
-            print 'failed to link using %s' % key
+            print('failed to link using %s' % key)
           continue
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0] # odd?
-        if verbose: print "predefined residue named link",key
+        if verbose: print("predefined residue named link",key)
         self.cif["link_%s" % key] = link.cif_object
         continue
       #
@@ -767,10 +772,10 @@ Residue classes
       key = link_key[0]
       link = self.mon_lib_srv.link_link_id_dict.get(key, None)
       if verbose:
-        print 'pdbres',pdbres
-        print 'link',link
-        print 'link_key',link_key
-        print 'link_atoms',link_atoms
+        print('pdbres',pdbres)
+        print('link',link)
+        print('link_key',link_key)
+        print('link_atoms',link_atoms)
       if key.find("ALPHA1")>-1 or key.find("BETA1")>-1: # is handled in elif
         key, cif, bond_i_seqs = \
           glyco_utils.apply_glyco_link_using_proxies_and_atoms(
@@ -896,12 +901,12 @@ Residue classes
     #
     if verbose:
       for key in sorted(custom_links):
-        print '-'*80
-        print key
+        print('-'*80)
+        print(key)
         for pair in custom_links[key]:
           for atom in pair:
-            try: print atom.quote()
-            except Exception: print atom
+            try: print(atom.quote())
+            except Exception: print(atom)
 
     pair_sym_table = pair_asu_table.extract_pair_sym_table()
     n_simple, n_symmetry = 0, 0
@@ -939,14 +944,14 @@ Residue classes
           j_seq=j_seq,
           rt_mx_ji=sym_pair.rt_mx_ji)
         added_to_asu_table = True
-      except RuntimeError, e:
+      except RuntimeError as e:
         error = """
     Difficulties linking atoms
       %s
       %s
     Suggestions include providing restraints for any unknown residues.
         """ % (atom1.quote(), atom2.quote())
-        print >> log, error
+        print(error, file=log)
       if added_to_asu_table:
         retain.append(ijk)
         if (sym_pair.rt_mx_ji.is_unit_mx()): n_simple += 1
@@ -968,22 +973,22 @@ Residue classes
 
     # output
     if link_data:
-      print >> log, "  Number of additional links: simple=%d, symmetry=%d" % (
+      print("  Number of additional links: simple=%d, symmetry=%d" % (
         simple_links,
         sym_bonds,
-        )
+        ), file=log)
       for label1, label2, sym_op, link_name in sorted(link_data):
         if sym_op is None:
-          print >> log, "    Simple link:   %s - %s" % (label1, label2)
+          print("    Simple link:   %s - %s" % (label1, label2), file=log)
       for label1, label2, sym_op, bond_type in sorted(bond_data):
         if sym_op:
-          print >> log, "    Symmetry link: %s - %s sym. op: %s" % (label1,
+          print("    Symmetry link: %s - %s sym. op: %s" % (label1,
                                                                     label2,
                                                                     sym_op,
-            )
+            ), file=log)
     if(log is not None):
-      print >> log,"  Number of custom bonds: simple=%d, symmetry=%d" % (
-        n_simple, n_symmetry)
+      print("  Number of custom bonds: simple=%d, symmetry=%d" % (
+        n_simple, n_symmetry), file=log)
     if (n_symmetry == 0):
       blanks = ""
     else:
@@ -1001,14 +1006,14 @@ Residue classes
       return 1
     #
     if exclude_out_lines:
-      print >> log, "  Excluded links - shortest distance candidate listed for each exclusion"
-      for key, item in exclude_out_lines.items():
-        print >> log, item
+      print("  Excluded links - shortest distance candidate listed for each exclusion", file=log)
+      for key, item in list(exclude_out_lines.items()):
+        print(item, file=log)
     if links:
       explained = []
-      print >> log,  "  Links applied"
+      print("  Links applied", file=log)
       for key in sorted(links):
-        print >> log,  "    %s" % key
+        print("    %s" % key, file=log)
         links[key].sort(_sort_on_id)
         for ag1, ag2, i_seq, j_seq in links[key]:
           self.pdb_link_records["LINK"].append([self.pdb_atoms[i_seq],
@@ -1016,16 +1021,16 @@ Residue classes
                                                 "x,y,z", #link_rt_mx_ji,
                                                 ])
           if ag1.altloc or ag2.altloc:
-            print >> log, '      "%s" - "%s" : altloc "%s" - "%s"' % (
+            print('      "%s" - "%s" : altloc "%s" - "%s"' % (
               ag1.id_str(),
               ag2.id_str(),
               ag1.altloc,
               ag2.altloc,
-              )
+              ), file=log)
           else:
-            print >> log, '      "%s" - "%s"' % (ag1.id_str(),
+            print('      "%s" - "%s"' % (ag1.id_str(),
                                                  ag2.id_str(),
-              )
+              ), file=log)
           explain=""
           if key.find("ALPHA")==0 or key.find("BETA")==0:
             true_alpha_beta = glyco_utils.get_alpha_beta(ag2.resname,
@@ -1042,27 +1047,27 @@ Residue classes
                                                                one)
               explain += " %s linkage is required..." % (two)
               if explain not in explained:
-                print >> log, explain
+                print(explain, file=log)
               explained.append(explain)
     if bond_data:
-      print >> log, "  Number of additional bonds: simple=%d, symmetry=%d" % (
+      print("  Number of additional bonds: simple=%d, symmetry=%d" % (
         simple_bonds,
         sym_bonds,
-        )
+        ), file=log)
       for caption, bond_type in [
           ("Coordination",'metal-coordination'),
           ("Other bonds",'bond'),
         ]:
-        print >> log, "  %s:" % caption
+        print("  %s:" % caption, file=log)
         for ijk, (label1, label2, sym_op, bt) in enumerate(sorted(bond_data)):
           if sym_op is None and bt == bond_type and ijk in retain:
-            print >> log, "    Simple bond:   %s - %s" % (label1, label2)
+            print("    Simple bond:   %s - %s" % (label1, label2), file=log)
         for ijk, (label1, label2, sym_op, bt) in enumerate(sorted(bond_data)):
           if sym_op and bt == bond_type and ijk in retain:
-            print >> log, "    Symmetry bond: %s - %s sym. op: %s" % (label1,
+            print("    Symmetry bond: %s - %s sym. op: %s" % (label1,
                                                                       label2,
                                                                       sym_op,
-            )
+            ), file=log)
     if(log is not None):
-      print >> log, '  Time building additional restraints: %0.2f' % (
-        time.time()-t0)
+      print('  Time building additional restraints: %0.2f' % (
+        time.time()-t0), file=log)

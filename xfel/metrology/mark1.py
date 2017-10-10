@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from builtins import range
 import math,copy
 import scitbx.math
 from scitbx.array_family import flex
@@ -19,19 +21,19 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
 
   def curvatures(self):
     curvs = flex.double([0.]*128)
-    for x in xrange(64):
+    for x in range(64):
       curvs[2*x] = 2. * self.selection_counts[x]
       curvs[2*x+1]=2. * self.selection_counts[x]
     return curvs
 
   def compute_functional_and_gradients(self):
     # HATTNE does never enter this function
-    print "HATTNE entering mark1.compute_functional_and_gradients"
+    print("HATTNE entering mark1.compute_functional_and_gradients")
 
     self.model_calcx = self.spotcx.deep_copy()
     self.model_calcy = self.spotcy.deep_copy()
 
-    for x in xrange(64):
+    for x in range(64):
       selection = self.selections [x]
       self.model_calcx.set_selected(selection, self.model_calcx + self.x[2*x])
       self.model_calcy.set_selected(selection, self.model_calcy + self.x[2*x+1])
@@ -43,31 +45,31 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
     calc_obs_diffy = self.model_calcy - self.spotfy
 
     gradients = flex.double([0.]*128)
-    for x in xrange(64):
+    for x in range(64):
       selection = self.selections [x]
       gradients[2*x] = 2. * flex.sum( calc_obs_diffx.select(selection) )
       gradients[2*x+1]=2. * flex.sum( calc_obs_diffy.select(selection) )
-    print "Functional ",math.sqrt(flex.mean(squares))
+    print("Functional ",math.sqrt(flex.mean(squares)))
 
     return f,gradients
 
   def post_min_recalc(self):
 
-    print "ENTERING post_min_recalc cx, cy", \
+    print("ENTERING post_min_recalc cx, cy", \
       flex.mean(self.spotcx), \
       flex.mean(self.spotcy), \
       len(self.spotcx), \
-      len(self.spotcy)
-    print "ENTERING post_min_recalc fx, fy", \
+      len(self.spotcy))
+    print("ENTERING post_min_recalc fx, fy", \
       flex.mean(self.spotfx), \
       flex.mean(self.spotfy), \
       len(self.spotfx), \
-      len(self.spotfy)
-    print "HATTNE check input 0", \
+      len(self.spotfy))
+    print("HATTNE check input 0", \
       flex.mean(self.model_calcx), \
       flex.mean(self.model_calcy), \
       len(self.model_calcx), \
-      len(self.model_calcy)
+      len(self.model_calcy))
 
     self.delrsq = self.delrsq_functional(calcx = self.model_calcx, calcy = self.model_calcy)
     self.tile_rmsd = [0.]*(len(self.tiles) // 4)
@@ -78,12 +80,12 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
 
     self.post_mean_cv = []
 
-    print "HATTNE post_min_recalc input CV x,y", \
+    print("HATTNE post_min_recalc input CV x,y", \
       flex.mean(flex.pow(self.correction_vector_x, 2)), \
-      flex.mean(flex.pow(self.correction_vector_y, 2))
-    print "HATTNE post_min_recalc input model ", \
+      flex.mean(flex.pow(self.correction_vector_y, 2)))
+    print("HATTNE post_min_recalc input model ", \
       flex.mean(self.model_calcx), \
-      flex.mean(self.model_calcy)
+      flex.mean(self.model_calcy))
 
     for x in range(len(self.tiles) // 4):
         #if self.tilecounts[x]==0: continue
@@ -149,8 +151,8 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
                                   flex.mean ( self.correction_vector_y) ])
     self.overall_rmsd = math.sqrt(flex.mean(self.delrsq_functional(self.model_calcx, self.model_calcy)))
 
-    print "HATTNE post_min_recalc post_min_recalc 1", list(self.overall_cv)
-    print "HATTNE post_min_recalc post_min_recalc 2", self.overall_rmsd
+    print("HATTNE post_min_recalc post_min_recalc 1", list(self.overall_cv))
+    print("HATTNE post_min_recalc post_min_recalc 2", self.overall_rmsd)
 
 
   def print_table(self):
@@ -166,12 +168,12 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
     tangen_sigmas = flex.double(64)
 
     wtaveg = [0.]*64
-    for x in xrange(64):
+    for x in range(64):
       if self.tilecounts[x] >= 3:
         wtaveg[x] = self.weighted_average_angle_deg_from_tile(x, self.post_mean_cv[x], self.correction_vector_x,
           self.correction_vector_y)
 
-    for idx in xrange(64):
+    for idx in range(64):
       x = sort_radii[idx]
       if self.tilecounts[x] < 3:
         radial = (0,0)
@@ -224,8 +226,8 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
         format_value("%s", ""),
       ])
 
-    print
-    print table_utils.format(table_data,has_header=1,justify='center',delim=" ")
+    print()
+    print(table_utils.format(table_data,has_header=1,justify='center',delim=" "))
 
 
 def run(args):

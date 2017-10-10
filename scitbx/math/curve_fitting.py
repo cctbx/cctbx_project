@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 import math
 
 import libtbx
@@ -196,7 +198,7 @@ class univariate_polynomial_fit(object):
     self.degree = degree
     self.n_terms = degree + 1
     params = flex.double([1] * self.n_terms)
-    for cycle in xrange(number_of_cycles):
+    for cycle in range(number_of_cycles):
       polynomial = univariate_polynomial(*params)
       fit = lbfgs_minimiser(
         functions=[polynomial],

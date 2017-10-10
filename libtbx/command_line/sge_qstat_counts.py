@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from past.builtins import cmp
 from libtbx.queuing_system_utils.sge_utils import qstat_parse
 from libtbx import dict_with_default_0
 import sys
@@ -11,7 +13,7 @@ def run(args):
     counts = user_states.setdefault(items.user, dict_with_default_0())
     counts[items.state] += items.counts()
   sum_counts = []
-  for user,counts in user_states.items():
+  for user,counts in list(user_states.items()):
     sum_counts.append((user, sum(counts.values())))
   def cmp_sum_counts(a,b):
     result = cmp(b[1], a[1])
@@ -21,15 +23,15 @@ def run(args):
   cpus=0
   for user,sc in sum_counts:
     counts = user_states[user]
-    print "%-10s   %5d r   %5d qw" % (user, counts["r"], counts["qw"]),
+    print("%-10s   %5d r   %5d qw" % (user, counts["r"], counts["qw"]), end=' ')
     cpus+=counts["r"]
-    for state,c in counts.items():
+    for state,c in list(counts.items()):
       if (state in ["r", "qw"]): continue
-      print "  %5d %s" % (c, state),
-    print "  %5d total" % sc
-  print "-"*45
-  print "%-10s   %5d r" % ("total", cpus)
-  print "-"*45
+      print("  %5d %s" % (c, state), end=' ')
+    print("  %5d total" % sc)
+  print("-"*45)
+  print("%-10s   %5d r" % ("total", cpus))
+  print("-"*45)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

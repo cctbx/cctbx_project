@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import time
 from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residue
@@ -39,7 +40,7 @@ pdb_files = [
 def sample(residue, clusters, states):
   xyz_moved_dc = residue.atoms().extract_xyz().deep_copy()
   chi_angles = rotamer_manager.get_chi_angles(resname=residue.resname)
-  print residue.resname, len(chi_angles)
+  print(residue.resname, len(chi_angles))
   if(residue.resname in ["ARG","LYS"]):
     return None # skip: too long to run
   if(residue.resname in ["ALA","GLY"]):
@@ -96,5 +97,5 @@ if(__name__ == "__main__"):
   t0 = time.time()
   for fn in pdb_files:
     exercise(file_name=fn)
-  print "Time: %8.4f"%(time.time()-t0)
-  print "OK"
+  print("Time: %8.4f"%(time.time()-t0))
+  print("OK")

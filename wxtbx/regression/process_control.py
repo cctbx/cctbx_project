@@ -3,6 +3,10 @@
 
 from __future__ import division
 from __future__ import absolute_import # XXX is this necessary?
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from builtins import object
 from wx.lib.agw import pyprogress
 import wx
 from libtbx import thread_utils
@@ -173,19 +177,19 @@ class detached_process (runtime_utils.detached_process_client) :
     self.proxy.callback_stdout(data)
 
   def callback_other (self, data) :
-    print "OTHER"
+    print("OTHER")
     self.proxy.callback_other(data)
 
   def callback_abort (self) :
-    print "ABORT"
+    print("ABORT")
     self.proxy.callback_abort()
 
   def callback_final (self, result) :
-    print "FINAL"
+    print("FINAL")
     self.proxy.callback_final(result)
 
   def callback_error (self, error, traceback_info) :
-    print "ERROR"
+    print("ERROR")
     self.proxy.callback_error(error, traceback_info)
 
   def callback_pause (self) :
@@ -255,7 +259,7 @@ class download_file_basic (object) :
   def run (self) :
     try :
       result = self.dl_func(self.args)
-    except Exception, e :
+    except Exception as e :
       result = (None, str(e))
     finally :
       wx.PostEvent(self.window, DownloadCompleteEvent(result))
@@ -531,7 +535,7 @@ def test_function_1 (*args, **kwds) :
   n = 0
   for i in range(25000) :
     x = math.sqrt(i)
-    print x
+    print(x)
     n += x
   return n
 def test_function_2 (*args, **kwds) :

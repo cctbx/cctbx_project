@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import fftw3tbx
 from libtbx import easy_run
 from libtbx.utils import Sorry, Usage
@@ -10,21 +11,21 @@ import sys, os
 def install(tgz, precision, n_proc):
   assert precision in ["double", "float"]
   #
-  print "cd %s" % show_string(libtbx.env.build_path)
+  print("cd %s" % show_string(libtbx.env.build_path))
   os.chdir(libtbx.env.build_path)
-  print
+  print()
   #
   command = "gunzip -c %s | tar xvf -" % show_string(tgz)
-  print command
+  print(command)
   lines = easy_run.fully_buffered(
     command=command).raise_if_errors().stdout_lines
-  print
+  print()
   if (len(lines) > 10):
     lines = lines[:3] \
           + ["... (%d lines not shown)" % (len(lines)-6)] \
           + lines[-3:]
-  print " ", "\n  ".join(lines)
-  print
+  print(" ", "\n  ".join(lines))
+  print()
   if (len(lines) == 0):
     raise Sorry(
       "Source code file appears to be empty: %s" % show_string(tgz))
@@ -33,9 +34,9 @@ def install(tgz, precision, n_proc):
     raise Sorry(
       "Expected source directory does not exist: %s" % show_string(src))
   #
-  print "cd %s" % show_string(src)
+  print("cd %s" % show_string(src))
   os.chdir(src)
-  print
+  print()
   #
   if (precision == "float"):
     s = " --enable-single"
@@ -45,27 +46,27 @@ def install(tgz, precision, n_proc):
     libfftw3 = fftw3tbx.libfftw3
   command = "./configure --prefix=%s --enable-shared%s" % (show_string(
     libtbx.env.under_build("base")), s)
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
   if (not os.path.isfile("Makefile")):
     raise Sorry(
       "./configure command failed: Makefile does not exist.")
   #
   command = "make"
   if (n_proc is not None): command += " -j%d" % n_proc
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
   f = ".libs/" + libfftw3
   if (not os.path.isfile(f)):
     raise Sorry(
       "make command failed: %s does not exist." % show_string(f))
   #
   command = "make install"
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
   for f in ["base/include/"+fftw3tbx.fftw3_h,
             "base/lib/"+libfftw3]:
     f = libtbx.env.under_build(f)
@@ -73,17 +74,17 @@ def install(tgz, precision, n_proc):
       raise Sorry(
         "make install command failed: %s does not exist." % show_string(f))
   #
-  print "cd %s" % show_string(libtbx.env.build_path)
+  print("cd %s" % show_string(libtbx.env.build_path))
   os.chdir(libtbx.env.build_path)
-  print
+  print()
   #
   command = "rm -rf %s" % show_string(src)
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
 
 def run(args):
-  print
+  print()
   if (len(args) != 1):
     raise Usage("%s fftw-*.tar.gz" % libtbx.env.dispatcher_name)
   tgz = args[0]
@@ -96,15 +97,15 @@ def run(args):
   install(tgz=tgz, precision="float", n_proc=n_proc)
   #
   command = "libtbx.refresh"
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
   #
   command = "libtbx.scons"
   if (n_proc is not None): command += " -j%d" % n_proc
-  print command
+  print(command)
   easy_run.call(command=command)
-  print
+  print()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

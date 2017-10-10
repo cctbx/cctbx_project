@@ -1,8 +1,10 @@
 from __future__ import division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME cxi.trial_stats
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
+from builtins import str
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 import sys
@@ -48,12 +50,12 @@ def run (args) :
     if (not "=" in arg) :
       try :
         user_phil.append(libtbx.phil.parse("""trial_id=%d""" % int(arg)))
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Unrecognized argument '%s'" % arg)
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = master_phil.fetch(sources=user_phil).extract()
   if (params.trial_id is None) :
@@ -105,7 +107,7 @@ def run (args) :
     else:
       indexingrate = 100*numindexed/numframes
 
-    print "Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,hitrate,numindexed,indexingrate)
+    print("Run: %3d, number of hits: %6d, number of frames: %6d, hitrate: %4.1f%%. Number indexed: %6d (%4.1f%%)"%(run,numhits,numframes,hitrate,numindexed,indexingrate))
     frames_total += numframes
     hits_total += numhits
     indexed_total += numindexed
@@ -119,7 +121,7 @@ def run (args) :
   else:
     indexingrate = 100*indexed_total/frames_total
 
-  print "Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,hitrate,indexed_total,indexingrate)
+  print("Totals: frames: %d, hits: %d (%4.1f%%), indexed: %d (%4.1f%%)"%(frames_total,hits_total,hitrate,indexed_total,indexingrate))
   dbobj.close()
 
 if (__name__ == "__main__") :

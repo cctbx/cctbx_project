@@ -1,4 +1,6 @@
 from __future__ import division
+from builtins import range
+from builtins import object
 from scitbx import lbfgs
 from scitbx.array_family import flex
 from scitbx.math import chebyshev_lsq
@@ -11,7 +13,7 @@ def chebyshev_nodes(n,
                     low=-1,
                     high=1,
                     include_limits=False):
-  x = flex.double( range(n) )+1
+  x = flex.double( list(range(n)) )+1
   x = (2.0*x-1.0)/n
   x = x*math.pi/2.0
   x = -flex.cos(x)
