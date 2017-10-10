@@ -186,6 +186,7 @@ class Script(object):
       read_experiments=True,
       read_datablocks=True,
       read_reflections=True,
+      check_format=False,
       epilog=help_message)
 
   def run(self):

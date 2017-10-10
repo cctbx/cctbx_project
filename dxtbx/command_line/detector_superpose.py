@@ -80,12 +80,12 @@ class Script(object):
     # Parse the command line arguments
     params, options = self.parser.parse_args(show_diff_phil=True)
 
-    reference_experiments = ExperimentListFactory.from_json_file(params.reference_experiments)
+    reference_experiments = ExperimentListFactory.from_json_file(params.reference_experiments, check_format=False)
     if len(reference_experiments.detectors()) != 1:
       raise Sorry("Please ensure reference has only 1 detector model")
     reference = reference_experiments.detectors()[0]
 
-    moving_experiments = ExperimentListFactory.from_json_file(params.moving_experiments)
+    moving_experiments = ExperimentListFactory.from_json_file(params.moving_experiments, check_format=False)
     if len(moving_experiments.detectors()) != 1:
       raise Sorry("Please ensure moving has only 1 detector model")
     moving = moving_experiments.detectors()[0]
