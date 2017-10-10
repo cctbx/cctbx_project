@@ -46,13 +46,13 @@ ENDCHAR
     O.dwidth = None
     O.bbx = None
     O.bitmap = None
-    line = bdf_file.next().strip()
+    line = next(bdf_file).strip()
     if (line == "ENDFONT"):
       return
     assert line.startswith("STARTCHAR ")
     O.label = line.split(None, 1)[1]
     while True:
-      line = bdf_file.next().strip()
+      line = next(bdf_file).strip()
       if (line.startswith("ENCODING ")):
         fields = line.split()
         assert len(fields) == 2
@@ -78,7 +78,7 @@ ENDCHAR
     assert O.encoding is not None
     O.bitmap = []
     while True:
-      line = bdf_file.next().strip()
+      line = next(bdf_file).strip()
       if (line == "ENDCHAR"):
         break
       O.bitmap.append(line)
