@@ -28,7 +28,7 @@ if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
 
 # XXX backward compatibility 2011-03-29
 qnew = 2
-if (qnew == 1 and sys.version_info[:2] < (2,7)): qnew = 0
+if (qnew == 1 and sys.version_info[:2] < (2,7)) or sys.version_info[0] >= 3: qnew = 0
 qnew = ["", " -Qwarn", " -Qnew"][qnew]
 
 if (os.name == "nt"):

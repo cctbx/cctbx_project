@@ -38,11 +38,11 @@ def run():
   engine_path = find_scons_engine_path()
   if (engine_path is not None):
     sys.path.insert(0, engine_path)
-    try: from . import SCons
+    try: import SCons
     except ImportError:
       show_traceback()
       del sys.path[0]
-  try: from . import SCons.Script
+  try: import SCons.Script
   except ImportError:
     show_traceback()
     msg = ["SCons is not available.",
@@ -56,7 +56,7 @@ def run():
       "  It may be necessary to rename the unpacked distribution, e.g.:",
       "    mv scons-0.96.1 scons"])
     raise Sorry("\n".join(msg))
-  from . import SCons.Script.Main
+  import SCons.Script.Main
   if (hasattr(SCons.Script.Main, "fetch_win32_parallel_msg")):
     SCons.Script.Main.fetch_win32_parallel_msg = dummy_fetch_win32_parallel_msg
   show_times_at_exit()
