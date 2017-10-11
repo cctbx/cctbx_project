@@ -189,7 +189,7 @@ class manager(object):
     self.model_input = model_input
     self._restraint_objects = restraint_objects
     self.monomer_parameters = monomer_parameters
-    self.pdb_interpretation_params = pdb_interpretation_params
+    self.pdb_interpretation_params = None
     self.build_grm = build_grm
     self.stop_for_unknowns = stop_for_unknowns
     self.processed_pdb_file = processed_pdb_file
@@ -237,16 +237,7 @@ class manager(object):
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
-    if self.pdb_interpretation_params is None:
-      self.pdb_interpretation_params = iotbx.phil.parse(
-          input_string=grand_master_phil_str, process_includes=True).extract()
-    # check if we got only inside of pdb_interpretation scope.
-    # For mmtbx.command_line.load_model_and_data
-    if getattr(self.pdb_interpretation_params, "sort_atoms", None) is not None:
-      full_params = iotbx.phil.parse(
-          input_string=grand_master_phil_str, process_includes=True).extract()
-      full_params.pdb_interpretation = self.pdb_interpretation_params
-      self.pdb_interpretation_params = full_params
+    self.set_pdb_interpretation_params(pdb_interpretation_params)
 
     if self.model_input is not None:
       s = str(type(model_input))
@@ -304,6 +295,34 @@ class manager(object):
     if self.has_hd:
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
+
+  @staticmethod
+  def get_default_pdb_interpretation_params():
+    """
+    Get parsed parameters (in form of Python objects). Use this function to
+    avoid importing pdb_interpretation phil strings and think about how to
+    parse it. Does need the instance of class (staticmethod).
+    Then modify what needed to be modified and init this class normally.
+    """
+    return iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+
+  def set_pdb_interpretation_params(self, params):
+    #
+    # Consider invalidating self._grm here, because it could be already
+    # constructed with different params
+    #
+    if params is None:
+      self.pdb_interpretation_params = iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+    # check if we got only inside of pdb_interpretation scope.
+    # For mmtbx.command_line.load_model_and_data
+    if getattr(params, "sort_atoms", None) is not None:
+      full_params = iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+      full_params.pdb_interpretation = params
+      self.pdb_interpretation_params = full_params
+
 
   def crystal_symmetry(self):
     return self._crystal_symmetry
