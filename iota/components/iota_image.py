@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/19/2017
+Last Changed: 10/10/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -583,19 +583,15 @@ class SingleImage(object):
       self.final['final'] = None
     else:
       from iota.components.iota_cctbx import Integrator
-      integrator = Integrator(self.conv_img,
-                              self.fin_file,
-                              self.params.cctbx.selection.min_sigma,
-                              self.params.cctbx.target,
-                              self.params.analysis.charts,
-                              self.viz_path,
-                              self.int_log,
-                              tag,
-                              self.tmp_base,
-                              self.gain,
-                              self.params.mp_method,
-                              self.params.mp_queue,
-                              single_image)
+      integrator = Integrator(params = self.params,
+                              source_image=self.conv_img,
+                              output_image=self.fin_file,
+                              viz=self.viz_path,
+                              log=self.int_log,
+                              tag=tag,
+                              tmp_base=self.tmp_base,
+                              gain=self.gain,
+                              single_image=single_image)
       if tag == 'grid search':
         self.log_info.append('\nCCTBX grid search:')
         for i in range(len(self.grid)):

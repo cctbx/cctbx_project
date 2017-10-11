@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 09/20/2017
+Last Changed: 10/10/2017
 Description : IOTA image-tracking GUI module
 '''
 
@@ -25,8 +25,6 @@ from iota.components.iota_utils import InputFinder
 from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
-
-from time import time
 
 
 # Platform-specific stuff
@@ -626,7 +624,21 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=stop_bmp,
                                                 shortHelp='Stop',
                                                 longHelp='Stop Spotfinding')
-    self.toolbar.AddSeparator()
+    # self.toolbar.AddSeparator()
+    # span_view = bitmaps.fetch_custom_icon_bitmap('span_view')
+    # self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
+    #                                              bitmap=span_view,
+    #                                              kind=wx.ITEM_CHECK,
+    #                                              shortHelp='Select to View',
+    #                                              longHelp='Select images to view')
+    # span_zoom = bitmaps.fetch_custom_icon_bitmap('span_zoom')
+    # self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY, label='Zoom In',
+    #                                              bitmap=span_zoom,
+    #                                              kind=wx.ITEM_CHECK,
+    #                                              shortHelp='Zoom In',
+    #                                              longHelp='Zoom in on chart')
+    # self.toolbar.ToggleTool(self.tb_btn_view.GetId(), True)
+
     # view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer32')
     # self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
     #                                             bitmap=view_bmp,

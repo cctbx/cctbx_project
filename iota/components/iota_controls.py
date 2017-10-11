@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 07/21/2017
+Last Changed: 10/10/2017
 Description : IOTA GUI controls
 '''
 
@@ -285,6 +285,84 @@ class CtrlBase(wx.Panel):
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
     elif content_style == 'italic_bold':
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+
+class DialogButtonsCtrl(CtrlBase):
+  ''' Customizable "bottom of window" set of buttons for dialogs '''
+
+  def __init__(self, parent,
+               preset = None,
+               buttons = None,
+               button_size = wx.DefaultSize,
+               choices = None,
+               choice_label = None,
+               choice_size = wx.DefaultSize):
+    CtrlBase.__init__(self, parent=parent)
+
+    main_sizer = wx.FlexGridSizer(1, 3, 0, 15)
+    main_sizer.AddStretchSpacer()
+
+    # Presets that make for convenient shorthand
+    if preset == 'OK_CANCEL':
+      buttons = [('OK', wx.ID_OK), ('Cancel', wx.ID_CANCEL)]
+    elif preset == 'YES_NO':
+      buttons = [('Yes', wx.ID_YES), ('No', wx.ID_NO)]
+    elif preset == 'CLOSE':
+      buttons = [('Close', wx.ID_CLOSE)]
+    if preset == 'PROC_DIALOG':
+      buttons = [('OK', wx.ID_OK), ('Cancel', wx.ID_CANCEL)]
+      choices = ['Basic', 'Advanced', 'Developer']
+      choice_label = 'Expert Level: '
+      choice_size = (150, -1)
+
+    if choices is not None:
+      choice_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      self.choice_txt = wx.StaticText(self, label=choice_label, size=wx.DefaultSize)
+      self.choice = wx.Choice(self, size=choice_size, choices=choices)
+      choice_sizer.Add(self.choice_txt, flag=wx.LEFT, border=5)
+      choice_sizer.Add(self.choice)
+      main_sizer.Add(choice_sizer, flag=wx.ALL, border=10)
+
+    if buttons is not None:
+      btn_sizer = wx.FlexGridSizer(1, len(buttons), 0, 0)
+      for key, id in buttons:
+        btn_name = 'btn_{}'.format(str.lower(key))
+        button = wx.Button(self, label=key, id=id, size=button_size)
+        self.__setattr__(btn_name, button)
+        btn_sizer.Add(button, flag=wx.RIGHT, border=5)
+      main_sizer.Add(btn_sizer, flag=wx.ALL, border=10)
+
+    main_sizer.AddGrowableCol(0)
+    self.SetSizer(main_sizer)
+
+class TextCtrlWithButtons(CtrlBase):
+  ''' Text control with multiple buttons '''
+  def __init__(self, parent,
+               buttons = None,
+               button_size = wx.DefaultSize,
+               ctrl_value = '',
+               ctrl_size = wx.DefaultSize,
+               ctrl_label = ''):
+    CtrlBase.__init__(self, parent=parent)
+
+    main_sizer = wx.FlexGridSizer(1, 3, 0, 15)
+
+    self.txt_label = wx.StaticText(self, label=ctrl_label, size=ctrl_size)
+    self.txt_ctrl = wx.TextCtrl(self)
+    self.txt_ctrl.SetValue(ctrl_value)
+    main_sizer.Add(self.txt_label)
+    main_sizer.Add(self.txt_ctrl, flag=wx.EXPAND)
+
+    if buttons is not None:
+      btn_sizer = wx.FlexGridSizer(1, len(buttons), 0, 0)
+      for key, id in buttons:
+        btn_name = 'btn_{}'.format(str.lower(key))
+        button = wx.Button(self, label=key, id=id, size=button_size)
+        self.__setattr__(btn_name, button)
+        btn_sizer.Add(button, flag=wx.RIGHT, border=5)
+      main_sizer.Add(btn_sizer)
+
+    main_sizer.AddGrowableCol(1)
+    self.SetSizer(main_sizer)
 
 class InputCtrl(CtrlBase):
   ''' Generic panel that will place a text control with a label '''
@@ -614,7 +692,7 @@ class TwoButtonCtrl(CtrlBase):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
-    output_box = wx.FlexGridSizer(1, 5, 0, 10)
+    output_box = wx.FlexGridSizer(1, 5, 0, 5)
     self.txt = wx.StaticText(self, label=label, size=label_size)
     self.txt.SetFont(self.font)
     output_box.Add(self.txt)
@@ -693,6 +771,8 @@ class VirtualImageListCtrl(CtrlBase):
 
 class PHILBox(CtrlBase):
   def __init__(self, parent,
+               btn_clear_size=(120, -1),
+               btn_clear_label='Clear PHIL',
                btn_import=True,
                btn_import_size=(120, -1),
                btn_import_label='Import PHIL',
@@ -702,6 +782,7 @@ class PHILBox(CtrlBase):
                btn_default=True,
                btn_default_size=(120, -1),
                btn_default_label='Default PHIL',
+               btn_pos = 'top',
                ctr_size=(-1, 125),
                ctr_value='',
                label_style='normal',
@@ -717,34 +798,61 @@ class PHILBox(CtrlBase):
                                         size=ctr_size,
                                         style=wx.VSCROLL,
                                         value=ctr_value)
-    span_counter = 0
+    span_counter = 1
+    if btn_pos in ('left', 'right'):
+      self.btn_sizer = wx.BoxSizer(wx.VERTICAL)
+      b_flag = wx.BOTTOM
+    elif btn_pos in ('top', 'bottom'):
+      self.btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+      b_flag = wx.RIGHT
+    else:
+      b_flag = wx.ALL
+
     if btn_import:
       self.btn_import = wx.Button(self,
                                   label=btn_import_label,
                                   size=btn_import_size)
-      self.sizer.Add(self.btn_import, pos=(span_counter, 0))
-      span_counter += 1
+      self.btn_sizer.Add(self.btn_import, flag=b_flag, border=5)
     if btn_export:
       self.btn_export = wx.Button(self,
                                   label=btn_export_label,
                                   size=btn_export_size)
-      self.sizer.Add(self.btn_export, pos=(span_counter, 0))
-      span_counter += 1
+      self.btn_sizer.Add(self.btn_export, flag=b_flag, border=5)
     if btn_default:
       self.btn_default = wx.Button(self,
                                    label=btn_default_label,
                                    size=btn_default_size)
-      self.sizer.Add(self.btn_default, pos=(span_counter, 0))
-      span_counter += 1
+      self.btn_sizer.Add(self.btn_default, flag=b_flag, border=5)
 
-    if span_counter > 0:
-      self.sizer.Add(self.ctr, pos=(0, 1), span=(span_counter + 1, 1),
-                     flag=wx.EXPAND)
+    self.btn_clear = wx.Button(self,
+                               label=btn_clear_label,
+                               size=btn_clear_size)
+    self.btn_sizer.Add(self.btn_clear)
+    self.Bind(wx.EVT_BUTTON, self.onClear, self.btn_clear)
+
+    if btn_pos == 'left':
+      self.sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL)
+      self.sizer.Add(self.ctr, pos=(0, 1), flag=wx.EXPAND)
       self.sizer.AddGrowableCol(1)
-    elif span_counter == 0:
+      self.sizer.AddGrowableRow(0)
+    elif btn_pos == 'right':
+      self.sizer.Add(self.btn_sizer, pos=(0, 1), flag=wx.ALL)
       self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
       self.sizer.AddGrowableCol(0)
-    self.sizer.AddGrowableRow(span_counter)
+      self.sizer.AddGrowableRow(0)
+    elif btn_pos == 'top':
+      self.sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL | wx.ALIGN_LEFT)
+      self.sizer.Add(self.ctr, pos=(1, 0), flag=wx.EXPAND)
+      self.sizer.AddGrowableCol(0)
+      self.sizer.AddGrowableRow(1)
+    elif btn_pos == 'bottom':
+      self.sizer.Add(self.btn_sizer, pos=(1, 0), flag=wx.ALL | wx.ALIGN_RIGHT)
+      self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
+      self.sizer.AddGrowableCol(0)
+      self.sizer.AddGrowableRow(0)
+
+  def onClear(self, e):
+    self.reset_default()
 
   def reset_default(self):
     self.ctr.SetValue('')
