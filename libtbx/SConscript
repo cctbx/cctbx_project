@@ -12,6 +12,8 @@ op = os.path
 if (hasattr(Environment, "Clone")):
   Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
 
+# This is a monkey patch of Executor.get_contents() in scons\engine\SCons\Executor.py
+# I have no idea of why this was needed but in Python3 it must return bytearray to not fall over
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
                                                    dict=None):
   import pickle
@@ -19,7 +21,7 @@ def SCons_Action_FunctionAction_get_contents(self, target, source, env,
     code = pickle.dumps(self.execfunction)
   except (TypeError, pickle.PicklingError):
     code = self.execfunction.func_name
-  return str(code) + env.subst("".join(map(lambda v: '${'+v+'}',self.varlist)))
+  return bytearray(str(code) + env.subst("".join(map(lambda v: '${'+v+'}',self.varlist))), 'utf-8')
 if (1):
   import SCons.Action
   SCons.Action.FunctionAction.get_contents = \
