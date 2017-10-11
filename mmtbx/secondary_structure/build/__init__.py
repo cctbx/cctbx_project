@@ -480,8 +480,6 @@ def substitute_ss(
   ss_annotation = model.get_ss_annotation()
 
   t0 = time()
-  # if rotamer_manager is None:
-  #   rotamer_manager = RotamerEval()
   if model.get_hierarchy().models_size() > 1:
     raise Sorry("Multi model files are not supported")
   for m in model.get_hierarchy().models():
@@ -596,12 +594,8 @@ def substitute_ss(
     # Don't do geometry minimization and stuff if nothing was changed.
     return None
 
-
-
   # XXX here we want to adopt new coordinates
   model.set_sites_cart(sites_cart=edited_h.atoms().extract_xyz())
-
-
 
   t3 = time()
   # pre_result_h = edited_h
@@ -659,7 +653,7 @@ def substitute_ss(
   # print "params_line"
   # print params_line
   params = iotbx.phil.parse(input_string=params_line, process_includes=True)#.extract()
-  # This does not the same way for a strange reason. Need to investigate.
+  # This does not work the same way for a strange reason. Need to investigate.
   # The number of resulting hbonds is different later.
   # w_params = params.extract()
   # w_params.pdb_interpretation.secondary_structure.protein.remove_outliers = False

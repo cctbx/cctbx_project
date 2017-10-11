@@ -22,6 +22,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
       "%s_start.pdb" % prefix,
       "use_map_for_reference=False",
       "number_of_refinement_cycles=1",
+      "run_minimization_first=False",
       "n_macro=1",
       ">%s.log" % prefix])
   print cmd
