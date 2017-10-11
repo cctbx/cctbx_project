@@ -186,10 +186,12 @@ class manager(object):
 
     self._xray_structure = xray_structure
     self._pdb_hierarchy = pdb_hierarchy
-    self.model_input = model_input
+    self._model_input = model_input
     self._restraint_objects = restraint_objects
     self.monomer_parameters = monomer_parameters
     self.pdb_interpretation_params = None
+    self.set_pdb_interpretation_params(pdb_interpretation_params)
+
     self.build_grm = build_grm
     self.stop_for_unknowns = stop_for_unknowns
     self.processed_pdb_file = processed_pdb_file
@@ -237,18 +239,17 @@ class manager(object):
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
-    self.set_pdb_interpretation_params(pdb_interpretation_params)
 
-    if self.model_input is not None:
+    if self._model_input is not None:
       s = str(type(model_input))
       if s.find("pdb") > 0:
         self.original_model_format = "pdb"
       elif s.find("cif") > 0:
         self.original_model_format = "mmcif"
-      self._ss_annotation = self.model_input.extract_secondary_structure()
+      self._ss_annotation = self._model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
-        self._crystal_symmetry = self.model_input.crystal_symmetry()
+        self._crystal_symmetry = self._model_input.crystal_symmetry()
 
     if process_input or build_grm:
       assert self.processed_pdb_file is None
@@ -260,8 +261,8 @@ class manager(object):
       if self.processed_pdb_file is not None:
         self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
-      elif self.model_input is not None:
-        self._pdb_hierarchy = deepcopy(self.model_input).construct_hierarchy()
+      elif self._model_input is not None:
+        self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
     self._atom_selection_cache = self._pdb_hierarchy.atom_selection_cache()
     self._update_pdb_atoms()
 
@@ -312,6 +313,7 @@ class manager(object):
     # Consider invalidating self._grm here, because it could be already
     # constructed with different params
     #
+    self.pdb_interpretation_params = params
     if params is None:
       self.pdb_interpretation_params = iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
@@ -366,8 +368,8 @@ class manager(object):
     return None
 
   def get_number_of_models(self):
-    if self.model_input is not None:
-      return self.model_input.model_ids().size()
+    if self._model_input is not None:
+      return self._model_input.model_ids().size()
     return 0
 
   def get_site_symmetry_table(self):
@@ -673,7 +675,7 @@ class manager(object):
           use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
     if self.processed_pdb_file is None:
       self.processed_pdb_file, junk = self.processed_pdb_files_srv.process_pdb_files(
-          pdb_inp = self.model_input,
+          pdb_inp = self._model_input,
           # because hierarchy already extracted
           # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
           stop_if_duplicate_labels = True,
@@ -781,7 +783,7 @@ class manager(object):
       log):
     torsion_utils.check_for_internal_chain_ter_records(
         pdb_hierarchy = self.get_hierarchy(),
-        ter_indices   = self.model_input.ter_indices())
+        ter_indices   = self._model_input.ter_indices())
     ncs_obj = self.get_ncs_obj()
     if ncs_obj is None: return
     geometry = self.get_restraints_manager().geometry
@@ -880,7 +882,7 @@ class manager(object):
       tls_params.nproc = nproc
       self.searched_tls_selections = find_tls_groups.find_tls(
         params=tls_params,
-        pdb_inp=self.model_input,
+        pdb_inp=self._model_input,
         pdb_hierarchy=self._pdb_hierarchy,
         xray_structure=deepcopy(self._xray_structure),
         return_as_list=True,
@@ -904,8 +906,8 @@ class manager(object):
     pdb_inp_tls = None
     if acp is not None:
       pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
-    elif self.model_input is not None:
-      pdb_inp_tls = self.model_input.extract_tls_params(self._pdb_hierarchy)
+    elif self._model_input is not None:
+      pdb_inp_tls = self._model_input.extract_tls_params(self._pdb_hierarchy)
 
     if(pdb_inp_tls and pdb_inp_tls.tls_present):
       print_statistics.make_header(
@@ -1713,7 +1715,7 @@ class manager(object):
       new_restraints_manager.geometry.pair_proxies(sites_cart =
         self._xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
     new = manager(
-      model_input                = self.model_input, # any selection here?
+      model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self.processed_pdb_file,
       processed_pdb_files_srv    = self.processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,

@@ -112,7 +112,7 @@ def run(args, command_name = "phenix.tls"):
   if(not command_line.options.silent):
     utils.print_header("TLS groups from PDB file header", out = log)
   pdb_inp_tls = mmtbx.tls.tools.tls_from_pdb_inp(
-    remark_3_records = model.model_input.extract_remark_iii_records(3),
+    remark_3_records = model._model_input.extract_remark_iii_records(3),
     pdb_hierarchy = model.get_hierarchy())
   #
   tls_groups = []
