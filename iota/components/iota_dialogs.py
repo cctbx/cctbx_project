@@ -1089,33 +1089,41 @@ class CCTBXOptions(BaseBackendDialog):
     self.phil.ctr.SetValue(self.target_phil)
 
     # Resolution limits
-    lowres = self.params.cctbx.resolution_limits.low
-    hires = self.params.cctbx.resolution_limits.high
-    self.res_limits.lowres.SetValue(str(lowres))
-    self.res_limits.hires.SetValue(str(hires))
+    # "Try/except" for backwards compatibility
+    try:
+      lowres = self.params.cctbx.resolution_limits.low
+      hires = self.params.cctbx.resolution_limits.high
+      self.res_limits.lowres.SetValue(str(lowres))
+      self.res_limits.hires.SetValue(str(hires))
+    except AttributeError:
+      pass
 
     # Target options
-    t_uc = self.params.cctbx.target_unit_cell
-    t_lat = self.params.cctbx.target_lattice_type
-    l_idx = self.target_lattice.ctr.FindString(str(t_lat))
-    t_ctype = self.params.cctbx.target_centering_type
-    if t_ctype == 'P':
-      c_idx = 1
-    elif t_ctype == 'C':
-      c_idx = 2
-    elif t_ctype == 'I':
-      c_idx = 3
-    elif t_ctype == 'R':
-      c_idx = 4
-    elif t_ctype == 'F':
-      c_idx = 5
-    else:
-      c_idx = 0
-    if t_uc is not None:
-      uc_str = [str(i) for i in t_uc.parameters()]
-      self.target_uc.cell.SetValue(' '.join(uc_str))
-    self.target_lattice.ctr.SetSelection(l_idx)
-    self.target_centering.ctr.SetSelection(c_idx)
+    # "Try/except" for backwards compatibility
+    try:
+      t_uc = self.params.cctbx.target_unit_cell
+      t_lat = self.params.cctbx.target_lattice_type
+      l_idx = self.target_lattice.ctr.FindString(str(t_lat))
+      t_ctype = self.params.cctbx.target_centering_type
+      if t_ctype == 'P':
+        c_idx = 1
+      elif t_ctype == 'C':
+        c_idx = 2
+      elif t_ctype == 'I':
+        c_idx = 3
+      elif t_ctype == 'R':
+        c_idx = 4
+      elif t_ctype == 'F':
+        c_idx = 5
+      else:
+        c_idx = 0
+      if t_uc is not None:
+        uc_str = [str(i) for i in t_uc.parameters()]
+        self.target_uc.cell.SetValue(' '.join(uc_str))
+      self.target_lattice.ctr.SetSelection(l_idx)
+      self.target_centering.ctr.SetSelection(c_idx)
+    except AttributeError:
+      pass
 
     # Grid search options
     idx = self.gs_type.ctr.FindString(self.params.cctbx.grid_search.type)
@@ -1473,13 +1481,17 @@ class DIALSOptions(BaseBackendDialog):
     self.phil.ctr.SetValue(self.target_phil)
 
     # Target options
-    if self.params.dials.target_unit_cell is not None:
-      uc_str = [str(i) for i in self.params.dials.target_unit_cell.parameters()]
-      self.target_uc.cell.SetValue(' '.join(uc_str))
-    if self.params.dials.target_space_group is not None:
-      sg_info = str(self.params.dials.target_space_group).replace(' ', '')
-      self.target_sg.sg.SetValue(sg_info)
-    self.use_fft3d.SetValue(self.params.dials.use_fft3d)
+    # "Try/except" for backwards compatibility
+    try:
+      if self.params.dials.target_unit_cell is not None:
+        uc_str = [str(i) for i in self.params.dials.target_unit_cell.parameters()]
+        self.target_uc.cell.SetValue(' '.join(uc_str))
+      if self.params.dials.target_space_group is not None:
+        sg_info = str(self.params.dials.target_space_group).replace(' ', '')
+        self.target_sg.sg.SetValue(sg_info)
+      self.use_fft3d.SetValue(self.params.dials.use_fft3d)
+    except AttributeError:
+      pass
 
     # Optimization options
     self.reindex.SetValue(self.params.dials.determine_sg_and_reindex)
