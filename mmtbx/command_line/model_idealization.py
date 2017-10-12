@@ -1106,7 +1106,7 @@ def get_map_from_hkl(hkl_file_object, params, xrs, log):
         labels=flex.std_string([""]))
   return map_data, crystal_symmetry
 
-def get_map_from_map(map_file_object, params, xrs, pdb_h, log):
+def get_map_from_map(map_file_object, params, xrs, log):
   print >> log, "Processing input CCP4 map file..."
   map_data = map_file_object.file_content.data.as_double()
   try:
@@ -1195,9 +1195,15 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=work_params.model_file_name)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
-  pdb_cs = pdb_input.crystal_symmetry()
-  pdb_h = pdb_input.construct_hierarchy()
-  xrs = pdb_h.extract_xray_structure(crystal_symmetry=pdb_cs)
+
+  model = mmtbx.model.manager(
+      model_input = pdb_input,
+      restraint_objects = input_objects.cif_objects,
+      process_input = True,
+      log=log)
+
+  pdb_cs = model.crystal_symmetry()
+  pdb_h = model.get_hierarchy()
   map_cs = None
   crystal_symmetry = None
   map_data = None
@@ -1208,21 +1214,17 @@ def run(args):
     map_data, map_cs, shift_manager = get_map_from_map(
         map_content,
         work_params,
-        pdb_h=pdb_h,
-        xrs=xrs,
+        xrs=model.get_xray_structure(),
         log=log)
-    xray_structure = shift_manager.xray_structure_box
-    shifted_crystal_symmetry = xray_structure.crystal_symmetry()
-    pdb_h.adopt_xray_structure(xray_structure)
-    pdb_h.write_pdb_file("junk_shift.pdb")
-
+    model.set_shift_manager(shift_manager)
+    model.get_hierarchy().write_pdb_file("junk_shift.pdb")
 
   hkl_content = input_objects.get_file(work_params.hkl_file_name)
   if hkl_content is not None:
     map_data, map_cs = get_map_from_hkl(
         hkl_content,
         work_params,
-        xrs=xrs, # here we don't care about atom order
+        xrs=model.get_xray_structure(), # here we don't care about atom order
         log=log)
 
   # Crystal symmetry: validate and finalize consensus object
@@ -1241,7 +1243,10 @@ def run(args):
         pass
       else:
         raise e
+  # not sure this is right cs to set here...
+  model.set_crystal_symmetry(crystal_symmetry)
   mi_object = model_idealization(
+      # model = model,
       pdb_h=pdb_h,
       cif_objects=input_objects.cif_objects,
       map_data = map_data,

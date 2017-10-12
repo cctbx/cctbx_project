@@ -2913,7 +2913,7 @@ class shift_origin(object):
 
 class extract_box_around_model_and_map(object):
   def __init__(self,
-               xray_structure,
+               xray_structure, # safe to pass here, does not change
                map_data,
                box_cushion,
                selection=None,
@@ -3032,6 +3032,12 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+
+  def get_original_cs(self):
+    return self.xray_structure.crystal_symmetry()
+
+  def get_shifted_cs(self):
+    return self.xray_structure_box.crystal_symmetry()
 
   def shift_back(self, pdb_hierarchy):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()

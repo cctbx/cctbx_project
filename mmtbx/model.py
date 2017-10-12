@@ -191,6 +191,11 @@ class manager(object):
     self.monomer_parameters = monomer_parameters
     self.pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
+    # Important! if shift_manager is not None, model_input - in original coords,
+    # self.get_hierarchy(), self.get_xray_structure, self.get_sites_cart - in shifted coords.
+    # self.crystal_symmetry() - shifted (boxed) one
+    # If shift_manager is None - everything is consistent.
+    self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
 
     self.build_grm = build_grm
     self.stop_for_unknowns = stop_for_unknowns
@@ -307,6 +312,12 @@ class manager(object):
     """
     return iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
+
+  def set_shift_manager(self, shift_manager):
+    self._shift_manager = shift_manager
+    if shift_manager is not None:
+      self.set_xray_structure(self._shift_manager.xray_structure_box)
+      self.set_crystal_symmetry(self._shift_manager.get_shifted_cs())
 
   def set_pdb_interpretation_params(self, params):
     #
@@ -491,6 +502,7 @@ class manager(object):
     if update_hierarchy:
       self.set_sites_cart_from_xrs()
     self._update_has_hd()
+    self._update_pdb_atoms()
 
   def _create_xray_structure(self):
     if self._xray_structure is not None:
@@ -545,13 +557,20 @@ class manager(object):
 
   def model_as_pdb(self,
       output_cs = True,
-      atoms_reset_serial_first_value=None):
+      atoms_reset_serial_first_value=None,
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
+    if do_not_shift_back:
+      assert self._shift_manager is not None
     cs_to_output = None
     if output_cs:
-      cs_to_output = self.crystal_symmetry()
+      if do_not_shift_back:
+        cs_to_output = self._shift_manager.get_shifted_cs()
+      else:
+        cs_to_output = self.crystal_symmetry()
+
     result = StringIO()
     # outputting HELIX/SHEET records
     ss_records = ""
@@ -570,12 +589,18 @@ class manager(object):
     #
     # Here should be NCS output somehow
     #
-
     if (self.link_records_in_pdb_format is not None
         and len(self.link_records_in_pdb_format)>0):
       result.write("%s\n" % self.link_records_in_pdb_format)
-    if self._pdb_hierarchy is not None:
-      result.write(self._pdb_hierarchy.as_pdb_string(
+
+    hierarchy_to_output = self.get_hierarchy()
+    if hierarchy_to_output is not None:
+      hierarchy_to_output = hierarchy_to_output.deep_copy()
+    if self._shift_manager is not None and not do_not_shift_back:
+      self._shift_manager.shift_back(hierarchy_to_output)
+
+    if hierarchy_to_output is not None:
+      result.write(hierarchy_to_output.as_pdb_string(
           crystal_symmetry=cs_to_output,
           atoms_reset_serial_first_value=atoms_reset_serial_first_value,
           append_end=True))
@@ -1714,6 +1739,7 @@ class manager(object):
           selection = selection)
       new_restraints_manager.geometry.pair_proxies(sites_cart =
         self._xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
+    new_shift_manager = self._shift_manager
     new = manager(
       model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self.processed_pdb_file,
@@ -1730,6 +1756,10 @@ class manager(object):
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
+    # do not use set_shift_manager for this because shifted xray_str and hierarchy
+    # are used here and being cutted. We need only shift_back and get_..._cs
+    # functionality form shift_manager at the moment
+    new._shift_manager = new_shift_manager
     return new
 
   def number_of_ordered_solvent_molecules(self):
