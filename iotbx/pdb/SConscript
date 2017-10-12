@@ -2,7 +2,7 @@ Import("env_base", "env_etc")
 
 env = env_base.Clone(
   SHLINKFLAGS=env_etc.shlinkflags)
-if (env_etc.gcc_version >= 30300):
+if (env_etc.gcc_version is not None and env_etc.gcc_version >= 30300):
   env_etc.enable_more_warnings(env=env)
 env_etc.include_registry.append(
   env=env,
