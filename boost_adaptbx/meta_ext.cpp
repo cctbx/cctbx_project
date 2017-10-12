@@ -413,10 +413,12 @@ namespace {
   {
     PyObject* obj = O.ptr();
     boost::python::ssize_t n;
-    const char* c;
-    if (PyString_Check(obj)) {
-      n = PyString_GET_SIZE(obj);
-      c = PyString_AS_STRING(obj);
+	// TODO: implement Unicode logic for Python3
+	const wchar_t* uc; 
+	const char* c;
+	if (PyUnicode_Check(obj)) {
+      n = PyUnicode_GET_SIZE(obj);
+      uc = PyUnicode_AS_UNICODE(obj);
     }
     else if (PyUnicode_Check(obj)) {
       n = PyUnicode_GET_DATA_SIZE(obj);
@@ -427,7 +429,7 @@ namespace {
     }
     boost::python::list result;
     for(boost::python::ssize_t i=0;i<n;i++) {
-      result.append(std::string(c+i, 1u));
+      result.append(std::wstring(uc));
     }
     return result;
   }
@@ -526,7 +528,7 @@ namespace {
     char preferred_quote,
     char alternative_quote)
   {
-    PyStringObject* op = (PyStringObject*) string.ptr();
+	PyUnicodeObject* op = (PyUnicodeObject*) string.ptr();
     size_t newsize = 2 + 4 * Py_SIZE(op);
     if (newsize > boost::python::ssize_t_max || newsize / 4 != Py_SIZE(op)) {
       PyErr_SetString(PyExc_OverflowError,
@@ -534,11 +536,12 @@ namespace {
       boost::python::throw_error_already_set();
       return boost::python::object(); // to avoid compiler warnings
     }
-    PyObject* v = PyString_FromStringAndSize((char *)NULL, newsize);
+    PyObject* v = PyUnicode_FromStringAndSize((char *)NULL, newsize);
     if (v == NULL) {
       boost::python::throw_error_already_set();
       return boost::python::object(); // to avoid compiler warnings
     }
+	/*  // TODO: implement Unicode logic for Python3
     else {
       int quote = preferred_quote;
       if (   alternative_quote != preferred_quote
@@ -549,8 +552,8 @@ namespace {
       char* p = PyString_AS_STRING(v);
       *p++ = quote;
       for (boost::python::ssize_t i = 0; i < Py_SIZE(op); i++) {
-        /* There's at least enough room for a hex escape
-           and a closing quote. */
+        // There's at least enough room for a hex escape
+        //  and a closing quote. 
         TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 5);
         char c = op->ob_sval[i];
         if (c == quote || c == '\\')
@@ -562,9 +565,9 @@ namespace {
         else if (c == '\r')
           *p++ = '\\', *p++ = 'r';
         else if (c < ' ' || c >= 0x7f) {
-          /* For performance, we don't want to call
-             PyOS_snprintf here (extra layers of
-             function call). */
+          // For performance, we don't want to call
+          //   PyOS_snprintf here (extra layers of
+          //   function call). 
           sprintf(p, "\\x%02x", c & 0xff);
           p += 4;
         }
@@ -579,6 +582,7 @@ namespace {
       }
       return boost::python::object(boost::python::handle<>(v));
     }
+	*/
   }
 
 } // namespace anonymous

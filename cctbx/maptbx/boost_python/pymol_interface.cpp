@@ -44,9 +44,12 @@ namespace {
         if (apply_sigma_scaling) val = (val - mean) / sigma;
         *out_ptr++ = static_cast<OutFloatType>(val);
       }}}
-      return boost::python::object(boost::python::handle<>(
-        PyCObject_FromVoidPtr(out_mem, free)));
-    }
+	  // TODO: needs fixing for Python3
+	  //return boost::python::object(boost::python::handle<>(
+	  //  PyCObject_FromVoidPtr(out_mem, free)));
+	  return boost::python::object(boost::python::handle<>(
+		  PyCapsule_New(out_mem, NULL, (PyCapsule_Destructor) free)));
+	}
 
     static std::size_t
     out_size(index_type const& first, index_type const& last)

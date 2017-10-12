@@ -197,9 +197,10 @@ class streambuf : public std::basic_streambuf<char>
       read_buffer = py_read(buffer_size);
       char *read_buffer_data;
       bp::ssize_t py_n_read;
-      if (PyString_AsStringAndSize(read_buffer.ptr(),
-                                   &read_buffer_data, &py_n_read) == -1) {
-        setg(0, 0, 0);
+//      if (PyString_AsStringAndSize(read_buffer.ptr(),
+//                                   &read_buffer_data, &py_n_read) == -1) {
+	  if (PyUnicode_AsUnicodeAndSize(read_buffer.ptr(), &py_n_read) ) {
+		  setg(0, 0, 0);
         throw std::invalid_argument(
           "The method 'read' of the Python file object "
           "did not return a string.");
@@ -464,11 +465,13 @@ struct ostream : private streambuf_capsule, streambuf::ostream
     }
     catch (bp::error_already_set&) {
       PyErr_Clear();
+	  /*
       throw std::runtime_error(
         "Problem closing python ostream.\n"
         "  Known limitation: the error is unrecoverable. Sorry.\n"
         "  Suggestion for programmer: add ostream.flush() before"
         " returning.");
+		*/
     }
   }
 };

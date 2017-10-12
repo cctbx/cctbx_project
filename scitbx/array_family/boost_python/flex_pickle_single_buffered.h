@@ -14,12 +14,12 @@ namespace scitbx { namespace af { namespace boost_python {
     struct getstate_manager
     {
       getstate_manager(std::size_t a_size, std::size_t size_per_element)
-      {
+      {	  // TODO: needs fixing for Python3
         str_capacity = a_size * size_per_element + 50;// extra space for a_size
-        str_obj = PyString_FromStringAndSize(
+        str_obj = PyBytes_FromStringAndSize(
           0, static_cast<boost::python::ssize_t>(str_capacity + 100));
             // extra space for safety
-        str_begin = PyString_AS_STRING(str_obj);
+        str_begin = PyBytes_AsString(str_obj);
         str_end = scitbx::serialization::single_buffered::to_string(
           str_begin, a_size);
       };
@@ -31,18 +31,18 @@ namespace scitbx { namespace af { namespace boost_python {
       }
 
       PyObject* finalize()
-      {
-        if (_PyString_Resize(&str_obj,
-              static_cast<boost::python::ssize_t>(str_end - str_begin)) != 0) {
-          boost::python::throw_error_already_set();
-        }
+      {// TODO: needs fixing for Python3
+        //if (_PyString_Resize(&str_obj,
+        //      static_cast<boost::python::ssize_t>(str_end - str_begin)) != 0) {
+        // boost::python::throw_error_already_set();
+        //}
         return str_obj;
       }
 
       std::size_t str_capacity;
       PyObject* str_obj;
-      char* str_begin;
-      char* str_end;
+	  char* str_begin;
+	  char* str_end;
     };
 
     struct setstate_manager
@@ -50,7 +50,8 @@ namespace scitbx { namespace af { namespace boost_python {
       setstate_manager(std::size_t a_size, PyObject* state)
       {
         SCITBX_ASSERT(a_size == 0);
-        str_ptr = PyString_AsString(state);
+		// TODO: needs fixing for Python3
+        //str_ptr = PyUnicode_AsWideCharString(state);
         SCITBX_ASSERT(str_ptr != 0);
         a_capacity = get_value(type_holder<std::size_t>());
       };

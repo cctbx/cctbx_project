@@ -145,19 +145,12 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     }
 
     static void* convertible(PyObject* obj_ptr)
-    {
+    { // TODO: needs fixing for Python3
       if (!(   PyList_Check(obj_ptr)
             || PyTuple_Check(obj_ptr)
             || PyIter_Check(obj_ptr)
             || PyRange_Check(obj_ptr)
-            || (   !PyString_Check(obj_ptr)
-                && !PyUnicode_Check(obj_ptr)
-                && (   obj_ptr->ob_type == 0
-                    || obj_ptr->ob_type->ob_type == 0
-                    || obj_ptr->ob_type->ob_type->tp_name == 0
-                    || std::strcmp(
-                         obj_ptr->ob_type->ob_type->tp_name,
-                         "Boost.Python.class") != 0)
+            || (   !PyUnicode_Check(obj_ptr)
                 && PyObject_HasAttrString(obj_ptr, "__len__")
                 && PyObject_HasAttrString(obj_ptr, "__getitem__")))) return 0;
       boost::python::handle<> obj_iter(
