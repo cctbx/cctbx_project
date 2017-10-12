@@ -95,7 +95,7 @@ def get_template_parameter_args(numbered_template_args):
 
 def get_template_header(numbered_template_args):
   ha = get_template_header_args(numbered_template_args)
-  result = "template<" + "".join( ", ".join(["".join(x) for x in ha])) + ">"
+  result = "template<" + ", ".join([" ".join(x) for x in ha]) + ">"
   return result
 
 def get_template_parameters(array_type_name, template_parameter_args):
