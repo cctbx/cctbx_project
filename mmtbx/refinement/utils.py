@@ -15,8 +15,8 @@ def two_group_selections_per_residue(
   #   pdb_hierarchy = all_chain_proxies.pdb_hierarchy
   #   sc = all_chain_proxies.sel_sidechain().iselection()
   #   bb = all_chain_proxies.sel_backbone().iselection()
-  sc = model.sel_sidechain()
-  bb = model.sel_backbone()
+  sc = model.sel_sidechain().iselection()
+  bb = model.sel_backbone().iselection()
   ogpr = [rg.atoms().extract_i_seq() for rg in model.get_hierarchy().residue_groups()]
   result = []
   for g in ogpr:
