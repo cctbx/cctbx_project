@@ -1570,7 +1570,7 @@ def loc_res(map,
         ss         = ss,
         d_mins     = flex.double([i/10. for i in range(int(hard_d_min*10),100)]),
         b_iso      = b_iso)
- 
+
         if cc_best is None or cc>cc_best:
           cc_best=cc
           d_min_best=d_min
@@ -1579,7 +1579,7 @@ def loc_res(map,
       d_min=d_min_best
       b_iso=b_best
 
-    if verbose: 
+    if verbose:
       print >>log,"CHUNK d_min %s b %s cc %s" %(d_min,b_iso,cc)
     results.append(d_min)
     results_b.append(b_iso)

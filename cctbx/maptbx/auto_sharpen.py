@@ -198,7 +198,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = resolution_dependent b
 
        .help = If set, apply resolution_dependent_b (b0 b1 b2). \
-             Log10(amplitudes) will start at 1, change to b0 at half \ 
+             Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
              change to b1/2 at resolution specified, \
              and change to b1/2+b2 at d_min_ratio*resolution
@@ -268,14 +268,14 @@ master_phil = iotbx.phil.parse("""
      density_select_in_auto_sharpen = True
        .type = bool
        .short_caption = density_select to choose box
-       .help = Choose representative box of density for initial \ 
+       .help = Choose representative box of density for initial \
                 auto-sharpening with density_select method \
                 (choose region where there is high density).  Normally use\
                 False for X-ray data and True for cryo-EM.
 
      allow_box_if_b_iso_set = False
        .type = bool
-       .short_caption = Allow box if b_iso set 
+       .short_caption = Allow box if b_iso set
        .help = Allow box_in_auto_sharpen (if set to True) even if \
                b_iso is set. Default is to set box_n_auto_sharpen=False \
                if b_iso is set.
@@ -283,7 +283,7 @@ master_phil = iotbx.phil.parse("""
     soft_mask = True
       .type = bool
       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). 
+             based on resolution of map).
       .short_caption = Soft mask
 
      use_weak_density = False
@@ -311,7 +311,7 @@ master_phil = iotbx.phil.parse("""
 
      local_aniso_in_local_sharpening = None
        .type = bool
-       .short_caption = Local anisotropy 
+       .short_caption = Local anisotropy
        .help = Use local anisotropy in local sharpening.  \
                Default is True unless NCS is present.
 
@@ -403,7 +403,7 @@ master_phil = iotbx.phil.parse("""
 
      mask_atoms = True
        .type = bool
-       .short_caption = Mask atoms 
+       .short_caption = Mask atoms
        .help = Mask atoms when using model sharpening
 
      mask_atoms_atom_radius = 3
@@ -443,8 +443,8 @@ master_phil = iotbx.phil.parse("""
                 b_iso
 
      adjust_region_weight = True
-       .type = bool 
-       .short_caption = Adjust region weight 
+       .type = bool
+       .short_caption = Adjust region weight
        .help = Adjust region_weight to make overall change in surface area \
                equal to overall change in normalized regions over the range \
                of search_b_min to search_b_max using b_iso_to_d_cut.
@@ -472,7 +472,7 @@ master_phil = iotbx.phil.parse("""
 
      target_b_iso_ratio = 5.9
        .type = float
-       .short_caption = Target b_iso ratio 
+       .short_caption = Target b_iso ratio
        .help = Target b_iso ratio : b_iso is estimated as \
                target_b_iso_ratio * resolution**2
 
@@ -564,8 +564,8 @@ master_phil = iotbx.phil.parse("""
         .type = float
         .help = k_sol value for model map calculation. IGNORED (Not applied)
         .short_caption = k_sol IGNORED
-        .style = hidden 
-  
+        .style = hidden
+
       b_sol = 50
         .type = float
         .help = b_sol value for model map calculation. IGNORED (Not applied)
@@ -628,7 +628,7 @@ def get_params(args,out=sys.stdout):
 
 def set_sharpen_params(params,out=sys.stdout):
 
-  
+
   if params.map_modification.resolution_dependent_b==[0,0,0]:
     params.map_modification.resolution_dependent_b=[0,0,1.e-10]
     # just so that we know it was set
@@ -642,7 +642,7 @@ def set_sharpen_params(params,out=sys.stdout):
       params.map_modification.auto_sharpen_methods=['b_iso_to_d_cut']
     else:
       params.map_modification.auto_sharpen_methods=['b_iso']
-   
+
   if (params.map_modification.b_iso and \
        params.map_modification.auto_sharpen_methods in [
        ['b_iso_to_d_cut'],['b_iso']])   or  \
@@ -664,13 +664,13 @@ def set_sharpen_params(params,out=sys.stdout):
 
   if params.map_modification.optimize_k_sharpen and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
-       not 'b_iso' in params.map_modification.auto_sharpen_methods: 
+       not 'b_iso' in params.map_modification.auto_sharpen_methods:
      print >>out,"Set optimize_k_sharpen=False as neither b_iso_to_d_cut nor"+\
          " b_iso are used"
      params.map_modification.optimize_k_sharpen=False
 
   return params
-   
+
 
 def get_map_coeffs_from_file(
       map_coeffs_file=None,
@@ -815,7 +815,7 @@ def run(args=None,params=None,
     ncs_copies=params.crystal_info.ncs_copies
 
   # get map_data and crystal_symmetry
- 
+
   pdb_inp,map_data,half_map_data_list,ncs_obj,\
         crystal_symmetry,acc=get_map_and_model(
      map_data=map_data,

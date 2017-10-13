@@ -271,12 +271,12 @@ def fit_cc(cc_list=None,sthol_list=None,
 
 def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
    scale_using_last=None):
-  # only do this if there is some value of s where cc is at least 2*cc_cut or 
+  # only do this if there is some value of s where cc is at least 2*cc_cut or
   #  (1-c_cut/2), whichever is smaller
   min_cc=min(2*cc_cut,1-0.5*cc_cut)
   if cc_list.min_max_mean().max < min_cc:
     return cc_list
-  # find first point after point where cc>=min_cc that cc<=cc_cut 
+  # find first point after point where cc>=min_cc that cc<=cc_cut
   #   then back off by 1 point
   found_high=False
   s_cut=None
@@ -313,7 +313,7 @@ def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
   # cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
   # however for small cc the errors are very big and we think cc decreases
   #  rapidly towards zero once cc is small
-  # So find value of sthol_zero that gives cc about cc_cut...for 
+  # So find value of sthol_zero that gives cc about cc_cut...for
   #   sthol >sthol_zero use fit of cc_zero * exp(-falloff*(sthol-sthol_zero))
   #  for scale_using_last set: subtract off final values so it goes to zero.
 
@@ -382,9 +382,9 @@ def calculate_fsc(si=None,
     mc1=first_half_map_coeffs
     mc2=second_half_map_coeffs
     fo_map=map_coeffs # scale map_coeffs to cc*
-    fc_map=model_map_coeffs 
+    fc_map=model_map_coeffs
     b_eff=None
-    
+
 
   ratio_list=flex.double()
   target_sthol2=flex.double()
@@ -452,7 +452,7 @@ def calculate_fsc(si=None,
     if baseline is None: # don't use it
       scale_using_last=None
 
-  
+
   original_cc_list=deepcopy(cc_list)
   if not is_model_based:  # calculate cc* for half-dataset cc
     cc_list=estimate_cc_star(cc_list=cc_list,sthol_list=sthol_list,
@@ -463,10 +463,10 @@ def calculate_fsc(si=None,
 
   if si.target_scale_factors: # not using these
     max_possible_cc=1.
-    fraction_complete=1. 
+    fraction_complete=1.
   elif (not is_model_based):
     max_possible_cc=1.
-    fraction_complete=1. 
+    fraction_complete=1.
   else:
     # Define overall CC based on model completeness (CC=sqrt(fraction_complete))
 
@@ -525,7 +525,7 @@ def calculate_fsc(si=None,
   si.target_sthol2=target_sthol2
   si.d_min_list=d_min_list
 
-  return si 
+  return si
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
      get_remove_aniso_object=True,
@@ -537,7 +537,7 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
 
   if map_coeffs:  # convert to f and apply
     from cctbx.maptbx.segment_and_split_map import map_coeffs_as_fp_phi
-    f_local,phases_local=map_coeffs_as_fp_phi(map_coeffs) 
+    f_local,phases_local=map_coeffs_as_fp_phi(map_coeffs)
     f_local,f_local_aa=analyze_aniso(f_array=f_local,
        aniso_obj=aniso_obj,
        get_remove_aniso_object=get_remove_aniso_object,
@@ -625,7 +625,7 @@ def scale_amplitudes(model_map_coeffs=None,
 
   # Now create resolution-dependent coefficients from the scale factors
 
-  if not si.target_scale_factors: # nothing to do 
+  if not si.target_scale_factors: # nothing to do
     print >>out,"\nNo scaling applied"
     map_data=calculate_map(map_coeffs=map_coeffs,n_real=si.n_real)
     return map_and_b_object(map_data=map_data)
@@ -759,7 +759,7 @@ def get_kurtosis(data=None):
 
 class analyze_aniso_object:
   def __init__(self):
-  
+
     self.b_iso=None # target b_iso, default is mean of existing
     self.b_cart=None
     self.b_cart_aniso_removed=None
@@ -781,7 +781,7 @@ class analyze_aniso_object:
       b_iso=b_mean  # use mean
     self.b_iso=b_iso
 
-    self.b_cart=aniso_scale_and_b.b_cart  # current 
+    self.b_cart=aniso_scale_and_b.b_cart  # current
     self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change
 
     # ready to apply
@@ -792,7 +792,7 @@ class analyze_aniso_object:
       return f_array  # nothing to do
 
     from mmtbx.scaling import absolute_scaling
-    from cctbx import adptbx 
+    from cctbx import adptbx
 
     u_star= adptbx.u_cart_as_u_star(
       f_array.unit_cell(), adptbx.b_as_u( self.b_cart) )
@@ -1050,8 +1050,8 @@ def run(map_coeffs=None,
   if ma:
     (d_max,d_min)=ma.d_max_min()
     ma.setup_binner(n_bins=n_bins,d_max=d_max,d_min=d_min)
-    if normalize_amplitudes_in_resdep: 
-      print >>out,"Normalizing structure factors..."  
+    if normalize_amplitudes_in_resdep:
+      print >>out,"Normalizing structure factors..."
       ma=quasi_normalize_structure_factors(ma,set_to_minimum=0.01)
   else:
     assert resolution is not None

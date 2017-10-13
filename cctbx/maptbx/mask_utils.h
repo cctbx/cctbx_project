@@ -76,14 +76,14 @@ private:
 public:
   zero_boundary_box_map(
     af::const_ref<double, af::flex_grid<> > const& mask,
-    int const& boundary) 
+    int const& boundary)
   {
     CCTBX_ASSERT(mask.accessor().nd() == 3);
     CCTBX_ASSERT(mask.accessor().all().all_gt(0));
 
     af::c_grid<3> a = mask.accessor();
     CCTBX_ASSERT(boundary >= 0);  // if 0, all 1 in map
-    CCTBX_ASSERT(2*boundary < a[0]); 
+    CCTBX_ASSERT(2*boundary < a[0]);
     CCTBX_ASSERT(2*boundary < a[1]);
     CCTBX_ASSERT(2*boundary < a[2]);
 
