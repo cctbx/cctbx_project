@@ -8,6 +8,7 @@ from copy import deepcopy
 from cctbx.array_family import flex
 import scitbx.lbfgs
 import math
+from cctbx.maptbx.segment_and_split_map import map_and_b_object
 
 def write_mtz(ma=None,phases=None,file_name=None):
   mtz_dataset=ma.as_mtz_dataset(column_root_label="FWT")
@@ -227,6 +228,122 @@ def get_b_eff(si=None,out=sys.stdout):
        %( b_eff,si.rmsd)
   return b_eff
 
+def cc_fit(sthol_list=None,scale=None,value_zero=None,baseline=None,
+     scale_using_last=None):
+  # for scale_using_last, fix final value at zero
+  fit=flex.double()
+  s_zero=sthol_list[0]
+  for s in sthol_list:
+    fit.append(value_zero*math.exp(-scale*(s-s_zero)))
+  if scale_using_last:
+    fit=fit-fit[-1]
+  return fit
+
+def get_baseline(scale=None,scale_using_last=None,max_cc_for_rescale=None):
+  if not scale_using_last:
+    return 0
+  else:
+    baseline=min(0.99,max(0.,scale[-scale_using_last:].min_max_mean().mean))
+    if baseline > max_cc_for_rescale:
+       return None
+    else:
+       return baseline
+
+def fit_cc(cc_list=None,sthol_list=None,
+    scale_min=None,scale_max=None,n_tries=None,scale_using_last=None):
+  # find value of scale in range scale_min,scale_max that minimizes rms diff
+  # between cc_list and cc_list[0]*exp(-scale*(sthol-sthol_list[0]))
+  # for scale_using_last, require it to go to zero at end
+
+  best_scale=None
+  best_rms=None
+  for i in xrange(n_tries):
+    scale=scale_min+(scale_max-scale_min)*i/n_tries
+    fit=cc_fit(sthol_list=sthol_list,scale=scale,value_zero=cc_list[0],
+       scale_using_last=scale_using_last)
+    fit=fit-cc_list
+    rms=fit.norm()
+    if best_rms is None or rms<best_rms:
+      best_rms=rms
+      best_scale=scale
+  return cc_fit(sthol_list=sthol_list,scale=best_scale,value_zero=cc_list[0],
+      scale_using_last=scale_using_last)
+
+def get_fitted_cc(cc_list=None,sthol_list=None, cc_cut=None,
+   scale_using_last=None):
+  # only do this if there is some value of s where cc is at least 2*cc_cut or 
+  #  (1-c_cut/2), whichever is smaller
+  min_cc=min(2*cc_cut,1-0.5*cc_cut)
+  if cc_list.min_max_mean().max < min_cc:
+    return cc_list
+  # find first point after point where cc>=min_cc that cc<=cc_cut 
+  #   then back off by 1 point
+  found_high=False
+  s_cut=None
+  i_cut=0
+  for s,cc in zip(sthol_list,cc_list):
+    if cc > min_cc:
+      found_high=True
+    if found_high and cc < cc_cut:
+      s_cut=s
+      break
+    i_cut+=1
+  if s_cut is None or i_cut==0:
+    return cc_list
+
+  #Fit remainder
+  sthol_remainder_list=sthol_list[i_cut:]
+  cc_remainder_list=cc_list[i_cut:]
+  n=cc_remainder_list.size()
+  scale_min=10 # soft
+  scale_max=500 # hard
+  n_tries=200
+
+  fitted_cc_remainder_list=fit_cc(
+     cc_list=cc_remainder_list,sthol_list=sthol_remainder_list,
+     scale_min=scale_min,scale_max=scale_max,n_tries=n_tries,
+     scale_using_last=scale_using_last)
+
+  new_cc_list=cc_list[:i_cut]
+  new_cc_list.extend(fitted_cc_remainder_list)
+  return new_cc_list
+
+def estimate_cc_star(cc_list=None,sthol_list=None, cc_cut=None,
+    scale_using_last=None):
+  # cc ~ sqrt(2*half_dataset_cc/(1+half_dataset_cc))
+  # however for small cc the errors are very big and we think cc decreases
+  #  rapidly towards zero once cc is small
+  # So find value of sthol_zero that gives cc about cc_cut...for 
+  #   sthol >sthol_zero use fit of cc_zero * exp(-falloff*(sthol-sthol_zero))
+  #  for scale_using_last set: subtract off final values so it goes to zero.
+
+  fitted_cc=get_fitted_cc(
+    cc_list=cc_list,sthol_list=sthol_list,cc_cut=cc_cut,
+    scale_using_last=scale_using_last)
+
+  cc_star_list=flex.double()
+  for cc in fitted_cc:
+     cc=max(cc,0.)
+     cc_star=(2.*cc/(1.+cc))**0.5
+     cc_star_list.append(cc_star)
+  return cc_star_list
+
+
+def rescale_cc_list(cc_list=None,scale_using_last=None,
+    max_cc_for_rescale=None):
+  baseline=get_baseline(scale=cc_list,
+      scale_using_last=scale_using_last,
+      max_cc_for_rescale=max_cc_for_rescale)
+  if baseline is None:
+     return cc_list,baseline
+
+  # replace cc with (cc-baseline)/(1-baseline)
+  scaled_cc_list=flex.double()
+  for cc in cc_list:
+    scaled_cc_list.append((cc-baseline)/(1-baseline))
+  return scaled_cc_list,baseline
+
+
 def calculate_fsc(si=None,
      f_array=None,  # just used for binner
      map_coeffs=None,
@@ -237,6 +354,9 @@ def calculate_fsc(si=None,
      fraction_complete=None,
      min_fraction_complete=None,
      is_model_based=None,
+     cc_cut=None,
+     scale_using_last=None,
+     max_cc_for_rescale=None,
      verbose=None,
      out=sys.stdout):
 
@@ -269,6 +389,7 @@ def calculate_fsc(si=None,
   ratio_list=flex.double()
   target_sthol2=flex.double()
   cc_list=flex.double()
+  sthol_list=flex.double()
   d_min_list=flex.double()
   rms_fo_list=flex.double()
   rms_fc_list=flex.double()
@@ -276,6 +397,9 @@ def calculate_fsc(si=None,
   for i_bin in f_array.binner().range_used():
     sel       = f_array.binner().selection(i_bin)
     d         = dsd.select(sel)
+    if d.size()<1:
+      raise Sorry("Please reduce number of bins (no data in bin "+
+        "%s) from current value of %s" %(i_bin,f_array.binner().n_bins_used()))
     d_min     = flex.min(d)
     d_max     = flex.max(d)
     d_avg     = flex.mean(d)
@@ -284,11 +408,6 @@ def calculate_fsc(si=None,
     m2        = mc2.select(sel)
     cc        = m1.map_correlation(other = m2)
 
-    if not is_model_based:  # calculate cc* for half-dataset cc
-      # cc_anom ~ sqrt(2*half_dataset_cc_anom/(1+half_dataset_cc_anom))
-      cc=max(1.e-10,cc)
-      cc_star=(2. * cc /(1. + cc))**0.5
-      cc=cc_star
 
     if fo_map:
       fo        = fo_map.select(sel)
@@ -309,6 +428,7 @@ def calculate_fsc(si=None,
     target_sthol2.append(sthol2)
     if cc is None: cc=0.
     cc_list.append(cc)
+    sthol_list.append(1/d_avg)
     d_min_list.append(d_min)
     rms_fo_list.append(rms_fo)
     rms_fc_list.append(rms_fc)
@@ -324,6 +444,19 @@ def calculate_fsc(si=None,
     if verbose:
       print >>out,"d_min: %5.1f  FC: %7.1f  FOBS: %7.1f   CC: %5.2f" %(
       d_avg,rms_fc,rms_fo,cc)
+
+  if scale_using_last: # rescale to give final value average==0
+    cc_list,baseline=rescale_cc_list(
+       cc_list=cc_list,scale_using_last=scale_using_last,
+       max_cc_for_rescale=max_cc_for_rescale)
+    if baseline is None: # don't use it
+      scale_using_last=None
+
+  
+  original_cc_list=deepcopy(cc_list)
+  if not is_model_based:  # calculate cc* for half-dataset cc
+    cc_list=estimate_cc_star(cc_list=cc_list,sthol_list=sthol_list,
+      cc_cut=cc_cut,scale_using_last=scale_using_last)
 
   if not max_possible_cc:
     max_possible_cc=0.01
@@ -348,7 +481,6 @@ def calculate_fsc(si=None,
       max_possible_cc=fraction_complete**0.5
 
   target_scale_factors=flex.double()
-  max_scale=None
   for i_bin in f_array.binner().range_used():
     index=i_bin-1
     ratio=ratio_list[index]
@@ -358,18 +490,14 @@ def calculate_fsc(si=None,
 
     corrected_cc=max(0.00001,min(1.,cc/max_possible_cc))
 
-    if (not is_model_based): # use sqrt(cc) as est of correlation to perfect
-      scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc**0.5))
+    if (not is_model_based): # cc is already cc*
+      scale_on_fo=ratio * corrected_cc
     elif b_eff is not None:
       scale_on_fo=ratio * min(1.,
         max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
     else:
       scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
 
-    if max_scale is None or d_min >= resolution:
-      max_scale=scale_on_fo
-    elif scale_on_fo > max_scale:
-      scale_on_fo=max_scale
 
     target_scale_factors.append(scale_on_fo)
 
@@ -382,10 +510,16 @@ def calculate_fsc(si=None,
     target_scale_factors=flex.double(target_scale_factors.size()*(1.0,))
 
   print >>out,"\nScale factors vs resolution:"
-  for sthol2,scale,rms_fo,cc,rms_fc in zip(
-     target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list):
-     print >>out,"d_min: %5.1f   scale:  %5.2f  rms Fo:  %7.1f rmsFc: %7.1f CC: %7.3f" %(
-       0.5/sthol2**0.5,scale,rms_fo,rms_fc,cc)
+  print >>out,"Note 1: CC* estimated from sqrt(2*CC/(1+CC))"
+  print >>out,"Note 2: CC estimated by fitting (smoothing) for values < %s" %(cc_cut)
+  print >>out,"Note 3: Scale = A  CC*  rmsFc/rmsFo (A is normalization)"
+  print >>out,"  d_min     rmsFo       rmsFc    CC       CC*   Scale"
+
+  for sthol2,scale,rms_fo,cc,rms_fc,orig_cc in zip(
+     target_sthol2,target_scale_factors,rms_fo_list,cc_list,rms_fc_list,
+      original_cc_list):
+     print >>out,"%7.1f  %9.1f  %9.1f %7.3f  %7.3f  %5.2f" %(
+       0.5/sthol2**0.5,rms_fo,rms_fc,orig_cc,cc,scale)
 
   si.target_scale_factors=target_scale_factors
   si.target_sthol2=target_sthol2
@@ -394,6 +528,7 @@ def calculate_fsc(si=None,
   return si 
 
 def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
+     get_remove_aniso_object=True,
      remove_aniso=None, aniso_obj=None, out=sys.stdout):
   # optionally remove anisotropy and set all directions to mean value
   #  return array and analyze_aniso_object
@@ -405,8 +540,12 @@ def analyze_aniso(f_array=None,map_coeffs=None,b_iso=None,resolution=None,
     f_local,phases_local=map_coeffs_as_fp_phi(map_coeffs) 
     f_local,f_local_aa=analyze_aniso(f_array=f_local,
        aniso_obj=aniso_obj,
+       get_remove_aniso_object=get_remove_aniso_object,
        remove_aniso=remove_aniso, resolution=resolution,out=out)
     return f_local.phase_transfer(phase_source=phases_local,deg=True),f_local_aa
+
+  elif not get_remove_aniso_object:
+    return f_array,aniso_obj # don't do anything
 
   else:  # have f_array and resolution
     if not aniso_obj:
@@ -426,9 +565,9 @@ def scale_amplitudes(model_map_coeffs=None,
     si=None,resolution=None,overall_b=None,
     fraction_complete=None,
     min_fraction_complete=0.05,
+    map_calculation=True,
     verbose=False,
     out=sys.stdout):
-
   # Figure out resolution_dependent sharpening to optimally
   #  match map and model. Then apply it as usual.
   #  if second_half_map_coeffs instead of model, use second_half_map_coeffs same as
@@ -455,6 +594,8 @@ def scale_amplitudes(model_map_coeffs=None,
   (d_max,d_min)=f_array.d_max_min()
   if not f_array.binner():
     f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+    f_array.binner().require_all_bins_have_data(min_counts=1,
+      error_string="Please use a lower value of n_bins")
 
   if resolution is None:
     resolution=si.resolution
@@ -475,6 +616,9 @@ def scale_amplitudes(model_map_coeffs=None,
       fraction_complete=fraction_complete,
       min_fraction_complete=min_fraction_complete,
       is_model_based=is_model_based,
+      cc_cut=si.cc_cut,
+      scale_using_last=si.scale_using_last,
+      max_cc_for_rescale=si.max_cc_for_rescale,
       verbose=verbose,
       out=out)
     # now si.target_scale_factors array are the scale factors
@@ -482,28 +626,42 @@ def scale_amplitudes(model_map_coeffs=None,
   # Now create resolution-dependent coefficients from the scale factors
 
   if not si.target_scale_factors: # nothing to do 
-    scaled_f_array=f_array
-    f_array_b_iso=get_b_iso(f_array,d_min=resolution)
-    print >>out,"\nNo scaling applied. B_iso=%5.1f A**2\n" %(f_array_b_iso)
+    print >>out,"\nNo scaling applied"
+    map_data=calculate_map(map_coeffs=map_coeffs,n_real=si.n_real)
+    return map_and_b_object(map_data=map_data)
+  elif not map_calculation:
+    return map_and_b_object()
   else:  # apply scaling
+    map_and_b=apply_target_scale_factors(
+      f_array=f_array,phases=phases,resolution=resolution,
+      target_scale_factors=si.target_scale_factors,
+      n_real=si.n_real,
+      out=out)
+    return map_and_b
+
+def apply_target_scale_factors(f_array=None,phases=None,
+   resolution=None,target_scale_factors=None,
+   n_real=None,out=sys.stdout):
+    from cctbx.maptbx.segment_and_split_map import get_b_iso
     f_array_b_iso=get_b_iso(f_array,d_min=resolution)
     scale_array=get_scale_factors(f_array,
-        target_scale_factors=si.target_scale_factors)
+        target_scale_factors=target_scale_factors)
     scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
     scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=resolution)
     print >>out,"\nInitial b_iso for "+\
       "map: %5.1f A**2     After applying scaling: %5.1f A**2" %(
       f_array_b_iso,scaled_f_array_b_iso)
-  new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
-  assert si.n_real is not None
-  return calculate_map(map_coeffs=new_map_coeffs,n_real=si.n_real)
-
+    new_map_coeffs=scaled_f_array.phase_transfer(phase_source=phases,deg=True)
+    map_data=calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
+    return map_and_b_object(map_data=map_data,starting_b_iso=f_array_b_iso,
+      final_b_iso=scaled_f_array_b_iso)
 def calculate_map(map_coeffs=None,crystal_symmetry=None,n_real=None):
 
   if crystal_symmetry is None: crystal_symmetry=map_coeffs.crystal_symmetry()
   from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
-  return get_map_from_map_coeffs(
+  map_data=get_map_from_map_coeffs(
      map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry, n_real=n_real)
+  return map_data
 
 def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
     n_real=None,d_min_ratio=None):
@@ -511,7 +669,8 @@ def get_sharpened_map(ma=None,phases=None,b=None,resolution=None,
   sharpened_ma=adjust_amplitudes_linear(ma,b[0],b[1],b[2],resolution=resolution,
      d_min_ratio=d_min_ratio)
   new_map_coeffs=sharpened_ma.phase_transfer(phase_source=phases,deg=True)
-  return calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
+  map_data=calculate_map(map_coeffs=new_map_coeffs,n_real=n_real)
+  return map_data
 
 def calculate_match(target_sthol2=None,target_scale_factors=None,b=None,resolution=None,d_min_ratio=None,rmsd=None,fraction_complete=None):
 
@@ -621,7 +780,6 @@ class analyze_aniso_object:
     if b_iso is None:
       b_iso=b_mean  # use mean
     self.b_iso=b_iso
-
 
     self.b_cart=aniso_scale_and_b.b_cart  # current 
     self.b_cart_aniso_removed = [ -b_iso, -b_iso, -b_iso, 0, 0, 0] # change

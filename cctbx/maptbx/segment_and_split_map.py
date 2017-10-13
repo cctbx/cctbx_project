@@ -458,7 +458,8 @@ master_phil = iotbx.phil.parse("""
      soft_mask = True
        .type = bool
        .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map).
+             based on resolution of map). Required if you use half-map \
+             sharpening without a model, otherwise optional.
        .short_caption = Soft mask
 
      use_weak_density = False
@@ -490,6 +491,11 @@ master_phil = iotbx.phil.parse("""
        .help = Use local anisotropy in local sharpening.  \
                Default is True unless NCS is present.
 
+     overall_before_local = True
+       .type = bool
+       .short_caption = Overall before local 
+       .help = Apply overall scaling before local scaling
+
      select_sharpened_map = None
        .type = int
        .short_caption = Sharpened map to use
@@ -519,12 +525,45 @@ master_phil = iotbx.phil.parse("""
      box_size = 40 40 40
        .type = ints
        .short_caption = Size of box
-       .help = You can specify the size of the box (grid units)
+       .help = You can specify the size of the boxes to use (grid units)
+
+     target_n_overlap = 10
+       .type = int
+       .short_caption = Target overlap of boxes
+       .help = You can specify the targeted overlap of boxes in local \
+           sharpening
+
+     restrict_map_size = True
+       .type = bool
+       .short_caption = Restrict box map size
+       .help = Restrict box map to be inside full map (required for cryo-EM data)
 
      remove_aniso = True
        .type = bool
        .short_caption = Remove aniso
        .help = You can remove anisotropy (overall and locally) during sharpening
+
+     cc_cut = 0.2
+       .type = float
+       .short_caption = Min reliable CC in half-maps
+       .help = Estimate of minimum highly reliable CC in half-map FSC. Used\
+               to decide at what CC value to smooth the remaining CC values.
+
+     max_cc_for_rescale = 0.2
+       .type = float
+       .short_caption = Max CC for rescaleMin reliable CC in half-maps
+       .help = Used along with cc_cut and scale_using_last to correct for \
+               small errors in FSC estimation at high resolution.  If the \
+               value of FSC near the high-resolution limit is above \
+               max_cc_for_rescale, assume these values are correct and do not \
+               correct them.
+
+     scale_using_last = 3
+       .type = int
+       .short_caption = Last N bins in FSC assumed to be about zero
+       .help = If set, assume that the last scale_using_last bins in the FSC \
+          for half-map or model sharpening are about zero (corrects for  \
+          errors int the half-map process).
 
      max_box_fraction = 0.5
        .type = float
@@ -1279,6 +1318,15 @@ REMARK 350   BIOMT3  60 -0.276128  0.850682 -0.447319        0.00000
 """
 
 
+class map_and_b_object:
+  def __init__(self,
+      map_data=None,
+      starting_b_iso=None,
+      final_b_iso=None):
+    from libtbx import adopt_init_args
+    adopt_init_args(self, locals())
+
+
 class pdb_info_object:
   def __init__(self,
     file_name=None,
@@ -1692,8 +1740,17 @@ class box_sharpening_info:
   def __init__(self,tracking_data=None,
       crystal_symmetry=None,
       solvent_fraction=None,
+      b_iso=None,
+      resolution=None,
+      lower_bounds=None,
+      upper_bounds=None,
       wrapping=None,
-      n_real=None):
+      n_real=None,
+      n_buffer=None,
+      map_data=None,
+      smoothed_box_mask_data=None,
+      original_box_map_data=None,
+       ):
     from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     del self.tracking_data # do not save it
@@ -1701,6 +1758,104 @@ class box_sharpening_info:
       self.crystal_symmetry=tracking_data.crystal_symmetry
       self.solvent_fraction=tracking_data.solvent_fraction
       self.wrapping=tracking_data.params.crystal_info.use_sg_symmetry
+
+  def get_gaussian_weighting(self,out=sys.stdout):
+    # return a gaussian function centered on center of the map, fall-off 
+    #   based on smoothing_radius
+  
+    # Calculate weight map, max near location of centers_ncs_cart
+    # U=rmsd**2
+    # (b_eff=8*3.14159**2*U)
+    #  rmsd is at least distance between centers, not too much bigger than
+    #  unit cell size, typically 10-20 A,
+    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(
+       self.smoothing_radius)
+    u=self.smoothing_radius**2
+  
+    from cctbx import xray
+    xrs,scatterers=set_up_xrs(crystal_symmetry=self.crystal_symmetry)
+    unit_cell=self.crystal_symmetry.unit_cell()
+    for xyz_fract in [(0.5,0.5,0.5,)]:
+      scatterers.append( xray.scatterer(scattering_type="H", label="H",
+        site=xyz_fract, u=u, occupancy=1.0))
+    xrs = xray.structure(xrs, scatterers=scatterers)
+    f_array,phases=get_f_phases_from_map(map_data=self.map_data,
+       crystal_symmetry=self.crystal_symmetry,
+       d_min=self.resolution,
+       d_min_ratio=self.d_min_ratio,
+       get_remove_aniso_object=False,# don't need it
+       out=out)
+  
+    weight_f_array=f_array.structure_factors_from_scatterers(
+      algorithm = 'direct',
+      xray_structure = xrs).f_calc()
+  
+    weight_map=get_map_from_map_coeffs(map_coeffs=weight_f_array,
+      crystal_symmetry=self.crystal_symmetry,n_real=self.map_data.all())
+    min_value=weight_map.as_1d().min_max_mean().min
+    weight_map=weight_map-min_value # all positive or zero
+    max_value=weight_map.as_1d().min_max_mean().max
+    weight_map=weight_map/max(1.e-10,max_value)  # normalize; max=1 now
+    min_value=1.e-10  # just a small value for all distances far from center
+    s = (weight_map <min_value )  # make extra sure every point is above this
+    weight_map=weight_map.set_selected(s,min_value)
+    return weight_map
+  
+  
+  def remove_buffer_from_bounds(self,minimum=1):
+    # back off by n_buffer in each direction, leave at 
+    # least minimum grid on either side of center
+
+    adjusted_lower_bounds,adjusted_upper_bounds=[],[]
+    delta_lower_bounds,delta_upper_bounds=[],[]
+    for lb,ub in zip(self.lower_bounds,self.upper_bounds):
+      sum=lb+ub
+      if sum >=0:
+        mid=(1+sum)//2
+      else:
+        mid=(-1+sum)//2
+      alb=min(mid-minimum,lb+self.n_buffer)
+      aub=max(mid+minimum,ub-self.n_buffer)
+      adjusted_lower_bounds.append(alb)
+      adjusted_upper_bounds.append(aub)
+      delta_lower_bounds.append(alb-lb)
+      delta_upper_bounds.append(aub-ub)
+    return adjusted_lower_bounds,adjusted_upper_bounds,\
+      delta_lower_bounds,delta_upper_bounds
+
+
+  def merge_into_overall_map(self,overall_map=None):
+    # Smoothly fill out edges of the small map with overall_map
+
+    assert self.smoothed_box_mask_data is not None
+    assert self.original_box_map_data is not None
+
+    self.map_data= (self.map_data * self.smoothed_box_mask_data) + \
+       (self.original_box_map_data * (1-self.smoothed_box_mask_data))
+
+  def remove_buffer(self,out=sys.stdout):
+    # remove the buffer from this box
+
+    new_lower_bounds,new_upper_bounds,delta_lower,delta_upper=\
+       self.remove_buffer_from_bounds()
+
+    cut_out_lower_bounds=[]
+    cut_out_upper_bounds=[]
+    for o,a,dlb,dub in zip(self.map_data.origin(),self.map_data.all(),
+      delta_lower,delta_upper):
+     cut_out_lower_bounds.append(o+dlb)
+     cut_out_upper_bounds.append(a+dub-1)
+    self.map_data,self.crystal_symmetry,\
+       self.smoothed_box_mask_data,self.original_box_map_data=cut_out_map(
+          map_data=self.map_data,
+	  crystal_symmetry=self.crystal_symmetry,
+	  soft_mask=False,
+          resolution=self.resolution,
+          shift_origin=True,
+          min_point=cut_out_lower_bounds,
+          max_point=cut_out_upper_bounds,out=out)
+    self.lower_bounds=new_lower_bounds
+    self.upper_bounds=new_upper_bounds
 
 class sharpening_info:
   def __init__(self,
@@ -1752,6 +1907,7 @@ class sharpening_info:
       smoothing_radius=None,
       local_sharpening=None,
       local_aniso_in_local_sharpening=None,
+      overall_before_local=None,
       use_local_aniso=None,
       original_aniso_obj=None,
       auto_sharpen=None,
@@ -1760,6 +1916,9 @@ class sharpening_info:
       use_weak_density=None,
       discard_if_worse=None,
       max_box_fraction=None,
+      cc_cut=None,
+      max_cc_for_rescale=None,
+      scale_using_last=None,
       density_select_max_box_fraction=None,
       mask_atoms=None,
       mask_atoms_atom_radius=None,
@@ -1784,6 +1943,8 @@ class sharpening_info:
       verbose=None,
       pdb_inp=None,  # XXX probably do not need this
       local_solvent_fraction=None,
+      wang_radius=None,
+      buffer_radius=None,
         ):
 
     from libtbx import adopt_init_args
@@ -1909,8 +2070,13 @@ class sharpening_info:
       #  NOTE:
       #  resolution=X-ray resolution or nominal resolution of cryoEM map
       #  high-res cutoff of reflections is d_min*d_min_ratio
+      self.buffer_radius=params.crystal_info.buffer_radius
+      self.wang_radius=params.crystal_info.wang_radius
 
       self.max_box_fraction=params.map_modification.max_box_fraction
+      self.cc_cut=params.map_modification.cc_cut
+      self.max_cc_for_rescale=params.map_modification.max_cc_for_rescale
+      self.scale_using_last=params.map_modification.scale_using_last
       self.density_select_max_box_fraction=params.map_modification.density_select_max_box_fraction
       self.mask_atoms=params.map_modification.mask_atoms
       self.mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius
@@ -1934,12 +2100,16 @@ class sharpening_info:
       self.local_sharpening=params.map_modification.local_sharpening
       self.local_aniso_in_local_sharpening=\
          params.map_modification.local_aniso_in_local_sharpening
+      self.overall_before_local=\
+         params.map_modification.overall_before_local
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
       self.density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen
       self.use_weak_density=params.map_modification.use_weak_density
       self.discard_if_worse=params.map_modification.discard_if_worse
       self.box_center=params.map_modification.box_center
       self.box_size=params.map_modification.box_size
+      self.target_n_overlap=params.map_modification.target_n_overlap
+      self.restrict_map_size=params.map_modification.restrict_map_size
       self.remove_aniso=params.map_modification.remove_aniso
       self.min_ratio_of_ncs_copy_to_first=\
          params.segmentation.min_ratio_of_ncs_copy_to_first
@@ -2097,16 +2267,13 @@ class sharpening_info:
   def sharpen_and_score_map(self,map_data=None,set_b_iso=False,out=sys.stdout):
     if self.n_real is None: # need to get it
       self.n_real=map_data.all()
-    print >>out,"B-iso before sharpening:",
-    self.get_effective_b_iso(map_data=map_data,out=out)
-    self.map_data=sharpen_map_with_si(
-      sharpening_info_obj=self,map_data=map_data,
+    map_and_b=sharpen_map_with_si(
+        sharpening_info_obj=self,
+        map_data=map_data,
         resolution=self.resolution,out=out)
-    print >>out,"B-iso after sharpening:",
-    final_b_iso=self.get_effective_b_iso(map_data=self.map_data,out=out)
+    self.map_data=map_and_b.map_data
     if set_b_iso:
-      self.b_iso=final_b_iso
-
+      self.b_iso=map_and_b.final_b_iso
     score_map(map_data=self.map_data,
         sharpening_info_obj=self,
         out=null_out())
@@ -2431,6 +2598,7 @@ def get_f_phases_from_model(f_array=None,pdb_inp=None,overall_b=None,
 def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_max=100000.,
       d_min_ratio=None,return_as_map_coeffs=False,remove_aniso=None,
+      get_remove_aniso_object=True,
         out=sys.stdout):
 
     if d_min is not None:
@@ -2455,10 +2623,12 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
 
     if remove_aniso:
       print >>out,"\nRemoving aniso in data before analysis\n"
+      get_remove_aniso_object=True
 
     from cctbx.maptbx.refine_sharpening import analyze_aniso
     map_coeffs,map_coeffs_ra=analyze_aniso(
          remove_aniso=remove_aniso,
+         get_remove_aniso_object=get_remove_aniso_object,
          map_coeffs=map_coeffs,resolution=d_min,out=out)
 
     if return_as_map_coeffs:
@@ -2474,7 +2644,6 @@ def apply_sharpening(map_coeffs=None,
     f_array=None,phases=None,d_min=None,k_sharpen=None,
     b_blur_hires=None,
     out=sys.stdout):
-
     if map_coeffs and f_array is None and phases is None:
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
@@ -2504,24 +2673,21 @@ def apply_sharpening(map_coeffs=None,
         (local_d_max,local_d_min)=f_array.d_max_min()
         f_array.setup_binner(n_bins=n_bins,d_max=local_d_max,d_min=local_d_min)
 
-      from cctbx.maptbx.refine_sharpening import get_scale_factors
-      scale_array=get_scale_factors(f_array,
-          target_scale_factors=target_scale_factors)
-      scaled_f_array=f_array.customized_copy(data=f_array.data()*scale_array)
-      scaled_f_array_b_iso=get_b_iso(scaled_f_array,d_min=d_min)
-      print >>out,"\nInitial b_iso for "+\
-        "local map: %5.1f A**2     After adjustment: %5.1f A**2" %(
-        f_array_b_iso,scaled_f_array_b_iso)
-
-      return get_map_from_map_coeffs(map_coeffs=map_coeffs,
-        crystal_symmetry=crystal_symmetry,n_real=n_real)
+      from cctbx.maptbx.refine_sharpening import apply_target_scale_factors 
+      map_and_b=apply_target_scale_factors(f_array=f_array,phases=phases,
+        resolution=d_min,
+        target_scale_factors=target_scale_factors,
+        n_real=n_real,
+        out=out)
+      return map_and_b
 
     elif b_sharpen is None or (
         b_sharpen in [0,None] and k_sharpen in [0,None]):
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
-      return get_map_from_map_coeffs(map_coeffs=map_coeffs,
+      map_data=get_map_from_map_coeffs(map_coeffs=map_coeffs,
         crystal_symmetry=crystal_symmetry,n_real=n_real)
+      return map_and_b_object(map_data=map_data)
 
     elif k_sharpen is None or d_min is None or k_sharpen<=0 or \
         ( b_blur_hires is None and b_sharpen < 0):
@@ -2570,9 +2736,10 @@ def apply_sharpening(map_coeffs=None,
       phase_source=phases,deg=True)
 
     # And get new map
-    return get_map_from_map_coeffs(map_coeffs=sharpened_map_coeffs,
+    map_data=get_map_from_map_coeffs(map_coeffs=sharpened_map_coeffs,
       crystal_symmetry=crystal_symmetry,
        n_real=n_real)
+    return map_and_b_object(map_data=map_data)
 
 def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
      n_real=None):
@@ -2975,7 +3142,7 @@ def get_mask_around_molecule(map_data=None,
       out=out)
   except Exception,e:
     print >>out,"No mask obtained..."
-    return
+    return None,None
 
   # Now expand the mask to increase molecular region
   expand_size=estimate_expand_size(
@@ -3005,11 +3172,11 @@ def get_mask_around_molecule(map_data=None,
   mask.set_selected(~s,0)
   masked_fraction=mask.count(1)/mask.size()
   print >>out,"Masked fraction after buffering:  %7.2f" %(masked_fraction)
-
-  return mask
+  return mask.as_double(),solvent_fraction
 
 def get_mean_in_and_out(sel=None,
     map_data=None,
+    verbose=False,
     out=sys.stdout):
 
   mean_value_in,fraction_in=get_mean_in_or_out(sel=sel,
@@ -3024,8 +3191,9 @@ def get_mean_in_and_out(sel=None,
     mean_value_out=mean_value_in
   if mean_value_in is None:
     mean_value_in=mean_value_out
-  print >>out,\
-    "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
+  if verbose:
+    print >>out,\
+     "\nMean inside mask: %7.2f  Outside mask: %7.2f  Fraction in: %7.2f" %(
      mean_value_in,mean_value_out,fraction_in)
   return mean_value_in,mean_value_out,fraction_in
 
@@ -3050,30 +3218,32 @@ def apply_soft_mask(map_data=None,
           crystal_symmetry=None,
           set_outside_to_mean_inside=False,
           threshold=0.5,
+          verbose=False,
           out=sys.stdout):
 
   # apply a soft mask based on mask_data to map_data.
   # set value outside mask==mean value inside mask or mean value outside mask
 
-  #write_ccp4_map(crystal_symmetry,'map_data.ccp4',map_data)
 
   s = mask_data > threshold  # s marks inside mask
 
   # get mean inside or outside mask
-  print >>out,"\nStarting map values inside and outside mask:"
+  if verbose:
+    print >>out,"\nStarting map values inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    map_data=map_data, out=out)
+    verbose=verbose,map_data=map_data, out=out)
 
-  print >>out,"\nMask inside and outside values"
+  if verbose:
+    print >>out,"\nMask inside and outside values"
   mask_mean_value_in,mask_mean_value_out,mask_fraction_in=get_mean_in_and_out(
-      sel=s,map_data=mask_data, out=out)
+      sel=s,map_data=mask_data, verbose=verbose,out=out)
 
   # Smooth the mask in place. First make it a binary mask
   mask_data = mask_data.set_selected(~s, 0)  # outside mask==0
   mask_data = mask_data.set_selected( s, 1)
-  #write_ccp4_map(crystal_symmetry,'mask_data.ccp4',mask_data)
   if mask_data.count(1)  and mask_data.count(0): # something to do
-    print >>out,"Smoothing mask..."
+    if verbose:
+      print >>out,"Smoothing mask..."
     maptbx.unpad_in_place(map=mask_data)
     mask_data = maptbx.smooth_map(
       map              = mask_data,
@@ -3084,16 +3254,17 @@ def apply_soft_mask(map_data=None,
     max_mask_data_value=mask_data.as_1d().min_max_mean().max
     if max_mask_data_value > 1.e-30 and max_mask_data_value!=1.0:
       mask_data=mask_data*(1./max_mask_data_value)
-      print >>out,"Scaling mask by %.2f to yield maximum of 1.0 " %(
-        1./max_mask_data_value)
+      if verbose:
+        print >>out,"Scaling mask by %.2f to yield maximum of 1.0 " %(
+           1./max_mask_data_value)
   else:
-    print >>out,"Not smoothing mask that is a constant..."
+    if verbose:
+      print >>out,"Not smoothing mask that is a constant..."
 
-  print >>out,"\nSmoothed mask inside and outside values"
+  if verbose:
+    print >>out,"\nSmoothed mask inside and outside values"
   smoothed_mean_value_in,smoothed_mean_value_out,smoothed_fraction_in=\
-     get_mean_in_and_out(sel=s,map_data=mask_data, out=out)
-
-  #write_ccp4_map(crystal_symmetry,'mask_smooth.ccp4',mask_data)
+     get_mean_in_and_out(sel=s,map_data=mask_data, verbose=verbose,out=out)
 
   # Now replace value outside mask with mean_value, value inside with current,
   #   smoothly going from one to the other based on mask_data
@@ -3101,25 +3272,26 @@ def apply_soft_mask(map_data=None,
   # set_to_mean will be a constant map with value equal to inside or outside
   if set_outside_to_mean_inside or mean_value_out is None:
     target_value_for_outside=mean_value_in
-    print >>out,"Setting value outside mask to mean inside (%.2f)" %(
+    if verbose:
+      print >>out,"Setting value outside mask to mean inside (%.2f)" %(
       target_value_for_outside)
   else:
     target_value_for_outside=mean_value_out
-    print >>out,"Setting value outside mask to mean outside (%.2f)" %(
-      target_value_for_outside)
+    if verbose:
+      print >>out,"Setting value outside mask to mean outside (%.2f)" %(
+        target_value_for_outside)
   set_to_mean=mask_data.deep_copy()
   ss = set_to_mean > -1.e+30 # select everything
   set_to_mean.set_selected(ss, target_value_for_outside)
 
   masked_map= (map_data * mask_data ) +  (set_to_mean * (1-mask_data))
 
-  print >>out,"\nFinal mean value inside and outside mask:"
+  if verbose:
+    print >>out,"\nFinal mean value inside and outside mask:"
   mean_value_in,mean_value_out,fraction_in=get_mean_in_and_out(sel=s,
-    map_data=masked_map, out=out)
+    map_data=masked_map, verbose=verbose,out=out)
 
-  #write_ccp4_map(crystal_symmetry,'masked_map.ccp4',masked_map)
-
-  return masked_map
+  return masked_map,mask_data
 
 def estimate_expand_size(
        crystal_symmetry=None,
@@ -3361,46 +3533,16 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     half_map_data_list=new_half_map_data_list
 
     if params.map_modification.soft_mask:
-      if not params.crystal_info.resolution:
-        raise Sorry("Need resolution for soft_mask")
-
-      rad_smooth=params.crystal_info.resolution
-
-      print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
-        rad_smooth)
-      if params.crystal_info.wang_radius:
-        wang_radius=params.crystal_info.wang_radius
-      else:
-        wang_radius=1.5*params.crystal_info.resolution
-
-      if params.crystal_info.buffer_radius:
-        buffer_radius=params.crystal_info.buffer_radius
-      else:
-        buffer_radius=2.*params.crystal_info.resolution
-
-      mask_data=get_mask_around_molecule(map_data=map_data,
-        crystal_symmetry=crystal_symmetry,
-        wang_radius=wang_radius,
-        buffer_radius=buffer_radius,
+      mask_data,map_data,half_map_data_list,\
+      dummy_solvent_fraction,smoothed_mask_data,\
+      original_box_map_data=\
+       get_and_apply_soft_mask_to_maps(
+        resolution=params.crystal_info.resolution,
+        wang_radius=params.crystal_info.wang_radius,
+        buffer_radius=params.crystal_info.buffer_radius,
+        map_data=map_data,crystal_symmetry=crystal_symmetry,
+        half_map_data_list=half_map_data_list,
         out=out)
-      if mask_data:
-        map_data=apply_soft_mask(map_data=map_data,
-          mask_data=mask_data.as_double(),
-          rad_smooth=rad_smooth,
-          crystal_symmetry=crystal_symmetry,
-          out=out)
-
-        new_half_map_data_list=[]
-        for half_map in half_map_data_list:
-          half_map=apply_soft_mask(map_data=half_map,
-            mask_data=mask_data.as_double(),
-            rad_smooth=rad_smooth,
-            crystal_symmetry=crystal_symmetry,
-            out=out)
-          new_half_map_data_list.append(half_map)
-        half_map_data_list=new_half_map_data_list
-      else:
-        print >>out,"Unable to get mask...skipping"
 
 
   else:  # shift if necessary...
@@ -3498,6 +3640,58 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        out=out)
 
   return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
+
+def get_and_apply_soft_mask_to_maps(
+    resolution=None,  #params.crystal_info.resolution
+    wang_radius=None, #params.crystal_info.wang_radius
+    buffer_radius=None, #params.crystal_info.buffer_radius
+    map_data=None,crystal_symmetry=None,
+    half_map_data_list=None,
+    out=sys.stdout):
+
+  smoothed_mask_data=None
+  if not resolution:
+    raise Sorry("Need resolution for soft_mask")
+
+  rad_smooth=resolution
+
+  print >>out,"\nApplying soft mask with smoothing radius of %s\n" %(
+    rad_smooth)
+  if wang_radius:
+    wang_radius=wang_radius
+  else:
+    wang_radius=1.5*resolution
+
+  if buffer_radius:
+    buffer_radius=buffer_radius
+  else:
+    buffer_radius=2.*resolution
+  original_map_data=map_data.deep_copy()
+  mask_data,solvent_fraction=get_mask_around_molecule(map_data=map_data,
+    crystal_symmetry=crystal_symmetry,
+    wang_radius=wang_radius,
+    buffer_radius=buffer_radius,
+    out=out)
+  if mask_data:
+    map_data,smoothed_mask_data=apply_soft_mask(map_data=map_data,
+      mask_data=mask_data.as_double(),
+      rad_smooth=rad_smooth,
+      crystal_symmetry=crystal_symmetry,
+      out=out)
+
+    new_half_map_data_list=[]
+    for half_map in half_map_data_list:
+      half_map,smoothed_mask_data=apply_soft_mask(map_data=half_map,
+        mask_data=mask_data.as_double(),
+        rad_smooth=rad_smooth,
+        crystal_symmetry=crystal_symmetry,
+        out=out)
+      new_half_map_data_list.append(half_map)
+    half_map_data_list=new_half_map_data_list
+  else:
+    print >>out,"Unable to get mask...skipping"
+  return mask_data,map_data,half_map_data_list,\
+    solvent_fraction,smoothed_mask_data,original_map_data
 
 def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
   file_name=params.input_files.ncs_file
@@ -5456,8 +5650,10 @@ def write_region_maps(params,
     # Now cut down the map to the size we want
     lower_bounds,upper_bounds=adjust_bounds(params,lower_bounds,upper_bounds,
       map_data=map_data,out=out)
-    box_map,box_crystal_symmetry=cut_out_map(
-       map_data=local_map_data, crystal_symmetry=tracking_data.crystal_symmetry,
+    box_map,box_crystal_symmetry,\
+      dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
+      map_data=local_map_data, \
+       crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
 
     if remainder_ncs_group_obj:
@@ -5675,7 +5871,8 @@ def write_output_files(params,
 
   # Now box_map of cut out AU
 
-  box_mask_ncs_au,box_crystal_symmetry=cut_out_map(
+  box_mask_ncs_au,box_crystal_symmetry,\
+        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=mask_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
@@ -5699,7 +5896,8 @@ def write_output_files(params,
   # Map
   if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
-    box_map_ncs_au,box_crystal_symmetry=cut_out_map(
+    box_map_ncs_au,box_crystal_symmetry,\
+       dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
@@ -5929,7 +6127,7 @@ def get_grid_units(map_data=None,crystal_symmetry=None,radius=None,
     grid_units=int(radius/grid_spacing)
     min_cell_grid_units=min(N_[0], N_[1], N_[2])
     grid_units=min(grid_units,int(min_cell_grid_units/3))
-    print "Grid units representing %7.1f A will be %d" %(
+    print >>out,"Grid units representing %7.1f A will be %d" %(
        radius,grid_units)
     return grid_units
 
@@ -5974,15 +6172,18 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     # this map is zero's around the edge and 1 in the middle
     # multiply zero_boundary_map--smoothed & new_map_data and return
     print >>out,"Applying soft mask to boundary of cut out map"
-    #write_ccp4_map(new_crystal_symmetry,'before.ccp4',new_map_data)
-    new_map_data=apply_soft_mask(map_data=new_map_data,
+    original_map_data=new_map_data.deep_copy()
+    new_map_data,smoothed_mask_data=apply_soft_mask(map_data=new_map_data,
           mask_data=zero_boundary_map,
           rad_smooth=resolution,
           crystal_symmetry=new_crystal_symmetry,
           out=out)
-    #write_ccp4_map(new_crystal_symmetry,'after.ccp4',new_map_data)
+  else:
+    original_map_data=None
+    smoothed_mask_data=None
 
-  return new_map_data, new_crystal_symmetry
+  return new_map_data, new_crystal_symmetry,\
+    smoothed_mask_data,original_map_data
 
 def apply_shift_to_pdb_hierarchy(
     origin_shift=None,
@@ -6496,11 +6697,10 @@ def sharpen_map_with_si(sharpening_info_obj=None,
      overall_b=None,
      resolution=None,
      out=sys.stdout):
-
   si=sharpening_info_obj
 
   if si.sharpening_method=='no_sharpening':
-     return map_data # do nothing
+     return map_and_b_object(map_data=map_data)
 
   if map_data and (not f_array or not phases):
     map_coeffs,dummy=get_f_phases_from_map(map_data=map_data,
@@ -6530,9 +6730,10 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   if si.is_model_sharpening() or si.is_half_map_sharpening():
     from cctbx.maptbx.refine_sharpening import scale_amplitudes
-    return scale_amplitudes(
+    map_and_b=scale_amplitudes(
       map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True),
       si=si,overall_b=overall_b,out=out)
+    return map_and_b
 
   elif si.is_resolution_dependent_sharpening():
     if f_array_normalized is None:
@@ -6544,21 +6745,23 @@ def sharpen_map_with_si(sharpening_info_obj=None,
         f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
       f_array_normalized=quasi_normalize_structure_factors(
           f_array,set_to_minimum=0.01)
-    return get_sharpened_map(ma=f_array_normalized,phases=phases,
+    map_data=get_sharpened_map(ma=f_array_normalized,phases=phases,
        b=si.resolution_dependent_b,resolution=si.resolution,n_real=si.n_real,
        d_min_ratio=si.d_min_ratio)
+    return map_and_b_object(map_data=map_data)
 
   else:
-    return apply_sharpening(n_real=si.n_real,
+    map_and_b=apply_sharpening(n_real=si.n_real,
           f_array=f_array,phases=phases,
           sharpening_info_obj=si,
           crystal_symmetry=si.crystal_symmetry,
           out=null_out())
+    return map_and_b
 
 def put_bounds_in_range(
      lower_bounds=None,upper_bounds=None,
      box_size=None,
-     buffer=None,
+     n_buffer=None,
      n_real=None,out=sys.stdout):
   # put lower and upper inside (0,n_real) and try to make size at least minimum
 
@@ -6566,8 +6769,8 @@ def put_bounds_in_range(
   new_ub=[]
   print >>out,"Putting bounds in range...(%s,%s,%s) to (%s,%s,%s)" %(
        tuple(list(lower_bounds)+list(upper_bounds)))
-  if buffer:
-     print >>out,"Buffer of %s added" %(buffer)
+  if n_buffer:
+     print >>out,"Buffer of %s added" %(n_buffer)
   for lb,ub,ms,nr in zip(lower_bounds,upper_bounds,box_size,n_real):
     if ub<lb: ub=lb
     if lb >ub: lb=ub
@@ -6575,9 +6778,9 @@ def put_bounds_in_range(
     lb=lb-extra
     ub=ub+extra
       
-    if buffer:
-       lb=lb-buffer
-       ub=ub+buffer
+    if n_buffer:
+       lb=lb-n_buffer
+       ub=ub+n_buffer
 
     if lb<0:
       shift=-lb
@@ -6637,11 +6840,17 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       sharpening_method=None
 
     for param in [
-       'verbose','seq_file','box_size','box_center','remove_aniso',
+       'verbose','seq_file',
+       'box_size',
+       'target_n_overlap',
+       'restrict_map_size',
+       'box_center','remove_aniso',
        'input_weight_map_pickle_file', 'output_weight_map_pickle_file',
        'read_sharpened_maps', 'write_sharpened_maps', 'select_sharpened_map',
        'output_directory',
-       'smoothing_radius','use_local_aniso','local_aniso_in_local_sharpening',
+       'smoothing_radius','use_local_aniso',
+       'local_aniso_in_local_sharpening',
+       'overall_before_local',
        'local_sharpening',
        'box_in_auto_sharpen',
        'density_select_in_auto_sharpen',
@@ -6658,6 +6867,9 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'require_helical_or_point_group_symmetry',
        'allow_box_if_b_iso_set',
        'max_box_fraction',
+       'cc_cut',
+       'max_cc_for_rescale',
+       'scale_using_last',
        'density_select_max_box_fraction',
        'k_sharpen',
        'optimize_k_sharpen',
@@ -6669,6 +6881,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
         'region_weight_buffer',
         'target_b_iso_ratio',
         'signal_min',
+        'buffer_radius',
+        'wang_radius',
         'target_b_iso_model_scale',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
@@ -6743,40 +6957,131 @@ def select_inside_box(lower_bounds=None,upper_bounds=None,xrs=None,
   asc1=hierarchy.atom_selection_cache()
   return hierarchy.select(selection)
       
+def make_empty_map(template_map=None,value=0.):
+    # Create empty map original_map_in_box
+    empty_map=flex.double(template_map.as_1d().as_double().size(),value)
+    empty_map.reshape(flex.grid(template_map.all()))
+    return empty_map
+
+def sum_box_data(starting_map=None,box_map=None,
+      lower_bounds=None,upper_bounds=None):
+    # sum box data into starting_map
+
+
+    #Pull out current starting_map data
+    starting_box_data= maptbx.copy(starting_map, tuple(lower_bounds), tuple(upper_bounds)) 
+    assert starting_box_data.all()==box_map.all()
+
+    # Add to box_map
+    starting_box_data=starting_box_data.as_1d()
+    box_map_data=box_map.as_1d()
+    starting_box_data+=box_map_data
+
+    # put back into shape
+    starting_box_data.reshape(flex.grid(box_map.all()))
+
+    maptbx.set_box(
+        map_data_from = starting_box_data,
+        map_data_to   = starting_map,
+        start         = lower_bounds,
+        end           = upper_bounds)
+    return starting_map
+
+
+def copy_box_data(starting_map=None,box_map=None,
+      lower_bounds=None,upper_bounds=None):
+    # Copy box data into original_map_in_box
+    maptbx.set_box(
+        map_data_from = box_map,
+        map_data_to   = starting_map,
+        start         = lower_bounds,
+        end           = upper_bounds)
+    return starting_map
 
 def select_box_map_data(si=None,
            map_data=None,
            first_half_map_data=None,
            second_half_map_data=None,
            pdb_inp=None,
-           max_box_fraction=None,
            get_solvent_fraction=True,# XXX test not doing this...
            n_min=30, # at least 30 atoms to run model sharpening
-           out=sys.stdout):
+           restrict_map_size=None,
+           out=sys.stdout,local_out=sys.stdout):
 
+  box_solvent_fraction=None
   solvent_fraction=si.solvent_fraction
   crystal_symmetry=si.crystal_symmetry
   box_size=si.box_size
-  if pdb_inp or si.density_select_in_auto_sharpen:  # use map_box
+  lower_bounds=None
+  upper_bounds=None
+  smoothed_box_mask_data=None
+  original_box_map_data=None #
+  n_buffer=None
+    
+  if  (not pdb_inp and not si.box_in_auto_sharpen) and (
+      first_half_map_data and second_half_map_data):
+      print >>out,\
+          "Creating density-based soft mask and applying to half-map data"
+
+      if not si.soft_mask:
+        raise Sorry(
+         "Need to set soft_mask=True for half-map sharpening without model")
+      # NOTE: could precede this by density_select on map_data, save bounds and
+      #   cut out half-maps with those bounds. That case could 
+      #   cover si.soft_mask=False 
+
+      half_map_data_list=[first_half_map_data,second_half_map_data]
+
+      box_mask_data,box_map,half_map_data_list,\
+       box_solvent_fraction,smoothed_box_mask_data,original_box_map_data=\
+       get_and_apply_soft_mask_to_maps(
+        resolution=si.resolution,
+        wang_radius=si.wang_radius,
+        buffer_radius=si.buffer_radius,
+        map_data=map_data,crystal_symmetry=crystal_symmetry,
+        half_map_data_list=half_map_data_list,
+        out=out)
+    
+      box_first_half_map,box_second_half_map=half_map_data_list
+      box_crystal_symmetry=crystal_symmetry
+      box_pdb_inp=pdb_inp
+
+  elif pdb_inp or (
+     si.density_select_in_auto_sharpen and not si.box_in_auto_sharpen):
+
+  #   use map_box for pdb_inp (mask with model)
+  #   also use map_box for density_select_in_auto_sharpen sharpening because 
+  #     need to use the same density select for all 3 maps.
+
+  # XXX Perhaps we canuse above method for pdb_inp
+
     assert not si.local_sharpening
+
     if pdb_inp:
+      print >>out,"Using map_box based on input model"
       hierarchy=pdb_inp.construct_hierarchy()
+      max_box_fraction=si.max_box_fraction
+      si.density_select_in_auto_sharpen=False  
     else:
+      print >>out,"Using density_select in map_box"
       hierarchy=None
       assert si.density_select_in_auto_sharpen
-    if si.box_center:  # center at box_center. Trim hierarchy
+      max_box_fraction=si.density_select_max_box_fraction
+
+    #----------------------trimming model-------------------------------
+    if si.box_center:  # Have model but center at box_center and trim hierarchy
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
       if si.soft_mask:
-        buffer=get_grid_units(map_data=map_data,
+        n_buffer=get_grid_units(map_data=map_data,
           crystal_symmetry=crystal_symmetry,
           radius=si.resolution,out=out)
-        buffer=int(0.5+buffer*1.5)
+        n_buffer=int(0.5+n_buffer*1.5)
       else:
-        buffer=0
+        n_buffer=0
       lower_bounds,upper_bounds=put_bounds_in_range(
        lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-       box_size=box_size,buffer=buffer,
+       box_size=box_size,n_buffer=n_buffer,
        n_real=map_data.all(),out=out)
       lower_frac=bounds_to_frac(lower_bounds,map_data)
       upper_frac=bounds_to_frac(upper_bounds,map_data)
@@ -6785,7 +7090,8 @@ def select_box_map_data(si=None,
       upper_cart=bounds_to_cart(
         upper_bounds,map_data,crystal_symmetry=crystal_symmetry)
 
-      if hierarchy:
+      if hierarchy: # trimming hierarchy to box and then using trimmed 
+                    # hierarchy in map_box to create actual box
         xrs=hierarchy.extract_xray_structure(
           crystal_symmetry=si.crystal_symmetry)
         # find everything in box
@@ -6797,41 +7103,57 @@ def select_box_map_data(si=None,
           print "Skipping...using entire structure"
         else:
           hierarchy=sel_hierarchy
-
+    #----------------------end trimming model-------------------------------
+  
 
     from mmtbx.command_line.map_box import run as run_map_box
     args=[]
     if si.density_select_in_auto_sharpen:
       args.append('density_select=True')
       print >>out,"Using density_select in map_box"
+    elif si.box_in_auto_sharpen and not si.mask_atoms:
+      print >>out,"Using map_box with model" 
     elif si.mask_atoms:
+      print >>out,"Using map_box with model and mask_atoms" 
       args.append('mask_atoms=True')
       if si.mask_atoms_atom_radius:
         args.append('mask_atoms_atom_radius=%s' %(si.mask_atoms_atom_radius))
       if si.value_outside_atoms:
         args.append('value_outside_atoms=%s' %(si.value_outside_atoms))
       if si.soft_mask:
+        print >>out,"Using soft mask"
         args.append('soft_mask=%s' %(si.soft_mask))
         args.append('soft_mask_radius=%s' %(si.resolution))
-
-    print >>out,"Getting map as box"
-    if hierarchy:
-      local_hierarchy=hierarchy.deep_copy()
     else:
-      local_hierarchy=None
+      raise Sorry("Unknown choice in select_box_data")
+
+    if restrict_map_size:
+      args.append('restrict_map_size=True')
+    print >>out,"Getting map as box now"
+    local_hierarchy=None
+    if hierarchy: 
+       local_hierarchy=hierarchy.deep_copy() # run_map_box modifies its argument
     box=run_map_box(args,
         map_data=map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
        crystal_symmetry=crystal_symmetry,log=out)
+
+    lower_bounds=box.gridding_first
+    upper_bounds=box.gridding_last
+
     box_map=box.map_box.as_double()
     box_map=scale_map(box_map,out=out)
     box_crystal_symmetry=box.box_crystal_symmetry
     box_pdb_inp=box.hierarchy.as_pdb_input()
     if first_half_map_data:
       print >>out,"Getting first map as box"
+      if hierarchy: 
+        local_hierarchy=hierarchy.deep_copy() # required
       box_first=run_map_box(args,
         map_data=first_half_map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
+       lower_bounds=lower_bounds,
+       upper_bounds=upper_bounds,
        crystal_symmetry=crystal_symmetry,log=out)
       box_first_half_map=box_first.map_box.as_double()
     else:
@@ -6839,42 +7161,51 @@ def select_box_map_data(si=None,
 
     if second_half_map_data:
       print >>out,"Getting second map as box"
+      if hierarchy: 
+        local_hierarchy=hierarchy.deep_copy() # required
       box_second=run_map_box(args,
         map_data=second_half_map_data,pdb_hierarchy=local_hierarchy,
        write_output_files=False,
+       lower_bounds=lower_bounds,
+       upper_bounds=upper_bounds,
        crystal_symmetry=crystal_symmetry,log=out)
       box_second_half_map=box_second.map_box.as_double()
     else:
       box_second_half_map=None
 
+  else: # cut out box based on box_center or regions
 
-  else:
     if si.box_center:  # center at box_center
+      print>>out,"Cutting out box based on center at (%.2f,%.2f,%.2f) " %( si.box_center)
       lower_bounds,upper_bounds=box_from_center(si=si,
         map_data=map_data,out=out)
     elif si.use_weak_density:
+      print >>out,"Cutting out box based on centering on weak density"
       lower_bounds,upper_bounds=box_of_smallest_region(si=si,
            map_data=map_data,
            out=out)
     else:
+      print >>out,"Cutting out box based on centering on strong density"
       lower_bounds,upper_bounds=box_of_biggest_region(si=si,
            map_data=map_data,
            out=out)
     if si.soft_mask:
-      buffer=get_grid_units(map_data=map_data,
+      n_buffer=get_grid_units(map_data=map_data,
         crystal_symmetry=crystal_symmetry,
         radius=si.resolution,out=out)
-      buffer=int(0.5+buffer*1.5)
+      n_buffer=int(0.5+n_buffer*1.5)
     else:
-      buffer=0
+      n_buffer=0
     lower_bounds,upper_bounds=put_bounds_in_range(
      lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-     box_size=box_size,buffer=buffer,
+     box_size=box_size,n_buffer=n_buffer,
      n_real=map_data.all(),out=out)
 
     # select map data inside this box
     print >>out,"\nSelecting map data inside box"
-    box_map,box_crystal_symmetry=cut_out_map(
+  
+    box_map,box_crystal_symmetry,\
+         smoothed_box_mask_data,original_box_map_data=cut_out_map(
        map_data=map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
        soft_mask=si.soft_mask,
@@ -6885,54 +7216,61 @@ def select_box_map_data(si=None,
     box_pdb_inp=None
 
     if first_half_map_data:
-      box_first_half_map,box_first_crystal_symmetry=cut_out_map(
+      box_first_half_map,box_first_crystal_symmetry,\
+        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=first_half_map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
        soft_mask=si.soft_mask,
        soft_mask_radius=si.resolution,
        resolution=si.resolution,
        shift_origin=True,
-       min_point=lower_bounds, max_point=upper_bounds,out=out)
+       min_point=lower_bounds, max_point=upper_bounds,out=local_out)
     else:
       box_first_half_map=None
 
     if second_half_map_data:
-      box_second_half_map,box_second_crystal_symmetry=cut_out_map(
+      box_second_half_map,box_second_crystal_symmetry,\
+         dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=second_half_map_data.as_double(),
        crystal_symmetry=crystal_symmetry,
        soft_mask=si.soft_mask,
        soft_mask_radius=si.resolution,
        resolution=si.resolution,
        shift_origin=True,
-       min_point=lower_bounds, max_point=upper_bounds,out=out)
+       min_point=lower_bounds, max_point=upper_bounds,out=local_out)
     else:
       box_second_half_map=None
 
   if not box_map or (
        (not pdb_inp and not second_half_map_data) and \
-      box_map.size() > max_box_fraction* map_data.size()):
+      box_map.size() > si.max_box_fraction* map_data.size()):
+
     return None,map_data,first_half_map_data,\
-        second_half_map_data,crystal_symmetry,None # no point
+        second_half_map_data,crystal_symmetry,None,\
+        smoothed_box_mask_data,None,None # no point
 
-  else:
-    # figure out solvent fraction in this box...
+  # figure out solvent fraction in this box...
 
-    if get_solvent_fraction:
+  if get_solvent_fraction: #
+    if box_solvent_fraction is None: 
       box_solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=box_crystal_symmetry,
         map=box_map,
         out=out)
-      print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
-    else:
-      box_solvent_fraction=None
+    print >>out,"Local solvent fraction: %7.2f" %(box_solvent_fraction)
+  else:
+    box_solvent_fraction=None
 
-    box_sharpening_info_obj=box_sharpening_info(
-      n_real=box_map.all(),
-      wrapping=False,
-      crystal_symmetry=box_crystal_symmetry,
-      solvent_fraction=box_solvent_fraction)
-    return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
-        box_crystal_symmetry,box_sharpening_info_obj
+  box_sharpening_info_obj=box_sharpening_info(
+    lower_bounds=lower_bounds,
+    upper_bounds=upper_bounds,
+    n_real=box_map.all(),
+    wrapping=False,
+    crystal_symmetry=box_crystal_symmetry,
+    solvent_fraction=box_solvent_fraction)
+  return box_pdb_inp,box_map,box_first_half_map,box_second_half_map,\
+      box_crystal_symmetry,box_sharpening_info_obj,\
+      smoothed_box_mask_data,original_box_map_data,n_buffer
 
 def inside_zero_one(xyz):
   from scitbx.array_family import flex
@@ -7125,16 +7463,50 @@ def fit_bounds_inside_box(lower,upper,box_size=None,all=None):
   # adjust bounds so upper>lower and box size is at least box_size
   new_lower=[]
   new_upper=[]
-  for u,l,s,a in zip(upper,lower,box_size,all):
-    ss=u-l+1
-    delta=int((1+s-ss)/2) # desired increase in size, to subtract from l
-    l=max(0,l-delta)
-    ss=u-l+1
-    delta=(s-ss) # desired increase in size, to add to u
-    u=min(a-1,u+delta)
-    new_lower.append(l)
-    new_upper.append(u)
+  if box_size: 
+   for u,l,s,a in zip(upper,lower,box_size,all):
+     ss=u-l+1
+     delta=int((1+s-ss)/2) # desired increase in size, to subtract from l
+     l=max(0,l-delta)
+     ss=u-l+1
+     delta=(s-ss) # desired increase in size, to add to u
+     u=min(a-1,u+delta)
+     l=max(0,l)
+     new_lower.append(l)
+     new_upper.append(u)
+  else:
+   for u,l,a in zip(upper,lower,all):
+     u=min(a-1,u)
+     l=max(0,l)
+     new_lower.append(l)
+     new_upper.append(u)
+
   return new_lower,new_upper
+
+def split_boxes(lower=None,upper=None,target_size=None,target_n_overlap=None):
+  # purpose: split the region from lower to upper into overlapping 
+  # boxes of size about target_size
+
+  all_box_list=[]
+  for l,u,ts in zip (lower,upper,target_size):
+    n=u+1-l
+    n_box=max(1,(n+(3*ts//4))//ts)
+    new_target_size=int(0.9+n/n_box)
+
+    # offset defined by: (n_box-1)*offset+ts=n
+    offset=int(0.9+(n-new_target_size)/max(1,n_box-1))  
+    box_list=[]
+    for i in xrange(n_box):
+      start_pos=max(l,l+i*offset)
+      end_pos=min(u,start_pos+new_target_size)
+      box_list.append([start_pos,end_pos])
+    all_box_list.append(box_list)
+  new_lower_upper_list=[]
+  for xs,xe in all_box_list[0]:
+    for ys,ye in all_box_list[1]:
+      for zs,ze in all_box_list[2]:
+        new_lower_upper_list.append([(xs,ys,zs,),(xe,ye,ze,)])
+  return new_lower_upper_list
 
 def get_target_boxes(si=None,ncs_obj=None,map=None,
     pdb_inp=None,out=sys.stdout):
@@ -7180,11 +7552,12 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
   centers_frac=flex.vec3_double()
   upper_bounds_list=[]
   lower_bounds_list=[]
-  if pdb_inp:
+  if pdb_inp and pdb_inp.atoms().extract_xyz().size()>1:
     xyz_list=pdb_inp.atoms().extract_xyz()
     i_end=xyz_list.size()
     n_centers=min(i_end,max(1,len(tracking_data.output_region_map_info_list)))
-    i_step=int(0.5+min(i_end/2,i_end/n_centers)) # about n_centers
+    n_steps=min(n_centers,xyz_list.size())
+    i_step=int(0.5+min(i_end/2,i_end/n_steps)) # about n_centers but up to n_atoms
     i_start=max(1,int(0.5+i_step/2))
     from scitbx.matrix import col
     ma=map.all()
@@ -7205,11 +7578,16 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
     for map_info_obj in tracking_data.output_region_map_info_list:
       lower,upper=map_info_obj.lower_upper_bounds()
       lower,upper=fit_bounds_inside_box(
-        lower,upper,box_size=si.box_size,all=map.all())
-      upper_bounds_list.append(upper)
-      lower_bounds_list.append(lower)
-      average_fract=average_from_bounds(lower,upper,grid_all=map.all())
-      centers_frac.append(average_fract)
+        lower,upper,
+        box_size=None, # take the whole region, not just center
+        all=map.all())
+      for lower,upper in split_boxes(lower=lower,upper=upper,
+         target_size=si.box_size,
+         target_n_overlap=si.target_n_overlap):
+         upper_bounds_list.append(upper)
+         lower_bounds_list.append(lower)
+         average_fract=average_from_bounds(lower,upper,grid_all=map.all())
+         centers_frac.append(average_fract)
 
 
   centers_cart=si.crystal_symmetry.unit_cell().orthogonalize(centers_frac)
@@ -7289,14 +7667,44 @@ def run_local_sharpening(si=None,
   #   centered at different places.  Identify the places as centers of regions.
   #   Run on au of NCS and apply NCS to get remaining positions
 
+  if si.overall_before_local:
+    # first do overall sharpening of the map to get it about right
+    print >>out,80*"*"
+    print >>out,\
+       "\nSharpening map overall before carrying out local sharpening\n"
+    overall_si=deepcopy(si)
+    overall_si.local_sharpening=False  # don't local sharpen
+    overall_si=auto_sharpen_map_or_map_coeffs(si=overall_si,
+          auto_sharpen_methods=auto_sharpen_methods,
+          map=map,
+          half_map_data_list=half_map_data_list,
+          pdb_inp=pdb_inp,
+          out=out)
+    sharpened_map=overall_si.map_data
+    print >>out,"\nDone sharpening map overall before carrying out local sharpening\n"
+    print >>out,80*"*"
+  else:
+    sharpened_map=map
+
+
   # Accumulate sums
-  sum_weight_map=map.deep_copy()
-  s = (sum_weight_map != 0)
-  sum_weight_map=sum_weight_map.set_selected(s,0.0)
-  sum_weight_value_map=sum_weight_map.deep_copy()
+  starting_weight=0.01 # put starting map everywhere with low weight
+  sum_weight_map=make_empty_map(template_map=map,value=starting_weight) 
+
+  # in case a pixel is not covered...
+  sum_weight_value_map=starting_weight*sharpened_map.deep_copy()
+
+  print >>out,"\nUsing overall map for any regions where "+\
+     "no local information is present"
+
+  id_list=[]
+  b_iso_list=flex.double()
+  starting_b_iso_list=flex.double()
+
+  # use sharpened map here
   upper_bounds_list,lower_bounds_list,\
      centers_cart_ncs_list,centers_cart,all_cart=\
-     get_target_boxes(si=si,map=map,ncs_obj=ncs_obj,
+     get_target_boxes(si=si,map=sharpened_map,ncs_obj=ncs_obj,
        pdb_inp=pdb_inp,out=out)
 
   dist=mean_dist_to_nearest_neighbor(all_cart)
@@ -7307,18 +7715,17 @@ def run_local_sharpening(si=None,
   print >>out,"\nMean distance to nearest center is %7.2f A " %(
     dist)
   if not si.smoothing_radius:
-    si.smoothing_radius=float("%.0f" %(dist*2/3))  # 10% from nearest neighbor
+    si.smoothing_radius=float("%.0f" %(dist*2/3)) # 10A from nearest neighbor
     print >>out,"Using %s A for smoothing radius" %(si.smoothing_radius)
 
   i=-1
   for ub,lb,centers_ncs_cart,center_cart in zip(
     upper_bounds_list,lower_bounds_list,centers_cart_ncs_list,centers_cart):
     i+=1
-
     if si.select_sharpened_map is not None and i != si.select_sharpened_map:
       continue
     map_file_name='sharpened_map_%s.ccp4' %(i)
-    if si.read_sharpened_maps:
+    if 0 and si.read_sharpened_maps: # cannot do this as no bounds
       print >>out,"\nReading sharpened map directly from %s" %(map_file_name)
       result=get_map_object(file_name=map_file_name,
         out=out)
@@ -7331,73 +7738,65 @@ def run_local_sharpening(si=None,
       local_si.box_center=center_cart
       local_si.box_in_auto_sharpen=True
       local_si.density_select_in_auto_sharpen=False
-      local_si.use_local_aniso=True
+      local_si.use_local_aniso=si.local_aniso_in_local_sharpening
+      local_si.remove_aniso=si.local_aniso_in_local_sharpening
+      local_si.max_box_fraction=999 # just bigger than 1
+      local_si.density_select_max_box_fraction=999
       print >>out,80*"+"
       print >>out,"Getting local sharpening for box %s" %(i)
       print >>out,80*"+"
-      local_si=auto_sharpen_map_or_map_coeffs(si=local_si,
+      bsi=auto_sharpen_map_or_map_coeffs(si=local_si, 
         auto_sharpen_methods=auto_sharpen_methods,
-        map=map,
+        map=sharpened_map,
         half_map_data_list=half_map_data_list,
         pdb_inp=pdb_inp,
+        return_bsi=True, # just return the bsi of sharpened data
         out=out)
-      local_map_data=local_si.map_data
 
-    if si.write_sharpened_maps:
-      print >>out,"\nWriting sharpened map %s to %s" %(
-       i,map_file_name)
-      write_ccp4_map(si.crystal_symmetry,map_file_name,
-         local_map_data)
 
-    local_map_data=local_map_data.as_double()
+      # merge with background using bsi.smoothed_box_mask_data 
+      if bsi.smoothed_box_mask_data:
+        print >>out,"Merging small map into overall map in soft-mask region"
+        bsi.merge_into_overall_map(overall_map=map)
 
-    # Calculate weight map, max near location of centers_ncs_cart
-    # U=rmsd**2
-    # (b_eff=8*3.14159**2*U)
-    #  rmsd is at least distance between centers, not too much bigger than
-    #  unit cell size, typically 10-20 A,
-    print >>out,"\nFall-off of local weight is 1/%6.1f A\n" %(
-      si.smoothing_radius)
-    u=si.smoothing_radius**2
+      # Now remove buffer region
+      if bsi.n_buffer: # extract just the good part
+         print >>out,"Removing buffer from small map"
+         bsi.remove_buffer(out=out)
 
-    from cctbx import xray
-    xrs,scatterers=set_up_xrs(crystal_symmetry=si.crystal_symmetry)
-    unit_cell=si.crystal_symmetry.unit_cell()
-    for xyz_cart in centers_ncs_cart:
-      scatterers.append( xray.scatterer(scattering_type="H", label="H",
-        site=unit_cell.fractionalize(xyz_cart), u=u, occupancy=1.0))
-    xrs = xray.structure(xrs, scatterers=scatterers)
 
-    f_array,phases=get_f_phases_from_map(map_data=map,
-       crystal_symmetry=si.crystal_symmetry,
-       d_min=si.resolution,
-       d_min_ratio=si.d_min_ratio,
-       out=out)
+    weight_data=bsi.get_gaussian_weighting(out=out)
+    weighted_data=bsi.map_data*weight_data
 
-    weight_f_array=f_array.structure_factors_from_scatterers(
-      algorithm = 'direct',
-      xray_structure = xrs).f_calc()
+    sum_weight_value_map=sum_box_data(starting_map=sum_weight_value_map, 
+       box_map=weighted_data,
+       lower_bounds=bsi.lower_bounds,
+       upper_bounds=bsi.upper_bounds)
 
-    weight_map=get_map_from_map_coeffs(map_coeffs=weight_f_array,
-      crystal_symmetry=si.crystal_symmetry,n_real=map.all())
-    min_value=weight_map.as_1d().min_max_mean().min
-    weight_map=weight_map-min_value # all positive or zero
+    sum_weight_map=sum_box_data(starting_map=sum_weight_map,
+       box_map=weight_data,
+       lower_bounds=bsi.lower_bounds,
+       upper_bounds=bsi.upper_bounds)
 
-    max_value=weight_map.as_1d().min_max_mean().max
-    weight_map=weight_map/max(1.e-10,max_value)  # normalize; max=1 now
-    min_value=1.e-10  # just a small value for all distances far from center
-    s = (weight_map <min_value )  # make extra sure every point is above this
-    weight_map=weight_map.set_selected(s,min_value)
-
-    # increase sums
-    sum_weight_map+=weight_map
-    sum_weight_value_map+=weight_map*local_map_data
+    id_list.append(i)
+    starting_b_iso_list.append(bsi.starting_b_iso)
+    b_iso_list.append(bsi.b_iso)
 
     print >>out,80*"+"
-    print >>out,"End of getting local sharpening for box %s" %(i)
+    print >>out,"End of getting local sharpening for small box %s" %(i)
     print >>out,80*"+"
 
   print >>out,"\nOverall map created from total of %s local maps" %(i)
+  if si.overall_before_local:
+    print >>out,"Note: overall map already sharpened with global sharpening"
+  print >>out,"Summary of b_iso values by local map:"
+  print >>out," ID   Starting B-iso    Sharpened B-iso"
+  for i,starting_b_iso,b_iso in zip(id_list,starting_b_iso_list,b_iso_list):
+    print >>out," %4s    %7.2f        %7.2f" %(i,starting_b_iso,b_iso)
+
+  print >>  out,"\nMean    %7.2f        %7.2f" %(
+     starting_b_iso_list.min_max_mean().mean,
+     b_iso_list.min_max_mean().mean)
 
   si.map_data=sum_weight_value_map/sum_weight_map
 
@@ -7449,6 +7848,7 @@ def auto_sharpen_map_or_map_coeffs(
         smoothing_radius=None,
         local_sharpening=None,
         local_aniso_in_local_sharpening=None,
+        overall_before_local=None,
         use_local_aniso=None,
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
@@ -7461,6 +7861,10 @@ def auto_sharpen_map_or_map_coeffs(
         box_center=None,
         remove_aniso=None,
         box_size=None,
+        target_n_overlap=None,
+        lower_bounds=None,
+        upper_bounds=None,
+        restrict_map_size=None,
         auto_sharpen_methods=None,
         residual_target=None,
         sharpening_target=None,
@@ -7468,6 +7872,9 @@ def auto_sharpen_map_or_map_coeffs(
         input_d_cut=None,
         b_blur_hires=None,
         max_box_fraction=None,
+        cc_cut=None,
+        max_cc_for_rescale=None,
+        scale_using_last=None,
         density_select_max_box_fraction=None,
         mask_atoms=None,
         mask_atoms_atom_radius=None,
@@ -7489,11 +7896,14 @@ def auto_sharpen_map_or_map_coeffs(
         region_weight_buffer=None,
         target_b_iso_ratio=None,
         signal_min=None,
+        buffer_radius=None,
+        wang_radius=None,
         target_b_iso_model_scale=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
         resolution_dependent_b=None, # if set, use it
         normalize_amplitudes_in_resdep=None, # if set, use it
+        return_bsi=False,
         verbose=None,
         out=sys.stdout):
     if si:  #
@@ -7551,8 +7961,7 @@ def auto_sharpen_map_or_map_coeffs(
         verbose=si.verbose,
         map=map,
         out=out)
-    print >>out,"Estimated solvent fraction: %s" %(si.solvent_fraction)
-
+    print >>out,"Estimated solvent fraction: %.2f" %(si.solvent_fraction)
     # Determine if we are running half-map or model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
       first_half_map_data=half_map_data_list[0]
@@ -7576,7 +7985,7 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,80*"="
     print >>out,"\nRunning auto_sharpen to get sharpening parameters\n"
     print >>out,80*"="
-    si=run_auto_sharpen( # get sharpening parameters standard run
+    result=run_auto_sharpen( # get sharpening parameters standard run
       si=si,
       map_data=map,
       first_half_map_data=first_half_map_data,
@@ -7584,7 +7993,12 @@ def auto_sharpen_map_or_map_coeffs(
       pdb_inp=pdb_inp,
       auto_sharpen_methods=auto_sharpen_methods,
       print_result=False,
+      return_bsi=return_bsi,
       out=out)
+    if return_bsi:
+      return result  # it is a box_sharpening_info object
+    else:
+      si=result
     print >>out,80*"="
     print >>out,"\nDone running auto_sharpen to get sharpening parameters\n"
     print >>out,80*"="
@@ -7648,6 +8062,7 @@ def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
 def optimize_k_sharpen_or_d_cut_or_b_iso(
            optimization_target='k_sharpen',
            local_best_si=None,
+           local_best_map_and_b=None,
            si_id_list=None,
            si_score_list=None,
            delta_b=None,
@@ -7675,6 +8090,8 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
   print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
        local_best_si.score,local_best_si.b_iso,
        local_best_si.k_sharpen,local_best_si.get_d_cut())
+
+
   # existing values:
   value_dict={}
   for id,score in zip(si_id_list,si_score_list):
@@ -7692,6 +8109,9 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
        "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
      working_best_si.score,working_best_si.b_iso,
         working_best_si.k_sharpen,working_best_si.get_d_cut())
+    if working_best_si.verbose:
+      print >>out," B-sharpen B-iso K-sharpen   Adj-SA    "+\
+           "Kurtosis  SA-ratio   Regions   d_cut   k_sharpen"
     local_best_working_si=deepcopy(working_best_si)
     improving=False
     for jj in xrange(-n_range,n_range+1):
@@ -7720,22 +8140,23 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
           local_si.b_iso=test_b_iso
           local_si.b_sharpen=original_b_iso-local_si.b_iso
 
-          local_map_data=apply_sharpening(
+          local_map_and_b=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
             sharpening_info_obj=local_si,
             crystal_symmetry=local_si.crystal_symmetry,
             out=null_out())
           local_si=score_map(
-             map_data=local_map_data,sharpening_info_obj=local_si,
+             map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
             out=null_out())
           value_dict[id]=local_si.score
-          print >>out,\
-           " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
-            local_si.b_sharpen,local_si.b_iso,
-             local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
-            "  %7.3f         %7.3f   %7.3f %7.3f " %(
-             local_si.sa_ratio,local_si.normalized_regions,
-             test_d_cut,test_k_sharpen)
+          if local_si.verbose:
+            print >>out,\
+             " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
+              local_si.b_sharpen,local_si.b_iso,
+               local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+              "  %7.3f         %7.3f   %7.3f %7.3f " %(
+               local_si.sa_ratio,local_si.normalized_regions,
+               test_d_cut,test_k_sharpen)
 
           if local_si.score > local_best_score:
             local_best_score=local_si.score
@@ -7758,7 +8179,13 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
 
   local_best_si.show_summary(out=out)
 
-  return local_best_si 
+  return local_best_si,local_best_map_and_b
+
+def set_mean_sd_of_map(map_data=None,target_mean=None,target_sd=None):
+    new_mean=map_data.as_1d().min_max_mean().mean
+    new_sd=max(1.e-10,map_data.sample_standard_deviation())
+    map_data=(map_data-new_mean)/new_sd # normalized
+    return map_data*target_sd + target_mean # restore original
 
 def run_auto_sharpen(
       si=None,
@@ -7768,7 +8195,13 @@ def run_auto_sharpen(
       pdb_inp=None,
       auto_sharpen_methods=None,
       print_result=True,
+      return_bsi=False,
       out=sys.stdout):
+
+  if si.verbose:
+     local_out=out
+  else:
+     local_out=null_out()
   #  Identifies parameters for optimal map sharpening using analysis of density,
   #    model-correlation, or half-map correlation (first_half_map_data vs
   #     vs second_half_map_data).
@@ -7776,30 +8209,25 @@ def run_auto_sharpen(
   #  NOTE: We can apply this to any map_data (a part or whole of the map)
   #  BUT: need to update n_real if we change the part of the map!
   #  change with map data: crystal_symmetry, solvent_fraction, n_real, wrapping,
+
+  smoothed_box_mask_data=None
+  original_box_map_data=None
+
   if si.auto_sharpen and (
-       si.box_in_auto_sharpen or si.density_select_in_auto_sharpen):
-    if pdb_inp:
-      print >>out,"\nAuto-sharpening using model-defined box of density"
-      max_box_fraction=si.max_box_fraction
-    elif si.density_select_in_auto_sharpen:
-      print >>out,"\nAuto-sharpening using density_select box of density"
-      max_box_fraction=si.density_select_max_box_fraction
-    else:
-      print >>out,"\nAuto-sharpening using representative box of density"
-      max_box_fraction=si.max_box_fraction
-    original_box_sharpening_info_obj=deepcopy(si)
-    #write_ccp4_map(si.crystal_symmetry,'orig_map.ccp4',map_data)
+    si.box_in_auto_sharpen or si.density_select_in_auto_sharpen or pdb_inp):
+
+    original_box_sharpening_info_obj=deepcopy(si)  # should really not be box
     box_pdb_inp,box_map_data,box_first_half_map_data,\
          box_second_half_map_data,\
-         box_crystal_symmetry,box_sharpening_info_obj=\
+         box_crystal_symmetry,box_sharpening_info_obj,\
+         smoothed_box_mask_data,original_box_map_data,n_buffer=\
        select_box_map_data(si=si,
            map_data=map_data,
            first_half_map_data=first_half_map_data,
            second_half_map_data=second_half_map_data,
            pdb_inp=pdb_inp,
-           max_box_fraction=max_box_fraction,
-           out=out)
-    #write_ccp4_map(box_crystal_symmetry,'box_map.ccp4',box_map_data)
+           restrict_map_size=si.restrict_map_size,
+           out=out,local_out=local_out)
 
     if box_sharpening_info_obj is None: # did not do it
       print >>out,"Box map is similar in size to entire map..."+\
@@ -7807,7 +8235,7 @@ def run_auto_sharpen(
       original_box_sharpening_info_obj=None
       crystal_symmetry=si.crystal_symmetry
     else:
-      print >>out,"Using box map to identify optimal sharpening"
+      print >>out,"Using small map to identify optimal sharpening"
       print >>out,"Box map grid: %d  %d  %d" %(
          box_map_data.all())
       print >>out,"Box map cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f  "%(
@@ -7818,7 +8246,8 @@ def run_auto_sharpen(
       map_data=box_map_data
       pdb_inp=box_pdb_inp
       if si.density_select_in_auto_sharpen and ( # catch empty pdb_inp
-         not pdb_inp.construct_hierarchy().overall_counts().n_residues):
+         not pdb_inp or not \
+           pdb_inp.construct_hierarchy().overall_counts().n_residues):
         pdb_inp=None
 
       crystal_symmetry=box_crystal_symmetry
@@ -7833,6 +8262,9 @@ def run_auto_sharpen(
     original_box_sharpening_info_obj=None
     box_sharpening_info_obj=None
     crystal_symmetry=si.crystal_symmetry
+
+  starting_mean=map_data.as_1d().min_max_mean().mean
+  starting_sd=map_data.sample_standard_deviation()
 
   print >>out,"\nGetting original b_iso..."
   map_coeffs_aa,map_coeffs,f_array,phases=effective_b_iso(
@@ -7857,7 +8289,7 @@ def run_auto_sharpen(
        d_min_ratio=si.d_min_ratio,
        remove_aniso=si.remove_aniso,
        return_as_map_coeffs=True,
-       out=out)
+       out=local_out)
   else:
     first_half_map_coeffs=None
 
@@ -7869,7 +8301,7 @@ def run_auto_sharpen(
        d_min_ratio=si.d_min_ratio,
        remove_aniso=si.remove_aniso,
        return_as_map_coeffs=True,
-       out=out)
+       out=local_out)
   else:
     second_half_map_coeffs=None
 
@@ -7920,12 +8352,12 @@ def run_auto_sharpen(
       local_si.b_sharpen=original_b_iso-b_iso
       local_si.b_iso=b_iso
 
-      local_map_data=apply_sharpening(
+      local_map_and_b=apply_sharpening(
             f_array=f_array,phases=phases,
             sharpening_info_obj=local_si,
             crystal_symmetry=local_si.crystal_symmetry,
             out=null_out())
-      local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
+      local_si=score_map(map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
           out=null_out())
       if local_si.sa_ratio is None or local_si.normalized_regions is None:
         ok_region_weight=False
@@ -8022,7 +8454,8 @@ def run_auto_sharpen(
         print >>out,"b_iso=%7.2f" %(si.b_iso)
       else:
         si.region_weight=40
-        print >>out,"\nUnable to set region_weight ... using value of %7.2f" % (
+        print >>out,\
+          "\nUnable to set region_weight ... using value of %7.2f" % (
           si.region_weight)
       if si.discard_if_worse:
         print >>out,"Setting discard_if_worse=False as region_weight failed "
@@ -8050,8 +8483,9 @@ def run_auto_sharpen(
   null_si=None
   best_si=deepcopy(si).update_with_box_sharpening_info(
       box_sharpening_info_obj=box_sharpening_info_obj)
+  best_map_and_b=map_and_b_object()
 
-  if si.sharpening_is_defined():  # just do it Use this if come in with method
+  if si.sharpening_is_defined():  # Use this if come in with method
     print >>out,"\nUsing specified sharpening"
     best_si=set_up_sharpening(si=si,map_data=map_data,out=out)
     best_si.sharpen_and_score_map(map_data=map_data,
@@ -8068,7 +8502,6 @@ def run_auto_sharpen(
         best_si.sharpening_target)
     if not auto_sharpen_methods or auto_sharpen_methods==['None']:
       auto_sharpen_methods=['no_sharpening']
-
     for m in auto_sharpen_methods:
       # ------------------------
       if m in ['no_sharpening','resolution_dependent','model_sharpening',
@@ -8114,6 +8547,7 @@ def run_auto_sharpen(
             "\nB-sharpen   B-iso   k_sharpen   SA   "+\
              "Kurtosis  sa_ratio  Normalized regions"
       # ------------------------
+      local_best_map_and_b=map_and_b_object()
       local_best_si=deepcopy(si).update_with_box_sharpening_info(
         box_sharpening_info_obj=box_sharpening_info_obj)
 
@@ -8174,13 +8608,14 @@ def run_auto_sharpen(
           local_si.b_iso=b_iso
 
 
-        local_map_data=apply_sharpening(
+        local_map_and_b=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
             sharpening_info_obj=local_si,
             crystal_symmetry=local_si.crystal_symmetry,
             out=null_out())
-        local_si=score_map(map_data=local_map_data,sharpening_info_obj=local_si,
+        local_si=score_map(map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
           out=null_out())
+
         if m=='resolution_dependent':
           print >>out,\
            "\nb[0]   b[1]   b[2]   SA   Kurtosis   sa_ratio  Normalized regions"
@@ -8215,6 +8650,8 @@ def run_auto_sharpen(
           null_si=local_si
         if local_best_si.score is None or local_si.score>local_best_si.score:
           local_best_si=local_si
+          local_best_map_and_b=local_map_and_b
+
         # ============================================
 
 
@@ -8268,9 +8705,10 @@ def run_auto_sharpen(
       optimize_b_iso=True
       for cycle in xrange(n_cycles):
         if optimize_k_sharpen:
-          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
            optimization_target='k_sharpen',
            local_best_si=local_best_si,
+           local_best_map_and_b=local_best_map_and_b,
            si_id_list=si_id_list, 
            si_score_list=si_score_list, 
            delta_b=delta_b,
@@ -8280,9 +8718,10 @@ def run_auto_sharpen(
            out=out)
  
         if optimize_d_cut: 
-          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
            optimization_target='d_cut',
            local_best_si=local_best_si,
+           local_best_map_and_b=local_best_map_and_b,
            si_id_list=si_id_list, 
            si_score_list=si_score_list, 
            delta_b=delta_b,
@@ -8292,9 +8731,10 @@ def run_auto_sharpen(
            out=out)
 
         if optimize_b_iso:
-          local_best_si=optimize_k_sharpen_or_d_cut_or_b_iso(
+          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
            optimization_target='b_iso',
            local_best_si=local_best_si,
+           local_best_map_and_b=local_best_map_and_b,
            si_id_list=si_id_list, 
            si_score_list=si_score_list, 
            delta_b=delta_b,
@@ -8308,6 +8748,8 @@ def run_auto_sharpen(
       if local_best_si.score is not None and (
           best_si.score is None or local_best_si.score > best_si.score):
         best_si=local_best_si
+        best_map_and_b=local_best_map_and_b
+ 
         if not best_si.is_model_sharpening() and \
             not best_si.is_half_map_sharpening():
           print >>out,"This is the current best score\n"
@@ -8324,6 +8766,24 @@ def run_auto_sharpen(
       print >>out,"Improved score with sharpening..."
     else:
       print >>out,"Did not improve score with sharpening..."
+
+  if return_bsi:
+    map_data=best_map_and_b.map_data
+    map_data=set_mean_sd_of_map(map_data=map_data,
+      target_mean=starting_mean,target_sd=starting_sd)
+
+    box_sharpening_info_obj.map_data=map_data
+    box_sharpening_info_obj.smoothed_box_mask_data=smoothed_box_mask_data
+    box_sharpening_info_obj.original_box_map_data=original_box_map_data
+    box_sharpening_info_obj.n_buffer=n_buffer
+    box_sharpening_info_obj.crystal_symmetry=best_si.crystal_symmetry
+    box_sharpening_info_obj.resolution=best_si.resolution
+    box_sharpening_info_obj.d_min_ratio=best_si.d_min_ratio
+    box_sharpening_info_obj.smoothing_radius=best_si.smoothing_radius
+    box_sharpening_info_obj.b_iso=best_map_and_b.final_b_iso
+    box_sharpening_info_obj.starting_b_iso=best_map_and_b.starting_b_iso
+    return box_sharpening_info_obj
+
   if original_box_sharpening_info_obj:
       # Put back original crystal_symmetry with original_box_sharpening_info_obj
       print >>out,"\nRestoring original symmetry to best sharpening info"

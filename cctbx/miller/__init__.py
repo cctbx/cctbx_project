@@ -68,6 +68,17 @@ class binner(ext.binner):
         indices=self.miller_indices(),
         anomalous_flag=self.anomalous_flag))
 
+  def require_all_bins_have_data(self,min_counts=1,
+     error_string=""):
+    for i_bin in self.range_used():
+      if self.count(i_bin)<min_counts:
+        for j_bin in self.range_used():
+          print "BIN: %s  COUNTS: %s " %(j_bin,self.count(j_bin))
+        raise Sorry(
+         "Bin %s required to have %s or more counts has %s\n%s" %(
+            i_bin,min_counts,self.count(i_bin),error_string))
+        
+
   def counts_given(self):
     if (self._counts_given is None):
       self._counts_given = []

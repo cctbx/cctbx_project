@@ -2925,7 +2925,11 @@ class extract_box_around_model_and_map(object):
                mask_atoms=False,
                mask_atoms_atom_radius=3.0,
                value_outside_atoms=None,
-               keep_map_size=False):
+               keep_map_size=False,
+               restrict_map_size=False,
+               lower_bounds=None,
+               upper_bounds=None,
+                   ):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     soo = shift_origin(map_data=self.map_data,
@@ -2960,8 +2964,18 @@ class extract_box_around_model_and_map(object):
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
     na = self.map_data.all()
-    self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
-    self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
+    if lower_bounds and upper_bounds:
+      self.gridding_first=lower_bounds
+      self.gridding_last=upper_bounds
+    else:
+      self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
+      self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
+      if restrict_map_size:
+        self.gridding_first=[max(0,g) for g in self.gridding_first]
+        self.gridding_last=[min(n,g) for n,g in zip(na,self.gridding_last)]
+ 
+
+
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
