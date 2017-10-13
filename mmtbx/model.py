@@ -319,6 +319,9 @@ class manager(object):
       self.set_xray_structure(self._shift_manager.xray_structure_box)
       self.set_crystal_symmetry(self._shift_manager.get_shifted_cs())
 
+  def get_shift_manager(self):
+    return self._shift_manager
+
   def set_pdb_interpretation_params(self, params):
     #
     # Consider invalidating self._grm here, because it could be already

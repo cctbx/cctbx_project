@@ -147,22 +147,24 @@ Usage examples:
 
 class model_idealization():
   def __init__(self,
-               pdb_h, # shifted model
-               cif_objects=None,
+               model, # shifted, with shift_manager
+               # pdb_h, # shifted model
+               # cif_objects=None,
                map_data = None, # shifted map_data
-               shift_manager = None, # manager used to shift and cut map/model
-               crystal_symmetry = None, # original consensus symmetry (map, model)
-               ss_annotation=None,
+               # shift_manager = None, # manager used to shift and cut map/model
+               # crystal_symmetry = None, # original consensus symmetry (map, model)
+               # ss_annotation=None,
                params=None,
                log=sys.stdout,
                verbose=True):
     t_0 = time()
-    self.cif_objects = cif_objects
+    self.model = model
+    # self.cif_objects = cif_objects
     self.params = params
     self.log = log
     self.verbose = verbose
 
-    self.shift_manager = shift_manager
+    self.shift_manager = self.model.get_shift_manager()
 
     self.rmsd_from_start = None
     self.init_model_statistics = None
@@ -180,12 +182,12 @@ class model_idealization():
     self.master_grm = None
     self.working_grm = None
 
-    self.mon_lib_srv = None
-    self.ener_lib = None
-    self.rotamer_manager = None
-    self.rama_manager = rama_eval()
+    # self.mon_lib_srv = None
+    # self.ener_lib = None
+    # self.rotamer_manager = None
+    # self.rama_manager = rama_eval()
 
-    self.original_hierarchy = pdb_h # original pdb_h, without any processing
+    self.original_hierarchy = self.model.get_hierarchy() # original pdb_h, without any processing
     self.original_boxed_hierarchy = None # original and boxed (if needed)
     self.whole_pdb_h = None # boxed with processing (AC trimming, H trimming,...)
     self.master_pdb_h = None # master copy in case of NCS
@@ -232,6 +234,7 @@ class model_idealization():
     self.original_boxed_hierarchy.reset_atom_i_seqs()
     self.shift_vector = None
     if self.cs is None:
+      # should it happen here?
       if corrupted_cs:
         print >> self.log, "Symmetry information is corrupted, "
       else:
@@ -339,12 +342,12 @@ class model_idealization():
     print >> self.log, "Preparing map for initial GM..."
     asc = pdb_h.atom_selection_cache()
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
+          rama_score_selection(pdb_h, self.model.get_ramachandran_manager(), "outlier",1)
     # print >> self.log, "rama outlier selection:", outlier_selection_txt
     rama_out_sel = asc.selection(outlier_selection_txt)
 
     allowed_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_score_selection(pdb_h, self.rama_manager, "allowed",0)
+          rama_score_selection(pdb_h, self.model.get_ramachandran_manager(), "allowed",0)
     # print >> self.log, "rama allowed selection:", allowed_selection_txt
     rama_allowed_sel = asc.selection(allowed_selection_txt)
 
@@ -416,7 +419,7 @@ class model_idealization():
     """ with ramachandran outliers """
     print >> self.log, "Preparing reference map, method 3"
     outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_score_selection(pdb_h, self.rama_manager, "outlier",1)
+          rama_score_selection(pdb_h, self.model.get_ramachandran_manager(), "outlier",1)
     asc = pdb_h.atom_selection_cache()
     # print >> self.log, "rama outlier selection:", outlier_selection_txt
     rama_out_sel = asc.selection(outlier_selection_txt)
@@ -480,7 +483,7 @@ class model_idealization():
           geometry_restraints_manager=self.whole_grm.geometry,
           sec_str_from_pdb_file=ss_annotation,
           params=None,
-          mon_lib_srv=self.mon_lib_srv,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
           verbose=-1,
           log=log)
       # self.whole_pdb_h.write_pdb_file(file_name="for_ss.pdb")
@@ -513,29 +516,36 @@ class model_idealization():
     params.pdb_interpretation.c_beta_restraints=True
     params.pdb_interpretation.max_reasonable_bond_distance = None
     params.pdb_interpretation.ncs_search.enabled = True
+    params.pdb_interpretation.ncs_search.chain_max_rmsd=4.0,
+    params.pdb_interpretation.ncs_search.chain_similarity_threshold=0.99,
+    params.pdb_interpretation.ncs_search.residue_match_radius=999.0
     params.pdb_interpretation.restraints_library.rdl = True
-    log = self.log
-    if not self.verbose:
-      log = null_out()
-    if self.params.ignore_ncs:
-      params.pdb_interpretation.ncs_search.enabled = False
-    processed_pdb_files_srv = mmtbx.utils.\
-        process_pdb_file_srv(
-            crystal_symmetry= self.whole_xrs.crystal_symmetry(),
-            pdb_interpretation_params = params.pdb_interpretation,
-            stop_for_unknowns         = False,
-            log=log,
-            cif_objects=self.cif_objects)
-    processed_pdb_file, junk = processed_pdb_files_srv.\
-        process_pdb_files(
-            raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
+    self.model.set_pdb_interpretation_params(params)
+    self.model.get_restraints_manager()
+    # log = self.log
+    # if not self.verbose:
+    #   log = null_out()
+    # if self.params.ignore_ncs:
+    #   params.pdb_interpretation.ncs_search.enabled = False
+    # processed_pdb_files_srv = mmtbx.utils.\
+    #     process_pdb_file_srv(
+    #         crystal_symmetry= self.whole_xrs.crystal_symmetry(),
+    #         pdb_interpretation_params = params.pdb_interpretation,
+    #         stop_for_unknowns         = False,
+    #         log=log,
+    #         cif_objects=self.cif_objects)
+    # processed_pdb_file, junk = processed_pdb_files_srv.\
+    #     process_pdb_files(
+    #         raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
 
-    self.mon_lib_srv = processed_pdb_files_srv.mon_lib_srv
-    self.ener_lib = processed_pdb_files_srv.ener_lib
-    self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
+    # self.model.get_mon_lib_srv() = processed_pdb_files_srv.mon_lib_srv
+    # self.ener_lib = processed_pdb_files_srv.ener_lib
+    # self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
 
-    self.whole_grm = get_geometry_restraints_manager(
-        processed_pdb_file, self.whole_xrs, params=params)
+    # self.whole_grm = get_geometry_restraints_manager(
+    #     processed_pdb_file, self.whole_xrs, params=params)
+
+    self.whole_grm = self.model.get_restraints_manager()
 
     # set SS restratins
     self.set_ss_restraints(self.filtered_whole_ann)
@@ -546,11 +556,12 @@ class model_idealization():
 
   def get_filtered_ncs_group_list(self):
     if not self.params.ignore_ncs:
-      ncs_obj = iotbx.ncs.input(
-          hierarchy=self.whole_pdb_h,
-          chain_max_rmsd=4.0,
-          chain_similarity_threshold=0.99,
-          residue_match_radius=999.0)
+      ncs_obj = self.model.get_ncs_obj()
+      # ncs_obj = iotbx.ncs.input(
+      #     hierarchy=self.whole_pdb_h,
+      #     chain_max_rmsd=4.0,
+      #     chain_similarity_threshold=0.99,
+      #     residue_match_radius=999.0)
       print >> self.log, "Found NCS groups:"
       ncs_obj.show(format='phil', log=self.log)
       self.ncs_restr_group_list = ncs_obj.get_ncs_restraints_group_list(
@@ -559,7 +570,6 @@ class model_idealization():
       master_sel = flex.size_t([])
       self.filtered_ncs_restr_group_list = filter_ncs_restraints_group_list(
           self.whole_pdb_h, self.ncs_restr_group_list)
-    if not self.params.ignore_ncs:
       if len(self.filtered_ncs_restr_group_list) > 0:
         self.using_ncs = True
         master_sel = flex.bool(self.whole_pdb_h.atoms_size(), True)
@@ -696,7 +706,7 @@ class model_idealization():
       negate_selection = None
       if self.reference_map is None:
         outlier_selection_txt = mmtbx.building.loop_closure.utils. \
-          rama_score_selection(self.working_pdb_h, self.rama_manager, "outlier",1)
+          rama_score_selection(self.working_pdb_h, self.model.get_ramachandran_manager(), "outlier",1)
         print >> self.log, "outlier_selection_txt", outlier_selection_txt
         negate_selection = "all"
         if outlier_selection_txt != "" and outlier_selection_txt is not None:
@@ -727,7 +737,7 @@ class model_idealization():
           cif_objects=self.cif_objects,
           verbose=self.params.verbose,
           reference_map=self.master_map,
-          rotamer_manager=self.rotamer_manager,
+          rotamer_manager=self.model.get_rotamer_manager(),
           log=self.log)
       self.log.flush()
 
@@ -761,8 +771,8 @@ class model_idealization():
         reference_map=self.master_map,
         crystal_symmetry=self.working_xrs.crystal_symmetry(),
         grm=self.working_grm,
-        rama_manager=self.rama_manager,
-        rotamer_manager=self.rotamer_manager,
+        rama_manager=self.model.get_ramachandran_manager(),
+        rotamer_manager=self.model.get_rotamer_manager(),
         log=self.log,
         verbose=True)
     self.log.flush()
@@ -799,8 +809,8 @@ class model_idealization():
           grm=self.working_grm.geometry,
           xrs=self.working_xrs,
           map_data=self.master_map,
-          mon_lib_srv=self.mon_lib_srv,
-          rotamer_manager=self.rotamer_manager,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
+          rotamer_manager=self.model.get_rotamer_manager(),
           verbose=True)
     if self.params.debug:
       self.shift_and_write_result(
@@ -854,7 +864,7 @@ class model_idealization():
           geometry_restraints_manager=self.whole_grm.geometry,
           sec_str_from_pdb_file=self.filtered_whole_ann,
           params=ss_params.secondary_structure,
-          mon_lib_srv=self.mon_lib_srv,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
           verbose=-1,
           log=self.log)
       self.whole_grm.geometry.set_secondary_structure_restraints(
@@ -936,9 +946,9 @@ class model_idealization():
           log=self.log,
           ncs_restraints_group_list=ncs_restraints_group_list,
           ss_annotation=ss_annotation,
-          mon_lib_srv=self.mon_lib_srv,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
           ener_lib=self.ener_lib,
-          rotamer_manager=self.rotamer_manager)
+          rotamer_manager=self.model.get_rotamer_manager())
     else:
       print >> self.log, "Using map as reference"
       self.log.flush()
@@ -947,8 +957,8 @@ class model_idealization():
           xrs=xrs,
           target_map=reference_map,
           grm=grm,
-          mon_lib_srv=self.mon_lib_srv,
-          rotamer_manager=self.rotamer_manager,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
+          rotamer_manager=self.model.get_rotamer_manager(),
           ncs_restraints_group_list=ncs_restraints_group_list,
           ss_annotation=ss_annotation,
           number_of_cycles=self.params.number_of_refinement_cycles,

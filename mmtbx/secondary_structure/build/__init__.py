@@ -456,7 +456,7 @@ def ss_element_is_good(ss_stats_obj, hsh_tuple):
   return True
 
 def substitute_ss(
-                    model,
+                    model, # changed in place
                     params = None,
                     use_plane_peptide_bond_restr=True,
                     fix_rotamer_outliers=True,
