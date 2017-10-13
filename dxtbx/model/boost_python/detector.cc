@@ -129,7 +129,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       scitbx::af::shared<bool> used(boost::python::len(panels), false);
       DXTBX_ASSERT(!hierarchy.contains("panel"));
       Panel *panel = from_dict<Panel>(hierarchy);
-      std::swap<Panel>(*result->root(), *panel);
+	  // TODO: needs fixing for Python3
+      // std::swap<Panel>(*result->root(), *panel);
       for (std::size_t i = 0; i < boost::python::len(hierarchy["children"]); ++i) {
         boost::python::dict child = boost::python::extract<boost::python::dict>(
             hierarchy["children"][i]);
@@ -195,7 +196,8 @@ namespace dxtbx { namespace model { namespace boost_python {
 
       DXTBX_ASSERT(!hierarchy.contains("panel"));
       Panel *panel = from_dict<Panel>(hierarchy);
-      std::swap<Panel>(*detector->root(), *panel);
+	  // TODO: needs fixing for Python3
+      //std::swap<Panel>(*detector->root(), *panel);
       copy_node(detector->root(), hierarchy, panels);
       delete panel;
 

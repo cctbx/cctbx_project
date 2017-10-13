@@ -2,7 +2,8 @@
 #define SCITBX_BOOST_PYTHON_CSTRINGIO_UTILS_H
 
 #include <stdexcept>
-#include <cStringIO.h>
+// TODO: needs fixing for Python3
+//#include <cStringIO.h>
 
 namespace scitbx { namespace boost_python {
 
@@ -14,23 +15,27 @@ namespace scitbx { namespace boost_python {
     const char* cobject_name = "cStringIO_CAPI";
     char* m = const_cast<char*>(module_name);
     char* c = const_cast<char*>(cobject_name);
-    PycStringIO = reinterpret_cast<PycStringIO_CAPI*>(PyCObject_Import(m, c));
+	// TODO: needs fixing for Python3
+    //PycStringIO = reinterpret_cast<PycStringIO_CAPI*>(PyCObject_Import(m, c));
   }
 
   inline
   void
   cstringio_output_check(PyObject* sio)
-  {
+  {// TODO: needs fixing for Python3
+	  /*
     if (!PycStringIO_OutputCheck(sio)) {
       throw std::invalid_argument(
         "cstringio argument must be a cStringIO.StringIO instance.");
     }
+	*/
   }
 
   inline
   void
   cstringio_cwrite(PyObject* sio, const char* s, unsigned n)
-  {
+  {// TODO: needs fixing for Python3
+	  /*
     PycStringIO->cwrite(
       sio,
 #if PY_VERSION_HEX >= 0x02050000
@@ -39,6 +44,7 @@ namespace scitbx { namespace boost_python {
       const_cast<char*>(s),
 #endif
       static_cast<boost::python::ssize_t>(n));
+	  */
   }
 
 }} // namespace scitbx::boost_python

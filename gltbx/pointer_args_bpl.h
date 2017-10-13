@@ -173,13 +173,14 @@ namespace gltbx { namespace boost_python {
         len_py_arg_ = PyList_GET_SIZE(py_arg_ptr_);
         if (len_py_arg_ == 1) {
           item = PyList_GET_ITEM(py_arg_ptr_, 0);
-          if (!PyString_Check(item)) throw_must_be();
+		  // TODO: needs fixing for Python3
+          if (!PyUnicode_Check(item)) throw_must_be();
         }
         else if (len_py_arg_ != 0 || is_const_) {
           throw_must_be();
         }
       }
-      else if (is_const_ && PyString_Check(py_arg_ptr_)) {
+      else if (is_const_ && PyUnicode_Check(py_arg_ptr_)) {
         item = py_arg_ptr_;
       }
       else {
@@ -187,7 +188,8 @@ namespace gltbx { namespace boost_python {
       }
       py_ssize_t item_size = 0;
       if (item != 0) {
-        item_size = PyString_GET_SIZE(item);
+	  // TODO: needs fixing for Python3
+        item_size = PyUnicode_GET_SIZE(item);
         data_size_ = detail::consolidate_sizes(
           arg_name_, expected_size, item_size);
       }
@@ -196,12 +198,13 @@ namespace gltbx { namespace boost_python {
       }
       data_ = boost::shared_array<T>(new T[data_size_]);
       if (item != 0) {
-        char* item_char_pointer = PyString_AsString(item);
+		  // TODO: needs fixing for Python3
+		PyObject* item_char_pointer = PyUnicode_AsASCIIString(item);
         if (item_char_pointer == 0) {
           boost::python::throw_error_already_set();
         }
         for(py_ssize_t i=0;i<item_size;i++) {
-          data_[i] = static_cast<T>(item_char_pointer[i]);
+          //data_[i] = static_cast<T>(item_char_pointer[i]);
         }
       }
       for(ssize_t i=item_size;i<data_size_;i++) {
@@ -216,7 +219,7 @@ namespace gltbx { namespace boost_python {
     write_back()
     {
       namespace bp = boost::python;
-      bp::object new_item((bp::handle<>(PyString_FromStringAndSize(
+      bp::object new_item((bp::handle<>(PyUnicode_FromStringAndSize(
         reinterpret_cast<char*>(data_.get()),
         data_size_ * sizeof(T)))));
       if (len_py_arg_ == 0) {

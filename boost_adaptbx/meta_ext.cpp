@@ -583,6 +583,7 @@ namespace {
       return boost::python::object(boost::python::handle<>(v));
     }
 	*/
+	return boost::python::object();
   }
 
 } // namespace anonymous

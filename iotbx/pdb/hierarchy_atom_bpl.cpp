@@ -1,5 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
-
+#include <string>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/dict.hpp>
@@ -176,31 +176,31 @@ namespace {
     format_atom_record(
       w_t const& self,
       const char* replace_floats_with)
-    {
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+    {// TODO: needs fixing for Python3
+      boost::python::handle<> str_hdl(PyUnicode_FromStringAndSize(0, 81));
       PyObject* str_obj = str_hdl.get();
-      char* str_begin = PyString_AS_STRING(str_obj);
-      unsigned str_len = self.format_atom_record(
-        str_begin, 0, replace_floats_with);
+	  const char* str_begin = PyUnicode_AS_DATA(str_obj);
+	  unsigned str_len = self.format_atom_record(
+		  (char*)str_begin, 0, replace_floats_with);
       str_hdl.release();
-      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(str_obj));
-    }
-
+	}
+	// TODO: needs fixing for Python3
 #define IOTBX_LOC(R) \
     static \
     boost::python::object \
     format_##R##_record( \
       w_t const& self) \
     { \
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81)); \
+      boost::python::handle<> str_hdl(PyUnicode_FromStringAndSize(0, 81)); \
       PyObject* str_obj = str_hdl.get(); \
-      char* str_begin = PyString_AS_STRING(str_obj); \
-      unsigned str_len = self.format_##R##_record(str_begin, 0); \
+      const char* str_begin = PyUnicode_AS_DATA(str_obj); \
+      unsigned str_len = self.format_##R##_record((char*)str_begin, 0); \
       str_hdl.release(); \
-      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) { \
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) { \
         boost::python::throw_error_already_set(); \
       } \
       return boost::python::object(boost::python::handle<>(str_obj)); \
@@ -220,14 +220,14 @@ namespace {
       bool sigatm=true,
       bool anisou=true,
       bool siguij=true)
-    {
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 324));
+    {// TODO: needs fixing for Python3
+      boost::python::handle<> str_hdl(PyUnicode_FromStringAndSize(0, 324));
       PyObject* str_obj = str_hdl.get();
-      char* str_begin = PyString_AS_STRING(str_obj);
+	  const char* str_begin = PyUnicode_AS_DATA(str_obj);
       unsigned str_len = self.format_atom_record_group(
-        str_begin, 0, atom_hetatm, sigatm, anisou, siguij);
+		  (char*)str_begin, 0, atom_hetatm, sigatm, anisou, siguij);
       str_hdl.release();
-      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(str_obj));

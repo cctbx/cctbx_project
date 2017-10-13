@@ -46,7 +46,7 @@
   IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET(attr) \
   IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_SET(attr)
 
-
+// TODO: needs fixing for Python3
 #define IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36( \
           attr, data_attr, width, value_min, value_max) \
     static void \
@@ -57,12 +57,12 @@
         self.data_attr.replace_with(0); \
         return; \
       } \
-      if (PyString_Check(ptr)) { \
-        self.data_attr.replace_with(PyString_AS_STRING(ptr)); \
+      if (PyUnicode_Check(ptr)) { \
+        self.data_attr.replace_with(PyUnicode_AS_DATA(ptr)); \
         return; \
       } \
-      if (PyInt_Check(ptr)) { \
-        long v = PyInt_AS_LONG(ptr); \
+      if (PyLong_Check(ptr)) { \
+        long v = PyLong_AsLong(ptr); \
         if (v < value_min) { \
           PyErr_SetString( \
             PyExc_ValueError, "value is less than " #value_min); \
