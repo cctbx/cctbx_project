@@ -386,6 +386,7 @@ def minimize_wrapper_for_ramachandran(
     original_pdb_h,
     excl_string_selection,
     grm,
+    processed_pdb_file = None,
     log=None,
     ncs_restraints_group_list=[],
     ss_annotation = None,
@@ -401,6 +402,7 @@ def minimize_wrapper_for_ramachandran(
     reference_sigma=0.7):
   """ Wrapper around geometry minimization specifically tuned for eliminating
   Ramachandran outliers.
+  probably not working anymore... no processed_pdb_file available.
   """
   try:
     import cPickle as pickle

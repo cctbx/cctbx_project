@@ -565,8 +565,8 @@ class manager(object):
     """
     move all the writing here later.
     """
-    if do_not_shift_back:
-      assert self._shift_manager is not None
+    if do_not_shift_back and self._shift_manager is None:
+      do_not_shift_back = False
     cs_to_output = None
     if output_cs:
       if do_not_shift_back:
@@ -690,6 +690,7 @@ class manager(object):
   def _process_input_model(self):
     # Not clear if we can handle this correctly for self._xray_structure
     # assert self.get_number_of_models() < 2
+    # assert 0
     if self.processed_pdb_files_srv is None:
       self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
           crystal_symmetry          = self.crystal_symmetry(),
@@ -742,6 +743,8 @@ class manager(object):
     if(self._xray_structure is not None):
       sctr_keys = self._xray_structure.scattering_type_registry().type_count_dict().keys()
       self.has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if not self.has_hd:
+      self.unset_riding_h_manager()
 
   def _build_grm(
       self,
@@ -1026,6 +1029,7 @@ class manager(object):
     if update_grm:
       self.restraints_manager.geometry.pair_proxies(sites_cart)
     self.model_statistics_info = None
+    self._update_pdb_atoms()
 
   def sync_pdb_hierarchy_with_xray_structure(self):
     # to be deleted.
@@ -1833,6 +1837,13 @@ class manager(object):
   def remove_solvent(self):
     result = self.select(selection = ~self.solvent_selection())
     return result
+
+  def remove_hydrogens(self):
+    if self.has_hd:
+      noh_selection = self.selection("not (element H or element D)")
+      return self.select(noh_selection)
+    else:
+      return self
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
