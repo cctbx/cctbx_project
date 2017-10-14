@@ -8613,8 +8613,14 @@ def run_auto_sharpen(
             sharpening_info_obj=local_si,
             crystal_symmetry=local_si.crystal_symmetry,
             out=null_out())
-        local_si=score_map(map_data=local_map_and_b.map_data,sharpening_info_obj=local_si,
+        local_si=score_map(map_data=local_map_and_b.map_data,
+          sharpening_info_obj=local_si,
           out=null_out())
+        # Record b_iso values
+        if not local_map_and_b.starting_b_iso:
+          local_map_and_b.starting_b_iso=original_b_iso
+        if not local_map_and_b.final_b_iso:
+          local_map_and_b.final_b_iso=local_si.b_iso
 
         if m=='resolution_dependent':
           print >>out,\
@@ -8749,7 +8755,6 @@ def run_auto_sharpen(
           best_si.score is None or local_best_si.score > best_si.score):
         best_si=local_best_si
         best_map_and_b=local_best_map_and_b
-
         if not best_si.is_model_sharpening() and \
             not best_si.is_half_map_sharpening():
           print >>out,"This is the current best score\n"
