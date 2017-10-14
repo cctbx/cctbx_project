@@ -7098,9 +7098,9 @@ def select_box_map_data(si=None,
         sel_hierarchy=select_inside_box(lower_bounds=lower_cart,
          upper_bounds=upper_cart, xrs=xrs,hierarchy=hierarchy)
         n=sel_hierarchy.overall_counts().n_atoms
-        print "Selected atoms inside box: %d" %(n)
+        print >>out,"Selected atoms inside box: %d" %(n)
         if n<n_min:
-          print "Skipping...using entire structure"
+          print >>out,"Skipping...using entire structure"
         else:
           hierarchy=sel_hierarchy
     #----------------------end trimming model-------------------------------
@@ -7753,6 +7753,9 @@ def run_local_sharpening(si=None,
         return_bsi=True, # just return the bsi of sharpened data
         out=out)
 
+      if not bsi.map_data:
+        print >>out,"\nNo result for local map %s ...skipping" %(i)
+        continue
 
       # merge with background using bsi.smoothed_box_mask_data
       if bsi.smoothed_box_mask_data:
@@ -7789,12 +7792,15 @@ def run_local_sharpening(si=None,
   print >>out,"\nOverall map created from total of %s local maps" %(i)
   if si.overall_before_local:
     print >>out,"Note: overall map already sharpened with global sharpening"
-  print >>out,"Summary of b_iso values by local map:"
-  print >>out," ID   Starting B-iso    Sharpened B-iso"
-  for i,starting_b_iso,b_iso in zip(id_list,starting_b_iso_list,b_iso_list):
-    print >>out," %4s    %7.2f        %7.2f" %(i,starting_b_iso,b_iso)
 
-  print >>  out,"\nMean    %7.2f        %7.2f" %(
+  if starting_b_iso_list.size()<1:
+    print >>out,"No results for local sharpening..."
+  else:
+    print >>out,"Summary of b_iso values by local map:"
+    print >>out," ID   Starting B-iso    Sharpened B-iso"
+    for i,starting_b_iso,b_iso in zip(id_list,starting_b_iso_list,b_iso_list):
+      print >>out," %4s    %7.2f        %7.2f" %(i,starting_b_iso,b_iso)
+    print >>  out,"\nMean    %7.2f        %7.2f" %(
      starting_b_iso_list.min_max_mean().mean,
      b_iso_list.min_max_mean().mean)
 
@@ -8182,6 +8188,7 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
   return local_best_si,local_best_map_and_b
 
 def set_mean_sd_of_map(map_data=None,target_mean=None,target_sd=None):
+    if not map_data: return None 
     new_mean=map_data.as_1d().min_max_mean().mean
     new_sd=max(1.e-10,map_data.sample_standard_deviation())
     map_data=(map_data-new_mean)/new_sd # normalized
