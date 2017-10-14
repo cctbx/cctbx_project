@@ -15,7 +15,7 @@ dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
 MORE BUGFIXES:
 
 1. Eliminated iCCP warning by removing the offending iCCP chunk from many (not
-all) icons, both Crystal and custom using ImageMagick:
+all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
      mogrify -strip <filename>
 2. Fixed errors in PHIL handling for DIALS and Labelit option dialogs
 3. Corrected target param panel parentage for DIALS options dialog
