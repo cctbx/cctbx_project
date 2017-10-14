@@ -6562,8 +6562,14 @@ def get_overall_mask(
   w = 4 * stol * math.pi * smoothing_radius
   sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
 
-  temp = complete_set.structure_factors_from_map(
+  try:
+    temp = complete_set.structure_factors_from_map(
       flex.pow2(map_data-map_data.as_1d().min_max_mean().mean))
+  except Exception,e:
+    print >>out,e
+    raise Sorry("The sampling of the map appears to be too low for a "+
+      "\nresolution of %s. Try using a larger value for resolution" %(
+       resolution))
   fourier_coeff=complete_set.array(data=temp.data()*sphere_reciprocal)
   sd_map=fourier_coeff.fft_map(
       crystal_gridding=cg,
