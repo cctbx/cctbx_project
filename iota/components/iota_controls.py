@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/10/2017
+Last Changed: 10/13/2017
 Description : IOTA GUI controls
 '''
 
@@ -318,6 +318,7 @@ class DialogButtonsCtrl(CtrlBase):
       choice_sizer = wx.BoxSizer(wx.HORIZONTAL)
       self.choice_txt = wx.StaticText(self, label=choice_label, size=wx.DefaultSize)
       self.choice = wx.Choice(self, size=choice_size, choices=choices)
+      self.choice.SetSelection(0)
       choice_sizer.Add(self.choice_txt, flag=wx.LEFT, border=5)
       choice_sizer.Add(self.choice)
       main_sizer.Add(choice_sizer, flag=wx.ALL, border=10)
@@ -791,8 +792,10 @@ class PHILBox(CtrlBase):
     CtrlBase.__init__(self, parent=parent, label_style=label_style,
                       content_style=content_style)
 
-    self.sizer = wx.GridBagSizer(5, 5)
-    self.SetSizer(self.sizer)
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+    self.ctrl_sizer = wx.GridBagSizer(5, 5)
 
     self.ctr = wx.richtext.RichTextCtrl(self,
                                         size=ctr_size,
@@ -831,25 +834,27 @@ class PHILBox(CtrlBase):
     self.Bind(wx.EVT_BUTTON, self.onClear, self.btn_clear)
 
     if btn_pos == 'left':
-      self.sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL)
-      self.sizer.Add(self.ctr, pos=(0, 1), flag=wx.EXPAND)
-      self.sizer.AddGrowableCol(1)
-      self.sizer.AddGrowableRow(0)
+      self.ctrl_sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL)
+      self.ctrl_sizer.Add(self.ctr, pos=(0, 1), flag=wx.EXPAND)
+      self.ctrl_sizer.AddGrowableCol(1)
+      self.ctrl_sizer.AddGrowableRow(0)
     elif btn_pos == 'right':
-      self.sizer.Add(self.btn_sizer, pos=(0, 1), flag=wx.ALL)
-      self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
-      self.sizer.AddGrowableCol(0)
-      self.sizer.AddGrowableRow(0)
+      self.ctrl_sizer.Add(self.btn_sizer, pos=(0, 1), flag=wx.ALL)
+      self.ctrl_sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
+      self.ctrl_sizer.AddGrowableCol(0)
+      self.ctrl_sizer.AddGrowableRow(0)
     elif btn_pos == 'top':
-      self.sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL | wx.ALIGN_LEFT)
-      self.sizer.Add(self.ctr, pos=(1, 0), flag=wx.EXPAND)
-      self.sizer.AddGrowableCol(0)
-      self.sizer.AddGrowableRow(1)
+      self.ctrl_sizer.Add(self.btn_sizer, pos=(0, 0), flag=wx.ALL | wx.ALIGN_LEFT)
+      self.ctrl_sizer.Add(self.ctr, pos=(1, 0), flag=wx.EXPAND)
+      self.ctrl_sizer.AddGrowableCol(0)
+      self.ctrl_sizer.AddGrowableRow(1)
     elif btn_pos == 'bottom':
-      self.sizer.Add(self.btn_sizer, pos=(1, 0), flag=wx.ALL | wx.ALIGN_RIGHT)
-      self.sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
-      self.sizer.AddGrowableCol(0)
-      self.sizer.AddGrowableRow(0)
+      self.ctrl_sizer.Add(self.btn_sizer, pos=(1, 0), flag=wx.ALL | wx.ALIGN_RIGHT)
+      self.ctrl_sizer.Add(self.ctr, pos=(0, 0), flag=wx.EXPAND)
+      self.ctrl_sizer.AddGrowableCol(0)
+      self.ctrl_sizer.AddGrowableRow(0)
+
+    self.main_sizer.Add(self.ctrl_sizer, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
   def onClear(self, e):
     self.reset_default()

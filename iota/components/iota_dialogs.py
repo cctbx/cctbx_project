@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/10/2017
+Last Changed: 10/13/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -124,7 +124,8 @@ class BaseBackendDialog(BaseDialog):
     self.main_sizer.Add(self.btn_hide_script, flag=wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
     self.main_sizer.Add(self.splitter, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.dlg_ctr, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+    self.main_sizer.Add(self.dlg_ctr,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.RIGHT,
                         border=10)
 
   def show_hide_script(self, initialized=False):
@@ -162,6 +163,8 @@ class BaseBackendDialog(BaseDialog):
       with open(filepath, 'r') as phil_file:
         phil_content = phil_file.read()
       return phil_content
+    else:
+      return None
 
   def write_default_phil(self):
     if str.lower(self.backend) in ('cctbx', 'cctbx.xfel', 'labelit'):
@@ -802,7 +805,7 @@ class CCTBXOptions(BaseBackendDialog):
                            btn_pos='bottom',
                            ctr_size=(-1, 300),
                            ctr_value='')
-    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Grid search options
     # Type selection
@@ -959,13 +962,19 @@ class CCTBXOptions(BaseBackendDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
+    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
+
     self.filter_options.SetSizer(filter_box_sizer)
 
     # Add everything to sizer
-    self.options_sizer.Add(self.xtal_options, flag=wx.ALL | wx.EXPAND)
-    self.options_sizer.Add(self.gs_options, flag=wx.ALL | wx.EXPAND)
-    self.options_sizer.Add(self.sel_options, flag=wx.ALL | wx.EXPAND)
-    self.options_sizer.Add(self.filter_options, flag=wx.ALL | wx.EXPAND)
+    self.options_sizer.Add(self.xtal_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.gs_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.sel_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.filter_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
 
     self.show_hide_script()
     self.read_param_phil()
@@ -997,12 +1006,14 @@ class CCTBXOptions(BaseBackendDialog):
       self.sel_options.Show()
       self.signal_search.Show()
       self.filt_ref.Show()
-      self.filt_uc.Show()
+      self.filt_res.Show()
+      self.f_spacer.Show(False)
     else:
       self.sel_options.Hide()
       self.signal_search.Hide()
       self.filt_ref.Hide()
-      self.filt_uc.Hide()
+      self.filt_res.Hide()
+      self.f_spacer.Show(True)
 
     self.options.Layout()
     self.options.SetupScrolling()
@@ -1015,11 +1026,12 @@ class CCTBXOptions(BaseBackendDialog):
 
   def onImportPHIL(self, e):
     phil_content = self.get_target_file()
-    self.phil.ctr.SetValue(phil_content)
+    if phil_content is not None:
+      self.phil.ctr.SetValue(phil_content)
 
   def onDefaultPHIL(self, e):
-    default_phil = self.write_default_phil()
-    self.phil.ctr.SetValue('\n'.join(default_phil))
+    self.write_default_phil()
+    self.phil.ctr.SetValue(self.target_phil)
 
   def onSelCheck(self, e):
     self.img_objects_path.Enable(self.select_only.GetValue())
@@ -1299,8 +1311,6 @@ class DIALSOptions(BaseBackendDialog):
 
   def __init__(self, parent,
                phil, target,
-               label_style='bold',
-               content_style='normal',
                *args, **kwargs):
 
     BaseBackendDialog.__init__(self, parent,
@@ -1313,21 +1323,25 @@ class DIALSOptions(BaseBackendDialog):
 
     self.params = phil.extract()
     self.proc_phil = None
+
     self.splitter.SplitVertically(self.options, self.phil_panel)
 
+    # Target file input
     self.phil = ct.PHILBox(self.phil_panel,
                            btn_import=True,
                            btn_import_label='Import PHIL',
                            btn_export=False,
                            btn_default=True,
                            btn_default_label='Default PHIL',
-                           ctr_size=(500, 300),
+                           btn_pos='bottom',
+                           ctr_size=(-1, 300),
                            ctr_value='')
-    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
+
 
     # Target parameters
     self.trg_options = wx.Panel(self.options)
-    target_box = wx.StaticBox(self.options, label='Target Parameters')
+    target_box = wx.StaticBox(self.trg_options, label='Target Parameters')
     target_box_sizer = wx.StaticBoxSizer(target_box, wx.VERTICAL)
     self.trg_options.SetSizer(target_box_sizer)
 
@@ -1348,6 +1362,8 @@ class DIALSOptions(BaseBackendDialog):
                                  label='Use FFT3D for indexing')
     self.use_fft3d.SetValue(False)
     target_box_sizer.Add(self.use_fft3d, flag=wx.ALL, border=10)
+
+    self.t_spacer = target_box_sizer.AddSpacer((-1, 10))
 
     # Optimization options
     self.opt_options = wx.Panel(self.options)
@@ -1418,10 +1434,12 @@ class DIALSOptions(BaseBackendDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
+    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
+
     # Add all to sizers
-    self.options_sizer.Add(self.trg_options, flag=wx.ALL | wx.EXPAND)
-    self.options_sizer.Add(self.opt_options, flag=wx.ALL | wx.EXPAND)
-    self.options_sizer.Add(self.filt_options, flag=wx.ALL | wx.EXPAND)
+    self.options_sizer.Add(self.trg_options, flag=wx.ALL | wx.EXPAND, border=10)
+    self.options_sizer.Add(self.opt_options, flag=wx.ALL | wx.EXPAND, border=10)
+    self.options_sizer.Add(self.filt_options, flag=wx.ALL | wx.EXPAND, border=10)
 
     self.show_hide_script()
     self.show_hide_advanced(show=False)
@@ -1449,13 +1467,17 @@ class DIALSOptions(BaseBackendDialog):
       self.estimate_gain.Show()
       self.auto_threshold.Show()
       self.filt_ref.Show()
-      self.filt_uc.Show()
+      self.filt_res.Show()
+      self.t_spacer.Show(False)
+      self.f_spacer.Show(False)
     else:
       self.use_fft3d.Hide()
       self.estimate_gain.Hide()
       self.auto_threshold.Hide()
       self.filt_ref.Hide()
-      self.filt_uc.Hide()
+      self.filt_res.Hide()
+      self.t_spacer.Show(True)
+      self.f_spacer.Show(True)
 
     self.options.Layout()
     self.options.SetupScrolling()
@@ -1469,10 +1491,12 @@ class DIALSOptions(BaseBackendDialog):
 
   def onImportPHIL(self, e):
     phil_content = self.get_target_file()
-    self.phil.ctr.SetValue(phil_content)
+    if phil_content is not None:
+      self.phil.ctr.SetValue(phil_content)
 
   def onDefaultPHIL(self, e):
     self.write_default_phil()
+    self.phil.ctr.SetValue(self.target_phil)
 
   def read_param_phil(self):
     # DIALS target file settings

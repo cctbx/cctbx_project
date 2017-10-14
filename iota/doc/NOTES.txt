@@ -11,3 +11,12 @@ dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
     e. These are new settings in IOTA param files, too
 4. BUGFIX: Log displayed when run is recovered
 5. Searchable log in IOTA GUI
+
+MORE BUGFIXES:
+
+1. Eliminated iCCP warning by removing the offending iCCP chunk from many (not
+all) icons, both Crystal and custom using ImageMagick:
+     mogrify -strip <filename>
+2. Fixed errors in PHIL handling for DIALS and Labelit option dialogs
+3. Corrected target param panel parentage for DIALS options dialog
+4. Expert level drop-down choice is now set to Basic if running on Linux
