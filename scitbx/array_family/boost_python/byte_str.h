@@ -40,7 +40,8 @@ namespace scitbx { namespace af { namespace boost_python {
     boost::python::ssize_t
       shared_array_size = len_byte_str / sizeof(ElementType);
     SCITBX_ASSERT(shared_array_size * sizeof(ElementType) == len_byte_str);
-    const char* str_ptr = PyString_AsString(byte_str.ptr());
+	// TODO: needs fixing for Python3
+    const char* str_ptr = PyUnicode_AS_DATA(byte_str.ptr());
     return shared<ElementType>(
       reinterpret_cast<const ElementType*>(str_ptr),
       reinterpret_cast<const ElementType*>(str_ptr) + shared_array_size);

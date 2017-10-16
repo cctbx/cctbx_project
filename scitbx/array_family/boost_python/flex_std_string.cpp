@@ -20,8 +20,9 @@ namespace {
   {
     PyObject* str_ptr = multi_line_string.ptr();
     return misc::split_lines(
-      PyString_AS_STRING(str_ptr),
-      PyString_GET_SIZE(str_ptr),
+		// TODO: needs fixing for Python3
+	  PyUnicode_AS_DATA(str_ptr),
+      PyUnicode_GET_SIZE(str_ptr),
       keep_ends,
       count_lines_first);
   }
