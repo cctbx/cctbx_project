@@ -49,6 +49,7 @@ from mmtbx.validation.ramalyze import ramalyze
 from mmtbx.validation.rotalyze import rotalyze
 from mmtbx.validation.cbetadev import cbetadev
 from mmtbx.validation.clashscore import clashscore
+from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 
@@ -2417,6 +2418,26 @@ class statistics(object):
       twisted_general = twisted_general,
       twisted_proline = twisted_proline,
       n_twisted_general = n_twisted_general)
+
+  def get_molprobity_score(self):
+    return molprobity_score(
+        clashscore = self.clash().score,
+        rota_out   = self.ramachandran().favored,
+        rama_fav   = self.ramachandran().favored)
+
+  def result_for_model_idealization(self):
+    return group_args(
+        mpscore=self.get_molprobity_score(),
+        clashscore=self.clash().score,
+        c_beta_dev_percent= self.c_beta().outliers,
+        ramachandran_outliers=self.ramachandran().outliers,
+        ramachandran_allowed = self.ramachandran().allowed,
+        ramachandran_favored = self.ramachandran().favored,
+        rotamer_outliers=     self.rotamer().outliers,
+        cis_proline=    self.omega().cis_proline,
+        cis_general=    self.omega().cis_general,
+        twisted_proline=self.omega().twisted_proline,
+        twisted_general=self.omega().twisted_general,)
 
   def result(self):
     return group_args(

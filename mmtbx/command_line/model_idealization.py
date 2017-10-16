@@ -307,10 +307,17 @@ class model_idealization():
     self.model = self.model.remove_hydrogens()
     self.whole_pdb_h = self.model.get_hierarchy()
 
-    for_stat_h = self.get_intermediate_result_hierarchy()
+    # for_stat_h = self.get_intermediate_result_hierarchy()
 
-    self.init_model_statistics = mmtbx.model.statistics(pdb_hierarchy=for_stat_h)
+    # self.init_model_statistics = mmtbx.model.statistics(pdb_hierarchy=for_stat_h)
+    # self.init_model_statistics = self.model.geometry_statistics()
+    # print dir(self.init_model_statistics)
     self.time_for_init = time()-t_0
+
+  def get_statistics(self, model):
+    # should we shift here?
+    print "model.restraints_manager", model.restraints_manager
+    return model.geometry_statistics().result_for_model_idealization()
 
   def get_intermediate_result_hierarchy(self):
     result_h = self.model.get_hierarchy()
@@ -631,6 +638,7 @@ class model_idealization():
     self.get_grm()
     self.get_filtered_ncs_group_list()
 
+    self.init_model_statistics = self.get_statistics(self.model)
 
     # Here we are preparing maps if needed.
     if self.user_supplied_map is not None:
@@ -661,28 +669,24 @@ class model_idealization():
           reference_map=self.init_ref_map,
           # reference_map=self.reference_map,
           )
-      self.init_gm_model_statistics = mmtbx.model.statistics(
-          pdb_hierarchy=self.whole_pdb_h)
+      self.init_gm_model_statistics = self.get_statistics(self.model)
       if self.params.debug:
         self.shift_and_write_result(
             model = self.model,
             fname_suffix="init_gm")
 
     if (self.init_gm_model_statistics is not None
-        and self.init_gm_model_statistics.ramachandran().outliers == 0
-        and self.init_gm_model_statistics.omega().twisted_general <= 0.01
-        and self.init_gm_model_statistics.omega().twisted_proline <= 0.01
-        and self.init_gm_model_statistics.omega().cis_general <= 0.01
-        and self.init_gm_model_statistics.omega().cis_proline <= 0.01):
+        and self.init_gm_model_statistics.ramachandran_outliers == 0
+        and self.init_gm_model_statistics.twisted_general <= 0.01
+        and self.init_gm_model_statistics.twisted_proline <= 0.01
+        and self.init_gm_model_statistics.cis_general <= 0.01
+        and self.init_gm_model_statistics.cis_proline <= 0.01):
       print >> self.log, "Simple minimization was enough"
       # Early exit!!!
       self.shift_and_write_result(
           model=self.model,
           fname_suffix="all_idealized")
-      self.final_model_statistics = mmtbx.model.statistics(
-          pdb_hierarchy=iotbx.pdb.input(
-            source_info=None,
-            lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
+      self.final_model_statistics = self.get_statistics(self.model)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
       self.time_for_run = time() - t_0
       if self.params.output_pkl:
@@ -760,9 +764,9 @@ class model_idealization():
           log=self.log)
       self.log.flush()
 
-    for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_ss_idealization = mmtbx.model.statistics(
-      pdb_hierarchy=for_stat_h)
+    # for_stat_h = self.get_intermediate_result_hierarchy()
+    self.after_ss_idealization = self.get_statistics(self.model)
+    return
     self.shift_and_write_result(
           model=self.working_model,
           fname_suffix="ss_ideal_stat")
@@ -802,10 +806,9 @@ class model_idealization():
       self.shift_and_write_result(
           model = self.working_model,
           fname_suffix="rama_ideal")
-    for_stat_h = self.get_intermediate_result_hierarchy()
+    # for_stat_h = self.get_intermediate_result_hierarchy()
     # for_stat_h.write_pdb_file(file_name="compare_with_rama_ideal.pdb")
-    self.after_loop_idealization = mmtbx.model.statistics(
-        pdb_hierarchy=for_stat_h)
+    self.after_loop_idealization = self.get_statistics(self.working_model)
 
     if self.params.add_hydrogens:
       print >> self.log, "Adding hydrogens"
@@ -838,9 +841,8 @@ class model_idealization():
           fname_suffix="rota_ideal")
     cs_to_write = self.cs if self.shift_vector is None else None
 
-    for_stat_h = self.get_intermediate_result_hierarchy()
-    self.after_rotamer_fixing = mmtbx.model.statistics(
-      pdb_hierarchy=for_stat_h)
+    # for_stat_h = self.get_intermediate_result_hierarchy()
+    self.after_rotamer_fixing = self.get_statistics(self.working_model)
     ref_hierarchy_for_final_gm = self.original_boxed_hierarchy
     if not self.params.use_starting_model_for_final_gm:
       ref_hierarchy_for_final_gm = self.whole_pdb_h
@@ -905,10 +907,11 @@ class model_idealization():
     self.shift_and_write_result(
         model = self.model,
         fname_suffix="all_idealized")
-    self.final_model_statistics = mmtbx.model.statistics(
-        pdb_hierarchy=iotbx.pdb.input(
-          source_info=None,
-          lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
+    self.final_model_statistics = self.get_statistics(self.model)
+    # mmtbx.model.statistics(
+    #     pdb_hierarchy=iotbx.pdb.input(
+    #       source_info=None,
+    #       lines=self.whole_pdb_h.as_pdb_string()).construct_hierarchy())
     # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
     self.time_for_run = time() - t_0
     if self.params.output_pkl or self.params.debug:
@@ -1074,9 +1077,11 @@ class model_idealization():
         ("Cis-general", "cis_general", "{:10.2f}"),
         ("Twisted prolines", "twisted_proline", "{:10.2f}"),
         ("Twisted general", "twisted_general", "{:10.2f}"),
-        ("CaBLAM outliers", "cablam_outliers", "{:10.2f}"),
-        ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
-        ("CaBLAM CA outliers", "cablam_ca_outliers", "{:10.2f}")]:
+        # Until enabled in model.statistics
+        # ("CaBLAM outliers", "cablam_outliers", "{:10.2f}"),
+        # ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
+        # ("CaBLAM CA outliers", "cablam_ca_outliers", "{:10.2f}"),
+        ]:
       l = "%-21s:" % val_caption
       for stat_obj in stat_obj_list.geoms:
         value = 99999
