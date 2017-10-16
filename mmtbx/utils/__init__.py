@@ -1491,6 +1491,7 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
+
   def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
     fmodel = fmodel_manager(
       xray_structure = xrs.deep_copy_scatterers(),
@@ -1502,6 +1503,7 @@ def fmodel_simple(f_obs,
     if(bssf):
       fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om)
     return fmodel
+
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
   optimize_mask=False
@@ -1576,7 +1578,7 @@ def fmodel_simple(f_obs,
       fmodel_result.update_all_scales(remove_outliers = outliers_rejection)
     fmodel = fmodel_result
   if(bulk_solvent_and_scaling and not fmodel.twin): # "not fmodel.twin" for runtime only
-    fmodel.update_all_scales(remove_outliers = outliers_rejection)
+    fmodel.update_all_scales(remove_outliers = outliers_rejection) # duplicating update, time-consuming
   return fmodel
 
 def pdb_inp_from_multiple_files(pdb_files, log):
@@ -2973,8 +2975,6 @@ class extract_box_around_model_and_map(object):
       if restrict_map_size:
         self.gridding_first=[max(0,g) for g in self.gridding_first]
         self.gridding_last=[min(n,g) for n,g in zip(na,self.gridding_last)]
- 
-
 
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [

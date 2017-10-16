@@ -164,6 +164,16 @@ class info(object):
 
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
                                     max_number_of_bins, n_bins=None):
+    #
+    # XXX A huge number of duplicated calls (done in __init__) to f_model
+    # functionality, in case of 1ucs takes:
+    # phase_errors_work() - 2s each,
+    # phase_errors_test() - 2s each,
+    # alpha_beta_w () - 2s each
+    # figures_of_merit_work() - 2s each
+    # phase_errors() - being called 6 times, including inside fmodel, each takes 2 seconds.
+    #
+    #
     from mmtbx import bulk_solvent
     from cctbx.array_family import flex
     if(self.target_name == "twin_lsq_f"):
