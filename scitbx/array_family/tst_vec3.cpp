@@ -124,8 +124,8 @@ int main(int /*argc*/, char* /*argv*/[])
     check_true(__LINE__, std::fabs(
       (*(vec3<double>(1.,.5,-1.8).angle_rad(vec3<double>(-.3,.75,.5))))
       - 1.99306755584) < 1.e-6);
-    check_false(__LINE__,
-      vec3<double>(0,0,0).angle_rad(vec3<double>(0,0,0)));
+    check_true(__LINE__,
+      std::fabs(*(vec3<double>(0.,0.,0.).angle_rad(vec3<double>(0.,0.,0.))) - 0.0) < 1e-6);
     check_true(__LINE__, std::fabs(
       (  vec3<double>(1.,.5,-1.8).reflect(vec3<double>(1.,0.,1.))
        - vec3<double>(2.6,.5,-.2)).length()) < 1.e-6);
