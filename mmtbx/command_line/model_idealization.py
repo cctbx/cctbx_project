@@ -316,7 +316,8 @@ class model_idealization():
 
   def get_statistics(self, model):
     # should we shift here?
-    print "model.restraints_manager", model.restraints_manager
+    # should we multiply NCS here?
+    # print "model.restraints_manager", model.restraints_manager
     return model.geometry_statistics().result_for_model_idealization()
 
   def get_intermediate_result_hierarchy(self):
@@ -766,7 +767,6 @@ class model_idealization():
 
     # for_stat_h = self.get_intermediate_result_hierarchy()
     self.after_ss_idealization = self.get_statistics(self.model)
-    return
     self.shift_and_write_result(
           model=self.working_model,
           fname_suffix="ss_ideal_stat")
@@ -818,7 +818,7 @@ class model_idealization():
     # fixed_rot_pdb_h = loop_ideal.resulting_pdb_h.deep_copy()
     # fixed_rot_pdb_h.reset_atom_i_seqs()
     if (self.params.additionally_fix_rotamer_outliers and
-        self.after_loop_idealization.rotamer().outliers > 0.004):
+        self.after_loop_idealization.rotamer_outliers > 0.004):
       print >> self.log, "Processing pdb file again for fixing rotamers..."
       self.log.flush()
       print >> self.log, "Fixing rotamers..."
