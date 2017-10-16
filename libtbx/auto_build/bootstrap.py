@@ -890,8 +890,8 @@ class buildbot_module(SourceModule):
 class phaser_module(SourceModule):
   module = 'phaser'
   anonymous = ['git',
-               'git://git.csx.cam.ac.uk/cimr-phaser/phaser.git',
-               'https://git.csx.cam.ac.uk/cimr-phaser/phaser.git']
+               'git://git.uis.cam.ac.uk/cimr-phaser/phaser.git',
+               'https://git.uis.cam.ac.uk/cimr-phaser/phaser.git']
 
 class phaser_regression_module(SourceModule):
   module = 'phaser_regression'
