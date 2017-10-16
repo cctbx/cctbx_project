@@ -31,7 +31,11 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
+#if PY_MAJOR_VERSION == 2
   void import_numpy_api_if_available();
+#else
+  int import_numpy_api_if_available();
+#endif
   void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();

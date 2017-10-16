@@ -20,8 +20,11 @@
 #endif
 
 namespace scitbx { namespace af { namespace boost_python {
-
-  void
+#if PY_MAJOR_VERSION == 2
+	void
+#else
+  int
+#endif
   import_numpy_api_if_available()
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
@@ -35,6 +38,8 @@ namespace scitbx { namespace af { namespace boost_python {
        */
       using namespace boost_adaptbx::floating_point;
       exception_trapping guard(exception_trapping::dont_trap);
+	  // import_array() is a macro defined in base\bin\Python\Lib\site-packages\numpy\core\include\numpy\__multiarray_api.h
+	  // does not return void on Python3. Hence the #if PY_MAJOR_VERSION == 2 statement above
       import_array();
     }
     boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
