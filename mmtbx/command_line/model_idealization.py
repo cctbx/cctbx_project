@@ -828,7 +828,7 @@ class model_idealization():
           model = self.working_model,
           fname_suffix="just_before_rota")
       self.working_pdb_h = fix_rotamer_outliers(
-          model = working_model,
+          model = self.working_model,
           map_data=self.master_map,
           verbose=True)
     if self.params.debug:
