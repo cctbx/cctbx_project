@@ -2474,35 +2474,27 @@ def sample_and_fix_rotamer(
   res.atoms().set_xyz(all_inf[-1][-1])
 
 def fix_rotamer_outliers(
-    pdb_hierarchy,
-    grm,
-    xrs,
+    model,
     map_data=None,
     radius=5,
-    mon_lib_srv=None,
-    rotamer_manager=None,
     backrub_range=10,
     non_outliers_to_check=None, # bool selection
-    asc=None,
     verbose=False,
     log=None):
   import boost.python
   boost.python.import_ext("scitbx_array_family_flex_ext")
-  if mon_lib_srv is None:
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-  if rotamer_manager is None:
-    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   if log is None:
     log = sys.stdout
+  rotamer_manager = model.get_rotamer_manager()
   get_class = iotbx.pdb.common_residue_names_get_class
+  pdb_hierarchy = model.get_hierarchy()
+  asc = model.get_atom_selection_cache()
+  xrs = model.get_xray_structure()
   assert pdb_hierarchy is not None
-  assert grm is not None
+  # assert grm is not None
   assert xrs is not None
-  if asc is None:
-    asc = pdb_hierarchy.atom_selection_cache()
   special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = xrs.crystal_symmetry())
-  n_atoms = pdb_hierarchy.atoms_size()
+      crystal_symmetry = model.crystal_symmetry())
 
   crystal_gridding = None
   if map_data is not None:
@@ -2511,8 +2503,8 @@ def fix_rotamer_outliers(
       space_group_info      = xrs.space_group_info(),
       pre_determined_n_real = map_data.accessor().all())
 
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
+  for m in pdb_hierarchy.models():
+    for chain in m.chains():
       for conf in chain.conformers():
         residues = conf.residues()
         for i_res, res in enumerate(residues):
@@ -2543,10 +2535,10 @@ def fix_rotamer_outliers(
                 pdb_hierarchy,
                 xrs,
                 map_data,
-                grm,
+                model.get_restraints_manager().geometry,
                 rotamer_manager,
                 crystal_gridding,
-                mon_lib_srv,
+                model.get_mon_lib_srv(),
                 special_position_settings,
                 radius,
                 backrub_range,

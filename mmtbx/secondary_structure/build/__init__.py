@@ -716,16 +716,11 @@ def substitute_ss(
     with open("before_rotamers.pdb", 'w') as f:
       f.write(br_txt)
     mmtbx.utils.fix_rotamer_outliers(
-      pdb_hierarchy=model.get_hierarchy(),
-      grm=grm.geometry,
-      xrs=model.get_xray_structure(),
+      model = model,
       map_data=reference_map,
       radius=5,
-      mon_lib_srv=model.get_mon_lib_srv(),
-      rotamer_manager=model.get_rotamer_manager(),
       backrub_range=None, # don't sample backrub at this point
       non_outliers_to_check=fixed_ss_selection, # bool selection
-      asc=selection_cache,
       verbose=True,
       log=log)
     model.set_sites_cart_from_hierarchy()
