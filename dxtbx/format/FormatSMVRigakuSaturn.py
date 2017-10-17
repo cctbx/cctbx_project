@@ -142,15 +142,17 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
 
     for j, unit in enumerate(gonio_units):
       axis = matrix.col(gonio_axes[3 * j:3 * (j + 1)])
+      value = gonio_values[j]
+
       if unit == 'deg':
         rotations.append(axis.axis_and_angle_as_r3_rotation_matrix(
-            gonio_values[j], deg = True))
+          value, deg = True))
         translations.append(matrix.col((0.0, 0.0, 0.0)))
       elif unit == 'mm':
         rotations.append(matrix.sqr((1.0, 0.0, 0.0,
                                      0.0, 1.0, 0.0,
                                      0.0, 0.0, 1.0)))
-        translations.append(gonio_values[j] * axis)
+        translations.append(value * axis)
       else:
         raise RuntimeError, 'unknown axis unit %s' % unit
 
