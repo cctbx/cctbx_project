@@ -393,7 +393,7 @@ def process_input(argv=None, flag_mkdir=True):
       if os.path.isfile(arg):
         user_phil.append(iotbx.phil.parse(open(arg).read()))
       elif (os.path.isdir(arg)) :
-        user_phil.append(iotbx.phil.parse("""data=\"%s\"""" % arg))
+        user_phil.append(iotbx.phil.parse("""data=\"%s\" """ % arg))
       else :
         if arg == '--help' or arg == '-h':
           print txt_help
@@ -490,7 +490,7 @@ def read_pickles(data):
         # p is a glob
         file_list = glob.glob(p)
     else:
-      file_list = os.listdir(p)
+      file_list = glob.glob(os.path.join(p,'*'))
     frame_files.extend(file_list)
   if len(frame_files) == 0:
     raise InvalidData, "Error: no integration results found in the specified data parameter."
