@@ -9,7 +9,7 @@ from cctbx_adptbx_ext import *
 
 import scitbx.math
 import random
-from . import math
+import math
 
 u_as_b_factor = u_as_b(1)
 b_as_u_factor = b_as_u(1)

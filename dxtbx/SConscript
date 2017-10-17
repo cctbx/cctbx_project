@@ -19,14 +19,14 @@ env_etc.dxtbx_hdf5_lib_paths = []
 if (sys.platform == "win32" and env_etc.compiler == "win32_cl"):
   env_etc.dxtbx_libs = ["libtiff", "cbf", "boost_python"]
   env_etc.dxtbx_hdf5_libs = ["libhdf5"]
-  env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'include')))
+  env_etc.dxtbx_includes.append(libtbx.env.under_base(os.path.join('HDF5-1.10.1-win64', 'include')))
   env_etc.dxtbx_lib_paths = [
                               env_etc.libpath_python,
                               env_etc.libtbx_lib,
                               libtbx.env.under_base('libtiff'),
                             ]
   env_etc.dxtbx_hdf5_lib_paths = [
-                                   libtbx.env.under_base(os.path.join('HDF5-1.8.16', 'lib'))
+                                   libtbx.env.under_base(os.path.join('HDF5-1.10.1-win64', 'lib'))
                                  ]
 
   env_etc.dxtbx_includes.append(os.path.join(env_etc.cctbx_include,"msvc9.0_include"))

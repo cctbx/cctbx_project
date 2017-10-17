@@ -12,12 +12,15 @@ import sys
 import string
 import copy
 from io import StringIO
-from UserDict import DictMixin
+if sys.version_info[0] < 3:
+  from UserDict import DictMixin as DiktMixin
+else:
+  from collections import MutableMapping as DiktMixin
 
 from cctbx.array_family import flex
 
 
-class cif(DictMixin):
+class cif(DiktMixin):
   def __init__(self, blocks=None):
     if blocks is not None:
       self.blocks = OrderedDict(blocks)
@@ -105,7 +108,7 @@ class cif(DictMixin):
       for b in list(self.blocks.values()):
         b.sort(recursive=recursive, reverse=reverse)
 
-class block_base(DictMixin):
+class block_base(DiktMixin):
   def __init__(self):
     self._items = {}
     self.loops = {}
@@ -464,7 +467,7 @@ class block(block_base):
     new.saves = self.saves.copy()
     return new
 
-class loop(DictMixin):
+class loop(DiktMixin):
   def __init__(self, header=None, data=None):
     self._columns = OrderedDict()
     self.keys_lower = {}

@@ -57,7 +57,7 @@ class unit_cell(ext.unit_cell):
     else:
       ext.unit_cell.__init__(self, parameters=[])
 
-ext.unit_cell.metrical_matrix.__func__.__doc__ = """
+mstr = """
 Access to the metrical matrix:
 
 .. math::
@@ -70,8 +70,13 @@ Access to the metrical matrix:
 :returns: the metrical matrix
 :rtype: tuple
 """
+if sys.version_info[0] < 3:
+  ext.unit_cell.metrical_matrix.__func__.__doc__ = mstr
+else:
+  ext.unit_cell.metrical_matrix.__doc__ = mstr
 
-ext.unit_cell.orthogonalization_matrix.__func__.__doc__ = """
+
+mstr = """
 Matrix for the conversion of fractional to Cartesian coordinates:
 
 .. math::
@@ -80,8 +85,12 @@ Matrix for the conversion of fractional to Cartesian coordinates:
 :returns: the orthogonalization matrix
 :rtype: tuple
 """
+if sys.version_info[0] < 3:
+  ext.unit_cell.orthogonalization_matrix.__func__.__doc__ = mstr
+else:
+  ext.unit_cell.orthogonalization_matrix.__doc__ = mstr
 
-ext.unit_cell.fractionalization_matrix.__func__.__doc__ = """
+mstr = """
 Matrix for the conversion of fractional to Cartesian coordinates:
 
 .. math::
@@ -90,8 +99,13 @@ Matrix for the conversion of fractional to Cartesian coordinates:
 :returns: the fractionalization matrix
 :rtype: tuple
 """
+if sys.version_info[0] < 3:
+  ext.unit_cell.fractionalization_matrix.__func__.__doc__ = mstr
+else:
+  ext.unit_cell.fractionalization_matrix.__doc__ = mstr
 
-ext.unit_cell.orthogonalize.__func__.__doc__ = """
+
+mstr = """
 Conversion of fractional coordinates to Cartesian coordinates.
 
 :param sites_frac: The fractional coordinates.
@@ -101,8 +115,13 @@ Conversion of fractional coordinates to Cartesian coordinates.
 :returns: the Cartesian coordinates
 :rtype: 3-tuple or flex.vec3_double
 """
+if sys.version_info[0] < 3:
+  ext.unit_cell.orthogonalize.__func__.__doc__ = mstr
+else:
+  ext.unit_cell.orthogonalize.__doc__ = mstr
 
-ext.unit_cell.fractionalize.__func__.__doc__ = """
+
+mstr = """
 Conversion of Cartesian coordinates to fractional coordinates.
 
 :param sites_cart: The Cartesian coordinates.
@@ -112,6 +131,10 @@ Conversion of Cartesian coordinates to fractional coordinates.
 :returns: the fractional coordinates
 :rtype: 3-tuple or flex.vec3_double
 """
+if sys.version_info[0] < 3:
+  ext.unit_cell.fractionalize.__func__.__doc__ = mstr
+else:
+  ext.unit_cell.fractionalize.__doc__ = mstr
 
 
 class _(boost.python.injector, ext.unit_cell):

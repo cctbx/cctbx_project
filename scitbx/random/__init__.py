@@ -9,7 +9,7 @@ boost.python.import_ext("scitbx_random_ext")
 import scitbx_random_ext
 
 builtin_int = __builtins__["int"]
-builtin_long = __builtins__["long"]
+builtin_long = __builtins__["int"] # long doesn't exist in Python 3
 
 def get_random_seed():
   try:

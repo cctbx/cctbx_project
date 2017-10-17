@@ -711,7 +711,7 @@ class pdb_input_from_any(object):
         self.file_format = "cif"
       break
     if exc_info is not None:
-      raise exc_info[0], exc_info[1], exc_info[2]
+      raise (exc_info[0], exc_info[1], exc_info[2])
     if content is None:
       raise Sorry("Could not interpret input as any file type.")
     self._file_content = content
