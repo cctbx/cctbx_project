@@ -115,9 +115,16 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
         '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2])
     pixel_size = map(float, self._header_dictionary[
         '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:])
+    reindex = map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_VECTORS' % detector_name].split())
     image_size = map(int, self._header_dictionary[
         '%sDETECTOR_DIMENSIONS' % detector_name].split())
 
+    # apply SPATIAL_DISTORTION_VECTORS
+    _fast = reindex[0] * detector_fast + reindex[1] * detector_slow
+    _slow = reindex[2] * detector_fast + reindex[3] * detector_slow
+
+    detector_fast, detector_slow = _fast, _slow
     detector_origin = - (beam_pixels[0] * pixel_size[0] * detector_fast + \
                          beam_pixels[1] * pixel_size[1] * detector_slow)
 
