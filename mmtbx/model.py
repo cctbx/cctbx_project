@@ -1020,6 +1020,7 @@ class manager(object):
 
   def set_sites_cart_from_xrs(self):
     self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
+    self._update_pdb_atoms()
     self.model_statistics_info = None
 
   def set_sites_cart(self, sites_cart, update_grm=False):

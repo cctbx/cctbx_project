@@ -381,18 +381,12 @@ class run2(object):
 
 
 def minimize_wrapper_for_ramachandran(
-    hierarchy,
-    xrs,
+    model,
     original_pdb_h,
     excl_string_selection,
-    grm,
     processed_pdb_file = None,
     log=None,
     ncs_restraints_group_list=[],
-    ss_annotation = None,
-    mon_lib_srv=None,
-    ener_lib=None,
-    rotamer_manager=None,
     reference_rotamers = True,
     number_of_cycles=1,
     run_first_minimization_without_reference=False,
@@ -408,12 +402,11 @@ def minimize_wrapper_for_ramachandran(
     import cPickle as pickle
   except ImportError:
     import pickle
+
+  grm = model.get_restraints_manager()
   assert grm is not None
   from time import time
-  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
   from mmtbx.geometry_restraints import reference
-  from mmtbx.command_line.geometry_minimization import \
-      get_geometry_restraints_manager
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
       reference_model, reference_model_params
   from libtbx.utils import null_out
@@ -424,20 +417,19 @@ def minimize_wrapper_for_ramachandran(
   #     hierarchy.atoms_size(), xrs.scatterers().size())
 
   grm.geometry.pair_proxies(
-      sites_cart=hierarchy.atoms().extract_xyz())
+      sites_cart=model.get_sites_cart())
   if grm.geometry.ramachandran_manager is not None:
     grm.geometry.ramachandran_manager.update_phi_psi_targets(
-        sites_cart=hierarchy.atoms().extract_xyz())
+        sites_cart=model.get_sites_cart())
 
   if reference_rotamers and original_pdb_h is not None:
     # make selection excluding rotamer outliers
     from mmtbx.rotamer.rotamer_eval import RotamerEval
     # print "Excluding rotamer outliers"
-    if rotamer_manager is None:
-      rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
-    non_rot_outliers_selection = flex.bool(hierarchy.atoms_size(), False)
-    for model in original_pdb_h.models():
-      for chain in model.chains():
+    rotamer_manager = model.get_rotamer_manager()
+    non_rot_outliers_selection = flex.bool(model.get_number_of_atoms(), False)
+    for m in original_pdb_h.models():
+      for chain in m.chains():
         for conf in chain.conformers():
           for res in conf.residues():
             ev = rotamer_manager.evaluate_residue_2(res)
@@ -447,38 +439,38 @@ def minimize_wrapper_for_ramachandran(
             # else:
             #   print "  ", res.id_str()
 
-
-    rm_params = reference_model_params.extract()
-    rm_params.reference_model.enabled=True
-    rm_params.reference_model.strict_rotamer_matching=False
-    rm_params.reference_model.main_chain=False
-    rm = reference_model(
-      processed_pdb_file=processed_pdb_file,
-      reference_file_list=None,
-      reference_hierarchy_list=[original_pdb_h],
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      has_hd=None,
-      params=rm_params.reference_model,
-      selection=non_rot_outliers_selection,
-      log=log)
-    rm.show_reference_summary(log=log)
-    grm.geometry.adopt_reference_dihedral_manager(rm)
+    if processed_pdb_file is not None:
+      rm_params = reference_model_params.extract()
+      rm_params.reference_model.enabled=True
+      rm_params.reference_model.strict_rotamer_matching=False
+      rm_params.reference_model.main_chain=False
+      rm = reference_model(
+        processed_pdb_file=processed_pdb_file,
+        reference_file_list=None,
+        reference_hierarchy_list=[original_pdb_h],
+        mon_lib_srv=model.get_mon_lib_srv(),
+        ener_lib=model.get_ener_lib(),
+        has_hd=None,
+        params=rm_params.reference_model,
+        selection=non_rot_outliers_selection,
+        log=log)
+      rm.show_reference_summary(log=log)
+      grm.geometry.adopt_reference_dihedral_manager(rm)
 
   # dealing with SS
-  if ss_annotation is not None:
+  if model.get_ss_annotation() is not None:
     from mmtbx.secondary_structure import manager
     ss_manager = manager(
-        pdb_hierarchy=hierarchy,
+        pdb_hierarchy=model.get_hierarchy(),
         geometry_restraints_manager=grm.geometry,
-        sec_str_from_pdb_file=ss_annotation,
+        sec_str_from_pdb_file=model.get_ss_annotation(),
         params=None,
-        mon_lib_srv=mon_lib_srv,
+        mon_lib_srv=model.get_mon_lib_srv(),
         verbose=-1,
         log=log)
     grm.geometry.set_secondary_structure_restraints(
         ss_manager=ss_manager,
-        hierarchy=hierarchy,
+        hierarchy=model.get_hierarchy(),
         log=log)
 
   # grm pickle-unpickle
@@ -499,7 +491,7 @@ def minimize_wrapper_for_ramachandran(
   if run_first_minimization_without_reference:
     obj = run2(
       restraints_manager=grm,
-      pdb_hierarchy=hierarchy,
+      pdb_hierarchy=model.get_hierarchy(),
       correct_special_position_tolerance=1.0,
       ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations=300,
@@ -527,13 +519,10 @@ def minimize_wrapper_for_ramachandran(
             selection  = sel,
             sigma      = reference_sigma,
             top_out_potential=True))
-  # grm.geometry.write_geo_file(
-  #     sites_cart=hierarchy.atoms().extract_xyz(),
-  #     site_labels=[atom.id_str() for atom in hierarchy.atoms()],
-  #     file_name="last_gm.geo")
+
   obj = run2(
       restraints_manager       = grm,
-      pdb_hierarchy            = hierarchy,
+      pdb_hierarchy            = model.get_hierarchy(),
       correct_special_position_tolerance = 1.0,
       ncs_restraints_group_list=ncs_restraints_group_list,
       max_number_of_iterations = 300,

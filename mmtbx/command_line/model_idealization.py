@@ -661,14 +661,10 @@ class model_idealization():
       print >> self.log, "Minimization first"
       self.minimize(
           model=self.model,
-          # xrs=self.whole_pdb_h.extract_xray_structure(crystal_symmetry=self.cs),
           original_pdb_h=self.whole_pdb_h,
-          # grm=self.whole_grm,
           ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
           excl_string_selection=None, # don't need if we have map
-          # ss_annotation=self.ann,
           reference_map=self.init_ref_map,
-          # reference_map=self.reference_map,
           )
       self.init_gm_model_statistics = self.get_statistics(self.model)
       if self.params.debug:
@@ -737,12 +733,9 @@ class model_idealization():
       # if self.params.run_minimization_first:
       self.minimize(
           model=self.model,
-          # xrs=self.whole_xrs,
           original_pdb_h=self.whole_pdb_h,
-          # grm=self.whole_grm,
           ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
           excl_string_selection=negate_selection,
-          # ss_annotation=self.ann,
           reference_map=self.reference_map)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h_1.pdb")
     else:
@@ -751,17 +744,11 @@ class model_idealization():
             "%s_ss_before_reg.pdb" % self.params.output_prefix
       self.params.ss_idealization.skip_good_ss_elements = True
       ssb.substitute_ss(
-          # real_h=self.working_pdb_h,
-          # xray_structure=self.working_xrs,
-          # ss_annotation=self.ann,
           model = self.working_model,
           params=self.params.ss_idealization,
-          # grm=self.workiworking_grm,
           fix_rotamer_outliers=True,
-          # cif_objects=self.cif_objects,
           verbose=self.params.verbose,
           reference_map=self.master_map,
-          # rotamer_manager=self.model.get_rotamer_manager(),
           log=self.log)
       self.log.flush()
 
@@ -892,13 +879,9 @@ class model_idealization():
     print >> self.log, "Minimizing whole model"
     self.minimize(
         model = self.model,
-        # hierarchy=self.whole_pdb_h,
-        # xrs=self.whole_xrs,
-        # grm=self.whole_grm,
         ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
         original_pdb_h=ref_hierarchy_for_final_gm,
         excl_string_selection=loop_ideal.ref_exclusion_selection,
-        # ss_annotation=self.ann,
         reference_map = self.reference_map)
     self.shift_and_write_result(
         model = self.model,
@@ -946,43 +929,28 @@ class model_idealization():
 
   def minimize(self,
       model,
-      # hierarchy,
-      # xrs,
       original_pdb_h,
-      # grm,
       ncs_restraints_group_list,
       excl_string_selection,
-      # ss_annotation,
       reference_map):
     # print "ncs_restraints_group_list", ncs_restraints_group_list
     # assert 0
     if reference_map is None:
       minimize_wrapper_for_ramachandran(
-          hierarchy=model.get_hierarchy(),
-          xrs=model.get_xray_structure(),
+          model=model,
           original_pdb_h=original_pdb_h,
-          grm=model.get_restraints_manager(), # anyway need to reprocess just because of reference model restraints
-          processed_pdb_file = model.processed_pdb_file,
           excl_string_selection=excl_string_selection,
           number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log,
           ncs_restraints_group_list=ncs_restraints_group_list,
-          ss_annotation=model.get_ss_annotation(),
-          mon_lib_srv=model.get_mon_lib_srv(),
-          ener_lib=model.get_ener_lib(),
-          rotamer_manager=model.get_rotamer_manager())
+          )
     else:
       print >> self.log, "Using map as reference"
       self.log.flush()
       mwwm = minimize_wrapper_with_map(
-          pdb_h=model.get_hierarchy(),
-          xrs=model.get_xray_structure(),
+          model=model,
           target_map=reference_map,
-          grm=model.get_restraints_manager(),
-          mon_lib_srv=model.get_mon_lib_srv(),
-          rotamer_manager=model.get_rotamer_manager(),
           ncs_restraints_group_list=ncs_restraints_group_list,
-          ss_annotation=model.get_ss_annotation(),
           number_of_cycles=self.params.number_of_refinement_cycles,
           log=self.log)
 

@@ -823,13 +823,9 @@ def substitute_ss(
   else:
     ref_xrs = model.crystal_symmetry()
     minimize_wrapper_with_map(
-        pdb_h=model.get_hierarchy(),
-        xrs=ref_xrs,
+        model = model,
         target_map=reference_map,
-        grm=grm,
         ncs_restraints_group_list=[],
-        mon_lib_srv=None,
-        ss_annotation=ss_annotation,
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
         log=log)
