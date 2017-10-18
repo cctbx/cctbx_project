@@ -68,11 +68,13 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
 CYTHON_VERSION="0.22"
+FUTURE_VERSION="0.16"
 JINJA2_VERSION = "2.9.6"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 PILLOW_VERSION = "4.2.1"
 PYTEST_VERSION="2.9.1"
+SIX_VERSION="1.11.0"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
