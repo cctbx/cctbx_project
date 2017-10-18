@@ -269,8 +269,6 @@ class MainWindow(wx.Frame):
         self.target_phil = int_dialog.target_phil
       int_dialog.Destroy()
 
-    self.iota_phil.show()
-
   def onAnalysisOptions(self, e):
     ''' Opens dialog for integrated dataset analysis options
     :param e: event object for self.input_window.opt_btn_analysis
