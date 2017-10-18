@@ -20,3 +20,6 @@ all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
 2. Fixed errors in PHIL handling for DIALS and Labelit option dialogs
 3. Corrected target param panel parentage for DIALS options dialog
 4. Expert level drop-down choice is now set to Basic if running on Linux
+5. Tweaked Recovery option to accept new settings if missing in old PHIL
+6. Fixed PRIME input auto-create, which caused a mysterious 'zero reflections'
+error (merge.d_max was set to high-res rather than low-res)

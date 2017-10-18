@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/10/2017
+Last Changed: 10/18/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -267,7 +267,7 @@ class Integrator(object):
 
     # # Overwrite target file for this IOTA run
     # mod_phil = current_phil.format(python_object=self.phil)
-    # mod_phil.show(attributes_level=3)
+    # mod_phil.show()
 
 
   def find_spots(self):

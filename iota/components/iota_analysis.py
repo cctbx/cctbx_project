@@ -747,7 +747,7 @@ class Analyzer(object):
     prime_params.postref.allparams.d_min = np.mean(self.hres)
     prime_params.postref.allparams.d_max = np.max(self.lres)
     prime_params.merge.d_min = np.mean(self.hres)
-    prime_params.merge.d_max = np.max(self.hres)
+    prime_params.merge.d_max = np.max(self.lres)
     prime_params.target_unit_cell = unit_cell(self.cons_uc)
     prime_params.target_space_group = sg
     prime_params.target_crystal_system = crystal_system
