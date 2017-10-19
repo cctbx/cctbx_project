@@ -360,6 +360,7 @@ class manager(manager_mixin):
     self.bin_selections = bin_selections
     self.scale_method = scale_method
     self.arrays = None
+    self.alpha_beta_cache = None
     self.twin_law = twin_law
     self.twin_law_str = twin_law
     self.twin_fraction = twin_fraction
@@ -730,6 +731,7 @@ class manager(manager_mixin):
                             update_f_calc       = False,
                             update_f_mask       = False,
                             force_update_f_mask = False):
+    self.alpha_beta_cache = None
     if(xray_structure is not None):
       self.xray_structure = xray_structure
     if(self.arrays.core is None or
@@ -804,6 +806,7 @@ class manager(manager_mixin):
                   k_isotropic   = None,
                   k_mask        = None):
     core_ = None
+    self.alpha_beta_cache = None
     core_twin_ = None
     if(self.arrays is None):
       core_ = mmtbx.arrays.init(
@@ -1444,6 +1447,7 @@ class manager(manager_mixin):
         show = False,
         verbose=None,
         log = None):
+    self.alpha_beta_cache = None
     self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
@@ -1815,6 +1819,8 @@ class manager(manager_mixin):
   def alpha_beta(self, f_obs = None, f_model = None):
     global time_alpha_beta
     timer = user_plus_sys_time()
+    if self.alpha_beta_cache is not None:
+      return self.alpha_beta_cache
     if(f_obs is None): f_obs = self.f_obs()
     if(f_model is None): f_model = self.f_model()
     # Use work reflections if test set is too small
@@ -1829,12 +1835,15 @@ class manager(manager_mixin):
            flags                    = ~flags,
            interpolation            = False,
            epsilons                 = self.epsilons).alpha_beta()
-      return alpha, beta
+      self.alpha_beta_cache = (alpha, beta)
+      return self.alpha_beta_cache
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
     #Nobs and Ncalc restrained for ensemble refinement
     if self.set_sigmaa != None:
-      return self.alpha_beta_with_restrained_n_calc()
+      alpha, beta = self.alpha_beta_with_restrained_n_calc()
+      self.alpha_beta_cache = (alpha, beta)
+      return self.alpha_beta_cache
     if(self.alpha_beta_params is not None):
        assert self.alpha_beta_params.method in ("est", "calc")
        assert self.alpha_beta_params.estimation_algorithm in [
@@ -1879,7 +1888,8 @@ class manager(manager_mixin):
          interpolation            = False,
          epsilons                 = self.epsilons).alpha_beta()
     time_alpha_beta += timer.elapsed()
-    return alpha, beta
+    self.alpha_beta_cache = (alpha, beta)
+    return self.alpha_beta_cache
 
   def alpha_beta_w(self, only_if_required_by_target=False):
     if(only_if_required_by_target):
@@ -2528,7 +2538,7 @@ class mask_result (object) :
 
 # XXX backwards compatibility 2011-02-08
 # bad hack... - relative import
-# Change to absolute import 
+# Change to absolute import
 from . import f_model_info
 class info (f_model_info.info) :
   pass

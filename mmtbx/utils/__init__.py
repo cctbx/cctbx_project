@@ -1491,19 +1491,6 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-
-  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
-    fmodel = fmodel_manager(
-      xray_structure = xrs.deep_copy_scatterers(),
-      f_obs          = f_obs.deep_copy(),
-      r_free_flags   = flags.deep_copy(),
-      target_name    = target_name,
-      mask_params    = mp,
-      twin_law       = tl)
-    if(bssf):
-      fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om)
-    return fmodel
-
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
   optimize_mask=False
@@ -1511,16 +1498,27 @@ def fmodel_simple(f_obs,
   if(len(xray_structures) == 1):
     if(twin_laws is None): twin_laws = [None]
     if(twin_laws.count(None)==0): twin_laws.append(None)
-    fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
-      mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params,
-      ro = outliers_rejection,om=optimize_mask)
+    fmodel = fmodel_manager(
+      xray_structure = xray_structures[0].deep_copy_scatterers(),
+      f_obs          = f_obs.deep_copy(),
+      r_free_flags   = r_free_flags.deep_copy(),
+      target_name    = target_name,
+      mask_params    = mask_params,
+      twin_law       = None)
+    fmodel.update_all_scales(params = bss_params, log = log,
+        optimize_mask=optimize_mask, remove_outliers=outliers_rejection)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):
-        fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
-          flags=r_free_flags, mp=mask_params, tl=twin_law,
-          bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection,
-          om=optimize_mask)
+        fmodel_ = fmodel_manager(
+          xray_structure = xray_structures[0].deep_copy_scatterers(),
+          f_obs          = f_obs.deep_copy(),
+          r_free_flags   = r_free_flags.deep_copy(),
+          target_name    = target_name,
+          mask_params    = mask_params,
+          twin_law       = twin_law)
+        fmodel.update_all_scales(params = bss_params, log = log,
+            optimize_mask=optimize_mask, remove_outliers=outliers_rejection)
         r_work_ = fmodel_.r_work()
         fl = abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work
         if(fl):
@@ -1577,8 +1575,6 @@ def fmodel_simple(f_obs,
     if(bulk_solvent_and_scaling):
       fmodel_result.update_all_scales(remove_outliers = outliers_rejection)
     fmodel = fmodel_result
-  if(bulk_solvent_and_scaling and not fmodel.twin): # "not fmodel.twin" for runtime only
-    fmodel.update_all_scales(remove_outliers = outliers_rejection) # duplicating update, time-consuming
   return fmodel
 
 def pdb_inp_from_multiple_files(pdb_files, log):

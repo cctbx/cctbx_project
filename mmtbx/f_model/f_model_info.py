@@ -145,17 +145,20 @@ class info(object):
     self.min_f_obs_over_sigma = fmodel.f_obs().min_f_over_sigma(
       return_none_if_zero_sigmas=True)
     self.sf_algorithm = fmodel.sfg_params.algorithm
-    alpha_w, beta_w = fmodel.alpha_beta_w()
+    self.alpha_w, self.beta_w = fmodel.alpha_beta_w()
     self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
-      alpha_w.data().min_max_mean().as_tuple()
+      self.alpha_w.data().min_max_mean().as_tuple()
     self.beta_work_min, self.beta_work_max, self.beta_work_mean = \
-      beta_w.data().min_max_mean().as_tuple()
+      self.beta_w.data().min_max_mean().as_tuple()
+    self.fom = fmodel.figures_of_merit_work()
     self.fom_work_min, self.fom_work_max, self.fom_work_mean = \
-      fmodel.figures_of_merit_work().min_max_mean().as_tuple()
+      self.fom.min_max_mean().as_tuple()
+    self.pher_w = fmodel.phase_errors_work()
     self.pher_work_min, self.pher_work_max, self.pher_work_mean = \
-      fmodel.phase_errors_work().min_max_mean().as_tuple()
+      self.pher_w.min_max_mean().as_tuple()
+    self.pher_t = fmodel.phase_errors_test()
     self.pher_free_min, self.pher_free_max, self.pher_free_mean = \
-      fmodel.phase_errors_test().min_max_mean().as_tuple()
+      self.pher_t.min_max_mean().as_tuple()
     self.bins = self.statistics_in_resolution_bins(
       fmodel = fmodel,
       free_reflections_per_bin = free_reflections_per_bin,
@@ -164,16 +167,6 @@ class info(object):
 
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
                                     max_number_of_bins, n_bins=None):
-    #
-    # XXX A huge number of duplicated calls (done in __init__) to f_model
-    # functionality, in case of 1ucs takes:
-    # phase_errors_work() - 2s each,
-    # phase_errors_test() - 2s each,
-    # alpha_beta_w () - 2s each
-    # figures_of_merit_work() - 2s each
-    # phase_errors() - being called 6 times, including inside fmodel, each takes 2 seconds.
-    #
-    #
     from mmtbx import bulk_solvent
     from cctbx.array_family import flex
     if(self.target_name == "twin_lsq_f"):
@@ -189,11 +182,7 @@ class info(object):
     fc_t = fmodel.f_model_scaled_with_k1_t()
     fo_w = fmodel.f_obs_work()
     fc_w = fmodel.f_model_scaled_with_k1_w()
-    alpha_w, beta_w = fmodel.alpha_beta_w()
     alpha_t, beta_t = fmodel.alpha_beta_t()
-    pher_w = fmodel.phase_errors_work()
-    pher_t = fmodel.phase_errors_test()
-    fom = fmodel.figures_of_merit_work()
     if (n_bins is None) or (n_bins < 1) :
       n_bins = fmodel.determine_n_bins(
         free_reflections_per_bin=free_reflections_per_bin,
@@ -203,9 +192,9 @@ class info(object):
     fc_t.use_binning_of(fo_t)
     fo_w.use_binning_of(fo_t)
     fc_w.use_binning_of(fo_t)
-    alpha_w.use_binning_of(fo_t)
+    self.alpha_w.use_binning_of(fo_t)
     alpha_t.use_binning_of(fo_t)
-    beta_w.use_binning_of(fo_t)
+    self.beta_w.use_binning_of(fo_t)
     beta_t.use_binning_of(fo_t)
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
@@ -243,8 +232,8 @@ class info(object):
           i_bin        = i_bin,
           d_range      = d_range,
           completeness = completeness,
-          alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
-          beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
+          alpha_work   = flex.mean_default(self.alpha_w.select(sel_w).data(),None),
+          beta_work    = flex.mean_default(self.beta_w.select(sel_w).data(),None),
           r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d, 1),
           r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data(), 1),
           target_work  = sel_tpr_w,
@@ -253,9 +242,9 @@ class info(object):
           n_free       = sel_fo_t.data().size(),
           scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
           mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
-          fom_work     = flex.mean_default(fom.select(sel_w),None),
-          pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-          pher_free    = flex.mean_default(pher_t.select(sel_t),None),
+          fom_work     = flex.mean_default(self.fom.select(sel_w),None),
+          pher_work    = flex.mean_default(self.pher_w.select(sel_w),None),
+          pher_free    = flex.mean_default(self.pher_t.select(sel_t),None),
           cc_work      = cc(s_fo_w_d, s_fc_w_d_a),
           cc_free      = cc(sel_fo_t.data(), flex.abs(sel_fc_t.data())))
         result.append(bin)
