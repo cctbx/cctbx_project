@@ -13,6 +13,7 @@ def run(args):
   only_dos = False
   only_future = False
   flag_absolute_import = False
+  flag_print_statement = False
   #
   paths = []
   for arg in args:
@@ -34,6 +35,8 @@ def run(args):
       only_future = True
     elif (arg == "--absolute_import"):
       flag_absolute_import = True
+    elif (arg == "--print_statement"):
+      flag_print_statement = True
     else:
       paths.append(arg)
   if (len(paths) == 0): paths = ["."]
@@ -45,9 +48,12 @@ def run(args):
   n_too_many_from_future_import_division = 0
   n_missing_from_future_import_absolute_import = 0
   n_too_many_from_future_import_absolute_import = 0
+  n_missing_from_future_import_print_statement = 0
+  n_too_many_from_future_import_print_statement = 0
   n_bad_indentation = 0
   for info in gather(paths=paths, find_unused_imports=not flag_ni,
-      find_bad_indentation=flag_indentation, flag_absolute_import=flag_absolute_import):
+      find_bad_indentation=flag_indentation, flag_absolute_import=flag_absolute_import,
+      flag_print_statement=flag_print_statement):
     if (info.is_cluttered(flag_x=flag_x)):
       n_is_cluttered += 1
     if (info.n_bare_excepts > 0):
@@ -62,6 +68,10 @@ def run(args):
       n_missing_from_future_import_absolute_import += 1
     elif info.n_from_future_import_absolute_import > 1:
       n_too_many_from_future_import_absolute_import += 1
+    if info.n_from_future_import_print_statement == 0:
+      n_missing_from_future_import_print_statement += 1
+    elif info.n_from_future_import_print_statement > 1:
+      n_too_many_from_future_import_print_statement += 1
     if (info.bad_indentation is not None) and (flag_indentation) :
       n_bad_indentation += 1
     info.show(

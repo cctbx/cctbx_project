@@ -11,9 +11,12 @@ class file_clutter(object):
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
   from_future_import_absolute_import_pat = re.compile(
     '^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
+  from_future_import_print_statement_pat = re.compile(
+    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ print_statement', re.VERBOSE)
 
   def __init__(self, path, find_unused_imports=False,
-      find_bad_indentation=True, flag_absolute_import=False):
+      find_bad_indentation=True, flag_absolute_import=False,
+      flag_print_statement=False):
     self.path = path
     self.is_executable = os.access(path, os.X_OK)
     self.dos_format = False
@@ -25,6 +28,8 @@ class file_clutter(object):
     self.n_from_future_import_division = None
     self.flag_absolute_import = flag_absolute_import
     self.n_from_future_import_absolute_import = None
+    self.flag_print_statement = flag_print_statement
+    self.n_from_future_import_print_statement = None
     self.bad_indentation = None
     self.file_should_be_empty = False
     bytes = open(path, "rb").read()
@@ -45,6 +50,7 @@ class file_clutter(object):
       if (path.endswith(".py")):
         self.n_from_future_import_division = 0
         self.n_from_future_import_absolute_import = 0
+        self.n_from_future_import_print_statement = 0
         py_lines = bytes.splitlines()
         self.file_should_be_empty = True
         for line in py_lines:
@@ -54,6 +60,8 @@ class file_clutter(object):
             self.n_from_future_import_division += 1
           if self.from_future_import_absolute_import_pat.search(line):
             self.n_from_future_import_absolute_import += 1
+          if self.from_future_import_print_statement_pat.search(line):
+            self.n_from_future_import_print_statement += 1
           ls = line.strip()
           if (    ls.startswith("except")
               and ls[6:].strip().startswith(":")
@@ -103,7 +111,8 @@ class file_clutter(object):
     if (self.has_unused_imports()):
       sapp("unused imports=%d" % len(self.unused_imports))
     if self.file_should_be_empty:
-      if self.n_from_future_import_division == 0 and self.n_from_future_import_absolute_import == 0:
+      if self.n_from_future_import_division == 0 and self.n_from_future_import_absolute_import == 0 and \
+         self.n_from_future_import_print_statement:
         sapp("file is empty, should be 0 byte file")
       else:
         sapp("file contains only 'from __future__ import' and should be empty instead")
@@ -116,6 +125,11 @@ class file_clutter(object):
         sapp("missing 'from __future__ import absolute_import'")
       elif self.n_from_future_import_absolute_import > 1:
         sapp("more than one appearance of 'from __future__ import absolute_import'")
+    if self.flag_print_statement and not self.file_should_be_empty:
+      if self.n_from_future_import_print_statement == 0:
+        sapp("missing 'from __future__ import print_statement'")
+      elif self.n_from_future_import_print_statement > 1:
+        sapp("more than one appearance of 'from __future__ import print_statement'")
     if (self.bad_indentation is not None) and (flag_indentation) :
       n_tab, n_space = self.bad_indentation
       sapp("non-standard indentation: %d space, %d tab" % (n_space, n_tab))
@@ -144,11 +158,12 @@ def is_text_file(file_name):
     if (name.endswith(extension)): return True
   return False
 
-def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_absolute_import=False):
+def gather(paths, find_unused_imports=False, find_bad_indentation=False, flag_absolute_import=False, flag_print_statement=False):
   clutter = []
   def capp():
     clutter.append(file_clutter(path, find_unused_imports,
-      find_bad_indentation=find_bad_indentation, flag_absolute_import=flag_absolute_import))
+      find_bad_indentation=find_bad_indentation, flag_absolute_import=flag_absolute_import,
+      flag_print_statement=flag_print_statement))
   for path in paths:
     if (not os.path.exists(path)):
       print >> sys.stderr, "No such file or directory:", path
