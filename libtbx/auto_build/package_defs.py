@@ -11,8 +11,8 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 from builtins import object
-from .bootstrap import Toolbox
-from .installer_utils import *
+from bootstrap import Toolbox
+from installer_utils import *
 import os.path as op
 import os
 import platform
@@ -136,6 +136,12 @@ VCREDIST64 = "vcredist_x64.exe"
 VCREDIST32 = "vcredist_x86.exe"
 WINLIBTIFF64 = "libtiff4.0.6x64.zip"
 WINLIBTIFF32 = "libtiff4.0.6x32.zip"
+
+WIN64PYTHON36_VC19_PKG = "python3.6_plus_relocatable-vc19-win64.zip"
+WIN64HDF5_VC19_PKG = "HDF5-1.10.1-vc19-win64.zip"
+VCREDIST_VC19_X64 = "vc_redist.x64.exe"
+WINLIBTIFF_VC19_X64 = "libtiff-vc19-win64.zip"
+
 
 # Various dependencies from external repositories, distributed as static
 # tarballs (since they are not under active development by us or our

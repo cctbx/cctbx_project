@@ -22,7 +22,6 @@ import tempfile
 import time
 import traceback
 import urllib.request, urllib.error, urllib.parse
-import urllib.parse
 import zipfile
 
 windows_remove_list = []
@@ -391,6 +390,7 @@ class Toolbox(object):
         atime = st[ST_ATIME] # current access time
         os.utime(file,(atime,remote_mtime))
 
+      import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
       if cache and socket.info().getheader('ETag'):
         # If the server sent an ETAG, then keep it alongside the file
         open(tagfile, 'w').write(socket.info().getheader('ETag'))
@@ -1013,6 +1013,7 @@ class Builder(object):
       skip_base="",
       force_base_build=False,
       enable_shared=False,
+      python3=False
     ):
     if nproc is None:
       self.nproc=1
@@ -1043,6 +1044,7 @@ class Builder(object):
     self.verbose = verbose
     self.download_only = download_only
     self.skip_base = skip_base
+    self.python3 = python3
     self.force_base_build = force_base_build
     self.add_init()
 
@@ -1473,9 +1475,12 @@ class Builder(object):
       extra_opts.append('--git-ssh')
     if self.skip_base:
       extra_opts.append('--skip-base=%s' % self.skip_base)
+    if self.python3:
+      extra_opts.append('--python3')
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
+    #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
     self.add_step(self.shell(
       name='base',
       command=[
@@ -2234,6 +2239,11 @@ def run(root=None):
                     dest="enable_shared",
                     action="store_true",
                     default=False)
+  parser.add_option("--python3",
+                    dest="python3",
+                    action="store_true",
+                    default=False,
+                    help="Build for Python 3")
   options, args = parser.parse_args()
   # process external
   options.specific_external_builder=None
@@ -2301,6 +2311,7 @@ def run(root=None):
     verbose=options.verbose,
     download_only=options.download_only,
     skip_base=options.skip_base,
+    python3=options.python3,
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
   ).run()

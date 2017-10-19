@@ -34,7 +34,7 @@ def check_python_version (major=None, minor=None) :
     time.sleep(2)
 
 def import_subprocess () :
-  if (sys.version_info[1] >= 7) :
+  if ( sys.version_info[:2] > (2,6)) :
     import subprocess
   else :
     # XXX HACK

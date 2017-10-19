@@ -13,8 +13,8 @@ from __future__ import absolute_import
 from builtins import zip
 from builtins import filter
 from builtins import object
-from .installer_utils import *
-from .package_defs import *
+from installer_utils import *
+from package_defs import *
 from optparse import OptionParser
 import os
 import os.path as op
@@ -86,6 +86,8 @@ class installer (object) :
       help="Build xia2 dependencies")
     parser.add_option("--dials", dest="dials", action="store_true",
       help="Build DIALS dependencies")
+    parser.add_option("--python3", dest="python3", action="store_true",
+      default=False, help="Build for Python 3")
     parser.add_option("--gui", dest="build_gui", action="store_true",
       help="Build GUI dependencies")
     parser.add_option("-a", "--all", dest="build_all", action="store_true",
@@ -139,6 +141,8 @@ class installer (object) :
       no_download=options.no_download)
     # Shortcut: Extract HDF5 and python for Windows bundled with all preinstalled modules
     if sys.platform == "win32":
+      #import code, traceback; code.interact(local=locals(), banner="".join( traceback.format_stack(limit=10) ) )
+      compilerversion = platform.python_compiler().split()[1]
       if platform.architecture()[0] == '64bit':
         winpythonpkg = WIN64PYTHON_PKG
         hdf5pkg = WIN64HDF5_PKG
@@ -149,6 +153,12 @@ class installer (object) :
         hdf5pkg = WIN32HDF5_PKG
         vcredist = VCREDIST32
         libtiff = WINLIBTIFF32
+      # infer compiler version of base components to fetch from the python used for this bootstrap
+      if options.python3: # might do 32 bit versions one day
+        winpythonpkg = WIN64PYTHON36_VC19_PKG
+        hdf5pkg = WIN64HDF5_VC19_PKG
+        vcredist = VCREDIST_VC19_X64
+        libtiff = WINLIBTIFF_VC19_X64
 
       self.fetch_package(pkg_name=winpythonpkg, pkg_url=BASE_CCI_PKG_URL)
       winpython = zipfile.ZipFile(os.path.join(self.tmp_dir, winpythonpkg), 'r')
