@@ -103,6 +103,9 @@ use_map_for_reference = True
 run_minimization_first = True
   .type = bool
   .expert_level = 2
+run_minimization_last = True
+  .type = bool
+  .expert_level = 2
 reference_map_resolution = 5
   .type = float
   .expert_level = 2
@@ -611,7 +614,7 @@ class model_idealization():
       self.working_model = self.master_model
     else:
       self.working_pdb_h = self.whole_pdb_h
-      self.working_model = self.model.deep_copy()
+      self.working_model = self.model#.deep_copy()
     self.working_pdb_h.reset_atom_i_seqs()
 
 
@@ -731,12 +734,12 @@ class model_idealization():
         if outlier_selection_txt != "" and outlier_selection_txt is not None:
           negate_selection = "not (%s)" % outlier_selection_txt
       # if self.params.run_minimization_first:
-      self.minimize(
-          model=self.model,
-          original_pdb_h=self.whole_pdb_h,
-          ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
-          excl_string_selection=negate_selection,
-          reference_map=self.reference_map)
+      # self.minimize(
+      #     model=self.model,
+      #     original_pdb_h=self.whole_pdb_h,
+      #     ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
+      #     excl_string_selection=negate_selection,
+      #     reference_map=self.reference_map)
       # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h_1.pdb")
     else:
       if self.params.debug:
@@ -771,24 +774,19 @@ class model_idealization():
           fname_suffix="ss_ideal",
           # grm=self.working_grm,
           )
-    self.params.loop_idealization.minimize_whole = not self.using_ncs
+    self.params.loop_idealization.minimize_whole = not self.using_ncs and self.params.loop_idealization.minimize_whole
     self.params.loop_idealization.debug = self.params.debug or self.params.loop_idealization.debug
     # self.params.loop_idealization.enabled = False
     # self.params.loop_idealization.variant_search_level = 0
     print >> self.log, "Starting loop idealization"
     loop_ideal = loop_idealization(
-        pdb_hierarchy=self.working_pdb_h,
+        self.working_model,
         params=self.params.loop_idealization,
-        secondary_structure_annotation=self.ann,
         reference_map=self.master_map,
-        crystal_symmetry=self.working_xrs.crystal_symmetry(),
-        grm=self.working_grm,
-        rama_manager=self.model.get_ramachandran_manager(),
-        rotamer_manager=self.model.get_rotamer_manager(),
         log=self.log,
         verbose=True)
     self.log.flush()
-    self.working_pdb_h = loop_ideal.resulting_pdb_h
+    # self.working_pdb_h = loop_ideal.resulting_pdb_h
     if self.params.debug:
       self.shift_and_write_result(
           model = self.working_model,
@@ -875,14 +873,15 @@ class model_idealization():
           ss_manager=ss_manager,
           hierarchy=self.whole_pdb_h,
           log=self.log)
-    print >> self.log, "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
-    print >> self.log, "Minimizing whole model"
-    self.minimize(
-        model = self.model,
-        ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
-        original_pdb_h=ref_hierarchy_for_final_gm,
-        excl_string_selection=loop_ideal.ref_exclusion_selection,
-        reference_map = self.reference_map)
+    if self.params.run_minimization_last:
+      print >> self.log, "loop_ideal.ref_exclusion_selection", loop_ideal.ref_exclusion_selection
+      print >> self.log, "Minimizing whole model"
+      self.minimize(
+          model = self.model,
+          ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
+          original_pdb_h=ref_hierarchy_for_final_gm,
+          excl_string_selection=loop_ideal.ref_exclusion_selection,
+          reference_map = self.reference_map)
     self.shift_and_write_result(
         model = self.model,
         fname_suffix="all_idealized")

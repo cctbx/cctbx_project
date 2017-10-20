@@ -84,48 +84,29 @@ master_phil = iotbx.phil.parse(loop_idealization_master_phil_str)
 
 class loop_idealization():
   def __init__(self,
-               pdb_hierarchy,
+               model,
                params=None,
-               secondary_structure_annotation=None,
                reference_map=None,
-               crystal_symmetry=None,
-               grm=None,
-               rama_manager=None,
-               rotamer_manager=None,
                log=null_out(),
                verbose=False,
                tried_rama_angles={},
                tried_final_rama_angles={},
                n_run=0):
-    if len(pdb_hierarchy.models()) > 1:
+    if model.get_number_of_models() > 1:
       raise Sorry("Multi-model files are not supported")
-    self.original_pdb_h = pdb_hierarchy
-    self.secondary_structure_annotation=secondary_structure_annotation
-    asc = pdb_hierarchy.atom_selection_cache()
-    self.xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
+    self.model = model
+    self.original_pdb_h = self.model.get_hierarchy()
     self.reference_map = reference_map
-    self.resulting_pdb_h = pdb_hierarchy.deep_copy()
-    self.resulting_pdb_h.reset_atom_i_seqs()
     self.params = self.process_params(params)
     self.log = log
     self.verbose = verbose
-    self.grm = grm
-    self.r = rama_manager
     self.ideal_res_dict = idealized_aa.residue_dict()
     self.n_run = n_run
-    if self.r is None:
-      self.r = rama_eval()
-    self.rotamer_manager = rotamer_manager
-    if self.rotamer_manager is None:
-      self.rotamer_manager = RotamerEval()
-    ram = ramalyze.ramalyze(pdb_hierarchy=pdb_hierarchy)
+
+    ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
     self.p_initial_rama_outliers = ram.out_percent
     self.p_before_minimization_rama_outliers = None
     self.p_after_minimiaztion_rama_outliers = None
-    n_inputs = [reference_map, crystal_symmetry].count(None)
-    if not (n_inputs == 0 or n_inputs == 2):
-      print >> log, "Need to have both map and symmetry info. Not using map."
-      self.reference_map = None
 
     # here we are recording what CCD solutions were used to fix particular
     # outliers to not use the same in the next CCD try.
@@ -135,10 +116,10 @@ class loop_idealization():
     self.tried_rama_angles = tried_rama_angles
     self.tried_final_rama_angles = tried_final_rama_angles
 
-    berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+    berkeley_count = utils.list_rama_outliers_h(self.model.get_hierarchy(), self.model.get_ramachandran_manager()).count("\n")
     self.berkeley_p_before_minimization_rama_outliers = \
-        berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
-    n_bad_omegas = utils.n_bad_omegas(self.resulting_pdb_h)
+        berkeley_count/float(self.model.get_hierarchy().overall_counts().n_residues)*100
+    n_bad_omegas = utils.n_bad_omegas(self.model.get_hierarchy())
 
     self.berkeley_p_after_minimiaztion_rama_outliers = self.berkeley_p_before_minimization_rama_outliers
     self.ref_exclusion_selection = ""
@@ -159,7 +140,7 @@ class loop_idealization():
         and self.params.enabled):
       print >> self.log, "CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       processed_chain_ids = []
-      for chain in self.resulting_pdb_h.only_model().chains():
+      for chain in self.model.get_hierarchy().only_model().chains():
         if chain.id not in self.tried_rama_angles.keys():
           self.tried_rama_angles[chain.id] = {}
         if chain.id not in self.tried_final_rama_angles.keys():
@@ -170,8 +151,8 @@ class loop_idealization():
         else:
           continue
         selection = "protein and chain %s and (name N or name CA or name C or name O)" % chain.id
-        sel = asc.selection("chain %s" % chain.id)
-        chain_h = self.resulting_pdb_h.select(sel)
+        sel = self.model.selection("chain %s" % chain.id)
+        chain_h = self.model.get_hierarchy().select(sel)
         m = chain_h.only_model()
         i = 0
         cutted_chain_h = None
@@ -189,9 +170,10 @@ class loop_idealization():
             tried_final_rama_angles_for_chain=self.tried_final_rama_angles[chain.id])
         if ch_h is not None:
           set_xyz_smart(
-              # dest_h=self.resulting_pdb_h,
+              # dest_h=self.model.get_hierarchy(),
               dest_h=chain,
               source_h=ch_h)
+          self.model.set_sites_cart_from_hierarchy()
           for resnum in exclusions:
             selection += " and not resseq %s" % resnum
         self.ref_exclusion_selection += "(%s) or " % selection
@@ -199,25 +181,28 @@ class loop_idealization():
         print "self.tried_final_rama_angles", self.tried_final_rama_angles
       #
       # dumping and reloading hierarchy to do proper rounding of coordinates
-      self.resulting_pdb_h = iotbx.pdb.input(
+      resulting_pdb_h = iotbx.pdb.input(
           source_info=None,
-          lines=self.resulting_pdb_h.as_pdb_string()).construct_hierarchy()
-      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+          lines=self.model.get_hierarchy().as_pdb_string()).construct_hierarchy()
+      self.model.set_sites_cart(resulting_pdb_h.atoms().extract_xyz())
+
+      berkeley_count = utils.list_rama_outliers_h(resulting_pdb_h).count("\n")
       self.berkeley_p_before_minimization_rama_outliers = \
-          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+          berkeley_count/float(resulting_pdb_h.overall_counts().n_residues)*100
+      ram = ramalyze.ramalyze(pdb_hierarchy=resulting_pdb_h)
+      self.p_before_minimization_rama_outliers = ram.out_percent
       if len(self.ref_exclusion_selection) > 0:
         self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
-      ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
-      self.p_before_minimization_rama_outliers = ram.out_percent
 
       duke_count = ram.get_outliers_count_and_fraction()[0]
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count
-        self.resulting_pdb_h.write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
+        self.model.get_hierarchy().write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
       if self.params.debug:
-        self.resulting_pdb_h.write_pdb_file(
+        self.model.get_hierarchy().write_pdb_file(
             file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
                 self.params.output_prefix))
+      print "self.params.minimize_whole", self.params.minimize_whole
       if self.params.minimize_whole:
         print >> self.log, "minimizing whole chain..."
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
@@ -227,50 +212,41 @@ class loop_idealization():
         excl_sel = self.ref_exclusion_selection
         if len(excl_sel) == 0:
           excl_sel = None
-        non_outliers_for_check = asc.selection("(%s)" % self.ref_exclusion_selection)
-        pre_result_h = mmtbx.utils.fix_rotamer_outliers(
-          pdb_hierarchy=self.resulting_pdb_h,
-          grm=self.grm.geometry,
-          xrs=self.xrs,
+        non_outliers_for_check = self.model.selection("(%s)" % self.ref_exclusion_selection)
+        mmtbx.utils.fix_rotamer_outliers(
+          model = self.model,
           map_data=self.reference_map,
           radius=5,
-          mon_lib_srv=None,
-          rotamer_manager=self.rotamer_manager,
           backrub_range=None, # don't sample backrub at this point
           non_outliers_to_check=non_outliers_for_check, # bool selection
-          asc=asc,
           verbose=True,
           log=self.log)
 
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
-              hierarchy=self.resulting_pdb_h,
-              xrs=self.xrs,
+              model = self.model,
               original_pdb_h=self.original_pdb_h,
               excl_string_selection=self.ref_exclusion_selection,
-              grm=self.grm,
-              log=None,
-              ss_annotation=self.secondary_structure_annotation)
+              log=None)
         else:
           mwwm = minimize_wrapper_with_map(
-              pdb_h=self.resulting_pdb_h,
-              xrs=self.xrs,
+              model = self.model,
               target_map=self.reference_map,
-              grm=self.grm,
-              ss_annotation=self.secondary_structure_annotation,
               number_of_cycles=Auto,
               log=self.log)
       if self.params.debug:
-        self.resulting_pdb_h.write_pdb_file(
+        self.model.get_hierarchy().write_pdb_file(
             file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials,
                 self.params.output_prefix))
-      ram = ramalyze.ramalyze(pdb_hierarchy=self.resulting_pdb_h)
+      ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
-      berkeley_count = utils.list_rama_outliers_h(self.resulting_pdb_h).count("\n")
+      berkeley_count = utils.list_rama_outliers_h(
+          self.model.get_hierarchy(),
+          self.model.get_ramachandran_manager()).count("\n")
       duke_count = ram.get_outliers_count_and_fraction()[0]
-      n_bad_omegas = utils.n_bad_omegas(self.resulting_pdb_h)
+      n_bad_omegas = utils.n_bad_omegas(self.model.get_hierarchy())
       self.berkeley_p_after_minimiaztion_rama_outliers = \
-          berkeley_count/float(self.resulting_pdb_h.overall_counts().n_residues)*100
+          berkeley_count/float(self.model.get_hierarchy().overall_counts().n_residues)*100
       if berkeley_count != duke_count:
         print >> self.log, "Discrepancy between berkeley and duke after min:", berkeley_count, duke_count
       else:
@@ -320,9 +296,9 @@ class loop_idealization():
           hierarchy, [resnum], 2, 2, include_intermediate=True)
       list_of_reference_exclusion += excl_res
     out_i = 0
-    chain_ss_annot = self.secondary_structure_annotation
+    chain_ss_annot = self.model.get_ss_annotation()
     if chain_ss_annot is not None:
-      chain_ss_annot = self.secondary_structure_annotation.deep_copy()
+      chain_ss_annot = chain_ss_annot.deep_copy()
       chain_ss_annot.remove_empty_annotations(hierarchy=working_h)
     # combine outliers next to each other
     comb_rama_out_resnums = [[rama_out_resnums[0]]]
@@ -349,7 +325,7 @@ class loop_idealization():
         tried_rama_angles_for_chain=tried_rama_angles_for_chain,
         tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)
       print >> self.log, "listing outliers after loop minimization"
-      outp = utils.list_rama_outliers_h(new_h, self.r)
+      outp = utils.list_rama_outliers_h(new_h, self.model.get_ramachandran_manager())
       print >> self.log, outp
       utils.list_omega_outliers(new_h, self.log)
       self.log.flush()
@@ -635,7 +611,7 @@ class loop_idealization():
         map_target = 0
         if self.reference_map is not None:
           map_target = maptbx.real_space_target_simple(
-              unit_cell   = self.xrs.crystal_symmetry().unit_cell(),
+              unit_cell   = self.model.crystal_symmetry().unit_cell(),
               density_map = self.reference_map,
               sites_cart  = h.atoms().extract_xyz())
 
@@ -670,7 +646,7 @@ class loop_idealization():
             include_intermediate=True,
             avoid_ss_annot=ss_annotation)
         place_side_chains(moved_with_side_chains_h, original_pdb_h, original_pdb_h_asc,
-            self.rotamer_manager, placing_range, self.ideal_res_dict)
+            self.model.get_rotamer_manager(), placing_range, self.ideal_res_dict)
         # moved_with_side_chains_h.write_pdb_file(
         #     file_name="%s_after_sc_placement_%d.pdb" % (prefix, i))
 
@@ -729,6 +705,8 @@ class loop_idealization():
           print >> self.log, "Updated tried_final_rama_angles_for_chain:", tried_final_rama_angles_for_chain
 
           self.log.flush()
+          assert not minimize
+          # This is not working....
           if minimize:
             print >> self.log, "minimizing..."
             # moved_with_side_chains_h.write_pdb_file(
@@ -829,12 +807,12 @@ class loop_idealization():
     ranges_for_idealization = []
     # print >> self.log, "rama outliers for input hierarchy:"
     list_of_reference_exclusion = []
-    outp = utils.list_rama_outliers_h(pdb_hierarchy, self.r)
+    outp = utils.list_rama_outliers_h(pdb_hierarchy, self.model.get_ramachandran_manager())
     print >> self.log, outp
     for phi_psi_pair, rama_key, omega in phi_psi_atoms:
       if phi_psi_pair[0] is not None and phi_psi_pair[1] is not None:
         # print "resseq:", phi_psi_pair[0][2].parent().parent().resseq
-        ev = utils.rama_evaluate(phi_psi_pair, self.r, rama_key)
+        ev = utils.rama_evaluate(phi_psi_pair, self.model.get_ramachandran_manager(), rama_key)
         # print "  ev", ev
         rama_results.append(ev)
         # print phi_psi_pair[0][0].id_str()

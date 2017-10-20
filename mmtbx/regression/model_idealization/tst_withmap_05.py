@@ -95,7 +95,8 @@ END
 
 def exercise_04(prefix="tst_mi_map_test_05"):
   """
-  Actually will try to CCD
+  Actually will try to CCD.
+  Should include actual check for success.
   """
   # without cryst
   pdb_file = open("%s_start.pdb" % prefix, "w")
@@ -106,6 +107,8 @@ def exercise_04(prefix="tst_mi_map_test_05"):
       "%s_start.pdb" % prefix,
       "use_map_for_reference=True",
       "run_minimization_first=False",
+      "run_minimization_last=False",
+      "loop_idealization.minimize_whole=False",
       "loop_idealization.number_of_ccd_trials=1",
       "number_of_refinement_cycles=1",
       "n_macro=1",

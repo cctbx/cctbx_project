@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.pdb
 from mmtbx.building import loop_idealization
+import mmtbx.model
 
 def exercise_ligand_after_chain():
   tst_pdb_1 = """\
@@ -98,7 +99,9 @@ HETATM 9823  O6  NAG A 501    -148.610-133.860-123.650  1.00105.75           O
 HETATM 9824  O7  NAG A 501    -143.325-131.114-129.200  1.00105.75           O
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_pdb_1)
-  pdb_h = pdb_inp.construct_hierarchy()
+  model = mmtbx.model.manager(
+    pdb_inp,
+    build_grm=True)
   loop_ideal_params = loop_idealization.master_phil.extract()
   loop_ideal_params.loop_idealization.enabled=True
   loop_ideal_params.loop_idealization.variant_search_level=1
@@ -106,9 +109,8 @@ HETATM 9824  O7  NAG A 501    -143.325-131.114-129.200  1.00105.75           O
   loop_ideal_params.loop_idealization.number_of_ccd_trials=1
   loop_ideal_params.loop_idealization.minimize_whole=False
   loop_ideal = loop_idealization.loop_idealization(
-      pdb_hierarchy=pdb_h,
+      model,
       params = loop_ideal_params,
-      secondary_structure_annotation=None,
       verbose=False)
 
 def exercise_nonstd_residue():
@@ -193,9 +195,12 @@ ATOM   2880  CG2 THR A 504     -47.899  40.185 -13.187  1.00 94.96           C
 END
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_pdb_2)
-  pdb_h = pdb_inp.construct_hierarchy()
-  pdb_h.write_pdb_file("tst_loop_closure_2_start.pdb")
-  assert pdb_h.atoms_size() == 73
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm = True)
+
+  model.get_hierarchy().write_pdb_file("tst_loop_closure_2_start.pdb")
+  assert model.get_hierarchy().atoms_size() == 73
   loop_ideal_params = loop_idealization.master_phil.extract()
   loop_ideal_params.loop_idealization.enabled=True
   loop_ideal_params.loop_idealization.variant_search_level=1
@@ -203,15 +208,13 @@ END
   loop_ideal_params.loop_idealization.number_of_ccd_trials=1
   loop_ideal_params.loop_idealization.minimize_whole=False
   loop_ideal = loop_idealization.loop_idealization(
-      pdb_hierarchy=pdb_h,
+      model = model,
       params = loop_ideal_params,
-      secondary_structure_annotation=None,
       verbose=False)
-  loop_ideal.resulting_pdb_h.write_pdb_file("tst_loop_closure_2_result.pdb")
-  assert loop_ideal.resulting_pdb_h.atoms_size() == 73
-  asc = loop_ideal.resulting_pdb_h.atom_selection_cache()
-  sel = asc.selection("resname TPO")
-  assert loop_ideal.resulting_pdb_h.select(sel).atoms_size() == 11
+  model.get_hierarchy().write_pdb_file("tst_loop_closure_2_result.pdb")
+  assert model.get_hierarchy().atoms_size() == 73
+  sel = model.selection("resname TPO")
+  assert model.get_hierarchy().select(sel).atoms_size() == 11
 
 def exercise():
   exercise_ligand_after_chain()
