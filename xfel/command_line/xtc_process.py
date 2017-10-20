@@ -420,6 +420,7 @@ class InMemScript(DialsProcessScript):
     debug_file_handle.close()
 
   def mpi_log_write(self, string):
+    print string
     mpi_log_file_handle = open(self.mpi_log_file_path, 'a')
     mpi_log_file_handle.write(string)
     mpi_log_file_handle.close()
@@ -725,13 +726,17 @@ class InMemScript(DialsProcessScript):
               # inform the server this process is ready for an event
               print "Rank %d getting next task"%rank
               comm.send(rank,dest=0)
+              print "Rank %d waiting for response"%rank
               offset = comm.recv(source=0)
               if offset == 'endrun':
                 print "Rank %d recieved endrun"%rank
                 break
               evt = ds.jump(offset.filenames, offset.offsets, offset.lastBeginCalibCycleDgram)
               print "Rank %d beginning processing"%rank
-              self.process_event(run, evt)
+              try:
+                self.process_event(run, evt)
+              except Exception, e:
+                print "Rank %d unhandled exception processing event"%rank, str(e)
               print "Rank %d event processed"%rank
         except Exception, e:
           print "Error caught in main loop"
@@ -1185,7 +1190,10 @@ class InMemScript(DialsProcessScript):
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
-      self.debug_write("db_logging_failed_%d" % len(reflections), "fail")
+      if reflections is None:
+        self.debug_write("db_logging_failed", "fail")
+      else:
+        self.debug_write("db_logging_failed_%d" % len(reflections), "fail")
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
