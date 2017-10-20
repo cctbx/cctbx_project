@@ -144,6 +144,10 @@ class ramalyze (validation) :
       show_errors=False,
       out=sys.stdout,
       quiet=False) :
+    # Optimization hint: make it possible to pass
+    # ramachandran_eval.RamachandranEval() from outside.
+    # Better - convert this to using mmtbx.model.manager where
+    # RamachandranEval is already available.
     validation.__init__(self)
     self.n_allowed = 0
     self.n_favored = 0
