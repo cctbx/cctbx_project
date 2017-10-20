@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/01/2017
+Last Changed: 10/18/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -15,6 +15,7 @@ import sys
 from iotbx.phil import parse
 from dxtbx.datablock import DataBlockFactory
 from cctbx import sgtbx
+from cctbx.uctbx import unit_cell
 import copy
 
 from dials.array_family import flex
@@ -116,7 +117,6 @@ class IOTADialsProcessor(Processor):
       miller_indices.select(sel))
     reflections['miller_index'].set_selected(sel, miller_indices_reindexed)
     reflections['miller_index'].set_selected(~sel, (0, 0, 0))
-
 
     return experiments, reflections
 
@@ -232,6 +232,19 @@ class Integrator(object):
       self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
       self.phil.integration.lookup.mask = self.params.image_conversion.mask
 
+    if self.params.dials.target_space_group is not None:
+      sg = self.params.dials.target_space_group
+      self.phil.indexing.known_symmetry.space_group = sg
+
+    if self.params.dials.target_unit_cell is not None:
+      uc = self.params.dials.target_unit_cell
+      self.phil.indexing.known_symmetry.unit_cell = uc
+
+    if self.params.dials.use_fft3d:
+      self.phil.indexing.stills.method_list = ['fft1d',
+                                               'fft3d',
+                                               'real_space_grid_search']
+
     #current_phil.format(python_object=self.phil).show()
 
     self.img = [source_image]
@@ -251,6 +264,10 @@ class Integrator(object):
       # threshold = int(np.min(means) * 5)
       threshold = int(center_intensity)
       self.phil.spotfinder.threshold.xds.global_threshold = threshold
+
+    # # Overwrite target file for this IOTA run
+    # mod_phil = current_phil.format(python_object=self.phil)
+    # mod_phil.show()
 
 
   def find_spots(self):

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 09/20/2017
+Last Changed: 10/10/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -12,7 +12,7 @@ import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
 from wx.lib.scrolledpanel import ScrolledPanel
-
+from wx import richtext as rt
 
 import math
 import numpy as np
@@ -455,11 +455,99 @@ class LogTab(wx.Panel):
     wx.Panel.__init__(self, parent=parent, id=wx.ID_ANY)
 
     self.log_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.log_window = wx.TextCtrl(self,
-                                  style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP)
+    # self.log_window = wx.TextCtrl(self,
+    #                               style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP)
+    self.log_window = rt.RichTextCtrl(self,
+                                      style=rt.RE_MULTILINE |
+                                            rt.RE_READONLY |
+                                            wx.TE_DONTWRAP)
     self.log_window.SetFont(wx.Font(9, wx.TELETYPE, wx.NORMAL, wx.NORMAL, False))
     self.log_sizer.Add(self.log_window, proportion=1, flag= wx.EXPAND | wx.ALL, border=10)
+
+    self.find_string = ct.TextCtrlWithButtons(self,
+                                              buttons=[('Forward', -1),
+                                                       ('Reverse', -1)],
+                                              ctrl_label='Find String:')
+    self.log_sizer.Add(self.find_string, flag=wx.EXPAND | wx.ALL, border=10)
     self.SetSizer(self.log_sizer)
+
+    self.Bind(wx.EVT_BUTTON, self.onSearchForward, self.find_string.btn_forward)
+    self.Bind(wx.EVT_BUTTON, self.onSearchReverse, self.find_string.btn_reverse)
+
+  def onSearchForward(self, e):
+    if self.log_window.GetCaretPosition() == -1:
+      self.log_window.SetCaretPosition(0)
+    pos = self.log_window.GetCaretPosition()
+    search_string = self.find_string.txt_ctrl.GetValue().lower()
+    log_string = self.log_window.GetValue()[pos:-1].lower()
+    if search_string.replace(' ', '') not in ('', None):
+      found_pos = log_string.find(search_string)
+      if found_pos == -1:
+        if pos > 0:
+          msg_text = 'String Not Found! Search From the Top?'
+          msg = wx.MessageDialog(None, msg_text, 'Not Found!',
+                                 wx.YES_NO | wx.ICON_QUESTION)
+          if msg.ShowModal() == wx.ID_YES:
+            log_string = self.log_window.GetValue()[0:pos].lower()
+            found_pos = log_string.find(search_string)
+            if found_pos == -1:
+              wx.MessageBox('String Not Found!', 'Not Found!',
+                            wx.OK | wx.ICON_EXCLAMATION)
+              return
+          else:
+            return
+        else:
+          wx.MessageBox('String Not Found!', 'Not Found!',
+                        wx.OK | wx.ICON_EXCLAMATION)
+          return
+      else:
+        found_pos += pos
+      sel_range = (found_pos, found_pos + len(search_string))
+      self.log_window.SetSelectionRange(sel_range)
+    else:
+      found_pos = 0
+    self.log_window.SetCaretPosition(found_pos + len(search_string))
+    if not self.log_window.IsPositionVisible(found_pos):
+      self.log_window.ShowPosition(found_pos)
+
+  def onSearchReverse(self, e):
+    if self.log_window.GetCaretPosition() == -1:
+      self.log_window.SetCaretPosition(0)
+    pos = self.log_window.GetCaretPosition()
+    search_string = self.find_string.txt_ctrl.GetValue().lower()
+    full_log = self.log_window.GetValue()
+    log_string = full_log[0:pos].lower()
+    log_end = len(full_log)
+    if search_string.replace(' ', '') not in ('', None):
+      found_pos = log_string.rfind(search_string)
+      if found_pos == -1:
+        if pos < log_end:
+          msg_text = 'String Not Found! Search From the Bottom?'
+          msg = wx.MessageDialog(None, msg_text, 'Not Found!',
+                                 wx.YES_NO | wx.ICON_QUESTION)
+          if msg.ShowModal() == wx.ID_YES:
+            log_string = full_log[pos:-1].lower()
+            found_pos = log_string.rfind(search_string)
+            if found_pos == -1:
+              wx.MessageBox('String Not Found!', 'Not Found!',
+                            wx.OK | wx.ICON_EXCLAMATION)
+              return
+            else:
+              found_pos += pos
+          else:
+            return
+        else:
+          wx.MessageBox('String Not Found!', 'Not Found!',
+                        wx.OK | wx.ICON_EXCLAMATION)
+          return
+      sel_range = (found_pos, found_pos + len(search_string))
+      self.log_window.SetSelectionRange(sel_range)
+    else:
+      found_pos = 0
+    self.log_window.SetCaretPosition(found_pos - len(search_string))
+    if not self.log_window.IsPositionVisible(found_pos):
+      self.log_window.ShowPosition(found_pos)
+
 
 class ProcessingTab(wx.Panel):
   def __init__(self, parent):
@@ -1423,6 +1511,8 @@ class ProcWindow(wx.Frame):
     self.start_object_finder = True
     self.state = status
     self.start_object_finder = False
+
+    self.display_log()
     object_finder = thr.ObjectFinderThread(self,
                                            object_folder=self.init.obj_base,
                                            fix_paths=True,
@@ -1617,6 +1707,7 @@ class ProcWindow(wx.Frame):
         self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
         self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
         self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+        self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
       self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
 
       # Generate input file for PRIME

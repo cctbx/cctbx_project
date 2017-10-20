@@ -853,7 +853,7 @@ def get_atom_selections(
       scat_types = model.get_xray_structure().scatterers().extract_scattering_types()
       if not model.has_hd:
         raise Sorry('No hydrogens to select.')
-    for m in model.pdb_hierarchy().models():
+    for m in model.get_hierarchy().models():
       for chain in m.chains():
         for rg in chain.residue_groups():
           rg_i_seqs = []
@@ -1267,14 +1267,14 @@ def assert_model_is_consistent(model):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   compare_hierarchy(hier, scatterers, unit_cell)
 
 def assert_water_is_consistent(model):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   water_rgs = model.extract_water_residue_groups()
   for rg in water_rgs:
     if (rg.atom_groups_size() != 1):
@@ -1491,17 +1491,6 @@ def fmodel_simple(f_obs,
     bss_params = bss.master_params.extract()
   bss_params.bulk_solvent = bulk_solvent_correction
   bss_params.anisotropic_scaling = anisotropic_scaling
-  def get_fmodel(f_obs, xrs, flags, mp, tl, bssf, bssp, ro, om):
-    fmodel = fmodel_manager(
-      xray_structure = xrs.deep_copy_scatterers(),
-      f_obs          = f_obs.deep_copy(),
-      r_free_flags   = flags.deep_copy(),
-      target_name    = target_name,
-      mask_params    = mp,
-      twin_law       = tl)
-    if(bssf):
-      fmodel.update_all_scales(params = bssp, log = log, optimize_mask=om)
-    return fmodel
   if((twin_laws is None or twin_laws==[None]) and not skip_twin_detection):
     twin_laws = twin_analyses.get_twin_laws(miller_array=f_obs)
   optimize_mask=False
@@ -1509,16 +1498,27 @@ def fmodel_simple(f_obs,
   if(len(xray_structures) == 1):
     if(twin_laws is None): twin_laws = [None]
     if(twin_laws.count(None)==0): twin_laws.append(None)
-    fmodel = get_fmodel(f_obs=f_obs, xrs=xray_structures[0], flags=r_free_flags,
-      mp=mask_params, tl=None, bssf=bulk_solvent_and_scaling, bssp=bss_params,
-      ro = outliers_rejection,om=optimize_mask)
+    fmodel = fmodel_manager(
+      xray_structure = xray_structures[0].deep_copy_scatterers(),
+      f_obs          = f_obs.deep_copy(),
+      r_free_flags   = r_free_flags.deep_copy(),
+      target_name    = target_name,
+      mask_params    = mask_params,
+      twin_law       = None)
+    fmodel.update_all_scales(params = bss_params, log = log,
+        optimize_mask=optimize_mask, remove_outliers=outliers_rejection)
     r_work = fmodel.r_work()
     for twin_law in twin_laws:
       if(twin_law is not None):
-        fmodel_ = get_fmodel(f_obs=f_obs, xrs=xray_structures[0],
-          flags=r_free_flags, mp=mask_params, tl=twin_law,
-          bssf=bulk_solvent_and_scaling, bssp=bss_params, ro = outliers_rejection,
-          om=optimize_mask)
+        fmodel_ = fmodel_manager(
+          xray_structure = xray_structures[0].deep_copy_scatterers(),
+          f_obs          = f_obs.deep_copy(),
+          r_free_flags   = r_free_flags.deep_copy(),
+          target_name    = target_name,
+          mask_params    = mask_params,
+          twin_law       = twin_law)
+        fmodel.update_all_scales(params = bss_params, log = log,
+            optimize_mask=optimize_mask, remove_outliers=outliers_rejection)
         r_work_ = fmodel_.r_work()
         fl = abs(r_work-r_work_)*100 > twin_switch_tolerance and r_work_<r_work
         if(fl):
@@ -1575,8 +1575,6 @@ def fmodel_simple(f_obs,
     if(bulk_solvent_and_scaling):
       fmodel_result.update_all_scales(remove_outliers = outliers_rejection)
     fmodel = fmodel_result
-  if(bulk_solvent_and_scaling and not fmodel.twin): # "not fmodel.twin" for runtime only
-    fmodel.update_all_scales(remove_outliers = outliers_rejection)
   return fmodel
 
 def pdb_inp_from_multiple_files(pdb_files, log):
@@ -2472,35 +2470,27 @@ def sample_and_fix_rotamer(
   res.atoms().set_xyz(all_inf[-1][-1])
 
 def fix_rotamer_outliers(
-    pdb_hierarchy,
-    grm,
-    xrs,
+    model,
     map_data=None,
     radius=5,
-    mon_lib_srv=None,
-    rotamer_manager=None,
     backrub_range=10,
     non_outliers_to_check=None, # bool selection
-    asc=None,
     verbose=False,
     log=None):
   import boost.python
   boost.python.import_ext("scitbx_array_family_flex_ext")
-  if mon_lib_srv is None:
-    mon_lib_srv = mmtbx.monomer_library.server.server()
-  if rotamer_manager is None:
-    rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   if log is None:
     log = sys.stdout
+  rotamer_manager = model.get_rotamer_manager()
   get_class = iotbx.pdb.common_residue_names_get_class
+  pdb_hierarchy = model.get_hierarchy()
+  asc = model.get_atom_selection_cache()
+  xrs = model.get_xray_structure()
   assert pdb_hierarchy is not None
-  assert grm is not None
+  # assert grm is not None
   assert xrs is not None
-  if asc is None:
-    asc = pdb_hierarchy.atom_selection_cache()
   special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = xrs.crystal_symmetry())
-  n_atoms = pdb_hierarchy.atoms_size()
+      crystal_symmetry = model.crystal_symmetry())
 
   crystal_gridding = None
   if map_data is not None:
@@ -2509,8 +2499,8 @@ def fix_rotamer_outliers(
       space_group_info      = xrs.space_group_info(),
       pre_determined_n_real = map_data.accessor().all())
 
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
+  for m in pdb_hierarchy.models():
+    for chain in m.chains():
       for conf in chain.conformers():
         residues = conf.residues()
         for i_res, res in enumerate(residues):
@@ -2541,10 +2531,10 @@ def fix_rotamer_outliers(
                 pdb_hierarchy,
                 xrs,
                 map_data,
-                grm,
+                model.get_restraints_manager().geometry,
                 rotamer_manager,
                 crystal_gridding,
-                mon_lib_srv,
+                model.get_mon_lib_srv(),
                 special_position_settings,
                 radius,
                 backrub_range,
@@ -2799,7 +2789,7 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
       x1 = fmodel.xray_structure,
       x2 = model.get_xray_structure())
     model.reset_occupancies_for_hydrogens()
-  if(model is not None): pdb_hierarchy = model.pdb_hierarchy()
+  if(model is not None): pdb_hierarchy = model.get_hierarchy()
   import mmtbx.hydrogens
   rmh_sel = mmtbx.hydrogens.rotatable(pdb_hierarchy = pdb_hierarchy,
     mon_lib_srv=mon_lib_srv, restraints_manager=model.restraints_manager)
@@ -2913,7 +2903,7 @@ class shift_origin(object):
 
 class extract_box_around_model_and_map(object):
   def __init__(self,
-               xray_structure,
+               xray_structure, # safe to pass here, does not change
                map_data,
                box_cushion,
                selection=None,
@@ -2925,7 +2915,11 @@ class extract_box_around_model_and_map(object):
                mask_atoms=False,
                mask_atoms_atom_radius=3.0,
                value_outside_atoms=None,
-               keep_map_size=False):
+               keep_map_size=False,
+               restrict_map_size=False,
+               lower_bounds=None,
+               upper_bounds=None,
+                   ):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     soo = shift_origin(map_data=self.map_data,
@@ -2960,8 +2954,16 @@ class extract_box_around_model_and_map(object):
       frac_max = list(flex.double(frac_max)+cushion)
       frac_min = list(flex.double(frac_min)-cushion)
     na = self.map_data.all()
-    self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
-    self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
+    if lower_bounds and upper_bounds:
+      self.gridding_first=lower_bounds
+      self.gridding_last=upper_bounds
+    else:
+      self.gridding_first=[ifloor(f*n) for f,n in zip(frac_min,na)]
+      self.gridding_last =[iceil(f*n) for f,n in zip(frac_max,na)]
+      if restrict_map_size:
+        self.gridding_first=[max(0,g) for g in self.gridding_first]
+        self.gridding_last=[min(n,g) for n,g in zip(na,self.gridding_last)]
+
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
@@ -3018,6 +3020,12 @@ class extract_box_around_model_and_map(object):
         n_tot=mask.size()
         mean_in_box=one_d.min_max_mean().mean*n_tot/(n_tot-n_zero)
         self.map_box=self.map_box+(1-mask)*mean_in_box
+
+  def get_original_cs(self):
+    return self.xray_structure.crystal_symmetry()
+
+  def get_shifted_cs(self):
+    return self.xray_structure_box.crystal_symmetry()
 
   def shift_back(self, pdb_hierarchy):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()

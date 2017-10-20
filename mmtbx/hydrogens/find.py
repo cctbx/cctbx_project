@@ -274,7 +274,7 @@ def run(fmodel, model, log, params = None):
     log = log)
   waters_and_peaks = extract_hoh_peaks(
     peaks = peaks,
-    pdb_hierarchy = model.pdb_hierarchy(),
+    pdb_hierarchy = model.get_hierarchy(),
     pdb_atoms = model.pdb_atoms,
     xray_structure = model.get_xray_structure())
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
@@ -560,7 +560,7 @@ def assert_water_is_consistent(model):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   water_rgs = model.extract_water_residue_groups()
   for rg in water_rgs:
     if (rg.atom_groups_size() != 1):
@@ -591,7 +591,7 @@ def build_water_hydrogens_from_map(model, fmodel, params=None, log=None):
   xs = self.xray_structure
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   mmtbx.utils.assert_model_is_consistent(model)
   if log is None:
     log = model.log
@@ -753,7 +753,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   xs = model.get_xray_structure()
   unit_cell = xs.unit_cell()
   scatterers = xs.scatterers()
-  hier = model.pdb_hierarchy()
+  hier = model.get_hierarchy()
   mmtbx.utils.assert_model_is_consistent(model)
   #assert_water_is_consistent(model)
   model.reprocess_pdb_hierarchy_inefficient()
@@ -933,7 +933,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   assert_water_is_consistent(model)
   if False:
     model.idealize_h()
-    model.pdb_hierarchy(sync_with_xray_structure=True)
+    model.get_hierarchy(sync_with_xray_structure=True)
     mmtbx.utils.assert_model_is_consistent(model)
     assert_water_is_consistent(model)
   return model

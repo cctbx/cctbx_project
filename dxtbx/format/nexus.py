@@ -1436,6 +1436,10 @@ class ScanFactory(object):
 
     else:
 
+      # if this is not a sweep, then this is stills, in which case... should
+      # we have scans? and, even if we do, we have a small problem in that
+      # this returns a list of scans which even less works...
+
       self.model = []
       for i, image in enumerate(range(image_range[0], image_range[1]+1)):
         self.model.append(Scan(
@@ -1443,6 +1447,8 @@ class ScanFactory(object):
           oscillation,
           exposure_time[i:i+1],
           epochs[i:i+1]))
+
+      self.model = None
 
 
 class CrystalFactory(object):
@@ -1619,6 +1625,13 @@ class DataFactory(object):
     for key in sorted(list(obj.handle.iterkeys())):
       if key.startswith("_filename_"):
         continue
+
+      # datasets in this context mean ones which contain diffraction images
+      # so must have ndim > 1 - for example omega can also be nexus data set
+      # but with 1 dimension...
+      if obj.handle[key].ndim == 1:
+        continue
+
       try:
         datasets.append(obj.handle[key])
       except KeyError: # If we cannot follow links due to lack of a write permission

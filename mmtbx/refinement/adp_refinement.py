@@ -503,7 +503,7 @@ class refine_adp(object):
     #return minimized
 
   def run_lbfgs(self):
-    if(self.model.ncs_groups is None or
+    if(self.model.get_ncs_groups() is None or
        not self.all_params.ncs.constraints.apply_to_adp):
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
         max_iterations = self.individual_adp_params.iso.max_number_of_iterations)
@@ -526,7 +526,7 @@ class refine_adp(object):
       # update NCS groups
       import mmtbx.ncs.ncs_utils as nu
       nu.get_list_of_best_ncs_copy_map_correlation(
-        ncs_groups = self.model.ncs_groups,
+        ncs_groups = self.model.get_ncs_groups(),
         fmodel     = fmodel)
       assert "individual_adp" in self.all_params.refine.strategy
       minimized = minimization.run_constrained(

@@ -6,8 +6,11 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import format_cpu_times
 import iotbx.pdb
+import iotbx.phil
 from libtbx.test_utils import approx_equal
 import math
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+from mmtbx.refinement import geometry_minimization
 
 pdb_str = """
 CRYST1   15.360   12.804   11.094  90.00  90.00  90.00 P 1
@@ -47,25 +50,20 @@ def exercise(tolerance=0.01):
   for use_neutron_distances in [True, False]:
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv           = mon_lib_srv,
-      ener_lib              = ener_lib,
-      raw_records           = flex.std_string(pdb_str.splitlines()),
-#      use_neutron_distances = use_neutron_distances,
-      restraints_loading_flags = {"use_neutron_distances" : use_neutron_distances},
-      force_symmetry        = True)
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies = False, plain_pairs_radius = 5.0)
-    restraints_manager = mmtbx.restraints.manager(geometry = geometry,
-      normalization = True)
-    xray_structure = processed_pdb_file.xray_structure()
-    ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    inp = iotbx.pdb.input(lines=pdb_str.splitlines(), source_info=None)
+    params = iotbx.phil.parse(
+          input_string=grand_master_phil_str, process_includes=True).extract()
+    params.pdb_interpretation.use_neutron_distances = use_neutron_distances
+    model = mmtbx.model.manager(
+        model_input = inp,
+        pdb_interpretation_params = params,
+        build_grm = True)
+    ph = model.get_hierarchy()
     ph.write_pdb_file(file_name="input.pdb")
-    mmodel = mmtbx.model.manager(
-      restraints_manager = restraints_manager,
-      xray_structure     = xray_structure,
-      pdb_hierarchy      = ph)
-    mmodel.geometry_minimization(
+
+    m = geometry_minimization.run2(
+      restraints_manager = model.get_restraints_manager(),
+      pdb_hierarchy = ph,
       correct_special_position_tolerance=1.0,
       bond      = True,
       nonbonded = True,
@@ -73,7 +71,7 @@ def exercise(tolerance=0.01):
       dihedral  = True,
       chirality = True,
       planarity = True)
-    ph.adopt_xray_structure(mmodel.get_xray_structure())
+    model.set_sites_cart_from_hierarchy()
     suffix = "X"
     if(use_neutron_distances): suffix = "N"
     ph.write_pdb_file(file_name="output_%s.pdb"%suffix)

@@ -1,9 +1,8 @@
 from __future__ import division
 
 from mmtbx.utils import fix_rotamer_outliers
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx.rotamer.rotamer_eval import RotamerEval
+import iotbx.pdb
+import mmtbx.model
 
 pdb_str_1 = """\
 CRYST1   18.486   29.189   16.919  90.00  90.00  90.00 P 1
@@ -112,58 +111,40 @@ ATOM    174  CE  LYS A  39     -11.678  32.675 -24.183  1.00185.01           C
 ATOM    175  NZ  LYS A  39     -12.408  33.271 -25.337  1.00185.25           N
 """
 
-def get_necessary_inputs(pdb_str, mon_lib_srv, ener_lib):
-  ppf = mmtbx.monomer_library.pdb_interpretation.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = pdb_str.split("\n"),
-      force_symmetry = True)
-  grm = ppf.geometry_restraints_manager()
-  xrs = ppf.xray_structure()
-  pdb_h = ppf.all_chain_proxies.pdb_hierarchy
-  cs = xrs.crystal_symmetry()
-  return pdb_h, grm, xrs
+def get_necessary_inputs(pdb_str):
+  pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
+  return mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm= True)
 
 
-def exercise_1(mon_lib_srv, ener_lib, rotamer_manager):
+
+def exercise_1():
   """ 58 is outlier """
-  pdb_h, grm, xrs = get_necessary_inputs(pdb_str_1, mon_lib_srv, ener_lib)
+  model = get_necessary_inputs(pdb_str_1)
   # pdb_h.write_pdb_file("fix_rot_out_ex1_start.pdb")
   pdb_h = fix_rotamer_outliers(
-      pdb_hierarchy=pdb_h,
-      grm=grm,
-      xrs=xrs,
-      radius=5,
-      mon_lib_srv=mon_lib_srv,
-      rotamer_manager=rotamer_manager,
-      asc=None)
+      model=model,
+      radius=5)
   rotamers = []
   # pdb_h.write_pdb_file("fix_rot_out_ex1_end.pdb")
   for res in pdb_h.only_chain().only_conformer().residues():
-    rotamers.append(rotamer_manager.evaluate_residue(res))
+    rotamers.append(model.get_rotamer_manager().evaluate_residue(res))
   # print rotamers
   assert rotamers == ['m-80', 'p'], rotamers
 
-def exercise_2(mon_lib_srv, ener_lib, rotamer_manager):
-  pdb_h, grm, xrs = get_necessary_inputs(pdb_str_2, mon_lib_srv, ener_lib)
+def exercise_2():
+  model = get_necessary_inputs(pdb_str_2)
   pdb_h = fix_rotamer_outliers(
-      pdb_hierarchy=pdb_h,
-      grm=grm,
-      xrs=xrs,
-      radius=5,
-      mon_lib_srv=mon_lib_srv,
-      rotamer_manager=rotamer_manager,
-      asc=None)
+      model = model,
+      radius=5)
   rotamers = []
   for res in pdb_h.only_chain().only_conformer().residues():
-    rotamers.append(rotamer_manager.evaluate_residue(res))
+    rotamers.append(model.get_rotamer_manager().evaluate_residue(res))
   assert rotamers == ['mtt180', 'tttt', 'm-30', 'pt', 'p', 'mt-10', 'm-40',
       'EXCEPTION', 'tt', 'tttt'], rotamers
 
 if (__name__ == "__main__"):
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  rotamer_manager = RotamerEval()
-  exercise_1(mon_lib_srv, ener_lib, rotamer_manager)
-  exercise_2(mon_lib_srv, ener_lib, rotamer_manager)
+  exercise_1()
+  exercise_2()
   print "OK"

@@ -71,8 +71,7 @@ including TLS contribution if present.""")
     log                = out)
   make_sub_header("Analyzing model B-factors", out=out)
   if (params.adp_statistics.selection is not None) :
-    sel_cache = model.pdb_hierarchy().atom_selection_cache()
-    selection = sel_cache.selection(params.adp_statistics.selection)
+    selection = model.selection(params.adp_statistics.selection)
     n_sel = selection.count(True)
     if (n_sel == 0) :
       raise Sorry("No atoms in selection!")

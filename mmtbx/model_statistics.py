@@ -214,7 +214,7 @@ class adp(object):
     print >> out, pp+" type    |iso    aniso | min     max     mean   | min   max    mean   "+pad_r+"|"
     print >> out, pp+" - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - "+pad_r+"|"
     #
-    print >> out, pp+" all     : "+self._fmtl(self.n_iso_a,self.n_aniso_a,self.b_min_a,self.b_max_a,self.b_mean_a,self.a_min_a,self.a_max_a,self.a_mean_a,pad_r)
+    print >> out, pp+" all     : "+self._fmtl(self.n_iso_a, self.n_aniso_a, self.b_min_a,self.b_max_a,self.b_mean_a,self.a_min_a,self.a_max_a,self.a_mean_a,pad_r)
     print >> out, pp+" all(noH): "+self._fmtl(self.n_iso_a_noH,self.n_aniso_a_noH,self.b_min_a_noH,self.b_max_a_noH,self.b_mean_a_noH,self.a_min_a_noH,self.a_max_a_noH,self.a_mean_a_noH,pad_r)
     print >> out, pp+" Sol.    : "+self._fmtl(self.n_iso_s_noH,self.n_aniso_s_noH,self.b_min_s_noH,self.b_max_s_noH,self.b_mean_s_noH,self.a_min_s_noH,self.a_max_s_noH,self.a_mean_s_noH,pad_r)
     print >> out, pp+" Mac.    : "+self._fmtl(self.n_iso_m_noH,self.n_aniso_m_noH,self.b_min_m_noH,self.b_max_m_noH,self.b_mean_m_noH,self.a_min_m_noH,self.a_max_m_noH,self.a_mean_m_noH,pad_r)
@@ -295,7 +295,7 @@ class model(object):
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
     self.ncs_groups = model.extract_ncs_groups()
     self.ncs_manager = ncs_manager
-    self.pdb_hierarchy = model.pdb_hierarchy(sync_with_xray_structure=True)
+    self.pdb_hierarchy = model.get_hierarchy(sync_with_xray_structure=True)
     self.cdl_restraints = cdl_restraints
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):

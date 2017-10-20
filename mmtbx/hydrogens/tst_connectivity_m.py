@@ -96,10 +96,6 @@ def exercise():
       third_nb_dict = {ih: i_b1}
 
 # determine bonds from pdb_str
-  model = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure     = xray_structure,
-    pdb_hierarchy      = pdb_hierarchy)
   bond_ctrl = {}
   for i in model.xh_connectivity_table():
     bond_ctrl[i[1]]=[i[0],i[3]]

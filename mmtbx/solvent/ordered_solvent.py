@@ -434,7 +434,7 @@ class manager(object):
     print >> self.log, "Before RSCC filtering: ", \
       self.model.solvent_selection().count(True)
     assert self.fmodel.xray_structure is self.model.get_xray_structure()
-    assert len(list(self.model.pdb_hierarchy().atoms_with_labels())) == \
+    assert len(list(self.model.get_hierarchy().atoms_with_labels())) == \
       self.model.get_number_of_atoms()
     par = self.params.secondary_map_and_map_cc_filter
     selection = self.model.solvent_selection()

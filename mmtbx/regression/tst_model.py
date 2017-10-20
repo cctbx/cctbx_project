@@ -12,6 +12,7 @@ from mmtbx import utils
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
+from mmtbx.refinement import geometry_minimization
 
 pdb_str_00="""
 CRYST1  107.161  107.161   93.144  90.00  90.00 120.00 H 3           9
@@ -1196,10 +1197,16 @@ def exercise_convert_atom() :
       refine=["f_prime","f_double_prime"],
       selection_string="element MG",
       update_from_selection=True), ]
-  mol.geometry_minimization(nonbonded=True)
+  geometry_minimization.run2(
+      restraints_manager = mol.get_restraints_manager(),
+      pdb_hierarchy = mol.get_hierarchy(),
+      correct_special_position_tolerance = 1.,
+      nonbonded = True,
+      )
+  mol.set_sites_cart_from_hierarchy()
   # if the nonbonded type is set correctly, the nonbonded restraints should
   # not push the
-  for atom in mol.pdb_hierarchy(sync_with_xray_structure=True).atoms() :
+  for atom in mol.get_hierarchy(sync_with_xray_structure=True).atoms() :
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))

@@ -30,7 +30,7 @@ class FormatTIFFRayonix(FormatTIFF):
     width, height, depth, order, bytes = FormatTIFF.get_tiff_header(
         image_file)
 
-    assert(len(bytes) == 4096)
+    if len(bytes) != 4096: return False
 
     if order == FormatTIFF.LITTLE_ENDIAN:
       endian = '<'

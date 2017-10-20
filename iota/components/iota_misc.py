@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 09/07/2017
+Last Changed: 10/10/2017
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -37,6 +37,8 @@ def noneset(value):
   if value == '':
     return 'None'
   elif 'none' in str(value).lower():
+    return "None"
+  elif value is None:
     return "None"
   else:
     return value

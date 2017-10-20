@@ -154,6 +154,19 @@ master_phil = iotbx.phil.parse("""
         .help = You can specify ncs copies and seq file to define solvent \
             content
         .short_caption = NCS copies
+
+     wang_radius = None
+       .type = float
+       .help = Wang radius for solvent identification. \
+           Default is 1.5* resolution
+       .short_caption = Wang radius
+
+     buffer_radius = None
+       .type = float
+       .help = Buffer radius for mask smoothing. \
+           Default is resolution
+       .short_caption = Buffer radius
+
   }
 
   map_modification
@@ -185,7 +198,7 @@ master_phil = iotbx.phil.parse("""
        .short_caption = resolution_dependent b
 
        .help = If set, apply resolution_dependent_b (b0 b1 b2). \
-             Log10(amplitudes) will start at 1, change to b0 at half \ 
+             Log10(amplitudes) will start at 1, change to b0 at half \
              of resolution specified, changing linearly, \
              change to b1/2 at resolution specified, \
              and change to b1/2+b2 at d_min_ratio*resolution
@@ -255,14 +268,14 @@ master_phil = iotbx.phil.parse("""
      density_select_in_auto_sharpen = True
        .type = bool
        .short_caption = density_select to choose box
-       .help = Choose representative box of density for initial \ 
+       .help = Choose representative box of density for initial \
                 auto-sharpening with density_select method \
                 (choose region where there is high density).  Normally use\
                 False for X-ray data and True for cryo-EM.
 
      allow_box_if_b_iso_set = False
        .type = bool
-       .short_caption = Allow box if b_iso set 
+       .short_caption = Allow box if b_iso set
        .help = Allow box_in_auto_sharpen (if set to True) even if \
                b_iso is set. Default is to set box_n_auto_sharpen=False \
                if b_iso is set.
@@ -270,7 +283,7 @@ master_phil = iotbx.phil.parse("""
     soft_mask = True
       .type = bool
       .help = Use soft mask (smooth change from inside to outside with radius\
-             based on resolution of map). 
+             based on resolution of map).
       .short_caption = Soft mask
 
      use_weak_density = False
@@ -298,10 +311,14 @@ master_phil = iotbx.phil.parse("""
 
      local_aniso_in_local_sharpening = None
        .type = bool
-       .short_caption = Local anisotropy 
+       .short_caption = Local anisotropy
        .help = Use local anisotropy in local sharpening.  \
                Default is True unless NCS is present.
 
+     overall_before_local = True
+       .type = bool
+       .short_caption = Overall before local
+       .help = Apply overall scaling before local scaling
 
      select_sharpened_map = None
        .type = int
@@ -329,10 +346,21 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Center of box
        .help = You can specify the center of the box (A units)
 
-     box_size = 40 40 40
+     box_size = 30 30 30
        .type = ints
        .short_caption = Size of box
        .help = You can specify the size of the box (grid units)
+
+     target_n_overlap = 10
+       .type = int
+       .short_caption = Target overlap of boxes
+       .help = You can specify the targeted overlap of boxes in local \
+           sharpening
+
+     restrict_map_size = True
+       .type = bool
+       .short_caption = Restrict box map size
+       .help = Restrict box map to be inside full map (required for cryo-EM data)
 
      remove_aniso = True
        .type = bool
@@ -350,10 +378,32 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Max size of box for density_select
        .help = If box is greater than this fraction of entire map, use \
                 entire map for density_select. Default is 0.95
+    cc_cut = 0.2
+       .type = float
+       .short_caption = Min reliable CC in half-maps
+       .help = Estimate of minimum highly reliable CC in half-map FSC. Used\
+               to decide at what CC value to smooth the remaining CC values.
+
+     max_cc_for_rescale = 0.2
+       .type = float
+       .short_caption = Max CC for rescaleMin reliable CC in half-maps
+       .help = Used along with cc_cut and scale_using_last to correct for \
+               small errors in FSC estimation at high resolution.  If the \
+               value of FSC near the high-resolution limit is above \
+               max_cc_for_rescale, assume these values are correct and do not \
+               correct them.
+
+     scale_using_last = 3
+       .type = int
+       .short_caption = Last N bins in FSC assumed to be about zero
+       .help = If set, assume that the last scale_using_last bins in the FSC \
+          for half-map or model sharpening are about zero (corrects for  \
+          errors int the half-map process).
+
 
      mask_atoms = True
        .type = bool
-       .short_caption = Mask atoms 
+       .short_caption = Mask atoms
        .help = Mask atoms when using model sharpening
 
      mask_atoms_atom_radius = 3
@@ -393,8 +443,8 @@ master_phil = iotbx.phil.parse("""
                 b_iso
 
      adjust_region_weight = True
-       .type = bool 
-       .short_caption = Adjust region weight 
+       .type = bool
+       .short_caption = Adjust region weight
        .help = Adjust region_weight to make overall change in surface area \
                equal to overall change in normalized regions over the range \
                of search_b_min to search_b_max using b_iso_to_d_cut.
@@ -422,7 +472,7 @@ master_phil = iotbx.phil.parse("""
 
      target_b_iso_ratio = 5.9
        .type = float
-       .short_caption = Target b_iso ratio 
+       .short_caption = Target b_iso ratio
        .help = Target b_iso ratio : b_iso is estimated as \
                target_b_iso_ratio * resolution**2
 
@@ -514,8 +564,8 @@ master_phil = iotbx.phil.parse("""
         .type = float
         .help = k_sol value for model map calculation. IGNORED (Not applied)
         .short_caption = k_sol IGNORED
-        .style = hidden 
-  
+        .style = hidden
+
       b_sol = 50
         .type = float
         .help = b_sol value for model map calculation. IGNORED (Not applied)
@@ -578,7 +628,7 @@ def get_params(args,out=sys.stdout):
 
 def set_sharpen_params(params,out=sys.stdout):
 
-  
+
   if params.map_modification.resolution_dependent_b==[0,0,0]:
     params.map_modification.resolution_dependent_b=[0,0,1.e-10]
     # just so that we know it was set
@@ -592,7 +642,7 @@ def set_sharpen_params(params,out=sys.stdout):
       params.map_modification.auto_sharpen_methods=['b_iso_to_d_cut']
     else:
       params.map_modification.auto_sharpen_methods=['b_iso']
-   
+
   if (params.map_modification.b_iso and \
        params.map_modification.auto_sharpen_methods in [
        ['b_iso_to_d_cut'],['b_iso']])   or  \
@@ -614,13 +664,13 @@ def set_sharpen_params(params,out=sys.stdout):
 
   if params.map_modification.optimize_k_sharpen and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
-       not 'b_iso' in params.map_modification.auto_sharpen_methods: 
+       not 'b_iso' in params.map_modification.auto_sharpen_methods:
      print >>out,"Set optimize_k_sharpen=False as neither b_iso_to_d_cut nor"+\
          " b_iso are used"
      params.map_modification.optimize_k_sharpen=False
 
   return params
-   
+
 
 def get_map_coeffs_from_file(
       map_coeffs_file=None,
@@ -652,6 +702,7 @@ def get_map_and_model(params=None,
     pdb_inp=None,
     ncs_obj=None,
     half_map_data_list=None,
+    map_coords_inside_cell=True,
     out=sys.stdout):
 
   acc=None # accessor used to shift map back to original location if desired
@@ -728,10 +779,9 @@ def get_map_and_model(params=None,
        crystal_symmetry=crystal_symmetry,
        pdb_hierarchy=pdb_inp.construct_hierarchy(),
        out=out).as_pdb_input()
-
-    # put inside (0,1)
-    pdb_inp=map_inside_cell(pdb_inp,crystal_symmetry=crystal_symmetry)
-
+    if map_coords_inside_cell:
+      # put inside (0,1)
+      pdb_inp=map_inside_cell(pdb_inp,crystal_symmetry=crystal_symmetry)
 
   if params.input_files.ncs_file and not ncs_obj: # NCS
     from cctbx.maptbx.segment_and_split_map import get_ncs
@@ -765,13 +815,14 @@ def run(args=None,params=None,
     ncs_copies=params.crystal_info.ncs_copies
 
   # get map_data and crystal_symmetry
- 
+
   pdb_inp,map_data,half_map_data_list,ncs_obj,\
         crystal_symmetry,acc=get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
      ncs_obj=ncs_obj,
+     map_coords_inside_cell=False,
      crystal_symmetry=crystal_symmetry,
      params=params,out=out)
 
@@ -802,12 +853,16 @@ def run(args=None,params=None,
         smoothing_radius=params.map_modification.smoothing_radius,
         local_aniso_in_local_sharpening=\
            params.map_modification.local_aniso_in_local_sharpening,
+        overall_before_local=\
+           params.map_modification.overall_before_local,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen,
         use_weak_density=params.map_modification.use_weak_density,
         discard_if_worse=params.map_modification.discard_if_worse,
         box_center=params.map_modification.box_center,
         box_size=params.map_modification.box_size,
+        target_n_overlap=params.map_modification.target_n_overlap,
+        restrict_map_size=params.map_modification.restrict_map_size,
         remove_aniso=params.map_modification.remove_aniso,
         auto_sharpen_methods=params.map_modification.auto_sharpen_methods,
         residual_target=params.map_modification.residual_target,
@@ -822,6 +877,9 @@ def run(args=None,params=None,
         input_d_cut=params.map_modification.input_d_cut,
         b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
+        cc_cut=params.map_modification.cc_cut,
+        max_cc_for_rescale=params.map_modification.max_cc_for_rescale,
+        scale_using_last=params.map_modification.scale_using_last,
         density_select_max_box_fraction=params.map_modification.density_select_max_box_fraction,
         mask_atoms=params.map_modification.mask_atoms,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
@@ -841,6 +899,8 @@ def run(args=None,params=None,
             params.map_modification.region_weight_buffer,
         target_b_iso_ratio=params.map_modification.target_b_iso_ratio,
         signal_min=params.map_modification.signal_min,
+        buffer_radius=params.crystal_info.buffer_radius,
+        wang_radius=params.crystal_info.wang_radius,
         target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,

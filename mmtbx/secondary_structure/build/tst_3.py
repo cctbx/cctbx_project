@@ -2,6 +2,7 @@ from __future__ import division
 from mmtbx.secondary_structure import build as ssb
 import iotbx.pdb
 from libtbx.utils import Sorry
+import mmtbx.model
 
 def exercise_presence_of_h():
   tst_pdb_1 = """\
@@ -29,11 +30,13 @@ ATOM    885  H   TRP A 101    -126.863-142.797-102.745  1.00 42.04           H
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_pdb_1)
   ann = pdb_inp.extract_secondary_structure()
-  h = pdb_inp.construct_hierarchy()
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm = True)
+  model.set_ss_annotation(ann)
   rm = ssb.substitute_ss(
-      real_h=h,
-      xray_structure=pdb_inp.xray_structure_simple(),
-      ss_annotation=ann)
+      model,
+      )
 
 def exercise_ca_absent():
   # should raise Sorry
@@ -62,12 +65,13 @@ ATOM    885  H   TRP A 101    -126.863-142.797-102.745  1.00 42.04           H
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_pdb_1)
   ann = pdb_inp.extract_secondary_structure()
-  h = pdb_inp.construct_hierarchy()
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm = True)
+  model.set_ss_annotation(ann)
   try:
     rm = ssb.substitute_ss(
-        real_h=h,
-        xray_structure=pdb_inp.xray_structure_simple(),
-        ss_annotation=ann)
+        model)
   except Sorry as e:
     assert e.args[0].startswith("C, CA or N")
   except Exception:
@@ -95,11 +99,12 @@ ATOM    881  CE3 TRP A 101    -125.446-147.437-100.384  1.00 42.04           C
 """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=tst_pdb_2)
   ann = pdb_inp.extract_secondary_structure()
-  h = pdb_inp.construct_hierarchy()
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm = True)
+  model.set_ss_annotation(ann)
   rm = ssb.substitute_ss(
-      real_h=h,
-      xray_structure=pdb_inp.xray_structure_simple(),
-      ss_annotation=ann)
+      model)
 
 
 def exercise():

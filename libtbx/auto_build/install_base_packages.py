@@ -254,6 +254,8 @@ class installer (object) :
       # whenever Python is built
       packages += ['python', 'openssl', 'certifi']
 
+    # Python 2-3 compatibility packages
+    packages += ['python_compatibility']
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin', 'jinja2']
@@ -653,6 +655,7 @@ Installation of Python packages may fail.
     order = [
       'openssl',
       'python',
+      'python_compatibility',
       'certifi',
       'numpy',
       'cython',
@@ -823,6 +826,14 @@ _replace_sysconfig_paths(build_time_vars)
 
     self.set_python(op.abspath(python_exe))
     log.close()
+
+  def build_python_compatibility(self):
+    self.build_python_module_pip(
+      'six', package_version=SIX_VERSION,
+      confirm_import_module='six')
+    self.build_python_module_pip(
+      'future', package_version=FUTURE_VERSION,
+      confirm_import_module='future')
 
   def build_pythonextra(self):
     '''install all python packages found in base_tmp/python_extra/'''

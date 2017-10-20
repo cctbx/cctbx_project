@@ -448,8 +448,13 @@ def run(args, validated = False, out=sys.stdout):
   selection_bool = inputs.pdb_hierarchy.atom_selection_cache().selection(
     string = params.solvent_exclusion_mask_selection)
   n_selected = selection_bool.count(True)
+  n_selected_all = inputs.pdb_hierarchy.atom_selection_cache().selection(
+    string = 'all').count(True)
   if(n_selected == 0):
     raise Sorry("No atoms where selected. Check selection syntax again.")
+  if (n_selected/n_selected_all > 0.5):
+    raise Sorry("""More than half of total number of atoms selected. Omit
+      selection should be smaller, such as one ligand or a few residues.""")
   print >> log, "Number of atoms selected:", n_selected
   pdb_hierarchy_selected = inputs.pdb_hierarchy.select(selection_bool)
   ligand_str = pdb_hierarchy_selected.as_pdb_string()

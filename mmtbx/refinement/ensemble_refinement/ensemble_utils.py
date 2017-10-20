@@ -18,7 +18,7 @@ class manager(object):
                              model = None):
     if model == None:
       model = self.ensemble_obj.model
-    pdb_hierarchy = model.pdb_hierarchy
+    pdb_hierarchy = model.get_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
     if selection_bool_array == None:
       selection_bool_array = pdb_hierarchy.atom_selection_cache().selection(selection_string)

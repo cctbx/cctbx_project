@@ -115,9 +115,16 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
         '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[:2])
     pixel_size = map(float, self._header_dictionary[
         '%sSPATIAL_DISTORTION_INFO' % detector_name].split()[2:])
+    reindex = map(float, self._header_dictionary[
+        '%sSPATIAL_DISTORTION_VECTORS' % detector_name].split())
     image_size = map(int, self._header_dictionary[
         '%sDETECTOR_DIMENSIONS' % detector_name].split())
 
+    # apply SPATIAL_DISTORTION_VECTORS
+    _fast = reindex[0] * detector_fast + reindex[1] * detector_slow
+    _slow = reindex[2] * detector_fast + reindex[3] * detector_slow
+
+    detector_fast, detector_slow = _fast, _slow
     detector_origin = - (beam_pixels[0] * pixel_size[0] * detector_fast + \
                          beam_pixels[1] * pixel_size[1] * detector_slow)
 
@@ -135,15 +142,17 @@ class FormatSMVRigakuSaturn(FormatSMVRigaku):
 
     for j, unit in enumerate(gonio_units):
       axis = matrix.col(gonio_axes[3 * j:3 * (j + 1)])
+      value = gonio_values[j]
+
       if unit == 'deg':
         rotations.append(axis.axis_and_angle_as_r3_rotation_matrix(
-            gonio_values[j], deg = True))
+          value, deg = True))
         translations.append(matrix.col((0.0, 0.0, 0.0)))
       elif unit == 'mm':
         rotations.append(matrix.sqr((1.0, 0.0, 0.0,
                                      0.0, 1.0, 0.0,
                                      0.0, 0.0, 1.0)))
-        translations.append(gonio_values[j] * axis)
+        translations.append(value * axis)
       else:
         raise RuntimeError, 'unknown axis unit %s' % unit
 

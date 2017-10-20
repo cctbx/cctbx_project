@@ -3,13 +3,14 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 08/01/2017
+Last Changed: 10/13/2017
 Description : IOTA GUI Dialogs
 '''
 
 import os
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
+from wx.lib.buttons import GenToggleButton
 from wxtbx import bitmaps
 
 from iotbx import phil as ip
@@ -73,6 +74,113 @@ class BaseDialog(wx.Dialog):
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.NORMAL)
     elif content_style == 'italic_bold':
       self.cfont = wx.Font(norm_font_size, wx.DEFAULT, wx.ITALIC, wx.BOLD)
+
+class BaseBackendDialog(BaseDialog):
+  def __init__(self, parent, phil,
+               backend_name = 'BACKEND',
+               target=None,
+               content_style='normal',
+               label_style='bold',
+               opt_size=(500, 500),
+               phil_size=(500, 500),
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent,
+                        content_style=content_style,
+                        label_style=label_style,
+                        *args, **kwargs)
+
+    self.parent = parent
+    self.target_phil = target
+    self.backend = backend_name
+    self.params = phil.extract()
+    self.opt_size = opt_size
+    self.phil_size = phil_size
+    self.sash_position = None
+
+    self.splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE |
+                                                  wx.SP_3DSASH |
+                                                  wx.SP_NOBORDER)
+
+    # Create options panel (all objects should be called as self.options.object)
+    self.options = ScrolledPanel(self.splitter, size=self.opt_size)
+    self.options_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.options.SetSizer(self.options_sizer)
+
+    # Create PHIL panel
+    phil_label = "{} Target Settings".format(backend_name)
+    self.phil_panel = wx.Panel(self.splitter, size=self.opt_size)
+    phil_box = wx.StaticBox(self.phil_panel, label=phil_label)
+    self.phil_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
+    self.phil_panel.SetSizer(self.phil_sizer)
+
+    # Dialog control
+    self.dlg_ctr = ct.DialogButtonsCtrl(self, preset='PROC_DIALOG')
+
+    # Splitter button
+    self.btn_hide_script = GenToggleButton(self, label='Show Script >>>')
+    self.show_hide_script()
+    self.btn_hide_script.SetValue(False)
+
+    self.main_sizer.Add(self.btn_hide_script, flag=wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+    self.main_sizer.Add(self.splitter, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.dlg_ctr,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.RIGHT,
+                        border=10)
+
+  def show_hide_script(self, initialized=False):
+    if self.btn_hide_script.GetValue():
+      if initialized:
+        h = self.GetSize()[1]
+        w = self.GetSize()[0] + self.phil_size[0]
+        self.SetSize((w, h))
+      self.splitter.SplitVertically(self.options, self.phil_panel)
+      self.splitter.SetSashPosition(self.sash_position)
+      self.phil_panel.SetSize(self.phil_size)
+      self.options.SetSize(self.opt_size)
+      self.btn_hide_script.SetLabel('<<< Hide Script')
+    else:
+      h = self.GetSize()[1]
+      w = self.GetSize()[0] - self.phil_size[0]
+      self.SetSize((w, h))
+      self.splitter.Unsplit()
+      self.phil_panel.SetSize(self.phil_size)
+      self.options.SetSize(self.opt_size)
+      self.btn_hide_script.SetLabel('Show Script >>>')
+    self.splitter.SizeWindows()
+
+  def get_target_file(self):
+    dlg = wx.FileDialog(
+      self, message="Select CCTBX.XFEL target file",
+      defaultDir=os.curdir,
+      defaultFile="*.phil",
+      wildcard="*",
+      style=wx.OPEN | wx.CHANGE_DIR
+    )
+    if dlg.ShowModal() == wx.ID_OK:
+      filepath = dlg.GetPaths()[0]
+
+      with open(filepath, 'r') as phil_file:
+        phil_content = phil_file.read()
+      return phil_content
+    else:
+      return None
+
+  def write_default_phil(self):
+    if str.lower(self.backend) in ('cctbx', 'cctbx.xfel', 'labelit'):
+      method = 'cctbx'
+    elif str.lower(self.backend) == 'dials':
+      method = 'dials'
+    else:
+      method = 'cctbx'
+    from iota.components.iota_input import write_defaults
+    default_phil, _ = write_defaults(current_path=None,
+                                     txt_out=None,
+                                     method=method,
+                                     write_target_file=False,
+                                     write_param_file=False)
+    self.target_phil = '\n'.join(default_phil)
+
 
 class IOTAPreferences(BaseDialog):
   ''' Class for dialog that houses IOTA interface preferences, e.g.:
@@ -667,46 +775,80 @@ class ImportWindow(BaseDialog):
     e.Skip()
 
 
-class CCTBXOptions(BaseDialog):
+class CCTBXOptions(BaseBackendDialog):
   # CCTBX.XFEL options
 
   def __init__(self, parent,
                phil, target,
-               label_style='bold',
-               content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        size=(600, 500),
-                        *args, **kwargs)
+    BaseBackendDialog.__init__(self, parent,
+                               backend_name='LABELIT',
+                               target=target,
+                               phil=phil,
+                               opt_size=(500, 500),
+                               phil_size=(500, 500),
+                               *args, **kwargs)
 
-    self.target_phil = target
     self.params = phil.extract()
     self.proc_phil = None
 
-    # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self, size=(-1, 300))
-    options_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.options.SetSizer(options_sizer)
-
-    phil_box = wx.StaticBox(self, label='LABELIT Target Settings')
-    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
+    self.splitter.SplitVertically(self.options, self.phil_panel)
 
     # Target file input
-    self.phil = ct.PHILBox(self,
-                             btn_import=True,
-                             btn_import_label='Import PHIL',
-                             btn_export=False,
-                             btn_default=True,
-                             btn_default_label='Default PHIL',
-                             ctr_size=(-1, 300),
-                             ctr_value='')
-    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.phil = ct.PHILBox(self.phil_panel,
+                           btn_import=True,
+                           btn_import_label='Import PHIL',
+                           btn_export=False,
+                           btn_default=True,
+                           btn_default_label='Default PHIL',
+                           btn_pos='bottom',
+                           ctr_size=(-1, 300),
+                           ctr_value='')
+    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
     # Grid search options
     # Type selection
+    self.xtal_options = wx.Panel(self.options)
+    xtal_box = wx.StaticBox(self.xtal_options, label='Processing Options')
+    xtal_box_sizer = wx.StaticBoxSizer(xtal_box, wx.VERTICAL)
+    self.xtal_options.SetSizer(xtal_box_sizer)
+
+    self.res_limits = ct.OptionCtrl(self.xtal_options,
+                                    label='Resolution Limits: ',
+                                    label_size=(120, -1),
+                                    items=[('lowres', '50.0'),
+                                           ('hires', '1.5')],
+                                    sub_labels=['low', 'high'],
+                                    sub_label_justify=wx.ALIGN_RIGHT,
+                                    ctrl_size=(100, -1))
+    xtal_box_sizer.Add(self.res_limits, flag=wx.ALL, border=10)
+
+    self.target_uc = ct.OptionCtrl(self.xtal_options,
+                                   label='Target Unit Cell: ',
+                                   label_size=(120, -1),
+                                   items = [('cell', '')])
+    xtal_box_sizer.Add(self.target_uc, flag=wx.ALL, border=10)
+
+    lattice_types = ["None", "triclinic", "monoclinic", "orthorhombic",
+                     "tetragonal", "hexagonal", "rhombohedral",  "cubic"]
+    self.target_lattice = ct.ChoiceCtrl(self.xtal_options,
+                                        label='Target Lattice Type:',
+                                        label_size=(120, -1),
+                                        choices=lattice_types,
+                                        ctrl_size=(150, -1))
+    xtal_box_sizer.Add(self.target_lattice, flag=wx.ALL, border=10)
+
+    centering_types = ["None", "P - Primitive", "C - Base centered",
+                       "I - Body centered", "R - Rhombohedral",
+                       "F- Face centered"]
+    self.target_centering = ct.ChoiceCtrl(self.xtal_options,
+                                          label='Target Centering Type:',
+                                          label_size=(120, -1),
+                                          choices=centering_types,
+                                          ctrl_size=(150, -1))
+    xtal_box_sizer.Add(self.target_centering, flag=wx.ALL, border=10)
+
     self.gs_options = wx.Panel(self.options)
     gs_box = wx.StaticBox(self.gs_options, label='Grid Search Options')
     gs_box_sizer = wx.StaticBoxSizer(gs_box, wx.VERTICAL)
@@ -820,60 +962,76 @@ class CCTBXOptions(BaseDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
+    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
+
     self.filter_options.SetSizer(filter_box_sizer)
 
-    # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
-
     # Add everything to sizer
-    self.main_sizer.Add(phil_box_sizer, 1, flag=wx.ALL | wx.EXPAND, border=10)
-    options_sizer.Add(self.gs_options, flag=wx.ALL | wx.EXPAND, border=10)
-    options_sizer.Add(self.sel_options, flag=wx.ALL | wx.EXPAND, border=10)
-    options_sizer.Add(self.filter_options, flag=wx.ALL | wx.EXPAND,
-                      border=10)
+    self.options_sizer.Add(self.xtal_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.gs_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.sel_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
+    self.options_sizer.Add(self.filter_options, flag=wx.BOTTOM | wx.EXPAND,
+                           border=10)
 
-    self.main_sizer.Add(self.options, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
-                   border=10)
+    self.show_hide_script()
+    self.read_param_phil()
+    self.show_hide_advanced()
+
+    self.Layout()
+    self.options.SetupScrolling()
 
     # Button bindings
     self.Bind(wx.EVT_BUTTON, self.onImportPHIL, self.phil.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onDefaultPHIL, self.phil.btn_default)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_CHOICE, self.onGSChoice, self.gs_type.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onLatChoice, self.target_lattice.ctr)
+    self.Bind(wx.EVT_CHOICE, self.onCentChoice, self.target_centering.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onSelCheck, self.select_only)
+    self.Bind(wx.EVT_BUTTON, self.onHideScript, self.btn_hide_script)
+    self.Bind(wx.EVT_CHOICE, self.onAdvanced, self.dlg_ctr.choice)
 
-    self.Layout()
+  def onAdvanced(self, e):
+    mode = self.dlg_ctr.choice.GetSelection()
+    if mode == 0:
+      self.show_hide_advanced(show=False)
+    else:
+      self.show_hide_advanced(show=True)
+
+  def show_hide_advanced(self, show=False):
+    if show:
+      self.sel_options.Show()
+      self.signal_search.Show()
+      self.filt_ref.Show()
+      self.filt_res.Show()
+      self.f_spacer.Show(False)
+    else:
+      self.sel_options.Hide()
+      self.signal_search.Hide()
+      self.filt_ref.Hide()
+      self.filt_res.Hide()
+      self.f_spacer.Show(True)
+
+    self.options.Layout()
     self.options.SetupScrolling()
 
-    self.read_param_phil()
+  def onHideScript(self, e):
+    self.opt_size = self.options.GetSize()
+    self.phil_size = self.phil_panel.GetSize()
+    self.sash_position = self.opt_size[0]
+    self.show_hide_script(initialized=True)
 
   def onImportPHIL(self, e):
-    dlg = wx.FileDialog(
-      self, message="Select CCTBX.XFEL target file",
-      defaultDir=os.curdir,
-      defaultFile="*.phil",
-      wildcard="*",
-      style=wx.OPEN | wx.CHANGE_DIR
-    )
-    if dlg.ShowModal() == wx.ID_OK:
-      filepath = dlg.GetPaths()[0]
-
-      with open(filepath, 'r') as phil_file:
-        phil_content = phil_file.read()
+    phil_content = self.get_target_file()
+    if phil_content is not None:
       self.phil.ctr.SetValue(phil_content)
 
   def onDefaultPHIL(self, e):
     self.write_default_phil()
-
-  def write_default_phil(self):
-    from iota.components.iota_input import write_defaults
-    default_phil, _ = write_defaults(current_path=None,
-                                     txt_out=None,
-                                     method='cctbx',
-                                     write_target_file=False,
-                                     write_param_file=False)
-    self.phil.ctr.SetValue('\n'.join(default_phil))
+    self.phil.ctr.SetValue(self.target_phil)
 
   def onSelCheck(self, e):
     self.img_objects_path.Enable(self.select_only.GetValue())
@@ -881,8 +1039,23 @@ class CCTBXOptions(BaseDialog):
   def onGSChoice(self, e):
     self.set_grid_search(self.gs_type.ctr.GetSelection())
 
-  def set_grid_search(self, idx=1):
+  def onLatChoice(self, e):
+    lat_choice = self.target_lattice.ctr.GetSelection()
+    if lat_choice == 0:
+      self.target_centering.ctr.SetSelection(0)
+    else:
+      if self.target_centering.ctr.GetSelection() == 0:
+        self.target_centering.ctr.SetSelection(1)
 
+  def onCentChoice(self, e):
+    cent_choice = self.target_centering.ctr.GetSelection()
+    if cent_choice == 0:
+      self.target_lattice.ctr.SetSelection(0)
+    else:
+      if self.target_lattice.ctr.GetSelection() == 0:
+        self.target_lattice.ctr.SetSelection(1)
+
+  def set_grid_search(self, idx=1):
     self.gs_type.ctr.SetSelection(idx)
 
     if idx == 0:
@@ -923,10 +1096,46 @@ class CCTBXOptions(BaseDialog):
     ''' Reads parameters in the IOTA param PHIL and populates option controls '''
 
     # LABELIT target file settings
-    if self.target_phil is not None:
-      self.phil.ctr.SetValue(self.target_phil)
-    else:
-      self.phil.ctr.SetValue('')
+    if self.target_phil is None:
+      self.write_default_phil()
+    self.phil.ctr.SetValue(self.target_phil)
+
+    # Resolution limits
+    # "Try/except" for backwards compatibility
+    try:
+      lowres = self.params.cctbx.resolution_limits.low
+      hires = self.params.cctbx.resolution_limits.high
+      self.res_limits.lowres.SetValue(str(lowres))
+      self.res_limits.hires.SetValue(str(hires))
+    except AttributeError:
+      pass
+
+    # Target options
+    # "Try/except" for backwards compatibility
+    try:
+      t_uc = self.params.cctbx.target_unit_cell
+      t_lat = self.params.cctbx.target_lattice_type
+      l_idx = self.target_lattice.ctr.FindString(str(t_lat))
+      t_ctype = self.params.cctbx.target_centering_type
+      if t_ctype == 'P':
+        c_idx = 1
+      elif t_ctype == 'C':
+        c_idx = 2
+      elif t_ctype == 'I':
+        c_idx = 3
+      elif t_ctype == 'R':
+        c_idx = 4
+      elif t_ctype == 'F':
+        c_idx = 5
+      else:
+        c_idx = 0
+      if t_uc is not None:
+        uc_str = [str(i) for i in t_uc.parameters()]
+        self.target_uc.cell.SetValue(' '.join(uc_str))
+      self.target_lattice.ctr.SetSelection(l_idx)
+      self.target_centering.ctr.SetSelection(c_idx)
+    except AttributeError:
+      pass
 
     # Grid search options
     idx = self.gs_type.ctr.FindString(self.params.cctbx.grid_search.type)
@@ -978,6 +1187,7 @@ class CCTBXOptions(BaseDialog):
   def onOK(self, e):
     ''' Output PHIL settings & save target file '''
 
+    # Read cctbx.xfel PHIL string
     if self.phil.ctr.GetValue() == '':
       trg_warning = wx.MessageDialog(None,
                                      message='No target parameters specified! Generate defaults?',
@@ -990,8 +1200,44 @@ class CCTBXOptions(BaseDialog):
     else:
       self.target_phil = self.phil.ctr.GetValue()
 
+    # Resolution limits
+    # Resolution limits
+    lowres = noneset(self.res_limits.lowres.GetValue())
+    hires = noneset(self.res_limits.hires.GetValue())
+
+    # Target crystal parameters
+    t_uc = self.target_uc.cell.GetValue()
+    t_lat = self.target_lattice.ctr.GetString(
+      self.target_lattice.ctr.GetSelection())
+    t_ctype = self.target_centering.ctr.GetSelection()
+    if noneset(t_uc) != "None":
+      target_uc = str(t_uc)
+    else:
+      target_uc = None
+
+    if noneset(t_lat) == "None":
+      target_lattice = None
+    else:
+      target_lattice = str(t_lat)
+
+    if t_ctype == 1:
+      target_centering = 'P'
+    elif t_ctype == 2:
+      target_centering = 'C'
+    elif t_ctype == 3:
+      target_centering = 'I'
+    elif t_ctype == 4:
+      target_centering = 'R'
+    elif t_ctype == 5:
+      target_centering = 'F'
+    else:
+      target_centering = None
+
+
+    # Grid search path (for select-only option)
     grid_search_path = noneset(self.img_objects_path.ctr.GetValue())
 
+    # Filter options
     filter_on = bool(self.filt_lattice.toggle.GetValue() +
                      self.filt_uc.toggle.GetValue() +
                      self.filt_ref.toggle.GetValue() +
@@ -1011,9 +1257,18 @@ class CCTBXOptions(BaseDialog):
     ref = noneset(self.filt_ref.ref.GetValue())
     res = noneset(self.filt_res.res.GetValue())
 
+    # Populate IOTA settings
     proc_phil_text = '\n'.join([
       'cctbx',
       '{',
+      '  resolution_limits',
+      '  {',
+      '    low = {}'.format(lowres),
+      '    high = {}'.format(hires),
+      '  }',
+      '  target_unit_cell = {}'.format(target_uc),
+      '  target_lattice_type = {}'.format(target_lattice),
+      '  target_centering_type = {}'.format(target_centering),
       '  grid_search',
       '  {',
       '    type = {}'.format(self.gs_type.ctr.GetString(
@@ -1051,66 +1306,93 @@ class CCTBXOptions(BaseDialog):
     e.Skip()
 
 
-class DIALSOptions(BaseDialog):
+class DIALSOptions(BaseBackendDialog):
   # DIALS options
 
   def __init__(self, parent,
                phil, target,
-               label_style='bold',
-               content_style='normal',
                *args, **kwargs):
 
-    BaseDialog.__init__(self, parent,
-                        label_style=label_style,
-                        content_style=content_style,
-                        *args, **kwargs)
+    BaseBackendDialog.__init__(self, parent,
+                               backend_name='DIALS',
+                               phil=phil,
+                               target=target,
+                               phil_size=(500, 500),
+                               opt_size=(500, 500),
+                               *args, **kwargs)
 
-    self.target_phil = target
     self.params = phil.extract()
     self.proc_phil = None
 
+    self.splitter.SplitVertically(self.options, self.phil_panel)
 
-    # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self, size=(200, 200))
-    options_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.options.SetSizer(options_sizer)
-
-    phil_box = wx.StaticBox(self, label='DIALS Target Settings')
-    phil_box_sizer = wx.StaticBoxSizer(phil_box, wx.VERTICAL)
-    self.phil = ct.PHILBox(self,
+    # Target file input
+    self.phil = ct.PHILBox(self.phil_panel,
                            btn_import=True,
                            btn_import_label='Import PHIL',
                            btn_export=False,
                            btn_default=True,
                            btn_default_label='Default PHIL',
-                           ctr_size=(500, 300),
+                           btn_pos='bottom',
+                           ctr_size=(-1, 300),
                            ctr_value='')
-    phil_box_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=10)
+    self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
-    dials_box = wx.StaticBox(self.options, label='DIALS Options')
-    dials_box_sizer = wx.StaticBoxSizer(dials_box, wx.VERTICAL)
 
-    # DIALS options
-    self.reindex = wx.CheckBox(self.options,
+    # Target parameters
+    self.trg_options = wx.Panel(self.options)
+    target_box = wx.StaticBox(self.trg_options, label='Target Parameters')
+    target_box_sizer = wx.StaticBoxSizer(target_box, wx.VERTICAL)
+    self.trg_options.SetSizer(target_box_sizer)
+
+    self.target_sg = ct.OptionCtrl(self.trg_options,
+                                   label='Target Space Group: ',
+                                   label_size=(150, -1),
+                                   ctrl_size=(150, -1),
+                                   items = [('sg', '')])
+    target_box_sizer.Add(self.target_sg, flag=f.stack, border=10)
+
+    self.target_uc = ct.OptionCtrl(self.trg_options,
+                                   label='Target Unit Cell: ',
+                                   label_size=(150, -1),
+                                   items = [('cell', '')])
+    target_box_sizer.Add(self.target_uc, flag=f.stack, border=10)
+
+    self.use_fft3d = wx.CheckBox(self.trg_options,
+                                 label='Use FFT3D for indexing')
+    self.use_fft3d.SetValue(False)
+    target_box_sizer.Add(self.use_fft3d, flag=wx.ALL, border=10)
+
+    self.t_spacer = target_box_sizer.AddSpacer((-1, 10))
+
+    # Optimization options
+    self.opt_options = wx.Panel(self.options)
+    optz_box = wx.StaticBox(self.opt_options, label='Optimization Options')
+    optz_box_sizer = wx.StaticBoxSizer(optz_box, wx.VERTICAL)
+    self.opt_options.SetSizer(optz_box_sizer)
+
+    self.reindex = wx.CheckBox(self.opt_options,
                                label='Determine space group and reindex')
     self.reindex.SetValue(True)
-    dials_box_sizer.Add(self.reindex, flag=wx.ALL, border=10)
+    optz_box_sizer.Add(self.reindex, flag=wx.ALL, border=10)
 
-    self.estimate_gain = wx.CheckBox(self.options,
+    self.estimate_gain = wx.CheckBox(self.opt_options,
                                      label='Estimate gain for each image')
     self.estimate_gain.SetValue(True)
-    dials_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
+    optz_box_sizer.Add(self.estimate_gain, flag=wx.ALL, border=10)
 
-    self.auto_threshold = wx.CheckBox(self.options,
+    self.auto_threshold = wx.CheckBox(self.opt_options,
                                       label='Estimate threshold for each image')
     self.auto_threshold.SetValue(True)
-    dials_box_sizer.Add(self.auto_threshold, flag=wx.ALL, border=10)
+    optz_box_sizer.Add(self.auto_threshold, flag=wx.ALL, border=10)
 
     # Filters
-    filter_box = wx.StaticBox(self.options, label='Filters')
+    self.filt_options = wx.Panel(self.options)
+    filter_box = wx.StaticBox(self.filt_options, label='Filters')
     filter_box_sizer = wx.StaticBoxSizer(filter_box, wx.VERTICAL)
+    self.filt_options.SetSizer(filter_box_sizer)
 
-    self.filt_lattice = ct.OptionCtrl(self.options,
+    self.filt_lattice = ct.OptionCtrl(self.filt_options,
                                       items=[('lattice', 'P4')],
                                       checkbox=True,
                                       checkbox_label='Bravais Lattice:',
@@ -1118,7 +1400,7 @@ class DIALSOptions(BaseDialog):
                                       ctrl_size=(150, -1))
     filter_box_sizer.Add(self.filt_lattice, flag=f.stack, border=10)
 
-    self.filt_uc = ct.OptionCtrl(self.options,
+    self.filt_uc = ct.OptionCtrl(self.filt_options,
                                  items=[('a', '79.4'), ('b', '79.4'),
                                         ('c', '38.1'), ('alpha', '90'),
                                         ('beta', '90'), ('gamma', '90'),
@@ -1136,7 +1418,7 @@ class DIALSOptions(BaseDialog):
                                  ctrl_size=(50, -1))
     filter_box_sizer.Add(self.filt_uc, flag=f.stack, border=10)
 
-    self.filt_res = ct.OptionCtrl(self.options,
+    self.filt_res = ct.OptionCtrl(self.filt_options,
                                   items=[('res', '2.5')],
                                   checkbox=True,
                                   checkbox_label='Resolution:',
@@ -1144,7 +1426,7 @@ class DIALSOptions(BaseDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_res, flag=f.stack, border=10)
 
-    self.filt_ref = ct.OptionCtrl(self.options,
+    self.filt_ref = ct.OptionCtrl(self.filt_options,
                                   items=[('ref', '100')],
                                   checkbox=True,
                                   checkbox_label='Num. of reflections:',
@@ -1152,66 +1434,90 @@ class DIALSOptions(BaseDialog):
                                   ctrl_size=(100, -1))
     filter_box_sizer.Add(self.filt_ref, flag=wx.ALL, border=10)
 
-
-    # Dialog control
-    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.f_spacer = filter_box_sizer.AddSpacer((-1, 10))
 
     # Add all to sizers
-    options_sizer.Add(dials_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
-    options_sizer.Add(filter_box_sizer, flag=wx.ALL | wx.EXPAND, border=10)
-    self.main_sizer.Add(phil_box_sizer, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.options, flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(dialog_box,
-                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
-                   border=10)
+    self.options_sizer.Add(self.trg_options, flag=wx.ALL | wx.EXPAND, border=10)
+    self.options_sizer.Add(self.opt_options, flag=wx.ALL | wx.EXPAND, border=10)
+    self.options_sizer.Add(self.filt_options, flag=wx.ALL | wx.EXPAND, border=10)
+
+    self.show_hide_script()
+    self.show_hide_advanced(show=False)
+    self.Layout()
+    self.options.SetupScrolling()
+    self.read_param_phil()
 
     # Button bindings
     self.Bind(wx.EVT_BUTTON, self.onImportPHIL, self.phil.btn_import)
     self.Bind(wx.EVT_BUTTON, self.onDefaultPHIL, self.phil.btn_default)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+    self.Bind(wx.EVT_BUTTON, self.onHideScript, self.btn_hide_script)
+    self.Bind(wx.EVT_CHOICE, self.onAdvanced, self.dlg_ctr.choice)
 
-    self.Layout()
+  def onAdvanced(self, e):
+    mode = self.dlg_ctr.choice.GetSelection()
+    if mode == 0:
+      self.show_hide_advanced(show=False)
+    else:
+      self.show_hide_advanced(show=True)
+
+  def show_hide_advanced(self, show=False):
+    if show:
+      self.use_fft3d.Show()
+      self.estimate_gain.Show()
+      self.auto_threshold.Show()
+      self.filt_ref.Show()
+      self.filt_res.Show()
+      self.t_spacer.Show(False)
+      self.f_spacer.Show(False)
+    else:
+      self.use_fft3d.Hide()
+      self.estimate_gain.Hide()
+      self.auto_threshold.Hide()
+      self.filt_ref.Hide()
+      self.filt_res.Hide()
+      self.t_spacer.Show(True)
+      self.f_spacer.Show(True)
+
+    self.options.Layout()
     self.options.SetupScrolling()
 
-    self.read_param_phil()
+
+  def onHideScript(self, e):
+    self.opt_size = self.options.GetSize()
+    self.phil_size = self.phil_panel.GetSize()
+    self.sash_position = self.opt_size[0]
+    self.show_hide_script(initialized=True)
 
   def onImportPHIL(self, e):
-    dlg = wx.FileDialog(
-      self, message="Select DIALS target file",
-      defaultDir=os.curdir,
-      defaultFile="*.phil",
-      wildcard="*",
-      style=wx.OPEN | wx.CHANGE_DIR
-    )
-    if dlg.ShowModal() == wx.ID_OK:
-      filepath = dlg.GetPaths()[0]
-
-      with open(filepath, 'r') as phil_file:
-        phil_content = phil_file.read()
+    phil_content = self.get_target_file()
+    if phil_content is not None:
       self.phil.ctr.SetValue(phil_content)
-
 
   def onDefaultPHIL(self, e):
     self.write_default_phil()
-
-  def write_default_phil(self):
-    from iota.components.iota_input import write_defaults
-    default_phil, _ = write_defaults(current_path=None,
-                                     txt_out=None,
-                                     method='dials',
-                                     write_target_file=False,
-                                     write_param_file=False)
-    self.phil.ctr.SetValue('\n'.join(default_phil))
+    self.phil.ctr.SetValue(self.target_phil)
 
   def read_param_phil(self):
-
     # DIALS target file settings
-    if self.target_phil is not None:
-      self.phil.ctr.SetValue(self.target_phil)
-    else:
-      self.phil.ctr.SetValue('')
+    if self.target_phil is None:
+      self.write_default_phil()
+    self.phil.ctr.SetValue(self.target_phil)
 
-    # DIALS options
+    # Target options
+    # "Try/except" for backwards compatibility
+    try:
+      if self.params.dials.target_unit_cell is not None:
+        uc_str = [str(i) for i in self.params.dials.target_unit_cell.parameters()]
+        self.target_uc.cell.SetValue(' '.join(uc_str))
+      if self.params.dials.target_space_group is not None:
+        sg_info = str(self.params.dials.target_space_group).replace(' ', '')
+        self.target_sg.sg.SetValue(sg_info)
+      self.use_fft3d.SetValue(self.params.dials.use_fft3d)
+    except AttributeError:
+      pass
+
+    # Optimization options
     self.reindex.SetValue(self.params.dials.determine_sg_and_reindex)
     self.estimate_gain.SetValue(self.params.advanced.estimate_gain)
     self.auto_threshold.SetValue(self.params.dials.auto_threshold)
@@ -1268,6 +1574,18 @@ class DIALSOptions(BaseDialog):
     else:
       self.target_phil = self.phil.ctr.GetValue()
 
+    # Target params
+    if self.target_sg.sg.GetValue() not in (None, ''):
+      t_sg = self.target_sg.sg.GetValue()
+    else:
+      t_sg = None
+
+    if self.target_uc.cell.GetValue() not in (None, ''):
+      t_uc = self.target_uc.cell.GetValue()
+    else:
+      t_uc = None
+
+    # Filter params
     filter_on = bool(self.filt_lattice.toggle.GetValue() +
                      self.filt_uc.toggle.GetValue() +
                      self.filt_ref.toggle.GetValue() +
@@ -1290,6 +1608,9 @@ class DIALSOptions(BaseDialog):
     dials_phil_text = '\n'.join([
       'dials',
       '{',
+      '  target_space_group = {}'.format(t_sg),
+      '  target_unit_cell = {}'.format(t_uc),
+      '  use_fft3d = {}'.format(str(self.use_fft3d.GetValue())),
       '  determine_sg_and_reindex = {}'.format(self.reindex.GetValue()),
       '  auto_threshold = {}'.format(self.auto_threshold.GetValue()),
       '  filter',

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/13/2017
+Last Changed: 10/18/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -361,7 +361,8 @@ class MainWindow(wx.Frame):
 
       if os.path.isfile(init_file):
         rec_init = ep.load(init_file)
-        self.iota_phil = self.iota_phil.format(python_object=rec_init.params)
+        tmp_phil = inp.master_phil.format(python_object=rec_init.params)
+        self.iota_phil = self.iota_phil.fetch(source=tmp_phil)
       else:
         rec_init = InitAll(iver=iota_version)
         rec_init.int_base = int_path

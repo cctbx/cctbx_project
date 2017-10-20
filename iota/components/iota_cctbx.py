@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 08/17/2016
+Last Changed: 10/10/2017
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -143,45 +143,79 @@ class Triage(object):
 class Integrator(object):
   """ Class for image integration (w/ grid search params) """
   def __init__(self,
+               params,
                source_image = None,
                output_image = None,
-               min_sigma = 0,
-               target = None,
-               charts = False,
                viz = None,
                log = None,
                tag = 'grid search',
                tmp_base = None,
                gain = 1,
-               method = 'multiprocessing',
-               queue = 'psanaq',
                single_image = False):
 
+    self.params = params
     self.img = source_image
     self.out_img = output_image
-    self.min_sigma = min_sigma
-    self.target = os.path.abspath(target)
+    self.min_sigma = self.params.cctbx.selection.min_sigma
+    self.target = os.path.abspath(self.params.cctbx.target)
     self.viz = viz
     self.tag = tag
     self.int_log = log
-    self.charts = charts
+    self.charts = self.params.analysis.charts
     self.tmp_base = tmp_base
     self.single_image = single_image
-    self.method = method
-    self.queue = queue
+    self.method = self.params.mp_method
+    self.queue = self.params.mp_queue
 
     self.args = ["target={}".format(self.target),
                  "indexing.data={}".format(self.img),
-                 "beam_search_scope=0.5",
-                 "lepage_max_delta=3.0",
                  "spots_pickle=None",
                  "subgroups_pickle=None",
                  "refinements_pickle=None",
                  "rmsd_tolerance=5.0",
                  "mosflm_rmsd_tolerance=5.0",
-                 "difflimit_sigma_cutoff=2.0",
                  "integration.detector_gain={}".format(gain),
                  "indexing.verbose_cv=True"]
+
+    # Add target unit cell if exists
+    if self.params.cctbx.target_unit_cell is not None:
+      t_uc = [str(i) for i in self.params.cctbx.target_unit_cell.parameters()]
+      self.args.extend(['target_cell="{}"'.format(' '.join(t_uc))])
+
+    # Translate / add target lattice if exists
+    t_lat = self.params.cctbx.target_lattice_type
+    if t_lat is not None:
+      if t_lat == 'triclinic':
+        known_setting = 1
+      elif t_lat == 'monoclinic':
+        known_setting = 2
+      elif t_lat in ('orthorhombic', 'rhombohedral'):
+        known_setting = 5
+      elif t_lat == 'tetragonal':
+        known_setting = 9
+      elif t_lat == 'hexagonal':
+        known_setting = 12
+      elif t_lat == 'cubic':
+        known_setting = 22
+      self.args.extend(['known_setting={}'.format(known_setting)])
+
+    # Centering type if exists
+    t_ctype = self.params.cctbx.target_centering_type
+    if t_ctype is not None:
+      self.args.extend(['target_cell_centring_type={}'.format(t_ctype)])
+
+    # Resolution, if exists
+    hires = self.params.cctbx.resolution_limits.high
+    lowres = self.params.cctbx.resolution_limits.low
+    if hires is None:
+      hires = 1.5
+    if lowres is None:
+      lowres = 99.9
+    self.args.extend(['force_method2_resolution_limit={}'.format(hires),
+                      'distl_lowres_limit={}'.format(lowres),
+                      'distl_highres_limit={}'.format(hires),
+                      'distl.res.inner={}'.format(lowres),
+                      'distl.res.outer={}'.format(hires)])
 
   def integrate(self, grid_point):
     """ Runs the integration module in cctbx.xfel; used by either grid-search or

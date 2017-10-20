@@ -1,11 +1,25 @@
-IOTA v1.1.024 - image tracker upgrade
+IOTA v1.1.025 - interface updates
 
-1. New interface allows image selection on chart (shift-drag: user can highlight
- a stretch of chart, the image list is then populated with filenames and the
- images can be viewed)
-2. Click-drag allows user to select a range of chart to view close-up; slider
- then appears that allows user to navigate along the X-axis (updated as the
- chart is updated)
-3. Quit finally works fast, doesn't cycle through all queued images
-4. Chart update on each completed spot-finding instance, not timer (NOT sure
- that's the best thing...)
+1. PHIL script hidden, showable if user wants to modify
+2. Basic/Advanced/Developer - level options (This is in lieu of any auto-PHIL
+dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
+3. Option widgets for target params (inserted during processing):
+    a. target_cell, known_setting, target_cell_centring_type for Labelit
+    b. unit_cell, space_group for DIALS
+    c. Resolution limits for Labelit
+    d. Turn FFT3D on/off for DIALS
+    e. These are new settings in IOTA param files, too
+4. BUGFIX: Log displayed when run is recovered
+5. Searchable log in IOTA GUI
+
+MORE BUGFIXES:
+
+1. Eliminated iCCP warning by removing the offending iCCP chunk from many (not
+all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
+     mogrify -strip <filename>
+2. Fixed errors in PHIL handling for DIALS and Labelit option dialogs
+3. Corrected target param panel parentage for DIALS options dialog
+4. Expert level drop-down choice is now set to Basic if running on Linux
+5. Tweaked Recovery option to accept new settings if missing in old PHIL
+6. Fixed PRIME input auto-create, which caused a mysterious 'zero reflections'
+error (merge.d_max was set to high-res rather than low-res)

@@ -355,8 +355,18 @@ def refine_hierarchical(params, merged_scope, combine_phil):
   output_geometry(params)
 
 def refine_expanding(params, merged_scope, combine_phil):
-  assert not params.rmsd_filter.enable, "RMSD filter not implmented for expanding refinement mode"
   assert params.start_at_hierarchy_level == 0
+  if params.rmsd_filter.enable:
+    input_name = "filtered"
+    command = "cctbx.xfel.filter_experiments_by_rmsd %s %s output.filtered_experiments=%s output.filtered_reflections=%s"
+    command = command%("%s_combined_experiments.json"%params.tag, "%s_combined_reflections.pickle"%params.tag,
+                       "%s_filtered_experiments.json"%params.tag, "%s_filtered_reflections.pickle"%params.tag)
+    command += " iqr_multiplier=%f"%params.rmsd_filter.iqr_multiplier
+    print command
+    result = easy_run.fully_buffered(command=command).raise_if_errors()
+    result.show_stdout()
+  else:
+    input_name = "combined"
 
   # this is the order to refine the CSPAD in
   steps = {}
@@ -385,7 +395,7 @@ def refine_expanding(params, merged_scope, combine_phil):
   for j in xrange(8):
     from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
-    combined_path = "%s_combined_reflections.pickle"%params.tag
+    combined_path = "%s_%s_reflections.pickle"%(params.tag, input_name)
     output_path = "%s_reflections_step%d.pickle"%(params.tag, j)
     data = easy_pickle.load(combined_path)
     sel = None
@@ -418,8 +428,8 @@ def refine_expanding(params, merged_scope, combine_phil):
           diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
 
       if previous_step_and_level is None:
-        command = "dials.refine %s %s_combined_experiments.json %s_reflections_step%d.pickle"%( \
-          refine_phil_file, params.tag, params.tag, j)
+        command = "dials.refine %s %s_%s_experiments.json %s_reflections_step%d.pickle"%( \
+          refine_phil_file, params.tag, input_name, params.tag, j)
       else:
         p_step, p_level = previous_step_and_level
         if p_step == j:

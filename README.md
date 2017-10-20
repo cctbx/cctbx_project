@@ -1,7 +1,5 @@
 # Computational Crystallography Toolbox
 
-[![Code Issues](https://www.quantifiedcode.com/api/v1/project/ab81909bad9d437b842c37a4da4f3c53/badge.svg)](https://www.quantifiedcode.com/app/project/ab81909bad9d437b842c37a4da4f3c53)
-
 ## Introduction
 
 The Computational Crystallography Toolbox (cctbx) is being developed as the open source component of the PHENIX system. The goal of the PHENIX project is to advance automation of macromolecular structure determination. PHENIX depends on the cctbx, but not vice versa. This hierarchical approach enforces a clean design as a reusable library. The cctbx is therefore also useful for small-molecule crystallography and even general scientific applications.

@@ -234,7 +234,7 @@ class pair_lists_generator(object):
     self.registry = pair_registry(n_seq=self.n_seq, n_ncs=n_ncs)
     special_position_indices = scitbx.stl.set.unsigned(iter(
       model.get_site_symmetry_table().special_position_indices()))
-    pdb_hierarchy = model.pdb_hierarchy()
+    pdb_hierarchy = model.get_hierarchy()
     reference_hierarchy = pdb_hierarchy.select(
       atom_selection=self.selection_properties[0].iselection)
     for j_ncs in xrange(1,n_ncs):
@@ -608,6 +608,32 @@ class groups(object):
     else:
       self.members = members
     self.operators = None
+
+  @classmethod
+  def from_phil_params(cls,
+      ncs_group_phil_params,
+      ncs_phil_params,
+      model,
+      log):
+    ncs_groups = cls()
+    for ncs_group in ncs_group_phil_params:
+      print >> log, "NCS restraint group %d:" % (
+        len(ncs_groups.members)+1)
+      gr = group.from_atom_selections(
+        model                      = model,
+        reference_selection_string = ncs_group.reference,
+        selection_strings          = ncs_group.selection,
+        coordinate_sigma           = ncs_phil_params.coordinate_sigma,#XXX GLOBAL!
+        b_factor_weight            = ncs_phil_params.b_factor_weight, #XXX GLOBAL!
+        special_position_warnings_only
+          = ncs_phil_params.special_position_warnings_only,
+        log = log)
+      sites_cart = model.get_sites_cart()
+      ncs_operators = gr.operators(sites_cart=sites_cart)
+      ncs_operators.show(sites_cart=sites_cart, out=log, prefix="  ")
+      ncs_groups.members.append(gr)
+      print >> log
+    return ncs_groups
 
   def register_additional_isolated_sites(self, number):
     for group in self.members:

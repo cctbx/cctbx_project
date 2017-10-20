@@ -687,7 +687,7 @@ def run(args,
     n_sym_op = f_obs.crystal_symmetry().space_group_info().type().group().order_z(),
     uc_vol   = f_obs.unit_cell().volume()))
   #
-  hierarchy = model.pdb_hierarchy()
+  hierarchy = model.get_hierarchy()
   #
   # Extract TLS
   pdb_tls = None

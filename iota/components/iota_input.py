@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 09/12/2017
+Last Changed: 10/10/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -106,6 +106,23 @@ cctbx
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters
+  resolution_limits
+    .help = Sets several resolution limits in Labelit settings
+  {
+    low = 50.0
+      .type = float
+    high = 1.5
+      .type = float
+  }
+  target_lattice_type = *None triclinic monoclinic orthorhombic tetragonal rhombohedral hexagonal cubic
+    .type = choice
+    .help = Target Bravais lattice type if known
+  target_centering_type = *None P C I R F
+    .type = choice
+    .help = Target lattice centering type if known
+  target_unit_cell = None
+    .type = unit_cell
+    .help = Target unit cell parameters (if known)
   grid_search
     .help = "Parameters for the grid search."
   {
@@ -180,6 +197,15 @@ dials
     .type = str
     .multiple = False
     .help = Target (.phil) file with integration parameters for DIALS
+  target_space_group = None
+    .type = space_group
+    .help = Target space (or point) group (if known)
+  target_unit_cell = None
+    .type = unit_cell
+    .help = Target unit cell parameters (if known)
+  use_fft3d = False
+    .type = bool
+    .help = Set to True to use FFT3D in indexing
   determine_sg_and_reindex = True
     .type = bool
     .help = Will determine sg and reindex if no target space group supplied
@@ -419,18 +445,8 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx',
   if method == 'cctbx':
     def_target_file = '{}/cctbx.phil'.format(current_path)
     default_target = ['# -*- mode: conf -*-',
-                      '# target_cell = 79.4 79.4 38.1 90 90 90  # insert your own target unit cell if known',
-                      '# known_setting = 9                      # Triclinic = 1, monoclinic = 2,',
-                      '                                         # orthorhombic/rhombohedral = 5, tetragonal = 9,',
-                      '                                         # hexagonal = 12, cubic = 22,',
-                      '# target_cell_centring_type = *P C I R F',
                       'difflimit_sigma_cutoff = 0.01',
-                      'force_method2_resolution_limit = 2.5',
-                      'distl_highres_limit = 2.5',
-                      'distl_lowres_limit=50.0',
                       'distl{',
-                      '  res.outer=2.5',
-                      '  res.inner=50.0',
                       '  peak_intensity_maximum_factor=1000',
                       '  spot_area_maximum_factor=20',
                       '  compactness_filter=False',
@@ -476,10 +492,6 @@ def write_defaults(current_path=None, txt_out=None, method='cctbx',
                       '  }',
                       '}',
                       'indexing {',
-                      '  known_symmetry {',
-                      '    space_group = None',
-                      '    unit_cell = None',
-                      '  }',
                       '  refinement_protocol {',
                       '    n_macro_cycles = 1',
                       '    d_min_start = 2.0',

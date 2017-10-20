@@ -235,11 +235,11 @@ namespace tardy {
 
     //! For testing.
     bool
-    sites_moved_is_cached() const { return sites_moved_; }
+    sites_moved_is_cached() const { return static_cast<bool>(sites_moved_); }
 
     //! For testing.
     bool
-    qdd_array_is_cached() const { return qdd_array_; }
+    qdd_array_is_cached() const { return static_cast<bool>(qdd_array_); }
 
     af::shared<vec3<ft> > const&
     sites_moved()

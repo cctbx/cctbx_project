@@ -744,7 +744,7 @@ END
   s2 = ph_in.atoms_size()
   f = s2*100./s1
   #
-  # UNSTABLE
+  # UNSTABLE 2x
   #
   assert f>77 and f<100, f # was getting 79.16 on anaconda t96
 

@@ -27,7 +27,7 @@ class ExperimentListDict(object):
   def __init__(self, obj, check_format=True):
     ''' Initialise. Copy the dictionary. '''
     from copy import deepcopy
-    # Basic check: This is a dict-like object. This can happen if e.g. we 
+    # Basic check: This is a dict-like object. This can happen if e.g. we
     # were passed a DataBlock list instead of an ExperimentList dictionary
     if isinstance(obj, list) or not hasattr(obj, "get"):
       raise InvalidExperimentListError("Expected dictionary, not {}".format(type(obj)))

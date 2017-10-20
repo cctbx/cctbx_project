@@ -101,7 +101,7 @@ class torsion_ncs(object):
     self.pdb_hierarchy = None
     if self.model is not None:
       self.processed_pdb_file = self.model.processed_pdb_file
-      self.pdb_hierarchy = self.model.pdb_hierarchy()
+      self.pdb_hierarchy = self.model.get_hierarchy()
       self.ncs_obj = self.model.get_ncs_obj()
       self.cache = self.model.get_atom_selection_cache()
       assert self.ncs_obj is not None
