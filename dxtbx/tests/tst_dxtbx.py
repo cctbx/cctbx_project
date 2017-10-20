@@ -6,7 +6,7 @@ def tst_dxtbx():
     return
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
+  except KeyError:
     print 'FAIL: dials_regression not configured'
     return
 
@@ -41,7 +41,7 @@ def tst_dxtbx_compressed():
   import libtbx.load_env
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
+  except KeyError:
     print 'FAIL: dials_regression not configured'
     return
 
@@ -71,7 +71,7 @@ def tst_dxtbx_compressed():
       format = Registry.find(compressed_path)
       try:
         i = format(compressed_path)
-      except Exception, e:
+      except Exception:
         print 'Error reading compressed file: %s' %compressed_path
         import traceback
         traceback.print_exc()

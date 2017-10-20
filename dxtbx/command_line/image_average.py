@@ -52,7 +52,7 @@ class image_worker(object):
         #XXX This code assumes a monolithic detector!
         beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas = \
           self.read(item)
-      except Exception, e:
+      except Exception as e:
         print str(e)
         nfail += 1
         continue

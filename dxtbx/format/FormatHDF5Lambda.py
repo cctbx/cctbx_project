@@ -21,7 +21,7 @@ class FormatHDF5Lambda(FormatHDF5):
   def understand(image_file):
     try:
       tag = FormatHDF5.open_file(image_file, 'rb').read(8)
-    except IOError, e:
+    except IOError:
       return False
 
     # check that this is a HDF5 file (should not have got here if not
@@ -54,8 +54,6 @@ class FormatHDF5Lambda(FormatHDF5):
   def _start(self):
     import h5py
     self._h5_handle = h5py.File(self.get_image_file(), 'r')
-
-    return
 
   def _goniometer(self):
     '''Dummy goniometer - assume vertical (EMBl-HH P14)'''

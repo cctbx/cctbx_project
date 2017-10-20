@@ -175,7 +175,7 @@ def test_multi_axis_goniometer():
 
   # Check exception is raised if scan axis is out range
   try: GoniometerFactory.multi_axis(axes, angles, names, 3)
-  except RuntimeError, e: pass
+  except RuntimeError: pass
   else: raise Exception_expected
 
   # Single axis is just a special case of a multi axis goniometer

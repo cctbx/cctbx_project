@@ -18,7 +18,7 @@ class FormatBrukerFixedChi(FormatBruker):
     #return False
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError:
       return False
     matches = []
     for x in xrange(0,1024,80):
@@ -38,8 +38,6 @@ class FormatBrukerFixedChi(FormatBruker):
 
     self._image_file = image_file
     FormatBruker.__init__(self, image_file, **kwargs)
-
-    return
 
   def _start(self):
     self.header_dict = { }

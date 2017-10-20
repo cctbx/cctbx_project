@@ -126,13 +126,13 @@ class FormatSMVJHSim(FormatSMV):
     try:
       date_str = self._header_dictionary['DATE']
       date_str = date_str.replace('PST', '').replace('PDT', '')
-    except KeyError, e:
+    except KeyError:
       date_str = ''
     for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
       try:
         epoch = calendar.timegm(time.strptime(date_str, format_string))
         break
-      except ValueError, e:
+      except ValueError:
         pass
 
     # assert(epoch)
@@ -154,7 +154,7 @@ class FormatSMVJHSim(FormatSMV):
     image_pedestal = 1
     try:
       image_pedestal = float(self._header_dictionary['ADC_OFFSET'])
-    except (KeyError):
+    except KeyError:
       pass
     panel = self.get_detector()[0]
     size = panel.get_image_size()

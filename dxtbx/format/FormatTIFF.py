@@ -37,7 +37,7 @@ class FormatTIFF(Format):
           image_file)
       return True
 
-    except: # intentional
+    except Exception:
       pass
 
     return False
@@ -62,8 +62,6 @@ class FormatTIFF(Format):
 
     Format.__init__(self, image_file, **kwargs)
 
-    return
-
   def _start(self):
     '''Open the image file, read the image header, copy it into memory
     for future inspection.'''
@@ -77,5 +75,3 @@ class FormatTIFF(Format):
     self._tiff_header_bytes = FormatTIFF.open_file(
         self._image_file, 'rb').read(header)
     self._tiff_byte_order = order
-
-    return

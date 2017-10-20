@@ -43,8 +43,6 @@ class FormatCBFFull(FormatCBF):
     FormatCBF.__init__(self, image_file, **kwargs)
     self._raw_data = None
 
-    return
-
   def __del__(self):
     self._cbf_handle.__swig_destroy__(self._cbf_handle)
 
@@ -129,14 +127,14 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     try:
       cbf_handle = pycbf.cbf_handle_struct()
       cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
     #check if multiple arrays
     try:
       return cbf_handle.count_elements() == 1
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
@@ -167,7 +165,7 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     while cbf.category_name().lower() != "array_data":
       try:
         cbf.next_category()
-      except Exception, e:
+      except Exception:
         return None
     cbf.select_column(0)
     cbf.select_row(0)

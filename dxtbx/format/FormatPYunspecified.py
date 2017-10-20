@@ -14,7 +14,7 @@ class FormatPYunspecified(FormatPY):
       stream = FormatPYunspecified.open_file(image_file, 'rb')
       import cPickle as pickle
       data = pickle.load(stream)
-    except IOError,e:
+    except IOError:
       return False
 
     wanted_header_items = ['SIZE1','SIZE2','TIMESTAMP']

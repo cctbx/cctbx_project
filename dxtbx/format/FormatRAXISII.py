@@ -8,7 +8,7 @@ class FormatRAXISII(Format):
   def understand(image_file):
     try:
       tag = FormatRAXISII.open_file(image_file, 'rb').read(7)
-    except IOError,e:
+    except IOError:
       return False
 
     return tag == "R-AXIS2"

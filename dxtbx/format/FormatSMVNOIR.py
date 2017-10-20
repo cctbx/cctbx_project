@@ -69,8 +69,6 @@ class FormatSMVNOIR(FormatSMVRigaku):
     self.detector_class = 'NOIR1'
     self.detector = 'adsc'
 
-    return
-
   def _start(self):
     FormatSMVRigaku._start(self)
 
@@ -139,7 +137,7 @@ class FormatSMVNOIR(FormatSMVRigaku):
                                      0.0, 0.0, 1.0)))
         translations.append(gonio_values[j] * axis)
       else:
-        raise RuntimeError, 'unknown axis unit %s' % unit
+        raise RuntimeError('unknown axis unit %s' % unit)
 
     rotations.reverse()
     translations.reverse()

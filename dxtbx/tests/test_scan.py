@@ -43,8 +43,6 @@ def work_helper_image_files():
 
   assert(scan_helper_image_files.image_to_index("image_6.8kev_1_001.cbf") == 1)
 
-  return
-
 def work_helper_image_formats():
   '''Test the static methods and properties in scan_helper_image_formats.'''
 
@@ -71,7 +69,7 @@ def work_xScanFactory():
   try:
     print sum(xscans[1:], xscans[0])
     print 'I should not see this message'
-  except RuntimeError, e:
+  except RuntimeError:
     pass
 
   xscans.sort()
@@ -102,7 +100,6 @@ def test_scan():
 
 
 if __name__ == '__main__':
-
   work_helper_image_files()
   work_helper_image_formats()
   work_xScanFactory()

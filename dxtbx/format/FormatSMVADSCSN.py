@@ -63,8 +63,6 @@ class FormatSMVADSCSN(FormatSMVADSC):
 
     FormatSMVADSC.__init__(self, image_file, **kwargs)
 
-    return
-
   def _adsc_module_gain(self, model=None):
     '''Overload to look the model number up from the serial number table'''
 

@@ -117,7 +117,7 @@ def template_directory_number2image(template, directory, number):
   # check that the number will fit in the template
 
   if (math.pow(10, length) - 1) < number:
-    raise RuntimeError, 'number too big for template'
+    raise RuntimeError('number too big for template')
 
   # construct a format statement to give the number part of the
   # template
@@ -138,7 +138,7 @@ def template_number2image(template, number):
   # check that the number will fit in the template
 
   if (math.pow(10, length) - 1) < number:
-    raise RuntimeError, 'number too big for template'
+    raise RuntimeError('number too big for template')
 
   format = '%%0%dd' % length
 

@@ -60,7 +60,7 @@ class FormatNexusExternalDataFile(FormatHDF5):
   def understand(image_file):
     try:
       is_nexus = is_nexus_external_data_file(image_file)
-    except IOError, e:
+    except IOError:
       return False
     return is_nexus
 

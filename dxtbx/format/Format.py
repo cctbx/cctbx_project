@@ -18,12 +18,12 @@ import sys
 
 try:
   import bz2
-except: # intentional
+except ImportError:
   bz2 = None
 
 try:
   import gzip
-except: # intentional
+except ImportError:
   gzip = None
 
 import dxtbx.filecache_controller
@@ -209,11 +209,10 @@ class Format(object):
       #assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
 
-    except exceptions.Exception, e:
+    except exceptions.Exception:
       # FIXME ideally should not squash the errors here...
       import traceback
       traceback.print_exc()
-      pass
     finally:
       self._end()
 
@@ -585,12 +584,12 @@ class Format(object):
 
     elif Format.is_bz2(filename):
       if bz2 is None:
-        raise RuntimeError, 'bz2 file provided without bz2 module'
+        raise RuntimeError('bz2 file provided without bz2 module')
       fh_func = lambda: bz2.BZ2File(filename, mode)
 
     elif Format.is_gzip(filename):
       if gzip is None:
-        raise RuntimeError, 'gz file provided without gzip module'
+        raise RuntimeError('gz file provided without gzip module')
       fh_func = lambda: gzip.GzipFile(filename, mode)
 
     else:

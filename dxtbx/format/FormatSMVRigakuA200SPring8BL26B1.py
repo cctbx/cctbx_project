@@ -51,8 +51,6 @@ class FormatSMVRigakuA200SPring8BL26B1(FormatSMVRigakuA200):
 
     FormatSMVRigakuA200.__init__(self, image_file, **kwargs)
 
-    return
-
   def _start(self):
 
     FormatSMVRigakuA200._start(self)

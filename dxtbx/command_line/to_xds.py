@@ -21,7 +21,7 @@ def run(file_names):
       datablock = load.datablock(file_names[0])
       assert len(datablock) == 1
       sweep = datablock[0].extract_sweeps()[0]
-    except ValueError, e:
+    except ValueError as e:
       if str(e) == '"__id__" does not equal "imageset"':
         experiments = load.experiment_list(file_names[0])
         assert len(experiments) == 1

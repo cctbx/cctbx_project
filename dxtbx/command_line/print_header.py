@@ -40,7 +40,7 @@ def print_header():
           raw_data = (raw_data,)
         d = [p.as_1d() for p in raw_data]
         print 'Total Counts: %d' % sum([flex.sum(p.select(p >= 0)) for p in d])
-      except AttributeError, e:
+      except AttributeError:
         print "Could not read image data"
 
 if __name__ == '__main__':

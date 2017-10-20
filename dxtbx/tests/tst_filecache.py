@@ -8,11 +8,11 @@
 # Tests for the filecache classes. This compares behaviour against StringIO.
 
 from __future__ import absolute_import, division
+import os
 
 def test_filecache():
   import dxtbx.filecache
   import libtbx.load_env
-  import os
   from StringIO import StringIO # this is not cStringIO on purpose!
 
   dxtbx_dir = libtbx.env.dist_path('dxtbx')
@@ -100,11 +100,10 @@ def test_filecache():
 def test_filecache_more():
   import dxtbx.filecache
   import libtbx.load_env
-  import os
 
   try:
     dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError, e:
+  except KeyError:
     print 'SKIP: dials_regression not configured'
     exit(0)
 

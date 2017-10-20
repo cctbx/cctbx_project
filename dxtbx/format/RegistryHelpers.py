@@ -73,7 +73,7 @@ def _LoadFormatModule(name, fqname, path):
 
   try:
     module = imp.load_module(fqname, stream, pathname, description)
-  except exceptions.Exception, e:
+  except exceptions.Exception:
     traceback.print_exc(sys.stderr)
   finally:
     if stream:

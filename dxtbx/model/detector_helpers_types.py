@@ -14,6 +14,7 @@ from __future__ import absolute_import, division
 import os
 import sys
 
+import dxtbx
 from dxtbx.model.detector_helpers import detector_helper_sensors
 from dxtbx.model.detector import DetectorFactory
 
@@ -22,14 +23,11 @@ class detector_helpers_types:
   macromolecular crystallography.'''
 
   def __init__(self):
-
-    import dxtbx
-
     detector_lib = os.path.join(os.path.split(dxtbx.__file__)[0],
                                 'data', 'detectors.lib')
 
     if not os.path.exists(detector_lib):
-      raise RuntimeError, 'detector library not found'
+      raise RuntimeError('detector library not found')
 
     self._detectors = { }
 
@@ -53,8 +51,6 @@ class detector_helpers_types:
 
       self._detectors[(sensor, fast, slow, df, ds)] = tokens[5]
 
-    return
-
   def get(self, sensor, fast, slow, df, ds):
     '''Look up a name for a detector with this sensor type (listed in
     detector_helpers) these image dimensions in the fast and slow
@@ -68,11 +64,11 @@ class detector_helpers_types:
       for s in detector_helper_sensors.all():
         try:
           return self.get(s, fast, slow, df, ds)
-        except: # intentional
+        except Exception:
           pass
 
-      raise RuntimeError, 'detector %s %d %d %d %d unknown' % \
-            (sensor, fast, slow, df, ds)
+      raise RuntimeError('detector %s %d %d %d %d unknown' % \
+            (sensor, fast, slow, df, ds))
 
     if (sensor, fast, slow, df, ds) in self._detectors:
       return self._detectors[(sensor, fast, slow, df, ds)]
@@ -85,8 +81,8 @@ class detector_helpers_types:
           return self._detectors[
               (sensor, fast, slow, df + ddf, ds + dds)]
 
-    raise RuntimeError, 'detector %s %d %d %d %d unknown' % \
-          (sensor, fast, slow, df, ds)
+    raise RuntimeError('detector %s %d %d %d %d unknown' % \
+          (sensor, fast, slow, df, ds))
 
 detector_helpers_types = detector_helpers_types()
 

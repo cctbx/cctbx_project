@@ -27,7 +27,7 @@ class FormatRAXISIVSPring8(Format):
   def understand(image_file):
     try:
       header = Format.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError:
       return False
 
     # A few items expected to be the same from image to image that we can use
@@ -47,8 +47,6 @@ class FormatRAXISIVSPring8(Format):
       raise IncorrectFormatError(self, image_file)
 
     Format.__init__(self, image_file, **kwargs)
-
-    return
 
   def _start(self):
     self._header_bytes = Format.open_file(self._image_file).read(1024)

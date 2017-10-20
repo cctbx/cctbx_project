@@ -26,8 +26,6 @@ class _Registry:
 
     self._setup = False
 
-    return
-
   def setup(self):
     '''Look to import format defining modules from around the place -
     this will look in dxtbx/format and $HOME/.xia2/ for files starting
@@ -40,8 +38,6 @@ class _Registry:
 
     self._setup = True
 
-    return
-
   def add(self, format):
     '''Register a new image format with the registry. N.B. to work
     this object must be inherited from the base Format class.'''
@@ -51,8 +47,6 @@ class _Registry:
     assert(issubclass(format, Format))
     if not format in self._formats:
       self._formats.append(format)
-
-    return
 
   def get(self):
     '''Get a list of image formats registered here.'''
@@ -80,7 +74,7 @@ class _Registry:
       if format.understand(image_file):
         return recurse(format, image_file)
 
-    raise IOError, 'no format support found for %s' % image_file
+    raise IOError('no format support found for %s' % image_file)
 
 class Registry:
   '''A class to turn the registry above into a singleton, so that we
@@ -90,10 +84,8 @@ class Registry:
   __instance = None
 
   def __init__(self):
-
     if Registry.__instance is None:
       Registry.__instance = _Registry()
-    return
 
   def __call__(self):
     return self

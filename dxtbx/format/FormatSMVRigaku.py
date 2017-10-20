@@ -67,25 +67,25 @@ class FormatSMVRigaku(FormatSMV):
     '''Overload this method to read the image file however you like so
     long as the result is an goniometer.'''
 
-    raise RuntimeError, 'overload me'
+    raise NotImplementedError('overload me')
 
   def _detector(self):
     '''Overload this method to read the image file however you like so
     long as the result is an detector.'''
 
-    raise RuntimeError, 'overload me'
+    raise NotImplementedError('overload me')
 
   def _beam(self):
     '''Overload this method to read the image file however you like so
     long as the result is an beam.'''
 
-    raise RuntimeError, 'overload me'
+    raise NotImplementedError('overload me')
 
   def _scan(self):
     '''Overload this method to read the image file however you like so
     long as the result is an scan.'''
 
-    raise RuntimeError, 'overload me'
+    raise NotImplementedError('overload me')
 
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a

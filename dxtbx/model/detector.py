@@ -491,7 +491,7 @@ class DetectorFactory:
       p.set_identifier(identifier)
       if gain is not None:
         p.set_gain(gain)
-    except Exception, e:
+    except Exception as e:
       print e
       raise e
     return d
@@ -637,7 +637,7 @@ class DetectorFactory:
       underload = find_undefined_value(cbf_handle)
       overload = cbf_handle.get_overload(0)
       trusted_range = (underload, overload * dxtbx_overload_scale)
-    except: # intentional
+    except Exception:
       trusted_range = (0.0, 0.0)
 
     cbf_detector.__swig_destroy__(cbf_detector)
@@ -670,4 +670,4 @@ class DetectorFactory:
     elif name.upper() == 'UNKNOWN':
       return detector_helper_sensors.SENSOR_UNKNOWN
 
-    raise RuntimeError, 'name %s not known' % name
+    raise RuntimeError('name %s not known' % name)

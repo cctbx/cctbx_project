@@ -35,7 +35,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     try:
       cbf_handle.find_category("axis")
       cbf_handle.find_column("equipment_component")
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" in str(e):
         return False
       else:
@@ -49,8 +49,6 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       raise IncorrectFormatError(self, image_file)
 
     FormatCBFMultiTile.__init__(self, image_file, **kwargs)
-
-    return
 
   def _start(self):
     '''Parent class will open the image file as a cbf file handle, and keep
@@ -137,7 +135,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       pg = d.hierarchy() # root object for the detector
       try:
         pg.get_D_matrix() # test to see if we've initialized the detector basis yet
-      except RuntimeError, e:
+      except RuntimeError as e:
         assert "DXTBX_ASSERT(D_)" in str(e)
       else:
         assert False # shouldn't be reached.  Detector should be initialized only once.
@@ -169,7 +167,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
     cbf.find_category("array_structure_list")
     try:
       cbf.find_column("array_section_id")
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" not in str(e): raise e
       cbf.find_column("array_id")
 
@@ -200,7 +198,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
       cbf.find_row(detector_axis)
       try:
         cbf.find_column("array_section_id")
-      except Exception, e:
+      except Exception as e:
         if "CBF_NOTFOUND" not in str(e): raise e
         cbf.find_column("array_id")
       panel_names_detectororder.append(cbf.get_value())
@@ -219,7 +217,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
 
       try:
         size = tuple(cbf.get_image_size_fs(i))
-      except Exception, e:
+      except Exception as e:
         if "CBF_NOTFOUND" in str(e):
           # no array data in the file, it's probably just a cbf header.  Get the image size elsewhere
           size = [0,0]
@@ -253,7 +251,7 @@ class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
         underload = cbf.get_doublevalue()
         overload = cbf.get_overload(0)
         trusted_range = (underload, overload)
-      except: # intentional
+      except Exception:
         trusted_range = (0.0, 0.0)
 
       p.set_pixel_size(tuple(map(float, pixel)))

@@ -29,7 +29,7 @@ def tiff_byte_order(filename):
     assert(struct.unpack('>H', four_bytes[2:])[0] == 42)
     return BIG_ENDIAN
 
-  raise RuntimeError, '%s not recognised as TIFF' % filename
+  raise RuntimeError('%s not recognised as TIFF' % filename)
 
 def read_basic_tiff_header(filename):
   '''Read the TIFF header (assuming for the moment a 4k header...) and

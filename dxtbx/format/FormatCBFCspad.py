@@ -39,7 +39,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
     try:
       # a header only CBF file will not have a beam object
       beam = self._beam()
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" not in str(e): raise e
       return d
 
@@ -220,14 +220,11 @@ class FormatCBFFullStillInMemory(FormatCBFFullStill):
       assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
-    except Exception, e:
-    #except exceptions.Exception, e:
+    except Exception:
       # FIXME ideally should not squash the errors here...
       pass
     finally:
       self._end()
-
-    return
 
   def __getstate__(self):
     # For pickling and copying, don't carry the cbf_handle

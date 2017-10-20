@@ -222,7 +222,7 @@ def convert_units(value, input_units, output_units):
     return value
   try:
     return converters[input_units][output_units](value)
-  except Exception, e:
+  except Exception:
     pass
   raise RuntimeError('Can\'t convert units "%s" to "%s"' % (input_units, output_units))
 
@@ -245,7 +245,7 @@ def visit_dependancies(nx_file, item, visitor = None):
       raise RuntimeError("'%s' is a circular dependency" % depends_on)
     try:
       item = nx_file[depends_on]
-    except Exception, e:
+    except Exception:
       raise RuntimeError("'%s' is missing from nx_file" % depends_on)
     dependency_chain.append(depends_on)
     try:
@@ -306,7 +306,7 @@ def construct_vector(nx_file, item, vector=None):
       value = convert_units(value, units, "mm")
       try:
         vector = vector * value
-      except ValueError, e:
+      except ValueError:
         vector = vector * value[0]
       vector += offset
 
@@ -605,7 +605,7 @@ class NXdetector(object):
     for entry in find_class(self.handle, "NXdetector_module"):
       try:
         self.modules.append(NXdetector_module(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -629,7 +629,7 @@ class NXinstrument(object):
     for entry in find_class(self.handle, "NXdetector"):
       try:
         self.detectors.append(NXdetector(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -642,7 +642,7 @@ class NXinstrument(object):
     for entry in find_class(self.handle, "NXdetector_group"):
       try:
         self.detector_groups.append(NXdetector_group(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -746,7 +746,7 @@ class NXsample(object):
     for entry in find_class(self.handle, "NXbeam"):
       try:
         self.beams.append(NXbeam(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -798,7 +798,7 @@ class NXmxEntry(object):
     for entry in find_class(self.handle, "NXinstrument"):
       try:
         self.instruments.append(NXinstrument(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -807,7 +807,7 @@ class NXmxEntry(object):
     for entry in find_class(self.handle, "NXsample"):
       try:
         self.samples.append(NXsample(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -816,7 +816,7 @@ class NXmxEntry(object):
     for entry in find_class(self.handle, "NXdata"):
       try:
         self.data.append(NXdata(entry, errors=errors))
-      except Exception, e:
+      except Exception as e:
         if errors is not None:
           errors.append(str(e))
 
@@ -849,7 +849,7 @@ class NXmxReader(object):
     for entry in find_entries(handle, "/"):
       try:
         self.entries.append(NXmxEntry(entry, errors=self.errors))
-      except Exception, e:
+      except Exception as e:
         self.errors.append(str(e))
 
     # Check we've got some stuff
@@ -1376,7 +1376,7 @@ class GoniometerFactory(object):
     # Construct the model - if nonsense present cope by failing over...
     try:
       self.model = Goniometer(tuple(rotation_axis))
-    except: # deliberate
+    except Exception:
       self.model = Goniometer((1, 0, 0))
 
 def find_goniometer_rotation(obj):
@@ -1388,7 +1388,7 @@ def find_goniometer_rotation(obj):
       # if this is changing, assume is scan axis
       v = o[()]
       if min(v) < max(v): return o
-  raise ValueError, 'no rotation found'
+  raise ValueError('no rotation found')
 
 class ScanFactory(object):
   '''
@@ -1403,7 +1403,7 @@ class ScanFactory(object):
     # in dependency tree
     try:
       phi = find_goniometer_rotation(obj)
-    except ValueError, e:
+    except ValueError:
       phi = obj.handle.file[obj.handle['depends_on'][()]]
     image_range = (1, len(phi))
     if len(phi) > 1:

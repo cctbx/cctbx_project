@@ -386,8 +386,8 @@ class ExperimentListDict(object):
     try:
       with temp_chdir(dirname(filename)):
         with open(filename, 'r') as infile:
-          return json.loads(infile.read(), object_hook=_decode_dict)
-    except IOError, e:
+          return json.load(infile, object_hook=_decode_dict)
+    except IOError:
       raise IOError('unable to read file, %s' % filename)
 
 
@@ -680,7 +680,7 @@ class ExperimentListFactory(object):
     # First try as a JSON file
     try:
       return ExperimentListFactory.from_json_file(filename, check_format)
-    except Exception, e:
+    except Exception:
       pass
 
     # Now try as a pickle file

@@ -56,7 +56,7 @@ class FormatBruker(Format):
   def understand(image_file):
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError,e:
+    except IOError:
       return False
     matches = []
     for x in xrange(0,1024,80):

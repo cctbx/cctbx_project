@@ -32,7 +32,7 @@ def xds_detector_name(xia2_name):
   if 'raxis' in xia2_name:
     return 'RAXIS'
 
-  raise RuntimeError, 'detector %s unknown' % xia2_name
+  raise RuntimeError('detector %s unknown' % xia2_name)
 
 class to_xds:
   def __init__(self, sweep):
@@ -42,8 +42,6 @@ class to_xds:
     self._detector = sweep.get_detector()
     self._beam = sweep.get_beam()
     self._scan = sweep.get_scan()
-
-    return
 
   def get_detector(self):
     return self._detector

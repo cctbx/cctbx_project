@@ -14,7 +14,7 @@ class FormatDIP2030b(Format):
       rawheader = F.read(1024)
       eof = F.read(1)# end of file
       F.close()
-    except IOError,e:
+    except IOError:
       return False
 
     return eof == "" and rawheader[0:3] == "DIP"

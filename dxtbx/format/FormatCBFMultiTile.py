@@ -44,7 +44,7 @@ class cbf_wrapper(pycbf.cbf_handle_struct):
     """
     try:
       self.find_category("array_structure_list_section")
-    except Exception, e:
+    except Exception as e:
       if "CBF_NOTFOUND" not in str(e): raise e
       return False
     return True
@@ -60,14 +60,14 @@ class FormatCBFMultiTile(FormatCBFFull):
     try:
       cbf_handle = pycbf.cbf_handle_struct()
       cbf_handle.read_widefile(image_file, pycbf.MSG_DIGEST)
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
     #check if multiple arrays
     try:
       return cbf_handle.count_elements() > 1
-    except Exception, e:
+    except Exception as e:
       if 'CBFlib Error' in str(e):
         return False
 
@@ -80,8 +80,6 @@ class FormatCBFMultiTile(FormatCBFFull):
     FormatCBFFull.__init__(self, image_file, **kwargs)
 
     self._raw_data = None
-
-    return
 
   def _start(self):
     '''Open the image file as a cbf file handle, and keep this somewhere
@@ -135,7 +133,7 @@ class FormatCBFMultiTile(FormatCBFFull):
         underload = cbf.get_doublevalue()
         overload = cbf.get_overload(0)
         trusted_range = (underload, overload)
-      except: # intentional
+      except Exception:
         trusted_range = (0.0, 0.0)
 
       cbf_detector.__swig_destroy__(cbf_detector)
@@ -167,7 +165,7 @@ class FormatCBFMultiTile(FormatCBFFull):
       while cbf.category_name().lower() != "array_data":
         try:
           cbf.next_category()
-        except Exception, e:
+        except Exception:
           return None
       cbf.select_column(0)
       cbf.select_row(0)
@@ -197,7 +195,7 @@ class FormatCBFMultiTile(FormatCBFFull):
 
         try:
           cbf.next_row()
-        except Exception, e:
+        except Exception:
           break
       assert len(d) == len(self._raw_data)
 

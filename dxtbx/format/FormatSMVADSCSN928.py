@@ -39,8 +39,6 @@ class FormatSMVADSCSN928(FormatSMVADSCSN):
 
     FormatSMVADSCSN.__init__(self, image_file, **kwargs)
 
-    return
-
   def _goniometer(self):
     '''Return a model for a simple single-axis goniometer. This should
     probably be checked against the image header.'''

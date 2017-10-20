@@ -15,7 +15,7 @@ class FormatPY(Format):
   def understand(image_file):
     try:
       tag = FormatPY.open_file(image_file, 'rb').read(4)
-    except IOError,e:
+    except IOError:
       return False
 
     return tag[0:2]=="(d" or tag[0:2]=="}q" or \
@@ -28,7 +28,6 @@ class FormatPY(Format):
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
     Format.__init__(self, image_file, **kwargs)
-    return
 
 if __name__ == '__main__':
   import sys

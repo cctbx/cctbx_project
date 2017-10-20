@@ -19,7 +19,7 @@ class FormatHDF5(FormatMultiImage, Format):
   def understand(image_file):
     try:
       tag = FormatHDF5.open_file(image_file, 'rb').read(8)
-    except IOError,e:
+    except IOError:
       return False
 
     return tag == "\211HDF\r\n\032\n"

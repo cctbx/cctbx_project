@@ -174,7 +174,7 @@ class ScanFactory:
     gonio = cbf_handle.construct_goniometer()
     try:
       angles = tuple(gonio.get_rotation_range())
-    except Exception, e:
+    except Exception as e:
       if str(e).strip() == 'CBFlib Error(s): CBF_NOTFOUND':
         # probaby a still shot -> no scan object
         return None
@@ -238,4 +238,4 @@ class ScanFactory:
     elif name.upper() == 'MAR':
       return scan_helper_image_formats.FORMAT_MAR
 
-    raise RuntimeError, 'name %s not known' % name
+    raise RuntimeError('name %s not known' % name)

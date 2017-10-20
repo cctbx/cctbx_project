@@ -148,7 +148,7 @@ class FormatSMVRigakuSaturnNoTS(FormatSMVRigaku):
                                      0.0, 0.0, 1.0)))
         translations.append(gonio_values[j] * axis)
       else:
-        raise RuntimeError, 'unknown axis unit %s' % unit
+        raise RuntimeError('unknown axis unit %s' % unit)
 
     rotations.reverse()
     translations.reverse()

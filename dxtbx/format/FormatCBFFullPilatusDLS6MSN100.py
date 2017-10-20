@@ -28,7 +28,7 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
 
     try:
       from dials.util.masking import GoniometerShadowMaskGenerator
-    except ImportError, e:
+    except ImportError:
       return False
 
     header = FormatCBFFullPilatus.get_cbf_header(image_file)
@@ -52,8 +52,6 @@ class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
     if self._dynamic_shadowing in (libtbx.Auto, 'Auto'):
       self._dynamic_shadowing = True
     FormatCBFFullPilatus.__init__(self, image_file, **kwargs)
-
-    return
 
   def get_mask(self, goniometer=None):
     mask = super(FormatCBFFullPilatusDLS6MSN100, self).get_mask()

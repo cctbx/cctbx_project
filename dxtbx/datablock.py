@@ -870,7 +870,7 @@ class DataBlockFactory(object):
       try:
         datablocks.extend(DataBlockFactory.from_serialized_format(filename))
         if verbose: print 'Loaded datablocks(s) from %s' % filename
-      except Exception, e:
+      except Exception:
         unhandled.append(filename)
 
     # Return the datablocks
@@ -977,7 +977,7 @@ class DataBlockFactory(object):
     # First try as JSON format
     try:
       return DataBlockFactory.from_json_file(filename, check_format)
-    except Exception, e:
+    except Exception:
       pass
 
     # Now try as pickle format
@@ -1022,7 +1022,6 @@ class DataBlockDumper(object):
   def as_json(self, filename=None, compact=False):
     ''' Dump datablock as json. '''
     from os.path import splitext
-    import json
     ext = splitext(filename)[1]
     dictionary = [db.to_dict() for db in self._datablocks]
     if compact:

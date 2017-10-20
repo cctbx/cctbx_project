@@ -20,7 +20,7 @@ class FormatBrukerPhotonII(FormatBruker):
 
     try:
       header_lines = FormatBruker.read_header_lines(image_file)
-    except IOError,e:
+    except IOError:
       return False
 
     header_dic = {}
@@ -52,13 +52,11 @@ class FormatBrukerPhotonII(FormatBruker):
     self._image_file = image_file
     FormatBruker.__init__(self, image_file, **kwargs)
 
-    return
-
   def _start(self):
 
     try:
       header_lines = FormatBruker.read_header_lines(self._image_file)
-    except IOError,e:
+    except IOError:
       return False
 
     self.header_dict = {}

@@ -40,8 +40,6 @@ class FormatSMVADSCSN920(FormatSMVADSCSN):
 
     FormatSMVADSCSN.__init__(self, image_file, **kwargs)
 
-    return
-
   def _detector(self):
     '''Return a model for a simple detector, presuming no one has
     one of these on a two-theta stage. Assert that the beam centre is

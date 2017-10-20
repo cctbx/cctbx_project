@@ -30,13 +30,11 @@ class FormatStill(Format):
       assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
-    except exceptions.Exception, e:
+    except exceptions.Exception:
       # FIXME ideally should not squash the errors here...
       pass
     finally:
       self._end()
-
-    return
 
   def _goniometer(self):
     '''Not sensible for still shot data'''
