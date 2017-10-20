@@ -1623,8 +1623,10 @@ class hhalign_parser(hhpred_parser):
     Probab = ( [+-]? \d+ \. \d* ) \s+
     E-value = ( \d+ \.? \d* )( e[+-]? \d+ )? \s+
     Score = ( \d+\.\d+ ) \s+
-    Aligned_columns = ( \d+ ) \s+
-    Identities = ( \d+ ) % (?: \n | \r\n | \r )
+    (?: Aligned_cols | Aligned_columns ) = ( \d+ ) \s+
+    Identities = ( \d+ ) %
+    [^\n]*
+    (?: \n | \r\n | \r )
     (?P<blocks> .*? )(?= (?:^No) | (?:\Z) )
     """,
     re.VERBOSE | re.DOTALL | re.MULTILINE
