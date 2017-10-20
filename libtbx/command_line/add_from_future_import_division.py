@@ -59,7 +59,7 @@ def run(locations):
       fix(l, imports=check_for_imports)
     else:
       for dirpath, dirnames, filenames in os.walk(l):
-        if dirpath.endswith('jinja2'): continue
+        if dirpath.endswith('jinja2') or dirpath.endswith('.git'): continue
         print(dirpath)
         for f in filenames:
           if f.endswith('.py'):
