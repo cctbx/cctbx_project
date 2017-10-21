@@ -2,8 +2,10 @@ from __future__ import division, absolute_import, print_function
 import atexit
 import libtbx.load_env
 import os
+import itertools
 
 _first_pytest_collection = True
+_pytest_unique_counter = itertools.count(1)
 
 def discover(module, pytestargs=None):
   '''
@@ -62,7 +64,8 @@ def discover(module, pytestargs=None):
   dist_dir = libtbx.env.dist_path(module)
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
-      testarray = L([ "libtbx.python", "-m", "pytest", '--basetemp=pytest',
+      global _pytest_unique_counter
+      testarray = L([ "libtbx.python", "-m", "pytest", '--basetemp=pytest/t%03d' % _pytest_unique_counter.next(),
         '"%s"' % (item.fspath + '::' + item.nodeid.split('::', 1)[1]) ])
       testclass = module + '.' + item.location[0].replace(os.path.sep, '.')
       if testclass.endswith('.py'):
@@ -87,4 +90,12 @@ def discover(module, pytestargs=None):
     pytest.main(pytest_parameters + [ dist_dir ] + pytestargs, plugins=[TestDiscoveryPlugin()])
   finally:
     del os.environ['LIBTBX_SKIP_PYTEST']
+
+  if test_list:
+    # Ensure the common basetemp directory pytest/ exists
+    try:
+      os.mkdir('pytest')
+    except OSError:
+      pass
+
   return test_list
