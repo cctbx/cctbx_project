@@ -889,11 +889,11 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="numpy")
 
   def build_docutils(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=DOCUTILS_PKG,
-      pkg_name_label="docutils",
-      confirm_import_module="docutils")
+    self.build_python_module_pip(
+      package_name='docutils',
+      package_version=DOCUTILS_VERSION,
+      confirm_import_module="docutils",
+    )
 
   def build_junitxml(self):
     self.build_python_module_pip(
@@ -1019,9 +1019,8 @@ _replace_sysconfig_paths(build_time_vars)
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
     h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
-    if ( self.check_download_only(HDF5_PKG) and
-         self.check_download_only(H5PY_PKG)
-         ):
+    if self.check_download_only(HDF5_PKG) and \
+       self.check_download_only(H5PY_PKG):
       return
     self.untar_and_chdir(pkg=hdf5pkg, log=pkg_log)
     print >> pkg_log, "Building base HDF5 library..."

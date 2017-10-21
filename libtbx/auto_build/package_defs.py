@@ -48,8 +48,6 @@ OPENSSL_PKG = "openssl-1.0.2l.tar.gz"
 # root certificates for macOS 10.11 and later
 CERTIFI_PKG = "certifi-2017.4.17.tar.gz"
 
-# base packages updated on 2/15/2015 by bkpoon
-
 # from CCI
 PYTHON_PKG = "Python-2.7.14.tgz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
@@ -62,18 +60,18 @@ BIOPYTHON_PKG = "biopython-1.68.tar.gz"  # used in iotbx
 SPHINX_PKG = "Sphinx-1.4.4.tar.gz"       # for documentation ()
 NUMPYDOC_PKG = "numpydoc-0.5.tar.gz"     # for documentation
 IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
-DOCUTILS_PKG = "docutils-0.12.tar.gz"    # docutils
 VIRTUALENV_PKG = "virtualenv-14.0.6.tar.gz" # virtualenv
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
 CYTHON_VERSION="0.22"
+DOCUTILS_VERSION="0.12"
 FUTURE_VERSION="0.16"
 JINJA2_VERSION = "2.9.6"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 PILLOW_VERSION = "4.2.1"
-PYTEST_VERSION="2.9.1"
+PYTEST_VERSION="3.2.3"
 SIX_VERSION="1.11.0"
 
 # HDF5
