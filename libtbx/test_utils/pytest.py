@@ -1,7 +1,9 @@
-from __future__ import division, absolute_import
+from __future__ import division, absolute_import, print_function
 import atexit
 import libtbx.load_env
 import os
+
+_first_pytest_collection = True
 
 def discover(module, pytestargs=None):
   '''
@@ -25,6 +27,13 @@ def discover(module, pytestargs=None):
   '''
 
   if 'LIBTBX_SKIP_PYTEST' in os.environ:
+    '''If LIBTBX_SKIP_PYTEST is set then the user is running libtbx testing but
+       does not want any pytests to be run.
+       Alternatively the user is running pytest, and pytest wants to find all
+       legacy libtbx tests. In this case we also do not attempt to recursively
+       find pytests.
+    '''
+    # Buck stops here in either case
     return []
 
   if pytestargs is None:
@@ -35,12 +44,12 @@ def discover(module, pytestargs=None):
     import mock
   except ImportError:
     def pytest_warning():
-      print "=" * 55
-      print " WARNING: Skipping some tests for %s\n" % module
-      print " To run all available tests you need to install pytest"
-      print " and the python mocking package, e.g. by running\n"
-      print "    libtbx.python -m pip install pytest mock"
-      print "=" * 55
+      print("=" * 55)
+      print(" WARNING: Skipping some tests for %s\n" % module)
+      print(" To run all available tests you need to install pytest")
+      print(" and the python mocking package, e.g. by running\n")
+      print("    libtbx.python -m pip install pytest mock")
+      print("=" * 55)
     pytest_warning()
     atexit.register(pytest_warning)
     return []
@@ -48,12 +57,12 @@ def discover(module, pytestargs=None):
   class L(list):
     """Subclass list so that it can accept additional attributes."""
 
-  print "Discovering pytest tests for %s:" % module
+  print("Discovering pytest tests for %s:" % module)
   test_list = []
   dist_dir = libtbx.env.dist_path(module)
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
-      testarray = L([ "libtbx.python", "-m", "pytest", '--noconftest', '--basetemp=pytest',
+      testarray = L([ "libtbx.python", "-m", "pytest", '--basetemp=pytest',
         '"%s"' % (item.fspath + '::' + item.nodeid.split('::', 1)[1]) ])
       testclass = module + '.' + item.location[0].replace(os.path.sep, '.')
       if testclass.endswith('.py'):
@@ -61,5 +70,21 @@ def discover(module, pytestargs=None):
       testarray.test_class = testclass
       testarray.test_name = item.name
       test_list.append(testarray)
-  pytest.main(['-qq', '--collect-only', '--noconftest', dist_dir] + pytestargs, plugins=[TestDiscoveryPlugin()])
+
+  pytest_parameters = ['-qq', '--collect-only']
+
+  # Only show pytest warnings during first collection
+  global _first_pytest_collection
+  if not _first_pytest_collection:
+    pytest_parameters.append('--disable-pytest-warnings')
+  _first_pytest_collection = False
+
+  try:
+    # Now set LIBTBX_SKIP_PYTEST so we can collect all pytests without pytest
+    # recursively trying to find legacy libtbx tests.
+    os.environ['LIBTBX_SKIP_PYTEST'] = "1"
+
+    pytest.main(pytest_parameters + [ dist_dir ] + pytestargs, plugins=[TestDiscoveryPlugin()])
+  finally:
+    del os.environ['LIBTBX_SKIP_PYTEST']
   return test_list

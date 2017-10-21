@@ -10,6 +10,7 @@ from cStringIO import StringIO
 import traceback
 import time
 import os
+import re
 import sys
 
 QUIET = 0
@@ -59,24 +60,15 @@ def find_tests (dir_name) :
 def run_command(command,
                 verbosity=DEFAULT_VERBOSITY,
                 out=None):
-  if (out is None) :
-    out = sys.stdout
-  try :
+  try:
     t0=time.time()
     cmd_result = easy_run.fully_buffered(
       command=command,
-      #join_stdout_stderr=join_stdout_stderr,
       )
-    if 0:
-      test_utils._check_command_output(
-        lines=cmd_result.stdout_lines,
-        show_command_if_error=1, #show_command_if_error,
-        sorry_expected=0, #sorry_expected,
-        )
     cmd_result.wall_time = time.time()-t0
     cmd_result.error_lines = evaluate_output(cmd_result)
     return cmd_result
-  except KeyboardInterrupt :
+  except KeyboardInterrupt:
     traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
     sys.stdout.write(traceback_str)
     return None
@@ -97,7 +89,6 @@ def reconstruct_test_name (command) :
   if hasattr(command, 'test_class') and hasattr(command, 'test_name'):
     return command.test_class, command.test_name
 
-  import re
   if "-m pytest" in command:
     m = re.search('-m pytest ([^:]*)::(.*)$', command)
     command = 'libtbx.python "%s" %s' % (m.group(1), m.group(2))
@@ -216,7 +207,6 @@ class run_command_list (object) :
     # Output JUnit XML if possible
     try:
       from junit_xml import TestSuite, TestCase
-      import re
       def decode_string(string):
         try:
           return string.encode('ascii', 'xmlcharrefreplace')
@@ -251,7 +241,7 @@ class run_command_list (object) :
       ts = TestSuite("libtbx.run_tests_parallel", test_cases=test_cases)
       with open('output.xml', 'wb') as f:
         print >> f, TestSuite.to_xml_string([ts], prettyprint=True)
-    except ImportError, e:
+    except ImportError:
       pass
 
     # Run time distribution.
@@ -313,7 +303,7 @@ class run_command_list (object) :
     return alert
 
   def save_result (self, result) :
-    if (result is None ):
+    if result is None:
       print >> self.out, "ERROR: job returned None, assuming CTRL+C pressed"
       if self.pool: self.pool.terminate()
       return False
@@ -323,6 +313,17 @@ class run_command_list (object) :
       test_ok = (result.stderr_lines[-1].strip() == 'OK')
       if test_ok:
         result.stderr_lines = []
+    if "-m pytest" in result.command:
+      # pytest does not write to stderr. Attempt to find relevant snippet in
+      # stdout and add it to stderr.
+      add_to_stderr = False
+      for line in result.stdout_lines:
+        if line.startswith('===='):
+          add_to_stderr = False
+        if add_to_stderr:
+          result.stderr_lines.append(line)
+        if line.startswith('____'):
+          add_to_stderr = True
     self.results.append(result)
     kw = {}
     kw['out'] = self.out
