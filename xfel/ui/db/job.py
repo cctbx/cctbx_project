@@ -336,6 +336,9 @@ def submit_job(app, job):
       trial_params.radial_average.two_theta_low = job.rungroup.two_theta_low
       trial_params.radial_average.two_theta_high = job.rungroup.two_theta_high
 
+    if trial_params.input.known_orientations_folder is not None:
+      trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=job.run.run)
+
     working_phil = phil_scope.format(python_object=trial_params)
     diff_phil = orig_phil_scope.fetch_diff(source=working_phil)
 
