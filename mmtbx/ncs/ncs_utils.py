@@ -995,6 +995,9 @@ def recalculate_ncs_transforms(ncs_restraints_group_list,asu_site_cart):
 def filter_ncs_restraints_group_list(whole_h, ncs_restr_group_list):
   """ Remove ncs groups where master or copy does not cover whole chain
   (some atoms are left behind).
+  Reason for this - when big moves are likely (e.g. in real-space refine or
+  model idealization), the chain can get a big gap in place where NCS ends.
+  This leads to undesired artefacts in refinement.
   """
   def whole_chain_in_ncs(whole_h, master_iselection):
     m_c = whole_h.select(master_iselection)

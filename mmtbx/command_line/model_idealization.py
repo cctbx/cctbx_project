@@ -544,36 +544,10 @@ class model_idealization():
 
   def get_grm(self):
     # first make whole grm using self.whole_pdb_h
-
     self.model.get_restraints_manager()
-    # log = self.log
-    # if not self.verbose:
-    #   log = null_out()
-    # if self.params.ignore_ncs:
-    #   params.pdb_interpretation.ncs_search.enabled = False
-    # processed_pdb_files_srv = mmtbx.utils.\
-    #     process_pdb_file_srv(
-    #         crystal_symmetry= self.whole_xrs.crystal_symmetry(),
-    #         pdb_interpretation_params = params.pdb_interpretation,
-    #         stop_for_unknowns         = False,
-    #         log=log,
-    #         cif_objects=self.cif_objects)
-    # processed_pdb_file, junk = processed_pdb_files_srv.\
-    #     process_pdb_files(
-    #         raw_records=flex.split_lines(self.whole_pdb_h.as_pdb_string()))
-
-    # self.model.get_mon_lib_srv() = processed_pdb_files_srv.mon_lib_srv
-    # self.ener_lib = processed_pdb_files_srv.ener_lib
-    # self.rotamer_manager = RotamerEval(mon_lib_srv=self.mon_lib_srv)
-
-    # self.whole_grm = get_geometry_restraints_manager(
-    #     processed_pdb_file, self.whole_xrs, params=params)
-
     self.whole_grm = self.model.get_restraints_manager()
-
     # set SS restratins
     self.set_ss_restraints(self.filtered_whole_ann)
-
     # now select part of it for working with master hierarchy
     self.update_grms()
 
@@ -606,7 +580,6 @@ class model_idealization():
           self.master_pdb_h.reset_atom_i_seqs()
           self.master_model = self.model.select(master_sel)
 
-
     if self.using_ncs:
       if self.params.debug:
         self.master_pdb_h.write_pdb_file("%s_master_h.pdb" % self.params.output_prefix)
@@ -616,7 +589,6 @@ class model_idealization():
       self.working_pdb_h = self.whole_pdb_h
       self.working_model = self.model#.deep_copy()
     self.working_pdb_h.reset_atom_i_seqs()
-
 
     self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=self.cs)
     if self.using_ncs:
@@ -833,21 +805,7 @@ class model_idealization():
 
     # This massively repeats  self.get_intermediate_result_hierarchy
     self.whole_pdb_h = self.get_intermediate_result_hierarchy()
-    # if self.using_ncs:
-    #   print >> self.log, "Using ncs"
-    #   # multiply back and do geometry_minimization for the whole molecule
-    #   for ncs_gr in self.ncs_restr_group_list:
-    #     # master_h = self.whole_pdb_h.select(ncs_gr.master_iselection)
-    #     new_sites = self.working_pdb_h.atoms().extract_xyz()
-    #     self.whole_pdb_h.select(ncs_gr.master_iselection).atoms().set_xyz(new_sites)
-    #     for c in ncs_gr.copies:
-    #       new_c_sites = c.r.elems * new_sites + c.t
-    #       self.whole_pdb_h.select(c.iselection).atoms().set_xyz(new_c_sites)
-    #   self.log.flush()
-    # else:
-    #   # still need to run gm if rotamers were fixed
-    #   print >> self.log, "Not using ncs"
-    # assert 0
+
     if self.using_ncs:
       print >> self.log, "Using ncs"
       # assert 0

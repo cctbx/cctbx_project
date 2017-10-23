@@ -370,13 +370,6 @@ class manager(object):
       return self._xray_structure.sites_cart()
     return None
 
-  def get_ncs_groups(self):
-    """
-    This returns object mmtbx.ncs.ncs.ncs_group, used primarily in
-    Tom's tools for historic reasons
-    """
-    return self._ncs_groups
-
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
       return self._atom_selection_cache
@@ -541,9 +534,6 @@ class manager(object):
     if self.all_chain_proxies is not None:
       return self.all_chain_proxies.apply_cif_links
     return []
-
-  def get_ncs_obj(self):
-    return self._ncs_obj
 
   def update_xrs(self, hierarchy=None):
     """
@@ -808,6 +798,12 @@ class manager(object):
     #
     self.extract_tls_selections_from_input()
 
+  #
+  # =======================================================================
+  # NCS-related features.
+  # =======================================================================
+  #
+
   def setup_torsion_ncs_restraints(self,
       fmodel,
       ncs_torsion_params,
@@ -839,6 +835,25 @@ class manager(object):
     if self.get_ncs_obj() is not None:
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
           chain_max_rmsd=chain_max_rmsd)
+
+  def extract_ncs_groups(self):
+    result = None
+    if (self.restraints_manager is not None and
+        self.restraints_manager.ncs_groups is not None):
+      result = self.restraints_manager.ncs_groups.extract_ncs_groups(
+        sites_cart = self._xray_structure.sites_cart())
+    return result
+
+  def get_ncs_obj(self):
+    return self._ncs_obj
+
+  def get_ncs_groups(self):
+    """
+    This returns object mmtbx.ncs.ncs.ncs_group, used primarily in
+    Tom's tools for historic reasons
+    """
+    return self._ncs_groups
+
 
   def setup_scattering_dictionaries(self,
       scattering_table,
@@ -1539,14 +1554,6 @@ class manager(object):
       restraints_manager = self.restraints_manager,
       xray_structure     = self._xray_structure,
       ias_manager        = self.ias_manager)
-
-  def extract_ncs_groups(self):
-    result = None
-    if(self.restraints_manager is not None and
-       self.restraints_manager.ncs_groups is not None):
-      result = self.restraints_manager.ncs_groups.extract_ncs_groups(
-        sites_cart = self._xray_structure.sites_cart())
-    return result
 
   def deep_copy(self):
     return self.select(selection = flex.bool(
