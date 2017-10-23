@@ -714,8 +714,12 @@ int main() {
       SHLINK="icpc",
     )
     env_etc.c_link = "icc"
+    # Specific warnings disabled and why:
+    # 161: unrecognized #pragma
+    # 167: argument of type "type" is incompatible with parameter of type "type"
+    #      Turned off in 2edd0; "incompatible char pointers, triggered by ccp4 code"
     env_etc.ccflags_base = [
-      "-fPIC", "-fno-strict-aliasing", "-vec_report0", "-wd161,167"]
+      "-fPIC", "-fno-strict-aliasing", "-wd161,167"]
     env_etc.cxxflags_base = ["-Wno-deprecated"]
     # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.icc_version >= 100000 and determine_cpp0x_flag()):
