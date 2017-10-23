@@ -166,13 +166,13 @@ class SBSettingsPanel(wx.Panel):
       path = str(dialog.GetPath())
       if (path != "") :
         # The detector object of the format instance is adjusted when the quadrant calibration
-        # arrows are clicked.  Sync those adjustments to the cbf handle, drop uneeded categories
+        # arrows are clicked.  Sync those adjustments to a new cbf handle, drop uneeded categories
         # (categories frame specific but not metrology specific) and write the file.
         frame = self.GetParent().GetParent()
-        img = frame.pyslip.tiles.raw_image.image_set.reader().get_format()
-
-        img.sync_detector_to_cbf()
-        cbf = img._cbf_handle
+        img = frame.pyslip.tiles.raw_image
+        header=img.image_set.get_format_class()(img.full_path)
+        header.sync_detector_to_cbf(img.get_detector())
+        cbf = header._cbf_handle
         cbf.find_category("array_data")                  ; cbf.remove_category()
         cbf.find_category("array_structure")             ; cbf.remove_category()
         cbf.find_category("array_intensities")           ; cbf.remove_category()
