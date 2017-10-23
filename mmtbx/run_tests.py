@@ -261,6 +261,7 @@ tst_list = (
   "$D/regression/model_idealization/tst_withmap_03.py",
   "$D/regression/model_idealization/tst_withmap_04.py",
   "$D/regression/model_idealization/tst_withmap_05.py",
+  "$D/regression/model_idealization/tst_withmap_06.py",
   "$D/regression/model_idealization/tst_ligands.py",
   "$D/regression/model_idealization/tst_with_mtz.py",
   "$D/regression/model_idealization/tst_ext_map_01.py",
