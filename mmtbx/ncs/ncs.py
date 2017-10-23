@@ -1062,7 +1062,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     raise Sorry(
      "Unable to find forward and reverse operators for this helical symmetry")
 
-  def extend_helix_operators(self,z_range=None,tol_z=0.01):
+  def extend_helix_operators(self,z_range=None,tol_z=0.01,
+      max_operators=None):
     assert self._have_helical_symmetry
     # extend the operators to go from -z_range to z_range
     from copy import deepcopy
@@ -1094,6 +1095,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     r_forwards,t_forwards,r_reverse,t_reverse=self.get_forwards_reverse_helix(
       r1=r_next_to_last,t1=t_next_to_last,r2=r_last,t2=t_last)
 
+    if max_operators:
+      max_new_each_direction=max(0,
+          (1+max_operators-len(rota_matrices_inv_sav))//2)
+    else:
+      max_new_each_direction=None
+
     # Add on at end until we get to z_max (or z_min if z_translation<0)
     r_list=[r_last]
     t_list=[t_last]
@@ -1102,7 +1109,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       new_r = r_forwards*r_list[-1]
       new_t= (r_forwards * t_list[-1]) + t_forwards
       new_c= (r_forwards*c_list[-1])+t_forwards
-      if is_in_range(new_t[2],-z_range,z_range):
+      if max_new_each_direction and len(c_list)>=max_new_each_direction:
+        break
+      elif is_in_range(new_t[2],-z_range,z_range):
         r_list.append(new_r)
         t_list.append(new_t)
         c_list.append(new_c)
@@ -1120,7 +1129,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       new_r = r_reverse*r_list[-1]
       new_t= (r_reverse * t_list[-1]) + t_reverse
       new_c= (r_reverse*c_list[-1])+t_reverse
-      if is_in_range(new_t[2],-z_range,z_range):
+      if max_new_each_direction and len(c_list)>=max_new_each_direction:
+        break
+      elif is_in_range(new_t[2],-z_range,z_range):
         r_list.append(new_r)
         t_list.append(new_t)
         c_list.append(new_c)
@@ -1852,11 +1863,13 @@ class ncs:
     for ncs_group in self._ncs_groups:
       ncs_group.sort_by_z_translation(tol_z=tol_z)
 
-  def extend_helix_operators(self,z_range=None,tol_z=0.01):
+  def extend_helix_operators(self,z_range=None,tol_z=0.01,
+      max_operators=None):
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
-      ncs_group.extend_helix_operators(z_range=z_range,tol_z=tol_z)
+      ncs_group.extend_helix_operators(z_range=z_range,tol_z=tol_z,
+        max_operators=max_operators)
 
   def is_helical_along_z(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
     if not self._ncs_groups:

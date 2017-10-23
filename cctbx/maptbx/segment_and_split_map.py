@@ -320,6 +320,12 @@ master_phil = iotbx.phil.parse("""
       .help = tolerance in translations (A) for point group or helical symmetry
       .short_caption = Translation tolerance absolute
 
+    max_helical_operators= None
+      .type = int 
+      .help = Maximum helical operators (if extending existing helical\
+             operators)
+      .short_caption = Maximum helical operators 
+
     rel_tol_t = .05
       .type = float
       .help = tolerance in translations (fractional) for point group or \
@@ -3757,7 +3763,13 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
          parameters()[2]
       print >>out,"Extending NCS operators to entire cell (z_range=%.1f)" %(
          z_range)
-      ncs_object.extend_helix_operators(z_range=z_range)
+      max_operators= \
+          tracking_data.params.reconstruction_symmetry.max_helical_operators
+      if max_operators:
+        print>>out,"Maximum new number of NCS operators will be %s" %(
+         max_operators) 
+      ncs_object.extend_helix_operators(z_range=z_range,
+        max_operators=max_operators)
       ncs_object.display_all()
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
@@ -6871,6 +6883,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'tol_r','abs_tol_t',
        'rel_tol_t',
        'require_helical_or_point_group_symmetry',
+       'max_helical_operators',
        'allow_box_if_b_iso_set',
        'max_box_fraction',
        'cc_cut',
@@ -7896,6 +7909,7 @@ def auto_sharpen_map_or_map_coeffs(
         abs_tol_t=None,
         rel_tol_t=None,
         require_helical_or_point_group_symmetry=None,
+        max_helical_operators=None,
         k_sharpen=None,
         optimize_d_cut=None,
         optimize_k_sharpen=None,

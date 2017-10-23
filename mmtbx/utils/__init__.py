@@ -3143,6 +3143,9 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
           get_half_height_width=False)
         return z_min,z_max
       else:
+        z_min,z_max=self.get_range(value_list,threshold=threshold,
+          ignore_ends=ignore_ends,keep_near_ends_frac=keep_near_ends_frac,
+          get_half_height_width=False)
         return z_min,z_max
 
     if threshold is None: threshold=0
