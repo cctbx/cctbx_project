@@ -55,11 +55,15 @@ control_phil_str = '''
 '''
 
 delete_shoeboxes_override_str = '''
-  output {
-    delete_integration_shoeboxes = True
-      .type = bool
-      .help = Delete integration shoeboxes when finished with each image.
+  integration {
+    debug {
+      delete_shoeboxes = True
+        .type = bool
+        .help = "Delete shoeboxes immediately before saving files. This option"
+                "in combination with debug.output=True enables intermediate"
+                "processing steps to make use of shoeboxes."
     }
+  }
 '''
 
 from dials.command_line.stills_process import Processor, dials_phil_str, program_defaults_phil_str, Script as DialsScript
