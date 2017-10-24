@@ -827,16 +827,19 @@ class manager(object):
         geometry.ncs_dihedral_manager = None
     geometry.sync_reference_dihedral_with_ncs(log=log)
 
-  def setup_ncs_groups(self, chain_max_rmsd=10):
+  def setup_ncs_constraints_groups(self, chain_max_rmsd=10):
     """
     This will be used directly (via get_ncs_groups) in
     mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
+
+    supposedly NCS constraints
     """
     if self.get_ncs_obj() is not None:
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
           chain_max_rmsd=chain_max_rmsd)
 
   def extract_ncs_groups(self):
+    """ This is groups for Cartesian NCS"""
     result = None
     if (self.restraints_manager is not None and
         self.restraints_manager.ncs_groups is not None):
@@ -853,6 +856,14 @@ class manager(object):
     Tom's tools for historic reasons
     """
     return self._ncs_groups
+
+  def setup_cartesian_ncs_groups(self, ncs_groups):
+    rm = self.get_restraints_manager()
+    if ncs_groups is not None and len(ncs_groups.members) > 0:
+      assert rm is not None
+      rm.ncs_groups = ncs_groups
+
+
 
 
   def setup_scattering_dictionaries(self,

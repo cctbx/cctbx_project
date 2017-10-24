@@ -194,7 +194,7 @@ class run2(object):
                pdb_hierarchy,
                correct_special_position_tolerance,
                riding_h_manager               = None,
-               ncs_restraints_group_list      = [],
+               ncs_restraints_group_list      = [], # These are actually for NCS CONSTRAINTS!
                max_number_of_iterations       = 500,
                number_of_macro_cycles         = 5,
                selection                      = None,
@@ -291,7 +291,7 @@ class run2(object):
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
             target_function_and_grads_geometry_minimization(
                 xray_structure=xrs,
-                ncs_restraints_group_list=ncs_restraints_group_list,
+                ncs_restraints_group_list=ncs_restraints_group_list, # CONSTRAINTS
                 refine_selection=refine_selection,
                 restraints_manager=self.restraints_manager.geometry,
                 refine_sites=True,
@@ -300,7 +300,7 @@ class run2(object):
         minimized = mmtbx.refinement.minimization_ncs_constraints.lbfgs(
           target_and_grads_object      = tfg_obj,
           xray_structure               = xrs,
-          ncs_restraints_group_list    = ncs_restraints_group_list,
+          ncs_restraints_group_list    = ncs_restraints_group_list, # CONSTRAINTS
           refine_selection             = refine_selection,
           finite_grad_differences_test = False,
           max_iterations               = max_number_of_iterations,
@@ -386,7 +386,7 @@ def minimize_wrapper_for_ramachandran(
     excl_string_selection,
     processed_pdb_file = None,
     log=None,
-    ncs_restraints_group_list=[],
+    ncs_restraints_group_list=[], #CONSTRAINTS
     reference_rotamers = True,
     number_of_cycles=1,
     run_first_minimization_without_reference=False,
