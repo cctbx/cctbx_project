@@ -16,6 +16,7 @@ from mmtbx import ncs
 import mmtbx.utils
 from libtbx import Auto
 import time
+from libtbx.str_utils import line_breaker
 
 # Refactoring notes 11 May 2015
 # Torsion NCS restraints should use the same procedure to find NCS groups
@@ -224,43 +225,71 @@ class torsion_ncs(object):
       # in this module
       # ================================================
       assert 0
-      # atom_labels = list(pdb_hierarchy.atoms_with_labels())
-      # segids = flex.std_string([ a.segid for a in atom_labels ])
-      # self.use_segid = not segids.all_eq('    ')
-      # ncs_groups_manager = get_ncs_groups(
-      #     pdb_hierarchy=pdb_hierarchy,
-      #     use_segid=self.use_segid,
-      #     params=self.params,
-      #     log=self.log)
-      # self.ncs_groups = ncs_groups_manager.ncs_groups
-      # self.alignments = ncs_groups_manager.alignments
-      # new_ncs_groups = None
-      # #sort NCS groups alphabetically
-      # def selection_sort(match_list):
-      #   match_list.sort()
-      #   return match_list[0]
-      # self.ncs_groups.sort(key=selection_sort)
-      # if len(self.ncs_groups) > 0:
-      #   new_ncs_groups = "refinement {\n ncs {\n  torsion {\n"
-      #   for ncs_set in self.ncs_groups:
-      #     new_ncs_groups += "   restraint_group {\n"
-      #     for chain in ncs_set:
-      #       new_ncs_groups += "    selection = %s\n" % chain
-      #     if self.b_factor_weight is not None:
-      #       new_ncs_groups += \
-      #         "    b_factor_weight = %.1f\n" % self.b_factor_weight
-      #     else:
-      #       new_ncs_groups += \
-      #         "    b_factor_weight = None\n"
-      #     if self.coordinate_sigma is not None:
-      #       new_ncs_groups += \
-      #         "    coordinate_sigma = %.1f\n" % self.coordinate_sigma
-      #     else:
-      #       new_ncs_groups += \
-      #         "    coordinate_sigma = None\n"
-      #     new_ncs_groups += "   }\n"
-      #   new_ncs_groups += "  }\n }\n}"
-      # self.found_ncs = new_ncs_groups
+
+  def as_cif_block(self, loops, cif_block):
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
+        ncs_ens_gen_loop) = loops
+    for i_group, ncs_group in enumerate(self.ncs_groups):
+      ncs_ens_loop.add_row((i_group+1, "?"))
+      for i_domain, ncs_domain in enumerate(ncs_group):
+        ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
+        segments = self.master_ranges[ncs_domain]
+        asym_id = ncs_domain.split("and")[0].split()[1].strip()
+        for i_segment, segment_range in enumerate(segments):
+          ncs_dom_lim_loop.add_row(
+            (i_group+1, i_domain+1, asym_id, segment_range[0],
+             asym_id, segment_range[1], ncs_domain))
+    cif_block.add_loop(ncs_ens_loop)
+    cif_block.add_loop(ncs_dom_loop)
+    cif_block.add_loop(ncs_dom_lim_loop)
+    if self.ncs_groups is not None:
+      cif_block.add_loop(ncs_oper_loop)
+      cif_block.add_loop(ncs_ens_gen_loop)
+    return cif_block
+
+  def as_pdb(self, hierarchy, out):
+    assert out is not None
+    restraint_groups = self.ncs_groups
+    torsion_counts=self.get_number_of_restraints_per_group(
+      pdb_hierarchy=hierarchy)
+    sites_cart = hierarchy.atoms().extract_xyz()
+    self.get_torsion_rmsd(sites_cart=sites_cart)
+    pr = "REMARK   3  "
+    print >> out, pr+"TORSION NCS DETAILS."
+    print >> out, pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
+    for i_group, ncs_group in enumerate(restraint_groups):
+      count = 0
+      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
+      selection_strings = ncs_group
+      for selection in selection_strings:
+        lines = line_breaker(selection, width=34)
+        for i_line, line in enumerate(lines):
+          if (i_line == 0):
+            print >> out, pr+"   SELECTION          : %s"%line
+          else:
+            print >> out, pr+"                      : %s"%line
+        count += torsion_counts[selection]
+      print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
+      if self.torsion_rmsd is not None:
+        print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
+          self.torsion_rmsd
+      if self.all_torsion_rmsd is not None:
+        print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
+          self.all_torsion_rmsd
+    if self.histogram_under_limit is not None:
+      print >> out, pr + "  Histogram of differences under limit:"
+      self.histogram_under_limit.show(
+        f=out,
+        prefix=pr+"  ",
+        format_cutoffs="%8.3f")
+    if self.histogram_over_limit is not None:
+      print >> out, pr + "  Histogram of differences over limit:"
+      self.histogram_over_limit.show(
+        f=out,
+        prefix=pr+"  ",
+        format_cutoffs="%8.3f")
 
   def find_ncs_matches_from_hierarchy(self,
                                       pdb_hierarchy):

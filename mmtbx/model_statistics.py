@@ -18,26 +18,6 @@ from mmtbx.validation import cablam
 import iotbx.cif.model
 from libtbx import group_args
 
-class model_content(object):
-  def __init__(self, model):
-    self.atoms_count = model.get_number_of_atoms()
-    self.atoms_occupancy_sum = \
-      flex.sum(model.get_xray_structure().scatterers().extract_occupancies())
-    self.scattering_types_counts_and_occupancy_sums = \
-      model.get_xray_structure().scattering_types_counts_and_occupancy_sums()
-
-  def show(self, out = None, prefix = "", pdb_deposition = False):
-    if(out is None): out = sys.stdout
-    if(pdb_deposition):
-      prefix = "REMARK   3  "
-    fmt = "   %5s               %10d        %8.2f"
-    print >> out, prefix+"MODEL CONTENT."
-    print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
-    for item in self.scattering_types_counts_and_occupancy_sums:
-      print >> out, prefix+fmt % (item.scattering_type, item.count,
-        item.occupancy_sum)
-    print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)
-
 class adp(object):
   def __init__(self, model, wilson_b = None, n_histogram_slots = 10, file_name=None,
       selection=None):
@@ -279,24 +259,23 @@ class adp(object):
     return cif_block
 
 class model(object):
+  """
+  This class does not make any sence and should be removed.
+  Please do not add anything here.
+  Most likely this class should be merged into class info() below.
+  """
   def __init__(self,
                model,
                wilson_b = None,
                use_molprobity=True,
-               ncs_manager=None,
-               cdl_restraints=False,
                general_selection=None,
                ):
+    self.model_manager = model
     self.geometry = model.geometry_statistics(
       general_selection=general_selection)
-    self.content = model_content(model)
     self.adp = adp(model, wilson_b=wilson_b)
     self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
-    self.ncs_groups = model.extract_ncs_groups()
-    self.ncs_manager = ncs_manager
-    self.pdb_hierarchy = model.get_hierarchy(sync_with_xray_structure=True)
-    self.cdl_restraints = cdl_restraints
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
@@ -314,169 +293,14 @@ class model(object):
     if(self.anomalous_scatterer_groups is not None):
       print >> out, prefix
       self.show_anomalous_scatterer_groups(out = out)
-    if(self.ncs_groups is not None):
+    c_ncs_pdb = self.model_manager.cartesian_NCS_as_pdb()
+    if len(c_ncs_pdb) > 0:
       print >> out, prefix
-      self.show_ncs_groups(out = out)
-    if(self.ncs_manager is not None):
+      print >> out, c_ncs_pdb
+    t_ncs_pdb = self.model_manager.torsion_NCS_as_pdb()
+    if len(t_ncs_pdb) > 0:
       print >> out, prefix
-      self.show_torsion_ncs_groups(out = out)
-
-  def show_ncs_groups(self, out = None):
-    if(out is None): out = sys.stdout
-    pr = "REMARK   3  "
-    print >>out,pr+"NCS DETAILS."
-    print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups)
-    for i_group, ncs_group in enumerate(self.ncs_groups):
-      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
-      selection_strings = ncs_group.group.selection_strings
-      for i_op,pair,mx,rms in zip(
-          count(1),
-          ncs_group.group.selection_pairs,
-          ncs_group.matrices,
-          ncs_group.rms):
-        print >> out,pr+"  NCS OPERATOR : %-d" % i_op
-        lines = line_breaker(selection_strings[0], width=34)
-        for i_line, line in enumerate(lines):
-          if(i_line == 0):
-            print >> out, pr+"   REFERENCE SELECTION: %s"%line
-          else:
-            print >> out, pr+"                      : %s"%line
-        lines = line_breaker(selection_strings[i_op], width=34)
-        for i_line, line in enumerate(lines):
-          if(i_line == 0):
-            print >> out, pr+"   SELECTION          : %s"%line
-          else:
-            print >> out, pr+"                      : %s"%line
-        print >> out,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
-        print >> out,pr+"   RMSD               : %-10.3f" % rms
-
-  def ncs_as_cif_block(self, cif_block=None):
-    if cif_block is None:
-      cif_block = iotbx.cif.model.block()
-
-    ncs_ens_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_ens.id",
-      "_struct_ncs_ens.details"))
-    ncs_dom_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_dom.id",
-      "_struct_ncs_dom.pdbx_ens_id",
-      "_struct_ncs_dom.details"))
-    ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_dom_lim.pdbx_ens_id",
-      "_struct_ncs_dom_lim.dom_id",
-      #"_struct_ncs_dom_lim.pdbx_component_id",
-      #"_struct_ncs_dom_lim.pdbx_refine_code",
-      "_struct_ncs_dom_lim.beg_auth_asym_id",
-      "_struct_ncs_dom_lim.beg_auth_seq_id",
-      "_struct_ncs_dom_lim.end_auth_asym_id",
-      "_struct_ncs_dom_lim.end_auth_seq_id",
-      "_struct_ncs_dom_lim.selection_details"))
-
-    ncs_oper_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_oper.id",
-      "_struct_ncs_oper.code",
-      "_struct_ncs_oper.matrix[1][1]",
-      "_struct_ncs_oper.matrix[1][2]",
-      "_struct_ncs_oper.matrix[1][3]",
-      "_struct_ncs_oper.matrix[2][1]",
-      "_struct_ncs_oper.matrix[2][2]",
-      "_struct_ncs_oper.matrix[2][3]",
-      "_struct_ncs_oper.matrix[3][1]",
-      "_struct_ncs_oper.matrix[3][2]",
-      "_struct_ncs_oper.matrix[3][3]",
-      "_struct_ncs_oper.vector[1]",
-      "_struct_ncs_oper.vector[2]",
-      "_struct_ncs_oper.vector[3]",
-      "_struct_ncs_oper.details"))
-
-    ncs_ens_gen_loop = iotbx.cif.model.loop(header=(
-      "_struct_ncs_ens_gen.dom_id_1",
-      "_struct_ncs_ens_gen.dom_id_2",
-      "_struct_ncs_ens_gen.ens_id",
-      "_struct_ncs_ens_gen.oper_id"))
-
-    oper_id = 0
-    if self.ncs_groups is not None:
-      for i_group, ncs_group in enumerate(self.ncs_groups):
-        ncs_ens_loop.add_row((i_group+1, "?"))
-        selection_strings = ncs_group.group.selection_strings
-        matrices = ncs_group.matrices
-        rms = ncs_group.rms
-        pair_count = len(ncs_group.group.selection_pairs[0])
-        for i_domain, domain_selection in enumerate(selection_strings):
-          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
-          # XXX TODO: export individual sequence ranges from selection
-          ncs_dom_lim_loop.add_row(
-            (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
-          if i_domain > 0:
-            rt_mx = ncs_group.matrices[i_domain-1]
-            oper_id += 1
-            row = [oper_id, "given"]
-            row.extend(rt_mx.r)
-            row.extend(rt_mx.t)
-            row.append("?")
-            ncs_oper_loop.add_row(row)
-            ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
-    elif self.ncs_manager is not None:
-      for i_group, ncs_group in enumerate(self.ncs_manager.ncs_groups):
-        ncs_ens_loop.add_row((i_group+1, "?"))
-        for i_domain, ncs_domain in enumerate(ncs_group):
-          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
-          segments = self.ncs_manager.master_ranges[ncs_domain]
-          asym_id = ncs_domain.split("and")[0].split()[1].strip()
-          for i_segment, segment_range in enumerate(segments):
-            ncs_dom_lim_loop.add_row(
-              (i_group+1, i_domain+1, asym_id, segment_range[0],
-               asym_id, segment_range[1], ncs_domain))
-    cif_block.add_loop(ncs_ens_loop)
-    cif_block.add_loop(ncs_dom_loop)
-    cif_block.add_loop(ncs_dom_lim_loop)
-    if self.ncs_groups is not None:
-      cif_block.add_loop(ncs_oper_loop)
-      cif_block.add_loop(ncs_ens_gen_loop)
-    return cif_block
-
-  def show_torsion_ncs_groups(self, out = None):
-    if(out is None): out = sys.stdout
-    restraint_groups = self.ncs_manager.ncs_groups
-    torsion_counts=self.ncs_manager.get_number_of_restraints_per_group(
-      pdb_hierarchy=self.pdb_hierarchy)
-    sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    self.ncs_manager.get_torsion_rmsd(sites_cart=sites_cart)
-    pr = "REMARK   3  "
-    print >>out,pr+"TORSION NCS DETAILS."
-    print >>out,pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
-    for i_group, ncs_group in enumerate(restraint_groups):
-      count = 0
-      print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
-      selection_strings = ncs_group
-      for selection in selection_strings:
-        lines = line_breaker(selection, width=34)
-        for i_line, line in enumerate(lines):
-          if (i_line == 0):
-            print >> out, pr+"   SELECTION          : %s"%line
-          else:
-            print >> out, pr+"                      : %s"%line
-        count += torsion_counts[selection]
-      print >> out,pr+"   RESTRAINED TORSIONS: %-d" % count
-      if self.ncs_manager.torsion_rmsd is not None:
-        print >> out,pr+"   BELOW LIMIT RMSD   : %-10.3f" % \
-          self.ncs_manager.torsion_rmsd
-      if self.ncs_manager.all_torsion_rmsd is not None:
-        print >> out,pr+"   ALL RESTRAINT RMSD : %-10.3f" % \
-          self.ncs_manager.all_torsion_rmsd
-    if self.ncs_manager.histogram_under_limit is not None:
-      print >> out, pr + "  Histogram of differences under limit:"
-      self.ncs_manager.histogram_under_limit.show(
-        f=out,
-        prefix=pr+"  ",
-        format_cutoffs="%8.3f")
-    if self.ncs_manager.histogram_over_limit is not None:
-      print >> out, pr + "  Histogram of differences over limit:"
-      self.ncs_manager.histogram_over_limit.show(
-        f=out,
-        prefix=pr+"  ",
-        format_cutoffs="%8.3f")
+      print >> out, t_ncs_pdb
 
   def show_anomalous_scatterer_groups(self, out = None):
     if(out is None): out = sys.stdout
@@ -511,8 +335,13 @@ class model(object):
     if self.anomalous_scatterer_groups is not None:
       pass
       #self.show_anomalous_scatterer_groups(out = out)
-    if self.ncs_groups is not None or self.ncs_manager is not None:
-      self.ncs_as_cif_block(cif_block=cif_block)
+    # adding NCS information.
+    # It is not clear why we dump cartesian NCS first, and if it is absent,
+    # Torsion NCS next. What about NCS constraints?
+    if self.model_manager.cartesian_NCS_present():
+      self.model_manager.cartesian_NCS_as_cif_block(cif_block=cif_block)
+    elif self.model_manager.torsion_NCS_present():
+      self.model_manager.torsion_NCS_as_cif_block(cif_block=cif_block)
     return cif_block
 
 class info(object):
@@ -523,11 +352,6 @@ class info(object):
                      general_selection = None,
                      use_molprobity    = True):
     ref_par = refinement_params
-    ncs_manager = None
-    if model != None:
-      if model.restraints_manager != None:
-        if model.restraints_manager.geometry != None:
-          ncs_manager = model.restraints_manager.geometry.ncs_dihedral_manager
     wilson_b = None
     if fmodel_x is not None:
       wilson_b = fmodel_x.wilson_b()
@@ -537,8 +361,6 @@ class info(object):
       model = model,
       wilson_b = wilson_b,
       use_molprobity = use_molprobity,
-      ncs_manager = ncs_manager,
-      cdl_restraints = ref_par.pdb_interpretation.restraints_library.cdl,
       general_selection = general_selection,
       )
     self.data_x, self.data_n = None, None

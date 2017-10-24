@@ -834,6 +834,33 @@ class manager(object):
         geometry.ncs_dihedral_manager = None
     geometry.sync_reference_dihedral_with_ncs(log=log)
 
+  def torsion_NCS_present(self):
+    rm = self.get_restraints_manager()
+    if rm is None:
+      return False
+    if rm.geometry.ncs_dihedral_manager is None:
+      return False
+    return True
+
+  def torsion_NCS_as_pdb(self):
+    result = StringIO()
+    if self.torsion_NCS_present():
+      self.get_restraints_manager().geometry.ncs_dihedral_manager.as_pdb(
+          hierarchy=self.get_hierarchy(),
+          out=result)
+    return result.getvalue()
+
+  def torsion_NCS_as_cif_block(self, cif_block):
+    if not self.torsion_NCS_present():
+      return cif_block
+    loops = manager._get_NCS_cif_loops()
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    cif_block = self.get_restraints_manager().geometry.ncs_dihedral_manager.as_cif_block(
+        loops=loops, cif_block=cif_block)
+    return cif_block
+
+
   def setup_ncs_constraints_groups(self, chain_max_rmsd=10):
     """
     This will be used directly (via get_ncs_groups) in
@@ -848,9 +875,9 @@ class manager(object):
   def extract_ncs_groups(self):
     """ This is groups for Cartesian NCS"""
     result = None
-    if (self.restraints_manager is not None and
-        self.restraints_manager.ncs_groups is not None):
-      result = self.restraints_manager.ncs_groups.extract_ncs_groups(
+    if (self.get_restraints_manager() is not None and
+        self.get_restraints_manager().ncs_groups is not None):
+      result = self.get_restraints_manager().ncs_groups.extract_ncs_groups(
         sites_cart = self._xray_structure.sites_cart())
     return result
 
@@ -869,6 +896,79 @@ class manager(object):
     if ncs_groups is not None and len(ncs_groups.members) > 0:
       assert rm is not None
       rm.ncs_groups = ncs_groups
+
+  def cartesian_NCS_as_pdb(self):
+    result = StringIO()
+    if (self.restraints_manager is not None and
+        self.restraints_manager.ncs_groups is not None):
+      self.restraints_manager.ncs_groups.as_pdb(
+          sites_cart=self.get_sites_cart(),
+          out=result)
+    return result.getvalue()
+
+  @staticmethod
+  def _get_NCS_cif_loops():
+    ncs_ens_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens.id",
+      "_struct_ncs_ens.details"))
+    ncs_dom_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom.id",
+      "_struct_ncs_dom.pdbx_ens_id",
+      "_struct_ncs_dom.details"))
+    ncs_dom_lim_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_dom_lim.pdbx_ens_id",
+      "_struct_ncs_dom_lim.dom_id",
+      #"_struct_ncs_dom_lim.pdbx_component_id",
+      #"_struct_ncs_dom_lim.pdbx_refine_code",
+      "_struct_ncs_dom_lim.beg_auth_asym_id",
+      "_struct_ncs_dom_lim.beg_auth_seq_id",
+      "_struct_ncs_dom_lim.end_auth_asym_id",
+      "_struct_ncs_dom_lim.end_auth_seq_id",
+      "_struct_ncs_dom_lim.selection_details"))
+
+    ncs_oper_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_oper.id",
+      "_struct_ncs_oper.code",
+      "_struct_ncs_oper.matrix[1][1]",
+      "_struct_ncs_oper.matrix[1][2]",
+      "_struct_ncs_oper.matrix[1][3]",
+      "_struct_ncs_oper.matrix[2][1]",
+      "_struct_ncs_oper.matrix[2][2]",
+      "_struct_ncs_oper.matrix[2][3]",
+      "_struct_ncs_oper.matrix[3][1]",
+      "_struct_ncs_oper.matrix[3][2]",
+      "_struct_ncs_oper.matrix[3][3]",
+      "_struct_ncs_oper.vector[1]",
+      "_struct_ncs_oper.vector[2]",
+      "_struct_ncs_oper.vector[3]",
+      "_struct_ncs_oper.details"))
+
+    ncs_ens_gen_loop = iotbx.cif.model.loop(header=(
+      "_struct_ncs_ens_gen.dom_id_1",
+      "_struct_ncs_ens_gen.dom_id_2",
+      "_struct_ncs_ens_gen.ens_id",
+      "_struct_ncs_ens_gen.oper_id"))
+
+    return ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop, ncs_ens_gen_loop
+
+  def cartesian_NCS_present(self):
+    if (self.get_restraints_manager() is not None and
+        self.get_restraints_manager().ncs_groups is not None and
+        self.get_restraints_manager().ncs_groups.get_n_groups() > 0):
+      return True
+    return False
+
+  def cartesian_NCS_as_cif_block(self, cif_block=None):
+    if not self.cartesian_NCS_present():
+      return cif_block
+    loops = manager._get_NCS_cif_loops()
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    if (self.get_restraints_manager() is not None and
+        self.get_restraints_manager().ncs_groups is not None):
+      cif_block = self.get_restraints_manager().ncs_groups.as_cif_block(
+          loops=loops, cif_block=cif_block, sites_cart=self.get_sites_cart())
+    return cif_block
 
 
 
@@ -1265,6 +1365,21 @@ class manager(object):
     print >> self.log, "%s  count: %d"%(prefix, hc.hrot_count)
     print >> self.log, "%s  occupancy sum: %6.2f (%s of total atoms %6.2f)"%(
       prefix, hc.hrot_occ_sum, "%", hc.hrot_fraction_of_total)
+
+  def scattering_types_counts_and_occupancy_sums(self, prefix=""):
+    out = StringIO()
+    st_counts_and_occupancy_sums = \
+        self.get_xray_structure().scattering_types_counts_and_occupancy_sums()
+    atoms_occupancy_sum = \
+        flex.sum(self.get_xray_structure().scatterers().extract_occupancies())
+    fmt = "   %5s               %10d        %8.2f"
+    print >> out, prefix+"MODEL CONTENT."
+    print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
+    for item in st_counts_and_occupancy_sums:
+      print >> out, prefix+fmt % (item.scattering_type, item.count,
+        item.occupancy_sum)
+    print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
+    return out.getvalue()
 
   def idealize_h(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):

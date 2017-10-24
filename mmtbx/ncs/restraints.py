@@ -15,6 +15,8 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 from itertools import count
 import sys
+from StringIO import StringIO
+from libtbx.str_utils import line_breaker
 
 class selection_properties(object):
 
@@ -635,6 +637,9 @@ class groups(object):
       print >> log
     return ncs_groups
 
+  def get_n_groups(self):
+    return len(self.members)
+
   def register_additional_isolated_sites(self, number):
     for group in self.members:
       group.register_additional_isolated_sites(number=number)
@@ -740,6 +745,74 @@ class groups(object):
       ncs_operators = group.operators(sites_cart=sites_cart)
       result.append(ncs_operators)
     return result
+
+  def as_pdb(self, sites_cart, out):
+    result = out
+    ncs_groups = self.extract_ncs_groups(sites_cart=sites_cart)
+    pr = "REMARK   3  "
+    print >> result, pr+"NCS DETAILS."
+    print >> result, pr+" NUMBER OF NCS GROUPS : %-6d"%len(ncs_groups)
+    for i_group, ncs_group in enumerate(ncs_groups):
+      print >>result,pr+" NCS GROUP : %-6d"%(i_group+1)
+      selection_strings = ncs_group.group.selection_strings
+      for i_op,pair,mx,rms in zip(
+          count(1),
+          ncs_group.group.selection_pairs,
+          ncs_group.matrices,
+          ncs_group.rms):
+        print >> result,pr+"  NCS OPERATOR : %-d" % i_op
+        lines = line_breaker(selection_strings[0], width=34)
+        for i_line, line in enumerate(lines):
+          if(i_line == 0):
+            print >> result, pr+"   REFERENCE SELECTION: %s"%line
+          else:
+            print >> result, pr+"                      : %s"%line
+        lines = line_breaker(selection_strings[i_op], width=34)
+        for i_line, line in enumerate(lines):
+          if(i_line == 0):
+            print >> result, pr+"   SELECTION          : %s"%line
+          else:
+            print >> result, pr+"                      : %s"%line
+        print >> result,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
+        print >> result,pr+"   RMSD               : %-10.3f" % rms
+    return result.getvalue()
+
+  def as_ncs_block(self, loops, cif_block, sites_cart):
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
+        ncs_ens_gen_loop) = loops
+
+    oper_id = 0
+    ncs_groups = self.extract_ncs_groups(sites_cart=sites_cart)
+    if ncs_groups is not None:
+      for i_group, ncs_group in enumerate(ncs_groups):
+        ncs_ens_loop.add_row((i_group+1, "?"))
+        selection_strings = ncs_group.group.selection_strings
+        matrices = ncs_group.matrices
+        rms = ncs_group.rms
+        pair_count = len(ncs_group.group.selection_pairs[0])
+        for i_domain, domain_selection in enumerate(selection_strings):
+          ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
+          # XXX TODO: export individual sequence ranges from selection
+          ncs_dom_lim_loop.add_row(
+            (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
+          if i_domain > 0:
+            rt_mx = ncs_group.matrices[i_domain-1]
+            oper_id += 1
+            row = [oper_id, "given"]
+            row.extend(rt_mx.r)
+            row.extend(rt_mx.t)
+            row.append("?")
+            ncs_oper_loop.add_row(row)
+            ncs_ens_gen_loop.add_row((1, i_domain+1, i_group+1, oper_id))
+    cif_block.add_loop(ncs_ens_loop)
+    cif_block.add_loop(ncs_dom_loop)
+    cif_block.add_loop(ncs_dom_lim_loop)
+    if self.ncs_groups is not None:
+      cif_block.add_loop(ncs_oper_loop)
+      cif_block.add_loop(ncs_ens_gen_loop)
+    return cif_block
 
   def show_sites_distances_to_average(self,
          sites_cart,
