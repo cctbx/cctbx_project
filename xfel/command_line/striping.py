@@ -197,8 +197,8 @@ postprocessing {
 postprocessing_override_str = """
 postprocessing {
   input {
-    experiments = FILENAME_refined_experiments_CLUSTER.json
-    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+    experiments = FILENAME_reintegrated_experiments_CLUSTER.json
+    reflections = FILENAME_reintegrated_reflections_CLUSTER.pickle
   }
   output {
     filename = FILENAME_CLUSTER_ITER_extracted.pickle
