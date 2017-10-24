@@ -57,6 +57,7 @@ import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
+from mmtbx.rotamer.rotamer_eval import RotamerID
 
 from cStringIO import StringIO
 from copy import deepcopy
@@ -238,6 +239,7 @@ class manager(object):
     self._mon_lib_srv = None
     self._ener_lib = None
     self._rotamer_eval = None
+    self._rotamer_id = None
     self._rama_eval = None
     self.original_model_format = None
     self._ss_manager = None
@@ -524,6 +526,11 @@ class manager(object):
     if self._rotamer_eval is None:
       self._rotamer_eval = RotamerEval(mon_lib_srv=self.get_mon_lib_srv())
     return self._rotamer_eval
+
+  def get_rotamer_id(self):
+    if self._rotamer_id is None:
+      self._rotamer_id = RotamerID()
+    return self._rotamer_id
 
   def get_ramachandran_manager(self):
     if self._rama_eval is None:
