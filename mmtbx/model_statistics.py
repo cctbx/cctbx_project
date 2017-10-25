@@ -257,58 +257,6 @@ class adp(object):
     #_refine.aniso_B[2][3]
     return cif_block
 
-class model(object):
-  """
-  This class does not make any sence and should be removed.
-  Please do not add anything here.
-  Most likely this class should be merged into class info() below.
-  """
-  def __init__(self,
-               model,
-               wilson_b = None,
-               use_molprobity=True,
-               general_selection=None,
-               ):
-    self.model_manager = model
-    self.geometry = model.geometry_statistics(
-      general_selection=general_selection)
-    self.adp = adp(model, wilson_b=wilson_b)
-    self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
-
-  def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
-    if(out is None): out = sys.stdout
-    if(pdb_deposition): prefix="REMARK   3  "
-    if(self.geometry is not None):
-      self.geometry.show(log=out, prefix=prefix)
-    print >> out, prefix
-    self.adp.show(out=out, prefix=prefix, padded=padded,
-      pdb_deposition=pdb_deposition)
-
-    for info_pdb_str in [self.model_manager.tls_groups_as_pdb(),
-        self.model_manager.anomalous_scatterer_groups_as_pdb(),
-        self.model_manager.cartesian_NCS_as_pdb(),
-        self.model_manager.torsion_NCS_as_pdb()]:
-      if len(info_pdb_str) > 0:
-        print >> out, prefix
-        print >> out, info_pdb_str
-
-  def as_cif_block(self, cif_block=None):
-    import iotbx.pdb.mmcif
-    if self.geometry is not None:
-      cif_block = self.geometry.as_cif_block(cif_block=cif_block)
-    cif_block = self.adp.as_cif_block(cif_block=cif_block)
-    cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
-    if self.anomalous_scatterer_groups is not None:
-      pass
-      #self.show_anomalous_scatterer_groups(out = out)
-    # adding NCS information.
-    # It is not clear why we dump cartesian NCS first, and if it is absent,
-    # Torsion NCS next. What about NCS constraints?
-    if self.model_manager.cartesian_NCS_present():
-      self.model_manager.cartesian_NCS_as_cif_block(cif_block=cif_block)
-    elif self.model_manager.torsion_NCS_present():
-      self.model_manager.torsion_NCS_as_cif_block(cif_block=cif_block)
-    return cif_block
 
 class info(object):
   def __init__(self, model,
@@ -319,16 +267,16 @@ class info(object):
                      use_molprobity    = True):
     ref_par = refinement_params
     wilson_b = None
+    self.model = model
     if fmodel_x is not None:
       wilson_b = fmodel_x.wilson_b()
     elif fmodel_n is not None:
       wilson_b = fmodel_n.wilson_b()
-    self.model = mmtbx.model_statistics.model(
-      model = model,
-      wilson_b = wilson_b,
-      use_molprobity = use_molprobity,
-      general_selection = general_selection,
-      )
+
+    self.geometry = model.geometry_statistics(
+        general_selection=general_selection)
+    self.adp = adp(model, wilson_b=wilson_b)
+
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
@@ -352,10 +300,41 @@ class info(object):
       print >> out, prefix
       self.data_n.show_remark_3(out = out)
       print >> out, prefix
-    self.model.show(out = out, pdb_deposition = True)
+    if(self.geometry is not None):
+      self.geometry.show(log=out, prefix=prefix)
+      print >> out, prefix
+    if self.adp is not None:
+      self.adp.show(out=out, prefix="", padded=None,
+          pdb_deposition=True)
+      print >> out, prefix
+    for info_pdb_str in [self.model.tls_groups_as_pdb(),
+        self.model.anomalous_scatterer_groups_as_pdb(),
+        self.model.cartesian_NCS_as_pdb(),
+        self.model.torsion_NCS_as_pdb()]:
+      if len(info_pdb_str) > 0:
+        print >> out, prefix
+        print >> out, info_pdb_str
 
   def as_cif_block(self, cif_block=None):
-    cif_block = self.data_x.as_cif_block(cif_block=cif_block)
+    if cif_block is None:
+      cif_block = iotbx.cif.model.block()
+    if self.data_x is not None:
+      cif_block = self.data_x.as_cif_block(cif_block=cif_block)
     # XXX Neutron data?
-    cif_block = self.model.as_cif_block(cif_block=cif_block)
+
+    if self.geometry is not None:
+      cif_block = self.geometry.as_cif_block(cif_block=cif_block)
+    if self.adp is not None:
+      cif_block = self.adp.as_cif_block(cif_block=cif_block)
+    cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
+
+    # What about anomalous_scatterer_groups here?
+
+    # adding NCS information.
+    # It is not clear why we dump cartesian NCS first, and if it is absent,
+    # Torsion NCS next. What about NCS constraints?
+    if self.model.cartesian_NCS_present():
+      self.model.cartesian_NCS_as_cif_block(cif_block=cif_block)
+    elif self.model.torsion_NCS_present():
+      self.model.torsion_NCS_as_cif_block(cif_block=cif_block)
     return cif_block
