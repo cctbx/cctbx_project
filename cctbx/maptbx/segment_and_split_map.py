@@ -250,6 +250,13 @@ master_phil = iotbx.phil.parse("""
            Default is resolution
        .short_caption = Buffer radius
 
+     pseudo_likelihood = None
+       .type = bool
+       .help = Use pseudo-likelihood method for half-map sharpening. \
+               (In development)
+       .short_caption = Pseudo-likelihood
+       .style = hidden 
+
   }
 
   reconstruction_symmetry {
@@ -394,6 +401,11 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
+
+     scale_max = 100000
+       .type = float
+       .short_caption = Scale_max 
+       .help = Scale amplitudes from inverse FFT to yield maximum of this value
 
      input_d_cut = None
        .type = float
@@ -1748,12 +1760,15 @@ class box_sharpening_info:
       solvent_fraction=None,
       b_iso=None,
       resolution=None,
+      d_min_ratio=None,
+      scale_max=None,
       lower_bounds=None,
       upper_bounds=None,
       wrapping=None,
       n_real=None,
       n_buffer=None,
       map_data=None,
+      smoothing_radius=None,
       smoothed_box_mask_data=None,
       original_box_map_data=None,
        ):
@@ -1788,6 +1803,7 @@ class box_sharpening_info:
     f_array,phases=get_f_phases_from_map(map_data=self.map_data,
        crystal_symmetry=self.crystal_symmetry,
        d_min=self.resolution,
+       scale_max=self.scale_max,
        d_min_ratio=self.d_min_ratio,
        get_remove_aniso_object=False,# don't need it
        out=out)
@@ -1880,6 +1896,7 @@ class sharpening_info:
       eps=None,
       d_min=None,
       d_min_ratio=None,
+      scale_max=None,
       input_d_cut=None,
       b_blur_hires=None,
       rmsd=None,
@@ -1951,6 +1968,7 @@ class sharpening_info:
       local_solvent_fraction=None,
       wang_radius=None,
       buffer_radius=None,
+      pseudo_likelihood=None,
         ):
 
     from libtbx import adopt_init_args
@@ -2065,6 +2083,8 @@ class sharpening_info:
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
       self.d_min_ratio=params.map_modification.d_min_ratio
+      self.scale_max=params.map_modification.scale_max
+
       self.input_d_cut=params.map_modification.input_d_cut
       self.b_blur_hires=params.map_modification.b_blur_hires
       self.rmsd=params.map_modification.rmsd
@@ -2078,6 +2098,7 @@ class sharpening_info:
       #  high-res cutoff of reflections is d_min*d_min_ratio
       self.buffer_radius=params.crystal_info.buffer_radius
       self.wang_radius=params.crystal_info.wang_radius
+      self.pseudo_likelihood=params.crystal_info.pseudo_likelihood
 
       self.max_box_fraction=params.map_modification.max_box_fraction
       self.cc_cut=params.map_modification.cc_cut
@@ -2230,7 +2251,7 @@ class sharpening_info:
       for d_min,sc in zip(
         self.d_min_list,
         self.target_scale_factors):
-        print >>out,"Dmin: %7.2f  Scale: %7.2f" %(d_min,sc)
+        print >>out,"Dmin: %7.2f  Scale: %9.6f" %(d_min,sc)
 
     elif self.sharpening_method=="half_map_sharpening":
       print >>out,"Resolution-dependent half-map sharpening"
@@ -2239,7 +2260,7 @@ class sharpening_info:
         for d_min,sc in zip(
           self.d_min_list,
           self.target_scale_factors):
-          print >>out,"Dmin: %7.2f  Scale: %7.2f" %(d_min,sc)
+          print >>out,"Dmin: %7.2f  Scale: %9.6f" %(d_min,sc)
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
       self.k_sharpen and self.resolution:
@@ -2263,9 +2284,11 @@ class sharpening_info:
           print >>out,"%s : %s" %(x,getattr(self,x))
 
   def get_effective_b_iso(self,map_data=None,out=sys.stdout):
-    map_coeffs_ra,map_coeffs,f_array,phases=effective_b_iso(map_data=map_data,
+    map_coeffs_ra,map_coeffs,f_array,phases=effective_b_iso(
+      map_data=map_data,
       resolution=self.resolution,
       d_min_ratio=self.d_min_ratio,
+      scale_max=self.scale_max,
       crystal_symmetry=self.crystal_symmetry,
        out=out)
     return map_coeffs_ra.b_iso
@@ -2321,6 +2344,7 @@ class sharpening_info:
        crystal_symmetry=self.crystal_symmetry,
        d_min=self.resolution,
        d_min_ratio=self.d_min_ratio,
+       scale_max=self.scale_max,
        return_as_map_coeffs=True,
        out=out)
       return map_coeffs
@@ -2413,10 +2437,13 @@ def scale_map(map,scale_rms=1.0,out=sys.stdout):
       print >>out,"Cannot scale map...all zeros"
     return map
 
-def scale_map_coeffs(map_coeffs,scale_max=100000.,out=sys.stdout):
+def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
   max_value=f_array.data().min_max_mean().max
-  scale=scale_max/max(1.e-10,max_value)
+  if scale_max:
+    scale=scale_max/max(1.e-10,max_value)
+  else:
+    scale=1.0
   if 0:
     print >>out,"Scaling map_coeffs by %9.3f to yield maximum of %7.0f" %(
      scale,scale_max)
@@ -2605,6 +2632,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_max=100000.,
       d_min_ratio=None,return_as_map_coeffs=False,remove_aniso=None,
       get_remove_aniso_object=True,
+      scale_max=None,
         out=sys.stdout):
 
     if d_min is not None:
@@ -2625,7 +2653,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
     if d_min_use:
       map_coeffs=map_coeffs.resolution_filter(d_min=d_min_use,d_max=d_max)
 
-    map_coeffs=scale_map_coeffs(map_coeffs,out=out)
+    map_coeffs=scale_map_coeffs(map_coeffs,scale_max=scale_max,out=out)
 
     if remove_aniso:
       print >>out,"\nRemoving aniso in data before analysis\n"
@@ -6726,6 +6754,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        return_as_map_coeffs=True,
+       scale_max=si.scale_max,
        out=out)
     f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
@@ -6875,6 +6904,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'use_weak_density',
        'resolution',
        'd_min_ratio',
+       'scale_max',
        'input_d_cut',
        'b_blur_hires',
        'discard_if_worse',
@@ -6902,6 +6932,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
         'signal_min',
         'buffer_radius',
         'wang_radius',
+        'pseudo_likelihood',
         'target_b_iso_model_scale',
        'b_iso','b_sharpen',
        'resolution_dependent_b',
@@ -7284,6 +7315,7 @@ def select_box_map_data(si=None,
     lower_bounds=lower_bounds,
     upper_bounds=upper_bounds,
     n_real=box_map.all(),
+    scale_max=si.scale_max,
     wrapping=False,
     crystal_symmetry=box_crystal_symmetry,
     solvent_fraction=box_solvent_fraction)
@@ -7831,6 +7863,7 @@ def run_local_sharpening(si=None,
      map_data=si.map_data,
       resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
+      scale_max=si.scale_max,
       crystal_symmetry=si.crystal_symmetry,
       out=out)
 
@@ -7894,6 +7927,7 @@ def auto_sharpen_map_or_map_coeffs(
         residual_target=None,
         sharpening_target=None,
         d_min_ratio=None,
+        scale_max=None,
         input_d_cut=None,
         b_blur_hires=None,
         max_box_fraction=None,
@@ -7924,6 +7958,7 @@ def auto_sharpen_map_or_map_coeffs(
         signal_min=None,
         buffer_radius=None,
         wang_radius=None,
+        pseudo_likelihood=None,
         target_b_iso_model_scale=None,
         b_iso=None, # if set, use it
         b_sharpen=None, # if set, use it
@@ -8298,6 +8333,7 @@ def run_auto_sharpen(
      map_data=map_data,
       resolution=si.resolution,
       d_min_ratio=si.d_min_ratio,
+      scale_max=si.scale_max,
       remove_aniso=si.remove_aniso,
       crystal_symmetry=si.crystal_symmetry,
       out=out)
@@ -8315,6 +8351,7 @@ def run_auto_sharpen(
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
        remove_aniso=si.remove_aniso,
+       scale_max=si.scale_max,
        return_as_map_coeffs=True,
        out=local_out)
   else:
@@ -8326,6 +8363,7 @@ def run_auto_sharpen(
        crystal_symmetry=si.crystal_symmetry,
        d_min=si.resolution,
        d_min_ratio=si.d_min_ratio,
+       scale_max=si.scale_max,
        remove_aniso=si.remove_aniso,
        return_as_map_coeffs=True,
        out=local_out)
@@ -8606,7 +8644,8 @@ def run_auto_sharpen(
           local_si.b_sharpen=0
           local_si.b_iso=original_b_iso
           from cctbx.maptbx.refine_sharpening import scale_amplitudes
-          scale_amplitudes(model_map_coeffs=model_map_coeffs,map_coeffs=map_coeffs,
+          scale_amplitudes(
+            model_map_coeffs=model_map_coeffs,map_coeffs=map_coeffs,
             si=local_si,out=out)
           # local_si contains target_scale_factors now
           local_f_array=f_array
@@ -8811,6 +8850,7 @@ def run_auto_sharpen(
     box_sharpening_info_obj.crystal_symmetry=best_si.crystal_symmetry
     box_sharpening_info_obj.resolution=best_si.resolution
     box_sharpening_info_obj.d_min_ratio=best_si.d_min_ratio
+    box_sharpening_info_obj.scale_max=best_si.scale_max
     box_sharpening_info_obj.smoothing_radius=best_si.smoothing_radius
     box_sharpening_info_obj.b_iso=best_map_and_b.final_b_iso
     box_sharpening_info_obj.starting_b_iso=best_map_and_b.starting_b_iso
@@ -8832,6 +8872,7 @@ def effective_b_iso(map_data=None,tracking_data=None,
       resolution=None,
       remove_aniso=None,
       d_min_ratio=None,
+      scale_max=None,
       out=sys.stdout):
     if not crystal_symmetry:
       if box_sharpening_info_obj:
@@ -8850,6 +8891,7 @@ def effective_b_iso(map_data=None,tracking_data=None,
        crystal_symmetry=crystal_symmetry,
        d_min=d_min,
        d_min_ratio=d_min_ratio,
+       scale_max=scale_max,
        remove_aniso=remove_aniso,
        return_as_map_coeffs=True,
        out=out)

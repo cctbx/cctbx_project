@@ -167,6 +167,13 @@ master_phil = iotbx.phil.parse("""
            Default is resolution
        .short_caption = Buffer radius
 
+     pseudo_likelihood = None
+       .type = bool
+       .help = Use pseudo-likelihood method for half-map sharpening. \
+               (In development)
+       .short_caption = Pseudo-likelihood
+       .style = hidden
+
   }
 
   map_modification
@@ -213,6 +220,11 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Sharpen d_min ratio
        .help = Sharpening will be applied using d_min equal to \
              d_min_ratio times resolution. Default is 0.833
+
+     scale_max = 100000
+       .type = float
+       .short_caption = Scale_max
+       .help = Scale amplitudes from inverse FFT to yield maximum of this value
 
      input_d_cut = None
        .type = float
@@ -874,6 +886,7 @@ def run(args=None,params=None,
         fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,
+        scale_max=params.map_modification.scale_max,
         input_d_cut=params.map_modification.input_d_cut,
         b_blur_hires=params.map_modification.b_blur_hires,
         max_box_fraction=params.map_modification.max_box_fraction,
@@ -901,6 +914,7 @@ def run(args=None,params=None,
         signal_min=params.map_modification.signal_min,
         buffer_radius=params.crystal_info.buffer_radius,
         wang_radius=params.crystal_info.wang_radius,
+        pseudo_likelihood=params.crystal_info.pseudo_likelihood,
         target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale,
         b_iso=params.map_modification.b_iso,
         b_sharpen=params.map_modification.b_sharpen,

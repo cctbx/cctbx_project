@@ -20,13 +20,16 @@ def write_mtz(ma=None,phases=None,file_name=None):
 #  close to what we want. Figure this out later...
 # XXX Also set means=1 not mean square = 1
 
-def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None): # Not used
+def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None,
+    pseudo_likelihood=False):  # Used for pseudo-likelihood calculation
     epsilons = ma.epsilons().data().as_double()
     mean_f_sq_over_epsilon = flex.double()
     for i_bin in ma.binner().range_used():
       sel = ma.binner().selection(i_bin)
-      #sel_f_sq = flex.pow2(ma.data().select(sel))
-      sel_f_sq = ma.data().select(sel)
+      if pseudo_likelihood:
+        sel_f_sq = flex.pow2(ma.data().select(sel)) # original method used
+      else: # usual
+        sel_f_sq = ma.data().select(sel)
       if (sel_f_sq.size() > 0):
         sel_epsilons = epsilons.select(sel)
         sel_f_sq_over_epsilon = sel_f_sq / sel_epsilons
@@ -36,19 +39,25 @@ def amplitude_quasi_normalisations(ma, d_star_power=1, set_to_minimum=None): # N
     mean_f_sq_over_epsilon_interp = ma.binner().interpolate(
       mean_f_sq_over_epsilon, d_star_power)
     if set_to_minimum and not mean_f_sq_over_epsilon_interp.all_gt(0):
-      # HACK NO REASON THIS SHOULD WORK
+      # HACK NO REASON THIS SHOULD WORK BUT IT GETS BY THE FAILURE
       sel = (mean_f_sq_over_epsilon_interp <= set_to_minimum)
       mean_f_sq_over_epsilon_interp.set_selected(sel,-mean_f_sq_over_epsilon_interp)
       sel = (mean_f_sq_over_epsilon_interp <= set_to_minimum)
       mean_f_sq_over_epsilon_interp.set_selected(sel,set_to_minimum)
     assert mean_f_sq_over_epsilon_interp.all_gt(0)
     from cctbx.miller import array
-    #return array(ma, flex.sqrt(mean_f_sq_over_epsilon_interp))
-    return array(ma, mean_f_sq_over_epsilon_interp)
+    return array(ma, flex.sqrt(mean_f_sq_over_epsilon_interp))
+    # XXX was below before 2017-10-25
+    # return array(ma, mean_f_sq_over_epsilon_interp)
 
-def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None):
+def quasi_normalize_structure_factors(ma, d_star_power=1, set_to_minimum=None,
+     pseudo_likelihood=False):
     normalisations = amplitude_quasi_normalisations(ma, d_star_power,
-       set_to_minimum=set_to_minimum)
+       set_to_minimum=set_to_minimum,pseudo_likelihood=pseudo_likelihood)
+    if pseudo_likelihood:
+      print "Norms:"
+      for n,d in zip(normalisations[:100],ma.data()[:100]): print n,d
+
     q = ma.data() / normalisations.data()
     from cctbx.miller import array
     return array(ma, q)
@@ -357,6 +366,7 @@ def calculate_fsc(si=None,
      cc_cut=None,
      scale_using_last=None,
      max_cc_for_rescale=None,
+     pseudo_likelihood=False,
      verbose=None,
      out=sys.stdout):
 
@@ -493,16 +503,20 @@ def calculate_fsc(si=None,
     if (not is_model_based): # cc is already cc*
       scale_on_fo=ratio * corrected_cc
     elif b_eff is not None:
-      scale_on_fo=ratio * min(1.,
-        max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
+      if pseudo_likelihood:
+        scale_on_fo=(cc/max(0.001,1-cc**2))
+      else: # usual
+        scale_on_fo=ratio * min(1.,
+          max(0.00001,corrected_cc) * math.exp(min(20.,sthol2*b_eff)) )
     else:
       scale_on_fo=ratio * min(1.,max(0.00001,corrected_cc))
 
 
     target_scale_factors.append(scale_on_fo)
 
-  target_scale_factors=\
-     target_scale_factors/target_scale_factors.min_max_mean().max
+  if not pseudo_likelihood: # normalize
+    target_scale_factors=\
+      target_scale_factors/target_scale_factors.min_max_mean().max
 
   if fraction_complete < min_fraction_complete:
     print >>out,"\nFraction complete (%5.2f) is less than minimum (%5.2f)..." %(
@@ -619,6 +633,7 @@ def scale_amplitudes(model_map_coeffs=None,
       cc_cut=si.cc_cut,
       scale_using_last=si.scale_using_last,
       max_cc_for_rescale=si.max_cc_for_rescale,
+      pseudo_likelihood=si.pseudo_likelihood,
       verbose=verbose,
       out=out)
     # now si.target_scale_factors array are the scale factors
@@ -632,6 +647,11 @@ def scale_amplitudes(model_map_coeffs=None,
   elif not map_calculation:
     return map_and_b_object()
   else:  # apply scaling
+    if si.pseudo_likelihood:
+      print >>out,"Normalizing structure factors"
+      f_array=quasi_normalize_structure_factors(f_array,set_to_minimum=0.01,
+        pseudo_likelihood=si.pseudo_likelihood)
+      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
     map_and_b=apply_target_scale_factors(
       f_array=f_array,phases=phases,resolution=resolution,
       target_scale_factors=si.target_scale_factors,
