@@ -347,11 +347,11 @@ class info(object):
   def show_remark_3(self, out = None):
     prefix = "REMARK   3  "
     if(out is None): out = sys.stdout
-    if(self.data_n is not None):
+    if(self.data_x is not None):
       print >> out, prefix+"X-RAY DATA."
       print >> out, prefix
-    self.data_x.show_remark_3(out = out)
-    print >> out, prefix
+      self.data_x.show_remark_3(out = out)
+      print >> out, prefix
     if(self.data_n is not None):
       print >> out, prefix+"NEUTRON DATA."
       print >> out, prefix
