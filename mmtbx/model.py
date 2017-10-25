@@ -1065,6 +1065,15 @@ class manager(object):
         value          = 0.0)
       self.tls_groups.tlsos = tlsos
 
+  def tls_groups_as_pdb(self):
+    out = StringIO()
+    if self.tls_groups is not None:
+      tls_tools.remark_3_tls(
+          tlsos             = self.tls_groups.tlsos,
+          selection_strings = self.tls_groups.selection_strings,
+          out               = out)
+    return out.getvalue()
+
   def extract_tls_selections_from_input(self):
     self.input_tls_selections = []
     acp = self.all_chain_proxies
@@ -2417,6 +2426,27 @@ class manager(object):
             group.iselection = isel
             modified = True
       return modified
+
+  def anomalous_scatterer_groups_as_pdb(self):
+    out = StringIO()
+    if self.anomalous_scatterer_groups is not None:
+      pr = "REMARK   3  "
+      print >> out, pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
+      print >> out, pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
+        len(self.anomalous_scatterer_groups)
+      counter = 0
+      for group in self.anomalous_scatterer_groups:
+        counter += 1
+        print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
+        lines = str_utils.line_breaker(group.selection_string, width=45)
+        for i_line, line in enumerate(lines):
+          if(i_line == 0):
+            print >> out, pr+"  SELECTION: %s"%line
+          else:
+            print >> out, pr+"           : %s"%line
+        print >>out,pr+"  fp  : %-15.4f"%group.f_prime
+        print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
+    return out.getvalue()
 
 # This class should take model and/or model class should have a function to
 # create this one.

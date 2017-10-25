@@ -5,7 +5,6 @@ from libtbx.utils import null_out
 import sys, math, mmtbx
 from cctbx import geometry_restraints
 from mmtbx.tls import tools
-from libtbx.str_utils import line_breaker
 from libtbx.str_utils import format_value
 from itertools import count
 from mmtbx.validation.ramalyze import ramalyze
@@ -285,42 +284,14 @@ class model(object):
     print >> out, prefix
     self.adp.show(out=out, prefix=prefix, padded=padded,
       pdb_deposition=pdb_deposition)
-    if(self.tls_groups is not None):
-      print >> out, prefix
-      tools.remark_3_tls(tlsos             = self.tls_groups.tlsos,
-                         selection_strings = self.tls_groups.selection_strings,
-                         out               = out)
-    if(self.anomalous_scatterer_groups is not None):
-      print >> out, prefix
-      self.show_anomalous_scatterer_groups(out = out)
-    c_ncs_pdb = self.model_manager.cartesian_NCS_as_pdb()
-    if len(c_ncs_pdb) > 0:
-      print >> out, prefix
-      print >> out, c_ncs_pdb
-    t_ncs_pdb = self.model_manager.torsion_NCS_as_pdb()
-    if len(t_ncs_pdb) > 0:
-      print >> out, prefix
-      print >> out, t_ncs_pdb
 
-  def show_anomalous_scatterer_groups(self, out = None):
-    if(out is None): out = sys.stdout
-    pr = "REMARK   3  "
-    print >>out,pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
-    print >>out,pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
-      len(self.anomalous_scatterer_groups)
-    counter = 0
-    for group in self.anomalous_scatterer_groups:
-      counter += 1
-      print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
-      lines = line_breaker(group.selection_string, width=45)
-      for i_line, line in enumerate(lines):
-        if(i_line == 0):
-          print >> out, pr+"  SELECTION: %s"%line
-        else:
-          print >> out, pr+"           : %s"%line
-      print >>out,pr+"  fp  : %-15.4f"%group.f_prime
-      print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
-      out.flush()
+    for info_pdb_str in [self.model_manager.tls_groups_as_pdb(),
+        self.model_manager.anomalous_scatterer_groups_as_pdb(),
+        self.model_manager.cartesian_NCS_as_pdb(),
+        self.model_manager.torsion_NCS_as_pdb()]:
+      if len(info_pdb_str) > 0:
+        print >> out, prefix
+        print >> out, info_pdb_str
 
   def as_cif_block(self, cif_block=None):
     import iotbx.pdb.mmcif
