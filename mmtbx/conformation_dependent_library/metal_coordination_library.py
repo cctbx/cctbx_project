@@ -140,6 +140,11 @@ def get_metal_coordination_proxies(pdb_hierarchy,
   return mbonds
 
 def get_proxies(coordination):
+  #
+  # TODO
+  #   - check that only one link is made to each resiude
+  #     e.g. 1a6y "2080 ZN    ZN B 451 .*." "1874  CB  CYS B 153 .*."
+  #
   def _bond_generator(atoms):
     for atom in atoms['others']:
       yield atoms['metal'], atom
@@ -167,6 +172,7 @@ def get_proxies(coordination):
   if not atoms: return None, None
   for a1, a2 in _bond_generator(atoms):
     key = (a1.name.strip(), a2.name.strip())
+    if key not in ideals: continue
     t = ideals[key]
     p = geometry_restraints.bond_simple_proxy(
       i_seqs=[a1.i_seq, a2.i_seq],
@@ -179,6 +185,7 @@ def get_proxies(coordination):
     bonds.append(p)
   for a1, a2, a3 in _angle_generator(atoms):
     key = (a1.name.strip(), a2.name.strip(), a3.name.strip())
+    if key not in ideals: continue
     t = ideals[key]
     p = geometry_restraints.angle_proxy(
       i_seqs=[a1.i_seq, a2.i_seq, a3.i_seq],
