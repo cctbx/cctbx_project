@@ -14,27 +14,42 @@ def fix(module_path, imports=None):
 
   with file(module_path) as fh:
     module_lines = fh.readlines()
-  module_node = ast.parse(''.join(module_lines), filename=module_path)
+  syntax_tree = ast.parse(''.join(module_lines), filename=module_path)
   # the attribute lineno is the index of the line *following* that node
-  if ast.get_docstring(module_node):
-    insertion_lineno = module_node.body[0].lineno
+  if ast.get_docstring(syntax_tree):
+    insertion_lineno = syntax_tree.body[0].lineno
   else:
     insertion_lineno = 0
 
-  for node in ast.iter_child_nodes(module_node):
+  for node in ast.iter_child_nodes(syntax_tree):
     if isinstance(node, ast.ImportFrom) and node.module == '__future__':
       insertion_lineno = node.lineno
-      module = node.module.split('.')
       for n in node.names:
-        if n.name in want:
-          want.remove(n.name)
+        want.discard(n.name)
 
   if not want:
     return
 
   missing_future = ", ".join(sorted(want))
-  print("Adding {stmt} to {file}".format(stmt=missing_future, file=module_path))
   module_lines.insert(insertion_lineno, "from __future__ import %s\n" % missing_future)
+
+  # Check syntax before making change
+  try:
+    modified_syntax_tree = ast.parse(''.join(module_lines))
+  except SyntaxError:
+    print("Cannot add {stmt} to {file}, causes syntax error".format(stmt=missing_future, file=module_path))
+    return
+
+  # Compare the modified syntax tree to the original tree
+  for n, node in enumerate(modified_syntax_tree.body):
+    if isinstance(node, ast.ImportFrom) and node.module == '__future__' and node.names[0].name in want:
+      del(modified_syntax_tree.body[n])
+      break
+  if ast.dump(modified_syntax_tree) != ast.dump(syntax_tree):
+    print("Cannot add {stmt} to {file}, changes parsing tree".format(stmt=missing_future, file=module_path))
+    return
+
+  print("Adding {stmt} to {file}".format(stmt=missing_future, file=module_path))
   with file(module_path, mode='w') as fh:
     fh.writelines(module_lines)
 
@@ -55,12 +70,10 @@ def run(locations):
     locations = [ os.path.dirname(libtbx.env.dist_path('libtbx')) ]
   for l in locations:
     if os.path.isfile(l) and l.endswith('.py'):
-      print(l)
       fix(l, imports=check_for_imports)
     else:
-      for dirpath, dirnames, filenames in os.walk(l):
-        if dirpath.endswith('jinja2') or dirpath.endswith('.git'): continue
-        print(dirpath)
+      for dirpath, dirs, filenames in os.walk(l):
+        dirs[:] = [d for d in dirs if not d.endswith('jinja2') and d not in ('.git', '__pycache__')]
         for f in filenames:
           if f.endswith('.py'):
             fix(os.path.join(dirpath, f), imports=check_for_imports)
