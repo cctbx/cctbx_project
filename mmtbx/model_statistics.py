@@ -273,7 +273,6 @@ class model(object):
     self.geometry = model.geometry_statistics(
       general_selection=general_selection)
     self.adp = adp(model, wilson_b=wilson_b)
-    self.tls_groups = model.tls_groups
     self.anomalous_scatterer_groups = model.anomalous_scatterer_groups
 
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
@@ -298,11 +297,7 @@ class model(object):
     if self.geometry is not None:
       cif_block = self.geometry.as_cif_block(cif_block=cif_block)
     cif_block = self.adp.as_cif_block(cif_block=cif_block)
-    if self.tls_groups is not None:
-      cif_block = iotbx.pdb.mmcif.tls_as_cif_block(
-        tlsos=self.tls_groups.tlsos,
-        selection_strings=self.tls_groups.selection_strings,
-        cif_block=cif_block)
+    cif_block = self.model.tls_groups_as_cif_block(cif_block=cif_block)
     if self.anomalous_scatterer_groups is not None:
       pass
       #self.show_anomalous_scatterer_groups(out = out)

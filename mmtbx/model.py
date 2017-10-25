@@ -20,6 +20,7 @@ from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
 from iotbx.cif import category_sort_function
+from iotbx.pdb.mmcif import tls_as_cif_block
 
 from cctbx.array_family import flex
 from cctbx import xray
@@ -1073,6 +1074,14 @@ class manager(object):
           selection_strings = self.tls_groups.selection_strings,
           out               = out)
     return out.getvalue()
+
+  def tls_groups_as_cif_block(self, cif_block=None):
+    if self.tls_groups is not None:
+      cif_block = tls_as_cif_block(
+        tlsos=self.tls_groups.tlsos,
+        selection_strings=self.tls_groups.selection_strings,
+        cif_block=cif_block)
+    return cif_block
 
   def extract_tls_selections_from_input(self):
     self.input_tls_selections = []
