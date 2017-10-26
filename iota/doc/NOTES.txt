@@ -23,3 +23,5 @@ all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
 5. Tweaked Recovery option to accept new settings if missing in old PHIL
 6. Fixed PRIME input auto-create, which caused a mysterious 'zero reflections'
 error (merge.d_max was set to high-res rather than low-res)
+7. IOTA actually won't look for new images if monitor mode is off
+8. Hidden files (as in '.filename') are not accepted into a list of images

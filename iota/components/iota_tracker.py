@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 10/10/2017
+Last Changed: 10/25/2017
 Description : IOTA image-tracking GUI module
 '''
 
@@ -16,7 +16,7 @@ import numpy as np
 
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
-from matplotlib.widgets import SpanSelector, Cursor, Slider
+from matplotlib.widgets import SpanSelector
 
 from iotbx import phil as ip
 

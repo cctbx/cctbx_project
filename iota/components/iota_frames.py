@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/10/2017
+Last Changed: 10/25/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1340,7 +1340,7 @@ class ProcWindow(wx.Frame):
     self.monitor_mode = False
     self.monitor_mode_timeout = None
     self.timeout_start = None
-    self.find_new_images = True
+    self.find_new_images = self.monitor_mode
     self.start_object_finder = True
     self.finished_objects = []
     self.read_object_files = []
@@ -1445,6 +1445,7 @@ class ProcWindow(wx.Frame):
     elif not self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
       self.monitor_mode = False
       self.monitor_mode_timeout = None
+    self.find_new_images = self.monitor_mode
 
   def onStatusBarResize(self, e):
     rect = self.sb.GetFieldRect(0)
@@ -1843,7 +1844,7 @@ class ProcWindow(wx.Frame):
   def onFinishedImageFinder(self, e):
     new_img = e.GetValue()
     self.new_images = self.new_images + new_img
-    self.find_new_images = True
+    self.find_new_images = self.monitor_mode
 
   def onFinishedObjectFinder(self, e):
     self.finished_objects = e.GetValue()

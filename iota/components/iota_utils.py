@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 04/25/2017
+Last Changed: 10/25/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -55,6 +55,8 @@ class InputFinder():
       filepaths = [path for path in filepaths if not path.endswith(ignore_ext)]
     elif ext_only is not None:
       filepaths = [path for path in filepaths if path.endswith(ext_only)]
+    filepaths = [path for path in filepaths if not
+                 os.path.basename(path).startswith('.')]
 
     if as_string:
       return '\n'.join(filepaths)

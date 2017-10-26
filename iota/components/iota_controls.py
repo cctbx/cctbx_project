@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/13/2017
+Last Changed: 10/25/2017
 Description : IOTA GUI controls
 '''
 
@@ -907,3 +907,196 @@ class TableCtrl(CtrlBase):
         self.sizer.Add(cell)
 
     self.SetSizer(self.sizer)
+
+# ------------------------------ Generic Plotter ----------------------------- #
+
+class FastPlotter(CtrlBase):
+  '''Panel with one or multiple charts in it with these characteristics:
+        1. Chart is configurable (w/ axis sharing)
+        2. Chart is fast-updated (i.e. new data are added to existing chart)
+        3. Data are selectable (w/ up to three span selectors per chart)
+
+     n_plots: number of plots, can be either int, signifying number of plots, or
+              tuple, signifying how the plots are arranged
+     axes: list of axis object names, e.g. ['ax1', 'ax2', 'ax3']; must be same
+           length as number of plots
+     legends: list of tuples; each tuple contains labels for x- and y-axes
+     transparent: Boolean, set to True if want figure/plot to be transparent
+  '''
+
+  # NOTE: THIS DOES NOT YET WORK!
+
+  # Constructor
+  def __init__(self, parent,
+               n_plots=1,
+               axes=None,
+               labels=None,
+               chart_label='',
+               transparent=True,
+               slider=True):
+
+    from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
+    from matplotlib import pyplot as plt
+    from matplotlib.widgets import SpanSelector
+    import numpy as np
+
+    CtrlBase.__init__(self, parent)
+
+    # Initialize the main sizer for the chart
+    self.main_box = wx.StaticBox(self, label=chart_label)
+    self.main_fig_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
+    self.SetSizer(self.main_fig_sizer)
+
+    # Create figure and axis array; flatten axis array to zip with other info
+    self.track_figure, axarr = plt.subplots(n_plots)
+    axarr_flat = [ax for sub_ax in axarr for ax in sub_ax]
+
+    # Make sure the number of axes matches number of axis names / legends
+    try:
+      assert len(axarr_flat) == len(axes) == len(labels)
+    except AssertionError:
+      print 'FastPlotter Error: Match number of plots to number of ' \
+            'axes and axis labels!'
+
+    # Generate generic Nonetype axis object names & labels if none are provided
+    if axes is None:
+      axes = [None] * len(axes)
+    if labels is None:
+      labels = [None] * len(axes)
+    axes_w_names = zip(axes, axarr_flat, labels)
+
+    # Attach axis objects to class attributes (handling various cases)
+    for axn in axes_w_names:
+      ax_name = axn[0]
+      if ax_name is None:
+        ax_name = 'ax' + str(axes_w_names.index(axn))
+      ax_obj = axn[1]
+      ax_legend = axn[2]
+      if transparent:
+        ax_obj.patch.set_visible(False)
+      if ax_legend is not None:
+        if isinstance(ax_legend, (list, tuple)):
+          ax_obj.set_xlabel(ax_legend[0])
+          ax_obj.set_ylabel(ax_legend[1])
+        else:
+          ax_obj.set_ylabel(ax_legend)
+      ax_obj.set_autoscaley_on(True)
+      setattr(self, ax_name, ax_obj)
+
+    # Data-handling attributes
+    self.xdata = []
+    self.ydata = []
+    self.x_min = 0
+    self.x_max = 1
+    self.y_max = 1
+
+    # Chart navigation attributes
+    self.bracket_set = False
+    self.button_hold = False
+    self.plot_zoom = False
+    self.chart_range = None
+    self.selector = None
+    self.max_lock = True
+    self.patch_x = 0
+    self.patch_x_last = 1
+    self.patch_width = 1
+    self.start_edge = 0
+    self.end_edge = 1
+
+    # Set general figure characteristics (default tight layout)
+    if transparent:
+      self.track_figure.patch.set_visible(False)
+    self.track_figure.set_tight_layout(True)
+    self.track_canvas = FigureCanvas(self, -1, self.track_figure)
+
+    # Slider bar for the plot
+    if slider:
+      self.plot_sb = wx.Slider(self, minValue=0, maxValue=1)
+      self.plot_sb.Hide()
+      self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
+
+    self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
+    self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
+
+    # Plot bindings
+    self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
+
+  def onScroll(self, e):
+    sb_center = self.plot_sb.GetValue()
+    half_span = (self.x_max - self.x_min) / 2
+    if sb_center - half_span == 0:
+      self.x_min = 0
+      self.x_max = half_span * 2
+    else:
+      self.x_min = sb_center - half_span
+      self.x_max = sb_center + half_span
+
+    if self.plot_sb.GetValue() == self.plot_sb.GetMax():
+      self.max_lock = True
+    else:
+      self.max_lock = False
+
+    self.draw_plot()
+
+
+  def draw_plot(self, new_x=None, new_y=None, new_data=False):
+
+    if new_x is None:
+      new_x = []
+    if new_y is None:
+      new_y = []
+
+    nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
+    nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
+    self.xdata = nref_x
+    self.ydata = nref_y
+    nref_xy = zip(nref_x, nref_y)
+    all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
+    all_rej = [i[0] for i in nref_xy if i[1] < min_bragg]
+
+    if nref_x != [] and nref_y != []:
+      if self.plot_zoom:
+        if self.max_lock:
+          self.x_max = np.max(nref_x)
+          self.x_min = self.x_max - self.chart_range
+      else:
+        self.x_min = -1
+        self.x_max = np.max(nref_x) + 1
+
+      if min_bragg > np.max(nref_y):
+        self.y_max = min_bragg + int(0.1 * min_bragg)
+      else:
+        self.y_max = np.max(nref_y) + int(0.1 * np.max(nref_y))
+
+      self.track_axes.set_xlim(self.x_min, self.x_max)
+      self.track_axes.set_ylim(0, self.y_max)
+
+    else:
+      self.x_min = -1
+      self.x_max = 1
+
+    acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
+    rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
+
+    self.acc_plot.set_xdata(nref_x)
+    self.rej_plot.set_xdata(nref_x)
+    self.acc_plot.set_ydata(nref_y)
+    self.rej_plot.set_ydata(nref_y)
+    self.acc_plot.set_markevery(acc)
+    self.rej_plot.set_markevery(rej)
+
+    self.Layout()
+
+    count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
+    self.main_window.tracker_panel.count_txt.SetLabel(count)
+    self.main_window.tracker_panel.status_sizer.Layout()
+
+    # Set up scroll bar
+    if len(self.xdata) > 0:
+      self.plot_sb.SetMax(np.max(nref_x))
+      if self.max_lock:
+        self.plot_sb.SetValue(self.plot_sb.GetMax())
+
+    # Draw extended plots
+    self.track_axes.draw_artist(self.acc_plot)
+    self.track_axes.draw_artist(self.rej_plot)
