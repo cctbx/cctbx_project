@@ -1313,7 +1313,7 @@ _replace_sysconfig_paths(build_time_vars)
                                  " /usr/lib/i386-linux-gnu" +
                                  " /usr/lib/x86_64-linux-gnu", ))
 
-    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11", "10.12")) :
+    if (self.flag_is_mac and get_os_version() in ("10.10", "10.11", "10.12", "10.13")) :
       # Workaround wxwidgets 3.0.2 compilation error on Yosemite
       # This will be fixed in 3.0.3.
       # See:
@@ -1324,7 +1324,7 @@ _replace_sysconfig_paths(build_time_vars)
                      target=("#include <WebKit/WebKit.h>",),
                      replace_with=("#include <WebKit/WebKitLegacy.h>",))
 
-    if (self.flag_is_mac and get_os_version() in ("10.12",)) :
+    if (self.flag_is_mac and get_os_version() in ("10.12", "10.13")) :
       # Workaround wxwidgets 3.0.2 compilation error on Sierra
       # QuickTime Framework deprecated in OS X v10.9
       # See:
