@@ -1,6 +1,7 @@
 import os, sys
 
 from cctbx import geometry_restraints
+origin_ids = geometry_restraints.linking_class.linking_class()
 
 headers = ['Zn-SG (A)',
            'SG-Zn-SG (degrees)',
@@ -181,7 +182,7 @@ def get_proxies(coordination):
       slack=0,
       top_out=False,
       limit=1,
-      origin_id=2)
+      origin_id=origin_ids.get_origin_id('metal coordination'))
     bonds.append(p)
   for a1, a2, a3 in _angle_generator(atoms):
     key = (a1.name.strip(), a2.name.strip(), a3.name.strip())
@@ -191,7 +192,7 @@ def get_proxies(coordination):
       i_seqs=[a1.i_seq, a2.i_seq, a3.i_seq],
       angle_ideal=t[0],
       weight=1.0/t[1]**2,
-      origin_id=0)
+      origin_id=origin_ids.get_origin_id('metal coordination'))
     angles.append(p)
   return bonds, angles
 
