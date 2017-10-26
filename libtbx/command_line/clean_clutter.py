@@ -32,6 +32,24 @@ def clean_clutter_in(files, tabsize=8):
         os.remove(tmpname)
         raise
 
+def isort(path):
+  try:
+    import mock
+    from isort.main import main
+  except ImportError:
+    # Install package if necessary
+    import pip
+    pip.main(['install', 'isort', 'mock'])
+    import mock
+    from isort.main import main
+  with mock.patch.object(sys, 'argv', ['isort', '-y', '-ac', '-vb']):
+    oldcwd = os.getcwd()
+    try:
+      os.chdir(path)
+      main()
+    finally:
+      os.chdir(oldcwd)
+
 def run():
   opt_parser = (option_parser(
     usage="""
@@ -60,6 +78,7 @@ by running svn commit.""")
   if co.committing and files:
       opt_parser.show_help()
       exit(1)
+  run_isort_in_path = False
   if co.committing:
     try:
       files = list(subversion.marked_for_commit())
@@ -72,7 +91,14 @@ by running svn commit.""")
       else: dir = files[0]
       files = [ c.path for c in libtbx.file_clutter.gather([dir])
                 if c.is_cluttered(flag_x=False) ]
+      if os.path.exists(os.path.join(dir, '.isort.cfg')):
+        run_isort_in_path = dir
   clean_clutter_in(files, tabsize=co.tabsize)
+  if run_isort_in_path:
+    try:
+      isort(run_isort_in_path)
+    except Exception as e:
+      print("Did not run isort (%s)" % str(e))
 
 if (__name__ == "__main__"):
   import sys
