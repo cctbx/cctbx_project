@@ -145,7 +145,7 @@ def find_and_build_ions (
       log=out,
       manager_class=manager_class)
   else :
-    grm = model.restraints_manager.geometry
+    grm = model.get_restraints_manager().geometry
     connectivity = grm.shell_sym_tables[0].full_simple_connectivity()
     manager.update_structure(
       pdb_hierarchy=pdb_hierarchy,
@@ -256,6 +256,7 @@ def find_and_build_ions (
         site_label=scatterers[i_seq].label,
         tolerance=1.0)
     model.get_xray_structure().replace_scatterers(scatterers=scatterers)
+    model.set_xray_structure(model.get_xray_structure())
     def show_r_factors () :
        return "r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free())
     fmodel.update_xray_structure(

@@ -343,6 +343,21 @@ class manager(object):
       full_params.pdb_interpretation = params
       self.pdb_interpretation_params = full_params
 
+  def check_consistency(self):
+    """
+    Primarilly for debugging
+    """
+    # print "NUMBER OF ATOMS", self.get_number_of_atoms()
+    assert self.pdb_atoms.size() == self.get_xray_structure().scatterers().size()
+    assert self.pdb_atoms.size() == self.get_hierarchy().atoms().size()
+    # finally, check all_chain_proxies
+    if self.all_chain_proxies is not None:
+      self.all_chain_proxies.extract_xray_structure().scatterers().size() == self.pdb_atoms.size()
+    # for ha, xa in zip(self.get_hierarchy().atoms_with_labels(),
+    #     self.get_xray_structure().scatterers().extract_labels()):
+    #   if ha.id_str() != xa:
+    #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), xa)
+
 
   def crystal_symmetry(self):
     return self._crystal_symmetry
@@ -488,9 +503,6 @@ class manager(object):
   def sel_sidechain(self):
     assert self.all_chain_proxies is not None
     return self.all_chain_proxies.sel_backbone_or_sidechain(False, True)
-
-  def get_hierarchy(self):
-    return self._pdb_hierarchy
 
   def get_xray_structure(self):
     if self._xray_structure is None:
@@ -744,6 +756,12 @@ class manager(object):
       self.has_hd = "H" in sctr_keys or "D" in sctr_keys
     if not self.has_hd:
       self.unset_riding_h_manager()
+
+  def _update_atom_selection_cache(self):
+    if self.all_chain_proxies is not None:
+      self._atom_selection_cache = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    else:
+      self._atom_selection_cache = self.get_hierarchy().atom_selection_cache()
 
   def _build_grm(
       self,
@@ -1802,7 +1820,7 @@ class manager(object):
       self._xray_structure.scattering_type_registry().show(out=self.log)
       self._pdb_hierarchy = self._pdb_hierarchy.select(
         atom_selection = ~ias_selection)
-      self.pdb_atoms = self._pdb_hierarchy.atoms()
+      self._update_pdb_atoms()
 
   def show_rigid_bond_test(self, out=None, use_id_str=False, prefix=""):
     if (out is None): out = sys.stdout
@@ -1867,7 +1885,7 @@ class manager(object):
   def solvent_selection(self, include_ions=False):
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
-    for a in self.pdb_atoms:
+    for a in self.get_hierarchy().atoms():
       resname = (a.parent().resname).strip()
       if(get_class(name = resname) == "common_water"):
         result.append(True)
@@ -2205,11 +2223,18 @@ class manager(object):
       new_chain.append_residue_group(residue_group=new_residue_group)
     if (new_chain.residue_groups_size() != 0):
       pdb_model.append_chain(chain=new_chain)
-    self.pdb_atoms = self._pdb_hierarchy.atoms()
-    self.pdb_atoms.reset_i_seq()
     if (reset_labels) :
       for sc, atom in zip(self._xray_structure.scatterers(), self.pdb_atoms) :
         sc.label = atom.id_str()
+    self._update_atom_selection_cache()
+    # This deep_copy here for the following reason:
+    # sometimes (particualrly in IAS refinement), after update_atom_selection_cache()
+    # part of the model atoms loose their parent(). Not clear why.
+    # deep_copy seems to help with it.
+    self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
+    self._update_pdb_atoms()
+    self.all_chain_proxies = None
+    self.processed_pdb_file = None
 
   def convert_atom (self,
       i_seq,
@@ -2303,7 +2328,8 @@ class manager(object):
       charge=charge)
     self._xray_structure.discard_scattering_type_registry()
     assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
-    self.get_hierarchy(sync_with_xray_structure=True)
+    self.set_xray_structure(self._xray_structure)
+    self._update_pdb_atoms()
     return atom
 
   def scale_adp(self, scale_max, scale_min):

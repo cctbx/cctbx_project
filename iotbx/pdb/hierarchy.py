@@ -670,7 +670,16 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           l1 = sc.label.replace("pdb=","").replace(" ","")
           l2 = a.id_str().replace("pdb=","").replace(" ","")
           if(l1 != l2):
-            raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
+            # This condition allows mismatch in residue number for ions
+            # with the same residue name (effectively this should be the same
+            # chemical). They got shuffled (why?) in water placement/
+            # ion identification steps.
+            # print "'%s' '%s' '%s'" % (a.segid, a.resname, resname_from_sc)
+            if a.segid == "ION" and a.resname == resname_from_sc:
+              pass
+            else:
+              # print "offending scattering type", sc.scattering_type[:2]
+              raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
         set_attr(sc=sc, a=a)
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
