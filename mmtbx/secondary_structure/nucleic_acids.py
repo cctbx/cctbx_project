@@ -8,6 +8,8 @@ from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 import iotbx.phil
 
+origin_ids = geometry_restraints.linking_class.linking_class()
+
 dna_rna_params_str = """
 hbond_distance_cutoff = 3.4
   .type = float
@@ -524,7 +526,7 @@ def get_stacking_proxies(pdb_hierarchy, stacking_phil_params, grm,
             slack=0,
             top_out=False,
             limit=1,
-            origin_id=0)
+            origin_id=0) # special case default but not "covalent geometry"
           result.append(proxy)
   return result
 
@@ -598,7 +600,7 @@ def get_angle_proxies_for_bond(atoms):
           i_seqs=i_seqs_for_angle,
           angle_ideal=vals[i][0],
           weight=1./vals[i][1]**2,
-          origin_id=1)
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
       proxies.append(p)
   return proxies
 
@@ -689,7 +691,7 @@ def get_bp_hbond_proxies(a1, a2, base_pair, hbond_distance_cutoff):
           slack=0,
           top_out=False,
           limit=1,
-          origin_id=1)
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
         bp_result.append(p)
         # print "bond:", hb[0].id_str(), hb[1].id_str(), "(%4.2f, %4.2f)" % (hb_target, hb_sigma)
         # s1 = pdb_atoms[hb[0].i_seq].id_str()
@@ -721,7 +723,7 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
           slack=0,
           top_out=False,
           limit=1,
-          origin_id=1)
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
         result_parr_p.append(proxy)
       if base_pair.restrain_planarity:
         if base_pair.planarity_sigma < 1e-5:
@@ -730,6 +732,6 @@ def get_bp_plan_proxies(a1, a2, base_pair, grm, mon_lib_srv, plane_cache):
         proxy=geometry_restraints.planarity_proxy(
           i_seqs=flex.size_t(i_seqs+j_seqs),
           weights=[w]*len(i_seqs+j_seqs),
-          origin_id=1)
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
         result_plan_p.append(proxy)
   return result_plan_p, result_parr_p

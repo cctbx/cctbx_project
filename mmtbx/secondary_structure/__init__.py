@@ -489,18 +489,6 @@ class manager (object) :
     else :
       print >> log, "    %d hydrogen bonds defined for protein." % n_proxies
       print >> log, "    %d hydrogen bond angles defined for protein." % len(hb_angle_proxies)
-    # reg_proxies = []
-    # for hb_p in build_proxies.proxies:
-    #   reg_proxy = geometry_restraints.bond_simple_proxy(
-    #     i_seqs=hb_p.i_seqs,
-    #     distance_ideal=hb_p.distance_ideal,
-    #     weight=hb_p.weight,
-    #     slack=hb_p.slack,
-    #     top_out=hb_p.top_out,
-    #     limit=hb_p.limit,
-    #     origin_id=1)
-    #   reg_proxies.append(reg_proxy)
-    # return geometry_restraints.shared_bond_simple_proxy(reg_proxies)
     return generated_proxies, geometry_restraints.shared_angle_proxy(hb_angle_proxies)
 
   def create_all_new_restraints(self,

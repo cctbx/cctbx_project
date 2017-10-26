@@ -226,7 +226,7 @@ def exercise_single_atom(mon_lib_srv, ener_lib):
       i_seqs=(3,9),
       distance_ideal=2.0,
       weight=3000,
-      origin_id=1)
+      origin_id=1) # just a test
 
   new_xrs = xrs.concatenate(xrs_add)
   all_sites_cart = new_xrs.sites_cart()

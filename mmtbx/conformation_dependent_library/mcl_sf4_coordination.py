@@ -3,6 +3,8 @@ import os, sys
 
 from cctbx import geometry_restraints
 
+origin_ids = geometry_restraints.linking_class.linking_class()
+
 sf4_coordination = {
   ("FE", "S")      : [  2.268, 0.017*2],
   ("S", "FE", "S") : [114.24,  5.75*2],
@@ -77,7 +79,7 @@ def get_bond_proxies(coordination):
       slack=0,
       top_out=False,
       limit=1,
-      origin_id=2)
+      origin_id=origin_ids.get_origin_id('metal coordination'))
     bonds.append(p)
   return bonds
 
@@ -103,7 +105,7 @@ def get_angle_proxies_for_bond(coordination):
         i_seqs=[a3.i_seq, a1.i_seq, a2.i_seq],
         angle_ideal=angle_ideal,
         weight=1./weight**2,
-        origin_id=0)
+        origin_id=origin_ids.get_origin_id('metal coordination'))
       angles.append(p)
   return angles
 

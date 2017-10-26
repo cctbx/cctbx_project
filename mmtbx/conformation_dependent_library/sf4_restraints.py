@@ -64,6 +64,7 @@ def generate_proxies_from_xray_structure(pdb_hierarchy,
                                          geometry_restraints_manager,
                                          log,
                                          ):
+  assert 0
   for atom_group in generate_atom_groups(pdb_hierarchy, resnames=['CD']):
     selection = flex.bool(xray_structure.scatterers().size())
     for atom in atom_group.atoms(): selection[atom.i_seq]=True
@@ -112,7 +113,7 @@ def generate_proxies_from_xray_structure(pdb_hierarchy,
           #slack=slack,
           #top_out=top_out,
           #limit=limit,
-          origin_id=10)
+        )
         #print dir(proxy)
         print atom.i_seq, other.i_seq, proxy.rt_mx_ji
 

@@ -16,6 +16,9 @@ import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import reindexing_array
 
+from cctbx.geometry_restraints.linking_class import linking_class
+origin_ids = linking_class()
+
 #from mmtbx.geometry_restraints.hbond import get_simple_bonds
 
 # All proxies have attribute "origin_id" which should reflect the origin of
@@ -33,6 +36,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 #        3 - geometry_resraints.edits from users
 # angles: 0 - covalent geometry
 #         1 - angle restraints associated with NA basepair hydrogen bonds
+#         2 - metal coordination
 #         3 - geometry_resraints.edits from users
 # dihedral(torsion): 0 - covalent geometry
 #                    1 - C-beta restraints
@@ -479,13 +483,19 @@ class manager(object):
     planarity = None
     parallelity = None
     pair_proxies = self.pair_proxies()
+    specific_origin_id = origin_ids.get_origin_id('edits')
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
-        bonds_simpe = pair_proxies.bond_proxies.simple.proxy_select(origin_id=3)
-        bonds_asu = pair_proxies.bond_proxies.asu.proxy_select(origin_id=3)
-    angles = self.angle_proxies.proxy_select(origin_id=3)
-    planarity = self.planarity_proxies.proxy_select(origin_id=3)
-    parallelity = self.parallelity_proxies.proxy_select(origin_id=3)
+        bonds_simpe = pair_proxies.bond_proxies.simple.proxy_select(
+          origin_id=specific_origin_id)
+        bonds_asu = pair_proxies.bond_proxies.asu.proxy_select(
+          origin_id=specific_origin_id)
+    angles = self.angle_proxies.proxy_select(
+      origin_id=specific_origin_id)
+    planarity = self.planarity_proxies.proxy_select(
+      origin_id=specific_origin_id)
+    parallelity = self.parallelity_proxies.proxy_select(
+      origin_id=specific_origin_id)
     return bonds_simpe, bonds_asu, angles, planarity, parallelity
 
   def remove_user_supplied_restraints_in_place(self):
@@ -499,27 +509,33 @@ class manager(object):
     pair_proxies = self.pair_proxies(sites_cart=sites_cart)
     simple = None
     asu = None
+    specific_origin_id = origin_ids.get_origin_id('edits')
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
         if pair_proxies.bond_proxies.simple is not None:
-          simple = pair_proxies.bond_proxies.simple.get_proxies_without_origin_id(origin_id=3)
+          simple = pair_proxies.bond_proxies.simple.get_proxies_without_origin_id(
+            origin_id=specific_origin_id)
         if pair_proxies.bond_proxies.asu is not None:
-          asu = pair_proxies.bond_proxies.asu.get_proxies_without_origin_id(origin_id=3)
+          asu = pair_proxies.bond_proxies.asu.get_proxies_without_origin_id(
+            origin_id=specific_origin_id)
     return simple, asu
 
   def get_angle_proxies_without_user_supplied(self):
+    specific_origin_id = origin_ids.get_origin_id('edits')
     if self.angle_proxies is not None:
-      return self.angle_proxies.proxy_remove(origin_id=3)
+      return self.angle_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
 
   def get_planarity_proxies_without_user_supplied(self):
+    specific_origin_id = origin_ids.get_origin_id('edits')
     if self.planarity_proxies is not None:
-      return self.planarity_proxies.proxy_remove(origin_id=3)
+      return self.planarity_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
 
   def get_parallelity_proxies_without_user_supplied(self):
+    specific_origin_id = origin_ids.get_origin_id('edits')
     if self.parallelity_proxies is not None:
-      return self.parallelity_proxies.proxy_remove(origin_id=3)
+      return self.parallelity_proxies.proxy_remove(origin_id=specific_origin_id)
     return None
 
   #=================================================================
@@ -609,6 +625,7 @@ class manager(object):
       chi_angles_only=False,
       top_out_potential=False):
     from mmtbx.geometry_restraints.reference import generate_torsion_restraints
+    specific_origin_id = origin_ids.get_origin_id('chi angles')
     chi_torsions = generate_torsion_restraints(
         pdb_hierarchy=pdb_hierarchy,
         sites_cart=sites_cart,
@@ -617,26 +634,32 @@ class manager(object):
         limit=limit,
         chi_angles_only=chi_angles_only,
         top_out_potential=top_out_potential,
-        origin_id=2)
+        origin_id=specific_origin_id)
     self.add_dihedrals_in_place(chi_torsions)
 
   def remove_chi_torsion_restraints_in_place(self, selection=None):
+    specific_origin_id = origin_ids.get_origin_id('chi angles')
     if self.dihedral_proxies is not None:
       if selection is None:
-        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=2)
+        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
+          origin_id=specific_origin_id)
       else:
-        chi_proxies = self.dihedral_proxies.proxy_select(origin_id=2)
+        chi_proxies = self.dihedral_proxies.proxy_select(
+          origin_id=specific_origin_id)
         should_remain_proxies = chi_proxies.proxy_remove(selection=selection)
-        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=2)
+        self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
+          origin_id=specific_origin_id)
         self.add_dihedrals_in_place(should_remain_proxies)
 
   def get_chi_torsion_proxies(self):
+    specific_origin_id = origin_ids.get_origin_id('chi angles')
     if self.dihedral_proxies is not None:
-      return self.dihedral_proxies.proxy_select(origin_id=2)
+      return self.dihedral_proxies.proxy_select(origin_id=specific_origin_id)
 
   def get_n_chi_torsion_proixes(self):
+    specific_origin_id = origin_ids.get_origin_id('chi angles')
     if self.dihedral_proxies is not None:
-      return self.dihedral_proxies.proxy_select(origin_id=2).size()
+      return self.dihedral_proxies.proxy_select(origin_id=specific_origin_id).size()
 
 
   #=================================================================
@@ -666,16 +689,18 @@ class manager(object):
         selection=selection)
 
   def get_dihedral_proxies(self):
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
     if self.dihedral_proxies is not None:
-      return self.dihedral_proxies.proxy_select(origin_id=0)
+      return self.dihedral_proxies.proxy_select(origin_id=specific_origin_id)
     return None
 
   #=================================================================
   # C-beta dihedral proxies methods
   #=================================================================
   def get_c_beta_torsion_proxies(self):
+    specific_origin_id = origin_ids.get_origin_id('C-beta')
     if self.dihedral_proxies is not None:
-      return self.dihedral_proxies.proxy_select(origin_id=1)
+      return self.dihedral_proxies.proxy_select(origin_id=specific_origin_id)
     return None
 
   def get_n_c_beta_torsion_proxies(self):
@@ -685,11 +710,13 @@ class manager(object):
     return 0
 
   def remove_c_beta_torsion_restraints_in_place(self, selection=None):
+    specific_origin_id = origin_ids.get_origin_id('C-beta')
     if selection is None:
-      self.dihedral_proxies = self.dihedral_proxies.proxy_remove(origin_id=1)
+      self.dihedral_proxies = self.dihedral_proxies.proxy_remove(
+        origin_id=specific_origin_id)
     else:
-      self.dihedral_proxies = self.dihedral_proxies.proxy_select(origin_id=1).\
-          proxy_remove(selection=selection)
+      self.dihedral_proxies = self.dihedral_proxies.proxy_select(
+        origin_id=specific_origin_id).proxy_remove(selection=selection)
 
   #=================================================================
   # Reference dihedral proxies methods
@@ -824,14 +851,18 @@ class manager(object):
     return 0
 
   def get_n_bond_proxies(self):
-    return self._get_n_bond_proxies_origin(origin_id=0)
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    return self._get_n_bond_proxies_origin(origin_id=specific_origin_id)
 
   def get_covalent_bond_proxies(self, sites_cart=None):
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
     pair_proxies = self.pair_proxies(sites_cart=sites_cart)
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
-        return (pair_proxies.bond_proxies.simple.proxy_select(origin_id=0),
-        pair_proxies.bond_proxies.asu.proxy_select(origin_id=0))
+        return (pair_proxies.bond_proxies.simple.proxy_select(
+          origin_id=specific_origin_id),
+        pair_proxies.bond_proxies.asu.proxy_select(
+          origin_id=specific_origin_id))
 
   def get_all_bond_proxies(self, sites_cart=None):
     pair_proxies = self.pair_proxies(sites_cart=sites_cart)
@@ -841,33 +872,46 @@ class manager(object):
         pair_proxies.bond_proxies.asu)
 
   def get_covalent_angle_proxies(self):
-    return self.angle_proxies.proxy_select(origin_id=0)
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    return self.angle_proxies.proxy_select(origin_id=specific_origin_id)
 
   def get_all_angle_proxies(self):
     return self.angle_proxies
 
   def get_n_hbond_proxies(self):
-    return self._get_n_bond_proxies_origin(origin_id=1)
+    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    return self._get_n_bond_proxies_origin(origin_id=specific_origin_id)
 
   def get_n_angle_proxies(self):
-    return len(self.angle_proxies.proxy_select(origin_id=0))
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    return len(self.angle_proxies.proxy_select(origin_id=specific_origin_id))
 
   def get_n_hangle_proxies(self):
-    return len(self.angle_proxies.proxy_select(origin_id=1))
+    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    return len(self.angle_proxies.proxy_select(origin_id=specific_origin_id))
 
   def get_n_stacking_proxies(self):
-    return len(self.parallelity_proxies.proxy_select(origin_id=0))
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    return len(self.parallelity_proxies.proxy_select(
+      origin_id=specific_origin_id))
 
   def get_n_parallelity_bp_proxies(self):
-    return len(self.parallelity_proxies.proxy_select(origin_id=1))
+    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    return len(self.parallelity_proxies.proxy_select(
+      origin_id=specific_origin_id))
 
   def get_n_planarity_proxies(self):
-    return len(self.planarity_proxies.proxy_select(origin_id=0))
+    specific_origin_id = origin_ids.get_origin_id('covalent geometry')
+    return len(self.planarity_proxies.proxy_select(
+      origin_id=specific_origin_id))
 
   def get_n_planarity_bp_proxies(self):
-    return len(self.planarity_proxies.proxy_select(origin_id=1))
+    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    return len(self.planarity_proxies.proxy_select(
+      origin_id=specific_origin_id))
 
   def get_hbond_proxies_iseqs(self):
+    specific_origin_id = origin_ids.get_origin_id('hydrogen bonds')
     result = []
     try:
       pair_proxies = self.pair_proxies()
@@ -881,8 +925,10 @@ class manager(object):
         raise
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
-        simple_p = pair_proxies.bond_proxies.simple.proxy_select(origin_id=1)
-        asu_p = pair_proxies.bond_proxies.asu.proxy_select(origin_id=1)
+        simple_p = pair_proxies.bond_proxies.simple.proxy_select(
+          origin_id=specific_origin_id)
+        asu_p = pair_proxies.bond_proxies.asu.proxy_select(
+          origin_id=specific_origin_id)
         for p in simple_p:
           result.append((p.i_seqs[0], p.i_seqs[1]))
         for p in asu_p:
@@ -1532,6 +1578,7 @@ class manager(object):
         sites_cart=None,
         site_labels=None,
         f=None):
+    default_origin_id = origin_ids.get_origin_id('covalent geometry')
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     if (sites_cart is None):
@@ -1543,12 +1590,13 @@ class manager(object):
           sites_cart=sites_cart,
           site_labels=site_labels,
           f=f,
-          origin_id=0)
+          origin_id=default_origin_id)
       print >> f
-      for label, origin_id in [["Bond-like", 1],
-                               ["Metal coordination", 2],
-                               ["User supplied restraints", 3]
-                               ]:
+      for label, origin_id in [
+        ["Bond-like", origin_ids.get_origin_id('hydrogen bonds')],
+        ["Metal coordination", origin_ids.get_origin_id('metal coordination')],
+         ["User supplied restraints", origin_ids.get_origin_id('edits')],
+        ]:
         tempbuffer = StringIO.StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -1565,11 +1613,15 @@ class manager(object):
         sites_cart=sites_cart,
         site_labels=site_labels,
         f=f,
-        origin_id=0)
+        origin_id=default_origin_id)
       print >> f
-      for label, origin_id in [["SS restraints around h-bond", 1],
-                               ["User supplied restraints", 3]
-                               ]:
+      for label, origin_id in [
+        ["SS restraints around h-bond",
+         origin_ids.get_origin_id('hydrogen bonds')],
+        ['Metal coordination',
+         origin_ids.get_origin_id('metal coordination')],
+        ["User supplied restraints", origin_ids.get_origin_id('edits')],
+      ]:
         tempbuffer = StringIO.StringIO()
         self.angle_proxies.show_sorted(
             by_value="residual",

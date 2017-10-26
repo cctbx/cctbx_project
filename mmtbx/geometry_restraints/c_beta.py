@@ -4,6 +4,8 @@ from cctbx.array_family import flex
 from iotbx.pdb.amino_acid_codes import three_letter_l_given_three_letter_d
 from libtbx.utils import Sorry
 
+origin_ids = cctbx.geometry_restraints.linking_class.linking_class()
+
 def get_c_beta_torsion_proxies(pdb_hierarchy,
                                selection=None,
                                sigma=2.5):
@@ -64,7 +66,7 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 i_seqs=i_seqs,
                 angle_ideal=dihedralNCAB,
                 weight=1/sigma**2,
-                origin_id=1)
+                origin_id=origin_ids.get_origin_id('C-beta'))
               c_beta_dihedral_proxies.append(dp_add)
               #CNAB
               i_seqs = [C_atom.i_seq,N_atom.i_seq,CA_atom.i_seq,CB_atom.i_seq]
@@ -72,7 +74,7 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 i_seqs=i_seqs,
                 angle_ideal=dihedralCNAB,
                 weight=1/sigma**2,
-                origin_id=1)
+                origin_id=origin_ids.get_origin_id('C-beta'))
               c_beta_dihedral_proxies.append(dp_add)
   return c_beta_dihedral_proxies, c_beta_residues_skipped # BAD
 

@@ -27,6 +27,9 @@ import sys, os
 import time
 import math
 
+from cctbx.geometry_restraints.linking_class import linking_class
+origin_ids = linking_class()
+
 # see iotbx/pdb/common_residue_names.h; additionally here only: U I S
 ad_hoc_single_atom_residue_element_types = """\
 ZN CA MG CL NA MN K FE CU CD HG NI CO BR XE SR CS PT BA TL PB SM AU RB YB LI
@@ -4291,7 +4294,7 @@ class build_all_chain_proxies(linking_mixins):
           distance_ideal=bond.distance_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
           slack=slack,
-          origin_id=3,
+          origin_id=origin_ids.get_origin_id('edits'),
           rt_mx_ji=rt_mx_ji)
         bond_sym_proxies.append(p)
         b = geometry_restraints.bond(
@@ -4375,7 +4378,7 @@ class build_all_chain_proxies(linking_mixins):
         p = geometry_restraints.angle_proxy(
           i_seqs=i_seqs,
           angle_ideal=angle.angle_ideal,
-          origin_id=3,
+          origin_id=origin_ids.get_origin_id('edits'),
           weight=geometry_restraints.sigma_as_weight(sigma=angle.sigma))
         a = geometry_restraints.angle(
           sites_cart=self.sites_cart,
@@ -4439,7 +4442,7 @@ class build_all_chain_proxies(linking_mixins):
           i_seqs=i_seqs,
           angle_ideal=dihedral.angle_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=dihedral.sigma),
-          origin_id=3,
+          origin_id=origin_ids.get_origin_id('edits'),
           periodicity=dihedral.periodicity,
         )
         a = geometry_restraints.dihedral(
@@ -4500,7 +4503,7 @@ class build_all_chain_proxies(linking_mixins):
           sigma=planarity.sigma))
       proxy = geometry_restraints.planarity_proxy(
         i_seqs=i_seqs,
-        origin_id=3,
+        origin_id=origin_ids.get_origin_id('edits'),
         weights=flex.double(weights))
       plane = geometry_restraints.planarity(
         sites_cart=self.sites_cart,
@@ -5619,7 +5622,7 @@ class process(object):
           n_slots=params.show_histogram_slots.bond_lengths,
           f=self.log,
           prefix="  ",
-          origin_id=0)
+          origin_id=origin_ids.get_origin_id('covalent geometry'))
         smallest_distance_model = \
           pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -5628,7 +5631,7 @@ class process(object):
             f=self.log,
             prefix="  ",
             max_items=params.show_max_items.bond_restraints_sorted_by_residual,
-            origin_id=0)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
@@ -5643,7 +5646,7 @@ class process(object):
               .bond_angle_deviations_from_ideal,
             f=self.log,
             prefix="  ",
-            origin_id=0)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         self._geometry_restraints_manager.angle_proxies \
           .show_sorted(
             by_value="residual",
@@ -5653,7 +5656,7 @@ class process(object):
             prefix="  ",
             max_items=params.show_max_items
               .bond_angle_restraints_sorted_by_residual,
-            origin_id=0)
+            origin_id=origin_ids.get_origin_id('covalent geometry'))
         print >> self.log
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(

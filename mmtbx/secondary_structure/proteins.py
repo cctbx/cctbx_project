@@ -3,8 +3,11 @@ import iotbx.phil
 from libtbx.utils import Sorry
 from math import sqrt
 from cctbx import geometry_restraints
+from cctbx.geometry_restraints import linking_class
 from cctbx.array_family import flex
 import sys
+
+origin_ids = linking_class.linking_class()
 
 helix_group_params_str = """
 helix
@@ -158,21 +161,21 @@ def _create_hbond_angles_proxies(
         i_seqs=[C_atom.i_seq, O_atom.i_seq, N_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["C"][0],
         weight=1./angle_restraints_values[angle_restraint_type-1]["C"][1]**2,
-        origin_id=1)
+        origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   for CA_atom in CA_atoms:
     p = geometry_restraints.angle_proxy(
         i_seqs=[CA_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["CA"][0],
         weight=1./angle_restraints_values[angle_restraint_type-1]["CA"][1]**2,
-        origin_id=1)
+        origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   for C_1_atom in C_1_atoms:
     p = geometry_restraints.angle_proxy(
         i_seqs=[C_1_atom.i_seq, N_atom.i_seq, O_atom.i_seq],
         angle_ideal=angle_restraints_values[angle_restraint_type-1]["C-1"][0],
         weight=1./angle_restraints_values[angle_restraint_type-1]["C-1"][1]**2,
-        origin_id=1)
+        origin_id=origin_ids.get_origin_id('hydrogen bonds'))
     result.append(p)
   return result
 
@@ -245,7 +248,7 @@ def _create_hbond_proxy (
         slack=slack,
         top_out=top_out,
         limit=limit,
-        origin_id=1)
+        origin_id=origin_ids.get_origin_id('hydrogen bonds'))
       result.append(proxy)
       if angle_restraint_type != 0 and prev_atoms is not None:
         ap = _create_hbond_angles_proxies(
