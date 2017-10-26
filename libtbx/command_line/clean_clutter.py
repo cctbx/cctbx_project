@@ -1,37 +1,36 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import sys
-import os.path
-from fileinput import input, isfirstline, filename, isstdin
+import os
+import shutil
 from libtbx import subversion
 from libtbx.option_parser import option_parser
 import libtbx.file_clutter
 
 def clean_clutter_in(files, tabsize=8):
   if not files: return
-  n_empty = 0
   for fname in files:
-    if not os.path.isdir(fname):
-      for line in input(fname, inplace=1):
-        if (isfirstline()):
-          if (not isstdin()):
-            print >> sys.__stdout__, filename() + ':'
+    tmpname = fname + '.bak'
+    if os.path.isfile(tmpname):
+      print("found temporary file {temp}, ignoring {original}.".format(temp=tmpname, original=fname))
+      continue
+    if os.path.isfile(fname):
+      try:
+        print(fname)
+        with open(fname, 'r') as ifh, open(tmpname, 'wb') as ofh:
+          # explicitly convert Windows linebreaks into Unix linebreaks
+          lines = ifh.read().replace('\r\n', '\n').split('\n')
           n_empty = 0
-        clean_line = line.expandtabs(tabsize).rstrip()
-        if (len(clean_line) == 0):
-          n_empty += 1
-        else:
-          for i in xrange(n_empty): sys.stdout.write("\n")
-          n_empty = 0
-          sys.stdout.write(clean_line)
-          sys.stdout.write("\n")
-    # explicitly convert Windows linebreaks into Unix linebreaks
-    wfile = open(fname,"r")
-    wstr=wfile.read()
-    wfile.close()
-    ustr = wstr.replace("\r\n", "\n")
-    ufile=open(fname,'wb')
-    ufile.write(ustr)
-    ufile.close()
+          for line in lines:
+            clean_line = line.expandtabs(tabsize).rstrip()
+            if clean_line:
+              ofh.write("\n" * n_empty + clean_line + "\n")
+              n_empty = 0
+            else:
+              n_empty += 1
+        shutil.move(tmpname, fname)
+      except: # intentionally trap KeyboardInterrupt, too
+        os.remove(tmpname)
+        raise
 
 def run():
   opt_parser = (option_parser(
@@ -64,8 +63,8 @@ by running svn commit.""")
   if co.committing:
     try:
       files = list(subversion.marked_for_commit())
-    except RuntimeError, err:
-      print err
+    except RuntimeError as err:
+      print(err)
       exit(1)
   else:
     if len(files) <= 1:
