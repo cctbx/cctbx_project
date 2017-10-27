@@ -37,6 +37,7 @@ def isort(path):
     import mock
     from isort.main import main
   except ImportError:
+    raise # caught upstream
     # Install package if necessary
     import pip
     pip.main(['install', 'isort', 'mock'])
