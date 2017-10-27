@@ -98,13 +98,15 @@ def run(args):
       if orthographic:
         ax.plot(z[0], z[1], color=color)
 
-        # Annotate with panel numbers
-        ax.text(vcen[0], vcen[1], '%d'%g.index())
+        if params.panel_numbers:
+          # Annotate with panel numbers
+          ax.text(vcen[0], vcen[1], '%d'%g.index())
       else:
         ax.plot(z[0], z[1], z[2], color=color)
 
-        # Annotate with panel numbers
-        ax.text(vcen[0], vcen[1], vcen[2], '%d'%g.index())
+        if params.panel_numbers:
+          # Annotate with panel numbers
+          ax.text(vcen[0], vcen[1], vcen[2], '%d'%g.index())
 
   fig = plt.figure()
   colormap = plt.cm.gist_ncar
