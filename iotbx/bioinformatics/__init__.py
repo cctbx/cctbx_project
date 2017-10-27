@@ -1817,7 +1817,7 @@ def clear_empty_lines(text):
   return "\n".join(new_lines)+"\n"
   
 def guess_chain_types_from_sequences(file_name=None,text=None,
-    return_as_dict=False):
+    return_as_dict=False,minimum_fraction=None):
   # Guess what chain types are in this sequence file
   if not text:
     if not file_name:
@@ -1829,17 +1829,34 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
   text=clear_empty_lines(text)
   chain_types=[]
   ( sequences, unknowns ) = parse_sequence( text )
-  if return_as_dict: dd={}
+  dd={}
+  dd_n={}
+  total_residues=0
   for sequence in sequences:
     chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
     if chain_type is None and n_residues is None:
       continue
     if chain_type and not chain_type in chain_types:
       chain_types.append(chain_type)
-      if return_as_dict: dd[chain_type]=[]
-    if return_as_dict and chain_type:
+      dd[chain_type]=[]
+      dd_n[chain_type]=0
+    if chain_type:
       dd[chain_type].append(sequence)
-
+      dd_n[chain_type]+=len(sequence.sequence)
+      total_residues+=len(sequence.sequence)
+  if minimum_fraction and len(chain_types)>1 and total_residues>1: # remove anything < minimum_fraction
+    new_chain_types=[]
+    new_dd={}
+    new_dd_n={}
+    for chain_type in chain_types:
+      if dd_n[chain_type]/total_residues >= minimum_fraction:
+        new_chain_types.append(chain_type)
+        new_dd[chain_type]=dd[chain_type]
+        new_dd_n[chain_type]=dd_n[chain_type]
+    chain_types=new_chain_types
+    dd=new_dd
+    dd_n=new_dd_n
+  print dd_n
   if return_as_dict:
     return dd # dict of chain_types and sequences for each chain_type
   else:
