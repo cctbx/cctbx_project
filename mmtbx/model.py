@@ -2075,7 +2075,11 @@ class manager(object):
       i_seq_start=i_seq,
       chain_id=chain_id,
       refine_adp=refine_adp,
-      refine_occupancies=refine_occupancies)
+      refine_occupancies=refine_occupancies,
+      # reset_labels=True, # Not clear if one forgot to do this or this
+      # was not available at the time. Need investigation. Probably will
+      # help to eliminate special water treatment in adopt_xray_structure()
+      )
     self._update_has_hd()
 
   def append_single_atoms(self,
@@ -2091,6 +2095,10 @@ class manager(object):
       chain_id     = " ",
       reset_labels=False) :
     assert refine_adp in ["isotropic", "anisotropic"]
+    assert new_xray_structure.scatterers().size() == len(atom_names) == \
+        len(residue_names) == len(nonbonded_types)
+    if segids is not None:
+      assert len(atom_names) == len(segids)
     ms = self._xray_structure.scatterers().size() #
     number_of_new_atoms = new_xray_structure.scatterers().size()
     self._xray_structure = \
@@ -2223,9 +2231,6 @@ class manager(object):
       new_chain.append_residue_group(residue_group=new_residue_group)
     if (new_chain.residue_groups_size() != 0):
       pdb_model.append_chain(chain=new_chain)
-    if (reset_labels) :
-      for sc, atom in zip(self._xray_structure.scatterers(), self.pdb_atoms) :
-        sc.label = atom.id_str()
     self._update_atom_selection_cache()
     # This deep_copy here for the following reason:
     # sometimes (particualrly in IAS refinement), after update_atom_selection_cache()
@@ -2233,6 +2238,9 @@ class manager(object):
     # deep_copy seems to help with it.
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
     self._update_pdb_atoms()
+    if (reset_labels) :
+      for sc, atom in zip(self._xray_structure.scatterers(), self.pdb_atoms) :
+        sc.label = atom.id_str()
     self.all_chain_proxies = None
     self.processed_pdb_file = None
 

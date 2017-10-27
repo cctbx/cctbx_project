@@ -659,6 +659,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       resname_from_sc = id_str[10:13]
       cl1 = gc(resname_from_sc)
       cl2 = gc(a.resname)
+      # Probably this water treatment could be eliminated by using
+      # reset_labels=True in model.add_solvent(). Need investigation.
       if([cl1,cl2].count("common_water")==2 or
          (id_str.strip()=="" and cl2=="common_water")):
         if(not sc.scattering_type.strip().lower() in ["o","h","d"]):
@@ -670,16 +672,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           l1 = sc.label.replace("pdb=","").replace(" ","")
           l2 = a.id_str().replace("pdb=","").replace(" ","")
           if(l1 != l2):
-            # This condition allows mismatch in residue number for ions
-            # with the same residue name (effectively this should be the same
-            # chemical). They got shuffled (why?) in water placement/
-            # ion identification steps.
-            # print "'%s' '%s' '%s'" % (a.segid, a.resname, resname_from_sc)
-            if a.segid == "ION" and a.resname == resname_from_sc:
-              pass
-            else:
-              # print "offending scattering type", sc.scattering_type[:2]
-              raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
+            raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
         set_attr(sc=sc, a=a)
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
