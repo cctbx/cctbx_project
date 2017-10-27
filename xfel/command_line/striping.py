@@ -389,6 +389,8 @@ class Script(object):
     diff_str = self.diff_scope.get(section_tag).as_str().replace("FILENAME", self.filename)
     if lambda_diff_str is not None:
       diff_str = lambda_diff_str(diff_str)
+    if not clustering:
+      diff_str = diff_str.replace("_CLUSTER", "")
     diff_parts = diff_str.split("\n")[1:-2]
     if custom_parts is not None:
       for part in custom_parts:
