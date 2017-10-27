@@ -2117,7 +2117,7 @@ END
   except Exception, e:
     pass
   assert str(e)=="""Bad ATOM record:
-ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00"""
+ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00""", str(e)
 
 def exercise_edits_parallelity(mon_lib_srv, ener_lib):
   raw_records = """\
