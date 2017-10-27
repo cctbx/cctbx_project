@@ -1,7 +1,8 @@
 import os, sys
 
 from cctbx import geometry_restraints
-origin_ids = geometry_restraints.linking_class.linking_class()
+from cctbx.geometry_restraints import linking_class
+origin_ids = linking_class.linking_class()
 
 headers = ['Zn-SG (A)',
            'SG-Zn-SG (degrees)',
@@ -59,6 +60,14 @@ def print_restraints(db):
       for atoms, values in sorted(restraints.items()):
         print '    ',atoms, values
 
+def check_other_in_database(metal, other):
+  sub = database.get(metal.name.strip(), None)
+  if sub is None: return False
+  for key, item in sub.items():
+    for atoms in item:
+      if other.name.strip() in atoms: return True
+  return False
+
 def get_metal_coordination_proxies(pdb_hierarchy,
                                    nonbonded_proxies,
                                    prefix=None,
@@ -94,50 +103,21 @@ def get_metal_coordination_proxies(pdb_hierarchy,
         metal = a2
         other = a1
       if metal:
+        if not check_other_in_database(metal, other): continue
         mbonds.setdefault(metal.i_seq, {})
         mbonds[metal.i_seq]['metal'] = metal
         mbonds[metal.i_seq].setdefault('others', [])
         mbonds[metal.i_seq]['others'].append(other)
     i += 1
-    continue
-    assert 0
-    if (common_residue_names_get_class(ag1.resname, consider_ccp4_mon_lib_rna_dna=True) in \
-          ["common_rna_dna", "ccp4_mon_lib_rna_dna"] and
-        common_residue_names_get_class(ag2.resname, consider_ccp4_mon_lib_rna_dna=True) in \
-          ["common_rna_dna", "ccp4_mon_lib_rna_dna"] and
-        (a1.element in ["N", "O"] and a2.element in ["N", "O"]) and
-        a1.name.find("P") < 0 and a2.name.find("P") < 0 and
-        a1.name.find("'") < 0 and a2.name.find("'") < 0 and
-        not consecutive_residues(a1, a2) and
-        (ag1.altloc.strip() == ag2.altloc.strip()) and
-         final_link_direction_check(a1, a2)):
-      hbonds.append((i_seq, j_seq))
-  # check and define basepairs
   pairs = []
-  if 0: #for hb in hbonds:
-    if verbose > 1:
-      print >> log, "Making pair with", atoms[hb[0]].id_str(), atoms[hb[1]].id_str()
-    new_hbonds, class_number = get_h_bonds_for_basepair(
-        atoms[hb[0]],
-        atoms[hb[1]],
-        distance_cutoff=hbond_distance_cutoff,
-        log=log,
-        verbose=verbose)
-    if verbose > 1:
-      print >> log, "  Picked class: %d, number of h-bonds under cutoff:%d" % (class_number, len(new_hbonds)),
-    if len(new_hbonds) > 1:
-      p = make_phil_base_pair_record(atoms[hb[0]].parent(), atoms[hb[1]].parent(),
-          params, saenger_class=class_number, add_segid=add_segid)
-      if verbose > 1:
-        print >> log, "  OK"
-      pairs.append(p)
-    else:
-      if verbose > 0:
-        s = " ".join(["Basepairing for residues '%s' and '%s'" % (
-            atoms[hb[0]].id_str()[10:-1], atoms[hb[1]].id_str()[10:-1]),
-          "was rejected because only 1 h-bond was found"])
-        if verbose > 1:
-          print >> log, "Rejected"
+  if verbose:
+    for key, item in mbonds.items():
+      for label, l in item.items():
+        if type(l)==type([]):
+          for atom in l:
+            print '  ',atom.quote()
+        else:
+          print l.quote()
   return mbonds
 
 def get_proxies(coordination):
@@ -159,7 +139,7 @@ def get_proxies(coordination):
   if coordination is None: return bonds, angles
   atoms = None
   for metal_i_seq, atoms in coordination.items():
-    if len(atoms['others'])!=4: continue
+    if len(atoms['others'])<4: continue
     cyss = []
     hiss = []
     for atom in atoms['others']:
@@ -170,30 +150,30 @@ def get_proxies(coordination):
     key = (len(cyss), len(hiss))
     metal_name = atoms['metal'].name.strip()
     ideals = database[metal_name][key]
-  if not atoms: return None, None
-  for a1, a2 in _bond_generator(atoms):
-    key = (a1.name.strip(), a2.name.strip())
-    if key not in ideals: continue
-    t = ideals[key]
-    p = geometry_restraints.bond_simple_proxy(
-      i_seqs=[a1.i_seq, a2.i_seq],
-      distance_ideal=t[0],
-      weight=1.0/t[1]**2,
-      slack=0,
-      top_out=False,
-      limit=1,
-      origin_id=origin_ids.get_origin_id('metal coordination'))
-    bonds.append(p)
-  for a1, a2, a3 in _angle_generator(atoms):
-    key = (a1.name.strip(), a2.name.strip(), a3.name.strip())
-    if key not in ideals: continue
-    t = ideals[key]
-    p = geometry_restraints.angle_proxy(
-      i_seqs=[a1.i_seq, a2.i_seq, a3.i_seq],
-      angle_ideal=t[0],
-      weight=1.0/t[1]**2,
-      origin_id=origin_ids.get_origin_id('metal coordination'))
-    angles.append(p)
+    if not atoms: continue #return None, None
+    for a1, a2 in _bond_generator(atoms):
+      key = (a1.name.strip(), a2.name.strip())
+      if key not in ideals: continue
+      t = ideals[key]
+      p = geometry_restraints.bond_simple_proxy(
+        i_seqs=[a1.i_seq, a2.i_seq],
+        distance_ideal=t[0],
+        weight=1.0/t[1]**2,
+        slack=0,
+        top_out=False,
+        limit=1,
+        origin_id=origin_ids.get_origin_id('metal coordination'))
+      bonds.append(p)
+    for a1, a2, a3 in _angle_generator(atoms):
+      key = (a1.name.strip(), a2.name.strip(), a3.name.strip())
+      if key not in ideals: continue
+      t = ideals[key]
+      p = geometry_restraints.angle_proxy(
+        i_seqs=[a1.i_seq, a2.i_seq, a3.i_seq],
+        angle_ideal=t[0],
+        weight=1.0/t[1]**2,
+        origin_id=origin_ids.get_origin_id('metal coordination'))
+      angles.append(p)
   return bonds, angles
 
 def run(model_filename=None):
@@ -220,13 +200,12 @@ def run(model_filename=None):
         by_value="delta",
         sites_cart=sites_cart,
         site_labels=site_labels)
-    rc = get_metal_coordination_bond_proxies(pdb_hierarchy,
-                                             pair_proxies.nonbonded_proxies,
-                                           )
+    rc = get_metal_coordination_proxies(pdb_hierarchy,
+                                        pair_proxies.nonbonded_proxies,
+    )
     bonds, angles = get_proxies(rc)
-    print bonds
-    print angles
-    assert 0
+    print '\n\tbonds, angles : %d, %d\n\n' % (len(bonds), len(angles))
+
 
 if __name__=="__main__":
   args = sys.argv[1:]
