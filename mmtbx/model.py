@@ -353,10 +353,12 @@ class manager(object):
     # finally, check all_chain_proxies
     if self.all_chain_proxies is not None:
       self.all_chain_proxies.extract_xray_structure().scatterers().size() == self.pdb_atoms.size()
-    # for ha, xa in zip(self.get_hierarchy().atoms_with_labels(),
-    #     self.get_xray_structure().scatterers().extract_labels()):
-    #   if ha.id_str() != xa:
-    #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), xa)
+    # checking label consistency
+    # for ha, sc in zip(self.get_hierarchy().atoms_with_labels(),
+    #     self.get_xray_structure().scatterers()):
+    #   if ha.id_str() != sc.label and sc.scattering_type[:2] != "IS":
+    #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), sc.label)
+    #     assert 0
 
 
   def crystal_symmetry(self):
@@ -1494,8 +1496,8 @@ class manager(object):
     result = []
     solvent_sel = self.solvent_selection()
     get_class = iotbx.pdb.common_residue_names_get_class
-    for model in self._pdb_hierarchy.models():
-      for chain in model.chains():
+    for m in self._pdb_hierarchy.models():
+      for chain in m.chains():
         for rg in chain.residue_groups():
           first_water = None
           first_other = None
@@ -1536,6 +1538,9 @@ class manager(object):
     for i,rg in enumerate(self.extract_water_residue_groups()):
       rg.resseq = iotbx.pdb.resseq_encode(value=i+1)
       rg.icode = " "
+    self._update_pdb_atoms()
+    self._sync_xrs_labels()
+
 
   def add_hydrogens(self, correct_special_position_tolerance,
         element = "H", neutron = False, occupancy=0.01):
@@ -2076,7 +2081,7 @@ class manager(object):
       chain_id=chain_id,
       refine_adp=refine_adp,
       refine_occupancies=refine_occupancies,
-      # reset_labels=True, # Not clear if one forgot to do this or this
+      reset_labels=True, # Not clear if one forgot to do this or this
       # was not available at the time. Need investigation. Probably will
       # help to eliminate special water treatment in adopt_xray_structure()
       )
@@ -2239,10 +2244,13 @@ class manager(object):
     self._pdb_hierarchy = self._pdb_hierarchy.deep_copy()
     self._update_pdb_atoms()
     if (reset_labels) :
-      for sc, atom in zip(self._xray_structure.scatterers(), self.pdb_atoms) :
-        sc.label = atom.id_str()
+      self._sync_xrs_labels()
     self.all_chain_proxies = None
     self.processed_pdb_file = None
+
+  def _sync_xrs_labels(self):
+    for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()) :
+      sc.label = atom.id_str()
 
   def convert_atom (self,
       i_seq,
@@ -2287,7 +2295,7 @@ class manager(object):
       resseq = rg.resseq_as_int()
       rg.resseq = "%4d" % (resseq + 1)
       label = atom.id_str()
-    scatterer.label = atom.id_str()
+    # scatterer.label = atom.id_str() # will be done below for whole xrs
     if (initial_occupancy is not None) :
       # XXX preserve partial occupancies on special positions
       if (scatterer.occupancy != 1.0) :
@@ -2336,6 +2344,7 @@ class manager(object):
       charge=charge)
     self._xray_structure.discard_scattering_type_registry()
     assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    self._sync_xrs_labels()
     self.set_xray_structure(self._xray_structure)
     self._update_pdb_atoms()
     return atom

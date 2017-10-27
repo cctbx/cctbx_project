@@ -661,19 +661,19 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       cl2 = gc(a.resname)
       # Probably this water treatment could be eliminated by using
       # reset_labels=True in model.add_solvent(). Need investigation.
-      if([cl1,cl2].count("common_water")==2 or
-         (id_str.strip()=="" and cl2=="common_water")):
-        if(not sc.scattering_type.strip().lower() in ["o","h","d"]):
-          raise Sorry("Bad ATOM record:\n%s"%a.format_atom_record())
-        set_attr(sc=sc, a=a)
-      else:
+      # if([cl1,cl2].count("common_water")==2 or
+      #    (id_str.strip()=="" and cl2=="common_water")):
+      #   if(not sc.scattering_type.strip().lower() in ["o","h","d"]):
+      #     raise Sorry("Bad ATOM record:\n%s"%a.format_atom_record())
+      #   set_attr(sc=sc, a=a)
+      # else:
         # XXX may be fix it when creating IS ? or make another special case?
-        if(assert_identical_id_str and sc.scattering_type[:2] != "IS"):
-          l1 = sc.label.replace("pdb=","").replace(" ","")
-          l2 = a.id_str().replace("pdb=","").replace(" ","")
-          if(l1 != l2):
-            raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
-        set_attr(sc=sc, a=a)
+      if(assert_identical_id_str and sc.scattering_type[:2] != "IS"):
+        l1 = sc.label.replace("pdb=","").replace(" ","")
+        l2 = a.id_str().replace("pdb=","").replace(" ","")
+        if(l1 != l2):
+          raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
+      set_attr(sc=sc, a=a)
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
