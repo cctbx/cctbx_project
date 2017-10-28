@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.array_family import flex
 from scitbx.lbfgs import have_lbfgs_fem, fortran, raw_reference, raw
 from libtbx.utils import show_times
@@ -23,8 +23,7 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
   size_w = n*(2*m+1)+2*m
   w = flex.double(size_w)
   iflag = 0
-  icall = 0
-  while 1:
+  for icall in xrange(2000):
     f = 0.
     for j in xrange(0, n, 2):
       t1 = 1.e0 - x[j]
@@ -36,25 +35,22 @@ def exercise(lbfgs_impl, n=100, m=5, iprint=[1, 0]):
       n=n, m=m, x=x, f=f, g=g, diagco=diagco, diag=diag,
       iprint=iprint, eps=eps, xtol=xtol, w=w, iflag=iflag)
     if (iflag <= 0): break
-    icall += 1
-    # We allow at most 2000 evaluations of f and g
-    if (icall > 2000): break
 
 def run_cmd(cmd):
-  print cmd
+  print(cmd)
   sys.stdout.flush()
   out = easy_run.fully_buffered(command=cmd)
   err = "\n".join(out.stderr_lines)
-  if (len(err) != 0):
-    print err
-    if (err.find("== ERROR SUMMARY: 0 errors from 0 contexts") < 0):
+  if err:
+    print(err)
+    if err.find("== ERROR SUMMARY: 0 errors from 0 contexts") < 0:
       raise AssertionError(
         "stderr output does not appear to be valgrind output")
   return "\n".join(out.stdout_lines)
 
 def run_and_compare_sdrive_fem(this_script):
   sdrive_fem = libtbx.env.under_build(path="scitbx/lbfgs/sdrive_fem")
-  if (not os.path.isfile(sdrive_fem)):
+  if not os.path.isfile(sdrive_fem):
     return
   outputs = []
   for cmd in [sdrive_fem, 'scitbx.python "%s" fortran 100 5 1 0' % this_script]:
@@ -70,7 +66,7 @@ def truncate_floats(out):
     i = match_obj.start()
     j = match_obj.end()
     v = float(out[i:j])
-    if (abs(v) < 1e-14):
+    if abs(v) < 1e-14:
       v = 0
     else:
       v = float(out[i:j-4])
@@ -99,12 +95,12 @@ def replace_e0dd_with_edd(out):
 def run_and_compare_implementations(this_script, n, m, iprint):
   outputs = []
   for impl in ["fortran", "raw_reference", "raw"]:
-    if (impl == "fortran" and not have_lbfgs_fem):
+    if impl == "fortran" and not have_lbfgs_fem:
       continue
     cmd = 'scitbx.python "%s" %s %d %d %d %d' % (
       this_script, impl, n, m, iprint[0], iprint[1])
     out = run_cmd(cmd=cmd)
-    if (impl == "fortran"):
+    if impl == "fortran":
       out = out.replace("D-", "E-").replace("D+", "E+")
     out = replace_e0dd_with_edd(out=out)
     out = out.replace("E-00", "E+00")
@@ -112,9 +108,9 @@ def run_and_compare_implementations(this_script, n, m, iprint):
     outputs.append(out)
   assert len(outputs) >= 2
   a = outputs[0]
-  for i in xrange(1, len(outputs)):
-    b = outputs[i]
-    if show_diff(a, b):
+  for b in outputs[1:]:
+    if a != b:
+      show_diff(a, b)
       # We need this to cover up test failure with Xcode 7.3
       for lia, lib in zip(a.splitlines(), b.splitlines()):
         if lia != lib:
@@ -125,7 +121,7 @@ def run_and_compare_implementations(this_script, n, m, iprint):
 def compare_implementations():
   this_script = libtbx.env.under_dist(
     module_name="scitbx", path="lbfgs/tst_lbfgs_fem.py")
-  assert this_script.find('"') < 0
+  assert '"' not in this_script
   run_and_compare_sdrive_fem(this_script=this_script)
   rnd = random.Random(x=0)
   for iprint1 in [-1, 0, 1, 2, 3]:
@@ -137,7 +133,7 @@ def compare_implementations():
 
 def run(args):
   timer = show_times(time_start="now")
-  if (len(args) == 5):
+  if len(args) == 5:
     exercise(
       lbfgs_impl=eval(args[0]),
       n=int(args[1]),
@@ -145,21 +141,20 @@ def run(args):
       iprint=[int(args[3]), int(args[4])])
     return
   assert args in [[], ["--once"], ["--endless"]]
-  if (not have_lbfgs_fem):
-    print "Skipping some tests: lbfgs_fem.cpp not linked into scitbx_lbfgs_ext."
+  if not have_lbfgs_fem:
+    print("Skipping some tests: lbfgs_fem.cpp not linked into scitbx_lbfgs_ext.")
   once = "--once" in args
   endless = "--endless" in args
-  if (once or endless):
-    while 1:
-      if (have_lbfgs_fem):
-        exercise(lbfgs_impl=fortran)
-      exercise(lbfgs_impl=raw_reference)
-      exercise(lbfgs_impl=raw)
-      if (not endless): break
+  while once or endless:
+    if have_lbfgs_fem:
+      exercise(lbfgs_impl=fortran)
+    exercise(lbfgs_impl=raw_reference)
+    exercise(lbfgs_impl=raw)
+    once = False
   else:
     compare_implementations()
   timer()
-  print "OK"
+  print("OK")
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   run(sys.argv[1:])
