@@ -1808,7 +1808,10 @@ class manager(object):
       atom_names=atom_names,
       residue_names=residue_names,
       chain_id=" ",
-      i_seq_start=0)
+      i_seq_start=0,
+      reset_labels=True, # maybe this will allow to drop IS handling in
+      # adopt_xray_structure()
+      )
 
   def remove_ias(self):
     print >> self.log, ">>> Removing IAS..............."

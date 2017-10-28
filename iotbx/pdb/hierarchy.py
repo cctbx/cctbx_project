@@ -668,7 +668,8 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       #   set_attr(sc=sc, a=a)
       # else:
         # XXX may be fix it when creating IS ? or make another special case?
-      if(assert_identical_id_str and sc.scattering_type[:2] != "IS"):
+      # if(assert_identical_id_str and sc.scattering_type[:2] != "IS"):
+      if assert_identical_id_str:
         l1 = sc.label.replace("pdb=","").replace(" ","")
         l2 = a.id_str().replace("pdb=","").replace(" ","")
         if(l1 != l2):
