@@ -11,6 +11,7 @@ dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
     e. These are new settings in IOTA param files, too
 4. BUGFIX: Log displayed when run is recovered
 5. Searchable log in IOTA GUI
+6. LSF queue jobs now abort cleanly (via 'bkill' command)
 
 MORE BUGFIXES:
 

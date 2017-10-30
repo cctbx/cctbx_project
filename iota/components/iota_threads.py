@@ -10,7 +10,6 @@ Description : IOTA GUI Threads and PostEvents
 import os
 import wx
 from threading import Thread
-import time
 
 from libtbx.easy_mp import parallel_map
 from libtbx import easy_pickle as ep
@@ -66,9 +65,10 @@ class ProcessImage():
     self.input_entry = input_entry
     self.input_type = input_type
     self.abort = abort
+
   def run(self):
     if self.abort:
-      raise SpfTermination('IOTA: Run aborted by user')
+      raise IOTATermination('IOTA: Run aborted by user')
     else:
       if self.input_type == 'image':
         img_object = img.SingleImage(self.input_entry, self.init)
@@ -76,6 +76,8 @@ class ProcessImage():
       elif self.input_type == 'object':
         img_object = self.input_entry[2]
         img_object.import_int_file(self.init)
+      else:
+        img_object = None
 
       if self.init.params.image_conversion.convert_only:
         return img_object
@@ -101,44 +103,53 @@ class ProcThread(Thread):
     self.aborted = False
 
   def run(self):
-    if self.init.params.mp_method == 'multiprocessing':
-      try:
-        img_objects = parallel_map(iterable=self.iterable,
-                                   func = self.full_proc_wrapper,
-                                   processes=self.init.params.n_processors)
-      except SpfTermination, e:
-        self.aborted = True
-        print e
-        return
-    else:
-      # write iterable
-      img_objects = None
-      queue = self.init.params.mp_queue
-      iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-      init_path = os.path.join(self.init.int_base, 'init.cfg')
-      nproc = self.init.params.n_processors
-      ep.dump(iter_path, self.iterable)
-      ep.dump(init_path, self.init)
-      try:
-        if self.init.params.mp_method == 'lsf':
-          command = 'bsub -q {} -n {} iota.process {} --files {} --type {} ' \
-                    '--stopfile {}'.format(queue, nproc, init_path, iter_path,
-                                             self.type, self.term_file)
-        if self.init.params.mp_method == 'torq':
-          params = '{} --files {} --type {} --stopfile {}' \
-                   ''.format(init_path, iter_path, self.type, self.term_file)
-          command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-                    ''.format(self.init.params.output, params)
-        print command
-        easy_run.fully_buffered(command, join_stdout_stderr=True)
-      except SpfTermination, e:
-        print e
+    # if self.init.params.mp_method == 'multiprocessing':
+    try:
+      img_objects = parallel_map(iterable=self.iterable,
+                                 func = self.full_proc_wrapper,
+                                 processes=self.init.params.n_processors)
+    except IOTATermination, e:
+      self.aborted = True
+      print e
+      return
+    # else:
+    #   # write iterable
+    #   img_objects = None
+    #   queue = self.init.params.mp_queue
+    #   iter_path = os.path.join(self.init.int_base, 'iter.cfg')
+    #   init_path = os.path.join(self.init.int_base, 'init.cfg')
+    #   nproc = self.init.params.n_processors
+    #   ep.dump(iter_path, self.iterable)
+    #   ep.dump(init_path, self.init)
+    #
+    #   if self.init.params.mp_method == 'lsf':
+    #     logfile = os.path.join(self.init.int_base, 'bsub.log')
+    #     command = 'bsub -o {} -q {} -n {} ' \
+    #               'iota.process {} --files {} --type {} --stopfile {}' \
+    #               ''.format(logfile, queue, nproc,
+    #                         init_path, iter_path, self.type, self.term_file)
+    #   elif self.init.params.mp_method == 'torq':
+    #     params = '{} --files {} --type {} --stopfile {}' \
+    #              ''.format(init_path, iter_path, self.type, self.term_file)
+    #     command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
+    #               ''.format(self.init.params.output, params)
+    #   else:
+    #     command = None
+    #   if command is not None:
+    #     try:
+    #       print command
+    #       easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
+    #     except IOTATermination, e:
+    #       print e
+    #   else:
+    #     print 'IOTA ERROR: COMMAND NOT ISSUED!'
+    #     return
 
     # Send "all done" event to GUI
     try:
       evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
       wx.PostEvent(self.parent, evt)
-    except TypeError, e:
+    except Exception, e:
       pass
 
   def full_proc_wrapper(self, input_entry):
@@ -152,7 +163,7 @@ class ProcThread(Thread):
                                          abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except SpfTermination, e:
+    except IOTATermination, e:
       raise e
 
 class ImageFinderThread(Thread):
@@ -250,7 +261,7 @@ EVT_SPFALLDONE = wx.PyEventBinder(tp_EVT_SPFALLDONE, 1)
 tp_EVT_SLICEDONE = wx.NewEventType()
 EVT_SLICEDONE = wx.PyEventBinder(tp_EVT_SLICEDONE)
 
-class SpfTermination(Exception):
+class IOTATermination(Exception):
   def __init__(self, termination):
     Exception.__init__(self, termination)
 
@@ -305,7 +316,7 @@ class SpotFinderThread(Thread):
                    func=self.spf_wrapper,
                    callback=self.callback,
                    processes=None)
-    except SpfTermination, e:
+    except IOTATermination, e:
       self.terminated = True
       print e
 
@@ -323,7 +334,7 @@ class SpotFinderThread(Thread):
   def spf_wrapper(self, img):
     if os.path.isfile(self.term_file):
       os.remove(self.term_file)
-      raise SpfTermination('IOTA_TRACKER: Termination signal received!')
+      raise IOTATermination('IOTA_TRACKER: Termination signal received!')
     else:
       if os.path.isfile(img):
         datablock = DataBlockFactory.from_filenames([img])[0]
