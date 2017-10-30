@@ -1070,11 +1070,9 @@ _replace_sysconfig_paths(build_time_vars)
       os.environ['KERNEL_BITS'] = ''
 
   def build_certifi(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=CERTIFI_PKG,
-      pkg_name_label="certifi",
-      confirm_import_module="certifi")
+    # No version specified - always take latest version
+    self.build_python_module_pip(
+      'certifi', confirm_import_module="certifi")
     if self.check_download_only(): return
 
     # set environment variable for root certificates

@@ -45,9 +45,6 @@ def get_pypi_package_information(package, version=None, information_only=False):
 BASE_OPENSSL_PKG_URL = "https://cdn.rawgit.com/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2l.tar.gz"
 
-# root certificates for macOS 10.11 and later
-CERTIFI_PKG = "certifi-2017.4.17.tar.gz"
-
 # from CCI
 PYTHON_PKG = "Python-2.7.14.tgz"
 NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
