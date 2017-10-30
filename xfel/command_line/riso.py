@@ -9,6 +9,7 @@ import iotbx.phil
 from dials.util.options import OptionParser
 from iotbx import mtz
 from cctbx.array_family import flex
+from libtbx.str_utils import format_value
 from xfel.cxi.cxi_cc import r1_factor, scale_factor
 from cctbx.crystal import symmetry
 
@@ -104,9 +105,13 @@ def riso(data_1, data_2, params, show_tables=True):
     common_set_2, common_set_1,
     scale_factor=riso_scale_factor,
     use_binning=True)
+  riso_scale_factor_all = scale_factor(
+    common_set_2, common_set_1,
+    weights=flex.pow(common_set_2.sigmas(), -2),
+    use_binning=False)
   riso_all = r1_factor(
     common_set_2, common_set_1,
-    scale_factor=riso_scale_factor,
+    scale_factor=riso_scale_factor_all,
     use_binning=False)
 
   if show_tables:
