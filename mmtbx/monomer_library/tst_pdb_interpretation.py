@@ -2106,18 +2106,23 @@ ATOM   5963  W   HOH 21102      32.322  79.906 -13.581 1.000 50.00
 END
   """.splitlines()
   e = None
-  try:
-    log = StringIO()
-    processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      file_name=None,
-      raw_records=raw_records,
-      log=log)
-  except Exception, e:
-    pass
-  assert str(e)=="""Bad ATOM record:
-ATOM      1  W   HOH 21100      44.341  86.390 -10.071  1.00 50.00""", str(e)
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
+  assert msg == """Fatal problems interpreting model file:
+  Number of atoms with unknown scattering type symbols: 3
+  Number of atoms with unknown nonbonded energy type symbols: 3
+    Please edit the model file to resolve the problems and/or supply a
+    CIF file with matching restraint definitions, along with
+    apply_cif_modification and apply_cif_link parameter definitions
+    if necessary.
+    It is best practice to define the element names in
+    columns 77-78 of the PDB file.""", msg
 
 def exercise_edits_parallelity(mon_lib_srv, ener_lib):
   raw_records = """\
