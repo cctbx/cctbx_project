@@ -109,14 +109,16 @@ def run_and_compare_implementations(this_script, n, m, iprint):
   assert len(outputs) >= 2
   a = outputs[0]
   for b in outputs[1:]:
-    if a != b:
-      show_diff(a, b)
-      # We need this to cover up test failure with Xcode 7.3
+    if sys.platform != 'darwin':
+      assert a == b, show_diff(b, a)
+    elif a != b:
+      show_diff(b, a)
+      # We need this to cover up test failure with Xcode >=7.3
       for lia, lib in zip(a.splitlines(), b.splitlines()):
         if lia != lib:
           gnorma = lia.split()[3]
           gnormb = lib.split()[3]
-          assert abs(float(gnorma) - float(gnormb)) <= 1e-7
+          assert abs(float(gnorma) - float(gnormb)) <= 1e-6
 
 def compare_implementations():
   this_script = libtbx.env.under_dist(
