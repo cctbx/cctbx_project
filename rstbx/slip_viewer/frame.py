@@ -668,9 +668,23 @@ class XrayFrame (AppFrame,XFBaseClass) :
             currentZoom = self.pyslip.level
             self.pyslip.tiles.UseLevel(0) #1:1 zoom level
 
-            x, y, width, height = self._img._raw.bounding_box_mm()
-            x1, y1 = self._img._raw.detector_coords_as_image_coords(x,y)
-            x2, y2 = self._img._raw.detector_coords_as_image_coords(x+width,y+height)
+            try:
+              x, y, width, height = self._img._raw.bounding_box_mm()
+              x1, y1 = self._img._raw.detector_coords_as_image_coords(x,y)
+              x2, y2 = self._img._raw.detector_coords_as_image_coords(x+width,y+height)
+            except AttributeError:
+              x1 = min([p.get_pixel_lab_coord(c)[0]/p.get_pixel_size()[0] \
+                        for p in detector \
+                        for c in [(0,0),(0,p.get_image_size()[1]),(p.get_image_size()[0],0),(p.get_image_size()[0],p.get_image_size()[1])]])
+              y1 = min([p.get_pixel_lab_coord(c)[1]/p.get_pixel_size()[1] \
+                        for p in detector \
+                        for c in [(0,0),(0,p.get_image_size()[1]),(p.get_image_size()[0],0),(p.get_image_size()[0],p.get_image_size()[1])]])
+              x2 = max([p.get_pixel_lab_coord(c)[0]/p.get_pixel_size()[0] \
+                        for p in detector \
+                        for c in [(0,0),(0,p.get_image_size()[1]),(p.get_image_size()[0],0),(p.get_image_size()[0],p.get_image_size()[1])]])
+              y2 = max([p.get_pixel_lab_coord(c)[1]/p.get_pixel_size()[1] \
+                        for p in detector \
+                        for c in [(0,0),(0,p.get_image_size()[1]),(p.get_image_size()[0],0),(p.get_image_size()[0],p.get_image_size()[1])]])
 
             # Map > View - determine layout in X direction
             x_offset = x1
@@ -704,7 +718,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
             wximg = wx.ImageFromBitmap(bitmap)
             imageout = Image.new('RGB', (wximg.GetWidth(), wximg.GetHeight()))
-            imageout.fromstring(wximg.GetData())
+            imageout.frombytes(wximg.GetData())
 
             self.pyslip.tiles.UseLevel(currentZoom)
 
