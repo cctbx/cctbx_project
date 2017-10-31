@@ -10,15 +10,44 @@ import dxtbx
 import libtbx.load_env
 from libtbx.utils import Usage
 from scitbx.array_family import flex
+from libtbx.phil import parse
 
+phil_scope = parse("""
+  show_plots = False
+    .type = bool
+    .help = Show CC gridmap plots
+  multi_angle = True
+    .type = bool
+    .help = If true, compute CC over many angles at each gridpoint (20-70 degrees \
+            in increments of 2.5 degrees). Otherwise, just compute CC at 45 \
+            degrees at each grid point (much faster but not as robust)
+  plot_range = None
+    .type = floats(size=2)
+    .help = Min and max CC values for gridmap plots
+  pdf_file = None
+    .type = path
+    .help = If not None and show_plots is True, then save CC plots as multi- \
+            page cbf file
+""")
 
-if (__name__ == "__main__"):
-  if len(sys.argv) == 1 or '-h' in sys.argv or '--help' in sys.argv or '-c' in sys.argv:
-    raise Usage("%s [-p] files"%libtbx.env.dispatcher_name)
+def run(args):
+  if len(args) == 0 or '-h' in args or '--help' in args or '-c' in args:
+    print "Usage: %s [-p] files"%libtbx.env.dispatcher_name
+    phil_scope.show(attributes_level = 2)
+    return
 
-  files = [arg for arg in sys.argv[1:] if os.path.isfile(arg)]
-  arguments = [arg for arg in sys.argv[1:] if not os.path.isfile(arg)]
-  plot = '-p' in arguments
+  files = [arg for arg in args if os.path.isfile(arg)]
+  arguments = [arg for arg in args if not os.path.isfile(arg)]
+  user_phil = []
+  for arg in arguments:
+    if arg == '-p':
+      user_phil.append(parse("show_plots=True"))
+    else:
+      try:
+        user_phil.append(parse(arg))
+      except Exception as e:
+        raise Sorry("Unrecognized argument: %s"%arg)
+  params = phil_scope.fetch(sources = user_phil).extract()
 
   for file in files:
     message="""Based on the file %s,
@@ -61,7 +90,7 @@ if (__name__ == "__main__"):
           key_panel = panel
 
       print "Doing cross-correlation on panel", key_panel.get_name()
-      Q = one_panel(image,key_panel,i_quad,quad,plot)
+      Q = one_panel(image,key_panel,i_quad,quad,params.show_plots,params.multi_angle,params.plot_range,params.pdf_file is None)
       delta = panel.pixel_to_millimeter((Q.coordmax[0], Q.coordmax[1]))
 
       quad.set_frame(quad.get_fast_axis(),
@@ -69,6 +98,14 @@ if (__name__ == "__main__"):
                      col(quad.get_origin())-col((delta[0],delta[1],0)))
       ccs.append(Q.ccmax)
     print "Average CC: %7.4f"%flex.mean(ccs)
+    if params.pdf_file is not None:
+      print "Saving plots to", params.pdf_file
+      from matplotlib import pyplot as plt
+      from matplotlib.backends.backend_pdf import PdfPages
+      pp = PdfPages(params.pdf_file)
+      for i in plt.get_fignums():
+        pp.savefig(plt.figure(i), dpi=300)
+      pp.close()
 
     import pycbf
     image.sync_detector_to_cbf()
@@ -76,3 +113,6 @@ if (__name__ == "__main__"):
     print "Saving result to", dest_path
     image._cbf_handle.write_widefile(dest_path,pycbf.CBF,\
         pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+
+if (__name__ == "__main__"):
+  run(sys.argv[1:])

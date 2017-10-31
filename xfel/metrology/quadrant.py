@@ -2,6 +2,7 @@ from __future__ import division
 from scitbx.matrix import sqr,col
 from math import sin,cos,pi
 from scitbx.array_family import flex
+import sys
 class one_sensor(object):
   def __init__(self,image,sensor,manager):
     self.image = image
@@ -92,11 +93,15 @@ class one_sensor(object):
     #plt.show()
 
 class one_panel(object):
-  def __init__(self,image,panel,i_quad,quad,plot=False):
+  def __init__(self,image,panel,i_quad,quad,plot=False,multi_angle=True,plot_range=None,show=True):
     self.image = image
     self.panel = panel
     self.i_quad = i_quad
     self.quad = quad
+    if multi_angle:
+      angles = [20.,22.5, 25.,27.5, 30.,32.5, 35.,37.5,40.,42.5,45.,47.5,50.,52.5,55.,57.5,60.,62.5,65.,67.5,70.]
+    else:
+      angles = [45.]
 
     grid_radius = 20
     mapp = flex.double(flex.grid(2*grid_radius+1, 2*grid_radius+1))
@@ -106,32 +111,49 @@ class one_panel(object):
     beam_center = col(panel.get_beam_centre_lab(beam.get_s0())[0:2])
     gmax = 0.0
     coordmax = (0,0)
+    print "Rastering row",
     for xi in range(-grid_radius, grid_radius+1):
+      print xi,; sys.stdout.flush()
       for yi in range(-grid_radius, grid_radius+1):
         delta = col((xi,yi))
-        VV = self.CC(beam_center + delta)
+        all_VV = flex.double()
+        for deg in angles:
+          ang_rad = deg * pi/180.
+          rotmat = sqr(  (sin(ang_rad), -cos(ang_rad), cos(ang_rad), sin(ang_rad))  )
+          all_VV.append(self.CC(beam_center + delta, rotmat))
+        #VV = self.CC(beam_center + delta)
+        VV = flex.max(all_VV)
         if VV>gmax:
           gmax = VV
           coordmax = delta
         mapp[(xi+grid_radius,yi+grid_radius)]=VV
+    print
 
     print "max cc %7.4F is at (%d, %d)"%(gmax, coordmax[0], coordmax[1])
     if plot:
       npy = mapp.as_numpy_array().T # T: transpose
       from matplotlib import pyplot as plt
-      plt.imshow(npy, cmap="hot", extent=[-grid_radius-1, grid_radius+1, grid_radius+1, -grid_radius-1])
+      fig = plt.figure()
+      if plot_range is None:
+        vmin = vmax = None
+      else:
+        vmin, vmax = plot_range
+      plt.imshow(npy, cmap="hot", interpolation="nearest", extent=[-grid_radius-1, grid_radius+1, grid_radius+1, -grid_radius-1],
+                 vmin = vmin, vmax = vmax)
       ax = plt.colorbar()
       ax.set_label("CC")
       plt.plot([coordmax[0]],[coordmax[1]],"k.")
       plt.title("Rotational autocorrelation of quadrant %d"%i_quad)
       plt.xlabel("X offset (pixels)")
       plt.ylabel("Y offset (pixels)")
-      plt.show()
+
+      if show:
+        plt.show()
 
     self.coordmax = coordmax
     self.ccmax = gmax
 
-  def CC(self, beam_center):
+  def CC(self, beam_center, rotmat=None):
     detector = self.image.get_detector()
     angle = [0,3,2,1][self.i_quad] #
 
@@ -145,8 +167,9 @@ class one_panel(object):
     asic_origin = col(self.panel.millimeter_to_pixel((min([p[0] for p in b]),
                                                       min([p[1] for p in b]))))
 
-
-    rot45 = sqr((sin(pi/4.),-cos(pi/4.),cos(pi/4.),sin(pi/4.)))
+    if rotmat is None:
+      rot45 = sqr((sin(pi/3.),-cos(pi/3.),cos(pi/3.),sin(pi/3.)))
+    else: rot45 = rotmat
 
     from xfel.metrology.legacy_scale import quadrant_self_correlation
     min_value = self.image.get_detector()[0].get_trusted_range()[0]
