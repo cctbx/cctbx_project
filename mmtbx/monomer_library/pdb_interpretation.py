@@ -505,6 +505,10 @@ bond
     .type = float
   slack = None
     .type = float
+  limit = -1.0
+    .type = float
+  top_out = False
+    .type = bool
 }
 angle
   .optional = True
@@ -4294,6 +4298,8 @@ class build_all_chain_proxies(linking_mixins):
           distance_ideal=bond.distance_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
           slack=slack,
+          limit=bond.limit,
+          top_out=bond.top_out,
           origin_id=origin_ids.get_origin_id('edits'),
           rt_mx_ji=rt_mx_ji)
         bond_sym_proxies.append(p)

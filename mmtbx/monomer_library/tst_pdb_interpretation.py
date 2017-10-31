@@ -2276,6 +2276,73 @@ pdb_interpretation.geometry_restraints {
   assert list(pp.i_seqs) == [0,1,2]
   assert approx_equal(list(pp.weights)[0], 1371.7421124828534)
 
+def exercise_edits_bond(mon_lib_srv, ener_lib):
+  from cctbx.geometry_restraints.linking_class import linking_class
+  origin_ids = linking_class()
+
+  raw_records = """\
+CRYST1   47.935   37.102   30.520  90.00  90.00  90.00 P 1
+ATOM     55  N   PHE A 431      31.800  18.971   9.354  1.00187.57           N
+ATOM     56  CA  PHE A 431      30.664  18.262   9.908  1.00187.57           C
+ATOM     57  C   PHE A 431      29.679  19.392  10.042  1.00187.57           C
+ATOM     58  O   PHE A 431      29.961  20.372  10.729  1.00187.57           O
+ATOM     59  CB  PHE A 431      30.976  17.709  11.288  1.00192.11           C
+ATOM     60  CG  PHE A 431      32.191  16.840  11.330  1.00192.11           C
+ATOM     61  CD1 PHE A 431      32.307  15.750  10.487  1.00192.11           C
+ATOM     62  CD2 PHE A 431      33.209  17.101  12.221  1.00192.11           C
+ATOM     63  CE1 PHE A 431      33.426  14.943  10.527  1.00192.11           C
+ATOM     64  CE2 PHE A 431      34.331  16.298  12.265  1.00192.11           C
+ATOM     65  CZ  PHE A 431      34.439  15.217  11.418  1.00192.11           C
+END
+  """.splitlines()
+  edits = """\
+pdb_interpretation.geometry_restraints {
+    edits {
+      bond
+      {
+        action = *add delete change
+        atom_selection_1 = name N
+        atom_selection_2 = name CB
+        symmetry_operation = None
+        distance_ideal = 3
+        sigma = 0.1
+        slack = None
+        limit = 1.0
+        top_out = True
+      }
+    }
+}"""
+  gm_phil = iotbx.phil.parse(
+      monomer_library.pdb_interpretation.grand_master_phil_str,
+      process_includes=True)
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = gm_phil.fetch(edits_phil)
+  params = working_phil.extract()
+  # print params.geometry_restraints.edits.parallelity[0].atom_selection_1
+  assert params.geometry_restraints.edits.bond[0].atom_selection_1 == \
+      "name N"
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=None,
+      raw_records=raw_records,
+      params = params.pdb_interpretation,
+      log=None)
+  grm = processed_pdb_file.geometry_restraints_manager(
+      params_edits=params.geometry_restraints.edits,
+      params_remove=params.geometry_restraints.remove)
+  simple = grm.pair_proxies().bond_proxies.simple
+  assert simple.size() == 12
+  user_defined = simple.proxy_select(origin_id=origin_ids.get_origin_id('edits'))
+  assert user_defined.size() == 1
+  udp = user_defined[0]
+  assert list(udp.i_seqs) == [0,4]
+  assert udp.limit == 1
+  assert udp.top_out
+  assert approx_equal(udp.distance_ideal, 3, eps=1e-4)
+  assert approx_equal(udp.weight, 100, eps=1e-4)
+
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
@@ -2308,6 +2375,7 @@ def run(args):
   exercise_ss_bond_angles_alt_loc(mon_lib_srv, ener_lib)
   exercise_edits_parallelity(mon_lib_srv, ener_lib)
   exercise_edits_planarity(mon_lib_srv, ener_lib)
+  exercise_edits_bond(mon_lib_srv, ener_lib)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
