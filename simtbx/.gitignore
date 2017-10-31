@@ -6,6 +6,8 @@
 *.img
 *.mccd
 *.mccd.gz
+*.mtz
+*.mtz.gz
 *.cbf
 *.bin
 .adxv_beam_center

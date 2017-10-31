@@ -11,10 +11,12 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/versa.h>
 #include <cctbx/uctbx.h>
 #include <cctbx/crystal_orientation.h>
 #include <cctbx/miller.h>
 #include <dxtbx/model/detector.h>
+#include <dxtbx/model/beam.h>
 #include <boost/math/special_functions/erf.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 
@@ -201,8 +203,14 @@ class nanoBragg {
     int hdiv_tic,vdiv_tic,disp_tic,mos_tic;
     int mosaic_domains;
     double weight;
-    int source,sources;
+    int source,sources,allocated_sources;
     double *source_X,*source_Y,*source_Z,*source_I,*source_lambda;
+
+    /* version of source list to pass back to Python */
+    af::shared<vec3> pythony_source_XYZ;
+    af::shared<double> pythony_source_intensity;
+    af::shared<double> pythony_source_lambda;
+    scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > pythony_beams;
 
     /* incident x-ray fluence in photons/m^2   default equivalent to unity
         that is, one electron will scatter 1 ph/SR after a fluence of 1.26e29 ph/m^2
@@ -245,7 +253,7 @@ class nanoBragg {
     double distance; // = 100.0e-3;
     double detsize_f; // = 102.4e-3;
     double detsize_s; // = 102.4e-3;
-    double detector_mu; //=0.0;
+    double detector_attnlen; //= 234 um;
     double detector_thick; // =0.0;
     double detector_thickstep,parallax,capture_fraction;
     int    thick_tic,detector_thicksteps; // =-1;
@@ -339,7 +347,7 @@ class nanoBragg {
     af::shared<double> pythony_amplitudes;
 
     /* pythony version of amorphous structure factor table vs sin(theta)/lambda, converted by init_stolFbg */
-    af::shared<vec2> pythony_stolFbg;
+    af::shared<vec2>  pythony_stolFbg;
 
     /* intensity stats */
     double I,I_bg;
@@ -355,7 +363,7 @@ class nanoBragg {
     /* image file data */
     double *floatimage;
     /* version of image to pass back to Python */
-    af::flex_double raw;
+    af::flex_double raw_pixels;
     unsigned short int *intimage;
     unsigned char *pgmimage;
 //    char *byte_order; // = get_byte_order();
@@ -434,8 +442,8 @@ class nanoBragg {
 //    bool write_pgm; // = 1;
 //    bool binary_spots; // = 0; no inter-Bragg spots, flat-top spots inside FWHM of sinc function instead
 
-    /* the constructor that takes a DIALS detector model */
-    nanoBragg(const dxtbx::model::Detector&);
+    /* the constructor that takes a DXTBX detector and beam model */
+    nanoBragg(const dxtbx::model::Detector&, const dxtbx::model::Beam& beam, int verbose);
 
     /* the default constructor */
 //    nanoBragg();
@@ -479,6 +487,7 @@ class nanoBragg {
     void show_detector_thicksteps();  // print out all detector layers
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
     void show_params();         // print out everything to screen, just like standalone program
+    void show_sources();        // print out internal source information to screen
 
     /* member function for randomizing crystal orientation */
     void randomize_orientation();
@@ -490,7 +499,7 @@ class nanoBragg {
     void add_background(int oversample, int source);
 
     /* member function for extracting background from raw image */
-    void extract_background();
+    void extract_background(int source);
 
     /* member function for applying the point-spread function */
     void apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius);

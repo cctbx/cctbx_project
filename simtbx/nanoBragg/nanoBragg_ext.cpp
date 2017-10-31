@@ -1,5 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python/copy_const_reference.hpp>
+
 #include <boost/python/module.hpp>
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
@@ -637,13 +639,17 @@ namespace boost_python { namespace {
   static af::shared<vec2> get_Fbg_vs_stol(nanoBragg nanoBragg) {
       int i;
       /* create a new flex array */
-      nanoBragg.pythony_stolFbg = af::shared<vec2>();
+      //nanoBragg.pythony_stolFbg = af::shared<vec2>();
       /* make sure it is big enough to hold all stol,Fbg pairs */
       nanoBragg.pythony_stolFbg.resize(nanoBragg.stols);
       /* copy the non-edge values into the flex array (interpolation buffer of 2 values on either end) */
+printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nanoBragg.pythony_stolFbg[1][1]);
+      if(nanoBragg.verbose>3) printf(" about to initialize pythony_stolFbg\n");
       for(i=0;i<=nanoBragg.stols-4;++i){
-          nanoBragg.pythony_stolFbg[i] = vec2(nanoBragg.stol_of[i+2],nanoBragg.Fbg_of[i+2]);
+          nanoBragg.pythony_stolFbg[i] = vec2(nanoBragg.stol_of[i+2]/nanoBragg.stol_file_mult,nanoBragg.Fbg_of[i+2]);
       }
+printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nanoBragg.pythony_stolFbg[1][1]);
+      if(nanoBragg.verbose>3) printf("  done\n");
       return nanoBragg.pythony_stolFbg;
   }
   static void   set_Fbg_vs_stol(nanoBragg& nanoBragg, af::shared<vec2> const& value) {
@@ -662,6 +668,97 @@ namespace boost_python { namespace {
       /* make sure this gets applied! */
       nanoBragg.init_background();
   }
+
+
+  /* table of sources, as dxtbx "beam"s */
+  static scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > get_beams(nanoBragg& nanoBragg) {
+      int i;
+      /* allocate new flex array */
+//      scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > nanoBragg_pythony_beams;
+      nanoBragg.pythony_beams = scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> >();
+      /* make sure it is big enough to hold all sources */
+      nanoBragg.pythony_beams.resize(nanoBragg.sources);
+
+      /* copy internal storage into the flex array */
+      for(i=0;i<nanoBragg.sources;++i){
+          nanoBragg.pythony_beams[i].set_direction(vec3(nanoBragg.source_X[i],nanoBragg.source_Y[i],nanoBragg.source_Z[i]));
+          nanoBragg.pythony_beams[i].set_wavelength(nanoBragg.source_lambda[i]*1e10);
+          nanoBragg.pythony_beams[i].set_flux(nanoBragg.source_I[i]);
+          // how is this a fraction when it can be negative? (Kahn et al. 1982)
+          nanoBragg.pythony_beams[i].set_polarization_fraction(nanoBragg.polarization);
+          nanoBragg.pythony_beams[i].set_polarization_normal(vec3(nanoBragg.polar_vector[1],nanoBragg.polar_vector[2],nanoBragg.polar_vector[3]));
+      }
+      /* pass this back to python */
+      return nanoBragg.pythony_beams;
+  }
+  static void   set_beams(nanoBragg& nanoBragg, scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
+      if(nanoBragg.verbose>3) printf(" about to initialize sources\n");
+      nanoBragg.pythony_beams = value;
+      if(nanoBragg.verbose>3) printf(" done\n");
+
+      /* re-initialize source table from pythony array */
+      nanoBragg.init_sources();
+  }
+
+
+
+  /* table of sources : position in space  */
+  static af::shared<vec3> get_source_XYZ(nanoBragg nanoBragg) {
+      int i;
+      /* create new flex arrays */
+      nanoBragg.pythony_source_XYZ = af::shared<vec3>();
+      //nanoBragg.pythony_source_intensity = af::shared<double>();
+      //nanoBragg.pythony_source_lambda = af::shared<double>();
+      /* make sure it is big enough to hold all sources, and that they all match */
+      nanoBragg.pythony_source_XYZ.resize(nanoBragg.sources);
+      nanoBragg.pythony_source_intensity.resize(nanoBragg.sources);
+      nanoBragg.pythony_source_lambda.resize(nanoBragg.sources);
+      /* copy internal storage into the flex array */
+      for(i=0;i<nanoBragg.sources;++i){
+          nanoBragg.pythony_source_XYZ[i]       = vec3(nanoBragg.source_X[i],nanoBragg.source_Y[i],nanoBragg.source_Z[i]);
+          nanoBragg.pythony_source_intensity[i] = nanoBragg.source_I[i];
+          nanoBragg.pythony_source_lambda[i]    = nanoBragg.source_lambda[i]*1e10;
+      }
+      return nanoBragg.pythony_source_XYZ;
+  }
+  static void   set_source_XYZ(nanoBragg& nanoBragg, af::shared<vec3> const& value) {
+      if(nanoBragg.verbose>3) printf(" about to initialize sources\n");
+      nanoBragg.pythony_source_XYZ = value;
+      if(nanoBragg.verbose>3) printf(" done\n");
+
+      /* re-initialize source table from pythony array */
+      nanoBragg.init_sources();
+  }
+
+
+  /* table of sources : wavelength  */
+  static af::shared<double> get_source_lambda(nanoBragg nanoBragg) {
+      int i;
+      /* create new flex arrays */
+      nanoBragg.pythony_source_lambda = af::shared<double>();
+      /* make sure it is big enough to hold all sources, and that they all match */
+      nanoBragg.pythony_source_XYZ.resize(nanoBragg.sources);
+      nanoBragg.pythony_source_intensity.resize(nanoBragg.sources);
+      nanoBragg.pythony_source_lambda.resize(nanoBragg.sources);
+      /* copy internal storage into the flex array */
+      for(i=0;i<nanoBragg.sources;++i){
+          nanoBragg.pythony_source_XYZ[i]       = vec3(nanoBragg.source_X[i],nanoBragg.source_Y[i],nanoBragg.source_Z[i]);
+          nanoBragg.pythony_source_intensity[i] = nanoBragg.source_I[i];
+          nanoBragg.pythony_source_lambda[i]    = nanoBragg.source_lambda[i]*1e10;
+      }
+      return nanoBragg.pythony_source_lambda;
+  }
+  static void   set_source_lambda(nanoBragg& nanoBragg, af::shared<double> const& value) {
+      if(nanoBragg.verbose>3) printf(" about to initialize sources\n");
+      nanoBragg.pythony_source_lambda = value;
+      if(nanoBragg.verbose>3) printf(" done\n");
+
+      /* re-initialize source table from pythony array */
+      nanoBragg.init_sources();
+  }
+
+
+
 
 
   /* X-ray wavelength */
@@ -830,7 +927,7 @@ namespace boost_python { namespace {
       nanoBragg.phi0 = value/RTD;
       /* need to re-create phi step table */
       nanoBragg.init_steps();
-      nanoBragg.show_phisteps();
+      if(nanoBragg.verbose) nanoBragg.show_phisteps();
   }
 
   /* spindle rotation ange, in deg */
@@ -842,7 +939,7 @@ namespace boost_python { namespace {
       /* need to re-create phi step table */
       nanoBragg.phistep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.show_phisteps();
+      if(nanoBragg.verbose) nanoBragg.show_phisteps();
   }
 
   /* number of discrete phi rotations, default: 1 or 2 ; you will want more */
@@ -854,7 +951,7 @@ namespace boost_python { namespace {
       /* need to re-create phi step table */
       nanoBragg.phistep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.show_phisteps();
+      if(nanoBragg.verbose) nanoBragg.show_phisteps();
   }
 
   /* spindle angle phi step, in deg */
@@ -865,7 +962,7 @@ namespace boost_python { namespace {
       nanoBragg.phistep = value/RTD;
       /* need to re-create phi step table */
       nanoBragg.init_steps();
-      nanoBragg.show_phisteps();
+      if(nanoBragg.verbose) nanoBragg.show_phisteps();
   }
 
 
@@ -878,7 +975,7 @@ namespace boost_python { namespace {
       /* need to re-create thick step table */
       nanoBragg.detector_thickstep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.show_detector_thicksteps();
+      if(nanoBragg.verbose) nanoBragg.show_detector_thicksteps();
   }
 
   /* number of discrete detector layers, default: 1 or 2 ; you will want more */
@@ -890,7 +987,7 @@ namespace boost_python { namespace {
       /* need to re-create detector layer table */
       nanoBragg.detector_thickstep=-1.0;
       nanoBragg.init_steps();
-      nanoBragg.show_detector_thicksteps();
+      if(nanoBragg.verbose) nanoBragg.show_detector_thicksteps();
   }
 
   /* optionally specify detector sub-layer thickness, in um */
@@ -901,7 +998,17 @@ namespace boost_python { namespace {
       nanoBragg.detector_thickstep = value/1000.;
       /* need to re-create detector layer table */
       nanoBragg.init_steps();
-      nanoBragg.show_detector_thicksteps();
+      if(nanoBragg.verbose) nanoBragg.show_detector_thicksteps();
+  }
+
+  /* detector active layer attenuation length in mm */
+  static double get_detector_attenuation_mm(nanoBragg const& nanoBragg) {
+      /* internal storage is always in meters */
+      return nanoBragg.detector_attnlen*1000;
+  }
+  static void   set_detector_attenuation_mm(nanoBragg& nanoBragg, double const& value) {
+      /* internal storage is always in meters */
+      nanoBragg.detector_attnlen = value/1000.;
   }
 
 
@@ -948,6 +1055,8 @@ namespace boost_python { namespace {
     using namespace boost::python;
 
     typedef return_value_policy<return_by_value> rbv;
+    typedef return_value_policy<copy_const_reference> ccr;
+    typedef return_internal_reference<> rir;
     typedef default_call_policies dcp;
 
     def("testuple", &testuple,
@@ -979,10 +1088,14 @@ namespace boost_python { namespace {
     // end of enum definitions
 
     class_<nanoBragg>("nanoBragg",no_init)
-      /* constructor that takes a dials detector model */
-      .def(init<const dxtbx::model::Detector&>(
-        (arg_("detector")),
-        "nanoBragg simulation initialized from a dxtbx detector object"))
+      /* constructor that takes a dxtbx detector and beam model */
+      .def(init<const dxtbx::model::Detector&,
+                const dxtbx::model::Beam&,
+                int>(
+        (arg_("detector"),
+         arg_("beam"),
+         arg_("verbose")=0),
+        "nanoBragg simulation initialized from dxtbx detector and beam objects"))
 
        /* constructor that takes any and all parameters with sensible defaults */
       .def(init<scitbx::vec2<int>,
@@ -1010,7 +1123,7 @@ namespace boost_python { namespace {
          arg_("dispersion_pct")=0,
          arg_("mosaic_spread_deg")=0,
          arg_("oversample")=0,
-         arg_("verbose")=1),
+         arg_("verbose")=0),
          "nanoBragg simulation initialized with most common parameters. All parameters have sensible defaults."))
 
       /* toggle printing stuff to screen - does not work completely yet */
@@ -1317,17 +1430,22 @@ namespace boost_python { namespace {
                      "size of the internal phi micro-step (deg)")
 
 
-      /* detector x-ray sensitive layer thickness in micron */
+      /* detector x-ray sensitive layer thickness in mm */
       .add_property("detector_thick_mm",
                      make_function(&get_detector_thick_mm,rbv()),
                      make_function(&set_detector_thick_mm,dcp()),
                      "detector x-ray sensitive layer thickness in millimeters (mm)")
+      /* detector x-ray sensitive layer attenuation length in mm */
+      .add_property("detector_attenuation_length_mm",
+                     make_function(&get_detector_attenuation_mm,rbv()),
+                     make_function(&set_detector_attenuation_mm,dcp()),
+                     "detector x-ray sensitive layer attenuation length in millimeters (mm)")
       /* number of internal detector layers in thickness sweep */
       .add_property("detector_thicksteps",
                      make_function(&get_detector_thicksteps,rbv()),
                      make_function(&set_detector_thicksteps,dcp()),
                      "number of internal detector layers in thickness sweep, speed is inversely proportional to this")
-      /* size of the internal detector thickness micro-step, in micron */
+      /* size of the internal detector thickness micro-step, in mm */
       .add_property("detector_thickstep_mm",
                      make_function(&get_detector_thickstep_mm,rbv()),
                      make_function(&set_detector_thickstep_mm,dcp()),
@@ -1376,6 +1494,28 @@ namespace boost_python { namespace {
                      make_function(&get_default_Fbg,rbv()),
                      make_function(&set_default_Fbg,dcp()),
                      "override value of missing background-scatter structure factor (Fbg), default 0 (useful if you just want some uniform background)")
+
+
+      /* x-ray source position, intensity and wavelength list */
+      .add_property("xray_beams",
+                     make_function(&get_beams,rbv()),
+                     make_function(&set_beams,dcp()),
+                     "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
+      /* x-ray sources, raw position list */
+      .add_property("xray_source_XYZ",
+                     make_function(&get_source_XYZ,rbv()),
+                     make_function(&set_source_XYZ,dcp()),
+                     "list of the xyz positon in space of each x-ray point source, same axis convention as detector vectors ")
+      /* x-ray sources, raw wavelength list */
+      .add_property("xray_source_wavelengths_A",
+                     make_function(&get_source_lambda,rbv()),
+                     make_function(&set_source_lambda,dcp()),
+                     "list of the wavelengths (A) for each x-ray point source. default is to initialize with nanoBragg.wavelength_A ")
+      /* x-ray sources, raw position list */
+      .add_property("xray_source_intensity_fraction",
+                     make_getter(&nanoBragg::pythony_source_intensity,rbv()),
+                     make_setter(&nanoBragg::pythony_source_intensity,dcp()),
+                     "list of relative intensities of each x-ray point source, should always sum to unity ")
 
 
       /* toggle interpolation between spot structure factors */
@@ -1450,16 +1590,20 @@ namespace boost_python { namespace {
 
 
       /* 2D flex array representing pixel values in expected photons, not neccesarily integers */
-      .add_property("raw",
-                     make_getter(&nanoBragg::raw,rbv()),
-                     make_setter(&nanoBragg::raw,dcp()),
+      .add_property("raw_pixels",
+                     make_getter(&nanoBragg::raw_pixels,rbv()),
+                     make_setter(&nanoBragg::raw_pixels,dcp()),
                      "2D flex array representing floating-point pixel values, this is expected photons before you call add_noise(), which converts it into detector pixel values, or ADU")
 
       /* print to screen a summary of all initialized parameters */
       .def("show_params",&nanoBragg::show_params,
        "print out all simulation parameters, just like the standalone program")
 
-      /* print to screen a summary of all initialized parameters */
+      /* print to screen a summary of all initialized sources */
+      .def("show_sources",&nanoBragg::show_sources,
+       "print out all internal x-ray source parameters, just like the standalone program")
+
+      /* randomize crystal orientation */
       .def("randomize_orientation",&nanoBragg::randomize_orientation,
        "rotate crystal to a random orientation, updates Amatrix and missets normally seeded with time, set nanoBragg.seed to get the same random orientation each time")
 
@@ -1471,6 +1615,11 @@ namespace boost_python { namespace {
       .def("add_background",&nanoBragg::add_background,
         (arg_("oversample")=-1,arg_("source")=-1),
        "run the non-Bragg simulation, adding background from speficied amorphous materials")
+
+      /* retrieve radial-median filtered average background from the image */
+      .def("extract_background",&nanoBragg::extract_background,
+        (arg_("source")=-1),
+       "retrieve radial-median filtered average background from the image, populates stol_vs_Fbg, given the flux and properties of speficied amorphous materials")
 
       /* blur the image with specified point-spread function */
       .def("apply_psf",&nanoBragg::apply_psf,

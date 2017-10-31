@@ -1,23 +1,114 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 
 
-//Contributed by James Holton, LBNL.
+//Contributed by James Holton, UCSF,LBNL,SLAC.
 
 namespace simtbx {
 namespace nanoBragg {
 
 
-/* constructor that takes a DIALS detector model */
-nanoBragg::nanoBragg(const dxtbx::model::Detector& detector)
+/* constructor that takes a dxtbx "panel" detector model */
+nanoBragg::nanoBragg(
+    const dxtbx::model::Detector& detector, // no default
+    const dxtbx::model::Beam& beam,  // no default
+    int verbose)    // =0
 {
+    double temp;
+    vec3 xyz;
+
     /* initialize to sensible default values */
     init_defaults();
 
-    std::cout << detector << std::endl;
+    /* store arg verbosity as member */
+    this->verbose=verbose;
+
+    if(verbose) std::cout << detector << std::endl;
+    if(verbose) std::cout << beam << std::endl;
+
+    /* BEAM properties first */
+
+    /* direction in 3-space of beam vector */
+    xyz = beam.get_direction();
+    beam_vector[1] = xyz[0];
+    beam_vector[2] = xyz[1];
+    beam_vector[3] = xyz[2];
+    unitize(beam_vector,beam_vector);
+
+    /* central wavelength, in Angstrom */
+    lambda0 = beam.get_wavelength()*1e-10;
+
+    /* divergence, what are the DXTBX units? */
+    temp = beam.get_divergence();
+    if(temp>0.0) hdivrange = vdivrange = temp;
+
+    /* assume this is photons/s, unless it is zero */
+    temp = beam.get_flux();
+    if(temp>0.0) flux = temp;
+
+    /* assume this is Kahn polarization parameter */
+    temp = beam.get_polarization_fraction();
+    if(temp>=-1.0 && temp<=1.0) polarization = temp;
+
+    /* dxtbx polarization points down B vector, we want the E vector */
+    xyz = beam.get_polarization_normal();
+    vert_vector[1] = xyz[0];
+    vert_vector[2] = xyz[1];
+    vert_vector[3] = xyz[2];
+    unitize(vert_vector,vert_vector);
+    cross_product(beam_vector,vert_vector,polar_vector);
+    unitize(polar_vector,polar_vector);
+
+
+    /* DETECTOR properties */
+
+    /* size of the pixels in meters */
+    pixel_size = detector[0].get_pixel_size()[0]/1000.;
+
+    /* pixel count in short and fast-axis directions */
     spixels = detector[0].get_image_size()[1];
     fpixels = detector[0].get_image_size()[0];
 
-    /* NOT IMPLEMENTED: read in all the other stuff!  */
+    /* allocate all the other arrays */
+    init_detector();
+
+    /* direction in 3-space of detector axes */
+    beam_convention = CUSTOM;
+    /* typically: 1 0 0 */
+    fdet_vector[1] = detector[0].get_fast_axis()[0];
+    fdet_vector[2] = detector[0].get_fast_axis()[1];
+    fdet_vector[3] = detector[0].get_fast_axis()[2];
+    unitize(fdet_vector,fdet_vector);
+    /* typically: 0 -1 0 */
+    sdet_vector[1] = detector[0].get_slow_axis()[0];
+    sdet_vector[2] = detector[0].get_slow_axis()[1];
+    sdet_vector[3] = detector[0].get_slow_axis()[2];
+    unitize(sdet_vector,sdet_vector);
+    /* must form an orthonormal system, but dxtbx distance is negative?  */
+    cross_product(sdet_vector,fdet_vector,odet_vector);
+    unitize(odet_vector,odet_vector);
+
+    /* dxtbx origin is location of the first pixel? */
+    pix0_vector[1] = -detector[0].get_origin()[0]/1000.0;
+    pix0_vector[2] = -detector[0].get_origin()[1]/1000.0;
+    pix0_vector[3] = -detector[0].get_origin()[2]/1000.0;
+    /* what is the point of closest approach between sample and detector? */
+    Fclose = Xclose = dot_product(pix0_vector,fdet_vector);
+    Sclose = Yclose = dot_product(pix0_vector,sdet_vector);
+    close_distance = distance =  dot_product(pix0_vector,odet_vector);
+
+
+    /* detector sensor layer properties */
+    detector_thick   = detector[0].get_thickness();
+    temp = detector[0].get_mu();        // is this really a mu? or mu/rho ?
+    if(temp>0.0) detector_attnlen = 1.0/temp;
+
+    /* quantum_gain = amp_gain * electrooptical_gain, does not include capture_fraction */
+    quantum_gain = detector[0].get_gain();
+
+    //adc_offset = detector[0].ADC_OFFSET;
+
+    /* NOT IMPLEMENTED: read in any other stuff?  */
+    show_params();
 
     /* sensible initialization of all unititialized values */
     reconcile_parameters();
@@ -127,7 +218,7 @@ nanoBragg::reconcile_parameters()
     init_mosaicity();
 
 
-    if(verbose) printf("CONSTRUCT!!! %d   x-ray beam: %f %f %f\n",(int) raw.size(),this->beam_vector[1],this->beam_vector[2],this->beam_vector[3]);
+    if(verbose) printf("CONSTRUCT!!! %d   x-ray beam: %f %f %f\n",(int) raw_pixels.size(),this->beam_vector[1],this->beam_vector[2],this->beam_vector[3]);
 }
 
 
@@ -189,6 +280,7 @@ nanoBragg::init_defaults()
     weight=0;
     source=sources=0;
     source_X=source_Y=source_Z=source_I=source_lambda=NULL;
+    allocated_sources=0;
 
     /* Thomson cross section (m^2) */
 //    r_e_sqr = 7.94079248018965e-30;
@@ -226,11 +318,11 @@ nanoBragg::init_defaults()
     /* default detector stuff */
     pixel_size = 0.1e-3;
     fpixels=spixels=0;
-    pixels=allocated_pixels=0;
+    pixels=0;
     distance = 100.0e-3;
     detsize_f = 102.4e-3;
     detsize_s = 102.4e-3;
-    detector_mu=0.0;
+    detector_attnlen= 234e-6; // default to Si at 1 A x-ray wavelength?
     detector_thick=0.0;
     detector_thickstep=0.0;
     detector_thicksteps=-1;
@@ -323,6 +415,7 @@ nanoBragg::init_defaults()
     default_Fbg = 0.0;
     stol_of = NULL;
     Fbg_of  = NULL;
+    allocated_stols = 0;
     nearest=0;
     stol_file_mult=1.0e10;
     ignore_values=0;
@@ -341,7 +434,8 @@ nanoBragg::init_defaults()
 
     pythony_indices.clear();
     pythony_amplitudes.clear();
-
+    pythony_stolFbg.clear();
+    pythony_source_XYZ.clear();
 
     /* intensity stats */
     max_I = 0.0;
@@ -357,6 +451,7 @@ nanoBragg::init_defaults()
     maskimage = NULL;
     intimage = NULL;
     pgmimage = NULL;
+    allocated_pixels=0;
 
     /* random number seeds */
     seed = -time((time_t *)0);
@@ -437,8 +532,8 @@ nanoBragg::init_detector()
 
     if(pixels!=allocated_pixels) {
         /* actually allocate memory */
-        if(verbose>6) printf("(re)allocating %d %ld-byte doubles for raw array\n",pixels,sizeof(double));
-        raw = af::flex_double(af::flex_grid<>(spixels,fpixels));
+        if(verbose>6) printf("(re)allocating %d %ld-byte doubles for raw_pixels array\n",pixels,sizeof(double));
+        raw_pixels = af::flex_double(af::flex_grid<>(spixels,fpixels));
 
         if(invalid_pixel!=NULL) {
             if(verbose>6) printf("freeing %d %ld-byte bool invalid_pixel at %p\n",pixels,sizeof(bool),invalid_pixel);
@@ -1006,7 +1101,10 @@ nanoBragg::update_beamcenter()
     /* first off, what is the relationship between the two "beam centers"? */
     rotate(odet_vector,vector,detector_rotx,detector_roty,detector_rotz);
     ratio = dot_product(beam_vector,vector);
-    if(ratio == 0.0) { ratio = DBL_MIN; }
+    if(ratio == 0.0) {
+        if(verbose) printf("WARNING: beam is parallel to detector surface! \n");
+        ratio = DBL_MIN;
+    }
     if(isnan(close_distance)) close_distance = fabs(ratio*distance);
     distance = close_distance/ratio;
 
@@ -1568,6 +1666,7 @@ nanoBragg::init_Fhkl()
         for (h0=0; h0<h_range;h0++) {
             for (k0=0; k0<k_range;k0++) {
                 for (l0=0; l0<l_range;l0++) {
+                    if(verbose>9) printf("initializing %d %d %d to default_F = %g:\n",h0,k0,l0,default_F);
                     Fhkl[h0][k0][l0] = default_F;
                 }
             }
@@ -1612,6 +1711,7 @@ nanoBragg::init_Fhkl()
 void
 nanoBragg::init_background()
 {
+    int i;
     /* straighten up amorphous material properties */
     if(amorphous_sample_y<=0.0) amorphous_sample_y = beamsize;
     if(amorphous_sample_z<=0.0) amorphous_sample_z = beamsize;
@@ -1703,6 +1803,7 @@ nanoBragg::init_background()
 
     if(stols > 0 && isnan(stol_of[stols]))
     {
+        if(verbose>9) printf("shifting F_bg vs stol array up by 2\n");
         /* clear the flag */
         stol_of[stols] = 0.0;
         /* add two values at either end for interpolation */
@@ -1757,7 +1858,7 @@ nanoBragg::show_detector_thicksteps()
 {
     /* print out detector sensor thickness with sweep over all sensor layers */
     for(thick_tic=0;thick_tic<detector_thicksteps;++thick_tic){
-        printf("thick%d = %g um\n",thick_tic,detector_thickstep*thick_tic*1e6);
+        if(verbose) printf("thick%d = %g um\n",thick_tic,detector_thickstep*thick_tic*1e6);
     }
 }
 
@@ -1792,6 +1893,135 @@ nanoBragg::init_sources()
                 source_lambda[source] = lambda0;
             }
         }
+    }
+
+
+
+    if(pythony_beams.size())
+    {
+        if(verbose>8) printf("pythony_beams.size()= %ld\n",pythony_beams.size());
+        sources = pythony_beams.size();
+        if(verbose>8) printf("total sources: %d\n",sources);
+        if(allocated_sources != sources && sources>0)
+        {
+            /* free any previous allocation */
+            if(source_X != NULL) free(source_X);
+            if(source_Y != NULL) free(source_Y);
+            if(source_Z != NULL) free(source_Z);
+            if(source_I != NULL) free(source_I);
+            if(source_lambda != NULL) free(source_lambda);
+
+            /* allocate enough space */
+            if(verbose>6) printf("allocating space for %d sources\n",sources);
+            source_X = (double *) calloc(sources+10,sizeof(double));
+            source_Y = (double *) calloc(sources+10,sizeof(double));
+            source_Z = (double *) calloc(sources+10,sizeof(double));
+            source_I = (double *) calloc(sources+10,sizeof(double));
+            source_lambda = (double *) calloc(sources+10,sizeof(double));
+            allocated_sources = sources;
+        }
+
+        if(verbose) printf("initializing sources with pythony sources\n");
+        vec3 xyz,beamdir=vec3(0,0,0),polarvec = vec3(0,0,0);
+        double flux_sum = 0.0, lambda_sum = 0.0, polar_sum = 0.0, div_sum = 0.0;
+        for (i=0; i < sources; ++i)
+        {
+            xyz = pythony_beams[i].get_direction();
+            source_X[i] = xyz[0];
+            source_Y[i] = xyz[1];
+            source_Z[i] = xyz[2];
+            source_I[i] = pythony_beams[i].get_flux();
+            if(isnan(source_I) || source_I[i]==0.) source_I[i] = 1.0/sources;
+            flux_sum += source_I[i];
+            source_lambda[i] = pythony_beams[i].get_wavelength();
+            if(isnan(source_lambda[i]) || source_lambda[i]==0.) source_lambda[i] = lambda0;
+            lambda_sum += source_lambda[i];
+            if(verbose>8) printf("source %d :  xyz= ( %g %g %g ), I= %g lambda=%g\n",i,source_X[i],source_Y[i],source_Z[i],source_I[i],source_lambda[i]);
+
+            /* average quantities that we store as one value */
+            div_sum += pythony_beams[i].get_divergence();
+            polar_sum += pythony_beams[i].get_polarization_fraction();
+            polarvec += pythony_beams[i].get_polarization_normal();
+            beamdir += xyz;
+        }
+        /* update averaged parameters */
+        if(lambda_sum>0.0) lambda0 = lambda_sum/sources;
+        polarization = polar_sum/sources;
+        hdivrange=vdivrange=div_sum/sources;
+        vert_vector[1] = polarvec[0];vert_vector[2] = polarvec[1];vert_vector[3] = polarvec[2];
+        beam_vector[1] = beamdir[0]; beam_vector[2] = beamdir[1]; beam_vector[3] = beamdir[2];
+        unitize(beam_vector,beam_vector);
+        unitize(vert_vector,vert_vector);
+        cross_product(beam_vector,vert_vector,polar_vector);
+        unitize(polar_vector,polar_vector);
+
+
+        /* take in total flux */
+        if(flux_sum > 0)
+        {
+            flux = flux_sum;
+            init_beam();
+        }
+        /* make sure stored source intensities are fractional */
+        double norm = flux_sum/sources;
+        for (i=0; i < sources && norm>0.0; ++i)
+        {
+            source_I[i] /= norm;
+        }
+
+        if(verbose) printf("done initializing sources:\n");
+    }
+
+
+
+    if(pythony_source_XYZ.size() || pythony_source_intensity.size() || pythony_source_lambda.size())
+    {
+        if(verbose>8) printf("pythony_source_XYZ.size()= %ld\n",pythony_source_XYZ.size());
+        if(verbose>8) printf("pythony_source_intensity.size()= %ld\n",pythony_source_intensity.size());
+        if(verbose>8) printf("pythony_source_lambda.size()= %ld\n",pythony_source_lambda.size());
+        sources = pythony_source_XYZ.size();
+        if(sources < pythony_source_intensity.size()) sources = pythony_source_intensity.size();
+        if(sources < pythony_source_lambda.size()) sources = pythony_source_lambda.size();
+        if(verbose>8) printf("total sources: %d\n",sources);
+        if(allocated_sources != sources && sources>0)
+        {
+            /* free any previous allocation */
+            if(source_X != NULL) free(source_X);
+            if(source_Y != NULL) free(source_Y);
+            if(source_Z != NULL) free(source_Z);
+            if(source_I != NULL) free(source_I);
+            if(source_lambda != NULL) free(source_lambda);
+
+            /* allocate enough space */
+            if(verbose>6) printf("allocating space for %d sources\n",sources);
+            source_X = (double *) calloc(sources+10,sizeof(double));
+            source_Y = (double *) calloc(sources+10,sizeof(double));
+            source_Z = (double *) calloc(sources+10,sizeof(double));
+            source_I = (double *) calloc(sources+10,sizeof(double));
+            source_lambda = (double *) calloc(sources+10,sizeof(double));
+            allocated_sources = sources;
+        }
+
+        /* make sure sizes match, or else? */
+        pythony_source_XYZ.resize(sources);
+        pythony_source_intensity.resize(sources);
+        pythony_source_lambda.resize(sources);
+
+        if(verbose) printf("initializing sources with pythony sources\n");
+        vec3 xyz;
+        for (i=0; i < pythony_source_XYZ.size(); ++i)
+        {
+            xyz = pythony_source_XYZ[i];
+            source_X[i] = xyz[0];
+            source_Y[i] = xyz[1];
+            source_Z[i] = xyz[2];
+            source_I[i] = pythony_source_intensity[i];
+            if(isnan(source_I[i]) || source_I[i]==0.) source_I[i] = 1.0/sources;
+            source_lambda[i] = pythony_source_lambda[i];
+            if(isnan(source_lambda[i]) || source_lambda[i]==0.) source_lambda[i] = lambda0;
+            if(verbose>8) printf("source %d :  xyz= ( %g %g %g ), I= %g lambda=%g\n",i,source_X[i],source_Y[i],source_Z[i],source_I[i],source_lambda[i]);
+        }
+        if(verbose) printf("done initializing sources:\n");
     }
 
 
@@ -1885,11 +2115,43 @@ nanoBragg::init_sources()
 
         if(verbose) printf("%g %g %g   %g %.6g\n",X,Y,Z,I,lambda);
     }
-
-    }
+}
 // end of init_sources()
 
 
+
+
+
+/* expose internal source data */
+void
+nanoBragg::show_sources()
+{
+    printf("  created a total of %d sources:\n",sources);
+    for(source=0;source<sources;++source){
+
+        /* retrieve stuff from cache */
+        X = source_X[source];
+        Y = source_Y[source];
+        Z = source_Z[source];
+        I = source_I[source];
+        lambda = source_lambda[source];
+
+        printf("%d %g %g %g   %g %.6g\n",source,X,Y,Z,I,lambda);
+    }
+    printf("pythony sources:\n");
+    for(source=0;source<pythony_source_lambda.size();++source){
+
+        /* retrieve stuff from cache */
+        X = pythony_source_XYZ[source][0];
+        Y = pythony_source_XYZ[source][1];
+        Z = pythony_source_XYZ[source][2];
+        I = pythony_source_intensity[source];
+        lambda = pythony_source_lambda[source];
+
+        printf("pythony: %d %g %g %g   %g %.6g\n",source,X,Y,Z,I,lambda);
+    }
+}
+// end of init_sources()
 
 
 
@@ -1964,7 +2226,7 @@ nanoBragg::show_mosaic_blocks()
 void
 nanoBragg::show_params()
 {
-    printf("nanoBragg nanocrystal diffraction simulator - James Holton and Ken Frankel 6-21-17\n");
+    printf("nanoBragg nanocrystal diffraction simulator - James Holton and Ken Frankel 8-1-17\n");
 
     printf("  %d initialized hkls (all others =%g)\n",hkls,default_F);
     printf("  ");
@@ -2057,8 +2319,8 @@ nanoBragg::add_nanoBragg_spots()
 {
     max_I = 0.0;
     i = 0;
-    floatimage = raw.begin();
-//    double* floatimage(raw.begin());
+    floatimage = raw_pixels.begin();
+//    double* floatimage(raw_pixels.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
     if(verbose) printf("TESTING sincg(1,1)= %f\n",sincg(1,1));
@@ -2139,12 +2401,12 @@ nanoBragg::add_nanoBragg_spots()
                         omega_sum += omega_pixel;
 
                         /* now calculate detector thickness effects */
-                        if(detector_thick > 0.0)
+                        if(detector_thick > 0.0 && detector_attnlen > 0.0)
                         {
                             /* inverse of effective thickness increase */
                             parallax = dot_product(diffracted,odet_vector);
-                            capture_fraction = exp(-thick_tic*detector_thickstep*detector_mu/parallax)
-                                              -exp(-(thick_tic+1)*detector_thickstep*detector_mu/parallax);
+                            capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                         }
                         else
                         {
@@ -2344,6 +2606,7 @@ nanoBragg::add_nanoBragg_spots()
                                             if(verbose) printf("WARNING: further warnings will not be printed! ");
                                         }
                                         F_cell = default_F;
+                                        interpolate=0;
                                         continue;
                                     }
 
@@ -2388,7 +2651,8 @@ nanoBragg::add_nanoBragg_spots()
                                     /* run the tricubic polynomial interpolation */
                                     polin3(h_interp_d,k_interp_d,l_interp_d,sub_Fhkl,h,k,l,&F_cell);
                                 }
-                                else
+
+                                if(! interpolate)
                                 {
                                     if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
                                         /* just take nearest-neighbor */
@@ -2462,7 +2726,7 @@ nanoBragg::add_nanoBragg_spots()
             }
             else
             {
-                if(progress_meter && progress_pixels/100 > 0)
+                if(progress_meter && verbose && progress_pixels/100 > 0)
                 {
                     if(progress_pixel % ( progress_pixels/20 ) == 0 ||
                        ((10*progress_pixel<progress_pixels ||
@@ -2499,8 +2763,8 @@ nanoBragg::add_background( int oversample, int source )
     int source_start = 0;
     int sources = this->sources;
     max_I = 0.0;
-    floatimage = raw.begin();
-//    double* floatimage(raw.begin());
+    floatimage = raw_pixels.begin();
+//    double* floatimage(raw_pixels.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
 
     /* allow user to override automated oversampling decision at call time with arguments */
@@ -2581,8 +2845,8 @@ nanoBragg::add_background( int oversample, int source )
                         {
                             /* inverse of effective thickness increase */
                             parallax = dot_product(diffracted,odet_vector);
-                            capture_fraction = exp(-thick_tic*detector_thickstep*detector_mu/parallax)
-                                              -exp(-(thick_tic+1)*detector_thickstep*detector_mu/parallax);
+                            capture_fraction = exp(-thick_tic*detector_thickstep*detector_attnlen/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep*detector_attnlen/parallax);
                         }
                         else
                         {
@@ -2717,13 +2981,24 @@ nanoBragg::add_background( int oversample, int source )
 
 /* function for extracting stol-vs-Fbg data from an existing image */
 void
-nanoBragg::extract_background()
+nanoBragg::extract_background(int source)
 {
-    int i,j,k;
+    /* make sure we override k from hkl */
+    int i,k;
+
+    nearest = 0;
     max_I = 0.0;
-    floatimage = raw.begin();
-//    double* floatimage(raw.begin());
+    floatimage = raw_pixels.begin();
+//    double* floatimage(raw_pixels.begin());
 //    floatimage = (double *) calloc(spixels*fpixels+10,sizeof(double));
+
+    /* override internal default if argument was given */
+    if(source<0) {
+        /* user did not specify source in the argument, use the first one */
+        source = 0;
+    }
+    /* no oversampling, this is an extraction */
+    steps = 1;
 
     /* sweep over detector */
     sum = sumsqr = 0.0;
@@ -2731,8 +3006,10 @@ nanoBragg::extract_background()
     progress_pixel = 0;
     valid_pixels = 0;
     omega_sum = 0.0;
-    for(spixel=0;spixel<spixels;++spixel){
-        for(fpixel=0;fpixel<fpixels;++fpixel){
+    for(spixel=0;spixel<spixels;++spixel)
+    {
+        for(fpixel=0;fpixel<fpixels;++fpixel)
+        {
 
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
@@ -2745,14 +3022,19 @@ nanoBragg::extract_background()
             for(k=1;k<=ignore_values;++k)
             {
                 if(floatimage[i]==ignore_value[k]){
-                    invalid_pixel[i]=true;
+                    ++invalid_pixel[i];
                 }
             }
+//            if(invalid_pixel[i])
+//            {
+//                ++i;
+//                continue;
+//            }
 
             /* still need polar, omega and stol, but cannot deconvolute sub-pixels and source size,
                so assume oversample=1, neutronium detector, and take the first source */
             thick_tic = 0;
-            source = 0;
+            //source = 0;
 
             /* absolute mm position on detector (relative to its origin) */
             //Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
@@ -2774,7 +3056,9 @@ nanoBragg::extract_background()
             pixel_pos[0] = 0.0;
             if(curved_detector) {
                 /* construct detector pixel that is always "distance" from the sample */
-                vector[1] = distance*beam_vector[1]; vector[2]=distance*beam_vector[2] ; vector[3]=distance*beam_vector[3];
+                vector[1] = distance*beam_vector[1];
+                vector[2] = distance*beam_vector[2] ;
+                vector[3] = distance*beam_vector[3];
                 /* treat detector pixel coordinates as radians */
                 rotate_axis(vector,newvector,sdet_vector,pixel_pos[2]/distance);
                 rotate_axis(newvector,pixel_pos,fdet_vector,pixel_pos[3]/distance);
@@ -2788,9 +3072,6 @@ nanoBragg::extract_background()
             /* option to turn off obliquity effect, inverse-square-law only */
             if(point_pixel) omega_pixel = 1.0/airpath/airpath;
             omega_sum += omega_pixel;
-
-            /* take the first source as the only one */
-            source=0;
 
             /* retrieve stuff from cache */
             incident[1] = -source_X[source];
@@ -2809,6 +3090,10 @@ nanoBragg::extract_background()
             /* sin(theta)/lambda is half the scattering vector length */
             stol = 0.5*magnitude(scattering);
 
+            /* now we need to find the nearest four "stol file" points */
+            while(stol > stol_of[nearest] && nearest <= stols){++nearest; };
+            while(stol < stol_of[nearest] && nearest >= 2){--nearest; };
+
             /* polarization factor */
             if(! nopolar){
                 /* need to compute polarization factor */
@@ -2820,6 +3105,7 @@ nanoBragg::extract_background()
             }
 
             /* now we have everything we need to transform pixel intensity back to a structure factor */
+            /* note that for real image data we want to subtract ADC offset, but not for half-done simulated data */
             deviate=floatimage[i]-adc_offset;
             /* for negative intensities, make the structure factor negative too */
             sign = 1.0;
@@ -2834,11 +3120,53 @@ nanoBragg::extract_background()
             {
                 /* figure out which stol bin this pixel belongs to.  invalid pixels are in bin=0 */
                 bin = nearest;
+                /* move to next bin if it is more than halfway there */
                 if(stol > (stol_of[bin]+stol_of[bin+1])/2.0) ++bin;
+                /* only pixels with bin assignments are valid */
                 ++valid_pixels;
             }
             ++pixels_in[bin];
             bin_of[i]=bin;
+
+            /* now maybe do some stats? */
+            if(floatimage[i] > max_I) {
+                max_I = floatimage[i];
+                max_I_x = Fdet;
+                max_I_y = Sdet;
+            }
+            sum += floatimage[i];
+            sumsqr += floatimage[i]*floatimage[i];
+            ++n;
+
+            /* debugging option: print out particular pixel, or progress meter */
+            if( printout )
+            {
+                if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0)
+                {
+                    twotheta = atan2(sqrt(pixel_pos[2]*pixel_pos[2]+pixel_pos[3]*pixel_pos[3]),pixel_pos[1]);
+                    test = sin(twotheta/2.0)/(lambda0*1e10);
+                        printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
+                        printf(" F=%g    I = %g\n", F,I);
+                        printf("I/steps %15.10g\n", I/steps);
+                        printf("polar   %15.10g\n", polar);
+                        printf("omega   %15.10g\n", omega_pixel);
+                        printf("pixel   %15.10g\n", floatimage[i]);
+                }
+            }
+            else
+            {
+                if(progress_meter && progress_pixels/100 > 0)
+                {
+                    if(progress_pixel % ( progress_pixels/20 ) == 0 ||
+                       ((10*progress_pixel<progress_pixels ||
+                         10*progress_pixel>9*progress_pixels) &&
+                        (progress_pixel % (progress_pixels/100) == 0)))
+                    {
+                        printf("%lu%% done\n",progress_pixel*100/progress_pixels);
+                    }
+                }
+                ++progress_pixel;
+            }
 
             ++i;
         }
@@ -2859,12 +3187,12 @@ nanoBragg::extract_background()
     }
 
     /* populate each bin with appropriate pixel values */
-    for(j=0;j<pixels;++j)
+    for(i=0;i<pixels;++i)
     {
         /* recover which bin this pixel is in */
-        bin = bin_of[j];
+        bin = bin_of[i];
         /* copy F value into start of bin data */
-        *bin_start[bin] = Fimage[j];
+        *bin_start[bin] = Fimage[i];
         /* increment the pointer to the next value for this bin */
         ++bin_start[bin];
         /* yes, I know.  The bin_start now points to the end, we will reset the starting points in the next loop */
@@ -2887,7 +3215,7 @@ nanoBragg::extract_background()
         {
 //          fprintf(outfile,"%g %g %g  %d\n",stol/stol_file_mult,median,mad,n);
 //          fprintf(outfile,"%g %g %g  %d\n",stol/stol_file_mult,avg_arej,rmsd_arej,n);
-            if(verbose) printf("stol= %g avg= %g rmsd= %g  n= %d\n",stol/stol_file_mult,avg_arej,rmsd_arej,n);
+            if(verbose) printf("bin= %d stol= %g avg= %g rmsd= %g  n= %d\n",bin,stol/stol_file_mult,avg_arej,rmsd_arej,n);
             /* now populate the Fbg array.  This should automagically get passed back to Python? */
             Fbg_of[bin]=avg_arej;
         }
@@ -2911,7 +3239,7 @@ void
 nanoBragg::apply_psf(shapetype psf_type, double fwhm_pixels, int user_psf_radius)
 {
     max_I=0.0;
-    double* inimage(raw.begin());
+    double* inimage(raw_pixels.begin());
     double *outimage=NULL;
     double *kernel;
     int x0,y0,x,y,dx,dy;
@@ -3163,8 +3491,8 @@ nanoBragg::add_noise()
     long cseed;
 
     double expected_photons,observed_photons,adu;
-    /* refer to raw pixel data */
-    floatimage = raw.begin();
+    /* refer to raw_pixels pixel data */
+    floatimage = raw_pixels.begin();
 
     /* don't bother with this loop if calibration is perfect
      NOTE: applying calibration before Poisson noise simulates loss of photons before the detector
@@ -3341,7 +3669,7 @@ nanoBragg::to_smv_format(
     std::string const& fileout, double intfile_scale, int debug_x, int debug_y)
 {
     pixels = spixels * fpixels;
-    floatimage = raw.begin();
+    floatimage = raw_pixels.begin();
     FILE* outfile;
     double max_value = (double)std::numeric_limits<unsigned short int>::max();
     double saturation = floor(max_value - 1 );
