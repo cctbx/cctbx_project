@@ -21,4 +21,9 @@ def all_chain_ids():
   second_char_lower = product(chars, lowerchars)
   first_char_lower = product(lowerchars, chars)
   both_char_lower = permutations(iterable = lowerchars, r = 2)
-  return [" "+c for c in chars]+[" "+c for c in lowerchars]+["".join(p) for p in both_char_upper]+["".join(p) for p in second_char_lower]+["".join(p) for p in first_char_lower]+["".join(p) for p in both_char_lower]
+  result = [" "+c for c in chars]+[" "+c for c in lowerchars]+\
+         ["".join(p) for p in both_char_upper]+\
+         ["".join(p) for p in second_char_lower]+\
+         ["".join(p) for p in first_char_lower]+\
+         ["".join(p) for p in both_char_lower]
+  return result
