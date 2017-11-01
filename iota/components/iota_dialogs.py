@@ -2020,8 +2020,8 @@ class RecoveryDialog(BaseDialog):
     for i in range(self.pathlist.GetItemCount()):
       if self.pathlist.IsSelected(i):
 
-        self.selected = [self.pathlist.GetItemText(i, col=1),
-                         self.pathlist.GetItemText(i, col=2)]
+        self.selected = [self.pathlist.GetItemText(i, col=2),
+                         self.pathlist.GetItemText(i, col=3)]
     e.Skip()
 
 class DIALSSpfDialog(BaseDialog):
