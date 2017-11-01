@@ -156,7 +156,7 @@ class algorithm2:
             #  rij_[(j,i)] -= corr.coefficient()
 
       focus = wij_.focus()
-      flat_wij = flex.double(list(wij_))
+      flat_wij = wij_.as_1d()
       selection = (flat_wij>1)
       print "w_ij is a %dx%d matrix with %d/%d >1 elements with average value %4.1f"%(
         focus[0],focus[1],selection.count(True),len(wij_), flex.mean(flat_wij.select(selection)))
