@@ -554,12 +554,12 @@ class model_idealization():
 
   def get_filtered_ncs_group_list(self):
     if not self.params.ignore_ncs:
-      # ncs_obj = self.model.get_ncs_obj()
-      ncs_obj = iotbx.ncs.input(
-          hierarchy=self.model.get_hierarchy(),
-          chain_max_rmsd=4.0,
-          chain_similarity_threshold=0.99,
-          residue_match_radius=999.0)
+      ncs_obj = self.model.get_ncs_obj()
+      # ncs_obj = iotbx.ncs.input(
+      #     hierarchy=self.model.get_hierarchy(),
+      #     chain_max_rmsd=4.0,
+      #     chain_similarity_threshold=0.99,
+      #     residue_match_radius=999.0)
       if ncs_obj is not None:
         print >> self.log, "Found NCS groups:"
         ncs_obj.show(format='phil', log=self.log)

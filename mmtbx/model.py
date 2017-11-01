@@ -39,6 +39,7 @@ from mmtbx import ias
 from mmtbx import utils
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
@@ -234,6 +235,7 @@ class manager(object):
     self.neutron_scattering_dict = None
     self.has_hd = None
     self.model_statistics_info = None
+    self._master_sel = flex.size_t([]) # selection of master part if NCS constraints are in use
     self._grm = None
     self._atom_selection_cache = None
     self._ncs_obj = None
@@ -882,7 +884,7 @@ class manager(object):
     return cif_block
 
 
-  def setup_ncs_constraints_groups(self, chain_max_rmsd=10):
+  def setup_ncs_constraints_groups(self, chain_max_rmsd=10, filter_groups=False):
     """
     This will be used directly (via get_ncs_groups) in
     mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
@@ -892,6 +894,24 @@ class manager(object):
     if self.get_ncs_obj() is not None:
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
           chain_max_rmsd=chain_max_rmsd)
+    if filter_groups:
+      ncs_group_list = ncs_obj.get_ncs_restraints_group_list(
+          raise_sorry=False)
+      # set up new groups for refinements
+      self._ncs_groups = filter_ncs_restraints_group_list(
+          self.get_hierarchy(), self.ncs_restr_group_list)
+    if len(self._ncs_groups) > 0:
+      # determine master selections
+      self._master_sel = self.flex.bool(self.get_number_of_atoms(), True)
+      for ncs_gr in self._ncs_groups:
+        for copy in ncs_gr.copies:
+          self._master_sel.set_selected(copy.iselection, False)
+
+  def get_master_hierarchy(self):
+    if self._master_sel.size() > 0:
+      return self.get_hierarchy().select(self._master_sel)
+    else:
+      return self.get_hierarchy()
 
   def extract_ncs_groups(self):
     """ This is groups for Cartesian NCS"""
@@ -1909,7 +1929,7 @@ class manager(object):
     return result
 
   def select(self, selection):
-    # what about NCS?
+    # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
