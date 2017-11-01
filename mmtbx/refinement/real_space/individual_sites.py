@@ -394,7 +394,6 @@ class minimize_wrapper_with_map():
   def __init__(self,
       model,
       target_map,
-      ncs_restraints_group_list=[],
       refine_ncs_operators=False,
       number_of_cycles=1,
       log=None):
@@ -414,6 +413,9 @@ class minimize_wrapper_with_map():
       self.model.get_restraints_manager().geometry.ramachandran_manager.update_phi_psi_targets(
           sites_cart=self.model.get_sites_cart())
 
+    ncs_restraints_group_list = self.model.get_ncs_groups()
+    if ncs_restraints_group_list is None:
+      ncs_restraints_group_list = []
     ncs_groups=None
     if len(ncs_restraints_group_list) > 0:
       ncs_groups=ncs_restraints_group_list

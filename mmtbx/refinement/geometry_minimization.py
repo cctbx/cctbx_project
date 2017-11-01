@@ -386,7 +386,6 @@ def minimize_wrapper_for_ramachandran(
     excl_string_selection,
     processed_pdb_file = None,
     log=None,
-    ncs_restraints_group_list=[], #CONSTRAINTS
     reference_rotamers = True,
     number_of_cycles=1,
     run_first_minimization_without_reference=False,
@@ -415,6 +414,10 @@ def minimize_wrapper_for_ramachandran(
     log = null_out()
   # assert hierarchy.atoms_size()==xrs.scatterers().size(), "%d %d" % (
   #     hierarchy.atoms_size(), xrs.scatterers().size())
+
+  ncs_restraints_group_list = model.get_ncs_groups()
+  if ncs_restraints_group_list is None:
+    ncs_restraints_group_list = []
 
   grm.geometry.pair_proxies(
       sites_cart=model.get_sites_cart())

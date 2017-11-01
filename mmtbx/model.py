@@ -883,6 +883,9 @@ class manager(object):
         loops=loops, cif_block=cif_block)
     return cif_block
 
+  def ncs_constraints_present(self):
+    g = self.get_ncs_groups()
+    return g is not None and len(g)>0
 
   def setup_ncs_constraints_groups(self, chain_max_rmsd=10, filter_groups=False):
     """
@@ -912,6 +915,9 @@ class manager(object):
       return self.get_hierarchy().select(self._master_sel)
     else:
       return self.get_hierarchy()
+
+  def get_master_selection(self):
+    return self._master_sel
 
   def extract_ncs_groups(self):
     """ This is groups for Cartesian NCS"""
@@ -1200,7 +1206,15 @@ class manager(object):
         xray_structure = self._xray_structure)
     return self._pdb_hierarchy
 
-  def set_sites_cart_from_hierarchy(self):
+  def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
+    if (multiply_ncs and self.ncs_constraints_present()):
+      ncs_groups = self.get_ncs_groups()
+      for ncs_gr in ncs_groups:
+        h = self.get_hierarchy()
+        new_sites = h.select(ncs_gr.master_iselection).atoms().extract_xyz()
+        for c in ncs_gr.copies:
+          new_c_sites = c.r.elems * new_sites + c.t
+          h.select(c.iselection).atoms().set_xyz(new_c_sites)
     self._xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
     self._update_pdb_atoms()
     self.model_statistics_info = None
