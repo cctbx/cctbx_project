@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/10/2017
+Last Changed: 10/31/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -501,7 +501,10 @@ class SingleImage(object):
 
       elif self.params.advanced.integrate_with == 'dials':
         from iota.components.iota_dials import Triage
-        triage = Triage(self.conv_img, self.gain, self.params)
+        triage = Triage(img=self.conv_img,
+                        gain=self.gain,
+                        center_intensity=self.center_int,
+                        params=self.params)
         self.fail, log_entry = triage.triage_image()
 
       self.log_info.append(log_entry)

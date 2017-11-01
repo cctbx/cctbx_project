@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 10/25/2017
+Last Changed: 10/31/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -304,9 +304,9 @@ class InputFinder():
 
     input_list = []
     for path in input_entries:
-      filepaths, _ = self.get_input(path, last=last)
-      input_list.extend(filepaths)
-
+      if path is not None:
+        filepaths, _ = self.get_input(path, last=last)
+        input_list.extend(filepaths)
     return input_list
 
 class RadAverageCalculator(object):

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/25/2017
+Last Changed: 10/31/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -684,7 +684,7 @@ class ProcessingTab(wx.Panel):
     self.sum_axes.axis('off')
     self.proc_figure.set_tight_layout(True)
     self.proc_canvas = FigureCanvas(self.proc_panel, -1, self.proc_figure)
-    proc_sizer.Add(self.proc_canvas, flag=wx.EXPAND)
+    proc_sizer.Add(self.proc_canvas, flag=wx.EXPAND | wx.BOTTOM, border=10)
 
     self.main_fig_sizer.Add(self.int_panel, 1, flag=wx.EXPAND)
     self.main_fig_sizer.Add(self.proc_panel, flag=wx.EXPAND)
@@ -1807,7 +1807,7 @@ class ProcWindow(wx.Frame):
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
         except Exception, e:
-          raise e
+          print e
           pass
 
     self.chart_tab.init = self.init
@@ -1833,6 +1833,8 @@ class ProcWindow(wx.Frame):
 
       if self.run_aborted:
         self.finish_process()
+    else:
+      self.run_aborted = False
 
     # Find processed image objects
     if self.start_object_finder:
@@ -1877,10 +1879,12 @@ class ProcWindow(wx.Frame):
     if self.obj_counter >= len(self.img_list):
       if self.monitor_mode:
         if len(self.new_images) > 0:
+          self.status_txt.SetLabel('Found {} new images'.format(len(self.new_images)))
           self.timeout_start = None
           self.state = 'new images'
           self.process_images()
         else:
+          self.status_txt.SetLabel('No new images found! Waiting ...')
           if self.monitor_mode_timeout != None:
             if self.timeout_start is None:
               self.timeout_start = time.time()
@@ -1894,6 +1898,7 @@ class ProcWindow(wx.Frame):
                             ''.format(int(self.monitor_mode_timeout - interval))
                 self.status_txt.SetLabel(timeout_msg)
       else:
+        self.status_txt.SetLabel('Wrapping up ...')
         self.finish_process()
 
   def onFinishedProcess(self, e):

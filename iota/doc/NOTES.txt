@@ -27,3 +27,8 @@ all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
 error (merge.d_max was set to high-res rather than low-res)
 7. IOTA actually won't look for new images if monitor mode is off
 8. Hidden files (as in '.filename') are not accepted into a list of images
+9. Fixed silent bug in TableCtrl
+10. Fixed processing summary chart "cut off" at the bottom (on Linux)
+11. Fixed monitor mode when no new images found (now keeps waiting w/o timeout)
+12. Fixed DIALS triage - now has same modified settings as Processor
+13. Input search avoids Nonetype paths

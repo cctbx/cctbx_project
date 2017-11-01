@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/18/2017
+Last Changed: 10/31/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -138,7 +138,7 @@ class Triage(object):
       for further processing.
   """
 
-  def __init__(self, img, gain, params):
+  def __init__(self, img, gain, params, center_intensity=0):
     """ Initialization and data read-in
     """
     self.gain = gain
@@ -159,6 +159,24 @@ class Triage(object):
     self.phil.output.strong_filename = None
     self.processor = IOTADialsProcessor(params=self.phil)
 
+    # Set customized parameters
+    beamX = self.params.image_conversion.beam_center.x
+    beamY = self.params.image_conversion.beam_center.y
+    if beamX != 0 or beamY != 0:
+      self.phil.geometry.detector.slow_fast_beam_centre = '{} {}'.format(
+        beamY, beamX)
+    if self.params.image_conversion.distance != 0:
+      self.phil.geometry.detector.distance = self.params.image_conversion.distance
+    if self.params.advanced.estimate_gain:
+      self.phil.spotfinder.threshold.xds.gain = gain
+    if self.params.image_conversion.mask is not None:
+      self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
+      self.phil.integration.lookup.mask = self.params.image_conversion.mask
+
+    if self.params.dials.auto_threshold:
+      threshold = int(center_intensity)
+      self.phil.spotfinder.threshold.xds.global_threshold = threshold
+
     # Convert raw image into single-image datablock
     with misc.Capturing() as junk_output:
       self.datablock = DataBlockFactory.from_filenames([img])[0]
@@ -166,16 +184,19 @@ class Triage(object):
   def triage_image(self):
     """ Perform triage by running spotfinding and analyzing results
     """
-    # Perform spotfinding
-    observed = self.processor.find_spots(datablock=self.datablock)
 
-    # Triage the image
-    if len(observed) >= self.params.image_triage.min_Bragg_peaks:
-      log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
-      status = None
-    else:
-      log_info = 'REJECTED!'
+    # Triage image
+    try:
+      observed = self.processor.find_spots(datablock=self.datablock)
+      if len(observed) >= self.params.image_triage.min_Bragg_peaks:
+        log_info = 'ACCEPTED! {} observed reflections.'.format(len(observed))
+        status = None
+      else:
+        log_info = 'REJECTED! {} observed reflections.'.format(len(observed))
+        status = 'failed triage'
+    except Exception, e:
       status = 'failed triage'
+      return status, 'REJECTED! SPOT-FINDING ERROR!'
 
     return status, log_info
 

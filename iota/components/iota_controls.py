@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/25/2017
+Last Changed: 10/31/2017
 Description : IOTA GUI controls
 '''
 
@@ -16,6 +16,8 @@ from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
+
+import numpy as np
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -888,7 +890,7 @@ class TableCtrl(CtrlBase):
     # add column labels (xlabels)
     if len(clabels) > 0:
       self.sizer.Add(wx.StaticText(self, label=''))
-      for item in column_labels:
+      for item in clabels:
         clabel = wx.StaticText(self, label=item, size=clabel_size)
         clabel.SetFont(self.font)
         self.sizer.Add(clabel)
@@ -932,6 +934,8 @@ class FastPlotter(CtrlBase):
                axes=None,
                labels=None,
                chart_label='',
+               sharex=False,
+               sharey=False,
                transparent=True,
                slider=True):
 
@@ -948,7 +952,7 @@ class FastPlotter(CtrlBase):
     self.SetSizer(self.main_fig_sizer)
 
     # Create figure and axis array; flatten axis array to zip with other info
-    self.track_figure, axarr = plt.subplots(n_plots)
+    self.track_figure, axarr = plt.subplots(n_plots, sharex=sharex)
     axarr_flat = [ax for sub_ax in axarr for ax in sub_ax]
 
     # Make sure the number of axes matches number of axis names / legends
