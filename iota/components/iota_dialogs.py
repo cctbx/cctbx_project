@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/13/2017
+Last Changed: 11/01/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -345,6 +345,8 @@ class IOTAPreferences(BaseDialog):
     else:
       self.custom_queue.Enable()
       self.custom_queue.cqueue.SetValue(self.queue)
+      custom_sel = self.queues.ctr.FindString('custom')
+      self.queues.ctr.SetSelection(custom_sel)
 
     # Set method to default value
     inp_method = self.mp_methods.ctr.FindString(noneset(self.method))
@@ -1957,7 +1959,6 @@ class RecoveryDialog(BaseDialog):
     BaseDialog.__init__(self, parent, style=dlg_style,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(400, 400),
                         title='Recover Previous Run',
                         *args, **kwargs)
 
@@ -1966,8 +1967,9 @@ class RecoveryDialog(BaseDialog):
     self.selected = None
 
     self.pathlist.InsertColumn(0, "")
-    self.pathlist.InsertColumn(1, "Status")
-    self.pathlist.InsertColumn(2, "Integration Path")
+    self.pathlist.InsertColumn(1, "#")
+    self.pathlist.InsertColumn(2, "Status")
+    self.pathlist.InsertColumn(3, "Integration Path")
 
     bmps = wx.ImageList(width=16, height=16)
     finished_bmp = bitmaps.fetch_icon_bitmap('actions', 'button_ok', size=16)
@@ -1989,8 +1991,10 @@ class RecoveryDialog(BaseDialog):
 
 
   def insert_paths(self, pathlist):
+    pathlist = sorted(pathlist, key=lambda i:i.lower())
     for i in range(len(pathlist)):
       final_file = os.path.join(pathlist[i], 'integrated.lst')
+      run_no = int(os.path.basename(pathlist[i]))
       if os.path.isfile(final_file):
         img_id = 0       # "finished" icon
         status = 'Finished'
@@ -2001,11 +2005,15 @@ class RecoveryDialog(BaseDialog):
         img_id = 2       # "unknown" icon
         status = 'Unknown'
       idx = self.pathlist.InsertImageItem(i, img_id)
-      self.pathlist.SetStringItem(idx, 1, status)
-      self.pathlist.SetStringItem(idx, 2, pathlist[i])
+      self.pathlist.SetStringItem(idx, 1, str(run_no))
+      self.pathlist.SetStringItem(idx, 2, status)
+      self.pathlist.SetStringItem(idx, 3, pathlist[i])
       self.pathlist.SetColumnWidth(0, width=-1)
       self.pathlist.SetColumnWidth(1, width=-1)
       self.pathlist.SetColumnWidth(2, width=-1)
+      self.pathlist.SetColumnWidth(3, width=-1)
+
+      self.Fit()
 
 
   def onOK(self, e):

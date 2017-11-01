@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 10/31/2017
+Last Changed: 11/01/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1770,13 +1770,6 @@ class ProcWindow(wx.Frame):
       self.proc_nb.AddPage(self.summary_tab, 'Analysis')
       self.proc_nb.SetSelection(2)
 
-      # Signal end of run
-      font = self.sb.GetFont()
-      font.SetWeight(wx.BOLD)
-      self.status_txt.SetFont(font)
-      self.status_txt.SetForegroundColour('blue')
-      self.status_txt.SetLabel('DONE')
-
       # Finish up
       self.display_log()
       self.plot_integration()
@@ -1828,6 +1821,9 @@ class ProcWindow(wx.Frame):
         info_command = 'bjobs -J {}'.format(self.job_id)
         lsf_info = easy_run.fully_buffered(info_command).stdout_lines
         self.run_aborted = (lsf_info == [])
+
+        print 'DEBUG: RUN_ABORTED =  ', self.run_aborted
+
       else:
         self.run_aborted = os.path.isfile(self.tmp_aborted_file)
 
@@ -1965,8 +1961,20 @@ class ProcWindow(wx.Frame):
       self.sb.SetStatusText('{} of {} images successfully integrated'\
                             ''.format(len(self.final_objects), len(self.img_list)), 1)
       if len(self.final_objects) > 0:
+        # Signal end of run
+        font = self.sb.GetFont()
+        font.SetWeight(wx.BOLD)
+        self.status_txt.SetFont(font)
+        self.status_txt.SetForegroundColour('blue')
+        self.status_txt.SetLabel('DONE')
         self.plot_integration()
         self.analyze_results()
+      else:
+        font = self.sb.GetFont()
+        font.SetWeight(wx.BOLD)
+        self.status_txt.SetFont(font)
+        self.status_txt.SetForegroundColour('blue')
+        self.status_txt.SetLabel('NO IMAGES PROCESSED')
 
       try:
         shutil.rmtree(self.init.tmp_base)

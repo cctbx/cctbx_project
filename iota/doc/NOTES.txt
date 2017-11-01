@@ -13,6 +13,8 @@ dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
 5. Searchable log in IOTA GUI
 6. LSF queue jobs now abort cleanly (via 'bkill' command)
 7. IOTA opens at mouse position
+8. Added run number in recovery dialog
+9. Recovery dialog sized to content
 
 MORE BUGFIXES:
 
@@ -32,3 +34,4 @@ error (merge.d_max was set to high-res rather than low-res)
 11. Fixed monitor mode when no new images found (now keeps waiting w/o timeout)
 12. Fixed DIALS triage - now has same modified settings as Processor
 13. Input search avoids Nonetype paths
+14. LSF queue abort exits cleanly if job has not yet been submitted
