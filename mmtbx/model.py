@@ -902,7 +902,7 @@ class manager(object):
           self.get_hierarchy(), self.ncs_restr_group_list)
     if len(self._ncs_groups) > 0:
       # determine master selections
-      self._master_sel = self.flex.bool(self.get_number_of_atoms(), True)
+      self._master_sel = flex.bool(self.get_number_of_atoms(), True)
       for ncs_gr in self._ncs_groups:
         for copy in ncs_gr.copies:
           self._master_sel.set_selected(copy.iselection, False)
