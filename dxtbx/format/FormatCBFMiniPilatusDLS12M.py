@@ -13,18 +13,6 @@ from __future__ import absolute_import, division
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
-__mask = None
-
-def read_mask():
-  global __mask
-  if not __mask:
-    import os
-    import cPickle as pickle
-    source_dir = os.path.split(__file__)[0]
-    mask_file = os.path.join(source_dir, 'FormatCBFMiniPilatusDLS12M.pickle')
-    __mask = pickle.load(open(mask_file, 'rb'))
-  return __mask
-
 class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
   @staticmethod
@@ -207,9 +195,6 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     pixel_values = uncompress(packed = data[data_offset:data_offset + size],
                               fast = fast, slow = slow)
-
-    isel = read_mask()
-    pixel_values.as_1d().set_selected(isel, -2)
 
     return pixel_values
 
