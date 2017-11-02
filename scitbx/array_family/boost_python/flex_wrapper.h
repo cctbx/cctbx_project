@@ -596,7 +596,8 @@ namespace scitbx { namespace af { namespace boost_python {
     count(f_t const& a1, e_t const& a2)
     {
       std::size_t result = 0;
-      for(std::size_t i=0;i<a1.size();i++) if(a1[i] == a2) result++;
+      std::size_t a1_size = a1.size();
+      for(std::size_t i=0;i<a1_size;i++) if(a1[i] == a2) result++;
       return result;
     }
 
