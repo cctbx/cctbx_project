@@ -26,6 +26,7 @@ def lbfgs_run(target_evaluator,
   else:
     raise RuntimeError
     is_converged = ext.drop_convergence_test(min_iterations)
+  callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   try:
     icall = 0
     requests_f_and_g = True
@@ -47,6 +48,8 @@ def lbfgs_run(target_evaluator,
         have_request = minimizer.run(x, f, g, d)
       else:
         have_request = minimizer.run(x, f, g)
+      if (callback_after_step is not None):
+        callback_after_step(minimizer)
       if (have_request):
         requests_f_and_g = minimizer.requests_f_and_g()
         requests_diag = minimizer.requests_diag()
