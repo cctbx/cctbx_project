@@ -1125,6 +1125,10 @@ int main() {
       ('mingw',       [['-fopenmp']]*2),
     ],
     default=[None]*2)
+  # Intel compiler > 15 deprecates -openmp in favor of -qopenmp
+  if env_etc.compiler == "unix_icc" and env_etc.icc_version >= 150000:
+    compiler_options, linker_options = [["-qopenmp"], ["-qopenmp"]]
+
   if (compiler_options is None):
     print "libtbx.scons: OpenMP is not supported."
     return
