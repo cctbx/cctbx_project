@@ -379,7 +379,7 @@ object/function_doc_signature.cpp
     env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
 
   # Boost 1.63 added the numpy submodule. Let's build this now.
-  if env_etc.boost_version >= 106300:
+  if ( (env_etc.boost_version >= 106300) and (sys.platform != 'win32') ):
     try:
       import numpy
       env_npy = env.Clone()
