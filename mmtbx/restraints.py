@@ -25,7 +25,7 @@ class manager(object):
   def __init__(self,
         geometry=None,
         ncs_groups=None,
-        torsion_ncs_groups=None,
+        torsion_ncs_groups=None, #XXX Not used anywhere, should be removed.
         normalization=False,
         use_amber=False,
         use_sander=False,
