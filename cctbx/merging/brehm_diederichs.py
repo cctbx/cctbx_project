@@ -187,6 +187,7 @@ class algorithm2:
                     bbox_inches='tight')
       if show_plot:
         plt.show()
+      plt.clf()
     grouped_lattice_ids = self.lattices.select(group)
     assert len(grouped_lattice_ids) == len(selection)
 
