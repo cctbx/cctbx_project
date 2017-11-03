@@ -1,11 +1,11 @@
 from __future__ import division
 import libtbx.forward_compatibility
-import sys, os
+import os
+import sys
 
 manual_date_stamp = 20090819
 
 def _STOP(exit_status=0):
-  import sys
   f = sys._getframe(1)
   print "STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno)
   sys.exit(exit_status)
@@ -59,10 +59,13 @@ class AutoType(object):
   singleton = None
 
   def __str__(self): return "Auto"
-  def __eq__ (self, other) :
-    return (type(other) is self.__class__)
-  def __new__ (cls) :
-    if (cls.singleton is None) :
+  def __eq__(self, other):
+    return type(other) is self.__class__
+  def __hash__(self):
+    '''AutoType behaves as a singleton, so return the same hash value for all instances.'''
+    return hash(AutoType)
+  def __new__(cls):
+    if cls.singleton is None:
       cls.singleton = super(AutoType, cls).__new__(cls)
     return cls.singleton
 
