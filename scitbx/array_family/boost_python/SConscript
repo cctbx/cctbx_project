@@ -17,8 +17,8 @@ try:
   env_npy = env.Clone()
   env_etc.include_registry.append(env=env_npy, paths=[numpy.get_include()])
   env_npy.Append(SHCXXFLAGS=["-DSCITBX_HAVE_NUMPY_INCLUDE"])
-  
-  if env_etc.boost_version >= 106300:
+
+  if ( (env_etc.boost_version >= 106300) and (sys.platform != 'win32') ):
     # Link the boost_numpy library into the extension
     env.Append(LIBS="boost_numpy")
 except ImportError:
