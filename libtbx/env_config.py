@@ -1077,6 +1077,7 @@ Wait for the command to finish, then try again.""" % vars())
       # disable warnings for 3rd party modules
       py3warn_ignores = ( # must specify each module exactly
         'mock.mock', 'numpy.core', 'py._code.code', 'pytest_timeout',
+        'wx._controls', 'wx._core', 'wx._gdi', 'wx._misc',
       )
       print >> f, 'PYTHONWARNINGS="{}"'.format(",".join(
         'ignore::DeprecationWarning:' + module for module in py3warn_ignores))
@@ -1117,7 +1118,7 @@ Wait for the command to finish, then try again.""" % vars())
         if self.build_options.python3warn == 'warn':
           qnew_tmp += " -3"
         elif self.build_options.python3warn == 'fail':
-          qnew_tmp += " -3 -Werror"
+          qnew_tmp += " -3 -Werror::DeprecationWarning"
         cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew_tmp)
       start_python = False
       if (source_is_py):
@@ -1180,7 +1181,7 @@ Wait for the command to finish, then try again.""" % vars())
     if self.build_options.python3warn == 'warn':
       qnew_tmp += " -3"
     elif self.build_options.python3warn == 'fail':
-      qnew_tmp += " -3 -Werror"
+      qnew_tmp += " -3 -Werror::DeprecationWarning"
     if source_file.ext().lower() == '.py':
       print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew_tmp, source_file.bat_value())
