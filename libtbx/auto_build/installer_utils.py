@@ -9,6 +9,7 @@ import os.path as op
 import os
 import sys
 import tarfile
+import platform
 
 # XXX CCTBX itself requires at least Python 2.5 (and some packages such as
 # Phenix require 2.7+), but this script is intended to bootstrap an
@@ -181,18 +182,13 @@ def get_os_version () :
   uname = os.uname()
   kernel_version = uname[2]
   if (uname[0] == "Darwin") :
-    os_versions = {
-      "16" : "10.12",
-      "15" : "10.11",
-      "14" : "10.10",
-      "13" : "10.9",
-      "12" : "10.8",
-      "11" : "10.7",
-      "10" : "10.6",
-      "9"  : "10.5",
-      "8"  : "10.4",
-    }
-    return os_versions.get(kernel_version.split(".")[0], "unknown")
+    # Use Python's platform module to determine OSX version
+    release, _, _ = platform.mac_ver()
+    # Convert X.Y.Z to X.Y - discard minor version
+    release_major = ".".join(release.split(".")[:2])
+    assert release, "Could not determine OSX version"
+    return release_major
+
   return kernel_version
 
 def machine_type () :
