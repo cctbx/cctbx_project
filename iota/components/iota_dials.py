@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/31/2017
+Last Changed: 11/03/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -207,6 +207,7 @@ class Integrator(object):
   def __init__(self,
                source_image,
                object_folder,
+               int_folder,
                final_filename,
                final,
                logfile,
@@ -216,6 +217,7 @@ class Integrator(object):
     '''Initialise the script.'''
 
     self.params = params
+    self.int_base = int_folder
 
     # Read settings from the DIALS target (.phil) file
     # If none is provided, use default settings (and may God have mercy)
@@ -247,8 +249,6 @@ class Integrator(object):
         beamY, beamX)
     if self.params.image_conversion.distance != 0:
       self.phil.geometry.detector.distance = self.params.image_conversion.distance
-    if self.params.advanced.estimate_gain:
-      self.phil.spotfinder.threshold.xds.gain = gain
     if self.params.image_conversion.mask is not None:
       self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
       self.phil.integration.lookup.mask = self.params.image_conversion.mask
@@ -265,8 +265,22 @@ class Integrator(object):
       self.phil.indexing.stills.method_list = ['fft1d',
                                                'fft3d',
                                                'real_space_grid_search']
+    if self.params.dials.significance_filter.flag_on:
+      if self.params.dials.significance_filter.sigma is not None:
+        sigma = self.params.dials.significance_filter.sigma
+        self.phil.significance_filter.enable = True
+        self.phil.significance_filter.isigi_cutoff = sigma
 
-    #current_phil.format(python_object=self.phil).show()
+    # Write target file for this IOTA run
+    with misc.Capturing() as output:
+      mod_phil = current_phil.format(python_object=self.phil)
+      mod_phil.show()
+      txt_out = ''
+    for one_output in output:
+      txt_out += one_output + '\n'
+    local_target_file = os.path.join(self.int_base, 'target.phil')
+    with open(local_target_file, 'w') as tf:
+      tf.write(txt_out)
 
     self.img = [source_image]
     self.obj_base = object_folder
@@ -277,6 +291,7 @@ class Integrator(object):
     self.datablock = DataBlockFactory.from_filenames(self.img)[0]
     self.obj_filename = "int_{}".format(os.path.basename(self.img[0]))
 
+    # Auto-set threshold and gain (not saved for target.phil)
     if self.params.dials.auto_threshold:
       # This is still experimental and I'm not sure if it does anything...
 
@@ -285,10 +300,8 @@ class Integrator(object):
       # threshold = int(np.min(means) * 5)
       threshold = int(center_intensity)
       self.phil.spotfinder.threshold.xds.global_threshold = threshold
-
-    # # Overwrite target file for this IOTA run
-    # mod_phil = current_phil.format(python_object=self.phil)
-    # mod_phil.show()
+    if self.params.advanced.estimate_gain:
+      self.phil.spotfinder.threshold.xds.gain = gain
 
 
   def find_spots(self):

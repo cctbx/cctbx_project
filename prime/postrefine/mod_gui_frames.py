@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 09/08/2017
+Last Changed: 11/03/2017
 Description : PRIME GUI frames module
 '''
 
@@ -166,10 +166,14 @@ class PRIMEInputWindow(BasePanel):
     advanced = dlg.PRIMEAdvancedOptions(self,
                                         title='Advanced PRIME Options',
                                         style=wx.DEFAULT_DIALOG_STYLE |
+                                              wx.STAY_ON_TOP |
                                               wx.RESIZE_BORDER)
+    advanced.SetMinSize((600, -1))
     advanced.Fit()
 
     # Populate the PHIL textbox
+    current_phil = master_phil.format(python_object=self.pparams)
+    self.generate_phil_string(current_phil=current_phil)
     advanced.phil.ctr.SetValue(self.phil_string)
 
     # Set values to default parameters
@@ -238,7 +242,10 @@ class PRIMEInputWindow(BasePanel):
       current_phil = master_phil
 
     # Generate Python object and text of parameters
+    self.generate_phil_string(current_phil)
     self.pparams = current_phil.extract()
+
+  def generate_phil_string(self, current_phil):
     with misc.Capturing() as txt_output:
       current_phil.show()
     self.phil_string = ''

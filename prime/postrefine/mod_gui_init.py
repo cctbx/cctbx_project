@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 09/07/2017
+Last Changed: 11/03/2017
 Description : PRIME GUI Initialization module
 '''
 
@@ -160,16 +160,24 @@ class PRIMEWindow(wx.Frame):
 
   def onPreferences(self, e):
     self.pparams = self.input_window.pparams
-    prefs = dlg.PRIMEPreferences(self)
+    prefs = dlg.PRIMEPreferences(self,
+                                 title='Advanced PRIME Options',
+                                 style=wx.DEFAULT_DIALOG_STYLE |
+                                       wx.STAY_ON_TOP |
+                                       wx.RESIZE_BORDER)
+    prefs.SetMinSize((600, -1))
+    prefs.Fit()
+
     prefs.set_choices(method=self.pparams.queue.mode,
                       queue=self.pparams.queue.qname)
+
 
     if prefs.ShowModal() == wx.ID_OK:
       if prefs.method == 'multiprocessing':
         self.pparams.queue.mode = None
       else:
-        self.pparams.queue.mode = dlg.method
-      self.pparams.queue.qname = dlg.queue
+        self.pparams.queue.mode = prefs.method
+      self.pparams.queue.qname = prefs.queue
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':

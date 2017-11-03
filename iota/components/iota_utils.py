@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 10/31/2017
+Last Changed: 11/03/2017
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -261,6 +261,7 @@ class InputFinder():
 
       if filter:
         input_pairs = [i for i in input_pairs if 'image' in i[1]]
+        input_pairs = [i for i in input_pairs if not '_tmp' in i[0]]
 
       if len(input_pairs) > 0:
         input_list = [i[0] for i in input_pairs]

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 09/07/2017
+Last Changed: 11/03/2017
 Description : PRIME GUI dialogs module
 '''
 
@@ -245,9 +245,10 @@ class PRIMEPreferences(wx.Dialog):
     else:
       self.custom_queue.Enable()
       self.custom_queue.cqueue.SetValue(queue)
+      custom_queue = self.queues.ctr.FindString('custom')
+      self.queues.ctr.SetSelection(custom_queue)
 
     # Set method to default value
-    print "method: ", method
     inp_method = self.mp_methods.ctr.FindString(str(method))
     if inp_method != wx.NOT_FOUND:
       self.mp_methods.ctr.SetSelection(inp_method)

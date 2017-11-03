@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 10/18/2017
+Last Changed: 11/03/2017
 Description : IOTA GUI Initialization module
 '''
 
@@ -844,8 +844,9 @@ class InitAll(object):
 
     # If fewer images than requested processors are supplied, set the number of
     # processors to the number of images
-    if self.params.n_processors > len(self.input_list):
-      self.params.n_processors = len(self.input_list)
+    if self.params.mp_method == 'multiprocessing':
+      if self.params.n_processors > len(self.input_list):
+        self.params.n_processors = len(self.input_list)
 
     # Generate base folder paths
     self.conv_base = misc.set_base_dir('converted_pickles',

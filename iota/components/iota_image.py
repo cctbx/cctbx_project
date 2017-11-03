@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/31/2017
+Last Changed: 11/03/2017
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -795,14 +795,15 @@ class SingleImage(object):
       else:
         # Create DIALS integrator object
         from iota.components.iota_dials import Integrator
-        integrator = Integrator(self.conv_img,
-                                self.obj_path,
-                                self.fin_file,
-                                self.final,
-                                self.int_log,
-                                self.gain,
-                                self.center_int,
-                                self.params)
+        integrator = Integrator(source_image=self.conv_img,
+                                object_folder=self.obj_path,
+                                int_folder=self.int_base,
+                                final_filename=self.fin_file,
+                                final=self.final,
+                                logfile=self.int_log,
+                                gain=self.gain,
+                                center_intensity=self.center_int,
+                                params=self.params)
 
         # Run DIALS
         self.fail, self.final, int_log = integrator.run()

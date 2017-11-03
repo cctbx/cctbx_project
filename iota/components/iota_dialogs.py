@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/01/2017
+Last Changed: 11/03/2017
 Description : IOTA GUI Dialogs
 '''
 
@@ -1340,7 +1340,6 @@ class DIALSOptions(BaseBackendDialog):
                            ctr_value='')
     self.phil_sizer.Add(self.phil, 1, flag=wx.EXPAND | wx.ALL, border=5)
 
-
     # Target parameters
     self.trg_options = wx.Panel(self.options)
     target_box = wx.StaticBox(self.trg_options, label='Target Parameters')
@@ -1363,7 +1362,17 @@ class DIALSOptions(BaseBackendDialog):
     self.use_fft3d = wx.CheckBox(self.trg_options,
                                  label='Use FFT3D for indexing')
     self.use_fft3d.SetValue(False)
-    target_box_sizer.Add(self.use_fft3d, flag=wx.ALL, border=10)
+    target_box_sizer.Add(self.use_fft3d, flag=f.stack, border=10)
+
+    self.sig_filter = ct.OptionCtrl(self.trg_options,
+                                    items=[('sigma', '1.0')],
+                                    checkbox=True,
+                                    checkbox_state=True,
+                                    checkbox_label='Significance Filter:',
+                                    label_size=(150, -1),
+                                    ctrl_size=(50, -1))
+    self.sig_filter.toggle_boxes(False)
+    target_box_sizer.Add(self.sig_filter, flag=wx.ALL, border=10)
 
     self.t_spacer = target_box_sizer.AddSpacer((-1, 10))
 
@@ -1516,6 +1525,10 @@ class DIALSOptions(BaseBackendDialog):
         sg_info = str(self.params.dials.target_space_group).replace(' ', '')
         self.target_sg.sg.SetValue(sg_info)
       self.use_fft3d.SetValue(self.params.dials.use_fft3d)
+      if self.params.dials.significance_filter.flag_on:
+        sigma = self.params.dials.significance_filter.sigma
+        self.sig_filter.toggle_boxes()
+        self.sig_filter.sigma.SetValue(str(sigma))
     except AttributeError:
       pass
 
@@ -1613,6 +1626,11 @@ class DIALSOptions(BaseBackendDialog):
       '  target_space_group = {}'.format(t_sg),
       '  target_unit_cell = {}'.format(t_uc),
       '  use_fft3d = {}'.format(str(self.use_fft3d.GetValue())),
+      '  significance_filter',
+      '  {',
+      '    flag_on = {}'.format(self.sig_filter.toggle.GetValue()),
+      '    sigma = {}'.format(noneset(self.sig_filter.sigma.GetValue())),
+      '  }',
       '  determine_sg_and_reindex = {}'.format(self.reindex.GetValue()),
       '  auto_threshold = {}'.format(self.auto_threshold.GetValue()),
       '  filter',

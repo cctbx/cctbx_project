@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/01/2017
+Last Changed: 11/03/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -761,7 +761,7 @@ class ProcessingTab(wx.Panel):
       try:
         # Strong reflections per frame
         self.nsref_axes.clear()
-        self.nsref_x = np.array([i + 1.5 for i in
+        self.nsref_x = np.array([i + 1 for i in
                                  range(len(self.img_list))]).astype(np.double)
         self.nsref_y = np.array([np.nan if i == 0 else i for i in
                                  self.nref_list]).astype(np.double)
@@ -787,7 +787,7 @@ class ProcessingTab(wx.Panel):
 
         # Resolution per frame
         self.res_axes.clear()
-        self.res_x = np.array([i + 1.5 for i in range(len(self.img_list))]) \
+        self.res_x = np.array([i + 1 for i in range(len(self.img_list))]) \
           .astype(np.double)
         self.res_y = np.array([np.nan if i == 0 else i for i in self.res_list]) \
           .astype(np.double)
@@ -1019,11 +1019,11 @@ class ProcessingTab(wx.Panel):
     self.draw_plots()
 
   def on_pick(self, event):
-    idx = event.mouseevent.xdata
-    img = self.finished_objects[int(idx) - 1].conv_img
-    print '{}: {}'.format(int(idx), img)
+    idx = int(round(event.mouseevent.xdata)) - 1
+    img = self.finished_objects[idx].conv_img
+    # print '{}: {}'.format(idx, img)
     self.pick['image'] = img
-    self.pick['index'] = int(idx) - 1
+    self.pick['index'] = idx
 
     if event.mouseevent.inaxes == self.nsref_axes:
       self.pick['axis'] = 'nsref'
@@ -1664,115 +1664,123 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('No images successfully integrated')
 
-    elif not self.gparams.image_conversion.convert_only:
-      self.status_txt.SetForegroundColour('black')
-      self.status_txt.SetLabel('Analyzing results...')
+    else:
+      if not self.gparams.image_conversion.convert_only:
+        self.status_txt.SetForegroundColour('black')
+        self.status_txt.SetLabel('Analyzing results...')
 
-      # Do analysis
-      analysis = Analyzer(self.init,
-                          self.finished_objects,
-                          gui_mode=True)
-      plot = Plotter(self.gparams,
-                     self.final_objects,
-                     self.init.viz_base)
+        # Do analysis
+        analysis = Analyzer(self.init,
+                            self.finished_objects,
+                            gui_mode=True)
+        plot = Plotter(self.gparams,
+                       self.final_objects,
+                       self.init.viz_base)
 
-      # Initialize summary tab
-      prime_file = os.path.join(self.init.int_base,
-                                '{}.phil'.format(self.gparams.advanced.prime_prefix))
-      self.summary_tab = SummaryTab(self.proc_nb,
-                                    self.gparams,
-                                    self.final_objects,
-                                    os.path.dirname(prime_file),
-                                    plot)
+        # Initialize summary tab
+        prime_file = os.path.join(self.init.int_base,
+                                  '{}.phil'.format(self.gparams.advanced.prime_prefix))
+        self.summary_tab = SummaryTab(self.proc_nb,
+                                      self.gparams,
+                                      self.final_objects,
+                                      os.path.dirname(prime_file),
+                                      plot)
 
-      # Run information
-      self.summary_tab.title_txt.SetLabel(noneset(self.gparams.description))
-      self.summary_tab.folder_txt.SetLabel(self.gparams.output)
+        # Run information
+        self.summary_tab.title_txt.SetLabel(noneset(self.gparams.description))
+        self.summary_tab.folder_txt.SetLabel(self.gparams.output)
 
-      # Analysis of integration
-      if self.gparams.advanced.integrate_with == 'cctbx':
-        self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
-        self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
-        self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
-        self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
-        self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
-        self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
-        self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
-        self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
-        self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
-        self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
-        self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
-        self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
+        # Analysis of integration
+        if self.gparams.advanced.integrate_with == 'cctbx':
+          self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
+          self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
+          self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
+          self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
+          self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
+          self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
+          self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
+          self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
+          self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
+          self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
+          self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
+          self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
 
-      # Dataset information
-      analysis.print_results()
-      pg, uc, clusters = analysis.unit_cell_analysis()
+        # Dataset information
+        analysis.print_results()
+        pg, uc, clusters = analysis.unit_cell_analysis()
 
-      if clusters != []:
-        for cluster in clusters:
-          row = clusters.index(cluster) + 1
-          n_ucs = wx.StaticText(self.summary_tab.cluster_panel,
-                                label=str(cluster['number']))
-          pg_info = wx.StaticText(self.summary_tab.cluster_panel,
-                                  label=str(cluster['pg']))
-          uc_info = wx.StaticText(self.summary_tab.cluster_panel,
-                                  label=str(cluster['uc']))
-          fname = wx.StaticText(self.summary_tab.cluster_panel,
-                                label=str(cluster['filename']))
-          self.summary_tab.cluster_box_grid.Add(n_ucs, pos=(row, 0))
-          self.summary_tab.cluster_box_grid.Add(pg_info, pos=(row, 1))
-          self.summary_tab.cluster_box_grid.Add(uc_info, pos=(row, 2))
-          self.summary_tab.cluster_box_grid.Add(fname, pos=(row, 3))
-        self.summary_tab.cluster_panel.SetupScrolling()
+        if clusters != []:
+          for cluster in clusters:
+            row = clusters.index(cluster) + 1
+            n_ucs = wx.StaticText(self.summary_tab.cluster_panel,
+                                  label=str(cluster['number']))
+            pg_info = wx.StaticText(self.summary_tab.cluster_panel,
+                                    label=str(cluster['pg']))
+            uc_info = wx.StaticText(self.summary_tab.cluster_panel,
+                                    label=str(cluster['uc']))
+            fname = wx.StaticText(self.summary_tab.cluster_panel,
+                                  label=str(cluster['filename']))
+            self.summary_tab.cluster_box_grid.Add(n_ucs, pos=(row, 0))
+            self.summary_tab.cluster_box_grid.Add(pg_info, pos=(row, 1))
+            self.summary_tab.cluster_box_grid.Add(uc_info, pos=(row, 2))
+            self.summary_tab.cluster_box_grid.Add(fname, pos=(row, 3))
+          self.summary_tab.cluster_panel.SetupScrolling()
 
-      self.summary_tab.pg_txt.SetLabel(str(pg))
-      unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
-      self.summary_tab.uc_txt.SetLabel(unit_cell)
-      res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
-                                np.mean(analysis.hres),
-                                u'\u212B'))
-      self.summary_tab.rs_txt.SetLabel(res)
+        self.summary_tab.pg_txt.SetLabel(str(pg))
+        unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+        self.summary_tab.uc_txt.SetLabel(unit_cell)
+        res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
+                                  np.mean(analysis.hres),
+                                  u'\u212B'))
+        self.summary_tab.rs_txt.SetLabel(res)
 
-      with warnings.catch_warnings():
-        # To catch any 'mean of empty slice' runtime warnings
-        warnings.simplefilter("ignore", category=RuntimeWarning)
-        beamX, beamY = plot.calculate_beam_xy()[:2]
-        pixel_size = plot.calculate_beam_xy()[-1]
-        beamX_mm = np.median(beamX)
-        beamY_mm = np.median(beamY)
-        beamX_px = np.median(beamX) / pixel_size
-        beamY_px = np.median(beamY) / pixel_size
-        beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
-                 "Y = {:4.1f} mm / {:4.0f} px" \
-                 "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
+        with warnings.catch_warnings():
+          # To catch any 'mean of empty slice' runtime warnings
+          warnings.simplefilter("ignore", category=RuntimeWarning)
+          beamX, beamY = plot.calculate_beam_xy()[:2]
+          pixel_size = plot.calculate_beam_xy()[-1]
+          beamX_mm = np.median(beamX)
+          beamY_mm = np.median(beamY)
+          beamX_px = np.median(beamX) / pixel_size
+          beamY_px = np.median(beamY) / pixel_size
+          beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
+                   "Y = {:4.1f} mm / {:4.0f} px" \
+                   "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
 
-      self.summary_tab.xy_txt.SetLabel(beamXY)
+        self.summary_tab.xy_txt.SetLabel(beamXY)
 
-      # Summary
-      self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
-      self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
-      self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
-      if self.gparams.advanced.integrate_with == 'cctbx':
-        self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-        self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-      elif self.gparams.advanced.integrate_with == 'dials':
-        self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
-        self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
-        self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-        self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-      self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
+        # Summary
+        self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
+        self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
+        self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
+        if self.gparams.advanced.integrate_with == 'cctbx':
+          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+          self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+        elif self.gparams.advanced.integrate_with == 'dials':
+          self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
+          self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
+          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+          self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+        self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
 
-      # Generate input file for PRIME
-      analysis.print_summary()
-      analysis.make_prime_input(filename=prime_file)
+        # Generate input file for PRIME
+        analysis.print_summary()
+        analysis.make_prime_input(filename=prime_file)
 
-      # Display summary
-      self.proc_nb.AddPage(self.summary_tab, 'Analysis')
-      self.proc_nb.SetSelection(2)
+        # Display summary
+        self.proc_nb.AddPage(self.summary_tab, 'Analysis')
+        self.proc_nb.SetSelection(2)
 
-      # Finish up
-      self.display_log()
-      self.plot_integration()
+        # Finish up
+        self.display_log()
+        self.plot_integration()
+
+      # Signal end of run
+      font = self.sb.GetFont()
+      font.SetWeight(wx.BOLD)
+      self.status_txt.SetFont(font)
+      self.status_txt.SetForegroundColour('blue')
+      self.status_txt.SetLabel('DONE')
 
     # Stop timer
     self.timer.Stop()
@@ -1821,9 +1829,6 @@ class ProcWindow(wx.Frame):
         info_command = 'bjobs -J {}'.format(self.job_id)
         lsf_info = easy_run.fully_buffered(info_command).stdout_lines
         self.run_aborted = (lsf_info == [])
-
-        print 'DEBUG: RUN_ABORTED =  ', self.run_aborted
-
       else:
         self.run_aborted = os.path.isfile(self.tmp_aborted_file)
 
@@ -1880,7 +1885,6 @@ class ProcWindow(wx.Frame):
           self.state = 'new images'
           self.process_images()
         else:
-          self.status_txt.SetLabel('No new images found! Waiting ...')
           if self.monitor_mode_timeout != None:
             if self.timeout_start is None:
               self.timeout_start = time.time()
@@ -1893,6 +1897,8 @@ class ProcWindow(wx.Frame):
                 timeout_msg = 'No images found! Timing out in {} seconds' \
                             ''.format(int(self.monitor_mode_timeout - interval))
                 self.status_txt.SetLabel(timeout_msg)
+          else:
+            self.status_txt.SetLabel('No new images found! Waiting ...')
       else:
         self.status_txt.SetLabel('Wrapping up ...')
         self.finish_process()
@@ -1962,11 +1968,6 @@ class ProcWindow(wx.Frame):
                             ''.format(len(self.final_objects), len(self.img_list)), 1)
       if len(self.final_objects) > 0:
         # Signal end of run
-        font = self.sb.GetFont()
-        font.SetWeight(wx.BOLD)
-        self.status_txt.SetFont(font)
-        self.status_txt.SetForegroundColour('blue')
-        self.status_txt.SetLabel('DONE')
         self.plot_integration()
         self.analyze_results()
       else:
@@ -1975,6 +1976,8 @@ class ProcWindow(wx.Frame):
         self.status_txt.SetFont(font)
         self.status_txt.SetForegroundColour('blue')
         self.status_txt.SetLabel('NO IMAGES PROCESSED')
+
+      print 'JOB FINISHED!'
 
       try:
         shutil.rmtree(self.init.tmp_base)
