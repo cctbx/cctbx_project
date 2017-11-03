@@ -18,10 +18,9 @@ import iotbx.cif.model
 from libtbx import group_args
 
 class adp(object):
-  def __init__(self, model, wilson_b = None, n_histogram_slots = 10, file_name=None,
+  def __init__(self, model, wilson_b = None, n_histogram_slots = 10,
       selection=None):
     self.wilson_b = wilson_b
-    self.file_name = file_name
     self.selection = selection
     self.rms_b_iso_or_b_equiv_bonded = model.rms_b_iso_or_b_equiv_bonded()
     eps = math.pi**2*8

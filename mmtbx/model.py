@@ -2539,6 +2539,11 @@ class manager(object):
 
 # This class should take model and/or model class should have a function to
 # create this one.
+# Also this class should be moved to mmtbx/model_statistics, because it is
+# close to class adp over there and wrapped with class info also in
+# model_statistics.py
+# Consider restoring "use_molprobity" or similar parameter here to be
+# able to turn off usage of reduce.
 class statistics(object):
   def __init__(self,
                pdb_hierarchy,
