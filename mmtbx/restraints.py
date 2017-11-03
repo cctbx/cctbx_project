@@ -25,7 +25,6 @@ class manager(object):
   def __init__(self,
         geometry=None,
         ncs_groups=None,
-        torsion_ncs_groups=None, #XXX Not used anywhere, should be removed.
         normalization=False,
         use_amber=False,
         use_sander=False,
@@ -34,7 +33,6 @@ class manager(object):
         afitt_object=None) :
     self.geometry = geometry
     self.ncs_groups = ncs_groups
-    self.torsion_ncs_groups = torsion_ncs_groups
     self.normalization = normalization
     # amber
     self.use_amber = use_amber
@@ -132,16 +130,10 @@ class manager(object):
       if(not isinstance(selection, flex.size_t)):
         selection = selection.iselection()
       ncs_groups = self.ncs_groups.select(iselection=selection)
-    if (self.torsion_ncs_groups is None):
-      torsion_ncs_groups = None
-    else:
-      torsion_ncs_groups = \
-        self.torsion_ncs_groups.select(iselection=selection)
 
     return manager(
       geometry=geometry,
       ncs_groups=ncs_groups,
-      torsion_ncs_groups=torsion_ncs_groups,
       normalization=self.normalization,
       use_amber=self.use_amber,
       amber_structs=self.amber_structs,
@@ -286,10 +278,6 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients)
       result += result.geometry
-    if (self.ncs_groups is not None and \
-        self.torsion_ncs_groups is not None):
-      raise Sorry("Cannot have both Cartesian and torsion NCS restraints"+\
-                  " at the same time.")
     if (self.ncs_groups is None):
       result.ncs_groups = None
     else:
@@ -299,15 +287,6 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients)
       result += result.ncs_groups
-    if (self.torsion_ncs_groups is None):
-      result.torsion_ncs_groups = None
-    else:
-      result.torsion_ncs_groups = self.torsion_ncs_groups.energies_adp_iso(
-        u_isos=xray_structure.extract_u_iso_or_u_equiv(),
-        average_power=parameters.average_power,
-        compute_gradients=compute_gradients,
-        gradients=result.gradients)
-      result += result.torsion_ncs_groups
     result.finalize_target_and_gradients()
     if(compute_gradients):
        #XXX highly inefficient code: do something asap by adopting new scatters flags
