@@ -1073,6 +1073,14 @@ Wait for the command to finish, then try again.""" % vars())
     print >> f, 'LIBTBX_PYEXE="%s"' % (
       self.python_exe.dirname() / "$LIBTBX_PYEXE_BASENAME").sh_value()
     print >> f, 'export LIBTBX_PYEXE'
+    if self.build_options.python3warn in ('warn', 'fail'):
+      # disable warnings for 3rd party modules
+      py3warn_ignores = ( # must specify each module exactly
+        'mock.mock', 'numpy.core', 'py._code.code', 'pytest_timeout',
+      )
+      print >> f, 'PYTHONWARNINGS="{}"'.format(",".join(
+        'ignore::DeprecationWarning:' + module for module in py3warn_ignores))
+      print >> f, 'export PYTHONWARNINGS'
 
     # Since El Capitan, Apple Python does not allow relative rpath in shared
     # libraries. Thus any cctbx-based script will fail with an import error
