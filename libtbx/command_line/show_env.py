@@ -75,7 +75,7 @@ elif len(sys.argv) != 2:
 elif not os.path.isfile(sys.argv[1]):
   print("Error: {} is not a file.".format(sys.argv[1]))
 else:
-  # Load the environment dump and 
+  # Load the environment dump and
   env = pickle.load(open(sys.argv[1],"rb"))
   d = env.to_dict()
   pprint(d)

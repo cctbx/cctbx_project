@@ -26,10 +26,6 @@ if (os.name == "nt"):
 else:
   exe_suffix = ""
 
-def bool_literal(b):
-  if (b): return "True"
-  return "False"
-
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
@@ -2167,14 +2163,14 @@ class pre_process_args:
       type="bool",
       default=default_build_boost_python_extensions,
       help="build Boost.Python extension modules (default: %s)"
-        % bool_literal(default_build_boost_python_extensions),
+        % default_build_boost_python_extensions,
       metavar="True|False")
     parser.option(None, "--enable_openmp_if_possible",
       action="store",
       type="bool",
       default=default_enable_openmp_if_possible,
       help="use OpenMP if available and known to work (default: %s)"
-        % bool_literal(default_enable_openmp_if_possible),
+        % default_enable_openmp_if_possible,
       metavar="True|False")
     parser.option(None, "--enable_boost_threads",
       action="store",
@@ -2190,7 +2186,7 @@ class pre_process_args:
       type="bool",
       default=default_opt_resources,
       help="use opt_resources if available (default: %s)"
-        % bool_literal(default_opt_resources),
+        % default_opt_resources,
       metavar="True|False")
     parser.option(None, "--precompile_headers",
       action="store_true",
