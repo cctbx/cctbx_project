@@ -19,10 +19,7 @@ op = os.path
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
   import wingdbstub # special import
 
-# XXX backward compatibility 2011-03-29
-qnew = 2
-if (qnew == 1 and sys.version_info[:2] < (2,7)): qnew = 0
-qnew = ["", " -Qwarn", " -Qnew"][qnew]
+qnew = " -Qnew"
 
 if (os.name == "nt"):
   exe_suffix = ".exe"
@@ -782,6 +779,7 @@ Wait for the command to finish, then try again.""" % vars())
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
         old_division=command_line.options.old_division,
+        python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
       if (command_line.options.command_version_suffix is not None):
@@ -791,6 +789,8 @@ Wait for the command to finish, then try again.""" % vars())
     if (command_line.options.build_boost_python_extensions is not None):
       self.build_options.build_boost_python_extensions \
         = command_line.options.build_boost_python_extensions
+    if command_line.options.python3warn:
+      self.build_options.python3warn = command_line.options.python3warn
     self.reset_module_registry()
     module_names.insert(0, "libtbx")
     for module_name in module_names:
@@ -1110,6 +1110,10 @@ Wait for the command to finish, then try again.""" % vars())
         qnew_tmp = qnew
         if (self.build_options.old_division) :
           qnew_tmp = ""
+        if self.build_options.python3warn == 'warn':
+          qnew_tmp += " -3"
+        elif self.build_options.python3warn == 'fail':
+          qnew_tmp += " -3 -Werror"
         cmd += ' %s"$LIBTBX_PYEXE"%s' % (pre_cmd(), qnew_tmp)
       start_python = False
       if (source_is_py):
@@ -1169,6 +1173,10 @@ Wait for the command to finish, then try again.""" % vars())
     qnew_tmp = qnew
     if (self.build_options.old_division) :
       qnew_tmp = ""
+    if self.build_options.python3warn == 'warn':
+      qnew_tmp += " -3"
+    elif self.build_options.python3warn == 'fail':
+      qnew_tmp += " -3 -Werror"
     if source_file.ext().lower() == '.py':
       print >>f, '@"%%LIBTBX_PYEXE%%"%s "%s" %%*' % (
         qnew_tmp, source_file.bat_value())
@@ -1936,6 +1944,7 @@ class build_options:
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
         old_division=False,
+        python3warn='none',
         skip_phenix_dispatchers=False):
 
     adopt_init_args(self, locals())
@@ -1996,6 +2005,7 @@ class build_options:
     print >> f, "Use environment flags:", self.use_environment_flags
     print >> f, "Enable C++11:", self.enable_cxx11
     print >> f, "Force true division:", (not self.old_division)
+    print >> f, "Python3 migration warning policy:", self.python3warn
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
       print >>f, "  CFLAGS = ", self.env_cflags
@@ -2212,6 +2222,11 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="Don't force 'true division' behavior in dispatchers")
+    parser.option(None, "--python3warn", action="store", default=None,
+      help="Python3 migration warnings. "
+           "'warn': print warnings when running code that may cause problems in Python 3. "
+           "'fail': stop execution on warnings. 'none': disable warnings (default)",
+      metavar="none|warn|fail")
     parser.option("--skip_phenix_dispatchers",
       action="store_true",
       default=False,
@@ -2404,6 +2419,9 @@ def unpickle():
   # XXX backward compatibility 2016-06-06
   if not hasattr(env, 'extra_command_line_locations'):
     env.extra_command_line_locations = []
+  # XXX backward compatibility 2017-11-03
+  if not hasattr(env.build_options, "python3warn"):
+    env.build_options.python3warn = 'none'
   return env
 
 def warm_start(args):
