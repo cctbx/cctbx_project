@@ -339,7 +339,6 @@ class absolute_path(path_mixin):
 
 
 class relocatable_path(path_mixin):
-
   def __init__(self, anchor, relocatable):
     assert isinstance(anchor, absolute_path)
     self._anchor = anchor
@@ -390,6 +389,9 @@ class relocatable_path(path_mixin):
   def __eq__(self, other):
     return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
+
+  def __hash__(self):
+    return hash((self._anchor, self.relocatable))
 
 class clean_out_directory (object) :
   """

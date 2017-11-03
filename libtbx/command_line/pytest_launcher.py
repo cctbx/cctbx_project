@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME pytest
+# LIBTBX_SET_DISPATCHER_NAME py.test
 from __future__ import absolute_import, division, print_function
 
 import sys

@@ -590,13 +590,15 @@ def select_matching(key, choices, default=None):
     if m is not None: return value
   return default
 
-class KeepType (object) :
-  def __str__ (self) :
+class KeepType(object):
+  def __str__(self):
     return "Keep"
-  def __repr__ (self) :
+  def __repr__(self):
     return "Keep"
-  def __eq__ (self, other) :
+  def __eq__(self, other):
     return type(other) is self.__class__
+  def __hash__(self):
+    return hash(KeepType) # return the same hash value for all instances
 
 Keep = KeepType()
 

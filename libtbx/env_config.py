@@ -513,7 +513,7 @@ class environment:
     return result
 
   def has_module(self, name):
-    return self.module_dist_paths.has_key(name)
+    return name in self.module_dist_paths
 
   def require_module(self, name, error=RuntimeError):
     if (not self.has_module(name)):
