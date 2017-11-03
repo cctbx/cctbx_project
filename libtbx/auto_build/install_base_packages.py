@@ -1361,6 +1361,10 @@ _replace_sysconfig_paths(build_time_vars)
         "--enable-monolithic",
         "--disable-mediactrl"
       ])
+      if get_os_version() == "10.13":
+        # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
+        config_opts.append("CPPFLAGS=-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1")
+
     elif (self.flag_is_linux) :
       config_opts.extend([
         "--with-gtk",
