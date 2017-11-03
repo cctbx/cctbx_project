@@ -802,6 +802,13 @@ class pdb_input_mixin(object):
       rot_matrices = mtrix_biomt_container.r,
       trans_vectors = mtrix_biomt_container.t)
 
+  def deposition_date(self):
+    """
+    Placeholder to match mmCIF functionality. Probably could parse
+    REVDAT.
+    """
+    return None
+
   def construct_hierarchy_MTRIX_expanded(self):
     return self._expand_hierarchy_helper(
       mtrix_biomt_container = self.process_MTRIX_records())
@@ -1171,7 +1178,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         return result
     return None
 
-  def crystal_symmetry_from_cns_remark_sg(self):
+  def _crystal_symmetry_from_cns_remark_sg(self):
     from iotbx.cns import pdb_remarks
     for line in self.remark_section():
       if (line.startswith("REMARK sg=")):
@@ -1185,7 +1192,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
         weak_symmetry=False):
     self_symmetry = self.crystal_symmetry_from_cryst1()
     if (self_symmetry is None):
-      self_symmetry = self.crystal_symmetry_from_cns_remark_sg()
+      self_symmetry = self._crystal_symmetry_from_cns_remark_sg()
     if (crystal_symmetry is None):
       return self_symmetry
     if (self_symmetry is None):
