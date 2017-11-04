@@ -1126,6 +1126,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
          arg_("verbose")=0),
          "nanoBragg simulation initialized with most common parameters. All parameters have sensible defaults."))
 
+      .def("free_all",&nanoBragg::free_all)
       /* toggle printing stuff to screen - does not work completely yet */
       .add_property("verbose",
                      make_getter(&nanoBragg::verbose,rbv()),

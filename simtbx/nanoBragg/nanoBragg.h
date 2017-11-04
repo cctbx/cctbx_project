@@ -464,6 +464,53 @@ class nanoBragg {
         int oversample, // =0 =auto
         int vervbose); // = 1
 
+    inline void free_all(){
+      /* Based on valgrind, these are the variables that need to be free'd within this test:
+         export LIBTBX_VALGRIND=valgrind --leak-check=full --tool=memcheck --suppressions=${ROOT}/cctbx_project/libtbx/valgrind-python-cci.supp
+         libtbx.valgrind libtbx.python ${ROOT}/cctbx_project/simtbx/nanoBragg/tst_nanoBragg_basic.py
+
+         Use of the free_all() class method within the Python script is meant to be an interim
+         measure to prevent memory leaks, until such time as the nanoBragg class is refactored,
+         with class variables that manage memory and lifetime.  These will include std::string,
+         std::map, std::vector, std::shared_ptr, and flex arrays.
+       */
+
+      printf("free all memory within nanoBragg\n");
+      free(pixels_in);
+      free(bin_start);
+      free(source_X);
+      free(source_Y);
+      free(source_Z);
+      free(source_I);
+      free(source_lambda);
+      free(stol_of);
+      free(Fbg_of);
+      free(mosaic_umats);
+      free(invalid_pixel);
+      free(pgmimage);
+      free(intimage);
+      free(bin_of);
+      free(stolimage);
+      free(Fimage);
+      free(diffimage);
+      /* free any previous allocations */
+      if(Fhkl != NULL) {
+        for (h0=0; h0<=h_range;h0++) {
+          for (k0=0; k0<=k_range;k0++) {
+            if(verbose>6) printf("freeing %d %ld-byte double Fhkl[%d][%d] at %p\n",l_range+1,sizeof(double),h0,k0,Fhkl[h0][k0]);
+            free(Fhkl[h0][k0]);
+          }
+          if(verbose>6) printf("freeing %d %ld-byte double* Fhkl[%d] at %p\n",k_range+1,sizeof(double*),h0,Fhkl[h0]);
+          free(Fhkl[h0]);
+        }
+        if(verbose>6) printf("freeing %d %ld-byte double** Fhkl at %p\n",h_range+1,sizeof(double**),Fhkl);
+        free(Fhkl);
+      }
+      hkls = 0;
+
+      printf("finished freeing memory\n");
+    }
+
     /* member functions to run once (might allocate memory) */
     void init_defaults();               // reset all values to defaults, nulls and NANs
     void reconcile_parameters();        // call all the below functions

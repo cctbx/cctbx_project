@@ -204,7 +204,7 @@ def run_sim2smv(fileout):
   FormatCBFMiniPilatus.as_file(
     detector=img.get_detector(),beam=img.get_beam(),gonio=img.get_goniometer(),scan=img.get_scan(),
     data=img.get_raw_data(),path=fileout)
-
+  SIM.free_all()
 
 
 #run_sim2smv("intimage_001.img")
