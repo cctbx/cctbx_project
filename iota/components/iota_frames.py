@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/03/2017
+Last Changed: 11/04/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1020,8 +1020,10 @@ class ProcessingTab(wx.Panel):
 
   def on_pick(self, event):
     idx = int(round(event.mouseevent.xdata)) - 1
-    img = self.finished_objects[idx].conv_img
-    # print '{}: {}'.format(idx, img)
+    obj_i = [i for i in self.finished_objects if i.img_index == idx + 1]
+    img = obj_i[0].conv_img
+
+    print '{}: {}'.format(idx, img)
     self.pick['image'] = img
     self.pick['index'] = idx
 
@@ -1819,7 +1821,6 @@ class ProcWindow(wx.Frame):
     self.chart_tab.nref_list = self.nref_list
     self.chart_tab.draw_plots()
     self.chart_tab.draw_summary()
-
 
   def onTimer(self, e):
     if self.abort_initiated:

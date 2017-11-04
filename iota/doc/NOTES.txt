@@ -37,6 +37,7 @@ error (merge.d_max was set to high-res rather than low-res)
 13. Input search avoids Nonetype paths
 14. LSF queue abort exits cleanly if job has not yet been submitted
 15. Input search scrubs "_tmp*" image files
+16. Chart picking now shows the correct image associated with plotted data
 
 PRIME BUGFIXES
 

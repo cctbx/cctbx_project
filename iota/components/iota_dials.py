@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/03/2017
+Last Changed: 11/04/2017
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -271,16 +271,16 @@ class Integrator(object):
         self.phil.significance_filter.enable = True
         self.phil.significance_filter.isigi_cutoff = sigma
 
-    # Write target file for this IOTA run
-    with misc.Capturing() as output:
-      mod_phil = current_phil.format(python_object=self.phil)
-      mod_phil.show()
-      txt_out = ''
-    for one_output in output:
-      txt_out += one_output + '\n'
-    local_target_file = os.path.join(self.int_base, 'target.phil')
-    with open(local_target_file, 'w') as tf:
-      tf.write(txt_out)
+    # # Write target file for this IOTA run
+    # with misc.Capturing() as output:
+    #   mod_phil = current_phil.format(python_object=self.phil)
+    #   mod_phil.show()
+    #   txt_out = ''
+    # for one_output in output:
+    #   txt_out += one_output + '\n'
+    # local_target_file = os.path.join(self.int_base, 'target.phil')
+    # with open(local_target_file, 'w') as tf:
+    #   tf.write(txt_out)
 
     self.img = [source_image]
     self.obj_base = object_folder
