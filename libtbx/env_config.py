@@ -1204,19 +1204,20 @@ Wait for the command to finish, then try again.""" % vars())
     if self.build_options.skip_phenix_dispatchers and 'phenix' in target_file.basename():
       return
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
-    if (reg != source_file):
+    if reg != source_file:
       if not reg.isfile():
         self._dispatcher_registry[target_file] = source_file
       elif (source_file.isfile()
             and (   not hasattr(os.path, "samefile")
-                 or not reg.samefile(source_file))
-            and  reg != source_file):
+                 or not reg.samefile(source_file))):
         raise RuntimeError("Multiple sources for dispatcher:\n"
           + "  target file:\n"
           + "    %s\n" % show_string(abs(target_file))
           + "  source files:\n"
           + "    %s\n" % show_string(abs(reg))
-          + "    %s" % show_string(abs(source_file)))
+          + "   =%s\n" % reg
+          + "    %s\n" % show_string(abs(source_file))
+          + "   =%s" % source_file)
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
     else:
@@ -1226,7 +1227,7 @@ Wait for the command to finish, then try again.""" % vars())
       target_file_ext += '.bat'
     remove_or_rename(target_file_ext)
     try: action(source_file, target_file_ext, source_is_python_exe)
-    except IOError, e: print "  Ignored:", e
+    except IOError as e: print "  Ignored:", e
 
   def _write_dispatcher_in_bin(self,
         source_file, target_file, source_is_python_exe=False):

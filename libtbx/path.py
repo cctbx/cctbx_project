@@ -390,9 +390,16 @@ class relocatable_path(path_mixin):
     return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
 
-# This hash function fails on Windows builds, but not sure why. 20171105
-# def __hash__(self):
-#   return hash((self._anchor, self.relocatable))
+  # From the Python 2.7 documentation:
+  #   There are no implied relationships among the comparison operators. The
+  #   truth of x==y does not imply that x!=y is false. Accordingly, when
+  #   defining __eq__(), one should also define __ne__() so that the operators
+  #   will behave as expected.
+  def __ne__(self, other):
+    return not self == other
+
+  def __hash__(self):
+    return hash((self._anchor, self.relocatable))
 
 class clean_out_directory (object) :
   """
