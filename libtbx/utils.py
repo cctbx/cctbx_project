@@ -597,6 +597,8 @@ class KeepType(object):
     return "Keep"
   def __eq__(self, other):
     return type(other) is self.__class__
+  def __ne__(self, other):
+    return not self.__eq__(other)
   def __hash__(self):
     return hash(KeepType) # return the same hash value for all instances
 

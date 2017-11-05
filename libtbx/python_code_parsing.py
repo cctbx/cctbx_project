@@ -16,6 +16,9 @@ class imported_name(object):
     return (self.name == other.name
             and self.lineno == other.lineno)
 
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
   def __hash__(self):
     return hash((self.name, self.lineno))
 
@@ -165,6 +168,9 @@ class old_style_class(object):
   def __eq__(self, other):
     return (self.name == other.name
             and self.lineno == other.lineno)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
   def __hash__(self):
     return hash((self.name, self.lineno))
