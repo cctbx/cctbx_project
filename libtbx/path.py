@@ -390,8 +390,9 @@ class relocatable_path(path_mixin):
     return (    self._anchor == other._anchor
             and self.relocatable == other.relocatable)
 
-  def __hash__(self):
-    return hash((self._anchor, self.relocatable))
+# This hash function fails on Windows builds, but not sure why. 20171105
+# def __hash__(self):
+#   return hash((self._anchor, self.relocatable))
 
 class clean_out_directory (object) :
   """
