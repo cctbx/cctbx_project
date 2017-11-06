@@ -1077,7 +1077,10 @@ Wait for the command to finish, then try again.""" % vars())
       # disable warnings for 3rd party modules
       py3warn_ignores = ( # must specify each module exactly
         'mock.mock', 'numpy.core', 'py._code.code', 'pytest_timeout',
+        '_pytest.capture', '_pytest.fixtures', '_pytest.python',
         'wx._controls', 'wx._core', 'wx._gdi', 'wx._misc',
+        'mysql.connector.authentication', 'mysql.connector.catch23',
+        'mysql.connector.dbapi', 'mysql.connector.network',
       )
       print >> f, 'PYTHONWARNINGS="{}"'.format(",".join(
         'ignore::DeprecationWarning:' + module for module in py3warn_ignores))
