@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 10/10/2017
+Last Changed: 11/06/2017
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -216,6 +216,12 @@ class Integrator(object):
                       'distl_highres_limit={}'.format(hires),
                       'distl.res.inner={}'.format(lowres),
                       'distl.res.outer={}'.format(hires)])
+
+    # Add gain (necessary now)
+    self.args.extend(['integration.detector_gain={}'.format(gain)])
+
+    with open(os.path.join(self.params.output, 'test.txt'), 'w') as tf:
+      tf.write('\n'.join(self.args))
 
   def integrate(self, grid_point):
     """ Runs the integration module in cctbx.xfel; used by either grid-search or

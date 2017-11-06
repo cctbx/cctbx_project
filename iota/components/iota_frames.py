@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/04/2017
+Last Changed: 11/06/2017
 Description : IOTA GUI Windows / frames
 '''
 
@@ -24,6 +24,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.patches as mpatches
 
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
@@ -554,12 +555,14 @@ class ProcessingTab(wx.Panel):
   def __init__(self, parent):
     self.gparams = None
     self.init = None
+    self.parent = parent
 
     self.finished_objects = None
     self.img_list = None
     self.nref_list = None
     self.res_list = None
-    self.pick = {'image':None, 'index':0, 'axis':None}
+    self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
+    self.proc_fnames = None
 
     wx.Panel.__init__(self, parent)
     self.main_fig_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -677,9 +680,9 @@ class ProcessingTab(wx.Panel):
     self.proc_panel = wx.Panel(self, size=(-1, 120))
     proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_panel.SetSizer(proc_sizer)
+
     self.proc_figure = Figure()
     self.proc_figure.patch.set_visible(False)
-
     self.sum_axes = self.proc_figure.add_subplot(111)
     self.sum_axes.axis('off')
     self.proc_figure.set_tight_layout(True)
@@ -690,7 +693,11 @@ class ProcessingTab(wx.Panel):
     self.main_fig_sizer.Add(self.proc_panel, flag=wx.EXPAND)
 
     cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
-    xid = self.int_canvas.mpl_connect('button_press_event', self.on_miss)
+    sid = self.proc_canvas.mpl_connect('pick_event', self.on_bar_pick)
+    xid = self.int_canvas.mpl_connect('button_press_event', self.on_button_press)
+    xid = self.proc_canvas.mpl_connect('button_press_event', self.on_button_press)
+    xid = self.proc_canvas.mpl_connect('button_release_event',
+                                       self.on_button_release)
 
     self.SetSizer(self.main_fig_sizer)
 
@@ -726,10 +733,12 @@ class ProcessingTab(wx.Panel):
                          len(self.img_list) - sum([i[2] for i in categories])])
       nonzero = [i for i in categories if i[2] > 0]
       names = [i[0] for i in nonzero]
+      patches = [None] * len(nonzero)
 
       self.sum_axes.clear()
-      self.sum_axes.axis([0, len(self.img_list), 0, 1])
+      self.sum_axes.axis([0, 1.01*len(self.img_list), -0.5, 0.75])
       self.sum_axes.axis('off')
+
       for i in range(len(nonzero)):
         percent = np.round(nonzero[i][2] / len(self.img_list) * 100)
 
@@ -738,18 +747,59 @@ class ProcessingTab(wx.Panel):
         barh = self.sum_axes.barh(0, nonzero[i][2],
                                   left=lf,
                                   color=nonzero[i][1],
-                                  align='edge',
-                                  label='{}%'.format(percent))
+                                  align='center',
+                                  label='{}%'.format(percent),
+                                  picker=True)
         patch = barh[0]
         bl = patch.get_xy()
+        patches[i] = ((bl[0], bl[0] + patch.get_width()),
+                      (bl[1], bl[1] + patch.get_height()))
         x = 0.5 * patch.get_width() + bl[0]
         y = 0.5 * patch.get_height() + bl[1]
         self.sum_axes.text(x, y, "{}%".format(percent),
                            ha='center', va='center')
       self.sum_axes.legend(names, ncol=len(nonzero),
-                           bbox_to_anchor=(0, -0.5, 1, 1),
-                           loc='lower center', fontsize=9,
+                           bbox_to_anchor=(0, -1, 1, 1),
+                           loc='upper center', fontsize=9,
                            frameon=False, handlelength=1)
+
+      self.bracket = mpatches.Rectangle((0, 0), len(self.img_list), 1,
+                                        facecolor='white', edgecolor='black',
+                                        zorder=2, lw=2, visible=False)
+      self.sum_axes.add_patch(self.bracket)
+
+      # If bar is clicked, find category and files for display
+      if self.pick['picked'] and self.pick['axis'] == 'summary':
+        idx = self.pick['index']
+        p_idx = [patches.index(i) for i in patches if
+                 idx >= i[0][0] and idx <= i[0][1]][0]
+        cat = names[p_idx]
+        if self.gparams.advanced.integrate_with == 'cctbx':
+          if cat == 'failed indexing / integration':
+            cat = 'failed grid search'
+          elif cat == 'failed filter':
+            cat = 'failed prefilter'
+
+        if cat not in ('integrated', 'not processed'):
+          self.proc_fnames = [i.conv_img for i in self.finished_objects
+                              if i.fail == cat]
+        elif cat == 'integrated':
+          self.proc_fnames = [i.conv_img for i in self.finished_objects if
+                              i.fail == None and i.final['final'] != None]
+        elif cat == 'not processed':
+          self.proc_fnames = [i.conv_img for i in self.finished_objects if
+                              i.fail == None and i.final['final'] == None]
+        else:
+          self.proc_fnames = ''
+
+        px = patches[p_idx][0][0]
+        pw = patches[p_idx][0][1] - patches[p_idx][0][0]
+        py = patches[p_idx][1][0]
+        ph = patches[p_idx][1][1] - patches[p_idx][1][0]
+        self.bracket.set_bounds(px, py, pw, ph)
+        self.bracket.set_visible(True)
+        self.proc_panel.Refresh()
+
       self.proc_canvas.draw()
 
     except ValueError, e:
@@ -785,6 +835,10 @@ class ProcessingTab(wx.Panel):
         self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
         self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
+      except ValueError, e:
+        print "NSREF ERROR: ", e
+
+      try:
         # Resolution per frame
         self.res_axes.clear()
         self.res_x = np.array([i + 1 for i in range(len(self.img_list))]) \
@@ -816,13 +870,15 @@ class ProcessingTab(wx.Panel):
                                                 self.nsref_y[0],
                                                 marker='o',
                                                 ms=12, alpha=0.5,
+                                                zorder=2,
                                                 color='yellow', visible=False)
         self.res_pick, = self.res_axes.plot(self.res_x[0],
                                             self.res_x[0],
                                             marker='o',
+                                            zorder=2,
                                             ms=12, alpha=0.5,
                                             color='yellow', visible=False)
-        if self.pick['image'] is not None:
+        if self.pick['picked'] and self.pick['axis'] != 'summary':
           img = self.pick['image']
           idx = self.pick['index']
           axis = self.pick['axis']
@@ -839,6 +895,11 @@ class ProcessingTab(wx.Panel):
           self.btn_right.Enable()
           self.btn_viewer.Enable()
 
+      except ValueError, e:
+        print "RES ERROR: ", e
+
+
+      try:
         # Unit cell histograms
         finished = [i for i in self.finished_objects if
                     i.fail == None and i.final['final'] != None]
@@ -899,6 +960,10 @@ class ProcessingTab(wx.Panel):
           self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
           plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
+      except ValueError, e:
+        print 'UC HISTOGRAM ERROR: ', e
+
+      try:
         # Beam XY (cumulative)
         info = []
         wavelengths = []
@@ -971,7 +1036,7 @@ class ProcessingTab(wx.Panel):
         self.int_canvas.draw()
 
       except ValueError, e:
-        print e
+        print 'BEAM XY ERROR: ', e
 
 
     self.Layout()
@@ -984,6 +1049,30 @@ class ProcessingTab(wx.Panel):
                                      viewer=viewer,
                                      file_string=filepath)
       viewer.start()
+
+  def view_proc_images(self):
+    if self.proc_fnames is not None:
+      view_warning = dlg.ViewerWarning(self.parent, len(self.proc_fnames))
+      if view_warning.ShowModal() == wx.ID_OK:
+        # parse 'other' entry
+        img_no_string = str(view_warning.no_images).split(',')
+        filenames = []
+        for n in img_no_string:
+          if '-' in n:
+            img_limits = n.split('-')
+            start = int(min(img_limits))
+            end = int(max(img_limits))
+            if start <= len(self.proc_fnames) and end <= len(self.proc_fnames):
+              filenames.extend(self.proc_fnames[start:end])
+          else:
+            if int(n) <= len(self.proc_fnames):
+              filenames.append(self.proc_fnames[int(n)])
+        file_string = ' '.join(filenames)
+        viewer = self.gparams.advanced.image_viewer
+        viewer = thr.ImageViewerThread(self,
+                                       viewer=viewer,
+                                       file_string=file_string)
+        viewer.start()
 
   def onArrow(self, e):
     idx = self.pick['index']
@@ -1019,11 +1108,12 @@ class ProcessingTab(wx.Panel):
     self.draw_plots()
 
   def on_pick(self, event):
+    self.pick['picked'] = True
     idx = int(round(event.mouseevent.xdata)) - 1
     obj_i = [i for i in self.finished_objects if i.img_index == idx + 1]
     img = obj_i[0].conv_img
 
-    print '{}: {}'.format(idx, img)
+    print '{}: {}'.format(idx+1, img)
     self.pick['image'] = img
     self.pick['index'] = idx
 
@@ -1033,8 +1123,37 @@ class ProcessingTab(wx.Panel):
       self.pick['axis'] = 'res'
     self.draw_plots()
 
-  def on_miss(self, event):
-    pass
+  def on_bar_pick(self, event):
+    self.show_image_group(e=event.mouseevent)
+
+  def show_image_group(self, e):
+    self.pick['picked'] = True
+    if e.inaxes == self.sum_axes:
+      self.pick['axis'] = 'summary'
+      self.pick['index'] = e.xdata
+    self.draw_summary()
+
+  def on_button_press(self, event):
+    if event.button != 1:
+      self.pick['picked'] = False
+      if event.inaxes == self.sum_axes:
+        self.bracket.set_visible(False)
+        self.draw_summary()
+      elif event.inaxes == self.nsref_axes:
+        self.nsref_pick.set_visible(False)
+      elif event.inaxes == self.res_axes:
+        self.res_pick.set_visible(False)
+
+    if event.dblclick:
+      self.dblclick = True
+    else:
+      self.dblclick = False
+
+  def on_button_release(self, event):
+    if event.button == 1 and self.dblclick:
+      self.show_image_group(e=event)
+      self.view_proc_images()
+
 
 class SummaryTab(wx.Panel):
   def __init__(self,
@@ -1481,6 +1600,8 @@ class ProcWindow(wx.Frame):
       os.remove(self.tmp_abort_file)
     if os.path.isfile(self.tmp_aborted_file):
         os.remove(self.tmp_aborted_file)
+    self.abort_initiated = False
+    self.run_aborted = False
 
     # Re-generate new image info to include un-processed images
     input_entries = [i for i in self.gparams.input if i != None]
@@ -1899,6 +2020,7 @@ class ProcWindow(wx.Frame):
                             ''.format(int(self.monitor_mode_timeout - interval))
                 self.status_txt.SetLabel(timeout_msg)
           else:
+            self.find_new_images = self.monitor_mode
             self.status_txt.SetLabel('No new images found! Waiting ...')
       else:
         self.status_txt.SetLabel('Wrapping up ...')
