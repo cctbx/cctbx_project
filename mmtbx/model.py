@@ -883,6 +883,12 @@ class manager(object):
         loops=loops, cif_block=cif_block)
     return cif_block
 
+  def torsion_ncs_restraints_update(self, log=None):
+    if self.get_restraints_manager() is not None:
+      self.get_restraints_manager().geometry.update_dihedral_ncs_restraints(
+          model=self,
+          log=log)
+
   def ncs_constraints_present(self):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
@@ -1016,8 +1022,6 @@ class manager(object):
       cif_block = self.get_restraints_manager().ncs_groups.as_cif_block(
           loops=loops, cif_block=cif_block, sites_cart=self.get_sites_cart())
     return cif_block
-
-
 
 
   def setup_scattering_dictionaries(self,

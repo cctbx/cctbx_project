@@ -50,6 +50,30 @@ def get_reference_dihedral_proxies(
     reference_dihedral_proxies[file_name]=dihedral_proxies
   return reference_dihedral_proxies
 
+def get_complete_dihedral_proxies_2(
+    model,
+    log=None):
+  from cStringIO import StringIO
+  from cctbx.geometry_restraints import dihedral_proxy_registry
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  if log is None:
+    log = StringIO
+  dihedral_registry = dihedral_proxy_registry(
+      strict_conflict_handling=True)
+  dihedral_registry.initialize_table()
+  grm = model.get_restraints_manager().geometry
+  dihedral_proxies = grm.get_dihedral_proxies().deep_copy()
+  for p in dihedral_proxies:
+    dihedral_registry.add_if_not_duplicated(p)
+  for three in generate_protein_threes(
+      hierarchy=model.get_hierarchy(),
+      geometry=None):
+    proxies = three.get_dummy_dihedral_proxies(
+        only_psi_phi_pairs=False)
+    for p in proxies:
+      dihedral_registry.add_if_not_duplicated(p)
+  return dihedral_registry.proxies
+
 def get_complete_dihedral_proxies(
       pdb_hierarchy=None,
       file_name=None,
@@ -61,6 +85,7 @@ def get_complete_dihedral_proxies(
   #
   # This function is called only for reference files, that were not processed
   # yet. For the main file only get_dihedrals_and_phi_psi below is called.
+  # Still used for reference model torsion restraints
   #
   assert [pdb_hierarchy,
           file_name,

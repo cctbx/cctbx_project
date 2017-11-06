@@ -145,10 +145,7 @@ class manager(object):
       x2 = model.get_xray_structure())
     model.restraints_manager.geometry.\
       den_manager.import_eq_distances(eq_distances=best_eq_distances)
-    self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-        sites_cart=self.model.get_sites_cart(),
-        pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
-        log=self.log)
+    self.model.torsion_ncs_restraints_update(log=self.log)
     #DEN refinement done, turn off
 
   def try_den_weight_torsion(self, grid_pair):
@@ -217,10 +214,7 @@ class manager(object):
         self.fmodels.fmodel_xray().xray_structure = self.model.get_xray_structure()
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
-      self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-          sites_cart=self.model.get_sites_cart(),
-          pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
-          log=local_log)
+      self.model.torsion_ncs_restraints_update(log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
           den_manager.current_cycle += 1
@@ -291,10 +285,7 @@ class manager(object):
         self.bulk_solvent_and_scale(log=local_log)
       if self.params.den.refine_adp:
         self.adp_refinement(log=local_log)
-      self.model.restraints_manager.geometry.update_dihedral_ncs_restraints(
-          sites_cart=self.model.get_sites_cart(),
-          pdb_hierarchy=self.model.get_hierarchy(sync_with_xray_structure=True),
-          log=local_log)
+      self.model.torsion_ncs_restraints_update(log=local_log)
       cycle += 1
       self.model.restraints_manager.geometry.\
           den_manager.current_cycle += 1

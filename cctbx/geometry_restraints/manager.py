@@ -732,11 +732,10 @@ class manager(object):
     if self.ncs_dihedral_manager is not None:
       self.ncs_dihedral_manager.remove_ncs_dihedrals_in_place()
 
-  def update_dihedral_ncs_restraints(self, sites_cart, pdb_hierarchy, log):
+  def update_dihedral_ncs_restraints(self, model, log):
     if self.ncs_dihedral_manager is not None:
       self.ncs_dihedral_manager.update_dihedral_ncs_restraints(
-          sites_cart=sites_cart,
-          pdb_hierarchy=pdb_hierarchy,
+          model=model,
           log=log)
 
   def get_n_reference_dihedral_proxies(self):

@@ -77,7 +77,7 @@ def all_sites_above_sigma_cutoff(sites_cart_residue,
 
 class torsion_ncs(object):
   def __init__(self,
-               model=None,
+               model,
                fmodel=None,
                params=None,
                selection=None,
@@ -85,6 +85,7 @@ class torsion_ncs(object):
                alignments=None,
                ncs_dihedral_proxies=None,
                log=None):
+    assert model is not None
     if(log is None): log = sys.stdout
     if params is None:
       params = torsion_ncs_params.extract()
@@ -100,13 +101,12 @@ class torsion_ncs(object):
     self.model = model
     self.cache = None
     self.pdb_hierarchy = None
-    if self.model is not None:
-      self.processed_pdb_file = self.model.processed_pdb_file
-      self.pdb_hierarchy = self.model.get_hierarchy()
-      self.ncs_obj = self.model.get_ncs_obj()
-      self.cache = self.model.get_atom_selection_cache()
-      assert self.ncs_obj is not None
-      self.cache = self.model.get_atom_selection_cache()
+    self.pdb_hierarchy = self.model.get_hierarchy()
+    self.ncs_obj = self.model.get_ncs_obj()
+    self.cache = self.model.get_atom_selection_cache()
+    assert self.ncs_obj is not None
+    self.cache = self.model.get_atom_selection_cache()
+
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
@@ -120,12 +120,10 @@ class torsion_ncs(object):
     self.ncs_dihedral_proxies = ncs_dihedral_proxies
     self.alignments = alignments
     self.sa = SidechainAngles(False)
-    self.rotamer_id = rotamer_eval.RotamerID()
-    self.rotamer_evaluator = rotamer_eval.RotamerEval()
     #sanity check
-    if self.pdb_hierarchy is not None:
-      self.pdb_hierarchy.reset_i_seq_if_necessary()
-      self.cache = self.pdb_hierarchy.atom_selection_cache()
+    # if self.pdb_hierarchy is not None:
+    #   self.pdb_hierarchy.reset_i_seq_if_necessary()
+    #   self.cache = self.pdb_hierarchy.atom_selection_cache()
     if self.alignments is None:
       self.find_ncs_groups(pdb_hierarchy=self.pdb_hierarchy)
     if self.pdb_hierarchy is not None:
@@ -311,23 +309,8 @@ class torsion_ncs(object):
     # XXX Update. Due to possible changes in number of atoms in hierarchy
     # during refinement we have to construct again all internal stuff
     # on every macro-cycle.
-    mon_lib_srv = None
-    ener_lib = None
-    if self.processed_pdb_file is not None:
-      mon_lib_srv = self.processed_pdb_file.mon_lib_srv
-      ener_lib = self.processed_pdb_file.ener_lib
-    # if self.processed_pdb_file is not None:
-    if False:
-      complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
-          processed_pdb_file=self.processed_pdb_file)
-    else:
-      # This is just because processed_pdb_file is not available in
-      # xyz_reciprocal_space.py funcitons and it is not clear how to
-      # handle it in this class selection
-      complete_dihedral_proxies = utils.get_complete_dihedral_proxies(
-          pdb_hierarchy=pdb_hierarchy,
-          mon_lib_srv=mon_lib_srv,
-          ener_lib=ener_lib)
+    complete_dihedral_proxies = utils.get_complete_dihedral_proxies_2(
+        model = self.model)
     # print "Number of complete_dihedral_proxies in find_ncs_matches_from_hierarchy", complete_dihedral_proxies.size()
 
     # if self.cache is None:
@@ -821,9 +804,9 @@ class torsion_ncs(object):
         f=f)
 
   def update_dihedral_ncs_restraints(self,
-                                     sites_cart,
-                                     pdb_hierarchy,
+                                     model,
                                      log=None):
+    self.model = model
     if log is None:
       log = sys.stdout
     make_sub_header(
@@ -831,10 +814,10 @@ class torsion_ncs(object):
       out=log)
     self.dp_ncs = None
     if self.dp_ncs is None:
-      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=pdb_hierarchy)
+      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=model.get_hierarchy())
     else:
-      self.generate_dihedral_ncs_restraints(sites_cart=sites_cart,
-                                            pdb_hierarchy=pdb_hierarchy,
+      self.generate_dihedral_ncs_restraints(sites_cart=self.model.get_sites_cart(),
+                                            pdb_hierarchy=self.model.get_hierarchy(),
                                             log=log)
     # self.add_ncs_dihedral_proxies(geometry=geometry)
 
@@ -1166,8 +1149,8 @@ class torsion_ncs(object):
               model_rot, m_chis, value = rotalyze.evaluate_rotamer(
                 atom_group=atom_group,
                 sidechain_angles=self.sa,
-                rotamer_evaluator=self.rotamer_evaluator,
-                rotamer_id=self.rotamer_id,
+                rotamer_evaluator=self.model.get_rotamer_manager(),
+                rotamer_id=self.model.get_rotamer_id(),
                 all_dict=all_dict,
                 sites_cart=sites_cart_moving)
               residue_name = key[-3:]
@@ -1335,8 +1318,8 @@ class torsion_ncs(object):
                 model_rot, m_chis, value = rotalyze.evaluate_rotamer(
                   atom_group=atom_group,
                   sidechain_angles=self.sa,
-                  rotamer_evaluator=self.rotamer_evaluator,
-                  rotamer_id=self.rotamer_id,
+                  rotamer_evaluator=self.model.get_rotamer_manager(),
+                  rotamer_id=self.model.get_rotamer_id(),
                   all_dict=all_dict,
                   sites_cart=sites_cart_moving)
                 residue_name = key[-3:]
@@ -1381,8 +1364,8 @@ class torsion_ncs(object):
                   rotamer, chis, value = rotalyze.evaluate_rotamer(
                     atom_group=atom_group,
                     sidechain_angles=self.sa,
-                    rotamer_evaluator=self.rotamer_evaluator,
-                    rotamer_id=self.rotamer_id,
+                    rotamer_evaluator=self.model.get_rotamer_manager(),
+                    rotamer_id=self.model.get_rotamer_id(),
                     all_dict=all_dict,
                     sites_cart=sites_cart_moving)
                   assert rotamer == model_rot
