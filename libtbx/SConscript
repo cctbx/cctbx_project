@@ -818,7 +818,9 @@ int main() {
         if env_etc.apple_gcc_builds.llvm is not None:
           print ", LLVM build %i" % env_etc.apple_gcc_builds.llvm,
     try:
-      subprocess.check_call(('xcodebuild', '-version'))
+      # Print out the version of XCode (but only if we could check the version)
+      print(subprocess.check_output(('xcodebuild', '-version'),
+            stderr=subprocess.STDOUT))
     except subprocess.CalledProcessError:
       print "Not using Xcode"
     print
