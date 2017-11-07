@@ -132,6 +132,7 @@ class fsc_model_vs_map(object):
                map,
                atom_radius,
                d_min):
+    assert atom_radius is not None # otherwise C++ traceback from flex.double(sites_frac.size(), atom_radius)
     self.atom_radius = atom_radius
     sgn = xray_structure.crystal_symmetry().space_group().type().number()
     assert sgn == 1 # P1 only

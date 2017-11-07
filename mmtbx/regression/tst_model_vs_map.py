@@ -144,14 +144,15 @@ def exercise(prefix="tst_model_vs_data1"):
       ">%s_mvsm_ccp4.log" % prefix])
   print cmd
   assert not easy_run.call(cmd)
-  cmd = " ".join([
-      "phenix.model_vs_map",
-      "%s_start.pdb" % prefix,
-      "%s.map.xplor" % prefix,
-      "resolution=5",
-      ">%s_mvsm_xpl.log" % prefix])
-  print cmd
-  assert not easy_run.call(cmd)
+  # xplor is not supported...
+  # cmd = " ".join([
+  #     "phenix.model_vs_map",
+  #     "%s_start.pdb" % prefix,
+  #     "%s.map.xplor" % prefix,
+  #     "resolution=5",
+  #     ">%s_mvsm_xpl.log" % prefix])
+  # print cmd
+  # assert not easy_run.call(cmd)
 
 if (__name__ == "__main__"):
   t0 = time.time()

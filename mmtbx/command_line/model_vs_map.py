@@ -2,27 +2,16 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_map
 
 from scitbx.array_family import flex
-import sys, math, time
 import iotbx.pdb
 from libtbx.utils import Sorry
-import mmtbx.utils
-import mmtbx.maps.correlation
+from libtbx.str_utils import make_sub_header
 from cctbx import maptbx
 from cctbx import miller
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from libtbx import adopt_init_args
-from mmtbx.rotamer.rotamer_eval import RotamerEval
-from libtbx.test_utils import approx_equal
-from mmtbx.maps import correlation
-from libtbx.str_utils import format_value
-from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.validation.cbetadev import cbetadev
-from libtbx.utils import null_out
+import mmtbx.utils
+import mmtbx.maps.correlation
 from mmtbx import model_statistics
-from libtbx.str_utils import make_sub_header
-from cctbx import adptbx
+import mmtbx.model
+import sys, time
 
 legend = """phenix.development.model_map_statistics:
   Given PDB file and a map compute various statistics.
@@ -83,27 +72,15 @@ def run(args, log=sys.stdout):
   if(len(file_names) != 1): raise Sorry("PDB file has to given.")
   if(inputs.crystal_symmetry is None):
     raise Sorry("No crystal symmetry defined.")
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv      = monomer_library.server.server(),
-    ener_lib         = monomer_library.server.ener_lib(),
-    file_name        = file_names[0],
-    crystal_symmetry = inputs.crystal_symmetry,
-    force_symmetry   = True,
-    log              = None)
-  ph = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  if(len(ph.models())>1):
+  pdb_inp = iotbx.pdb.input(file_name=file_names[0])
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      crystal_symmetry=inputs.crystal_symmetry,
+      build_grm=True)
+  if model.get_number_of_models() > 1:
     raise Sorry("Only one model allowed.")
-  xrs = processed_pdb_file.xray_structure()
-  xrs.scattering_type_registry(table = params.scattering_table)
-  xrs.show_summary(f=log, prefix="  ")
-  # restraints
-  sctr_keys = xrs.scattering_type_registry().type_count_dict().keys()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies      = False,
-    assume_hydrogens_all_missing = not has_hd,
-    plain_pairs_radius = 5.0)
-  # map
+  model.setup_scattering_dictionaries(scattering_table=params.scattering_table)
+  model.get_xray_structure().show_summary(f=log, prefix="  ")
   broadcast(m="Input map:", log=log)
   if(inputs.ccp4_map is None): raise Sorry("Map file has to given.")
   inputs.ccp4_map.show_summary(prefix="  ")
@@ -116,60 +93,65 @@ def run(args, log=sys.stdout):
     data_max=flex.max(md), log=log)
   # shift origin if needed
   soin = maptbx.shift_origin_if_needed(map_data=map_data,
-    sites_cart=xrs.sites_cart(), crystal_symmetry=xrs.crystal_symmetry())
+    sites_cart=model.get_sites_cart(), crystal_symmetry=model.crystal_symmetry())
   map_data = soin.map_data
-  xrs.set_sites_cart(soin.sites_cart)
+  model.set_sites_cart(soin.sites_cart, update_grm=True)
   ####
   # Compute and show all stats
   ####
   broadcast(m="Model statistics:", log=log)
   make_sub_header("Overall", out=log)
-  ms = model_statistics.geometry(
-    pdb_hierarchy      = ph,
-    restraints_manager = geometry,
-    molprobity_scores  = True)
-  ms.show()
-  make_sub_header("Histogram of devations from ideal bonds", out=log)
-  show_histogram(data=ms.bond_deltas, n_slots=10, data_min=0, data_max=0.2,
-    log=log)
-  #
-  make_sub_header("Histogram of devations from ideal angles", out=log)
-  show_histogram(data=ms.angle_deltas, n_slots=10, data_min=0, data_max=30.,
-    log=log)
-  #
-  make_sub_header("Histogram of non-bonded distances", out=log)
-  show_histogram(data=ms.nonbonded_distances, n_slots=10, data_min=0,
-    data_max=5., log=log)
+  info = model_statistics.info(model=model)
+  info.geometry.show()
+
+  # XXX - these are not available anymore due to refactoring
+  # make_sub_header("Histogram of devations from ideal bonds", out=log)
+  # show_histogram(data=ms.bond_deltas, n_slots=10, data_min=0, data_max=0.2,
+  #   log=log)
+  # #
+  # make_sub_header("Histogram of devations from ideal angles", out=log)
+  # show_histogram(data=ms.angle_deltas, n_slots=10, data_min=0, data_max=30.,
+  #   log=log)
+  # #
+  # make_sub_header("Histogram of non-bonded distances", out=log)
+  # show_histogram(data=ms.nonbonded_distances, n_slots=10, data_min=0,
+  #   data_max=5., log=log)
   #
   make_sub_header("Histogram of ADPs", out=log)
-  bs = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-  show_histogram(data=bs, n_slots=10, data_min=flex.min(bs),
-    data_max=flex.max(bs), log=log)
+  info.adp.show()
+  # bs = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+  # show_histogram(data=bs, n_slots=10, data_min=flex.min(bs),
+  #   data_max=flex.max(bs), log=log)
   #
   # Compute CC
   broadcast(m="Map-model CC (overall):", log=log)
   five_cc_result = mmtbx.maps.correlation.five_cc(map = map_data,
-    xray_structure = xrs, d_min = d_min)
+    xray_structure = model.get_xray_structure(), d_min = d_min)
+  atom_radius = five_cc_result.atom_radius
+  if atom_radius is None:
+    atom_radius = five_cc_result._atom_radius()
   print >> log, "  CC_mask  : %6.4f"%five_cc_result.cc_mask
   print >> log, "  CC_volume: %6.4f"%five_cc_result.cc_volume
   print >> log, "  CC_peaks : %6.4f"%five_cc_result.cc_peaks
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   fsc = mmtbx.maps.correlation.fsc_model_vs_map(
-    xray_structure = xrs,
+    xray_structure = model.get_xray_structure(),
     map            = map_data,
-    atom_radius    = five_cc_result.atom_radius,
+    atom_radius    = atom_radius,
     d_min          = d_min)
   fsc.show(prefix="  ")
   # Local CC
   cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
-    xray_structure = xrs,
+    xray_structure = model.get_xray_structure(),
     map_data       = map_data,
     d_min          = d_min)
   broadcast(m="Map-model CC (local):", log=log)
   # per residue
   print >> log, "Per residue:"
   residue_results = list()
+  ph = model.get_hierarchy()
+  xrs = model.get_xray_structure()
   for rg in ph.residue_groups():
     cc = cc_calculator.cc(selection=rg.atoms().extract_i_seq())
     chain_id = rg.parent().id
