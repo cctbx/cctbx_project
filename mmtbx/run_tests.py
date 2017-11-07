@@ -326,6 +326,7 @@ tst_list = (
   "$D/regression/tst_polder_ccs.py",
   "$D/regression/tst_map_model_cc.py",
   "$D/regression/tst_model_map.py",
+  "$D/regression/tst_model_vs_map.py",
   #
   "$D/regression/tst_cis_trans_peptide_link.py",
   "$D/regression/tst_apply_cif_restraints.py",
