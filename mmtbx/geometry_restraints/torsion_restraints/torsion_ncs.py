@@ -99,20 +99,19 @@ class torsion_ncs(object):
     self.limit = params.limit
     self.selection = selection
     self.model = model
-    self.cache = None
     self.pdb_hierarchy = None
     self.pdb_hierarchy = self.model.get_hierarchy()
     self.ncs_obj = self.model.get_ncs_obj()
-    self.cache = self.model.get_atom_selection_cache()
+    # self.cache = self.model.get_atom_selection_cache()
     assert self.ncs_obj is not None
-    self.cache = self.model.get_atom_selection_cache()
 
     #slack is not a user parameter for now
     self.slack = 0.0
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.restrain_to_master_chain = params.restrain_to_master_chain
     self.fmodel = fmodel
-    self.ncs_groups = self.ncs_obj.get_array_of_selections()
+    self.ncs_groups_selection_string_list = self.ncs_obj.get_array_of_selections()
+    self.ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
     self.log = log
     self.params = params
     self.dp_ncs = None
@@ -127,7 +126,7 @@ class torsion_ncs(object):
     if self.alignments is None:
       self.find_ncs_groups(pdb_hierarchy=self.pdb_hierarchy)
     if self.pdb_hierarchy is not None:
-      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=self.pdb_hierarchy)
+      self.find_ncs_matches_from_hierarchy(model=self.model)
 
   def get_alignments(self):
     # This function should use something like common_res_dict already available
@@ -141,20 +140,21 @@ class torsion_ncs(object):
           updated_resname+rg.atoms()[0].pdb_label_columns()[8:]+\
           rg.atoms()[0].segid
     alignments = {}
-    for group in self.ncs_groups:
-      for i, isel in enumerate(group):
-        for j, jsel in enumerate(group):
+    # for group in self.ncs_groups:
+    for i_group, group in enumerate(self.ncs_restraints_group_list):
+      for i, isel in enumerate(group.get_iselections_list()):
+        for j, jsel in enumerate(group.get_iselections_list()):
           if i <= j:
             continue
-          isel_plus = isel
-          jsel_plus = jsel
-          if self.ncs_obj.exclude_selection is not None:
-            isel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
-            jsel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
-          sel_i = self.cache.selection(isel_plus)
-          sel_j = self.cache.selection(jsel_plus)
-          h_i = self.pdb_hierarchy.select(sel_i)
-          h_j = self.pdb_hierarchy.select(sel_j)
+          # isel_plus = isel
+          # jsel_plus = jsel
+          # if self.ncs_obj.exclude_selection is not None:
+          #   isel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
+          #   jsel_plus += " and not (%s)" % self.ncs_obj.exclude_selection
+          # sel_i = self.cache.selection(isel_plus)
+          # sel_j = self.cache.selection(jsel_plus)
+          h_i = self.pdb_hierarchy.select(isel)
+          h_j = self.pdb_hierarchy.select(jsel)
           # chain matching procedure
           matching_chain_numbers = []
           matching_chains = []
@@ -202,8 +202,10 @@ class torsion_ncs(object):
               residue_match_map2[get_key(rg2)] = get_key(rg1)
           # This duplication won't be necessary when all the rest code would
           # be able to work without it. 2x less memory...
-          key1 = (isel, jsel)
-          key2 = (jsel, isel)
+          ikey = self.ncs_groups_selection_string_list[i_group][i]
+          jkey = self.ncs_groups_selection_string_list[i_group][j]
+          key1 = (ikey, jkey)
+          key2 = (jkey, ikey)
           alignments[key1] = residue_match_map1
           alignments[key2] = residue_match_map2
     return alignments
@@ -229,7 +231,7 @@ class torsion_ncs(object):
       cif_block = iotbx.cif.model.block()
     (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
         ncs_ens_gen_loop) = loops
-    for i_group, ncs_group in enumerate(self.ncs_groups):
+    for i_group, ncs_group in enumerate(self.ncs_groups_selection_string_list):
       ncs_ens_loop.add_row((i_group+1, "?"))
       for i_domain, ncs_domain in enumerate(ncs_group):
         ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
@@ -242,22 +244,20 @@ class torsion_ncs(object):
     cif_block.add_loop(ncs_ens_loop)
     cif_block.add_loop(ncs_dom_loop)
     cif_block.add_loop(ncs_dom_lim_loop)
-    if self.ncs_groups is not None:
+    if self.ncs_groups_selection_string_list is not None:
       cif_block.add_loop(ncs_oper_loop)
       cif_block.add_loop(ncs_ens_gen_loop)
     return cif_block
 
-  def as_pdb(self, hierarchy, out):
+  def as_pdb(self, out):
     assert out is not None
-    restraint_groups = self.ncs_groups
-    torsion_counts=self.get_number_of_restraints_per_group(
-      pdb_hierarchy=hierarchy)
-    sites_cart = hierarchy.atoms().extract_xyz()
+    torsion_counts=self.get_number_of_restraints_per_group()
+    sites_cart = self.model.get_sites_cart()
     self.get_torsion_rmsd(sites_cart=sites_cart)
     pr = "REMARK   3  "
     print >> out, pr+"TORSION NCS DETAILS."
-    print >> out, pr+" NUMBER OF NCS GROUPS : %-6d"%len(restraint_groups)
-    for i_group, ncs_group in enumerate(restraint_groups):
+    print >> out, pr+" NUMBER OF NCS GROUPS : %-6d"%len(self.ncs_groups_selection_string_list)
+    for i_group, ncs_group in enumerate(self.ncs_groups_selection_string_list):
       count = 0
       print >>out,pr+" NCS GROUP : %-6d"%(i_group+1)
       selection_strings = ncs_group
@@ -289,12 +289,12 @@ class torsion_ncs(object):
         prefix=pr+"  ",
         format_cutoffs="%8.3f")
 
-  def find_ncs_matches_from_hierarchy(self,
-                                      pdb_hierarchy):
+  def find_ncs_matches_from_hierarchy(self, model):
     # This is list of dp_match, see below
     self.dp_ncs = []
     self.cb_dp_ncs = []
     self.dihedral_proxies_backup = None
+    pdb_hierarchy = model.get_hierarchy()
     self.name_hash = utils.build_name_hash(pdb_hierarchy)
     self.segid_hash = utils.build_segid_hash(pdb_hierarchy)
     self.sym_atom_hash = utils.build_sym_atom_hash(pdb_hierarchy)
@@ -313,10 +313,7 @@ class torsion_ncs(object):
         model = self.model)
     # print "Number of complete_dihedral_proxies in find_ncs_matches_from_hierarchy", complete_dihedral_proxies.size()
 
-    # if self.cache is None:
-    if True:
-      self.cache = pdb_hierarchy.atom_selection_cache()
-    if len(self.ncs_groups) > 0:
+    if len(self.ncs_restraints_group_list) > 0:
       element_hash = utils.build_element_hash(pdb_hierarchy)
       i_seq_hash = utils.build_i_seq_hash(pdb_hierarchy)
       dp_hash = {}
@@ -336,10 +333,12 @@ class torsion_ncs(object):
       super_hash = {}
       res_match_master = {}
       res_to_selection_hash = {}
-      for i, group in enumerate(self.ncs_groups):
-        for chain_i in group:
-          selection = self.cache.selection(chain_i)
-          c_atoms = pdb_hierarchy.select(selection).atoms()
+      # This is for cache/hash generation....
+      print pdb_hierarchy.as_pdb_string()
+      for i, group in enumerate(self.ncs_groups_selection_string_list):
+        for isel, chain_i in zip(self.ncs_restraints_group_list[i].get_iselections_list(), group):
+          print i, "isel,", list(isel)
+          c_atoms = pdb_hierarchy.select(isel).atoms()
           for atom in c_atoms:
             for chain_j in group:
               if chain_i == chain_j:
@@ -448,7 +447,7 @@ class torsion_ncs(object):
 
       match_counter = {}
       inclusive_range = {}
-      for group in self.ncs_groups:
+      for group in self.ncs_groups_selection_string_list:
         cur_len = len(group)
         for chain in group:
           match_counter[chain] = cur_len
@@ -814,7 +813,7 @@ class torsion_ncs(object):
       out=log)
     self.dp_ncs = None
     if self.dp_ncs is None:
-      self.find_ncs_matches_from_hierarchy(pdb_hierarchy=model.get_hierarchy())
+      self.find_ncs_matches_from_hierarchy(model=model)
     else:
       self.generate_dihedral_ncs_restraints(sites_cart=self.model.get_sites_cart(),
                                             pdb_hierarchy=self.model.get_hierarchy(),
@@ -1387,15 +1386,14 @@ class torsion_ncs(object):
     sidechain_angle_hash['VAL'][' N   CA  CB  CG2'] = 'chi1'
     return sidechain_angle_hash
 
-  def get_number_of_restraints_per_group(self, pdb_hierarchy):
+  def get_number_of_restraints_per_group(self):
     torsion_counts = {}
-    sel_cache = pdb_hierarchy.atom_selection_cache()
-    for group in self.ncs_groups:
-      for selection in group:
-        one_group_selection = sel_cache.iselection(selection)
-        torsion_counts[selection] = self.ncs_dihedral_proxies.\
-            proxy_select(n_seq=len(pdb_hierarchy.atoms()),
-                         iselection=one_group_selection).\
+    for i_gr, group in enumerate(self.ncs_restraints_group_list):
+      for i_sel, selection in enumerate(group.get_iselections_list()):
+        key = self.ncs_groups_selection_string_list[i_gr][i_sel]
+        torsion_counts[key] = self.ncs_dihedral_proxies.\
+            proxy_select(n_seq=self.model.get_number_of_atoms(),
+                         iselection=selection).\
                 size()
     return torsion_counts
 

@@ -869,7 +869,6 @@ class manager(object):
     result = StringIO()
     if self.torsion_NCS_present():
       self.get_restraints_manager().geometry.ncs_dihedral_manager.as_pdb(
-          hierarchy=self.get_hierarchy(),
           out=result)
     return result.getvalue()
 

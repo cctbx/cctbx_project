@@ -2505,6 +2505,15 @@ class NCS_restraint_group(object):
     self.master_iselection = master_iselection
     self.copies = []
 
+  def get_iselections_list(self):
+    """
+    Returns all iselections in the group in one list
+    """
+    return [self.master_iselection] + [c.iselection for c in self.copies]
+
+  def get_number_of_copies(self):
+    return len(self.copies)
+
   def deep_copy(self):
     result = NCS_restraint_group(self.master_iselection.deep_copy())
     for c in self.copies:
