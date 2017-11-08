@@ -2411,20 +2411,21 @@ def run(only_i=None):
     "linking_test_two_ASN-NAG.pdb",
     ]
   # test exclusion
-  cifs = ""
-  for pdb in pdbs:
-    f=file(pdb, "wb")
-    f.write(pdbs[pdb])
-    f.close()
-    if pdb.endswith(".phil"): cifs += " %s" % pdb
-  for pdb in pdbs:
-    if pdb=='linking_test_exclusion_SO4.pdb':
-      cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
-      print cmd
-      run_and_test(cmd, pdb, 0, True)
-      cmd += "  %s" % (cifs)
-      print cmd
-      run_and_test(cmd, pdb, 1, True)
+  if only_i is not None and only_i==1:
+    cifs = ""
+    for pdb in pdbs:
+      f=file(pdb, "wb")
+      f.write(pdbs[pdb])
+      f.close()
+      if pdb.endswith(".phil"): cifs += " %s" % pdb
+    for pdb in pdbs:
+      if pdb=='linking_test_exclusion_SO4.pdb':
+        cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
+        print cmd
+        run_and_test(cmd, pdb, 0, True)
+        cmd += "  %s" % (cifs)
+        print cmd
+        run_and_test(cmd, pdb, 1, True)
   #
   cifs = ""
   for pdb in pdbs:
