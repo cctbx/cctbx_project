@@ -1035,8 +1035,33 @@ END
       for rn in rg.unique_resnames():
         assert rn=="MET"
 
+def exercise_switch_rotamers(prefix="exercise_switch_rotamers"):
+  pdb_str_met = """
+ATOM      1  N   MET B  37       7.525   5.296   6.399  1.00 10.00           N
+ATOM      2  CA  MET B  37       6.533   6.338   6.634  1.00 10.00           C
+ATOM      3  C   MET B  37       6.175   7.044   5.330  1.00 10.00           C
+ATOM      4  O   MET B  37       5.000   7.200   5.000  1.00 10.00           O
+ATOM      5  CB  MET B  37       7.051   7.351   7.655  1.00 10.00           C
+ATOM      6  CG  MET B  37       7.377   6.750   9.013  1.00 10.00           C
+ATOM      7  SD  MET B  37       8.647   5.473   8.922  1.00 10.00           S
+ATOM      8  CE  MET B  37       8.775   5.000  10.645  1.00 10.00           C
+TER
+END
+  """
+  pi = iotbx.pdb.input(source_info=None, lines=pdb_str_met)
+  ph_met_in = pi.construct_hierarchy()
+  pi.write_pdb_file(file_name="%s.pdb"%prefix)
+  for o in ["max_distant","min_distant","exact_match","fix_outliers"]:
+    cmd = " ".join([
+      "phenix.pdbtools",
+      "%s.pdb"%prefix,
+      "switch_rotamers=%s"%o,
+      "output.file_name=%s_%s.pdb"%(o,prefix)])
+    print cmd
+    run_command(command=cmd, verbose=False)
 
 def exercise(args):
+  exercise_switch_rotamers()
   exercise_mmcif_support_2()
   exercise_basic()
   exercise_multiple()

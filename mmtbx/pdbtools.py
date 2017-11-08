@@ -8,6 +8,10 @@ import scitbx.matrix
 import sys
 import scitbx.rigid_body
 from libtbx import group_args
+import mmtbx.monomer_library.server
+import mmtbx.utils
+
+mon_lib_srv = mmtbx.monomer_library.server.server()
 
 master_params_str = """\
 modify
@@ -500,9 +504,8 @@ class modify(object):
     self._print_action(
       text = "Switching rotamers; mode = %s"%mode,
       selection = selection)
-    mon_lib_srv = mmtbx.monomer_library.server.server()
     self.pdb_hierarchy.atoms().set_xyz(self.xray_structure.sites_cart())
-    self.pdb_hierarchy = utils.switch_rotamers(
+    self.pdb_hierarchy = mmtbx.utils.switch_rotamers(
       pdb_hierarchy=self.pdb_hierarchy,
       mode=mode,
       selection=selection.flags)

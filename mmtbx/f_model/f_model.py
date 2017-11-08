@@ -873,13 +873,10 @@ class manager(manager_mixin):
       self.mask_params.shrink_truncation_radius," "*17)
     print >> out, \
       "| all data:                         500 lowest resolution reflections:        |"
-    rwl = self.r_work_low()
-    fmtl = "| r_work= %s r_free= %s     r_work= %s (resolution: %s-%s A)"%(
+    fmtl = "| r_work= %s r_free= %s     r_work= %s  "%(
       format_value(format="%6.4f", value=self.r_work()).strip(),
       format_value(format="%6.4f", value=self.r_free()).strip(),
-      format_value(format="%6.4f", value=rwl.r_work).strip(),
-      format_value(format="%6.2f", value=rwl.d_min).strip(),
-      format_value(format="%7.2f", value=rwl.d_max).strip())
+      format_value(format="%6.4f", value=self.r_work_low()).strip())
     pad = " "*(78-len(fmtl))
     print >> out, fmtl + pad + "|"
     print >> out, "|"+"-"*77+"|"
@@ -1454,7 +1451,7 @@ class manager(manager_mixin):
       fmodel=self, apply_back_trace = apply_back_trace,
       remove_outliers = remove_outliers, fast = fast,
       params = params, log = log, refine_hd_scattering=refine_hd_scattering)
-    if(optimize_mask): self.optimize_mask()
+    if(optimize_mask): self.optimize_mask(out=log)
     if(remove_outliers):
       for i in [1,2,3,4,5]:
         if(self.r_work_low()>0.7 and len(self.bin_selections)>1):
