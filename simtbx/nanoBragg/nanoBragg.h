@@ -533,6 +533,8 @@ class nanoBragg {
     void show_phisteps();       // print out everything to screen, enumerate all phi steps
     void show_detector_thicksteps();  // print out all detector layers
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
+    af::shared<mat3> get_mosaic_blocks();  // get the individual mosaic block orientations as array
+    void set_mosaic_blocks(af::shared<mat3>);  // set the individual mosaic block orientations from array
     void show_params();         // print out everything to screen, just like standalone program
     void show_sources();        // print out internal source information to screen
 

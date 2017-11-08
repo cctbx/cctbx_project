@@ -2218,8 +2218,43 @@ nanoBragg::show_mosaic_blocks()
 // end of show_mosaic_blocks()
 
 
+/* return the unitary matrices U that define the mosaic block distribution, cctbx format please */
+af::shared<mat3>
+nanoBragg::get_mosaic_blocks() {
+    /* assume init_mosaicity() was already run? */
+    af::shared<mat3> result;
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
+        result.push_back(mat3( *(mosaic_umats+9*mos_tic+0), *(mosaic_umats+9*mos_tic+1), *(mosaic_umats+9*mos_tic+2),
+                               *(mosaic_umats+9*mos_tic+3), *(mosaic_umats+9*mos_tic+4), *(mosaic_umats+9*mos_tic+5),
+                               *(mosaic_umats+9*mos_tic+6), *(mosaic_umats+9*mos_tic+7), *(mosaic_umats+9*mos_tic+8)));
+    }
+    return result;
+}
+// end of get_mosaic_blocks()
 
+/* set the mosaic domains */
+void
+nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
+    /* free any previous allocations */
+    if(mosaic_umats!=NULL) free(mosaic_umats);
 
+    /* allocate enough space */
+    mosaic_domains = umat_in.size();
+    if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
+    mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
+
+    /* now actually create the orientation of each domain */
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
+      int offset = 9 * mos_tic;
+      mat3& domain = umat_in[mos_tic];
+      mosaic_umats[0+offset]=domain[0];mosaic_umats[1+offset]=domain[1];mosaic_umats[2+offset]=domain[2];
+      mosaic_umats[3+offset]=domain[3];mosaic_umats[4+offset]=domain[4];mosaic_umats[5+offset]=domain[5];
+      mosaic_umats[6+offset]=domain[6];mosaic_umats[7+offset]=domain[7];mosaic_umats[8+offset]=domain[8];
+   }
+
+    if(verbose) printf("  created a total of %d mosaic domains\n",mosaic_domains);
+}
+// end of init_mosaicity()
 
 
 /* reconcile different conventions of beam center input and detector position */

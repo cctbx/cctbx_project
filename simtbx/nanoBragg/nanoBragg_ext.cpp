@@ -1463,6 +1463,15 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_mosaic_domains,rbv()),
                      make_function(&set_mosaic_domains,dcp()),
                      "number of discrete mosaic domains to generate, speed is inversely proportional to this")
+      .def          ("show_mosaic_blocks",
+                     &nanoBragg::show_mosaic_blocks,
+                     "print out individual mosaic domain orientations")
+      .def          ("get_mosaic_blocks",
+                     &nanoBragg::get_mosaic_blocks,
+                     "return the unitary matrices U that define the mosaic block distribution")
+      .def          ("set_mosaic_blocks",
+                     &nanoBragg::set_mosaic_blocks,
+                     "enter an arbitrary list of unitary matrices U to define the mosaic block distribution")
 
       /* hkl and F */
       .add_property("indices",
