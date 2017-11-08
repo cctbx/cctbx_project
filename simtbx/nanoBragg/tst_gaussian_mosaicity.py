@@ -37,6 +37,46 @@ class plotter:
   def permute_vector(self, vector, perm):
     return (vector[perm[0]], vector[perm[1]], vector[perm[2]],)
 
+class plotter2:  # compare the transformation of 001 with that of .57735,.57735,.57735
+  def __init__(self, tophat, normal, plot):
+    # take U-mats from two different distributions, apply them to unit vectors, and plot
+    if plot:
+      from matplotlib import pyplot as plt
+      fig, axes = plt.subplots(2, 2,figsize=(8,7))
+    else:
+      axes = ((1,2),(3,4)) #dummy
+
+    # columns plot the transformation of x, y, and z unit vectors
+    rows = [tophat,normal]
+    for irow,dist in enumerate(rows):
+      iaxes = axes[irow];
+      for icol, RLP in enumerate([(0,0,1), (0.57735, 0.57735, 0.57735)]):
+        RLP = col(RLP)
+        print "%27s"%(str(RLP.elems)),"Vector length:%8.6f"%(RLP.length()),
+        axis = iaxes[icol]
+        unit = RLP.normalize()
+        seed = col((1,0,0))
+        perm2 = unit.cross(seed)
+        perm3 = unit.cross(perm2)
+        a2 = flex.double(); a3 = flex.double()
+        difference_vectors = flex.vec3_double()
+        for u in dist:
+          U = sqr(u)
+          newvec = U * RLP
+          difference_vectors.append( newvec-RLP )
+          a2.append(newvec.dot(perm2)); a3.append(newvec.dot(perm3))
+        rms = math.sqrt( flex.mean ( difference_vectors.dot(difference_vectors) ) )
+        print "The rms difference is", rms
+        if plot:
+          axis.plot (a2,a3,'r,')
+          axis.set_aspect("equal")
+          axis.set_title("Transformation of vector %s"%(str(RLP.elems)))
+          axis.set_xlim(-0.05,0.05)
+          axis.set_ylim(-0.05,0.05)
+
+    if plot: plt.show()
+
+
 class check_distributions:
   @staticmethod
   def get_angular_rotation(dist):
@@ -92,6 +132,12 @@ def tst_all(make_plots):
   UM_th, UM_nm = run_sim2smv(fileout)
   if make_plots:
     P = plotter(UM_th,UM_nm)
+  Q = plotter2(UM_th,UM_nm,make_plots) # suggested by Holton:
+  """apply all the UMATs to a particular starting unit vector and take the rms of the resulting end points.
+    You should not see a difference between starting with a vector with x,y,z = 0,0,1 vs
+    x,y,z = 0.57735,0.57735,0.57735.  But if the implementation is wrong and the UMATs are being made by
+    generating Gaussian-random rotations about the three principle axes, then the variance of
+    0,0,1 will be significantly smaller than that of 0.57735,0.57735,0.57735."""
 
 if __name__=="__main__":
   import sys
