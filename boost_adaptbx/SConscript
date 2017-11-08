@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import libtbx.load_env
 from libtbx.str_utils import show_string
 from libtbx.utils import \
@@ -18,7 +20,7 @@ env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 # as this is a hindrance for CCP4 people when they cross-compile Phaser
 # (c.f. Marcin's email mid-october 2012)
 env_etc.boost_version = libtbx.env.boost_version
-print "BOOST_VERSION: %i" %env_etc.boost_version
+print("BOOST_VERSION: %i" %env_etc.boost_version)
 
 # If Boost.Thread was asked for at configuration time and if it is available
 # we modify env_base to link the DLL's necessary for code using Boost.Thread
@@ -525,7 +527,7 @@ class
         cpp = "%s.cpp" % s
         file_name = os.path.join(test_dir, cpp)
         if (not os.path.isfile(file_name)):
-          print "Warning: source file not available:", show_string(file_name)
+          print("Warning: source file not available:", show_string(file_name))
           ok = False
         else:
           source.append(os.path.join(prefix, cpp))
@@ -567,23 +569,23 @@ class
       f = open(boost_python_run_tests, "w")
       for tst in all_tst:
         if (tst.startswith("$ ")):
-          print >> f, 'call %s' % tst[2:]
+          print('call %s' % tst[2:], file=f)
         else:
-          print >> f, 'call libtbx.python %s' % show_string(tst)
+          print('call libtbx.python %s' % show_string(tst), file=f)
       f.close()
     else:
       boost_python_run_tests = \
         "%s/boost_python_run_tests.csh" % abs(libtbx.env.build_path)
       f = open(boost_python_run_tests, "w")
-      print >> f, "#! /bin/csh -f"
-      print >> f, "set verbose"
+      print("#! /bin/csh -f", file=f)
+      print("set verbose", file=f)
       for tst in all_tst:
         if (tst.startswith("$ ")):
-          print >> f, tst[2:]
+          print(tst[2:], file=f)
         else:
-          print >> f, 'libtbx.python "%s"' % show_string(tst)
+          print('libtbx.python "%s"' % show_string(tst), file=f)
       f.close()
-      os.chmod(boost_python_run_tests, 0755)
+      os.chmod(boost_python_run_tests, 0o755)
 
   def write_type_id_eq_h():
     unsigned_types = [
@@ -635,15 +637,15 @@ main()
       f=f,
       file_name_generator="cctbx_project/boost_adaptbx/SConscript")
     guard = "BOOST_ADAPTBX_TYPE_ID_EQ_H"
-    print >> f, "#ifndef", guard
-    print >> f, "#define", guard
-    print >> f
+    print("#ifndef", guard, file=f)
+    print("#define", guard, file=f)
+    print(file=f)
     for u,c in zip(unsigned_types, output):
       if (c == "1"):
-        print >> f, "#define BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_" \
-          + u.replace(" ", "_").upper()
-    print >> f
-    print >> f, "#endif // GUARD"
+        print("#define BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_" \
+          + u.replace(" ", "_").upper(), file=f)
+    print(file=f)
+    print("#endif // GUARD", file=f)
     del f
   write_type_id_eq_h()
 
