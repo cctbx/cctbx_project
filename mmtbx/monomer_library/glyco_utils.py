@@ -117,6 +117,17 @@ class glyco_link_class:
         #ring_carbon is None or
         self.link_carbon is None
         ):
+      if 0:
+        print '''
+  self.anomeric_carbon %s
+  self.link_oxygen     %s
+  self.ring_carbon     %s
+  self.link_carbon     %s
+''' % (self.anomeric_carbon.quote(),
+       self.link_oxygen.quote(),
+       self.ring_oxygen.quote(),
+       self.link_carbon.quote(),
+       )
       return False
     return True
 

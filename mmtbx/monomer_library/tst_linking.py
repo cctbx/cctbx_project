@@ -2251,6 +2251,42 @@ _chem_comp_atom.partial_charge
 _chem_comp_atom.charge
 CM N26    N N  0.000 0
 """,
+  'linking_test_exclusion_SO4.pdb' : '''
+CRYST1  126.007  546.508  585.856  90.00  90.00  90.00 P 2 21 21
+ATOM   5781  N   ARG A 782     -68.913-438.467 717.772  1.00 96.17           N
+ATOM   5782  CA  ARG A 782     -68.051-437.794 718.737  1.00 96.10           C
+ATOM   5783  C   ARG A 782     -68.057-438.454 720.114  1.00 96.19           C
+ATOM   5784  O   ARG A 782     -67.489-437.889 721.054  1.00 96.06           O
+ATOM   5785  CB  ARG A 782     -68.457-436.323 718.866  1.00 95.82           C
+ATOM   5786  CG  ARG A 782     -67.625-435.372 718.021  1.00 95.68           C
+ATOM   5787  CD  ARG A 782     -66.340-434.995 718.736  1.00 95.65           C
+ATOM   5788  NE  ARG A 782     -65.486-434.139 717.918  1.00 95.53           N
+ATOM   5789  CZ  ARG A 782     -64.442-434.578 717.222  1.00 95.65           C
+ATOM   5790  NH1 ARG A 782     -64.123-435.865 717.246  1.00 95.88           N1+
+ATOM   5791  NH2 ARG A 782     -63.715-433.731 716.504  1.00 95.52           N
+ATOM   4791  N   LYS A 660     -54.507-433.397 715.702  1.00 89.00           N
+ATOM   4792  CA  LYS A 660     -55.052-434.689 715.302  1.00 89.16           C
+ATOM   4793  C   LYS A 660     -53.950-435.729 715.157  1.00 89.32           C
+ATOM   4794  O   LYS A 660     -54.180-436.916 715.414  1.00 89.49           O
+ATOM   4795  CB  LYS A 660     -55.827-434.552 713.989  1.00 89.09           C
+ATOM   4796  CG  LYS A 660     -57.191-433.881 714.110  1.00 88.95           C
+ATOM   4797  CD  LYS A 660     -58.164-434.700 714.947  1.00 89.07           C
+ATOM   4798  CE  LYS A 660     -59.455-433.926 715.203  1.00 88.92           C
+ATOM   4799  NZ  LYS A 660     -60.489-434.725 715.925  1.00 89.03           N1+
+HETATM 6886  O1  SO4 A 923     -60.519-433.073 715.370  0.00 86.34           O
+HETATM 6887  O2  SO4 A 923     -62.688-432.381 714.671  1.00 86.19           O
+HETATM 6888  O3  SO4 A 923     -62.430-433.668 716.666  0.10 86.40           O
+HETATM 6889  O4  SO4 A 923     -61.695-431.404 716.606  1.00 86.05           O
+HETATM 6890  S   SO4 A 923     -61.834-432.632 715.827  1.00 86.25           S
+  ''',
+  'so4_exclude.phil' : '''
+pdb_interpretation {
+  exclude_from_automatic_linking {
+    selection_1 = "resname SO4"
+    selection_2 = all
+  }
+}
+  ''',
         }
 
 links = {
@@ -2297,9 +2333,10 @@ links = {
   "linking_test_MAN-before-ASN.pdb" : [15,15],
   "linking_test_partial_alt_loc_glyco.pdb" : [63,67],
   'linking_test_CM-SO4.pdb' : [4,4],
+  'linking_test_exclusion_SO4.pdb' :[24,22]
   }
 
-def run_and_test(cmd, pdb, i):
+def run_and_test(cmd, pdb, i, skip_links=False):
   result = easy_run.fully_buffered(cmd).raise_if_errors()
   assert (result.return_code == 0)
   for line in result.stdout_lines :
@@ -2331,6 +2368,7 @@ def run_and_test(cmd, pdb, i):
     os.remove(new_geo)
   os.rename(pdb.replace(".pdb", "_minimized.geo"), new_geo)
   print "OK"
+  if skip_links: return
   # test links
   #if pdb in ["linking_test_LEU-CSY-VAL.pdb",
   #           ]:
@@ -2372,6 +2410,22 @@ def run(only_i=None):
   longer_tests = [
     "linking_test_two_ASN-NAG.pdb",
     ]
+  # test exclusion
+  cifs = ""
+  for pdb in pdbs:
+    f=file(pdb, "wb")
+    f.write(pdbs[pdb])
+    f.close()
+    if pdb.endswith(".phil"): cifs += " %s" % pdb
+  for pdb in pdbs:
+    if pdb=='linking_test_exclusion_SO4.pdb':
+      cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
+      print cmd
+      run_and_test(cmd, pdb, 0, True)
+      cmd += "  %s" % (cifs)
+      print cmd
+      run_and_test(cmd, pdb, 1, True)
+  #
   cifs = ""
   for pdb in pdbs:
     f=file(pdb, "wb")
