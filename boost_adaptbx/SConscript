@@ -68,10 +68,7 @@ if (not env_etc.no_boost_python):
   env_no_includes_boost_python_ext.Replace(
     SHLIBSUFFIX=env_etc.extension_module_suffix)
   if (env_etc.compiler == "win32_cl" and env_etc.have_manifest_tool):
-    env_no_includes_boost_python_ext.Append(
-      SHLINKCOM=[
-        'mt /nologo /outputresource:"${TARGET};#2"'
-        ' /manifest ${TARGET}.manifest'])
+    env_no_includes_boost_python_ext.Append(WINDOWS_EMBED_MANIFEST = True)
   elif (env_etc.mac_os_use_dsymutil):
     # Debugging with DWARF + dSYM works much more reliably with XCode 3 or 4 using gdb
     # Using lldb, the following tricks aren't necessary but lldb seems pretty flawed
