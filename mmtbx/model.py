@@ -1949,6 +1949,8 @@ class manager(object):
   def select(self, selection):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
+    if isinstance(selection, flex.size_t):
+      selection = flex.bool(self.get_number_of_atoms(), selection)
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
     sdi = self.scattering_dict_info
