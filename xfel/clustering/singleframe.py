@@ -82,12 +82,13 @@ class SingleFrame(InputFrame):
       self.miller_array = d['observations'][crystal_num]
       self.mapped_predictions = d['mapped_predictions'][crystal_num]
       # Image pickle info
-      self.path = path
+      self.path = path or d['path']
       self.name = filename
       # Unit cell info
       self.crystal_system = self.miller_array.crystal_symmetry()\
         .space_group().crystal_system()
       self.pg = d['pointgroup'].replace(' ', '')  # enforce consistency
+      # XXX major bug here??? niggli cell not produced with knowledge of the centring symbol???
       self.uc = d['current_orientation'][crystal_num].unit_cell() \
         .niggli_cell() \
         .parameters()
@@ -323,3 +324,21 @@ class SingleDialsFrameFromFiles(SingleFrame):
     from xfel.command_line.frame_extractor import ConstructFrameFromFiles
     frame = ConstructFrameFromFiles(refls_path, expts_path).make_frame()
     SingleFrame.__init__(self, dicti=frame, path=" ".join((refls_path, expts_path)), **kwargs)
+
+class CellOnlyFrame(SingleFrame):
+  def __init__(self, args, path):
+      unit_cell_params = tuple([float(a) for a in args[0:5]])
+      space_group_type = args[6]
+
+      from cctbx.uctbx import unit_cell
+      uc_init = unit_cell(unit_cell_params)
+      from cctbx.sgtbx import space_group_info
+      sgi = space_group_info(space_group_type)
+      from cctbx import crystal
+      self.crystal_symmetry = crystal.symmetry(unit_cell=uc_init, space_group_info=sgi)
+      self.crystal_symmetry.show_summary()
+      self.niggli_cell = self.crystal_symmetry.niggli_cell()
+      self.niggli_cell.show_summary(prefix="   niggli-->")
+      self.uc = self.niggli_cell.unit_cell().parameters()
+      self.pg = "".join(sgi.type().lookup_symbol().split())
+      self.path = path

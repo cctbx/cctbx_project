@@ -12,7 +12,7 @@ def unit_cell_info(sub_clusters):
   """
   # 3. print out some information that is useful.
   out_str = "\n{} clusters:".format(len(sub_clusters))
-  out_str += "\n\n{:<16} {:<8} {:<11} {:<11} {:<11} {:<12} {:<12} {:<12}".format(
+  out_str += "\n\n{:<16} {:<8} {:<13} {:<13} {:<13} {:<12} {:<12} {:<12}".format(
     "Cluster_id",
     "N_xtals",
     "Med_a", "Med_b", "Med_c",
@@ -26,8 +26,8 @@ def unit_cell_info(sub_clusters):
       pg_strings = ["{} in {}".format(pg[1], pg[0])
                     for pg in sorted_pg_comp]
       point_group_string = ", ".join(pg_strings) + "."
-      out_str += ("\n{:<16} {:<8} {:<5.1f}({:<4.1f}) {:<5.1f}({:<4.1f})"
-                  " {:<5.1f}({:<4.1f}) {:<6.2f}({:<4.2f}) {:<6.2f}"
+      out_str += ("\n{:<16} {:<8} {:<6.2f}({:<5.2f}) {:<6.2f}({:<5.2f})"
+                  " {:<6.2f}({:<5.2f}) {:<6.2f}({:<4.2f}) {:<6.2f}"
                   "({:<4.2f}) {:<6.2f}({:<4.2f})").format(
         cluster.cname,
         len(cluster.members),
@@ -39,7 +39,7 @@ def unit_cell_info(sub_clusters):
         cluster.medians[5], cluster.stdevs[5])
       out_str += "\n" + point_group_string
     else:
-      singletons.append("".join([("{:<14} {:<11.1f} {:<11.1f} {:<11.1f}"
+      singletons.append("".join([("{:<14} {:<11.2f} {:<11.2f} {:<11.2f}"
                                   "{:<12.1f} {:<12.1f} {:<12.1f}").format(
         cluster.pg_composition.keys()[0],
         cluster.members[0].uc[0], cluster.members[0].uc[1],

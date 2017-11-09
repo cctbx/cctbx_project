@@ -70,4 +70,4 @@ if (not env_etc.no_boost_python):
   Export("env_legacy_boost_python_ext")
 
   SConscript("mono_simulation/SConscript")
-
+  SConscript("clustering/SConscript")

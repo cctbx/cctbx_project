@@ -13,6 +13,10 @@ def run(_args):
     raise IOError("Must provide location(s) of pickles")
   if _args.paths:
     ucs = Cluster.from_files(raw_input=_args.dirs, n_images=_args.n, dials=_args.dials)
+  elif _args.text:
+    assert len(_args.dirs)==1 # one file
+    one_file = _args.dirs[0]
+    ucs = Cluster.from_list(one_file)
   else:
     ucs = Cluster.from_directories(_args.dirs, n_images=_args.n, dials=_args.dials)
 
@@ -40,8 +44,10 @@ if __name__ == "__main__":
                                                 'a set of indexing pickles.'))
   parser.add_argument('dirs', type=str, nargs='+',
                       help='One or more paths to directories, integration pickles or DIALS experiment lists.')
+  parser.add_argument('--text', action='store_true',
+                      help='Interpret the argument as a text file containing unit cells and space group type.')
   parser.add_argument('--paths', action='store_true',
-                      help='Interpret the arguments as complete paths to pickles, not directories.')
+                      help='Interpret the arguments as complete paths to pickles or tarred pickles, not directories.')
   parser.add_argument('--dials', action='store_true',
                       help='Interpret the arguments as DIALS format pickles and jsons.')
   parser.add_argument('-t', type=float, default=5000,

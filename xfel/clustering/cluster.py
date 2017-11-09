@@ -14,7 +14,7 @@ import os
 import math
 import logging
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
-from cctbx.uctbx.determine_unit_cell import NCDist
+from cctbx.uctbx.determine_unit_cell import NCDist2017
 import numpy as np
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
@@ -99,7 +99,11 @@ class Cluster:
     unit_cells = np.zeros([len(self.members), 6])
     self.pg_composition = {}
     for i, member in enumerate(self.members):
-      unit_cells[i, :] = member.orientation.unit_cell().parameters()
+      try:
+        unit_cells[i, :] = member.orientation.unit_cell().parameters()
+        # XXX naive: orientation matrix can be either centered or not, does not account for cell reduction
+      except AttributeError:
+        unit_cells[i, :] = member.crystal_symmetry.unit_cell().parameters() # for text-only input
       # Calculate point group composition
       if member.pg in self.pg_composition.keys():
         self.pg_composition[member.pg] += 1
@@ -155,6 +159,39 @@ class Cluster:
       dials_expts=dials_expts, _prefix=_prefix,
       _message='Made from files in {}'.format(path_to_integration_dir[:]),
       dials=dials, n_images=n_images, **kwargs)
+
+  @classmethod
+  def from_list( cls,file_name,
+                 raw_input=None,
+                 pickle_list=[],
+                 dials_refls=[],
+                 dials_expts=[],
+                 _prefix='cluster_from_file',
+                 _message='Made from list of individual cells',
+                 n_images=None,
+                 dials=False,
+                 **kwargs):
+    """Constructor to get a cluster from a single file.  The file must list unit cell a,b,c,alpha,beta,gamma
+    and space_group_type, each as a single token.
+    :param file_name: pathname of the file
+    """
+
+    data = []
+
+    from xfel.clustering.singleframe import CellOnlyFrame
+    stream = open(file_name,"r").readlines()
+    print "There are %d lines in the input file"%(len(stream))
+    for j,item in enumerate(stream):
+      tokens = item.strip().split()
+
+      this_frame = CellOnlyFrame(tokens,"lattice%07d"%j)
+      if hasattr(this_frame, 'crystal_symmetry'):
+          data.append(this_frame)
+      else:
+          logging.info('skipping item {}'.format(item))
+    print "%d lattices will be analyzed"%(len(data))
+
+    return cls(data, _prefix, _message)
 
   @classmethod
   def from_files(cls,
@@ -216,14 +253,17 @@ class Cluster:
     else:
       if raw_input is not None:
         pickle_list.extend(raw_input)
-      for path in pickle_list:
-        this_frame = SingleFrame(path, os.path.basename(path), **kwargs)
+      print "There are %d input files"%(len(pickle_list))
+      from xfel.command_line.print_pickle import generate_data_from_streams
+      for data_dict in generate_data_from_streams(pickle_list):
+        this_frame = SingleFrame(dicti=data_dict, **kwargs)
         if hasattr(this_frame, 'miller_array'):
           data.append(this_frame)
           if done():
             break
         else:
           logging.info('skipping file {}'.format(os.path.basename(path)))
+      print "%d lattices will be analyzed"%(len(data))
 
     return cls(data, _prefix, _message)
 
@@ -423,8 +463,8 @@ class Cluster:
       logging.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
                    "J Appl Cryst 47:346 (2014)")
       pair_distances = dist.pdist(g6_cells,
-                                metric=lambda a, b: NCDist(a, b))
-      metric = lambda a, b: NCDist(a, b)
+                                metric=lambda a, b: NCDist2017(a, b))
+      metric = lambda a, b: NCDist2017(a, b)
     if len(pair_distances) > 0:
       logging.info("Distances have been calculated")
       this_linkage = hcluster.linkage(pair_distances,
