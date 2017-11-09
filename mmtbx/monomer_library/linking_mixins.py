@@ -286,6 +286,7 @@ class linking_mixins(object):
                                   link_carbohydrates          = True,
                                   link_amino_acid_rna_dna     = False,
                                   link_ligands                = False,
+                                  link_small_molecules        = False,
                                   max_bonded_cutoff           = None,
                                   metal_coordination_cutoff   = 3.,
                                   amino_acid_bond_cutoff      = 2.,
@@ -293,6 +294,7 @@ class linking_mixins(object):
                                   second_row_buffer           = 0.5,
                                   carbohydrate_bond_cutoff    = 2.,
                                   ligand_bond_cutoff          = 2.,
+                                  small_molecule_bond_cutoff  = 2.,
                                   include_selections          = None,
                                   exclude_selections          = None,
                                   log                         = None,
@@ -304,6 +306,7 @@ class linking_mixins(object):
                               amino_acid_bond_cutoff,
                               carbohydrate_bond_cutoff,
                               ligand_bond_cutoff,
+                              small_molecule_bond_cutoff,
                               inter_residue_bond_cutoff+second_row_buffer,
                               )
     max_bonded_cutoff_standard = max_bonded_cutoff
@@ -401,6 +404,7 @@ class linking_mixins(object):
         Amimo acid           : %-5s - %0.2f
         Carbohydrate         : %-5s - %0.2f
         Ligands              : %-5s - %0.2f
+        Small molecules      : %-5s - %0.2f
         Amino acid - RNA/DNA : %-5s
       """ % (link_metals,
              metal_coordination_cutoff,
@@ -410,6 +414,8 @@ class linking_mixins(object):
              carbohydrate_bond_cutoff,
              link_ligands,
              ligand_bond_cutoff,
+             link_small_molecules,
+             small_molecule_bond_cutoff,
              link_amino_acid_rna_dna,
              )
     t0=time.time()
@@ -452,6 +458,7 @@ class linking_mixins(object):
             amino_acid_bond_cutoff=bond_cutoff
             carbohydrate_bond_cutoff=bond_cutoff
             ligand_bond_cutoff=bond_cutoff
+            small_molecule_bond_cutoff=bond_cutoff
             inter_residue_bond_cutoff=bond_cutoff
             saccharide_bond_cutoff=bond_cutoff
             link_residues=True
@@ -525,6 +532,8 @@ Residue classes
 %s """ % (classes1, classes2)
       # why was this commented out???
       if not link_ligands and (classes1.other or classes2.other): continue
+      if (not link_small_molecules and
+          (classes1.common_small_molecule or classes2.common_small_molecule)): continue
       # is_proxy_set between any of the atoms ????????
       if classes1.common_amino_acid and classes2.common_amino_acid:
         if not link_residues:

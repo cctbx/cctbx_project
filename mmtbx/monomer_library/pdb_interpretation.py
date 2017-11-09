@@ -233,6 +233,9 @@ master_params_str = """\
     link_ligands = True
       .type = bool
       .short_caption = Link ligands to protein
+    link_small_molecules = False
+      .type = bool
+      .short_caption = Link small molecules such as SO4, PO4 to protein
     metal_coordination_cutoff = 3.5
       .type = float
       .short_caption = Maximum distance for automatic linking of metals
@@ -249,6 +252,8 @@ master_params_str = """\
     carbohydrate_bond_cutoff = 1.99
       .type = float
     ligand_bond_cutoff = 1.99
+      .type = float
+    small_molecule_bond_cutoff = 1.98
       .type = float
   }
   include_in_automatic_linking
@@ -5089,6 +5094,7 @@ class build_all_chain_proxies(linking_mixins):
                   "link_carbohydrates",
                   "link_amino_acid_rna_dna",
                   "link_ligands",
+                  'link_small_molecules',
                   ]
     if al_params.link_all:
       for attr in link_attrs:
@@ -5140,11 +5146,13 @@ class build_all_chain_proxies(linking_mixins):
         link_carbohydrates        = al_params.link_carbohydrates,
         link_amino_acid_rna_dna   = al_params.link_amino_acid_rna_dna,
         link_ligands              = al_params.link_ligands,
+        link_small_molecules      = al_params.link_small_molecules,
         amino_acid_bond_cutoff    = al_params.amino_acid_bond_cutoff,
         metal_coordination_cutoff = al_params.metal_coordination_cutoff,
         carbohydrate_bond_cutoff  = al_params.carbohydrate_bond_cutoff,
         inter_residue_bond_cutoff = al_params.inter_residue_bond_cutoff,
         ligand_bond_cutoff        = al_params.ligand_bond_cutoff,
+        small_molecule_bond_cutoff= al_params.small_molecule_bond_cutoff,
         second_row_buffer         = al_params.buffer_for_second_row_elements,
         exclude_selections        = exclude_selections,
         include_selections        = include_selections,

@@ -305,6 +305,9 @@ tst_list = (
   ["$D/monomer_library/tst_linking.py", "27"],
   ["$D/monomer_library/tst_linking.py", "28"],
   ["$D/monomer_library/tst_linking.py", "29"],
+  ["$D/monomer_library/tst_linking.py", "30"],
+  ["$D/monomer_library/tst_linking.py", "31"],
+  ["$D/monomer_library/tst_linking.py", "32"],
   #
   "$D/ions/tst_pick_ca_svm.py",
   "$D/scaling/tst_plan_sad_experiment.py",

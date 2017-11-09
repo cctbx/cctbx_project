@@ -2421,6 +2421,7 @@ def run(only_i=None):
     for pdb in pdbs:
       if pdb=='linking_test_exclusion_SO4.pdb':
         cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
+        cmd += ' link_small_molecules=True'
         print cmd
         run_and_test(cmd, pdb, 0, True)
         cmd += "  %s" % (cifs)
@@ -2442,6 +2443,7 @@ def run(only_i=None):
     if pdb.find("CD_GHE")>-1: continue
     if pdb.find("partial")>-1: continue
     #if pdb.find('SO4')==-1: continue
+    if pdb in ['linking_test_exclusion_SO4.pdb']: continue
     print 'pdb',pdb
     j+=1
     if only_i is not None and only_i!=j: continue
