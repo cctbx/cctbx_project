@@ -107,7 +107,7 @@ class installer (object) :
 
     # set default macOS flags
     if (self.flag_is_mac):
-      self.base_macos_flags = ' -stdlib=libc++ -mmacosx-version-min=10.7'
+      self.base_macos_flags = ' -stdlib=libstdc++ -mmacosx-version-min=10.6'
       self.cppflags_start += self.base_macos_flags
       self.ldflags_start += self.base_macos_flags
 
@@ -1364,7 +1364,7 @@ _replace_sysconfig_paths(build_time_vars)
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--with-macosx-version-min=10.7",
+        "--with-macosx-version-min=10.6",
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl"
