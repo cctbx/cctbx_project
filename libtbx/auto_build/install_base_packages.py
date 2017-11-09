@@ -107,9 +107,9 @@ class installer (object) :
 
     # set default macOS flags
     if (self.flag_is_mac):
-      base_macos_flags = ' -stdlib=libc++ -mmacosx-version-min=10.7'
-      self.cppflags_start += base_macos_flags
-      self.ldflags_start += base_macos_flags
+      self.base_macos_flags = ' -stdlib=libc++ -mmacosx-version-min=10.7'
+      self.cppflags_start += self.base_macos_flags
+      self.ldflags_start += self.base_macos_flags
 
     # Compilation flags for CentOS 5 (32-bit)
     if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
@@ -1364,14 +1364,14 @@ _replace_sysconfig_paths(build_time_vars)
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        #"--with-macosx-version-min=%s" % get_os_version(),
+        "--with-macosx-version-min=10.7",
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl"
       ])
       if get_os_version() == "10.13":
         # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
-        config_opts.append("CPPFLAGS=-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1")
+        config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.base_macos_flags)
 
     elif (self.flag_is_linux) :
       config_opts.extend([
