@@ -3,6 +3,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
 #include <scitbx/matrix/transpose_multiply.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/vec2.h>
 #include <scitbx/mat2.h>
@@ -335,6 +336,38 @@ namespace {
     return std::sqrt(sum_length_sq / lhs.size());
   }
 
+  template <typename FloatType>
+  void
+  distance_matrix_detail(
+    FloatType* result,
+    af::const_ref<vec2<FloatType> > const& lhs,
+    af::const_ref<vec2<FloatType> > const& rhs)
+  {
+    for(unsigned i=0;i<lhs.size();i++) {
+      vec2<FloatType> li = lhs[i];
+      for(unsigned j=0;j<rhs.size();j++) {
+        vec2<FloatType> difference = li - rhs[j];
+        *result++ = std::sqrt(difference*difference);
+      }
+    }
+  }
+
+  af::versa<double, af::c_grid<2> >
+  distance_matrix(
+    af::const_ref<vec2<double> > const& lhs,
+    af::const_ref<vec2<double> > const& rhs)
+  {
+    //! Distance matrix between vec2<double> and another vec2<double>
+    /*! Returns 2D matrix, element ij is sqrt[(LHS[i] - RHS[j]).dot(LHS[i] - RHS[j])]
+     */
+    af::versa<double, af::c_grid<2> >
+      result(
+        af::c_grid<2>(lhs.size(), rhs.size()),
+        af::init_functor_null<double>());
+    distance_matrix_detail(result.begin(), lhs, rhs);
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -397,6 +430,7 @@ namespace boost_python {
       .def("max_distance", max_distance)
       .def("rms_difference", rms_difference)
       .def("rms_length", rms_length)
+      .def("distance_matrix", distance_matrix)
       .def("parts", parts)
     ;
   }

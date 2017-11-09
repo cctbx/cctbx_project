@@ -4,7 +4,6 @@ from __future__ import division
 from libtbx import easy_pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
 import math
 import logging
 from cctbx.array_family import flex
@@ -182,6 +181,7 @@ class SingleFrame(InputFrame):
                                             if i[0] >= 0])
 
     if use_b_factor:
+      from scipy.stats import linregress
       minus_2B, G, r_val, _, std_err = linregress(sinsqtheta_over_labmdasq,
                                                   np.log(inten))
     else:
@@ -261,7 +261,7 @@ class SingleFrame(InputFrame):
 
   def distance_from(self, other_uc):
     """
-    Calculares to distance using NCDist from Andrews and Bernstein J. Appl.
+    Calculates distance using NCDist from Andrews and Bernstein J. Appl.
     Cryst. 2014 between this frame and some other unit cell.
     :param:other_uc: a 6-tuple of a, b, c, alpha, beta, gamma for some unit cell
     :return: the NCDist in A^2 to other_uc
@@ -340,5 +340,6 @@ class CellOnlyFrame(SingleFrame):
       self.niggli_cell = self.crystal_symmetry.niggli_cell()
       self.niggli_cell.show_summary(prefix="   niggli-->")
       self.uc = self.niggli_cell.unit_cell().parameters()
+      self.mm = self.niggli_cell.unit_cell().metrical_matrix()
       self.pg = "".join(sgi.type().lookup_symbol().split())
       self.path = path
