@@ -1949,7 +1949,6 @@ class manager(object):
   def select(self, selection):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
-    print "!!!!!!  selecting model !!!!!!!"
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
     sdi = self.scattering_dict_info
@@ -1999,9 +1998,12 @@ class manager(object):
       if self._master_sel.size() == selection.size():
         new._master_sel = self._master_sel.select(selection)
       else:
-        x = flex.bool(selection.size(), self._master_sel.iselection())
-        new._master_sel = x.select(selection)
-
+        if isinstance(self._master_sel, flex.bool):
+          x = flex.bool(selection.size(), self._master_sel.iselection())
+          new._master_sel = x.select(selection)
+        else:
+          x = flex.bool(selection.size(), self._master_sel)
+          new._master_sel = x.select(selection)
     return new
 
   def number_of_ordered_solvent_molecules(self):

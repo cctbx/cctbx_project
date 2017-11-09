@@ -2479,9 +2479,6 @@ class NCS_copy():
     self.t = tran
 
   def deep_copy(self):
-    print " copy deep_copy"
-    # print dir(self.r)
-    # print dir(self.t)
     res = NCS_copy(self.iselection.deep_copy(), self.r, self.t)
     return res
 
