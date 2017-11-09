@@ -1949,6 +1949,7 @@ class manager(object):
   def select(self, selection):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
+    print "!!!!!!  selecting model !!!!!!!"
     new_pdb_hierarchy = self._pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
     sdi = self.scattering_dict_info
@@ -1991,6 +1992,16 @@ class manager(object):
     # are used here and being cutted. We need only shift_back and get_..._cs
     # functionality form shift_manager at the moment
     new._shift_manager = new_shift_manager
+    if self.ncs_constraints_present():
+      new_ncs_groups = self._ncs_groups.select(selection)
+      new._ncs_groups = new_ncs_groups
+    if self._master_sel is not None:
+      if self._master_sel.size() == selection.size():
+        new._master_sel = self._master_sel.select(selection)
+      else:
+        x = flex.bool(selection.size(), self._master_sel.iselection())
+        new._master_sel = x.select(selection)
+
     return new
 
   def number_of_ordered_solvent_molecules(self):

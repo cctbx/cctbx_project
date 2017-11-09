@@ -1481,7 +1481,7 @@ class input(object):
           log=self.log)
         if not nrgl_ok:
           raise Sorry('NCS copies do not match well')
-    return ncs_restraints_group_list
+    return class_ncs_restraints_group_list(ncs_restraints_group_list)
 
   def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
     """
@@ -2478,6 +2478,23 @@ class NCS_copy():
     self.r = rot
     self.t = tran
 
+  def deep_copy(self):
+    print " copy deep_copy"
+    # print dir(self.r)
+    # print dir(self.t)
+    res = NCS_copy(self.iselection.deep_copy(), self.r, self.t)
+    return res
+
+  def select(self, selection):
+    self.iselection = iselection_select(self.iselection, selection)
+
+def iselection_select(isel, sel):
+  # x = flex.bool(sel.size(), isel)
+  x = flex.bool(sel.size(), False)
+  x.set_selected(isel, True)
+  res = x.select(sel).iselection()
+  return res
+
 class NCS_restraint_group(object):
 
   def __init__(self,master_iselection):
@@ -2490,3 +2507,32 @@ class NCS_restraint_group(object):
     """
     self.master_iselection = master_iselection
     self.copies = []
+
+  def deep_copy(self):
+    result = NCS_restraint_group(self.master_iselection.deep_copy())
+    for c in self.copies:
+      result.copies.append(c.deep_copy())
+    return result
+
+  def select(self, selection):
+    assert isinstance(selection, flex.bool)
+    self.master_iselection = iselection_select(self.master_iselection, selection)
+    for c in self.copies:
+      c.select(selection)
+
+class class_ncs_restraints_group_list(list):
+  def __init__(self, *args):
+    super(class_ncs_restraints_group_list, self).__init__(*args)
+
+  def deep_copy(self):
+    result = class_ncs_restraints_group_list()
+    for gr in self:
+      result.append(gr.deep_copy())
+    return result
+
+  def select(self, selection):
+    assert isinstance(selection, flex.bool)
+    result = self.deep_copy()
+    for gr in result:
+      gr.select(selection)
+    return result
