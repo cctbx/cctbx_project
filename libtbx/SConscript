@@ -828,7 +828,7 @@ int main() {
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
 
-    base_macos_flags = ['-stdlib=libstdc++', '-mmacosx-version-min=10.6']
+    base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=10.7']
 
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     link_flags.extend(base_macos_flags)

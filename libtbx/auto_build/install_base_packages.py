@@ -107,7 +107,10 @@ class installer (object) :
 
     # set default macOS flags
     if (self.flag_is_mac):
-      self.base_macos_flags = ' -stdlib=libstdc++ -mmacosx-version-min=10.6'
+      self.min_macos_version = '10.7'
+      self.min_macos_version_flag = '-mmacosx-version-min=%s' %\
+                                    self.min_macos_version
+      self.base_macos_flags = ' -stdlib=libc++ %s' % self.min_macos_version_flag
       self.cppflags_start += self.base_macos_flags
       self.ldflags_start += self.base_macos_flags
 
@@ -1364,14 +1367,17 @@ _replace_sysconfig_paths(build_time_vars)
     if (self.flag_is_mac) :
       config_opts.extend([
         "--with-osx_cocoa",
-        "--with-macosx-version-min=10.6",
+        "--with-macosx-version-min=%s" % self.min_macos_version,
         "--with-mac",
         "--enable-monolithic",
         "--disable-mediactrl"
       ])
-      if get_os_version() == "10.13":
+      if (get_os_version() in ('10.12', '10.13')):
         # See https://trac.wxwidgets.org/ticket/17929 fixed for wxWidgets 3.0.4
-        config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.base_macos_flags)
+        # Does not affect 10.12, but using macro does not hurt
+        # Also, -stdlib flag breaks things on Xcode 9, so leave it out.
+        config_opts.append('CPPFLAGS="-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=1 %s"' % self.min_macos_version_flag)
+        config_opts.append('LDFLAGS="%s"' % self.min_macos_version_flag)
 
     elif (self.flag_is_linux) :
       config_opts.extend([
@@ -1404,6 +1410,10 @@ _replace_sysconfig_paths(build_time_vars)
       os.environ['CFLAGS'] = os.environ.get('CFLAGS', '') + " -arch x86_64"
       wxpy_build_opts.extend(["BUILD_STC=1",
                               "WXPORT=osx_cocoa"])
+      # Xcode 9 fails with -stdlib flag
+      if (get_os_version() in ('10.12', '10.13')):
+        os.environ['CPPFLAGS'] = self.min_macos_version_flag
+        os.environ['LDFLAGS'] = self.min_macos_version_flag
     else :
       wxpy_build_opts.extend(["BUILD_STC=1", #"BUILD_STC=0",
                               #"BUILD_OGL=0",
