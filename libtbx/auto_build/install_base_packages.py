@@ -106,10 +106,10 @@ class installer (object) :
     self.ldflags_start = os.environ.get("LDFLAGS", "")
 
     # set default macOS flags
-    self.base_macos_flags = ' -stdlib=libc++ -mmacosx-version-min=10.7'
     if (self.flag_is_mac):
-      self.cppflags_start += self.base_macos_flags
-      self.ldflags_start += self.base_macos_flags
+      base_macos_flags = ' -stdlib=libc++ -mmacosx-version-min=10.7'
+      self.cppflags_start += base_macos_flags
+      self.ldflags_start += base_macos_flags
 
     # Compilation flags for CentOS 5 (32-bit)
     if ( (self.flag_is_linux) and (platform.architecture()[0] == '32bit') ):
