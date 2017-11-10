@@ -1,21 +1,9 @@
 from __future__ import division
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
-from libtbx.utils import null_out
-import sys, math, mmtbx
-from cctbx import geometry_restraints
-from mmtbx.tls import tools
+import sys, math
 from libtbx.str_utils import format_value
 from itertools import count
-from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation.cbetadev import cbetadev
-from mmtbx.validation.clashscore import clashscore
-from mmtbx.validation.utils import molprobity_score
-from mmtbx.validation import omegalyze
-from mmtbx.validation import cablam
 import iotbx.cif.model
-from libtbx import group_args
 
 class adp(object):
   def __init__(self, model, wilson_b = None, n_histogram_slots = 10,
