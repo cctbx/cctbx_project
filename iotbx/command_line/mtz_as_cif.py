@@ -11,6 +11,8 @@ from iotbx import reflection_file_utils
 
 # Probably we can align with what PDB choose to use
 # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/refln.html
+# comply with newer version:
+# http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/refln.html
 
 phenix_to_cif_labels_dict = {
   'FOBS': '_refln.F_meas_au',
@@ -261,6 +263,8 @@ class mtz_as_cif_blocks(object):
       for mtz_label in labels:
         cif_label = mtz_to_cif_label(mtz_to_cif_labels_dict, mtz_label)
         column_names.append(cif_label)
+
+      column_names = self.check_for_dano_and_convert(column_names, labels, array)
       if column_names.count(None) > 0:
         # I don't know what to do with this array
         for i, mtz_label in enumerate(labels):
@@ -337,6 +341,28 @@ class mtz_as_cif_blocks(object):
         refln_status.data().set_selected(match.single_selection(0), "<") # XXX
       self.cif_blocks[data_type].add_miller_array(
         array=refln_status, column_name="_refln.status")
+
+  def check_for_dano_and_convert(self, column_names, labels, array):
+    print "checking names"
+    need_to_convert = False
+    for l in labels:
+      if l.lower().find("dano") >= 0:
+        need_to_convert = True
+        break
+    if not need_to_convert:
+      return column_names
+    else:
+      result = []
+      assert array.anomalous_flag()
+      ref_type = 'F'
+      if labels[0].lower.find('i-obs') >= 0:
+        ref_type = 'I'
+      result = ["_refln.pdbx_%s_plus" % ref_type,
+          "_refln.pdbx_%s_plus_sigma" % ref_type,
+          "_refln.pdbx_%s_minus" % ref_type,
+          "_refln.pdbx_%s_minus_sigma" % ref_type]
+      return result
+
 
 def validate_params (params) :
   if (len(params.mtz_as_cif.mtz_file) == 0) :
