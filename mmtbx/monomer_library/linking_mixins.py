@@ -182,10 +182,12 @@ def _apply_link_using_proxies(link,
       volume_ideal = -2.4
     elif chir.volume_sign[:4].lower()=="zero":
       volume_ideal = 0.
+    both_signs=False
+    if chir.volume_sign=='both': both_signs=True
     proxy = geometry_restraints.chirality_proxy(
       i_seqs=i_seqs,
       volume_ideal=volume_ideal,
-      both_signs=False,
+      both_signs=both_signs,
       weight=25.,
       )
     geometry_proxy_registries.chirality.add_if_not_duplicated(proxy=proxy)
