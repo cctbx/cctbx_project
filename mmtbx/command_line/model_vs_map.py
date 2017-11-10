@@ -9,7 +9,7 @@ from cctbx import maptbx
 from cctbx import miller
 import mmtbx.utils
 import mmtbx.maps.correlation
-from mmtbx import model_statistics
+import mmtbx.model.statistics
 import mmtbx.model
 import sys, time
 
@@ -101,7 +101,7 @@ def run(args, log=sys.stdout):
   ####
   broadcast(m="Model statistics:", log=log)
   make_sub_header("Overall", out=log)
-  info = model_statistics.info(model=model)
+  info = mmtbx.model.statistics.info(model=model)
   info.geometry.show()
 
   # XXX - these are not available anymore due to refactoring

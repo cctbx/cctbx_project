@@ -13,7 +13,7 @@ from mmtbx import utils
 from iotbx import pdb
 from libtbx import easy_pickle
 from cStringIO import StringIO
-from mmtbx import model_statistics
+import mmtbx.model.statistics
 from libtbx import group_args
 import mmtbx.restraints
 import mmtbx.maps
@@ -346,25 +346,25 @@ def show_geometry(
       restraints_manager.geometry.pair_proxies(sites_cart =
         xray_structure.sites_cart())
       ###
-      model_statistics_geometry_all = mmtbx.model.statistics(
+      model_statistics_geometry_all = mmtbx.model.statistics.geometry(
         pdb_hierarchy      = hierarchy_i_seq,
         geometry_restraints_manager = restraints_manager.geometry)
       #
       if(atom_selections.macromolecule.count(True)>0):
         mac_sel = atom_selections_i_model.macromolecule
-        model_statistics_geometry_macromolecule = mmtbx.model.statistics(
+        model_statistics_geometry_macromolecule = mmtbx.model.statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(mac_sel),
           geometry_restraints_manager = restraints_manager.select(mac_sel).geometry)
       #
       if(atom_selections.solvent.count(True)>0):
         sol_sel = atom_selections_i_model.solvent
-        model_statistics_geometry_solvent = mmtbx.model.statistics(
+        model_statistics_geometry_solvent = mmtbx.model.statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(sol_sel),
           geometry_restraints_manager = restraints_manager.select(sol_sel).geometry)
       #
       if(atom_selections.ligand.count(True)>0):
         lig_sel = atom_selections_i_model.ligand
-        model_statistics_geometry_ligand = mmtbx.model.statistics(
+        model_statistics_geometry_ligand = mmtbx.model.statistics.geometry(
           pdb_hierarchy      = hierarchy_i_seq.select(lig_sel),
           geometry_restraints_manager = restraints_manager.select(lig_sel).geometry)
       ###

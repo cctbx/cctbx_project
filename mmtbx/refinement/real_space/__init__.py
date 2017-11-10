@@ -9,7 +9,7 @@ from mmtbx.rotamer.rotamer_eval import RotamerEval
 import iotbx.pdb
 from cctbx import miller
 from libtbx.str_utils import format_value
-from mmtbx import model_statistics
+import mmtbx.model.statistics
 import libtbx.load_env
 from mmtbx.utils import rotatable_bonds
 from cctbx.eltbx import tiny_pse
@@ -79,7 +79,7 @@ class rsr_model(object):
     self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
     print >> log, "%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask)
-    mso = mmtbx.model.statistics(
+    mso = mmtbx.model.statistics.geometry(
       pdb_hierarchy               = self.pdb_hierarchy,
       geometry_restraints_manager = self.geometry_restraints_manager)
     mso.show(prefix=prefix, log=log, lowercase=True)
@@ -506,12 +506,12 @@ class structure_monitor(object):
         # disable this 'if' branch. Reason is - nothing from extended
         # model_statistics (with GRM) is being used, so no reason to spend
         # time calculating statistics over various restraints.
-        mso = model_statistics.geometry(
+        mso = mmtbx.model.statistics.geometry(
           pdb_hierarchy      = self.pdb_hierarchy,
           molprobity_scores  = libtbx.env.has_module("probe"),
           restraints_manager = self.geometry_restraints_manager)
       else:
-        mso = model_statistics.geometry_no_grm(
+        mso = mmtbx.model.statistics.geometry_no_grm(
           pdb_hierarchy      = self.pdb_hierarchy,
           molprobity_scores  = libtbx.env.has_module("probe"))
     except Exception:

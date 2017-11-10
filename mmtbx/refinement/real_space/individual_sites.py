@@ -398,7 +398,6 @@ class minimize_wrapper_with_map():
       number_of_cycles=1,
       log=None):
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
-    import mmtbx.model_statistics
     from mmtbx.refinement.minimization_monitor import minimization_monitor
     self.model = model
     self.log = log

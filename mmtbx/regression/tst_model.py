@@ -1317,7 +1317,7 @@ def exercise_6(mon_lib_srv, ener_lib):
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies      = False,
     plain_pairs_radius = 5.0)
-  ms = mmtbx.model.statistics(
+  ms = mmtbx.model.statistics.geometry(
     pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     geometry_restraints_manager = geometry)
   ms.show()
@@ -1325,7 +1325,7 @@ def exercise_6(mon_lib_srv, ener_lib):
   # IF you are about to change this - STOP! Likely you're doing something wrong!
   #
   import inspect
-  r = inspect.getargspec(mmtbx.model.statistics.__init__)
+  r = inspect.getargspec(mmtbx.model.statistics.geometry.__init__)
   assert r.args == ['self', 'pdb_hierarchy', 'geometry_restraints_manager']
 
 def run():
