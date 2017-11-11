@@ -355,7 +355,7 @@ class mtz_as_cif_blocks(object):
       result = []
       assert array.anomalous_flag()
       ref_type = 'F'
-      if labels[0].lower.find('i-obs') >= 0:
+      if labels[0].lower().find('i-obs') >= 0:
         ref_type = 'I'
       result = ["_refln.pdbx_%s_plus" % ref_type,
           "_refln.pdbx_%s_plus_sigma" % ref_type,
