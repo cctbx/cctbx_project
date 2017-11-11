@@ -15,9 +15,7 @@ from mmtbx.validation import rna_validate
 from mmtbx.validation import clashscore
 from mmtbx.validation import restraints
 from mmtbx.validation import ramalyze
-##### omegalyze ################################################################
 from mmtbx.validation import omegalyze
-##### omegalyze ################################################################
 from mmtbx.validation import rotalyze
 from mmtbx.validation import cbetadev
 from mmtbx.validation import waters
@@ -133,7 +131,9 @@ class molprobity (slots_getstate_setstate) :
     "xtriage",
     "_multi_criterion",
     "file_name",
-    "kinemage_file"
+    "kinemage_file",
+    "model_statistics_geometry",
+    "model_statistics_geometry_result"
   ]
 
   # backwards compatibility with saved results
@@ -211,35 +211,19 @@ class molprobity (slots_getstate_setstate) :
     self.header_info = header_info
     if (flags is None) :
       flags = molprobity_flags()
+    import mmtbx.model.statistics
+    self.model_statistics_geometry = mmtbx.model.statistics.geometry(
+      pdb_hierarchy               = pdb_hierarchy,
+      geometry_restraints_manager = geometry_restraints_manager)
+    self.model_statistics_geometry_result = \
+      self.model_statistics_geometry.result()
+    self.ramalyze  = self.model_statistics_geometry_result.ramachandran.ramalyze
+    self.omegalyze = self.model_statistics_geometry_result.omega.omegalyze
+    self.rotalyze  = self.model_statistics_geometry_result.rotamer.rotalyze
+    self.cbetadev  = self.model_statistics_geometry_result.c_beta.cbetadev
+    self.clashes   = self.model_statistics_geometry_result.clash.clashes
     if pdb_hierarchy.contains_protein() :
       self.find_missing_atoms(out=null_out())
-      if (flags.ramalyze) :
-        self.ramalyze = ramalyze.ramalyze(
-          pdb_hierarchy=pdb_hierarchy,
-          outliers_only=outliers_only,
-          out=null_out(),
-          quiet=True)
-##### omegalyze ################################################################
-      if (flags.omegalyze) :
-        self.omegalyze = omegalyze.omegalyze(
-          pdb_hierarchy=pdb_hierarchy,
-          nontrans_only=outliers_only,
-          out=null_out(),
-          quiet=True)
-##### omegalyze ################################################################
-      if (flags.rotalyze) :
-        self.rotalyze = rotalyze.rotalyze(
-          pdb_hierarchy=pdb_hierarchy,
-          data_version=rotamer_library,
-          outliers_only=outliers_only,
-          out=null_out(),
-          quiet=True)
-      if (flags.cbetadev) :
-        self.cbetadev = cbetadev.cbetadev(
-          pdb_hierarchy=pdb_hierarchy,
-          outliers_only=outliers_only,
-          out=null_out(),
-          quiet=True)
       if (flags.nqh) :
         self.nqh_flips = clashscore.nqh_flips(
           pdb_hierarchy=pdb_hierarchy)
@@ -251,14 +235,6 @@ class molprobity (slots_getstate_setstate) :
           geometry_restraints_manager=geometry_restraints_manager,
           outliers_only=outliers_only,
           params=None)
-    if (flags.clashscore) :
-      self.clashes = clashscore.clashscore(
-        pdb_hierarchy=pdb_hierarchy,
-        save_probe_unformatted_file=save_probe_unformatted_file,
-        nuclear=nuclear,
-        keep_hydrogens=keep_hydrogens,
-        out=null_out(),
-        verbose=False)
     if (flags.model_stats) and (xray_structure is not None) :
       self.model_stats = model_properties.model_statistics(
         pdb_hierarchy=pdb_hierarchy,
@@ -334,21 +310,6 @@ class molprobity (slots_getstate_setstate) :
     if (pdb_hierarchy.models_size() == 1) :
       self._multi_criterion = multi_criterion_view(pdb_hierarchy)
 
-  def molprobity_score (self) :
-    """
-    Compute overall measure of (protein!) structure quality based on an
-    empirical formula combining clashscore, rotamer outliers, and Ramachandran
-    favored statistics.  The result is on approximately the same scale as
-    resolution.
-    """
-    if (None in [self.ramalyze, self.rotalyze, self.clashes]) :
-      return None
-    from mmtbx.validation import utils
-    return utils.molprobity_score(
-      clashscore=self.clashes.get_clashscore(),
-      rota_out=self.rotalyze.out_percent,
-      rama_fav=self.ramalyze.fav_percent)
-
   def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False,
       show_percentiles=False) :
     """
@@ -372,23 +333,7 @@ class molprobity (slots_getstate_setstate) :
       make_header("Geometry restraints", out=out)
       self.restraints.show(out=out, prefix="  ")
     make_header("Molprobity validation", out=out)
-    if (self.ramalyze is not None) :
-      make_sub_header("Ramachandran angles", out=out)
-      self.ramalyze.show(out=out, prefix="  ", outliers_only=outliers_only)
-##### omegalyze ################################################################
-    if (self.omegalyze is not None) :
-      make_sub_header("Omegalyze analysis", out=out)
-      self.omegalyze.show(out=out, prefix=" ", outliers_only=outliers_only)
-##### omegalyze ################################################################
-    if (self.rotalyze is not None) :
-      make_sub_header("Sidechain rotamers", out=out)
-      self.rotalyze.show(out=out, prefix="  ", outliers_only=outliers_only)
-    if (self.cbetadev is not None) :
-      make_sub_header("C-beta deviations", out=out)
-      self.cbetadev.show(out=out, prefix="  ", outliers_only=outliers_only)
-    if (self.clashes is not None) :
-      make_sub_header("Bad clashes", out=out)
-      self.clashes.show(out=out, prefix="  ")
+    self.model_statistics_geometry.show(log=out, prefix="  ", lowercase=True)
     if (self.nqh_flips is not None) :
       make_sub_header("Asn/Gln/His flips", out=out)
       self.nqh_flips.show(out=out, prefix="  ")
@@ -401,40 +346,35 @@ class molprobity (slots_getstate_setstate) :
         show_percentiles=show_percentiles)
     return self
 
-  def summarize (self) :
+  def summarize(self):
     """
     Condense results into a compact object - for compatibility with
     (now obsolete) mmtbx.validation_summary, and use in high-throughput
     analyses
     """
-    clashscore = r_work = r_free = rms_bonds = rms_angles = d_min = None
-    if (self.clashes is not None) :
-      clashscore = self.clashes.get_clashscore()
-    if (self.restraints is not None) :
-      rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
-    if (self.data_stats is not None) :
+    r_work, r_free, d_min = [None,]*3
+    if(self.data_stats is not None):
       r_work, r_free = self.data_stats.r_work, self.data_stats.r_free
       d_min = self.data_stats.d_min
-    elif (self.header_info is not None) :
+    elif (self.header_info is not None):
       r_work, r_free = self.header_info.r_work, self.header_info.r_free
       d_min = self.header_info.d_min
-      if (self.restraints is None) :
+      if(self.restraints is None):
         rms_bonds = self.header_info.rms_bonds
         rms_angles = self.header_info.rms_angles
-    mpscore = self.molprobity_score()
     return summary(
-      rama_outliers=getattr(self.ramalyze, "out_percent", None),
-      rama_favored=getattr(self.ramalyze, "fav_percent", None),
-      rotamer_outliers=getattr(self.rotalyze, "out_percent", None),
-      c_beta_deviations=getattr(self.cbetadev, "n_outliers", None),
-      clashscore=clashscore,
-      bond_rmsd=rms_bonds,
-      angle_rmsd=rms_angles,
-      mpscore=mpscore,
-      d_min=d_min,
-      r_work=r_work,
-      r_free=r_free,
-      program=getattr(self.header_info, "refinement_program", None))
+      rama_outliers     = self.rama_outliers(),
+      rama_favored      = self.rama_favored(),
+      rotamer_outliers  = self.rota_outliers(),
+      c_beta_deviations = self.cbeta_outliers(),
+      clashscore        = self.clashscore(),
+      bond_rmsd         = self.rms_bonds(),
+      angle_rmsd        = self.rms_angles(),
+      mpscore           = self.molprobity_score(),
+      d_min             = d_min,
+      r_work            = r_work,
+      r_free            = r_free,
+      program           = getattr(self.header_info, "refinement_program", None))
 
   def show_summary (self, *args, **kwds) :
     """
@@ -505,35 +445,32 @@ class molprobity (slots_getstate_setstate) :
       else :
         return self.data_stats.d_max, self.data_stats.d_min
 
-  def rms_bonds (self) :
-    if (self.restraints is not None) :
-      rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
-      return rms_bonds
+  def rms_bonds(self):
+    return self.model_statistics_geometry_result.bond.mean
 
-  def rms_angles (self) :
-    if (self.restraints is not None) :
-      rms_bonds, rms_angles = self.restraints.get_bonds_angles_rmsds()
-      return rms_angles
+  def rms_angles(self):
+    return self.model_statistics_geometry_result.angle.mean
 
-  def rama_favored (self) :
-    return getattr(self.ramalyze, "fav_percent", None)
+  def rama_favored(self):
+    return self.model_statistics_geometry_result.ramachandran.favored
 
-  def rama_outliers (self) :
-    return getattr(self.ramalyze, "out_percent", None)
+  def rama_outliers(self):
+    return self.model_statistics_geometry_result.ramachandran.outliers
 
-  def rama_allowed (self) :
-    if (self.ramalyze is not None) :
-      return self.ramalyze.percent_allowed
-    return None
+  def rama_allowed(self):
+    return self.model_statistics_geometry_result.ramachandran.allowed
 
-  def rota_outliers (self) :
-    return getattr(self.rotalyze, "out_percent", None)
+  def rota_outliers(self):
+    return self.model_statistics_geometry_result.rotamer.outliers
 
-  def cbeta_outliers (self) :
-    return getattr(self.cbetadev, "n_outliers", None)
+  def cbeta_outliers(self):
+    return self.model_statistics_geometry_result.c_beta.cbetadev.get_outlier_count()
 
-  def clashscore (self) :
-    return getattr(self.clashes, "get_clashscore", lambda: None)()
+  def clashscore(self):
+    return self.model_statistics_geometry_result.clash.score
+
+  def molprobity_score(self):
+    return self.model_statistics_geometry_result.molprobity_score
 
   def b_iso_mean (self) :
     overall_stats = getattr(self.model_stats, "all", None)
@@ -589,14 +526,11 @@ class molprobity (slots_getstate_setstate) :
         self._multi_criterion.process_outliers(self.real_space.results)
       if (self.waters is not None) :
         self._multi_criterion.process_outliers(self.waters.results)
-      if (self.ramalyze is not None) :
-        self._multi_criterion.process_outliers(self.ramalyze.results)
-      if (self.rotalyze is not None) :
-        self._multi_criterion.process_outliers(self.rotalyze.results)
-      if (self.cbetadev is not None) :
-        self._multi_criterion.process_outliers(self.cbetadev.results)
-      if (self.clashes is not None) :
-        self._multi_criterion.process_outliers(self.clashes.results)
+      msr = self.model_statistics_geometry_result
+      self._multi_criterion.process_outliers(msr.ramachandran.ramalyze.results)
+      self._multi_criterion.process_outliers(msr.rotamer.rotalyze.results)
+      self._multi_criterion.process_outliers(msr.c_beta.cbetadev.results)
+      self._multi_criterion.process_outliers(msr.clash.clashes.results)
     return self._multi_criterion
 
   def display_wx_plots (self) :
@@ -623,22 +557,16 @@ class molprobity (slots_getstate_setstate) :
     f.write(open(coot_script).read())
     f.write("\n")
     f.write("data = {}\n")
-    if (self.ramalyze is not None) :
-      f.write("data['rama'] = %s\n" % self.ramalyze.as_coot_data())
-##### omegalyze ################################################################
-    if (self.omegalyze is not None) :
-      f.write("data['omega'] = %s\n" % self.omegalyze.as_coot_data())
-##### omegalyze ################################################################
-    if (self.rotalyze is not None) :
-      f.write("data['rota'] = %s\n" % self.rotalyze.as_coot_data())
-    if (self.cbetadev is not None) :
-      f.write("data['cbeta'] = %s\n" % self.cbetadev.as_coot_data())
-    if (self.clashes is not None) :
-      f.write("data['probe'] = %s\n" % self.clashes.as_coot_data())
-      if (self.clashes.probe_file is not None) :
-        f.write("handle_read_draw_probe_dots_unformatted(\"%s\", 0, 0)\n" %
-          self.clashes.probe_file)
-        f.write("show_probe_dots(True, True)\n")
+    msr = self.model_statistics_geometry_result
+    f.write("data['rama'] = %s\n" %  msr.ramachandran.ramalyze.as_coot_data())
+    f.write("data['omega'] = %s\n" % msr.omega.omegalyze.as_coot_data())
+    f.write("data['rota'] = %s\n" %  msr.rotamer.rotalyze.as_coot_data())
+    f.write("data['cbeta'] = %s\n" % msr.c_beta.cbetadev.as_coot_data())
+    f.write("data['probe'] = %s\n" % msr.clash.clashes.as_coot_data())
+    if(msr.clash.clashes.probe_file is not None):
+      f.write("handle_read_draw_probe_dots_unformatted(\"%s\", 0, 0)\n" %
+        msr.clash.clashes.probe_file)
+      f.write("show_probe_dots(True, True)\n")
     f.write("gui = coot_molprobity_todo_list_gui(data=data)\n")
     f.close()
 

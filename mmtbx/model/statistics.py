@@ -99,29 +99,32 @@ class geometry(object):
       n = self.from_restraints.n_nonbonded_proxies
     return group_args(min = mi, max = ma, mean = me, n = n)
 
-  # !!! The following 5 functions should save result for future reuse.
-  # Those also will benefit from model object, because it should contain
-  # ramachandran_eval, rotamer_eval objects (dictionaries with information)
   def ramachandran(self):
     result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
     return group_args(
       outliers = result.percent_outliers,
       allowed  = result.percent_allowed,
-      favored  = result.percent_favored)
+      favored  = result.percent_favored,
+      ramalyze = result)
 
   def rotamer(self):
     result = rotalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
-    return group_args(outliers = result.percent_outliers)
+    return group_args(
+      outliers = result.percent_outliers,
+      rotalyze = result)
 
   def c_beta(self):
     result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
-       outliers_only = True, out = null_out()) # XXX Why it is different from others?
-    return group_args(outliers = result.get_weighted_outlier_percent())
+      outliers_only = True, out = null_out()) # XXX Why it is different from others?
+    return group_args(
+      outliers = result.get_outlier_percent(),
+      cbetadev = result)
 
   def clash(self):
     result = clashscore(pdb_hierarchy = self.pdb_hierarchy)
     return group_args(
-      score = result.get_clashscore())
+      score   = result.get_clashscore(),
+      clashes = result)
 
   def cablam(self):
     result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
@@ -132,7 +135,7 @@ class geometry(object):
       ca_outliers = result.percent_ca_outliers())
 
   def omega(self):
-    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True) # XXX
+    result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
     # XXX Move this to omegalyze function.
     n_proline         = result.n_proline()
     n_general         = result.n_general()
@@ -140,10 +143,10 @@ class geometry(object):
     n_cis_general     = result.n_cis_general()
     n_twisted_proline = result.n_twisted_proline()
     n_twisted_general = result.n_twisted_general()
-    cis_general     = 0
-    twisted_general = 0
-    cis_proline     = 0
-    twisted_proline = 0
+    cis_general       = 0
+    twisted_general   = 0
+    cis_proline       = 0
+    twisted_proline   = 0
     if(n_proline != 0):
       cis_proline     = n_cis_proline    *100./n_proline
       twisted_proline = n_twisted_proline*100./n_proline
@@ -151,47 +154,50 @@ class geometry(object):
       cis_general     = n_cis_general    *100./n_general
       twisted_general = n_twisted_general*100./n_general
     return group_args(
-      cis_proline     = cis_proline,
-      cis_general     = cis_general,
-      twisted_general = twisted_general,
-      twisted_proline = twisted_proline,
-      n_twisted_general = n_twisted_general)
+      cis_proline       = cis_proline,
+      cis_general       = cis_general,
+      twisted_general   = twisted_general,
+      twisted_proline   = twisted_proline,
+      n_twisted_general = n_twisted_general,
+      omegalyze         = result)
 
-  def get_molprobity_score(self):
+  def mp_score(self):
     return molprobity_score(
-        clashscore = self.clash().score,
-        rota_out   = self.ramachandran().favored,
-        rama_fav   = self.ramachandran().favored)
+      clashscore = self.clash().score,
+      rota_out   = self.rotamer().outliers,
+      rama_fav   = self.ramachandran().favored)
 
   def result_for_model_idealization(self):
+    # It is unclear why duplicate instead of using existing "def result"
     return group_args(
-        mpscore=self.get_molprobity_score(),
-        clashscore=self.clash().score,
-        c_beta_dev_percent= self.c_beta().outliers,
-        ramachandran_outliers=self.ramachandran().outliers,
-        ramachandran_allowed = self.ramachandran().allowed,
-        ramachandran_favored = self.ramachandran().favored,
-        rotamer_outliers=     self.rotamer().outliers,
-        cis_proline=    self.omega().cis_proline,
-        cis_general=    self.omega().cis_general,
-        twisted_proline=self.omega().twisted_proline,
-        twisted_general=self.omega().twisted_general,)
+      mpscore               = self.mp_score(),
+      clashscore            = self.clash().score,
+      c_beta_dev_percent    = self.c_beta().outliers,
+      ramachandran_outliers = self.ramachandran().outliers,
+      ramachandran_allowed  = self.ramachandran().allowed,
+      ramachandran_favored  = self.ramachandran().favored,
+      rotamer_outliers      = self.rotamer().outliers,
+      cis_proline           = self.omega().cis_proline,
+      cis_general           = self.omega().cis_general,
+      twisted_proline       = self.omega().twisted_proline,
+      twisted_general       = self.omega().twisted_general,)
 
   def result(self):
     return group_args(
-      angle        = self.angle(),
-      bond         = self.bond(),
-      chirality    = self.chirality(),
-      dihedral     = self.dihedral(),
-      planarity    = self.planarity(),
-      parallelity  = self.parallelity(),
-      nonbonded    = self.nonbonded(),
-      ramachandran = self.ramachandran(),
-      rotamer      = self.rotamer(),
-      c_beta       = self.c_beta(),
-      clash        = self.clash(),
-      # cablam       = self.cablam(), # broken
-      omega        = self.omega())
+      angle            = self.angle(),
+      bond             = self.bond(),
+      chirality        = self.chirality(),
+      dihedral         = self.dihedral(),
+      planarity        = self.planarity(),
+      parallelity      = self.parallelity(),
+      nonbonded        = self.nonbonded(),
+      ramachandran     = self.ramachandran(),
+      rotamer          = self.rotamer(),
+      c_beta           = self.c_beta(),
+      clash            = self.clash(),
+      molprobity_score = self.mp_score(),
+      # cablam         = self.cablam(), # broken
+      omega            = self.omega())
 
   def show(self, log=None, prefix="", lowercase=False):
     if(log is None): log = sys.stdout
@@ -275,7 +281,6 @@ class geometry(object):
     loop.add_row(("f_dihedral_angle_d", d.n, d.mean, "?", "?"))
     cif_block.add_loop(loop)
     return cif_block
-
 
 class adp(object):
   def __init__(self, model, wilson_b = None, n_histogram_slots = 10,

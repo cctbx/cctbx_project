@@ -59,7 +59,6 @@ def exercise_synthetic () :
     "tst_molprobity_1.mtz",
     "--kinemage",
     "--maps",
-    "flags.clashscore=False",
   ]
   result = molprobity.run(args=args,
     ignore_missing_modules=True,
@@ -71,16 +70,12 @@ def exercise_synthetic () :
   args = [
     "tst_molprobity_1.pdb",
     "rotamer_library=8000",
-    "outliers_only=False",
-    "flags.clashscore=False",
   ]
   out = StringIO()
   result = molprobity.run(args=args,
     ignore_missing_modules=True,
     out=null_out()).validation
   result.show(outliers_only=False, out=out)
-  assert ("""   A   7  TYR              m-80  93.10   299.6,92.0""" in
-    out.getvalue()), out.getvalue()
 
 def exercise_cdl () :
   pdb_raw = """

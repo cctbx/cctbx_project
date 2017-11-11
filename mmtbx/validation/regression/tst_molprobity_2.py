@@ -65,20 +65,15 @@ def exercise_protein () :
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file)
   hierarchy = pdb_in.file_object.hierarchy
-  flags = mmtbx.validation.molprobity.molprobity_flags()
-  flags.clashscore = False
-  flags.model_stats = False
-  flags.cbetadev = False
   result = mmtbx.validation.molprobity.molprobity(
-    pdb_hierarchy=hierarchy,
-    flags=flags)
+    pdb_hierarchy=hierarchy)
   out3 = StringIO()
   result.show_summary(out=out3)
-  assert not show_diff(out3.getvalue(), """\
+  assert  """\
   Ramachandran outliers =   1.76 %
                 favored =  96.47 %
   Rotamer outliers      =  20.00 %
-""")
+""" in out3.getvalue()
   # now with data
   args2 = args1 + [ hkl_file, "--maps" ]
   result, cmdline = molprobity.run(args=args2,
