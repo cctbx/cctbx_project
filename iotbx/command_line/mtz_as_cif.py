@@ -194,10 +194,17 @@ def run(args, params=None, out=sys.stdout):
     if output_file is None:
       output_file = prefix + ".reflections.cif"
     cif_model = iotbx.cif.model.cif()
-    if cif_blocks["xray"] is not None:
-      cif_model[prefix] = cif_blocks["xray"].cif_block
-    if cif_blocks["neutron"] is not None:
-      cif_model[prefix+"_neutron"] = cif_blocks["neutron"].cif_block
+    # This is gross... refactor some time the whole thing.
+    for key in cif_blocks.keys():
+      print key
+      if key == "xray" and cif_blocks["xray"] is not None:
+        cif_model[prefix] = cif_blocks["xray"].cif_block
+
+      elif key == "neutron" and cif_blocks["neutron"] is not None:
+        cif_model[prefix+"_neutron"] = cif_blocks["neutron"].cif_block
+
+      elif cif_blocks[key] is not None:
+        cif_model[prefix+"_"+key] = cif_blocks[key].cif_block
     with open(output_file, "wb") as f:
       print >> out, "Writing data and map coefficients to CIF file:\n  %s" % \
         (f.name)
@@ -289,7 +296,21 @@ class mtz_as_cif_blocks(object):
         self.cif_blocks[data_type] = iotbx.cif.miller_arrays_as_cif_block(
           array=array, column_names=column_names, format="mmcif")
       else:
-        self.cif_blocks[data_type].add_miller_array(array, column_names=column_names)
+        # check if it is taken already
+        present = False
+        for ln in column_names:
+          if ln in self.cif_blocks[data_type].refln_loop.keys():
+            present = True
+
+        if present:
+          labels_string = "_"
+          for l in labels:
+            labels_string += l+" "
+          labels_string = labels_string.strip().replace(" ", "_")
+          self.cif_blocks[data_type+labels_string] = iotbx.cif.miller_arrays_as_cif_block(
+              array=array, column_names=column_names, format="mmcif")
+        else:
+          self.cif_blocks[data_type].add_miller_array(array, column_names=column_names)
 
     if len(unknown_mtz_labels):
       print >> log, "Warning: Unknown mtz label%s: %s" %(
@@ -343,7 +364,6 @@ class mtz_as_cif_blocks(object):
         array=refln_status, column_name="_refln.status")
 
   def check_for_dano_and_convert(self, column_names, labels, array):
-    print "checking names"
     need_to_convert = False
     for l in labels:
       if l.lower().find("dano") >= 0:
