@@ -1,7 +1,7 @@
 from __future__ import division
 import math
 from cctbx import geometry_restraints
-#from libtbx.utils import Sorry
+from libtbx.utils import Sorry
 #from scitbx import matrix
 #import time
 from scitbx.array_family import flex
@@ -222,15 +222,26 @@ class determine_connectivity(object):
           self.parent_angles[iy][(ix, iz)] = ap.angle_ideal
       # for third neighbors, a1 atom is central
       if (is_hd_ix or is_hd_iz): continue
+      i_third = None
       if (iy in self.a1_atoms):
         if (ix in self.parents and ix in self.a0a1_dict):
           if (self.a0a1_dict[ix]==iy and not is_hd_iz):
             i_parent = ix
             i_third = iz
+          elif (i_third == None):
+            raise  Sorry(
+  "It looks like anle restraints involving an H atom are missing.\n\
+  Check H atoms bound to %s and with second neighbor %s" % \
+    (self.atoms[ix].id_str(), self.atoms[iy].id_str()))
         elif (iz in self.parents and iz in self.a0a1_dict):
           if (self.a0a1_dict[iz]==iy and not is_hd_ix):
             i_parent = iz
             i_third = ix
+          elif (i_third == None):
+            raise  Sorry(
+  "It looks like anle restraints involving an H atom are missing.\n\
+  Check H atoms bound to %s and with second neighbor %s" % \
+    (self.atoms[iz].id_str(), self.atoms[iy].id_str()))
         else:
           continue
         if (i_third not in self.third_neighbors_raw[i_parent]):
