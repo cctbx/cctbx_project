@@ -230,7 +230,7 @@ class determine_connectivity(object):
             i_third = iz
           elif (i_third == None):
             raise  Sorry(
-  "It looks like anle restraints involving an H atom are missing.\n\
+  "It looks like angle restraints involving an H atom are missing.\n\
   Check H atoms bound to %s and with second neighbor %s" % \
     (self.atoms[ix].id_str(), self.atoms[iy].id_str()))
         elif (iz in self.parents and iz in self.a0a1_dict):
@@ -239,7 +239,7 @@ class determine_connectivity(object):
             i_third = ix
           elif (i_third == None):
             raise  Sorry(
-  "It looks like anle restraints involving an H atom are missing.\n\
+  "It looks like angle restraints involving an H atom are missing.\n\
   Check H atoms bound to %s and with second neighbor %s" % \
     (self.atoms[iz].id_str(), self.atoms[iy].id_str()))
         else:
