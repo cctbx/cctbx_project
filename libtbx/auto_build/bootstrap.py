@@ -1568,6 +1568,11 @@ class Builder(object):
                                            str(self.nproc),
 #                                          #"--skip-version", # for Phaser
                                            ])
+    # run build again to make sure everything is built
+    self.add_command('libtbx.scons', args=['-j',
+                                           str(self.nproc),
+#                                          #"--skip-version", # for Phaser
+                                           ])
 
   def add_install(self):
     """Run after compile, before tests."""
