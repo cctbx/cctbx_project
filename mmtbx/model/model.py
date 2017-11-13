@@ -1262,6 +1262,7 @@ class manager(object):
         else:      bj=bi+20
         scatterers[i_seq].u_iso = adptbx.b_as_u(bi)
         scatterers[j_seq].u_iso = adptbx.b_as_u(bj)
+    self.set_sites_cart_from_xrs()
 
   def xh_connectivity_table(self):
     result = None
@@ -1350,6 +1351,7 @@ class manager(object):
         i_x, i_h = t[0], t[1]
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
       self._xray_structure.set_b_iso(values = bfi, selection = hd_sel)
+    self.set_sites_cart_from_xrs()
 
   def reset_occupancies_for_hydrogens(self):
     """
@@ -1394,6 +1396,7 @@ class manager(object):
               if(o is not None):
                 qi[rf_] = o
       self._xray_structure.scatterers().set_occupancies(qi, hd_sel)
+      self.set_sites_cart_from_xrs()
 
   def reset_coordinates_for_exchangable_hd(self):
     if(len(self.exchangable_hd_groups) > 0):
@@ -1405,6 +1408,7 @@ class manager(object):
           scatterers[j].site = scatterers[i].site
         else:
           scatterers[i].site = scatterers[j].site
+    self.set_sites_cart_from_xrs()
 
   def rotatable_hd_selection(self):
     rmh_sel = mmtbx.hydrogens.rotatable(
@@ -1760,6 +1764,7 @@ class manager(object):
           adp_fl[i_seq_min_q] = False
           assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
           scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
+    self.set_sites_cart_from_xrs()
 
   def rms_b_iso_or_b_equiv_bonded(self):
     return utils.rms_b_iso_or_b_equiv_bonded(
@@ -2415,6 +2420,7 @@ class manager(object):
     b_isos.set_selected(sel_outliers_max, max_b_iso)
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self._xray_structure.set_b_iso(values = b_isos)
+    self.set_sites_cart_from_xrs()
 
   def geometry_statistics(self,
                           general_selection = None):
