@@ -1190,11 +1190,10 @@ class manager(object):
     sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.get_hierarchy(),
-      geometry_restraints = self.restraints_manager.geometry)
+      geometry_restraints = self.get_restraints_manager().geometry)
     if(idealize):
       self.riding_h_manager.idealize(sites_cart = sites_cart)
-      self._xray_structure.set_sites_cart(sites_cart=sites_cart)
-      self.get_hierarchy(sync_with_xray_structure=True)
+      self.set_sites_cart(sites_cart)
 
   def get_hierarchy(self, sync_with_xray_structure=False):
     """
