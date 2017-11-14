@@ -61,7 +61,7 @@ master_phil = libtbx.phil.parse("""
     .help = Set to 'mean' to make average value same inside and outside mask.
   soft_mask=False
     .type=bool
-    .help = Use Gaussian mask in mask_atoms 
+    .help = Use Gaussian mask in mask_atoms
   soft_mask_radius=3
     .type=float
     .help = Gaussian mask smoothing radius
@@ -78,7 +78,7 @@ master_phil = libtbx.phil.parse("""
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
-  
+
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -136,7 +136,7 @@ Parameters:"""%h
     raise Sorry("PDB file is needed unless density_select or keep_map_size or bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
        (params.mask_atoms or params.soft_mask )):
-    raise Sorry("PDB file is needed for mask_atoms or soft_mask") 
+    raise Sorry("PDB file is needed for mask_atoms or soft_mask")
   if (params.density_select and params.keep_map_size):
     raise Sorry("Cannot set both density_select and keep_map_size")
   if (params.density_select and params.upper_bounds):

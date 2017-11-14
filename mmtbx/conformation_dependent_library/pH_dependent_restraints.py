@@ -63,7 +63,7 @@ def adjust_geometry_proxies_registeries(hierarchy,
       k=0
       l=1
       bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
-      if ( not bond_table_entry or 
+      if ( not bond_table_entry or
            i_seqs[l] not in gpr.bond_simple.table[i_seqs[k]]):
         k=1
         l=0

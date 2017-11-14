@@ -1815,7 +1815,7 @@ def clear_empty_lines(text):
        line=""
     new_lines.append(line)
   return "\n".join(new_lines)+"\n"
-  
+
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False,minimum_fraction=None):
   # Guess what chain types are in this sequence file

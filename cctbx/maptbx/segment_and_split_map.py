@@ -255,7 +255,7 @@ master_phil = iotbx.phil.parse("""
        .help = Use pseudo-likelihood method for half-map sharpening. \
                (In development)
        .short_caption = Pseudo-likelihood
-       .style = hidden 
+       .style = hidden
 
   }
 
@@ -328,10 +328,10 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Translation tolerance absolute
 
     max_helical_operators= None
-      .type = int 
+      .type = int
       .help = Maximum helical operators (if extending existing helical\
              operators)
-      .short_caption = Maximum helical operators 
+      .short_caption = Maximum helical operators
 
     rel_tol_t = .05
       .type = float
@@ -404,7 +404,7 @@ master_phil = iotbx.phil.parse("""
 
      scale_max = 100000
        .type = float
-       .short_caption = Scale_max 
+       .short_caption = Scale_max
        .help = Scale amplitudes from inverse FFT to yield maximum of this value
 
      input_d_cut = None
@@ -3795,7 +3795,7 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
           tracking_data.params.reconstruction_symmetry.max_helical_operators
       if max_operators:
         print>>out,"Maximum new number of NCS operators will be %s" %(
-         max_operators) 
+         max_operators)
       ncs_object.extend_helix_operators(z_range=z_range,
         max_operators=max_operators)
       ncs_object.display_all()
@@ -8243,7 +8243,7 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
   return local_best_si,local_best_map_and_b
 
 def set_mean_sd_of_map(map_data=None,target_mean=None,target_sd=None):
-    if not map_data: return None 
+    if not map_data: return None
     new_mean=map_data.as_1d().min_max_mean().mean
     new_sd=max(1.e-10,map_data.sample_standard_deviation())
     map_data=(map_data-new_mean)/new_sd # normalized

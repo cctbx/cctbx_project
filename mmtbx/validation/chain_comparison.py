@@ -235,7 +235,7 @@ def get_chains_from_lines(lines):
   chains=[]
   for line in lines:
     h=get_pdb_inp(line).construct_hierarchy()
-    id=h.models()[0].chains()[0].id 
+    id=h.models()[0].chains()[0].id
     if not id in chains:
       chains.append(id)
   return chains
@@ -297,7 +297,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
       if best_dist is None or dist<best_dist:
         best_chain_dist_dict[seq]=dist
         best_chain_dict[seq]=chain
- 
+
 
   for seq in best_chain_dist_dict.keys():
     chain=best_chain_dict[seq]
@@ -342,7 +342,7 @@ def run_all(params=None,out=sys.stdout):
 def write_summary(params=None,file_list=None,rv_list=None,
     max_dist=None,out=sys.stdout):
 
-  if params and max_dist is None: 
+  if params and max_dist is None:
      max_dist=params.comparison.max_dist
   if max_dist is None: max_dist=0.
 
@@ -733,7 +733,7 @@ def run(args=None,
         hierarchy=target_ca,
         target_length_from_matching_chains=target_length_from_matching_chains)
       rv.add_target_length(id='close',target_length=target_length)
-          
+
       if verbose:
          print "SEQ1:",seq_chain_ca,len(lines_chain_ca)
          print "SEQ2:",seq_target_xyz,len(lines_target_xyz)

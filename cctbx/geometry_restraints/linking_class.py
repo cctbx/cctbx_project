@@ -5,7 +5,7 @@ class linking_class(dict):
     for i, item in origin_ids[0].items(): # bond
       self[i]=item
       self[item[0]] = i
-      
+
   def __repr__(self):
     outl = 'links\n'
     for i, item in self.items():

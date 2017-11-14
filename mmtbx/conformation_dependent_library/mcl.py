@@ -65,7 +65,7 @@ def update(grm,
     for bp in bproxies:
       sf4_ag = atoms[bp.i_seqs[0]].parent()
       sf4_coordination.setdefault(sf4_ag.id_str(), [])
-      sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]], 
+      sf4_coordination[sf4_ag.id_str()].append((atoms[bp.i_seqs[0]],
                                                 atoms[bp.i_seqs[1]]))
       link = (atoms[bp.i_seqs[0]], atoms[bp.i_seqs[1]], 'x,y,z')
       if link not in link_records: link_records['LINK'].append(link)

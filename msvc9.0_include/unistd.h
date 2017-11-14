@@ -43,7 +43,7 @@
 
 // ssize_t is declared with typedef in HDF5-1.8.16\include\H5public.h
 // so don't define it here
-// #define ssize_t int 
+// #define ssize_t int
 
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1

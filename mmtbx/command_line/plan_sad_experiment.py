@@ -297,7 +297,7 @@ def setup_params (params, out) :
   if params.crystal_info.solvent_fraction and \
      params.crystal_info.solvent_fraction > 1.01:
     raise Sorry("Solvent fraction should be from 0 to 1")
-    
+
   if params.crystal_info.seq_file and \
        os.path.isfile(params.crystal_info.seq_file):
     residues,sites,number_of_s,solvent_fraction,ncs_copies=get_residues_and_ha(

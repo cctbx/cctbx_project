@@ -458,7 +458,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       residue_range_list=self._n_ncs_oper*[None]
     new_residue_range_list=[]
     new_group=[]
-    
+
     for i in xrange(self._n_ncs_oper):
       if i in ops_to_keep:
         new._n_ncs_oper+=1
@@ -2000,5 +2000,3 @@ if __name__=="__main__":
       print new_ncs_object.is_point_group_symmetry()
       print "IS helical:",
       print new_ncs_object.is_helical_along_z()
-
-  

@@ -42,7 +42,7 @@ for link_info in [
      'values determined from hi-res structures and published in CCN. '
      'Some bonds are automatically excluded based on distance from metals.',
      # citation
-     'Comput. Cryst. Newsl. (2015), 6, 13-13.', 
+     'Comput. Cryst. Newsl. (2015), 6, 13-13.',
     ],
   ]:
   for oi in origin_ids:
@@ -53,5 +53,3 @@ for link_info in [
 if __name__=="__main__":
   print bond_origin_ids
   print angle_origin_ids
-
-

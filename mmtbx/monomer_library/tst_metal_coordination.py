@@ -193,7 +193,7 @@ def run(only_i=None):
       print "test number:",j
       print cmd
       run_and_test(cmd, pdb,i)
-      
+
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += ' superpose_ideal_ligand=all'
       ideal_and_test(cmd, pdb, i)

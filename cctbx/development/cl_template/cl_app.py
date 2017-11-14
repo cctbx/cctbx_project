@@ -77,8 +77,3 @@ class cl_app(object):
   def read_model_file(self):
     pdb_inp = iotbx.pdb.input(file_name=getattr(self.work_params, self.pdbf_def))
     setattr(self, self.needed_info["model"], pdb_inp.construct_hierarchy())
-
-
-
-
-

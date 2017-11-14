@@ -165,24 +165,24 @@ ATOM   1148  CD1 LEU B 158       9.897  -2.151  18.478  1.00 11.88      B    C
 ATOM   1149  CD2 LEU B 158      11.900  -3.216  17.391  1.00 15.14      B    C
 ''',
   'VAL' : '''
-HETATM    1  N   VAL A   1      -0.458  -1.800  -0.548  1.00 20.00      A    N  
-HETATM    2  CA  VAL A   1      -0.329  -0.702   0.393  1.00 20.00      A    C  
-HETATM    3  C   VAL A   1      -1.671  -0.463   1.082  1.00 20.00      A    C  
-HETATM    4  O   VAL A   1      -2.646  -0.015   0.423  1.00 20.00      A    O  
-HETATM    5  CB  VAL A   1       0.092   0.561  -0.354  1.00 20.00      A    C  
-HETATM    6  CG2 VAL A   1       0.584   1.604   0.647  1.00 20.00      A    C  
-HETATM    7  CG1 VAL A   1       1.215   0.224  -1.332  1.00 20.00      A    C  
+HETATM    1  N   VAL A   1      -0.458  -1.800  -0.548  1.00 20.00      A    N
+HETATM    2  CA  VAL A   1      -0.329  -0.702   0.393  1.00 20.00      A    C
+HETATM    3  C   VAL A   1      -1.671  -0.463   1.082  1.00 20.00      A    C
+HETATM    4  O   VAL A   1      -2.646  -0.015   0.423  1.00 20.00      A    O
+HETATM    5  CB  VAL A   1       0.092   0.561  -0.354  1.00 20.00      A    C
+HETATM    6  CG2 VAL A   1       0.584   1.604   0.647  1.00 20.00      A    C
+HETATM    7  CG1 VAL A   1       1.215   0.224  -1.332  1.00 20.00      A    C
 HETATM    8  OXT VAL A   1      -1.802  -0.713   2.309  1.00 20.00      A    O-1
-HETATM    9  H   VAL A   1      -1.391  -2.165  -0.511  1.00 20.00      A    H  
-HETATM   10  H2  VAL A   1       0.193  -2.524  -0.308  1.00 20.00      A    H  
-HETATM   11  HA  VAL A   1       0.419  -0.949   1.136  1.00 20.00      A    H  
-HETATM   12  HB  VAL A   1      -0.755   0.957  -0.900  1.00 20.00      A    H  
-HETATM   13 HG21 VAL A   1      -0.219   1.854   1.334  1.00 20.00      A    H  
-HETATM   14 HG22 VAL A   1       0.897   2.498   0.115  1.00 20.00      A    H  
-HETATM   15 HG23 VAL A   1       1.426   1.202   1.204  1.00 20.00      A    H  
-HETATM   16 HG11 VAL A   1       0.813  -0.349  -2.162  1.00 20.00      A    H  
-HETATM   17 HG12 VAL A   1       1.975  -0.362  -0.822  1.00 20.00      A    H  
-HETATM   18 HG13 VAL A   1       1.657   1.143  -1.707  1.00 20.00      A    H  
+HETATM    9  H   VAL A   1      -1.391  -2.165  -0.511  1.00 20.00      A    H
+HETATM   10  H2  VAL A   1       0.193  -2.524  -0.308  1.00 20.00      A    H
+HETATM   11  HA  VAL A   1       0.419  -0.949   1.136  1.00 20.00      A    H
+HETATM   12  HB  VAL A   1      -0.755   0.957  -0.900  1.00 20.00      A    H
+HETATM   13 HG21 VAL A   1      -0.219   1.854   1.334  1.00 20.00      A    H
+HETATM   14 HG22 VAL A   1       0.897   2.498   0.115  1.00 20.00      A    H
+HETATM   15 HG23 VAL A   1       1.426   1.202   1.204  1.00 20.00      A    H
+HETATM   16 HG11 VAL A   1       0.813  -0.349  -2.162  1.00 20.00      A    H
+HETATM   17 HG12 VAL A   1       1.975  -0.362  -0.822  1.00 20.00      A    H
+HETATM   18 HG13 VAL A   1       1.657   1.143  -1.707  1.00 20.00      A    H
 ''',
 }
 

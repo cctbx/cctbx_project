@@ -77,7 +77,7 @@ class binner(ext.binner):
         raise Sorry(
          "Bin %s required to have %s or more counts has %s\n%s" %(
             i_bin,min_counts,self.count(i_bin),error_string))
-        
+
 
   def counts_given(self):
     if (self._counts_given is None):

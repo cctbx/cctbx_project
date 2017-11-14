@@ -411,7 +411,7 @@ def tst_0():
 
   assert  approx_equal(b_values,[5.8, 3.0])
 
-  method = "fsc" 
+  method = "fsc"
   pdb_hierarchy_new  = maptbx.loc_res(
      map              = map_data,
      pdb_hierarchy    = ph,
@@ -448,7 +448,7 @@ def tst_1():
      hard_d_min=3.,
      b_range_low=-1000,
      b_range_high=1000,)
- 
+
     b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
     print "Bvalues (b_sharpen)  expected: %s     found: %s " %(

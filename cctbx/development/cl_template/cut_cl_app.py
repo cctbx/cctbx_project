@@ -102,5 +102,3 @@ This tool will cut out range of residues from chain. Usage:
 cutter_app = cl_cutter(
     cl_args=sys.argv)
 cutter_app.run()
-
-

@@ -103,7 +103,7 @@ def run():
     print '  conf    %s' % threes.is_pure_main_conf()
     assert threes.cis_group()==refine[i]
     assert threes.cis_group(limit=30)==omegalyze[i]
-    
+
   for j in range(0,181,10):
     i+=1
     print "  %3d %-5s %-8s %-5s" % (
@@ -113,7 +113,7 @@ def run():
       refine[i],
     )
     assert (threes._define_omega_a_la_duke_using_limit(j)=='cis')==refine[i]
-    
+
 
 
 if __name__=="__main__":
