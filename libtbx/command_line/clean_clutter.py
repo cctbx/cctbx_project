@@ -28,7 +28,8 @@ def clean_clutter_in(files, tabsize=8):
             else:
               n_empty += 1
         shutil.move(tmpname, fname)
-      except: # intentionally trap KeyboardInterrupt, too
+      except: # intentional
+              # to trap KeyboardInterrupt, too
         os.remove(tmpname)
         raise
 
