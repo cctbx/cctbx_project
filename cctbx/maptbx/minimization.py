@@ -4,7 +4,7 @@ import scitbx.lbfgs
 from cctbx import miller
 from cctbx import maptbx
 from libtbx import adopt_init_args
-from cctbx.maptbx import real_space_refinement_simple
+from cctbx.maptbx import real_space_refinement_simple # special import
 
 def show(histogram):
   h_1 = histogram
