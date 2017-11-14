@@ -122,24 +122,29 @@ def show_histogram(map_histograms, log):
     s_1 = enumerate(hm.slots())
     for (i_1,n_1) in s_1:
       hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
-      print >> log, "%15.4f - %-15.4f : %d" % (lc_1, hc_1, n_1)
+      print >> log, "%8.4f - %-8.4f : %d" % (lc_1, hc_1, n_1)
       lc_1 = hc_1
   else:
     print >> log, \
-      "                   Values                 Map Half-map1 Half-map2"
+      "                Full map                   Half-map1 Half-map2"
     h0 = map_histograms.h_map
     h1 = map_histograms.h_half_map_1
     h2 = map_histograms.h_half_map_2
     data_min = map_histograms._data_min
-    lc_1 = data_min
+    lc_2 = data_min
+    lc_1 = h0.data_min()
     s_0 = enumerate(h0.slots())
     s_1 = h1.slots()
     s_2 = h2.slots()
     for (i_1,n_1) in s_0:
-      hc_1 = data_min + h0.slot_width() * (i_1+1)
-      print >> log, "%15.4f - %-15.4f : %9d %9d %9d" % (
-        lc_1, hc_1, n_1, s_1[i_1], s_2[i_1])
+      hc_1 = h0.data_min() + h0.slot_width() * (i_1+1)
+      hc_2 = data_min + h2.slot_width() * (i_1+1)
+      print >> log, "%8.4f - %-8.4f : %9d %8.4f - %-8.4f : %9d %9d" % (
+        lc_1, hc_1, n_1, lc_2, hc_2, s_1[i_1], s_2[i_1])
       lc_1 = hc_1
+      lc_2 = hc_2
+    print >> log, "  Half-maps, correlation of histograms: ", \
+      map_histograms.half_map_histogram_cc
 
 def run(args, log=sys.stdout):
   """phenix.mtriage:
@@ -217,16 +222,18 @@ Feedback:
   show_histogram(map_histograms = results.map_histograms, log = log)
   # show results
   print >> log, "Map resolution estimates:"
-  print >> log, "  using map alone (d99)           :", results.d99
-  print >> log, "  comparing with model (d_model)  :", results.d_model
-  print >> log, "    b_iso_overall                 :", results.b_iso_overall
+  print >> log, "  using map alone (d99)            :", results.d99
+  print >> log, "  comparing with model (d_model)   :", results.d_model
+  print >> log, "    b_iso_overall                  :", results.b_iso_overall
+  print >> log, "  comparing with model (d_model_b0):", results.d_model_b0
+  print >> log, "    b_iso_overall=0"
   print >> log, "  d_fsc_model:"
-  print >> log, "    FSC(map,model map)=0          :", results.d_fsc_model_0
-  print >> log, "    FSC(map,model map)=0.143      :", results.d_fsc_model_0143
-  print >> log, "    FSC(map,model map)=0.5        :", results.d_fsc_model
-  print >> log, "  d99 (half map 1)                :", results.d99_1
-  print >> log, "  d99 (half map 2)                :", results.d99_2
-  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc) :", results.d_fsc
+  print >> log, "    FSC(map,model map)=0           :", results.d_fsc_model_0
+  print >> log, "    FSC(map,model map)=0.143       :", results.d_fsc_model_0143
+  print >> log, "    FSC(map,model map)=0.5         :", results.d_fsc_model
+  print >> log, "  d99 (half map 1)                 :", results.d99_1
+  print >> log, "  d99 (half map 2)                 :", results.d99_2
+  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", results.d_fsc
   print >> log
   #
   print >> log, "Radius used for mask smoothing:", results.radius_smooth

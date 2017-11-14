@@ -87,16 +87,18 @@ def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   if(data_1 is None):
     h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
   else:
-    data_min = min(flex.min(data), flex.min(data_1), flex.min(data_2))
-    data_max = max(flex.max(data), flex.max(data_1), flex.max(data_2))
-    h0 = flex.histogram(data = data.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
+    data_min = min(flex.min(data_1), flex.min(data_2))
+    data_max = max(flex.max(data_1), flex.max(data_2))
+    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
     h1 = flex.histogram(data = data_1.as_1d(), data_min=data_min,
       data_max=data_max, n_slots = n_slots)
     h2 = flex.histogram(data = data_2.as_1d(), data_min=data_min,
       data_max=data_max, n_slots = n_slots)
+  hmhcc = flex.linear_correlation(
+    x=h1.slots().as_double(),
+    y=h2.slots().as_double()).coefficient()
   return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
-    _data_min = data_min)
+    _data_min = data_min, half_map_histogram_cc = hmhcc)
 
 def get_map_counts(map_data):
   if(map_data is None): return None
@@ -134,6 +136,7 @@ class mtriage(object):
     self.d99_1            = None
     self.d99_2            = None
     self.d_model          = None
+    self.d_model_b0       = None
     self.b_iso_overall    = None
     self.d_fsc            = None
     self.d_fsc_model      = None
@@ -148,6 +151,11 @@ class mtriage(object):
     self.map_counts        = get_map_counts(map_data = self.map_data)
     self.half_map_1_counts = get_map_counts(map_data = self.half_map_data_1)
     self.half_map_2_counts = get_map_counts(map_data = self.half_map_data_2)
+    self.map_histograms = get_map_histograms(
+      data    = self.map_data,
+      n_slots = 20,
+      data_1  = self.half_map_data_1,
+      data_2  = self.half_map_data_2)
     # Internal work objects
     self.f   = None
     self.f1  = None
@@ -190,6 +198,8 @@ class mtriage(object):
     self.call(func=self._get_box, prefix="Extract box around model with map")
     # Compute d99
     self.call(func=self._compute_d99, prefix="Compute d99")
+    # Compute d_model at B=0
+    self.call(func=self._compute_d_model_b0, prefix="Compute d_model_b0")
     # Compute d_model
     self.call(func=self._compute_d_model, prefix="Compute d_model")
     # Compute half-map FSC
@@ -278,6 +288,13 @@ class mtriage(object):
       self.f1 = d99_obj_1.f
       self.f2 = d99_obj_2.f
 
+  def _compute_d_model_b0(self):
+    o = resolution_from_map_and_model.run_at_b0(
+      map_data         = self.box.map_data,
+      xray_structure   = self.box.xray_structure,
+      d_min_min        = 1.7)
+    self.d_model_b0 = o.d_min
+
   def _compute_d_model(self):
     if(not self.params.compute_d_model): return
     if(self.pdb_hierarchy is not None):
@@ -339,6 +356,7 @@ class mtriage(object):
     print >> log, "d_fsc_model (FSC=0.5)  : ", r.d_fsc_model
     print >> log, "d_fsc_model (FSC=0.143): ", r.d_fsc_model_0143
     print >> log, "d_fsc_model (FSC=0)    : ", r.d_fsc_model_0
+    print >> log, "CC(half_map1,half_map2 : ", r.map_histograms.half_map_histogram_cc
     #
     of = open("%s_model"%fsc_file_prefix,"w")
     for a,b in zip(r.fsc_curve_model.fsc.d_inv, r.fsc_curve_model.fsc.fsc):
@@ -353,13 +371,7 @@ class mtriage(object):
 
   def get_results(self, slim=False):
     mask = None
-    map_histograms = None
     if(not slim):
-      map_histograms = get_map_histograms(
-        data    = self.map_data,
-        n_slots = 20,
-        data_1  = self.half_map_data_1,
-        data_2  = self.half_map_data_2)
       if(self.mask_object is not None):
         mask = self.mask_object.mask_smooth
     return group_args(
@@ -369,6 +381,7 @@ class mtriage(object):
       d99_1             = self.d99_1,
       d99_2             = self.d99_2,
       d_model           = self.d_model,
+      d_model_b0        = self.d_model_b0,
       b_iso_overall     = self.b_iso_overall,
       d_fsc             = self.d_fsc,
       d_fsc_model       = self.d_fsc_model,
@@ -380,7 +393,7 @@ class mtriage(object):
       map_counts        = self.map_counts,
       half_map_1_counts = self.half_map_1_counts,
       half_map_2_counts = self.half_map_2_counts,
-      map_histograms    = map_histograms, # FIXME histogram computed on modified map
+      map_histograms    = self.map_histograms,
       mask              = mask,
       radius_smooth     = self.radius_smooth)
 

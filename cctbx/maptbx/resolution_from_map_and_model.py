@@ -316,6 +316,27 @@ def get_trial_resolutions(map_data, unit_cell, d_min_min):
   s &= l<=d_min_end
   return l.select(s)
 
+def run_at_b0(map_data, xray_structure, d_min_min=None):
+  m1 = flex.mean(map_data)
+  xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
+  d_mins = get_trial_resolutions(
+    map_data  = map_data,
+    unit_cell = xray_structure.unit_cell(),
+    d_min_min = d_min_min)
+  d_min_start = flex.min(d_mins)
+  fc = xrs.structure_factors(d_min=d_min_start).f_calc()
+  f_obs, fc, d_mins = get_fo_fc_adjust_d_min_start(
+    map    = map_data,
+    xrs    = xrs,
+    fc     = fc,
+    d_mins = d_mins)
+  d_spacings = fc.d_spacings().data()
+  ss = 1./flex.pow2(d_spacings) / 4.
+  m2 = flex.mean(map_data)
+  assert approx_equal(m1, m2)
+  return run_loop(fc=fc, f_obs=f_obs, b_iso=0.0, map=map, d_mins=d_mins,
+    d_spacings=d_spacings, ss=ss)
+
 class run(object):
   def __init__(self, map_data, xray_structure, pdb_hierarchy, d_min_min=None,
                      nproc=1, ofn=None):
