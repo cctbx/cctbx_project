@@ -20,10 +20,12 @@ from mmtbx.validation import cablam
 class geometry(object):
   def __init__(self,
                pdb_hierarchy,
+               use_hydrogens=True,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
     self.geometry_restraints_manager = geometry_restraints_manager
     self.from_restraints = None
+    self.use_hydrogens = use_hydrogens
     self.update()
 
   def update(self, pdb_hierarchy=None):
@@ -31,6 +33,11 @@ class geometry(object):
       self.pdb_hierarchy = pdb_hierarchy
     if(self.geometry_restraints_manager is not None):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      if(not self.use_hydrogens):
+        asc = self.pdb_hierarchy.atom_selection_cache()
+        sel = asc.selection("not (element H or element D)")
+        sites_cart = sites_cart.select(sel)
+        self.geometry_restraints_manager = self.geometry_restraints_manager.select(sel)
       self.from_restraints = \
         self.geometry_restraints_manager.energies_sites(
           sites_cart        = sites_cart,

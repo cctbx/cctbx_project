@@ -214,7 +214,8 @@ class molprobity (slots_getstate_setstate) :
     import mmtbx.model.statistics
     self.model_statistics_geometry = mmtbx.model.statistics.geometry(
       pdb_hierarchy               = pdb_hierarchy,
-      geometry_restraints_manager = geometry_restraints_manager)
+      geometry_restraints_manager = geometry_restraints_manager,
+      use_hydrogens               = keep_hydrogens)
     self.model_statistics_geometry_result = \
       self.model_statistics_geometry.result()
     self.ramalyze  = self.model_statistics_geometry_result.ramachandran.ramalyze

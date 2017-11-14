@@ -1326,7 +1326,7 @@ def exercise_6(mon_lib_srv, ener_lib):
   #
   import inspect
   r = inspect.getargspec(mmtbx.model.statistics.geometry.__init__)
-  assert r.args == ['self', 'pdb_hierarchy', 'geometry_restraints_manager']
+  assert r.args == ['self', 'pdb_hierarchy', 'use_hydrogens', 'geometry_restraints_manager']
 
 def run():
   mon_lib_srv = monomer_library.server.server()

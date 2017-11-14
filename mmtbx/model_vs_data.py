@@ -1,440 +1,25 @@
 from __future__ import division
-import sys, os, random, re
+import sys, random
 from cctbx.array_family import flex
 from iotbx import pdb
-from cctbx import adptbx, sgtbx
-from libtbx.utils import Sorry, null_out
-from iotbx import reflection_file_utils
-from mmtbx import real_space_correlation
+from libtbx.utils import Sorry
 from iotbx import reflection_file_utils
 from libtbx.str_utils import format_value
 import iotbx
 from mmtbx import utils
 from iotbx import pdb
-from libtbx import easy_pickle
 from cStringIO import StringIO
-import mmtbx.model.statistics
-from libtbx import group_args
-import mmtbx.restraints
-import mmtbx.maps
-import mmtbx.masks
 import mmtbx.model
-from mmtbx.monomer_library import pdb_interpretation
 import iotbx.phil
 from cStringIO import StringIO
+import mmtbx.f_model
 
-if (1):
+if(1):
   random.seed(0)
   flex.set_random_seed(0)
 
-class mvd(object):
-
-  def __init__(self):
-    self.crystal       = None
-    self.models        = None
-    self.data          = None
-    self.model_vs_data = None
-    self.pdb_header    = None
-    self.misc          = None
-    self.pdb_file      = None
-    self.fmodel        = None
-
-  def collect(self,
-              crystal       = None,
-              models        = None,
-              data          = None,
-              model_vs_data = None,
-              pdb_header    = None,
-              misc          = None):
-    if(crystal       is not None): self.crystal       = crystal
-    if(models        is not None): self.models        = models
-    if(data          is not None): self.data          = data
-    if(model_vs_data is not None): self.model_vs_data = model_vs_data
-    if(pdb_header    is not None): self.pdb_header    = pdb_header
-    if(misc          is not None): self.misc          = misc
-
-  def get_summary (self) :
-    return summarize_results(self)
-
-  def show(self, log = None):
-    if(log is None): log = sys.stdout
-    # crystal
-    print >> log, "  Unit cell:       ", self.crystal.uc
-    print >> log, "  Space group:     ", self.crystal.sg, \
-                  "number of symmetry operations:", self.crystal.n_sym_op
-    # models
-    print >> log, "  Number of models:", len(self.models)
-    for i_seq, i_model in enumerate(self.models):
-      print >> log, "  Model #%s:"%str("%d"%(i_seq+1)).strip()
-      print >> log, "    Number of residues in alternative conformations:", \
-        i_model.n_residues_in_altlocs
-      print >> log, "    Residue content:"
-      len_max = 0
-      for k in i_model.resname_classes:
-        k = k.split()
-        if(len(k[0])>len_max): len_max = len(k[0])
-      fmt = "      %-"+str(len_max)+"s : %s"
-      for rc in i_model.resname_classes:
-        k,v = rc.split()
-        print >> log, fmt%(k, v)
-      x = i_model.xray_structure_stat
-      print >> log, "    Atoms:"
-      print >> log, "      content: %s"%x.all.n_atoms
-      max_field_for_element_count = 1
-      for element_occupancy_sum in x.all.atom_counts_str.split():
-        individual_element_count_len = len(element_occupancy_sum.split(":")[1])
-        if(individual_element_count_len>max_field_for_element_count):
-          max_field_for_element_count = individual_element_count_len
-      for element_occupancy_sum in x.all.atom_counts_str.split():
-        iecl = "%" + str(max_field_for_element_count)+"s"
-        fmt = "        %s "+"count: %s "%iecl+"occupancy sum: %s"
-        print >> log, fmt%tuple(element_occupancy_sum.split(":"))
-      print >> log, "      ADP (min,max,mean):"
-      print >> log, "        all           (%s atoms): %s %s %s"%(x.all.n_atoms, x.all.b_min,x.all.b_max,x.all.b_mean)
-
-      if(x.sidechain     is not None):print >> log, "        side chains   (%s atoms): %s %s %s"%(x.sidechain.n_atoms, x.sidechain.b_min,x.sidechain.b_max,x.sidechain.b_mean)
-      if(x.backbone      is not None):print >> log, "        main chains   (%s atoms): %s %s %s"%(x.backbone.n_atoms, x.backbone.b_min,x.backbone.b_max,x.backbone.b_mean)
-      if(x.macromolecule is not None):print >> log, "        macromolecule (%s atoms): %s %s %s"%(x.macromolecule.n_atoms, x.macromolecule.b_min,x.macromolecule.b_max,x.macromolecule.b_mean)
-      if(x.ligand        is not None):print >> log, "        ligands       (%s atoms): %s %s %s"%(x.ligand.n_atoms, x.ligand.b_min,x.ligand.b_max,x.ligand.b_mean)
-      if(x.solvent       is not None):print >> log, "        solvent       (%s atoms): %s %s %s"%(x.solvent.n_atoms, x.solvent.b_min,x.solvent.b_max,x.solvent.b_mean)
-      if(i_model.rms_b_iso_or_b_equiv_bonded is not None):
-        print >> log, "      mean bonded (Bi-Bj) : %s"%format_value("%8.2f",i_model.rms_b_iso_or_b_equiv_bonded).strip()
-      print >> log, "      occupancies (min,max,mean)       : %s %s %s"%(x.all.o_min,x.all.o_max,x.all.o_mean)
-      print >> log, "      number_of_anisotropic            : "+format_value("%-7s",x.all.n_aniso)
-      print >> log, "      number_of_non_positive_definite  : %s"%x.all.n_npd
-      g = i_model.geometry_all
-      if(g is not None):
-        a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
-          g.planarity(), g.nonbonded()
-        print >> log, "    Stereochemistry statistics (mean, max, count) - overall:"
-        print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-        print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-        print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-        print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-        print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-        print >> log, "      non-bonded (min) : %8.4f" % (n.min)
-      if([i_model.geometry_solvent,i_model.geometry_ligand].count(None)==0):
-        g = i_model.geometry_macromolecule
-        if(g is not None):
-          a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
-            g.planarity(), g.nonbonded()
-          print >> log, "    Stereochemistry statistics (mean, max, count) - macromolecule:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
-        g = i_model.geometry_ligand
-        if(g is not None):
-          a,b,c,d,p,n = g.angle(), g.bond(), g.chirality(), g.dihedral(), \
-            g.planarity(), g.nonbonded()
-          print >> log, "    Stereochemistry statistics (mean, max, count) - ligands:"
-          print >> log, "      bonds            : %8.4f %8.4f %d" % (b.mean, b.max, b.n)
-          print >> log, "      angles           : %8.4f %8.4f %d" % (a.mean, a.max, a.n)
-          print >> log, "      dihedrals        : %8.4f %8.4f %d" % (d.mean, d.max, d.n)
-          print >> log, "      chirality        : %8.4f %8.4f %d" % (c.mean, c.max, c.n)
-          print >> log, "      planarity        : %8.4f %8.4f %d" % (p.mean, p.max, p.n)
-          print >> log, "      non-bonded (min) : %8.4f" % (n.min)
-        g = i_model.geometry_solvent
-        if(g is not None):
-          print >> log, "    Stereochemistry statistics - solvent:"
-          print >> log, "      non-bonded (min) : %8.4f" % (g.nonbonded().min)
-      if(i_model.molprobity is not None):
-        outl = i_model.molprobity.ramalyze_outliers
-        allo = i_model.molprobity.ramalyze_allowed
-        favo = i_model.molprobity.ramalyze_favored
-        print >> log, "    Molprobity statistics:"
-        print >> log, "      Ramachandran plot, number of:"
-        print >> log, "        outliers : %-5.2f %s"%(outl,"%")
-        print >> log, "        allowed  : %-5.2f %s"%(allo,"%")
-        print >> log, "        favored  : %-5.2f %s"%(favo,"%")
-        print >> log, "      Rotamer outliers        : %s %s" %(
-          str("%6.2f"%(i_model.molprobity.rotalyze)).strip(),"%")
-        print >> log, "      Cbeta deviations >0.25A : %d"%i_model.molprobity.cbetadev
-        print >> log, "      All-atom clashscore     : %.2f (steric overlaps >0.4A per 1000 atoms)"% \
-          i_model.molprobity.clashscore
-    #
-    print >> log, "  Data:"
-    result = " \n    ".join([
-      "data_label                           : %s"%                    self.data.data_label,
-      "high_resolution                      : "+format_value("%-5.2f",self.data.high_resolution),
-      "low_resolution                       : "+format_value("%-6.2f",self.data.low_resolution),
-      "completeness_in_range                : "+format_value("%-6.2f",self.data.completeness_in_range),
-      "completeness(d_min-inf)              : "+format_value("%-6.2f",self.data.completeness_d_min_inf),
-      "completeness(6A-inf)                 : "+format_value("%-6.2f",self.data.completeness_6A_inf),
-      "wilson_b                             : "+format_value("%-6.1f",self.data.wilson_b),
-      "number_of_reflections                : "+format_value("%-8d",  self.data.number_of_reflections),
-      "number_of_reflections(non-anomalous) : "+format_value("%-8d",  self.data.number_of_reflections_merged),
-      "test_set_size                        : "+format_value("%-8.4f",self.data.test_set_size),
-      "test_flag_value                      : "+format_value("%-s",   self.data.test_flag_value),
-      "number_of_Fobs_outliers              : "+format_value("%-8d",  self.data.number_of_Fobs_outliers),
-      "twinned                              : "+format_value("%-s",   self.data.twinned),
-      "anomalous_flag                       : "+format_value("%-6s",  self.data.anomalous_flag)
-      ])
-    print >> log, "   ", result
-    #
-    print >> log, "  Model_vs_Data:"
-    result = [
-      "r_work(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_work).strip(),
-      "r_free(re-computed)                : %s"%format_value("%-6.4f",self.model_vs_data.r_free).strip(),
-      "mean phase error estimate (deg)    : %s"%format_value("%-7.2f",self.model_vs_data.mean_phase_error).strip(),
-    ]
-    ml_err = self.model_vs_data.ml_coordinate_error
-    if(ml_err is not None):
-      result.append("ml coordinate error estimate (A)   : %s"%
-        format_value("%-6.2f",ml_err).strip())
-    sc = self.model_vs_data.solvent_content_via_mask
-    if (sc is not None): sc *= 100
-    result.append("solvent_content_estimated_via_mask : %-s %%"
-      % format_value("%.1f", sc))
-    result = " \n    ".join(result)
-    print >> log, "   ", result
-    #
-    if(self.pdb_header is not None):
-      print >> log, "  Information extracted from PDB file header:"
-      print >> log, "    program_name    : %-s"%format_value("%s",self.pdb_header.program_name)
-      print >> log, "    year            : %-s"%format_value("%s",self.pdb_header.year)
-      print >> log, "    r_work          : %-s"%format_value("%s",self.pdb_header.r_work)
-      print >> log, "    r_free          : %-s"%format_value("%s",self.pdb_header.r_free)
-      print >> log, "    high_resolution : %-s"%format_value("%s",self.pdb_header.high_resolution)
-      print >> log, "    low_resolution  : %-s"%format_value("%s",self.pdb_header.low_resolution)
-      print >> log, "    sigma_cutoff    : %-s"%format_value("%s",self.pdb_header.sigma_cutoff)
-      print >> log, "    matthews_coeff  : %-s"%format_value("%s",self.pdb_header.matthews_coeff)
-      if(self.pdb_header.solvent_cont is not None):
-        print >> log, "    solvent_cont    : %-s %%"%format_value("%s",self.pdb_header.solvent_cont)
-      else:
-        print >> log, "    solvent_cont    : %-s"%format_value("%s",self.pdb_header.solvent_cont)
-      if(self.pdb_header.tls is not None):
-        print >> log, "    TLS             : %-s"%format_value("%s",
-          " ".join([str(self.pdb_header.tls.pdb_inp_tls.tls_present),
-          "(number of groups: %s)"%
-          str(len(self.pdb_header.tls.tls_selections))]))
-      else:
-        print >> log, "    TLS             : None"
-      if (self.pdb_header.exptl_method is not None) :
-        print >> log, "    exptl_method    : %-s"%format_value("%s",
-          self.pdb_header.exptl_method)
-    #
-    print >> log, "  After applying resolution and sigma cutoffs:"
-    print >> log, "    n_refl_cutoff : %-s"%format_value("%d",self.misc.n_refl_cutoff).strip()
-    print >> log, "    r_work_cutoff : %-s"%format_value("%6.4f",self.misc.r_work_cutoff).strip()
-    print >> log, "    r_free_cutoff : %-s"%format_value("%6.4f",self.misc.r_free_cutoff).strip()
-
-def molprobity_stats(model_statistics_geometry, resname_classes):
-  result = None
-  need_ramachandran = False
-  rc = resname_classes
-  n_residues = 0
-  for k in rc.keys():
-    if(k.count('amino_acid')):
-      need_ramachandran = True
-      n_residues = int(rc[k])
-      break
-  if(need_ramachandran): # FIXME no clashscore for nucleic acids???
-    msg = model_statistics_geometry
-    return group_args(
-      ramalyze_outliers = msg.ramachandran().outliers,
-      ramalyze_allowed  = msg.ramachandran().allowed,
-      ramalyze_favored  = msg.ramachandran().favored,
-      rotalyze          = msg.rotamer().outliers,
-      cbetadev          = msg.c_beta().outliers,
-      clashscore        = msg.clash().score)
-  else: return None
-
-def show_geometry(
-      xray_structures,
-      processed_pdb_file,
-      scattering_table,
-      hierarchy,
-      model_selections,
-      show_geometry_statistics,
-      mvd_obj,
-      atom_selections):
-  if(len(xray_structures)>1):
-    tmp = xray_structures[0]
-    for xi in xray_structures[1:]:
-      tmp = tmp.concatenate(xi)
-    xray_structures = tmp
-  else:
-    xray_structures = xray_structures[0]
-  ##
-  utils.assert_xray_structures_equal(
-    x1 = xray_structures,
-    x2 = processed_pdb_file.xray_structure(),
-    sites = True,
-    adp = False,
-    occupancies = True)
-  ##
-  hd_sel_all = xray_structures.hd_selection()
-  if(show_geometry_statistics):
-    sctr_keys = \
-      xray_structures.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies                = False,
-      plain_pairs_radius           = 5.0,
-      assume_hydrogens_all_missing = not has_hd)
-    restraints_manager_all = mmtbx.restraints.manager(
-      geometry      = geometry,
-      normalization = True)
-  models = hierarchy.models()
-  geometry_statistics = []
-  n_residues_in_altlocs = None
-  for i_seq, model_selection in enumerate(model_selections):
-    hierarchy_i_seq = pdb.hierarchy.root()
-    hierarchy_i_seq.append_model(models[i_seq].detached_copy())
-    #
-    overall_counts_i_seq = hierarchy_i_seq.overall_counts()
-    n_residues_in_altlocs = \
-      overall_counts_i_seq.n_alt_conf_pure + \
-      overall_counts_i_seq.n_alt_conf_proper + \
-      overall_counts_i_seq.n_alt_conf_improper
-    #
-    resname_classes = []
-    for k,v in zip(overall_counts_i_seq.resname_classes.keys(),
-                   overall_counts_i_seq.resname_classes.values()):
-      resname_classes.append(" ".join([k.replace("common_",""), str(v)]))
-    #
-    xray_structure = xray_structures.select(model_selection)
-    assert hierarchy_i_seq.atoms_size() == xray_structure.scatterers().size()
-    hd_sel = xray_structure.hd_selection()
-    def select_atom_selections(selection       = model_selection,
-                               atom_selections = atom_selections):
-      result = group_args()
-      result.all           = atom_selections.all          .select(selection)
-      result.macromolecule = atom_selections.macromolecule.select(selection)
-      result.solvent       = atom_selections.solvent      .select(selection)
-      result.ligand        = atom_selections.ligand       .select(selection)
-      result.backbone      = atom_selections.backbone     .select(selection)
-      result.sidechain     = atom_selections.sidechain    .select(selection)
-      return result
-    atom_selections_i_model = select_atom_selections(
-      selection       = model_selection,
-      atom_selections = atom_selections)
-    if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
-      xray_structure_stat = show_xray_structure_statistics(
-        xray_structure  = xray_structure,
-        hd_sel          = hd_sel,
-        atom_selections = atom_selections_i_model)
-    else:
-      xray_structure_stat = show_xray_structure_statistics(
-        xray_structure = xray_structure,
-        atom_selections=atom_selections_i_model)
-    model_statistics_geometry_macromolecule = None
-    model_statistics_geometry_solvent = None
-    model_statistics_geometry_ligand = None
-    model_statistics_geometry_all = None
-    molprobity_stats_i_seq = None
-    rms_b_iso_or_b_equiv_bonded = None
-    if(show_geometry_statistics):
-      # exclude hydrogens
-      if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
-        xray_structure = xray_structure.select(~hd_sel)
-        model_selection = model_selection.select(~hd_sel)
-        hierarchy_i_seq = hierarchy_i_seq.select(~hd_sel)
-        geometry = restraints_manager_all.geometry.select(selection=~hd_sel_all)
-        atom_selections_i_model = select_atom_selections(selection =~hd_sel_all,
-           atom_selections = atom_selections_i_model)
-      model_selection_as_bool = flex.bool(xray_structures.scatterers().size(),
-        model_selection)
-      geometry = restraints_manager_all.geometry.select(selection =
-        model_selection_as_bool)
-      restraints_manager = mmtbx.restraints.manager(
-        geometry      = geometry,
-        normalization = True)
-      restraints_manager.geometry.pair_proxies(sites_cart =
-        xray_structure.sites_cart())
-      ###
-      model_statistics_geometry_all = mmtbx.model.statistics.geometry(
-        pdb_hierarchy      = hierarchy_i_seq,
-        geometry_restraints_manager = restraints_manager.geometry)
-      #
-      if(atom_selections.macromolecule.count(True)>0):
-        mac_sel = atom_selections_i_model.macromolecule
-        model_statistics_geometry_macromolecule = mmtbx.model.statistics.geometry(
-          pdb_hierarchy      = hierarchy_i_seq.select(mac_sel),
-          geometry_restraints_manager = restraints_manager.select(mac_sel).geometry)
-      #
-      if(atom_selections.solvent.count(True)>0):
-        sol_sel = atom_selections_i_model.solvent
-        model_statistics_geometry_solvent = mmtbx.model.statistics.geometry(
-          pdb_hierarchy      = hierarchy_i_seq.select(sol_sel),
-          geometry_restraints_manager = restraints_manager.select(sol_sel).geometry)
-      #
-      if(atom_selections.ligand.count(True)>0):
-        lig_sel = atom_selections_i_model.ligand
-        model_statistics_geometry_ligand = mmtbx.model.statistics.geometry(
-          pdb_hierarchy      = hierarchy_i_seq.select(lig_sel),
-          geometry_restraints_manager = restraints_manager.select(lig_sel).geometry)
-      ###
-      rms_b_iso_or_b_equiv_bonded = utils.rms_b_iso_or_b_equiv_bonded(
-        restraints_manager = restraints_manager,
-        xray_structure     = xray_structure)
-      #
-      molprobity_stats_i_seq = molprobity_stats(
-        model_statistics_geometry = model_statistics_geometry_all,
-        resname_classes = overall_counts_i_seq.resname_classes)
-    geometry_statistics.append(group_args(
-      n_residues_in_altlocs       = n_residues_in_altlocs,
-      resname_classes             = resname_classes,
-      xray_structure_stat         = xray_structure_stat,
-      rms_b_iso_or_b_equiv_bonded = rms_b_iso_or_b_equiv_bonded,
-      geometry_all                = model_statistics_geometry_all,
-      geometry_macromolecule      = model_statistics_geometry_macromolecule,
-      geometry_solvent            = model_statistics_geometry_solvent,
-      geometry_ligand             = model_statistics_geometry_ligand,
-      molprobity                  = molprobity_stats_i_seq))
-  mvd_obj.collect(models = geometry_statistics)
-  return geometry_statistics
-
-def show_xray_structure_statistics(xray_structure, atom_selections, hd_sel = None):
-  result = group_args(
-    all           = None,
-    macromolecule = None,
-    sidechain     = None,
-    solvent       = None,
-    ligand        = None,
-    backbone      = None)
-  if(hd_sel is not None):
-    xray_structure = xray_structure.select(~hd_sel)
-  for key in atom_selections.__dict__.keys():
-    value = atom_selections.__dict__[key]
-    if(value.count(True) > 0):
-      if(hd_sel is not None):
-        value = value.select(~hd_sel)
-      xrs = xray_structure.select(value)
-      atom_counts = xrs.scattering_types_counts_and_occupancy_sums()
-      atom_counts_strs = []
-      for ac in atom_counts:
-        atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
-          str("%10.2f"%ac.occupancy_sum).strip()))
-      atom_counts_str = " ".join(atom_counts_strs)
-      b_isos = xrs.extract_u_iso_or_u_equiv()
-      n_aniso = xrs.use_u_aniso().count(True)
-      n_not_positive_definite = xrs.is_positive_definite_u().count(False)
-      b_mean = format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos)))
-      b_min = format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos)))
-      b_max = format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos)))
-      n_atoms = format_value("%-8d",xrs.scatterers().size()).strip()
-      n_npd = format_value("%-8s",n_not_positive_definite).strip()
-      occ = xrs.scatterers().extract_occupancies()
-      o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
-      o_min = format_value("%-6.2f",flex.min(occ)).strip()
-      o_max = format_value("%-6.2f",flex.max(occ)).strip()
-      tmp_result = group_args(
-        n_atoms         = n_atoms,
-        atom_counts_str = atom_counts_str,
-        b_min           = b_min,
-        b_max           = b_max,
-        b_mean          = b_mean,
-        o_min           = o_min,
-        o_max           = o_max,
-        o_mean          = o_mean,
-        n_aniso         = n_aniso,
-        n_npd           = n_npd)
-      setattr(result,key,tmp_result)
-  return result
+def show_header(l, log):
+  print >> log, l, "-"*(79-len(l))
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -443,69 +28,7 @@ def reflection_file_server(crystal_symmetry, reflection_files):
     reflection_files=reflection_files,
     err=StringIO())
 
-def show_data(fmodel, n_outl, test_flag_value, f_obs_labels, fmodel_cut):
-  info = fmodel.info()
-  flags_pc = \
-   fmodel.r_free_flags().data().count(True)*1./fmodel.r_free_flags().data().size()
-  twinned = str(fmodel_cut.twin)
-  if(fmodel_cut.twin != fmodel.twin):
-    twinned = "May be, %s or %s"%(str(fmodel_cut.twin), str(fmodel.twin))
-  return group_args(
-    data_label                   = f_obs_labels,
-    high_resolution              = info.d_min,
-    low_resolution               = info.d_max,
-    completeness_in_range        = info.completeness_in_range,
-    completeness_d_min_inf       = info.completeness_d_min_inf,
-    completeness_6A_inf          = info.completeness_6_inf,
-    wilson_b                     = fmodel.wilson_b(),
-    number_of_reflections        = info.number_of_reflections,
-    number_of_reflections_merged = info.number_of_reflections_merged,
-    test_set_size                = flags_pc,
-    test_flag_value              = test_flag_value,
-    number_of_Fobs_outliers      = n_outl,
-    twinned                      = twinned,
-    anomalous_flag               = fmodel.f_obs().anomalous_flag())
-
-def show_model_vs_data(fmodel):
-  d_max, d_min = fmodel.f_obs().d_max_min()
-  flags_pc = fmodel.r_free_flags().data().count(True)*100./\
-    fmodel.r_free_flags().data().size()
-  if(flags_pc == 0): r_free = None
-  else: r_free = fmodel.r_free()
-  sc = None
-  mm = getattr(fmodel, "mask_manager", None)
-  if (mm is not None):
-    sc = mm.solvent_content_via_mask
-  r_work_outer_shell = r_free_outer_shell = None
-  if (type(fmodel).__name__ != "twin_model_manager") :
-    f_obs_work_copy = fmodel.f_obs_work().customized_copy()
-    f_obs_work_copy.setup_binner(n_bins=10)
-    bin_selection_work = f_obs_work_copy.binner().selection(10)
-    f_obs_free_copy = fmodel.f_obs_free().customized_copy()
-    f_obs_free_copy.setup_binner(n_bins=10)
-    bin_selection_free = f_obs_free_copy.binner().selection(10)
-    r_work_outer_shell = fmodel.r_work(selection=bin_selection_work)
-    r_free_outer_shell = fmodel.r_free(selection=bin_selection_free)
-  return group_args(
-    r_work                   = fmodel.r_work(),
-    r_free                   = r_free,
-    r_work_outer_shell       = r_work_outer_shell,
-    r_free_outer_shell       = r_free_outer_shell,
-    ml_coordinate_error      = fmodel.model_error_ml(),
-    mean_phase_error         = fmodel.phase_errors().min_max_mean().as_tuple()[2],
-    solvent_content_via_mask = sc)
-
 msg="""\
-
-phenix.model_vs_data: compute model, data and model-to-data fit statistics.
-
-Reference:
-  phenix.model_vs_data: a high-level tool for the calculation of
-  crystallographic model and data statistics. P.V. Afonine, R.W.
-  Grosse-Kunstleve, V.B. Chen, J.J. Headd, N.W. Moriarty, J.S. Richardson,
-  D.C. Richardson, A. Urzhumtsev, P.H. Zwart, P.D. Adams
-  J. Appl. Cryst. 43, 677-685 (2010).
-
 Inputs:
   - File with reflection data (Fobs or Iobs), and R-free flags (optionally);
   - label(s) selecting which reflection data arrays should be used (in case
@@ -518,11 +41,7 @@ Usage examples:
   1. phenix.model_vs_data model.pdb data.hkl
   2. phenix.model_vs_data model.pdb data.hkl f_obs_label="F" r_free_flags_label="FREE"
   3. phenix.model_vs_data model.pdb data.hkl scattering_table=neutron
-  4. phenix.model_vs_data model.pdb data.hkl map="2mFo-DFc"
-  5. phenix.model_vs_data model.pdb data.hkl map="3Fo-2Fc" map="mFo-DFc"
-
-  Note: Map type string: [p][m]Fo+[q][D]Fc[filled]. Examples: 2mFo-DFc,
-  3.2Fo-2.3Fc, Fc, anom, fo-fc, etc.
+  3. phenix.model_vs_data model.pdb data.hkl twin_law='h,-k,l+h'
 """
 
 master_params_str="""\
@@ -532,23 +51,9 @@ r_free_flags_label = None
   .type = str
 scattering_table = wk1995  it1992  *n_gaussian  neutron
   .type = choice
-map = None
-  .type = str
-  .multiple = True
 high_resolution = None
   .type = float
-comprehensive = False
-  .type = bool
-dump_result_object_as_pickle = False
-  .type = bool
-ignore_giant_models_and_datasets = True
-  .type = bool
-skip_twin_detection = False
-  .type = bool
-  .expert_level = 3
-unmerged_data = None
-  .type = path
-unmerged_labels = None
+twin_law = None
   .type = str
 n_bins = 20
   .type = int
@@ -562,22 +67,13 @@ def defaults(log, silent):
   return parsed
 
 def run(args,
-        command_name             = "mmtbx.model_vs_data",
-        show_geometry_statistics = True,
-        model_size_max_atoms     = 80000,
-        data_size_max_reflections= 1000000,
-        unit_cell_max_dimension  = 800.,
-        return_fmodel_and_pdb    = False,
-        out                      = None,
-        log                      = sys.stdout):
-  import mmtbx.f_model.f_model_info
+        out = None,
+        log = sys.stdout):
   if(len(args)==0) or (args == ["--help"]) :
     print >> log, msg
     defaults(log=log, silent=False)
     return
   parsed = defaults(log=log, silent=True)
-  #
-  mvd_obj = mvd()
   #
   processed_args = utils.process_command_line_args(args = args,
     log = log, master_params = parsed)
@@ -612,24 +108,22 @@ def run(args,
     keep_going              = True,
     log                     = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
-  number_of_reflections = f_obs.indices().size()
-  if(params.ignore_giant_models_and_datasets and
-     number_of_reflections > data_size_max_reflections):
-    raise Sorry("Too many reflections: %d"%number_of_reflections)
-  #
-  max_unit_cell_dimension = max(f_obs.unit_cell().parameters()[:3])
-  if(params.ignore_giant_models_and_datasets and
-     max_unit_cell_dimension > unit_cell_max_dimension):
-    raise Sorry("Too large unit cell (max dimension): %s"%
-      str(max_unit_cell_dimension))
-  #
+  # Data
+  show_header(l="Data:", log=log)
+  f_obs.show_comprehensive_summary(prefix="  ", f = log)
+  # R-free-flags
+  show_header(l="R-free-flags:", log=log)
   r_free_flags = determine_data_and_flags_result.r_free_flags
   test_flag_value = determine_data_and_flags_result.test_flag_value
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
-  #
-  pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=processed_args.pdb_file_names)
+    print >> log, "  not available"
+  else:
+    print >> log, "  flag value:", test_flag_value
+  # Model
+  pdb_combined = iotbx.pdb.combine_unique_pdb_files(
+    file_names=processed_args.pdb_file_names)
   pdb_combined.report_non_unique(out=log)
   if (len(pdb_combined.unique_file_names) == 0):
     raise Sorry("No coordinate file given.")
@@ -639,101 +133,40 @@ def run(args,
                               lines       = flex.std_string(raw_records))
   except ValueError, e :
     raise Sorry("Model format (PDB or mmCIF) error:\n%s" % str(e))
-
-  pdb_interpretation_params = iotbx.phil.parse(
-      input_string=pdb_interpretation.grand_master_phil_str,
-      process_includes=True).extract()
-  pdb_interpretation_params.pdb_interpretation.use_neutron_distances = \
-      params.scattering_table=="neutron"
-
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      process_input = True,
-      pdb_interpretation_params = pdb_interpretation_params,
-      restraint_objects = processed_args.cif_objects,
-      crystal_symmetry = crystal_symmetry,
-      stop_for_unknowns = show_geometry_statistics,
-      log = StringIO())
-  processed_pdb_file = model.processed_pdb_file
-  #
-  acp = model.all_chain_proxies
-  atom_selections = group_args(
-    all           = acp.selection(string = "all"),
-    macromolecule = acp.selection(string = "protein or dna or rna"),
-    solvent       = acp.selection(string = "water"), # XXX single_atom_residue
-    ligand        = acp.selection(string = "not (protein or dna or rna or water)"),
-    backbone      = acp.selection(string = "backbone"),
-    sidechain     = acp.selection(string = "sidechain"))
+    model_input      = pdb_inp,
+    crystal_symmetry = crystal_symmetry,
+    log              = StringIO())
   #
   scattering_table = params.scattering_table
   exptl_method = pdb_inp.get_experiment_type()
-  if (exptl_method is not None) and ("NEUTRON" in exptl_method) :
+  if(exptl_method is not None) and ("NEUTRON" in exptl_method):
     scattering_table = "neutron"
-  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
-    processed_pdb_file = model.processed_pdb_file,
-    scattering_table   = scattering_table,
-    d_min              = f_obs.d_min())
-  xray_structures = xsfppf.xray_structures
-  if(0): #XXX normalize occupancies if all models have occ=1 so the total=1
-    n_models = len(xray_structures)
-    for xrs in xray_structures:
-      occ = xrs.scatterers().extract_occupancies()
-      occ = occ/n_models
-      xrs.set_occupancies(occ)
-  model_selections = xsfppf.model_selections
-  mvd_obj.collect(crystal = group_args(
-    uc       = f_obs.unit_cell(),
-    sg       = f_obs.crystal_symmetry().space_group_info().symbol_and_number(),
-    n_sym_op = f_obs.crystal_symmetry().space_group_info().type().group().order_z(),
-    uc_vol   = f_obs.unit_cell().volume()))
+  model.setup_scattering_dictionaries(
+    scattering_table = scattering_table,
+    d_min            = f_obs.d_min())
   #
-  hierarchy = model.get_hierarchy()
+  # Model vs data
   #
-  # Extract TLS
-  pdb_tls = None
-  pdb_inp_tls = pdb_inp.extract_tls_params(hierarchy)
-  pdb_tls = group_args(pdb_inp_tls           = pdb_inp_tls,
-                       tls_selections        = [],
-                       tls_selection_strings = [])
-  # XXX no TLS + multiple models -- maybe opposite?
-  if(pdb_inp_tls.tls_present and pdb_inp_tls.error_string is None and
-     len(xray_structures)==1):
-    pdb_tls = mmtbx.tls.tools.extract_tls_from_pdb(
-      pdb_inp_tls       = pdb_inp_tls,
-      model             = model)
-    if(len(pdb_tls.tls_selections)==len(pdb_inp_tls.tls_params) and
-       len(pdb_inp_tls.tls_params) > 0):
-      xray_structures = [utils.extract_tls_and_u_total_from_pdb(
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
-        xray_structure = xray_structures[0], # XXX no TLS + multiple models
-        tls_selections = pdb_tls.tls_selections,
-        tls_groups     = pdb_inp_tls.tls_params)]
-  ###########################
-  geometry_statistics = show_geometry(
-    xray_structures          = xray_structures,
-    processed_pdb_file       = processed_pdb_file,
-    scattering_table         = scattering_table,
-    hierarchy                = hierarchy,
-    model_selections         = model_selections,
-    show_geometry_statistics = show_geometry_statistics,
-    mvd_obj                  = mvd_obj,
-    atom_selections          = atom_selections)
-  ###########################
-  mp = mmtbx.masks.mask_master_params.extract()
-  f_obs_labels = f_obs.info().label_string()
-  f_obs = f_obs.sort(reverse=True, by_value="packed_indices")
-  r_free_flags = r_free_flags.sort(reverse=True, by_value="packed_indices")
-  fmodel = utils.fmodel_simple(
-    xray_structures     = xray_structures,
-    scattering_table    = scattering_table,
-    mask_params         = mp,
-    f_obs               = f_obs,
-    r_free_flags        = r_free_flags,
-    skip_twin_detection = params.skip_twin_detection)
+  show_header(l="Model vs Data:", log=log)
+  fmodel = mmtbx.f_model.manager(
+    xray_structure = model.get_xray_structure(),
+    f_obs          = f_obs,
+    r_free_flags   = r_free_flags,
+    twin_law       = params.twin_law)
+  fmodel.update_all_scales(update_f_part1=True)
+  fmodel.show(log=log, show_header=False, show_approx=False)
+  print >> log, "  r_work: %6.4f"%fmodel.r_work()
+  if(test_flag_value is not None):
+    print >> log, "  r_free: %6.4f"%fmodel.r_free()
+  else:
+    print >> log, "  r_free: None"
+  print >> log
   n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
-  mvd_obj.collect(model_vs_data = show_model_vs_data(fmodel))
+  print >> log, "  Number of F-obs outliers:", n_outl
+  #
   # Extract information from PDB file header and output (if any)
+  #
   pub_r_work       = None
   pub_r_free       = None
   pub_high         = None
@@ -752,18 +185,19 @@ def run(args,
   pub_program_name = pdb_inp.get_program_name()
   pub_solv_cont    = pdb_inp.get_solvent_content()
   pub_matthews     = pdb_inp.get_matthews_coeff()
-  mvd_obj.collect(pdb_header = group_args(
-    program_name    = pub_program_name,
-    year            = pdb_inp.extract_header_year(),
-    r_work          = pub_r_work,
-    r_free          = pub_r_free,
-    high_resolution = pub_high,
-    low_resolution  = pub_low,
-    sigma_cutoff    = pub_sigma,
-    matthews_coeff  = pub_matthews,
-    solvent_cont    = pub_solv_cont,
-    tls             = pdb_tls,
-    exptl_method    = exptl_method))
+  #
+  show_header(l="Information extracted from PDB file header:", log=log)
+  print >> log, "  program_name    : %-s"%format_value("%s",pub_program_name)
+  print >> log, "  year            : %-s"%format_value("%s",pdb_inp.extract_header_year())
+  print >> log, "  r_work          : %-s"%format_value("%s",pub_r_work)
+  print >> log, "  r_free          : %-s"%format_value("%s",pub_r_free)
+  print >> log, "  high_resolution : %-s"%format_value("%s",pub_high)
+  print >> log, "  low_resolution  : %-s"%format_value("%s",pub_low)
+  print >> log, "  sigma_cutoff    : %-s"%format_value("%s",pub_sigma)
+  print >> log, "  matthews_coeff  : %-s"%format_value("%s",pub_matthews)
+  print >> log, "  solvent_cont    : %-s"%format_value("%s",pub_solv_cont)
+  if(exptl_method is not None) :
+    print >> log, "  exptl_method    : %-s"%format_value("%s", exptl_method)
   #
   # Recompute R-factors using published cutoffs
   fmodel_cut = fmodel
@@ -775,182 +209,19 @@ def run(args,
   if(pub_low is not None and abs(pub_low-fmodel.f_obs().d_max_min()[0]) > 0.03):
     tmp_sel &= fmodel.f_obs().d_spacings().data() < pub_low
   if(tmp_sel.count(True) != tmp_sel.size() and tmp_sel.count(True) > 0):
-    fmodel_cut = utils.fmodel_simple(
-      xray_structures     = xray_structures,
-      scattering_table    = scattering_table,
-      f_obs               = fmodel.f_obs().select(tmp_sel),
-      r_free_flags        = fmodel.r_free_flags().select(tmp_sel),
-      skip_twin_detection = params.skip_twin_detection)
-  mvd_obj.collect(misc = group_args(
-    r_work_cutoff = fmodel_cut.r_work(),
-    r_free_cutoff = fmodel_cut.r_free(),
-    n_refl_cutoff = fmodel_cut.f_obs().data().size()))
-  mvd_obj.collect(data =
-    show_data(fmodel          = fmodel,
-              n_outl          = n_outl,
-              test_flag_value = test_flag_value,
-              f_obs_labels    = f_obs_labels,
-              fmodel_cut      = fmodel_cut))
-  # CC* and friends
-  cc_star_stats = None
-  if (params.unmerged_data is not None) :
-    import mmtbx.validation.experimental
-    import mmtbx.command_line
-    f_obs = fmodel.f_obs().average_bijvoet_mates()
-    unmerged_i_obs = mmtbx.command_line.load_and_validate_unmerged_data(
-      f_obs=f_obs,
-      file_name=params.unmerged_data,
-      data_labels=params.unmerged_labels,
-      log=null_out())
-    cc_star_stats = mmtbx.validation.experimental.merging_and_model_statistics(
-      f_model=fmodel.f_model().average_bijvoet_mates(),
-      f_obs=f_obs,
-      r_free_flags=fmodel.r_free_flags().average_bijvoet_mates(),
-      unmerged_i_obs=unmerged_i_obs,
-      n_bins=params.n_bins)
-  mvd_obj.show(log=out)
-  if (cc_star_stats is not None) :
-    cc_star_stats.show_model_vs_data(out=out, prefix="  ")
-  if return_fmodel_and_pdb :
-    mvd_obj.pdb_file = processed_pdb_file
-    mvd_obj.fmodel = fmodel
-  if(len(params.map) > 0):
-    for map_name_string in params.map:
-      map_type_obj = mmtbx.map_names(map_name_string = map_name_string)
-      map_params = mmtbx.maps.map_and_map_coeff_master_params().fetch(
-        mmtbx.maps.cast_map_coeff_params(map_type_obj)).extract()
-      maps_obj = mmtbx.maps.compute_map_coefficients(fmodel = fmodel_cut, params =
-        map_params.map_coefficients)
-      fn = os.path.basename(processed_args.reflection_file_names[0])
-      if(fn.count(".")):
-        prefix = fn[:fn.index(".")]
-      else: prefix= fn
-      file_name = prefix+"_%s_map_coeffs.mtz"%map_type_obj.format()
-      maps_obj.write_mtz_file(file_name = file_name)
-  # statistics in bins
-  if(not fmodel.twin):
-    print >> log, "Statistics in resolution bins:"
-    mmtbx.f_model.f_model_info.r_work_and_completeness_in_resolution_bins(
-      fmodel = fmodel, out = log, prefix="  ")
-  # report map cc
-  if(params.comprehensive and not fmodel_cut.twin and
-     fmodel_cut.xray_structure is not None):
-    rsc_params = real_space_correlation.master_params().extract()
-    rsc_params.scattering_table = scattering_table
-    real_space_correlation.simple(
-       fmodel        = fmodel_cut,
-       pdb_hierarchy = hierarchy,
-       params        = rsc_params,
-       log           = log,
-       show_results  = True)
-  #
-  if(params.dump_result_object_as_pickle):
-    output_prefixes = []
-    for op in processed_args.pdb_file_names+processed_args.reflection_file_names:
-      op = os.path.basename(op)
-      try: op = op[:op.index(".")]
-      except Exception: pass
-      if(not op in output_prefixes): output_prefixes.append(op)
-    output_prefix = "_".join(output_prefixes)
-    easy_pickle.dump("%s.pickle"%output_prefix, mvd_obj)
-  return mvd_obj
-
-# XXX this is really, really gross.
-def summarize_results (mvd_obj) :
-  space_group_str = getattr(mvd_obj.crystal, "sg", None)
-  if (space_group_str is None) :
-    space_group = None
-  else :
-    space_group = sgtbx.space_group_info(re.sub("\ \(.*", "", space_group_str))
-  model_stats = mvd_obj.models[0]
-  geometry_stats = getattr(model_stats, "geometry_all", None)
-  molprobity_stats = getattr(model_stats, "molprobity", None)
-  xs_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
-                     "all", None)
-  mm_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
-      "macromolecule", None)
-  bb_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
-    "backbone", None)
-  lig_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
-    "ligand", None)
-  wat_stats = getattr(getattr(model_stats, "xray_structure_stat", None),
-    "solvent", None)
-  if (molprobity_stats is not None) :
-    c_beta_deviations = molprobity_stats.cbetadev
-    clashscore = molprobity_stats.clashscore
-    rama_allowed = molprobity_stats.ramalyze_allowed
-    rama_favored = molprobity_stats.ramalyze_favored
-    rama_outliers = molprobity_stats.ramalyze_outliers
-    rotamer_outliers = molprobity_stats.rotalyze
-  else:
-    c_beta_deviations = clashscore = rama_allowed = rama_favored = \
-      rama_outliers = rotamer_outliers = mpscore = None
-  def convert_int (value) :
-    if (value is None) : return None
-    try :
-      return int(value)
-    except ValueError :
-      return None
-  def convert_float (value) :
-    if (value is None) : return None
-    try :
-      return float(value)
-    except ValueError :
-      return None
-  return group_args(
-    space_group=space_group,
-    unit_cell=getattr(mvd_obj.crystal, "uc", None),
-    r_work=mvd_obj.model_vs_data.r_work,
-    r_free=mvd_obj.model_vs_data.r_free,
-    r_work_outer_shell=mvd_obj.model_vs_data.r_work_outer_shell,
-    r_free_outer_shell=mvd_obj.model_vs_data.r_free_outer_shell,
-    pdb_header_r_work=getattr(mvd_obj.pdb_header, "r_work", None),
-    pdb_header_r_free=getattr(mvd_obj.pdb_header, "r_free", None),
-    r_work_cutoffs=getattr(mvd_obj.misc, "r_work_cutoff", None),
-    r_free_cutoffs=getattr(mvd_obj.misc, "r_free_cutoff", None),
-    program_name=getattr(mvd_obj.pdb_header, "program_name", None),
-    d_max_pdb=getattr(mvd_obj.pdb_header, "low_resolution", None),
-    d_min_pdb=getattr(mvd_obj.pdb_header, "high_resolution", None),
-    d_min=mvd_obj.data.high_resolution,
-    d_max=mvd_obj.data.low_resolution,
-    completeness_6A_inf=mvd_obj.data.completeness_6A_inf,
-    completeness_d_min_inf=mvd_obj.data.completeness_d_min_inf,
-    completeness_in_range=mvd_obj.data.completeness_in_range,
-    n_atoms=convert_int(getattr(xs_stats, "n_atoms", None)),
-    n_macro_atoms=convert_int(getattr(mm_stats, "n_atoms", None)),
-    n_ligand_atoms=convert_int(getattr(lig_stats, "n_atoms", None)),
-    n_solvent_atoms=convert_int(getattr(wat_stats, "n_atoms", None)),
-    adp_max_all=convert_float(getattr(xs_stats, "b_max",None)),
-    adp_mean_all=convert_float(getattr(xs_stats, "b_mean",None)),
-    adp_min_all=convert_float(getattr(xs_stats, "b_min", None)),
-    adp_max_mm=convert_float(getattr(mm_stats, "b_max",None)),
-    adp_mean_mm=convert_float(getattr(mm_stats, "b_mean",None)),
-    adp_min_mm=convert_float(getattr(mm_stats, "b_min", None)),
-    adp_max_bb=convert_float(getattr(bb_stats, "b_max",None)),
-    adp_mean_bb=convert_float(getattr(bb_stats, "b_mean",None)),
-    adp_min_bb=convert_float(getattr(bb_stats, "b_min", None)),
-    adp_mean_lig=convert_float(getattr(lig_stats, "b_mean", None)),
-    adp_mean_wat=convert_float(getattr(wat_stats, "b_mean", None)),
-    n_aniso=getattr(xs_stats, "n_aniso", None),
-    wilson_b=mvd_obj.data.wilson_b,
-    solvent_content_via_mask=mvd_obj.model_vs_data.solvent_content_via_mask,
-    bond_rmsd=getattr(geometry_stats, "b_mean", None),
-    bond_max_deviation=getattr(geometry_stats, "b_max", None),
-    angle_rmsd=getattr(geometry_stats, "a_mean", None),
-    angle_max_deviation=getattr(geometry_stats, "a_max", None),
-    dihedral_rmsd=getattr(geometry_stats, "d_mean", None),
-    dihedral_max_deviation=getattr(geometry_stats, "d_max", None),
-    chirality_rmsd=getattr(geometry_stats, "c_mean", None),
-    chirality_max_deviation=getattr(geometry_stats, "c_max", None),
-    planarity_rmsd=getattr(geometry_stats, "p_mean", None),
-    planarity_max_deviation=getattr(geometry_stats, "p_max", None),
-    rama_favored=rama_favored,
-    rama_allowed=rama_allowed,
-    rama_outliers=rama_outliers,
-    rotamer_outliers=rotamer_outliers,
-    c_beta_deviations=c_beta_deviations,
-    clashscore=clashscore,
-    twin_law=mvd_obj.data.twinned,
-    anomalous_flag=mvd_obj.data.anomalous_flag,
-    tls=getattr(getattr(getattr(mvd_obj.pdb_header, "tls", None), "pdb_inp_tls",
-      None), "tls_present"))
+    show_header(l="After applying resolution and sigma cutoffs:", log=log)
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = model.get_xray_structure(),
+      f_obs          = fmodel.f_obs().select(tmp_sel),
+      r_free_flags   = fmodel.r_free_flags().select(tmp_sel),
+      twin_law       = params.twin_law)
+    fmodel.update_all_scales(update_f_part1=True)
+    fmodel.show(log=log, show_header=False, show_approx=False)
+    print >> log, "  r_work: %6.4f"%fmodel.r_work()
+    if(test_flag_value is not None):
+      print >> log, "  r_free: %6.4f"%fmodel.r_free()
+    else:
+      print >> log, "  r_free: None"
+    print >> log
+    n_outl = f_obs.data().size() - fmodel.f_obs().data().size()
+    print >> log, "  Number of F-obs outliers:", n_outl

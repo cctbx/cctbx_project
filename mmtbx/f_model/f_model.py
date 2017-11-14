@@ -1258,10 +1258,11 @@ class manager(manager_mixin):
     f2 = "  F_model = k_total * (F_calc + k_mask * F_mask)\n"
     f3 = "    k_total = k_isotropic * k_anisotropic"
     m=(77-len(l))//2
-    if(show_header): print >> log, "\n","="*m,l,"="*m,"\n"
-    print >> log, f1
-    print >> log, f2
-    print >> log, f3
+    if(show_header):
+      print >> log, "\n","="*m,l,"="*m,"\n"
+      print >> log, f1
+      print >> log, f2
+      print >> log, f3
     fmt="%7.3f-%-7.3f %6.2f %5d %5d %6.4f %9.3f %9.3f %5.3f %5.3f %s"
     print >> log, "   Resolution    Compl Nwork Nfree R_work    <Fobs>  <Fmodel> kiso   kani kmask"
     for b in self.bins():
