@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 from libtbx import easy_run
 
 gnp = '''

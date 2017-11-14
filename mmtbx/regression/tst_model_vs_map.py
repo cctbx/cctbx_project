@@ -2,9 +2,8 @@ from __future__ import division
 
 import time
 from libtbx import easy_run
-import libtbx.load_env
-import libtbx.path
-import time, os
+#import libtbx.load_env
+import time
 from iotbx import pdb
 
 cryst_str = """\n

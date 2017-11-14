@@ -7,7 +7,6 @@ import math
 from cStringIO import StringIO
 from mmtbx.validation.ramalyze import res_types
 from scitbx.math import dihedral_angle
-from libtbx.test_utils import approx_equal
 # from scitbx.matrix import _dihedral_angle # python implementation, but on flex arrays
 
 import boost.python

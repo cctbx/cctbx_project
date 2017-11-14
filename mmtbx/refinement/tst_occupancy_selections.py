@@ -3,7 +3,6 @@ from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
 from mmtbx.command_line import fmodel
 import mmtbx.model
-from mmtbx import utils
 from iotbx import file_reader
 import iotbx.pdb
 import iotbx.phil

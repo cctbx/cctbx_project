@@ -4,7 +4,6 @@ from mmtbx.validation import rotalyze
 from mmtbx.validation import ramalyze
 from mmtbx.validation import analyze_peptides
 from mmtbx.rotamer.sidechain_angles import SidechainAngles
-from mmtbx.rotamer import rotamer_eval
 from cctbx.array_family import flex
 import iotbx.phil
 from libtbx.str_utils import make_sub_header

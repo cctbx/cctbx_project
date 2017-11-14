@@ -1,14 +1,10 @@
 from __future__ import division
 from scitbx.array_family import flex
-from scitbx.matrix import sqr
 from simtbx.nanoBragg import testuple
-from simtbx.nanoBragg import pivot
 from simtbx.nanoBragg import shapetype
-from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
-from cctbx import miller
 
 pdb_lines = """HEADER TEST
 CRYST1   50.000   60.000   70.000  90.00  90.00  90.00 P 1

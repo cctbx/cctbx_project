@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
-from libtbx import adopt_init_args
 from cctbx import xray
 
 def local_standard_deviations_target_per_site(

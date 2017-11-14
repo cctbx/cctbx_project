@@ -8,8 +8,6 @@ import iotbx.pdb
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
-import mmtbx.refinement.real_space.rigid_body
-from libtbx.utils import null_out
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1

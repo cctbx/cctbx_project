@@ -4,7 +4,6 @@ import libtbx.load_env
 import os.path
 import time
 import iotbx
-from mmtbx.regression.make_fake_anomalous_data import generate_mtz_file
 from mmtbx.utils import fmodel_from_xray_structure
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
 import mmtbx.command_line.fmodel

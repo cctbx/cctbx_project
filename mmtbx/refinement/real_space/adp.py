@@ -8,7 +8,6 @@ from libtbx import easy_mp
 import mmtbx.secondary_structure
 from mmtbx import bulk_solvent
 from libtbx.test_utils import approx_equal
-from cctbx import maptbx
 from mmtbx import masks
 
 class real_space_group_adp_refinery_via_reciprocal_space(object):

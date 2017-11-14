@@ -351,7 +351,6 @@ def strip_model (
   if (log is None) :
     log = null_out()
   make_sub_header("Processing input model", out=log)
-  from mmtbx import pdbtools
   remarks = None
   if (file_name is not None) :
     print >> log, "Reading model from %s" % file_name

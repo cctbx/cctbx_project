@@ -1,10 +1,8 @@
 from __future__ import division
 
 from libtbx.test_utils import approx_equal
-import iotbx.ccp4_map
 import iotbx.pdb
 from cctbx import maptbx
-from cctbx import crystal
 from  cctbx import maptbx
 
 raw_records = """\

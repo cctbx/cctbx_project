@@ -1,10 +1,7 @@
 from __future__ import division
 import time
 
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
-from mmtbx import monomer_library
 from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
 import iotbx.pdb

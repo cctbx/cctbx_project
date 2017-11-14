@@ -12,10 +12,8 @@
 
 from __future__ import division
 
-import os, sys
+import sys
 import iotbx.phil
-from libtbx import adopt_init_args
-from libtbx.utils import Sorry
 import iotbx.pdb
 
 input_model_phil_str = """\

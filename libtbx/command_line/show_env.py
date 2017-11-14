@@ -12,7 +12,6 @@ Usage:
 """
 
 import pickle
-import yaml
 from pprint import pprint
 import sys
 from types import ModuleType

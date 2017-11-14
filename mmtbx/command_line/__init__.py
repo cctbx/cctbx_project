@@ -279,7 +279,6 @@ class load_model_and_data (object) :
     import mmtbx.utils
     import mmtbx.model
     from iotbx import crystal_symmetry_from_any
-    from cctbx.crystal import select_crystal_symmetry
     import iotbx.phil
     if generate_input_phil :
       assert isinstance(master_phil, basestring)

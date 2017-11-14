@@ -578,7 +578,7 @@ def tst_03():
   model_hierarchy=model_pdb_inp.construct_hierarchy()
   query_hierarchy=iotbx.pdb.input(source_info='query',
        lines=flex.split_lines(query)).construct_hierarchy()
-  import os,shutil
+  import os
   if not os.path.isdir("files"):
     os.mkdir("files")
 

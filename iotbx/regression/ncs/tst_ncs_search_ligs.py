@@ -1,8 +1,5 @@
 from __future__ import division
 import iotbx.ncs
-from mmtbx.ncs.ncs_search import is_same_transform
-from libtbx.test_utils import approx_equal
-from scitbx import matrix
 import iotbx.ncs as ncs
 from iotbx import pdb
 

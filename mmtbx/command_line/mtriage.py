@@ -1,7 +1,7 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.mtriage
 
-import sys, time
+import sys
 import iotbx.pdb
 from libtbx import group_args
 from libtbx.utils import Sorry

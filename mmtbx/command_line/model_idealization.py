@@ -12,7 +12,6 @@ from cStringIO import StringIO
 from cctbx import crystal
 from iotbx.pdb import secondary_structure as ioss
 from iotbx.pdb import write_whole_pdb_file
-from iotbx.file_reader import any_file
 from iotbx import reflection_file_utils
 from iotbx.phil import process_command_line_with_files
 import iotbx.ncs
@@ -27,10 +26,8 @@ from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
-from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.validation.clashscore import check_and_add_hydrogen
 import mmtbx.model

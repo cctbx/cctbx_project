@@ -11,7 +11,7 @@ from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import libtbx.phil
 from libtbx import adopt_init_args, group_args
-from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
+from iotbx.pdb.hybrid_36 import hy36encode
 import os
 import sys
 

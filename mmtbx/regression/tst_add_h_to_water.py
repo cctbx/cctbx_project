@@ -1,8 +1,6 @@
 from __future__ import division
 from mmtbx.hydrogens import find as find_hydrogens
-import mmtbx.utils
 import mmtbx.model
-import mmtbx.restraints
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server

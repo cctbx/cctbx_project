@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 import StringIO
 
 from libtbx import easy_run

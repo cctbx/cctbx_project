@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx import adopt_init_args, Auto
+from libtbx import adopt_init_args
 import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex

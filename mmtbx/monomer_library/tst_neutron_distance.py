@@ -1,5 +1,4 @@
 from __future__ import division
-from cctbx.array_family import flex
 import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server

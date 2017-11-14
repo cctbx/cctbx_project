@@ -4,7 +4,7 @@ from mmtbx.command_line import molprobity
 import mmtbx.validation.molprobity
 import iotbx.pdb.hierarchy
 from libtbx.easy_pickle import loads, dumps, dump
-from libtbx.test_utils import show_diff, approx_equal
+from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
 import libtbx.load_env
 from cStringIO import StringIO

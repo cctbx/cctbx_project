@@ -1,6 +1,5 @@
 from __future__ import division
 from libtbx import easy_run
-from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
 import libtbx.load_env
 import os.path
 import time

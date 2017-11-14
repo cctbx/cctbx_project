@@ -4,7 +4,6 @@ import mmtbx.model
 import libtbx.load_env
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import ias
 import iotbx.pdb
 from iotbx import file_reader

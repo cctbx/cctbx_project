@@ -5,7 +5,6 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from iotbx import reflection_file_reader
 from cctbx import miller
-from cctbx import maptbx
 from scitbx.array_family import flex
 from mmtbx.maps.polder_lib import master_params_str
 import mmtbx.maps.polder_lib

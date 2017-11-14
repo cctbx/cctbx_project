@@ -1,7 +1,6 @@
 from __future__ import division
 import iotbx.pdb
 import mmtbx.utils
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.monomer_library import idealized_aa
 from libtbx.utils import Sorry, null_out
 from mmtbx.validation import ramalyze
@@ -18,9 +17,9 @@ import math
 from libtbx import easy_pickle, Auto
 
 
-import boost.python
-ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
-from mmtbx_validation_ramachandran_ext import rama_eval
+#import boost.python
+#ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+#from mmtbx_validation_ramachandran_ext import rama_eval
 
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
 

@@ -1,5 +1,5 @@
 from __future__ import division
-import os, sys
+import sys
 import time
 
 from cctbx.array_family import flex

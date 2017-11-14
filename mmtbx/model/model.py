@@ -8,10 +8,9 @@ restraints.
 
 from __future__ import division
 
-import scitbx.lbfgs
 
 from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry, user_plus_sys_time, null_out
+from libtbx.utils import Sorry, user_plus_sys_time
 from libtbx import group_args, str_utils
 
 import iotbx.pdb
@@ -46,14 +45,6 @@ from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
-
-from mmtbx.validation.ramalyze import ramalyze
-from mmtbx.validation.rotalyze import rotalyze
-from mmtbx.validation.cbetadev import cbetadev
-from mmtbx.validation.clashscore import clashscore
-from mmtbx.validation.utils import molprobity_score
-from mmtbx.validation import omegalyze
-from mmtbx.validation import cablam
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")

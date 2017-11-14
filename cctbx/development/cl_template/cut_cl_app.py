@@ -28,7 +28,6 @@ from __future__ import division
 import sys
 from cutter import cutter
 from cl_app import cl_app
-from libtbx.utils import Sorry
 import iotbx.phil
 
 # Note that we just including existing scope here, which is wrapped in

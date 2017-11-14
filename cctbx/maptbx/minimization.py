@@ -6,7 +6,6 @@ from cctbx import maptbx
 from libtbx import adopt_init_args
 from cctbx.maptbx import real_space_refinement_simple
 
-
 def show(histogram):
   h_1 = histogram
   lc_1 = histogram.data_min()

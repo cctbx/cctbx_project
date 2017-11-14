@@ -1,10 +1,8 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.fab_elbow_angle
 from mmtbx.utils.fab_elbow_angle import fab_elbow_angle
-from libtbx.utils import Sorry
 import iotbx.pdb
 import sys
-import os
 import iotbx.phil
 
 def get_master_phil():

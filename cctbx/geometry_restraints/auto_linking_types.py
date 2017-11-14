@@ -1,5 +1,4 @@
 from __future__ import division
-import os, sys
 
 bond_origin_ids = {}
 angle_origin_ids = {}

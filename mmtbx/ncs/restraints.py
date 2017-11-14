@@ -15,7 +15,6 @@ from libtbx.utils import Sorry
 from libtbx import adopt_init_args
 from itertools import count
 import sys
-from StringIO import StringIO
 from libtbx.str_utils import line_breaker
 
 class selection_properties(object):
