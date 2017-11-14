@@ -334,10 +334,10 @@ class torsion_ncs(object):
       res_match_master = {}
       res_to_selection_hash = {}
       # This is for cache/hash generation....
-      print pdb_hierarchy.as_pdb_string()
+      # print pdb_hierarchy.as_pdb_string()
       for i, group in enumerate(self.ncs_groups_selection_string_list):
         for isel, chain_i in zip(self.ncs_restraints_group_list[i].get_iselections_list(), group):
-          print i, "isel,", list(isel)
+          # print i, "isel,", list(isel)
           c_atoms = pdb_hierarchy.select(isel).atoms()
           for atom in c_atoms:
             for chain_j in group:
