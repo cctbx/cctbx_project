@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
 
 class linking_class(dict):

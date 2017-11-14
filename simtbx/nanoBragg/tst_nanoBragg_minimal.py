@@ -1,3 +1,4 @@
+from __future__ import division
 # absolute bare-minimum diffraction image simulation
 
 from simtbx.nanoBragg import nanoBragg
