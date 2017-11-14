@@ -2137,7 +2137,7 @@ class QRBuilder(PhenixBuilder):
 
   def add_tests(self):
     self.add_test_command('qr.test',
-                          haltOnFailure=False,
+                          haltOnFailure=True,
                           )
 
   def add_dispatchers(self):
