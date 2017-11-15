@@ -941,7 +941,6 @@ class FastPlotter(CtrlBase):
 
     from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
     from matplotlib import pyplot as plt
-    from matplotlib.widgets import SpanSelector
     import numpy as np
 
     CtrlBase.__init__(self, parent)
