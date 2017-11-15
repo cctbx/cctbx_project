@@ -9,6 +9,7 @@ import sys
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
+from libtbx.utils import Sorry
 
 def get_selection_above_cutoff(m, n):
   return m>=m.as_1d().select(flex.sort_permutation(m.as_1d(), reverse=True))[n]

@@ -12,6 +12,7 @@ from mmtbx.maps import correlation
 from mmtbx import masks
 from scitbx.array_family import flex
 import time
+from libtbx.utils import Sorry
 
 master_params_str = """
   scattering_table = wk1995  it1992  n_gaussian  neutron *electron
