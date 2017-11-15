@@ -169,7 +169,7 @@ namespace {
     siguij(other.siguij),
 #endif
     fp(other.fp), fdp(other.fdp),
-    i_seq(0), tmp(0), have_sentinel(false),
+    i_seq(other.i_seq), tmp(0), have_sentinel(false),
     hetero(other.hetero), serial(other.serial), name(other.name),
     segid(other.segid), element(other.element), charge(other.charge)
   {}
