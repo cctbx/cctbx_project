@@ -187,7 +187,7 @@ Full parameters:
         file_def_name = self.map_file_def
       elif (f.file_type == "cif") and (self.cif_file_def is not None) :
         file_def_name = self.cif_file_def
-        self.cif_objects.append((file_def_name, f.file_object.model()))
+        self.cif_objects.append((f.file_name, f.file_object.model()))
       elif (f.file_type == "seq") and (self.seq_file_def is not None) :
         file_def_name = self.seq_file_def
       elif (f.file_type == "ncs") and (self.ncs_file_def is not None) :
