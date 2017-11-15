@@ -2872,6 +2872,11 @@ HETATM    3  O   HOH B   2       4.000   0.000   0.000  1.0  20.0            O
   pdb_in = pdb.input(source_info=None, lines=flex.split_lines(pdb_str))
   assert pdb_in.atoms().extract_i_seq().all_eq(0)
   hierarchy = pdb_in.construct_hierarchy(set_atom_i_seq=False)
+  # check deep_copy
+  h = pdb.input(source_info=None, lines=flex.split_lines(pdb_str)).construct_hierarchy(set_atom_i_seq=True)
+  h2 = h.deep_copy()
+  assert not h2.atoms().extract_i_seq().all_eq(0)
+  #
   pdb_atoms_1 = hierarchy.atoms()
   assert pdb_atoms_1.extract_i_seq().all_eq(0)
   pdb_atoms_1.reset_i_seq()
