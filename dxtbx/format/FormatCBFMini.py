@@ -172,11 +172,15 @@ class FormatCBFMini(FormatCBF):
       beam.set_flux(flux)
     except KeyError:
       pass
+    except IndexError:
+      pass
 
     try:
       transmission = float(self._cif_header_dictionary['Transmission'].split()[0])
       beam.set_transmission(transmission)
     except KeyError:
+      pass
+    except IndexError:
       pass
 
     return beam
