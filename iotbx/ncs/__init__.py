@@ -201,6 +201,7 @@ class input(object):
       # for a in hierarchy.atoms():
       #   print "oo", a.i_seq, a.id_str()
       # print "====="
+      hierarchy.reset_i_seq_if_necessary()
       self.original_hierarchy = hierarchy.deep_copy()
       self.original_hierarchy.reset_atom_i_seqs()
       if self.exclude_selection is not None:
@@ -1438,7 +1439,7 @@ class input(object):
     # assert 0number_of_ncs_groups
     group_id_list = sort_dict_keys(self.ncs_group_map)
     # print "self.ncs_group_map", self.ncs_group_map
-    # print "self.asu_to_ncs_map", self.asu_to_ncs_map
+    # print "self.asu_to_ncs_map", self.asu_to_ncs_map, list(self.asu_to_ncs_map["chain 'A1'"])
     # print "group_id_list", group_id_list
     # print "self.transform_to_ncs", self.transform_to_ncs
     for k in group_id_list:
