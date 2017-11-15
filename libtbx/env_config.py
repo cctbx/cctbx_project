@@ -774,7 +774,6 @@ Wait for the command to finish, then try again.""" % vars())
         force_32bit=command_line.options.force_32bit,
         msvc_arch_flag=command_line.options.msvc_arch_flag,
         enable_cxx11=command_line.options.enable_cxx11,
-        old_division=command_line.options.old_division,
         python3warn=command_line.options.python3warn,
         skip_phenix_dispatchers=command_line.options.skip_phenix_dispatchers)
       self.build_options.get_flags_from_environment()
@@ -1116,8 +1115,6 @@ Wait for the command to finish, then try again.""" % vars())
       cmd = ""
       if (source_is_py or source_is_python_exe):
         qnew_tmp = qnew
-        if (self.build_options.old_division) :
-          qnew_tmp = ""
         if self.build_options.python3warn == 'warn':
           qnew_tmp += " -3"
         elif self.build_options.python3warn == 'fail':
@@ -1179,8 +1176,6 @@ Wait for the command to finish, then try again.""" % vars())
     print >>f, '@set LIBTBX_PYEXE=%s' % self.python_exe.bat_value()
     write_dispatcher_include(where="before_command")
     qnew_tmp = qnew
-    if (self.build_options.old_division) :
-      qnew_tmp = ""
     if self.build_options.python3warn == 'warn':
       qnew_tmp += " -3"
     elif self.build_options.python3warn == 'fail':
@@ -1952,7 +1947,6 @@ class build_options:
         force_32bit=False,
         msvc_arch_flag=default_msvc_arch_flag,
         enable_cxx11=default_enable_cxx11,
-        old_division=False,
         python3warn='none',
         skip_phenix_dispatchers=False):
 
@@ -2013,7 +2007,6 @@ class build_options:
     print >> f, "Use opt_resources if available:", self.opt_resources
     print >> f, "Use environment flags:", self.use_environment_flags
     print >> f, "Enable C++11:", self.enable_cxx11
-    print >> f, "Force true division:", (not self.old_division)
     print >> f, "Python3 migration warning policy:", self.python3warn
     if( self.use_environment_flags ):
       print >>f, "  CXXFLAGS = ", self.env_cxxflags
@@ -2227,10 +2220,6 @@ class pre_process_args:
       action="store_true",
       default=default_enable_cxx11,
       help="use C++11 standard")
-    parser.option(None, "--old_division",
-      action="store_true",
-      default=False,
-      help="Don't force 'true division' behavior in dispatchers")
     parser.option(None, "--python3warn", action="store", default=None,
       help="Python3 migration warnings. "
            "'warn': print warnings when running code that may cause problems in Python 3. "
@@ -2393,8 +2382,6 @@ def unpickle():
   # XXX backward compatibility 2011-07-05
   if (not hasattr(env.build_options, "enable_cuda")):
     env.build_options.enable_cuda = False
-  if (not hasattr(env.build_options, "old_division")) :
-    env.build_options.old_division = False
   # XXX backward incompatibility 2011-10
   if not hasattr(env, 'relocatable'):
     print ("Please re-configure from scratch your cctbx_build:"
