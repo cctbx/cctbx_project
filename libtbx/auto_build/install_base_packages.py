@@ -842,7 +842,7 @@ _replace_sysconfig_paths(build_time_vars)
     if (self.flag_is_mac):
       filename = os.path.join(self.base_dir, 'Python.framework', 'Versions',
                               '2.7', 'Python')
-      os.chmod(filename, 33261)  # set permissions to -rwxr-xr-x
+      os.chmod(filename, 0o755)  # set permissions to -rwxr-xr-x
 
     self.set_python(op.abspath(python_exe))
     log.close()
