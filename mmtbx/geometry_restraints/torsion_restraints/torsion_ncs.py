@@ -1450,12 +1450,19 @@ class torsion_ncs(object):
     return math.sqrt(delta_sq_sum / len(deltas))
 
   def proxy_select (self, nseq, iselection) :
+    #
+    # This is still not proper manager selection. A lot of stuff remains old.
+    # It still works because it is being updated every macro-cycle via
+    # update_dihedral_ncs_restraints
+    #
     import copy
     assert (self.ncs_dihedral_proxies is not None)
     new_ncs_dihedral_proxies = \
         self.ncs_dihedral_proxies.proxy_select(nseq, iselection)
     new_manager = copy.copy(self)
     new_manager.ncs_dihedral_proxies = new_ncs_dihedral_proxies
+    new_manager.ncs_restraints_group_list = \
+        self.ncs_restraints_group_list.select(flex.bool(nseq, iselection))
     return new_manager
 
   def remove_reference_dihedrals_in_place(self):
