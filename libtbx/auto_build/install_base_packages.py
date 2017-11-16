@@ -835,6 +835,15 @@ _replace_sysconfig_paths(build_time_vars)
       print >> log, "Could not make python relocatable:"
       print >> log, e
 
+    # On macOS, base/Python.framework/Versions/2.7/Python (aka
+    # libpython2.7.dylib) may be read-only. This affects the create-installer
+    # step that makes Python relocatable. For applications (e.g. Rosetta) that
+    # link to this library, this can cause crashes, so make it writeable.
+    if (self.flag_is_mac):
+      filename = os.path.join(self.base_dir, 'Python.framework', 'Versions',
+                              '2.7', 'Python')
+      os.chmod(filename, 33261)  # set permissions to -rwxr-xr-x
+
     self.set_python(op.abspath(python_exe))
     log.close()
 
