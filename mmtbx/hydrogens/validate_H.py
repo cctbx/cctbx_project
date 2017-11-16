@@ -1,9 +1,7 @@
 from __future__ import division
-#import iotbx.phil
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
-from libtbx.utils import Sorry
-from scitbx import matrix
+#from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
 
 def is_hydrogen(atom):
@@ -26,7 +24,7 @@ class validate_H():
     self.params = params
     self.log = log
     self.pdb_hierarchy = self.model.get_hierarchy()
-    # results
+  # results
     self.overall_counts_hd = None
     self.hd_exchanged_sites = None
     self.hd_sites_analysis = None
@@ -35,7 +33,8 @@ class validate_H():
 
   def validate_inputs(self):
     if not self.model.has_hd:
-      raise Sorry("There are no H or D atoms in the model.")
+      #raise Sorry("There are no H or D atoms in the model.")
+      return 0
 
   def get_missing_h_in_residue(self, residue, mon_lib_srv):
     missing = []
@@ -98,7 +97,6 @@ class validate_H():
   def missing_H(self):
     missing_HD_atoms = []
     from mmtbx.rotamer import rotamer_eval
-    #protein = ["common_amino_acid", "modified_amino_acid"]
     protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
       "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
@@ -128,14 +126,7 @@ class validate_H():
       if atom: return atom
     return None
 
-  def distance2(self, xyz1, xyz2):
-    sum = 0
-    for x1,x2 in zip(xyz1, xyz2):
-      sum += (x1-x2)**2
-    return sum
-
   def find_closest_hd(self, atom, residue_group, neighbors, minimum_distance):
-    names = list(self.pdb_hierarchy.atoms().extract_name())
     exchange_atom = None
     hd_without_altloc = []
     if (is_hydrogen(atom)):
@@ -148,20 +139,18 @@ class validate_H():
       if _atom.element.strip().upper()!= element: continue
       if neighbors:
         if _atom.i_seq not in neighbors: continue
-      # _atom.distance(atom)
-      d2 = self.distance2(atom.xyz, _atom.xyz)
-      if d2 <= minimum_distance:
-        minimum_distance = d2
+      current_distance = _atom.distance(atom)
+      if current_distance <= minimum_distance:
+        minimum_distance = current_distance
         exchange_atom = _atom
     return exchange_atom, hd_without_altloc
 
   def find_exchanged_pair(self, atom_H, atom_D, residue_group, fsc1):
-    names = list(self.pdb_hierarchy.atoms().extract_name())
-    minimum_distance = self.distance2(atom_H.xyz, atom_D.xyz)
+    minimum_distance = atom_H.distance(atom_D)
     if (atom_H.parent().altloc == '' and atom_D.parent().altloc != ''):
       atom = atom_D
-    elif (atom_D.parent().altloc == '' and atom_H.parent().altloc == ''):
-      STOP()
+    #elif (atom_D.parent().altloc == '' and atom_H.parent().altloc == ''):
+    #  STOP()
     else:
       atom = atom_H
     exchange_atom, hd_without_altloc = self.find_closest_hd(
@@ -220,13 +209,11 @@ class validate_H():
     protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
       "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
-    names = list(pdb_hierarchy.atoms().extract_name())
     hd_exchanged_sites = {}
     for residue_group in pdb_hierarchy.residue_groups():
       for atom in residue_group.atoms():
         resname = atom.parent().resname
         if (get_class(name=resname) in protein):
-          #if (not atom.element_is_hydrogen()): continue
           if (is_hydrogen(atom)):
             atom_H = atom
             name_atom_H = atom_H.name
@@ -253,31 +240,37 @@ class validate_H():
     sites_sum_occ_not_1 = []
     sites_occ_sum_no_scattering = []
     rotatable_hd_selection = self.model.rotatable_hd_selection()
+    eps_xyz = 0.001
+    eps_b = 0.01
+    delta_occ_sum = 0.001
     occ_h_zero_scattering = 0.64
-    occ_d_zero_scattering = 0.36
-    occ_zero_scatt_eps = 0.05
+    eps_occ_zero_scatt = 0.05
+    max_distance_between_rotatable_H = 1.0
     for iseq in self.hd_exchanged_sites:
       atom_H = self.hd_exchanged_sites[iseq][0]
       atom_D = self.hd_exchanged_sites[iseq][1]
-      if atom_H.xyz != atom_D.xyz:
-        delta_xyz = (matrix.col(atom_H.xyz)-matrix.col(atom_D.xyz)).length()
+      # H/D at different positions
+      delta_xyz = atom_H.distance(atom_D)
+      if (delta_xyz >= eps_xyz):
         sites_different_xyz.append(
           (atom_H.id_str(),atom_D.id_str(),delta_xyz,atom_H.xyz,atom_D.xyz))
-      if (atom_H.b != atom_D.b):
+      # H/D with different B
+      delta_b = abs(atom_H.b - atom_D.b)
+      if (delta_b >= eps_b):
         delta_b = atom_H.b - atom_D.b
         sites_different_b.append(
           (atom_H.id_str(), atom_D.id_str(), delta_b, atom_H.xyz, atom_D.xyz))
+      # H/D with sum of occupancies lt or gt 1
       occupancy_sum = atom_H.occ + atom_D.occ
-      if (occupancy_sum < 1 or occupancy_sum > 1):
+      if (abs(1-occupancy_sum) >= delta_occ_sum):
         sites_sum_occ_not_1.append(
           (atom_H.id_str(),atom_D.id_str(),occupancy_sum,atom_H.xyz,atom_D.xyz))
+      # rotatable H/D with zero scattering sum
       if ((atom_H.i_seq in rotatable_hd_selection) and
           (atom_D.i_seq in rotatable_hd_selection)):
-        if (self.distance2(atom_H.xyz, atom_D.xyz) < 1.5):
-          if ((occ_h_zero_scattering - occ_zero_scatt_eps <= atom_H.occ
-              <= occ_h_zero_scattering + occ_zero_scatt_eps) and
-            (occ_d_zero_scattering - occ_zero_scatt_eps <= atom_D.occ
-              <= occ_d_zero_scattering + occ_zero_scatt_eps)):
+        if (atom_H.distance(atom_D) < max_distance_between_rotatable_H):
+          if ((abs(atom_H.occ-occ_h_zero_scattering) <= eps_occ_zero_scatt)
+              and (abs(atom_D.occ-(1-occ_h_zero_scattering)) <= eps_occ_zero_scatt)):
             sites_occ_sum_no_scattering.append(
               (atom_H.id_str(),atom_D.id_str(),atom_H.occ,atom_D.occ,atom_H.xyz))
 
@@ -385,7 +378,6 @@ class validate_H():
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()
     self.missing_H()
-    #self.analyze_XN_distances
 
   def get_results(self):
     return group_args(
