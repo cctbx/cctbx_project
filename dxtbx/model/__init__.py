@@ -530,6 +530,8 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
       r['mask'] = imset.external_lookup.mask.filename
       r['gain'] = imset.external_lookup.gain.filename
       r['pedestal'] = imset.external_lookup.pedestal.filename
+      r['dx'] = imset.external_lookup.dx.filename
+      r['dy'] = imset.external_lookup.dy.filename
       r['params'] = imset.params()
       result['imageset'].append(r)
 

@@ -196,16 +196,14 @@ namespace dxtbx { namespace model {
     OffsetParallaxCorrectedPxMmStrategy(
           double mu,
           double t0,
-          scitbx::af::const_ref< double, scitbx::af::c_grid<2> > dx,
-          scitbx::af::const_ref< double, scitbx::af::c_grid<2> > dy)
+          scitbx::af::versa< double, scitbx::af::c_grid<2> > dx,
+          scitbx::af::versa< double, scitbx::af::c_grid<2> > dy)
       : ParallaxCorrectedPxMmStrategy(mu, t0),
-        dx_(dx.accessor()),
-        dy_(dy.accessor()) {
+        dx_(dx),
+        dy_(dy) {
       DXTBX_ASSERT(mu > 0);
       DXTBX_ASSERT(t0 > 0);
-      DXTBX_ASSERT(dx_.accessor().all_eq(dy.accessor()));
-      std::copy(dx.begin(), dx.end(), dx_.begin());
-      std::copy(dy.begin(), dy.end(), dy_.begin());
+      DXTBX_ASSERT(dx_.accessor().all_eq(dy_.accessor()));
     }
 
     /** Virtual desctructor */
@@ -235,6 +233,11 @@ namespace dxtbx { namespace model {
     vec2<double> to_millimeter(const PanelData &panel,
         vec2<double> xy) const {
 
+      // Check map size
+      DXTBX_ASSERT(dx_.accessor().all_eq(dy_.accessor()));
+      DXTBX_ASSERT(dx_.accessor()[0] == panel.get_image_size()[1]);
+      DXTBX_ASSERT(dx_.accessor()[1] == panel.get_image_size()[0]);
+
       // Apply the correction
       int i = (int)std::floor(xy[0]);
       int j = (int)std::floor(xy[1]);
@@ -262,6 +265,8 @@ namespace dxtbx { namespace model {
      */
     vec2<double> to_pixel(const PanelData &panel,
         vec2<double> xy) const {
+
+      // Check map size
       DXTBX_ASSERT(dx_.accessor().all_eq(dy_.accessor()));
       DXTBX_ASSERT(dx_.accessor()[0] == panel.get_image_size()[1]);
       DXTBX_ASSERT(dx_.accessor()[1] == panel.get_image_size()[0]);

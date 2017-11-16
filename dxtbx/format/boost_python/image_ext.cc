@@ -64,7 +64,6 @@ namespace dxtbx { namespace format { namespace boost_python {
   make_image_tile_with_name(
       typename scitbx::af::flex<T>::type data,
       const char *name) {
-    std::cout << "H" << std::endl;
     DXTBX_ASSERT(data.accessor().all().size() == 2);
     return boost::make_shared< ImageTile<T> >(
         scitbx::af::versa<T, scitbx::af::c_grid<2> >(

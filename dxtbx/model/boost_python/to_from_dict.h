@@ -19,8 +19,11 @@
 #include <dxtbx/model/panel.h>
 #include <dxtbx/model/scan.h>
 #include <dxtbx/model/crystal.h>
+#include <dxtbx/format/image.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
+
+  using format::Image;
 
   template <typename T>
   boost::python::dict to_dict(const T &obj);
@@ -61,8 +64,17 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   Panel* from_dict<Panel>(boost::python::dict obj);
 
+  Panel* panel_from_dict_with_offset(boost::python::dict obj,
+      scitbx::af::versa<double, scitbx::af::c_grid<2> > dx,
+      scitbx::af::versa<double, scitbx::af::c_grid<2> > dy);
+
   template <>
   Detector* from_dict<Detector>(boost::python::dict obj);
+
+  Detector* detector_from_dict_with_offset(
+        boost::python::dict obj,
+        const Image<double> &dx,
+        const Image<double> &dy);
 
   template <>
   Scan* from_dict<Scan>(boost::python::dict obj);

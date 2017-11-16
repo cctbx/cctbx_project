@@ -184,6 +184,24 @@ class ExperimentListDict(object):
           else:
             pedestal_filename = None
             pedestal = None
+          if 'dx' in imageset and imageset['dx'] is not None:
+            dx_filename = load_path(imageset['dx'])
+            if dx_filename is not "":
+              dx = pickle.load(open(dx_filename))
+            else:
+              dx = None
+          else:
+            dx_filename = None
+            dx = None
+          if 'dy' in imageset and imageset['dy'] is not None:
+            dy_filename = load_path(imageset['dy'])
+            if dy_filename is not "":
+              dy = pickle.load(open(dy_filename))
+            else:
+              dy = None
+          else:
+            dy_filename = None
+            dy = None
           if imageset['__id__'] == 'ImageSet':
             imageset = self._make_stills(imageset, format_kwargs=format_kwargs)
           elif imageset['__id__'] == 'ImageGrid':
@@ -209,6 +227,10 @@ class ExperimentListDict(object):
               gain_filename = ""
             if pedestal_filename is None:
               pedestal_filename = ""
+            if dx_filename is None:
+              dx_filename = ""
+            if dy_filename is None:
+              dy_filename = ""
             if mask is None:
               mask = ImageBool()
             else:
@@ -221,12 +243,24 @@ class ExperimentListDict(object):
               pedestal = ImageDouble()
             else:
               pedestal = ImageDouble(pedestal)
+            if dx is None:
+              dx = ImageDouble()
+            else:
+              dx = ImageDouble(dx)
+            if dy is None:
+              dy = ImageDouble()
+            else:
+              dy = ImageDouble(dy)
             imageset.external_lookup.mask.data = mask
             imageset.external_lookup.mask.filename = mask_filename
             imageset.external_lookup.gain.data = gain
             imageset.external_lookup.gain.filename = gain_filename
             imageset.external_lookup.pedestal.data = pedestal
             imageset.external_lookup.pedestal.filename = pedestal_filename
+            imageset.external_lookup.dx.data = dx
+            imageset.external_lookup.dx.filename = dx_filename
+            imageset.external_lookup.dy.data = dy
+            imageset.external_lookup.dy.filename = dy_filename
 
           # Update the imageset models
           if isinstance(imageset, ImageSweep):
@@ -248,6 +282,9 @@ class ExperimentListDict(object):
               imageset.set_scan(scan, i)
           else:
             pass
+
+          if imageset is not None:
+            imageset.update_detector_px_mm_data()
 
         # Add the imageset to the dict
         imagesets[key] = imageset

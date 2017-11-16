@@ -125,11 +125,27 @@ namespace dxtbx {
       return pedestal_;
     }
 
+    /**
+     * @returns an internal reference to the dx map
+     */
+    ExternalLookupItem<double>& dx() {
+      return dx_;
+    }
+
+    /**
+     * @returns an internal reference to the dy map
+     */
+    ExternalLookupItem<double>& dy() {
+      return dy_;
+    }
+
   protected:
 
     ExternalLookupItem<bool> mask_;
     ExternalLookupItem<double> gain_;
     ExternalLookupItem<double> pedestal_;
+    ExternalLookupItem<double> dx_;
+    ExternalLookupItem<double> dy_;
   };
 
 

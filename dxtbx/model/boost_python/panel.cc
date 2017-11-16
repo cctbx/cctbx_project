@@ -116,22 +116,22 @@ namespace dxtbx { namespace model { namespace boost_python {
     boost::python::dict result;
     std::string name = obj->name();
     result["type"] = name;
-    if (name == "SimplePxMmStrategy") {
-    } else if (name == "ParallaxCorrectedPxMmStrategy") {
-      boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d =
-        boost::dynamic_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj);
-      result["mu"] = d->mu();
-      result["t0"] = d->t0();
-    } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
-      boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> d =
-        boost::dynamic_pointer_cast<OffsetParallaxCorrectedPxMmStrategy>(obj);
-      result["mu"] = d->mu();
-      result["t0"] = d->t0();
-      result["dx"] = boost::python::list(d->dx());
-      result["dy"] = boost::python::list(d->dy());
-    } else {
-      DXTBX_ERROR("Unknown PxMmStrategy");
-    }
+    /* if (name == "SimplePxMmStrategy") { */
+    /* } else if (name == "ParallaxCorrectedPxMmStrategy") { */
+    /*   boost::shared_ptr<ParallaxCorrectedPxMmStrategy> d = */
+    /*     boost::dynamic_pointer_cast<ParallaxCorrectedPxMmStrategy>(obj); */
+    /*   result["mu"] = d->mu(); */
+    /*   result["t0"] = d->t0(); */
+    /* } else if (name == "OffsetParallaxCorrectedPxMmStrategy") { */
+    /*   boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> d = */
+    /*     boost::dynamic_pointer_cast<OffsetParallaxCorrectedPxMmStrategy>(obj); */
+    /*   result["mu"] = d->mu(); */
+    /*   result["t0"] = d->t0(); */
+    /*   result["dx"] = boost::python::list(d->dx()); */
+    /*   result["dy"] = boost::python::list(d->dy()); */
+    /* } else { */
+    /*   DXTBX_ERROR("Unknown PxMmStrategy"); */
+    /* } */
     return result;
   }
 
@@ -157,8 +157,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
-  template <>
-  Panel* from_dict<Panel>(boost::python::dict obj) {
+  Panel* basic_panel_from_dict(boost::python::dict obj) {
     Panel *result = new Panel();
     if (obj.has_key("name")) {
       result->set_name(boost::python::extract<std::string>(obj["name"]));
@@ -211,6 +210,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       result->set_trusted_range(
         boost::python::extract< tiny<double,2> >(obj["trusted_range"]));
     }
+    return result;
+  }
+
+  template <>
+  Panel* from_dict<Panel>(boost::python::dict obj) {
+    Panel *result = basic_panel_from_dict(obj);
     if (obj.has_key("px_mm_strategy")) {
       boost::python::dict st = boost::python::extract<boost::python::dict>(obj["px_mm_strategy"]);
       std::string name = boost::python::extract<std::string>(st["type"]);
@@ -218,42 +223,110 @@ namespace dxtbx { namespace model { namespace boost_python {
         shared_ptr<PxMmStrategy> strategy(new SimplePxMmStrategy());
         result->set_px_mm_strategy(strategy);
       } else if (name == "ParallaxCorrectedPxMmStrategy") {
+        double mu = result->get_mu();
+        double t0 = result->get_thickness();
         if (st.has_key("mu") && st.has_key("t0")) {
-          double mu = boost::python::extract<double>(st["mu"]);
-          double t0 = boost::python::extract<double>(st["t0"]);
+          mu = boost::python::extract<double>(st["mu"]);
+          t0 = boost::python::extract<double>(st["t0"]);
+          result->set_mu(mu);
+          result->set_thickness(t0);
+        }
+        if (mu > 0 && t0 > 0) {
           shared_ptr<PxMmStrategy> strategy(
               new ParallaxCorrectedPxMmStrategy(mu, t0));
           result->set_px_mm_strategy(strategy);
-        } else {
-          DXTBX_ERROR("JSON file specifies ParallaxCorrectedPxMmStrategy, by contains no mu or t0. Try regenerating the file");
         }
       } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
-        if (st.has_key("mu") && st.has_key("t0") && st.has_key("dx") && st.has_key("dy")) {
-          double mu = boost::python::extract<double>(st["mu"]);
-          double t0 = boost::python::extract<double>(st["t0"]);
-          scitbx::af::shared<double> dxtemp = boost::python::extract<
-            scitbx::af::shared<double> >(st["dx"]);
-          scitbx::af::shared<double> dytemp = boost::python::extract<
-            scitbx::af::shared<double> >(st["dy"]);
-          scitbx::af::c_grid<2> grid(result->get_image_size()[1], result->get_image_size()[0]);
-          scitbx::af::versa<double, scitbx::af::c_grid<2> > dx(grid);
-          scitbx::af::versa<double, scitbx::af::c_grid<2> > dy(grid);
-          DXTBX_ASSERT(dxtemp.size() == dx.size());
-          DXTBX_ASSERT(dytemp.size() == dy.size());
-          std::copy(dxtemp.begin(), dxtemp.end(), dx.begin());
-          std::copy(dytemp.begin(), dytemp.end(), dy.begin());
+        double mu = result->get_mu();
+        double t0 = result->get_thickness();
+        if (st.has_key("mu") && st.has_key("t0")) {
+          mu = boost::python::extract<double>(st["mu"]);
+          t0 = boost::python::extract<double>(st["t0"]);
+          result->set_mu(mu);
+          result->set_thickness(t0);
+        }
+        if (mu > 0 && t0 > 0) {
           shared_ptr<PxMmStrategy> strategy(
-              new OffsetParallaxCorrectedPxMmStrategy(mu, t0, dx.const_ref(), dy.const_ref()));
+              new ParallaxCorrectedPxMmStrategy(mu, t0));
           result->set_px_mm_strategy(strategy);
-        } else {
-          DXTBX_ERROR("JSON file specifies OffsetParallaxCorrectedPxMmStrategy, by contains no mu, t0, dx or dy. Try regenerating the file");
+          //DXTBX_ERROR("The offset arrays need to be set for OffsetParallaxCorrectedPxMmStrategy");
+        }
+      } else {
+        DXTBX_ERROR("Unknown px_mm_strategy");
+      }
+    }
+    return result;
+  }
+
+  Panel* panel_from_dict_with_offset(
+        boost::python::dict obj,
+        scitbx::af::versa<double, scitbx::af::c_grid<2> > dx,
+        scitbx::af::versa<double, scitbx::af::c_grid<2> > dy) {
+    Panel *result = basic_panel_from_dict(obj);
+    DXTBX_ASSERT(dx.accessor()[0] == result->get_image_size()[1]);
+    DXTBX_ASSERT(dx.accessor()[1] == result->get_image_size()[0]);
+    DXTBX_ASSERT(dx.accessor().all_eq(dy.accessor()));
+    if (obj.has_key("px_mm_strategy")) {
+      boost::python::dict st = boost::python::extract<boost::python::dict>(obj["px_mm_strategy"]);
+      std::string name = boost::python::extract<std::string>(st["type"]);
+      if (name == "SimplePxMmStrategy") {
+        shared_ptr<PxMmStrategy> strategy(new SimplePxMmStrategy());
+        result->set_px_mm_strategy(strategy);
+      } else if (name == "ParallaxCorrectedPxMmStrategy") {
+        double mu = result->get_mu();
+        double t0 = result->get_thickness();
+        if (st.has_key("mu") && st.has_key("t0")) {
+          mu = boost::python::extract<double>(st["mu"]);
+          t0 = boost::python::extract<double>(st["t0"]);
+          result->set_mu(mu);
+          result->set_thickness(t0);
+        }
+        if (mu > 0 && t0 > 0) {
+          shared_ptr<PxMmStrategy> strategy(
+              new ParallaxCorrectedPxMmStrategy(mu, t0));
+         result->set_px_mm_strategy(strategy);
+        }
+      } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
+        double mu = result->get_mu();
+        double t0 = result->get_thickness();
+        if (st.has_key("mu") && st.has_key("t0")) {
+          mu = boost::python::extract<double>(st["mu"]);
+          t0 = boost::python::extract<double>(st["t0"]);
+          result->set_mu(mu);
+          result->set_thickness(t0);
+        }
+        if (mu > 0 && t0 > 0) {
+          shared_ptr<PxMmStrategy> strategy(
+              new OffsetParallaxCorrectedPxMmStrategy(
+                mu,
+                t0,
+                dx,
+                dy));
+          result->set_px_mm_strategy(strategy);
         }
       } else {
         DXTBX_ASSERT(false);
       }
     }
-
     return result;
+  }
+
+  Panel* panel_from_dict_with_offset_wrapper(
+        boost::python::dict obj,
+        scitbx::af::versa<double, scitbx::af::flex_grid<> > dx,
+        scitbx::af::versa<double, scitbx::af::flex_grid<> > dy) {
+    DXTBX_ASSERT(dx.accessor().all().size() == 2);
+    DXTBX_ASSERT(dy.accessor().all().size() == 2);
+    DXTBX_ASSERT(dx.accessor().all().all_eq(dy.accessor().all()));
+
+    std::size_t ysize = dx.accessor().all()[0];
+    std::size_t xsize = dx.accessor().all()[1];
+
+    scitbx::af::c_grid<2> grid(ysize, xsize);
+    scitbx::af::versa< double, scitbx::af::c_grid<2> > dx2(dx.handle(), grid);
+    scitbx::af::versa< double, scitbx::af::c_grid<2> > dy2(dy.handle(), grid);
+
+    return panel_from_dict_with_offset(obj, dx2, dy2);
   }
 
   void export_panel()
@@ -485,6 +558,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_trusted_range_mask", &Panel::get_trusted_range_mask<double>)
       .def("to_dict", &to_dict<Panel>)
       .def("from_dict", &from_dict<Panel>,
+        return_value_policy<manage_new_object>())
+      .def("from_dict", &panel_from_dict_with_offset_wrapper,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def("is_", &panel_is)

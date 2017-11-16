@@ -21,9 +21,11 @@
 #include <dxtbx/model/detector.h>
 #include <dxtbx/model/boost_python/to_from_dict.h>
 #include <dxtbx/model/boost_python/pickle_suite.h>
+#include <dxtbx/format/image.h>
 
 namespace dxtbx { namespace model { namespace boost_python {
 
+  using format::Image;
   using scitbx::deg_as_rad;
 
   std::string detector_to_string(const Detector &detector) {
@@ -150,10 +152,54 @@ namespace dxtbx { namespace model { namespace boost_python {
     return result;
   }
 
+  Detector* detector_from_dict(
+        Detector *result,
+        boost::python::dict obj,
+        const Image<double> &dx,
+        const Image<double> &dy) {
+    boost::python::list panels =
+      boost::python::extract<boost::python::list>(obj["panels"]);
+    if (obj.contains("hierarchy")) {
+      boost::python::dict hierarchy = boost::python::extract<boost::python::dict>(obj["hierarchy"]);
+      scitbx::af::shared<bool> used(boost::python::len(panels), false);
+      DXTBX_ASSERT(!hierarchy.contains("panel"));
+      Panel *panel = from_dict<Panel>(hierarchy);
+      std::swap(*((Panel*)result->root()), *panel);
+      for (std::size_t i = 0; i < boost::python::len(hierarchy["children"]); ++i) {
+        boost::python::dict child = boost::python::extract<boost::python::dict>(
+            hierarchy["children"][i]);
+        node_from_dict(child, result->root(), panels, used.ref());
+      }
+      delete panel;
+      for (std::size_t i = 0; i < used.size(); ++i) {
+        DXTBX_ASSERT(used[i] == true);
+      }
+    } else {
+      for (std::size_t i = 0; i < boost::python::len(panels); ++i) {
+        boost::python::dict panel_dict = boost::python::extract<boost::python::dict>(panels[i]);
+        Panel *panel = panel_from_dict_with_offset(
+            panel_dict,
+            dx.tile(i).data(),
+            dy.tile(i).data());
+        result->add_panel(*panel);
+        delete panel;
+      }
+    }
+    return result;
+  }
+
   template <>
   Detector* from_dict<Detector>(boost::python::dict obj) {
     Detector *result = new Detector();
     return detector_from_dict(result, obj);
+  }
+
+  Detector* detector_from_dict_with_offset(
+        boost::python::dict obj,
+        const Image<double> &dx,
+        const Image<double> &dy) {
+    Detector *result = new Detector();
+    return detector_from_dict(result, obj, dx, dy);
   }
 
   struct DetectorPickleSuite : boost::python::pickle_suite {
@@ -469,6 +515,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__copy__", &detector_deepcopy)
       .def("to_dict", &to_dict<Detector>)
       .def("from_dict", &from_dict<Detector>,
+        return_value_policy<manage_new_object>())
+      .def("from_dict", &detector_from_dict_with_offset,
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(DetectorPickleSuite())

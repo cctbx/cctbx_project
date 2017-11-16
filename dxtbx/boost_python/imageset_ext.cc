@@ -5,9 +5,12 @@
 #include <scitbx/array_family/flex_types.h>
 #include <vector>
 #include <dxtbx/imageset.h>
+#include <dxtbx/model/pixel_to_millimeter.h>
 #include <dxtbx/error.h>
 
 namespace dxtbx { namespace boost_python {
+
+  using model::OffsetParallaxCorrectedPxMmStrategy;
 
   namespace detail {
 
@@ -215,7 +218,13 @@ namespace dxtbx { namespace boost_python {
             obj.external_lookup().gain().get_data()),
           boost::python::make_tuple(
             obj.external_lookup().pedestal().get_filename(),
-            obj.external_lookup().pedestal().get_data()));
+            obj.external_lookup().pedestal().get_data()),
+          boost::python::make_tuple(
+            obj.external_lookup().dx().get_filename(),
+            obj.external_lookup().dx().get_data()),
+          boost::python::make_tuple(
+            obj.external_lookup().dy().get_filename(),
+            obj.external_lookup().dy().get_data()));
     }
 
     static
@@ -296,7 +305,7 @@ namespace dxtbx { namespace boost_python {
 
     static
     void set_lookup_tuple(ImageSetData &obj, boost::python::tuple lookup) {
-      DXTBX_ASSERT(boost::python::len(lookup) == 3);
+      DXTBX_ASSERT(boost::python::len(lookup) == 5);
       ImageSetDataPickleSuite::set_lookup_item< Image<bool> >(
           obj,
           boost::python::extract<boost::python::tuple>(lookup[0])(),
@@ -309,6 +318,14 @@ namespace dxtbx { namespace boost_python {
           obj,
           boost::python::extract<boost::python::tuple>(lookup[2])(),
           &ExternalLookup::pedestal);
+      ImageSetDataPickleSuite::set_lookup_item< Image<double> >(
+          obj,
+          boost::python::extract<boost::python::tuple>(lookup[3])(),
+          &ExternalLookup::dx);
+      ImageSetDataPickleSuite::set_lookup_item< Image<double> >(
+          obj,
+          boost::python::extract<boost::python::tuple>(lookup[4])(),
+          &ExternalLookup::dy);
     }
 
     static
@@ -516,6 +533,68 @@ namespace dxtbx { namespace boost_python {
 
   }
 
+
+  /**
+   * If we have offset arrays set in the imageset then update the pixel to
+   * millimeter strategy to use them
+   */
+  void ImageSet_update_detector_px_mm_data(ImageSet &self) {
+    Image<double> dx = self.external_lookup().dx().get_data();
+    Image<double> dy = self.external_lookup().dy().get_data();
+    DXTBX_ASSERT(dx.empty() == dy.empty());
+    if (dx.empty() && dy.empty()) {
+      return;
+    }
+    for (std::size_t i = 0; i < self.size(); ++i) {
+      ImageSet::detector_ptr detector = self.get_detector_for_image(i);
+      DXTBX_ASSERT(dx.n_tiles() == detector->size());
+      DXTBX_ASSERT(dy.n_tiles() == detector->size());
+      for (std::size_t i = 0; i < detector->size(); ++i) {
+        Panel& panel = detector->operator[](i);
+        if (panel.get_px_mm_strategy()->name() == "ParallaxCorrectedPxMmStrategy" ||
+            panel.get_px_mm_strategy()->name() == "OffsetParallaxCorrectedPxMmStrategy") {
+          boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> strategy = boost::make_shared<
+            OffsetParallaxCorrectedPxMmStrategy>(
+          panel.get_mu(),
+          panel.get_thickness(),
+          dx.tile(i).data(),
+          dy.tile(i).data());
+          panel.set_px_mm_strategy(strategy);
+        }
+      }
+
+    }
+  }
+
+  /**
+   * If we have offset arrays set in the imageset then update the pixel to
+   * millimeter strategy to use them
+   */
+  void ImageSweep_update_detector_px_mm_data(ImageSweep &self) {
+    ImageSweep::detector_ptr detector = self.get_detector();
+    Image<double> dx = self.external_lookup().dx().get_data();
+    Image<double> dy = self.external_lookup().dy().get_data();
+    DXTBX_ASSERT(dx.empty() == dy.empty());
+    if (dx.empty() && dy.empty()) {
+      return;
+    }
+    DXTBX_ASSERT(dx.n_tiles() == detector->size());
+    DXTBX_ASSERT(dy.n_tiles() == detector->size());
+    for (std::size_t i = 0; i < detector->size(); ++i) {
+      Panel& panel = detector->operator[](i);
+      if (panel.get_px_mm_strategy()->name() == "ParallaxCorrectedPxMmStrategy" ||
+          panel.get_px_mm_strategy()->name() == "OffsetParallaxCorrectedPxMmStrategy") {
+        boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> strategy = boost::make_shared<
+          OffsetParallaxCorrectedPxMmStrategy>(
+        panel.get_mu(),
+        panel.get_thickness(),
+        dx.tile(i).data(),
+        dy.tile(i).data());
+        panel.set_px_mm_strategy(strategy);
+      }
+    }
+  }
+
   /**
    * Export the imageset classes
    */
@@ -537,6 +616,14 @@ namespace dxtbx { namespace boost_python {
       .add_property("pedestal",
           make_function(
             &ExternalLookup::pedestal,
+            return_internal_reference<>()))
+      .add_property("dx",
+          make_function(
+            &ExternalLookup::dx,
+            return_internal_reference<>()))
+      .add_property("dy",
+          make_function(
+            &ExternalLookup::dy,
             return_internal_reference<>()))
       ;
 
@@ -632,6 +719,8 @@ namespace dxtbx { namespace boost_python {
       .def("partial_set", &ImageSet::partial_set)
       .def("__eq__", &ImageSet::operator==)
       .def("__ne__", &ImageSet::operator!=)
+      .def("update_detector_px_mm_data",
+          &ImageSet_update_detector_px_mm_data)
       .add_property("external_lookup",
           make_function(
             &ImageSet::external_lookup,
@@ -703,6 +792,8 @@ namespace dxtbx { namespace boost_python {
       .def("get_array_range", &ImageSweep::get_array_range)
       .def("complete_set", &ImageSweep::complete_sweep)
       .def("partial_set", &ImageSweep::partial_sweep)
+      .def("update_detector_px_mm_data",
+          &ImageSweep_update_detector_px_mm_data)
       .def_pickle(ImageSweepPickleSuite())
       ;
   }
