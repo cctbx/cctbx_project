@@ -1,11 +1,10 @@
 from __future__ import division
 import time
 
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx import monomer_library
+import mmtbx.model
 from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
+import iotbx.pdb
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for nucleic acids
@@ -16,19 +15,13 @@ from mmtbx.hydrogens import riding
 #-----------------------------------------------------------------------------
 
 def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = None,
-    raw_records    = pdb_str,
-    force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp)
 
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False)
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
 
   sites_cart = xray_structure.sites_cart()
   atoms = pdb_hierarchy.atoms()

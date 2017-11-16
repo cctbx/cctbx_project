@@ -1,16 +1,13 @@
 from __future__ import division
 import time
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx import monomer_library
-from cctbx import geometry_restraints
 import mmtbx.model
+import iotbx.pdb
 import mmtbx.refinement.geometry_minimization
 import scitbx.lbfgs
 import cctbx.geometry_restraints
+from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
-#from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-#import iotbx.phil
+
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of hydrogen atoms for all H geometries
 # for each fragment, the coordinates are minimized before computation of
@@ -27,28 +24,18 @@ def exercise(pdb_str, use_ideal_bonds_angles):
   #    input_string=params_line, process_includes=True).extract()
   #params.pdb_interpretation.restraints_library.cdl=False
 # ---------------------------------------------------------------
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = None,
-    raw_records    = pdb_str,
-    force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
-#
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False)
+
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp)
+
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
+
   sites_cart = xray_structure.sites_cart()
   atoms = pdb_hierarchy.atoms()
 
-#  #mol = mmtbx.model.manager(
-#  #  restraints_manager = restraints_manager,
-#  #  xray_structure     = xray_structure,
-#  #  pdb_hierarchy      = pdb_hierarchy)
-#  #mol.geometry_minimization(nonbonded=True)
-#
   grf = cctbx.geometry_restraints.flags.flags(default=True)
   minimized = mmtbx.refinement.geometry_minimization.lbfgs(
       sites_cart                         = sites_cart,
@@ -93,11 +80,9 @@ def exercise(pdb_str, use_ideal_bonds_angles):
         'distance too large: %s  atom: %s (%s) residue: %s ' \
         % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
     else:
-      assert (h_distances[ih] < 1e-8), \
-        'distance too large: %s  atom: %s (%s) residue: %s ' \
-        % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
-    #print '%s distance: %s  atom: %s (%s) residue: %s ' % \
-    #  (h_parameterization[ih].htype, h_distances[ih], atoms[ih].name, ih, labels.resseq)
+      assert (h_distances[ih] < 1e-7), \
+        'distance too large: %s  atom: %s (%s) residue: %s  distance %s' \
+        % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip(), h_distances[ih])
 
   #for type1, type2 in zip(type_list, type_list_known):
   #  assert (type1 == type2)
