@@ -14,7 +14,7 @@ import os
 import math
 import logging
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
-from cctbx.uctbx.determine_unit_cell import NCDist2017
+from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
 import matplotlib.pyplot as plt
@@ -463,8 +463,8 @@ class Cluster:
       logging.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
                    "J Appl Cryst 47:346 (2014)")
       pair_distances = dist.pdist(g6_cells,
-                                metric=lambda a, b: NCDist2017(a, b))
-      metric = lambda a, b: NCDist2017(a, b)
+                                metric=lambda a, b: NCDist(a, b))
+      metric = lambda a, b: NCDist(a, b)
     if len(pair_distances) > 0:
       logging.info("Distances have been calculated")
       this_linkage = hcluster.linkage(pair_distances,
