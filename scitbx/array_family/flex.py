@@ -223,6 +223,7 @@ random_generator = ext.mersenne_twister(scitbx.random.mt19937)
 
 def set_random_seed(value):
   random_generator.seed(value=value)
+  scitbx.random.set_random_seed(value)
 
 random_size_t = random_generator.random_size_t
 random_double = random_generator.random_double
