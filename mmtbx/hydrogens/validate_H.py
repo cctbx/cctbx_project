@@ -19,10 +19,8 @@ def is_deuterium(atom):
 class validate_H():
   """ This class is for the validation of H and D atoms, especially for models
   obtained by neutron diffraction."""
-  def __init__(self, model, params, log):
+  def __init__(self, model):
     self.model = model
-    self.params = params
-    self.log = log
     self.pdb_hierarchy = self.model.get_hierarchy()
   # results
     self.overall_counts_hd = None

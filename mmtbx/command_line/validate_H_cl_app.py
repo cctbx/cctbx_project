@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.validate_H
 import sys, time
 #from libtbx.utils import Sorry
@@ -6,9 +6,7 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import iotbx.phil
 import mmtbx.model
 from mmtbx.monomer_library import pdb_interpretation
-#from mmtbx import monomer_library
 from mmtbx.hydrogens.validate_H import validate_H
-#import mmtbx.monomer_library.server
 
 master_params_str = """\
 cif_file = None
@@ -54,7 +52,7 @@ Usage:
     return 0
 
   def show_help(self):
-    print >> self.log, self.help_message
+    print(self.help_message, file=self.log)
     self.master_par.show(self.log)
 
   def read_model_file(self):
@@ -64,81 +62,80 @@ Usage:
 
   def print_overall_results(self, overall_counts_hd):
     oc = overall_counts_hd
-    print >> self.log, '*'*79
-    print >> self.log, 'H/D ATOMS IN THE INPUT MODEL:\n'
-    print >> self.log, 'Total number of hydrogen atoms: ',  oc.count_h
-    print >> self.log, 'Total number of deuterium atoms: ', oc.count_d
-    print >> self.log, 'Number of H atoms (protein): ', oc.count_h_protein
-    print >> self.log, 'Number of D atoms (protein): ', oc.count_d_protein
-    print >> self.log, 'Number of H atoms (water): ', oc.count_h_water
-    print >> self.log, 'Number of D atoms (water): ', oc.count_d_water
-    print >> self.log, '*'*79
-    print >> self.log, 'WATER MOLECULES:\n'
-    print >> self.log, 'Number of water: ', oc.count_water
-    print >> self.log, 'Number of water with 0 H (or D): ', oc.count_water_0h
-    print >> self.log, 'Number of water with 1 H (or D): ', oc.count_water_1h
-    print >> self.log, 'Number of water with 2 H (or D): ', oc.count_water_2h
-    print >> self.log, 'Number of water in alternative conformation: ', \
-      oc.count_water_altconf
-    print >> self.log, 'Number of water without oxygen atom: ', \
-      oc.count_water_no_oxygen
+    print('*'*79, file=self.log)
+    print('H/D ATOMS IN THE INPUT MODEL:\n', file=self.log)
+    print('Total number of hydrogen atoms: ',  oc.count_h, file=self.log)
+    print('Total number of deuterium atoms: ', oc.count_d, file=self.log)
+    print('Number of H atoms (protein): ', oc.count_h_protein, file=self.log)
+    print('Number of D atoms (protein): ', oc.count_d_protein, file=self.log)
+    print('Number of H atoms (water): ', oc.count_h_water, file=self.log)
+    print('Number of D atoms (water): ', oc.count_d_water, file=self.log)
+    print('*'*79, file=self.log)
+    print('WATER MOLECULES:\n', file=self.log)
+    print('Number of water: ', oc.count_water, file=self.log)
+    print('Number of water with 0 H (or D): ', oc.count_water_0h, file=self.log)
+    print('Number of water with 1 H (or D): ', oc.count_water_1h, file=self.log)
+    print('Number of water with 2 H (or D): ', oc.count_water_2h, file=self.log)
+    print('Number of water in alternative conformation: ', \
+      oc.count_water_altconf, file=self.log)
+    print('Number of water without oxygen atom: ', \
+      oc.count_water_no_oxygen, file=self.log)
 
   def print_renamed(self, renamed):
-    print >> self.log, '*'*79
-    print >> self.log, 'The following atoms were renamed:'
+    print('*'*79, file=self.log)
+    print('The following atoms were renamed:', file=self.log)
     for entry in renamed:
       atom = entry['atom']
       oldname = entry['oldname']
       newname = atom.name
-      print >> self.log, 'Residue %s atom %s --> %s' % \
-        (atom.id_str()[10:-1], oldname, newname)
+      print('Residue %s atom %s --> %s' % \
+        (atom.id_str()[10:-1], oldname, newname), file=self.log)
 
   def print_atoms_occ_0(self, hd_atoms_with_occ_0):
-    print >> self.log, '*'*79
-    print >> self.log, 'The following H (or D) atoms have zero occupancy:'
+    print('*'*79, file=self.log)
+    print('The following H (or D) atoms have zero occupancy:', file=self.log)
     for item in hd_atoms_with_occ_0:
-      print item[0][5:-1]
+      print(item[0][5:-1])
 
   def print_results_hd_sites(
         self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd):
-    count_exchanged_sites = len(hd_exchanged_sites.keys())
+    count_exchanged_sites = len(list(hd_exchanged_sites.keys()))
     sites_different_xyz = hd_sites_analysis.sites_different_xyz
     sites_different_b   = hd_sites_analysis.sites_different_b
     sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
     sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
-    print >> self.log, '*'*79
-    print >> self.log, 'H/D EXCHANGED SITES:\n'
-    print >> self.log, 'Number of H/D exchanged sites: ', count_exchanged_sites
-    print >> self.log, 'Number of atoms modelled only as H: ', \
-     overall_counts_hd.count_h_protein - count_exchanged_sites
-    print >> self.log, 'Number of atoms modelled only as D: ', \
-     overall_counts_hd.count_d_protein - count_exchanged_sites
+    print('*'*79, file=self.log)
+    print('H/D EXCHANGED SITES:\n', file=self.log)
+    print('Number of H/D exchanged sites: ', count_exchanged_sites, file=self.log)
+    print('Number of atoms modelled only as H: ', \
+     overall_counts_hd.count_h_protein - count_exchanged_sites, file=self.log)
+    print('Number of atoms modelled only as D: ', \
+     overall_counts_hd.count_d_protein - count_exchanged_sites, file=self.log)
     if sites_different_xyz:
-      print >> self.log, '\nH/D pairs not at identical positions:'
+      print('\nH/D pairs not at identical positions:', file=self.log)
       for item in sites_different_xyz:
-        print >> self.log, '%s and  %s at distance %s' % \
-          (item[0][5:-1], item[1][5:-1], item[2])
+        print('%s and  %s at distance %s' % \
+          (item[0][5:-1], item[1][5:-1], item[2]), file=self.log)
     if sites_different_b:
-      print >> self.log, '\nH/D pairs without identical ADPs:'
+      print('\nH/D pairs without identical ADPs:', file=self.log)
       for item in sites_different_b:
-        print >> self.log, '%s and %s ' % (item[0][5:-1], item[1][5:-1])
+        print('%s and %s ' % (item[0][5:-1], item[1][5:-1]), file=self.log)
     if sites_sum_occ_not_1:
-      print >> self.log, '\nH/D pairs with occupancy sum != 1:'
+      print('\nH/D pairs with occupancy sum != 1:', file=self.log)
       for item in sites_sum_occ_not_1:
-        print >> self.log, ' %s  and %s with occupancy sum %s' % \
-          (item[0][5:-1], item[1][5:-1], item[2])
+        print(' %s  and %s with occupancy sum %s' % \
+          (item[0][5:-1], item[1][5:-1], item[2]), file=self.log)
     if sites_occ_sum_no_scattering:
-      print >> self.log, \
-        '\nRotatable H/D pairs with zero scattering occupancy sum:'
+      print('\nRotatable H/D pairs with zero scattering occupancy sum:', file=self.log)
       for item in sites_occ_sum_no_scattering:
-        print >> self.log, ' %s with occ %s and  %s with occ %s' %\
-          (item[0][5:-1], item[2], item[1][5:-1], item[3])
+        print(' %s with occ %s and  %s with occ %s' %\
+          (item[0][5:-1], item[2], item[1][5:-1], item[3]), file=self.log)
 
   def print_missing_HD_atoms(self, missing_HD_atoms):
-    print >> self.log, '*'*79
-    print >> self.log, 'MISSING H or D atoms:\n'
+    print('*'*79, file=self.log)
+    print('MISSING H or D atoms:\n', file=self.log)
     for item in missing_HD_atoms:
-      print >> self.log, '%s : %s ' % (item[0][8:-1], ", ".join(item[1]))
+      print('%s : %s ' % (item[0][8:-1], ", ".join(item[1])), file=self.log)
 
   def print_results(self, results):
     overall_counts_hd  = results.overall_counts_hd
@@ -153,7 +150,7 @@ Usage:
       self.print_renamed(renamed)
     if hd_atoms_with_occ_0:
       self.print_atoms_occ_0(hd_atoms_with_occ_0)
-    if len(hd_exchanged_sites.keys()) != 0:
+    if len(list(hd_exchanged_sites.keys())) != 0:
       self.print_results_hd_sites(
         hd_exchanged_sites, hd_sites_analysis, overall_counts_hd)
     if missing_HD_atoms:
@@ -183,14 +180,11 @@ Usage:
         pdb_interpretation_params = pi_params,
         restraint_objects         = self.input_objects.cif_objects)
 
-    print >> self.log, "Model object created from file %s:" % \
-      getattr(self.work_params, self.pdbf_def)
+    print("Model object created from file %s:" % \
+      getattr(self.work_params, self.pdbf_def), file=self.log)
 
     # If needed, this could be wrapped in try...except to catch errors.
-    c = validate_H(
-      model  = model,
-      params = self.params,
-      log    = self.log)
+    c = validate_H(model = model)
     c.validate_inputs()
     c.run()
     results = c.get_results()
@@ -202,4 +196,4 @@ t0 = time.time()
 validate_H_app = cl_validate_H(
     cl_args=sys.argv[1:])
 validate_H_app.run()
-print "Finished. Time: %8.3f"%(time.time()-t0)
+print("Finished. Time: %8.3f"%(time.time()-t0))
