@@ -224,6 +224,8 @@ class find_outliers:
     sd_data = None
     radius_outlier_index = None
     limit_outlier = None
+    # --- Quoted code superceeded by extension module call to find_green_bar
+    """
     for i in xrange(len(rayleigh_cdf_x)):
       mx = rayleigh_cdf_x[i]
       my = rayleigh_cdf[i]
@@ -241,6 +243,23 @@ class find_outliers:
             break
         if (sd_data is not None):
           break
+    """
+    from rstbx.indexing_api import find_green_bar
+    green = find_green_bar(rayleigh_cdf_x = rayleigh_cdf_x,
+                           rayleigh_cdf = rayleigh_cdf,
+                           dr = self.dr, x = self.x, sd = sd)
+    if green.is_set:
+      #assert radius_outlier_index == green.radius_outlier_index
+      #assert limit_outlier == green.limit_outlier
+      #assert sd_data[0][0] == green.sd_mx
+      #assert sd_data[0][1] == green.sd_my
+      #assert sd_data[1][0] == green.sd_lower_x
+      #assert sd_data[1][1] == green.sd_lower_y
+      if self.verbose:print "Width of green bar = %4.3f"%(green.sd_lower_x - green.sd_mx)
+      radius_outlier_index = green.radius_outlier_index
+      limit_outlier = green.limit_outlier
+      sd_data = ((green.sd_mx, green.sd_my), (green.sd_lower_x, green.sd_lower_y))
+
     if (radius_outlier_index is None):
       radius_outlier_index = len(self.dr)
     if (limit_outlier is None):
