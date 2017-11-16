@@ -47,7 +47,6 @@ OPENSSL_PKG = "openssl-1.0.2l.tar.gz"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.14.tgz"
-NUMPY_PKG = "numpy-1.8.1.tar.gz"         # used many places
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.8.tar.gz"
@@ -67,6 +66,7 @@ FUTURE_VERSION="0.16"
 JINJA2_VERSION = "2.9.6"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
+NUMPY_VERSION="1.8.1"
 PILLOW_VERSION = "4.2.1"
 PYTEST_VERSION="3.2.3"
 SIX_VERSION="1.11.0"
@@ -248,7 +248,7 @@ def fetch_all_dependencies (dest_dir,
     pkg_dirs=pkg_dirs,
     copy_files=copy_files)
   for pkg_name in [
-      PYTHON_PKG, NUMPY_PKG, IMAGING_PKG, REPORTLAB_PKG, ZLIB_PKG,
+      PYTHON_PKG, IMAGING_PKG, REPORTLAB_PKG, ZLIB_PKG,
       SCIPY_PKG, PYRTF_PKG, BIOPYTHON_PKG, SPHINX_PKG, NUMPYDOC_PKG,
       IPYTHON_PKG,
     ] :

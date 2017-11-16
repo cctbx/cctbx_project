@@ -902,11 +902,11 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="libsvm")
 
   def build_numpy(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=NUMPY_PKG,
-      pkg_name_label="numpy",
-      confirm_import_module="numpy")
+    self.build_python_module_pip(
+      package_name='numpy',
+      package_version=NUMPY_VERSION,
+      confirm_import_module="numpy",
+    )
 
   def build_docutils(self):
     self.build_python_module_pip(
