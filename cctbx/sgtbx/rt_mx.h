@@ -456,7 +456,7 @@ namespace cctbx { namespace sgtbx {
       inverse_cancel() const;
 
       //! Multiplication with cancellation for general rt_mx.
-      /*! Similar to opertor*(). However, the operands may have any
+      /*! Similar to operator*(). However, the operands may have any
           rotation denominator or translation denominator.
           <p>
           The denominators of the result are made as small as possible.
