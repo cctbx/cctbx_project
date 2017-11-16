@@ -316,7 +316,7 @@ K&    RMS difference with respect to the reference: 0.724248
   assert selection.size() == 132
   assert selection.count(True) == 110
   out = StringIO()
-  model.processed_pdb_file.show_atoms_without_ncs_restraints(
+  model._processed_pdb_file.show_atoms_without_ncs_restraints(
     ncs_restraints_groups=groups, out=out, prefix="%&")
   assert not show_diff(out.getvalue(), """\
 %&Atoms without NCS restraints:

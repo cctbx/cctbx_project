@@ -517,7 +517,7 @@ class load_model_and_data (object) :
       make_sub_header("Processing PDB file(s)", out=self.log)
       full_grm = self.model.get_restraints_manager()
       self.geometry = full_grm.geometry
-      self.processed_pdb_file = self.model.processed_pdb_file # to remove later
+      self.processed_pdb_file = self.model._processed_pdb_file # to remove later
     self.xray_structure = self.model.get_xray_structure()
     self.pdb_hierarchy = self.model.get_hierarchy()
     self.pdb_hierarchy.atoms().reset_i_seq()

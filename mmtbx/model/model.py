@@ -168,9 +168,9 @@ class manager(object):
       process_input = False, # obtain processed_pdb_file straight away
       build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
       stop_for_unknowns = True,
-      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
       log = None,
       # for GRM, selections etc
+                     processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
                      processed_pdb_files_srv = None, # remove later ! used in def select()
@@ -183,8 +183,8 @@ class manager(object):
     self._pdb_hierarchy = pdb_hierarchy
     self._model_input = model_input
     self._restraint_objects = restraint_objects
-    self.monomer_parameters = monomer_parameters
-    self.pdb_interpretation_params = None
+    self._monomer_parameters = monomer_parameters
+    self._pdb_interpretation_params = None
     self.set_pdb_interpretation_params(pdb_interpretation_params)
     # Important! if shift_manager is not None, model_input - in original coords,
     # self.get_hierarchy(), self.get_xray_structure, self.get_sites_cart - in shifted coords.
@@ -192,10 +192,9 @@ class manager(object):
     # If shift_manager is None - everything is consistent.
     self._shift_manager = None # mmtbx.utils.extract_box_around_model_and_map
 
-    self.build_grm = build_grm
-    self.stop_for_unknowns = stop_for_unknowns
-    self.processed_pdb_file = processed_pdb_file
-    self.processed_pdb_files_srv = processed_pdb_files_srv
+    self._stop_for_unknowns = stop_for_unknowns
+    self._processed_pdb_file = processed_pdb_file
+    self._processed_pdb_files_srv = processed_pdb_files_srv
     self._crystal_symmetry = crystal_symmetry
 
     self.restraints_manager = restraints_manager
@@ -235,7 +234,7 @@ class manager(object):
     self._rotamer_eval = None
     self._rotamer_id = None
     self._rama_eval = None
-    self.original_model_format = None
+    self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
 
@@ -245,31 +244,31 @@ class manager(object):
     if self._model_input is not None:
       s = str(type(model_input))
       if s.find("pdb") > 0:
-        self.original_model_format = "pdb"
+        self._original_model_format = "pdb"
       elif s.find("cif") > 0:
-        self.original_model_format = "mmcif"
+        self._original_model_format = "mmcif"
       self._ss_annotation = self._model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._model_input.crystal_symmetry()
 
     if process_input or build_grm:
-      assert self.processed_pdb_file is None
+      assert self._processed_pdb_file is None
       assert self.all_chain_proxies is None
       self._process_input_model()
 
     # do pdb_hierarchy
     if self._pdb_hierarchy is None: # got nothing in parameters
-      if self.processed_pdb_file is not None:
-        self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+      if self._processed_pdb_file is not None:
+        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
       elif self._model_input is not None:
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
     self._atom_selection_cache = self._pdb_hierarchy.atom_selection_cache()
     self._update_pdb_atoms()
 
-    if not self.all_chain_proxies and self.processed_pdb_file:
-      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+    if not self.all_chain_proxies and self._processed_pdb_file:
+      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
 
     if(anomalous_scatterer_groups is not None and
         len(anomalous_scatterer_groups) == 0):
@@ -324,9 +323,9 @@ class manager(object):
     # Consider invalidating self._grm here, because it could be already
     # constructed with different params
     #
-    self.pdb_interpretation_params = params
+    self._pdb_interpretation_params = params
     if params is None:
-      self.pdb_interpretation_params = iotbx.phil.parse(
+      self._pdb_interpretation_params = iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
     # check if we got only inside of pdb_interpretation scope.
     # For mmtbx.command_line.load_model_and_data
@@ -334,7 +333,7 @@ class manager(object):
       full_params = iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
       full_params.pdb_interpretation = params
-      self.pdb_interpretation_params = full_params
+      self._pdb_interpretation_params = full_params
 
   def check_consistency(self):
     """
@@ -686,43 +685,43 @@ class manager(object):
         # Stuff for outputting ncs_groups
         excessive_distance_limit = excessive_distance_limit,
         xray_structure=self.get_xray_structure(),
-        processed_pdb_file=self.processed_pdb_file,
+        processed_pdb_file=self._processed_pdb_file,
         file_descriptor=result)
     return result.getvalue()
 
   def input_format_was_cif(self):
-    return self.original_model_format == "mmcif"
+    return self._original_model_format == "mmcif"
 
   def _process_input_model(self):
     # Not clear if we can handle this correctly for self._xray_structure
     # assert self.get_number_of_models() < 2
     # assert 0
-    if self.processed_pdb_files_srv is None:
-      self.processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
+    if self._processed_pdb_files_srv is None:
+      self._processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
           crystal_symmetry          = self.crystal_symmetry(),
-          pdb_interpretation_params = self.pdb_interpretation_params.pdb_interpretation,
-          stop_for_unknowns         = self.stop_for_unknowns,
+          pdb_interpretation_params = self._pdb_interpretation_params.pdb_interpretation,
+          stop_for_unknowns         = self._stop_for_unknowns,
           log                       = self.log,
           cif_objects               = self._restraint_objects,
-          cif_parameters            = self.monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
+          cif_parameters            = self._monomer_parameters, # mmtbx.utils.cif_params scope - should be refactored to remove
           mon_lib_srv               = None,
           ener_lib                  = None,
-          use_neutron_distances     = self.pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
-    if self.processed_pdb_file is None:
-      self.processed_pdb_file, junk = self.processed_pdb_files_srv.process_pdb_files(
+          use_neutron_distances     = self._pdb_interpretation_params.pdb_interpretation.use_neutron_distances)
+    if self._processed_pdb_file is None:
+      self._processed_pdb_file, junk = self._processed_pdb_files_srv.process_pdb_files(
           pdb_inp = self._model_input,
           # because hierarchy already extracted
           # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
           stop_if_duplicate_labels = True,
           allow_missing_symmetry=True)
     if self.all_chain_proxies is None:
-      self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
-    self._atom_selection_cache = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+      self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
+    self._atom_selection_cache = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
     if self._pdb_hierarchy is None:
-      self._pdb_hierarchy = self.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+      self._pdb_hierarchy = self._processed_pdb_file.all_chain_proxies.pdb_hierarchy
     if self._xray_structure is None:
       xray_structure_all = \
-          self.processed_pdb_file.xray_structure(show_summary = False)
+          self._processed_pdb_file.xray_structure(show_summary = False)
       # XXX ad hoc manipulation
       for sc in xray_structure_all.scatterers():
         lbl=sc.label.split()
@@ -734,12 +733,12 @@ class manager(object):
       if(xray_structure_all.scatterers().size()==0):
         raise Sorry("Empty xray_structure.")
       if self.all_chain_proxies is not None:
-        self.all_chain_proxies = self.processed_pdb_file.all_chain_proxies
+        self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
       self._xray_structure = xray_structure_all
 
-    self._mon_lib_srv = self.processed_pdb_files_srv.mon_lib_srv
-    self._ener_lib = self.processed_pdb_files_srv.ener_lib
-    self._ncs_obj = self.processed_pdb_file.ncs_obj
+    self._mon_lib_srv = self._processed_pdb_files_srv.mon_lib_srv
+    self._ener_lib = self._processed_pdb_files_srv.ener_lib
+    self._ncs_obj = self._processed_pdb_file.ncs_obj
 
     # copy-paste from command_line/geometry_minimization.py: get_geometry_restraints_manager
     # should live only here and be removed there.
@@ -766,30 +765,30 @@ class manager(object):
       custom_nb_excl=None,
       file_descriptor_for_geo_in_case_of_failure=None,
       ):
-    if self.processed_pdb_file is None:
+    if self._processed_pdb_file is None:
       self._process_input_model()
 
     # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
     # not clear how they work with multi-model stuff...
 
-    # if self.pdb_interpretation_params is None:
-    #   self.pdb_interpretation_params = master_params().fetch().extract()
+    # if self._pdb_interpretation_params is None:
+    #   self._pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
-    geometry = self.processed_pdb_file.geometry_restraints_manager(
+    geometry = self._processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
-      params_edits       = self.pdb_interpretation_params.geometry_restraints.edits,
-      params_remove      = self.pdb_interpretation_params.geometry_restraints.remove,
+      params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
+      params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
       assume_hydrogens_all_missing = not self.has_hd,
       file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
 
-    self._ss_manager = self.processed_pdb_file.ss_manager
+    self._ss_manager = self._processed_pdb_file.ss_manager
 
     # Link treating should be rewritten. They should not be saved in
     # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(self.processed_pdb_file.all_chain_proxies)
+    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
     # For test GRM pickling
     # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
     # geometry = make_geo_pickle_unpickle(
@@ -801,14 +800,14 @@ class manager(object):
       geometry      = geometry,
       normalization = grm_normalization)
     # Torsion restraints from reference model
-    if hasattr(self.pdb_interpretation_params, "reference_model") and restraints_manager is not None:
+    if hasattr(self._pdb_interpretation_params, "reference_model") and restraints_manager is not None:
       add_reference_dihedral_restraints_if_requested(
           geometry=restraints_manager.geometry,
-          processed_pdb_file=self.processed_pdb_file,
+          processed_pdb_file=self._processed_pdb_file,
           mon_lib_srv=self.get_mon_lib_srv(),
           ener_lib=self.get_ener_lib(),
           has_hd=self.has_hd,
-          params=self.pdb_interpretation_params.reference_model,
+          params=self._pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)
     if(self._xray_structure is not None):
@@ -1692,7 +1691,7 @@ class manager(object):
     """
     raw_records = self.model_as_pdb()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
-    pip = self.pdb_interpretation_params
+    pip = self._pdb_interpretation_params
     pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
     pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
     pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
@@ -1969,12 +1968,12 @@ class manager(object):
     new_shift_manager = self._shift_manager
     new = manager(
       model_input                = self._model_input, # any selection here?
-      processed_pdb_file         = self.processed_pdb_file,
-      processed_pdb_files_srv    = self.processed_pdb_files_srv,
+      processed_pdb_file         = self._processed_pdb_file,
+      processed_pdb_files_srv    = self._processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
       xray_structure             = self._xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
-      pdb_interpretation_params  = self.pdb_interpretation_params,
+      pdb_interpretation_params  = self._pdb_interpretation_params,
       # refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       anomalous_scatterer_groups = self.anomalous_scatterer_groups,
@@ -2296,7 +2295,7 @@ class manager(object):
     if (reset_labels) :
       self._sync_xrs_labels()
     self.all_chain_proxies = None
-    self.processed_pdb_file = None
+    self._processed_pdb_file = None
 
   def _sync_xrs_labels(self):
     for sc, atom in zip(self.get_xray_structure().scatterers(), self.get_hierarchy().atoms()) :

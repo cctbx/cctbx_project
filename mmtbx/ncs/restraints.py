@@ -776,7 +776,7 @@ class groups(object):
         print >> result,pr+"   RMSD               : %-10.3f" % rms
     return result.getvalue()
 
-  def as_ncs_block(self, loops, cif_block, sites_cart):
+  def as_cif_block(self, loops, cif_block, sites_cart):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     (ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop,
@@ -808,7 +808,7 @@ class groups(object):
     cif_block.add_loop(ncs_ens_loop)
     cif_block.add_loop(ncs_dom_loop)
     cif_block.add_loop(ncs_dom_lim_loop)
-    if self.ncs_groups is not None:
+    if ncs_groups is not None:
       cif_block.add_loop(ncs_oper_loop)
       cif_block.add_loop(ncs_ens_gen_loop)
     return cif_block
