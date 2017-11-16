@@ -6,6 +6,18 @@ from libtbx.utils import Sorry
 from scitbx import matrix
 from mmtbx.rotamer import rotamer_eval
 
+def is_hydrogen(atom):
+  answer = False
+  if (atom.element.strip().upper() == 'H'):
+    answer = True
+  return answer
+
+def is_deuterium(atom):
+  answer = False
+  if (atom.element.strip().upper() == 'D'):
+    answer = True
+  return answer
+
 class validate_H():
   """ This class is for the validation of H and D atoms, especially for models
   obtained by neutron diffraction."""
@@ -39,7 +51,7 @@ class validate_H():
           xyz = atom.xyz
         atom_name = atom.name.strip().upper()
         atom_name_list.append(atom_name)
-        if (atom.element.strip() == 'D'):
+        if is_deuterium(atom):
           atom_name_list.append(atom_name.replace('D','H',1))
         #if atom_name in hd_aliases:
         #  atom_name_list.append(hd_aliases[atom_name])
@@ -126,14 +138,17 @@ class validate_H():
     names = list(self.pdb_hierarchy.atoms().extract_name())
     exchange_atom = None
     hd_without_altloc = []
-    if (atom.element.strip() == 'H'): element = 'D'
-    else: element = 'H'
+    if (is_hydrogen(atom)):
+      element = 'D'
+    else:
+      element = 'H'
     for _atom in residue_group.atoms():
       if (_atom.parent().altloc == ''):
         hd_without_altloc.append(_atom.name)
-      if _atom.element.strip()!= element: continue
+      if _atom.element.strip().upper()!= element: continue
       if neighbors:
         if _atom.i_seq not in neighbors: continue
+      # _atom.distance(atom)
       d2 = self.distance2(atom.xyz, _atom.xyz)
       if d2 <= minimum_distance:
         minimum_distance = d2
@@ -155,7 +170,7 @@ class validate_H():
       neighbors = list(fsc1[atom.i_seq]),
       minimum_distance = minimum_distance)
     if exchange_atom is not None:
-      if (atom.element.strip() == 'H'):
+      if (is_hydrogen(atom)):
         atom_H_new, atom_D_new = atom, exchange_atom
       else:
         atom_H_new, atom_D_new = exchange_atom, atom
@@ -211,8 +226,8 @@ class validate_H():
       for atom in residue_group.atoms():
         resname = atom.parent().resname
         if (get_class(name=resname) in protein):
-          if (not atom.element_is_hydrogen()): continue
-          if (atom.element.strip() == 'H'):
+          #if (not atom.element_is_hydrogen()): continue
+          if (is_hydrogen(atom)):
             atom_H = atom
             name_atom_H = atom_H.name
             name_atom_D = name_atom_H.replace('H','D',1)
@@ -238,6 +253,9 @@ class validate_H():
     sites_sum_occ_not_1 = []
     sites_occ_sum_no_scattering = []
     rotatable_hd_selection = self.model.rotatable_hd_selection()
+    occ_h_zero_scattering = 0.64
+    occ_d_zero_scattering = 0.36
+    occ_zero_scatt_eps = 0.05
     for iseq in self.hd_exchanged_sites:
       atom_H = self.hd_exchanged_sites[iseq][0]
       atom_D = self.hd_exchanged_sites[iseq][1]
@@ -256,8 +274,10 @@ class validate_H():
       if ((atom_H.i_seq in rotatable_hd_selection) and
           (atom_D.i_seq in rotatable_hd_selection)):
         if (self.distance2(atom_H.xyz, atom_D.xyz) < 1.5):
-          if ((atom_H.occ < 0.69 and atom_H.occ > 0.59) and
-              (atom_D.occ < 0.41 and atom_D.occ > 0.31)):
+          if ((occ_h_zero_scattering - occ_zero_scatt_eps <= atom_H.occ
+              <= occ_h_zero_scattering + occ_zero_scatt_eps) and
+            (occ_d_zero_scattering - occ_zero_scatt_eps <= atom_D.occ
+              <= occ_d_zero_scattering + occ_zero_scatt_eps)):
             sites_occ_sum_no_scattering.append(
               (atom_H.id_str(),atom_D.id_str(),atom_H.occ,atom_D.occ,atom_H.xyz))
 
@@ -306,8 +326,10 @@ class validate_H():
               is_alt_conf = True
               break
             else:
-              if (atom.element_is_hydrogen()): count_hd_in_rg += 1
-              if (atom.element.strip() == 'O'): count_o_in_rg += 1
+              if (atom.element_is_hydrogen()):
+                count_hd_in_rg += 1
+              elif (atom.element.strip().upper() == 'O'):
+                count_o_in_rg += 1
           if not is_alt_conf:
             if   count_hd_in_rg == 1 and count_o_in_rg == 1:
               count_water_1h += 1
@@ -320,17 +342,21 @@ class validate_H():
       for atom in residue_group.atoms():
         resname = atom.parent().resname
         if (get_class(name=resname) in protein):
-          if (not atom.element_is_hydrogen()): continue
+          if (not atom.element_is_hydrogen()):
+            continue
           count_hd_atoms_protein += 1
           if (atom.occ == 0):
             hd_atoms_with_occ_0.append((atom.id_str(), atom.xyz))
-          if (atom.element.strip() == 'H'):
+          if (is_hydrogen(atom)):
             count_h_protein += 1
-          elif (atom.element.strip() == 'D'): count_d_protein += 1
+          elif (is_deuterium(atom)):
+            count_d_protein += 1
         elif (get_class(name=resname) == 'common_water'):
-          if (not atom.element_is_hydrogen()): continue
-          if (atom.element.strip() == 'H'):   count_h_water += 1
-          elif (atom.element.strip() == 'D'): count_d_water += 1
+          #if (not atom.element_is_hydrogen()): continue
+          if (is_hydrogen(atom)):
+            count_h_water += 1
+          elif (is_deuterium(atom)):
+            count_d_water += 1
     assert (count_hd_atoms_protein == count_h_protein + count_d_protein)
     assert (count_water_1h + count_water_2h + count_water_0h + \
       count_water_altconf + count_water_no_oxygen == count_water)
