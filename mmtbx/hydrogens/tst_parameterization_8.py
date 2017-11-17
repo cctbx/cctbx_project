@@ -1,12 +1,12 @@
 from __future__ import division
 import time
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx import monomer_library
-from cctbx import geometry_restraints
-from mmtbx.hydrogens import riding
+
+import mmtbx.model
+import iotbx.pdb
 import iotbx.phil
+from mmtbx.hydrogens import riding
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+
 
 def exercise1():
 
@@ -223,9 +223,6 @@ geometry_restraints.edits {
 }
   """
 
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-
   gm_phil = iotbx.phil.parse(
       input_string     = grand_master_phil_str,
       process_includes = True)
@@ -237,20 +234,16 @@ geometry_restraints.edits {
   assert (params.geometry_restraints.edits.angle[3].atom_selection_1 == \
     "chain D and resseq 1001 and name HAB")
 
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = None,
-    raw_records    = pdb_str,
-    params         = params.pdb_interpretation,
-    log            = None)
-#    force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
 
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    params_edits  = params.geometry_restraints.edits,
-    show_energies = False)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params)
+
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
 
   sites_cart = xray_structure.sites_cart()
   atoms = pdb_hierarchy.atoms()
@@ -345,8 +338,6 @@ geometry_restraints.edits {
   type_list_known = ['3neigbs', '2tetra', '2tetra', 'flat_2neigbs',
     'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1b']
 
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
 
   gm_phil = iotbx.phil.parse(
       input_string     = grand_master_phil_str,
@@ -359,19 +350,16 @@ geometry_restraints.edits {
   assert (params.geometry_restraints.edits.bond[0].atom_selection_1 == \
     "chain A and resseq 7 and name HH")
 
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = None,
-    raw_records    = pdb_str,
-    params         = params.pdb_interpretation,
-    log            = None)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
 
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    params_edits  = params.geometry_restraints.edits,
-    show_energies = False)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params)
+
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
 
   sites_cart = xray_structure.sites_cart()
   atoms = pdb_hierarchy.atoms()
