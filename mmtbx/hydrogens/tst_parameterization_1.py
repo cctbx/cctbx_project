@@ -1,8 +1,6 @@
 from __future__ import division
 import time
-
 import mmtbx.model
-from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
 import iotbx.pdb
 

@@ -1,11 +1,9 @@
 from __future__ import division
 import time
-
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-from mmtbx import monomer_library
-from cctbx import geometry_restraints
+import mmtbx.model
 from mmtbx.hydrogens import riding
+from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
+import iotbx.pdb
 
 #-----------------------------------------------------------------------------
 # This test checks the parameterization of H/D atoms in models containing
@@ -13,20 +11,21 @@ from mmtbx.hydrogens import riding
 #-----------------------------------------------------------------------------
 
 def exercise(pdb_str):
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = mon_lib_srv,
-    ener_lib                 = ener_lib,
-    file_name                = None,
-    raw_records              = pdb_str,
-    restraints_loading_flags = {"use_neutron_distances" : True},
-    force_symmetry           = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
+  pdb_interpretation_phil = iotbx.phil.parse(
+    input_string = grand_master_phil_str,
+    process_includes = True)
+  params = pdb_interpretation_phil.extract()
+  params.pdb_interpretation.use_neutron_distances = True
 
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False)
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    pdb_interpretation_params = params)
+
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
 
   sites_cart = xray_structure.sites_cart()
   atoms = pdb_hierarchy.atoms()

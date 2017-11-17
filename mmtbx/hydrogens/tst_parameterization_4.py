@@ -5,7 +5,6 @@ import iotbx.pdb
 import mmtbx.refinement.geometry_minimization
 import scitbx.lbfgs
 import cctbx.geometry_restraints
-from cctbx import geometry_restraints
 from mmtbx.hydrogens import riding
 
 #-----------------------------------------------------------------------------
