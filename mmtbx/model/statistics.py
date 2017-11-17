@@ -188,18 +188,19 @@ class geometry(object):
   def result_for_model_idealization(self):
     # It is unclear why duplicate instead of using existing "def result"
     # Was faster to wrap things the way they are already used in model_idealization
+    res = self.result()
     return group_args(
-      mpscore               = self.mp_score(),
-      clashscore            = self.clash().score,
-      c_beta_dev_percent    = self.c_beta().outliers,
-      ramachandran_outliers = self.ramachandran().outliers,
-      ramachandran_allowed  = self.ramachandran().allowed,
-      ramachandran_favored  = self.ramachandran().favored,
-      rotamer_outliers      = self.rotamer().outliers,
-      cis_proline           = self.omega().cis_proline,
-      cis_general           = self.omega().cis_general,
-      twisted_proline       = self.omega().twisted_proline,
-      twisted_general       = self.omega().twisted_general,)
+      mpscore               = res.molprobity_score,
+      clashscore            = res.clash.score,
+      c_beta_dev_percent    = res.c_beta.outliers,
+      ramachandran_outliers = res.ramachandran.outliers,
+      ramachandran_allowed  = res.ramachandran.allowed,
+      ramachandran_favored  = res.ramachandran.favored,
+      rotamer_outliers      = res.rotamer.outliers,
+      cis_proline           = res.omega.cis_proline,
+      cis_general           = res.omega.cis_general,
+      twisted_proline       = res.omega.twisted_proline,
+      twisted_general       = res.omega.twisted_general,)
 
   def result(self):
     if self.cached_result is None:
