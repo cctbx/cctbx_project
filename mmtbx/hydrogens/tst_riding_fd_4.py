@@ -1,9 +1,8 @@
 from __future__ import division
 import time
+import iotbx.pdb
+import mmtbx.model
 from cctbx.array_family import flex
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens import riding
 
@@ -13,28 +12,22 @@ from mmtbx.hydrogens import riding
 #-----------------------------------------------------------------------------
 
 def exercise(pdb_str, eps, idealize):
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = pdb_str,
-      force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xray_structure = processed_pdb_file.xray_structure()
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp)
 
-  geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
-#
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
+
   riding_h_manager = riding.manager(
     pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry)
+    geometry_restraints = geometry_restraints)
 
   riding_h_manager.idealize(xray_structure=xray_structure)
   sites_cart = xray_structure.sites_cart()
 
-  g_analytical = geometry.energies_sites(
+  g_analytical = geometry_restraints.energies_sites(
     sites_cart = sites_cart, compute_gradients = True).gradients
   hd_selection = xray_structure.hd_selection()
 
@@ -61,7 +54,7 @@ def exercise(pdb_str, eps, idealize):
         riding_h_manager.idealize(
           xray_structure=xray_structure_)
         sites_cart_ = xray_structure_.sites_cart()
-        ts.append(geometry.energies_sites(
+        ts.append(geometry_restraints.energies_sites(
           sites_cart = sites_cart_,
           compute_gradients = False).target)
       g_fd_i.append((ts[1]-ts[0])/(2*eps))
