@@ -202,12 +202,9 @@ class find_outliers:
       self.fraction_spot_indices.append(self.sorted_observed_spots[dr])
 
     # generate points for fitted distributions
-    rayleigh_cdf_x = flex.double(500)
-    for i in xrange(len(rayleigh_cdf_x)):
-      rayleigh_cdf_x[i] = float(i)/float(len(rayleigh_cdf_x))
-    rayleigh_cdf = flex.double(len(rayleigh_cdf_x))
-    for i in xrange(len(rayleigh_cdf_x)):
-      rayleigh_cdf[i] = fitted_rayleigh.distribution.cdf(x=rayleigh_cdf_x[i])
+    rayleigh_cdf_x = flex.double(xrange(500))
+    rayleigh_cdf_x /= float(len(rayleigh_cdf_x))
+    rayleigh_cdf = fitted_rayleigh.distribution.cdf(x=rayleigh_cdf_x)
 
     # generate points for pdf
     dr_bins,dr_histogram = make_histogram_data(data=self.dr,n_bins=100)
