@@ -549,7 +549,7 @@ Residues matching in forward direction:     16  RMSD:   1.45
 Residues matching in reverse direction:     31  RMSD:   1.40
 Residues near but not matching one-to-one:  12  RMSD:   1.87
 
-All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  43.4
+All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  21.7
 Residues far from target:    2  RMSD:   3.31"""
 
   found_text="\n".join(f.getvalue().splitlines()[-10:])
@@ -594,6 +594,7 @@ def tst_03():
   args=["query_dir=files","model.pdb"]
   r=run(args,out=f)
   expected_text="""
+
 SEQ SCORE is fraction (close and matching target sequence).
 
 
@@ -602,7 +603,8 @@ SEQ SCORE is fraction (close and matching target sequence).
      MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED FOUND   CA                   SEQ
                RMSD   N    RMSD   N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
-     query.pdb 1.52   59    3.3    2     16      31      12   21.7   0.14     6.8        0.01"""
+     query.pdb 1.52   59    3.3    2     16      31      12   43.4   0.29     6.8        0.03"""
+
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)

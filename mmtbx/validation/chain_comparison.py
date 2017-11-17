@@ -92,6 +92,7 @@ class rmsd_values:
     self.n_list=[]
     self.match_percent_list=[]
     self.target_length_list=[]
+    self.ratio_unique_to_total_target=None
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
@@ -126,7 +127,11 @@ class rmsd_values:
     target_length=self.get_target_length(id=id)
     rmsd,n=self.get_values(id=id)
     if target_length is not None and n is not None:
-      return 100.*n/max(1.,target_length)
+      value=100.*n/max(1.,target_length)
+      if self.ratio_unique_to_total_target:
+         value=value/self.ratio_unique_to_total_target
+      return value
+ 
 
     else:
       return 0.
@@ -366,12 +371,15 @@ def write_summary(params=None,file_list=None,rv_list=None,
     (rmsd,n)=rv.get_values('close')
     target_length=rv.get_target_length('close')
     score=n/(max(1,target_length)*max(0.1,rmsd))
+    if rv.ratio_unique_to_total_target:
+         score=score/rv.ratio_unique_to_total_target
     score_list.append([score,full_f])
   score_list.sort()
   score_list.reverse()
   for score,full_f in score_list:
     rv=results_dict[full_f]
     percent_close=rv.get_close_to_target_percent('close')
+
     seq_score=rv.get_match_percent('close')*percent_close/10000
     file_name=os.path.split(full_f)[-1]
     close_rmsd,close_n=rv.get_values('close')
@@ -742,8 +750,6 @@ def run(args=None,
       rv.add_match_percent(id='close',match_percent=match_percent)
 
       percent_close=rv.get_close_to_target_percent('close')
-      if ratio_unique_to_total_target:
-        percent_close=percent_close/ratio_unique_to_total_target
 
       print >>out,\
         "\nAll residues near target: "+\
@@ -767,6 +773,7 @@ def run(args=None,
   rv.n_reverse=n_reverse
   rv.n=len(pair_list)
   rv.max_dist=params.comparison.max_dist
+  rv.ratio_unique_to_total_target=ratio_unique_to_total_target
   return rv
 
 if __name__=="__main__":
