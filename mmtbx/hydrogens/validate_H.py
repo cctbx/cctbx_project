@@ -95,8 +95,8 @@ class validate_H():
   def missing_H(self):
     missing_HD_atoms = []
     from mmtbx.rotamer import rotamer_eval
-    protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-      "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
+    #protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
+    #  "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
@@ -104,8 +104,8 @@ class validate_H():
           missing = []
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
-            #if (get_class(name=residue.resname ) == 'common_water'): continue
-            if (get_class(name=residue.resname)) not in protein: continue
+            if (get_class(name=residue.resname ) == 'common_water'): continue
+            #if (get_class(name=residue.resname)) not in protein: continue
             residue_id = residue.id_str()
             xyz, missing_list = self.get_missing_h_in_residue(
               residue=residue,
@@ -219,7 +219,7 @@ class validate_H():
             atom_D = self.get_atom(
               residue_group = residue_group,
               name = name_atom_D)
-            if atom_D == None: continue
+            if atom_D is None: continue
             if atom_H.xyz == atom_D.xyz:
               hd_exchanged_sites[atom_H.i_seq] = [atom_H, atom_D]
             else:
