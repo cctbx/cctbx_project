@@ -281,7 +281,15 @@ class run_command_list(object):
       print >> self.out, "Warning: the following jobs took at least %d seconds:"%max_time
       for result in sorted(longjobs, key=lambda result:result.wall_time):
         print >> self.out, "  %s: %.1fs"%(result.command, result.wall_time)
-      print >> self.out, "Please try to reduce overall runtime - consider splitting up these tests."
+    else:
+      # Just print 5 worst offenders to encourage developers to check them out
+      print >> self.out, ""
+      print >> self.out, "Warning: the following are 5 longest jobs:"
+      for result in sorted(self.results, key=lambda result:-result.wall_time)[:5]:
+        print >> self.out, "  %s: %.1fs"%(result.command, result.wall_time)
+    print >> self.out, "Please try to reduce overall runtime - consider splitting up these tests."
+    print >> self.out, ""
+
 
     # Failures.
     if failures:
