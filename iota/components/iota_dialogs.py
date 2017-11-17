@@ -2157,17 +2157,17 @@ class DIALSSpfDialog(BaseDialog):
 
     # DIALS Spotfinder options
     self.sigma_background.s_bkg.SetValue(
-      str(self.params.spotfinder.threshold.xds.sigma_background))
+      str(self.params.spotfinder.threshold.dispersion.sigma_background))
     self.sigma_strong.s_strong.SetValue(
-      str(self.params.spotfinder.threshold.xds.sigma_strong))
+      str(self.params.spotfinder.threshold.dispersion.sigma_strong))
     self.global_threshold.threshold.SetValue(
-      str(self.params.spotfinder.threshold.xds.global_threshold))
+      str(self.params.spotfinder.threshold.dispersion.global_threshold))
     self.min_local.min_local.SetValue(
-      str(self.params.spotfinder.threshold.xds.min_local))
-    self.gain.gain.SetValue(str(self.params.spotfinder.threshold.xds.gain))
+      str(self.params.spotfinder.threshold.dispersion.min_local))
+    self.gain.gain.SetValue(str(self.params.spotfinder.threshold.dispersion.gain))
     self.kernel_size.kernel.SetValue('{} {}'.format(
-      self.params.spotfinder.threshold.xds.kernel_size[0],
-      self.params.spotfinder.threshold.xds.kernel_size[1]))
+      self.params.spotfinder.threshold.dispersion.kernel_size[0],
+      self.params.spotfinder.threshold.dispersion.kernel_size[1]))
     if str(self.params.spotfinder.lookup.mask).lower() != 'none':
       self.mod_mask.ctr.SetValue(str(self.params.spotfinder.lookup.mask))
     else:
@@ -2189,7 +2189,7 @@ class DIALSSpfDialog(BaseDialog):
     phil_string = '\n'.join(['spotfinder {',
                              '  lookup.mask = {}'.format(mask),
                              '  threshold {',
-                             '    xds {',
+                             '    dispersion {',
                              '      gain = {}'.format(gain),
                              '      kernel_size = {}'.format(kernel),
                              '      sigma_background = {}'.format(s_bkg),

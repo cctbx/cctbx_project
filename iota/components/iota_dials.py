@@ -168,14 +168,14 @@ class Triage(object):
     if self.params.image_conversion.distance != 0:
       self.phil.geometry.detector.distance = self.params.image_conversion.distance
     if self.params.advanced.estimate_gain:
-      self.phil.spotfinder.threshold.xds.gain = gain
+      self.phil.spotfinder.threshold.dispersion.gain = gain
     if self.params.image_conversion.mask is not None:
       self.phil.spotfinder.lookup.mask = self.params.image_conversion.mask
       self.phil.integration.lookup.mask = self.params.image_conversion.mask
 
     if self.params.dials.auto_threshold:
       threshold = int(center_intensity)
-      self.phil.spotfinder.threshold.xds.global_threshold = threshold
+      self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
 
     # Convert raw image into single-image datablock
     with misc.Capturing() as junk_output:
@@ -299,9 +299,9 @@ class Integrator(object):
       # means, res = rad_avg.make_radial_average(num_bins=20, lowres=90)
       # threshold = int(np.min(means) * 5)
       threshold = int(center_intensity)
-      self.phil.spotfinder.threshold.xds.global_threshold = threshold
+      self.phil.spotfinder.threshold.dispersion.global_threshold = threshold
     if self.params.advanced.estimate_gain:
-      self.phil.spotfinder.threshold.xds.gain = gain
+      self.phil.spotfinder.threshold.dispersion.gain = gain
 
 
   def find_spots(self):
