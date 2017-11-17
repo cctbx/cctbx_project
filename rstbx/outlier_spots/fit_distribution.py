@@ -54,13 +54,20 @@ class fit_cdf(object):
   def compute_functional_and_gradients(self):
     # caculate difference between predicted and observed values
     self.distribution.set_parameters(p=self.x)
-    predicted = flex.double(self.n)
-    for i in xrange(self.n):
-      predicted[i] = self.distribution.cdf(x=self.x_data[i])
+    is_cpp_ = getattr(self.distribution,"interface","Python")=="C++"
+    if is_cpp_:
+      predicted = self.distribution.cdf(x=self.x_data)
+    else:
+      predicted = flex.double(self.n)
+      for i in xrange(self.n):
+        predicted[i] = self.distribution.cdf(x=self.x_data[i])
     difference = predicted - self.y_data
 
     # target function for minimization is sum of rmsd
     f = flex.sum(flex.sqrt(difference*difference))
+    if is_cpp_:
+      gradients = self.distribution.gradients(x=self.x_data, nparams=len(self.x), difference=difference)
+      return f,gradients
     gradients = flex.double(len(self.x))
     for i in xrange(self.n):
       g_i = self.distribution.cdf_gradients(x=self.x_data[i])

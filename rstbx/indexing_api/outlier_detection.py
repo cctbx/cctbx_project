@@ -2,7 +2,8 @@ from __future__ import division
 import math
 import scitbx.math
 from scitbx.array_family import flex
-from rstbx.outlier_spots.fit_distribution import fit_cdf,rayleigh
+from rstbx.outlier_spots.fit_distribution import fit_cdf
+from rstbx.indexing_api import rayleigh_cpp
 from rstbx_ext import * # gets us SpotClass
 
 def format_data(x_data=None,y_data=None):
@@ -186,7 +187,7 @@ class find_outliers:
     limit = int(self.fraction*len(self.dr))
     if limit < 4: return # Basic sanity check, need at least a few good spots to fit the distribution
     fitted_rayleigh = fit_cdf(x_data=self.dr[0:limit],
-                              y_data=self.x[0:limit],distribution=rayleigh)
+                              y_data=self.x[0:limit],distribution=rayleigh_cpp)
     if False:
         y_data=self.x[0:limit]
         inv_cdf = [fitted_rayleigh.distribution.inv_cdf(cdf) for cdf in y_data]
