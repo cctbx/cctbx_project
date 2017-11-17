@@ -49,6 +49,11 @@ detector_phil_scope = libtbx.phil.parse('''
         .help = "Override the panel type"
         .short_caption = "Panel type"
 
+      gain = None
+        .type = float(value_min=0)
+        .help = "The gain of the detector panel"
+        .short_caption = "Gain value"
+
       pixel_size = None
         .type = floats(size=2)
         .help = "Override the panel pixel size"
@@ -204,6 +209,8 @@ class DetectorFactory:
         panel.set_name(panel_params.name)
       if panel_params.type is not None:
         panel.set_type(panel_params.type)
+      if panel_params.gain is not None:
+        panel.set_gain(panel_params.gain)
       if panel_params.pixel_size is not None:
         panel.set_pixel_size(panel_params.pixel_size)
       else:
@@ -307,6 +314,8 @@ class DetectorFactory:
         panel.set_name(panel_params.name)
       if panel_params.type is not None:
         panel.set_type(panel_params.type)
+      if panel_params.gain is not None:
+        panel.set_gain(panel_params.gain)
       if panel_params.pixel_size is not None:
         panel.set_pixel_size(panel_params.pixel_size)
       if panel_params.image_size is not None:
