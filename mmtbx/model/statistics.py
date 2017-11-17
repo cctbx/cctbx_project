@@ -26,6 +26,10 @@ class geometry(object):
     self.geometry_restraints_manager = geometry_restraints_manager
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
+    self.cached_result = None
+    self.cached_clash = None
+    self.cached_rama = None
+    self.cached_rota = None
     self.update()
 
   def update(self, pdb_hierarchy=None):
@@ -107,18 +111,24 @@ class geometry(object):
     return group_args(min = mi, max = ma, mean = me, n = n)
 
   def ramachandran(self):
-    result = ramalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    if self.cached_rama is None:
+      self.cached_rama = ramalyze(
+          pdb_hierarchy = self.pdb_hierarchy,
+          outliers_only = False)
     return group_args(
-      outliers = result.percent_outliers,
-      allowed  = result.percent_allowed,
-      favored  = result.percent_favored,
-      ramalyze = result)
+      outliers = self.cached_rama.percent_outliers,
+      allowed  = self.cached_rama.percent_allowed,
+      favored  = self.cached_rama.percent_favored,
+      ramalyze = self.cached_rama)
 
   def rotamer(self):
-    result = rotalyze(pdb_hierarchy = self.pdb_hierarchy, outliers_only = False)
+    if self.cached_rota is None:
+      self.cached_rota = rotalyze(
+          pdb_hierarchy = self.pdb_hierarchy,
+          outliers_only = False)
     return group_args(
-      outliers = result.percent_outliers,
-      rotalyze = result)
+      outliers = self.cached_rota.percent_outliers,
+      rotalyze = self.cached_rota)
 
   def c_beta(self):
     result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
@@ -128,10 +138,11 @@ class geometry(object):
       cbetadev = result)
 
   def clash(self):
-    result = clashscore(pdb_hierarchy = self.pdb_hierarchy)
+    if self.cached_clash is None:
+      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy)
     return group_args(
-      score   = result.get_clashscore(),
-      clashes = result)
+      score   = self.cached_clash.get_clashscore(),
+      clashes = self.cached_clash)
 
   def cablam(self):
     result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
@@ -176,6 +187,7 @@ class geometry(object):
 
   def result_for_model_idealization(self):
     # It is unclear why duplicate instead of using existing "def result"
+    # Was faster to wrap things the way they are already used in model_idealization
     return group_args(
       mpscore               = self.mp_score(),
       clashscore            = self.clash().score,
@@ -190,21 +202,23 @@ class geometry(object):
       twisted_general       = self.omega().twisted_general,)
 
   def result(self):
-    return group_args(
-      angle            = self.angle(),
-      bond             = self.bond(),
-      chirality        = self.chirality(),
-      dihedral         = self.dihedral(),
-      planarity        = self.planarity(),
-      parallelity      = self.parallelity(),
-      nonbonded        = self.nonbonded(),
-      ramachandran     = self.ramachandran(),
-      rotamer          = self.rotamer(),
-      c_beta           = self.c_beta(),
-      clash            = self.clash(),
-      molprobity_score = self.mp_score(),
-      # cablam         = self.cablam(), # broken
-      omega            = self.omega())
+    if self.cached_result is None:
+      self.cached_result = group_args(
+          angle            = self.angle(),
+          bond             = self.bond(),
+          chirality        = self.chirality(),
+          dihedral         = self.dihedral(),
+          planarity        = self.planarity(),
+          parallelity      = self.parallelity(),
+          nonbonded        = self.nonbonded(),
+          ramachandran     = self.ramachandran(),
+          rotamer          = self.rotamer(),
+          c_beta           = self.c_beta(),
+          clash            = self.clash(),
+          molprobity_score = self.mp_score(),
+          # cablam         = self.cablam(), # broken
+          omega            = self.omega())
+    return self.cached_result
 
   def show(self, log=None, prefix="", lowercase=False):
     if(log is None): log = sys.stdout
@@ -215,8 +229,9 @@ class geometry(object):
     def fmt2(f1):
       if f1 is None: return '  -   '
       return "%-6.3f"%(f1)
-    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
-      self.planarity(), self.nonbonded()
+    res = self.result()
+    a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
+      res.planarity, res.nonbonded
     result = "%s" % prefix
     result += """
 %sDEVIATIONS FROM IDEAL VALUES.
@@ -250,18 +265,18 @@ class geometry(object):
 %s    TWISTED PROLINE : %s
 %s    TWISTED GENERAL : %s"""%(
         prefix,
-        prefix, str_utils.format_value("%-6.2f", self.clash().score).strip(),
+        prefix, str_utils.format_value("%-6.2f", res.clash.score).strip(),
         prefix,
-        prefix, self.ramachandran().outliers, "%",
-        prefix, self.ramachandran().allowed, "%",
-        prefix, self.ramachandran().favored, "%",
-        prefix, str("%6.2f"%(self.rotamer().outliers)).strip(),"%",
-        prefix, self.c_beta().outliers,
+        prefix, res.ramachandran.outliers, "%",
+        prefix, res.ramachandran.allowed, "%",
+        prefix, res.ramachandran.favored, "%",
+        prefix, str("%6.2f"%(res.rotamer.outliers)).strip(),"%",
+        prefix, res.c_beta.outliers,
         prefix,
-        prefix, str(self.omega().cis_proline),
-        prefix, str(self.omega().cis_general),
-        prefix, str(self.omega().twisted_proline),
-        prefix, str(self.omega().twisted_general))
+        prefix, str(res.omega.cis_proline),
+        prefix, str(res.omega.cis_general),
+        prefix, str(res.omega.twisted_proline),
+        prefix, str(res.omega.twisted_general))
     if(lowercase):
       result = result.swapcase()
     print >> log, result
@@ -279,8 +294,9 @@ class geometry(object):
       #"_refine_ls_restr.pdbx_refine_id",
       "_refine_ls_restr.pdbx_restraint_function",
     ))
-    a,b,c,d,p,n = self.angle(), self.bond(), self.chirality(), self.dihedral(), \
-      self.planarity(), self.nonbonded()
+    res = self.result()
+    a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
+      res.planarity, res.nonbonded
     loop.add_row(("f_bond_d",           b.n, b.mean, "?", "?"))
     loop.add_row(("f_angle_d",          a.n, a.mean, "?", "?"))
     loop.add_row(("f_chiral_restr",     c.n, c.mean, "?", "?"))
