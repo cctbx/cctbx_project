@@ -1,14 +1,9 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
-from mmtbx import monomer_library
-from cctbx import geometry_restraints
+import iotbx.pdb
 from mmtbx.hydrogens import riding
-
-#from mmtbx import hydrogens
 
 pdb_str = """\
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
@@ -44,23 +39,14 @@ END
 #----------------------------------------------------
 
 def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    file_name      = None,
-    raw_records    = pdb_str,
-    force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  geometry_restraints = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False)
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(model_input=pdb_inp)
 
-# necessary for comparison
-  xray_structure = processed_pdb_file.xray_structure()
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry_restraints,
-    normalization = False)
+  pdb_hierarchy = model.get_hierarchy()
+  restraints_manager = model.get_restraints_manager()
+  geometry_restraints = restraints_manager.geometry
+  xray_structure = model.get_xray_structure()
+
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
   riding_h_manager = riding.manager(
@@ -97,11 +83,6 @@ def exercise():
       i_b1 = neighbors.b1['iseq']
       third_nb_dict = {ih: i_b1}
 
-# determine bonds from pdb_str
-  model = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure     = xray_structure,
-    pdb_hierarchy      = pdb_hierarchy)
   bond_ctrl = {}
   for i in model.xh_connectivity_table():
     bond_ctrl[i[1]]=[i[0],i[3]]
@@ -142,4 +123,4 @@ def exercise():
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
-  print "OK. Time: %8.3f"%(time.time()-t0)
+  print("OK. Time: %8.3f"%(time.time()-t0))
