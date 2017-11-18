@@ -6,6 +6,7 @@ from __future__ import absolute_import, division
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
 from libtbx import easy_pickle
+from scitbx.matrix import col
 import sys
 import os
 import math
@@ -106,24 +107,21 @@ def run (args, image = None):
   for item in iterable:
     img = load_func(item)
     beam = img.get_beam()
+    s0 = col(beam.get_s0())
     detector = img.get_detector()
 
     # Search the detector for the panel farthest from the beam. The number of bins in the radial average will be
     # equal to the farthest point from the beam on the detector, in pixels, unless overridden at the command line
-    extent = 0
-    extent_two_theta = 0
-    for panel in detector:
-      size2, size1 = panel.get_image_size()
-      bc = panel.get_beam_centre_px(beam.get_s0())
-      p_extent = int(math.ceil(max(distance((0,0),bc),
-                                   distance((size1,0),bc),
-                                   distance((0,size2),bc),
-                                   distance((size1,size2),bc))))
-      p_extent_two_theta = 2*math.asin(beam.get_wavelength()/(2*panel.get_max_resolution_at_corners(beam.get_s0())))*180/math.pi
-      if p_extent > extent:
-        extent = p_extent
-        assert p_extent_two_theta >= extent_two_theta
-        extent_two_theta = p_extent_two_theta
+    panel_res = [p.get_max_resolution_at_corners(s0) for p in detector]
+    farthest_panel = detector[panel_res.index(min(panel_res))]
+    size2, size1 = farthest_panel.get_image_size()
+    corners = [(0,0), (size1-1,0), (0,size2-1), (size1-1,size2-1)]
+    corners_lab = [col(farthest_panel.get_pixel_lab_coord(c)) for c in corners]
+    corner_two_thetas = [farthest_panel.get_two_theta_at_pixel(s0, c) for c in corners]
+    extent_two_theta = max(corner_two_thetas)
+    max_corner = corners_lab[corner_two_thetas.index(extent_two_theta)]
+    extent = int(math.ceil(max_corner.length()*math.sin(extent_two_theta)/max(farthest_panel.get_pixel_size())))
+    extent_two_theta *= 180/math.pi
 
     if params.n_bins < extent:
       params.n_bins = extent
