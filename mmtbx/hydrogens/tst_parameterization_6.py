@@ -11,28 +11,22 @@ import iotbx.pdb
 #-----------------------------------------------------------------------------
 
 def exercise(pdb_str):
-  pdb_interpretation_phil = iotbx.phil.parse(
-    input_string = grand_master_phil_str,
-    process_includes = True)
-  params = pdb_interpretation_phil.extract()
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.use_neutron_distances = True
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
-    pdb_interpretation_params = params)
+    pdb_interpretation_params = params,
+    build_grm   = True)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xray_structure()
-
-  sites_cart = xray_structure.sites_cart()
+  sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
+
   h_parameterization = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
@@ -43,9 +37,7 @@ def exercise(pdb_str):
   number_h_para = diagnostics.number_h_para
 
 # number of H atoms in structure
-  number_h = 0
-  for h_bool in xray_structure.hd_selection():
-    if h_bool: number_h += 1
+  number_h = model.get_hd_selection().count(True)
 
   if (pdb_str != pdb_str_02):
     assert (number_h_para == number_h), 'Not all H atoms are parameterized'

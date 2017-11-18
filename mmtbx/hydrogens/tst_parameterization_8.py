@@ -238,19 +238,16 @@ geometry_restraints.edits {
 
   model = mmtbx.model.manager(
     model_input = pdb_inp,
+    build_grm   = True,
     pdb_interpretation_params = params)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xray_structure()
-
-  sites_cart = xray_structure.sites_cart()
+  sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
+
   h_para = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
@@ -261,10 +258,8 @@ geometry_restraints.edits {
   number_h_para = diagnostics.number_h_para
   type_list     = diagnostics.type_list
 
-# number of H atoms in structure
-  number_h = 0
-  for h_bool in xray_structure.hd_selection():
-    if h_bool: number_h += 1
+# number of H atoms
+  number_h = model.get_hd_selection().count(True)
 
 # Test if number of paramterized H atoms is correct
   assert (len(unk_list)==1), 'Wrong number of H atoms not recognized for riding'

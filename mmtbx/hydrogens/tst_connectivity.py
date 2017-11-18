@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 import time
-
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import riding
@@ -42,17 +41,12 @@ def exercise():
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(model_input=pdb_inp)
 
-  pdb_hierarchy = model.get_hierarchy()
   restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xray_structure()
-
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
-  h_connectivity = riding_h_manager.h_connectivity
+  model.setup_riding_h_manager()
+
+  h_connectivity = model.get_riding_h_manager().h_connectivity
 
 # get bonds stored in connectivity
   bond_list = {}

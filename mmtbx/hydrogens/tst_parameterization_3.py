@@ -12,21 +12,22 @@ import iotbx.pdb
 
 def exercise(pdb_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xray_structure()
-
-  sites_cart = xray_structure.sites_cart()
+  sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy           = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
 
   h_parameterization = riding_h_manager.h_parameterization
+
+  diagnostics = riding_h_manager.diagnostics(
+    sites_cart         = sites_cart,
+    threshold          = 0.05)
 
   diagnostics = riding_h_manager.diagnostics(
     sites_cart         = sites_cart,
@@ -36,9 +37,7 @@ def exercise(pdb_str):
   unk_list      = diagnostics.unk_list
 
 # number of H atoms in structure
-  number_h = 0
-  for h_bool in xray_structure.hd_selection():
-    if h_bool: number_h += 1
+  number_h = model.get_hd_selection().count(True)
 
 # There are 90 H atoms in pdb_string, check if all of them are recognized and
 # that none of them has unknown type

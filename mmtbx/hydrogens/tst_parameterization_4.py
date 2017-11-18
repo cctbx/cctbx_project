@@ -28,12 +28,10 @@ def exercise(pdb_str, use_ideal_bonds_angles):
   model = mmtbx.model.manager(model_input=pdb_inp)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
+  geometry_restraints = model.get_restraints_manager().geometry
   xray_structure = model.get_xray_structure()
 
-  sites_cart = xray_structure.sites_cart()
-  atoms = pdb_hierarchy.atoms()
+  sites_cart = model.get_sites_cart()
 
   grf = cctbx.geometry_restraints.flags.flags(default=True)
   minimized = mmtbx.refinement.geometry_minimization.lbfgs(
@@ -45,6 +43,7 @@ def exercise(pdb_str, use_ideal_bonds_angles):
         max_iterations=500))
   xray_structure.set_sites_cart(sites_cart)
   pdb_hierarchy.adopt_xray_structure(xray_structure)
+  atoms = pdb_hierarchy.atoms()
   sites_cart = xray_structure.sites_cart()
 
   riding_h_manager = riding.manager(
@@ -62,9 +61,7 @@ def exercise(pdb_str, use_ideal_bonds_angles):
   number_h_para = diagnostics.number_h_para
 
 # number of H atoms in structure
-  number_h = 0
-  for h_bool in xray_structure.hd_selection():
-    if h_bool: number_h += 1
+  number_h = model.get_hd_selection().count(True)
 
   assert (number_h_para == number_h), 'Not all H atoms are parameterized'
   assert(len(unk_list) == 0), \
