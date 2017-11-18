@@ -343,3 +343,24 @@ class CellOnlyFrame(SingleFrame):
       self.mm = self.niggli_cell.unit_cell().metrical_matrix()
       self.pg = "".join(sgi.type().lookup_symbol().split())
       self.path = path
+
+class SingleDialsFrameFromJson(SingleFrame):
+  def __init__(self, expts_path=None, **kwargs):
+    from dials.util.options import Importer, flatten_experiments
+    importer = Importer([expts_path], read_experiments=True, read_reflections=False, check_format=False)
+    if importer.unhandled:
+      raise Exception("unable to process:"), importer.unhandled
+    experiments_l = flatten_experiments(importer.experiments)
+    assert len(experiments_l)==1, "Sorry, only supports one experiment per json at present."
+    tcrystal = experiments_l[0].crystal
+    from cctbx import crystal
+    group = tcrystal.get_space_group()
+    self.crystal_symmetry = crystal.symmetry(unit_cell=tcrystal.get_unit_cell(),
+                                             space_group=group)
+    self.crystal_symmetry.show_summary()
+    self.niggli_cell = self.crystal_symmetry.niggli_cell()
+    self.niggli_cell.show_summary(prefix="   niggli-->")
+    self.uc = self.niggli_cell.unit_cell().parameters()
+    self.mm = self.niggli_cell.unit_cell().metrical_matrix()
+    self.pg = "".join(group.type().lookup_symbol().split())
+    self.path = expts_path

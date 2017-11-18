@@ -14,6 +14,7 @@ import os
 import math
 import logging
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
+from xfel.clustering.singleframe import SingleDialsFrameFromJson
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
 import matplotlib.patheffects as patheffects
@@ -203,6 +204,7 @@ class Cluster:
                  _message='Made from list of individual files',
                  n_images=None,
                  dials=False,
+                 json=False,
                  **kwargs):
     """Constructor to get a cluster from a list of individual files.
     :param pickle_list: list of pickle files
@@ -250,6 +252,19 @@ class Cluster:
             break
         else:
           logging.info('skipping reflections {} and experiments {}'.format(r, e))
+    elif json:
+      if raw_input is not None:
+        r, e = sort_dials_raw_input(raw_input)
+        dials_expts.extend(e)
+      dials_expts_ids = [os.path.join(os.path.dirname(e), os.path.basename(e).split("_")[0])
+                         for e in dials_expts]
+      for e in dials_expts:
+        name = os.path.join(os.path.dirname(e), os.path.basename(e).split("_")[0])
+        this_frame = SingleDialsFrameFromJson(expts_path=e,  **kwargs)
+        this_frame.name=name
+        data.append(this_frame)
+        if done():
+            break
     else:
       if raw_input is not None:
         pickle_list.extend(raw_input)

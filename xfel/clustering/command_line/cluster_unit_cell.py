@@ -12,7 +12,7 @@ def run(_args):
   if _args < 2:
     raise IOError("Must provide location(s) of pickles")
   if _args.paths:
-    ucs = Cluster.from_files(raw_input=_args.dirs, n_images=_args.n, dials=_args.dials)
+    ucs = Cluster.from_files(raw_input=_args.dirs, n_images=_args.n, dials=_args.dials, json=_args.json)
   elif _args.text:
     assert len(_args.dirs)==1 # one file
     one_file = _args.dirs[0]
@@ -49,7 +49,10 @@ if __name__ == "__main__":
   parser.add_argument('--paths', action='store_true',
                       help='Interpret the arguments as complete paths to pickles or tarred pickles, not directories.')
   parser.add_argument('--dials', action='store_true',
-                      help='Interpret the arguments as DIALS format pickles and jsons.')
+                      help='Interpret the arguments as DIALS-format pickles and jsons.')
+  parser.add_argument('--json', action='store_true',
+                      help='Interpret the arguments as DIALS-format jsons only, no reflection tables.'
+                           "specifically implemented for unit cell clustering without reflections.")
   parser.add_argument('-t', type=float, default=5000,
                       help='threshold value for the clustering. Default = 5000')
   parser.add_argument('--noplot', action='store_false',
