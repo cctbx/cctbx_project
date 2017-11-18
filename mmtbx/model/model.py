@@ -173,7 +173,7 @@ class manager(object):
                      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
-                     processed_pdb_files_srv = None, # remove later ! used in def select()
+                     # processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
                      anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
@@ -194,7 +194,7 @@ class manager(object):
 
     self._stop_for_unknowns = stop_for_unknowns
     self._processed_pdb_file = processed_pdb_file
-    self._processed_pdb_files_srv = processed_pdb_files_srv
+    self._processed_pdb_files_srv = None
     self._crystal_symmetry = crystal_symmetry
 
     self.restraints_manager = restraints_manager
@@ -1951,32 +1951,29 @@ class manager(object):
       # XXX Tom
       try:
         new_refinement_flags = self.refinement_flags.select(selection)
-      except Exception:
+      except Exception: # This is potential bug. What kind of exceptions are possible here?!
         new_refinement_flags = self.refinement_flags
 #      new_refinement_flags = self.refinement_flags.select(selection)
     new_restraints_manager = None
     if(self.restraints_manager is not None):
-      # XXX Why separate? Function call is exactly the same...
-      if(isinstance(selection, flex.bool)):
-        new_restraints_manager = self.restraints_manager.select(
-          selection = selection)
-      elif(isinstance(selection, flex.size_t)):
-        new_restraints_manager = self.restraints_manager.select(
-          selection = selection)
-      new_restraints_manager.geometry.pair_proxies(sites_cart =
-        self._xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
+      new_restraints_manager = self.restraints_manager.select(selection = selection)
+      # XXX is it necessary ?
+      # YYY yes, this keeps pair_proxies initialized and available, e.g. for
+      # extracting info used in .geo files.
+      new_restraints_manager.geometry.pair_proxies(
+          sites_cart = self._xray_structure.sites_cart().select(selection))
     new_shift_manager = self._shift_manager
     new = manager(
       model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self._processed_pdb_file,
-      processed_pdb_files_srv    = self._processed_pdb_files_srv,
+      # processed_pdb_files_srv    = self._processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
       xray_structure             = self._xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       # refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
-      anomalous_scatterer_groups = self.anomalous_scatterer_groups,
+      anomalous_scatterer_groups = self.anomalous_scatterer_groups, # XXX not selected
       log                        = self.log)
     new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
@@ -1986,6 +1983,7 @@ class manager(object):
     # are used here and being cutted. We need only shift_back and get_..._cs
     # functionality form shift_manager at the moment
     new._shift_manager = new_shift_manager
+    new._processed_pdb_files_srv = self._processed_pdb_files_srv
     if self.ncs_constraints_present():
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
