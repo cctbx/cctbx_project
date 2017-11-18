@@ -316,42 +316,48 @@ K&    RMS difference with respect to the reference: 0.724248
   assert selection.size() == 132
   assert selection.count(True) == 110
   out = StringIO()
-  model._processed_pdb_file.show_atoms_without_ncs_restraints(
-    ncs_restraints_groups=groups, out=out, prefix="%&")
-  assert not show_diff(out.getvalue(), """\
-%&Atoms without NCS restraints:
-%&MODEL        1
-%&ATOM     20  N   ALA B   3     111.517   7.175  -8.669  1.00 10.73           N
-%&ATOM     21  CA  ALA B   3     112.152   8.103  -8.026  1.00 16.28           C
-%&ATOM     22  C   ALA B   3     111.702   8.243  -5.903  1.00  9.19           C
-%&ATOM     24  CA  SER B   4     111.797   9.689  -4.364  1.00  8.91           C
-%&TER
-%&ATOM     38  N   ALA C   3     109.043  27.391  28.663  1.00 15.05           N
-%&ATOM     39  CA  ALA C   3     109.073  26.531  28.433  1.00  3.14           C
-%&ATOM     40  C   ALA C   3     108.930  26.867  26.637  1.00 15.22           C
-%&TER
-%&ATOM     57  N   ALA D   3      65.439   9.903 -12.471  1.00  7.59           N
-%&ATOM     58  CA  ALA D   3      65.019   9.566 -11.201  1.00 15.62           C
-%&ATOM     59  C   ALA D   3      65.679  11.045 -11.097  1.00  2.65           C
-%&ATOM     61  CA CSER D   4      65.657  12.870  -8.333  1.00  5.84           C
-%&TER
-%&ENDMDL
-%&MODEL        2
-%&ATOM     86  N   ALA B   3     111.984   7.364  -8.288  1.00  3.16           N
-%&ATOM     87  CA  ALA B   3     112.389   8.456  -7.544  1.00 12.73           C
-%&ATOM     88  C   ALA B   3     111.615   8.267  -6.238  1.00  7.17           C
-%&ATOM     90  CA  SER B   4     111.707   9.131  -4.317  1.00 13.83           C
-%&TER
-%&ATOM    104  N   ALA C   3     109.237  27.879  29.334  1.00  6.45           N
-%&ATOM    105  CA  ALA C   3     109.043  26.399  28.156  1.00 15.21           C
-%&ATOM    106  C   ALA C   3     108.983  26.760  27.178  1.00 11.73           C
-%&TER
-%&ATOM    123  N   ALA D   3      65.188  10.335 -12.959  1.00  6.94           N
-%&ATOM    124  CA  ALA D   3      65.543   9.614 -11.242  1.00  5.18           C
-%&ATOM    125  C   ALA D   3      65.064  11.402 -10.648  1.00 16.01           C
-%&ATOM    127  CA CSER D   4      65.127  12.969  -9.218  1.00  9.03           C
-%&TER
-%&ENDMDL
+  rm = model.get_restraints_manager()
+  rm.ncs_groups = groups
+  out = model.restraints_as_geo()
+  # print out
+  for i, l in enumerate(out.split('\n')):
+    if l == "Atoms without NCS restraints:":
+      break
+  out_res = "\n".join(out.split('\n')[i:-1])
+  assert not show_diff(out_res, """\
+Atoms without NCS restraints:
+MODEL        1
+ATOM     20  N   ALA B   3     111.517   7.175  -8.669  1.00 10.73           N
+ATOM     21  CA  ALA B   3     112.152   8.103  -8.026  1.00 16.28           C
+ATOM     22  C   ALA B   3     111.702   8.243  -5.903  1.00  9.19           C
+ATOM     24  CA  SER B   4     111.797   9.689  -4.364  1.00  8.91           C
+TER
+ATOM     38  N   ALA C   3     109.043  27.391  28.663  1.00 15.05           N
+ATOM     39  CA  ALA C   3     109.073  26.531  28.433  1.00  3.14           C
+ATOM     40  C   ALA C   3     108.930  26.867  26.637  1.00 15.22           C
+TER
+ATOM     57  N   ALA D   3      65.439   9.903 -12.471  1.00  7.59           N
+ATOM     58  CA  ALA D   3      65.019   9.566 -11.201  1.00 15.62           C
+ATOM     59  C   ALA D   3      65.679  11.045 -11.097  1.00  2.65           C
+ATOM     61  CA CSER D   4      65.657  12.870  -8.333  1.00  5.84           C
+TER
+ENDMDL
+MODEL        2
+ATOM     86  N   ALA B   3     111.984   7.364  -8.288  1.00  3.16           N
+ATOM     87  CA  ALA B   3     112.389   8.456  -7.544  1.00 12.73           C
+ATOM     88  C   ALA B   3     111.615   8.267  -6.238  1.00  7.17           C
+ATOM     90  CA  SER B   4     111.707   9.131  -4.317  1.00 13.83           C
+TER
+ATOM    104  N   ALA C   3     109.237  27.879  29.334  1.00  6.45           N
+ATOM    105  CA  ALA C   3     109.043  26.399  28.156  1.00 15.21           C
+ATOM    106  C   ALA C   3     108.983  26.760  27.178  1.00 11.73           C
+TER
+ATOM    123  N   ALA D   3      65.188  10.335 -12.959  1.00  6.94           N
+ATOM    124  CA  ALA D   3      65.543   9.614 -11.242  1.00  5.18           C
+ATOM    125  C   ALA D   3      65.064  11.402 -10.648  1.00 16.01           C
+ATOM    127  CA CSER D   4      65.127  12.969  -9.218  1.00  9.03           C
+TER
+ENDMDL
 """)
   #
   for group in groups.members:

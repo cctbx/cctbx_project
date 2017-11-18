@@ -334,6 +334,7 @@ class manager(object):
     return result
 
   def write_geo_file(self,
+      hierarchy = None,
       sites_cart=None,
       site_labels=None,
       file_name=None,
@@ -342,7 +343,8 @@ class manager(object):
       # Stuff for outputting ncs_groups
       excessive_distance_limit = 1.5,
       xray_structure=None,
-      processed_pdb_file=None):
+      # processed_pdb_file=None,
+      ):
     """
     This should make complete .geo file with geometry and NCS if present.
     Instead of sites_cart and site_labels one may pass xray_structure and they
@@ -353,6 +355,26 @@ class manager(object):
     directly pass file_descriptor and it will be used for output. The caller
     will have take care of saving, closing or flushing it separately.
     """
+
+    def show_selected_atoms(
+          selection,
+          hierarchy,
+          header_lines=None,
+          out=None,
+          prefix=""):
+      if (out is None): out = sys.stdout
+      if (header_lines is not None):
+        for line in header_lines:
+          print >> out, prefix+line
+      sub_hierarchy = hierarchy.select(atom_selection=selection)
+      s = sub_hierarchy.as_pdb_string()
+      if (len(s) == 0 and header_lines is not None):
+        s = "  None\n"
+      if (prefix == ""):
+        out.write(s)
+      else:
+        for line in s.splitlines():
+          print >> out, prefix+line
 
     outf_descriptor = None
     if file_name is None:
@@ -370,7 +392,7 @@ class manager(object):
       header=header,
       file_descriptor=outf_descriptor)
     n_excessive = 0
-    if [self.ncs_groups, xray_structure, processed_pdb_file].count(None) == 0:
+    if [self.ncs_groups, xray_structure].count(None) == 0:
       n_excessive = self.ncs_groups.show_sites_distances_to_average(
           sites_cart=sites_cart,
           site_labels=site_labels,
@@ -382,9 +404,13 @@ class manager(object):
           site_labels=site_labels,
           out=outf_descriptor)
       print >> outf_descriptor
-      processed_pdb_file.show_atoms_without_ncs_restraints(
-        ncs_restraints_groups=self.ncs_groups,
-        out=outf_descriptor)
+      # show_atoms_without_ncs_restraints
+      show_selected_atoms(
+          selection = ~self.ncs_groups.selection_restrained(
+              n_seq=hierarchy.atoms_size()),
+          hierarchy = hierarchy,
+          header_lines = ["Atoms without NCS restraints:"],
+          out = outf_descriptor)
       print >> outf_descriptor
     if file_name is not None:
       outf_descriptor.close()

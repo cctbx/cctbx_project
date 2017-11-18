@@ -5824,37 +5824,6 @@ class process(object):
         flush_log(log)
     return self._xray_structure
 
-  def show_selected_atoms(self,
-        selection,
-        header_lines=None,
-        out=None,
-        prefix=""):
-    if (out is None): out = sys.stdout
-    if (header_lines is not None):
-      for line in header_lines:
-        print >> out, prefix+line
-    sub_hierarchy = self.all_chain_proxies.pdb_hierarchy.select(
-      atom_selection=selection)
-    s = sub_hierarchy.as_pdb_string()
-    if (len(s) == 0 and header_lines is not None):
-      s = "  None\n"
-    if (prefix == ""):
-      out.write(s)
-    else:
-      for line in s.splitlines():
-        print >> out, prefix+line
-
-  def show_atoms_without_ncs_restraints(self,
-        ncs_restraints_groups,
-        out=None,
-        prefix=""):
-    self.show_selected_atoms(
-      selection=~ncs_restraints_groups.selection_restrained(
-        n_seq=self.all_chain_proxies.pdb_atoms.size()),
-      header_lines=["Atoms without NCS restraints:"],
-      out=out,
-      prefix=prefix)
-
   def search_for_ncs(self, hierarchy):
     params = self.all_chain_proxies.params.ncs_search
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group

@@ -679,13 +679,13 @@ class manager(object):
     if force:
       self.get_restraints_manager()
     self.restraints_manager.write_geo_file(
+        hierarchy = self.get_hierarchy(),
         sites_cart=self.get_sites_cart(),
         site_labels=self.get_xray_structure().scatterers().extract_labels(),
         header=header,
         # Stuff for outputting ncs_groups
         excessive_distance_limit = excessive_distance_limit,
         xray_structure=self.get_xray_structure(),
-        processed_pdb_file=self._processed_pdb_file,
         file_descriptor=result)
     return result.getvalue()
 
