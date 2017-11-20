@@ -270,9 +270,10 @@ def find_and_build_ions (
            (model.refinement_flags.s_occupancies is None) or
            (len(model.refinement_flags.s_occupancies) == 0)))
     if (refine_anomalous) :
-      if ((model.anomalous_scatterer_groups is not None) and
+      if (model.have_anomalous_scatterer_groups() and
           (group_anomalous_strategy_enabled)) :
-        model.anomalous_scatterer_groups.extend(anomalous_groups)
+        model.set_anomalous_scatterer_groups(
+            model.get_anomalous_scatterer_groups()+anomalous_groups)
         refine_anomalous = False
     if (refine_occupancies) or (refine_anomalous) :
       print >> out, ""

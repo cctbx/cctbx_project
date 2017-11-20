@@ -1189,14 +1189,15 @@ def exercise_convert_atom() :
     residue_name="MG",
     initial_occupancy=0.99,
     chain_id='X')
-  mol.anomalous_scatterer_groups = [
-    anomalous_scatterer_group(
-      iselection=flex.size_t([4]),
-      f_prime=0,
-      f_double_prime=0,
-      refine=["f_prime","f_double_prime"],
-      selection_string="element MG",
-      update_from_selection=True), ]
+  mol.set_anomalous_scatterer_groups(
+      [anomalous_scatterer_group(
+          iselection=flex.size_t([4]),
+          f_prime=0,
+          f_double_prime=0,
+          refine=["f_prime","f_double_prime"],
+          selection_string="element MG",
+          update_from_selection=True),]
+      )
   geometry_minimization.run2(
       restraints_manager = mol.get_restraints_manager(),
       pdb_hierarchy = mol.get_hierarchy(),
@@ -1210,8 +1211,9 @@ def exercise_convert_atom() :
     xyz_max = max([ abs(n) for n in atom.xyz])
     assert (xyz_max < 2.5)
   mol = mol.select(flex.size_t([1,2,3,4,5,6]))
-  assert mol.update_anomalous_groups(out=null_out())
-  isel = mol.anomalous_scatterer_groups[0].iselection
+  assert mol.have_anomalous_scatterer_groups()
+  # assert mol.update_anomalous_groups(out=null_out()) # not needed because select() processed groups correctly
+  isel = mol.get_anomalous_scatterer_groups()[0].iselection
   assert list(isel) == [3]
 
 pdb_file_exercise_h_counts="""

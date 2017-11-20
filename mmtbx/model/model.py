@@ -169,14 +169,12 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
       stop_for_unknowns = True,
       log = None,
-      # for GRM, selections etc
+      # for GRM, selections etc. Do not use when creating an object.
                      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
-                     # processed_pdb_files_srv = None, # remove later ! used in def select()
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
-                     anomalous_scatterer_groups = None, # remove later. ! It is used in def select(), hard to get rid of.
                      ):
 
     self._xray_structure = xray_structure
@@ -205,7 +203,7 @@ class manager(object):
                           # somewhat challenging because of ias.build_only parameter in phenix.refine
     self.tls_groups = tls_groups         # remove later? No action performed on them here
     self._ncs_groups = None
-    self.anomalous_scatterer_groups = anomalous_scatterer_groups, # remove later. ! It is used in def select(), hard to get rid of.
+    self._anomalous_scatterer_groups = []
     self.log = log
     self.exchangable_hd_groups = []
     self.original_xh_lengths = None
@@ -269,11 +267,6 @@ class manager(object):
 
     if not self.all_chain_proxies and self._processed_pdb_file:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
-
-    if(anomalous_scatterer_groups is not None and
-        len(anomalous_scatterer_groups) == 0):
-      anomalous_scatterer_groups = None
-    self.anomalous_scatterer_groups = anomalous_scatterer_groups
 
     # do GRM
     if self.restraints_manager is None and build_grm:
@@ -423,8 +416,8 @@ class manager(object):
     result = []
     if find_automatically:
       result = anomalous_scatterer_groups.find_anomalous_scatterer_groups(
-        pdb_atoms=self.all_chain_proxies.pdb_atoms,
-        xray_structure=self._xray_structure,
+        pdb_atoms=self.get_atoms(),
+        xray_structure=self.get_xray_structure(),
         group_same_element=False,
         out=self.log)
       for group in result:
@@ -449,10 +442,61 @@ class manager(object):
           # aag.show_summary(out=log)
           result.append(aag)
           self.n_anomalous_total += aag.iselection.size()
-    self.anomalous_scatterer_groups = result
-    for group in self.anomalous_scatterer_groups:
+    self._anomalous_scatterer_groups = result
+    for group in self._anomalous_scatterer_groups:
       group.copy_to_scatterers_in_place(scatterers=self._xray_structure.scatterers())
-    return self.anomalous_scatterer_groups, self.n_anomalous_total
+    return self._anomalous_scatterer_groups, self.n_anomalous_total
+
+  def set_anomalous_scatterer_groups(self, groups):
+    self._anomalous_scatterer_groups = groups
+    new_n_anom_total = 0
+    for g in self._anomalous_scatterer_groups:
+      new_n_anom_total += g.iselection.size()
+    self.n_anomalous_total = new_n_anom_total
+
+  def get_anomalous_scatterer_groups(self):
+    return self._anomalous_scatterer_groups
+
+  def have_anomalous_scatterer_groups(self):
+    return (self._anomalous_scatterer_groups is not None and
+        len(self._anomalous_scatterer_groups) > 0)
+
+  def update_anomalous_groups (self, out=sys.stdout) :
+    if self.have_anomalous_scatterer_groups():
+      modified = False
+      sel_cache = self.get_atom_selection_cache()
+      for i_group, group in enumerate(self._anomalous_scatterer_groups) :
+        if (group.update_from_selection) :
+          isel = sel_cache.selection(group.selection_string).iselection()
+          assert (len(isel) == len(group.iselection))
+          if (not isel.all_eq(group.iselection)) :
+            print >> out, "Updating %d atom(s) in anomalous group %d" % \
+              (len(isel), i_group+1)
+            print >> out, "  selection string: %s" % group.selection_string
+            group.iselection = isel
+            modified = True
+      return modified
+
+  def anomalous_scatterer_groups_as_pdb(self):
+    out = StringIO()
+    if self.have_anomalous_scatterer_groups():
+      pr = "REMARK   3  "
+      print >> out, pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
+      print >> out, pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
+        len(self._anomalous_scatterer_groups)
+      counter = 0
+      for group in self._anomalous_scatterer_groups:
+        counter += 1
+        print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
+        lines = str_utils.line_breaker(group.selection_string, width=45)
+        for i_line, line in enumerate(lines):
+          if(i_line == 0):
+            print >> out, pr+"  SELECTION: %s"%line
+          else:
+            print >> out, pr+"           : %s"%line
+        print >>out,pr+"  fp  : %-15.4f"%group.f_prime
+        print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
+    return out.getvalue()
 
   def get_restraints_manager(self):
     if self.restraints_manager is not None:
@@ -1966,19 +2010,23 @@ class manager(object):
     new = manager(
       model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self._processed_pdb_file,
-      # processed_pdb_files_srv    = self._processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
       xray_structure             = self._xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
-      # refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
-      anomalous_scatterer_groups = self.anomalous_scatterer_groups, # XXX not selected
       log                        = self.log)
     new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
+    # selecting anomalous_scatterer_groups one by one because they are simple list!
+    new_anom_groups = []
+    for an_gr in self._anomalous_scatterer_groups:
+      new_an_gr = an_gr.select(selection)
+      if new_an_gr.iselection.size() > 0:
+        new_anom_groups.append(new_an_gr)
+    new.set_anomalous_scatterer_groups(new_anom_groups)
     # do not use set_shift_manager for this because shifted xray_str and hierarchy
     # are used here and being cutted. We need only shift_back and get_..._cs
     # functionality form shift_manager at the moment
@@ -2510,40 +2558,3 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
-  def update_anomalous_groups (self, out=sys.stdout) :
-    if ((self.anomalous_scatterer_groups is not None) and
-        (len(self.anomalous_scatterer_groups) > 0)) :
-      modified = False
-      sel_cache = self.get_atom_selection_cache()
-      for i_group, group in enumerate(self.anomalous_scatterer_groups) :
-        if (group.update_from_selection) :
-          isel = sel_cache.selection(group.selection_string).iselection()
-          assert (len(isel) == len(group.iselection))
-          if (not isel.all_eq(group.iselection)) :
-            print >> out, "Updating %d atom(s) in anomalous group %d" % \
-              (len(isel), i_group+1)
-            print >> out, "  selection string: %s" % group.selection_string
-            group.iselection = isel
-            modified = True
-      return modified
-
-  def anomalous_scatterer_groups_as_pdb(self):
-    out = StringIO()
-    if self.anomalous_scatterer_groups is not None:
-      pr = "REMARK   3  "
-      print >> out, pr+"ANOMALOUS SCATTERER GROUPS DETAILS."
-      print >> out, pr+" NUMBER OF ANOMALOUS SCATTERER GROUPS : %-6d"%\
-        len(self.anomalous_scatterer_groups)
-      counter = 0
-      for group in self.anomalous_scatterer_groups:
-        counter += 1
-        print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
-        lines = str_utils.line_breaker(group.selection_string, width=45)
-        for i_line, line in enumerate(lines):
-          if(i_line == 0):
-            print >> out, pr+"  SELECTION: %s"%line
-          else:
-            print >> out, pr+"           : %s"%line
-        print >>out,pr+"  fp  : %-15.4f"%group.f_prime
-        print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
-    return out.getvalue()

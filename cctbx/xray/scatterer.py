@@ -248,3 +248,22 @@ class anomalous_scatterer_group:
           msg.extend(s.getvalue().splitlines())
           msg.append("  tolerance: %.6g" % tolerance)
           raise RuntimeError("\n".join(msg))
+
+  def select(self, bselection):
+    # otherwise we will need total number of atoms
+    assert isinstance(bselection, flex.bool)
+    new_iselection = flex.bool(bselection.size(), self.iselection)
+    new_iselection = new_iselection.select(bselection).iselection()
+    new_refine = []
+    if self.refine_f_prime:
+      new_refine.append("f_prime")
+    if self.refine_f_double_prime:
+      new_refine.append("f_double_prime")
+    result = anomalous_scatterer_group(
+        iselection=new_iselection,
+        f_prime=self.f_prime,
+        f_double_prime=self.f_double_prime,
+        selection_string=self.selection_string,
+        refine = new_refine,
+        update_from_selection=self.update_from_selection)
+    return result
