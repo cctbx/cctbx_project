@@ -383,7 +383,7 @@ class run_command_list(object):
   def display_result (self, result, alert, out=None, log_return=True, log_stderr=True, log_stdout=False) :
     status = {Status.OK: 'OK', Status.WARNING: 'WARNING', Status.FAIL: 'FAIL'}
     if out:
-      print >> out, "%s [%s]"%(result.command, status[alert])
+      print >> out, "%s [%s] %.1fs"%(result.command, status[alert], result.wall_time)
       out.flush()
     if log_return:
       print >> log_return, "  Time: %5.2f"%result.wall_time
