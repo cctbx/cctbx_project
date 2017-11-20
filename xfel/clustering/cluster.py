@@ -163,6 +163,7 @@ class Cluster:
 
   @classmethod
   def from_crystal_symmetries(cls, crystal_symmetries,
+                              lattice_ids=None,
                               _prefix='cluster_from_crystal_symmetries',
                               _message='Made from list of individual cells',
                               n_images=None,
@@ -174,9 +175,15 @@ class Cluster:
     data = []
 
     from xfel.clustering.singleframe import CellOnlyFrame
+    if lattice_ids is not None:
+      assert len(lattice_ids) == len(crystal_symmetries)
     for j, cs in enumerate(crystal_symmetries):
       name = "lattice%07d"%j
-      this_frame = CellOnlyFrame(crystal_symmetry=cs, path=name, name=name)
+      lattice_id = None
+      if lattice_ids is not None:
+        lattice_id = lattice_ids[j]
+      this_frame = CellOnlyFrame(
+        crystal_symmetry=cs, path=name, name=name, lattice_id=lattice_id)
       if hasattr(this_frame, 'crystal_symmetry'):
           data.append(this_frame)
       else:

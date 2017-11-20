@@ -326,7 +326,7 @@ class SingleDialsFrameFromFiles(SingleFrame):
     SingleFrame.__init__(self, dicti=frame, path=" ".join((refls_path, expts_path)), **kwargs)
 
 class CellOnlyFrame(SingleFrame):
-  def __init__(self, crystal_symmetry, path=None, name=None):
+  def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
       self.crystal_symmetry = crystal_symmetry
       self.crystal_symmetry.show_summary()
       self.niggli_cell = self.crystal_symmetry.niggli_cell()
@@ -336,6 +336,7 @@ class CellOnlyFrame(SingleFrame):
       self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())
       self.path = path
       self.name = name
+      self.lattice_id = lattice_id
 
 class SingleDialsFrameFromJson(SingleFrame):
   def __init__(self, expts_path=None, **kwargs):
