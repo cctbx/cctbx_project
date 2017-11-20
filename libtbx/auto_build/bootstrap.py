@@ -1168,9 +1168,16 @@ class Builder(object):
   def cleanup(self, dirs=None):
     dirs = dirs or []
     if self.isPlatformWindows():
-      # deleting folders by copying an empty folder with robocopy is more reliable on Windows
-      cmd=['cmd', '/c', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
-       [')', 'DO', '(ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul', '&', 'rmdir', '%d))', '&', 'rmdir', 'empty']
+      # Delete folders by copying an empty folder with ROBOCOPY is more reliable on Windows
+      # If ROBOCOPY fails i.e. ERRORLEVEL>0 then bail to stop bootstrap. Start cmd.exe with
+      # delayedexpansion turned on (/V:ON) so that ERRORLEVEL is properly assigned in the FOR loop
+      cmd=['cmd', '/V:ON', '/C', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
+       [')', 'DO', '((ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul)',
+                '&', '@IF', '!ERRORLEVEL!', 'GTR', '0',
+                       '(echo.', '&', 'echo', 'Error', 'deleting', '%d', '&', 'echo.'
+                            '&', 'exit', '/B', '42)',
+                '&', 'rmdir', '%d))',
+          '&', 'rmdir', 'empty']
       self.add_step(self.shell(
         name='Removing directories ' + ', '.join(dirs),
         command =cmd,
