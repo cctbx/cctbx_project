@@ -162,6 +162,30 @@ class Cluster:
       dials=dials, n_images=n_images, **kwargs)
 
   @classmethod
+  def from_crystal_symmetries(cls, crystal_symmetries,
+                              _prefix='cluster_from_crystal_symmetries',
+                              _message='Made from list of individual cells',
+                              n_images=None,
+                              dials=False,
+                              **kwargs):
+    """Constructor to get a cluster from a list of crystal symmetries.
+    """
+
+    data = []
+
+    from xfel.clustering.singleframe import CellOnlyFrame
+    for j, cs in enumerate(crystal_symmetries):
+      name = "lattice%07d"%j
+      this_frame = CellOnlyFrame(crystal_symmetry=cs, path=name, name=name)
+      if hasattr(this_frame, 'crystal_symmetry'):
+          data.append(this_frame)
+      else:
+          logging.info('skipping item {}'.format(item))
+    print "%d lattices will be analyzed"%(len(data))
+
+    return cls(data, _prefix, _message)
+
+  @classmethod
   def from_list( cls,file_name,
                  raw_input=None,
                  pickle_list=[],
@@ -184,8 +208,17 @@ class Cluster:
     print "There are %d lines in the input file"%(len(stream))
     for j,item in enumerate(stream):
       tokens = item.strip().split()
-
-      this_frame = CellOnlyFrame(tokens,"lattice%07d"%j)
+      assert len(tokens) == 7, tokens
+      unit_cell_params = tuple([float(t) for t in tokens[0:5]])
+      space_group_type = tokens[6]
+      from cctbx.uctbx import unit_cell
+      uc_init = unit_cell(unit_cell_params)
+      from cctbx.sgtbx import space_group_info
+      sgi = space_group_info(space_group_type)
+      from cctbx import crystal
+      crystal_symmetry = crystal.symmetry(unit_cell=uc_init, space_group_info=sgi)
+      name = "lattice%07d"%j
+      this_frame = CellOnlyFrame(crystal_symmetry, path=name, name=name)
       if hasattr(this_frame, 'crystal_symmetry'):
           data.append(this_frame)
       else:

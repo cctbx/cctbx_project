@@ -326,23 +326,16 @@ class SingleDialsFrameFromFiles(SingleFrame):
     SingleFrame.__init__(self, dicti=frame, path=" ".join((refls_path, expts_path)), **kwargs)
 
 class CellOnlyFrame(SingleFrame):
-  def __init__(self, args, path):
-      unit_cell_params = tuple([float(a) for a in args[0:5]])
-      space_group_type = args[6]
-
-      from cctbx.uctbx import unit_cell
-      uc_init = unit_cell(unit_cell_params)
-      from cctbx.sgtbx import space_group_info
-      sgi = space_group_info(space_group_type)
-      from cctbx import crystal
-      self.crystal_symmetry = crystal.symmetry(unit_cell=uc_init, space_group_info=sgi)
+  def __init__(self, crystal_symmetry, path=None, name=None):
+      self.crystal_symmetry = crystal_symmetry
       self.crystal_symmetry.show_summary()
       self.niggli_cell = self.crystal_symmetry.niggli_cell()
       self.niggli_cell.show_summary(prefix="   niggli-->")
       self.uc = self.niggli_cell.unit_cell().parameters()
       self.mm = self.niggli_cell.unit_cell().metrical_matrix()
-      self.pg = "".join(sgi.type().lookup_symbol().split())
+      self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())
       self.path = path
+      self.name = name
 
 class SingleDialsFrameFromJson(SingleFrame):
   def __init__(self, expts_path=None, **kwargs):
