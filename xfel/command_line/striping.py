@@ -135,6 +135,30 @@ refinement {
 }
 '''
 
+recompute_mosaicity_str = '''
+recompute_mosaicity {
+  include scope xfel.command_line.recompute_mosaicity.phil_scope
+  input {
+    experiments = None
+    reflections = None
+  }
+}
+'''
+
+recompute_mosaicity_override_str = '''
+recompute_mosaicity {
+  input {
+    experiments = FILENAME_refined_experiments_CLUSTER.json
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+  }
+  output {
+    experiments = FILENAME_refined_experiments_CLUSTER.json
+    reflections = FILENAME_refined_reflections_CLUSTER.pickle
+  }
+}
+'''
+
+
 # reintegration after dials refinement
 reintegration_str = '''
 reintegration {
@@ -208,13 +232,14 @@ postprocessing {
 """
 
 master_defaults_str = multiprocessing_str + striping_str + combining_str + filtering_str + \
-                        refinement_str + reintegration_str + postprocessing_str
+                        refinement_str + recompute_mosaicity_str + reintegration_str + postprocessing_str
 
 # initialize a master scope from the multiprocessing phil string
 master_defaults_scope = parse(master_defaults_str, process_includes=True)
 # update master scope with customized and local phil scopes
 master_scope = master_defaults_scope.fetch(parse(postprocessing_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(reintegration_override_str, process_includes=True))
+master_scope = master_scope.fetch(parse(recompute_mosaicity_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(refinement_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(combining_override_str, process_includes=True))
 master_scope = master_scope.fetch(parse(multiprocessing_override_str, process_includes=True))
@@ -463,6 +488,10 @@ class Script(object):
 
         # refinement of the grouped experiments
         self.set_up_section("refinement", "dials.refine",
+          clustering=self.clustering)
+
+        # refinement of the grouped experiments
+        self.set_up_section("recompute_mosaicity", "cctbx.xfel.recompute_mosaicity",
           clustering=self.clustering)
 
         # reintegration
