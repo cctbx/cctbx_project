@@ -415,7 +415,7 @@ class DataBlockTemplateImporter(object):
     assert(all(x+1==y for x, y in zip(numbers, numbers[1:])))
 
     # Read the image
-    fmt = format_class(filenames[0])
+    fmt = format_class(filenames[0], **kwargs.get('format_kwargs'))
 
     # Get the meta data from the format
     b = fmt.get_beam()
