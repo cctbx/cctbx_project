@@ -35,6 +35,10 @@ phil_scope = parse("""
     .type = bool
     .help = If True, do not refine tilt (Tau2 and Tau3) when refining panel positions. Further, \
             don't refine distance at levels 1 or higher (respects refine_distance for level 0).
+  flat_refinement_with_distance = False
+    .type = bool
+    .help = If True, and if using flat refinement, then use constraints to allow disance \
+            to refine at levels 1 and higher.
   n_subset = None
     .type = int
     .help = Refine a random subset of the provided files
@@ -328,7 +332,10 @@ def refine_hierarchical(params, merged_scope, combine_phil):
         diff_phil += " refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
     else:
       # Note, always need to fix something, so pick a panel group and fix its Tau1 (rotation around Z) always
-      if params.flat_refinement:
+      if params.flat_refinement and params.flat_refinement_with_distance:
+        diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1,Tau2,Tau3\n" # refine distance, rotz and xy translation
+        diff_phil += "refinement.parameterisation.detector.constraints.parameter=Dist\n" # constrain distance to be refined identically for all panels at this hierarchy level
+      elif params.flat_refinement:
         diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Group1Tau1,Tau2,Tau3\n" # refine only rotz and xy translation
       else:
         diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
@@ -422,7 +429,10 @@ def refine_expanding(params, merged_scope, combine_phil):
           diff_phil += "refinement.parameterisation.beam.fix=in_spindle_plane+out_spindle_plane\n" # allow energy to refine
       else:
         # Note, always need to fix something, so pick a panel group and fix its Tau1 (rotation around Z) always
-        if params.flat_refinement:
+        if params.flat_refinement and params.flat_refinement_with_distance:
+          diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1,Tau2,Tau3\n" # refine distance, rotz and xy translation
+          diff_phil += "refinement.parameterisation.detector.constraints.parameter=Dist\n" # constrain distance to be refined identically for all panels at this hierarchy level
+        elif params.flat_refinement:
           diff_phil = "refinement.parameterisation.detector.fix_list=Dist,Group1Tau1,Tau2,Tau3\n" # refine only rotz and xy translation
         else:
           diff_phil = "refinement.parameterisation.detector.fix_list=Group1Tau1\n" # refine almost everything
@@ -442,8 +452,9 @@ def refine_expanding(params, merged_scope, combine_phil):
 
       diff_phil += "refinement.parameterisation.detector.hierarchy_level=%d\n"%i
 
-      command += " output.experiments=%s_refined_experiments_step%d_level%d.json output.reflections=%s_refined_reflections_step%d_level%d.pickle"%( \
-        params.tag, j, i, params.tag, j, i)
+      output_experiments = "%s_refined_experiments_step%d_level%d.json"%(params.tag, j, i)
+      command += " output.experiments=%s output.reflections=%s_refined_reflections_step%d_level%d.pickle"%( \
+        output_experiments, params.tag, j, i)
 
       scope = merged_scope.fetch(parse(diff_phil))
       f = open(refine_phil_file, 'w')
@@ -453,6 +464,63 @@ def refine_expanding(params, merged_scope, combine_phil):
       print command
       result = easy_run.fully_buffered(command=command).raise_if_errors()
       result.show_stdout()
+
+      # In expanding mode, if using flat refinement with distance, after having refined this step as a block, unrefined
+      # panels will have been left behind.  Read back the new metrology, compute the shift applied to the panels refined
+      # in this step,and apply that shift to the unrefined panels in this step
+      if params.flat_refinement and params.flat_refinement_with_distance and i > 0:
+        from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
+        from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels
+        from scitbx.array_family import flex
+        from scitbx.matrix import col
+        from libtbx.test_utils import approx_equal
+        experiments = ExperimentListFactory.from_json_file(output_experiments, check_format=False)
+        assert len(experiments.detectors()) == 1
+        detector = experiments.detectors()[0]
+        # Displacements: deltas along the vector normal to the detector
+        displacements = flex.double()
+        # Iterate through the panel groups at this level
+        for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
+          # Were there panels refined in this step in this panel group?
+          test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
+          if not any(test): continue
+          # Compute the translation along the normal of this panel group.  This is defined as distance in dials.refine
+          displacements.append(col(panel_group.get_local_fast_axis()).cross(col(panel_group.get_local_slow_axis())).dot(col(panel_group.get_local_origin())))
+
+        # Even though the panels are constrained to move the same amount, there is a bit a variation.
+        stats = flex.mean_and_variance(displacements)
+        displacement = stats.mean()
+        print "Average displacement along normals: %f +/- %f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
+
+        # Verify the variation isn't significant
+        for k in xrange(1, len(displacements)):
+          assert approx_equal(displacements[0], displacements[k])
+        # If all of the panel groups in this level moved, no need to do anything.
+        if len(displacements) != len(list(iterate_detector_at_level(detector.hierarchy(), 0, i))):
+          for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
+            test = [list(detector).index(panel) in steps[j] for panel in iterate_panels(panel_group)]
+            # If any of the panels in this panel group moved, no need to do anything
+            if any(test): continue
+
+            # None of the panels in this panel group moved in this step, so need to apply displacement from other panel
+            # groups at this level
+            fast = col(panel_group.get_local_fast_axis())
+            slow = col(panel_group.get_local_slow_axis())
+            ori = col(panel_group.get_local_origin())
+            normal = fast.cross(slow)
+            panel_group.set_local_frame(fast, slow, (ori.dot(fast)*fast) + (ori.dot(slow)*slow) + (normal*displacement))
+
+        # Check the new displacements. Should be the same across all panels.
+        displacements = []
+        for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
+          displacements.append(col(panel_group.get_local_fast_axis()).cross(col(panel_group.get_local_slow_axis())).dot(col(panel_group.get_local_origin())))
+
+        for k in xrange(1, len(displacements)):
+          assert approx_equal(displacements[0], displacements[k])
+
+        dump = ExperimentListDumper(experiments)
+        dump.as_json(output_experiments)
+
       previous_step_and_level = j,i
 
   output_geometry(params)
