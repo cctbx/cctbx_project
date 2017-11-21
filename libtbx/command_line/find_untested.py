@@ -1,8 +1,23 @@
 from __future__ import division
 import os
 import libtbx.load_env
+from libtbx import easy_run
 
 include = ["cctbx", "iotbx", "mmtbx", "scitbx"]
+
+find_blame = True
+
+def find_majority_blame(full_path):
+  cmd = 'git blame %s' % full_path
+  rc = easy_run.go(cmd)
+  blames = {}
+  for line in rc.stdout_lines:
+    key = line[line.find('(')+1:line.find('(')+11]
+    blames.setdefault(key, 0)
+    blames[key]+=1
+  m = max(blames.values())
+  for key, item in blames.items():
+    if item==m: return key
 
 def find_all_tst_dot_py_files(root_dir):
   result = []
@@ -39,7 +54,10 @@ def find_mismatch(from_run_tests, from_dirs, full_path):
     print "  Tests listed below are never executed:"
   for f1 in from_dirs:
     if(not f1 in from_run_tests):
-      if(1): print "      ", f1
+      rc = ''
+      if find_blame:
+        rc = find_majority_blame(f1)
+      if(1): print "    '%s' %s" % (rc, f1)
 
 def run():
   root_dir = libtbx.env.find_in_repositories("cctbx_project")
