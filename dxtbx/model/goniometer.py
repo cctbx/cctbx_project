@@ -57,6 +57,11 @@ goniometer_phil_scope = libtbx.phil.parse('''
       .help = "Override the setting rotation matrix"
       .short_caption = "Setting rotation matrix"
 
+    invert_rotation_axis = False
+      .type = bool
+      .help = "Invert the rotation axis"
+      .short_caption = "Invert rotation axis"
+
   }
 ''')
 
@@ -103,6 +108,9 @@ class GoniometerFactory:
       goniometer.set_fixed_rotation(params.goniometer.fixed_rotation)
     if params.goniometer.setting_rotation is not None:
       goniometer.set_setting_rotation(params.goniometer.setting_rotation)
+    if params.goniometer.invert_rotation_axis == True:
+      rotation_axis = goniometer.get_rotation_axis_datum()
+      goniometer.set_rotation_axis_datum(map(lambda x: -x, rotation_axis))
 
     # Return the model
     return goniometer
@@ -133,6 +141,10 @@ class GoniometerFactory:
       axes = flex.vec3_double(
         params.goniometer.axes[i*3:(i*3)+3] for i in
         range(len(params.goniometer.axes) // 3))
+
+      # Invert the rotation axis
+      if params.goniometer.invert_rotation_axis == True:
+        axes = flex.vec3_double([map(lambda x: -x, v) for v in axes])
 
       # Create the angles
       if params.goniometer.angles is not None:
@@ -169,6 +181,11 @@ class GoniometerFactory:
         if len(goniometer.get_axes()) != len(axes):
           raise RuntimeError("Number of axes must match the current goniometer (%s)"
              %len(goniometer.get_axes()))
+        goniometer.set_axes(axes)
+
+      # Invert rotation axis
+      if params.goniometer.invert_rotation_axis == True:
+        axes = flex.vec3_double([map(lambda x: -x, v) for v in goniometer.get_axes()])
         goniometer.set_axes(axes)
 
       # Set the angles
