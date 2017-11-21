@@ -24,14 +24,14 @@ class accu_builder(object):
 def exercise(verbose):
   builder = accu_builder()
   import iotbx.cif
-  reader = iotbx.cif.ext.fast_reader(input="", builder=builder, strict=True)
+  reader = iotbx.cif.ext.fast_reader(input_string="", filename="", builder=builder, strict=True)
   assert reader.lexer_errors().size() == 0
   assert reader.parser_errors().size() == 0
   assert len(builder.accu) == 0
   for i in xrange(256):
     builder = accu_builder()
     reader = iotbx.cif.ext.fast_reader(
-      input=chr(i), builder=builder, strict=True)
+      input_string=chr(i), filename="", builder=builder, strict=True)
     if (verbose):
       print reader.lexer_errors().size(), \
             reader.parser_errors().size(), \

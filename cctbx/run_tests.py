@@ -104,6 +104,7 @@ tst_list = (
   "$D/regression/tst_geometry_restraints_lbfgs.py",
   "$D/regression/tst_geometry_restraints_2.py",
   "$D/regression/tst_grm_pickling.py",
+  "$D/regression/tst_french_wilson.py",
   ["$D/development/make_cns_input.py", "P31"],
   ["$D/development/tst_cns_epsilon.py", "P31"],
   ["$D/development/tst_cns_hl.py", "P31"],
