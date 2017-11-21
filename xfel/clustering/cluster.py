@@ -96,15 +96,19 @@ class Cluster:
     self.members = data
     self.info = info
 
-    # Calculate medians and stdevs
+    # Calculate medians and stdevs.  Explanation:
+    # When clustering cells together, median and standard deviation parameters should always
+    # be calculated on the Niggli setting, not the input cell. Admittedly, this does not cover
+    # corner cases where the relationship between two Niggli cells crosses a polytope boundary,
+    # but for most cases the Niggli settings are the appropriate cells to be averaged.
+    # Fixes cctbx issue #97.
+    # Prior to 20171121, try the member.orientation.unit_cell(), then
+    # member.crystal_symmetry.unit_cell().  After 20171121, use member.uc, which is
+    # supposedly always constructed to be the niggli cell.
     unit_cells = np.zeros([len(self.members), 6])
     self.pg_composition = {}
     for i, member in enumerate(self.members):
-      try:
-        unit_cells[i, :] = member.orientation.unit_cell().parameters()
-        # XXX naive: orientation matrix can be either centered or not, does not account for cell reduction
-      except AttributeError:
-        unit_cells[i, :] = member.crystal_symmetry.unit_cell().parameters() # for text-only input
+      unit_cells[i, :] = member.uc # supposed to be the Niggli setting cell parameters tuple
       # Calculate point group composition
       if member.pg in self.pg_composition.keys():
         self.pg_composition[member.pg] += 1
