@@ -133,7 +133,6 @@ WINLIBTIFF32 = "libtiff4.0.6x32.zip"
 # tarballs (since they are not under active development by us or our
 # collaborators)
 dependency_tarballs = {
-  "boost":  ("http://cci.lbl.gov/hot", "boost_hot.tar.gz"),
   "scons":  ("http://cci.lbl.gov/hot", "scons_hot.tar.gz"),
   "annlib": ("http://cci.lbl.gov/hot", "annlib_hot.tar.gz"),
 }

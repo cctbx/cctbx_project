@@ -696,18 +696,6 @@ class scons_module(SourceModule):
   authentarfile = ['%(cciuser)s@cci.lbl.gov', 'scons.tar.gz', '/net/cci/auto_build/repositories/scons']
   authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/scons/']
 
-class boost_module(SourceModule):
-  module = 'boost'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/boost.gz']
-  # Compared to rsync pscp is very slow when downloading multiple files
-  # Resort to downloading the compressed archive on Windows
-  authentarfile = ['%(cciuser)s@cci.lbl.gov',
-                   'boost_hot.tar.gz',
-                   '/net/cci/auto_build/repositories/boost_hot/']
-  authenticated = [
-    'rsync',
-    '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/boost_hot/']
-
 # external modules
 class amber_module(SourceModule):
   module = 'amber'
@@ -778,6 +766,13 @@ class geostd_module(SourceModule):
                'svn://svn.code.sf.net/p/geostd/code/trunk'
                ]
   authenticated = anonymous
+
+class boost_module(SourceModule):
+  module = 'boost'
+  anonymous = ['git',
+               'git@github.com:cctbx/boost.git',
+               'https://github.com/cctbx/boost.git',
+               'https://github.com/cctbx/boost/archive/master.zip']
 
 class cbflib_module(SourceModule):
   module = 'cbflib'
@@ -1605,6 +1600,7 @@ class CCIBuilder(Builder):
   BASE_PACKAGES = 'all'
   # Checkout these codebases
   CODEBASES = [
+    'boost',
     'cbflib',
     'cctbx_project',
     'gui_resources',
@@ -1617,7 +1613,6 @@ class CCIBuilder(Builder):
   # Copy these sources from cci.lbl.gov
   HOT = [
     'annlib',
-    'boost',
     'scons',
     'ccp4io',
     'eigen',
@@ -1645,6 +1640,7 @@ class MOLPROBITYBuilder(Builder):
   BASE_PACKAGES = 'molprobity'
   # Checkout these codebases
   CODEBASES = [
+    'boost',
     'cbflib',
     'cctbx_project',
     'ccp4io_adaptbx',
@@ -1661,7 +1657,6 @@ class MOLPROBITYBuilder(Builder):
   # Copy these sources from cci.lbl.gov
   HOT = [
     'annlib',
-    'boost',
     'scons',
     'ccp4io',
     #"libsvm",
@@ -2157,7 +2152,7 @@ def run(root=None):
   usage = """Usage: %prog [options] [actions]
 
   You may specify one or more actions:
-    hot - Update static sources (boost, scons, etc.)
+    hot - Update static sources (scons, etc.)
     update - Update source repositories (cctbx, cbflib, etc.)
     base - Build base dependencies (python, hdf5, wxWidgets, etc.)
     build - Build
