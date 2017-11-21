@@ -9,7 +9,7 @@ from SingleFrame import SingleFrame
 import logging
 
 
-class Cluster:
+class Clu_BELIEVE_THIS_WHOLE_DIRECTORY_IS_DEAD_CODE_20171120_ster:
   def __init__(self, data, cname, info, log_level='INFO'):
     """ Contains a list of SingFrame objects, as well as information about these
     as a cluster (e.g. mean unit cell)."""
