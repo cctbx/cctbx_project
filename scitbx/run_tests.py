@@ -50,6 +50,7 @@ tst_list = (
   "$D/matrix/__init__.py",
   "$D/python_utils/tst_random_transform.py",
   "$D/python_utils/tst_graph.py",
+  "$D/python_utils/tst_robust.py",
   "$D/math/superpose.py",
   "$D/math/spe.py",
   "$D/math/incremental_SO3_sampling.py",
