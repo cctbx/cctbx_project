@@ -7,6 +7,8 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import make_sub_header
 import os
 import sys
+import iotbx.cif
+import iotbx.pdb
 
 master_phil = """
 adp_statistics
@@ -54,21 +56,16 @@ including TLS contribution if present.""")
     params = cmdline.work.extract()
   validate_params(params)
   import mmtbx.model
-  import mmtbx.restraints
-  from mmtbx.monomer_library import pdb_interpretation
-  processed_pdb_file = pdb_interpretation.run(
-    args=[params.adp_statistics.pdb_file] + params.adp_statistics.cif_file,
-    substitute_non_crystallographic_unit_cell_if_necessary=True,
-    log=out)
-  geometry = processed_pdb_file.geometry_restraints_manager(show_energies=True)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry = geometry,
-    normalization = True)
+  m_input = iotbx.pdb.input(file_name=params.adp_statistics.pdb_file)
+  restraint_objects = []
+  for fn in params.adp_statistics.cif_file:
+    cif_object = iotbx.cif.reader(file_path=fn).model()
+    restraint_objects.append((fn, cif_object))
   model = mmtbx.model.manager(
-    xray_structure     = processed_pdb_file.xray_structure(),
-    pdb_hierarchy      = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    restraints_manager = restraints_manager,
-    log                = out)
+      model_input = m_input,
+      restraint_objects = restraint_objects,
+      build_grm = True,
+      log = out)
   make_sub_header("Analyzing model B-factors", out=out)
   if (params.adp_statistics.selection is not None) :
     selection = model.selection(params.adp_statistics.selection)

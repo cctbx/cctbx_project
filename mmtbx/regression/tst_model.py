@@ -914,25 +914,10 @@ def exercise_00(mon_lib_srv, ener_lib):
 def exercise(mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(
                    relative_path="phenix_regression/pdb/enk.pdb", test=os.path.isfile)
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-                                       mon_lib_srv               = mon_lib_srv,
-                                       ener_lib                  = ener_lib,
-                                       file_name                 = pdb_file,
-                                       raw_records               = None,
-                                       force_symmetry            = True)
-################
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  selection = flex.bool(xray_structure.scatterers().size(), True)
   mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol.get_xray_structure().scattering_type_registry(table = "wk1995")
+      model_input = iotbx.pdb.input(file_name=pdb_file),
+      build_grm = True)
+  mol.setup_scattering_dictionaries(scattering_table = "wk1995")
 ################
 
 
@@ -961,18 +946,9 @@ def exercise(mon_lib_srv, ener_lib):
   mol.geometry_statistics().show()
 
 ################
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  selection = flex.bool(xray_structure.scatterers().size(), True)
-  mol_other = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol_other.get_xray_structure().scattering_type_registry(table = "wk1995")
+  selection = flex.bool(mol.get_number_of_atoms(), True)
+  mol_other = mol.select(selection)
+  mol_other.setup_scattering_dictionaries(scattering_table = "wk1995")
 ################
 
   mol_other.geometry_statistics()
@@ -1013,25 +989,11 @@ def exercise_2(mon_lib_srv, ener_lib):
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.nonbonded_weight = 16
   params.clash_guard.nonbonded_distance_threshold = None # disable clash_guard
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-                                       mon_lib_srv               = mon_lib_srv,
-                                       ener_lib                  = ener_lib,
-                                       params                    = params,
-                                       file_name                 = pdb_file,
-                                       raw_records               = None,
-                                       force_symmetry            = True)
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  selection = flex.bool(xray_structure.scatterers().size(), True)
   mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-  mol.get_xray_structure().scattering_type_registry(table = "wk1995")
+      model_input = iotbx.pdb.input(file_name=pdb_file),
+      pdb_interpretation_params = params,
+      build_grm = True)
+  mol.setup_scattering_dictionaries(scattering_table = "wk1995")
 
   out = StringIO()
   adp_stat = mol.show_adp_statistics(out = out)
@@ -1087,24 +1049,13 @@ def exercise_3():
     test=os.path.isfile)
   params = monomer_library.pdb_interpretation.master_params.extract()
   params.nonbonded_weight = 16
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-    pdb_interpretation_params=params)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  #
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  out = StringIO()
   mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    log = out)
-  #
+      model_input = iotbx.pdb.input(file_name=pdb_file),
+      pdb_interpretation_params = params,
+      build_grm = True)
+  mol.setup_scattering_dictionaries(scattering_table = "wk1995")
+  out = StringIO()
+  mol.set_log(out)
   mol.idealize_h()
   assert out.getvalue().splitlines()[0] == \
   "X-H deviation from ideal before regularization (bond): mean= 0.201 max= 0.636", \
@@ -1116,23 +1067,9 @@ def exercise_4():
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/lysozyme_noH.pdb",
     test=os.path.isfile)
-  processed_pdb_files_srv = utils.process_pdb_file_srv()
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  #
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  out = StringIO()
   mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    log = out)
-  #
+      model_input = iotbx.pdb.input(file_name=pdb_file),
+      build_grm = True)
   result = mol.isolated_atoms_selection()
   solvent_sel = mol.solvent_selection()
   assert solvent_sel.count(True)+1 == result.count(True)
@@ -1165,21 +1102,9 @@ def exercise_convert_atom() :
     space_group_symbol="P1",
     unit_cell=(10,10,10,90,90,90))
   open("tmp_tst_model_5.pdb", "w").write(root.as_pdb_string(symm))
-  processed_pdb_files_srv = utils.process_pdb_file_srv(log=null_out())
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = ["tmp_tst_model_5.pdb"])
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  xray_structure = processed_pdb_file.xray_structure()
-  pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms()
   mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
-    log = null_out())
+      model_input = iotbx.pdb.input(file_name="tmp_tst_model_5.pdb"),
+      build_grm = True)
   mol.convert_atom(
     i_seq=4,
     scattering_type="Mg2+",

@@ -160,7 +160,7 @@ class manager(object):
   """
 
   def __init__(self,
-      model_input = None, # pdb_input or cif_input, make mandatory later
+      model_input,
       crystal_symmetry = None,
       restraint_objects = None, # ligand restraints in cif format
       monomer_parameters = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
@@ -301,6 +301,9 @@ class manager(object):
     """
     return iotbx.phil.parse(
           input_string=grand_master_phil_str, process_includes=True).extract()
+
+  def set_log(self, log):
+    self.log = log
 
   def set_shift_manager(self, shift_manager):
     self._shift_manager = shift_manager

@@ -693,16 +693,14 @@ class test_nonbonded_overlaps(unittest.TestCase):
     Test overlaps when adding and moving scatterers
     Test water scatterers with and without labels
     '''
+    mol = mmtbx.model.manager(
+        model_input = iotbx.pdb.input(source_info=None, lines=raw_records3.split('\n')),
+        build_grm = True)
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
-    processed_pdb_file = pdb_inter.process(
-      mon_lib_srv    = mon_lib_srv,
-      ener_lib       = ener_lib,
-      raw_records    = raw_records3,
-      force_symmetry = True)
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = 5.0)
-    xrs = processed_pdb_file.xray_structure()
+
+    processed_pdb_file = mol._processed_pdb_file # DO NOT REPEAT THAT
+    geometry = mol.get_restraints_manager().geometry
+    xrs = mol.get_xray_structure()
     macro_mol_sel = nbo.get_macro_mol_sel(processed_pdb_file)
     nb_overlaps = geometry.nb_overlaps_info(
       sites_cart  = xrs.sites_cart(),
@@ -716,14 +714,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = outstring.format('Selection related clashscore', 1000, result)
     self.assertEqual(result, 1000, msg=msg)
     # Add water scatterers
-    restraints_manager = mmtbx.restraints.manager(
-      geometry = geometry,
-      normalization = False)
-    mol = mmtbx.model.manager(
-      restraints_manager = restraints_manager,
-      xray_structure = xrs,
-      pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
-    #
     new_scatterers = flex.xray_scatterer(
       xrs.scatterers().size(),
       xray.scatterer(occupancy = 1, b = 10, scattering_type = "O"))

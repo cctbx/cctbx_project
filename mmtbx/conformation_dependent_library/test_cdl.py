@@ -916,10 +916,11 @@ def get_managers(filename, testing=False, verbose=False):
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  mol = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+  # Not used anywhere, incorrect creation.
+  # mol = mmtbx.model.manager(
+  #   restraints_manager = restraints_manager,
+  #   xray_structure = xray_structure,
+  #   pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   return processed_pdb_file, restraints_manager
 
 def run_apply(filename, testing=False, verbose=False):

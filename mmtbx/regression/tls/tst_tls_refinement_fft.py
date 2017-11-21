@@ -11,6 +11,7 @@ from libtbx.utils import format_cpu_times
 import libtbx.load_env
 import random
 import sys, os
+import iotbx.pdb
 
 def exercise_2(eps = 1.e-6):
 ###> Get started from PDB
@@ -19,43 +20,26 @@ def exercise_2(eps = 1.e-6):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/phe_abc_tlsanl_out_geometry_minimized.pdb",
     test=os.path.isfile)
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-                                       mon_lib_srv               = mon_lib_srv,
-                                       ener_lib                  = ener_lib,
-                                       file_name                 = pdb_file,
-                                       raw_records               = None,
-                                       force_symmetry            = True)
-  xray_structure = processed_pdb_file.xray_structure()
-  xray_structure.scattering_type_registry(table = "wk1995")
-  xray_structure.convert_to_isotropic()
-  u_iso_start = xray_structure.extract_u_iso_or_u_equiv()
-  xray_structure.convert_to_anisotropic()
+  model = mmtbx.model.manager(
+      model_input=iotbx.pdb.input(file_name=pdb_file),
+      build_grm=True)
+  model.setup_scattering_dictionaries(scattering_table="wk1995")
+  model.get_xray_structure().convert_to_isotropic()
+  u_iso_start = model.get_xray_structure().extract_u_iso_or_u_equiv()
+  model.get_xray_structure().convert_to_anisotropic()
+
   selections = []
   selection_strings = ["chain A", "chain B", "chain C"]
   for string in selection_strings:
-      selections.append(processed_pdb_file.all_chain_proxies.selection(
-                                                              string = string))
+      selections.append(model.selection(selstr = string))
 ################
-  geometry = processed_pdb_file.geometry_restraints_manager(
-                                                    show_energies      = False,
-                                                    plain_pairs_radius = 5.0)
-  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
-                                                normalization = False)
-  selection = flex.bool(xray_structure.scatterers().size(), True)
+  selection = flex.bool(model.get_number_of_atoms(), True)
   class refinement_flags: pass
   refinement_flags.adp_tls = selections
-  tls_groups = tools.tls_groups(selection_strings = selection_strings)
-  tlsos = tools.generate_tlsos(
-          selections     = refinement_flags.adp_tls,
-          xray_structure = xray_structure,
-          value          = 0.0)
-  tls_groups.tlsos = tlsos
-  model = mmtbx.model.manager(
-    restraints_manager = restraints_manager,
-    xray_structure = xray_structure,
-    tls_groups = tls_groups,
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   model.set_refinement_flags(refinement_flags)
+  model.determine_tls_groups(selection_strings=selections, generate_tlsos=selections)
+  model.set_refinement_flags(refinement_flags)
+  xray_structure = model.get_xray_structure()
 ################
 ###> Get TLS <-> Ucart
   T_initial = []

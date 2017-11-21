@@ -259,12 +259,9 @@ def exercise_02():
     tmp_f.close()
   xrs_exact = iotbx.pdb.pdb_input(
     file_name = "m_good.pdb").xray_structure_simple()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = monomer_library.server.server(),
-    ener_lib                 = monomer_library.server.ener_lib(),
-    file_name                = "m_bad.pdb")
-  ph_part = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xrs_part = processed_pdb_file.xray_structure()
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(file_name="m_bad.pdb"))
+  xrs_part = model.get_xray_structure()
   miller_set = miller.build_set(
     crystal_symmetry = xrs_exact.crystal_symmetry(),
     anomalous_flag   = False,
@@ -281,11 +278,6 @@ def exercise_02():
     sf_and_grads_accuracy_params = sf_par,
     target_name                  = "ls_wunit_k1",
     f_obs                        = f_obs)
-  #
-  model = mmtbx.model.manager(
-    xray_structure = xrs_part,
-    pdb_hierarchy  = ph_part,
-    log            = None)
   #
   out = StringIO()
   params = find_hydrogens.all_master_params().extract()
