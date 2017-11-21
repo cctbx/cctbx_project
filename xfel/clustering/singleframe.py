@@ -3,7 +3,6 @@ dataset"""
 from __future__ import division
 from libtbx import easy_pickle
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 import logging
 from cctbx.array_family import flex
@@ -203,6 +202,7 @@ class SingleFrame(InputFrame):
     :param: ax: optional axes object to ve used for plotting
     """
 
+    import matplotlib.pyplot as plt
     if ax is None:
       fig = plt.figure()
       ax = fig.gca()

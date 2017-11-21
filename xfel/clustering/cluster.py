@@ -17,8 +17,6 @@ from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDia
 from xfel.clustering.singleframe import SingleDialsFrameFromJson
 from cctbx.uctbx.determine_unit_cell import NCDist
 import numpy as np
-import matplotlib.patheffects as patheffects
-import matplotlib.pyplot as plt
 
 class SingleMiller():
   """ Class for representing multiple measurements of a single miller index. """
@@ -441,6 +439,7 @@ class Cluster:
     sorted_cluster = sorted(self.members, key=lambda y: -1 * y.total_i)
 
     if plot:
+      import matplotlib.pyplot as plt
       plt.plot([x.total_i for x in sorted_cluster])
       plt.show()
 
@@ -565,6 +564,7 @@ class Cluster:
           cluster.dump_file_list(out_file_name="{}.lst".format(cluster.cname))
 
     if doplot:
+      import matplotlib.pyplot as plt
       if labels is True:
         labels = [image.name for image in self.members]
       elif labels is False:
@@ -623,6 +623,8 @@ class Cluster:
     :param axes_to_return: if None, print to screen, otherwise, requires 3 axes objects, and will return them.
     :param cbar: boolean to specify if a color bar should be used.
     """
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as patheffects
     from mpl_toolkits.basemap import Basemap
     import scipy.ndimage as ndi
 
@@ -777,6 +779,7 @@ class Cluster:
     :param ax: optionally hand the method three matplotlib axes objects to plot onto. If not specified, will plot the data.
     :return: the three axes, with the data plotted onto them.
     """
+    import matplotlib.pyplot as plt
     if ax is None:
       plt.figure(figsize=(10, 14))
       axes_to_return = [plt.subplot2grid((3, 1), (0, 0)),
@@ -825,6 +828,7 @@ class Cluster:
     """
     from scipy.stats import linregress
     from xfel.clustering.singleframe import SingleFrame as Sf
+    import matplotlib.pyplot as plt
 
     if ax is None:
       fig = plt.figure("All images intensity statistics")
