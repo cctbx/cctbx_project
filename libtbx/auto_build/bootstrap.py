@@ -2059,6 +2059,19 @@ class PhenixExternalRegression(PhenixBuilder):
       )
 
   def add_tests(self):
+    # timings
+    if self.subcategory in [None, 'timings']:
+      self.add_test_command(
+        'mmtbx.python',
+        args=[os.path.join('..',
+                           '..',
+                           'modules',
+                           'phenix_regression',
+                           'development',
+                           'runtime_speed_regression_test.py',
+                           )],
+        name="timings test",
+        )
     # amber
     if self.subcategory in [None, "amber"]:
       self.add_test_command('amber.run_tests',
