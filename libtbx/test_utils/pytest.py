@@ -5,7 +5,7 @@ import sys
 import itertools
 
 import libtbx.load_env
-from libtbx.test_utils.parallel import make_commands, run_command
+from libtbx.test_utils.parallel import run_command
 
 _first_pytest_collection = True
 _pytest_unique_counter = itertools.count(1)
@@ -136,7 +136,8 @@ def libtbx_collector():
   caller = frame.f_globals['__name__']
   if not caller.endswith('.conftest'):
     raise RuntimeError('Only use libtbx_collector() from within conftest.py')
-  caller_run_tests_module = caller[:-9] + '.run_tests'
+  caller = caller[:-9]
+  caller_run_tests_module = caller + '.run_tests'
 
   import pytest
 
@@ -149,7 +150,9 @@ def libtbx_collector():
   class LibtbxTest(pytest.Item):
     def __init__(self, name, parent, test_command, test_parameters):
       super(LibtbxTest, self).__init__(name, parent)
-      self.test_cmd = make_commands([test_command])[0]
+      self.test_cmd = test_command
+      if test_command.endswith('.py'):
+        self.test_cmd = 'libtbx.python "%s"' % self.test_cmd
       self.test_parms = test_parameters
       self.full_cmd = ' '.join([self.test_cmd] + self.test_parms)
 
@@ -196,8 +199,9 @@ def libtbx_collector():
             testparams = [str(s) for s in test[1:]]
             testname = "_".join(str(p) for p in testparams)
 
-          full_command = testfile.replace("$D", str(self.session.fspath))
-          shortpath = testfile.replace("$D/", "")
+          full_command = testfile.replace("$D", str(self.session.fspath)). \
+                                  replace("$B", libtbx.env.under_build(caller))
+          shortpath = testfile.replace("$D/", "").replace("$B/", "build/")
           pytest_file_object = pytest.File(shortpath, self.session)
           yield LibtbxTest(testname, pytest_file_object, full_command, testparams)
 
