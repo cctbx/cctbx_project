@@ -1165,14 +1165,15 @@ class Builder(object):
     if self.isPlatformWindows():
       # Delete folders by copying an empty folder with ROBOCOPY is more reliable on Windows
       # If ROBOCOPY fails i.e. ERRORLEVEL>0 then bail to stop bootstrap. Start cmd.exe with
-      # delayedexpansion turned on (/V:ON) so that ERRORLEVEL is properly assigned in the FOR loop
-      cmd=['cmd', '/V:ON', '/C', 'mkdir', 'empty', '&', '(FOR', '%d', 'IN', '('] + dirs + \
-       [')', 'DO', '((ROBOCOPY', 'empty', '%d', '/MIR', '>', 'nul)',
-                '&', '@IF', '!ERRORLEVEL!', 'GTR', '0',
-                       '(echo.', '&', 'echo', 'Error', 'deleting', '%d', '&', 'echo.'
-                            '&', 'exit', '/B', '42)',
-                '&', 'rmdir', '%d))',
-          '&', 'rmdir', 'empty']
+      cmd = ['cmd', '/C', 'mkdir', 'empty', '&',
+         '(FOR', '%b', 'IN', '('] + dirs + [')', 'DO',
+              '((ROBOCOPY', 'empty', '%b', '/MIR', '/COPYALL', '>', 'nul)',
+                 '&', 'rmdir', '/S', '/Q', '%b\\', # remove directory after robocopy
+                 '&', '@IF', 'EXIST', '%b\\', # backslash indicates it's a directory and not a file
+                         '(echo.', '&', 'echo', 'Error', 'deleting', '%b',
+                          '&', 'echo.', '&', 'exit', '/B', '42', ')))',
+          '&', 'rmdir', 'empty'
+       ]
       self.add_step(self.shell(
         name='Removing directories ' + ', '.join(dirs),
         command =cmd,
