@@ -114,7 +114,7 @@ def define_entry_points(epdict, **kwargs):
   # now in normal python land we could just do
   # caller = frame.f_globals['__name__']
   # alas we are in the libtbx shadow world and there is no __name__. x_x
-  caller = frame.f_code.co_filename  # Get the full path of the libtbx_refresh.py file.
+  caller = os.path.abspath(frame.f_code.co_filename)  # Get the full path of the libtbx_refresh.py file.
   refresh_file, _ = os.path.splitext(caller)
   if not refresh_file.endswith('libtbx_refresh'):
     raise RuntimeError('Entry points can only be defined from within libtbx_refresh.py')
