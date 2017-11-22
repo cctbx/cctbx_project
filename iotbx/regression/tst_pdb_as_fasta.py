@@ -30,39 +30,39 @@ TER
 ATOM     90  O   HOH X   1       0.000   0.000   0.000  1.00 20.00           0
 END
 """
-  open("tmp1.pdb", "w").write(pdb_str)
-  open("tmp2.pdb", "w").write(pdb_str_2)
+  open("tst_pdb_as_fasta1.pdb", "w").write(pdb_str)
+  open("tst_pdb_as_fasta2.pdb", "w").write(pdb_str_2)
   params = pdb_as_fasta.master_phil.fetch().extract()
-  params.pdb_as_fasta.file_name.extend(["tmp1.pdb", "tmp2.pdb"])
+  params.pdb_as_fasta.file_name.extend(["tst_pdb_as_fasta1.pdb", "tst_pdb_as_fasta2.pdb"])
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
   assert not show_diff(seq_in, """\
->tmp1 chain ' A'
+>tst_pdb_as_fasta1 chain ' A'
 XXGNNQAGQNY
->tmp2 chain ' A'
+>tst_pdb_as_fasta2 chain ' A'
 GNMQ
->tmp2 chain 'BB'
+>tst_pdb_as_fasta2 chain 'BB'
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXGAXXCU""")
   params.pdb_as_fasta.pad_missing_residues=False
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
   assert not show_diff(seq_in, """\
->tmp1 chain ' A'
+>tst_pdb_as_fasta1 chain ' A'
 GNNQAGQNY
->tmp2 chain ' A'
+>tst_pdb_as_fasta2 chain ' A'
 GNMQ
->tmp2 chain 'BB'
+>tst_pdb_as_fasta2 chain 'BB'
 GACU""")
   params.pdb_as_fasta.include_insertion_residues = False
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
   assert not show_diff(seq_in, """\
->tmp1 chain ' A'
+>tst_pdb_as_fasta1 chain ' A'
 GNNQQNY
->tmp2 chain ' A'
+>tst_pdb_as_fasta2 chain ' A'
 GNMQ
->tmp2 chain 'BB'
+>tst_pdb_as_fasta2 chain 'BB'
 GACU""")
   params.pdb_as_fasta.pad_missing_residues = True
   params.pdb_as_fasta.include_insertion_residues = True
@@ -70,11 +70,11 @@ GACU""")
   of = pdb_as_fasta.run(params=params)
   seq_in = open(of).read()
   assert not show_diff(seq_in, """\
->tmp1 chain ' A'
+>tst_pdb_as_fasta1 chain ' A'
 GNNQAGQNY
->tmp2 chain ' A'
+>tst_pdb_as_fasta2 chain ' A'
 GNMQ
->tmp2 chain 'BB'
+>tst_pdb_as_fasta2 chain 'BB'
 GAXXCU""")
 
 if (__name__ == "__main__") :

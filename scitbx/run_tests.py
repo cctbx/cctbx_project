@@ -113,7 +113,7 @@ tst_list = (
   "$D/graph/rigidity_matrix_symbolic.py",
   "$D/graph/tst_tardy_tree_find_paths.py",
   "$D/graph/tst_tardy_tree.py",
-  "$D/scitbx/graph/test_cases_tardy_pdb.py",
+  "$D/graph/test_cases_tardy_pdb.py",
   "$D/rigid_body/essence/tst_basic.py",
   "$D/rigid_body/essence/tst_tardy.py",
   "$D/rigid_body/essence/tst_energy_plots.py",

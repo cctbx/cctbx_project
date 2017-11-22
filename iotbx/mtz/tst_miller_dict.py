@@ -1,10 +1,14 @@
 from __future__ import division
 import os
 from iotbx import mtz
+import libtbx.load_env
+import os.path
 
 if (__name__ == "__main__") :
-  m = mtz.object(file_name=os.path.join(os.environ["CEXAM"],"data",
-                           "insulin_unmerged.mtz"))
+  fname = libtbx.env.find_in_repositories(
+    relative_path="iotbx/regression/data/insulin_unmerged_cutted_from_ccp4.mtz",
+    test=os.path.isfile)
+  m = mtz.object(file_name=fname)
 
   miller_dict = m.as_miller_arrays_dict()
 
