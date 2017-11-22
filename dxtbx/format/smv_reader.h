@@ -84,7 +84,7 @@ namespace dxtbx { namespace format {
       if (byte_order == "big_endian") {
         return true;
       } else if (byte_order != "little_endian") {
-        DXTBX_ERROR("Unknown byte order");
+        throw DXTBX_ERROR("Unknown byte order");
       }
       return false;
     }

@@ -344,7 +344,7 @@ namespace dxtbx { namespace model {
             return i;
           }
         }
-        DXTBX_ERROR("Programmer Error: no panel in detector");
+        throw DXTBX_ERROR("Programmer Error: no panel in detector");
         return 0;
       }
 

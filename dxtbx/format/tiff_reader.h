@@ -87,7 +87,7 @@ namespace dxtbx { namespace format {
           DXTBX_ASSERT(8 * sizeof(int) == (bits_per_sample));
           read_data_detail<int, int>(tiff);
         } else {
-          DXTBX_ERROR("Unsupported bits per sample");
+          throw DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_UINT) {
         if (bits_per_sample == 16) {
@@ -97,7 +97,7 @@ namespace dxtbx { namespace format {
           DXTBX_ASSERT(8 * sizeof(unsigned int) == (bits_per_sample));
           read_data_detail<int, unsigned int>(tiff);
         } else {
-          DXTBX_ERROR("Unsupported bits per sample");
+          throw DXTBX_ERROR("Unsupported bits per sample");
         }
       } else if (sample_format == SAMPLEFORMAT_IEEEFP) {
         if (bits_per_sample == 32) {
@@ -107,10 +107,10 @@ namespace dxtbx { namespace format {
           DXTBX_ASSERT(8 * sizeof(double) == (bits_per_sample));
           read_data_detail<double, double>(tiff);
         } else {
-          DXTBX_ERROR("Unsupported bits per sample");
+          throw DXTBX_ERROR("Unsupported bits per sample");
         }
       } else {
-        DXTBX_ERROR("Unsupported format");
+        throw DXTBX_ERROR("Unsupported format");
       }
 
       // Close the tiff file

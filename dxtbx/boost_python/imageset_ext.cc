@@ -494,7 +494,7 @@ namespace dxtbx { namespace boost_python {
     } else if (buffer.is_double()) {
       result = image_as_tuple<double>(buffer.as_double());
     } else {
-      DXTBX_ERROR("Problem reading raw data");
+      throw DXTBX_ERROR("Problem reading raw data");
     }
     return result;
   }

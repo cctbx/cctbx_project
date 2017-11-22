@@ -283,7 +283,7 @@ namespace dxtbx { namespace format {
             } else if (value == "signed 32-bit integer") {
               type = "int32";
             } else {
-              DXTBX_ERROR("Can only handle signed 16/32-bit integer data");
+              throw DXTBX_ERROR("Can only handle signed 16/32-bit integer data");
             }
           } else if (name == "X-Binary-Element-Byte-Order") {
             DXTBX_ASSERT(value == "LITTLE_ENDIAN");
@@ -402,7 +402,7 @@ namespace dxtbx { namespace format {
         } else if (array_data_type == "signed 64-bit real IEEE") {
           read_multi_tile_data_detail<double>(cbf_h);
         } else {
-          DXTBX_ERROR("Unsupported data type");
+          throw DXTBX_ERROR("Unsupported data type");
         }
       } else {
         read_single_tile_data_detail(cbf_h);

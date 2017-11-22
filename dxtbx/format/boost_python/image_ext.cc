@@ -93,7 +93,7 @@ namespace dxtbx { namespace format { namespace boost_python {
   make_image_from_object(boost::python::object data) {
 
     if (data != boost::python::object()) {
-      DXTBX_ERROR("No conversion to Image");
+      throw DXTBX_ERROR("No conversion to Image");
     }
     return boost::make_shared< Image<T> >();
   }

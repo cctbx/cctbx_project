@@ -195,7 +195,7 @@ namespace dxtbx { namespace format {
     public:
 
       ImageType operator()(const empty_type &) const {
-        DXTBX_ERROR("ImageBuffer is empty");
+        throw DXTBX_ERROR("ImageBuffer is empty");
         return ImageType();
       }
 

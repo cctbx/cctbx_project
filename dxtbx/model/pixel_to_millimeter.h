@@ -52,7 +52,7 @@ namespace dxtbx { namespace model {
       vec2<double> xy) const = 0;
 
     virtual std::string strategy_name() const{
-      DXTBX_ERROR("Overload me");
+      throw DXTBX_ERROR("Overload me");
       return std::string();
     }
   };

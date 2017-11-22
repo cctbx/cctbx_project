@@ -160,7 +160,7 @@ namespace dxtbx { namespace model {
       } else if (direction_ == MinusZ) {
         return vec3 <double> (c, 0.0, -s);
       } else {
-        DXTBX_ERROR("Invalid direction");
+        throw DXTBX_ERROR("Invalid direction");
       }
       return vec3 <double> (0.0, 0.0, 0.0);
     }
@@ -174,7 +174,7 @@ namespace dxtbx { namespace model {
         mat3 <double> K = axis_and_angle_as_matrix(kappa_axis_, kappa_, true);
         return O * K * phi_axis_;
       } else {
-        DXTBX_ERROR("Invalid scan axis");
+        throw DXTBX_ERROR("Invalid scan axis");
       }
       return vec3 <double> (0.0, 0.0, 0.0);
     }
@@ -191,7 +191,7 @@ namespace dxtbx { namespace model {
           0.0, 1.0, 0.0,
           0.0, 0.0, 1.0);
       } else {
-        DXTBX_ERROR("Invalid scan axis");
+        throw DXTBX_ERROR("Invalid scan axis");
       }
       return mat3 <double> (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     }

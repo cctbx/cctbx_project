@@ -247,8 +247,8 @@ namespace dxtbx {
             boost::python::extract<boost::python::tuple>(data)());
       } else if (name == "bool") {
         image = Image<bool>(get_image_tile_from_object<bool>(data));
-      } else {
-        DXTBX_ERROR("Unknown type");
+      } else if (name != "NoneType") {
+        throw DXTBX_ERROR("Unknown data type for mask");
       }
       return image;
     }
@@ -450,7 +450,7 @@ namespace dxtbx {
       } else if (name == "int") {
         buffer = ImageBuffer(get_image_from_tuple<int>(obj));
       } else {
-        DXTBX_ERROR("Unknown type");
+        throw DXTBX_ERROR("Unknown type");
       }
       return buffer;
     }
@@ -468,7 +468,7 @@ namespace dxtbx {
       } else if (name == "int") {
         buffer = ImageBuffer(Image<int>(get_image_tile_from_object<int>(obj)));
       } else {
-        DXTBX_ERROR("Unknown type");
+        throw DXTBX_ERROR("Unknown type");
       }
       return buffer;
     }
@@ -544,7 +544,7 @@ namespace dxtbx {
      * never return can be compiled without warnings.
      */
     ImageSet() {
-      DXTBX_ERROR("ImageSet needs imageset data");
+      throw DXTBX_ERROR("ImageSet needs imageset data");
     }
 
     /**
@@ -1046,7 +1046,7 @@ namespace dxtbx {
      * @returns The complete sweep
      */
     ImageSet complete_set() const {
-      DXTBX_ERROR("Cannot get complete set from image grid");
+      throw DXTBX_ERROR("Cannot get complete set from image grid");
       return ImageSet();
     }
 
@@ -1057,7 +1057,7 @@ namespace dxtbx {
      * @returns The partial sweep
      */
     ImageSet partial_set(std::size_t first, std::size_t last) const {
-      DXTBX_ERROR("Cannot get partial set from image grid");
+      throw DXTBX_ERROR("Cannot get partial set from image grid");
       return ImageSet();
     }
 
@@ -1255,28 +1255,28 @@ namespace dxtbx {
      * Override per-image model
      */
     void set_beam_for_image(const beam_ptr &beam, std::size_t index) {
-      DXTBX_ERROR("Cannot set per-image model in sweep");
+      throw DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
     void set_detector_for_image(const detector_ptr &detector, std::size_t index) {
-      DXTBX_ERROR("Cannot set per-image model in sweep");
+      throw DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
     void set_goniometer_for_image(const goniometer_ptr &goniometer, std::size_t index) {
-      DXTBX_ERROR("Cannot set per-image model in sweep");
+      throw DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
     /**
      * Override per-image model
      */
     void set_scan_for_image(const scan_ptr &scan, std::size_t index) {
-      DXTBX_ERROR("Cannot set per-image model in sweep");
+      throw DXTBX_ERROR("Cannot set per-image model in sweep");
     }
 
 
@@ -1294,7 +1294,7 @@ namespace dxtbx {
      * @returns The complete sweep
      */
     ImageSet complete_set() const {
-      DXTBX_ERROR("Cannot get complete set from image sweep");
+      throw DXTBX_ERROR("Cannot get complete set from image sweep");
       return ImageSet();
     }
 
@@ -1305,7 +1305,7 @@ namespace dxtbx {
      * @returns The partial sweep
      */
     ImageSet partial_set(std::size_t first, std::size_t last) const {
-      DXTBX_ERROR("Cannot get partial set from image sweep");
+      throw DXTBX_ERROR("Cannot get partial set from image sweep");
       return ImageSet();
     }
 

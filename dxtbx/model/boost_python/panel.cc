@@ -130,7 +130,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     /*   result["dx"] = boost::python::list(d->dx()); */
     /*   result["dy"] = boost::python::list(d->dy()); */
     /* } else { */
-    /*   DXTBX_ERROR("Unknown PxMmStrategy"); */
+    /*   throw DXTBX_ERROR("Unknown PxMmStrategy"); */
     /* } */
     return result;
   }
@@ -249,10 +249,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           shared_ptr<PxMmStrategy> strategy(
               new ParallaxCorrectedPxMmStrategy(mu, t0));
           result->set_px_mm_strategy(strategy);
-          //DXTBX_ERROR("The offset arrays need to be set for OffsetParallaxCorrectedPxMmStrategy");
+          //throw DXTBX_ERROR("The offset arrays need to be set for OffsetParallaxCorrectedPxMmStrategy");
         }
       } else {
-        DXTBX_ERROR("Unknown px_mm_strategy");
+        throw DXTBX_ERROR("Unknown px_mm_strategy");
       }
     }
     return result;
