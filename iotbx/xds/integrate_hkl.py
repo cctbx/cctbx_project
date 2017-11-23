@@ -1,11 +1,3 @@
-#!/usr/bin/env libtbx.python
-#
-# iotbx.xds.integrate_hkl.py
-#
-#   James Parkhurst, Diamond Light Source, 2012/OCT/16
-#
-#   Class to read all the data from an INTEGRATE.HKL file
-#
 from __future__ import division
 
 class reader:
@@ -211,7 +203,7 @@ class reader:
     return (miller.array(
       miller_set, data=flex.double(self.iobs), sigmas=flex.double(self.sigma))
             .set_info(base_array_info.customized_copy(
-              labels=["iobs", "sigma_iobs"])),
+              labels=["iobs", "sigma_iobs"])).set_observation_type_xray_intensity(),
             miller.array(miller_set, data=flex.vec3_double(self.xyzcal))
             .set_info(base_array_info.customized_copy(
               labels=["xyzcal"])),
