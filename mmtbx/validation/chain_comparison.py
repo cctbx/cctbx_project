@@ -258,7 +258,7 @@ def get_match_percent(seq1,seq2):
   assert len(seq1)>0
   match_n=0
   for a,b in zip(seq1,seq2):
-    if a==b: match_n+=1
+    if a.replace(" ","")==b.replace(" ",""): match_n+=1
   match_percent=100.*match_n/len(seq1)
   return match_n,match_percent
 
