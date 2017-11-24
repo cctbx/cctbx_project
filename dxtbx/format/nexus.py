@@ -1373,9 +1373,19 @@ class GoniometerFactory(object):
       obj.handle.file,
       obj.handle.file[obj.handle['depends_on'][()]].name)
 
+    def unroll(iterable):
+      result = []
+      for i in iterable:
+        if hasattr(i, '__iter__'):
+          result.extend(i)
+        else:
+          result.append(float(i))
+      return result
+
     # Construct the model - if nonsense present cope by failing over...
     try:
-      self.model = Goniometer(tuple(rotation_axis))
+      axis = tuple(unroll(rotation_axis))
+      self.model = Goniometer(axis)
     except Exception:
       self.model = Goniometer((1, 0, 0))
 
