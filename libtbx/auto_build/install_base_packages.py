@@ -1000,16 +1000,13 @@ _replace_sysconfig_paths(build_time_vars)
     )
 
   def build_sphinx(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=SPHINX_PKG,
-      pkg_name_label="Sphinx",
+    self.build_python_module_pip(
+      package_name="Sphinx",
+      package_version=SPHINX_VERSION,
       confirm_import_module="sphinx")
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=NUMPYDOC_PKG,
-      pkg_name_label="numpydoc",
-      confirm_import_module=None)
+    self.build_python_module_pip(
+      package_name="numpydoc",
+      package_version=NUMPYDOC_VERSION)
 
   def build_ipython(self):
     self.build_python_module_simple(
