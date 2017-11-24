@@ -1573,6 +1573,20 @@ selfx:
         return True
     return False
 
+  def relocate_python_paths_if_necessary(self):
+    base_directory = abs(self.build_path / '..' / 'base')
+    def is_in_local_base_directory(path):
+      return os.path.commonprefix([os.path.abspath(path), base_directory]) == base_directory
+
+    if not is_in_local_base_directory(sys.executable):
+      return # no relocation required when using non-local (presumably: system) python
+    site_packages = site.getsitepackages()
+    if any(map(is_in_local_base_directory, site_packages)):
+      return # There is a site directory inside the local python path.
+             # This means relocation is not required.
+    # Don't do the relocation *yet*, but say we would like to. See #62
+    print("*"*80 + "\nlibtbx.configure determined that a python relocation is required.\n" + "*"*80)
+
   def clear_scons_memory(self):
     (self.build_path / ".sconsign.dblite").remove()
     (self.build_path / ".sconf_temp").remove_tree()
@@ -1600,6 +1614,7 @@ selfx:
     self.clear_bin_directory()
     if not self.bin_path.isdir():
       self.bin_path.makedirs()
+    self.relocate_python_paths_if_necessary()
     python_dispatchers = ["libtbx.python"]
     if (self.is_development_environment() and not self.no_bin_python):
       python_dispatchers.append("python")
