@@ -199,7 +199,7 @@ def libtbx_collector():
             testparams = [str(s) for s in test[1:]]
             testname = "_".join(str(p) for p in testparams)
 
-          full_command = testfile.replace("$D", str(self.session.fspath)). \
+          full_command = testfile.replace("$D", os.path.dirname(run_tests.__file__)). \
                                   replace("$B", libtbx.env.under_build(caller))
           shortpath = testfile.replace("$D/", "").replace("$B/", "build/")
           pytest_file_object = pytest.File(shortpath, self.session)
