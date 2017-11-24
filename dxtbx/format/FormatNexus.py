@@ -70,6 +70,11 @@ class FormatNexus(FormatHDF5):
     # Construct the models
     self._beam_model = BeamFactory(beam).model
 
+    self._setup_gonio_and_scan(sample, detector)
+
+    array_range = self._scan_model.get_array_range()
+    num_images = array_range[1] - array_range[0]
+
     if len(instrument.detector_groups) == 0:
       assert len(reader.entries[0].instruments[0].detectors) == 1, \
         "Currently only supports 1 NXdetector unless in a detector group"
@@ -77,12 +82,11 @@ class FormatNexus(FormatHDF5):
         "Currently only supports 1 NXdetector_module unless in a detector group"
 
       self._detector_model = DetectorFactory(detector, self._beam_model).model
-      self._raw_data = DataFactory(data).model
+      self._raw_data = DataFactory(data, max_size=num_images).model
     else:
       self._detector_model = DetectorFactoryFromGroup(instrument, self._beam_model).model
       self._raw_data = DetectorGroupDataFactory(data, instrument).model
 
-    self._setup_gonio_and_scan(sample, detector)
     self._mask = MaskFactory(instrument.detectors).mask
 
   def _setup_gonio_and_scan(self, sample, detector):

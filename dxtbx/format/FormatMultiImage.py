@@ -299,20 +299,22 @@ class FormatMultiImage(object):
             format_instance = Class(f, **format_kwargs)
             scan += format_instance.get_scan()
 
-      # Create the sweep
-      iset = ImageSweep(
-        ImageSetData(
+      isetdata = ImageSetData(
           reader     = reader,
           masker     = masker,
           vendor     = vendor,
           params     = params,
           format     = Class,
-          template   = template),
+          template   = template)
+
+      # Create the sweep
+      iset = ImageSweep(
+        isetdata,
         beam       = beam,
         detector   = detector,
         goniometer = goniometer,
         scan       = scan,
-        indices=single_file_indices)
+        indices    = single_file_indices)
 
     # Return the imageset
     return iset

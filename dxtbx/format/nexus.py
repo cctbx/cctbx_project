@@ -1502,15 +1502,23 @@ class DataList(object):
 
   '''
 
-  def __init__(self, obj):
+  def __init__(self, obj, max_size=0):
     self.datasets = obj
     self.num_images = 0
     self.lookup = []
     self.offset = [0]
-    for i, dataset in enumerate(self.datasets):
-      self.num_images += dataset.shape[0]
-      self.lookup.extend([i] * dataset.shape[0])
-      self.offset.append(self.num_images)
+
+    if len(self.datasets) == 1 and max_size:
+      self.num_images = max_size
+      self.lookup.extend([0] * max_size)
+      self.offset.append(max_size)
+
+    else:
+      for i, dataset in enumerate(self.datasets):
+        self.num_images += dataset.shape[0]
+        self.lookup.extend([i] * dataset.shape[0])
+        self.offset.append(self.num_images)
+
     shape = self.datasets[0].shape
     self.height = shape[1]
     self.width = shape[2]
@@ -1629,7 +1637,7 @@ class MultiPanelDataList(object):
     return tuple(all_data)
 
 class DataFactory(object):
-  def __init__(self, obj):
+  def __init__(self, obj, max_size=0):
     import h5py
     datasets = []
     for key in sorted(list(obj.handle.iterkeys())):
@@ -1649,7 +1657,7 @@ class DataFactory(object):
 
     self._datasets = datasets
 
-    self.model = DataList(datasets)
+    self.model = DataList(datasets, max_size=max_size)
 
 class DetectorGroupDataFactory(DataFactory):
   """ Class to handle reading data from a detector with a NXdetector_group """

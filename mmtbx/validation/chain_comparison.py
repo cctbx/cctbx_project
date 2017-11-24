@@ -131,7 +131,7 @@ class rmsd_values:
       if self.ratio_unique_to_total_target:
          value=value/self.ratio_unique_to_total_target
       return value
- 
+
 
     else:
       return 0.
