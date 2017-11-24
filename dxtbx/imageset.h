@@ -13,6 +13,9 @@
 #define DXTBX_IMAGESET_H
 
 #include <map>
+
+#include <boost/python.hpp>
+
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>

@@ -12,7 +12,10 @@
 #define DXTBX_FORMAT_IMAGE_H
 
 #include <vector>
+
 #include <boost/variant.hpp>
+
+#include <dxtbx/error.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
