@@ -72,8 +72,11 @@ class FormatNexus(FormatHDF5):
 
     self._setup_gonio_and_scan(sample, detector)
 
-    array_range = self._scan_model.get_array_range()
-    num_images = array_range[1] - array_range[0]
+    if self._scan_model:
+      array_range = self._scan_model.get_array_range()
+      num_images = array_range[1] - array_range[0]
+    else:
+      num_images = 0
 
     if len(instrument.detector_groups) == 0:
       assert len(reader.entries[0].instruments[0].detectors) == 1, \
