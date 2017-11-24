@@ -1584,8 +1584,20 @@ selfx:
     if any(map(is_in_local_base_directory, site_packages)):
       return # There is a site directory inside the local python path.
              # This means relocation is not required.
-    # Don't do the relocation *yet*, but say we would like to. See #62
-    print("*"*80 + "\nlibtbx.configure determined that a python relocation is required.\n" + "*"*80)
+
+    print("libtbx.configure determined that a python relocation is required.")
+    old_base_path = os.path.commonprefix(site_packages)
+    while old_base_path:
+      old_base_path, directory = os.path.split(old_base_path)
+      if directory == 'base': break
+    if directory != 'base':
+      print("WARNING: Relocation not possible, could not determine original base path from '{}'".format(os.path.commonprefix(site_packages)))
+      return
+    old_base_path = os.path.join(old_base_path, 'base')
+    print("Attempting relocate from: {}\n           relocate to  : {}".format(old_base_path, base_directory))
+
+    import libtbx.auto_build.rpath
+    libtbx.auto_build.rpath.run(['--otherroot', old_base_path, base_directory])
 
   def clear_scons_memory(self):
     (self.build_path / ".sconsign.dblite").remove()
