@@ -1471,16 +1471,14 @@ class Builder(object):
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
-    self.add_step(self.shell(
-      name='base',
-      command=[
-        'python',
-        self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
-        '--python-shared',
-        '--%s'%self.BASE_PACKAGES
-      ] + extra_opts,
-      workdir=['.']
-    ))
+    command=[
+      'python',
+      self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
+      '--python-shared',
+      '--%s'%self.BASE_PACKAGES
+    ] + extra_opts
+    print "Installing base packages using:\n  " + " ".join(command)
+    self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""

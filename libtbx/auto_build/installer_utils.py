@@ -11,8 +11,7 @@ import sys
 import tarfile
 import platform
 
-# XXX CCTBX itself requires at least Python 2.5 (and some packages such as
-# Phenix require 2.7+), but this script is intended to bootstrap an
+# CCTBX itself requires Python 2.7, but this script is intended to bootstrap an
 # installation on older systems as well
 def check_python_version (major=None, minor=None) :
   if major and minor:
@@ -44,7 +43,7 @@ def import_subprocess () :
     import subprocess_with_fixes as subprocess
   return subprocess
 
-def call (args, log=sys.stdout, shell=True, cwd=None, verbose=False) :
+def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
   subprocess = import_subprocess()
   rc = None
   # shell=True requires string as args.
@@ -63,7 +62,8 @@ def call (args, log=sys.stdout, shell=True, cwd=None, verbose=False) :
     stdout=stdout,
     stderr=subprocess.STDOUT,
     universal_newlines=True,
-    close_fds=False)
+    close_fds=False,
+    env=env)
   if verbose:
     while p.poll() is None:
       line = p.stdout.readline()

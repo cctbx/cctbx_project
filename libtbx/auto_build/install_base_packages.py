@@ -30,7 +30,8 @@ python_dependencies = {"_ssl" : "Secure Socket Library",
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
-    check_python_version() # (2,6)
+    # Check python version >= 2.7 or >= 3.4
+    check_python_version()
     self.log = log
     print >> log, """
   ****************************************************************************
@@ -381,26 +382,27 @@ class installer (object) :
     pkg_dir = untar(pkg, log=log)
     os.chdir(pkg_dir)
 
-  def check_python_version(self, major=2, minor=6):
-    python_version = check_output([
-      self.python_exe,
-      '-c',
-      'import sys; print "%s.%s.%s"%(sys.version_info[0], sys.version_info[1], sys.version_info[2])',
-      ])
-    python_version = python_version.strip()
+  def check_python_version(self):
     try:
-      check_output([
+      python_version = check_output([
         self.python_exe,
         '-c',
-        'import sys; assert sys.version_info[0] == %d; assert sys.version_info[1] >= %d' % (major, minor),
+        'import sys; print("%d:%d:%d:%s" % (sys.version_info[0], sys.version_info[1], sys.hexversion, sys.version))',
         ])
     except (OSError, RuntimeError), e:
       print >> self.log, """
-Error: Python 2.6 or higher required. Python 3 is not supported.
+Error: Could not determine version of Python installed at:
+  %s
+Error: Python 2.7 or Python 3.4 or higher required. Python3 only supported for development purposes.
 Found Python version:
   %s
-"""%python_version
-      raise e
+""" % self.python_exe
+      sys.exit(1)
+    python_version = python_version.strip().split('\n')[0].split(':', 3)
+    if (int(python_version[0]) == 2 and int(python_version[1]) < 7) or \
+       (int(python_version[0]) > 2 and int(python_version[2]) < 0x03040000):
+      print >> self.log, "Error: Python 2.7 or 3.4+ required.\nFound Python version: %s" % python_version[3]
+      sys.exit(1)
 
   def check_python_dependencies(self):
     for module, desc in python_dependencies.items():
@@ -421,7 +423,7 @@ Found Python version:
     self.verify_python_module("Python", "socket")
     # check that certain modules are avaliable in python
     self.check_python_dependencies()
-    # Check python version >= 2.6.
+    # Check python version >= 2.7 or >= 3.4
     self.check_python_version()
 
     # Check that we have write access to site-packages dir
@@ -1069,7 +1071,7 @@ _replace_sysconfig_paths(build_time_vars)
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
     # http://stackoverflow.com/a/20740964
 
-    pkg_url=BASE_OPENSSL_PKG_URL
+    pkg_url=DEPENDENCIES_BASE
     pkg_name=OPENSSL_PKG
     pkg_name_label="OpenSSL"
     pkg_log = self.start_building_package(pkg_name_label)
@@ -1096,7 +1098,7 @@ _replace_sysconfig_paths(build_time_vars)
     # this affects future pip commands in the installation process and only
     # seems to be needed for macOS 10.11
     cert_file = check_output([self.python_exe, '-c',
-                              'import certifi; print certifi.where()'])
+                              'import certifi; print(certifi.where())'])
     cert_file = cert_file.strip()
     os.environ['SSL_CERT_FILE'] = cert_file
     print >> self.log, 'SSL_CERT_FILE environment variable set to %s' % \
