@@ -45,7 +45,7 @@ def exercise():
       if (verbose): print "id:", row_id
       comp_comp_id = srv.get_comp_comp_id_direct(comp_id=row_id)
       if (comp_comp_id is None):
-        print "Error instantiating comp_comp_id(%s)" % row_id
+        print "Could not instantiating comp_comp_id(%s)" % row_id
       else:
         has_primes = False
         has_commas = False
