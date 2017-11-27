@@ -1935,6 +1935,18 @@ def exercise_flex_vec2_double():
     (1.0, 0.0), (1.0, 1.0), (1.0, 2.0), (1.0, 3.0),
     (2.0, 0.0), (2.0, 1.0), (2.0, 2.0), (2.0, 3.0)]
 
+  #print ("test vec2_double.from_parts(), .distance_matrix()")
+  x = flex.random_double(size=25)
+  y = flex.random_double(size=25)
+  x2 = flex.random_double(size=15)
+  y2 = flex.random_double(size=15)
+  V = flex.vec2_double(x,y); V2 = flex.vec2_double(x2,y2)
+  DIST = V.distance_matrix(V2)
+  for i in xrange(len(x)):
+    for j in xrange(len(x2)):
+      pydist = math.sqrt( (x[i]-x2[j])**2 + (y[i]-y2[j])**2 )
+      assert pydist == DIST[(i,j)]
+
 def exercise_flex_vec3_int():
   flex.exercise_triple(flex.vec3_int)
   a = flex.vec3_int(((1,2,5), (-2,3,4), (3,4,3)))
