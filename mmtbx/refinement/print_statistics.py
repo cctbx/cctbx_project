@@ -13,6 +13,7 @@ from cctbx import xray
 import cctbx.xray.structure_factors.global_counters
 from libtbx import easy_pickle
 from itertools import count
+from libtbx import group_args
 
 enable_show_process_info = getenv_bool(
   "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")
@@ -142,6 +143,7 @@ class refinement_monitor(object):
     for name in self.__arrays__ :
       setattr(self, name, [])
     self.is_amber_monitor = False
+    self.geom = group_args(bonds=[], angles=[])
 
   def dump_statistics (self, file_name) :
     stats = {}
@@ -184,7 +186,9 @@ class refinement_monitor(object):
         None)
     geom = model.geometry_statistics(
       general_selection=general_selection)
-    if(geom is not None): self.geom.append(geom)
+    if(geom is not None):
+      self.geom.bonds.append(geom.bond().mean)
+      self.geom.angles.append(geom.angle().mean)
     hd_sel = None
     if(not self.neutron_refinement and not self.is_neutron_monitor):
       hd_sel = model.get_hd_selection()
@@ -194,17 +198,17 @@ class refinement_monitor(object):
     self.bs_iso_min_a.append(flex.min_default( b_isos, 0))
     self.bs_iso_ave_a.append(flex.mean_default(b_isos, 0))
     self.n_solv.append(model.number_of_ordered_solvent_molecules())
-    if(len(self.geom)>0):
+    if(len(self.geom.bonds)>0):
       if([self.bond_start,self.angle_start].count(None) == 2):
-        if(len(self.geom)>0):
-          self.bond_start  = self.geom[0].bond().mean
-          self.angle_start = self.geom[0].angle().mean
-      if(len(self.geom)>0):
-        self.bond_final  = self.geom[len(self.geom)-1].bond().mean
-        self.angle_final = self.geom[len(self.geom)-1].angle().mean
+        if(len(self.geom.bonds)>0):
+          self.bond_start  = self.geom.bonds[0]
+          self.angle_start = self.geom.angles[0]
+      if(len(self.geom.bonds)>0):
+        self.bond_final  = self.geom.bonds[len(self.geom.bonds)-1]
+        self.angle_final = self.geom.angles[len(self.geom.angles)-1]
       elif(len(self.geom)==1):
-        self.bond_final  = self.geom[0].bond().mean
-        self.angle_final = self.geom[0].angle().mean
+        self.bond_final  = self.geom.bonds[0]
+        self.angle_final = self.geom.angles[0]
     if(rigid_body_shift_accumulator is not None):
       self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
     t2 = time.time()
@@ -254,7 +258,7 @@ class refinement_monitor(object):
     print >> out, remark + separator
     #
     has_bonds_angles=True
-    if len(self.geom):
+    if len(self.geom.bonds):
       print >> out, remark + \
         " stage       r-work r-free bonds angles b_min b_max b_ave n_water shift"
       format = remark + "%s%ds"%("%",max_step_len)+\
@@ -264,10 +268,11 @@ class refinement_monitor(object):
         " stage       r-work r-free b_min b_max b_ave n_water shift"
       format = remark + "%s%ds"%("%",max_step_len)+\
         " %6.4f %6.4f %5.1f %5.1f %5.1f %3d %s"
-    for a,b,c,d,e,f,g,h,i in zip(self.steps,
+    for a,b,c, d1,d2, e,f,g,h,i in zip(self.steps,
                                    self.r_works,
                                    self.r_frees,
-                                   self.geom,
+                                   self.geom.bonds,
+                                   self.geom.angles,
                                    self.bs_iso_min_a,
                                    self.bs_iso_max_a,
                                    self.bs_iso_ave_a,
@@ -276,7 +281,7 @@ class refinement_monitor(object):
         if(type(1.)==type(i)): i = "     "+str("%5.3f"%i)
         else: i = "%9s"%i
         if has_bonds_angles:
-          print >> out, format % (a,b,c,d.bond().mean,d.angle().mean,e,f,g,h,i)
+          print >> out, format % (a,b,c,d1,d2,e,f,g,h,i)
         else:
           print >> out, format % (a,b,c,e,f,g,h,i)
     print >> out, remark + separator
@@ -304,9 +309,9 @@ class refinement_monitor(object):
         steps.append(cycle + "_" + action_label)
       r_works.append(self.r_works[i_step])
       r_frees.append(self.r_frees[i_step])
-      if (self.geom is not None) and (len(self.geom) != 0) :
-        as_ave.append(self.geom[i_step].angle().mean)
-        bs_ave.append(self.geom[i_step].bond().mean)
+      if (self.geom is not None) and (len(self.geom.bonds) != 0) :
+        as_ave.append(self.geom.angles[i_step])
+        bs_ave.append(self.geom.bonds[i_step])
       else :
         as_ave.append(None)
         bs_ave.append(None)
