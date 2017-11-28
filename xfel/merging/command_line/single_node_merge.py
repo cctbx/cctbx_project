@@ -168,7 +168,7 @@ def load_result (file_hash,
       obj['indices_to_edge'] = None
   return obj
 
-from cxi_merge import scaling_manager as scaling_manager_base
+from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
 class scaling_manager(scaling_manager_base):
 
   def tar_to_scale_frame_adapter(self, tar_list, db_mgr):

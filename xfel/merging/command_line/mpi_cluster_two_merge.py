@@ -6,9 +6,9 @@ from libtbx.utils import Usage, multi_out
 from cctbx.array_family import flex
 from libtbx import easy_pickle
 
-from xfel.command_line.single_node_merge import get_observations
+from xfel.merging.command_line.single_node_merge import get_observations
 
-from xfel.command_line.single_node_merge import scaling_manager as scaling_manager_base
+from xfel.merging.command_line.single_node_merge import scaling_manager as scaling_manager_base
 class scaling_manager_mpi(scaling_manager_base):
 
   def mpi_initialize (self, file_names) :

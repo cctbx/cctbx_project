@@ -3,10 +3,10 @@ from __future__ import division
 import sys,time
 from xfel.command_line import cxi_merge
 
-from xfel.command_line.single_node_merge import get_observations
+from xfel.merging.command_line.single_node_merge import get_observations
 cxi_merge.get_observations = get_observations
 
-from xfel.command_line.single_node_merge import scaling_manager as scaling_manager_base
+from xfel.merging.command_line.single_node_merge import scaling_manager as scaling_manager_base
 class scaling_manager_mpi(scaling_manager_base):
 
   def scale_all (self, file_names) :
