@@ -1004,7 +1004,7 @@ class process_pdb_file_srv(object):
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
                         pdb_inp=None,
-                        stop_if_duplicate_labels = True,
+                        # stop_if_duplicate_labels = True,
                         allow_missing_symmetry=False):
     assert [pdb_file_names, raw_records, pdb_inp].count(None) == 2
     # if(self.cif_objects is not None): # this could be empty and not None.
@@ -1015,11 +1015,11 @@ class process_pdb_file_srv(object):
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
       pdb_inp                  = pdb_inp,
-      stop_if_duplicate_labels = stop_if_duplicate_labels,
+      # stop_if_duplicate_labels = stop_if_duplicate_labels,
       allow_missing_symmetry   = allow_missing_symmetry)
 
   def _process_pdb_file(self, pdb_file_names, raw_records, pdb_inp,
-                        stop_if_duplicate_labels,
+                        # stop_if_duplicate_labels,
                         allow_missing_symmetry=False):
     if(raw_records is None and pdb_inp is None):
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
@@ -1053,9 +1053,9 @@ class process_pdb_file_srv(object):
     # Moreover, it seems completely useless here, because there's no way to
     # avoid "raise_duplicate_atom_labels_if_necessary" being called in
     # pdb_interpretation.process -> all_chain_proxies!
-    if(stop_if_duplicate_labels):
-      pdb_inp.construct_hierarchy(sort_atoms=self.pdb_interpretation_params.sort_atoms). \
-        overall_counts().raise_duplicate_atom_labels_if_necessary()
+    # if(stop_if_duplicate_labels):
+    #   pdb_inp.construct_hierarchy(sort_atoms=self.pdb_interpretation_params.sort_atoms). \
+    #     overall_counts().raise_duplicate_atom_labels_if_necessary()
     #
     # converge pdb_interpretation_params and use_neutron from scattering
     # table selection

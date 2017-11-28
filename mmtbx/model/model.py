@@ -759,7 +759,7 @@ class manager(object):
           pdb_inp = self._model_input,
           # because hierarchy already extracted
           # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
-          stop_if_duplicate_labels = True,
+          # stop_if_duplicate_labels = True,
           allow_missing_symmetry=True)
     if self.all_chain_proxies is None:
       self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
