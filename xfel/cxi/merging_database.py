@@ -41,8 +41,71 @@ mysql {
     .help = mysql user's working database name, provided by the database administrator
 }
 """
+class manager_base (object):
+  def insert_frame_legacy(self,result,wavelength,corr,slope,offset,data):
+    from scitbx import matrix
+    """Legacy compatibility with cxi.merge; insert frame-data to backend.
+    XXX needs to be backported to SQLite backend (use this base class)
+    result: an unpickled dictionary from an integration pickle
+    wavelength, beam_x, beam_y, distance: parameters from the model
+    data: an instance of a "frame_data" container class
+    postx: an instance of the legacy_cxi_merge_postrefinement results, or None
+    """
+    have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
 
-class manager:
+    kwargs = {'wavelength': wavelength,
+              'beam_x': result['xbeam'],
+              'beam_y': result['ybeam'],
+              'distance': result['distance'],
+              'c_c': corr,
+              'slope': slope,
+              'offset': offset,
+              'unique_file_name': data.file_name}
+    if have_sa_params:
+      sa_parameters = result['sa_parameters'][0]
+      res_ori_direct = sa_parameters['reserve_orientation'].direct_matrix().elems
+
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
+
+      kwargs['rotation100_rad'] = sa_parameters.rotation100_rad
+      kwargs['rotation010_rad'] = sa_parameters.rotation010_rad
+      kwargs['rotation001_rad'] = sa_parameters.rotation001_rad
+
+      kwargs['half_mosaicity_deg'] = sa_parameters.half_mosaicity_deg
+      kwargs['wave_HE_ang'] = sa_parameters.wave_HE_ang
+      kwargs['wave_LE_ang'] = sa_parameters.wave_LE_ang
+      kwargs['domain_size_ang'] = sa_parameters.domain_size_ang
+
+    else:
+      res_ori_direct = matrix.sqr(
+        data.indexed_cell.orthogonalization_matrix()).transpose().elems
+
+      kwargs['res_ori_1'] = res_ori_direct[0]
+      kwargs['res_ori_2'] = res_ori_direct[1]
+      kwargs['res_ori_3'] = res_ori_direct[2]
+      kwargs['res_ori_4'] = res_ori_direct[3]
+      kwargs['res_ori_5'] = res_ori_direct[4]
+      kwargs['res_ori_6'] = res_ori_direct[5]
+      kwargs['res_ori_7'] = res_ori_direct[6]
+      kwargs['res_ori_8'] = res_ori_direct[7]
+      kwargs['res_ori_9'] = res_ori_direct[8]
+      if self.params.scaling.report_ML:
+        kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
+        kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
+      else:
+        kwargs['half_mosaicity_deg'] =float("NaN")
+        kwargs['domain_size_ang'] =float("NaN")
+    return self.insert_frame(**kwargs)
+
+class manager (manager_base):
   def __init__(self,params):
     self.params = params
 
@@ -123,6 +186,7 @@ class manager:
 
 
   def insert_observation(self, **kwargs):
+    return
     db = self.connection()
     cursor = db.cursor()
 

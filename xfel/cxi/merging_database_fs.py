@@ -93,8 +93,8 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
   db_commands_queue.join()
   semaphore.release()
 
-
-class manager:
+from xfel.cxi.merging_database import manager_base
+class manager (manager_base):
   # The manager
 
   def __init__(self, params):
@@ -125,75 +125,8 @@ class manager:
 
     self._db_commands_queue.put(('miller', (1, 2, 3), indices, None))
 
-  def insert_frame_legacy(self,result,wavelength,corr,slope,offset,data):
-    from scitbx import matrix
-    """Legacy compatibility with cxi.merge; insert frame-data to backend.
-    XXX needs to be backported to the MySQL and SQLite backends (put into a base class)
-    result: an unpickled dictionary from an integration pickle
-    wavelength, beam_x, beam_y, distance: parameters from the model
-    data: an instance of a "frame_data" container class
-    postx: an instance of the legacy_cxi_merge_postrefinement results, or None
-    """
-    have_sa_params = ( type(result.get("sa_parameters")[0]) == type(dict()) )
-    #cell_params = data.indexed_cell.parameters()
-    #reserve_cell_params =
-    #  result["sa_parameters"][0]["reserve_orientation"].unit_cell().parameters()
-    # cell params == reserve cell params, within numerical precision
-
-    kwargs = {'wavelength': wavelength,
-              'beam_x': result['xbeam'],
-              'beam_y': result['ybeam'],
-              'distance': result['distance'],
-              'c_c': corr,
-              'slope': slope,
-              'offset': offset,
-              'unique_file_name': data.file_name}
-    if have_sa_params:
-      sa_parameters = result['sa_parameters'][0]
-      res_ori_direct = sa_parameters['reserve_orientation'].direct_matrix().elems
-
-      kwargs['res_ori_1'] = res_ori_direct[0]
-      kwargs['res_ori_2'] = res_ori_direct[1]
-      kwargs['res_ori_3'] = res_ori_direct[2]
-      kwargs['res_ori_4'] = res_ori_direct[3]
-      kwargs['res_ori_5'] = res_ori_direct[4]
-      kwargs['res_ori_6'] = res_ori_direct[5]
-      kwargs['res_ori_7'] = res_ori_direct[6]
-      kwargs['res_ori_8'] = res_ori_direct[7]
-      kwargs['res_ori_9'] = res_ori_direct[8]
-
-      kwargs['rotation100_rad'] = sa_parameters.rotation100_rad
-      kwargs['rotation010_rad'] = sa_parameters.rotation010_rad
-      kwargs['rotation001_rad'] = sa_parameters.rotation001_rad
-
-      kwargs['half_mosaicity_deg'] = sa_parameters.half_mosaicity_deg
-      kwargs['wave_HE_ang'] = sa_parameters.wave_HE_ang
-      kwargs['wave_LE_ang'] = sa_parameters.wave_LE_ang
-      kwargs['domain_size_ang'] = sa_parameters.domain_size_ang
-
-    else:
-      res_ori_direct = matrix.sqr(
-        data.indexed_cell.orthogonalization_matrix()).transpose().elems
-
-      kwargs['res_ori_1'] = res_ori_direct[0]
-      kwargs['res_ori_2'] = res_ori_direct[1]
-      kwargs['res_ori_3'] = res_ori_direct[2]
-      kwargs['res_ori_4'] = res_ori_direct[3]
-      kwargs['res_ori_5'] = res_ori_direct[4]
-      kwargs['res_ori_6'] = res_ori_direct[5]
-      kwargs['res_ori_7'] = res_ori_direct[6]
-      kwargs['res_ori_8'] = res_ori_direct[7]
-      kwargs['res_ori_9'] = res_ori_direct[8]
-      if self.params.scaling.report_ML:
-        kwargs['half_mosaicity_deg'] = result["ML_half_mosaicity_deg"][0]
-        kwargs['domain_size_ang'] = result["ML_domain_size_ang"][0]
-      else:
-        kwargs['half_mosaicity_deg'] =float("NaN")
-        kwargs['domain_size_ang'] =float("NaN")
-    return self.insert_frame(**kwargs)
-
   def insert_frame_updated(self,result,wavelength,data,postx):
-    from scitbx import matrix
+    from scitbx import matrix # implicit import
     """New compatibility with postrefinement container
     XXX needs to be backported to the MySQL and SQLite backends (put into a base class)
     """
