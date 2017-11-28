@@ -319,7 +319,7 @@ class model_idealization():
     # should we shift here?
     # should we multiply NCS here?
     # print "model.restraints_manager", model.restraints_manager
-    return model.geometry_statistics().result_for_model_idealization()
+    return model.geometry_statistics().result()
 
   # def get_intermediate_result_hierarchy(self):
   #   result_h = self.model.get_hierarchy()
@@ -614,11 +614,11 @@ class model_idealization():
             fname_suffix="init_gm")
 
     if (self.init_gm_model_statistics is not None
-        and self.init_gm_model_statistics.ramachandran_outliers == 0
-        and self.init_gm_model_statistics.twisted_general <= 0.01
-        and self.init_gm_model_statistics.twisted_proline <= 0.01
-        and self.init_gm_model_statistics.cis_general <= 0.01
-        and self.init_gm_model_statistics.cis_proline <= 0.01):
+        and self.init_gm_model_statistics.ramachandran.outliers == 0
+        and self.init_gm_model_statistics.omega.twisted_general <= 0.01
+        and self.init_gm_model_statistics.omega.twisted_proline <= 0.01
+        and self.init_gm_model_statistics.omega.cis_general <= 0.01
+        and self.init_gm_model_statistics.omega.cis_proline <= 0.01):
       print >> self.log, "Simple minimization was enough"
       # Early exit!!!
       self.shift_and_write_result(
@@ -740,7 +740,7 @@ class model_idealization():
     # fixed_rot_pdb_h = loop_ideal.resulting_pdb_h.deep_copy()
     # fixed_rot_pdb_h.reset_atom_i_seqs()
     if (self.params.additionally_fix_rotamer_outliers and
-        self.after_loop_idealization.rotamer_outliers > 0.004):
+        self.after_loop_idealization.rotamer.outliers > 0.004):
       print >> self.log, "Processing pdb file again for fixing rotamers..."
       self.log.flush()
       print >> self.log, "Fixing rotamers..."

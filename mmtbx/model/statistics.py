@@ -119,7 +119,8 @@ class geometry(object):
       outliers = self.cached_rama.percent_outliers,
       allowed  = self.cached_rama.percent_allowed,
       favored  = self.cached_rama.percent_favored,
-      ramalyze = self.cached_rama)
+      ramalyze = self.cached_rama #XXX Bulky object -- REMOVE!
+      )
 
   def rotamer(self):
     if self.cached_rota is None:
@@ -128,21 +129,24 @@ class geometry(object):
           outliers_only = False)
     return group_args(
       outliers = self.cached_rota.percent_outliers,
-      rotalyze = self.cached_rota)
+      rotalyze = self.cached_rota #XXX Bulky object -- REMOVE!
+      )
 
   def c_beta(self):
     result = cbetadev(pdb_hierarchy = self.pdb_hierarchy,
       outliers_only = True, out = null_out()) # XXX Why it is different from others?
     return group_args(
       outliers = result.get_outlier_percent(),
-      cbetadev = result)
+      cbetadev = result #XXX Bulky object -- REMOVE!
+      )
 
   def clash(self):
     if self.cached_clash is None:
       self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy)
     return group_args(
       score   = self.cached_clash.get_clashscore(),
-      clashes = self.cached_clash)
+      clashes = self.cached_clash #XXX Bulky object -- REMOVE!
+      )
 
   def cablam(self):
     result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
@@ -177,30 +181,14 @@ class geometry(object):
       twisted_general   = twisted_general,
       twisted_proline   = twisted_proline,
       n_twisted_general = n_twisted_general,
-      omegalyze         = result)
+      omegalyze         = result #XXX Bulky object -- REMOVE!
+      )
 
   def mp_score(self):
     return molprobity_score(
       clashscore = self.clash().score,
       rota_out   = self.rotamer().outliers,
       rama_fav   = self.ramachandran().favored)
-
-  def result_for_model_idealization(self):
-    # It is unclear why duplicate instead of using existing "def result"
-    # Was faster to wrap things the way they are already used in model_idealization
-    res = self.result()
-    return group_args(
-      mpscore               = res.molprobity_score,
-      clashscore            = res.clash.score,
-      c_beta_dev_percent    = res.c_beta.outliers,
-      ramachandran_outliers = res.ramachandran.outliers,
-      ramachandran_allowed  = res.ramachandran.allowed,
-      ramachandran_favored  = res.ramachandran.favored,
-      rotamer_outliers      = res.rotamer.outliers,
-      cis_proline           = res.omega.cis_proline,
-      cis_general           = res.omega.cis_general,
-      twisted_proline       = res.omega.twisted_proline,
-      twisted_general       = res.omega.twisted_general,)
 
   def result(self):
     if self.cached_result is None:
