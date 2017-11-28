@@ -109,11 +109,11 @@ def generate_streams_from_path(tar_or_other):
       fileIO = open(tar_or_other,'rb')
       yield fileIO,tar_or_other
 
-def generate_data_from_streams(args):
+def generate_data_from_streams(args, verbose=False):
   import cPickle as pickle
   for path in args:
     if not os.path.isfile(path):
-      print "Not a file:", path
+      if verbose: print "Not a file:", path
       continue
 
     # interpret the object as a tar of pickles, a pickle, or none of the above
@@ -122,14 +122,15 @@ def generate_data_from_streams(args):
       try:
         data = pickle.load(fileIO)
         if not isinstance(data, dict):
-          print "\nNot a dictionary pickle",path
+          if verbose: print "\nNot a dictionary pickle",path
           continue
         else:
-          print "\nPrinting contents of", path
+          if verbose: print "\nPrinting contents of", path
+          data["path"] = path
           yield data
 
       except UnpicklingError,e:
-        print "\ndoesn't unpickle",path
+        if verbose: print "\ndoesn't unpickle",path
 
 if __name__=="__main__":
   args = sys.argv[1:]
@@ -145,7 +146,7 @@ if __name__=="__main__":
   else:
     doplots = False
 
-  for data in generate_data_from_streams(args):
+  for data in generate_data_from_streams(args, verbose=True):
     if data.has_key('TIMESTAMP'):
       # this is how FormatPYunspecified guesses the address
       if not "DETECTOR_ADDRESS" in data:
