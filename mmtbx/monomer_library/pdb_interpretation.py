@@ -2923,7 +2923,6 @@ class build_all_chain_proxies(linking_mixins):
         mon_lib_srv,
         ener_lib,
         params=None,
-        raw_records=None,
         pdb_inp=None,
         pdb_hierarchy=None,
         atom_selection_string=None,
@@ -2939,6 +2938,7 @@ class build_all_chain_proxies(linking_mixins):
         restraints_loading_flags=None,
                 ):
     import iotbx.cif.model
+    assert [pdb_inp, pdb_hierarchy].count(None) == 1
     # MARKED_FOR_DELETION_OLEG
     # Reason: sub-optimal place for store this kind of information.
     # Proposal: not available yet, needs to be discussed.
@@ -2954,22 +2954,13 @@ class build_all_chain_proxies(linking_mixins):
     self.params = params
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
+
     if (pdb_inp is not None):
-      assert raw_records is None
       self.pdb_inp = pdb_inp
-    elif (pdb_hierarchy is not None):
-      self.pdb_inp = None # do something a few lines below
-    else:
-      if (isinstance(raw_records, str)):
-        raw_records = flex.split_lines(raw_records)
-      elif (not isinstance(raw_records, flex.std_string)):
-        assert raw_records is not None
-        raw_records = flex.std_string(raw_records)
-      self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
-    if(pdb_hierarchy is None):
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(
         sort_atoms=self.params.sort_atoms)
-    else: # here is that "something" mentioned just above
+    if (pdb_hierarchy is not None):
+      self.pdb_inp = None # do something a few lines below
       self.pdb_hierarchy = pdb_hierarchy
       if(self.params.sort_atoms):
         self.pdb_hierarchy.sort_atoms_in_place()
@@ -5409,18 +5400,25 @@ class process(object):
     self.ener_lib = ener_lib
     self.log = log
     nul = StringIO()
+    assert [file_name, raw_records, pdb_inp, pdb_hierarchy].count(None) == 3
     if log is None:
       self.log = nul
     if file_name is not None:
       assert pdb_inp is None
       pdb_inp = iotbx.pdb.input(file_name=file_name)
+    if raw_records is not None:
+      if (isinstance(raw_records, str)):
+        raw_records = flex.split_lines(raw_records)
+      elif (not isinstance(raw_records, flex.std_string)):
+        raw_records = flex.std_string(raw_records)
+      pdb_inp = pdb.input(source_info=None, lines=raw_records)
+
     self.ss_manager = None
     self.ss_torsion_restraints = None
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       params=params,
-      raw_records=raw_records,
       pdb_inp=pdb_inp,
       pdb_hierarchy=pdb_hierarchy,
       atom_selection_string=atom_selection_string,
