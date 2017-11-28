@@ -271,20 +271,66 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Get the mask from untrusted_rectangles
+     */
+    void apply_untrusted_rectangle_mask(
+        scitbx::af::ref< bool,scitbx::af::c_grid<2> > mask) const {
+      using scitbx::af::int4;
+      std::size_t xsize = get_image_size()[0];
+      std::size_t ysize = get_image_size()[1];
+      scitbx::af::shared<int4> untrusted_rectangle = get_mask();
+      for (std::size_t j = 0; j < untrusted_rectangle.size(); ++j) {
+        int x0 = std::max(untrusted_rectangle[j][0], 0);
+        int y0 = std::max(untrusted_rectangle[j][1], 0);
+        int x1 = std::min(untrusted_rectangle[j][2], (int)xsize);
+        int y1 = std::min(untrusted_rectangle[j][3], (int)ysize);
+        DXTBX_ASSERT(x0 < x1);
+        DXTBX_ASSERT(y0 < y1);
+        for (std::size_t y = y0; y < y1; ++y) {
+          for (std::size_t x = x0; x < x1; ++x) {
+            mask(y, x) = false;
+          }
+        }
+      }
+    }
+
+    /**
+     * Get the mask from untrusted_rectangles
+     */
+    scitbx::af::versa<bool, scitbx::af::c_grid<2> > get_untrusted_rectangle_mask() const {
+      using scitbx::af::int4;
+      std::size_t xsize = get_image_size()[0];
+      std::size_t ysize = get_image_size()[1];
+      scitbx::af::versa<bool, scitbx::af::c_grid<2> > mask(
+          scitbx::af::c_grid<2>(ysize, xsize),
+          scitbx::af::init_functor_null<bool>());
+      apply_untrusted_rectangle_mask(mask.ref());
+      return mask;
+    }
+
+    /**
+     * Apply a mask with the trusted range
+     */
+    template <typename T>
+    void apply_trusted_range_mask(
+        const scitbx::af::const_ref< T,scitbx::af::c_grid<2> > &data,
+        scitbx::af::ref< bool,scitbx::af::c_grid<2> > mask) const {
+      DXTBX_ASSERT(data.accessor()[0] == image_size_[1]);
+      DXTBX_ASSERT(data.accessor()[1] == image_size_[0]);
+      DXTBX_ASSERT(data.accessor().all_eq(mask.accessor()));
+      for (std::size_t i = 0; i < mask.size(); ++i) {
+        mask[i] = mask[i] && (trusted_range_[0] < data[i] && data[i] < trusted_range_[1]);
+      }
+    }
+
+    /**
      * Apply a mask with the trusted range
      */
     template <typename T>
     scitbx::af::versa<bool, scitbx::af::c_grid<2> > get_trusted_range_mask(
         const scitbx::af::const_ref< T,scitbx::af::c_grid<2> > &image) const {
-      DXTBX_ASSERT(image.accessor()[0] == image_size_[1]);
-      DXTBX_ASSERT(image.accessor()[1] == image_size_[0]);
-      scitbx::af::versa<bool, scitbx::af::c_grid<2> > mask(
-          image.accessor(),
-          scitbx::af::init_functor_null<bool>());
-      scitbx::af::ref< bool, scitbx::af::c_grid<2> > mask_ref = mask.ref();
-      for (std::size_t i = 0; i < mask.size(); ++i) {
-        mask_ref[i] = trusted_range_[0] < image[i] && image[i] < trusted_range_[1];
-      }
+      scitbx::af::versa<bool, scitbx::af::c_grid<2> > mask(image.accessor(), true);
+      apply_trusted_range_mask(image, mask.ref());
       return mask;
     }
 

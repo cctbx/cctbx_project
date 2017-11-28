@@ -29,6 +29,14 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
 
     return False
 
+  @staticmethod
+  def has_dynamic_shadowing(**kwargs):
+    import libtbx
+    dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    if dynamic_shadowing in (libtbx.Auto, 'Auto'):
+      return True
+    return dynamic_shadowing
+
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
@@ -42,9 +50,7 @@ class FormatCBFMiniPilatusDLS12M(FormatCBFMiniPilatus):
     # of 5 panels is grouped as one "panel"
     # elif multi_panel == True, then interpret data as 120 panels,
     # 24 rows * 5 columns
-    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
-    if self._dynamic_shadowing in (libtbx.Auto, 'Auto'):
-      self._dynamic_shadowing = True
+    self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
     self._multi_panel = kwargs.get('multi_panel', False)
     FormatCBFMiniPilatus.__init__(self, image_file, **kwargs)
 

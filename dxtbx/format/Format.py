@@ -119,6 +119,9 @@ class Masker(object):
       **self._kwargs)
     return format_instance.get_mask(goniometer=goniometer)
 
+  def has_dynamic_masking(self):
+    return self.format_class.has_dynamic_shadowing(**self._kwargs)
+
   def paths(self):
     return self._filenames
 
@@ -164,6 +167,14 @@ class Format(object):
   @classmethod
   def ignore(cls):
     return False
+
+  @staticmethod
+  def has_dynamic_shadowing(**kwargs):
+    import libtbx
+    dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    if dynamic_shadowing in (libtbx.Auto, 'Auto'):
+      return False
+    return dynamic_shadowing
 
   def __init__(self, image_file, **kwargs):
     '''Initialize a class instance from an image file.'''

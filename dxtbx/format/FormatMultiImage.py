@@ -78,6 +78,9 @@ class Masker(object):
   def num_images(self):
     return self._num_images
 
+  def has_dynamic_masking(self):
+    return self.format_class.has_dynamic_shadowing(**self.kwargs)
+
   def __len__(self):
     return self.num_images()
 

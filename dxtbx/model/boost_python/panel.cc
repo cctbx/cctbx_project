@@ -556,6 +556,7 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg")=true))
       .def("get_trusted_range_mask", &Panel::get_trusted_range_mask<int>)
       .def("get_trusted_range_mask", &Panel::get_trusted_range_mask<double>)
+      .def("get_untrusted_rectangle_mask", &Panel::get_untrusted_rectangle_mask)
       .def("to_dict", &to_dict<Panel>)
       .def("from_dict", &from_dict<Panel>,
         return_value_policy<manage_new_object>())

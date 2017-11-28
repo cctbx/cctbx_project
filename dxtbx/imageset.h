@@ -193,6 +193,13 @@ namespace dxtbx {
     }
 
     /**
+     * @returns Does the imageset have a dynamic mask.
+     */
+    bool has_dynamic_mask() const {
+      return boost::python::extract<bool>(masker_.attr("has_dynamic_mask")())();
+    }
+
+    /**
      * Read some image data
      * @param index The image index
      * @returns The image data
@@ -750,58 +757,126 @@ namespace dxtbx {
     }
 
     /**
+     * @returns Does the imageset have a dynamic mask.
+     */
+    bool has_dynamic_mask() const {
+      return data_.has_dynamic_mask();
+    }
+
+    /**
+     * Get an empty mask
+     * @param index The image index
+     * @returns The mask
+     */
+    Image<bool> get_empty_mask() const {
+      Detector detector = detail::safe_dereference(get_detector_for_image(0));
+      Image<bool> mask;
+      for (std::size_t i = 0; i < detector.size(); ++i) {
+        std::size_t xsize = detector[i].get_image_size()[0];
+        std::size_t ysize = detector[i].get_image_size()[1];
+        mask.push_back(
+          ImageTile<bool>(
+            scitbx::af::versa< bool, scitbx::af::c_grid<2> >(
+              scitbx::af::c_grid<2>(ysize, xsize),
+              true)));
+      }
+      return mask;
+    }
+
+    /**
+     * Get the untrusted rectangle mask
+     * @param mask The mask to write into
+     * @returns The mask
+     */
+    Image<bool> get_untrusted_rectangle_mask(Image<bool> mask) const {
+      Detector detector = detail::safe_dereference(get_detector_for_image(0));
+      DXTBX_ASSERT(mask.n_tiles() == detector.size());
+      for (std::size_t i = 0; i < detector.size(); ++i) {
+        detector[i].apply_untrusted_rectangle_mask(mask.tile(i).data().ref());
+      }
+      return mask;
+    }
+
+    /**
+     * Apply the external mask
+     * @param mask The input mask
+     * @returns The external mask
+     */
+    Image<bool> get_external_mask(Image<bool> mask) {
+      Image<bool> external_mask = external_lookup().mask().get_data();
+      if (!external_mask.empty()) {
+        DXTBX_ASSERT(external_mask.n_tiles() == mask.n_tiles());
+        for (std::size_t i = 0; i < mask.n_tiles(); ++i) {
+          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 =
+            mask.tile(i).data().ref();
+          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 =
+            external_mask.tile(i).data().const_ref();
+          DXTBX_ASSERT(m1.accessor().all_eq(m2.accessor()));
+          for (std::size_t j = 0; j < m1.size(); ++j) {
+            m1[j] = m1[j] && m2[j];
+          }
+        }
+      }
+      return mask;
+    }
+
+    /**
+     * Get the static mask common to all images
+     * @param mask The input mask
+     * @returns The mask
+     */
+    Image<bool> get_static_mask(Image<bool> mask) {
+      return get_untrusted_rectangle_mask(
+          get_external_mask(
+            mask.empty()
+              ? get_empty_mask()
+              : mask));
+    }
+
+    /**
+     * Get the static mask common to all images
+     * @returns The mask
+     */
+    Image<bool> get_static_mask() {
+      return get_static_mask(Image<bool>());
+    }
+
+    /**
+     * Get the trusted range mask for the index
+     * @param mask The mask to write into
+     * @param index The image index
+     * @returns The mask
+     */
+    Image<bool> get_trusted_range_mask(Image<bool> mask, std::size_t index) {
+      Detector detector = detail::safe_dereference(get_detector_for_image(index));
+      Image<double> data = get_raw_data(index).as_double();
+      DXTBX_ASSERT(mask.n_tiles() == data.n_tiles());
+      DXTBX_ASSERT(data.n_tiles() == detector.size());
+      for (std::size_t i = 0; i < detector.size(); ++i) {
+        detector[i].apply_trusted_range_mask(
+            data.tile(i).data().const_ref(),
+            mask.tile(i).data().ref());
+      }
+      return mask;
+    }
+
+    /**
+     * Get the dynamic mask for the requested image
+     * @param index The image index
+     * @returns The image mask
+     */
+    Image<bool> get_dynamic_mask(std::size_t index) {
+      Image<bool> dyn_mask = data_.get_mask(indices_[index]);
+      return get_trusted_range_mask(get_static_mask(dyn_mask), index);
+    }
+
+    /**
      * Compute the mask
      * @param index The image index
      * @returns The image mask
      */
     Image<bool> get_mask(std::size_t index) {
-
-      typedef scitbx::af::versa< double, scitbx::af::c_grid<2> > array_type;
-
-      // Compute the trusted range mask
-      DXTBX_ASSERT(index < indices_.size());
-      Image<double> data = get_raw_data(index).as_double();
-      Detector detector = detail::safe_dereference(get_detector_for_image(index));
-      DXTBX_ASSERT(data.n_tiles() == detector.size());
-      Image<bool> mask;
-      for (std::size_t i = 0; i < detector.size(); ++i) {
-        Panel panel = detector[i];
-        mask.push_back(
-          ImageTile<bool>(
-            panel.get_trusted_range_mask(
-              data.tile(i).data().const_ref())));
-      }
-
-      // Combine with the dynamic mask
-      Image<bool> dyn_mask = data_.get_mask(indices_[index]);
-      if (!dyn_mask.empty()) {
-        DXTBX_ASSERT(dyn_mask.n_tiles() == detector.size());
-        for (std::size_t i = 0; i < detector.size(); ++i) {
-          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask.tile(i).data().ref();
-          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = dyn_mask.tile(i).data().const_ref();
-          DXTBX_ASSERT(m1.size() == m2.size());
-          for (std::size_t j = 0; j < m1.size(); ++j) {
-            m1[j] = m1[j] && m2[j];
-          }
-        }
-      }
-
-      // Combine with the external lookup mask
-      Image<bool> ext_mask = external_lookup().mask().get_data();
-      if (!ext_mask.empty()) {
-        DXTBX_ASSERT(ext_mask.n_tiles() == detector.size());
-        for (std::size_t i = 0; i < detector.size(); ++i) {
-          scitbx::af::ref< bool, scitbx::af::c_grid<2> > m1 = mask.tile(i).data().ref();
-          scitbx::af::const_ref< bool, scitbx::af::c_grid<2> > m2 = ext_mask.tile(i).data().const_ref();
-          DXTBX_ASSERT(m1.size() == m2.size());
-          for (std::size_t j = 0; j < m1.size(); ++j) {
-            m1[j] = m1[j] && m2[j];
-          }
-        }
-      }
-
-      // Return the mask
-      return mask;
+      return get_dynamic_mask(index);
     }
 
     /**

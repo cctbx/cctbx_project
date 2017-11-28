@@ -31,6 +31,14 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
 
     return False
 
+  @staticmethod
+  def has_dynamic_shadowing(**kwargs):
+    import libtbx
+    dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
+    if dynamic_shadowing in (libtbx.Auto, 'Auto'):
+      return True
+    return dynamic_shadowing
+
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
     proper model of the experiment.'''
@@ -40,9 +48,7 @@ class FormatCBFMiniPilatusDLS6MSN100(FormatCBFMiniPilatus):
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
 
-    self._dynamic_shadowing = kwargs.get('dynamic_shadowing', False)
-    if self._dynamic_shadowing in (libtbx.Auto, 'Auto'):
-      self._dynamic_shadowing = True
+    self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
     self._multi_panel = kwargs.get('multi_panel', False)
     FormatCBFMiniPilatus.__init__(self, image_file, **kwargs)
 
