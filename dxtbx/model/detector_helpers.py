@@ -203,7 +203,6 @@ def set_detector_distance(detector, distance):
 
   '''
   from scitbx import matrix
-  from math import cos
   assert len(detector) == 1
   normal = matrix.col(detector[0].get_normal())
   origin = matrix.col(detector[0].get_origin())

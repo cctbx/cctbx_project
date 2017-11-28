@@ -10,7 +10,7 @@ else:
 if ext is not None:
   from dxtbx_ext import *
 
-import dxtbx.imageset
+import dxtbx.imageset # implicit import
 
 class IncorrectFormatError(RuntimeError):
   '''

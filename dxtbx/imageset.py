@@ -455,7 +455,6 @@ class ImageSetFactory(object):
                     format_kwargs=None):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
-    from dxtbx.format.FormatMultiImage import FormatMultiImage
     from dxtbx.format.Format import Format
 
     # Get the format object
@@ -490,7 +489,6 @@ class ImageSetFactory(object):
     '''Create a sweep'''
     import os
     from dxtbx.format.Registry import Registry
-    from dxtbx.format.FormatMultiImage import FormatMultiImage
     from dxtbx.format.Format import Format
 
     indices = sorted(indices)
