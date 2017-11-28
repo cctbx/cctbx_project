@@ -2923,7 +2923,6 @@ class build_all_chain_proxies(linking_mixins):
         mon_lib_srv,
         ener_lib,
         params=None,
-        file_name=None,
         raw_records=None,
         pdb_inp=None,
         pdb_hierarchy=None,
@@ -2955,14 +2954,9 @@ class build_all_chain_proxies(linking_mixins):
     self.params = params
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
-    if (log is not None and file_name is not None):
-      print >> log, file_name
     if (pdb_inp is not None):
       assert raw_records is None
       self.pdb_inp = pdb_inp
-    elif (file_name is not None):
-      assert raw_records is None
-      self.pdb_inp = pdb.input(file_name=file_name)
     elif (pdb_hierarchy is not None):
       self.pdb_inp = None # do something a few lines below
     else:
@@ -5417,13 +5411,15 @@ class process(object):
     nul = StringIO()
     if log is None:
       self.log = nul
+    if file_name is not None:
+      assert pdb_inp is None
+      pdb_inp = iotbx.pdb.input(file_name=file_name)
     self.ss_manager = None
     self.ss_torsion_restraints = None
     self.all_chain_proxies = build_all_chain_proxies(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       params=params,
-      file_name=file_name,
       raw_records=raw_records,
       pdb_inp=pdb_inp,
       pdb_hierarchy=pdb_hierarchy,
