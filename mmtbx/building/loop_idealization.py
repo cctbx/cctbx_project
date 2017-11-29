@@ -139,7 +139,7 @@ class loop_idealization():
         and self.params.enabled):
       print >> self.log, "CCD try number, outliers:", self.number_of_ccd_trials, self.berkeley_p_before_minimization_rama_outliers
       processed_chain_ids = []
-      for chain in self.model.get_hierarchy().only_model().chains():
+      for chain in self.model.get_master_hierarchy().only_model().chains():
         if chain.id not in self.tried_rama_angles.keys():
           self.tried_rama_angles[chain.id] = {}
         if chain.id not in self.tried_final_rama_angles.keys():
@@ -172,7 +172,7 @@ class loop_idealization():
               # dest_h=self.model.get_hierarchy(),
               dest_h=chain,
               source_h=ch_h)
-          self.model.set_sites_cart_from_hierarchy()
+          self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
           for resnum in exclusions:
             selection += " and not resseq %s" % resnum
         self.ref_exclusion_selection += "(%s) or " % selection

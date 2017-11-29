@@ -178,17 +178,23 @@ def exercise_04(prefix="tst_mi_map_test_06"):
   print cmd
   assert not easy_run.call(cmd)
   # assert os.path.isfile("%s_start.pdb_all_idealized.pdb" % prefix)
-  # res_log = open("%s.log" % prefix, "r")
-  # log_lines = res_log.readlines()
-  # # NCS constraints with map are not implemented yet
-  # for l in [
-  #     # "Using ncs\n",
-  #     "Using map as reference\n",
-  #     "  Minimizing... (NCS)\n",
-  #     # "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
-  #     "All done.\n"]:
-  #   assert l in log_lines, "'%s' not in log file." % l
-  # res_log.close()
+  res_log = open("%s_start.pdb.log" % prefix, "r")
+  log_lines = res_log.readlines()
+  res_log.close()
+  # NCS constraints with map are not implemented yet
+  # should be there
+  for l in [
+      "Using ncs\n",
+      "Idealizing chain A1\n",
+      # "Using map as reference\n",
+      # "  Minimizing... (NCS)\n",
+      # "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
+      "All done.\n"]:
+    assert l in log_lines, "'%s' not in log file." % l
+  # should not be there
+  for l in [
+      "Idealizing chain A2\n"]:
+    assert l not in log_lines, "'%s' should not be in log file." % l
 
 if (__name__ == "__main__"):
   t0 = time.time()
