@@ -939,17 +939,17 @@ class model_idealization():
       print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
     #                         Starting    SS ideal    Rama      Rota     Final
     # Molprobity Score     :      4.50      3.27      2.66      2.32      2.54
-    for val_caption, val_name, val_format in [
-        ("Molprobity Score", "mpscore", "{:10.2f}"),
-        ("Clashscore", "clashscore", "{:10.2f}"),
-        ("CBeta deviations", "c_beta_dev_percent", "{:10.2f}"),
-        ("Ramachandran outliers", "ramachandran_outliers", "{:10.2f}"),
-        ("Ramachandran allowed", "ramachandran_allowed", "{:10.2f}"),
-        ("Rotamer outliers", "rotamer_outliers", "{:10.2f}"),
-        ("Cis-prolines", "cis_proline", "{:10.2f}"),
-        ("Cis-general", "cis_general", "{:10.2f}"),
-        ("Twisted prolines", "twisted_proline", "{:10.2f}"),
-        ("Twisted general", "twisted_general", "{:10.2f}"),
+    for val_caption, val_name, val_subname, val_format in [
+        ("Molprobity Score", "molprobity_score", "", "{:10.2f}"),
+        ("Clashscore", "clash", "score", "{:10.2f}"),
+        ("CBeta deviations", "c_beta", "outliers", "{:10.2f}"),
+        ("Ramachandran outliers", "ramachandran", "outliers", "{:10.2f}"),
+        ("Ramachandran allowed", "ramachandran", "allowed", "{:10.2f}"),
+        ("Rotamer outliers", "rotamer", "outliers", "{:10.2f}"),
+        ("Cis-prolines", "omega", "cis_proline", "{:10.2f}"),
+        ("Cis-general", "omega", "cis_general", "{:10.2f}"),
+        ("Twisted prolines", "omega", "twisted_proline", "{:10.2f}"),
+        ("Twisted general", "omega", "twisted_general", "{:10.2f}"),
         # Until enabled in model.statistics
         # ("CaBLAM outliers", "cablam_outliers", "{:10.2f}"),
         # ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
@@ -959,7 +959,13 @@ class model_idealization():
       for stat_obj in stat_obj_list.geoms:
         value = 99999
         if stat_obj is not None:
-          l += val_format.format(getattr(stat_obj, val_name, 99999))
+          sub_class = getattr(stat_obj, val_name, None)
+          if sub_class is not None:
+            if val_subname != "":
+              value = getattr(sub_class, val_subname, None)
+            else:
+              value = sub_class
+          l += val_format.format(value)
         else:
           l += val_format.format(0)
       print >> self.log, l
