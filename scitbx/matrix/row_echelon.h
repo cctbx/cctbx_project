@@ -13,11 +13,11 @@ namespace scitbx { namespace matrix { namespace row_echelon {
 
 #ifdef __INTEL_COMPILER
 // Compiler bug in Intel Parallel Studio 18 means the swap function may produce
-// wrong results when optimised. 
+// wrong results when optimised.
 // Consequently cctbx_project/cctbx/sgtbx/boost_python/tst_sgtbx.py will fail
 // So we disable optimisation for this compiler.
 // Not sure if this applies to other Intel compiler versions
-#pragma optimize("", off) 
+#pragma optimize("", off)
 #endif
     template <typename AnyType>
     inline void
@@ -26,7 +26,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       for(std::size_t i=0;i<n;i++) std::swap(a[i], b[i]);
     }
 #ifdef __INTEL_COMPILER
-#pragma optimize("", on) 
+#pragma optimize("", on)
 #endif
   } // namespace detail
 
