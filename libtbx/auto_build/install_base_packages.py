@@ -67,6 +67,8 @@ class installer (object) :
       help="Use specified Python interpreter")
     parser.add_option("--with-system-python", dest="with_system_python",
       help="Use the system Python interpreter", action="store_true")
+    parser.add_option("--python3", dest="python3", action="store_true", default=False,
+      help="Install a Python3 interpreter. This is unsupported and purely for development purposes.")
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     # Package set options.
@@ -187,8 +189,11 @@ class installer (object) :
 
     # Which Python interpreter:
     self.python_exe = None
-    if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', 'python')):
-      self.python_exe = os.path.join(self.build_dir, 'base', 'bin', 'python')
+    python_executable = 'python'
+    self.python3 = options.python3
+    if self.python3: python_executable = 'python3'
+    if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
+      self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
       self.python_exe = options.with_python
     elif options.with_system_python:
@@ -741,7 +746,10 @@ Installation of Python packages may fail.
   ##### Build Individual Packages #######################
   #######################################################
 
-  def build_python (self) :
+  def build_python(self):
+    if self.python3:
+      return self.build_python3()
+
     if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
       print >> self.log, "zlib.h missing -- try running 'xcode-select --install' first"
       sys.exit(1)
@@ -849,6 +857,64 @@ _replace_sysconfig_paths(build_time_vars)
     self.set_python(op.abspath(python_exe))
     log.close()
 
+  def build_python3(self):
+    if self.flag_is_mac and not op.exists('/usr/include/zlib.h'):
+      print >> self.log, "zlib.h missing -- try running 'xcode-select --install' first"
+      sys.exit(1)
+    log = self.start_building_package("Python3")
+    os.chdir(self.tmp_dir)
+    python_tarball = self.fetch_package(pkg_name=PYTHON3_PKG, pkg_url=DEPENDENCIES_BASE)
+    if self.check_download_only(PYTHON3_PKG): return
+    python_dir = untar(python_tarball)
+    self.chdir(python_dir, log=log)
+
+    configure_args = ['--with-ensurepip=install', '--prefix=' + self.base_dir]
+    if (self.options.python_shared):
+      configure_args.append("--enable-shared")
+    environment = os.environ.copy()
+    environment['LDFLAGS'] = "-L{base}/lib/ -L{base}/lib64/".format(base=self.base_dir)
+    environment['LDFLAGS'] += " -Wl,-rpath={base}/lib".format(base=self.base_dir)
+    environment['LD_LIBRARY_PATH'] = "{base}/lib/:{base}/lib64/".format(base=self.base_dir)
+    environment['CPPFLAGS'] = "-I{base}/include -I{base}/include/openssl".format(base=self.base_dir)
+    self.call([os.path.join(python_dir, 'configure')] + configure_args,
+              log=log, cwd=python_dir, shell=False, env=environment)
+    self.call(['make', '-j', str(self.nproc)],
+              log=log, cwd=python_dir, shell=False, env=environment)
+    self.call(['make', 'install', '-j', str(self.nproc)],
+              log=log, cwd=python_dir, shell=False, env=environment)
+    python_exe = op.abspath(op.join(self.base_dir, "bin", "python3"))
+    self.set_python(op.abspath(python_exe))
+
+    # Make python relocatable - unclear if required
+#   python_sysconfig = check_output([ python_exe, '-c',
+#     'import os; import sys; import sysconfig; print(os.path.join(os.path.dirname(sysconfig.__file__), sysconfig._get_sysconfigdata_name() + ".py"))'
+#     ]).rstrip()
+    if False: # try:
+      with open(python_sysconfig, 'r') as fh:
+        python_config = fh.read()
+      if 'relocatable' not in python_config:
+        with open(python_sysconfig, 'a') as fh:
+          fh.write("""
+#
+# Fix to make python installation relocatable
+#
+
+def _replace_sysconfig_paths(d):
+  from os import environ
+  from sys import executable
+  path = environ.get('LIBTBX_PYEXE', executable)
+  if '/base/' in path:
+    path = path[:path.rfind('/base/')+5]
+    for k, v in d.iteritems():
+      if isinstance(v, basestring):
+        d[k] = v.replace('%s', path)
+_replace_sysconfig_paths(build_time_vars)
+""" % self.base_dir)
+#   except Exception, e:
+      print >> log, "Could not make python relocatable:"
+      print >> log, e
+    log.close()
+
   def build_python_compatibility(self):
     self.build_python_module_pip(
       'six', package_version=SIX_VERSION,
@@ -904,6 +970,8 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="libsvm")
 
   def build_numpy(self):
+    global NUMPY_VERSION
+    if self.python3: NUMPY_VERSION="1.13.3"
     self.build_python_module_pip(
       package_name='numpy',
       package_version=NUMPY_VERSION,
@@ -1025,6 +1093,8 @@ _replace_sysconfig_paths(build_time_vars)
         confirm_import_module="OpenGL")
 
   def build_cython(self):
+    global CYTHON_VERSION
+    if self.python3: CYTHON_VERSION="0.27.3"
     self.build_python_module_pip(
       'Cython', package_version=CYTHON_VERSION,
       confirm_import_module='cython')

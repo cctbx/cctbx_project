@@ -1000,6 +1000,7 @@ class Builder(object):
       skip_base="",
       force_base_build=False,
       enable_shared=False,
+      python3=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -1019,11 +1020,18 @@ class Builder(object):
       self.op = os.path
     self.name = '%s-%s'%(self.category, self.platform)
     # Platform configuration.
-    self.python_base = self.opjoin(*['..', 'base', 'bin', 'python'])
+    python_executable = 'python'
+    self.python3 = python3
+    if python3:
+      python_executable = 'python3'
+    if self.platform and ('windows' in self.platform or self.platform == 'win32'):
+      python_executable = python_executable + '.exe'
     if self.platform and 'windows' in self.platform:
-      self.python_base = self.opjoin(*['..', 'base', 'bin', 'python', 'python.exe'])
-    if sys.platform == "win32": # assuming we run standalone without buildbot
-      self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', 'python.exe'])
+      self.python_base = self.opjoin(*['..', 'base', 'bin', 'python', python_executable])
+    elif sys.platform == "win32": # assuming we run standalone without buildbot
+      self.python_base = self.opjoin(*[os.getcwd(), 'base', 'bin', 'python', python_executable])
+    else:
+      self.python_base = self.opjoin(*['..', 'base', 'bin', python_executable])
     self.with_python = with_python
     if self.with_python:
       self.python_base = with_python
@@ -1468,6 +1476,8 @@ class Builder(object):
       extra_opts.append('--git-ssh')
     if self.skip_base:
       extra_opts.append('--skip-base=%s' % self.skip_base)
+    if self.python3:
+      extra_opts.append('--python3')
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
@@ -2245,6 +2255,11 @@ def run(root=None):
                     dest="enable_shared",
                     action="store_true",
                     default=False)
+  parser.add_option("--python3",
+                    dest="python3",
+                    help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
+                    action="store_true",
+                    default=False)
   options, args = parser.parse_args()
   # process external
   options.specific_external_builder=None
@@ -2314,6 +2329,7 @@ def run(root=None):
     skip_base=options.skip_base,
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
+    python3=options.python3,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)
 

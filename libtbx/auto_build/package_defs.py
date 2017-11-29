@@ -43,6 +43,7 @@ def get_pypi_package_information(package, version=None, information_only=False):
 
 DEPENDENCIES_BASE = "https://cdn.rawgit.com/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2l.tar.gz" # OpenSSL - needed for Mac OS X 10.11 and later
+PYTHON3_PKG = "Python-3.6.3.tgz"
 
 # from CCI
 PYTHON_PKG = "Python-2.7.14.tgz"
