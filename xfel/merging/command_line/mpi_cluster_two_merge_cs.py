@@ -10,7 +10,7 @@ from xfel.merging.command_line.single_node_merge import get_observations
 
 from xfel.merging.command_line.single_node_merge import scaling_manager as scaling_manager_base
 class scaling_manager_mpi(scaling_manager_base):
-  
+
   def insert_frame(self, **kwargs):
     order = []
     if self.params.postrefinement.enable==True and \
@@ -149,7 +149,7 @@ class scaling_manager_mpi(scaling_manager_base):
 
     for call_instance in item.finished_db_mgr.sequencer:
       print "INSTANCE=%d START RANK=%d TIME=%f"%(count,rank,tt())
-      if call_instance["call"] == "insert_frame":        
+      if call_instance["call"] == "insert_frame":
         print "insert_frame=%d START RANK=%d TIME=%f"%(count,rank,tt())
         frame_id_zero_base = n_insert_frame(**call_instance["data"])
         print "insert_frame=%d STOP RANK=%d TIME=%f"%(count,rank,tt())
@@ -387,7 +387,7 @@ if (__name__ == "__main__"):
       idx = comm.recv(source=0)
       print "SCALER_WORKER_IDXRECV END  RANK=%d TIME=%f"%(rank,tt())
 
-      if idx == 'endrun': 
+      if idx == 'endrun':
         scaler_worker.finished_db_mgr = db_mgr
         break
       print "SCALER_WORKER START=%s RANK=%d TIME=%f"%(str([tar_file_names[idx],]), rank, tt())

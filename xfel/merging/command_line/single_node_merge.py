@@ -10,7 +10,7 @@ from libtbx import Auto
 from cStringIO import StringIO
 from libtbx.utils import Sorry
 from scitbx import matrix
-from xfel.cxi.merging_utils import intensity_data, frame_data, null_data
+from xfel.cxi.merging_utils import null_data
 
 def get_observations (work_params):
   try:
