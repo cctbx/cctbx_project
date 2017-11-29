@@ -688,8 +688,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     return result
 
   def expand_to_p1(self, crystal_symmetry):
-    if(crystal_symmetry.space_group().type().number()!=1):
-      raise Sorry("Space group must be P1.")
     # ANISOU will be invalid
     import string
     import scitbx.matrix
