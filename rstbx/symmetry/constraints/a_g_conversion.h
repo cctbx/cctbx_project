@@ -99,7 +99,7 @@ struct AG { // convert orientation matrix A to metrical matrix g & reverse
     G = uc_sym_mat3(g0,g1,g2,g3,g4,g5);
     cctbx::uctbx::unit_cell ersatz_uc ( cctbx::uctbx::unit_cell(G).reciprocal() );
 
-    if ( ersatz_uc.volume() <= 100.){ throw SCITBX_ERROR(
+    if ( ersatz_uc.volume() <= 70.){ throw SCITBX_ERROR(
       "Metrical matrix g is expected to be in the reciprocal setting;this appears to be direct space");
     }
 

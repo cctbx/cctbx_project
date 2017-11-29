@@ -31,9 +31,9 @@ class symmetrize_reduce_enlarge(object):
       from cctbx.crystal_orientation import crystal_orientation
       which_setting = [crystal_orientation(orientation,True),
                        crystal_orientation(orientation,False)]
-      #kludgy test for space setting: unit cell volume is never < 100 Angstroms^3
+      #kludgy test for space setting: unit cell volume is never < 70 Angstroms^3
       conversion_to_A3 = (length_unit*length_unit*length_unit)/1.E-30
-      select = [a.unit_cell().volume()*conversion_to_A3 > 100.
+      select = [a.unit_cell().volume()*conversion_to_A3 > 70.
                 for a in which_setting]
       self.orientation = which_setting[select.index(True)]
 
