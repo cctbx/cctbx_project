@@ -28,7 +28,7 @@ import glob
 from scitbx import matrix
 op = os.path
 
-from xfel.cxi.merging_database import mysql_master_phil
+from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 data = None
   .type = path
@@ -666,11 +666,11 @@ class scaling_manager (intensity_data) :
   def scale_all (self, file_names) :
     t1 = time.time()
     if self.params.backend == 'MySQL':
-      from xfel.cxi.merging_database import manager
+      from xfel.merging.database.merging_database import manager
     elif self.params.backend == 'SQLite':
-      from xfel.cxi.merging_database_sqlite3 import manager
+      from xfel.merging.database.merging_database_sqlite3 import manager
     else:
-      from xfel.cxi.merging_database_fs import manager
+      from xfel.merging.database.merging_database_fs import manager
 
     db_mgr = manager(self.params)
     db_mgr.initialize_db(self.miller_set.indices())

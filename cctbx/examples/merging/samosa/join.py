@@ -99,13 +99,13 @@ class scaling_manager (scaling_manager_base) :
   def scale_all (self, file_names) :
     t1 = time.time()
     if self.params.backend == 'MySQL':
-      from xfel.cxi.merging_database import manager
+      from xfel.merging.database.merging_database import manager
     elif self.params.backend == 'SQLite':
-      from xfel.cxi.merging_database_sqlite3 import manager
+      from xfel.merging.database.merging_database_sqlite3 import manager
     elif self.params.backend == 'FS':
-      from xfel.cxi.merging_database_fs import manager
+      from xfel.merging.database.merging_database_fs import manager
     elif self.params.backend == 'Flex':
-      from xfel.cxi.merging_database_flex import manager
+      from xfel.merging.database.merging_database_flex import manager
 
     import multiprocessing
     print "Allocating intensities"

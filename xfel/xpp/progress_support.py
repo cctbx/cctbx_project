@@ -4,7 +4,7 @@ from cctbx.miller import match_multi_indices
 from cctbx.miller import set as mset
 from scitbx import matrix
 
-from xfel.cxi.merging_database import manager
+from xfel.merging.database.merging_database import manager
 class progress_manager(manager):
   def __init__(self,params,db_experiment_tag,trial,rungroup_id,run):
     self.params = params

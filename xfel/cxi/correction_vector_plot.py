@@ -11,7 +11,7 @@ class manage_sql:
     self.have_db = False
     if self.params.mysql.runtag is not None:
       self.have_db = True
-      from xfel.cxi.merging_database import manager
+      from xfel.merging.database.merging_database import manager
       self.manager = manager
 
   def get_cursor(self):

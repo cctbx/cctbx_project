@@ -11,11 +11,11 @@ import iotbx.phil
 import math
 from scitbx import matrix
 from xfel import get_radial_tangential_vectors
-from xfel.cxi.merging_database import manager
+from xfel.merging.database.merging_database import manager
 from xfel import correction_vector_store
 from libtbx.development.timers import Timer
 
-from xfel.cxi.merging_database import mysql_master_phil
+from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 bravais_setting_id = None
   .type = int

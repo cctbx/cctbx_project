@@ -16,7 +16,7 @@ class scaling_manager_mpi(scaling_manager_base):
     self.t1 = time.time()
 
     assert self.params.backend == 'MySQL' # only sensible choice
-    from xfel.cxi.merging_database import manager
+    from xfel.merging.database.merging_database import manager
     db_mgr = manager(self.params)
     db_mgr.initialize_db(self.miller_set.indices())
 
@@ -253,7 +253,7 @@ if (__name__ == "__main__"):
   print "SCALERWORKER END RANK=%d TIME=%f"%(rank,tt())
 
   assert scaler_worker.params.backend == 'MySQL' # only option that makes sense
-  from xfel.cxi.merging_database import manager
+  from xfel.merging.database.merging_database import manager
   db_mgr = manager(scaler_worker.params)
   tar_file_names = transmitted_info["file_names"][0]
 

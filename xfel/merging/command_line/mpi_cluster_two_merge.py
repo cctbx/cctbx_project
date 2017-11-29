@@ -16,7 +16,7 @@ class scaling_manager_mpi(scaling_manager_base):
     self.t1 = time.time()
 
     assert self.params.backend == 'FS' # for prototyping rank=0 marshalling
-    from xfel.cxi.merging_database_fs import manager
+    from xfel.merging.database.merging_database_fs import manager
     db_mgr = manager(self.params)
     db_mgr.initialize_db(self.miller_set.indices())
     self.master_db_mgr = db_mgr
@@ -255,7 +255,7 @@ if (__name__ == "__main__"):
   print "SCALER_WORKER_SETUP END RANK=%d TIME=%f"%(rank,tt())
 
   assert scaler_worker.params.backend == 'FS' # only option that makes sense
-  from xfel.cxi.merging_database_fs import manager2 as manager
+  from xfel.merging.database.merging_database_fs import manager2 as manager
   db_mgr = manager(scaler_worker.params)
   tar_file_names = transmitted_info["file_names"][0]
 

@@ -93,7 +93,7 @@ def _execute(db_commands_queue, db_results_queue, output_prefix, semaphore):
   db_commands_queue.join()
   semaphore.release()
 
-from xfel.cxi.merging_database import manager_base
+from xfel.merging.database.merging_database import manager_base
 class manager (manager_base):
   # The manager
 

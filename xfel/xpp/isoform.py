@@ -9,7 +9,7 @@ class phil_validation:
   def application_level_validation(self):
     pass
 
-from xfel.cxi.merging_database import manager
+from xfel.merging.database.merging_database import manager
 class application(manager):
   def __init__(self,params):
     self.params = params

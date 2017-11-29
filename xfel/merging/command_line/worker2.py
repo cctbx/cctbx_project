@@ -15,7 +15,7 @@ sm = scaling_manager_mpi(received_info["miller_set"],
                          received_info["params"])
 
 assert sm.params.backend == 'MySQL' # only option that makes sense
-from xfel.cxi.merging_database import manager
+from xfel.merging.database.merging_database import manager
 db_mgr = manager(sm.params)
 
 for ix in xrange(len(file_names)):

@@ -9,7 +9,7 @@ from cctbx.examples.merging.data_utilities import I_and_G_base_estimate, plot_it
 from cctbx.examples.merging.data_utilities import show_histogram
 from cctbx.examples.merging.data_subset import mapper_factory
 from cctbx import miller
-from xfel.cxi.merging_database_flex import read_experiments
+from xfel.merging.database.merging_database_flex import read_experiments
 from cctbx.examples.merging.test_levenberg_sparse import xscale6e
 
 class execute_case(object):

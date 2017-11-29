@@ -75,7 +75,7 @@ def application(params, loop = True):
       return results
     time.sleep(10)
 
-from xfel.cxi.merging_database import manager
+from xfel.merging.database.merging_database import manager
 class progress_manager(manager):
   def __init__(self,params, cursor):
     self.params = params

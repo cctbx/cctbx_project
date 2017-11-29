@@ -11,7 +11,7 @@ from __future__ import division
 import iotbx.phil
 import sys
 
-from xfel.cxi.merging_database import mysql_master_phil
+from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
 run_numbers = None
   .type = ints
