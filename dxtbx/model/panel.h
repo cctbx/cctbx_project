@@ -302,8 +302,7 @@ namespace dxtbx { namespace model {
       std::size_t xsize = get_image_size()[0];
       std::size_t ysize = get_image_size()[1];
       scitbx::af::versa<bool, scitbx::af::c_grid<2> > mask(
-          scitbx::af::c_grid<2>(ysize, xsize),
-          scitbx::af::init_functor_null<bool>());
+          scitbx::af::c_grid<2>(ysize, xsize), true);
       apply_untrusted_rectangle_mask(mask.ref());
       return mask;
     }

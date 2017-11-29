@@ -153,7 +153,7 @@ namespace dxtbx { namespace model {
 
     /** Add an element to the mask */
     void add_mask(int f0, int s0, int f1, int s1) {
-      mask_.push_back(int4(f0, f1, s0, s1));
+      mask_.push_back(int4(f0, s0, f1, s1));
     }
 
     /** @returns True/False this is the same as the other */

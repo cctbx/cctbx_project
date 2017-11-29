@@ -154,6 +154,45 @@ def tst_resolution(detector):
   assert d_min1 < d_min2
   print 'OK'
 
+def tst_panel_mask():
+  from dxtbx.model import Panel
+
+  panel = Panel()
+  panel.set_image_size((100, 100))
+  panel.add_mask(40,0,60,100)
+  panel.add_mask(0,40,100,60)
+  panel.set_trusted_range((-1, 10))
+
+  data = flex.double(flex.grid(100,100))
+  data[10,10] = -1
+  data[20,20] = 10
+  data[30,30] = 100
+  data[40,40] = -10
+
+  m1 = panel.get_untrusted_rectangle_mask()
+  m2 = panel.get_trusted_range_mask(data)
+
+  count = 0
+  for j in range(100):
+    for i in range(40,60):
+      assert(m1[j,i] == False)
+      count += 1
+  for i in range(100):
+    for j in range(40,60):
+      if i >= 40 and i < 60:
+        continue
+      assert(m1[j,i] == False)
+      count += 1
+  assert m1.count(False) == count, "%d, %d" % (m1.count(False), count)
+
+  assert m2.count(False) == 4
+  assert m2[10,10] == False
+  assert m2[20,20] == False
+  assert m2[30,30] == False
+  assert m2[40,40] == False
+
+  print 'OK'
+
 def tst_detector():
   from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
@@ -189,6 +228,7 @@ def tst_detector():
   tst_get_thickness(detector)
   tst_get_material(detector)
   tst_resolution(detector)
+  tst_panel_mask()
 
   # Attenuation length
   from cctbx.eltbx import attenuation_coefficient

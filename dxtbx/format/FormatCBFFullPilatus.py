@@ -64,8 +64,8 @@ class FormatCBFFullPilatus(FormatCBFFull):
     detector = self._detector_factory.imgCIF_H(self._get_cbf_handle(),
                                                'PAD')
 
-    for f0, s0, f1, s1 in determine_pilatus_mask(detector):
-      detector[0].add_mask(f0, s0, f1, s1)
+    for f0, f1, s0, s1 in determine_pilatus_mask(detector):
+      detector[0].add_mask(f0-1, s0-1, f1, s1)
 
     import re
     m = re.search('^#\s*(\S+)\ssensor, thickness\s*([0-9.]+)\s*m\s*$', \
@@ -163,8 +163,8 @@ class FormatCBFFullPilatus(FormatCBFFull):
     for i, p in enumerate(detector):
       untrusted_regions = p.get_mask()
       for j, (f0, s0, f1, s1) in enumerate(untrusted_regions):
-        sub_array = flex.bool(flex.grid(s1-s0+1, f1-f0+1), False)
-        mask[i].matrix_paste_block_in_place(sub_array, s0-1, f0-1)
+        sub_array = flex.bool(flex.grid(s1-s0, f1-f0), False)
+        mask[i].matrix_paste_block_in_place(sub_array, s0, f0)
 
     if len(detector) == 1:
       raw_data = [self.get_raw_data()]
