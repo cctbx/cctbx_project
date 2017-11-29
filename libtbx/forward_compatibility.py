@@ -26,49 +26,6 @@ def stdlib_import(name):
         if (fp is not None): fp.close()
   raise RuntimeError("Cannot import %s module." % name)
 
-if not hasattr(os.path, "devnull"):
-  # Python 2.3 compatibility
-  if os.name == "nt":
-    os.path.devnull = "nul"
-  else:
-    os.path.devnull = "/dev/null"
-
-if ("sorted" not in __builtins__):
-  # Python 2.3 compatibility
-  def sorted(iterable, cmp=None, key=None, reverse=False):
-    """\
-sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
-    # copied from scons svn rev. 4787, fixed to use list(iterable)
-    if key is not None:
-      result = [(key(x), x) for x in iterable]
-    else:
-      result = list(iterable)
-    if cmp is None:
-      # Pre-2.3 Python does not support list.sort(None).
-      result.sort()
-    else:
-      result.sort(cmp)
-    if key is not None:
-      result = [t1 for t0,t1 in result]
-    if reverse:
-      result.reverse()
-    return result
-  __builtins__["sorted"] = sorted
-
-if ("reversed" not in __builtins__):
-  # Python 2.3 compatibility
-  def reversed(seq):
-    """ Return a reverse iterator. seq must be an object which supports
-    the sequence protocol (the __len__() method and the __getitem__() method
-    with integer arguments starting at 0). New in version 2.4. """
-    if (not hasattr(seq, "__getitem__")):
-      seq = list(seq)
-    i = len(seq)
-    while i > 0:
-      i -= 1
-      yield seq[i]
-  __builtins__["reversed"] = reversed
-
 vers_info = sys.version_info[:2]
 
 if (vers_info < (2,6)):
@@ -165,12 +122,6 @@ if (vers_info < (2,6)):
         pass
     itertools.izip_longest = izip_longest
 
-  if (vers_info == (2,3) and "set" not in __builtins__):
-    # Python 2.3 compatibility
-    import sets
-    __builtins__["set"] = sets.Set
-    __builtins__["frozenset"] = sets.ImmutableSet
-
   if (vers_info in [(2,3),(2,4),(2,5)]
         and not hasattr(frozenset, "isdisjoint")):
     # Python 2.3, 2.4, 2.5 compatibility
@@ -188,17 +139,6 @@ if (vers_info < (2,6)):
     __builtins__["set"] = forward_compatibility_set
 
 del vers_info
-
-if "all" not in __builtins__:
-  #Python 2.3-2.4 compatibility
-  def all(iterable):
-    for element in iterable:
-      if not element:
-        return False
-
-    return True
-
-  __builtins__[ "all" ] = all
 
 class _advertise_subprocess(object):
 
