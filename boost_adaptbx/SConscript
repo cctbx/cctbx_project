@@ -94,7 +94,7 @@ if (not env_etc.no_boost_python):
     directory = libtbx.env.module_dist_paths.get('boost','')
     filename = os.path.join(abs(directory), 'boost/math/tools/roots.hpp')
     old_filename = filename + '.original'
-    if ( os.path.exists(filename) and (not os.path.exists(old_filename)) ):
+    if (os.path.exists(filename)):
       os.rename(filename, old_filename)
       with open(old_filename,'r') as f_old, open(filename, 'w') as f_new:
         lines = f_old.readlines()
@@ -102,6 +102,7 @@ if (not env_etc.no_boost_python):
           line = line.replace('= get<', '= boost::fusion::get<')
           f_new.write(line)
       copystat(old_filename, filename)
+      os.remove(old_filename)
 
   conf = env_pure_boost_python_ext.Clone().Configure()
   if (not conf.TryCompile("#include <iostream>", extension=".cpp")):
