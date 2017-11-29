@@ -1,7 +1,6 @@
 from __future__ import division
 import time
 import mmtbx.model
-from mmtbx.hydrogens import riding
 import iotbx.pdb
 
 #-----------------------------------------------------------------------------

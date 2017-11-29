@@ -1,8 +1,6 @@
 from __future__ import division
 import time
 import mmtbx.model
-from mmtbx.hydrogens import riding
-from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import iotbx.pdb
 
 #-----------------------------------------------------------------------------

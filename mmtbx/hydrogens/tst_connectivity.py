@@ -2,7 +2,7 @@ from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-from mmtbx.hydrogens import riding
+#from mmtbx.hydrogens import riding
 
 pdb_str = """\
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1

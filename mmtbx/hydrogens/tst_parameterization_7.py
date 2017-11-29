@@ -3,7 +3,6 @@ import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.cif
-from mmtbx.hydrogens import riding
 
 #-----------------------------------------------------------------------------
 # This test makes sure that H are corrected according to angle restraint
