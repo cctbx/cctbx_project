@@ -11,6 +11,7 @@ from mmtbx.command_line import geometry_minimization
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from cctbx import miller
 from cctbx import maptbx
+import mmtbx.model
 
 if(1):
   random.seed(0)
@@ -95,21 +96,14 @@ END
 """
 
 def get_pdb_inputs(pdb_str):
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv              = server.server(),
-    ener_lib                 = server.ener_lib(),
-    raw_records              = flex.std_string(pdb_str.splitlines()),
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-  xrs = processed_pdb_file.xray_structure(show_summary = False)
-  geometry_restraints_manager = geometry_minimization.\
-      get_geometry_restraints_manager(processed_pdb_file, xrs)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n'))
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm = True)
   return group_args(
-    ph  = pdb_hierarchy,
-    grm = geometry_restraints_manager,
-    xrs = xrs)
+    ph  = model.get_hierarchy(),
+    grm = model.get_restraints_manager(),
+    xrs = model.get_xray_structure())
 
 def get_tmo(inp, d_min):
   sel = inp.ph.atom_selection_cache().selection(

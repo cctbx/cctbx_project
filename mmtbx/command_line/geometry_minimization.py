@@ -155,6 +155,8 @@ def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
   """
   !!! WARNING !!! This function is deprecated and will be deleted soon.
   !!! DO NOT USE IN ANY NEW CODE !!!
+  !!! The last known thing using it is phenix.real_space_refine
+
   mmtbx.model.manager provides better functionality
 
   This function should be transfered to be a member of processed_pdb_file

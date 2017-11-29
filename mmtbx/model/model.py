@@ -40,7 +40,7 @@ from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    add_reference_dihedral_restraints_if_requested
+    add_reference_dihedral_restraints_if_requested, reference_model_str
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
@@ -224,7 +224,6 @@ class manager(object):
     self.has_hd = None
     self.model_statistics_info = None
     self._master_sel = flex.size_t([]) # selection of master part if NCS constraints are in use
-    self._grm = None
     self._atom_selection_cache = None
     self._ncs_obj = None
     self._mon_lib_srv = None
@@ -300,7 +299,8 @@ class manager(object):
     Then modify what needed to be modified and init this class normally.
     """
     return iotbx.phil.parse(
-          input_string=grand_master_phil_str, process_includes=True).extract()
+          input_string=grand_master_phil_str+reference_model_str,
+          process_includes=True).extract()
 
   def set_log(self, log):
     self.log = log
@@ -316,20 +316,26 @@ class manager(object):
 
   def set_pdb_interpretation_params(self, params):
     #
-    # Consider invalidating self._grm here, because it could be already
-    # constructed with different params
+    # Consider invalidating self.restraints_manager here, because it could be already
+    # constructed with different params. Done.
     #
-    self._pdb_interpretation_params = params
-    if params is None:
-      self._pdb_interpretation_params = iotbx.phil.parse(
-          input_string=grand_master_phil_str, process_includes=True).extract()
     # check if we got only inside of pdb_interpretation scope.
     # For mmtbx.command_line.load_model_and_data
-    if getattr(params, "sort_atoms", None) is not None:
-      full_params = iotbx.phil.parse(
-          input_string=grand_master_phil_str, process_includes=True).extract()
-      full_params.pdb_interpretation = params
+    if params is None:
+      self._pdb_interpretation_params = manager.get_default_pdb_interpretation_params()
+    else:
+      # if getattr(params, "sort_atoms", None) is not None:
+      full_params = manager.get_default_pdb_interpretation_params()
+      if getattr(params, "sort_atoms", None) is not None:
+        full_params.pdb_interpretation = params
+      if hasattr(params, "pdb_interpretation"):
+        full_params.pdb_interpretation = params.pdb_interpretation
+      if hasattr(params, "geometry_restraints"):
+        full_params.geometry_restraints = params.geometry_restraints
+      if hasattr(params, "reference_model"):
+        full_params.reference_model = params.reference_model
       self._pdb_interpretation_params = full_params
+    self.restraints_manager = None
 
   def check_consistency(self):
     """
@@ -832,6 +838,13 @@ class manager(object):
       file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
 
     self._ss_manager = self._processed_pdb_file.ss_manager
+
+    # For test GRM pickling
+    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+    # geometry = make_geo_pickle_unpickle(
+    #     geometry=geometry,
+    #     xrs=xray_structure,
+    #     prefix=None)
 
     # Link treating should be rewritten. They should not be saved in
     # all_chain_proxies and they should support mmcif.

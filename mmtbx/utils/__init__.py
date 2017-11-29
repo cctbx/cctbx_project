@@ -2540,6 +2540,7 @@ def fix_rotamer_outliers(
                 backrub_range,
                 log,
                 verbose)
+  model.set_sites_cart_from_hierarchy()
   return pdb_hierarchy
 
 def switch_rotamers(

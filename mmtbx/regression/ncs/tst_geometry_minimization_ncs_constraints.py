@@ -1,7 +1,7 @@
 from __future__ import division
 
 import mmtbx.refinement.minimization_ncs_constraints
-from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
+import mmtbx.model
 from scitbx.array_family import flex
 import iotbx.ncs
 import mmtbx.utils
@@ -50,36 +50,22 @@ TER
 """
 
 def tst_1(prefix="gm_ncs_constr_tst1"):
-  f = open("%s_start.pdb" % prefix, 'w')
-  f.write(pdb_string1)
-  f.close()
   log = sys.stdout
   pdb_in = iotbx.pdb.input(source_info=None, lines=pdb_string1.split('\n'))
   # print dir(pdb_in)
-  pdb_h = pdb_in.construct_hierarchy()
-  xrs = pdb_h.extract_xray_structure()
-  cs = pdb_in.crystal_symmetry()
-  pdb_int_params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  pdb_int_params.ncs_search.enabled=True
-  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(
-    crystal_symmetry          = cs,
-    pdb_interpretation_params = pdb_int_params,
-    stop_for_unknowns         = True,
-    log                       = log,
-    cif_objects               = None,
-    use_neutron_distances     = False)
-  processed_pdb_file, junk = processed_pdb_files_srv.\
-    process_pdb_files(raw_records = pdb_string1.split('\n')) # XXX remove junk
-  ncs_obj = iotbx.ncs.input(hierarchy=pdb_h)
+  pdb_int_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  pdb_int_params.pdb_interpretation.ncs_search.enabled = True
+  model = mmtbx.model.manager(
+      model_input = pdb_in,
+      pdb_interpretation_params = pdb_int_params,
+      build_grm = True)
+  ncs_obj = iotbx.ncs.input(hierarchy=model.get_hierarchy())
   original_ncs_transform = ncs_obj.ncs_transform
   ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
   ncs_obj.show(format='phil')
-  grm = get_geometry_restraints_manager(
-      processed_pdb_file=processed_pdb_file,
-      xray_structure=xrs,
-      log=null_out())
-  tmp_xrs = xrs.deep_copy_scatterers()
-  refine_selection = flex.size_t(xrange(xrs.scatterers().size()))
+  grm = model.get_restraints_manager()
+  tmp_xrs = model.get_xray_structure().deep_copy_scatterers()
+  refine_selection = flex.size_t(xrange(model.get_number_of_atoms()))
 
   # print "refining sites"
   cycle = 0
@@ -101,7 +87,7 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
     max_iterations               = 100,
     refine_sites                 = True,
     refine_transformations       = False)
-  refined_pdb_h = pdb_h.deep_copy()
+  refined_pdb_h = model.get_hierarchy().deep_copy()
   refined_pdb_h.adopt_xray_structure(tmp_xrs)
   refined_pdb_h.write_pdb_file("refined_%d.pdb" % cycle)
   new_ncs_obj = iotbx.ncs.input(hierarchy=refined_pdb_h)

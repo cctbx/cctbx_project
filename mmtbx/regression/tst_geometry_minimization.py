@@ -1,10 +1,10 @@
 from __future__ import division
 
 from libtbx.utils import null_out
-from mmtbx.command_line.geometry_minimization import \
-    get_geometry_restraints_manager, master_params
 import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
+import mmtbx.model
+import iotbx.pdb
 
 def exercise_reference_model_restraints(mon_lib_srv, ener_lib):
   # 1yjp
@@ -80,46 +80,31 @@ HETATM   67  O   HOH A  14      -1.500   0.682  10.967  1.00 43.49           O
 MASTER      234    0    0    0    0    0    0    6   66    1    0    1
 END """
 
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    raw_records    = pdb_str,
-    force_symmetry = True)
-  # print dir(processed_pdb_file)
-  xrs = processed_pdb_file.xray_structure()
-  work_params = master_params().extract()
+  work_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   work_params.reference_model.enabled=True
   work_params.reference_model.use_starting_model_as_reference=True
-  grm = get_geometry_restraints_manager(
-      processed_pdb_file,
-      xrs,
-      params=work_params,
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(source_info=None, lines=pdb_str.split('\n')),
+      pdb_interpretation_params=work_params,
+      build_grm=True,
       log=null_out())
-  n_ref_dih_prox = grm.geometry.get_n_reference_dihedral_proxies()
+  n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
   assert n_ref_dih_prox == 34, "expected 34, got %d" % n_ref_dih_prox
 
-  work_params = master_params().extract()
+  work_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   work_params.reference_model.enabled=True
   work_params.reference_model.use_starting_model_as_reference=True
   work_params.reference_model.main_chain=False
-  grm = get_geometry_restraints_manager(
-      processed_pdb_file,
-      xrs,
-      params=work_params,
-      log=null_out())
-  n_ref_dih_prox = grm.geometry.get_n_reference_dihedral_proxies()
+  model.set_pdb_interpretation_params(work_params)
+  n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
   assert n_ref_dih_prox == 16, "expected 16, got %d" % n_ref_dih_prox
 
-  work_params = master_params().extract()
+  work_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   work_params.reference_model.enabled=True
   work_params.reference_model.use_starting_model_as_reference=True
   work_params.reference_model.side_chain=False
-  grm = get_geometry_restraints_manager(
-      processed_pdb_file,
-      xrs,
-      params=work_params,
-      log=null_out())
-  n_ref_dih_prox = grm.geometry.get_n_reference_dihedral_proxies()
+  model.set_pdb_interpretation_params(work_params)
+  n_ref_dih_prox = model.get_restraints_manager().geometry.get_n_reference_dihedral_proxies()
   assert n_ref_dih_prox == 18, "expected 18, got %d" % n_ref_dih_prox
 
 

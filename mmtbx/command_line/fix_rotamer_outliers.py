@@ -4,11 +4,12 @@ from __future__ import division
 import sys
 import iotbx.pdb
 import mmtbx.monomer_library.server
-from mmtbx.command_line.geometry_minimization import get_geometry_restraints_manager
 import iotbx.phil
+import iotbx.pdb
 from libtbx.utils import Sorry
 from mmtbx.utils import fix_rotamer_outliers
 from mmtbx.rotamer.rotamer_eval import RotamerEval
+import mmtbx.model
 
 
 master_phil_str = """
@@ -23,7 +24,6 @@ output_prefix = rotamer_fixed
   .type = str
 file_name = None
   .type = path
-  .multiple = True
   .optional = True
   .style = hidden
 """
@@ -61,55 +61,26 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
   # or use parameters defined by GUI
   else:
     work_params = params
-  pdb_files = work_params.file_name
+  pdb_inp = iotbx.pdb.input(file_name=work_params.file_name)
 
-  from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-  params = iotbx.phil.parse(
-      input_string=grand_master_phil_str, process_includes=True).extract()
-  params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  pdb_int_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  pdb_int_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      pdb_interpretation_params = pdb_int_params,
+      build_grm = True)
 
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  ppf_srv = mmtbx.utils.process_pdb_file_srv(
-      crystal_symmetry          = None,
-      pdb_interpretation_params = params.pdb_interpretation,
-      stop_for_unknowns         = False,
-      log                       = log,
-      cif_objects               = None, # need to figure out how to get them
-      mon_lib_srv               = mon_lib_srv,
-      ener_lib                  = None,
-      use_neutron_distances     = False)
-  processed_pdb_file, pdb_inp = ppf_srv.process_pdb_files(
-      pdb_file_names = pdb_files)
-  cs = ppf_srv.crystal_symmetry
-  xrs = processed_pdb_file.xray_structure(show_summary = True)
-
-  if(xrs is None):
-    raise Sorry("Cannot extract xray_structure.")
-
-  grm = get_geometry_restraints_manager(
-      processed_pdb_file=processed_pdb_file,
-      xray_structure=xrs,
-      log=log)
-
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  fixed_pdb_h = pdb_h.deep_copy()
+  fixed_pdb_h = model.get_hierarchy().deep_copy()
   fixed_pdb_h.reset_atom_i_seqs()
 
-  rotamer_manager = RotamerEval(mon_lib_srv=mon_lib_srv)
   fixed_pdb_h = fix_rotamer_outliers(
-      pdb_hierarchy=fixed_pdb_h,
-      grm=grm.geometry,
-      xrs=xrs,
+      model = model,
       radius=work_params.radius,
-      mon_lib_srv=mon_lib_srv,
-      rotamer_manager=rotamer_manager,
-      asc=None)
+      )
 
-  iotbx.pdb.write_whole_pdb_file(
-      file_name="%s.pdb" % work_params.output_prefix,
-      processed_pdb_file=processed_pdb_file,
-      pdb_hierarchy=fixed_pdb_h,
-      crystal_symmetry=cs)
+  res_pdb_str = model.model_as_pdb()
+  with open("%s.pdb" % work_params.output_prefix, "w") as f:
+    f.write(res_pdb_str)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
