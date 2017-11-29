@@ -175,9 +175,11 @@ def extend_protein_model(
   Rebuild a sidechain by substituting an ideal amino acid and rotating the
   sidechain to match the old conformation as closely as possible.
   Limited functionality:
-    1) Amino-acids only, 2) side chain atoms only.
-    3) Not terminii aware
-    4) Not aware of v2.3 vs v3.2 atom names e.g. HB1,HB2 vs HB2,HB3
+    1) Amino-acids only,
+    2) side chain atoms only.
+    3) Not terminii aware.
+    4) Not aware of v2.3 vs v3.2 atom names e.g. HB1,HB2 vs HB2,HB3.
+    5) Skips altlocs.
   """
   from mmtbx.monomer_library import idealized_aa
   from mmtbx.rotamer import rotamer_eval
@@ -189,6 +191,7 @@ def extend_protein_model(
   partial_sidechains = []
   for chain in pdb_hierarchy.only_model().chains():
     for residue_group in chain.residue_groups():
+      if(residue_group.atom_groups_size() != 1): continue # skip altlocs
       for residue in residue_group.atom_groups():
         i_seqs = residue.atoms().extract_i_seq()
         residue_sel = selection.select(i_seqs)
