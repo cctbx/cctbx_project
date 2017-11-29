@@ -1,7 +1,6 @@
 from __future__ import division
 
 from libtbx.utils import null_out
-import mmtbx.monomer_library.pdb_interpretation
 from mmtbx import monomer_library
 import mmtbx.model
 import iotbx.pdb

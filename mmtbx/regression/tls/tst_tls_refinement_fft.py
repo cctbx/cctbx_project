@@ -4,7 +4,6 @@ import mmtbx.f_model
 import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times

@@ -4,11 +4,8 @@ import mmtbx.refinement.minimization_ncs_constraints
 import mmtbx.model
 from scitbx.array_family import flex
 import iotbx.ncs
-import mmtbx.utils
 import iotbx.pdb
 import sys
-import mmtbx.monomer_library
-from libtbx.utils import null_out
 from libtbx import easy_run
 from libtbx.test_utils import approx_equal
 

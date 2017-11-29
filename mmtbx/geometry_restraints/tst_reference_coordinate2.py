@@ -4,10 +4,8 @@ import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
 import random
-from mmtbx.monomer_library import pdb_interpretation, server
 from libtbx import group_args
 from mmtbx.refinement.real_space import individual_sites
-from mmtbx.command_line import geometry_minimization
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from cctbx import miller
 from cctbx import maptbx

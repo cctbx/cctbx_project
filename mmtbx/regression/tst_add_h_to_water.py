@@ -1,9 +1,6 @@
 from __future__ import division
 from mmtbx.hydrogens import find as find_hydrogens
 import mmtbx.model
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.monomer_library.server
 import iotbx.pdb
 from cctbx import miller
 from scitbx.array_family import flex

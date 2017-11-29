@@ -8,7 +8,6 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
-from mmtbx import utils
 from libtbx.utils import format_cpu_times, null_out
 from libtbx.test_utils import approx_equal
 import iotbx.pdb

@@ -3,12 +3,9 @@ from __future__ import division
 
 import sys
 import iotbx.pdb
-import mmtbx.monomer_library.server
 import iotbx.phil
 import iotbx.pdb
-from libtbx.utils import Sorry
 from mmtbx.utils import fix_rotamer_outliers
-from mmtbx.rotamer.rotamer_eval import RotamerEval
 import mmtbx.model
 
 
