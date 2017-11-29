@@ -25,27 +25,27 @@ class get_r_rfree_sigma(object):
       if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
         try:
           self.highs.append(float(get_value_at(i=7)))
-        except: pass
+        except: pass # intentional
       if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
         try:
           self.lows.append(float(get_value_at(i=7)))
-        except: pass
+        except: pass # intentional
       if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
         try:
           self.sigmas.append(float(get_value_at(i=6)))
-        except: pass
+        except: pass # intentional
         try:
           self.sigmas.append(float(get_value_at(i=4)))
-        except: pass
+        except: pass # intentional
       if(not start_FitToDataUsedInRefinement):
         start_FitToDataUsedInRefinement = \
           self.is_FitToDataUsedInRefinement(line)
       if(start_FitToDataUsedInRefinement and self.is_RValueWorkingSet(line)):
         try: self.r_works.append(float(self.get_value(flds=flds)))
-        except: pass
+        except: pass # intentional
       if(start_FitToDataUsedInRefinement and self.is_FreeRValue(line)):
         try: self.r_frees.append(float(self.get_value(flds=flds)))
-        except: pass
+        except: pass # intentional
       if(self.is_Resolution(line)):
         tmp = get_value_at(i=3)
         if (self.resolution is None):

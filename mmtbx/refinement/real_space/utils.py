@@ -25,7 +25,7 @@ class target_map(object):
           anomalous_flag   = False,
           d_min            = d_min)
         self.miller_array = self.map_to_sf(map_data = self.map_data)
-      except:
+      except: # intentional
         d_min += 0.1
       if(self.miller_array is not None): break
     self.miller_array_masked = self.update_miller_array_masked(
