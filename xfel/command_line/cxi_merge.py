@@ -919,16 +919,13 @@ class scaling_manager (intensity_data) :
         % (N, slope, corr)
     return N, corr
 
-  def XXXget_overall_correlation_flex (self, data_a, data_b) :
+  def get_overall_correlation_flex (self, data_a, data_b) :
     """
     Correlate any two sets of data.
     @param data_a data set a
     @param data_b data set b
     @return tuple containing correlation coefficent, slope and offset.
     """
-    # XXX function is deprecated since it does not account for the possibility
-    # that the data sigma might be invalid (set to -1 intentionally)
-    # it would be straightforward to rewrite the calling code to account for this.
     import math
 
     assert len(data_a) == len(data_b)
@@ -994,6 +991,9 @@ class scaling_manager (intensity_data) :
       y = slope * x + offset
       plt.scatter(sorted_data, rankits)
       plt.plot(x,y)
+
+      plt.figure()
+      plt.hist(rankits, bins=100)
       plt.show()
 
     return corr, slope, offset
@@ -1047,8 +1047,8 @@ class scaling_manager (intensity_data) :
       sels.append(sel)
       binned_intensities.append((step/2 + step*i)+min(only_means))
 
-    #for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
-    #  print >> self.log, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
+    for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
+      print >> self.log, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)
 
     return sels, binned_intensities
 
@@ -1066,15 +1066,19 @@ class scaling_manager (intensity_data) :
     from scitbx.simplex import simplex_opt
     class simplex_minimizer(object):
       """Class for refining sdfac, sdb and sdadd"""
-      def __init__(self, sdfac, sdb, sdadd, data, indices, bins):
+      def __init__(self, sdfac, sdb, sdadd, data, indices, bins, log=None):
         """
         @param sdfac Initial value for sdfac
         @param sdfac Initial value for sdfac
         @param sdfac Initial value for sdfac
         @param data ISIGI dictionary of unmerged intensities
         @param indices array of miller indices to refine against
-        @params bins array of flex.bool object specifying the bins to use to calculate the functional
+        @param bins array of flex.bool object specifying the bins to use to calculate the functional
+        @param log Log to print to (none for stdout)
         """
+        if log is None:
+          log = sys.stdout
+        self.log = log
         self.data = data
         self.intensity_bin_selections = bins
         self.indices = indices
@@ -1114,7 +1118,7 @@ class scaling_manager (intensity_data) :
 
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
-    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.ISIGI, self.miller_set.indices(), sels)
+    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.ISIGI, self.miller_set.indices(), sels, self.log)
     sdfac, sdb, sdadd = minimizer.x
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
@@ -1141,15 +1145,20 @@ class scaling_manager (intensity_data) :
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
       print >> self.log, "Validating"
+      from matplotlib import pyplot as plt
       all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.miller_set.indices())
+      plt.hist(all_sigmas_normalized, bins=100)
+      plt.figure()
+
       binned_rms_normalized_sigmas = []
 
       for i, sel in enumerate(sels):
         binned_rms_normalized_sigmas.append(math.sqrt(flex.mean(all_sigmas_normalized.select(sel)*all_sigmas_normalized.select(sel))))
 
-      from matplotlib import pyplot as plt
       plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
       plt.show()
+
+      self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
 
   def errors_from_residuals(self):
     """

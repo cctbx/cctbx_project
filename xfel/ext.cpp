@@ -567,23 +567,33 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
 
     list data = extract<list>(ISIGI[miller_index]);
     std::size_t n = len(data);
+    std::size_t n_accept = 0;
 
-    scitbx::af::shared<double> intensities(n);
-    scitbx::af::shared<double> sigmas(n);
-    scitbx::af::shared<double> meanIprimes(n);
+    scitbx::af::shared<double> intensities;
+    scitbx::af::shared<double> sigmas;
+    scitbx::af::shared<double> meanIprimes;
+    double intensity = 0;
+    double sigma = 0;
     double sumI = 0;
-    double nn = std::sqrt((n-1.0)/n);
 
     // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
     for (std::size_t i = 0; i < n; i++) {
       // tuple of scaled intensity I (obs/slope), Isigi (obs/sigma), slope
       tuple dataitem = extract<tuple>(data[i]);
       // scaled intensity
-      intensities[i] = extract<double>(dataitem[0]);
+      intensity = extract<double>(dataitem[0]);
       // corrected sigma (original sigma/slope)
-      sigmas[i] = intensities[i] / extract<double>(dataitem[1]);
-      sumI += intensities[i];
+      sigma = intensity / extract<double>(dataitem[1]);
+      if (sigma <= 0)
+        continue;
+      ++n_accept;
+
+      intensities.push_back(intensity);
+      sigmas.push_back(sigma);
+      sumI += intensity;
     }
+    n = n_accept;
+    double nn = std::sqrt((n-1.0)/n);
 
     // compute the normalized deviations
     for (std::size_t i = 0; i < n; i++) {
