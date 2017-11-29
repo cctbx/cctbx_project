@@ -10,9 +10,9 @@ def unit_cell_info(sub_clusters):
   :return: a string containing median unit cells, standard deviations and
    point group composition of each cluster.
   """
+  from libtbx.utils import plural_s
   # 3. print out some information that is useful.
-  out_str = "\n{} clusters:".format(len(sub_clusters))
-  out_str += "\n\n{:<16} {:<8} {:<13} {:<13} {:<13} {:<12} {:<12} {:<12}{:<8}\n".format(
+  out_str = "\n\n{:<16} {:<8} {:<13} {:<13} {:<13} {:<12} {:<12} {:<12}{:<8}\n".format(
     "Cluster_id",
     "N_xtals",
     "Med_a", "Med_b", "Med_c",
@@ -85,9 +85,11 @@ Input lattice count, with integration Bravais setting space group.
 Cluster median with Niggli cell parameters (std dev in brackets).
 Highest possible metric symmetry and unit cell using LePage (J Appl Cryst 1982, 15:255) method, maximum delta 3deg."""
   out_str += explanation
-  singleton_str = "\n" + str(len(singletons)) + " singletons:"
+  singleton_str = "\n%i singleton%s:" %plural_s(len(singletons))
   singleton_str += "\n\n{:<14} {:<11} {:<11} {:<11}{:<12} {:<12} {:<12}\n".format(
     "Point group",
     "a", "b", "c",      "alpha", "beta", "gamma")
   singleton_str += "".join(singletons)
+  n_clusters = len(sub_clusters) - len(singletons)
+  out_str = "\n%i cluster%s:" %plural_s(n_clusters) + out_str
   return singleton_str + out_str
