@@ -1778,7 +1778,13 @@ def run(args):
   if ("--help" in args) :
     iotbx.phil.parse(master_phil).show(attributes_level=2)
     return
-  phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
+  processor = iotbx.phil.process_command_line(args=args, master_string=master_phil)
+  if len(processor.remaining_args) > 0:
+    print "The following arguments were not recognized:"
+    print "\n".join(processor.remaining_args)
+    iotbx.phil.parse(master_phil).show(attributes_level=2)
+    return
+  phil = processor.show()
   work_params = phil.work.extract()
   from xfel.merging.phil_validation import application
   application(work_params)
