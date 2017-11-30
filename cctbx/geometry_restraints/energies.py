@@ -47,7 +47,7 @@ class energies(scitbx.restraints.energies):
     self.extension_objects=extension_objects
     self.external_energy_function=external_energy_function
     self.gradients=gradients
-    self.ncs_dihedral_manager=ncs_dihedral_manager
+    # self.ncs_dihedral_manager=ncs_dihedral_manager
     self.nonbonded_function=nonbonded_function
     self.nonbonded_proxies=nonbonded_proxies
     self.normalization=normalization

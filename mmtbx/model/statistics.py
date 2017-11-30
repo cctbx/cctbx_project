@@ -23,27 +23,30 @@ class geometry(object):
                use_hydrogens=True,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
-    self.geometry_restraints_manager = geometry_restraints_manager
+    # Don't store GRM here because it is not used and is huge, GUI tries
+    # to pickle it and crashes.
+    # self.geometry_restraints_manager = geometry_restraints_manager
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
     self.cached_result = None
     self.cached_clash = None
     self.cached_rama = None
     self.cached_rota = None
-    self.update()
+    self.update(self.pdb_hierarchy, geometry_restraints_manager)
 
-  def update(self, pdb_hierarchy=None):
+  def update(self, pdb_hierarchy=None, geometry_restraints_manager=None):
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
-    if(self.geometry_restraints_manager is not None):
+    if(geometry_restraints_manager is not None):
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
+      working_geometry_restraints_manager = geometry_restraints_manager
       if(not self.use_hydrogens):
         asc = self.pdb_hierarchy.atom_selection_cache()
         sel = asc.selection("not (element H or element D)")
         sites_cart = sites_cart.select(sel)
-        self.geometry_restraints_manager = self.geometry_restraints_manager.select(sel)
+        working_geometry_restraints_manager = geometry_restraints_manager.select(sel)
       self.from_restraints = \
-        self.geometry_restraints_manager.energies_sites(
+        working_geometry_restraints_manager.energies_sites(
           sites_cart        = sites_cart,
           compute_gradients = False)
       assert approx_equal(
