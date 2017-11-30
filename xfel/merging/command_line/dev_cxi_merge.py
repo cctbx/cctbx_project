@@ -5,7 +5,6 @@
 # $Id$
 from __future__ import division
 
-from iotbx.phil import parse
 from xfel.command_line.cxi_merge import master_phil
 from libtbx.utils import Usage, multi_out
 import sys,os
@@ -13,12 +12,9 @@ from xfel.command_line.cxi_merge import get_observations, scaling_manager, show_
 from cctbx.array_family import flex
 from libtbx import easy_pickle
 
-
 help_message = '''
 Script for merging xfel data
 '''
-
-phil_scope = parse(master_phil)
 
 class Script(object):
   '''A class for running the script.'''
@@ -32,7 +28,8 @@ class Script(object):
   def initialize(self):
     '''Initialise the script.'''
     from dials.util.options import OptionParser
-
+    from iotbx.phil import parse
+    phil_scope = parse(master_phil)
     # Create the parser
     self.parser = OptionParser(
       usage=self.usage,
@@ -45,8 +42,8 @@ class Script(object):
         dest='show_plots',
         help='Show some plots.')
 
-    # Parse the command line
-    params, options = self.parser.parse_args(show_diff_phil=True)
+    # Parse the command line. quick_parse is required for MPI compatibility
+    params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
     self.params = params
     self.options = options
 
@@ -203,15 +200,7 @@ class Script(object):
     easy_pickle.dump("%s.pkl" % self.params.output.prefix, result)
     return result
 
-  def run(self):
-    '''Execute the script.'''
-    from dials.util import log
-
-    self.initialize()
-    self.validate()
-    self.read_models()
-    scaler = self.scale_all()
-    result = self.finalize(scaler)
+  def show_plot(self,result):
     if result is not None:
       if (self.options.show_plots) :
         try :
@@ -223,8 +212,19 @@ class Script(object):
           print "You should be able to view them by running this command:"
           print "  wxtbx.loggraph %s" % result.loggraph_file
           raise e
-    print "DONE"
+
+  def run(self):
+    '''Execute the script.'''
+    self.initialize()
+    self.validate()
+    self.read_models()
+    scaler = self.scale_all()
+    result = self.finalize(scaler)
+    return result
 
 if __name__ == '__main__':
   script = Script()
-  script.run()
+  result = script.run()
+  script.show_plot(result)
+  print "DONE"
+
