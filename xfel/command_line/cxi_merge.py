@@ -1736,6 +1736,17 @@ class scaling_manager (intensity_data) :
     data.show_log_out(sys.stdout)
     return data
 
+  def sum_intensities(self):
+    sum_I = flex.double(self.miller_set.size(), 0.)
+    sum_I_SIGI = flex.double(self.miller_set.size(), 0.)
+    for i in xrange(self.miller_set.size()) :
+      index = self.miller_set.indices()[i]
+      if index in self.ISIGI :
+        for t in self.ISIGI[index]:
+          sum_I[i] += t[0]
+          sum_I_SIGI[i] += t[1]
+    return sum_I, sum_I_SIGI
+
 def consistent_set_and_model(work_params,i_model=None):
   # Adjust the minimum d-spacing of the generated Miller set to assure
   # that the desired high-resolution limit is included even if the
@@ -1859,14 +1870,7 @@ def run(args):
   print >> out, "\n"
 
   # Sum the observations of I and I/sig(I) for each reflection.
-  sum_I = flex.double(miller_set.size(), 0.)
-  sum_I_SIGI = flex.double(miller_set.size(), 0.)
-  for i in xrange(miller_set.size()) :
-    index = miller_set.indices()[i]
-    if index in scaler.ISIGI :
-      for t in scaler.ISIGI[index]:
-        sum_I[i] += t[0]
-        sum_I_SIGI[i] += t[1]
+  sum_I, sum_I_SIGI = scaler.sum_intensities()
 
   miller_set_avg = miller_set.customized_copy(
     unit_cell=work_params.target_unit_cell)
@@ -1935,6 +1939,33 @@ Pred. Multiplicity = # predictions on all accepted images / # Miller indices the
   easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
   return result
 
+def single_reflection_histograms(obs, ISIGI):
+  # Per-bin sum of I and I/sig(I) for each observation.
+  # R-merge statistics have been removed because
+  #  >> R-merge is defined on whole structure factor intensities, either
+  #     full observations or summed partials from the rotation method.
+  #     For XFEL data all reflections are assumed to be partial; no
+  #     method exists now to convert partials to fulls.
+  for i in obs.binner().array_indices(i_bin) :
+    import numpy as np
+    index = obs.indices()[i]
+    if (index in ISIGI) :
+      # Compute m, the "merged" intensity, as the average intensity
+      # of all observations of the reflection with the given index.
+      N = 0
+      m = 0
+      for t in ISIGI[index] :
+        N += 1
+        m += t[0]
+        print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+        plot_n_bins = N//10
+        hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
+        width = 0.7*(bins[1]-bins[0])
+        center = (bins[:-1]+bins[1:])/2
+        import matplotlib.pyplot as plt
+        plt.bar(center, hist, align="center", width=width)
+        plt.show()
+
 def show_overall_observations(
   obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
   n_bins=15, out=None, title=None, work_params=None):
@@ -1990,35 +2021,11 @@ def show_overall_observations(
     I_sigI_sum = flex.sum(intensity * flex.sqrt(summed_weight.select(sel_o)))
     I_n = sel_o.count(True)
 
-    # Per-bin sum of I and I/sig(I) for each observation.
-    # R-merge statistics have been removed because
-    #  >> R-merge is defined on whole structure factor intensities, either
-    #     full observations or summed partials from the rotation method.
-    #     For XFEL data all reflections are assumed to be partial; no
-    #     method exists now to convert partials to fulls.
-    if work_params.plot_single_index_histograms: import numpy as np
-    for i in obs.binner().array_indices(i_bin) :
-      index = obs.indices()[i]
-      if (index in ISIGI) :
-        # Compute m, the "merged" intensity, as the average intensity
-        # of all observations of the reflection with the given index.
-        N = 0
-        m = 0
-        for t in ISIGI[index] :
-          N += 1
-          m += t[0]
-        if work_params is not None and \
-           (work_params.plot_single_index_histograms and \
-            N >= 30 and \
-            work_params.data_subset == 0):
-          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
-          plot_n_bins = N//10
-          hist,bins = np.histogram([t[0] for t in ISIGI[index]],bins=25)
-          width = 0.7*(bins[1]-bins[0])
-          center = (bins[:-1]+bins[1:])/2
-          import matplotlib.pyplot as plt
-          plt.bar(center, hist, align="center", width=width)
-          plt.show()
+    if work_params is not None and \
+     (work_params.plot_single_index_histograms and \
+      N >= 30 and \
+      work_params.data_subset == 0):
+      single_reflection_histograms(obs, ISIGI)
 
     if sel_measurements > 0:
       mean_I = mean_I_sigI = 0

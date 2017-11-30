@@ -9,7 +9,6 @@ from xfel.command_line.cxi_merge import master_phil
 from libtbx.utils import Usage, multi_out
 import sys,os
 from xfel.command_line.cxi_merge import get_observations, scaling_manager, show_overall_observations, scaling_result
-from cctbx.array_family import flex
 from libtbx import easy_pickle
 
 help_message = '''
@@ -123,15 +122,7 @@ class Script(object):
         print "  %s" % str(e)
     print >> self.out, "\n"
 
-    # Sum the observations of I and I/sig(I) for each reflection.
-    sum_I = flex.double(self.miller_set.size(), 0.)
-    sum_I_SIGI = flex.double(self.miller_set.size(), 0.)
-    for i in xrange(self.miller_set.size()) :
-      index = self.miller_set.indices()[i]
-      if index in scaler.ISIGI :
-        for t in scaler.ISIGI[index]:
-          sum_I[i] += t[0]
-          sum_I_SIGI[i] += t[1]
+    sum_I, sum_I_SIGI = scaler.sum_intensities()
 
     miller_set_avg = self.miller_set.customized_copy(
       unit_cell=self.params.target_unit_cell)
