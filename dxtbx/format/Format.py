@@ -119,7 +119,7 @@ class Masker(object):
       **self._kwargs)
     return format_instance.get_mask(goniometer=goniometer)
 
-  def has_dynamic_masking(self):
+  def has_dynamic_mask(self):
     return self.format_class.has_dynamic_shadowing(**self._kwargs)
 
   def paths(self):
