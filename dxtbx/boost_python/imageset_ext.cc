@@ -683,6 +683,7 @@ namespace dxtbx { namespace boost_python {
       .def("indices", &ImageSet::indices)
       .def("size", &ImageSet::size)
       .def("__len__", &ImageSet::size)
+      .def("has_dynamic_mask", &ImageSet::has_dynamic_mask)
       .def("get_raw_data", &ImageSet_get_raw_data)
       .def("get_corrected_data", &ImageSet_get_corrected_data)
       .def("get_gain", &ImageSet_get_gain)
