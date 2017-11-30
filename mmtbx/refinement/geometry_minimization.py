@@ -398,14 +398,8 @@ def minimize_wrapper_for_ramachandran(
   probably not working anymore... no processed_pdb_file available.
   WARNING: no setting sites_cart at the end...
   """
-  try:
-    import cPickle as pickle
-  except ImportError:
-    import pickle
-
   grm = model.get_restraints_manager()
   assert grm is not None
-  from time import time
   from mmtbx.geometry_restraints import reference
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
       reference_model, reference_model_params

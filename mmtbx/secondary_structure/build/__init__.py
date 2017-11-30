@@ -799,7 +799,6 @@ def substitute_ss(
   log.flush()
   if verbose:
     refinement_log = log
-  from mmtbx.refinement.geometry_minimization import run2
   t10 = time()
   if reference_map is None:
     minimize_wrapper_for_ramachandran(
