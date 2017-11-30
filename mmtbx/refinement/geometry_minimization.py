@@ -396,6 +396,7 @@ def minimize_wrapper_for_ramachandran(
   """ Wrapper around geometry minimization specifically tuned for eliminating
   Ramachandran outliers.
   probably not working anymore... no processed_pdb_file available.
+  WARNING: no setting sites_cart at the end...
   """
   try:
     import cPickle as pickle
@@ -476,21 +477,6 @@ def minimize_wrapper_for_ramachandran(
         hierarchy=model.get_hierarchy(),
         log=log)
 
-  # grm pickle-unpickle
-  # t0 = time()
-  # prefix="grm"
-  # pklfile = open("%s.pkl" % prefix, 'wb')
-  # pickle.dump(grm.geometry, pklfile)
-  # pklfile.close()
-  # t1 = time()
-  # pklfile = open("%s.pkl" % prefix, 'rb')
-  # grm_from_file = pickle.load(pklfile)
-  # pklfile.close()
-  # t2 = time()
-  # print "Time pickling/unpickling: %.4f, %.4f" % (t1-t0, t2-t1)
-  # grm.geometry=grm_from_file
-
-
   if run_first_minimization_without_reference:
     obj = run2(
       restraints_manager=grm,
@@ -508,13 +494,11 @@ def minimize_wrapper_for_ramachandran(
       fix_rotamer_outliers=True,
       log=log)
 
-
   if original_pdb_h is not None:
     if not excl_string_selection or len(excl_string_selection) == 0:
       excl_string_selection = "all"
     asc = original_pdb_h.atom_selection_cache()
     sel = asc.selection("(%s) and (name CA or name C or name N or name O)" % excl_string_selection)
-
 
     grm.geometry.append_reference_coordinate_restraints_in_place(
         reference.add_coordinate_restraints(

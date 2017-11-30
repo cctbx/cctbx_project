@@ -11,6 +11,7 @@ from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter as three_on
 from mmtbx import secondary_structure
 from mmtbx.monomer_library import idealized_aa
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
+from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from time import time
@@ -723,7 +724,6 @@ def substitute_ss(
       non_outliers_to_check=fixed_ss_selection, # bool selection
       verbose=True,
       log=log)
-    model.set_sites_cart_from_hierarchy()
 
   if verbose:
     print >> log, "Adding chi torsion restraints..."
@@ -802,34 +802,21 @@ def substitute_ss(
   from mmtbx.refinement.geometry_minimization import run2
   t10 = time()
   if reference_map is None:
-    n_cycles = 3
-    if processed_params.n_macro is not Auto:
-      n_cycles = processed_params.n_macro
-    obj = run2(
-        restraints_manager       = grm,
-        pdb_hierarchy            = model.get_hierarchy(),
-        correct_special_position_tolerance = 1.0,
-        max_number_of_iterations = processed_params.n_iter,
-        number_of_macro_cycles   = n_cycles,
-        bond                     = True,
-        nonbonded                = True,
-        angle                    = True,
-        dihedral                 = True,
-        chirality                = True,
-        planarity                = True,
-        fix_rotamer_outliers     = fix_rotamer_outliers,
-        log                      = refinement_log)
-    model.set_sites_cart_from_hierarchy()
+    minimize_wrapper_for_ramachandran(
+        model = model,
+        original_pdb_h = None,
+        excl_string_selection = "",
+        log = refinement_log,
+        number_of_cycles = processed_params.n_iter)
   else:
     ref_xrs = model.crystal_symmetry()
     minimize_wrapper_with_map(
         model = model,
         target_map=reference_map,
-        ncs_restraints_group_list=[],
         refine_ncs_operators=False,
         number_of_cycles=processed_params.n_macro,
         log=log)
-    model.set_sites_cart_from_hierarchy()
+  model.set_sites_cart_from_hierarchy()
 
   log.write(" Done\n")
   log.flush()
