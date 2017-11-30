@@ -34,16 +34,10 @@ def clean_clutter_in(files, tabsize=8):
         raise
 
 def isort(path):
-  try:
-    import mock
-    from isort.main import main
-  except ImportError:
-    raise # caught upstream
-    # Install package if necessary
-    import pip
-    pip.main(['install', 'isort', 'mock'])
-    import mock
-    from isort.main import main
+  # Potential ImportErrors are caught upstream
+  import mock
+  from isort.main import main
+  return # Disable isort pending resolution of https://github.com/timothycrosley/isort/issues/606
   with mock.patch.object(sys, 'argv', ['isort', '-y', '-ac', '-vb']):
     oldcwd = os.getcwd()
     try:
@@ -102,6 +96,5 @@ by running svn commit.""")
     except Exception as e:
       print("Did not run isort (%s)" % str(e))
 
-if (__name__ == "__main__"):
-  import sys
+if __name__ == "__main__":
   run()
