@@ -2,8 +2,6 @@ from __future__ import division
 import math
 from cctbx import geometry_restraints
 from libtbx.utils import Sorry
-#from scitbx import matrix
-#import time
 from scitbx.array_family import flex
 from scitbx.math import dihedral_angle
 
@@ -40,44 +38,45 @@ class determine_connectivity(object):
   def __init__(self,
       pdb_hierarchy,
       geometry_restraints):
-    self.pdb_hierarchy = pdb_hierarchy
-    self.geometry_restraints = geometry_restraints
-    self.atoms = self.pdb_hierarchy.atoms()
+    geometry = geometry_restraints
+    self.atoms = pdb_hierarchy.atoms()
     self.sites_cart = self.atoms.extract_xyz()
-    self.bond_proxies_simple, self.asu = \
-      self.geometry_restraints.get_all_bond_proxies(sites_cart=self.sites_cart)
-    self.angle_proxies = self.geometry_restraints.get_all_angle_proxies()
-    self.dihedral_proxies = self.geometry_restraints.dihedral_proxies # this should be function in GRM, like previous
-    self.planarity_proxies = self.geometry_restraints.planarity_proxies
-    self.fsc0 = \
-      self.geometry_restraints.shell_sym_tables[0].full_simple_connectivity()
-    self.n_atoms = self.pdb_hierarchy.atoms_size()
+    bond_proxies_simple, asu = \
+      geometry.get_all_bond_proxies(sites_cart = self.sites_cart)
+    angle_proxies = geometry.get_all_angle_proxies()
+    dihedral_proxies = geometry.dihedral_proxies # this should be function in GRM, like previous
+    planarity_proxies = geometry.planarity_proxies
+    fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
+    self.n_atoms = pdb_hierarchy.atoms_size()
     self.hd_sel = self.hd_selection()
-    self.names = list(self.atoms.extract_name())
+    #self.names = list(self.atoms.extract_name())
     # self.h_connectivity = [None for i in range(self.n_atoms)]
     # ~7 times faster:
     self.h_connectivity = [None]*self.n_atoms
     # 1. find parent atoms and ideal A0-H bond distances
-    self.find_first_neighbors()
+    self.find_first_neighbors(
+      bond_proxies_simple = bond_proxies_simple,
+      fsc0                = fsc0)
     # Check that H atoms in connectivity and total number of H atoms is the same
     self.connectivity_slipped = []
     self.count_H()
     # 2. find preliminary list of second neighbors
-    self.find_second_neighbors_raw()
+    self.find_second_neighbors_raw(angle_proxies = angle_proxies)
 
     # Get plane proxies --> useful for NH2 groups without dihedrals
-    self.process_plane_proxies()
+    self.process_plane_proxies(planarity_proxies = planarity_proxies)
 
     # 3. process preliminary list to eliminate atoms in double conformation
     self.process_second_neighbors()
 
     # 4. Find third neighbors via dihedral proxies
-    self.find_third_neighbors()
+    self.find_third_neighbors(dihedral_proxies = dihedral_proxies)
 
     # 5. Find angles involving a0 and covalently bound non-H atoms
     # also: find preliminary list of third neighbors in cases where no dihedral
     # proxy is present
-    self.determine_a0_angles_and_third_neighbors_without_dihedral()
+    self.determine_a0_angles_and_third_neighbors_without_dihedral(
+      angle_proxies = angle_proxies)
 
     # 6. assign the angles found previously and process preliminary list of
     # third neighbors
@@ -89,13 +88,13 @@ class determine_connectivity(object):
     #self.print_stuff()
 
 
-  def find_first_neighbors(self):
+  def find_first_neighbors(self, bond_proxies_simple, fsc0):
     """ Find first neighbors by looping through bond proxies
     Fills in dictionary of 'a0' in object 'neighbors'.
     Keys: i_seq, dist_ideal"""
     self.double_H = {}
     self.parents = set()
-    for bproxy in self.bond_proxies_simple:
+    for bproxy in bond_proxies_simple:
       i_seq, j_seq = bproxy.i_seqs
       is_i_hd = self.hd_sel[i_seq]
       is_j_hd = self.hd_sel[j_seq]
@@ -110,22 +109,22 @@ class determine_connectivity(object):
       # if neighbor exists, use only first one found
       if self.h_connectivity[ih] is not None: continue
       # find H atoms bound to two parent atoms, store info in list 'double_H'
-      if (self.fsc0[ih].size() > 1):
-        self.double_H[ih] = list(self.fsc0[ih])
+      if (fsc0[ih].size() > 1):
+        self.double_H[ih] = list(fsc0[ih])
       self.h_connectivity[ih] = neighbors(
         ih = ih,
         a0 = {'iseq':i_parent, 'dist_ideal': bproxy.distance_ideal,
           'angles':[]})
       self.parents.add(i_parent) #parent atoms stored in a set
 
-  def find_second_neighbors_raw(self):
+  def find_second_neighbors_raw(self, angle_proxies):
     """Get a an array listing all second neighbors for every H atom.
     :returns: a list of lists: [[iseq1, iseq2, ...], ...]
     :rtype: [[],[].[]]
     """
     self.second_neighbors_raw = [[] for i in range(self.n_atoms)]
     self.angle_dict = {}
-    for ap in self.angle_proxies:
+    for ap in angle_proxies:
       for i_test in ap.i_seqs:
         if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
           continue
@@ -206,13 +205,13 @@ class determine_connectivity(object):
 #      print 'angle_ideal a2', neighbors.a2['angle_ideal']
 
 
-  def determine_a0_angles_and_third_neighbors_without_dihedral(self):
+  def determine_a0_angles_and_third_neighbors_without_dihedral(self, angle_proxies):
     """Loop through angle proxies to find angles involving a0 and second
     neighbors. Find raw list of third neighbors, which don't have dihedral
     proxies."""
     self.parent_angles = [{} for i in range(self.n_atoms)]
     self.third_neighbors_raw = [[] for i in range(self.n_atoms)]
-    for ap in self.angle_proxies:
+    for ap in angle_proxies:
       ix, iy, iz = ap.i_seqs
       is_hd_ix = self.hd_sel[ix]
       is_hd_iz = self.hd_sel[iz]
@@ -275,9 +274,9 @@ class determine_connectivity(object):
         self.h_connectivity[ih].b1 = {'iseq': third_neighbors_reduced[0]}
         self.check_for_plane_proxy(ih)
 
-  def process_plane_proxies(self):
+  def process_plane_proxies(self, planarity_proxies):
     self.plane_h = {}
-    for pp in self.planarity_proxies:
+    for pp in planarity_proxies:
       hlist = []
       for i_test in pp.i_seqs:
         if self.hd_sel[i_test]:
@@ -339,10 +338,10 @@ class determine_connectivity(object):
             number_non_h_neighbors = 0)
 
 
-  def find_third_neighbors(self):
+  def find_third_neighbors(self, dihedral_proxies):
     """ Loop through dihedral angle proxies to find third neighbor
     Fill in neighbors.b1 with iseq and angle proxy"""
-    for dp in self.dihedral_proxies:
+    for dp in dihedral_proxies:
       for i_test in dp.i_seqs:
         if (self.h_connectivity[i_test] is None and not self.hd_sel[i_test]):
           continue
@@ -468,7 +467,7 @@ class determine_connectivity(object):
     list_H = []
     for item in self.h_connectivity:
       if item: list_H_connect.append(item.ih)
-    for atom in (self.pdb_hierarchy.atoms()):
+    for atom in self.atoms:
       if (atom.element_is_hydrogen()):
         list_H.append(atom.i_seq)
     set_list_H_connect = set(list_H_connect)
@@ -501,7 +500,7 @@ class determine_connectivity(object):
 
     result = flex.bool()
     self.list_H = []
-    for atom in (self.pdb_hierarchy.atoms()):
+    for atom in self.atoms:
       result.append(atom.element_is_hydrogen())
     return result
 

@@ -2,7 +2,7 @@ from __future__ import division, print_function
 import time
 import mmtbx.model
 import iotbx.pdb
-#from mmtbx.hydrogens import riding
+from mmtbx.hydrogens import connectivity
 
 pdb_str = """\
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
@@ -44,9 +44,10 @@ def exercise():
   restraints_manager = model.get_restraints_manager()
   angle_proxies = restraints_manager.geometry.get_all_angle_proxies()
 
-  model.setup_riding_h_manager()
-
-  h_connectivity = model.get_riding_h_manager().h_connectivity
+  connectivity_manager = connectivity.determine_connectivity(
+    pdb_hierarchy       = model.get_hierarchy(),
+    geometry_restraints = restraints_manager.geometry)
+  h_connectivity = connectivity_manager.h_connectivity
 
 # get bonds stored in connectivity
   bond_list = {}

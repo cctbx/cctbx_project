@@ -11,16 +11,21 @@ class manager(object):
       pdb_hierarchy,
       geometry_restraints,
       use_ideal_bonds_angles = True):
-    self.cs = geometry_restraints.crystal_symmetry
+    #self.cs = geometry_restraints.crystal_symmetry
     self.pdb_hierarchy = pdb_hierarchy
-    self.connectivity_manager = connectivity.determine_connectivity(
+    connectivity_manager = connectivity.determine_connectivity(
       pdb_hierarchy       = self.pdb_hierarchy,
       geometry_restraints = geometry_restraints)
-    self.h_connectivity = self.connectivity_manager.h_connectivity
-    self.double_H = self.connectivity_manager.double_H
-    self.connectivity_slipped = self.connectivity_manager.connectivity_slipped
+    h_connectivity = connectivity_manager.h_connectivity
+    self.h_in_connectivity = []
+    for neighbors in h_connectivity:
+      if (neighbors is not None):
+        self.h_in_connectivity.append(neighbors.ih)
+
+    self.double_H = connectivity_manager.double_H
+    self.connectivity_slipped = connectivity_manager.connectivity_slipped
     self.parameterization_manager = parameterization.manager(
-      h_connectivity         = self.h_connectivity,
+      h_connectivity         = h_connectivity,
       sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
       use_ideal_bonds_angles = use_ideal_bonds_angles)
     self.h_parameterization = \
@@ -120,11 +125,11 @@ class manager(object):
       if (h_distance > threshold):
         long_distance_list.append(ih)
     all_h_in_para = list_h + unk_list + unk_ideal_list
-    list_h_connect = []
-    for item in self.h_connectivity:
-      if (item):
-        list_h_connect.append(item.ih)
-    slipped = [x for x in list_h_connect if x not in set(all_h_in_para)]
+#    list_h_connect = []
+#    for item in self.h_connectivity:
+#      if (item):
+#        list_h_connect.append(item.ih)
+    slipped = [x for x in self.h_in_connectivity if x not in set(all_h_in_para)]
     return group_args(
       h_distances          = h_distances,
       unk_list             = unk_list,
@@ -133,7 +138,7 @@ class manager(object):
       slipped              = slipped,
       type_list            = type_list,
       number_h_para        = len(list_h),
-      n_connect            = len(list_h_connect),
+#      n_connect            = len(list_h_connect),
       threshold            = threshold,
       double_H             = self.double_H,
       connectivity_slipped = self.connectivity_slipped)

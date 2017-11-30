@@ -109,7 +109,6 @@ tst_list = (
   "$D/hydrogens/tst.py",
   "$D/hydrogens/tst_validate_H.py",
   "$D/hydrogens/tst_connectivity.py",
-  "$D/hydrogens/tst_connectivity_m.py",
   "$D/hydrogens/tst_parameterization_1.py",
   "$D/hydrogens/tst_parameterization_2.py",
   "$D/hydrogens/tst_parameterization_3.py",
