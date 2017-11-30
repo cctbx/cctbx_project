@@ -49,43 +49,37 @@ class determine_connectivity(object):
     fsc0 = geometry.shell_sym_tables[0].full_simple_connectivity()
     self.n_atoms = pdb_hierarchy.atoms_size()
     self.hd_sel = self.hd_selection()
-    #self.names = list(self.atoms.extract_name())
-    # self.h_connectivity = [None for i in range(self.n_atoms)]
-    # ~7 times faster:
     self.h_connectivity = [None]*self.n_atoms
-    # 1. find parent atoms and ideal A0-H bond distances
+    # 1. Find parent atoms and ideal A0-H bond distances
     self.find_first_neighbors(
       bond_proxies_simple = bond_proxies_simple,
       fsc0                = fsc0)
-    # Check that H atoms in connectivity and total number of H atoms is the same
-    self.connectivity_slipped = []
+    # Check if number H in connectivity and number H in model is the same
     self.count_H()
     # 2. find preliminary list of second neighbors
     self.find_second_neighbors_raw(angle_proxies = angle_proxies)
 
-    # Get plane proxies --> useful for NH2 groups without dihedrals
+    # 3. Get plane proxies --> useful for NH2 groups without dihedrals
     self.process_plane_proxies(planarity_proxies = planarity_proxies)
 
-    # 3. process preliminary list to eliminate atoms in double conformation
+    # 4. process preliminary list to eliminate atoms in double conformation
     self.process_second_neighbors()
 
-    # 4. Find third neighbors via dihedral proxies
+    # 5. Find third neighbors via dihedral proxies
     self.find_third_neighbors(dihedral_proxies = dihedral_proxies)
 
-    # 5. Find angles involving a0 and covalently bound non-H atoms
-    # also: find preliminary list of third neighbors in cases where no dihedral
-    # proxy is present
+    # 6. Find angles involving a0 and covalently bound non-H atoms and
+    #    find preliminary list of third neighbors in cases where no dihedral
+    #    proxy is present
     self.determine_a0_angles_and_third_neighbors_without_dihedral(
       angle_proxies = angle_proxies)
 
-    # 6. assign the angles found previously and process preliminary list of
-    # third neighbors
+    # 7. Assign the angles found previously and process preliminary list of
+    #    third neighbors
     self.process_a0_angles_and_third_neighbors_without_dihedral()
 
-    # Finally, add slipped H atoms again (not in bond proxies)
+    # Add slipped H atoms to h_connectivity
     self.add_slipped()
-
-    #self.print_stuff()
 
 
   def find_first_neighbors(self, bond_proxies_simple, fsc0):
@@ -139,7 +133,6 @@ class determine_connectivity(object):
         self.angle_dict[(ih, i_parent, i_second)] = ap.angle_ideal
 
 
-
   def process_second_neighbors(self):
     """Once candidates for second neighbors are determined, they are further
     processed, mainly to avoid alternative conformations of the same atom"""
@@ -172,37 +165,6 @@ class determine_connectivity(object):
         i_a1 = self.h_connectivity[ih].a1['iseq']
         self.a1_atoms.add(i_a1)
         self.a0a1_dict[i_parent] = i_a1
-
-#  def print_stuff(self):
-#    """Print information of connectivity for each H atom."""
-#    for neighbors in self.h_connectivity:
-#      if neighbors is None: continue
-#      ih = neighbors.ih
-#      if (ih != 1620): continue
-#      labels = self.atoms[ih].fetch_labels()
-#      i_a0 = neighbors.a0['iseq']
-#      i_a1 = neighbors.a1['iseq']
-#      string = self.names[i_a1]+'('+str(i_a1)+')'
-#      if 'iseq' in neighbors.a2:
-#        i_a2 = neighbors.a2['iseq']
-#        string = string + self.names[i_a2]
-#      if 'iseq' in neighbors.a3:
-#        string = string + self.names[neighbors.a3['iseq']]
-#      output = (self.names[ih], ih, labels.resseq.strip(), self.names[i_a0], i_a0, string)
-#      stringh = ''
-#      if 'iseq' in neighbors.h1:
-#        stringh = stringh + self.names[neighbors.h1['iseq']]
-#      if 'iseq' in neighbors.h2:
-#        stringh = stringh + self.names[neighbors.h2['iseq']]
-#      if 'iseq' in neighbors.b1:
-#        stringb1 = self.names[neighbors.b1['iseq']]
-#      else:
-#        stringb1 = 'n/a'
-#      output = output + (stringh,) + (stringb1,)#+ (self.third_neighbors_raw[i_a0],)
-#      print '%s %s (%s) , %s (%s) , %s , %s,%s' % output
-#      print 'angle_a1a0a2', neighbors.a0['angle_a1a0a2']
-#      print 'angle_ideal a1', neighbors.a1['angle_ideal']
-#      print 'angle_ideal a2', neighbors.a2['angle_ideal']
 
 
   def determine_a0_angles_and_third_neighbors_without_dihedral(self, angle_proxies):
@@ -450,17 +412,14 @@ class determine_connectivity(object):
     return alt_conf_neighbors_reduced
 
   def count_H(self):
-    """# Check if number H/D atoms in the hd_selection (= in the model) and
-    in h_connectivity are the same"""
-    number_h_1 = 0
-    for h_bool in self.hd_sel:
-      if h_bool: number_h_1 += 1
-    number_h_2 = 0
-    for item in self.h_connectivity:
-      if item: number_h_2 += 1
-    if (number_h_1 != number_h_2):
+    """ Check if number H/D atoms in the in the model and in h_connectivity
+    are the same"""
+    self.connectivity_slipped = []
+    number_h_input_model = self.hd_sel.count(True)
+    number_h_connectivity = \
+      len(self.h_connectivity) - self.h_connectivity.count(None)
+    if (number_h_input_model != number_h_connectivity):
       self.find_mismatch()
-    #assert (number_h_1 == number_h_2)
 
   def find_mismatch(self):
     list_H_connect = []
@@ -472,13 +431,7 @@ class determine_connectivity(object):
         list_H.append(atom.i_seq)
     set_list_H_connect = set(list_H_connect)
     slipped = [x for x in list_H if x not in set_list_H_connect]
-    #for hatom in slipped:
-    #  #if (not self.fsc0[hatom]):
-    #  labels = self.atoms[hatom].fetch_labels()
-    #  print 'atom: %s residue: %s chain %s' % (self.atoms[hatom].name,
-    #    labels.resseq.strip(), labels.chain_id), list(self.fsc0[hatom])
     self.connectivity_slipped = slipped
-
 
   def add_slipped(self):
     for ih in self.connectivity_slipped:
@@ -491,13 +444,6 @@ class determine_connectivity(object):
     :returns: an array to select all H and D scatterers of the structure
     :rtype: boolean[]
     """
-    # looked very much like copy-paste from xray structure
-    # (cctbx_project/cctbx/xray/structure.py) - which is fine, but
-    # As a general function it should reside in
-    # cctbx_project/iotbx/pdb/hierarchy.py as pdb_hierarchy method
-    # Surprisingly, append() here works bit faster than making the correct
-    # size array and access by elements...
-
     result = flex.bool()
     self.list_H = []
     for atom in self.atoms:
