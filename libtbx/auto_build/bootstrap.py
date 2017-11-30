@@ -446,9 +446,9 @@ class Toolbox(object):
         else:
           branch = False
         remote, rebase = False, False
-      if re.match('remote\s*=\s*', line.strip()):
+      if re.match('remote\s*=', line.strip()):
         remote = True
-      if re.match('rebase\s*=\s*', line.strip()):
+      if re.match('rebase\s*=', line.strip()):
         rebase = True
     if branch and remote and not rebase:
       insertions.insert(0, (n + 1, branch))
@@ -457,6 +457,49 @@ class Toolbox(object):
       cfg.insert(n, '\trebase = true\n')
     with open(config, 'w') as fh:
       fh.write("".join(cfg))
+
+  @staticmethod
+  def install_git_hooks(basedir, config):
+    if os.name != 'posix':
+      return # Only can do linux/mac
+    hookdir = os.path.join(basedir, '.git', 'hooks')
+    precommit = os.path.join(hookdir, 'pre-commit')
+    if os.path.exists(precommit) and os.access(precommit, os.X_OK):
+      return
+    with open(config, 'r') as fh:
+      cfg = fh.readlines()
+    core = False
+    for n, line in enumerate(cfg):
+      if line.startswith('['):
+        if core:
+          cfg.insert(n, '\twhitespace = blank-at-eol,space-before-tab,tab-in-indent,-blank-at-eof\n')
+          with open(config, 'w') as fh:
+            fh.write("".join(cfg))
+          break
+        core = line.strip() == '[core]'
+      if core and re.match('whitespace\s*=', line.strip()):
+        break
+    with open(precommit, 'w') as fh:
+      fh.write('''#!/bin/sh
+#
+# Ensure committed files do not contain trailing whitespace.
+# Use git commit --no-verify to override.
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+# If there are whitespace errors, print the offending file names and abort the commit.
+exec git diff-index --check --cached $against --
+''')
+      mode = os.fstat(fh.fileno()).st_mode
+      mode |= (mode & 0o444) >> 2
+      os.fchmod(fh.fileno(), mode & 0o7777)
+    print("Installed git pre-commit clutter detection in %s" % basedir)
 
   @staticmethod
   def git(module, parameters, destination=None, use_ssh=False, verbose=False, reference=None):
