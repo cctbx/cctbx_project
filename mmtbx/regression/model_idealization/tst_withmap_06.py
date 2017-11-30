@@ -186,6 +186,7 @@ def exercise_04(prefix="tst_mi_map_test_06"):
   for l in [
       "Using ncs\n",
       "Idealizing chain A1\n",
+      'Working on pdbres="VALA1  13 " OUTLIER\n',
       # "Using map as reference\n",
       # "  Minimizing... (NCS)\n",
       # "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
@@ -193,7 +194,8 @@ def exercise_04(prefix="tst_mi_map_test_06"):
     assert l in log_lines, "'%s' not in log file." % l
   # should not be there
   for l in [
-      "Idealizing chain A2\n"]:
+      "Idealizing chain A2\n",
+      'Working on pdbres="VALA2  13 " OUTLIER\n']:
     assert l not in log_lines, "'%s' should not be in log file." % l
 
 if (__name__ == "__main__"):

@@ -752,7 +752,8 @@ class model_idealization():
       fix_rotamer_outliers(
           model = self.model,
           map_data=self.master_map,
-          verbose=True)
+          verbose=True,
+          log=self.log)
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,

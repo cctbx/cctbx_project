@@ -2483,9 +2483,17 @@ def fix_rotamer_outliers(
     log = sys.stdout
   rotamer_manager = model.get_rotamer_manager()
   get_class = iotbx.pdb.common_residue_names_get_class
-  pdb_hierarchy = model.get_hierarchy()
-  asc = model.get_atom_selection_cache()
-  xrs = model.get_xray_structure()
+  if model.ncs_constraints_present():
+    pdb_hierarchy = model.get_master_hierarchy()
+    asc = pdb_hierarchy.atom_selection_cache()
+    xrs = pdb_hierarchy.extract_xray_structure()
+    grm = model.get_restraints_manager().select(model.get_master_selection()).geometry
+  else:
+    pdb_hierarchy = model.get_hierarchy()
+    asc = model.get_atom_selection_cache()
+    xrs = model.get_xray_structure()
+    grm = model.get_restraints_manager().geometry
+
   assert pdb_hierarchy is not None
   # assert grm is not None
   assert xrs is not None
@@ -2531,7 +2539,7 @@ def fix_rotamer_outliers(
                 pdb_hierarchy,
                 xrs,
                 map_data,
-                model.get_restraints_manager().geometry,
+                grm,
                 rotamer_manager,
                 crystal_gridding,
                 model.get_mon_lib_srv(),
@@ -2540,7 +2548,7 @@ def fix_rotamer_outliers(
                 backrub_range,
                 log,
                 verbose)
-  model.set_sites_cart_from_hierarchy()
+  model.set_sites_cart_from_hierarchy(multiply_ncs=True)
   return pdb_hierarchy
 
 def switch_rotamers(
