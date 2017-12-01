@@ -967,7 +967,15 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   residues_with_different_n_atoms = []
   for (i,j) in zip(res_num_a,res_num_b):
     # iterate over atoms in residues
-    # print "working with", i,j, chains_info[a_id].res_names[i], chains_info[a_id].resid[i], #chains_info[b_id].res_names[j]
+    # print "working with", i,j, chains_info[a_id].res_names[i], chains_info[a_id].resid[i], chains_info[b_id].res_names[j]
+    if chains_info[a_id].res_names[i] != chains_info[b_id].res_names[j]:
+      # This is happening in rare cases when 2 chains have different ions in them.
+      # All ions and exotic residues get replaced with 'X' single character for
+      # alignment and can be matched with each other.
+      # Filtering them out here was more targeted solution compared to changing
+      # cctbx_project/mmtbx/alignment.py function identity(a, b).
+      # print "skipping: ", "'%s' != '%s'" % (chains_info[a_id].res_names[i], chains_info[b_id].res_names[j])
+      continue
     sa = flex.size_t(chains_info[a_id].atom_selection[i])
     sb = flex.size_t(chains_info[b_id].atom_selection[j])
     dif_res_size = sa.size() != sb.size()
