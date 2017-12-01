@@ -1,5 +1,9 @@
 # LIBTBX_SET_DISPATCHER_NAME mpi.merge
 from __future__ import division
+
+print "Deprecated on 12/01/17. Code will be removed at a later date"
+exit()
+
 import sys,time
 from xfel.command_line import cxi_merge
 

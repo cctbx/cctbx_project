@@ -1,5 +1,9 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME mpi.worker2
+
+print "Deprecated on 12/01/17. Code will be removed at a later date"
+exit()
+
 from mpi4py import MPI
 from xfel.command_line.mpi_merge import scaling_manager_mpi
 

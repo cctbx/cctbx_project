@@ -1,5 +1,9 @@
 # LIBTBX_SET_DISPATCHER_NAME mpi.cluster_two_merge
 from __future__ import division
+
+print "Deprecated on 12/01/17. Code will be removed at a later date"
+exit()
+
 import sys,time,os
 from xfel.command_line import cxi_merge
 from libtbx.utils import Usage, multi_out

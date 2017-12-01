@@ -1,5 +1,9 @@
 # LIBTBX_SET_DISPATCHER_NAME singlenode.merge
 from __future__ import division
+
+print "Deprecated on 12/01/17. Code will be removed at a later date"
+exit()
+
 from xfel.command_line.cxi_merge import run
 from xfel.command_line.cxi_merge import OutlierCellError, WrongBravaisError
 import sys,glob,os,math,time
