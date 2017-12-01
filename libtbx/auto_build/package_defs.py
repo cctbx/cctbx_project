@@ -107,6 +107,7 @@ FONT_PKG = "fonts.tar.gz"
 
 MATPLOTLIB_PKG = "matplotlib-2.0.0.tar.gz"
 # CentOS 5 glibc too old to support matplotlib-2.0.0 dependency (subprocess32)
+# will be fixed in subprocess32 3.5+, https://github.com/google/python-subprocess32/blob/master/ChangeLog
 if (sys.platform.startswith("linux")):
   distribution = platform.dist()
   if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
