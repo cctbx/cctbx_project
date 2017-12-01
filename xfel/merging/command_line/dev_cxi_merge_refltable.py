@@ -20,39 +20,35 @@ def merging_reflection_table():
   table['miller_id'] = flex.size_t()
   return table
 
-def single_reflection_histograms(obs, ISIGI):
-  # Per-bin sum of I and I/sig(I) for each observation.
-  # R-merge statistics have been removed because
-  #  >> R-merge is defined on whole structure factor intensities, either
-  #     full observations or summed partials from the rotation method.
-  #     For XFEL data all reflections are assumed to be partial; no
-  #     method exists now to convert partials to fulls.
-  import numpy as np
-  for i in obs.binner().array_indices(i_bin) :
-    index = obs.indices()[i]
-    refls = ISIGI.select(ISIGI['miller_index'] == index)
-    if (len(refls) > 0) :
-      # Compute m, the "merged" intensity, as the average intensity
-      # of all observations of the reflection with the given index.
-      N = 0
-      m = 0
-      for j in xrange(len(refls)):
-        N += 1
-        m += refls['isigi'][j]
-
-        print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
-        plot_n_bins = N//10
-        hist,bins = np.histogram(refls['intensity'],bins=25)
-        width = 0.7*(bins[1]-bins[0])
-        center = (bins[:-1]+bins[1:])/2
-        import matplotlib.pyplot as plt
-        plt.bar(center, hist, align="center", width=width)
-        plt.show()
-
 class refltable_scaling_manager(scaling_manager):
   def initialize (self) :
     super(refltable_scaling_manager, self).initialize()
     self.ISIGI = merging_reflection_table()
+
+  @staticmethod
+  def single_reflection_histograms(obs, ISIGI):
+    # Per-bin sum of I and I/sig(I) for each observation.
+    import numpy as np
+    for i in obs.binner().array_indices(i_bin) :
+      index = obs.indices()[i]
+      refls = ISIGI.select(ISIGI['miller_index'] == index)
+      if (len(refls) > 0) :
+        # Compute m, the "merged" intensity, as the average intensity
+        # of all observations of the reflection with the given index.
+        N = 0
+        m = 0
+        for j in xrange(len(refls)):
+          N += 1
+          m += refls['isigi'][j]
+
+          print "Miller %20s n-obs=%4d  sum-I=%10.0f"%(index, N, m)
+          plot_n_bins = N//10
+          hist,bins = np.histogram(refls['intensity'],bins=25)
+          width = 0.7*(bins[1]-bins[0])
+          center = (bins[:-1]+bins[1:])/2
+          import matplotlib.pyplot as plt
+          plt.bar(center, hist, align="center", width=width)
+          plt.show()
 
   def scale_frame_detail(self, result, file_name, db_mgr, out):
     data = super(refltable_scaling_manager, self).scale_frame_detail(result, file_name, db_mgr, out)
