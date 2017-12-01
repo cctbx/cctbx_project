@@ -145,7 +145,7 @@ class run_manager(object):
 
   miller_set_avg = miller_set.customized_copy(
     unit_cell=work_params.target_unit_cell)
-  table1 = cxi_merge.show_overall_observations(
+  table1 = cxi_merge.scaling_manager.show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.completeness,
     redundancy_to_edge=scaler.completeness_predictions,
@@ -162,7 +162,7 @@ class run_manager(object):
   else:
     n_refl, corr = ((scaler.completeness > 0).count(True), 0)
   print >> out, "\n"
-  table2 = cxi_merge.show_overall_observations(
+  table2 = cxi_merge.scaling_manager.show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.summed_N,
     redundancy_to_edge=scaler.completeness_predictions,
