@@ -11,25 +11,22 @@ class manager(object):
       pdb_hierarchy,
       geometry_restraints,
       use_ideal_bonds_angles = True):
-    #self.cs = geometry_restraints.crystal_symmetry
     self.pdb_hierarchy = pdb_hierarchy
     connectivity_manager = connectivity.determine_connectivity(
       pdb_hierarchy       = self.pdb_hierarchy,
       geometry_restraints = geometry_restraints)
     h_connectivity = connectivity_manager.h_connectivity
-    self.h_in_connectivity = []
-    for neighbors in h_connectivity:
-      if (neighbors is not None):
-        self.h_in_connectivity.append(neighbors.ih)
 
-    self.double_H = connectivity_manager.double_H
-    self.connectivity_slipped = connectivity_manager.connectivity_slipped
+    diagnostics_connectivity = connectivity_manager.get_diagnostics()
+    self.h_in_connectivity = diagnostics_connectivity.h_in_connectivity
+    self.double_H = diagnostics_connectivity.double_H
+    self.connectivity_slipped = diagnostics_connectivity.connectivity_slipped
+
     self.parameterization_manager = parameterization.manager(
       h_connectivity         = h_connectivity,
       sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
       use_ideal_bonds_angles = use_ideal_bonds_angles)
-    self.h_parameterization = \
-      self.parameterization_manager.determine_parameterization()
+    self.h_parameterization = self.parameterization_manager.h_parameterization
     self.parameterization_cpp = []
     for hp in self.h_parameterization:
       if (hp is not None):

@@ -12,6 +12,7 @@ class manager(object):
     self.h_connectivity = h_connectivity
     self.sites_cart = sites_cart
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
+    self.determine_parameterization()
 
 # for every H atom, determine the type of geometry
   def determine_parameterization(self):
@@ -39,7 +40,7 @@ class manager(object):
         self.process_1_neighbor_type_arg(neighbors = neighbors)
       else:
         self.unk_list.append(ih)
-    return self.h_parameterization
+    #return self.h_parameterization
 
   def process_1_neighbor(self, neighbors):
     ih = neighbors.ih

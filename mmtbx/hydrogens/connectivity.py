@@ -2,6 +2,7 @@ from __future__ import division
 import math
 from cctbx import geometry_restraints
 from libtbx.utils import Sorry
+from libtbx import group_args
 from scitbx.array_family import flex
 from scitbx.math import dihedral_angle
 
@@ -438,6 +439,16 @@ class determine_connectivity(object):
       self.h_connectivity[ih] = neighbors(
         ih = ih,
         number_non_h_neighbors = 0)
+
+  def get_diagnostics(self):
+    h_in_connectivity = []
+    for neighbors in self.h_connectivity:
+      if (neighbors is not None):
+        h_in_connectivity.append(neighbors.ih)
+    return group_args(
+      double_H = self.double_H,
+      connectivity_slipped = self.connectivity_slipped,
+      h_in_connectivity = h_in_connectivity)
 
   def hd_selection(self):
     """Get a selector array for all hydrogen and deuterium scatterers of the structure.
