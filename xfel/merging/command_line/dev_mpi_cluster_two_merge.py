@@ -2,11 +2,11 @@
 from __future__ import division
 import sys,time
 
-from xfel.merging.command_line.single_node_merge import scaling_manager as scaling_manager_base
+from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
 class scaling_manager_mpi(scaling_manager_base):
 
   def mpi_initialize (self, file_names) :
-    tar_list,self.integration_pickle_names = file_names
+    self.integration_pickle_names = file_names
     self.t1 = time.time()
 
     assert self.params.backend == 'FS' # for prototyping rank=0 marshalling
@@ -105,14 +105,9 @@ class Script(base_Script):
     assert scaler_worker.params.backend == 'FS' # only option that makes sense
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
-    tar_file_names = transmitted_info["file_names"][0]
-
+    file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
     if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
-    for ix in xrange(len(tar_file_names)):
-      if ix%size == rank:
-        if timing: print "SCALER_WORKER START=%s RANK=%d TIME=%f"%(str([tar_file_names[ix],]), rank, tt())
-        scaler_worker.tar_to_scale_frame_adapter(tar_list=[tar_file_names[ix],], db_mgr=db_mgr)
-        if timing: print "SCALER_WORKER END=%s RANK=%d TIME=%f"%(str([tar_file_names[ix],]), rank, tt())
+    scaler_worker._scale_all_serial(file_names, db_mgr)
     if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())
     scaler_worker.finished_db_mgr = db_mgr
     # might want to clean up a bit before returning
