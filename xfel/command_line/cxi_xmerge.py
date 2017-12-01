@@ -17,7 +17,7 @@ import time
 import sys
 
 from xfel.command_line.cxi_merge import master_phil,scaling_manager
-from xfel.command_line.cxi_merge import unit_cell_distribution
+from xfel.command_line.cxi_merge import unit_cell_distribution,show_overall_observations
 from xfel.command_line.cxi_merge import scaling_result
 from xfel.command_line.cxi_merge import consistent_set_and_model
 from xfel import column_parser
@@ -342,7 +342,7 @@ def run(args):
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)
 
-    table1 = scaling_manager.show_overall_observations(
+    table1 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.completeness,
       redundancy_to_edge=None,
@@ -361,7 +361,7 @@ def run(args):
     else:
       n_refl, corr = ((scaler.completeness > 0).count(True), 0)
     print >> out, "\n"
-    table2 = scaling_manager.show_overall_observations(
+    table2 = show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.summed_N,
       redundancy_to_edge=None,

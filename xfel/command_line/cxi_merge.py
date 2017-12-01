@@ -1773,181 +1773,6 @@ class scaling_manager (intensity_data) :
           sum_I_SIGI[i] += t[1]
     return sum_I, sum_I_SIGI
 
-  @staticmethod
-  def show_overall_observations(
-    obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
-    n_bins=15, out=None, title=None, work_params=None):
-    if out is None:
-      out = sys.stdout
-    obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
-    result = []
-
-    cumulative_unique = 0
-    cumulative_meas   = 0
-    cumulative_n_pred = 0
-    cumulative_pred   = 0
-    cumulative_theor  = 0
-    cumulative_In     = 0
-    cumulative_I      = 0.0
-    cumulative_Isigma = 0.0
-
-    for i_bin in obs.binner().range_used():
-      sel_w = obs.binner().selection(i_bin)
-      sel_fo_all = obs.select(sel_w)
-      obs.binner()._have_format_strings=True
-      obs.binner().fmt_bin_range_used ="%6.3f -%6.3f"
-      d_range = obs.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      sel_redundancy = redundancy.select(sel_w)
-      if redundancy_to_edge is not None:
-        sel_redundancy_pred = redundancy_to_edge.select(sel_w)
-      else:
-        sel_redundancy_pred = None
-      sel_absent = sel_redundancy.count(0)
-      n_present = sel_redundancy.size() - sel_absent
-      sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
-      sel_measurements = flex.sum(sel_redundancy)
-
-      # Alternatively, redundancy (or multiplicity) is calculated as the
-      # average number of observations for the observed
-      # reflections--missing reflections do not affect the redundancy
-      # adversely, and the reported value becomes
-      # completeness-independent.
-      val_redundancy_obs = 0
-      if n_present > 0:
-        val_redundancy_obs = flex.sum(sel_redundancy) / n_present
-      # Repeat on the full set of predictions, calculated w.r.t. the asymmetric unit
-      val_redundancy_pred = 0
-      if redundancy_to_edge is not None and n_present > 0:
-        val_redundancy_pred = flex.sum(sel_redundancy_pred) / sel_redundancy.size()
-
-      # Per-bin sum of I and I/sig(I).  For any reflection, the weight
-      # of the merged intensity must be positive for this to make sense.
-      sel_o = (sel_w & (summed_weight > 0))
-      intensity = summed_wt_I.select(sel_o) / summed_weight.select(sel_o)
-      I_sum = flex.sum(intensity)
-      I_sigI_sum = flex.sum(intensity * flex.sqrt(summed_weight.select(sel_o)))
-      I_n = sel_o.count(True)
-
-      if work_params is not None and \
-       (work_params.plot_single_index_histograms and \
-        N >= 30 and \
-        work_params.data_subset == 0):
-        scaling_manager.single_reflection_histograms(obs, ISIGI)
-
-      if sel_measurements > 0:
-        mean_I = mean_I_sigI = 0
-        if I_n > 0:
-          mean_I = I_sum / I_n
-          mean_I_sigI = I_sigI_sum / I_n
-        bin = resolution_bin(
-          i_bin=i_bin,
-          d_range=d_range,
-          d_min=obs.binner().bin_d_min(i_bin),
-          redundancy_asu=flex.mean(sel_redundancy.as_double()),
-          redundancy_obs=val_redundancy_obs,
-          redundancy_to_edge=val_redundancy_pred,
-          complete_tag=sel_complete_tag,
-          completeness=n_present / sel_redundancy.size(),
-          measurements=sel_measurements,
-          predictions=sel_redundancy_pred,
-          mean_I=mean_I,
-          mean_I_sigI=mean_I_sigI)
-        result.append(bin)
-      cumulative_unique += n_present
-      cumulative_meas   += sel_measurements
-      if redundancy_to_edge is not None:
-        cumulative_n_pred += flex.sum(sel_redundancy_pred)
-        cumulative_pred   += redundancy_to_edge
-      cumulative_theor  += sel_redundancy.size()
-      cumulative_In     += I_n
-      cumulative_I      += I_sum
-      cumulative_Isigma += I_sigI_sum
-
-    if (title is not None) :
-      print >> out, title
-    from libtbx import table_utils
-    table_header = ["","","","","<asu","<obs","<pred","","","",""]
-    table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","multi>",
-      "n_meas", "n_pred","<I>","<I/sig(I)>"]
-    use_preds = (redundancy_to_edge is not None and flex.sum(redundancy_to_edge) > 0)
-    include_columns = [True, True, True, True, True, True, use_preds, True, use_preds, True, True]
-    table_data = []
-    table_data.append(table_header)
-    table_data.append(table_header2)
-    for bin in result:
-      table_row = []
-      table_row.append("%3d" % bin.i_bin)
-      table_row.append("%-13s" % bin.d_range)
-      table_row.append("%13s" % bin.complete_tag)
-      table_row.append("%5.2f" % (100*bin.completeness))
-      table_row.append("%6.2f" % bin.redundancy_asu)
-      table_row.append("%6.2f" % bin.redundancy_obs)
-      table_row.append("%6.2f" % (0 if redundancy_to_edge is None else bin.redundancy_to_edge))
-      table_row.append("%6d" % bin.measurements)
-      table_row.append("%6d" % (0 if redundancy_to_edge is None else flex.sum(bin.predictions)))
-      table_row.append("%8.0f" % bin.mean_I)
-      table_row.append("%8.3f" % bin.mean_I_sigI)
-      table_data.append(table_row)
-    if len(table_data) <= 2:
-      print >>out,"Table could not be constructed -- no bins accepted."
-      return
-    table_data.append([""]*len(table_header))
-    table_data.append(  [
-        format_value("%3s",   "All"),
-        format_value("%-13s", "                 "),
-        format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
-        format_value("%5.2f", 100*(cumulative_unique/cumulative_theor)),
-        format_value("%6.2f", cumulative_meas/cumulative_theor),
-        format_value("%6.2f", cumulative_meas/cumulative_unique),
-        format_value("%6.2f", (0 if redundancy_to_edge is None else cumulative_n_pred/cumulative_theor)),
-        format_value("%6d",   cumulative_meas),
-        format_value("%6d",   (0 if redundancy_to_edge is None else flex.sum(redundancy_to_edge))),
-        format_value("%8.0f", cumulative_I/cumulative_In),
-        format_value("%8.3f", cumulative_Isigma/cumulative_In),
-    ])
-    table_data = table_utils.manage_columns(table_data, include_columns)
-
-    print
-    print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
-
-    # XXX generate table object for displaying plots
-    if (title is None) :
-      title = "Data statistics by resolution"
-    table = data_plots.table_data(
-      title=title,
-      x_is_inverse_d_min=True,
-      force_exact_x_labels=True)
-    table.add_column(
-      column=[1 / bin.d_min**2 for bin in result],
-      column_name="d_min",
-      column_label="Resolution")
-    table.add_column(
-      column=[bin.redundancy_asu for bin in result],
-      column_name="redundancy",
-      column_label="Redundancy")
-    table.add_column(
-      column=[bin.completeness for bin in result],
-      column_name="completeness",
-      column_label="Completeness")
-    table.add_column(
-      column=[bin.mean_I_sigI for bin in result],
-      column_name="mean_i_over_sigI",
-      column_label="<I/sig(I)>")
-    table.add_graph(
-      name="Redundancy vs. resolution",
-      type="GRAPH",
-      columns=[0,1])
-    table.add_graph(
-      name="Completeness vs. resolution",
-      type="GRAPH",
-      columns=[0,2])
-    table.add_graph(
-      name="<I/sig(I)> vs. resolution",
-      type="GRAPH",
-      columns=[0,3])
-    return table
-
 def consistent_set_and_model(work_params,i_model=None):
   # Adjust the minimum d-spacing of the generated Miller set to assure
   # that the desired high-resolution limit is included even if the
@@ -2075,7 +1900,7 @@ def run(args):
 
   miller_set_avg = miller_set.customized_copy(
     unit_cell=work_params.target_unit_cell)
-  table1 = scaling_manager.show_overall_observations(
+  table1 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.completeness,
     redundancy_to_edge=scaler.completeness_predictions,
@@ -2092,7 +1917,7 @@ def run(args):
   else:
     n_refl, corr = ((scaler.completeness > 0).count(True), 0)
   print >> out, "\n"
-  table2 = scaling_manager.show_overall_observations(
+  table2 = show_overall_observations(
     obs=miller_set_avg,
     redundancy=scaler.summed_N,
     redundancy_to_edge=scaler.completeness_predictions,
@@ -2139,6 +1964,180 @@ Pred. Multiplicity = # predictions on all accepted images / # Miller indices the
     overall_correlation=corr)
   easy_pickle.dump("%s.pkl" % work_params.output.prefix, result)
   return result
+
+def show_overall_observations(
+  obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
+  n_bins=15, out=None, title=None, work_params=None):
+  if out is None:
+    out = sys.stdout
+  obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
+  result = []
+
+  cumulative_unique = 0
+  cumulative_meas   = 0
+  cumulative_n_pred = 0
+  cumulative_pred   = 0
+  cumulative_theor  = 0
+  cumulative_In     = 0
+  cumulative_I      = 0.0
+  cumulative_Isigma = 0.0
+
+  for i_bin in obs.binner().range_used():
+    sel_w = obs.binner().selection(i_bin)
+    sel_fo_all = obs.select(sel_w)
+    obs.binner()._have_format_strings=True
+    obs.binner().fmt_bin_range_used ="%6.3f -%6.3f"
+    d_range = obs.binner().bin_legend(
+      i_bin=i_bin, show_bin_number=False, show_counts=False)
+    sel_redundancy = redundancy.select(sel_w)
+    if redundancy_to_edge is not None:
+      sel_redundancy_pred = redundancy_to_edge.select(sel_w)
+    else:
+      sel_redundancy_pred = None
+    sel_absent = sel_redundancy.count(0)
+    n_present = sel_redundancy.size() - sel_absent
+    sel_complete_tag = "[%d/%d]" % (n_present, sel_redundancy.size())
+    sel_measurements = flex.sum(sel_redundancy)
+
+    # Alternatively, redundancy (or multiplicity) is calculated as the
+    # average number of observations for the observed
+    # reflections--missing reflections do not affect the redundancy
+    # adversely, and the reported value becomes
+    # completeness-independent.
+    val_redundancy_obs = 0
+    if n_present > 0:
+      val_redundancy_obs = flex.sum(sel_redundancy) / n_present
+    # Repeat on the full set of predictions, calculated w.r.t. the asymmetric unit
+    val_redundancy_pred = 0
+    if redundancy_to_edge is not None and n_present > 0:
+      val_redundancy_pred = flex.sum(sel_redundancy_pred) / sel_redundancy.size()
+
+    # Per-bin sum of I and I/sig(I).  For any reflection, the weight
+    # of the merged intensity must be positive for this to make sense.
+    sel_o = (sel_w & (summed_weight > 0))
+    intensity = summed_wt_I.select(sel_o) / summed_weight.select(sel_o)
+    I_sum = flex.sum(intensity)
+    I_sigI_sum = flex.sum(intensity * flex.sqrt(summed_weight.select(sel_o)))
+    I_n = sel_o.count(True)
+
+    if work_params is not None and \
+     (work_params.plot_single_index_histograms and \
+      N >= 30 and \
+      work_params.data_subset == 0):
+      scaling_manager.single_reflection_histograms(obs, ISIGI)
+
+    if sel_measurements > 0:
+      mean_I = mean_I_sigI = 0
+      if I_n > 0:
+        mean_I = I_sum / I_n
+        mean_I_sigI = I_sigI_sum / I_n
+      bin = resolution_bin(
+        i_bin=i_bin,
+        d_range=d_range,
+        d_min=obs.binner().bin_d_min(i_bin),
+        redundancy_asu=flex.mean(sel_redundancy.as_double()),
+        redundancy_obs=val_redundancy_obs,
+        redundancy_to_edge=val_redundancy_pred,
+        complete_tag=sel_complete_tag,
+        completeness=n_present / sel_redundancy.size(),
+        measurements=sel_measurements,
+        predictions=sel_redundancy_pred,
+        mean_I=mean_I,
+        mean_I_sigI=mean_I_sigI)
+      result.append(bin)
+    cumulative_unique += n_present
+    cumulative_meas   += sel_measurements
+    if redundancy_to_edge is not None:
+      cumulative_n_pred += flex.sum(sel_redundancy_pred)
+      cumulative_pred   += redundancy_to_edge
+    cumulative_theor  += sel_redundancy.size()
+    cumulative_In     += I_n
+    cumulative_I      += I_sum
+    cumulative_Isigma += I_sigI_sum
+
+  if (title is not None) :
+    print >> out, title
+  from libtbx import table_utils
+  table_header = ["","","","","<asu","<obs","<pred","","","",""]
+  table_header2 = ["Bin","Resolution Range","Completeness","%","multi>","multi>","multi>",
+    "n_meas", "n_pred","<I>","<I/sig(I)>"]
+  use_preds = (redundancy_to_edge is not None and flex.sum(redundancy_to_edge) > 0)
+  include_columns = [True, True, True, True, True, True, use_preds, True, use_preds, True, True]
+  table_data = []
+  table_data.append(table_header)
+  table_data.append(table_header2)
+  for bin in result:
+    table_row = []
+    table_row.append("%3d" % bin.i_bin)
+    table_row.append("%-13s" % bin.d_range)
+    table_row.append("%13s" % bin.complete_tag)
+    table_row.append("%5.2f" % (100*bin.completeness))
+    table_row.append("%6.2f" % bin.redundancy_asu)
+    table_row.append("%6.2f" % bin.redundancy_obs)
+    table_row.append("%6.2f" % (0 if redundancy_to_edge is None else bin.redundancy_to_edge))
+    table_row.append("%6d" % bin.measurements)
+    table_row.append("%6d" % (0 if redundancy_to_edge is None else flex.sum(bin.predictions)))
+    table_row.append("%8.0f" % bin.mean_I)
+    table_row.append("%8.3f" % bin.mean_I_sigI)
+    table_data.append(table_row)
+  if len(table_data) <= 2:
+    print >>out,"Table could not be constructed -- no bins accepted."
+    return
+  table_data.append([""]*len(table_header))
+  table_data.append(  [
+      format_value("%3s",   "All"),
+      format_value("%-13s", "                 "),
+      format_value("%13s",  "[%d/%d]"%(cumulative_unique,cumulative_theor)),
+      format_value("%5.2f", 100*(cumulative_unique/cumulative_theor)),
+      format_value("%6.2f", cumulative_meas/cumulative_theor),
+      format_value("%6.2f", cumulative_meas/cumulative_unique),
+      format_value("%6.2f", (0 if redundancy_to_edge is None else cumulative_n_pred/cumulative_theor)),
+      format_value("%6d",   cumulative_meas),
+      format_value("%6d",   (0 if redundancy_to_edge is None else flex.sum(redundancy_to_edge))),
+      format_value("%8.0f", cumulative_I/cumulative_In),
+      format_value("%8.3f", cumulative_Isigma/cumulative_In),
+  ])
+  table_data = table_utils.manage_columns(table_data, include_columns)
+
+  print
+  print >>out,table_utils.format(table_data,has_header=2,justify='center',delim=" ")
+
+  # XXX generate table object for displaying plots
+  if (title is None) :
+    title = "Data statistics by resolution"
+  table = data_plots.table_data(
+    title=title,
+    x_is_inverse_d_min=True,
+    force_exact_x_labels=True)
+  table.add_column(
+    column=[1 / bin.d_min**2 for bin in result],
+    column_name="d_min",
+    column_label="Resolution")
+  table.add_column(
+    column=[bin.redundancy_asu for bin in result],
+    column_name="redundancy",
+    column_label="Redundancy")
+  table.add_column(
+    column=[bin.completeness for bin in result],
+    column_name="completeness",
+    column_label="Completeness")
+  table.add_column(
+    column=[bin.mean_I_sigI for bin in result],
+    column_name="mean_i_over_sigI",
+    column_label="<I/sig(I)>")
+  table.add_graph(
+    name="Redundancy vs. resolution",
+    type="GRAPH",
+    columns=[0,1])
+  table.add_graph(
+    name="Completeness vs. resolution",
+    type="GRAPH",
+    columns=[0,2])
+  table.add_graph(
+    name="<I/sig(I)> vs. resolution",
+    type="GRAPH",
+    columns=[0,3])
+  return table
 
 class resolution_bin(object):
   def __init__(self,
