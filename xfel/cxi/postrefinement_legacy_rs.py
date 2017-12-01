@@ -268,7 +268,7 @@ class rs_parameterization(unpack_base):
     if item=="G" :      return YY.reference[0]
     if item=="BFACTOR": return YY.reference[1]
     if item=="RS":      return YY.reference[2]
-    return getattr(YY,item)
+    raise AttributeError(item)
 
   def show(YY, out):
     print >> out, "G: %10.7f"%YY.G,
@@ -285,7 +285,8 @@ class eta_deff_parameterization(unpack_base):
     if item=="BFACTOR": return YY.reference[1]
     if item=="ETA":      return YY.reference[2]
     if item=="DEFF":      return YY.reference[5]
-    return getattr(YY,item)
+    raise AttributeError(item)
+
 
   def show(YY, out):
     print >> out, "%10.7f"%YY.G,

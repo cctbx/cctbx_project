@@ -18,12 +18,26 @@ def merging_reflection_table():
   table['isigi'] = flex.double()
   table['slope'] = flex.double()
   table['miller_id'] = flex.size_t()
+  table['crystal_id'] = flex.size_t()
+  return table
+
+def merging_crystal_table(postrefinement_columns = False):
+  table = flex.reflection_table()
+  table['u_matrix'] = flex.mat3_double()
+  table['b_matrix'] = flex.mat3_double()
+  table['wavelength'] = flex.double()
+  if postrefinement_columns:
+    table['G'] = flex.double()
+    table['B'] = flex.double()
+    table['thetax'] = flex.double()
+    table['thetay'] = flex.double()
   return table
 
 class refltable_scaling_manager(scaling_manager):
   def initialize (self) :
     super(refltable_scaling_manager, self).initialize()
     self.ISIGI = merging_reflection_table()
+    self.crystal_table = merging_crystal_table(self.params.postrefinement.enable)
 
   @staticmethod
   def single_reflection_histograms(obs, ISIGI):
@@ -53,6 +67,7 @@ class refltable_scaling_manager(scaling_manager):
   def scale_frame_detail(self, result, file_name, db_mgr, out):
     data = super(refltable_scaling_manager, self).scale_frame_detail(result, file_name, db_mgr, out)
     reflections = merging_reflection_table()
+    crystal_id = len(self.crystal_table)
     for i, hkl in enumerate(self.miller_set.indices()):
       if hkl not in data.ISIGI: continue
       for refl in data.ISIGI[hkl]:
@@ -60,8 +75,19 @@ class refltable_scaling_manager(scaling_manager):
                             'scaled_intensity': refl[0],
                             'isigi': refl[1],
                             'slope': refl[2],
-                            'miller_id':i})
+                            'miller_id':i,
+                            'crystal_id':crystal_id})
     data.ISIGI = reflections
+
+    crystal_d = {'b_matrix':data.indexed_cell.reciprocal().orthogonalization_matrix(),
+                 'u_matrix':data.current_orientation.crystal_rotation_matrix()}
+    if self.params.postrefinement.enable:
+      crystal_d['G'] = self.postrefinement_params.G
+      crystal_d['B'] = self.postrefinement_params.BFACTOR
+      crystal_d['thetax'] = self.postrefinement_params.thetax
+      crystal_d['thetay'] = self.postrefinement_params.thetay
+    self.crystal_table.append(crystal_d)
+
     return data
 
   def _scale_all_parallel (self, file_names, db_mgr) :

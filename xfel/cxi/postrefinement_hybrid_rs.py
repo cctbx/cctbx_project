@@ -248,7 +248,8 @@ class nave1_parameterization(rs_parameterization):
     if item=="G" :      return YY.reference[0]
     if item=="BFACTOR": return YY.reference[1]
     if item=="RS":      return YY.reference[2]
-    return getattr(YY,item)
+    raise AttributeError(item)
+
 
 class per_frame_helper(normal_eqns.non_linear_ls, normal_eqns.non_linear_ls_mixin):
   def __init__(pfh,current_x=None, parameterization=None, refinery=None, out=None,):

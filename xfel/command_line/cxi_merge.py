@@ -1542,6 +1542,7 @@ class scaling_manager (intensity_data) :
 
     data = frame_data(self.n_refl, file_name)
     data.set_indexed_cell(indexed_cell)
+    data.current_orientation = result['current_orientation'][0]
     data.d_min = observations.d_min()
 
     # Ensure that match_multi_indices() will return identical results
@@ -1671,6 +1672,8 @@ class scaling_manager (intensity_data) :
         observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
       except (AssertionError,ValueError,RuntimeError),e:
         return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
+
+      self.postrefinement_params = postx.parameterization_class(postx.MINI.x)
 
       if self.params.postrefinement.show_trumpet_plot is True:
         from xfel.cxi.trumpet_plot import trumpet_wrapper
