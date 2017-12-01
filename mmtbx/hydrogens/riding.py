@@ -16,17 +16,16 @@ class manager(object):
       pdb_hierarchy       = self.pdb_hierarchy,
       geometry_restraints = geometry_restraints)
     h_connectivity = connectivity_manager.h_connectivity
-
     diagnostics_connectivity = connectivity_manager.get_diagnostics()
-    self.h_in_connectivity = diagnostics_connectivity.h_in_connectivity
+    #self.h_in_connectivity = diagnostics_connectivity.h_in_connectivity
     self.double_H = diagnostics_connectivity.double_H
-    self.connectivity_slipped = diagnostics_connectivity.connectivity_slipped
+    #self.connectivity_slipped = diagnostics_connectivity.connectivity_slipped
 
-    self.parameterization_manager = parameterization.manager(
+    parameterization_manager = parameterization.manager(
       h_connectivity         = h_connectivity,
       sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
       use_ideal_bonds_angles = use_ideal_bonds_angles)
-    self.h_parameterization = self.parameterization_manager.h_parameterization
+    self.h_parameterization = parameterization_manager.h_parameterization
     self.parameterization_cpp = []
     for hp in self.h_parameterization:
       if (hp is not None):
@@ -75,9 +74,17 @@ class manager(object):
     return new_gradients
 
   def print_parameterization_info(self, log):
-    unk_list = self.parameterization_manager.unk_list
     double_H = self.double_H
+    list_h = []
+    for rc in self.parameterization_cpp:
+      ih = rc.ih
+      list_h.append(ih)
     atoms = self.pdb_hierarchy.atoms()
+
+    all_H_model = \
+      list(self.pdb_hierarchy.select(self.hd_selection).atoms().extract_i_seq())
+    unk_list = [x for x in all_H_model if x not in list_h]
+
     if unk_list or double_H:
       number = len(unk_list) + len(double_H)
       m = """  The following atoms are not used in the riding H procedure. This typically
@@ -86,7 +93,6 @@ class manager(object):
   - Restraints involving the H atom are incomplete (this occurs most likely when
     custom restraints are supplied).
   - An H atom has less than 3 non-H covalently bound partners.
-    (This will be addressed in the future)
   It is not worrysome if a few atoms are listed here; but it is always helpful
   to check the environment of these H atoms, as it might hint to missing atoms
   or restraints.\n"""
@@ -105,8 +111,6 @@ class manager(object):
 
   def diagnostics(self, sites_cart, threshold):
     h_distances = {}
-    unk_list = self.parameterization_manager.unk_list
-    unk_ideal_list = self.parameterization_manager.unk_ideal_list
     long_distance_list, list_h, type_list = [], [], []
     for rc in self.parameterization_cpp:
       ih = rc.ih
@@ -121,21 +125,10 @@ class manager(object):
       type_list.append(rc.htype)
       if (h_distance > threshold):
         long_distance_list.append(ih)
-    all_h_in_para = list_h + unk_list + unk_ideal_list
-#    list_h_connect = []
-#    for item in self.h_connectivity:
-#      if (item):
-#        list_h_connect.append(item.ih)
-    slipped = [x for x in self.h_in_connectivity if x not in set(all_h_in_para)]
+
     return group_args(
       h_distances          = h_distances,
-      unk_list             = unk_list,
-      unk_ideal_list       = unk_ideal_list,
       long_distance_list   = long_distance_list,
-      slipped              = slipped,
       type_list            = type_list,
-      number_h_para        = len(list_h),
-#      n_connect            = len(list_h_connect),
-      threshold            = threshold,
-      double_H             = self.double_H,
-      connectivity_slipped = self.connectivity_slipped)
+      double_H             = self.double_H)
+

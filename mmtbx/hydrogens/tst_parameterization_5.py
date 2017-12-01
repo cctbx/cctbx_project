@@ -27,18 +27,14 @@ def exercise():
     sites_cart = sites_cart,
     threshold  = 0.05)
   h_distances   = diagnostics.h_distances
-  unk_list      = diagnostics.unk_list
-  number_h_para = diagnostics.number_h_para
   type_list     = diagnostics.type_list
 
-# number of H atoms in structure
   number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_para) - h_para.count(None)
 
 # There are 68 H atoms in the pdb_string, check if all of them are recognized
 # Note: one H atom (VAL 7 HA) is bound to two CA atoms at once
   assert (number_h_para == number_h), 'Not all H atoms are parameterized'
-  assert(len(unk_list) == 0), \
-    'Some H atoms are parameterized with an unknown type'
 
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()

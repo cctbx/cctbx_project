@@ -31,16 +31,12 @@ def exercise(pdb_str):
     sites_cart         = sites_cart,
     threshold          = 0.05)
   h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
-  number_h_para = diagnostics.number_h_para
 
-# number of H atoms in structure
   number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
   if (pdb_str != pdb_str_02):
     assert (number_h_para == number_h), 'Not all H atoms are parameterized'
-  assert(len(unk_list) == 0), \
-    'Some H atoms are parameterized with an unknown type'
 
 # For each H atom, check if distance between computed H and that in input model is
 # not too large

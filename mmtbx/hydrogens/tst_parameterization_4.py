@@ -57,20 +57,14 @@ def exercise(pdb_str, use_ideal_bonds_angles):
     sites_cart = sites_cart,
     threshold  = 0.05)
   h_distances   = diagnostics.h_distances
-  unk_list      = diagnostics.unk_list
-  number_h_para = diagnostics.number_h_para
 
-# number of H atoms in structure
   number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
   assert (number_h_para == number_h), 'Not all H atoms are parameterized'
-  assert(len(unk_list) == 0), \
-    'Some H atoms are parameterized with an unknown type'
 
-  #type_list = []
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    #type_list.append(hp.htype)
     if use_ideal_bonds_angles:
       assert (h_distances[ih] < 0.03), \
         'distance too large: %s  atom: %s (%s) residue: %s ' \
@@ -79,9 +73,6 @@ def exercise(pdb_str, use_ideal_bonds_angles):
       assert (h_distances[ih] < 1e-7), \
         'distance too large: %s  atom: %s (%s) residue: %s  distance %s' \
         % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip(), h_distances[ih])
-
-  #for type1, type2 in zip(type_list, type_list_known):
-  #  assert (type1 == type2)
 
 # alg2a - flat two neighbors
 pdb_str_00 = """

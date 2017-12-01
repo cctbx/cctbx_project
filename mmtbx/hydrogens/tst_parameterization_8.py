@@ -1,18 +1,14 @@
 from __future__ import division
 import time
-
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
-from mmtbx.hydrogens import riding
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 
 def exercise1():
 
   pdb_str = """
-REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "new_coot_mod.pdb"
-REMARK Date 2017-09-12 Time 11:09:24 PDT -0700 (1505239764.41 s)
 CRYST1   21.850   24.325   24.603  90.00  90.00  90.00 P 1
 SCALE1      0.045767  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.041110  0.000000        0.00000
@@ -254,17 +250,17 @@ geometry_restraints.edits {
     sites_cart = sites_cart,
     threshold  = 0.05)
   h_distances   = diagnostics.h_distances
-  unk_list      = diagnostics.unk_list
-  number_h_para = diagnostics.number_h_para
   type_list     = diagnostics.type_list
 
-# number of H atoms
   number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_para) - h_para.count(None)
+
+  for rc in h_para:
+    if rc:
+      assert(rc.ih != 63), 'Wrong atom not recognized.'
 
 # Test if number of paramterized H atoms is correct
-  assert (len(unk_list)==1), 'Wrong number of H atoms not recognized for riding'
   assert (number_h == number_h_para + 1), 'Not all H atoms are parameterized'
-  assert (unk_list[0] == 63), 'Wrong atom not recognized.'
 
   type_list_known = ['alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '3neigbs',
     '2tetra', '2tetra', '3neigbs', 'flat_2neigbs', 'flat_2neigbs',
@@ -349,38 +345,31 @@ geometry_restraints.edits {
 
   model = mmtbx.model.manager(
     model_input = pdb_inp,
+    build_grm   = True,
     pdb_interpretation_params = params)
 
   pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
-  xray_structure = model.get_xray_structure()
-
-  sites_cart = xray_structure.sites_cart()
+  sites_cart = model.get_sites_cart()
   atoms = pdb_hierarchy.atoms()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
+
   h_para = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
     sites_cart = sites_cart,
     threshold  = 0.05)
   h_distances   = diagnostics.h_distances
-  unk_list      = diagnostics.unk_list
-  number_h_para = diagnostics.number_h_para
   type_list     = diagnostics.type_list
 
-# number of H atoms in structure
-  number_h = 0
-  for h_bool in xray_structure.hd_selection():
-    if h_bool: number_h += 1
+  number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_para) - h_para.count(None)
 
   double_H = riding_h_manager.double_H
 
 # Test if number of paramterized H atoms is correct
-  assert (len(unk_list)==0), 'Not all H atoms are parameterized'
+  assert (number_h == number_h_para), 'Not all H atoms are parameterized'
   assert (double_H[19] == [11, 20]), 'H bound to two atoms wrongly recognized'
   assert (number_h_para == 8), 'Not all H atoms are parameterized'
 
@@ -393,7 +382,6 @@ geometry_restraints.edits {
 
   for type1, type2 in zip(type_list, type_list_known):
     assert (type1 == type2)
-
 
 if (__name__ == "__main__"):
   t0 = time.time()

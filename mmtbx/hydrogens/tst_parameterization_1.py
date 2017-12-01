@@ -31,28 +31,22 @@ def exercise():
     threshold          = 0.05)
 
   h_distances        = diagnostics.h_distances
-  unk_list           = diagnostics.unk_list
   type_list          = diagnostics.type_list
-  number_h_para      = diagnostics.number_h_para
-  #unk_ideal_list     = diagnostics.unk_ideal_list
-  #long_distance_list = diagnostics.long_distance_list
-  #slipped            = diagnostics.slipped
 
-# number of H atoms in structure
+# number of H atoms in model
   number_h = model.get_hd_selection().count(True)
+# number of H in parameterization
+  number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
 # There are 152 H atoms in pdb_string, check if all of them are parameterized
   assert (number_h_para == number_h), 'Not all H atoms are parameterized'
-  assert (number_h_para == len(type_list)), \
-    'Some H atoms are parameterized with an unknown type'
-  # redundant?
-  #assert(len(unk_list) == 0), 'Some H atoms are not recognized'
 
 # For each H atom, check if distance compared to input model is not > 0.05
 # 0.0014 = uncertainty for distance if uncertainty of coordinate = 0.001
   for ih in h_distances:
     labels = atoms[ih].fetch_labels()
-    assert (h_distances[ih] < 0.05), 'distance too large: %s  atom: %s (%s) residue: %s ' \
+    assert (h_distances[ih] < 0.05), \
+      'distance too large: %s  atom: %s (%s) residue: %s ' \
       % (h_parameterization[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
 # KEEP: useful for debugging
