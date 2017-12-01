@@ -8,7 +8,7 @@ from __future__ import division
 from xfel.command_line.cxi_merge import master_phil
 from libtbx.utils import Usage, multi_out
 import sys,os
-from xfel.command_line.cxi_merge import get_observations, scaling_manager, show_overall_observations, scaling_result
+from xfel.command_line.cxi_merge import get_observations, scaling_manager, scaling_result
 from libtbx import easy_pickle
 
 help_message = '''
@@ -126,7 +126,7 @@ class Script(object):
 
     miller_set_avg = self.miller_set.customized_copy(
       unit_cell=self.params.target_unit_cell)
-    table1 = show_overall_observations(
+    table1 = scaling_manager.show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.completeness,
       redundancy_to_edge=scaler.completeness_predictions,
@@ -143,7 +143,7 @@ class Script(object):
     else:
       n_refl, corr = ((scaler.completeness > 0).count(True), 0)
     print >> self.out, "\n"
-    table2 = show_overall_observations(
+    table2 = scaling_manager.show_overall_observations(
       obs=miller_set_avg,
       redundancy=scaler.summed_N,
       redundancy_to_edge=scaler.completeness_predictions,
