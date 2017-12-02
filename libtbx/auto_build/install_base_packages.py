@@ -1141,7 +1141,7 @@ _replace_sysconfig_paths(build_time_vars)
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
     # http://stackoverflow.com/a/20740964
 
-    pkg_url=DEPENDENCIES_BASE
+    pkg_url=OPENSSL_URL
     pkg_name=OPENSSL_PKG
     pkg_name_label="OpenSSL"
     pkg_log = self.start_building_package(pkg_name_label)
