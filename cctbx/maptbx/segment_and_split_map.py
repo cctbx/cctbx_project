@@ -665,6 +665,12 @@ master_phil = iotbx.phil.parse("""
        .help = Region_weight adjusted to be region_weight_buffer \
                away from minimum or maximum values
 
+     region_weight_default = 30.
+       .type = float
+       .short_caption = Region weight default
+       .help = Region_weight adjusted to be region_weight_default\
+               if no informatino available
+
      target_b_iso_ratio = 5.9
        .type = float
        .short_caption = Target b_iso ratio
@@ -815,6 +821,12 @@ master_phil = iotbx.phil.parse("""
       .short_caption = Starting density threshold
       .help = Optional guess of threshold density
 
+    iteration_fraction = 0.2
+      .type = float
+      .short_caption = Iteration fraction
+      .help = On iteration of finding regions, assume target volume is \
+              this fraction of the value on previous iteration
+
     max_overlap_fraction = 0.05
       .type = float
       .short_caption = Max overlap
@@ -842,12 +854,6 @@ master_phil = iotbx.phil.parse("""
       .type = bool
       .short_caption = Write all regions
       .help = Write all regions to ccp4 map files.
-
-    fraction_occupied = 0.2
-      .type = float
-      .help = Fraction of volume inside macromolecule that should be above \
-             threshold density
-      .short_caption = Fraction occupied
 
     max_per_au = None
       .type = int
@@ -1955,6 +1961,7 @@ class sharpening_info:
       region_weight_method=None,
       region_weight_factor=None,
       region_weight_buffer=None,
+      region_weight_default=None,
       target_b_iso_ratio=None,
       signal_min=None,
       target_b_iso_model_scale=None,
@@ -2155,6 +2162,7 @@ class sharpening_info:
       self.region_weight_method=params.map_modification.region_weight_method
       self.region_weight_factor=params.map_modification.region_weight_factor
       self.region_weight_buffer=params.map_modification.region_weight_buffer
+      self.region_weight_default=params.map_modification.region_weight_default
       self.target_b_iso_ratio=params.map_modification.target_b_iso_ratio
       self.signal_min=params.map_modification.signal_min
       self.target_b_iso_model_scale=params.map_modification.target_b_iso_model_scale
@@ -6035,7 +6043,7 @@ def iterate_search(params,
   else:
     new_params.output_files.au_output_file_stem=None
 
-  fraction=0.2
+  fraction=params.segmentation.iteration_fraction
   new_n_residues=int(tracking_data.n_residues*fraction)
   new_solvent_fraction=max(0.001,min(0.999,
       1- (1-tracking_data.solvent_fraction)*fraction))
@@ -6928,6 +6936,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'region_weight_method',
         'region_weight_factor',
         'region_weight_buffer',
+        'region_weight_default',
         'target_b_iso_ratio',
         'signal_min',
         'buffer_radius',
@@ -7954,6 +7963,7 @@ def auto_sharpen_map_or_map_coeffs(
         region_weight_method=None,
         region_weight_factor=None,
         region_weight_buffer=None,
+        region_weight_default=None,
         target_b_iso_ratio=None,
         signal_min=None,
         buffer_radius=None,
@@ -8487,7 +8497,6 @@ def run_auto_sharpen(
 
     # put them in bounds but note if we did it
 
-
     out_of_range=False
     if ok_region_weight and si.region_weight_method=='initial_ratio':
       if init_region_weight > max_region_weight or \
@@ -8510,16 +8519,15 @@ def run_auto_sharpen(
           si.region_weight) +\
           "\nfactor of %5.1f" %(si.region_weight_factor)
 
-    else: # just use resolution-based target for b_iso
-      if si.resolution:
-        print >>out,"Using resolution-based b_iso (region_weight not found)"
-        si.b_iso=si.get_target_b_iso()
-        si.sharpening_method='b_iso_to_d_cut'
-        auto_sharpen_methods=['b_iso_to_d_cut']
-        print >>out,"b_iso=%7.2f" %(si.b_iso)
-      else:
-        si.region_weight=40
-        print >>out,\
+    else: # just use default target for b_iso
+      si.region_weight=si.region_weight_default
+
+      print >>out,\
+            "Skipping region_weight analysis as signal-to-noise is zero ("+\
+           "adjusted sa\nvs b_iso does not have low values at extremes and "+\
+           "clear maximum in the middle.)"
+ 
+      print >>out, \
           "\nUnable to set region_weight ... using value of %7.2f" % (
           si.region_weight)
       if si.discard_if_worse:
