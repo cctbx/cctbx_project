@@ -8526,7 +8526,7 @@ def run_auto_sharpen(
             "Skipping region_weight analysis as signal-to-noise is zero ("+\
            "adjusted sa\nvs b_iso does not have low values at extremes and "+\
            "clear maximum in the middle.)"
- 
+
       print >>out, \
           "\nUnable to set region_weight ... using value of %7.2f" % (
           si.region_weight)
