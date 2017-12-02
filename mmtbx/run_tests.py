@@ -252,6 +252,7 @@ tst_list = (
   "$D/secondary_structure/build/tst_2.py",
   "$D/secondary_structure/build/tst_3.py",
   "$D/secondary_structure/build/tst_io.py",
+  "$D/secondary_structure/build/tst_ss_id_ncs.py",
   "$D/regression/tst_loop_closure.py",
   "$D/regression/model_idealization/tst_nomap_01.py",
   "$D/regression/model_idealization/tst_nomap_02.py",

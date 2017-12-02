@@ -494,8 +494,11 @@ def substitute_ss(
   if ss_annotation is None:
     return None
 
-  expected_n_hbonds = 0
   ann = ss_annotation
+  if model.ncs_constraints_present():
+    print >> log, "Using master NCS to reduce amount of work"
+
+  expected_n_hbonds = 0
   for h in ann.helices:
     expected_n_hbonds += h.get_n_maximum_hbonds()
   edited_h = model.get_hierarchy().deep_copy()
@@ -545,16 +548,26 @@ def substitute_ss(
   log.flush()
   ss_stats = gather_ss_stats(pdb_h=model.get_hierarchy())
   n_idealized_elements = 0
+  master_bool_sel = model.get_master_selection()
+  if master_bool_sel is None or master_bool_sel.size() == 0:
+    master_bool_sel = flex.bool(model.get_number_of_atoms(), True)
+  elif isinstance(master_bool_sel, flex.size_t):
+    master_bool_sel = flex.bool(model.get_number_of_atoms(), master_bool_sel)
+  assert master_bool_sel.size() == model.get_number_of_atoms()
   for h in ann.helices:
     log.write("  %s\n" % h.as_pdb_str())
     log.flush()
     if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([h],[])):
       log.write("    skipping, good element.\n")
     else:
+      selstring = h.as_atom_selections()
+      sel = selection_cache.selection(selstring[0])
+      isel = sel.iselection()
+      if (master_bool_sel & sel).iselection().size() == 0:
+        log.write("    skipping, not in NCS master.\n")
+        continue
       n_idealized_elements += 1
       log.write("    substitute with idealized one.\n")
-      selstring = h.as_atom_selections()
-      isel = selection_cache.iselection(selstring[0])
       fixed_ss_selection.set_selected(isel, True)
       all_bsel = flex.bool(n_atoms_in_real_h, False)
       all_bsel.set_selected(isel, True)
@@ -573,6 +586,14 @@ def substitute_ss(
     if processed_params.skip_good_ss_elements and ss_element_is_good(ss_stats, ([],[sh])):
       log.write("    skipping, good element.\n")
     else:
+      full_sh_selection = flex.bool(n_atoms_in_real_h, False)
+      for st in sh.strands:
+        selstring = st.as_atom_selections()
+        isel = selection_cache.iselection(selstring)
+        full_sh_selection.set_selected(isel, True)
+      if (master_bool_sel & full_sh_selection).iselection().size() == 0:
+        log.write("    skipping, not in NCS master.\n")
+        continue
       n_idealized_elements += 1
       log.write("    substitute with idealized one.\n")
       for st in sh.strands:
@@ -597,6 +618,8 @@ def substitute_ss(
 
   # XXX here we want to adopt new coordinates
   model.set_sites_cart(sites_cart=edited_h.atoms().extract_xyz())
+  if model.ncs_constraints_present():
+    model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
   t3 = time()
   # pre_result_h = edited_h
