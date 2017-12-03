@@ -1,10 +1,8 @@
 from __future__ import division
-import libtbx.load_env
 import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import iotbx.pdb
-import sys
 import time
 from libtbx.utils import null_out
 
