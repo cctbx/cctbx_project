@@ -581,7 +581,8 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
                n_bases=None,
                asu_contents=None,
                prot_frac = 1.0,
-               nuc_frac= 0.0):
+               nuc_frac= 0.0,
+               ignore_errors=False):
     """ Maximum likelihood anisotropic wilson scaling"""
     #Checking input
     if (n_residues is None):
@@ -643,9 +644,9 @@ class ml_aniso_absolute_scaling(scaling.xtriage_analysis):
       ## Optimisation stuff
       self.x = flex.double(self.dim_u+1, 0.0) ## B-values and scale factor!
       exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-        ignore_line_search_failed_step_at_lower_bound = False,
-        ignore_line_search_failed_step_at_upper_bound = False,
-        ignore_line_search_failed_maxfev              = False)
+        ignore_line_search_failed_step_at_lower_bound = ignore_errors,
+        ignore_line_search_failed_step_at_upper_bound = ignore_errors,
+        ignore_line_search_failed_maxfev              = ignore_errors)
       term_parameters = scitbx.lbfgs.termination_parameters(
         max_iterations = 50)
 

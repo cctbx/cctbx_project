@@ -750,6 +750,9 @@ def run(args=None,
       rv.add_match_percent(id='close',match_percent=match_percent)
 
       percent_close=rv.get_close_to_target_percent('close')
+      if ratio_unique_to_total_target:
+        percent_close=percent_close/ratio_unique_to_total_target
+
 
       print >>out,\
         "\nAll residues near target: "+\

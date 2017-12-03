@@ -2590,11 +2590,11 @@ def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
     res_cut_array=miller_array
 
   from mmtbx.scaling import absolute_scaling
-  if 1: #try:
+  try:
     aniso_scale_and_b=absolute_scaling.ml_aniso_absolute_scaling(
-      miller_array=res_cut_array, n_residues=200, n_bases=0)
+      miller_array=res_cut_array, n_residues=200, n_bases=0, ignore_errors=True)
     b_cart=aniso_scale_and_b.b_cart
-  if 0: #except Exception,e:
+  except Exception,e:
     b_cart=[0,0,0]
     aniso_scale_and_b=None
   b_aniso_mean=0.
