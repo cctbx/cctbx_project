@@ -76,6 +76,7 @@ tst_list = (
   "$D/regression/tst_geometry_minimization.py",
   ["$D/ncs/ncs.py", "exercise"],
   "$D/regression/tst_adp_restraints.py",
+  "$D/regression/tst_metal_link_1.py",
   # Xtriage
   "$D/scaling/tst_scaling.py",
   "$D/scaling/tst_outlier.py",
