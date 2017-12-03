@@ -541,7 +541,7 @@ def tst_02():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00 
+Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
 
 Looking for chain similarity for None (61 residues) in the model None (272 residues)
 
