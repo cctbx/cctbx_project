@@ -6,6 +6,7 @@ import mmtbx.monomer_library.pdb_interpretation
 import iotbx.pdb
 import sys
 import time
+from libtbx.utils import null_out
 
 pdb_str_1 = """
 CRYST1   79.110   79.110   37.465  90.00  90.00  90.00 P 43 21 2
@@ -110,10 +111,7 @@ TER
 END
 """
 
-def run(args):
-  if (not libtbx.env.has_module("reduce")) :
-    print "Reduce not installed, needed for model.idealize_h(). skipping"
-    return
+def run():
   for pdb_str in [pdb_str_1, pdb_str_2]:
     for use_neutron_distances in [True, False]:
       print "use_neutron_distances:", use_neutron_distances, "*"*30
@@ -121,10 +119,13 @@ def run(args):
       params.use_neutron_distances = use_neutron_distances
       inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
       m = mmtbx.model.manager(
-          model_input = inp,
-          build_grm=True)
+        model_input               = inp,
+        build_grm                 = True,
+        pdb_interpretation_params = params,
+        log                       = null_out())
       r1 = m.geometry_statistics()
-      m.idealize_h(show=False)
+      m.setup_riding_h_manager()
+      m.idealize_h()
       r2 = m.geometry_statistics()
       print "%6.3f %6.3f %6.3f %6.3f"%(
         r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean)
@@ -133,5 +134,5 @@ def run(args):
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  run(sys.argv[1:])
+  run()
   print "Time: %6.3f"%(time.time()-t0)
