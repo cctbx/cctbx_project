@@ -10,25 +10,31 @@ class manager(object):
   def __init__(self,
       pdb_hierarchy,
       geometry_restraints,
-      use_ideal_bonds_angles = True):
+      use_ideal_bonds_angles = True,
+      process_manager        = True):
     self.pdb_hierarchy = pdb_hierarchy
-    connectivity_manager = connectivity.determine_connectivity(
-      pdb_hierarchy       = self.pdb_hierarchy,
-      geometry_restraints = geometry_restraints)
-    h_connectivity = connectivity_manager.h_connectivity
-    diagnostics_connectivity = connectivity_manager.get_diagnostics()
-    parameterization_manager = parameterization.manager(
-      h_connectivity         = h_connectivity,
-      sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
-      use_ideal_bonds_angles = use_ideal_bonds_angles)
-    self.h_parameterization = parameterization_manager.h_parameterization
+    self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
+      selection("element H or element D")
+    self.not_hd_selection = ~self.hd_selection
+    if process_manager is True:
+      connectivity_manager = connectivity.determine_connectivity(
+        pdb_hierarchy       = self.pdb_hierarchy,
+        geometry_restraints = geometry_restraints)
+      h_connectivity = connectivity_manager.h_connectivity
+      diagnostics_connectivity = connectivity_manager.get_diagnostics()
+      parameterization_manager = parameterization.manager(
+        h_connectivity         = h_connectivity,
+        sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
+        use_ideal_bonds_angles = use_ideal_bonds_angles)
+      self.h_parameterization = parameterization_manager.h_parameterization
+      self.parameterization_cpp = []
+      self.get_parameterization_cpp()
+
+  def get_parameterization_cpp(self):
     self.parameterization_cpp = []
     for hp in self.h_parameterization:
       if (hp is not None):
         self.parameterization_cpp.append(hp)
-    self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
-      selection("element H or element D")
-    self.not_hd_selection = ~self.hd_selection
 
   def refinable_parameters_init(self):
     return flex.double(self.n_parameters(), 0)
