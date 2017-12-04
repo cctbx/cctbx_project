@@ -13,9 +13,13 @@ class manager(object):
       use_ideal_bonds_angles = True,
       process_manager        = True):
     self.pdb_hierarchy = pdb_hierarchy
+    self.geometry_restraints = geometry_restraints
+    self.use_ideal_bonds_angles = use_ideal_bonds_angles
     self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
       selection("element H or element D")
     self.not_hd_selection = ~self.hd_selection
+    self.h_parameterization = []
+    self.parameterization_cpp = []
     if process_manager is True:
       connectivity_manager = connectivity.determine_connectivity(
         pdb_hierarchy       = self.pdb_hierarchy,
@@ -27,14 +31,34 @@ class manager(object):
         sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
         use_ideal_bonds_angles = use_ideal_bonds_angles)
       self.h_parameterization = parameterization_manager.h_parameterization
-      self.parameterization_cpp = []
-      self.get_parameterization_cpp()
+      self.parameterization_cpp = self.get_parameterization_cpp(
+        h_parameterization = self.h_parameterization)
 
-  def get_parameterization_cpp(self):
-    self.parameterization_cpp = []
-    for hp in self.h_parameterization:
+  # TODO: needs test
+  def deep_copy(self):
+    new_h_parameterization = []
+    for rc in self.h_parameterization:
+      if rc is not None:
+        rc_copy = riding_coefficients(rc)
+        new_h_parameterization.append(rc_copy)
+      else:
+        new_h_parameterization.append(None)
+    new_manager = manager(
+      pdb_hierarchy = self.pdb_hierarchy,
+      geometry_restraints = self.geometry_restraints,
+      use_ideal_bonds_angles = self.use_ideal_bonds_angles,
+      process_manager = False)
+    new_manager.h_parameterization = new_h_parameterization
+    new_manager.parameterization_cpp = \
+      self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
+    return new_manager
+
+  def get_parameterization_cpp(self, h_parameterization):
+    parameterization_cpp = []
+    for hp in h_parameterization:
       if (hp is not None):
-        self.parameterization_cpp.append(hp)
+        parameterization_cpp.append(hp)
+    return parameterization_cpp
 
   def refinable_parameters_init(self):
     return flex.double(self.n_parameters(), 0)
