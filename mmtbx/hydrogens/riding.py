@@ -17,10 +17,6 @@ class manager(object):
       geometry_restraints = geometry_restraints)
     h_connectivity = connectivity_manager.h_connectivity
     diagnostics_connectivity = connectivity_manager.get_diagnostics()
-    #self.h_in_connectivity = diagnostics_connectivity.h_in_connectivity
-    self.double_H = diagnostics_connectivity.double_H
-    #self.connectivity_slipped = diagnostics_connectivity.connectivity_slipped
-
     parameterization_manager = parameterization.manager(
       h_connectivity         = h_connectivity,
       sites_cart             = self.pdb_hierarchy.atoms().extract_xyz(),
@@ -74,7 +70,6 @@ class manager(object):
     return new_gradients
 
   def print_parameterization_info(self, log):
-    double_H = self.double_H
     list_h = []
     for rc in self.parameterization_cpp:
       ih = rc.ih
@@ -85,8 +80,8 @@ class manager(object):
       list(self.pdb_hierarchy.select(self.hd_selection).atoms().extract_i_seq())
     unk_list = [x for x in all_H_model if x not in list_h]
 
-    if unk_list or double_H:
-      number = len(unk_list) + len(double_H)
+    if unk_list:
+      number = len(unk_list)
       m = """  The following atoms are not used in the riding H procedure. This typically
   happens when
   - A neighboring atom (H or non H) is missing.
@@ -104,9 +99,6 @@ class manager(object):
         labels = atom.fetch_labels()
         if (labels.resname in ['DOD', 'WAT', 'HOH']):
           continue
-        print >> log, '\t', atom.id_str()
-      for ih in double_H.keys():
-        atom = atoms[ih]
         print >> log, '\t', atom.id_str()
 
   def diagnostics(self, sites_cart, threshold):
@@ -129,6 +121,5 @@ class manager(object):
     return group_args(
       h_distances          = h_distances,
       long_distance_list   = long_distance_list,
-      type_list            = type_list,
-      double_H             = self.double_H)
+      type_list            = type_list)
 

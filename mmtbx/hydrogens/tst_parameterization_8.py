@@ -3,6 +3,7 @@ import time
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
+from mmtbx.hydrogens import connectivity
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 
@@ -366,7 +367,10 @@ geometry_restraints.edits {
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-  double_H = riding_h_manager.double_H
+  connectivity_manager = connectivity.determine_connectivity(
+    pdb_hierarchy       = pdb_hierarchy,
+    geometry_restraints = model.get_restraints_manager().geometry)
+  double_H = connectivity_manager.double_H
 
 # Test if number of paramterized H atoms is correct
   assert (number_h == number_h_para), 'Not all H atoms are parameterized'
