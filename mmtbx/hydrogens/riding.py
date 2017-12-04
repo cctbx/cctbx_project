@@ -15,6 +15,7 @@ class manager(object):
     self.pdb_hierarchy = pdb_hierarchy
     self.geometry_restraints = geometry_restraints
     self.use_ideal_bonds_angles = use_ideal_bonds_angles
+    #
     self.hd_selection = self.pdb_hierarchy.atom_selection_cache().\
       selection("element H or element D")
     self.not_hd_selection = ~self.hd_selection
@@ -34,7 +35,7 @@ class manager(object):
       self.parameterization_cpp = self.get_parameterization_cpp(
         h_parameterization = self.h_parameterization)
 
-  # TODO: needs test
+  # TODO: more thourough test?
   def deep_copy(self):
     new_h_parameterization = []
     for rc in self.h_parameterization:
