@@ -19,6 +19,7 @@ def merging_reflection_table():
   table['slope'] = flex.double()
   table['miller_id'] = flex.size_t()
   table['crystal_id'] = flex.size_t()
+  table['iobs'] = flex.double()
   return table
 
 def merging_crystal_table(postrefinement_columns = False):
@@ -31,6 +32,9 @@ def merging_crystal_table(postrefinement_columns = False):
     table['B'] = flex.double()
     table['thetax'] = flex.double()
     table['thetay'] = flex.double()
+  table['ETA'] = flex.double()
+  table['DEFF'] = flex.double()
+  table['n_refl'] = flex.size_t()
   return table
 
 class refltable_scaling_manager(scaling_manager):
@@ -66,26 +70,37 @@ class refltable_scaling_manager(scaling_manager):
 
   def scale_frame_detail(self, result, file_name, db_mgr, out):
     data = super(refltable_scaling_manager, self).scale_frame_detail(result, file_name, db_mgr, out)
+    if isinstance(data, null_data):
+      return data
     reflections = merging_reflection_table()
     crystal_id = len(self.crystal_table)
     for i, hkl in enumerate(self.miller_set.indices()):
       if hkl not in data.ISIGI: continue
-      for refl in data.ISIGI[hkl]:
+      for j, refl in enumerate(data.ISIGI[hkl]):
         reflections.append({'miller_index':hkl,
                             'scaled_intensity': refl[0],
                             'isigi': refl[1],
                             'slope': refl[2],
                             'miller_id':i,
-                            'crystal_id':crystal_id})
+                            'crystal_id':crystal_id,
+                            'iobs':data.unscaled_obs[hkl][j]})
     data.ISIGI = reflections
 
     crystal_d = {'b_matrix':data.indexed_cell.reciprocal().orthogonalization_matrix(),
-                 'u_matrix':data.current_orientation.crystal_rotation_matrix()}
+                 'u_matrix':data.current_orientation.crystal_rotation_matrix(),
+                 'wavelength':data.wavelength,
+                 'n_refl':len(reflections)}
     if self.params.postrefinement.enable:
       crystal_d['G'] = self.postrefinement_params.G
       crystal_d['B'] = self.postrefinement_params.BFACTOR
       crystal_d['thetax'] = self.postrefinement_params.thetax
       crystal_d['thetay'] = self.postrefinement_params.thetay
+    if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ['eta_deff']:
+      crystal_d['ETA'] = postrefinement_params.ETA
+      crystal_d['DEFF'] = postrefinement_params.DEFF
+    else:
+      crystal_d['ETA'] = result['ML_half_mosaicity_deg'][0]
+      crystal_d['DEFF'] = result['ML_domain_size_ang'][0]
     self.crystal_table.append(crystal_d)
 
     return data
@@ -188,7 +203,10 @@ class refltable_scaling_manager(scaling_manager):
     for key in data.failure_modes.keys():
       self.failure_modes[key] = self.failure_modes.get(key,0) + data.failure_modes[key]
 
+    next_crystal_id = len(self.crystal_table)
+    data.ISIGI['crystal_id'] += next_crystal_id
     self.ISIGI.extend(data.ISIGI)
+    self.crystal_table.extend(data.crystal_table)
 
     self.completeness += data.completeness
     self.completeness_predictions += data.completeness_predictions
