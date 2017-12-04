@@ -1,7 +1,9 @@
 from __future__ import division
 from libtbx import group_args
-from cctbx import geometry_restraints
+#from cctbx import geometry_restraints
 from scitbx import matrix
+from cctbx.array_family import flex
+from scitbx_array_family_flex_ext import reindexing_array
 from mmtbx.hydrogens import connectivity
 from mmtbx.hydrogens import parameterization
 from mmtbx_hydrogens_ext import *
@@ -49,6 +51,83 @@ class manager(object):
       geometry_restraints = self.geometry_restraints,
       use_ideal_bonds_angles = self.use_ideal_bonds_angles,
       process_manager = False)
+    new_manager.h_parameterization = new_h_parameterization
+    new_manager.parameterization_cpp = \
+      self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
+    return new_manager
+
+  # TODO: more tests?
+  def select(self, selection):
+    new_manager = self.deep_copy()
+    # Properties from current manager
+    n_atoms = new_manager.pdb_hierarchy.atoms_size()
+    iselection_original = new_manager.pdb_hierarchy.atoms().extract_i_seq()
+    h_parameterization = new_manager.h_parameterization
+    # Properties for the new (selected) manager
+    new_hierachy = new_manager.pdb_hierarchy.select(selection)
+    hd_selection_new = new_hierachy.atom_selection_cache().\
+          selection("element H or element D")
+    new_geometry_restraints = new_manager.geometry_restraints.select(selection)
+    new_manager.pdb_hierarchy = new_hierachy
+    new_manager.hd_selection = hd_selection_new
+    new_manager.not_hd_selection = ~hd_selection_new
+    new_manager.geometry_restraints = new_geometry_restraints
+
+    iselection = selection.iselection().as_int()
+    r_a = list(reindexing_array(n_atoms, iselection))
+    reindexing_dict = {}
+    for i in iselection_original:
+      if (r_a[i] == n_atoms): continue
+      reindexing_dict[i] = r_a[i]
+    r_a_keys = list(reindexing_dict.keys())
+    new_h_parameterization = []
+    # Change h_parameterization (contains i_seq --> have to be updated)
+    for index, rc in enumerate(h_parameterization):
+      # No entry for non-selected atoms (H or non-H)
+      if index not in r_a_keys: continue
+      # Non-H atoms (if included in selection) have entry None
+      if rc is None:
+        new_h_parameterization.append(None)
+        continue
+      # For other entries: 2 possibilities
+      # a) update all i_seqs according to reindexing dictionary
+      # b) if any neighbors of H is not in selection --> change this
+      #    entry to None (because if neighbor is missing, H cannot be built)
+      ih, a0, a1, a2, a3 = rc.ih ,rc.a0 ,rc.a1 ,rc.a2 ,rc.a3
+      #print ih, a0, a1, a2, a3
+      if ih in r_a_keys:
+        rc.ih = reindexing_dict[ih]
+        #print ih, reindexing_dict[ih]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if a0 in r_a_keys:
+        #print a0, reindexing_dict[a0]
+        rc.a0 = reindexing_dict[a0]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if a1 in r_a_keys:
+        #print a1, reindexing_dict[a1]
+        rc.a1 = reindexing_dict[a1]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if a2 in r_a_keys:
+        #print a2, reindexing_dict[a2]
+        rc.a2 = reindexing_dict[a2]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      # a3 is only necessary for htype "3neigbs"
+      if a3 != -1:
+        if a3 in r_a_keys:
+          rc.a3 = reindexing_dict[a3]
+        else:
+          new_h_parameterization.append(None)
+          continue
+      new_h_parameterization.append(rc)
+
     new_manager.h_parameterization = new_h_parameterization
     new_manager.parameterization_cpp = \
       self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
