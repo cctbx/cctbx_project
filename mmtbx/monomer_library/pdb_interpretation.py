@@ -2954,7 +2954,8 @@ class build_all_chain_proxies(linking_mixins):
     self.params = params
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
-
+    self.pdb_inp = None
+    self.pdb_hierarchy = None
     if (pdb_inp is not None):
       self.pdb_inp = pdb_inp
     if (pdb_hierarchy is not None):
