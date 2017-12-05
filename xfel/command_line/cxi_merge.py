@@ -327,10 +327,10 @@ levmar {
 cell_rejection {
   unit_cell = Auto
     .type = unit_cell
-    .help = unit_cell can be user specified for use with mark1 algorithm, or automatically chooses PDB model unit cell
+    .help = unit_cell for filtering crystals with the given unit cell params. If Auto will automatically choose PDB model unit cell.
   space_group = Auto
     .type = space_group
-    .help = space_group can be user specified for use with mark1 algorithm, or automatically chooses PDB model space group
+    .help = space_group for filtering crystals with the given space group params. If Auto will automatically choose PDB space group.
 }
 """ + mysql_master_phil
 
