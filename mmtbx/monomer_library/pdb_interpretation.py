@@ -2938,7 +2938,7 @@ class build_all_chain_proxies(linking_mixins):
         restraints_loading_flags=None,
                 ):
     import iotbx.cif.model
-    assert [pdb_inp, pdb_hierarchy].count(None) == 1
+    # assert [pdb_inp, pdb_hierarchy].count(None) == 1
     # MARKED_FOR_DELETION_OLEG
     # Reason: sub-optimal place for store this kind of information.
     # Proposal: not available yet, needs to be discussed.
@@ -2957,13 +2957,11 @@ class build_all_chain_proxies(linking_mixins):
 
     if (pdb_inp is not None):
       self.pdb_inp = pdb_inp
+    if (pdb_hierarchy is not None):
+      self.pdb_hierarchy = pdb_hierarchy
+    else:
       self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(
         sort_atoms=self.params.sort_atoms)
-    if (pdb_hierarchy is not None):
-      self.pdb_inp = None # do something a few lines below
-      self.pdb_hierarchy = pdb_hierarchy
-      if(self.params.sort_atoms):
-        self.pdb_hierarchy.sort_atoms_in_place()
     #
     # optionally modify the model before processing
     #
@@ -5204,6 +5202,12 @@ class build_all_chain_proxies(linking_mixins):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     use_cdl = self.params.restraints_library.cdl
     if (use_cdl is Auto) :
+      # XXX this should be methods of pdb_input and cif_input
+      # with the same name and become something like this:
+      # if self.pdb_inp.present_cdl_mention():
+      #   use_cdl = True
+      # else:
+      #   use_cdl = False
       if (self.pdb_inp.file_type() == "pdb") :
         for line in self.pdb_inp.remark_section() :
           if line.startswith("REMARK   3") and ("CDL" in line) :
@@ -5400,13 +5404,17 @@ class process(object):
     self.ener_lib = ener_lib
     self.log = log
     nul = StringIO()
-    assert [file_name, raw_records, pdb_inp, pdb_hierarchy].count(None) == 3
+    # allow pdb_inp and pdb_hierarchy present simultaneously
+    assert [file_name, raw_records, pdb_inp, pdb_hierarchy].count(None) >= 2
     if log is None:
       self.log = nul
     if file_name is not None:
       assert pdb_inp is None
       pdb_inp = iotbx.pdb.input(file_name=file_name)
     if raw_records is not None:
+      assert pdb_inp is None
+      assert pdb_hierarchy is None
+      assert file_name is None
       if (isinstance(raw_records, str)):
         raw_records = flex.split_lines(raw_records)
       elif (not isinstance(raw_records, flex.std_string)):

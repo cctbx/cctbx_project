@@ -174,6 +174,7 @@ class manager(object):
                      pdb_hierarchy = None,  # remove later
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
+                     mtrix_records_container = None,
                      ):
 
     self._xray_structure = xray_structure
@@ -211,7 +212,6 @@ class manager(object):
     # for reprocessing. Probably select() will also use...
     self.scattering_dict_info = None
 
-    self._atom_selection_cache = None
     self._ss_annotation = None
     self.link_records_in_pdb_format = None # Nigel's stuff up to refactoring
     self.all_chain_proxies = None # probably will keep it. Need to investigate
@@ -233,20 +233,31 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
+    self._mtrix_records_container = mtrix_records_container
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
-
+    # print "self._crystal_symmetry1", self._crystal_symmetry
     if self._model_input is not None:
       s = str(type(model_input))
-      if s.find("pdb") > 0:
-        self._original_model_format = "pdb"
-      elif s.find("cif") > 0:
+      if s.find("cif") > 0:
         self._original_model_format = "mmcif"
+      elif s.find("pdb") > 0:
+        self._original_model_format = "pdb"
       self._ss_annotation = self._model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._model_input.crystal_symmetry()
+      if self._mtrix_records_container is None and self._pdb_hierarchy is None:
+        self._mtrix_records_container = self._model_input.process_MTRIX_records()
+        if self._mtrix_records_container.is_empty():
+          self._mtrix_records_container = None
+        else:
+          self._pdb_hierarchy = self._model_input.construct_hierarchy_MTRIX_expanded(
+              sort_atoms=self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
+          self._ss_annotation = self._model_input.construct_ss_annotation_expanded(
+              exp_type='mtrix')
+    # print "self._crystal_symmetry2", self._crystal_symmetry
 
     if process_input or build_grm:
       assert self._processed_pdb_file is None
@@ -271,16 +282,21 @@ class manager(object):
       self._build_grm()
 
     # do xray_structure
-    if self._xray_structure is None:
-      self._create_xray_structure()
-    else:
+
+    # if self._xray_structure is None:
+    #   self._create_xray_structure()
+    if self._xray_structure is not None:
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._xray_structure.crystal_symmetry()
 
-    assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
+    if self._xray_structure is not None:
+      assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
 
-    if self.crystal_symmetry() is None:
-      self._crystal_symmetry = self._xray_structure.crystal_symmetry()
+    # print "self._crystal_symmetry21", self._crystal_symmetry
+
+    # if self.crystal_symmetry() is None:
+    #   self._crystal_symmetry = self._xray_structure.crystal_symmetry()
+    # print "self._crystal_symmetry3", self._crystal_symmetry
 
     if self.has_hd is None:
       self._update_has_hd()
@@ -379,9 +395,9 @@ class manager(object):
     return self.pdb_atoms
 
   def get_sites_cart(self):
-    if self._xray_structure is not None:
-      return self._xray_structure.sites_cart()
-    return None
+    if self.get_xray_structure() is None:
+      self._create_xray_structure()
+    return self._xray_structure.sites_cart()
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is not None:
@@ -534,7 +550,10 @@ class manager(object):
     if self.all_chain_proxies is None:
       return self.get_atom_selection_cache().selection(selstr, optional=optional)
     else:
-      return self.all_chain_proxies.selection(selstr, cache=self._atom_selection_cache, optional=optional)
+      return self.all_chain_proxies.selection(
+          selstr,
+          cache=self._atom_selection_cache,
+          optional=optional)
 
   def iselection(self, selstr):
     result = self.selection(selstr)
@@ -762,6 +781,7 @@ class manager(object):
     if self._processed_pdb_file is None:
       self._processed_pdb_file, junk = self._processed_pdb_files_srv.process_pdb_files(
           pdb_inp = self._model_input,
+          hierarchy = self._pdb_hierarchy,
           # because hierarchy already extracted
           # raw_records = flex.split_lines(self._pdb_hierarchy.as_pdb_string()),
           # stop_if_duplicate_labels = True,
@@ -1078,6 +1098,7 @@ class manager(object):
       log = None,
       set_inelastic_form_factors=None,
       iff_wavelength=None):
+    self._create_xray_structure()
     self.scattering_dict_info = group_args(
         scattering_table=scattering_table,
         d_min = d_min,
@@ -1185,10 +1206,11 @@ class manager(object):
     self.input_tls_selections = []
     acp = self.all_chain_proxies
     pdb_inp_tls = None
-    if acp is not None:
-      pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
-    elif self._model_input is not None:
+
+    if self._model_input is not None:
       pdb_inp_tls = self._model_input.extract_tls_params(self._pdb_hierarchy)
+    elif acp is not None and acp.pdb_inp is not None:
+      pdb_inp_tls = acp.pdb_inp.extract_tls_params(acp.pdb_hierarchy)
 
     if(pdb_inp_tls and pdb_inp_tls.tls_present):
       print_statistics.make_header(
@@ -1962,6 +1984,7 @@ class manager(object):
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
+      mtrix_records_container    = self._mtrix_records_container,
       log                        = self.log)
     new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)

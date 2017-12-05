@@ -1004,9 +1004,10 @@ class process_pdb_file_srv(object):
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
                         pdb_inp=None,
+                        hierarchy=None,
                         # stop_if_duplicate_labels = True,
                         allow_missing_symmetry=False):
-    assert [pdb_file_names, raw_records, pdb_inp].count(None) == 2
+    assert [pdb_file_names, raw_records, hierarchy, pdb_inp].count(None) >= 2
     # if(self.cif_objects is not None): # this could be empty and not None.
     # This condition should just go into the function
     if self.cif_objects is not None or self.cif_parameters is not None:
@@ -1015,13 +1016,17 @@ class process_pdb_file_srv(object):
       pdb_file_names           = pdb_file_names,
       raw_records              = raw_records,
       pdb_inp                  = pdb_inp,
+      hierarchy                = hierarchy,
       # stop_if_duplicate_labels = stop_if_duplicate_labels,
       allow_missing_symmetry   = allow_missing_symmetry)
 
   def _process_pdb_file(self, pdb_file_names, raw_records, pdb_inp,
+                        hierarchy = None,
                         # stop_if_duplicate_labels,
                         allow_missing_symmetry=False):
-    if(raw_records is None and pdb_inp is None):
+    assert [pdb_file_names, raw_records, hierarchy, pdb_inp].count(None) >= 2
+    if pdb_file_names is not None:
+      assert [raw_records, hierarchy, pdb_inp].count(None) == 3
       pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
       pdb_combined.report_non_unique(out=self.log)
       if (len(pdb_combined.unique_file_names) == 0):
@@ -1039,7 +1044,7 @@ class process_pdb_file_srv(object):
           self.crystal_symmetry = pdb_inp.crystal_symmetry()
       except ValueError, e :
         raise Sorry("PDB format error:\n%s" % str(e))
-    if(pdb_inp.atoms().size() == 0):
+    if pdb_inp is not None and pdb_inp.atoms().size() == 0:
       msg = ["No atomic coordinates found in PDB files:"]
       if(pdb_file_names is not None):
         for file_name in pdb_file_names:
@@ -1078,6 +1083,7 @@ class process_pdb_file_srv(object):
       params                   = self.pdb_interpretation_params,
       raw_records              = raw_records,
       pdb_inp                  = pdb_inp_,
+      pdb_hierarchy            = hierarchy,
       strict_conflict_handling = False,
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,

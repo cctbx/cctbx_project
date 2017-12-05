@@ -793,10 +793,13 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
-  def _expand_hierarchy_helper(self, mtrix_biomt_container, h=None):
+  def _expand_hierarchy_helper(self,
+      mtrix_biomt_container,
+      h=None,
+      sort_atoms=True):
     present = mtrix_biomt_container.validate()
     if(h is None):
-      h = self.construct_hierarchy()
+      h = self.construct_hierarchy(sort_atoms=sort_atoms)
     if(len(mtrix_biomt_container.r)==0 or present): return h
     return h.apply_rotation_translation(
       rot_matrices = mtrix_biomt_container.r,
@@ -809,13 +812,15 @@ class pdb_input_mixin(object):
     """
     return None
 
-  def construct_hierarchy_MTRIX_expanded(self):
+  def construct_hierarchy_MTRIX_expanded(self, sort_atoms=True):
     return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_MTRIX_records())
+      mtrix_biomt_container = self.process_MTRIX_records(),
+      sort_atoms = sort_atoms)
 
-  def construct_hierarchy_BIOMT_expanded(self):
+  def construct_hierarchy_BIOMT_expanded(self, sort_atoms=True):
     return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_BIOMT_records())
+      mtrix_biomt_container = self.process_BIOMT_records(),
+      sort_atoms = sort_atoms)
 
   def construct_ss_annotation_expanded(self, exp_type='mtrix'):
     exp_container = None
