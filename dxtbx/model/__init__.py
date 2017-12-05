@@ -573,3 +573,14 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
 
     # Create the datablock
     return DataBlockFactory.from_dict([obj])
+
+  def nullify_all_single_file_reader_format_instances(self):
+    '''
+    Parallel reading of HDF5 from the same handle is not allowed. Python
+    multiprocessing is a bit messed up and used fork on linux so need to
+    close and reopen file.
+
+    '''
+    for experiment in self:
+      if experiment.imageset.reader().is_single_file_reader():
+        experiment.imageset.reader().nullify_format_instance()
