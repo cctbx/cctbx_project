@@ -59,7 +59,7 @@ class clashscore(validation):
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
   gui_formats = ["%s", "%s", ".3f"]
-  wx_column_widths = [200] * 3
+  wx_column_widths = [150, 150, 150] #actually set in GUI's Molprobity/Core.py
 
   def get_result_class (self) : return clash
 
@@ -550,7 +550,7 @@ class nqh_flips (validation) :
   """
   gui_list_headers = ["Chain", "Residue"]
   gui_formats = ["%s", "%s"]
-  wx_column_widths = [100,220]
+  wx_column_widths = [75,220]
   def __init__ (self, pdb_hierarchy) :
     re_flip = re.compile(":FLIP")
     validation.__init__(self)

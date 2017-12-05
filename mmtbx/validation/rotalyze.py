@@ -94,7 +94,7 @@ class rotalyze (validation) :
   output_header+= "evaluation:rotamer"
   gui_list_headers = ["Chain","Residue","Score","Chi1","Chi2","Chi3","Chi4"]
   gui_formats = ["%s", "%s", "%.2f", "%.1f", "%.1f", "%.1f", "%.1f"]
-  wx_column_widths = [120]*7
+  wx_column_widths = [75, 120, 100, 120, 120, 120, 120]
 
   def get_result_class (self) : return rotamer
 

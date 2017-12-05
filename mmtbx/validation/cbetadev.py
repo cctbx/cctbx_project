@@ -61,7 +61,7 @@ class cbetadev (validation) :
   output_header = "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
   gui_list_headers = ["Chain", "Residue","Deviation","Angle"]
   gui_formats = ["%s", "%s", "%.3f", "%.2f"]
-  wx_column_widths = [100, 200, 100, 100]
+  wx_column_widths = [75, 125, 100, 100]
 
   def get_result_class (self) : return cbeta
 

@@ -249,7 +249,7 @@ class bonds (restraint_validation) :
   gui_list_headers = ["Atom 1","Atom 2","Ideal value","Model value",
                       "Deviation (sigmas)"]
   gui_formats = ["%s", "%s", "%.3f", "%.3f", "%.1f"]
-  wx_column_widths = [150, 150, 100, 100, 80]
+  wx_column_widths = [150, 150, 100, 100, 180]
 
   def get_result_class (self) : return bond
 

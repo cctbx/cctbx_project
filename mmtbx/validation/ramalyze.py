@@ -134,7 +134,7 @@ class ramalyze (validation) :
   output_header = "residue:score%:phi:psi:evaluation:type"
   gui_list_headers = ["Chain","Residue","Residue type","Score","Phi","Psi"]
   gui_formats = ["%s", "%s", "%s", "%.2f", "%.1f", "%.1f"]
-  wx_column_widths = [125]*6
+  wx_column_widths = [75, 125, 125, 100, 125, 125]
 
   def get_result_class (self) : return ramachandran
 
