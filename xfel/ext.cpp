@@ -572,6 +572,7 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
     scitbx::af::shared<double> intensities;
     scitbx::af::shared<double> sigmas;
     scitbx::af::shared<double> meanIprimes;
+    scitbx::af::shared<bool> accepted;
     double intensity = 0;
     double sigma = 0;
     double sumI = 0;
@@ -582,8 +583,11 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
       tuple dataitem = extract<tuple>(data[i]);
       // scaled intensity
       intensity = extract<double>(dataitem[0]);
+
       // corrected sigma (original sigma/slope)
       sigma = intensity / extract<double>(dataitem[1]);
+
+      accepted.push_back(sigma > 0);
       if (sigma <= 0)
         continue;
       ++n_accept;
@@ -592,14 +596,20 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
       sigmas.push_back(sigma);
       sumI += intensity;
     }
-    n = n_accept;
-    double nn = std::sqrt((n-1.0)/n);
+    double nn = 0;
+    if (n_accept > 0) {
+      nn = std::sqrt((n_accept-1.0)/n_accept);
+    }
 
     // compute the normalized deviations
     for (std::size_t i = 0; i < n; i++) {
-      double meanIprime = (sumI-intensities[i]) / (n>1 ? (n-1) : 1);
-
-      result.push_back(nn * (intensities[i] - meanIprime) / sigmas[i]);
+      if (accepted[i]) {
+        double meanIprime = (sumI-intensities[i]) / (n_accept>1 ? (n_accept-1) : 1);
+        result.push_back(nn * (intensities[i] - meanIprime) / sigmas[i]);
+      }
+      else {
+        result.push_back(0.0);
+      }
     }
   }
   return result;
