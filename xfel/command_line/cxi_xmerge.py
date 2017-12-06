@@ -334,10 +334,14 @@ def run(args):
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
   # ---------- End of new code ----------------
 
-    if work_params.raw_data.sdfac_refine:
-      scaler.scale_errors()
-    if work_params.raw_data.errors_from_sample_residuals:
-      scaler.errors_from_residuals()
+    if work_params.raw_data.sdfac_refine or work_params.raw_data.errors_from_sample_residuals:
+      if work_params.raw_data.sdfac_refine:
+        from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
+
+      if work_params.raw_data.errors_from_sample_residuals:
+        from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler
+
+      error_modeler(scaler).adjust_errors()
 
     miller_set_avg = miller_set.customized_copy(
       unit_cell=work_params.target_unit_cell)

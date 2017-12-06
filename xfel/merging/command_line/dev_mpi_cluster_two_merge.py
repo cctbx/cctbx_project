@@ -46,11 +46,14 @@ class scaling_manager_mpi(scaling_manager_base):
     print >> self.log, "Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
       (self.n_accepted, high_res_count, self.params.d_min)
 
-    if self.params.raw_data.sdfac_refine:
-      self.scale_errors()
+    if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals:
+      if self.params.raw_data.sdfac_refine:
+        from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
 
-    if self.params.raw_data.errors_from_sample_residuals:
-      self.errors_from_residuals()
+      if self.params.raw_data.errors_from_sample_residuals:
+        from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler
+
+      error_modeler(self).adjust_errors()
 
 from xfel.merging.command_line.dev_cxi_merge import Script as base_Script
 
