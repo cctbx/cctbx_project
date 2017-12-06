@@ -1,11 +1,11 @@
 from __future__ import division
 from cctbx.array_family import flex
 import sys, math
-from libtbx.str_utils import format_value
+from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
 from itertools import count
 import iotbx.cif.model
 from libtbx.test_utils import approx_equal
-from libtbx import group_args, str_utils
+from libtbx import group_args
 from libtbx.utils import null_out
 
 from mmtbx.validation.ramalyze import ramalyze
@@ -257,7 +257,7 @@ class geometry(object):
 %s    TWISTED PROLINE : %s
 %s    TWISTED GENERAL : %s"""%(
         prefix,
-        prefix, str_utils.format_value("%-6.2f", res.clash.score).strip(),
+        prefix, format_value("%-6.2f", res.clash.score).strip(),
         prefix,
         prefix, res.ramachandran.outliers, "%",
         prefix, res.ramachandran.allowed, "%",
@@ -289,11 +289,11 @@ class geometry(object):
     res = self.result()
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
-    loop.add_row(("f_bond_d",           b.n, b.mean, "?", "?"))
-    loop.add_row(("f_angle_d",          a.n, a.mean, "?", "?"))
-    loop.add_row(("f_chiral_restr",     c.n, c.mean, "?", "?"))
-    loop.add_row(("f_plane_restr",      p.n, p.mean, "?", "?"))
-    loop.add_row(("f_dihedral_angle_d", d.n, d.mean, "?", "?"))
+    loop.add_row(("f_bond_d",           b.n, round_4_for_cif(b.mean), "?", "?"))
+    loop.add_row(("f_angle_d",          a.n, round_4_for_cif(a.mean), "?", "?"))
+    loop.add_row(("f_chiral_restr",     c.n, round_4_for_cif(c.mean), "?", "?"))
+    loop.add_row(("f_plane_restr",      p.n, round_4_for_cif(p.mean), "?", "?"))
+    loop.add_row(("f_dihedral_angle_d", d.n, round_4_for_cif(d.mean), "?", "?"))
     cif_block.add_loop(loop)
     return cif_block
 
@@ -526,8 +526,8 @@ class adp(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    cif_block["_reflns.B_iso_Wilson_estimate"] = self.wilson_b
-    cif_block["_refine.B_iso_mean"] = self.b_mean_a
+    cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
+    cif_block["_refine.B_iso_mean"] = round_2_for_cif(self.b_mean_a)
     #_refine.aniso_B[1][1]
     #_refine.aniso_B[2][2]
     #_refine.aniso_B[3][3]

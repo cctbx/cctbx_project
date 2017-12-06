@@ -15,6 +15,22 @@ def format_value(format, value, null_value=0, replace_none_with="None"):
       replace_with=replace_none_with)
   return format % value
 
+def round_2_for_cif(value):
+  """
+  shortcut for cif output
+  """
+  if value is None or str(value).upper()=="NONE":
+    return '?'
+  return format_value(format="%.2f", value=value, null_value=0, replace_none_with="?")
+
+def round_4_for_cif(value):
+  """
+  shortcut for cif output
+  """
+  if value is None or str(value).upper()=="NONE":
+    return '?'
+  return format_value(format="%.4f", value=value, null_value=0, replace_none_with="?")
+
 def pad_string (line, width=72, border="|") :
   n_spaces = width - (len(border) * 2) - len(line)
   return border + line + (" " * n_spaces) + border

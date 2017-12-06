@@ -1,6 +1,6 @@
 from __future__ import division
 from libtbx import adopt_init_args
-from libtbx.str_utils import format_value
+from libtbx.str_utils import format_value, round_2_for_cif, round_4_for_cif
 import sys, re, string
 
 def _scale_helper(num, den, selection=None, num_num=False):
@@ -321,19 +321,19 @@ class info(object):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
 
-    cif_block["_refine.ls_d_res_low"] = self.d_max
-    cif_block["_refine.ls_d_res_high"] = self.d_min
-    cif_block["_refine.pdbx_ls_sigma_F"] = self.min_f_obs_over_sigma
-    cif_block["_refine.ls_percent_reflns_obs"] = self.completeness_in_range*100.0
+    cif_block["_refine.ls_d_res_low"] = round_2_for_cif(self.d_max)
+    cif_block["_refine.ls_d_res_high"] = round_2_for_cif(self.d_min)
+    cif_block["_refine.pdbx_ls_sigma_F"] = round_2_for_cif(self.min_f_obs_over_sigma)
+    cif_block["_refine.ls_percent_reflns_obs"] = round_2_for_cif(self.completeness_in_range*100.0)
     cif_block["_refine.ls_number_reflns_obs"] = self.number_of_reflections
     #_refine.ls_number_reflns_all
     cif_block["_refine.ls_number_reflns_R_work"] = (
       self.number_of_reflections - self.number_of_test_reflections)
     cif_block["_refine.ls_number_reflns_R_free"] = self.number_of_test_reflections
-    cif_block["_refine.ls_R_factor_obs"] = self.r_all
-    cif_block["_refine.ls_R_factor_R_work"] = self.r_work
-    cif_block["_refine.ls_R_factor_R_free"] = self.r_free
-    cif_block["_refine.ls_percent_reflns_R_free"] = (
+    cif_block["_refine.ls_R_factor_obs"] = round_4_for_cif(self.r_all)
+    cif_block["_refine.ls_R_factor_R_work"] = round_4_for_cif(self.r_work)
+    cif_block["_refine.ls_R_factor_R_free"] = round_4_for_cif(self.r_free)
+    cif_block["_refine.ls_percent_reflns_R_free"] = round_2_for_cif(
       self.number_of_test_reflections/self.number_of_reflections*100)
 
     loop = iotbx.cif.model.loop(
@@ -358,12 +358,12 @@ class info(object):
     for bin in self.bins:
       d_max, d_min = [float(d) for d in bin.d_range.split('-')]
       loop.add_row((
-        d_min,
-        d_max,
+        round_2_for_cif(d_min),
+        round_2_for_cif(d_max),
         bin.n_work,
-        bin.r_work,
-        bin.completeness * 100,
-        bin.r_free,
+        round_4_for_cif(bin.r_work),
+        round_2_for_cif(bin.completeness * 100),
+        round_4_for_cif(bin.r_free),
         bin.n_free))
 
     cif_block.add_loop(loop)
@@ -371,13 +371,13 @@ class info(object):
     cif_block["_refine.solvent_model_details"] = "FLAT BULK SOLVENT MODEL"
     #_refine.solvent_model_param_ksol
     #_refine.solvent_model_param_bsol
-    cif_block["_refine.pdbx_solvent_vdw_probe_radii"] = self.mask_solvent_radius
-    cif_block["_refine.pdbx_solvent_shrinkage_radii"] = self.mask_shrink_radius
+    cif_block["_refine.pdbx_solvent_vdw_probe_radii"] = round_4_for_cif(self.mask_solvent_radius)
+    cif_block["_refine.pdbx_solvent_shrinkage_radii"] = round_4_for_cif(self.mask_shrink_radius)
 
     # twinning?
 
-    cif_block["_refine.overall_SU_ML"] = self.ml_coordinate_error
-    cif_block["_refine.pdbx_overall_phase_error"] = self.ml_phase_error
+    cif_block["_refine.overall_SU_ML"] = round_4_for_cif(self.ml_coordinate_error)
+    cif_block["_refine.pdbx_overall_phase_error"] = round_4_for_cif(self.ml_phase_error)
 
     return cif_block
 
