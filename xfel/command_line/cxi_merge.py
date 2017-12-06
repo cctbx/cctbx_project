@@ -1327,10 +1327,10 @@ class scaling_manager (intensity_data) :
       image_info = ImageInfo(self.params.predictions_to_edge.image, detector_phil=self.params.predictions_to_edge.detector_phil)
     else:
       image_info = None
-      
+
     if self.params.cell_rejection.unit_cell == Auto:
       self.params.cell_rejection.unit_cell = self.params.target_unit_cell
-      
+
     try :
       result = load_result(
         file_name=file_name,
