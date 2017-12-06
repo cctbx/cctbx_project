@@ -86,60 +86,66 @@ class manager(object):
     if selection.count(True) == n_atoms:
       new_h_parameterization = h_parameterization
     else:
-      iselection = selection.iselection().as_int()
-      r_a = list(reindexing_array(n_atoms, iselection))
-      reindexing_dict = {}
-      for index, i_seq in enumerate(iselection_original):
-        if (r_a[index] == n_atoms): continue
-        reindexing_dict[iselection_original[index]] = r_a[index]
-      r_a_keys = list(reindexing_dict.keys())
-      new_h_parameterization = []
-      # Change h_parameterization (contains i_seq --> have to be updated)
-      for index, rc in enumerate(h_parameterization):
-        # No entry for non-selected atoms (H or non-H)
-        if index not in r_a_keys: continue
-        # Non-H atoms (if included in selection) have entry None
-        if rc is None:
-          new_h_parameterization.append(None)
-          continue
-        # For other entries: 2 possibilities
-        # a) update all i_seqs according to reindexing dictionary
-        # b) if any neighbors of H is not in selection --> change this
-        #    entry to None (because if neighbor is missing, H cannot be built)
-        ih, a0, a1, a2, a3 = rc.ih ,rc.a0 ,rc.a1 ,rc.a2 ,rc.a3
-        if ih in r_a_keys:
-          rc.ih = reindexing_dict[ih]
-        else:
-          new_h_parameterization.append(None)
-          continue
-        if a0 in r_a_keys:
-          rc.a0 = reindexing_dict[a0]
-        else:
-          new_h_parameterization.append(None)
-          continue
-        if a1 in r_a_keys:
-          rc.a1 = reindexing_dict[a1]
-        else:
-          new_h_parameterization.append(None)
-          continue
-        if a2 in r_a_keys:
-          rc.a2 = reindexing_dict[a2]
-        else:
-          new_h_parameterization.append(None)
-          continue
-        # a3 is only necessary for htype "3neigbs"
-        if a3 != -1:
-          if a3 in r_a_keys:
-            rc.a3 = reindexing_dict[a3]
-          else:
-            new_h_parameterization.append(None)
-            continue
-        new_h_parameterization.append(rc)
-
+      new_h_parameterization = self.reindex_h_parameterization(
+        selection           = selection,
+        iselection_original = iselection_original,
+        n_atoms             = n_atoms,
+        h_para              = h_parameterization)
     new_manager.h_parameterization = new_h_parameterization
     new_manager.parameterization_cpp = \
       self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
     return new_manager
+
+  def reindex_h_parameterization(
+      self, selection, iselection_original, n_atoms, h_para):
+    iselection = selection.iselection().as_int()
+    r_a = list(reindexing_array(n_atoms, iselection))
+    reindexing_dict = {}
+    for index, i_seq in enumerate(iselection_original):
+      reindexing_dict[iselection_original[index]] = r_a[index]
+    # Change h_parameterization (contains i_seq --> have to be updated)
+    new_h_parameterization = []
+    for index, rc in enumerate(h_para):
+      key = iselection_original[index]
+      # No entry for non-selected atoms (H or non-H)
+      if reindexing_dict[key] == n_atoms: continue
+      # Non-H atoms (if included in selection) have entry None
+      if rc is None:
+        new_h_parameterization.append(None)
+        continue
+      # For other entries: 2 possibilities
+      # a) update all i_seqs according to reindexing dictionary
+      # b) if any neighbors of H is not in selection --> change this
+      #    entry to None (because if neighbor is missing, H cannot be built)
+      if reindexing_dict[rc.ih] != n_atoms:
+        rc.ih = reindexing_dict[rc.ih]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if reindexing_dict[rc.a0] != n_atoms:
+        rc.a0 = reindexing_dict[rc.a0]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if reindexing_dict[rc.a1] != n_atoms:
+        rc.a1 = reindexing_dict[rc.a1]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      if reindexing_dict[rc.a2] != n_atoms:
+        rc.a2 = reindexing_dict[rc.a2]
+      else:
+        new_h_parameterization.append(None)
+        continue
+      # a3 only exists for htype "3neigbs"
+      if rc.a3 != -1:
+        if reindexing_dict[rc.a3] != n_atoms:
+          rc.a3 = reindexing_dict[rc.a3]
+        else:
+          new_h_parameterization.append(None)
+          continue
+      new_h_parameterization.append(rc)
+    return new_h_parameterization
 
   def get_parameterization_cpp(self, h_parameterization):
     parameterization_cpp = []
