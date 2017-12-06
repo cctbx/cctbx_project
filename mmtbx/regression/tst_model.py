@@ -1052,14 +1052,22 @@ def exercise_3():
     model_input               = iotbx.pdb.input(file_name=pdb_file),
     pdb_interpretation_params = params,
     build_grm                 = True)
+  mol.setup_scattering_dictionaries(scattering_table = "wk1995")
+  out = StringIO()
+  mol.set_log(out)
   mol.idealize_h()
-  diffs = flex.double()
-  for it in mol.xh_connectivity_table():
-    diffs.append(abs(it[3]-it[4]))
-  mmm = diffs.min_max_mean()
-  print mmm.as_tuple()
-  assert mmm.max <0.01 , mmm.max
-  assert mmm.mean<0.001, mmm.mean
+  assert out.getvalue().splitlines()[0] == \
+  "X-H deviation from ideal before regularization (bond): mean= 0.201 max= 0.636", \
+  out.getvalue().splitlines()[0]
+  assert out.getvalue().splitlines()[1] == \
+  "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.000"
+  #diffs = flex.double()
+  #for it in mol.xh_connectivity_table():
+  #  diffs.append(abs(it[3]-it[4]))
+  #mmm = diffs.min_max_mean()
+  #print mmm.as_tuple()
+  #assert mmm.max <0.01 , mmm.max
+  #assert mmm.mean<0.001, mmm.mean
 
 def exercise_4():
   pdb_file = libtbx.env.find_in_repositories(

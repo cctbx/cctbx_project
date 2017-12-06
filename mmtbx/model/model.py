@@ -8,7 +8,7 @@ restraints.
 
 from __future__ import division
 
-
+from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry, user_plus_sys_time
 from libtbx import group_args, str_utils
 
@@ -1530,11 +1530,84 @@ class manager(object):
     print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
     return out.getvalue()
 
-  def idealize_h(self):
-     if(self.riding_h_manager is None):
-       self.setup_riding_h_manager()
-     self.riding_h_manager.idealize(
-       sites_cart = self._xray_structure.sites_cart())
+  def idealize_h(self, correct_special_position_tolerance=1.0,
+                   selection=None, show=True, nuclear=False):
+    """
+    Perform geometry regularization on hydrogen atoms only.
+    """
+    if(self.restraints_manager is None): return
+    if self.has_hd:
+      hd_selection = self.get_hd_selection()
+      if(selection is not None): hd_selection = selection
+      if(hd_selection.count(True)==0): return
+      not_hd_selection = ~hd_selection
+      sol_hd = self.solvent_selection().set_selected(~hd_selection, False)
+      mac_hd = hd_selection.deep_copy().set_selected(self.solvent_selection(), False)
+      ias_selection = self.get_ias_selection()
+      if (ias_selection is not None):
+        not_hd_selection.set_selected(ias_selection, False)
+      sites_cart_mac_before = \
+        self._xray_structure.sites_cart().select(not_hd_selection)
+      xhd = flex.double()
+      if(hd_selection.count(True)==0): return
+      for t in self.xh_connectivity_table():
+        if(hd_selection[t[1]]):
+          xhd.append(abs(t[-1]-t[-2]))
+      if(show):
+        print >> self.log, \
+        "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd))
+      for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
+        if(sel_pair[0].count(True) > 0):
+          sel = sel_pair[0]
+          if(ias_selection is not None and ias_selection.count(True) > 0):
+            sel = sel.select(~ias_selection)
+          minimized = geometry_minimization.run2(
+              restraints_manager = self.get_restraints_manager(),
+              pdb_hierarchy = self.get_hierarchy(),
+              correct_special_position_tolerance = correct_special_position_tolerance,
+              riding_h_manager               = None, # didn't go in original implementation
+              ncs_restraints_group_list      = [], # didn't go in original implementation
+              max_number_of_iterations       = 500,
+              number_of_macro_cycles         = 5,
+              selection                      = sel,
+              bond                           = True,
+              nonbonded                      = sel_pair[1],
+              angle                          = True,
+              dihedral                       = True,
+              chirality                      = True,
+              planarity                      = True,
+              parallelity                    = True,
+              # rmsd_bonds_termination_cutoff  = rmsd_bonds_termination_cutoff,
+              # rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff,
+              # alternate_nonbonded_off_on     = False, # default
+              # cdl                            = False,
+              # rdl                            = False,
+              # correct_hydrogens              = False,
+              # fix_rotamer_outliers           = True,
+              # allow_allowed_rotamers         = True,
+              # states_collector               = None,
+              log                            = StringIO(),
+              mon_lib_srv                    = self.get_mon_lib_srv())
+          self.set_sites_cart_from_hierarchy()
+      sites_cart_mac_after = \
+        self._xray_structure.sites_cart().select(not_hd_selection)
+      assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
+        sites_cart_mac_after.as_double()), 0)
+      xhd = flex.double()
+      for t in self.xh_connectivity_table():
+        if(hd_selection[t[1]]):
+          xhd.append(abs(t[-1]-t[-2]))
+      if(show):
+        print >> self.log,\
+        "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd))
+
+  #def idealize_h(self):
+  #   if(self.riding_h_manager is None):
+  #     self.setup_riding_h_manager()
+  #   self.riding_h_manager.idealize(
+  #     sites_cart = self._xray_structure.sites_cart())
 
   def extract_water_residue_groups(self):
     result = []
