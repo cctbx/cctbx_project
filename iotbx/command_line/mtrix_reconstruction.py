@@ -26,26 +26,11 @@ def run(args):
   else:
     out_text = model.model_as_pdb()
     ext = ".pdb"
-
-  # input_file_is_cif = isinstance(pdb_inp, iotbx.pdb.mmcif.cif_input)
-  # h = pdb_inp.construct_hierarchy_MTRIX_expanded()
-  # ss_annot = pdb_inp.construct_ss_annotation_expanded(exp_type='mtrix')
-  # if(input_file_is_cif):
-  #   ext=".cif"
-  #   wff = iotbx.cif.write_whole_cif_file
-  # else:
-  #   ext=".pdb"
-  #   wff = iotbx.pdb.write_whole_pdb_file
   ofn = "%s_MTRIX_expanded%s"%(
     os.path.splitext(os.path.basename(file_name))[0], ext)
   print "Writing result to %s file."%ofn
   with open(ofn, 'w') as f:
     f.write(out_text)
-  # wff(
-  #   file_name        = ofn,
-  #   pdb_hierarchy    = h,
-  #   crystal_symmetry = pdb_inp.crystal_symmetry(),
-  #   ss_annotation    = ss_annot)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
