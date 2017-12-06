@@ -57,6 +57,7 @@ tst_list = (
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
   "$D/regression/tst_model.py",
+  "$D/regression/tst_model_mtrix.py",
   "$D/regression/tst_model_2.py",
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
