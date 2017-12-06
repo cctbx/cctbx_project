@@ -46,6 +46,20 @@ class manager(object):
         new_h_parameterization.append(None)
     return new_h_parameterization
 
+  def update(self, pdb_hierarchy, geometry_restraints, n_new_atoms):
+    new_h_parameterization = self.copy_h_parameterization(
+      h_parameterization = self.h_parameterization)
+    new_h_parameterization + [None]*n_new_atoms
+    new_manager = manager(
+      pdb_hierarchy = pdb_hierarchy,
+      geometry_restraints = geometry_restraints,
+      use_ideal_bonds_angles = self.use_ideal_bonds_angles,
+      process_manager = False)
+    new_manager.h_parameterization = new_h_parameterization
+    new_manager.parameterization_cpp = \
+      self.get_parameterization_cpp(h_parameterization = new_h_parameterization)
+    return new_manager
+
   # TODO: more thourough test?
   def deep_copy(self):
     new_h_parameterization = self.copy_h_parameterization(self.h_parameterization)
