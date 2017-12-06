@@ -161,6 +161,14 @@ raw_data {
   errors_from_sample_residuals = False
     .type = bool
     .help = Use sample residuals as error estimates. Not compatible with sdfac_auto or sdfac_refine.
+  error_models {
+    sdfac_refine {
+      random_seed = None
+        .help = Random seed. May be int or None.
+        .type = int
+        .expert_level = 1
+    }
+  }
 }
 output {
   n_bins = 10

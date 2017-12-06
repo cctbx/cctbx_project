@@ -142,7 +142,7 @@ class sdfac_refine(error_modeler_base):
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
     """
-    print >> self.log, "Starting scale_errors"
+    print >> self.log, "Starting adjust_errors"
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
     sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
 
@@ -152,7 +152,7 @@ class sdfac_refine(error_modeler_base):
     from scitbx.simplex import simplex_opt
     class simplex_minimizer(object):
       """Class for refining sdfac, sdb and sdadd"""
-      def __init__(self, sdfac, sdb, sdadd, data, indices, bins, log=None):
+      def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log=None):
         """
         @param sdfac Initial value for sdfac
         @param sdfac Initial value for sdfac
@@ -171,8 +171,15 @@ class sdfac_refine(error_modeler_base):
         self.n = 3
         self.x = flex.double([sdfac, sdb, sdadd])
         self.starting_simplex = []
+        if seed is None:
+          random_func = flex.random_double
+        else:
+          print >> self.log, "Using random seed %d"%seed
+          mt = flex.mersenne_twister(seed)
+          random_func = mt.random_double
+
         for i in xrange(self.n+1):
-          self.starting_simplex.append(flex.random_double(self.n))
+          self.starting_simplex.append(random_func(self.n))
 
         self.optimizer = simplex_opt( dimension = self.n,
                                       matrix    = self.starting_simplex,
@@ -186,25 +193,29 @@ class sdfac_refine(error_modeler_base):
         using those normalized deviations to compute the functional."""
         sdfac, sdb, sdadd = vector
 
-        data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
-        all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
+        if sdfac < 0 or sdb < 0 or sdadd < 0:
+          f = 1e6
+        else:
+          data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
+          all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
 
-        f = 0
-        for bin in self.intensity_bin_selections:
-          binned_normalized_sigmas = all_sigmas_normalized.select(bin)
-          n = len(binned_normalized_sigmas)
-          if n == 0: continue
-          # weighting scheme from Evans, 2011
-          w = math.sqrt(n)
-          # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
-          f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
+          f = 0
+          for bin in self.intensity_bin_selections:
+            binned_normalized_sigmas = all_sigmas_normalized.select(bin)
+            n = len(binned_normalized_sigmas)
+            if n == 0: continue
+            # weighting scheme from Evans, 2011
+            w = math.sqrt(n)
+            # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
+            f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
         print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
         return f
 
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
-    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, self.log)
+    seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
+    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, seed, self.log)
     sdfac, sdb, sdadd = minimizer.x
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
