@@ -483,7 +483,7 @@ class minimize_wrapper_with_map():
         self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
         print >> log, "RMSDS:", self.rmsd_bonds_final, self.rmsd_angles_final
         # print >> log, "sizes:", len(refine_object.sites_cart()), len(self.xrs.scatterers())
-        self.model.set_sites_cart_from_xrs()
+        self.model.set_sites_cart(refine_object.sites_cart(), update_grm=True)
         # print >> log, "sizes", self.xrs.scatterers()
       else:
         # Yes NCS
