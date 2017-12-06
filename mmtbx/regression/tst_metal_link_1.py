@@ -123,7 +123,7 @@ def run():
       if(i!=73): linked_atoms_found.append(a1)
       else:      linked_atoms_found.append(a2)
   linked_atoms_found.sort()
-  assert expected_link_atoms == linked_atoms_found
+  assert expected_link_atoms == linked_atoms_found, '%s != %s' % (expected_link_atoms, linked_atoms_found)
 
 if (__name__ == "__main__"):
   t0 = time.time()
