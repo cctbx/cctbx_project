@@ -327,6 +327,23 @@ class SetupInstaller(object):
       '--prefix', pkg_prefix,
     ], cwd=self.dest_dir)
 
+    # fix SSL_CERT_FILE location in dispatchers
+    # command-line installation step (above) is using the location from the
+    # current python, not the one in the newly installed location.
+    # command-line installation works correctly outside of this script, though.
+    try:
+      import certifi
+      from install_base_packages import installer
+      file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
+      for filename in file_list:
+        installer.patch_src(
+          os.path.join(app_root_dir,'build', 'bin', filename),
+          '"%s"' % certifi.where(),
+          '"$LIBTBX_BUILD/../base/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem"'
+        )
+    except ImportError:
+      pass
+
     tmp = os.path.join(self.root_dir, 'tmp')
     makedirs(tmp)
     makedirs(self.dist_dir)
