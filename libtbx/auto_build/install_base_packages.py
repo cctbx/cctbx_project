@@ -1538,7 +1538,8 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="matplotlib")
 
   def build_misc (self) :
-    self.build_python_module_simple(
+    if not self.python3: # This module will never be Python3 compatible
+     self.build_python_module_simple(
       pkg_url=BASE_CCI_PKG_URL,
       pkg_name=PYRTF_PKG,
       pkg_name_label="PyRTF",
