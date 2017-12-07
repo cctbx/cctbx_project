@@ -1678,6 +1678,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("add_nanoBragg_spots",&nanoBragg::add_nanoBragg_spots,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interst")
 
+      /* actual run of the spot simulation, restricted implementation plus OpenMP */
+      .def("add_nanoBragg_spots_nks",&nanoBragg::add_nanoBragg_spots_nks,
+       "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
+
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
         (arg_("oversample")=-1,arg_("source")=-1),

@@ -543,6 +543,7 @@ class nanoBragg {
 
     /* member function for triggering spot simulation over region of interest */
     void add_nanoBragg_spots();
+    void add_nanoBragg_spots_nks();
 
     /* member function for triggering background simulation */
     void add_background(int oversample, int source);
