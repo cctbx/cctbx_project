@@ -96,11 +96,12 @@ class refltable_scaling_manager(scaling_manager):
       crystal_d['B'] = self.postrefinement_params.BFACTOR
       crystal_d['thetax'] = self.postrefinement_params.thetax
       crystal_d['thetay'] = self.postrefinement_params.thetay
-      crystal_d['RS'] = self.postrefinement_params.RS
-    if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ['eta_deff']:
-      crystal_d['ETA'] = self.postrefinement_params.ETA
-      crystal_d['DEFF'] = self.postrefinement_params.DEFF
-    else:
+      if self.params.postrefinement.algorithm in ['eta_deff']:
+        crystal_d['ETA'] = self.postrefinement_params.ETA
+        crystal_d['DEFF'] = self.postrefinement_params.DEFF
+      else:
+        crystal_d['RS'] = self.postrefinement_params.RS
+    if not self.params.postrefinement.enable or self.params.postrefinement.algorithm not in ['eta_deff']:
       crystal_d['ETA'] = result['ML_half_mosaicity_deg'][0]
       crystal_d['DEFF'] = result['ML_domain_size_ang'][0]
     self.crystal_table.append(crystal_d)
