@@ -829,7 +829,7 @@ class DataBlockDictImporter(object):
           iset.external_lookup.mask.filename = imageset['mask']
           if check_format:
             with open(imageset['mask']) as infile:
-              iset.external_lookup.mask.data = ImageMask(pickle.load(infile))
+              iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
         if 'gain' in imageset and imageset['gain'] is not None:
           imageset['gain'] = load_path(imageset['gain'])
           iset.external_lookup.gain.filename = imageset['gain']
