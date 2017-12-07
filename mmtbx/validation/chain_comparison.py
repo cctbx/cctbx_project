@@ -436,7 +436,7 @@ def select_segments_that_match(params=None,
       " those with "+\
      "chain_type=%s and match percentage between %.1f %% and %.1f %% " %(
     params.crystal_info.chain_type,
-    params.comparison.minimum_percent_match_to_select, 
+    params.comparison.minimum_percent_match_to_select,
     params.comparison.maximum_percent_match_to_select)
   local_params=deepcopy(params)
   local_params.output_files.match_pdb_file=None # required
@@ -449,7 +449,7 @@ def select_segments_that_match(params=None,
       params=local_params,
       target_hierarchy=target_hierarchy,
       quiet=True,
-      chain_hierarchy=cm.hierarchy,out=null_out()) 
+      chain_hierarchy=cm.hierarchy,out=null_out())
     rv_list.append(rv)
     file_list.append(params.crystal_info.chain_type)
     close_rmsd,close_n=rv.get_values('close')
@@ -458,16 +458,16 @@ def select_segments_that_match(params=None,
 
     percent_matched=100.*close_n/max(1,close_n+far_away_n)
     if percent_matched < params.comparison.minimum_percent_match_to_select:
-      continue 
+      continue
     if percent_matched > params.comparison.maximum_percent_match_to_select:
       continue
 
     write_summary(params=params,file_list=file_list,rv_list=rv_list,
       write_header=write_header,out=out)
     write_header=False
-    models_to_keep.append(cm) 
+    models_to_keep.append(cm)
 
-  new_model=merge_hierarchies_from_models(models=models_to_keep,resid_offset=5) 
+  new_model=merge_hierarchies_from_models(models=models_to_keep,resid_offset=5)
   ff=open(params.output_files.match_pdb_file,'w')
   print >>ff,new_model.hierarchy.as_pdb_string()
   ff.close()
