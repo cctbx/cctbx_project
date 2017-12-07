@@ -30,6 +30,7 @@ def merging_crystal_table(postrefinement_columns = False):
   if postrefinement_columns:
     table['G'] = flex.double()
     table['B'] = flex.double()
+    table['RS'] = flex.double()
     table['thetax'] = flex.double()
     table['thetay'] = flex.double()
   table['ETA'] = flex.double()
@@ -96,11 +97,12 @@ class refltable_scaling_manager(scaling_manager):
       crystal_d['thetax'] = self.postrefinement_params.thetax
       crystal_d['thetay'] = self.postrefinement_params.thetay
     if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ['eta_deff']:
-      crystal_d['ETA'] = postrefinement_params.ETA
-      crystal_d['DEFF'] = postrefinement_params.DEFF
+      crystal_d['ETA'] = self.postrefinement_params.ETA
+      crystal_d['DEFF'] = self.postrefinement_params.DEFF
     else:
       crystal_d['ETA'] = result['ML_half_mosaicity_deg'][0]
       crystal_d['DEFF'] = result['ML_domain_size_ang'][0]
+      crystal_d['RS'] = self.postrefinement_params.RS
     self.crystal_table.append(crystal_d)
 
     return data
