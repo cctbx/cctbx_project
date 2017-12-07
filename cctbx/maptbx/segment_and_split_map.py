@@ -1971,6 +1971,7 @@ class sharpening_info:
       remove_aniso=None,
       d_min_list=None,
       verbose=None,
+      resolve_size=None,
       pdb_inp=None,  # XXX probably do not need this
       local_solvent_fraction=None,
       wang_radius=None,
@@ -2083,6 +2084,7 @@ class sharpening_info:
       self.seq_file=params.input_files.seq_file
       self.chain_type=params.crystal_info.chain_type
       self.verbose=params.control.verbose
+      self.resolve_size=params.control.resolve_size
 
       self.wrapping=params.crystal_info.use_sg_symmetry
       self.fraction_occupied=params.map_modification.fraction_occupied
@@ -6855,6 +6857,7 @@ def put_bounds_in_range(
 
 def get_iterated_solvent_fraction(map=None,
     verbose=None,
+    resolve_size=None,
     crystal_symmetry=None,out=sys.stdout):
   try:
     from phenix.autosol.map_to_model import iterated_solvent_fraction
@@ -6862,6 +6865,7 @@ def get_iterated_solvent_fraction(map=None,
       crystal_symmetry=crystal_symmetry,
       map_as_double=map,
       verbose=verbose,
+      resolve_size=resolve_size,
       return_solvent_fraction=True,
       out=out)
   except Exception,e:
@@ -6895,7 +6899,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       sharpening_method=None
 
     for param in [
-       'verbose','seq_file',
+       'verbose','resolve_size','seq_file',
        'box_size',
        'target_n_overlap',
        'restrict_map_size',
@@ -7976,6 +7980,7 @@ def auto_sharpen_map_or_map_coeffs(
         normalize_amplitudes_in_resdep=None, # if set, use it
         return_bsi=False,
         verbose=None,
+        resolve_size=None,
         out=sys.stdout):
     if si:  #
       resolution=si.resolution
@@ -7984,6 +7989,8 @@ def auto_sharpen_map_or_map_coeffs(
         auto_sharpen=si.auto_sharpen
       if verbose is None:
         verbose=si.verbose
+      if resolve_size is None:
+        resolve_size=si.resolve_size
 
     if auto_sharpen is None:
       auto_sharpen=True
@@ -8030,6 +8037,7 @@ def auto_sharpen_map_or_map_coeffs(
       si.solvent_fraction=get_iterated_solvent_fraction(
         crystal_symmetry=crystal_symmetry,
         verbose=si.verbose,
+        resolve_size=si.resolve_size,
         map=map,
         out=out)
     print >>out,"Estimated solvent fraction: %.2f" %(si.solvent_fraction)

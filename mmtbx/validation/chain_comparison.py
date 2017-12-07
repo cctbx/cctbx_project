@@ -39,6 +39,13 @@ master_phil = iotbx.phil.parse("""
       .help = directory containing query PDB files (any number)
       .short_caption = Query directory
   }
+  output_files {
+
+   match_pdb_file = None
+     .type = path
+     .help = Output file containing segments with specified match percentage
+     .short_caption = Match PDB
+  }
   crystal_info {
     chain_type = *PROTEIN RNA DNA
       .type = choice
@@ -55,7 +62,7 @@ master_phil = iotbx.phil.parse("""
     max_dist = 3.
       .type = float
       .short_caption = Maximum close distance
-      .caption = Maximum distance between atoms to be considered close
+      .help= Maximum distance between atoms to be considered close
 
     distance_per_site = None
       .type = float
@@ -66,9 +73,24 @@ master_phil = iotbx.phil.parse("""
     target_length_from_matching_chains = False
       .type = bool
       .short_caption = Use matching chains to get length
-      .caption = Use length of chains in target that are matched to \
+      .help= Use length of chains in target that are matched to \
                 define full target length (as opposed to all unique \
                 chains in target).
+
+    minimum_percent_match_to_select = None
+      .type = float
+      .help = You can specify minimum_percent_match_to_select and \
+              maximum_percent_match_to_select and match_pdb_file \
+              in which case all segments in the query model that have \
+              a percentage match (within max_dist of atom in target) \
+              in this range will be written out to match_pdb_file.
+    maximum_percent_match_to_select = None
+      .type = float
+      .help = You can specify minimum_percent_match_to_select and \
+              maximum_percent_match_to_select and match_pdb_file \
+              in which case all segments in the query model that have \
+              a percentage match (within max_dist of atom in target) \
+              in this range will be written out to match_pdb_file.
   }
   control {
       verbose = False
@@ -345,23 +367,24 @@ def run_all(params=None,out=sys.stdout):
   write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
 
 def write_summary(params=None,file_list=None,rv_list=None,
-    max_dist=None,out=sys.stdout):
+    max_dist=None,write_header=True,out=sys.stdout):
 
   if params and max_dist is None:
      max_dist=params.comparison.max_dist
   if max_dist is None: max_dist=0.
 
-  print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
-    max_dist)
-  print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
-  print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
+  if write_header:
+    print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
+      max_dist)
+    print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
+    print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
 
-  print >>out,"\n"
-  print >>out,"               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %"
-  print >>out,\
+    print >>out,"\n"
+    print >>out,"               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %"
+    print >>out,\
               "     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED"+\
               " FOUND   CA                   SEQ"
-  print >>out,"               RMSD   N    RMSD   N       N       N      N  "+\
+    print >>out,"               RMSD   N    RMSD   N       N       N      N  "+\
               "        SCORE  SEQ MATCH(%)  SCORE"+"\n"
 
   results_dict={}
@@ -401,6 +424,59 @@ def get_target_length(target_chain_ids=None,hierarchy=None,
           total_length+=len(conformer.residues())
   return total_length
 
+def select_segments_that_match(params=None,
+       chain_hierarchy=None,target_hierarchy=None, out=sys.stdout):
+  # Identify all the segments in chain_hierarchy that match target_hierarchy
+  #  and write them out
+  from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
+    merge_hierarchies_from_models
+  chain_model=model_info(hierarchy=chain_hierarchy)
+  chain_models=split_model(model=chain_model)
+  print >>out,"Analyzing %s segments and identifying " %(len(chain_models)) +\
+      " those with "+\
+     "chain_type=%s and match percentage between %.1f %% and %.1f %% " %(
+    params.crystal_info.chain_type,
+    params.comparison.minimum_percent_match_to_select, 
+    params.comparison.maximum_percent_match_to_select)
+  local_params=deepcopy(params)
+  local_params.output_files.match_pdb_file=None # required
+  models_to_keep=[]
+  write_header=True
+  for cm in chain_models:  # one segment
+    rv_list=[]
+    file_list=[]
+    rv=run(
+      params=local_params,
+      target_hierarchy=target_hierarchy,
+      quiet=True,
+      chain_hierarchy=cm.hierarchy,out=null_out()) 
+    rv_list.append(rv)
+    file_list.append(params.crystal_info.chain_type)
+    close_rmsd,close_n=rv.get_values('close')
+    far_away_rmsd,far_away_n=rv.get_values('far_away')
+    if close_n+far_away_n<1: continue # wrong chain type or other failure
+
+    percent_matched=100.*close_n/max(1,close_n+far_away_n)
+    if percent_matched < params.comparison.minimum_percent_match_to_select:
+      continue 
+    if percent_matched > params.comparison.maximum_percent_match_to_select:
+      continue
+
+    write_summary(params=params,file_list=file_list,rv_list=rv_list,
+      write_header=write_header,out=out)
+    write_header=False
+    models_to_keep.append(cm) 
+
+  new_model=merge_hierarchies_from_models(models=models_to_keep,resid_offset=5) 
+  ff=open(params.output_files.match_pdb_file,'w')
+  print >>ff,new_model.hierarchy.as_pdb_string()
+  ff.close()
+  print >>out,"Wrote %s %s chains with %s residues to %s" %(
+    len(models_to_keep),params.crystal_info.chain_type,
+    new_model.hierarchy.overall_counts().n_residues,
+    params.output_files.match_pdb_file)
+  return new_model
+
 def run(args=None,
    target_hierarchy=None,
    chain_hierarchy=None,
@@ -429,7 +505,8 @@ def run(args=None,
     print >>out,"Using %s as target for unique chains" %(
        params.input_files.unique_target_pdb_in)
   if params.input_files.query_dir and \
-      os.path.isdir(params.input_files.query_dir):
+      os.path.isdir(params.input_files.query_dir) and \
+      not params.output_files.match_pdb_file:
     print >>out,"\nUsing all files in %s as queries\n" %(
        params.input_files.query_dir)
     return run_all(params=params,out=out)
@@ -484,10 +561,16 @@ def run(args=None,
     chain_hierarchy=extract_unique_part_of_hierarchy(
       chain_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
 
-
   # remove hetero atoms as they are not relevant
   chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
   target_hierarchy=apply_atom_selection('not hetero',target_hierarchy)
+
+  if params.output_files.match_pdb_file and \
+    params.comparison.minimum_percent_match_to_select is not None and \
+    params.comparison.maximum_percent_match_to_select is not None:
+      return select_segments_that_match(params=params,
+       chain_hierarchy=chain_hierarchy,
+       target_hierarchy=target_hierarchy,out=out)
 
   if params.input_files.unique_only: # count unique residues/total
     unique_part_of_target_hierarchy=extract_unique_part_of_hierarchy(
