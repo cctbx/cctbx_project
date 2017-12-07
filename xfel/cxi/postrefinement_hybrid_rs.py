@@ -146,6 +146,7 @@ class rs_hybrid(updated_rs):
         gradient_threshold = 1.E-10)
     self.refined_mini = self.MINI2
     self.refinery = self.nave1_refinery # used elsewhere, not private interface
+    self.parameterization_class = nave1_parameterization
 
   def result_for_cxi_merge(self, file_name):
     values = self.get_parameter_values()
