@@ -2049,6 +2049,9 @@ class manager(object):
       new_restraints_manager.geometry.pair_proxies(
           sites_cart = self._xray_structure.sites_cart().select(selection))
     new_shift_manager = self._shift_manager
+    new_riding_h_manager = None
+    if self.riding_h_manager is not None:
+      new_riding_h_manager = self.riding_h_manager.select(selection)
     new = manager(
       model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self._processed_pdb_file,
@@ -2059,6 +2062,8 @@ class manager(object):
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       mtrix_records_container    = self._mtrix_records_container,
       log                        = self.log)
+    if new_riding_h_manager is not None:
+      new.riding_h_manager = new_riding_h_manager
     new.get_xray_structure().scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
@@ -2333,6 +2338,12 @@ class manager(object):
       self.restraints_manager.geometry.update_plain_pair_sym_table(
         sites_frac = self._xray_structure.sites_frac())
     assert self.pdb_atoms.size() == self._xray_structure.scatterers().size()
+    if self.riding_h_manager is not None:
+      new_riding_h_manager = self.riding_h_manager.update(
+        pdb_hierarchy       = self._pdb_hierarchy,
+        geometry_restraints = geometry,
+        n_new_atoms         = number_of_new_atoms)
+      self.riding_h_manager = new_riding_h_manager
 
   def _append_pdb_atoms (self,
       new_xray_structure,
