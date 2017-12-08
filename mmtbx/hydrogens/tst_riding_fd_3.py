@@ -4,26 +4,19 @@ import iotbx.pdb
 import mmtbx.model
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from mmtbx.hydrogens import riding
 
 def exercise(pdb_str, eps):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp)
 
-  pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
+  model = mmtbx.model.manager(
+            model_input = pdb_inp,
+            build_grm   = True)
+
+  geometry_restraints = model.restraints_manager.geometry
   xray_structure = model.get_xray_structure()
 
-#  geometry = processed_pdb_file.geometry_restraints_manager(
-#    show_energies      = False,
-#    plain_pairs_radius = 5.0)
-#
-  riding_h_manager = riding.manager(
-    pdb_hierarchy       = pdb_hierarchy,
-    geometry_restraints = geometry_restraints)
-
-  h_parameterization = riding_h_manager.h_parameterization
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
 
   riding_h_manager.idealize(xray_structure=xray_structure)
 

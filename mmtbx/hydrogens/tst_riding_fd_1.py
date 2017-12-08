@@ -4,7 +4,6 @@ import iotbx.pdb
 import mmtbx.model
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from mmtbx.hydrogens import riding
 
 #-----------------------------------------------------------------------------
 # Finite difference test for modified gradients of riding H
@@ -19,18 +18,15 @@ from mmtbx.hydrogens import riding
 
 def exercise(pdb_str, eps, use_ideal_bonds_angles):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  model = mmtbx.model.manager(model_input=pdb_inp)
+  model = mmtbx.model.manager(
+            model_input = pdb_inp,
+            build_grm   = True)
 
-  pdb_hierarchy = model.get_hierarchy()
-  restraints_manager = model.get_restraints_manager()
-  geometry_restraints = restraints_manager.geometry
+  geometry_restraints = model.restraints_manager.geometry
   xray_structure = model.get_xray_structure()
-  sites_cart = xray_structure.sites_cart()
 
-  riding_h_manager = riding.manager(
-    pdb_hierarchy          = pdb_hierarchy,
-    geometry_restraints    = geometry_restraints,
-    use_ideal_bonds_angles = use_ideal_bonds_angles)
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
 
   riding_h_manager.idealize(xray_structure = xray_structure)
 
