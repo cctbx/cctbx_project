@@ -4689,11 +4689,9 @@ double fmedian(unsigned int n, double arr[])
 double fmedian_with_rejection(unsigned int n, double arr[],double sigma_cutoff, double *final_mad, int *final_n)
 {
     double median_value;
-    int i,orig_n,done;
-    double min_frac,deviate,mad;
+    int i,done;
+    double deviate,mad;
 
-    orig_n = n;
-    min_frac = 0.7;
 
     done = 0;
     while(! done)
