@@ -62,15 +62,6 @@ class FormatXTCRayonix(FormatXTC):
   def get_scan(self, index=None):
       return None
 
-  def get_mask(self, index=None, goniometer=None):
-    return None
-
-  def get_detectorbase(self, index=None):
-    print 'get_detectorbase Overload!'
-
-  def get_image_file(self, index=None):
-    print 'get_image_file Overload!'
-
   def _detector(self):
     import psana
     self._env = self._ds.env()

@@ -33,11 +33,9 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     try:
       from psana import DataSource, DetNames
       try:
-        user_input = parse(file_name=image_file)
+        params = FormatXTC.params_from_phil(image_file)
       except Exception,e:
         return False
-      working_phil = locator_scope.fetch(sources=[user_input])
-      params = working_phil.extract()
       if params.locator is None:
         return False
       else:
@@ -68,7 +66,8 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     except Exception,e:
       return False
 
-  def params_from_phil(self, image_file):
+  @staticmethod
+  def params_from_phil(image_file):
     try:
       user_input = parse(file_name = image_file)
       working_phil = locator_scope.fetch(sources = [user_input])
