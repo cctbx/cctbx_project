@@ -95,27 +95,35 @@ diffracted[3]=diffracted_v[2];
                     /* loop over sources now */
                     for(int source=0;source<sources;++source){
 
-                        /* retrieve stuff from cache */
-                        incident[1] = -source_X[source];
-                        incident[2] = -source_Y[source];
-                        incident[3] = -source_Z[source];
-                        lambda = source_lambda[source];
+struct source_const{
+  source_const(int const& source, const double* diffracted, const nanoBragg* n){
+    /* retrieve stuff from cache */
+    incident[1] = -n->source_X[source];
+    incident[2] = -n->source_Y[source];
+    incident[3] = -n->source_Z[source];
+    double lambda = n->source_lambda[source];
 
-                        /* construct the incident beam unit vector while recovering source distance */
-                        source_path = unitize(incident,incident);
+    /* construct the incident beam unit vector while recovering source distance */
+    source_path = unitize(incident,incident);
 
-                        /* construct the scattering vector for this pixel */
-                        scattering[1] = (diffracted[1]-incident[1])/lambda;
-                        scattering[2] = (diffracted[2]-incident[2])/lambda;
-                        scattering[3] = (diffracted[3]-incident[3])/lambda;
+    /* construct the scattering vector for this pixel */
+    scattering[1] = (diffracted[1]-incident[1])/lambda;
+    scattering[2] = (diffracted[2]-incident[2])/lambda;
+    scattering[3] = (diffracted[3]-incident[3])/lambda;
 
-                        /* sin(theta)/lambda is half the scattering vector length */
-                        stol = 0.5*magnitude(scattering);
+    /* sin(theta)/lambda is half the scattering vector length */
+    stol = 0.5*magnitude(scattering);
+  }
+  double incident[4],scattering[4];
+  double stol,source_path;
+};
+                        source_const SC(source, diffracted, this);
+                        source_path = SC.source_path; //breaks const correctness
 
                         /* rough cut to speed things up when we aren't using whole detector */
-                        if(dmin > 0.0 && stol > 0.0)
+                        if(dmin > 0.0 && SC.stol > 0.0)
                         {
-                            if(dmin > 0.5/stol)
+                            if(dmin > 0.5/SC.stol)
                             {
                                 continue;
                             }
@@ -124,34 +132,54 @@ diffracted[3]=diffracted_v[2];
                         /* sweep over phi angles */
                         for(int phi_tic = 0; phi_tic < phisteps; ++phi_tic)
                         {
-                            phi = phi0 + phistep*phi_tic;
-
-                            if( phi != 0.0 )
-                            {
-                                /* rotate about spindle if neccesary */
-                                rotate_axis(a0,ap,spindle_vector,phi);
-                                rotate_axis(b0,bp,spindle_vector,phi);
-                                rotate_axis(c0,cp,spindle_vector,phi);
-                            }
+struct phitic_const{
+  phitic_const(int const& mostic, double const& phi, const nanoBragg* n){
+    for (int icopy=0; icopy<4; ++icopy){
+        a0[icopy] = n->a0[icopy];
+        b0[icopy] = n->b0[icopy];
+        c0[icopy] = n->c0[icopy];
+        spindle_vector[icopy] = n->spindle_vector[icopy];
+    }
+    if( phi != 0.0 ) {
+      /* rotate about spindle if neccesary */
+      rotate_axis(a0,ap,spindle_vector,phi);
+      rotate_axis(b0,bp,spindle_vector,phi);
+      rotate_axis(c0,cp,spindle_vector,phi);
+    } else {
+      for (int icopy=0; icopy<4; ++icopy){
+        ap[icopy] = n->a0[icopy];
+        bp[icopy] = n->b0[icopy];
+        cp[icopy] = n->c0[icopy];
+      }
+    }
+  }
+  double ap[4],bp[4],cp[4],a0[4],b0[4],c0[4],spindle_vector[4];
+};
+                            double phi = phi0 + phistep*phi_tic;
+                            phitic_const PC(phi_tic, phi, this);
 
                             /* enumerate mosaic domains */
+                            std::vector<double> I_terms(mosaic_domains);
+                            # pragma omp parallel for
                             for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
                             {
 
 struct mostic_const{
   mostic_const( int const& mostic, double* n_diffracted,
-      double const& capture_fraction, int const& source, const nanoBragg* n):
+      double const& capture_fraction, int const& source,
+      double* n_ap, double* n_bp, double* n_cp, double* n_scattering,
+      double* n_incident, const nanoBragg* n):
       F_cell(n->default_F),polar(1.0),I_increment(0){
       for (int icopy=0; icopy<4; ++icopy){
-        incident[icopy] = n->incident[icopy];
+        incident[icopy] = n_incident[icopy];
         diffracted[icopy] = n_diffracted[icopy];
         axis[icopy] = n->polar_vector[icopy];
       }
 
     vec3 a,b,c;
-    vec3 ap(n->ap[1],n->ap[2],n->ap[3]);
-    vec3 bp(n->bp[1],n->bp[2],n->bp[3]);
-    vec3 cp(n->cp[1],n->cp[2],n->cp[3]);
+    vec3 ap(n_ap[1],n_ap[2],n_ap[3]);
+    vec3 bp(n_bp[1],n_bp[2],n_bp[3]);
+    vec3 cp(n_cp[1],n_cp[2],n_cp[3]);
     mat3 u_mat = mat3(
       n->mosaic_umats[mostic*9],n->mosaic_umats[mostic*9+1],n->mosaic_umats[mostic*9+2],
       n->mosaic_umats[mostic*9+3],n->mosaic_umats[mostic*9+4],n->mosaic_umats[mostic*9+5],
@@ -160,7 +188,7 @@ struct mostic_const{
     /* apply mosaic rotation after phi rotation */
     if( n->mosaic_spread > 0.0 ){ a = u_mat * ap; b = u_mat * bp; c = u_mat * cp;
     } else { a = ap; b = bp; c = cp;}
-    vec3 scattering(n->scattering[1],n->scattering[2],n->scattering[3]);
+    vec3 scattering(n_scattering[1],n_scattering[2],n_scattering[3]);
 
     /* construct fractional Miller indicies */
     h = a * scattering;k = b * scattering;l = c * scattering;
@@ -219,13 +247,19 @@ struct mostic_const{
   double diffracted[4], incident[4], axis[4];
   vec3 as_vec3(const double* vec4){ return vec3(vec4[1],vec4[2],vec4[3]); }
 };
-                                mostic_const MC(mos_tic, diffracted, capture_fraction, source, this);
+                                mostic_const MC(mos_tic,diffracted,capture_fraction, source,
+                                  PC.ap, PC.bp, PC.cp, SC.scattering, SC.incident, this);
                                 /* polarization factor */
-                                polar = MC.polar;
+                                if (mos_tic == mosaic_domains-1) {
+                                  polar = MC.polar;  //breaks const correctness
+                                }
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                I += MC.I_increment;
+                                I_terms[mos_tic] = MC.I_increment; //breaks const correctness
                             }
                             /* end of mosaic loop */
+                            for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
+                              I += I_terms[mos_tic];
+                            }
                         }
                         /* end of phi loop */
                     }
@@ -264,7 +298,5 @@ struct mostic_const{
   } // for loop over slow pixels
 }
 // end of add_nanoBragg_spots()
-
-
 
 }}// namespace simtbx::nanoBragg
