@@ -135,87 +135,95 @@ diffracted[3]=diffracted_v[2];
                             }
 
                             /* enumerate mosaic domains */
-                            for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
+                            for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
                             {
-                                /* apply mosaic rotation after phi rotation */
-                                if( mosaic_spread > 0.0 )
-                                {
-                                    rotate_umat(ap,a,&mosaic_umats[mos_tic*9]);
-                                    rotate_umat(bp,b,&mosaic_umats[mos_tic*9]);
-                                    rotate_umat(cp,c,&mosaic_umats[mos_tic*9]);
-                                }
-                                else
-                                {
-                                    a[1]=ap[1];a[2]=ap[2];a[3]=ap[3];
-                                    b[1]=bp[1];b[2]=bp[2];b[3]=bp[3];
-                                    c[1]=cp[1];c[2]=cp[2];c[3]=cp[3];
-                                }
-//                              printf("%d %f %f %f\n",mos_tic,mosaic_umats[mos_tic*9+0],mosaic_umats[mos_tic*9+1],mosaic_umats[mos_tic*9+2]);
-//                              printf("%d %f %f %f\n",mos_tic,mosaic_umats[mos_tic*9+3],mosaic_umats[mos_tic*9+4],mosaic_umats[mos_tic*9+5]);
-//                              printf("%d %f %f %f\n",mos_tic,mosaic_umats[mos_tic*9+6],mosaic_umats[mos_tic*9+7],mosaic_umats[mos_tic*9+8]);
 
-                                /* construct fractional Miller indicies */
-                                double h = dot_product(a,scattering);
-                                double k = dot_product(b,scattering);
-                                double l = dot_product(c,scattering);
+struct mostic_const{
+  mostic_const( int const& mostic, double* n_diffracted,
+      double const& capture_fraction, int const& source, const nanoBragg* n):
+      F_cell(n->default_F),polar(1.0),I_increment(0){
+      for (int icopy=0; icopy<4; ++icopy){
+        incident[icopy] = n->incident[icopy];
+        diffracted[icopy] = n_diffracted[icopy];
+        axis[icopy] = n->polar_vector[icopy];
+      }
 
-                                /* round off to nearest whole index */
-                                int h0 = static_cast<int>(ceil(h-0.5));
-                                int k0 = static_cast<int>(ceil(k-0.5));
-                                int l0 = static_cast<int>(ceil(l-0.5));
+    vec3 a,b,c;
+    vec3 ap(n->ap[1],n->ap[2],n->ap[3]);
+    vec3 bp(n->bp[1],n->bp[2],n->bp[3]);
+    vec3 cp(n->cp[1],n->cp[2],n->cp[3]);
+    mat3 u_mat = mat3(
+      n->mosaic_umats[mostic*9],n->mosaic_umats[mostic*9+1],n->mosaic_umats[mostic*9+2],
+      n->mosaic_umats[mostic*9+3],n->mosaic_umats[mostic*9+4],n->mosaic_umats[mostic*9+5],
+      n->mosaic_umats[mostic*9+6],n->mosaic_umats[mostic*9+7],n->mosaic_umats[mostic*9+8]);
 
+    /* apply mosaic rotation after phi rotation */
+    if( n->mosaic_spread > 0.0 ){ a = u_mat * ap; b = u_mat * bp; c = u_mat * cp;
+    } else { a = ap; b = bp; c = cp;}
+    vec3 scattering(n->scattering[1],n->scattering[2],n->scattering[3]);
 
-                                // structure factor of the lattice (paralelpiped crystal)
-                                double F_latt = 1.0;
-                                double hrad_sqr = 0.;
-                                if(xtal_shape == SQUARE){ /* xtal is a paralelpiped */
-                                  if(Na>1){ F_latt *= sincg(M_PI*h,Na); }
-                                  if(Nb>1){ F_latt *= sincg(M_PI*k,Nb); }
-                                  if(Nc>1){ F_latt *= sincg(M_PI*l,Nc); }
-                                } else { /* handy radius in reciprocal space, squared */
-                                  hrad_sqr = (h-h0)*(h-h0)*Na*Na + (k-k0)*(k-k0)*Nb*Nb + (l-l0)*(l-l0)*Nc*Nc ;
-                                }
-                                if(xtal_shape == ROUND){ /* use sinc3 for elliptical xtal shape,
-                                           correcting for sqrt of volume ratio between cube and sphere */
-                                  F_latt = Na*Nb*Nc*0.723601254558268*sinc3(M_PI*sqrt( hrad_sqr * fudge ) );
-                                }
-                                if(xtal_shape == GAUSS){
-                                        /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
-                                  F_latt = Na*Nb*Nc*exp(-( hrad_sqr / 0.63 * fudge ));
-                                }
-                                if(xtal_shape == TOPHAT) {
-                                        /* make a flat-top spot of same height and volume as square_xtal spots */
-                                  F_latt = Na*Nb*Nc*(hrad_sqr*fudge < 0.3969 );
-                                }
-                                /* no need to go further if result will be zero */
-                                if(F_latt == 0.0) continue;
+    /* construct fractional Miller indicies */
+    h = a * scattering;k = b * scattering;l = c * scattering;
+    /* round off to nearest whole index */
+    h0 = static_cast<int>(ceil(h-0.5));
+    k0 = static_cast<int>(ceil(k-0.5));
+    l0 = static_cast<int>(ceil(l-0.5));
 
-                                /* find nearest point on Ewald sphere surface? */
-                                SCITBX_ASSERT(!integral_form);
-                                SCITBX_ASSERT(!interpolate);
-                                /* structure factor of the unit cell */
-                                double F_cell;
-                                if ( (h0<=h_max) && (h0>=h_min) && (k0<=k_max) && (k0>=k_min) && (l0<=l_max) && (l0>=l_min)  ) {
-                                        /* just take nearest-neighbor */
-                                        F_cell = Fhkl[h0-h_min][k0-k_min][l0-l_min];
-                                }else{
-                                        F_cell = default_F; // usually zero
-                                }
+    // structure factor of the lattice (paralelpiped crystal)
+    F_latt = 1.0;
+    hrad_sqr = 0.;
+    if(n->xtal_shape == SQUARE){ /* xtal is a paralelpiped */
+      if(n->Na>1){ F_latt *= sincg(M_PI*h,n->Na); }
+      if(n->Nb>1){ F_latt *= sincg(M_PI*k,n->Nb); }
+      if(n->Nc>1){ F_latt *= sincg(M_PI*l,n->Nc); }
+    } else { /* handy radius in reciprocal space, squared */
+      hrad_sqr = (h-h0)*(h-h0)*n->Na*n->Na + (k-k0)*(k-k0)*n->Nb*n->Nb + (l-l0)*(l-l0)*n->Nc*n->Nc ;
+    }
+    if(n->xtal_shape == ROUND){ /* use sinc3 for elliptical xtal shape,
+                                correcting for sqrt of volume ratio between cube and sphere */
+      F_latt = n->Na*n->Nb*n->Nc*0.723601254558268*sinc3(M_PI*sqrt( hrad_sqr * n->fudge ) );
+    }
+    if(n->xtal_shape == GAUSS){
+               /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+      F_latt = n->Na*n->Nb*n->Nc*exp(-( hrad_sqr / 0.63 * n->fudge ));
+    }
+    if(n->xtal_shape == TOPHAT) {
+               /* make a flat-top spot of same height and volume as square_xtal spots */
+      F_latt = n->Na*n->Nb*n->Nc*(hrad_sqr*n->fudge < 0.3969 );
+    }
+    if(F_latt == 0.0) {return;}
 
-                                /* now we have the structure factor for this pixel */
-
+    /* structure factor of the unit cell */
+    if ( (h0<=n->h_max) && (h0>=n->h_min) &&
+         (k0<=n->k_max) && (k0>=n->k_min) &&
+         (l0<=n->l_max) && (l0>=n->l_min)  ) {
+      /* just take nearest-neighbor */
+      F_cell = n->Fhkl[h0-n->h_min][k0-n->k_min][l0-n->l_min];
+    }else{
+      F_cell = n->default_F; // usually zero
+    }
+    /* now we have the structure factor for this pixel */
+    /* polarization factor */
+    if(! n->nopolar){
+      /* need to compute polarization factor */
+      polar = polarization_factor( n->polarization, incident,
+                                   diffracted,axis);
+    } else {
+      polar = 1.0;
+    }
+    I_increment = F_cell*F_cell*F_latt*F_latt*n->source_I[source]*capture_fraction;
+  };
+  double h,k,l;
+  int h0,k0,l0;
+  double F_latt, F_cell, hrad_sqr, polar, I_increment;
+  double diffracted[4], incident[4], axis[4];
+  vec3 as_vec3(const double* vec4){ return vec3(vec4[1],vec4[2],vec4[3]); }
+};
+                                mostic_const MC(mos_tic, diffracted, capture_fraction, source, this);
                                 /* polarization factor */
-                                if(! nopolar){
-                                    /* need to compute polarization factor */
-                                    polar = polarization_factor(polarization,incident,diffracted,polar_vector);
-                                }
-                                else
-                                {
-                                    polar = 1.0;
-                                }
-
+                                polar = MC.polar;
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                I += F_cell*F_cell*F_latt*F_latt*source_I[source]*capture_fraction;
+                                I += MC.I_increment;
                             }
                             /* end of mosaic loop */
                         }
@@ -228,7 +236,6 @@ diffracted[3]=diffracted_v[2];
                 /* end of sub-pixel y loop */
             }
             /* end of sub-pixel x loop */
-
             floatimage[imgidx] += r_e_sqr*fluence*polar*I/steps*omega_pixel;
             sum += floatimage[imgidx];
             sumsqr += floatimage[imgidx]*floatimage[imgidx];
