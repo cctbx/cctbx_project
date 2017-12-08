@@ -114,11 +114,25 @@ class lbfgs(object):
         max_value = self.u_max)
     #
     if(self.riding_h_manager is not None and self.refine_xyz):
+      # temporary array with zero shifts for all atoms
       tmp = flex.vec3_double(self._scatterers_start.size(), [0,0,0])
-      tmp = tmp.set_selected(self.riding_h_manager.not_hd_selection,
+      # Set shifts according to self.x
+      tmp = tmp.set_selected(self.model.refinement_flags.sites_individual,
         flex.vec3_double(self.x))
-      self.x.set_selected(flex.bool(self.x.size()), tmp.as_double())
-    #
+      # Set shifts of H atoms to zero (they will be idealized later anyway)
+      shifts_h = flex.vec3_double(self.riding_h_manager.hd_selection.count(True),
+        [0,0,0])
+      tmp = tmp.set_selected(self.riding_h_manager.hd_selection, shifts_h)
+      # Select entries for shifted atoms only (e.g. if there is xyz selection)
+      tmp_x = tmp.select(self.model.refinement_flags.sites_individual)
+      # orig
+      #tmp = tmp.set_selected(self.riding_h_manager.not_hd_selection,
+      #  flex.vec3_double(self.x))
+      # Set entries in self.x corresponding to H atoms to 0
+      self.x.set_selected(flex.bool(self.x.size()), tmp_x.as_double())
+      # orig
+      #self.x.set_selected(flex.bool(self.x.size()), tmp.as_double())
+
     apply_shifts_result = xray.ext.minimization_apply_shifts(
       unit_cell      = self.xray_structure.unit_cell(),
       scatterers     = self._scatterers_start,
