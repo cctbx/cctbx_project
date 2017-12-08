@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division
-from dxtbx.format.FormatXTC import FormatXTC, locator_scope
+from dxtbx.format.FormatXTC import FormatXTC
 from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
-from libtbx.phil import parse
 
 class FormatXTCRayonix(FormatXTC):
 
