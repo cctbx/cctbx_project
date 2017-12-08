@@ -2,8 +2,6 @@ from __future__ import absolute_import, division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatStill import FormatStill
 from dxtbx.format.FormatMultiImage import FormatMultiImage
-from dxtbx.model import Beam # import dependency
-from dxtbx.model import Detector # import dependency
 from libtbx.phil import parse
 
 locator_scope = parse("""
@@ -26,15 +24,14 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     Format.__init__(self, image_file, **kwargs)
     self._initialized=True
 
-# Extracts the locator and detector_address from the image_file and then feeds it to PSANA
-# If PSANA fails to read it then input may not be an xtc/smd file. If success, then OK
-# If detector_address is not provided, a command line promp will try to get the address
-# from the user
-
   @staticmethod
   def understand(image_file):
+    ''' Extracts the locator and detector_address from the image_file and then feeds it to PSANA
+        If PSANA fails to read it, then input may not be an xtc/smd file. If success, then OK.
+        If detector_address is not provided, a command line promp will try to get the address
+        from the user '''
     try:
-      from psana import DataSource, DetNames, Detector
+      from psana import DataSource, DetNames
       try:
         user_input = parse(file_name=image_file)
       except Exception,e:
@@ -67,11 +64,28 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
         print '-'*len(header)
 
         FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
-      understood = True
-
+      return True
     except Exception,e:
       return False
-    return understood
+
+  def params_from_phil(self, image_file):
+    try:
+      user_input = parse(file_name = image_file)
+      working_phil = locator_scope.fetch(sources = [user_input])
+      params = working_phil.extract()
+      return params
+    except Exception,e:
+      return None
+
+  def _get_datasource(self, image_file):
+    from psana import DataSource
+
+    params = self.params_from_phil(image_file)
+    if params.locator is None:
+      return False
+    else:
+      img = params.locator
+    return DataSource(img)
 
 if __name__ == '__main__':
   import sys
