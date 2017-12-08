@@ -15,6 +15,10 @@ from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_reflta
 import xfel.merging.algorithms.error_model
 xfel.merging.algorithms.error_model.sdfac_refine.sdfac_refine = sdfac_refine_refltable
 
+from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals_refltable
+import xfel.merging.algorithms.error_model
+xfel.merging.algorithms.error_model.errors_from_residuals.errors_from_residuals = errors_from_residuals_refltable
+
 from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params
 import xfel
 xfel.compute_normalized_deviations = compute_normalized_deviations
