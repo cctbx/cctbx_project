@@ -11,6 +11,15 @@ from xfel.merging.command_line.dev_cxi_merge import Script as MergingScript
 from xfel.cxi.merging_utils import null_data
 from libtbx import Auto
 
+from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable
+import xfel.merging.algorithms.error_model
+xfel.merging.algorithms.error_model.sdfac_refine.sdfac_refine = sdfac_refine_refltable
+
+from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params
+import xfel
+xfel.compute_normalized_deviations = compute_normalized_deviations
+xfel.apply_sd_error_params = apply_sd_error_params
+
 def merging_reflection_table():
   table = flex.reflection_table()
   table['miller_index'] = flex.miller_index()
