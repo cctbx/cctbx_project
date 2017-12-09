@@ -9,7 +9,6 @@ namespace nanoBragg {
 void
 nanoBragg::add_nanoBragg_spots_nks()
 {
-  int imgidx = 0;
   floatimage = raw_pixels.begin();
 
   if(verbose) {printf("TESTING sincg(1,1)= %f\n",sincg(1,1));}
@@ -21,12 +20,16 @@ nanoBragg::add_nanoBragg_spots_nks()
   double sum = 0.0; //reduction variable
   double sumsqr = 0.0; //reduction variable
 
+  # pragma omp parallel for reduction (+:sum, sumsqr)
   for(int spixel=0;spixel<spixels;++spixel){
+    //# pragma omp parallel for reduction (+:sum, sumsqr)
     for(int fpixel=0;fpixel<fpixels;++fpixel){
+            int imgidx = spixel * fpixels + fpixel;
+            double polar=0, omega_pixel=1; // per-pixel locality needed for parallelism
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             {
-                ++imgidx; continue;
+                /*++imgidx*/; continue;
             }
             /* allow for the use of a mask */
             if(maskimage != NULL)
@@ -34,7 +37,7 @@ nanoBragg::add_nanoBragg_spots_nks()
                 /* skip any flagged pixels in the mask */
                 if(maskimage[imgidx] == 0)
                 {
-                    ++imgidx; continue;
+                    /*++imgidx*/; continue;
                 }
             }
 
@@ -77,10 +80,12 @@ diffracted[0]=diffracted_v.length();
 diffracted[1]=diffracted_v[0];
 diffracted[2]=diffracted_v[1];
 diffracted[3]=diffracted_v[2];
-                        /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
-                        omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
-                        /* option to turn off obliquity effect, inverse-square-law only */
-                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        if (subS == oversample-1 && subF == oversample-1 && thick_tic==detector_thicksteps-1){
+                          /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
+                          omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+                          /* option to turn off obliquity effect, inverse-square-law only */
+                          if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        }
 
                         /* now calculate detector thickness effects */
                         double capture_fraction = 1.;
@@ -159,8 +164,8 @@ struct phitic_const{
                             phitic_const PC(phi_tic, phi, this);
 
                             /* enumerate mosaic domains */
-                            std::vector<double> I_terms(mosaic_domains);
-                            # pragma omp parallel for
+                            double I_reduction=0;
+                            //# pragma omp parallel for reduction(+:I_reduction)
                             for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
                             {
 
@@ -250,16 +255,16 @@ struct mostic_const{
                                 mostic_const MC(mos_tic,diffracted,capture_fraction, source,
                                   PC.ap, PC.bp, PC.cp, SC.scattering, SC.incident, this);
                                 /* polarization factor */
-                                if (mos_tic == mosaic_domains-1) {
+                                if (subS == oversample-1 && subF == oversample-1 && thick_tic==detector_thicksteps-1){
+                                if (source == sources-1 && phi_tic == phisteps-1 && mos_tic == mosaic_domains-1) {
                                   polar = MC.polar;  //breaks const correctness
                                 }
+                                }
                                 /* convert amplitudes into intensity (photons per steradian) */
-                                I_terms[mos_tic] = MC.I_increment; //breaks const correctness
+                                I_reduction += MC.I_increment; //breaks const correctness
                             }
                             /* end of mosaic loop */
-                            for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic){
-                              I += I_terms[mos_tic];
-                            }
+                            I+=I_reduction;
                         }
                         /* end of phi loop */
                     }
@@ -293,7 +298,7 @@ struct mostic_const{
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
                 }
             }
-            ++imgidx;
+            /*++imgidx*/;
     }  // for loop over fast pixels
   } // for loop over slow pixels
 }
