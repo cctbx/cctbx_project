@@ -133,7 +133,8 @@ class molprobity (slots_getstate_setstate) :
     "file_name",
     "kinemage_file",
     "model_statistics_geometry",
-    "model_statistics_geometry_result"
+    "model_statistics_geometry_result",
+    "polygon_stats"
   ]
 
   # backwards compatibility with saved results
@@ -572,19 +573,42 @@ class molprobity (slots_getstate_setstate) :
     f.close()
 
   def get_polygon_statistics (self, stat_names) :
+    # missing keys from polygon.keys_to_show:
+    #   r_work_cutoffs, r_free_cutoffs
+    #   completeness_in_range, completeness_d_min_inf, completeness_6A_inf
+    #   wilson_b, solvent_content_via_mask
     stats = {}
     for name in stat_names :
       val = None
       if (name == "r_work") : val = self.r_work()
       elif (name == "r_free") : val = self.r_free()
+      elif (name == "adp_mean_all") : val = self.b_iso_mean()
+      elif (name == "adp_min_all"): val = self.model_stats.all.b_min
+      elif (name == "adp_max_all"): val = self.model_stats.all.b_max
       elif (name == "wilson_b") : pass
+      elif (name == "bond_rmsd") : val = self.rms_bonds()
+      elif (name == "bond_max_deviation"):
+        val = self.model_statistics_geometry_result.bond.max
+      elif (name == "angle_rmsd") : val = self.rms_angles()
+      elif (name == "angle_max_deviation"):
+        val = self.model_statistics_geometry_result.angle.max
+      elif (name == "dihedral_rmsd"):
+        val = self.model_statistics_geometry_result.dihedral.mean
+      elif (name == "dihedral_max_deviation"):
+        val = self.model_statistics_geometry_result.dihedral.max
+      elif (name == "planarity_rmsd"):
+        val = self.model_statistics_geometry_result.planarity.mean
+      elif (name == "planarity_max_deviation"):
+        val = self.model_statistics_geometry_result.planarity.max
+      elif (name == "chirality_rmsd"):
+        val = self.model_statistics_geometry_result.chirality.mean
+      elif (name == "chirality_max_deviation"):
+        val = self.model_statistics_geometry_result.chirality.max
       elif (name == "rama_favored") : val = self.rama_favored()
+      elif (name == "rama_allowed") : val = self.rama_allowed()
       elif (name == "rama_outliers") : val =  self.rama_outliers()
       elif (name == "rotamer_outliers") : val = self.rota_outliers()
       elif (name == "clashscore") : val = self.clashscore()
-      elif (name == "bond_rmsd") : val = self.rms_bonds()
-      elif (name == "angle_rmsd") : val = self.rms_angles()
-      elif (name == "adp_mean_all") : val = self.b_iso_mean()
       stats[name] = val
     return stats
 

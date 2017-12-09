@@ -4,9 +4,7 @@
 from __future__ import division
 from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
-from libtbx import runtime_utils
-from libtbx import easy_pickle
-from libtbx import Auto
+from libtbx import Auto, easy_pickle, runtime_utils
 import libtbx.load_env
 import os.path
 import sys
@@ -58,6 +56,9 @@ molprobity {
   ligand_selection = None
     .type = atom_selection
     .expert_level = 3
+}
+polygon {
+  include scope mmtbx.polygon.polygon_params_str
 }
 output {
   quiet = False
@@ -191,6 +192,15 @@ def run (args,
     rotamer_library=params.molprobity.rotamer_library,
     map_params=params)
   map_file = None
+
+  # polygon statistics
+  validation.polygon_stats = validation.get_polygon_statistics(
+    params.polygon.keys_to_show)
+  if ('pdb_header_r_work' in params.polygon.keys_to_show):
+    validation.polygon_stats['pdb_header_r_work'] = header_info.r_work
+  if ('pdb_header_r_free' in params.polygon.keys_to_show):
+    validation.polygon_stats['pdb_header_r_free'] = header_info.r_free
+
   if (not params.output.quiet) :
     out2 = multi_out()
     out2.register("stdout", out)
