@@ -174,7 +174,12 @@ def set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre):
   """
   from scitbx import matrix
   s0 = matrix.col(beam.get_s0())
-  panel_id, old_beam_centre = detector.get_ray_intersection(beam.get_s0())
+  panel = detector[0]
+  if matrix.col(panel.get_origin()).dot(s0) < 0:
+    os0 = -s0
+  else:
+    os0 = s0
+  panel_id, old_beam_centre = detector.get_ray_intersection(os0.elems)
   # XXX maybe not the safest way to do this?
   new_beam_centre = matrix.col(tuple(reversed(mosflm_beam_centre)))
   origin_shift = matrix.col(old_beam_centre) - new_beam_centre
@@ -192,7 +197,7 @@ def set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre):
                           slow_axis=panel.get_slow_axis(),
                           origin=new_origin)
   # sanity check to make sure we have got the new beam centre correct
-  panel_id, new_beam_centre = detector.get_ray_intersection(beam.get_s0())
+  panel_id, new_beam_centre = detector.get_ray_intersection(os0.elems)
   assert (matrix.col(new_beam_centre) -
           matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-4
 
