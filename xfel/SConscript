@@ -55,7 +55,7 @@ if (not env_etc.no_boost_python):
   env_xfel_boost_python_ext.SharedLibrary(
                  target="#lib/xes_ext", source="vonHamos/xes_ext.cpp")
   env_xfel_boost_python_ext.SharedLibrary(
-                 target="#lib/xfel_sdfac_refine_ext", source="merging/algorithms/error_model/sdfac_refine.cpp")
+                 target="#lib/xfel_sdfac_refine_ext", source="merging/algorithms/error_model/sdfac_refine_ext.cpp")
 
   env_legacy_boost_python_ext = env_boost_python_ext.Clone()
   env_legacy_boost_python_ext.Prepend(
