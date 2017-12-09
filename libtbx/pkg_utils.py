@@ -65,13 +65,13 @@ def require(pkgname, version=None):
     egg_link = os.path.join(path_item, project_name + '.egg-link')
     if os.path.isfile(egg_link):
       with open(egg_link, 'r') as fh:
-        print ("=" * 80 + "\n\n"
+        print (("=" * 80 + "\n\n"
              + "     WARNING: Can not update package {package} automatically.\n"
              + "It is installed as editable package for development purposes. The currently\n"
              + "installed version, {currentversion}, is too old. The required version is {requirement}.\n"
              + "Please update the package manually in its installed location:\n\n"
              + "     {packagelocation}\n\n"
-             + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip())
+             + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip()))
         return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
