@@ -431,7 +431,11 @@ def select_segments_that_match(params=None,
   from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
     merge_hierarchies_from_models
   chain_model=model_info(hierarchy=chain_hierarchy)
-  chain_models=split_model(model=chain_model)
+  if params.crystal_info.chain_type=="PROTEIN":
+    distance_cutoff=5.
+  else:
+    distance_cutoff=15.
+  chain_models=split_model(model=chain_model,distance_cutoff=distance_cutoff)
   print >>out,"Analyzing %s segments and identifying " %(len(chain_models)) +\
       " those with "+\
      "chain_type=%s and match percentage between %.1f %% and %.1f %% " %(

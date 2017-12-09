@@ -198,12 +198,31 @@ def get_pdb_hierarchy(text=None):
   return iotbx.pdb.input(
      source_info=None,lines=flex.split_lines(text)).construct_hierarchy()
 
+def is_close_to(r,last_r,distance_cutoff=None):
+  if not r or not last_r:
+    return None
+  r_atom=None
+  for atom in r.atoms():
+    if atom.name.strip() in ["CA","P"]:
+       r_atom=atom
+  last_r_atom=None
+  for atom in last_r.atoms():
+    if atom.name.strip() in ["CA","P"]:
+       last_r_atom=atom
+  if not r_atom or not last_r_atom: return None
+  dd=col(r_atom.xyz)-col(last_r_atom.xyz)
+  if dd.length()<distance_cutoff:
+    return True
+  else:
+    return False
+
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
-     only_first_model=None,out=sys.stdout):
+     only_first_model=None,distance_cutoff=None,out=sys.stdout):
 
   # XXX NOTE: this splits model at all icode residues (one model per residue)
   # The routine extract_segment below assumes that the residues in an individual
   #  model are sequential (no insertion codes)
+  # if CA-CA or P-P distance is > distance-cutoff then split there
 
   model_list=[]
   if hierarchy:
@@ -232,8 +251,15 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       new_hierarchy.append_model(mm)
       mm.append_chain(cc)
       last_resseq=None
+      last_r=None
+      is_linked=None
       for r in chain.residue_groups():
-        if not (last_resseq is None or r.resseq_as_int()==last_resseq+1):
+        if distance_cutoff is not None:
+          is_linked=is_close_to(r,last_r,distance_cutoff=distance_cutoff)
+
+        if (last_resseq is not None )  and (r.resseq_as_int()!=last_resseq+1
+           or ( (distance_cutoff is not None) and (not is_linked) )):
+
           # save and make new model
           new_model_info=model_info(hierarchy=new_hierarchy,info=deepcopy(info))
           model_list.append(new_model_info)
@@ -249,9 +275,11 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
           new_hierarchy.append_model(mm)
           mm.append_chain(cc)
           last_resseq=None
+          last_r=None
         # add on a residue...
         cc.append_residue_group(r.detached_copy())
         last_resseq=r.resseq_as_int()
+        last_r=r
       new_hierarchy.reset_atom_i_seqs()
       new_model_info=model_info(hierarchy=new_hierarchy,info=deepcopy(info))
       model_list.append(new_model_info)
