@@ -389,7 +389,10 @@ def is_atom_pair_linked(atom1,
       print atom2.quote()
       assert 0
   if "metal" in lookup:
-    return link_metals
+    if not linking_setup.skip_if_non_linking(lookup, atom1, atom2):
+      return False
+    else:
+      return link_metals
   #
   # amino acids
   #
