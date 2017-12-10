@@ -761,6 +761,19 @@ class model_info: # mostly just a holder
   def length(self):
     return self.last_residue()-self.first_residue()+1
 
+  def set_chain_type(self): # XXX specific for atom names N O2'/O2*
+    # set the chain type if not already set
+    if self.info and self.info.get('chain_type'): return
+    if not self.info: self.info={}
+    if has_atom(self.hierarchy,name="N"):
+      self.info['chain_type']="PROTEIN"
+    else:
+      if has_atom(self.hierarchy,name="O2'") or  \
+          has_atom(self.hierarchy,name="O2*"): 
+        self.info['chain_type']="RNA"
+      else:
+        self.info['chain_type']="DNA"
+
 class segment:  # object for holding a helix or a strand or other
 
   def setup(self,sites=None,start_resno=None,hierarchy=None,
