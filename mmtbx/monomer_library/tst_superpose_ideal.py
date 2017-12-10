@@ -48,7 +48,9 @@ HETATM 9506  S4  SF4 X1001      39.895   0.913  20.872  1.00  6.51           S
   ''',
 }
 
-results = {'4udx_sf4.pdb' : [[10, 2799, 26372, 2085], [0,0,0,0]],
+results = {'4udx_sf4.pdb' : [[655, 9675, 12002, 8287],
+                             [0,0,13,4],
+                             ],
            }
 
 def run():
@@ -100,7 +102,7 @@ def run():
         print 'value',value
         assert value==results[fn][i][3], 'not matching %s to %s' % (
           value,
-          results[fn][i][4],
+          results[fn][i][3],
           )
 
   fn = '4udx_sf4_cys.pdb'
