@@ -1856,7 +1856,6 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
     chain_types=new_chain_types
     dd=new_dd
     dd_n=new_dd_n
-  print dd_n
   if return_as_dict:
     return dd # dict of chain_types and sequences for each chain_type
   else:
