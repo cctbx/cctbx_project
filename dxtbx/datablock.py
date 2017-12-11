@@ -11,6 +11,7 @@
 from __future__ import absolute_import, division
 import cPickle as pickle
 
+from libtbx.utils import Sorry
 
 
 class DataBlock(object):
@@ -411,8 +412,12 @@ class DataBlockTemplateImporter(object):
     last = int(filenames[-1][index])
 
     # Check all images in range are present
-    numbers = [int(f[index]) for f in filenames]
-    assert(all(x+1==y for x, y in zip(numbers, numbers[1:])))
+    all_numbers = {int(f[index]) for f in filenames}
+    missing = set(range(first, last + 1)) - all_numbers
+    if missing:
+      raise Sorry("Missing image{} {} from imageset ({}-{})".format(
+          "s" if len(missing) > 1 else "",
+          ", ".join(str(x) for x in sorted(missing)), first, last))
 
     # Read the image
     fmt = format_class(filenames[0], **(kwargs.get('format_kwargs', {})))
