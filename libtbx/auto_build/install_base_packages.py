@@ -631,8 +631,8 @@ Installation of Python packages may fail.
       pip_cmd = filter(None, ['download',
                               pkg_info['package'] + pkg_info['version'],
                               '-d', pkg_info['cachedir'], pkg_info['debug']])
-      if extra:
-        pip_cmd.extend(extra)
+      if extra_options:
+        pip_cmd.extend(extra_options)
       print "  Running with pip:", pip_cmd
       assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
