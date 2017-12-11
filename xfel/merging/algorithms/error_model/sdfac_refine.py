@@ -4,6 +4,71 @@ import math
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
 
+from scitbx.simplex import simplex_opt
+class simplex_minimizer(object):
+  """Class for refining sdfac, sdb and sdadd"""
+  def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log=None):
+    """
+    @param sdfac Initial value for sdfac
+    @param sdfac Initial value for sdfac
+    @param sdfac Initial value for sdfac
+    @param data ISIGI dictionary of unmerged intensities
+    @param indices array of miller indices to refine against
+    @param bins array of flex.bool object specifying the bins to use to calculate the functional
+    @param log Log to print to (none for stdout)
+    """
+    if log is None:
+      log = sys.stdout
+    self.log = log
+    self.data = data
+    self.intensity_bin_selections = bins
+    self.indices = indices
+    self.n = 3
+    self.x = flex.double([sdfac, sdb, sdadd])
+    self.starting_simplex = []
+    if seed is None:
+      random_func = flex.random_double
+    else:
+      print >> self.log, "Using random seed %d"%seed
+      mt = flex.mersenne_twister(seed)
+      random_func = mt.random_double
+
+    for i in xrange(self.n+1):
+      self.starting_simplex.append(random_func(self.n))
+
+    self.optimizer = simplex_opt( dimension = self.n,
+                                  matrix    = self.starting_simplex,
+                                  evaluator = self,
+                                  tolerance = 1e-1)
+    self.x = self.optimizer.get_solution()
+
+  def target(self, vector):
+    """ Compute the functional by first applying the current values for the sd parameters
+    to the input data, then computing the complete set of normalized deviations and finally
+    using those normalized deviations to compute the functional."""
+    from xfel import compute_normalized_deviations, apply_sd_error_params
+
+    sdfac, sdb, sdadd = vector
+
+    if sdfac < 0 or sdb < 0 or sdadd < 0:
+      f = 1e6
+    else:
+      data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
+      all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
+
+      f = 0
+      for bin in self.intensity_bin_selections:
+        binned_normalized_sigmas = all_sigmas_normalized.select(bin)
+        n = len(binned_normalized_sigmas)
+        if n == 0: continue
+        # weighting scheme from Evans, 2011
+        w = math.sqrt(n)
+        # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
+        f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
+
+    print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+    return f
+
 class sdfac_refine(error_modeler_base):
   def get_overall_correlation_flex (self, data_a, data_b) :
     """
@@ -150,68 +215,6 @@ class sdfac_refine(error_modeler_base):
     print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
 
     from xfel import compute_normalized_deviations, apply_sd_error_params
-    from scitbx.simplex import simplex_opt
-    class simplex_minimizer(object):
-      """Class for refining sdfac, sdb and sdadd"""
-      def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log=None):
-        """
-        @param sdfac Initial value for sdfac
-        @param sdfac Initial value for sdfac
-        @param sdfac Initial value for sdfac
-        @param data ISIGI dictionary of unmerged intensities
-        @param indices array of miller indices to refine against
-        @param bins array of flex.bool object specifying the bins to use to calculate the functional
-        @param log Log to print to (none for stdout)
-        """
-        if log is None:
-          log = sys.stdout
-        self.log = log
-        self.data = data
-        self.intensity_bin_selections = bins
-        self.indices = indices
-        self.n = 3
-        self.x = flex.double([sdfac, sdb, sdadd])
-        self.starting_simplex = []
-        if seed is None:
-          random_func = flex.random_double
-        else:
-          print >> self.log, "Using random seed %d"%seed
-          mt = flex.mersenne_twister(seed)
-          random_func = mt.random_double
-
-        for i in xrange(self.n+1):
-          self.starting_simplex.append(random_func(self.n))
-
-        self.optimizer = simplex_opt( dimension = self.n,
-                                      matrix    = self.starting_simplex,
-                                      evaluator = self,
-                                      tolerance = 1e-1)
-        self.x = self.optimizer.get_solution()
-
-      def target(self, vector):
-        """ Compute the functional by first applying the current values for the sd parameters
-        to the input data, then computing the complete set of normalized deviations and finally
-        using those normalized deviations to compute the functional."""
-        sdfac, sdb, sdadd = vector
-
-        if sdfac < 0 or sdb < 0 or sdadd < 0:
-          f = 1e6
-        else:
-          data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
-          all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
-
-          f = 0
-          for bin in self.intensity_bin_selections:
-            binned_normalized_sigmas = all_sigmas_normalized.select(bin)
-            n = len(binned_normalized_sigmas)
-            if n == 0: continue
-            # weighting scheme from Evans, 2011
-            w = math.sqrt(n)
-            # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
-            f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
-
-        print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
-        return f
 
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
