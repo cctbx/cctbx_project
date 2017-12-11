@@ -1,4 +1,4 @@
-import os, sys
+from __future__ import division
 from libtbx import easy_run
 
 pdb_str = '''
@@ -28,9 +28,9 @@ def get_clashscore(lines):
     if line.find('clashscore =')>-1:
       return float(line.split()[-1])
     if line.find('Clashscore            =')>-1:
-      return float(line.split()[-1])        
+      return float(line.split()[-1])
   assert 0
-  
+
 def run():
   print 'test'
   f=file('tst_mol_args.pdb', 'wb')
