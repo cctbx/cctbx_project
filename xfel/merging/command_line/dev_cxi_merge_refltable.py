@@ -7,7 +7,7 @@ from __future__ import division
 
 from xfel.command_line.cxi_merge import scaling_manager
 from dials.array_family import flex
-from xfel.merging.command_line.dev_cxi_merge import Script as MergingScript
+from xfel.merging.command_line.dev_cxi_merge import Script
 from xfel.cxi.merging_utils import null_data
 from libtbx import Auto
 
@@ -249,17 +249,6 @@ class refltable_scaling_manager(scaling_manager):
       sum_I_SIGI[j] += self.ISIGI['isigi'][i]
     return sum_I, sum_I_SIGI
 
-class Script(MergingScript):
-  '''A class for running the script.'''
-  def scale_all(self):
-    scaler = refltable_scaling_manager(
-      miller_set=self.miller_set,
-      i_model=self.i_model,
-      params=self.params,
-      log=self.out)
-    scaler.scale_all(self.frame_files)
-    return scaler
-
 if __name__ == '__main__':
-  script = Script()
+  script = Script(refltable_scaling_manager)
   script.run()

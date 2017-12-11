@@ -73,20 +73,20 @@ class Script(base_Script):
     # set things up
     if rank == 0:
       if timing: print "SETUP START RANK=%d TIME=%f"%(rank,tt())
-      script.initialize()
-      script.validate()
-      script.read_models()
-      scaler_master = scaling_manager_mpi(
-        miller_set=script.miller_set,
-        i_model=script.i_model,
-        params=script.params,
-        log=script.out)
-      scaler_master.mpi_initialize(script.frame_files)
+      self.initialize()
+      self.validate()
+      self.read_models()
+      scaler_master = self.scaler_class(
+        miller_set=self.miller_set,
+        i_model=self.i_model,
+        params=self.params,
+        log=self.out)
+      scaler_master.mpi_initialize(self.frame_files)
 
-      transmitted_info = dict(file_names=script.frame_files,
-                              miller_set=script.miller_set,
-                              model = script.i_model,
-                              params = script.params )
+      transmitted_info = dict(file_names=self.frame_files,
+                              miller_set=self.miller_set,
+                              model = self.i_model,
+                              params = self.params )
       if timing: print "SETUP END RANK=%d TIME=%f"%(rank,tt())
 
     else:
@@ -100,10 +100,10 @@ class Script(base_Script):
 
     # now actually do the work
     if timing: print "SCALER_WORKER_SETUP START RANK=%d TIME=%f"%(rank,tt())
-    scaler_worker = scaling_manager_mpi(transmitted_info["miller_set"],
-                                        transmitted_info["model"],
-                                        transmitted_info["params"],
-                                        log = sys.stdout)
+    scaler_worker = self.scaler_class(transmitted_info["miller_set"],
+                                       transmitted_info["model"],
+                                       transmitted_info["params"],
+                                       log = sys.stdout)
     if timing: print "SCALER_WORKER_SETUP END RANK=%d TIME=%f"%(rank,tt())
     assert scaler_worker.params.backend == 'FS' # only option that makes sense
     from xfel.merging.database.merging_database_fs import manager2 as manager
@@ -150,14 +150,14 @@ class Script(base_Script):
       scaler_master.mpi_finalize()
       if timing: print "SCALER_MASTER_FINALISE END RANK=%d TIME=%f"%(rank, tt())
 
-      return script.finalize(scaler_master)
+      return self.finalize(scaler_master)
 
 if (__name__ == "__main__"):
   from mpi4py import MPI
   comm = MPI.COMM_WORLD
   rank = comm.Get_rank()
 
-  script = Script()
+  script = Script(scaling_manager_mpi)
   result = script.run(comm=comm,timing=False)
   if rank == 0:
     script.show_plot(result)
