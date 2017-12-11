@@ -151,11 +151,11 @@ nanoBragg::add_nanoBragg_spots_nks()
   double sum = 0.0; //reduction variable
   double sumsqr = 0.0; //reduction variable
 
+  int maxidx = spixels * fpixels;
   # pragma omp parallel for reduction (+:sum, sumsqr)
-  for(int spixel=0;spixel<spixels;++spixel){
-    //# pragma omp parallel for reduction (+:sum, sumsqr)
-    for(int fpixel=0;fpixel<fpixels;++fpixel){
-            int imgidx = spixel * fpixels + fpixel;
+  for(int imgidx = 0; imgidx < maxidx; ++imgidx){ //single loop over pixels
+            int fpixel = imgidx % fpixels;
+            int spixel = imgidx / fpixels;
             double polar=0, omega_pixel=1; // per-pixel locality needed for parallelism
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
@@ -226,7 +226,6 @@ diffracted[3]=diffracted_v[2];
                             capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
                                               -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                         }
-
 
                     /* loop over sources now */
                     for(int source=0;source<sources;++source){
@@ -302,8 +301,8 @@ diffracted[3]=diffracted_v[2];
                 }
             }
             /*++imgidx*/;
-    }  // for loop over fast pixels
-  } // for loop over slow pixels
+
+  } // for loop over pixels
 }
 // end of add_nanoBragg_spots()
 
