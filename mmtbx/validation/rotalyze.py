@@ -63,7 +63,7 @@ class rotamer (residue) :
   # GUI output
   def as_table_row_phenix (self) :
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
-             self.score ] + list(self.chi_angles)
+             self.score ] + self.format_chi_angles(pad=True).split(",")#list(self.chi_angles)
 
 class rotamer_ensemble (residue) :
   """Container for validation results for an ensemble of residues."""
@@ -94,7 +94,7 @@ class rotalyze (validation) :
   output_header+= "evaluation:rotamer"
   gui_list_headers = ["Chain","Residue","Score","Chi1","Chi2","Chi3","Chi4"]
   gui_formats = ["%s", "%s", "%.2f", "%.1f", "%.1f", "%.1f", "%.1f"]
-  wx_column_widths = [75, 120, 100, 120, 120, 120, 120]
+  wx_column_widths = [75, 120, 100, 100, 100, 100, 100]
 
   def get_result_class (self) : return rotamer
 
