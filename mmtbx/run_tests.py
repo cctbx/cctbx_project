@@ -198,7 +198,6 @@ tst_list = (
   "$D/regression/tst_validation_summary.py",
   "$D/regression/tst_maps_misc.py",
   "$D/regression/tst_cablam.py",
-  "$D/regression/tst_molprobity_arguments.py",
   "$D/regression/tst_anomalous_substructure.py",
   "$D/regression/tst_map_coeffs_simple.py",
   "$D/regression/tst_clashes.py",
@@ -216,6 +215,7 @@ tst_list = (
   "$D/ringer/tst_emringer.py",
   "$D/ringer/tst_em_rscc.py",
   # validation/molprobity
+  "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_waters.py",
   "$D/validation/regression/tst_keep_hydrogens.py",
   "$D/validation/regression/tst_nqh_minimize.py",
