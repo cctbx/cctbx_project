@@ -602,10 +602,12 @@ compute_normalized_deviations(boost::python::dict const& ISIGI, scaling_results:
     }
 
     // compute the normalized deviations
+    std::size_t counter = 0;
     for (std::size_t i = 0; i < n; i++) {
       if (accepted[i]) {
-        double meanIprime = (sumI-intensities[i]) / (n_accept>1 ? (n_accept-1) : 1);
-        result.push_back(nn * (intensities[i] - meanIprime) / sigmas[i]);
+        double meanIprime = (sumI-intensities[counter]) / (n_accept>1 ? (n_accept-1) : 1);
+        result.push_back(nn * (intensities[counter] - meanIprime) / sigmas[counter]);
+        counter++;
       }
       else {
         result.push_back(0.0);
