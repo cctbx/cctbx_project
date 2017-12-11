@@ -18,11 +18,12 @@ Script for merging xfel data
 class Script(object):
   '''A class for running the script.'''
 
-  def __init__(self):
+  def __init__(self, scaler_class):
     # The script usage
     import libtbx.load_env
     self.usage = "usage: %s [options] [param.phil] " % libtbx.env.dispatcher_name
     self.parser = None
+    self.scaler_class = scaler_class
 
   def initialize(self):
     '''Initialise the script.'''
@@ -90,7 +91,7 @@ class Script(object):
     self.out = out
 
   def scale_all(self):
-    scaler = scaling_manager(
+    scaler = self.scaler_class(
       miller_set=self.miller_set,
       i_model=self.i_model,
       params=self.params,
@@ -214,7 +215,7 @@ class Script(object):
     return result
 
 if __name__ == '__main__':
-  script = Script()
+  script = Script(scaling_manager)
   result = script.run()
   script.show_plot(result)
   print "DONE"
