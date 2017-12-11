@@ -1829,7 +1829,7 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
     text=open(file_name).read()
   # clear any lines that have only > and nothing else
   text=clear_empty_lines(text)
-  
+
   chain_types=[]
   ( sequences, unknowns ) = parse_sequence( text )
   dd={}
