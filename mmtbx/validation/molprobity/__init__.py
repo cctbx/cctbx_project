@@ -702,7 +702,7 @@ class summary (slots_getstate_setstate_default_initializer) :
   def iter_molprobity_gui_fields (self) :
     stats = [
       ("Ramachandran outliers","%6.2f%%",self.rama_outliers,0.5,0.2,"< 0.2%"),
-      ("Ramachandran favored", "%6.2f%%",self.rama_favored,None,None,"> 98%"),
+      ("Ramachandran favored", "%6.2f%%",self.rama_favored,95,98,"> 98%"),
       ("Rotamer outliers", "%6.2f%%", self.rotamer_outliers, 2, 1, "1%"),
       ("C-beta outliers", "%3d   ", self.c_beta_deviations, 2, 0, "0"),
       ("Clashscore", "%6.2f", self.clashscore, 40, 20, None),
