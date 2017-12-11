@@ -590,7 +590,8 @@ Installation of Python packages may fail.
       self.verify_python_module(pkg_name_label, confirm_import_module)
 
   def build_python_module_pip(self, package_name, package_version=None, download_only=None,
-      callback_before_build=None, callback_after_build=None, confirm_import_module=None):
+      callback_before_build=None, callback_after_build=None, confirm_import_module=None,
+      extra_options=None):
     '''Download and install a package using pip.'''
     if download_only is None:
       download_only = self.options.download_only
@@ -609,6 +610,8 @@ Installation of Python packages may fail.
         pkg_info['version'] = '==' + package_version
     else:
       pkg_info['version'] = ''
+    if extra_options:
+      assert isinstance(extra_options, list), 'extra pip options must be passed as a list'
     if download_only:
       try:
         import pip
@@ -628,18 +631,24 @@ Installation of Python packages may fail.
       pip_cmd = filter(None, ['download',
                               pkg_info['package'] + pkg_info['version'],
                               '-d', pkg_info['cachedir'], pkg_info['debug']])
+      if extra:
+        pip_cmd.extend(extra)
       print "  Running with pip:", pip_cmd
       assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
+    if extra_options:
+      extra_options = ' '.join(extra_options)
+    else:
+      extra_options = ''
     self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + \
               ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + \
-              pkg_info['cachedir'] + '"',
+              pkg_info['cachedir'] + '" ' + extra_options,
               log=log)
     if callback_before_build:
       assert callback_before_build(log), package_name
     self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + \
               ' "' + pkg_info['package'] + pkg_info['version'] + \
-              '" --no-index -f "' + pkg_info['cachedir'] + '"',
+              '" --no-index -f "' + pkg_info['cachedir'] + '" ' + extra_options,
               log=log)
     if callback_after_build:
       assert callback_after_build(log), package_name
@@ -971,12 +980,20 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_numpy(self):
     global NUMPY_VERSION
-    if self.python3: NUMPY_VERSION="1.13.3"
-    self.build_python_module_pip(
-      package_name='numpy',
-      package_version=NUMPY_VERSION,
-      confirm_import_module="numpy",
-    )
+    if self.python3:
+      NUMPY_VERSION="1.13.3"
+      self.build_python_module_pip(
+        package_name='numpy',
+        package_version=NUMPY_VERSION,
+        confirm_import_module="numpy",
+      )
+    else:
+      self.build_python_module_pip(
+        package_name='numpy',
+        package_version=NUMPY_VERSION,
+        confirm_import_module="numpy",
+        extra_options=['--no-binary=numpy'],
+      )
 
   def build_docutils(self):
     self.build_python_module_pip(
