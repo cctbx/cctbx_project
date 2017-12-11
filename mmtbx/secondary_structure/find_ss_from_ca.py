@@ -769,7 +769,7 @@ class model_info: # mostly just a holder
       self.info['chain_type']="PROTEIN"
     else:
       if has_atom(self.hierarchy,name="O2'") or  \
-          has_atom(self.hierarchy,name="O2*"): 
+          has_atom(self.hierarchy,name="O2*"):
         self.info['chain_type']="RNA"
       else:
         self.info['chain_type']="DNA"
