@@ -5,6 +5,137 @@
 namespace simtbx {
 namespace nanoBragg {
 
+struct source_const{
+  source_const(int const& source, const double* diffracted, const nanoBragg* n){
+    /* retrieve stuff from cache */
+    incident[1] = -n->source_X[source];
+    incident[2] = -n->source_Y[source];
+    incident[3] = -n->source_Z[source];
+    double lambda = n->source_lambda[source];
+
+    /* construct the incident beam unit vector while recovering source distance */
+    source_path = unitize(incident,incident);
+
+    /* construct the scattering vector for this pixel */
+    scattering[1] = (diffracted[1]-incident[1])/lambda;
+    scattering[2] = (diffracted[2]-incident[2])/lambda;
+    scattering[3] = (diffracted[3]-incident[3])/lambda;
+
+    /* sin(theta)/lambda is half the scattering vector length */
+    stol = 0.5*magnitude(scattering);
+  }
+  double incident[4],scattering[4];
+  double stol,source_path;
+};
+
+struct phitic_const{
+  phitic_const(int const& mostic, double const& phi, const nanoBragg* n){
+    for (int icopy=0; icopy<4; ++icopy){
+        a0[icopy] = n->a0[icopy];
+        b0[icopy] = n->b0[icopy];
+        c0[icopy] = n->c0[icopy];
+        spindle_vector[icopy] = n->spindle_vector[icopy];
+    }
+    if( phi != 0.0 ) {
+      /* rotate about spindle if neccesary */
+      rotate_axis(a0,ap,spindle_vector,phi);
+      rotate_axis(b0,bp,spindle_vector,phi);
+      rotate_axis(c0,cp,spindle_vector,phi);
+    } else {
+      for (int icopy=0; icopy<4; ++icopy){
+        ap[icopy] = n->a0[icopy];
+        bp[icopy] = n->b0[icopy];
+        cp[icopy] = n->c0[icopy];
+      }
+    }
+  }
+  double ap[4],bp[4],cp[4],a0[4],b0[4],c0[4],spindle_vector[4];
+};
+
+struct mostic_const{
+  mostic_const( int const& mostic, double* n_diffracted,
+      double const& capture_fraction, int const& source,
+      double* n_ap, double* n_bp, double* n_cp, double* n_scattering,
+      double* n_incident, const nanoBragg* n):
+      F_cell(n->default_F),polar(1.0),I_increment(0){
+      for (int icopy=0; icopy<4; ++icopy){
+        incident[icopy] = n_incident[icopy];
+        diffracted[icopy] = n_diffracted[icopy];
+        axis[icopy] = n->polar_vector[icopy];
+      }
+
+    vec3 a,b,c;
+    vec3 ap(n_ap[1],n_ap[2],n_ap[3]);
+    vec3 bp(n_bp[1],n_bp[2],n_bp[3]);
+    vec3 cp(n_cp[1],n_cp[2],n_cp[3]);
+    mat3 u_mat = mat3(
+      n->mosaic_umats[mostic*9],n->mosaic_umats[mostic*9+1],n->mosaic_umats[mostic*9+2],
+      n->mosaic_umats[mostic*9+3],n->mosaic_umats[mostic*9+4],n->mosaic_umats[mostic*9+5],
+      n->mosaic_umats[mostic*9+6],n->mosaic_umats[mostic*9+7],n->mosaic_umats[mostic*9+8]);
+
+    /* apply mosaic rotation after phi rotation */
+    if( n->mosaic_spread > 0.0 ){ a = u_mat * ap; b = u_mat * bp; c = u_mat * cp;
+    } else { a = ap; b = bp; c = cp;}
+    vec3 scattering(n_scattering[1],n_scattering[2],n_scattering[3]);
+
+    /* construct fractional Miller indicies */
+    h = a * scattering;k = b * scattering;l = c * scattering;
+    /* round off to nearest whole index */
+    h0 = static_cast<int>(ceil(h-0.5));
+    k0 = static_cast<int>(ceil(k-0.5));
+    l0 = static_cast<int>(ceil(l-0.5));
+
+    // structure factor of the lattice (paralelpiped crystal)
+    F_latt = 1.0;
+    hrad_sqr = 0.;
+    if(n->xtal_shape == SQUARE){ /* xtal is a paralelpiped */
+      if(n->Na>1){ F_latt *= sincg(M_PI*h,n->Na); }
+      if(n->Nb>1){ F_latt *= sincg(M_PI*k,n->Nb); }
+      if(n->Nc>1){ F_latt *= sincg(M_PI*l,n->Nc); }
+    } else { /* handy radius in reciprocal space, squared */
+      hrad_sqr = (h-h0)*(h-h0)*n->Na*n->Na + (k-k0)*(k-k0)*n->Nb*n->Nb + (l-l0)*(l-l0)*n->Nc*n->Nc ;
+    }
+    if(n->xtal_shape == ROUND){ /* use sinc3 for elliptical xtal shape,
+                                correcting for sqrt of volume ratio between cube and sphere */
+      F_latt = n->Na*n->Nb*n->Nc*0.723601254558268*sinc3(M_PI*sqrt( hrad_sqr * n->fudge ) );
+    }
+    if(n->xtal_shape == GAUSS){
+               /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
+      F_latt = n->Na*n->Nb*n->Nc*exp(-( hrad_sqr / 0.63 * n->fudge ));
+    }
+    if(n->xtal_shape == TOPHAT) {
+               /* make a flat-top spot of same height and volume as square_xtal spots */
+      F_latt = n->Na*n->Nb*n->Nc*(hrad_sqr*n->fudge < 0.3969 );
+    }
+    if(F_latt == 0.0) {return;}
+
+    /* structure factor of the unit cell */
+    if ( (h0<=n->h_max) && (h0>=n->h_min) &&
+         (k0<=n->k_max) && (k0>=n->k_min) &&
+         (l0<=n->l_max) && (l0>=n->l_min)  ) {
+      /* just take nearest-neighbor */
+      F_cell = n->Fhkl[h0-n->h_min][k0-n->k_min][l0-n->l_min];
+    }else{
+      F_cell = n->default_F; // usually zero
+    }
+    /* now we have the structure factor for this pixel */
+    /* polarization factor */
+    if(! n->nopolar){
+      /* need to compute polarization factor */
+      polar = polarization_factor( n->polarization, incident,
+                                   diffracted,axis);
+    } else {
+      polar = 1.0;
+    }
+    I_increment = F_cell*F_cell*F_latt*F_latt*n->source_I[source]*capture_fraction;
+  };
+  double h,k,l;
+  int h0,k0,l0;
+  double F_latt, F_cell, hrad_sqr, polar, I_increment;
+  double diffracted[4], incident[4], axis[4];
+  vec3 as_vec3(const double* vec4){ return vec3(vec4[1],vec4[2],vec4[3]); }
+};
+
 /* add spots from nanocrystal simulation */
 void
 nanoBragg::add_nanoBragg_spots_nks()
@@ -100,28 +231,6 @@ diffracted[3]=diffracted_v[2];
                     /* loop over sources now */
                     for(int source=0;source<sources;++source){
 
-struct source_const{
-  source_const(int const& source, const double* diffracted, const nanoBragg* n){
-    /* retrieve stuff from cache */
-    incident[1] = -n->source_X[source];
-    incident[2] = -n->source_Y[source];
-    incident[3] = -n->source_Z[source];
-    double lambda = n->source_lambda[source];
-
-    /* construct the incident beam unit vector while recovering source distance */
-    source_path = unitize(incident,incident);
-
-    /* construct the scattering vector for this pixel */
-    scattering[1] = (diffracted[1]-incident[1])/lambda;
-    scattering[2] = (diffracted[2]-incident[2])/lambda;
-    scattering[3] = (diffracted[3]-incident[3])/lambda;
-
-    /* sin(theta)/lambda is half the scattering vector length */
-    stol = 0.5*magnitude(scattering);
-  }
-  double incident[4],scattering[4];
-  double stol,source_path;
-};
                         source_const SC(source, diffracted, this);
                         source_path = SC.source_path; //breaks const correctness
 
@@ -137,29 +246,6 @@ struct source_const{
                         /* sweep over phi angles */
                         for(int phi_tic = 0; phi_tic < phisteps; ++phi_tic)
                         {
-struct phitic_const{
-  phitic_const(int const& mostic, double const& phi, const nanoBragg* n){
-    for (int icopy=0; icopy<4; ++icopy){
-        a0[icopy] = n->a0[icopy];
-        b0[icopy] = n->b0[icopy];
-        c0[icopy] = n->c0[icopy];
-        spindle_vector[icopy] = n->spindle_vector[icopy];
-    }
-    if( phi != 0.0 ) {
-      /* rotate about spindle if neccesary */
-      rotate_axis(a0,ap,spindle_vector,phi);
-      rotate_axis(b0,bp,spindle_vector,phi);
-      rotate_axis(c0,cp,spindle_vector,phi);
-    } else {
-      for (int icopy=0; icopy<4; ++icopy){
-        ap[icopy] = n->a0[icopy];
-        bp[icopy] = n->b0[icopy];
-        cp[icopy] = n->c0[icopy];
-      }
-    }
-  }
-  double ap[4],bp[4],cp[4],a0[4],b0[4],c0[4],spindle_vector[4];
-};
                             double phi = phi0 + phistep*phi_tic;
                             phitic_const PC(phi_tic, phi, this);
 
@@ -169,89 +255,6 @@ struct phitic_const{
                             for(int mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
                             {
 
-struct mostic_const{
-  mostic_const( int const& mostic, double* n_diffracted,
-      double const& capture_fraction, int const& source,
-      double* n_ap, double* n_bp, double* n_cp, double* n_scattering,
-      double* n_incident, const nanoBragg* n):
-      F_cell(n->default_F),polar(1.0),I_increment(0){
-      for (int icopy=0; icopy<4; ++icopy){
-        incident[icopy] = n_incident[icopy];
-        diffracted[icopy] = n_diffracted[icopy];
-        axis[icopy] = n->polar_vector[icopy];
-      }
-
-    vec3 a,b,c;
-    vec3 ap(n_ap[1],n_ap[2],n_ap[3]);
-    vec3 bp(n_bp[1],n_bp[2],n_bp[3]);
-    vec3 cp(n_cp[1],n_cp[2],n_cp[3]);
-    mat3 u_mat = mat3(
-      n->mosaic_umats[mostic*9],n->mosaic_umats[mostic*9+1],n->mosaic_umats[mostic*9+2],
-      n->mosaic_umats[mostic*9+3],n->mosaic_umats[mostic*9+4],n->mosaic_umats[mostic*9+5],
-      n->mosaic_umats[mostic*9+6],n->mosaic_umats[mostic*9+7],n->mosaic_umats[mostic*9+8]);
-
-    /* apply mosaic rotation after phi rotation */
-    if( n->mosaic_spread > 0.0 ){ a = u_mat * ap; b = u_mat * bp; c = u_mat * cp;
-    } else { a = ap; b = bp; c = cp;}
-    vec3 scattering(n_scattering[1],n_scattering[2],n_scattering[3]);
-
-    /* construct fractional Miller indicies */
-    h = a * scattering;k = b * scattering;l = c * scattering;
-    /* round off to nearest whole index */
-    h0 = static_cast<int>(ceil(h-0.5));
-    k0 = static_cast<int>(ceil(k-0.5));
-    l0 = static_cast<int>(ceil(l-0.5));
-
-    // structure factor of the lattice (paralelpiped crystal)
-    F_latt = 1.0;
-    hrad_sqr = 0.;
-    if(n->xtal_shape == SQUARE){ /* xtal is a paralelpiped */
-      if(n->Na>1){ F_latt *= sincg(M_PI*h,n->Na); }
-      if(n->Nb>1){ F_latt *= sincg(M_PI*k,n->Nb); }
-      if(n->Nc>1){ F_latt *= sincg(M_PI*l,n->Nc); }
-    } else { /* handy radius in reciprocal space, squared */
-      hrad_sqr = (h-h0)*(h-h0)*n->Na*n->Na + (k-k0)*(k-k0)*n->Nb*n->Nb + (l-l0)*(l-l0)*n->Nc*n->Nc ;
-    }
-    if(n->xtal_shape == ROUND){ /* use sinc3 for elliptical xtal shape,
-                                correcting for sqrt of volume ratio between cube and sphere */
-      F_latt = n->Na*n->Nb*n->Nc*0.723601254558268*sinc3(M_PI*sqrt( hrad_sqr * n->fudge ) );
-    }
-    if(n->xtal_shape == GAUSS){
-               /* fudge the radius so that volume and FWHM are similar to square_xtal spots */
-      F_latt = n->Na*n->Nb*n->Nc*exp(-( hrad_sqr / 0.63 * n->fudge ));
-    }
-    if(n->xtal_shape == TOPHAT) {
-               /* make a flat-top spot of same height and volume as square_xtal spots */
-      F_latt = n->Na*n->Nb*n->Nc*(hrad_sqr*n->fudge < 0.3969 );
-    }
-    if(F_latt == 0.0) {return;}
-
-    /* structure factor of the unit cell */
-    if ( (h0<=n->h_max) && (h0>=n->h_min) &&
-         (k0<=n->k_max) && (k0>=n->k_min) &&
-         (l0<=n->l_max) && (l0>=n->l_min)  ) {
-      /* just take nearest-neighbor */
-      F_cell = n->Fhkl[h0-n->h_min][k0-n->k_min][l0-n->l_min];
-    }else{
-      F_cell = n->default_F; // usually zero
-    }
-    /* now we have the structure factor for this pixel */
-    /* polarization factor */
-    if(! n->nopolar){
-      /* need to compute polarization factor */
-      polar = polarization_factor( n->polarization, incident,
-                                   diffracted,axis);
-    } else {
-      polar = 1.0;
-    }
-    I_increment = F_cell*F_cell*F_latt*F_latt*n->source_I[source]*capture_fraction;
-  };
-  double h,k,l;
-  int h0,k0,l0;
-  double F_latt, F_cell, hrad_sqr, polar, I_increment;
-  double diffracted[4], incident[4], axis[4];
-  vec3 as_vec3(const double* vec4){ return vec3(vec4[1],vec4[2],vec4[3]); }
-};
                                 mostic_const MC(mos_tic,diffracted,capture_fraction, source,
                                   PC.ap, PC.bp, PC.cp, SC.scattering, SC.incident, this);
                                 /* polarization factor */
