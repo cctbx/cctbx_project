@@ -149,7 +149,7 @@ class geometry(object):
     if self.cached_clash is None:
       self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
                                      keep_hydrogens = self.use_hydrogens,
-                                     nuclear= self.use_nuclear
+                                     nuclear = self.use_nuclear
       )
     return group_args(
       score   = self.cached_clash.get_clashscore(),
