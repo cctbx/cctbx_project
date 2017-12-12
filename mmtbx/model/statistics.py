@@ -21,6 +21,7 @@ class geometry(object):
   def __init__(self,
                pdb_hierarchy,
                use_hydrogens=True,
+               use_nuclear=False,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
     # Don't store GRM here because it is not used and is huge, GUI tries
@@ -28,6 +29,7 @@ class geometry(object):
     # self.geometry_restraints_manager = geometry_restraints_manager
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
+    self.use_nuclear = use_nuclear
     self.cached_result = None
     self.cached_clash = None
     self.cached_rama = None
@@ -145,7 +147,10 @@ class geometry(object):
 
   def clash(self):
     if self.cached_clash is None:
-      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy)
+      self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
+                                     keep_hydrogens = self.use_hydrogens,
+                                     nuclear= self.use_nuclear
+      )
     return group_args(
       score   = self.cached_clash.get_clashscore(),
       clashes = self.cached_clash #XXX Bulky object -- REMOVE!
