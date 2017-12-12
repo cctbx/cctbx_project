@@ -1399,6 +1399,10 @@ _replace_sysconfig_paths(build_time_vars)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
+    if self.python3:
+      # Skip wxPython for the Python3 pathway for now
+      return
+
     pkg_log = self.start_building_package("wxPython")
     pkg_name = WXPYTHON_PKG
     pkg = self.fetch_package(pkg_name)
