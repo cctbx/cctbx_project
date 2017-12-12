@@ -3619,6 +3619,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     if params.map_modification.restrict_z_distance_for_helical_symmetry:
       args,lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
          args=args,crystal_symmetry=crystal_symmetry,box=box)
+      print >>out,"\nRunning map-box again with restricted Z range ..."
       box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
         crystal_symmetry=crystal_symmetry,log=out)
 
