@@ -19,7 +19,10 @@ compute_normalized_deviations(reflection_table ISIGI, shared_miller hkl_list) {
    * described in Evans 2011, but includes the nn term as currently implmented by aimless
    *
    */
-  using namespace boost::python;
+  SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
+  SCITBX_ASSERT(ISIGI.contains("isigi"));
+  SCITBX_ASSERT(ISIGI.contains("miller_id"));
+
   scitbx::af::shared<double>         result(ISIGI.size(), 0);
   scitbx::af::shared<bool>           accepted(ISIGI.size(), false);
   scitbx::af::shared<double>         sigmas(ISIGI.size(), 0);
@@ -69,29 +72,35 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
   /*
    * Apply a set of sd params (sdfac, sdb and sdd) to an ISIGI reflection table
    */
-  scitbx::af::const_ref<double> scaled_intensity = ISIGI["scaled_intensity"];
-  scitbx::af::ref<double> isigi = ISIGI["isigi"];
-  scitbx::af::shared<double> sigmas(ISIGI.size(), 0);
+  SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
+  SCITBX_ASSERT(ISIGI.contains("isigi"));
+  SCITBX_ASSERT(ISIGI.contains("slope"));
+  SCITBX_ASSERT(ISIGI.contains("miller_id"));
+
+  scitbx::af::const_ref<double>      scaled_intensity = ISIGI["scaled_intensity"];
+  scitbx::af::ref<double>            isigi = ISIGI["isigi"];
+  scitbx::af::const_ref<double>      slope = ISIGI["slope"];
+  scitbx::af::shared<double>         sigmas(ISIGI.size(), 0);
   scitbx::af::const_ref<std::size_t> miller_id = ISIGI["miller_id"];
-  scitbx::af::const_ref<std::size_t> n_refl = ISIGI["n_refl"];
-  scitbx::af::shared<double> isum; // can't get af::max to work...
+
+  std::size_t max_miller_id = scitbx::af::max(miller_id);
+  scitbx::af::shared<std::size_t>    n_refl(max_miller_id+1, 0);
+  scitbx::af::shared<double>         isum(max_miller_id+1, 0);
 
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // scaled intensity (iobs/slope)
     // corrected sigma (original sigma/slope)
     sigmas[i] = scaled_intensity[i] / isigi[i];
 
-    while ((int)isum.size()-1 < (int)miller_id[i])
-      isum.push_back(0);
-
     isum[miller_id[i]] += scaled_intensity[i];
+    n_refl[miller_id[i]]++;
   }
 
   double tmp = 0;
   double sigma_corrected = 0;
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
-    double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[i]>1 ? (n_refl[i]-1) : 1);
+    double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[miller_id[i]]>1 ? (n_refl[miller_id[i]]-1) : 1);
 
     // apply correction parameters
     if (squared_params)
@@ -110,7 +119,7 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
       sigma_corrected = sdfac * std::sqrt(tmp);
 
     SCITBX_ASSERT(sigma_corrected != 0.0);
-    isigi[i] = scaled_intensity[i] / sigma_corrected;
+    isigi[i] = scaled_intensity[i] * slope[i]/ sigma_corrected;
   }
 }
 
