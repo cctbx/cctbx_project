@@ -2464,6 +2464,8 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
 def get_map_object(file_name=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   from iotbx import ccp4_map
+  if not os.path.isfile(file_name):
+    raise Sorry("The map file %s is missing..." %(file_name))  
   m = ccp4_map.map_reader(file_name=file_name)
   print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
