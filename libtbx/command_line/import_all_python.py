@@ -14,8 +14,6 @@ ignore_modules = set([
   "libtbx.start_print_trace",   # produces lots of output
   "libtbx.command_line.epydoc_run",
   "libtbx.command_line.ipython_shell_start",
-  "libtbx.pythonpath.deep_thought",
-  "libtbx.pythonpath.stdlib",
   "mmtbx.pdb_distances",        # too much executed code
   "gltbx.wx_viewer_leapmotion", # crashes if Leap installed
   # non-CCTBX modules

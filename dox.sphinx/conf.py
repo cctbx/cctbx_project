@@ -21,7 +21,6 @@ import sys, os, re
 #sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('./../bin'))
 sys.path.insert(0, os.path.abspath('./../lib'))
-sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/libtbx/pythonpath'))
 sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/boost_adaptbx'))
 sys.path.insert(0, os.path.abspath('./../../sources/cctbx_project/clipper_adaptbx'))
 sys.path.insert(0, os.path.abspath('./../../sources'))

@@ -1708,8 +1708,6 @@ libtbx/program_utils/result.py -text
 libtbx/program_utils/statistics_info.py -text
 libtbx/progress.py -text
 libtbx/pyplot.py svneol=native#text/x-python
-libtbx/pythonpath/__init__.py -text
-libtbx/pythonpath/deep_thought.py svneol=native#text/x-python
 libtbx/queuing_system_utils/__init__.py svneol=native#text/x-python
 libtbx/queuing_system_utils/communication.py -text
 libtbx/queuing_system_utils/generic.py -text
