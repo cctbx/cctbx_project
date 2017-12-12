@@ -1,14 +1,14 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from scitbx.array_family import flex
 from scitbx.math import correlation
-from stdlib import math as smath
+from scitbx.stdlib import math
 from scitbx import fftpack, simplex
 
 def get_mean_sigma( nlm_array ):
   coef = nlm_array.coefs()
   mean = abs( coef[0] )
   var = flex.sum( flex.norm(coef) )
-  sigma = smath.sqrt( var-mean*mean )
+  sigma = math.sqrt( var-mean*mean )
   return mean, sigma
 
 
@@ -17,11 +17,11 @@ class align(object):
     self.nmax = nmax
     self.fixed = fixed
     self.moving = moving
-    self.beta = smath.pi*2.0/float(n_beta-1)*flex.double( range(n_beta) )
+    self.beta = math.pi*2.0/float(n_beta-1)*flex.double( range(n_beta) )
     self.nb = n_beta
     self.pad = max(0, (ngrid-1)//2 - nmax )
     self.ngrid = (self.pad+nmax) * 2 + 1
-    self.dx = smath.pi*2.0/(self.ngrid*10)
+    self.dx = math.pi*2.0/(self.ngrid*10)
     self.topn = topn
     self.refine = refine
     self.check_inversion = check_inversion
@@ -59,7 +59,7 @@ class align(object):
       scores = fft.backward( fft_input ).as_1d()
       self.scores = self.scores.concatenate( -flex.norm( scores )  )
     self.best_indx = flex.min_index( self.scores )
-    self.best_score = smath.sqrt( -self.scores[ self.best_indx ])
+    self.best_score = math.sqrt( -self.scores[ self.best_indx ])
 
 
     if self.check_inversion:
@@ -75,7 +75,7 @@ class align(object):
         scores = fft.backward( fft_input ).as_1d()
         inversion_scores = inversion_scores.concatenate( -flex.norm( scores )  )
       inv_best_indx = flex.min_index( inversion_scores )
-      inv_best_score = smath.sqrt(-inversion_scores[ inv_best_indx ] )
+      inv_best_score = math.sqrt(-inversion_scores[ inv_best_indx ] )
 
       if( inv_best_score < self.best_score ):
         self.score = inversion_scores
@@ -92,8 +92,8 @@ class align(object):
     g=self.best_indx - self.ngrid*self.ngrid*b - self.ngrid*a
 
     b = self.beta[b]
-    g = smath.pi*2.0 *( float(g)/(self.ngrid-1) )
-    a = smath.pi*2.0 *( float(a)/(self.ngrid-1) )
+    g = math.pi*2.0 *( float(g)/(self.ngrid-1) )
+    a = math.pi*2.0 *( float(a)/(self.ngrid-1) )
 
     self.best_ea = (a, b, g )
 
@@ -132,8 +132,8 @@ class align(object):
       g=o - self.ngrid*self.ngrid*b - self.ngrid*a
 
       b = self.beta[b]
-      g = smath.pi*2.0 *( float(g)/(self.ngrid-1) )
-      a = smath.pi*2.0 *( float(a)/(self.ngrid-1) )
+      g = math.pi*2.0 *( float(g)/(self.ngrid-1) )
+      a = math.pi*2.0 *( float(a)/(self.ngrid-1) )
       self.top_align.append( flex.double( (a, b, g) ) )
       self.top_scores.append( self.scores[o] )
       #print ii, ":", a, b, g, ":", self.scores[o]

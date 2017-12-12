@@ -1,13 +1,10 @@
-from __future__ import division
-from stdlib import math
-from stdlib import random
-
+from __future__ import absolute_import, division
+from scitbx.stdlib import math, random
 from libtbx.utils import frange
 from libtbx.test_utils import approx_equal, is_below_limit
 from scitbx.array_family import flex
-import scitbx.math
+import scitbx.math.curve_fitting
 import scitbx.random
-from scitbx.math import curve_fitting
 from scitbx.smoothing import savitzky_golay_filter, savitzky_golay_coefficients
 from scitbx.smoothing import convolve
 
@@ -72,7 +69,7 @@ def exercise_savitzky_golay_smoothing():
     mean = random.randint(-5,5)
     scale = flex.random_double() * 10
     sigma = flex.random_double() * 5 + 1
-    gaussian = curve_fitting.gaussian(scale, mean, sigma)
+    gaussian = scitbx.math.curve_fitting.gaussian(scale, mean, sigma)
 
     x = flex.double(frange(-20,20,0.1))
     y = gaussian(x)

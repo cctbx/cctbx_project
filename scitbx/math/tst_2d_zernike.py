@@ -1,11 +1,11 @@
-from __future__ import division
-from scitbx import math
+from __future__ import absolute_import, division
+import scitbx.math
 from scitbx import differential_evolution as de
 from scitbx import simplex
 from scitbx import lbfgs
 from scitbx import direct_search_simulated_annealing as dssa
 from scitbx.array_family import flex
-from stdlib import math as smath
+from scitbx.stdlib import math
 import time, sys
 from fractions import Fraction
 
@@ -24,10 +24,10 @@ def read_data(filename):
 
 def generate_image(n,l, N=100):
   nmax = max(20,n)
-  lfg =  math.log_factorial_generator(nmax)
-  #rzfa = math.zernike_2d_radial(n,l,lfg)
-  #rap = math.zernike_2d_polynome(n,l,rzfa)
-  rap = math.zernike_2d_polynome(n,l)#,rzfa)
+  lfg =  scitbx.math.log_factorial_generator(nmax)
+  #rzfa = scitbx.math.zernike_2d_radial(n,l,lfg)
+  #rap = scitbx.math.zernike_2d_polynome(n,l,rzfa)
+  rap = scitbx.math.zernike_2d_polynome(n,l)#,rzfa)
 
   image = flex.vec3_double()
 
@@ -35,11 +35,11 @@ def generate_image(n,l, N=100):
   count = 0
   for x in range(-N, N+1):
     for y in range(-N, N+1):
-      rr = smath.sqrt(x*x+y*y)/N
+      rr = math.sqrt(x*x+y*y)/N
       if rr>1.0:
         value=0.0
       else:
-        tt = smath.atan2(y,x)
+        tt = math.atan2(y,x)
         value = rap.f(rr,tt)
         value = value.real
         count = count + 1
@@ -57,14 +57,14 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
   else:
     image=generate_image(n,l)
 
-  NP=int(smath.sqrt( image.size() ))
+  NP=int(math.sqrt( image.size() ))
   N=NP/2
-  grid_2d = math.two_d_grid(N, nmax)
+  grid_2d = scitbx.math.two_d_grid(N, nmax)
   grid_2d.clean_space( image )
   grid_2d.construct_space_sum()
   tt2=time.time()
   print "time used: ", tt2-tt1
-  zernike_2d_mom = math.two_d_zernike_moments( grid_2d, nmax )
+  zernike_2d_mom = scitbx.math.two_d_zernike_moments( grid_2d, nmax )
 
   moments = zernike_2d_mom.moments()
 
@@ -72,10 +72,10 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
   print "time used: ", tt2-tt1
 
   coefs = flex.real( moments )
-  nl_array = math.nl_array( nmax )
+  nl_array = scitbx.math.nl_array( nmax )
   nls = nl_array.nl()
   nl_array.load_coefs( nls, coefs )
-  lfg =  math.log_factorial_generator(nmax)
+  lfg =  scitbx.math.log_factorial_generator(nmax)
 
   print nl_array.get_coef(n,l)*2
 
@@ -91,18 +91,18 @@ def tst_2d_zernike_mom(n,l, N=100, filename=None):
     l=nl[1]
     if(l>0):
       c=c*2
-    #rzfa = math.zernike_2d_radial(n,l,lfg)
-    rap = math.zernike_2d_polynome(n,l) #,rzfa)
+    #rzfa = scitbx.math.zernike_2d_radial(n,l,lfg)
+    rap = scitbx.math.zernike_2d_polynome(n,l) #,rzfa)
     i=0
     for x in range(0,NP):
       x=x-N
       for y in range(0,NP):
         y=y-N
-        rr = smath.sqrt(x*x+y*y)/N
+        rr = math.sqrt(x*x+y*y)/N
         if rr>1.0:
           value=0.0
         else:
-          tt = smath.atan2(y,x)
+          tt = math.atan2(y,x)
           value = rap.f(rr,tt)
         reconst[i]=reconst[i]+value*c
         i=i+1
@@ -123,14 +123,14 @@ def tst_2d_poly(n,l):
   nmax=max(n,20)
   np=50
   x,y=0.1,0.9
-  r,t=smath.sqrt(x*x+y*y),smath.atan2(y,x)
-  lfg =  math.log_factorial_generator(nmax)
-  #rzfa = math.zernike_2d_radial(n,l,lfg)
-  #rap = math.zernike_2d_polynome(n,l,rzfa)
-  rap = math.zernike_2d_polynome(n,l)#,rzfa)
+  r,t=math.sqrt(x*x+y*y),math.atan2(y,x)
+  lfg =  scitbx.math.log_factorial_generator(nmax)
+  #rzfa = scitbx.math.zernike_2d_radial(n,l,lfg)
+  #rap = scitbx.math.zernike_2d_polynome(n,l,rzfa)
+  rap = scitbx.math.zernike_2d_polynome(n,l)#,rzfa)
   rt_value=rap.f(r,t)
-  grid = math.two_d_grid(np, nmax)
-  zm2d = math.two_d_zernike_moments(grid, nmax)
+  grid = scitbx.math.two_d_grid(np, nmax)
+  zm2d = scitbx.math.two_d_zernike_moments(grid, nmax)
   xy_value=zm2d.zernike_poly(n,l,x,y)
 
   print rt_value, xy_value, abs(rt_value), abs(xy_value)
@@ -139,15 +139,15 @@ def tst_2d_zm(n,l):
   nmax=max(n,20)
   np=100
   points=flex.double(range(-np,np+1))/np
-  grid = math.two_d_grid(np, nmax)
-  zm2d = math.two_d_zernike_moments(grid, nmax)
+  grid = scitbx.math.two_d_grid(np, nmax)
+  zm2d = scitbx.math.two_d_zernike_moments(grid, nmax)
   image = flex.vec3_double()
 
   output=file('testmap.dat','w')
 
   for x in points:
     for y in points:
-      r=smath.sqrt(x*x+y*y)
+      r=math.sqrt(x*x+y*y)
       if(r>1.0):
         value=0.0
       else:
@@ -156,12 +156,12 @@ def tst_2d_zm(n,l):
 
   grid.clean_space( image )
   grid.construct_space_sum()
-  zernike_2d_mom = math.two_d_zernike_moments( grid, nmax )
+  zernike_2d_mom = scitbx.math.two_d_zernike_moments( grid, nmax )
 
   moments = zernike_2d_mom.moments()
 
   coefs = flex.real( moments )
-  nl_array = math.nl_array( nmax )
+  nl_array = scitbx.math.nl_array( nmax )
   nls = nl_array.nl()
 
   for nl, c in zip( nls, moments):
@@ -203,7 +203,7 @@ class Bnmk (object):
   "Bnmk coefficient object hold 2d zernike expansion coefs"
   def __init__(self, nmax):
     self.nmax=nmax
-    self.Bnmk=math.nmk_array(nmax)
+    self.Bnmk=scitbx.math.nmk_array(nmax)
     self.initialize_bnmk()
 
   def initialize_bnmk(self):
@@ -232,7 +232,7 @@ def tst_integral_triple_zernike2d(nmax):
   coef_table = []
 
   for m in range(nmax+1):
-    C_m_3n = math.nmk_array(nmax)
+    C_m_3n = scitbx.math.nmk_array(nmax)
     for n1 in range(m,nmax+1,2):
       for n2 in range(m,n1+1,2):
         for n3 in range(m,n2+1,2):
@@ -257,7 +257,7 @@ def calc_Cnm_4m_from_Inm(m, nmax, Inm, coef_table_m):
 
 
 def calc_Cnm_from_Inm( Inm, coef_table, nmax ):
-  Cnm=math.nl_array(nmax)
+  Cnm=scitbx.math.nl_array(nmax)
   for n in range( 0,nmax+1,2 ): # only even number (n,m)
     for m in range(0,n+1,2 ):
       temp = 0
@@ -273,7 +273,7 @@ def calc_Cnm_from_Inm( Inm, coef_table, nmax ):
 
 
 def comp_Cnm_calculations(nmax):
-  Inm=math.nl_array(nmax)
+  Inm=scitbx.math.nl_array(nmax)
   nls = Inm.nl()
   size = nls.size()
   coefs = flex.random_double(size)
@@ -297,7 +297,7 @@ def comp_Cnm_calculations(nmax):
 
 
 def tst_solving_Inm(nmax):
-  Inm=math.nl_array(nmax)
+  Inm=scitbx.math.nl_array(nmax)
   nls = Inm.nl()
   size = nls.size()
   coefs = flex.random_double(size)
@@ -306,13 +306,13 @@ def tst_solving_Inm(nmax):
   coef_table = tst_integral_triple_zernike2d(nmax)
   Cnm = calc_Cnm_from_Inm( Inm, coef_table, nmax )
 
-  new_Inm=math.nl_array(nmax)
+  new_Inm=scitbx.math.nl_array(nmax)
 
   for n in range( nmax+1 ):
     for m in range(n,-1,-2):
       Cnm_value = Cnm.get_coef( n, m )
       coef = coef_table[m].get_coef(n,n,n).real
-#      value = smath.sqrt( Cnm_value/coef )
+#      value = math.sqrt( Cnm_value/coef )
       if(coef != 0):
         value = ( Cnm_value/coef )
         print n,m,Inm.get_coef(n,m)**2, value
@@ -323,7 +323,7 @@ class inm_refine(object):
     self.nmax=nmax
     self.Cnm = Cnm
     self.coef_table = coef_table
-    self.Inm = math.nl_array(nmax)
+    self.Inm = scitbx.math.nl_array(nmax)
 
     self.m=m ## testing the most populated cases
     self.coef_table_m = self.coef_table[self.m]
@@ -430,7 +430,7 @@ class inm_refine(object):
     return Cnm
 
 def test_solving(nmax, m):
-  Inm=math.nl_array(nmax)
+  Inm=scitbx.math.nl_array(nmax)
   nls = Inm.nl()
   size = nls.size()
   coefs = flex.random_double(size)

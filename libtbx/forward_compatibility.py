@@ -1,36 +1,11 @@
-from __future__ import division
-from __future__ import generators
+from __future__ import absolute_import, division
 import sys, os
-
-def stdlib_import(name):
-  "Work around undesired behavior of Python's relative import feature."
-  try:
-    return sys.modules[name]
-  except KeyError:
-    pass
-  import imp
-  if (imp.is_builtin(name)):
-    try: return imp.init_builtin(name)
-    except Exception: pass
-  sys_path = sys.path[:]
-  sys_path.reverse()
-  for path in sys_path:
-    try:
-      fp, pathname, description = imp.find_module(name, [path])
-    except ImportError:
-      pass
-    else:
-      try:
-        return imp.load_module(name, fp, pathname, description)
-      finally:
-        if (fp is not None): fp.close()
-  raise RuntimeError("Cannot import %s module." % name)
 
 vers_info = sys.version_info[:2]
 
 if (vers_info < (2,6)):
   import cmath
-  math = stdlib_import("math")
+  import math
   cmath.phase = lambda z: math.atan2(z.imag, z.real)
   cmath.polar = lambda z: (abs(z), cmath.phase(z))
   cmath.rect = lambda r, phi: (r*math.cos(phi), r*math.sin(phi))

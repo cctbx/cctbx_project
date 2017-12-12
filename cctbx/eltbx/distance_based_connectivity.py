@@ -1,5 +1,5 @@
-from __future__ import division
-from stdlib import math as smath
+from __future__ import absolute_import, division, print_function
+import math
 
 expected_bond_lengths_by_element_pair = {
   # based on elbow/chemistry/BondLengths.py rev. 42
@@ -61,7 +61,7 @@ def build_edge_list(sites_cart, elements,slop=0.2):
       x2 = x2-x1
       y2 = y2-y1
       z2 = z2-z1
-      dd = smath.sqrt( x2*x2+y2*y2+z2*z2 )
+      dd = math.sqrt( x2*x2+y2*y2+z2*z2 )
       expected_dist =  expected_bond_lengths_by_element_pair.get(
         (elements[ii], elements[jj]), False )
       if not expected_dist:

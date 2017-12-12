@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from scitbx.array_family import flex
-from stdlib import math as smath
+from scitbx.stdlib import math
 
 """
 This is a python implementation of the
@@ -54,7 +54,7 @@ class classic_spe_engine(object):
         td = jj_info[1]
         xi = x[ii]
         xj = x[jj]
-        cd = smath.sqrt( flex.sum( (xi-xj)*(xi-xj) ) )
+        cd = math.sqrt( flex.sum( (xi-xj)*(xi-xj) ) )
         new_xi = xi + l*0.5*(td-cd)/(cd+self.eps)*(xi-xj)
         new_xj = xj + l*0.5*(td-cd)/(cd+self.eps)*(xj-xi)
         strain += abs(cd-td)
@@ -69,9 +69,9 @@ def tst():
   xy = []
   for ii in range(M):
     r=10.0
-    phi = ii*(smath.pi*2/M)
-    x = r*smath.cos(phi)
-    y = r*smath.sin(phi)
+    phi = ii*(math.pi*2/M)
+    x = r*math.cos(phi)
+    y = r*math.sin(phi)
     xy.append( flex.double([x,y]) )
   # build distance matrix
   dmat = []
@@ -85,7 +85,7 @@ def tst():
       y1=xy[ii][1]
       y2=xy[jj][1]
 
-      dd = smath.sqrt( (x1-x2)**2.0 +(y1-y2)**2.0  )
+      dd = math.sqrt( (x1-x2)**2.0 +(y1-y2)**2.0  )
       if jj != ii:
           tmp.append( (jj,dd) )
     dmat.append( tmp )
