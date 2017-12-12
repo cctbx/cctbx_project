@@ -555,6 +555,17 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Restrict box map size
        .help = Restrict box map to be inside full map (required for cryo-EM data)
+     restrict_z_turns_for_helical_symmetry = 1
+       .type = float
+       .short_caption = Restrict Z turns for helical symmetry
+       .help = Restrict Z turns for helical symmetry.  Number of \
+               turns of helix going each direction in Z is specified.
+
+     restrict_z_distance_for_helical_symmetry = None
+       .type = float
+       .short_caption = Restrict Z distance for helical symmetry
+       .help = Restrict Z distance (+/- this distance from center) \
+              for helical symmetry. 
 
      remove_aniso = True
        .type = bool
@@ -3356,6 +3367,56 @@ def estimate_expand_size(
       nn,nn*abc[0]/N_[0])
     return max(1,nn)
 
+def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
+  if not params.input_files.ncs_file: return
+  ncs_obj,dummy_tracking_data=get_ncs(params,None,out=out)
+  if not ncs_obj.is_helical_along_z(): return
+  if params.map_modification.restrict_z_distance_for_helical_symmetry:  #take it
+     return params.map_modification.restrict_z_distance_for_helical_symmetry 
+
+  if not params.map_modification.restrict_z_turns_for_helical_symmetry: return 
+
+  print >>out,"Identifying maximum z-range for helical symmetry"
+  print >>out,"Maximum of %7.1f turns up and down in Z allowed..." %(
+     params.map_modification.restrict_z_turns_for_helical_symmetry)
+  r,t=ncs_obj.ncs_groups()[0].helix_rt_forwards()
+  cost=r[0]
+  sint=r[1]
+  import math
+  theta=abs(180.*math.atan2(sint,cost)/3.14159)
+  trans=abs(t)
+  pitch=trans*360./max(0.1,theta)
+  max_z=params.map_modification.restrict_z_turns_for_helical_symmetry*pitch 
+  print >>out,"Z-values restricted to +/- %7.1f A" %(max_z)
+  print >>out,"\nRunning map-box once to get position of molecule, again to"+\
+      "apply\n Z restriction\n"
+  return max_z
+
+
+def get_bounds_for_helical_symmetry(params,args=None,
+     box=None,crystal_symmetry=None):
+  original_cell=box.map_data.all()
+  new_cell=box.map_box.all()
+  z_first=box.gridding_first[2]
+  z_last=box.gridding_last[2]
+  assert z_last>=z_first
+  z_middle=(z_first+z_last)//2
+  delta_z=crystal_symmetry.unit_cell().parameters()[5]/box.map_data.all()[2]
+  n_z_max= int(0.5+
+   params.map_modification.restrict_z_distance_for_helical_symmetry/delta_z)
+  new_z_first=max(z_first,z_middle-n_z_max)
+  new_z_last=min(z_last,z_middle+n_z_max)
+  lower_bounds=deepcopy(box.gridding_first)
+  upper_bounds=deepcopy(box.gridding_last)
+  lower_bounds[2]=new_z_first
+  upper_bounds[2]=new_z_last
+
+  new_args=[]
+  for arg in args:
+    if not arg.startswith('density_select'):
+      new_args.append(arg)
+  return new_args,lower_bounds,upper_bounds
+
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   params=get_params_from_args(args)
@@ -3521,6 +3582,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # Save center of map
   map_ncs_center=get_center_of_map(map_data,crystal_symmetry)
+ 
+  # Check for helical ncs...if present we may try to cut map at +/- 1 turn
+  params.map_modification.restrict_z_distance_for_helical_symmetry=\
+     get_max_z_range_for_helical_symmetry(params,out=out)
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
@@ -3549,6 +3614,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
     box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
+
+    # Run again for helical symmetry
+    if params.map_modification.restrict_z_distance_for_helical_symmetry:
+      args,lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
+         args=args,crystal_symmetry=crystal_symmetry,box=box)
+      box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
+        crystal_symmetry=crystal_symmetry,log=out)
+
     origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
@@ -3765,6 +3838,8 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
+    if not tracking_data:
+      return ncs_object,None
     if ncs_object.is_helical_along_z(
        abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
        rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
@@ -3799,7 +3874,7 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
     tracking_data.update_ncs_info(is_helical_symmetry=True,shifted=shifted)
 
     if tracking_data.input_map_info and tracking_data.input_map_info.all:
-      z_range=tracking_data.input_map_info.crystal_symmetry.unit_cell(). \
+      z_range=tracking_data.crystal_symmetry.unit_cell(). \
          parameters()[2]
       print >>out,"Extending NCS operators to entire cell (z_range=%.1f)" %(
          z_range)
@@ -3810,7 +3885,9 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
          max_operators)
       ncs_object.extend_helix_operators(z_range=z_range,
         max_operators=max_operators)
-      ncs_object.display_all()
+      #ncs_object.display_all()
+      print >>out,"New number of NCS operators is: %s " %(
+        ncs_object.max_operators())
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
         shifted=shifted)

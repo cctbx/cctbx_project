@@ -327,7 +327,8 @@ Parameters:"""%h
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.read_ncs(params.ncs_file,log=log)
-    ncs_object.display_all(log=log)
+    #ncs_object.display_all(log=log)
+    print >>log,"Total of %s operators read" %(ncs_object.max_operators())
     if not ncs_object or ncs_object.max_operators()<1:
       print >>log,"Skipping...no NCS available"
     elif box.shift_cart:
@@ -337,7 +338,8 @@ Parameters:"""%h
         tuple(box.shift_cart))
       ncs_object=ncs_object.coordinate_offset(
        coordinate_offset=matrix.col(box.shift_cart))
-      ncs_object.display_all(log=log)
+      #ncs_object.display_all(log=log)
+      print >>log,"Total of %s operators" %(ncs_object.max_operators())
     ncs_object.format_all_for_group_specification(
        file_name=output_ncs_file)
     box.ncs_object=ncs_object
