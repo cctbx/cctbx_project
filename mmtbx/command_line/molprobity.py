@@ -27,9 +27,9 @@ molprobity {
       Reduce).  If set to Auto, the behavior will depend on whether the \
       neutron scattering table is used (regardless of whether we actually \
       have experimental data).
-  nuclear = False
-    .type = bool
-    .short_caption = "Use nuclear hydrogen positions"
+  # nuclear = False     # redundant parameter, same as
+  #   .type = bool      # pdb_interpretation.use_neutron_distances
+  #   .short_caption = "Use nuclear hydrogen positions"
   min_cc_two_fofc = 0.8
     .type = float
     .short_caption = "CC threshold"
@@ -147,7 +147,8 @@ def run (args,
     raise Sorry("Map output requires experimental data.")
   if (params.molprobity.keep_hydrogens is Auto) :
     params.molprobity.keep_hydrogens = \
-      (params.input.scattering_table == "neutron")
+      ( (params.input.scattering_table == "neutron") or
+        (params.pdb_interpretation.use_neutron_distances) )
   header_info = mmtbx.validation.molprobity.pdb_header_info(
     pdb_file=params.input.pdb.file_name[0],
     pdb_hierarchy=cmdline.pdb_hierarchy)
@@ -177,7 +178,7 @@ def run (args,
     all_chain_proxies=cmdline.processed_pdb_file.all_chain_proxies,
     header_info=header_info,
     keep_hydrogens=params.molprobity.keep_hydrogens,
-    nuclear=params.molprobity.nuclear,
+    nuclear=params.pdb_interpretation.use_neutron_distances,
     save_probe_unformatted_file=probe_file,
     min_cc_two_fofc=params.molprobity.min_cc_two_fofc,
     n_bins_data=params.molprobity.n_bins,

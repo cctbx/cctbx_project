@@ -41,7 +41,7 @@ def run():
     for nuclear in range(2):
       cmd = 'phenix.clashscore tst_mol_args.pdb'
       if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
-      cmd += ' nuclear=%(nuclear)s' % locals()
+      cmd += ' pdb_interpretation.use_neutron_distances=%(nuclear)s' % locals()
       print 'CMD',cmd
       rc = easy_run.go(cmd)
       clashscore1 = get_clashscore(rc.stdout_lines)
@@ -50,7 +50,7 @@ def run():
 
       cmd = 'phenix.molprobity tst_mol_args.pdb'
       if keep_hydrogen!=2: cmd += ' keep_hydrogen=%(keep_hydrogen)s' % locals()
-      cmd += ' nuclear=%(nuclear)s' % locals()
+      cmd += ' pdb_interpretation.use_neutron_distances=%(nuclear)s' % locals()
       print 'CMD', cmd
       rc = easy_run.go(cmd)
       clashscore2 = get_clashscore(rc.stdout_lines)
