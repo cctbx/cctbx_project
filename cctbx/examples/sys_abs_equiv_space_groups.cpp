@@ -7,8 +7,13 @@ main()
   using std::cout;
   using std::endl;
   unsigned const** tab = cctbx::sgtbx::sys_abs_equiv::space_group_numbers;
+  // sys_abs_equiv::space_group_numbers has some NULL pointers (0)
+  // newer versions of clang do not like dereferencing NULL pointers
+  unsigned const zero = 0;
 #ifdef __clang__
-  cout << (*tab[0]) << endl; // XXX need to dereference when using clang
+  if (tab[0] == 0) {
+    cout << zero << endl;
+  }
 #else
   cout << tab[0] << endl;
 #endif
@@ -19,7 +24,9 @@ main()
   }
   cout << endl;
 #ifdef __clang__
-  cout << (*tab[230]) << endl; // XXX see above
+  if (tab[230] == 0) {
+    cout << zero << endl; // XXX see above
+  }
 #else
   cout << tab[230] << endl;
 #endif
