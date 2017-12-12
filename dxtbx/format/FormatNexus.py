@@ -183,4 +183,21 @@ class FormatNexusStill(FormatNexus, FormatStill):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatNexus.understand(arg)
+    if FormatNexus.understand(arg):
+      
+      format_instance = FormatNexus(arg)
+      
+      beam = format_instance.get_beam()
+      detector = format_instance.get_detector()
+      goniometer = format_instance.get_goniometer()
+      scan = format_instance.get_scan()
+    
+      iset = FormatNexus.get_imageset(arg)
+      print beam
+      print detector
+      print goniometer
+      print scan
+
+      print len(iset)
+      
+
