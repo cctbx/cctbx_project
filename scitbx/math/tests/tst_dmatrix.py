@@ -1,6 +1,6 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from scitbx.math import dmatrix
-from stdlib import math as smath
+from scitbx.stdlib import math
 
 def tst_dmatrix():
   # expected values are the d_jmn at beta=1.0 and j=2, m=-2, -2<=n<=2
@@ -20,13 +20,13 @@ def tst_dmatrix():
 
   # check agains d(2,2,1) = -(1+cos(beta))*sin(beta)/2.0
   for ii in range(10):
-    expt = -(1.0+smath.cos(ii))*smath.sin(ii)/2.0
+    expt = -(1.0+math.cos(ii))*math.sin(ii)/2.0
     assert abs( dmatrix(2,ii).djmn(2,2,1) - expt ) < eps
   # check beta= multiple of pi/2
 
-  assert abs( dmatrix( 20, smath.pi ).djmn(2,2,0) )< eps
-  assert abs( dmatrix( 2, smath.pi*2 ).djmn(2,2,0) )< eps
-  assert abs( dmatrix( 20, smath.pi*0.5 ).djmn(2,2,0)-smath.sqrt(6.0)/4.0 )< eps
+  assert abs( dmatrix( 20, math.pi ).djmn(2,2,0) )< eps
+  assert abs( dmatrix( 2, math.pi*2 ).djmn(2,2,0) )< eps
+  assert abs( dmatrix( 20, math.pi*0.5 ).djmn(2,2,0)-math.sqrt(6.0)/4.0 )< eps
 
 
 if __name__ == "__main__":

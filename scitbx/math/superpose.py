@@ -1,10 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division
 from scitbx.linalg import eigensystem
 from scitbx.math import superpose_kearsley_rotation
 from scitbx import matrix
-from stdlib import math
+from scitbx.stdlib import math, random
 from scitbx.array_family import flex
-from stdlib import math as smath
 from scitbx import differential_evolution as de
 from scitbx.math import euler_angles as euler
 
@@ -161,7 +160,7 @@ class nsd_engine(object):
       tot_rho_fm+=dd
     tot_rho_fm = tot_rho_fm / (self.fixed.size()*self.d_fixed )
     tot_rho_mf = tot_rho_mf / (moving.size()*self.d_moving )
-    result = smath.sqrt((tot_rho_fm+tot_rho_mf)/2.0)
+    result = math.sqrt((tot_rho_fm+tot_rho_mf)/2.0)
     return result
 
 
@@ -172,8 +171,8 @@ class nsd_rigid_body_fitter(object):
 
     self.nsde = nsd_engine(self.fixed)
 
-    self.d_fixed  = smath.sqrt(self.nsde.d_fixed)
-    self.d_moving = smath.sqrt(self.nsde.get_mean_distance( self.moving ) )
+    self.d_fixed  = math.sqrt(self.nsde.d_fixed)
+    self.d_moving = math.sqrt(self.nsde.get_mean_distance( self.moving ) )
 
     self.m_com = self.moving.mean()
     self.f_com = self.fixed.mean()
@@ -182,7 +181,7 @@ class nsd_rigid_body_fitter(object):
     self.d = (self.d_fixed+self.d_moving)/12
 
     self.n = 6
-    pi = smath.pi
+    pi = math.pi
     self.domain = [ (-pi,pi),(-pi,pi), (-pi,pi), (-self.d,self.d),(-self.d,self.d), (-self.d,self.d) ]
     self.x = None
     self.optimizer = de.differential_evolution_optimizer(self, population_size=12,f=0.85,cr=0.95, n_cross=2,eps=1e-2,
@@ -244,7 +243,6 @@ def tst_nsd():
 
 
 if __name__ == "__main__":
-  from stdlib import random
   random.seed(0)
   flex.set_random_seed(0)
   for ii in range(10):
