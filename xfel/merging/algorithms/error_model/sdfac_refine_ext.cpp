@@ -65,7 +65,7 @@ compute_normalized_deviations(reflection_table ISIGI, shared_miller hkl_list) {
 }
 
 void
-apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double sdb, const double sdadd) {
+apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double sdb, const double sdadd, const bool squared_params) {
   /*
    * Apply a set of sd params (sdfac, sdb and sdd) to an ISIGI reflection table
    */
@@ -87,19 +87,28 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
     isum[miller_id[i]] += scaled_intensity[i];
   }
 
+  double tmp = 0;
+  double sigma_corrected = 0;
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
     // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
     double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[i]>1 ? (n_refl[i]-1) : 1);
 
     // apply correction parameters
-    double tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
+    if (squared_params)
+      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanIprime + std::pow(sdadd,2) * std::pow(sdadd*meanIprime,2);
+    else
+      tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
 
     // avoid rare negatives
     double minimum = 0.1 * std::pow(sigmas[i],2);
     if (tmp < minimum)
       tmp = minimum;
 
-    double sigma_corrected = sdfac * std::sqrt(tmp);
+    if (squared_params)
+      sigma_corrected = std::sqrt(std::pow(sdfac,2) * tmp);
+    else
+      sigma_corrected = sdfac * std::sqrt(tmp);
+
     SCITBX_ASSERT(sigma_corrected != 0.0);
     isigi[i] = scaled_intensity[i] / sigma_corrected;
   }

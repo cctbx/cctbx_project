@@ -160,7 +160,11 @@ class sdfac_refine(error_modeler_base):
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
     sdfac = slope
     sdb = 0
-    sdadd = offset
+
+    if self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'original':
+      sdadd = offset
+    elif self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'squared':
+      sdadd = math.sqrt(offset)
 
     return sdfac, sdb, sdadd
 
@@ -263,7 +267,7 @@ class sdfac_refine(error_modeler_base):
 
 class simplex_minimizer_refltable(object):
   """Class for refining sdfac, sdb and sdadd"""
-  def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log=None):
+  def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log = None, squared = False):
     """
     @param sdfac Initial value for sdfac
     @param sdfac Initial value for sdfac
@@ -279,6 +283,7 @@ class simplex_minimizer_refltable(object):
     self.data = data
     self.intensity_bin_selections = bins
     self.indices = indices
+    self.squared = squared
     self.n = 3
     self.x = flex.double([sdfac, sdb, sdadd])
     self.starting_simplex = []
@@ -310,7 +315,7 @@ class simplex_minimizer_refltable(object):
       f = 1e6
     else:
       orig_isigi = self.data['isigi'] * 1
-      apply_sd_error_params(self.data, sdfac, sdb, sdadd)
+      apply_sd_error_params(self.data, sdfac, sdb, sdadd, self.squared)
       all_sigmas_normalized = compute_normalized_deviations(self.data, self.indices)
       self.data['isigi'] = orig_isigi
 
@@ -380,6 +385,9 @@ class sdfac_refine_refltable(sdfac_refine):
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
     sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
 
+    assert self.scaler.params.raw_data.error_models.sdfac_refine.target_function in ['original', 'squared']
+    squared = self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'squared'
+
     print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
 
     from xfel import compute_normalized_deviations, apply_sd_error_params
@@ -387,12 +395,12 @@ class sdfac_refine_refltable(sdfac_refine):
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
-    minimizer = simplex_minimizer_refltable(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, seed, self.log)
+    minimizer = simplex_minimizer_refltable(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, seed, self.log, squared)
     sdfac, sdb, sdadd = minimizer.x
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 1"
-    apply_sd_error_params(self.scaler.ISIGI, sdfac, sdb, sdadd)
+    apply_sd_error_params(self.scaler.ISIGI, sdfac, sdb, sdadd, squared)
 
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
