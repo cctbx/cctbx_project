@@ -104,7 +104,7 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
 
     // apply correction parameters
     if (squared_params)
-      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanIprime + std::pow(sdadd,2) * std::pow(sdadd*meanIprime,2);
+      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanIprime + std::pow(sdadd,2) * std::pow(meanIprime,2);
     else
       tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
 
