@@ -565,7 +565,7 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Restrict Z distance for helical symmetry
        .help = Restrict Z distance (+/- this distance from center) \
-              for helical symmetry. 
+              for helical symmetry.
 
      remove_aniso = True
        .type = bool
@@ -2481,7 +2481,7 @@ def get_map_object(file_name=None,out=sys.stdout):
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   from iotbx import ccp4_map
   if not os.path.isfile(file_name):
-    raise Sorry("The map file %s is missing..." %(file_name))  
+    raise Sorry("The map file %s is missing..." %(file_name))
   m = ccp4_map.map_reader(file_name=file_name)
   print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
@@ -3392,9 +3392,9 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
   if not ncs_obj.is_helical_along_z(): return
   if params.map_modification.restrict_z_distance_for_helical_symmetry:  #take it
-     return params.map_modification.restrict_z_distance_for_helical_symmetry 
+     return params.map_modification.restrict_z_distance_for_helical_symmetry
 
-  if not params.map_modification.restrict_z_turns_for_helical_symmetry: return 
+  if not params.map_modification.restrict_z_turns_for_helical_symmetry: return
 
   print >>out,"Identifying maximum z-range for helical symmetry"
   print >>out,"Maximum of %7.1f turns up and down in Z allowed..." %(
@@ -3406,7 +3406,7 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   theta=abs(180.*math.atan2(sint,cost)/3.14159)
   trans=abs(t)
   pitch=trans*360./max(0.1,theta)
-  max_z=params.map_modification.restrict_z_turns_for_helical_symmetry*pitch 
+  max_z=params.map_modification.restrict_z_turns_for_helical_symmetry*pitch
   print >>out,"Z-values restricted to +/- %7.1f A" %(max_z)
   print >>out,"\nRunning map-box once to get position of molecule, again to"+\
       "apply\n Z restriction\n"
@@ -3602,7 +3602,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # Save center of map
   map_ncs_center=get_center_of_map(map_data,crystal_symmetry)
- 
+
   # Check for helical ncs...if present we may try to cut map at +/- 1 turn
   params.map_modification.restrict_z_distance_for_helical_symmetry=\
      get_max_z_range_for_helical_symmetry(params,out=out)
