@@ -2877,7 +2877,7 @@ def get_ncs_from_map(map_data=None,
       n_rescore=None,
       use_center_of_map_as_center=None,
       min_ncs_cc=0.90,
-      ncs_file_to_check=None,
+      ncs_obj_to_check=None,
       out=sys.stdout):
 
   # Purpose: check through standard point groups and helical symmetry to see
@@ -2889,12 +2889,9 @@ def get_ncs_from_map(map_data=None,
   #  If center is not supplied and use_center_of_map_as_center, try that
   #  and return None if it fails to achieve a map cc of min_ncs_cc
 
-  # if ncs_file_to_check is supplied...just use that ncs
-  if ncs_file_to_check:
-    ncs_obj_to_check,dummy_info=get_ncs(file_name=ncs_file_to_check)
+  # if ncs_obj_to_check is supplied...just use that ncs
+  if ncs_obj_to_check:
     ncs_type="SUPPLIED NCS"
-  else:
-    ncs_obj_to_check=None
 
   if optimize_center is None:
     if ncs_center is None and (not use_center_of_map_as_center):
@@ -3725,10 +3722,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   map_ncs_center=matrix.col(map_ncs_center)+matrix.col(origin_shift) # New ctr
 
   # Get NCS operators if needed and user did not supply them
+  ncs_obj_to_check=None
   if params.reconstruction_symmetry.ncs_type and (not params.input_files.ncs_file):
     center_try_list=[True,False]
   elif params.input_files.ncs_file and params.control.check_ncs:
     center_try_list=[True,False]
+    ncs_obj_to_check,dummy_obj=get_ncs(file_name=params.input_files.ncs_file)
+    ncs_obj_to_check=ncs_obj_to_check.coordinate_offset(
+       coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
   elif params.reconstruction_symmetry.optimize_center:
     center_try_list=[None]
   else:
@@ -3754,7 +3755,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       two_fold_along_x=params.reconstruction_symmetry.two_fold_along_x,
       crystal_symmetry=crystal_symmetry,
       use_center_of_map_as_center=use_center_of_map,
-      ncs_file_to_check=params.input_files.ncs_file,
+      ncs_obj_to_check=ncs_obj_to_check,
       out=out
       )
     if new_ncs_obj:
