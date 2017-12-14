@@ -30,7 +30,7 @@ default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_msvc_arch_flag = ["None", "SSE2"][int(os.name == "nt")]
 default_build_boost_python_extensions = True
 default_enable_openmp_if_possible = False
-default_enable_boost_threads = False
+default_enable_boost_threads = True
 default_enable_cuda = False
 default_opt_resources = False
 default_enable_cxx11 = False
@@ -1966,7 +1966,7 @@ class build_options:
         boost_python_no_py_signatures=False,
         boost_python_bool_int_strict=True,
         enable_openmp_if_possible=default_enable_openmp_if_possible,
-        enable_boost_threads=False,
+        enable_boost_threads=True,
         enable_cuda=default_enable_cuda,
         opt_resources=default_opt_resources,
         precompile_headers=False,
