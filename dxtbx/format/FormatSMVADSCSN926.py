@@ -62,8 +62,13 @@ class FormatSMVADSCSN926(FormatSMVADSCSN):
       two_theta = float(self._header_dictionary['TWOTHETA'])
     else:
       two_theta = 0
-    overload = 65535
-    underload = 0
+    if 'IMAGE_PEDESTAL' in self._header_dictionary:
+      pedestal = int(self._header_dictionary['IMAGE_PEDESTAL'])
+    else:
+      pedestal = 0
+
+    overload = 65535 - pedestal
+    underload = pedestal - 1
 
     # now correct for some idiosyncracies...
 

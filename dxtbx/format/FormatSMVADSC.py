@@ -159,8 +159,13 @@ class FormatSMVADSC(FormatSMV):
     pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
-    overload = 65535
-    underload = 1
+    if 'IMAGE_PEDESTAL' in self._header_dictionary:
+      pedestal = int(self._header_dictionary['IMAGE_PEDESTAL'])
+    else:
+      pedestal = 0
+
+    overload = 65535 - pedestal
+    underload = pedestal - 1
 
     return self._detector_factory.simple(
         'CCD', distance, (beam_y, beam_x), '+x', '-y',
