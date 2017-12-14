@@ -3726,7 +3726,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   if params.reconstruction_symmetry.ncs_type and (not params.input_files.ncs_file):
     center_try_list=[True,False]
   elif params.input_files.ncs_file and params.control.check_ncs:
-    center_try_list=[True,False]
+    center_try_list=[True]
     ncs_obj_to_check,dummy_obj=get_ncs(file_name=params.input_files.ncs_file)
     ncs_obj_to_check=ncs_obj_to_check.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
