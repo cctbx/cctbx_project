@@ -975,6 +975,11 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Sharpen only
         .help = Sharpen map and stop
 
+     check_ncs = None
+       .type = bool
+       .short_caption = Check NCS
+       .help = Check the NCS symmetry by estimating NCS correlation and stop
+
      resolve_size = None
         .type = int
         .help = "Size of resolve to use. "
@@ -2872,6 +2877,7 @@ def get_ncs_from_map(map_data=None,
       n_rescore=None,
       use_center_of_map_as_center=None,
       min_ncs_cc=0.90,
+      ncs_file_to_check=None,
       out=sys.stdout):
 
   # Purpose: check through standard point groups and helical symmetry to see
@@ -2882,6 +2888,13 @@ def get_ncs_from_map(map_data=None,
   # Center of symmetry is as supplied, or center of map or center of density
   #  If center is not supplied and use_center_of_map_as_center, try that
   #  and return None if it fails to achieve a map cc of min_ncs_cc
+
+  # if ncs_file_to_check is supplied...just use that ncs
+  if ncs_file_to_check:
+    ncs_obj_to_check,dummy_info=get_ncs(file_name=ncs_file_to_check)
+    ncs_type="SUPPLIED NCS"
+  else:
+    ncs_obj_to_check=None
 
   if optimize_center is None:
     if ncs_center is None and (not use_center_of_map_as_center):
@@ -2909,6 +2922,7 @@ def get_ncs_from_map(map_data=None,
    two_fold_along_x=two_fold_along_x,
    op_max=op_max,
    helical_trans_z_angstrom=helical_trans_z_angstrom,
+   ncs_obj_to_check=ncs_obj_to_check,
    out=out,
    )
 
@@ -2960,12 +2974,14 @@ def get_ncs_from_map(map_data=None,
 
   # Optimize center if necessary
   if optimize_center:
-    ncs_center,cc_avg,score,ncs_obj=optimize_center_position(map_data,sites_orth,
+    ncs_center,cc_avg,score,ncs_obj=optimize_center_position(
+       map_data,sites_orth,
        crystal_symmetry,
        ncs_info,ncs_center,ncs_obj,score,cc_avg,
        helical_rot_deg=helical_rot_deg,
        two_fold_along_x=two_fold_along_x,
        op_max=op_max,
+       ncs_obj_to_check=ncs_obj_to_check,
        helical_trans_z_angstrom=helical_trans_z_angstrom,out=out)
     print >>out,"New center: (%7.3f, %7.3f, %7.3f)" %(tuple(ncs_center))
 
@@ -2985,6 +3001,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      helical_rot_deg=None,
      two_fold_along_x=None,
      op_max=None,
+     ncs_obj_to_check=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
   ncs_type=ncs_info.split()[0]
@@ -3015,6 +3032,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
        two_fold_along_x=two_fold_along_x,
        op_max=op_max,
        helical_trans_z_angstrom=helical_trans_z_angstrom,
+       ncs_obj_to_check=ncs_obj_to_check,
        out=null_out(),
        )
       ncs_obj=ncs_list[0]
@@ -3098,7 +3116,12 @@ def get_ncs_list(ncs_type,
    helical_trans_z_angstrom=None,
    op_max=None,
    two_fold_along_x=None,
+   ncs_obj_to_check=None,
     out=sys.stdout):
+
+  if ncs_obj_to_check:
+    return [ncs_obj_to_check],["SUPPLIED NCS"]
+
   ncs_list=[]
   ncs_type_list=[]
   all=False
@@ -3369,7 +3392,7 @@ def estimate_expand_size(
 
 def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   if not params.input_files.ncs_file: return
-  ncs_obj,dummy_tracking_data=get_ncs(params,None,out=out)
+  ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
   if not ncs_obj.is_helical_along_z(): return
   if params.map_modification.restrict_z_distance_for_helical_symmetry:  #take it
      return params.map_modification.restrict_z_distance_for_helical_symmetry 
@@ -3523,7 +3546,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     if params.input_files.ncs_file:
       # Magnify ncs
       print >>out,"NCS before applying magnification..."
-      ncs_obj,dummy_tracking_data=get_ncs(params,None,out=out)
+      ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
       ncs_obj.format_all_for_group_specification(out=out)
       ncs_obj=ncs_obj.adjust_magnification(
         magnification=params.map_modification.magnification)
@@ -3704,6 +3727,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   # Get NCS operators if needed and user did not supply them
   if params.reconstruction_symmetry.ncs_type and (not params.input_files.ncs_file):
     center_try_list=[True,False]
+  elif params.input_files.ncs_file and params.control.check_ncs:
+    center_try_list=[True,False]
   elif params.reconstruction_symmetry.optimize_center:
     center_try_list=[None]
   else:
@@ -3729,6 +3754,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       two_fold_along_x=params.reconstruction_symmetry.two_fold_along_x,
       crystal_symmetry=crystal_symmetry,
       use_center_of_map_as_center=use_center_of_map,
+      ncs_file_to_check=params.input_files.ncs_file,
       out=out
       )
     if new_ncs_obj:
@@ -3741,9 +3767,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       new_ncs_obj.format_all_for_group_specification(out=f)
       f.close()
       print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
-      params.input_files.ncs_file=file_name
+      if not params.control.check_ncs:
+        params.input_files.ncs_file=file_name # set it unless we're
       found_ncs=True
       break # found it, no need to continue
+  if params.control.check_ncs:
+    print >>out,"Done checking NCS"
+    return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
 
   if looking_for_ncs and (not found_ncs) and \
          params.reconstruction_symmetry.ncs_type != 'ANY':
@@ -3813,8 +3843,10 @@ def get_and_apply_soft_mask_to_maps(
   return mask_data,map_data,half_map_data_list,\
     solvent_fraction,smoothed_mask_data,original_map_data
 
-def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
-  file_name=params.input_files.ncs_file
+def get_ncs(params=None,tracking_data=None,file_name=None,
+     ncs_object=None,out=sys.stdout):
+  if not file_name:
+    file_name=params.input_files.ncs_file
   if file_name: print >>out,"Reading ncs from %s" %(file_name)
   is_helical_symmetry=None
   if not ncs_object and not file_name: # No ncs supplied...use just 1 ncs copy..
@@ -3839,7 +3871,7 @@ def get_ncs(params,tracking_data=None,ncs_object=None,out=sys.stdout):
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
       ncs_object.max_operators())
-    if not tracking_data:
+    if not tracking_data or not params:
       return ncs_object,None
     if ncs_object.is_helical_along_z(
        abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
@@ -9152,14 +9184,14 @@ def run(args,
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data=get_params(
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,out=out)
 
-    if params.control.shift_only:
+    if params.control.shift_only or params.control.check_ncs:
       return None,None,tracking_data
 
     if params.input_files.pdb_to_restore:
       restore_pdb(params,tracking_data=tracking_data,out=out)
       return None,None,tracking_data
     # read and write the ncs (Normally point-group NCS)
-    ncs_obj,tracking_data=get_ncs(params,tracking_data=tracking_data,
+    ncs_obj,tracking_data=get_ncs(params=params,tracking_data=tracking_data,
        ncs_object=ncs_obj,
        out=out)
 
