@@ -6906,6 +6906,14 @@ END
   ph_in.rename_chain_id(old_id="C", new_id="A")
   assert [c.id.strip() for c in ph_in.chains()] == ["B","A"]
 
+def exercise_shift_to_origin():
+  pdb_inp = pdb.input(source_info=None, lines="""\
+CRYST1   10.000   10.000   10.000  90.00  90.00  90.00 P 1
+HETATM 1135 MG   MG  A1002      15.000  25.000  35.000  1.00 40.88          Mg
+""")
+  ph = pdb_inp.construct_hierarchy()
+  ph.shift_to_origin(crystal_symmetry=pdb_inp.crystal_symmetry())
+  assert approx_equal(list(ph.atoms().extract_xyz())[0],[5,5,5])
 
 def exercise(args):
   comprehensive = "--comprehensive" in args
@@ -6921,6 +6929,7 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_shift_to_origin()
     exercise_rename_chain_id()
     exercise_convert_met_to_semet()
     exercise_truncate_to_polyala()

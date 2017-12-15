@@ -687,6 +687,27 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     result.reset_i_seq_if_necessary()
     return result
 
+  def shift_to_origin(self, crystal_symmetry):
+    uc = crystal_symmetry.unit_cell()
+    sites_frac = uc.fractionalize(self.atoms().extract_xyz())
+    l = abs(min(sites_frac.min()))
+    r = abs(max(sites_frac.max()))
+    rl = max(l, r)+2
+    rr= range(int(-rl), int(rl))
+    shift_best = None
+    for x in rr:
+      for y in rr:
+        for z in rr:
+          sf = sites_frac+[x,y,z]
+          sc = uc.orthogonalize(sf)
+          cmf = uc.fractionalize(sc.mean())
+          if(cmf[0]>=0 and cmf[0]<1 and
+             cmf[1]>=0 and cmf[1]<1 and
+             cmf[2]>=0 and cmf[2]<1):
+            shift_best = [x,y,z]
+    assert shift_best is not None # should never happen
+    self.atoms().set_xyz(uc.orthogonalize(sites_frac+shift_best))
+
   def expand_to_p1(self, crystal_symmetry):
     # ANISOU will be invalid
     import string
