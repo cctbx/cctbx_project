@@ -15,7 +15,7 @@ master_phil_str = """
   verbose = True
     .type = bool
 
-  keep_hydrogens = True
+  keep_hydrogens = False
     .type = bool
     .help = '''Keep hydrogens in input file'''
 
@@ -42,7 +42,7 @@ phenix.clashscore file.pdb [params.eff] [options ...]
 Options:
 
   model=input_file          input PDB file
-  keep_hydrogens=True       keep input hydrogen files (otherwise regenerate)
+  keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
   b_factor_cutoff=40        B factor cutoff for clash analysis
