@@ -286,43 +286,42 @@ class sdfac_refine(error_modeler_base):
       all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
       self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
 
-class simplex_minimizer_refltable(object):
+
+def setup_isigi_stats(ISIGI, indices):
+  """ Jiffy function to compute statistics needed downstream
+  For every observstion, computes:
+  mean_scaled_intensity: mean of all observations of this miller index
+  meanprime_scaled_intensity: mean of all observations of this miller index except this observation
+  n_refl: count of observed reflections for this miller index
+  nn: n_refl-1/n_refl
+  """
+  sumI = flex.double(len(indices), 0)
+  n_refl = flex.double(len(indices), 0)
+  for i in xrange(len(ISIGI)):
+    hkl_id = ISIGI['miller_id'][i]
+    sumI[hkl_id] += ISIGI['scaled_intensity'][i]
+    n_refl[hkl_id] += 1
+
+  all_meanI = flex.double(len(ISIGI), 0)
+  all_n_refl = flex.double(len(ISIGI), 0)
+  all_imeanprime = flex.double(len(ISIGI), 0)
+  for i in xrange(len(ISIGI)):
+    hkl_id = ISIGI['miller_id'][i]
+    all_meanI[i] = sumI[hkl_id]/n_refl[hkl_id]
+    all_n_refl[i] = n_refl[hkl_id]
+    assert n_refl[hkl_id] > 0
+    if n_refl[hkl_id] > 1:
+      all_imeanprime[i] = (sumI[hkl_id]-ISIGI['scaled_intensity'][i])/(n_refl[hkl_id]-1)
+  ISIGI['mean_scaled_intensity'] = all_meanI
+  ISIGI['n_refl'] = all_n_refl
+  ISIGI['nn'] = (all_n_refl - 1)/all_n_refl
+  ISIGI['meanprime_scaled_intensity'] = all_imeanprime
+
+class simplex_minimizer_refltable(simplex_minimizer):
   """Class for refining sdfac, sdb and sdadd"""
   def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log = None, squared = False):
-    """
-    @param sdfac Initial value for sdfac
-    @param sdfac Initial value for sdfac
-    @param sdfac Initial value for sdfac
-    @param data ISIGI dictionary of unmerged intensities
-    @param indices array of miller indices to refine against
-    @param bins array of flex.bool object specifying the bins to use to calculate the functional
-    @param log Log to print to (none for stdout)
-    """
-    if log is None:
-      log = sys.stdout
-    self.log = log
-    self.data = data
-    self.intensity_bin_selections = bins
-    self.indices = indices
     self.squared = squared
-    self.n = 3
-    self.x = flex.double([sdfac, sdb, sdadd])
-    self.starting_simplex = []
-    if seed is None:
-      random_func = flex.random_double
-    else:
-      print >> self.log, "Using random seed %d"%seed
-      mt = flex.mersenne_twister(seed)
-      random_func = mt.random_double
-
-    for i in xrange(self.n+1):
-      self.starting_simplex.append(random_func(self.n))
-
-    self.optimizer = simplex_opt( dimension = self.n,
-                                  matrix    = self.starting_simplex,
-                                  evaluator = self,
-                                  tolerance = 1e-1)
-    self.x = self.optimizer.get_solution()
+    super(simplex_minimizer_refltable, self).__init__(sdfac, sdb, sdadd, data, indices, bins, seed, log)
 
   def target(self, vector):
     """ Compute the functional by first applying the current values for the sd parameters
@@ -366,20 +365,8 @@ class sdfac_refine_refltable(sdfac_refine):
     """
     print >> self.log, "Computing intensity bins.",
     ISIGI = self.scaler.ISIGI
-    sumI = flex.double(len(self.scaler.miller_set.indices()), 0)
-    n_refl = flex.double(len(self.scaler.miller_set.indices()), 0)
-    for i in xrange(len(ISIGI)):
-      hkl_id = ISIGI['miller_id'][i]
-      sumI[hkl_id] += ISIGI['scaled_intensity'][i]
-      n_refl[hkl_id] += 1
-    sel = n_refl > 0
-    meanI = flex.double(len(sumI), 0)
-    meanI.set_selected(sel, sumI.select(sel)/n_refl.select(sel))
-
-    all_mean_Is = flex.double(len(ISIGI), 0)
-    for i in xrange(len(ISIGI)):
-      hkl_id = ISIGI['miller_id'][i]
-      all_mean_Is[i] = sumI[hkl_id]/n_refl[hkl_id]
+    setup_isigi_stats(ISIGI, self.scaler.miller_set.indices())
+    meanI = ISIGI['mean_scaled_intensity']
 
     min_meanI = flex.min(meanI)
     step = (flex.max(meanI)-min_meanI)/n_bins
@@ -388,7 +375,7 @@ class sdfac_refine_refltable(sdfac_refine):
     sels = []
     binned_intensities = []
     for i in xrange(n_bins):
-      sel = (all_mean_Is > (min_meanI + step * i)) & (all_mean_Is < (min_meanI + step * (i+1)))
+      sel = (meanI > (min_meanI + step * i)) & (meanI < (min_meanI + step * (i+1)))
       if sel.all_eq(False): continue
       sels.append(sel)
       binned_intensities.append((step/2 + step*i)+min(meanI))
