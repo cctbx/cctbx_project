@@ -116,7 +116,7 @@ class sdfac_refinery(object):
         w = math.sqrt(n)
         # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
         f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
-        
+
     return f
 
   def gradients(self, values):
@@ -288,4 +288,3 @@ class lbfgs_minimizer(object):
     print >> self.out, "FINALMODEL",
     print >> self.out, "functional value %11.3f"%self.func,
     values.show(self.out)
-
