@@ -1010,6 +1010,30 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
     n_not_shown = deltas.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 
+  def get_symmetry_interacting_indices_unique(self, sites_cart):
+    """
+    See output of show_sorted below to understand what this function does.
+    """
+    result = {}
+    deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    if (deltas.size() == 0): return
+    i_proxies_sorted = flex.sort_permutation(data=deltas)
+    if (self.asu.size() == 0):
+      asu_mappings = None
+    else:
+      asu_mappings = self.asu_mappings()
+    n_simple = self.simple.size()
+    for i_proxy in i_proxies_sorted:
+      if (i_proxy >= n_simple):
+        proxy = self.asu[i_proxy-n_simple]
+        i_seq,j_seq = proxy.i_seq,proxy.j_seq
+        rt_mx = asu_mappings.get_rt_mx_ji(pair=proxy)
+        #if str(rt_mx)=="x,y,z": continue # why do I need this?
+        result.setdefault(j_seq, []).append(rt_mx)
+    for k,v in zip(result.keys(), result.values()):
+      result[k] = list(set(v))
+    return result
+
   def show_sorted(self,
         by_value,
         sites_cart,
