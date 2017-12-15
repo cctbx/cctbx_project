@@ -227,6 +227,9 @@ class sdfac_refine(error_modeler_base):
 
     return sels, binned_intensities
 
+  def run_minimzer(self, sdfac, sdb, sdadd, sels, **kwargs):
+    return simplex_minimizer(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log)
+
   def adjust_errors(self):
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
@@ -242,7 +245,7 @@ class sdfac_refine(error_modeler_base):
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
-    minimizer = simplex_minimizer(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, seed, self.log)
+    minimizer = self.run_minimzer(sdfac, sdb, sdadd, sels, seed=seed)
     sdfac, sdb, sdadd = minimizer.x
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
@@ -385,6 +388,9 @@ class sdfac_refine_refltable(sdfac_refine):
 
     return sels, binned_intensities
 
+  def run_minimzer(self, sdfac, sdb, sdadd, sels, **kwargs):
+   return simplex_minimizer_refltable(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log, kwargs['squared'])
+
   def adjust_errors(self):
     """
     Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
@@ -403,7 +409,8 @@ class sdfac_refine_refltable(sdfac_refine):
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
-    minimizer = simplex_minimizer_refltable(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, seed, self.log, squared)
+    minimizer = self.run_minimzer(sdfac, sdb, sdadd, sels, seed=seed, squared=squared)
+
     sdfac, sdb, sdadd = minimizer.x
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 

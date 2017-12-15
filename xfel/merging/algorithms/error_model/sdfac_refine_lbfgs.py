@@ -18,63 +18,11 @@ def finite_difference(target, values, p):
   return finite_g
 
 class sdfac_refine_refltable_lbfgs(sdfac_refine_refltable):
-  def adjust_errors(self):
-    """
-    Adjust sigmas according to Evans, 2011 Acta D and Evans and Murshudov, 2013 Acta D
-    """
-    print >> self.log, "Starting adjust_errors"
-    print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
-    sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
-
-    assert self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation in ['evans2011', 'squared']
-    squared = self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'squared'
-
-    print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
-
-    from xfel import compute_normalized_deviations, apply_sd_error_params
-
-    print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
-    sels, binned_intensities = self.get_binned_intensities()
-    refinery = sdfac_refinery(self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, self.log, squared)
-    minimizer = lbfgs_minimizer(flex.double([sdfac, sdb, sdadd])**2, sdfac_parameterization, refinery, self.log)
-    sdfac, sdb, sdadd = minimizer.x
-    print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
-
-    print >> self.log, "Applying sdfac/sdb/sdadd 1"
-    apply_sd_error_params(self.scaler.ISIGI, sdfac, sdb, sdadd, squared)
-
-    self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
-    self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
-
-    print >> self.log, "Applying sdfac/sdb/sdadd 2"
-    for i in xrange(len(self.scaler.ISIGI)):
-      hkl_id = self.scaler.ISIGI['miller_id'][i]
-      Intensity = self.scaler.ISIGI['scaled_intensity'][i] # scaled intensity
-      sigma = Intensity / self.scaler.ISIGI['isigi'][i] # corrected sigma
-      variance = sigma * sigma
-      self.scaler.summed_wt_I[hkl_id] += Intensity / variance
-      self.scaler.summed_weight[hkl_id] += 1 / variance
-
-    if False:
-      # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
-      print >> self.log, "Validating"
-      from matplotlib import pyplot as plt
-      all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
-
-      plt.hist(all_sigmas_normalized, bins=100)
-      plt.figure()
-
-      binned_rms_normalized_sigmas = []
-
-      for i, sel in enumerate(sels):
-        binned_rms_normalized_sigmas.append(math.sqrt(flex.mean(all_sigmas_normalized.select(sel)*all_sigmas_normalized.select(sel))))
-
-      plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
-      plt.show()
-
-      all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
-      self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
-
+  def run_minimzer(self, sdfac, sdb, sdadd, sels, **kwargs):
+    assert kwargs['squared']
+    refinery = sdfac_refinery(self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, self.log)
+    # note the power of 2! We refine the square of the sd terms, not the sd terms themselves
+    return lbfgs_minimizer(flex.double([sdfac, sdb, sdadd])**2, sdfac_parameterization, refinery, self.log)
 
 from libtbx import adopt_init_args
 from xfel.cxi.postrefinement_legacy_rs import unpack_base
@@ -94,7 +42,7 @@ class sdfac_parameterization(unpack_base):
     print >> out, "Sdadd^2: %15.12f"%YY.SDADDSQ
 
 class sdfac_refinery(object):
-  def __init__(self, ISIGI, indices, bins, log, squared):
+  def __init__(self, ISIGI, indices, bins, log):
     adopt_init_args(self, locals())
 
   def fvec_callable(self, values):
@@ -130,10 +78,9 @@ class sdfac_refinery(object):
 
   def get_normalized_sigmas(self, values):
     from xfel import compute_normalized_deviations, apply_sd_error_params
-    assert self.squared
 
     orig_isigi = self.ISIGI['isigi'] * 1
-    apply_sd_error_params(self.ISIGI, values.SDFAC, values.SDB, values.SDADD, self.squared)
+    apply_sd_error_params(self.ISIGI, values.SDFAC, values.SDB, values.SDADD, True)
     all_sigmas_normalized = compute_normalized_deviations(self.ISIGI, self.indices)
 
     sigma_prime = self.ISIGI['scaled_intensity'] / self.ISIGI['isigi']
