@@ -164,10 +164,12 @@ raw_data {
   error_models {
     sdfac_refine {
       random_seed = None
-        .help = Random seed. May be int or None.
+        .help = Random seed. May be int or None. Only used for the simplex minimizer
         .type = int
         .expert_level = 1
-      target_function = *original squared
+      sigma_formulation = *evans2011 squared
+        .help = Which formulation of inflated error to use.  Evans 2011, or a version where the Sdfac \
+                terms are squared.
         .type = choice
     }
   }

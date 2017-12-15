@@ -178,9 +178,9 @@ class sdfac_refine(error_modeler_base):
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
     sdfac = slope
 
-    if self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'original':
+    if self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'evans2011':
       sdadd = offset
-    elif self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'squared':
+    elif self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'squared':
       sdadd = math.sqrt(offset)
 
     sdb = math.sqrt(sdadd)
@@ -405,8 +405,8 @@ class sdfac_refine_refltable(sdfac_refine):
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
     sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
 
-    assert self.scaler.params.raw_data.error_models.sdfac_refine.target_function in ['original', 'squared']
-    squared = self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'squared'
+    assert self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation in ['evans2011', 'squared']
+    squared = self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'squared'
 
     print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
 
