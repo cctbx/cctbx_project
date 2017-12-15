@@ -134,7 +134,8 @@ class molprobity (slots_getstate_setstate) :
     "kinemage_file",
     "model_statistics_geometry",
     "model_statistics_geometry_result",
-    "polygon_stats"
+    "polygon_stats",
+    "wilson_b"
   ]
 
   # backwards compatibility with saved results
@@ -312,6 +313,13 @@ class molprobity (slots_getstate_setstate) :
         count_anomalous_pairs_separately=False)
     if (pdb_hierarchy.models_size() == 1) :
       self._multi_criterion = multi_criterion_view(pdb_hierarchy)
+
+    # wilson B
+    self.wilson_b = None
+    if (fmodel is not None):
+      self.wilson_b = fmodel.wilson_b()
+    elif (fmodel_neutron is not None):
+      self.wilson_b = fmodel_neutron.wilson_b()
 
   def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False,
       show_percentiles=False) :
@@ -577,16 +585,16 @@ class molprobity (slots_getstate_setstate) :
     # missing keys from polygon.keys_to_show:
     #   r_work_cutoffs, r_free_cutoffs
     #   completeness_in_range, completeness_d_min_inf, completeness_6A_inf
-    #   wilson_b, solvent_content_via_mask
+    #   solvent_content_via_mask
     stats = {}
     for name in stat_names :
-      val = None
+      val = 0.0
       if (name == "r_work") : val = self.r_work()
       elif (name == "r_free") : val = self.r_free()
       elif (name == "adp_mean_all") : val = self.b_iso_mean()
       elif (name == "adp_min_all"): val = self.model_stats.all.b_min
       elif (name == "adp_max_all"): val = self.model_stats.all.b_max
-      elif (name == "wilson_b") : pass
+      elif (name == "wilson_b") : val = self.wilson_b
       elif (name == "bond_rmsd") : val = self.rms_bonds()
       elif (name == "bond_max_deviation"):
         val = self.model_statistics_geometry_result.bond.max
