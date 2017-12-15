@@ -1014,9 +1014,9 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
     """
     See output of show_sorted below to understand what this function does.
     Find atom indices in the main copy that bump with the main copy via symmetry
-    or periodicity. There may be several symmetry/periodicity related copies 
-    corresponding to given atom in main copy. The function returns a dictionary 
-    with keys being atom indices in main copy and values being the list of 
+    or periodicity. There may be several symmetry/periodicity related copies
+    corresponding to given atom in main copy. The function returns a dictionary
+    with keys being atom indices in main copy and values being the list of
     symmetry operations to generate interacting mates.
     """
     result = {}
