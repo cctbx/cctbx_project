@@ -298,7 +298,7 @@ def apply_atom_selection(atom_selection,hierarchy=None):
 def extract_representative_chains_from_hierarchy(ph,
     min_similarity=0.90,
     allow_mismatch_in_number_of_copies=False,out=sys.stdout):
-  
+
   unique_ph=extract_unique_part_of_hierarchy(ph,
     min_similarity=min_similarity,
     allow_mismatch_in_number_of_copies=allow_mismatch_in_number_of_copies,
@@ -335,7 +335,7 @@ def extract_representative_chains_from_hierarchy(ph,
   copies_of_biggest_chain_ph=extract_copies_identical_to_target_from_hierarchy(
      ph,target_ph=biggest_chain_hierarchy,out=sys.stdout)
   return copies_of_biggest_chain_ph
-   
+
 def extract_copies_identical_to_target_from_hierarchy(ph,
      min_similarity=None,target_ph=None,out=sys.stdout):
   new_hierarchy=iotbx.pdb.input(
@@ -355,7 +355,7 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
         pass
   if not target_seq:
      raise Sorry("No sequence found in target sequence for "+
-       "extract_copies_identical_to_target_from_hierarchy") 
+       "extract_copies_identical_to_target_from_hierarchy")
 
   matching_chain_list=[]
   for model in ph.models()[:1]:
@@ -375,17 +375,17 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
   for chain in matching_chain_list:
     mm.append_chain(chain.detached_copy())
     total_chains+=1
-  print >>out,"Total chains extracted: %s" %(total_chains) 
+  print >>out,"Total chains extracted: %s" %(total_chains)
   return new_hierarchy
 
 def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0):
-  from phenix.loop_lib.sequence_similarity import sequence_similarity 
+  from phenix.loop_lib.sequence_similarity import sequence_similarity
   for s in unique_sequences:
     sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
     if sim > min_similarity:
       return s # return the one it is similar to
   return None
-   
+
 def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
     min_similarity=1.0,out=sys.stdout):
@@ -418,7 +418,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
         seq=similar_seq
       else:
         unique_sequences.append(seq)
-        
+
       if target_centroid_list:
         xx=flex.vec3_double()
         xx.append(chain.atoms().extract_xyz().mean())
@@ -448,7 +448,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
       print >>out, "Adding chain %s: %s (%s): %7.2f" %(
          chain.id,seq,str(chain.atoms().extract_xyz()[0]),
          best_chain_dist_dict[seq])
-  
+
     if best_chain_copies_dict[seq] != copies_found:
       print >>out,"Mismatch in number of copies for chain %s: %s vs %s " %(
         chain.id,best_chain_copies_dict[seq],copies_found)
