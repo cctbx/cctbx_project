@@ -141,14 +141,18 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
     else:
       return matrix.col(offset_frac)
 
-def get_ncs_from_text(text=None,rotate_about_z=None,
+def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
     rotate_about_y=None,out=sys.stdout):
   from mmtbx.ncs.ncs import ncs
   import iotbx.pdb
   ncs_object=ncs()
-  from cctbx.array_family import flex
-  pdb_inp=iotbx.pdb.input(lines=flex.split_lines(text),source_info='string')
-  ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
+  if text_is_ncs_spec:
+    ncs_object.read_ncs(lines=text.splitlines())
+  else: # read BIOMTR
+    from cctbx.array_family import flex
+    pdb_inp=iotbx.pdb.input(lines=flex.split_lines(text),source_info='string')
+    ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
+
   if rotate_about_z:
     ncs_object.rotate_about_z(rot_deg=rotate_about_z,invert_matrices=True)
   if rotate_about_y:
