@@ -283,6 +283,7 @@ class sdfac_refine(error_modeler_base):
       plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
       plt.show()
 
+      all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
       self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
 
 class simplex_minimizer_refltable(object):
