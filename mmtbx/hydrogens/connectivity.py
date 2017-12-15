@@ -129,7 +129,15 @@ class determine_connectivity(object):
         if (i_parent not in self.parents): continue
         bonded = [ih, i_parent]
         i_second = [x for x in ap.i_seqs if x not in bonded][0]
-        assert(self.h_connectivity[ih].a0['iseq'] == i_parent)
+        #assert(self.h_connectivity[ih].a0['iseq'] == i_parent)
+        if (self.h_connectivity[ih].a0['iseq'] != i_parent):
+          raise Sorry  (
+            "It looks like angle and bond restraints are conflicting.\n\
+             Bond proxies:  H atom %s is bound to %s. \n\
+             Angle proxies: H atom %s is bound to %s" % \
+    (self.atoms[ih].id_str(),
+     self.atoms[self.h_connectivity[ih].a0['iseq']].id_str(),
+     self.atoms[ih].id_str(), self.atoms[i_parent].id_str()  )   )
         self.second_neighbors_raw[ih].append(i_second)
         self.angle_dict[(ih, i_parent, i_second)] = ap.angle_ideal
 
@@ -165,7 +173,11 @@ class determine_connectivity(object):
       if (neighbors.number_non_h_neighbors == 1):
         i_a1 = self.h_connectivity[ih].a1['iseq']
         self.a1_atoms.add(i_a1)
-        self.a0a1_dict[i_parent] = i_a1
+        if i_parent in self.a0a1_dict.keys():
+          self.a0a1_dict[i_parent].append(i_a1)
+        else:
+          self.a0a1_dict[i_parent]=[i_a1]
+          #self.a0a1_dict[i_parent] = i_a1
 
 
   def determine_a0_angles_and_third_neighbors_without_dihedral(self, angle_proxies):
@@ -178,7 +190,6 @@ class determine_connectivity(object):
       ix, iy, iz = ap.i_seqs
       is_hd_ix = self.hd_sel[ix]
       is_hd_iz = self.hd_sel[iz]
-      labels = self.atoms[iy].fetch_labels()
       # get all X1-A0-X2 angles if A0 is parent atom
       if (iy in self.parents and not is_hd_ix and not is_hd_iz):
           self.parent_angles[iy][(ix, iz)] = ap.angle_ideal
@@ -187,7 +198,7 @@ class determine_connectivity(object):
       i_third = None
       if (iy in self.a1_atoms):
         if (ix in self.parents and ix in self.a0a1_dict):
-          if (self.a0a1_dict[ix]==iy and not is_hd_iz):
+          if (iy in self.a0a1_dict[ix] and not is_hd_iz):
             i_parent = ix
             i_third = iz
           elif (i_third == None):
@@ -196,7 +207,7 @@ class determine_connectivity(object):
   Check H atoms bound to %s and with second neighbor %s" % \
     (self.atoms[ix].id_str(), self.atoms[iy].id_str()))
         elif (iz in self.parents and iz in self.a0a1_dict):
-          if (self.a0a1_dict[iz]==iy and not is_hd_ix):
+          if (iy in self.a0a1_dict[iz] and not is_hd_ix):
             i_parent = iz
             i_third = ix
           elif (i_third == None):

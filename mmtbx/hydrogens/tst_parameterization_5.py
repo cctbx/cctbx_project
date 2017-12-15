@@ -8,7 +8,7 @@ import iotbx.pdb
 # These examples are from pdb and initially failed
 #-----------------------------------------------------------------------------
 
-def exercise():
+def exercise(pdb_str, type_list_known):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
@@ -32,8 +32,6 @@ def exercise():
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_para) - h_para.count(None)
 
-# There are 68 H atoms in the pdb_string, check if all of them are recognized
-# Note: one H atom (VAL 7 HA) is bound to two CA atoms at once
   assert (number_h_para == number_h), 'Not all H atoms are parameterized'
 
   for ih in h_distances:
@@ -47,8 +45,9 @@ def exercise():
     #print "'%s'," % type1,
 
 # Several fragments from pdb with double conformations which caused crashes
-# and which should now be mended
-pdb_str = """\
+# There are 68 H atoms in the pdb_string, check if all of them are recognized
+# Note: one H atom (VAL 7 HA) is bound to two CA atoms at once
+pdb_str1 = """\
 CRYST1   27.832   30.931   25.475  90.00  90.00  90.00 P 1
 SCALE1      0.035930  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.032330  0.000000        0.00000
@@ -288,17 +287,7 @@ TER
 END
 """
 
-
-#type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '2tetra',
-#  'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', '3neigbs', 'alg1b', '3neigbs',
-#  'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'flat_2neigbs',
-#  'flat_2neigbs', '2tetra', '2tetra', 'alg1b', 'alg1b', 'alg1b', '3neigbs',
-#  '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs', '2tetra',
-#  'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
-#  '2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs', 'prop', 'prop', 'prop',
-#  'prop', 'prop', 'prop', 'prop', '3neigbs', 'prop']
-
-type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
+type_list_known1 = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
   '3neigbs', 'alg1b', '2tetra', '2tetra', '2tetra', '2tetra', 'alg1b',
   '3neigbs', '2tetra', '2tetra', '3neigbs', '2tetra', '2tetra', 'flat_2neigbs',
   'alg1b', '3neigbs', '2tetra', '2tetra', 'alg1b', '2tetra', '2tetra', 'alg1b',
@@ -309,7 +298,37 @@ type_list_known = ['2tetra', '2tetra', 'alg1b', '3neigbs', '3neigbs',
   'flat_2neigbs', 'flat_2neigbs', 'alg1b', '2tetra', '2tetra', 'flat_2neigbs',
   'flat_2neigbs', 'flat_2neigbs', 'flat_2neigbs', 'alg1b']
 
+pdb_str2 = """
+CRYST1   13.142   13.841   12.524  90.00  90.00  90.00 P 1
+SCALE1      0.076092  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.072249  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.079847        0.00000
+ATOM    285  CB  ALA A  25      21.105  -3.928  25.422  1.00 11.78           C
+ATOM    286  N  AALA A  25      18.694  -4.221  25.276  0.50  9.87           N
+ATOM    287  CA AALA A  25      19.812  -3.247  25.214  0.50 10.86           C
+ATOM    288  C  AALA A  25      19.902  -2.496  23.898  0.50  9.98           C
+ATOM    289  O  AALA A  25      20.720  -1.565  23.768  0.50  7.99           O
+ATOM    290  H  AALA A  25      18.945  -5.044  25.293  0.50 10.06           H
+ATOM    291  HA AALA A  25      19.625  -2.606  25.918  0.50 11.03           H
+ATOM    292  HB1AALA A  25      21.824  -3.278  25.378  0.50 11.78           H
+ATOM    293  HB2AALA A  25      21.109  -4.356  26.292  0.50 11.78           H
+ATOM    294  HB3AALA A  25      21.233  -4.598  24.732  0.50 11.78           H
+ATOM    295  N  BALA A  25      18.682  -4.224  25.328  0.50 10.05           N
+ATOM    296  CA BALA A  25      19.756  -3.242  25.276  0.50 11.02           C
+ATOM    297  C  BALA A  25      19.678  -2.389  23.992  0.50  9.97           C
+ATOM    298  O  BALA A  25      20.024  -1.203  24.029  0.50 11.29           O
+ATOM    299  H  BALA A  25      18.941  -5.043  25.374  0.50 10.06           H
+ATOM    300  HA BALA A  25      19.650  -2.631  26.022  0.50 11.03           H
+ATOM    301  HB1BALA A  25      21.811  -3.264  25.386  0.50 11.78           H
+ATOM    302  HB2BALA A  25      21.142  -4.393  26.273  0.50 11.78           H
+ATOM    303  HB3BALA A  25      21.224  -4.566  24.701  0.50 11.78           H
+"""
+
+type_list_known2 = ['alg1b', '3neigbs', 'prop', 'prop', 'prop', 'alg1b',
+  '3neigbs', 'prop', 'prop', 'prop']
+
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise()
+  exercise(pdb_str = pdb_str1, type_list_known = type_list_known1)
+  exercise(pdb_str = pdb_str2, type_list_known = type_list_known2)
   print "OK. Time: %8.3f"%(time.time()-t0)
