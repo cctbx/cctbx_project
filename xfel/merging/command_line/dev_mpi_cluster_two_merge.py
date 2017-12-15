@@ -51,7 +51,7 @@ class scaling_manager_mpi(scaling_manager_base):
         if self.params.raw_data.error_models.sdfac_refine.minimizer == 'simplex':
           from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
         elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'lbfgs':
-          from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable_lbfgs as error_modeler
+          from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refine_refltable_lbfgs as error_modeler
 
       if self.params.raw_data.errors_from_sample_residuals:
         from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler
