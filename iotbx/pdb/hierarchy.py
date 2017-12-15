@@ -687,6 +687,39 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     result.reset_i_seq_if_necessary()
     return result
 
+  def remove_residue_groups_with_atoms_on_special_positions_selective(self,
+        crystal_symmetry):
+    import iotbx.pdb
+    get_class = iotbx.pdb.common_residue_names_get_class
+    self.reset_i_seq_if_necessary()
+    special_position_settings = crystal.special_position_settings(
+      crystal_symmetry = crystal_symmetry)
+    # Using
+    # unconditional_general_position_flags=(self.atoms().extract_occ() != 1)
+    # will skip atoms on sp that have partial occupancy.
+    site_symmetry_table = \
+      special_position_settings.site_symmetry_table(
+        sites_cart = self.atoms().extract_xyz())
+    spi = site_symmetry_table.special_position_indices()
+    removed = []
+    for c in self.chains():
+      for rg in c.residue_groups():
+        keep=True
+        for i in rg.atoms().extract_i_seq():
+          if(i in spi):
+            keep=False
+            break
+        if(not keep):
+          for resname in rg.unique_resnames():
+            if(get_class(resname) == "common_amino_acid" or
+               get_class(resname) == "common_rna_dna"):
+              raise RuntimeError(
+                "Amino-acid residue or NA is on special position.")
+          for resname in rg.unique_resnames():
+            removed.append(",".join([c.id, rg.resid(), resname]))
+          c.remove_residue_group(residue_group=rg)
+    return removed
+
   def shift_to_origin(self, crystal_symmetry):
     uc = crystal_symmetry.unit_cell()
     sites_frac = uc.fractionalize(self.atoms().extract_xyz())
