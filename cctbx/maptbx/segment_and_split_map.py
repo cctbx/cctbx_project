@@ -318,6 +318,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = N NCS test
        .help =  Number of NCS operators to sample when identifying ncs id
 
+     min_ncs_cc = 0.75
+       .type = float
+       .short_caption = Minimum NCS CC to keep it
+       .help =  Minimum NCS CC to keep operators when identifying \
+                 automatically
+
      n_rescore = 5
        .type = int
        .short_caption = NCS operators to rescore
@@ -2888,7 +2894,7 @@ def get_ncs_from_map(map_data=None,
       random_points=None,
       n_rescore=None,
       use_center_of_map_as_center=None,
-      min_ncs_cc=0.90,
+      min_ncs_cc=None,
       n_ncs_test=None,
       identify_ncs_id=None,
       ncs_obj_to_check=None,
@@ -3811,6 +3817,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       use_center_of_map_as_center=use_center_of_map,
       identify_ncs_id=params.reconstruction_symmetry.identify_ncs_id,
       n_ncs_test=params.reconstruction_symmetry.n_ncs_test,
+      min_ncs_cc=params.reconstruction_symmetry.min_ncs_cc,
       ncs_obj_to_check=ncs_obj_to_check,
       out=out
       )
