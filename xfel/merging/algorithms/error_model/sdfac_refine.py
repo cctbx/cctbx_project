@@ -138,13 +138,27 @@ class sdfac_refine(error_modeler_base):
 
     if plot:
       from matplotlib import pyplot as plt
-      x = np.linspace(-500,500,100) # 100 linearly spaced numbers
+      lim = -5, 5
+      x = np.linspace(lim[0],lim[1],100) # 100 linearly spaced numbers
       y = slope * x + offset
-      plt.scatter(sorted_data, rankits)
+      plt.plot(sorted_data, rankits, '-')
       plt.plot(x,y)
+      plt.title("Rankits vs sorted data")
+      plt.xlabel("Sorted data")
+      plt.ylabel("Rankits")
+      plt.xlim(lim); plt.ylim(lim)
+      plt.axes().set_aspect('equal')
 
       plt.figure()
+      plt.title("Rankits")
+      plt.xlabel("")
+      plt.ylabel("Count")
       plt.hist(rankits, bins=100)
+      plt.figure()
+      plt.xlabel("")
+      plt.ylabel("Count")
+      plt.title("Data")
+      plt.hist(sorted_data, bins=100)
       plt.show()
 
     return corr, slope, offset
@@ -157,14 +171,19 @@ class sdfac_refine(error_modeler_base):
     all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
     assert ((all_sigmas_normalized > 0) | (all_sigmas_normalized <= 0)).count(True) == len(all_sigmas_normalized) # no nans allowed
 
+    # remove zeros (miller indices with only one observation will have a normalized deviation of 0 which shouldn't contribute to
+    # the normal probability plot analysis and initial parameter estimation
+    all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
+
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
     sdfac = slope
-    sdb = 0
 
     if self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'original':
       sdadd = offset
     elif self.scaler.params.raw_data.error_models.sdfac_refine.target_function == 'squared':
       sdadd = math.sqrt(offset)
+
+    sdb = math.sqrt(sdadd)
 
     return sdfac, sdb, sdadd
 
@@ -252,6 +271,7 @@ class sdfac_refine(error_modeler_base):
       print >> self.log, "Validating"
       from matplotlib import pyplot as plt
       all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
+
       plt.hist(all_sigmas_normalized, bins=100)
       plt.figure()
 
@@ -430,4 +450,5 @@ class sdfac_refine_refltable(sdfac_refine):
       plt.plot(binned_intensities, binned_rms_normalized_sigmas, 'o')
       plt.show()
 
+      all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
       self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
