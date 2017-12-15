@@ -70,6 +70,11 @@ master_phil = iotbx.phil.parse("""
       .help =Maximum distance spanned by a pair of residues.  Set by \
             default as 3.8 A for protein and 8 A for RNA
 
+    min_similarity = 0.9
+      .type = float
+      .short_caption = Minimum similarity in chains for uniqueness
+      .help = When choosing unique chains, use min_similarity cutoff
+
     target_length_from_matching_chains = False
       .type = bool
       .short_caption = Use matching chains to get length
@@ -290,8 +295,100 @@ def apply_atom_selection(atom_selection,hierarchy=None):
   return hierarchy.deep_copy().select(sel)  # deep copy is required
   #return hierarchy.select(sel)
 
+def extract_representative_chains_from_hierarchy(ph,
+    min_similarity=0.90,
+    allow_mismatch_in_number_of_copies=False,out=sys.stdout):
+  
+  unique_ph=extract_unique_part_of_hierarchy(ph,
+    min_similarity=min_similarity,
+    allow_mismatch_in_number_of_copies=allow_mismatch_in_number_of_copies,
+    out=out)
+  if ph==unique_ph:  # nothing is unique...
+    print >>out,"No representative unique chains available"
+    return None
 
-def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
+  biggest_chain=None
+  longest_chain=None
+  for model in unique_ph.models()[:1]:
+    for chain in model.chains():
+      try:
+        target_seq=chain.as_padded_sequence()  # has XXX for missing residues
+        target_seq.replace("X","")
+        chain_length=len(target_seq)
+      except Exception, e:
+        chain_length=0
+      if chain_length and (longest_chain is None or chain_length>longest_chain):
+        longest_chain=chain_length
+        biggest_chain=chain
+  if biggest_chain is None:
+    print >>out,"Unable to extract unique part of hierarchy"
+    return None
+
+  biggest_chain_hierarchy=iotbx.pdb.input(
+    source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
+  mm=iotbx.pdb.hierarchy.model()
+  biggest_chain_hierarchy.append_model(mm)
+  mm.append_chain(biggest_chain.detached_copy())
+
+  # ready with biggest chain
+
+  copies_of_biggest_chain_ph=extract_copies_identical_to_target_from_hierarchy(
+     ph,target_ph=biggest_chain_hierarchy,out=sys.stdout)
+  return copies_of_biggest_chain_ph
+   
+def extract_copies_identical_to_target_from_hierarchy(ph,
+     min_similarity=None,target_ph=None,out=sys.stdout):
+  new_hierarchy=iotbx.pdb.input(
+    source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
+  mm=iotbx.pdb.hierarchy.model()
+  new_hierarchy.append_model(mm)
+
+  assert target_ph is not None
+  target_seq=None
+  for model in target_ph.models()[:1]:
+    for chain in model.chains():
+      try:
+        target_seq=chain.as_padded_sequence()  # has XXX for missing residues
+        target_seq.replace("X","")
+        break
+      except Exception, e:
+        pass
+  if not target_seq:
+     raise Sorry("No sequence found in target sequence for "+
+       "extract_copies_identical_to_target_from_hierarchy") 
+
+  matching_chain_list=[]
+  for model in ph.models()[:1]:
+    for chain in model.chains():
+      try:
+        seq=chain.as_padded_sequence()  # has XXX for missing residues
+        seq=seq.replace("X","")
+      except Exception, e:
+        seq=""
+      similar_seq=seq_it_is_similar_to(
+         seq=seq,unique_sequences=[target_seq],
+         min_similarity=min_similarity)  # check for similar...
+      if similar_seq:
+        matching_chain_list.append(chain)
+
+  total_chains=0
+  for chain in matching_chain_list:
+    mm.append_chain(chain.detached_copy())
+    total_chains+=1
+  print >>out,"Total chains extracted: %s" %(total_chains) 
+  return new_hierarchy
+
+def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0):
+  from phenix.loop_lib.sequence_similarity import sequence_similarity 
+  for s in unique_sequences:
+    sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
+    if sim > min_similarity:
+      return s # return the one it is similar to
+  return None
+   
+def extract_unique_part_of_hierarchy(ph,target_ph=None,
+    allow_mismatch_in_number_of_copies=True,
+    min_similarity=1.0,out=sys.stdout):
   new_hierarchy=iotbx.pdb.input(
     source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
@@ -305,15 +402,23 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
     target_centroid_list=None
   unique_sequences=[]
   best_chain_dict={}
+  best_chain_copies_dict={}
   best_chain_dist_dict={}
   for model in ph.models()[:1]:
     for chain in model.chains():
       try:
         seq=chain.as_padded_sequence()  # has XXX for missing residues
+        seq=seq.replace("X","")
       except Exception, e:
-        seq="XXX"
-      if not seq in unique_sequences:
+        seq=""
+      similar_seq=seq_it_is_similar_to(
+         seq=seq,unique_sequences=unique_sequences,
+         min_similarity=min_similarity)  # check for similar...
+      if similar_seq:
+        seq=similar_seq
+      else:
         unique_sequences.append(seq)
+        
       if target_centroid_list:
         xx=flex.vec3_double()
         xx.append(chain.atoms().extract_xyz().mean())
@@ -321,23 +426,39 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,out=sys.stdout):
       else:
         dist=0.
       best_dist=best_chain_dist_dict.get(seq)
+      if not seq in best_chain_copies_dict:
+        best_chain_copies_dict[seq]=0
+      best_chain_copies_dict[seq]+=1
+
       if best_dist is None or dist<best_dist:
         best_chain_dist_dict[seq]=dist
         best_chain_dict[seq]=chain
 
-
+  copies_found=None
+  all_ok=True
   for seq in best_chain_dist_dict.keys():
     chain=best_chain_dict[seq]
+    if copies_found is None:
+      copies_found=best_chain_copies_dict[seq]
+      print >>out,"Number of copies of chain %s: %s" %(chain.id,copies_found)
     if not chain:
-      print >>out,"Mising chain for sequence %s" %(seq)
+      print >>out,"Missing chain for sequence %s" %(seq)
     else:
       mm.append_chain(chain.detached_copy())
       print >>out, "Adding chain %s: %s (%s): %7.2f" %(
-         chain.id,seq.replace("X",""),str(chain.atoms().extract_xyz()[0]),
+         chain.id,seq,str(chain.atoms().extract_xyz()[0]),
          best_chain_dist_dict[seq])
-
-
-  return new_hierarchy
+  
+    if best_chain_copies_dict[seq] != copies_found:
+      print >>out,"Mismatch in number of copies for chain %s: %s vs %s " %(
+        chain.id,best_chain_copies_dict[seq],copies_found)
+      all_ok=False
+  if not all_ok:
+    print >>out,"Selection of unique part of hierarchy failed...taking all"
+    return ph
+  else:
+    print >>out,"Selection of unique part of hierarchy successful"
+    return new_hierarchy
 
 def run_all(params=None,out=sys.stdout):
   if params.control.verbose:
@@ -495,6 +616,7 @@ def run(args=None,
    params=None,
    target_length_from_matching_chains=None,
    distance_per_site=None,
+   min_similarity=None,
    out=sys.stdout):
   if not args: args=[]
   if not params:
@@ -528,6 +650,8 @@ def run(args=None,
     max_dist=params.comparison.max_dist
   if distance_per_site is None:
     distance_per_site=params.comparison.distance_per_site
+  if min_similarity is None:
+    min_similarity=params.comparison.min_similarity
   if target_length_from_matching_chains is None:
     target_length_from_matching_chains=\
        params.comparison.target_length_from_matching_chains
@@ -563,7 +687,8 @@ def run(args=None,
   if params.input_files.unique_only:
     print >>out,"\nUsing only unique part of query\n"
     chain_hierarchy=extract_unique_part_of_hierarchy(
-      chain_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
+      chain_hierarchy,target_ph=target_unique_hierarchy,
+      min_similarity=min_similarity,out=local_out)
 
   # remove hetero atoms as they are not relevant
   chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
@@ -578,7 +703,9 @@ def run(args=None,
 
   if params.input_files.unique_only: # count unique residues/total
     unique_part_of_target_hierarchy=extract_unique_part_of_hierarchy(
-        target_hierarchy,target_ph=target_unique_hierarchy,out=local_out)
+        target_hierarchy,
+        min_similarity=min_similarity,
+        target_ph=target_unique_hierarchy,out=local_out)
     ratio_unique_to_total_target=\
        unique_part_of_target_hierarchy.overall_counts().n_residues/  \
        max(1,target_hierarchy.overall_counts().n_residues)

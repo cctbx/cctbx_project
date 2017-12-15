@@ -290,8 +290,7 @@ parser_displayRecognitionError (pANTLR3_BASE_RECOGNIZER recognizer, pANTLR3_UINT
         }
         else
         {
-          message << "Actually we didn't seem to be expecting anything here, or at least\n";
-          message << "I could not work out what I was expecting, like so many of us these days!\n";
+          message << "Unable to process inputs\n";
         }
       }
       break;
