@@ -571,12 +571,14 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         t_trans.append(matrix.col(map(float,t)))
 
     # filter everything for X0 and P here:
+    # Why??? Nobody promised that id would be integer, it is a 'single word':
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_pdbx_struct_oper_list.id.html
     trans = []
     rots = []
     serial_number = []
     coordinates_present = []
     for sn, r, t, cp in zip(t_serial_number, t_rots, t_trans, t_coordinates_present):
-      if sn[0] != "P" and sn[0] != "X0":
+      if sn[0] != "P" and sn[0] != "X0" and sn[0] != "H":
         trans.append(t)
         rots.append(r)
         serial_number.append((sn[0], int(sn[0])-1 ))
