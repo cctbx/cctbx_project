@@ -25,6 +25,7 @@ from cctbx import xray
 from cctbx import adptbx
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
+from cctbx import crystal
 
 import mmtbx.restraints
 import mmtbx.hydrogens
@@ -271,7 +272,7 @@ class manager(object):
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
       elif self._model_input is not None:
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
-    self._atom_selection_cache = self._pdb_hierarchy.atom_selection_cache()
+    self._update_atom_selection_cache()
     self._update_pdb_atoms()
 
     if not self.all_chain_proxies and self._processed_pdb_file:
@@ -826,6 +827,10 @@ class manager(object):
   def _update_atom_selection_cache(self):
     if self.all_chain_proxies is not None:
       self._atom_selection_cache = self.all_chain_proxies.pdb_hierarchy.atom_selection_cache()
+    elif self.crystal_symmetry() is not None:
+      self._atom_selection_cache = self.get_hierarchy().atom_selection_cache(
+          special_position_settings=crystal.special_position_settings(
+              crystal_symmetry = self.crystal_symmetry() ))
     else:
       self._atom_selection_cache = self.get_hierarchy().atom_selection_cache()
 
