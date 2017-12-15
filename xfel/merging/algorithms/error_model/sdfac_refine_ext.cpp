@@ -71,6 +71,10 @@ void
 apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double sdb, const double sdadd, const bool squared_params) {
   /*
    * Apply a set of sd params (sdfac, sdb and sdd) to an ISIGI reflection table
+
+   Squared not only uses the squared formulation of sigma', but also fixes 2 bugs:
+   1) Use meanI not meanIprime
+   2) When returning isigi, don't multiply by slope
    */
   SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
   SCITBX_ASSERT(ISIGI.contains("isigi"));
@@ -99,27 +103,33 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
   double tmp = 0;
   double sigma_corrected = 0;
   for (std::size_t i = 0; i < ISIGI.size(); i++) {
-    // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
-    double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[miller_id[i]]>1 ? (n_refl[miller_id[i]]-1) : 1);
-
     // apply correction parameters
-    if (squared_params)
-      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanIprime + std::pow(sdadd,2) * std::pow(meanIprime,2);
-    else
+    if (squared_params) {
+      // compute meanI, which is the mean of all observations of this hkl
+      double meanI = isum[miller_id[i]] / n_refl[miller_id[i]];
+      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanI + std::pow(sdadd,2) * std::pow(meanI,2);
+    }
+    else {
+      // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
+      double meanIprime = (isum[miller_id[i]]-scaled_intensity[i]) / (n_refl[miller_id[i]]>1 ? (n_refl[miller_id[i]]-1) : 1);
       tmp = std::pow(sigmas[i],2) + sdb * meanIprime + std::pow(sdadd*meanIprime,2);
+    }
 
     // avoid rare negatives
     double minimum = 0.1 * std::pow(sigmas[i],2);
     if (tmp < minimum)
       tmp = minimum;
 
-    if (squared_params)
+    if (squared_params) {
       sigma_corrected = std::sqrt(std::pow(sdfac,2) * tmp);
-    else
+      SCITBX_ASSERT(sigma_corrected != 0.0);
+      isigi[i] = scaled_intensity[i] / sigma_corrected;
+    }
+    else {
       sigma_corrected = sdfac * std::sqrt(tmp);
-
-    SCITBX_ASSERT(sigma_corrected != 0.0);
-    isigi[i] = scaled_intensity[i] * slope[i]/ sigma_corrected;
+      SCITBX_ASSERT(sigma_corrected != 0.0);
+      isigi[i] = scaled_intensity[i] * slope[i]/ sigma_corrected;
+    }
   }
 }
 
