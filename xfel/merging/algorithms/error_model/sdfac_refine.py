@@ -355,6 +355,9 @@ class simplex_minimizer_refltable(simplex_minimizer):
     print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
     return f
 
+  def get_refined_params(self):
+    return self.x
+
 class sdfac_refine_refltable(sdfac_refine):
   def get_binned_intensities(self, n_bins=100):
     """
@@ -411,7 +414,7 @@ class sdfac_refine_refltable(sdfac_refine):
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
     minimizer = self.run_minimzer(sdfac, sdb, sdadd, sels, seed=seed, squared=squared)
 
-    sdfac, sdb, sdadd = minimizer.x
+    sdfac, sdb, sdadd = minimizer.get_refined_params()
     print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 1"

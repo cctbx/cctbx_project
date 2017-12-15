@@ -230,6 +230,10 @@ class lbfgs_minimizer(object):
     values.show(self.out)
     return self.f, self.g
 
+  def get_refined_params(self):
+    values = self.parameterization(self.x)
+    return values.SDFAC, values.SDB, values.SDADD
+
   def __del__(self):
     values = self.parameterization(self.x)
     print >> self.out, "FINALMODEL",
