@@ -168,9 +168,12 @@ raw_data {
         .type = int
         .expert_level = 1
       sigma_formulation = *evans2011 squared
+        .type = choice
         .help = Which formulation of inflated error to use.  Evans 2011, or a version where the Sdfac \
                 terms are squared.
+      minimizer = *simplex lbfgs
         .type = choice
+        .help = Which minimizer to use while refining the Sdfac terms
     }
   }
 }
@@ -770,7 +773,10 @@ class scaling_manager (intensity_data) :
 
     if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals:
       if self.params.raw_data.sdfac_refine:
-        from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
+        if self.params.raw_data.error_models.sdfac_refine.minimizer == 'simplex':
+          from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
+        elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'lbfgs':
+          from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refine_refltable_lbfgs as error_modeler
 
       if self.params.raw_data.errors_from_sample_residuals:
         from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler

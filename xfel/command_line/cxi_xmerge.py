@@ -336,7 +336,10 @@ def run(args):
 
     if work_params.raw_data.sdfac_refine or work_params.raw_data.errors_from_sample_residuals:
       if work_params.raw_data.sdfac_refine:
-        from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
+        if work_params.raw_data.error_models.sdfac_refine.minimizer == 'simplex':
+          from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
+        elif work_params.raw_data.error_models.sdfac_refine.minimizer == 'lbfgs':
+          from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable_lbfgs as error_modeler
 
       if work_params.raw_data.errors_from_sample_residuals:
         from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler
