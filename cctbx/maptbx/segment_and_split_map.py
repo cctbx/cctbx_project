@@ -307,7 +307,7 @@ master_phil = iotbx.phil.parse("""
        .help = Number of random points in map to examine in finding NCS
 
      identify_ncs_id = True
-       .type = bool 
+       .type = bool
        .short_caption = Identify NCS ID
        .help = If NCS is not point-group symmetry, try each possible \
                operator when evaluating NCS and choose the one that  \
@@ -3085,7 +3085,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
     identify_ncs_id_list=[None]
 
   all_value_lists=[]
- 
+
   for site in sites_orth:
     best_id=0
     best_score=None
@@ -3098,7 +3098,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
       else:
         n_test=n_ncs_test
         real_thing=False
-        
+
       if identify_ncs_id and site_ncs_id:
         local_site=ncs_group.rota_matrices()[site_ncs_id] * matrix.col(site) + \
            ncs_group.translations_orth()[site_ncs_id]
