@@ -11,6 +11,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx import adopt_init_args
+from libtbx.utils import Sorry
 import libtbx.load_env
 import math
 import sys, os
@@ -120,7 +121,7 @@ def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
     map_data = map_data.shift_origin()
     if(sites_cart is not None):
       if(not crystal_symmetry.space_group().type().number() in [0,1]):
-        raise RuntimeError("Not implemented")
+        raise Sorry("Space groups other than P1 are not supported.")
       a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
       fm = crystal_symmetry.unit_cell().fractionalization_matrix()
       sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
@@ -176,7 +177,7 @@ def cc_peak(cutoff, map_1=None,map_2=None, map_coeffs_1=None,map_coeffs_2=None):
     m2_he = volume_scale(map = map_2,  n_bins = 10000).map_data()
     return ext.cc_peak(map_1=m1_he, map_2=m2_he, cutoff=cutoff)
   else:
-    raise RuntimeError("Combination of inputs not supported.")
+    raise Sorry("Combination of inputs not supported.")
 
 def map_accumulator(n_real, use_max_map, smearing_b=5, max_peak_scale=2,
                     smearing_span=10, use_exp_table=True):
