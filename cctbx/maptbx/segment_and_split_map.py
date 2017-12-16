@@ -3530,7 +3530,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
     values_by_site_dict[i]=flex.double() # value_list[0][1]
     for j in xrange(sites_orth.size()):
       values_by_site_dict[i].append(all_value_lists[j][i])
-  new_all_values_lists=[] 
+  new_all_values_lists=[]
   for i in xrange(len(all_value_lists[0])):
     new_all_values_lists.append(values_by_site_dict[i])
   return get_cc_among_value_lists(new_all_values_lists)
