@@ -601,39 +601,39 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     chain_residue_id=[group,residue_range_list]
     return new
 
-  def display_summary(self):
+  def display_summary(self,verbose=None):
     text=""
     text+="\nSummary of NCS group with "+str(self.n_ncs_oper())+" operators:"
     i=0
-    if self._chain_residue_id:
-      text+="\nID of chain/residue where these apply: "+\
-         str(self._chain_residue_id)
-    if self._rmsd_list and self._chain_residue_id:
-      text+="\nRMSD (A) from chain "+str(self._chain_residue_id[0][0])+':'+\
-       self.print_list(self._rmsd_list)
-    if self._residues_in_common_list and self._chain_residue_id:
-      text+="\nNumber of residues matching chain "+\
-          str(self._chain_residue_id[0][0])+':'+\
-           str(self._residues_in_common_list)
-    if self._source_of_ncs_info:
-      text+="\nSource of NCS info: "+str(self._source_of_ncs_info)
-    if self._ncs_domain_pdb:
-      text+="\nNCS domains represented by: "+str(self._ncs_domain_pdb)
-    if self._cc:
-      text+="\nCorrelation of NCS: "+str(self._cc)
-
-    for center,trans_orth,ncs_rota_matr in zip (
-       self._centers, self._translations_orth,self._rota_matrices):
-      if center is None: continue
-      i+=1
-      text+="\n\nOPERATOR "+str(i)
-      text+="\nCENTER: "+" %8.4f  %8.4f  %8.4f" %tuple(center)
-      r = ncs_rota_matr.elems
-      text+="\n\nROTA 1: "+" %8.4f  %8.4f  %8.4f" %tuple(r[0:3])
-      text+="\nROTA 2: "+" %8.4f  %8.4f  %8.4f" %tuple(r[3:6])
-      text+="\nROTA 3: "+" %8.4f  %8.4f  %8.4f" %tuple(r[6:9])
-      text+="\nTRANS:  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
-    text+="\n"
+    if verbose:
+      if self._chain_residue_id:
+        text+="\nID of chain/residue where these apply: "+\
+           str(self._chain_residue_id)
+      if self._rmsd_list and self._chain_residue_id:
+        text+="\nRMSD (A) from chain "+str(self._chain_residue_id[0][0])+':'+\
+         self.print_list(self._rmsd_list)
+      if self._residues_in_common_list and self._chain_residue_id:
+        text+="\nNumber of residues matching chain "+\
+            str(self._chain_residue_id[0][0])+':'+\
+             str(self._residues_in_common_list)
+      if self._source_of_ncs_info:
+        text+="\nSource of NCS info: "+str(self._source_of_ncs_info)
+      if self._ncs_domain_pdb:
+        text+="\nNCS domains represented by: "+str(self._ncs_domain_pdb)
+      if self._cc:
+        text+="\nCorrelation of NCS: "+str(self._cc)
+      for center,trans_orth,ncs_rota_matr in zip (
+         self._centers, self._translations_orth,self._rota_matrices):
+        if center is None: continue
+        i+=1
+        text+="\n\nOPERATOR "+str(i)
+        text+="\nCENTER: "+" %8.4f  %8.4f  %8.4f" %tuple(center)
+        r = ncs_rota_matr.elems
+        text+="\n\nROTA 1: "+" %8.4f  %8.4f  %8.4f" %tuple(r[0:3])
+        text+="\nROTA 2: "+" %8.4f  %8.4f  %8.4f" %tuple(r[3:6])
+        text+="\nROTA 3: "+" %8.4f  %8.4f  %8.4f" %tuple(r[6:9])
+        text+="\nTRANS:  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
+      text+="\n"
     return text
 
   def format_group_specification(self):
@@ -1669,7 +1669,7 @@ class ncs:
      self.init_ncs_group()
 
 
-  def display_all (self,log=None):
+  def display_all (self,verbose=True,log=None):
     if log==None:
       log=sys.stdout
     count=0
@@ -1677,7 +1677,7 @@ class ncs:
     for ncs_group in self._ncs_groups:
       count+=1
       text+="\n\nGROUP "+str(count)
-      text+=ncs_group.display_summary()
+      text+=ncs_group.display_summary(verbose=verbose)
     text+="\n\n"
     log.write(text)
     return text

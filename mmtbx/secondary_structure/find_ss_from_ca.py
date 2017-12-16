@@ -198,18 +198,29 @@ def get_pdb_hierarchy(text=None):
   return iotbx.pdb.input(
      source_info=None,lines=flex.split_lines(text)).construct_hierarchy()
 
-def is_close_to(r,last_r,distance_cutoff=None):
+def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
   if not r or not last_r:
     return None
   r_atom=None
+  atom_type=None
+  last_atom_type=None
   for atom in r.atoms():
     if atom.name.strip() in ["CA","P"]:
        r_atom=atom
+       atom_type=atom.name.strip()
   last_r_atom=None
   for atom in last_r.atoms():
     if atom.name.strip() in ["CA","P"]:
        last_r_atom=atom
+       last_atom_type=atom.name.strip()
   if not r_atom or not last_r_atom: return None
+  if last_atom_type != atom_type: return None # change of type
+  if distance_cutoff is None and use_default_distance_cutoff:
+     if atom_type=="P":
+        distance_cutoff=10.  # pretty sure these are not connected
+     else:
+        distance_cutoff=6.
+     
   dd=col(r_atom.xyz)-col(last_r_atom.xyz)
   if dd.length()<distance_cutoff:
     return True
@@ -217,8 +228,8 @@ def is_close_to(r,last_r,distance_cutoff=None):
     return False
 
 def split_model(model=None,hierarchy=None,verbose=False,info=None,
-     only_first_model=None,distance_cutoff=None,out=sys.stdout):
-
+     only_first_model=None,distance_cutoff=None,use_default_distance_cutoff=True,
+     out=sys.stdout):
   # XXX NOTE: this splits model at all icode residues (one model per residue)
   # The routine extract_segment below assumes that the residues in an individual
   #  model are sequential (no insertion codes)
@@ -254,11 +265,14 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       last_r=None
       is_linked=None
       for r in chain.residue_groups():
-        if distance_cutoff is not None:
-          is_linked=is_close_to(r,last_r,distance_cutoff=distance_cutoff)
+        if distance_cutoff is not None or use_default_distance_cutoff:
+          is_linked=is_close_to(r,last_r,distance_cutoff=distance_cutoff,
+             use_default_distance_cutoff=use_default_distance_cutoff)
 
         if (last_resseq is not None )  and (r.resseq_as_int()!=last_resseq+1
-           or ( (distance_cutoff is not None) and (not is_linked) )):
+           or ( 
+            (distance_cutoff is not None or use_default_distance_cutoff) and 
+            (not is_linked) )):
 
           # save and make new model
           new_model_info=model_info(hierarchy=new_hierarchy,info=deepcopy(info))
