@@ -313,11 +313,6 @@ master_phil = iotbx.phil.parse("""
                operator when evaluating NCS and choose the one that  \
                results in the most uniform density at NCS-related points.
 
-     n_ncs_test = 10
-       .type = int
-       .short_caption = N NCS test
-       .help =  Number of NCS operators to sample when identifying ncs id
-
      min_ncs_cc = 0.75
        .type = float
        .short_caption = Minimum NCS CC to keep it
@@ -3260,7 +3255,6 @@ def get_ncs_from_map(map_data=None,
       n_rescore=None,
       use_center_of_map_as_center=None,
       min_ncs_cc=None,
-      n_ncs_test=None,
       identify_ncs_id=None,
       ncs_obj_to_check=None,
       out=sys.stdout):
@@ -3318,7 +3312,6 @@ def get_ncs_from_map(map_data=None,
   for ncs_obj,ncs_type in zip(ncs_list,ncs_type_list):
     score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
        identify_ncs_id=identify_ncs_id,
-       n_ncs_test=n_ncs_test,
       sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
     if score is None:
       print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
@@ -3340,7 +3333,6 @@ def get_ncs_from_map(map_data=None,
     for orig_score,orig_cc_avg,ncs_obj,ncs_type in results_list[:n_rescore]:
       score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
         identify_ncs_id=identify_ncs_id,
-        n_ncs_test=n_ncs_test,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       if score is None:
         print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
@@ -3368,7 +3360,6 @@ def get_ncs_from_map(map_data=None,
        two_fold_along_x=two_fold_along_x,
        op_max=op_max,
        identify_ncs_id=identify_ncs_id,
-       n_ncs_test=n_ncs_test,
        ncs_obj_to_check=ncs_obj_to_check,
        helical_trans_z_angstrom=helical_trans_z_angstrom,out=out)
     print >>out,"New center: (%7.3f, %7.3f, %7.3f)" %(tuple(ncs_center))
@@ -3390,7 +3381,6 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      two_fold_along_x=None,
      op_max=None,
      identify_ncs_id=None,
-     n_ncs_test=None,
      ncs_obj_to_check=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
@@ -3428,7 +3418,6 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
       ncs_obj=ncs_list[0]
       score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
           identify_ncs_id=identify_ncs_id,
-          n_ncs_test=n_ncs_test,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       if best_score is None or score>best_score:
         best_cc_avg=cc_avg
@@ -3443,17 +3432,60 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
   return best_center,best_cc_avg,best_score,best_ncs_obj
 
 
+def score_ncs_in_map_point_group_symmetry(
+    map_data=None,ncs_object=None,sites_orth=None,
+     crystal_symmetry=None,out=sys.stdout):
+  ncs_group=ncs_object.ncs_groups()[0]
+  all_value_lists=[]
+  for c,t,r in zip(ncs_group.centers(),
+                       ncs_group.translations_orth(),
+                       ncs_group.rota_matrices()):
+    new_sites_cart=flex.vec3_double()
+    r_inv=r.inverse()
+    for site in sites_orth:
+      new_sites_cart.append(r_inv * (matrix.col(site) - t))
+    # get value at new_sites cart and make sure they are all the same...
+    new_sites_fract=crystal_symmetry.unit_cell().fractionalize(new_sites_cart)
+    values=flex.double()
+    for site_fract in new_sites_fract:
+      values.append(map_data.value_at_closest_grid_point(site_fract))
+    all_value_lists.append(values)
+  return get_cc_among_value_lists(all_value_lists)
+
+def get_cc_among_value_lists(all_value_lists):
+  a=all_value_lists[0]
+  cc_avg=0.
+  cc_low=None
+  cc_n=0.
+  for j in xrange(1,len(all_value_lists)):
+      b=all_value_lists[j]
+      cc=flex.linear_correlation(a,b).coefficient()
+      cc_avg+=cc
+      cc_n+=1.
+      if cc_low is None or cc<cc_low:
+        cc_low=cc
+  cc_avg=cc_avg/max(1.,cc_n)
+  if cc_n>0:
+    import math
+    return cc_low*math.sqrt(len(all_value_lists)),cc_avg
+  else:
+    return None,None
 
 def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
      identify_ncs_id=None,
-     n_ncs_test=None,
      crystal_symmetry=None,out=sys.stdout):
 
   ncs_group=ncs_object.ncs_groups()[0]
-  if identify_ncs_id and not ncs_group.is_point_group_symmetry():
-    identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
-  else:
-    identify_ncs_id_list=[None]
+  if (not identify_ncs_id) or ncs_group.is_point_group_symmetry():
+    return score_ncs_in_map_point_group_symmetry(
+     map_data=map_data,ncs_object=ncs_object,
+     sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+
+  # This version does not assume point-group symmetry: find the NCS
+  #  operator that maps each point on to all others the best, then save
+  #  that list of values
+
+  identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
 
@@ -3464,10 +3496,8 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
     for site_ncs_id in identify_ncs_id_list:  #last is real one
       if site_ncs_id is None:
         site_ncs_id=best_id
-        n_test=ncs_group.n_ncs_oper()
         real_thing=True
       else:
-        n_test=n_ncs_test
         real_thing=False
 
       if identify_ncs_id and site_ncs_id:
@@ -3476,9 +3506,9 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
       else:
         local_site=site
       new_sites_cart=flex.vec3_double()
-      for c,t,r in zip(ncs_group.centers()[:n_test],
-                       ncs_group.translations_orth()[:n_test],
-                       ncs_group.rota_matrices()[:n_test]):
+      for c,t,r in zip(ncs_group.centers(),
+                       ncs_group.translations_orth(),
+                       ncs_group.rota_matrices()):
         r_inv=r.inverse()
         new_sites_cart.append(r_inv * (matrix.col(local_site) - t))
       new_sites_fract=crystal_symmetry.unit_cell().fractionalize(
@@ -3487,28 +3517,23 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
       for site_fract in new_sites_fract:
         values.append(map_data.value_at_closest_grid_point(site_fract))
       score=values.standard_deviation_of_the_sample()
-      #if real_thing or (best_score is None or score < best_score):
-      if (best_score is None or score < best_score):
+      if real_thing or (best_score is None or score < best_score):
           best_score=score
           best_id=site_ncs_id
           best_values=values
-    all_value_lists.append(best_values) # list of values for this point+ncs
-  everything=flex.double()
-  individual=flex.double()
-  for ll in all_value_lists:
-    everything.extend(ll)
-    individual.append(ll.standard_deviation_of_the_sample())
-  sd_overall=everything.standard_deviation_of_the_sample()
-  sd_within=individual.min_max_mean().mean
-  normalized_sd_within=min(1.0,max(0.0,sd_within/max(1.e-10,sd_overall)))
-  cc_avg=(1-normalized_sd_within*normalized_sd_within) # approx value we would have obtained
+    all_value_lists.append(best_values)
 
-  if ncs_group.n_ncs_oper()>0:
-    import math
-    return cc_avg*math.sqrt(ncs_group.n_ncs_oper()),cc_avg
-  else:
-    return None,None
-
+  values_by_site_dict={} # all_value_lists[j][i] -> values_by_site_dict[i][j]
+  # there are sites_orth.size() values of j
+  # there are len(ncs_group_centers)==len(all_value_lists[0]) values of i
+  for i in xrange(len(all_value_lists[0])):
+    values_by_site_dict[i]=flex.double() # value_list[0][1]
+    for j in xrange(sites_orth.size()):
+      values_by_site_dict[i].append(all_value_lists[j][i])
+  new_all_values_lists=[] 
+  for i in xrange(len(all_value_lists[0])):
+    new_all_values_lists.append(values_by_site_dict[i])
+  return get_cc_among_value_lists(new_all_values_lists)
 
 def get_points_in_map(map_data,n=None,max_tries_ratio=100,crystal_symmetry=None):
   map_1d=map_data.as_1d()
@@ -4187,7 +4212,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       crystal_symmetry=crystal_symmetry,
       use_center_of_map_as_center=use_center_of_map,
       identify_ncs_id=params.reconstruction_symmetry.identify_ncs_id,
-      n_ncs_test=params.reconstruction_symmetry.n_ncs_test,
       min_ncs_cc=params.reconstruction_symmetry.min_ncs_cc,
       ncs_obj_to_check=ncs_obj_to_check,
       out=out
