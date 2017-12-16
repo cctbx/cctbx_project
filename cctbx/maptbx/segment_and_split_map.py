@@ -357,7 +357,7 @@ master_phil = iotbx.phil.parse("""
              helical symmetry
       .short_caption = Translation tolerance fractional
 
-    require_helical_or_point_group_symmetry = True
+    require_helical_or_point_group_symmetry = False
       .type = bool
       .help = normally helical or point-group symmetry (or none) is expected. \
              However in some cases (helical + rotational symmetry for \
@@ -5041,6 +5041,8 @@ def get_duplicates_and_ncs(
   identity_op=ncs_group.identity_op_id()
   print >>out,"Identity operator is %s" %(identity_op)
 
+  # 2017-12-16 Score poorly if it involves a cell translation
+
   if len(ncs_group.translations_orth())>1:
     # Skip if no ncs...
     for id in region_scattered_points_dict.keys():
@@ -5054,7 +5056,12 @@ def get_duplicates_and_ncs(
           n+=1
           new_xyz_cart=r * matrix.col(xyz_cart) + t
           new_xyz_frac=unit_cell.fractionalize(new_xyz_cart)
-          value=edited_mask.value_at_closest_grid_point(new_xyz_frac)
+          if new_xyz_frac[0]>=0 and new_xyz_frac[0]<=1 and \
+             new_xyz_frac[1]>=0 and new_xyz_frac[1]<=1 and \
+             new_xyz_frac[2]>=0 and new_xyz_frac[2]<=1:
+            value=edited_mask.value_at_closest_grid_point(new_xyz_frac)
+          else:
+            value=0  # value for nothing there 2017-12-16
           if value==id:
             duplicate_dict[id]+=1
             break # only count once
@@ -5144,6 +5151,7 @@ def get_ncs_equivalents(
     n_found=0
     for id1 in key_list:
       #     id matches id1 N=match_dict[id1]
+      #  2017-12-16 Do not include if there is a cell translation
 
       key,n=top_key(equiv_dict_ncs_copy_dict[id][id1]) # ncs_copy, n-overlap
       if n<min_coverage*region_scattered_points_dict[id].size():
@@ -5156,22 +5164,6 @@ def get_ncs_equivalents(
           break
 
   return equiv_dict_ncs_copy
-
-  # Skipping this below
-  print >>out,"\nSets of NCS-related regions"
-  keys=equiv_dict_ncs_copy.keys()
-  keys.sort()
-  used=[]
-  for id in keys:
-    #if id in used: continue
-    others=equiv_dict_ncs_copy[id].keys()
-    used+=others
-    print >>out,"%d: " %(id),
-    for id1 in others:
-      key,n=top_key(equiv_dict_ncs_copy_dict[id][id1])
-      print >>out,"%d:%d" %(id1,n),
-    print >>out
-  print >>out
 
 def get_overlap(l1,l2):
   overlap_list=[]
@@ -5708,7 +5700,6 @@ def add_neighbors(params,
   identity_op=ncs_group.identity_op_id()
   ncs_ops_used=[identity_op]
 
-  did_not_find_list=[]
   for id in selected_regions:
     related_regions=get_ncs_related_regions(
       ncs_group_obj=ncs_group_obj,
@@ -5719,14 +5710,7 @@ def add_neighbors(params,
       ncs_copy1=equiv_dict_ncs_copy.get(id,{}).get(id1,None)
       ncs_copy2=equiv_dict_ncs_copy.get(id1,{}).get(id,None)
       for a in [ncs_copy1,ncs_copy2]:
-        if a is None:
-          x=[id,id1]
-          x.sort()
-          x="%s_%s" %(tuple(x))
-          if not x in did_not_find_list:
-            did_not_find_list.append(x)
-        else:
-          if not a in ncs_ops_used:
+        if a is not None and not a in ncs_ops_used:
             ncs_ops_used.append(a)
   selected_regions.sort()
   ncs_ops_used.sort()
@@ -9768,7 +9752,7 @@ def run(args,
        out=out)
     if ncs_group_obj and ncs_group_obj.ncs_group_list: # ok
       break
-    elif ncs_obj and itry==0:# try again
+    elif ncs_obj and itry==0 and not is_iteration:# try again
       print >>out,"No NCS groups identified on first try...taking entire NCS AU."
       # Identify ncs au
       au_mask=get_one_au(tracking_data=tracking_data,

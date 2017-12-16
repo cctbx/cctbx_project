@@ -220,7 +220,7 @@ def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
         distance_cutoff=10.  # pretty sure these are not connected
      else:
         distance_cutoff=6.
-     
+
   dd=col(r_atom.xyz)-col(last_r_atom.xyz)
   if dd.length()<distance_cutoff:
     return True
@@ -270,8 +270,8 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
              use_default_distance_cutoff=use_default_distance_cutoff)
 
         if (last_resseq is not None )  and (r.resseq_as_int()!=last_resseq+1
-           or ( 
-            (distance_cutoff is not None or use_default_distance_cutoff) and 
+           or (
+            (distance_cutoff is not None or use_default_distance_cutoff) and
             (not is_linked) )):
 
           # save and make new model
