@@ -3840,7 +3840,7 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
   max_z=params.map_modification.restrict_z_turns_for_helical_symmetry*pitch
   print >>out,"Z-values restricted to +/- %7.1f A" %(max_z)
   print >>out,"\nRunning map-box once to get position of molecule, again to"+\
-      "apply\n Z restriction\n"
+      " apply\n Z restriction\n"
   return max_z
 
 
