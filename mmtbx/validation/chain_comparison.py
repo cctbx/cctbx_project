@@ -411,6 +411,8 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
         seq=seq.replace("X","")
       except Exception, e:
         seq=""
+      if not seq: continue
+
       similar_seq=seq_it_is_similar_to(
          seq=seq,unique_sequences=unique_sequences,
          min_similarity=min_similarity)  # check for similar...
