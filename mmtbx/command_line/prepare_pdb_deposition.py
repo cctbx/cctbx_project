@@ -1,13 +1,89 @@
-from __future__ import division
-import os
-import sys
+from __future__ import division, print_function
 
+import os, sys
+
+import iotbx.pdb
+import mmtbx.model
+
+from iotbx.file_reader import any_file
+from libtbx.data_manager import DataManager
+from libtbx.utils import multi_out, Sorry
+from mmtbx.programs import prepare_pdb_deposition
+
+# =============================================================================
+# roll into command-line parser
+def show_usage(logger=None):
+  if (logger is None):
+    logger = sys.stdout
+  print(prepare_pdb_deposition.description +
+        '\n mmtbx.prepare_pdb_depostion <model file> <sequence file>\n',
+        file=logger)
+
+# =============================================================================
+def run(args):
+
+  logger = multi_out() #logging.getLogger('main')
+  logger.register('stdout', sys.stdout)
+
+  # replace command-line parser
+  # ---------------------------------------------------------------------------
+  if (len(args) == 0):
+    show_usage(logger=logger)
+    sys.exit()
+
+  input_objects = iotbx.phil.process_command_line_with_files(
+    args=args,
+    master_phil=prepare_pdb_deposition.master_params,
+    pdb_file_def='input.model_file',
+    seq_file_def='input.sequence_file'
+  )
+
+  # get program settings
+  params = input_objects.work.extract()
+
+  # get files (will be handled by task.validate)
+  if (params.input.model_file is None):
+    raise Sorry('One model file is required.')
+  if (params.input.sequence_file is None):
+    raise Sorry('One sequence file is required.')
+
+  pdb_input = iotbx.pdb.input(params.input.model_file)
+  model = mmtbx.model.manager(model_input=pdb_input, log=logger)
+
+  sequence = any_file(params.input.sequence_file)
+  sequence.check_file_type('seq')
+  sequence = sequence.file_object
+
+  # construct data manager
+  data_manager = DataManager()
+  data_manager.add_model(params.input.model_file, model)
+  data_manager.add_sequence(params.input.sequence_file, sequence)
+
+  # ---------------------------------------------------------------------------
+  # start program
+  task = prepare_pdb_deposition.Program(data_manager, params, logger=logger)
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+# =============================================================================
+if __name__ == '__main__':
+  run(sys.argv[1:])
+
+
+
+
+
+# =============================================================================
+# old code
 import iotbx.phil
 from iotbx.file_reader import any_file
 from iotbx.pdb import mmcif
 from mmtbx.command_line import model_vs_sequence
 from iotbx.cif import category_sort_function
-
 
 master_phil = iotbx.phil.parse("""
 include scope mmtbx.command_line.cc_star.master_phil
@@ -41,7 +117,7 @@ include scope mmtbx.validation.sequence.master_phil
 """, process_includes=True)
 
 
-def run(args, out=None):
+def old_run(args, out=None):
   import iotbx.phil
   if (out is None) :
     out = sys.stdout
@@ -94,6 +170,3 @@ def run(args, out=None):
   with open(params.output.cif_file, "wb") as f:
     print >> f, cif_model
   return
-
-if __name__ == '__main__':
-  run(sys.argv[1:])
