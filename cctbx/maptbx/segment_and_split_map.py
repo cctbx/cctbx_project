@@ -5081,10 +5081,9 @@ def get_duplicates_and_ncs(
           n+=1
           new_xyz_cart=r * matrix.col(xyz_cart) + t
           new_xyz_frac=unit_cell.fractionalize(new_xyz_cart)
-          if tracking_data.params.crystal_info.use_sg_symmetry or \
-            ( new_xyz_frac[0]>=0 and new_xyz_frac[0]<=1 and \
+            if new_xyz_frac[0]>=0 and new_xyz_frac[0]<=1 and \
              new_xyz_frac[1]>=0 and new_xyz_frac[1]<=1 and \
-             new_xyz_frac[2]>=0 and new_xyz_frac[2]<=1):
+             new_xyz_frac[2]>=0 and new_xyz_frac[2]<=1:
             value=edited_mask.value_at_closest_grid_point(new_xyz_frac)
           else:
             value=0  # value for nothing there 2017-12-16
