@@ -78,7 +78,7 @@ class Program(ProgramTemplate):
 
     # write output file
     self.output_file = self.data_manager.get_default_model_name().split('.')[0]+\
-                       '_complete.cif'
+                       '.deposit.cif'
     print ('Writing mmCIF', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
     with open(self.output_file, 'wb') as f:
