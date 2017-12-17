@@ -3,7 +3,6 @@ from __future__ import division, print_function
 import iotbx.pdb
 import iotbx.phil
 import mmtbx.model
-from iotbx.cif import category_sort_function
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
