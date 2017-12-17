@@ -5065,7 +5065,8 @@ def get_duplicates_and_ncs(
   identity_op=ncs_group.identity_op_id()
   print >>out,"Identity operator is %s" %(identity_op)
 
-  # 2017-12-16 Score poorly if it involves a cell translation
+  # 2017-12-16 Score poorly if it involves a cell translation unless it
+  #  is a crystal
 
   if len(ncs_group.translations_orth())>1:
     # Skip if no ncs...
@@ -5080,9 +5081,10 @@ def get_duplicates_and_ncs(
           n+=1
           new_xyz_cart=r * matrix.col(xyz_cart) + t
           new_xyz_frac=unit_cell.fractionalize(new_xyz_cart)
-          if new_xyz_frac[0]>=0 and new_xyz_frac[0]<=1 and \
+          if tracking_data.params.crystal_info.use_sg_symmetry or \
+            ( new_xyz_frac[0]>=0 and new_xyz_frac[0]<=1 and \
              new_xyz_frac[1]>=0 and new_xyz_frac[1]<=1 and \
-             new_xyz_frac[2]>=0 and new_xyz_frac[2]<=1:
+             new_xyz_frac[2]>=0 and new_xyz_frac[2]<=1):
             value=edited_mask.value_at_closest_grid_point(new_xyz_frac)
           else:
             value=0  # value for nothing there 2017-12-16
