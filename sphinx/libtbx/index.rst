@@ -16,6 +16,7 @@ Submodules
 
     libtbx.phil
     libtbx.easy_mp
+    libtbx.program_template
 
 Basic functionality
 ===================

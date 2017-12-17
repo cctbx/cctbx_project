@@ -31,6 +31,7 @@ tst_list = (
   "$D/tst_topological_sort.py",
   "$D/clusterTests.py",
   "$D/tst_lzw.py",
+  "$d/tst_data_manager.py",
   )
 
 def run():
