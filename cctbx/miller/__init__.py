@@ -2149,13 +2149,15 @@ class array(set):
   def concatenate(self, other, assert_is_similar_symmetry=True):
     if([self.sigmas(), other.sigmas()].count(None) == 0):
       return self.set().concatenate(
-        other = other.set(),
+        other=other.set(),
         assert_is_similar_symmetry=assert_is_similar_symmetry).array(
-          data   = self.data().concatenate(other.data()),
-          sigmas = self.sigmas().concatenate(other.sigmas()))
+          data=self.data().concatenate(other.data()),
+          sigmas=self.sigmas().concatenate(other.sigmas()))
     else:
-      return self.set().concatenate(other = other.set()).array(
-        data = self.data().concatenate(other.data()))
+      return self.set().concatenate(
+        other=other.set(),
+        assert_is_similar_symmetry=assert_is_similar_symmetry).array(
+          data=self.data().concatenate(other.data()))
 
   def set(self,
         crystal_symmetry=Keep,
