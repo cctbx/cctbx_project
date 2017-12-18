@@ -1,17 +1,30 @@
 from __future__ import division
 from scitbx.array_family import flex
-import math
+import math, sys
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
+from xfel import compute_normalized_deviations, apply_sd_error_params
+
+from xfel.cxi.postrefinement_legacy_rs import unpack_base
+class sdfac_parameterization(unpack_base):
+  def __getattr__(YY,item):
+    if item=="SDFAC" : return YY.reference[0]
+    if item=="SDB"   : return YY.reference[1]
+    if item=="SDADD" : return YY.reference[2]
+    if item=="SDFACSQ" : return YY.reference[0]**2
+    if item=="SDBSQ"   : return YY.reference[1]**2
+    if item=="SDADDSQ" : return YY.reference[2]**2
+    raise AttributeError(item)
+
+  def show(YY, out):
+    print >> out, "sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(YY.SDFAC, YY.SDB, YY.SDADD)
 
 from scitbx.simplex import simplex_opt
 class simplex_minimizer(object):
   """Class for refining sdfac, sdb and sdadd"""
-  def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log=None):
+  def __init__(self, values, parameterization, data, indices, bins, seed = None, log=None):
     """
-    @param sdfac Initial value for sdfac
-    @param sdfac Initial value for sdfac
-    @param sdfac Initial value for sdfac
+    @param values parameterization of the SD terms
     @param data ISIGI dictionary of unmerged intensities
     @param indices array of miller indices to refine against
     @param bins array of flex.bool object specifying the bins to use to calculate the functional
@@ -23,8 +36,9 @@ class simplex_minimizer(object):
     self.data = data
     self.intensity_bin_selections = bins
     self.indices = indices
+    self.parameterization = parameterization
     self.n = 3
-    self.x = flex.double([sdfac, sdb, sdadd])
+    self.x = flex.double([values.SDFAC, values.SDB, values.SDADD])
     self.starting_simplex = []
     if seed is None:
       random_func = flex.random_double
@@ -46,14 +60,13 @@ class simplex_minimizer(object):
     """ Compute the functional by first applying the current values for the sd parameters
     to the input data, then computing the complete set of normalized deviations and finally
     using those normalized deviations to compute the functional."""
-    from xfel import compute_normalized_deviations, apply_sd_error_params
 
-    sdfac, sdb, sdadd = vector
+    values = self.parameterization(vector)
 
-    if sdfac < 0 or sdb < 0 or sdadd < 0:
+    if values.SDFAC < 0 or values.SDB < 0 or values.SDADD < 0:
       f = 1e6
     else:
-      data = apply_sd_error_params(self.data, sdfac, sdb, sdadd)
+      data = self.apply_sd_error_params(self.data, values)
       all_sigmas_normalized = compute_normalized_deviations(data, self.indices)
 
       f = 0
@@ -66,10 +79,21 @@ class simplex_minimizer(object):
         # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
         f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
-    print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+    print >> self.log, "f: % 12.1f,"%f,
+    values.show(self.log)
     return f
 
+  def apply_sd_error_params(self, data, values):
+    return apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD)
+
+  def get_refined_params(self):
+    return self.parameterization(self.x)
+
 class sdfac_refine(error_modeler_base):
+  def __init__(self, scaler):
+    error_modeler_base.__init__(self, scaler)
+    self.parameterization = sdfac_parameterization
+
   def get_overall_correlation_flex (self, data_a, data_b) :
     """
     Correlate any two sets of data.
@@ -177,12 +201,7 @@ class sdfac_refine(error_modeler_base):
 
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
     sdfac = slope
-
-    if self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'evans2011':
-      sdadd = offset
-    elif self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'squared':
-      sdadd = math.sqrt(offset)
-
+    sdadd = offset
     sdb = math.sqrt(sdadd)
 
     return sdfac, sdb, sdadd
@@ -227,8 +246,8 @@ class sdfac_refine(error_modeler_base):
 
     return sels, binned_intensities
 
-  def run_minimzer(self, sdfac, sdb, sdadd, sels, **kwargs):
-    return simplex_minimizer(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log)
+  def run_minimzer(self, values, sels, **kwargs):
+    return simplex_minimizer(values, self.parameterization, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log)
 
   def adjust_errors(self):
     """
@@ -236,21 +255,20 @@ class sdfac_refine(error_modeler_base):
     """
     print >> self.log, "Starting adjust_errors"
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
-    sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
+    values = self.parameterization(flex.double(self.get_initial_sdparams_estimates()))
 
-    print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
-
-    from xfel import compute_normalized_deviations, apply_sd_error_params
-
+    print >> self.log, "Initial estimates:",
+    values.show(self.log)
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
-    minimizer = self.run_minimzer(sdfac, sdb, sdadd, sels, seed=seed)
-    sdfac, sdb, sdadd = minimizer.x
-    print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
+    minimizer = self.run_minimzer(values, sels, seed=seed)
+    values = minimizer.get_refined_params()
+    print >> self.log, "Final",
+    values.show(self.log)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 1"
-    self.scaler.ISIGI = apply_sd_error_params(self.scaler.ISIGI, sdfac, sdb, sdadd)
+    self.scaler.ISIGI = minimizer.apply_sd_error_params(self.scaler.ISIGI, values)
 
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
@@ -322,23 +340,19 @@ def setup_isigi_stats(ISIGI, indices):
 
 class simplex_minimizer_refltable(simplex_minimizer):
   """Class for refining sdfac, sdb and sdadd"""
-  def __init__(self, sdfac, sdb, sdadd, data, indices, bins, seed = None, log = None, squared = False):
-    self.squared = squared
-    super(simplex_minimizer_refltable, self).__init__(sdfac, sdb, sdadd, data, indices, bins, seed, log)
 
   def target(self, vector):
     """ Compute the functional by first applying the current values for the sd parameters
     to the input data, then computing the complete set of normalized deviations and finally
     using those normalized deviations to compute the functional."""
-    from xfel import compute_normalized_deviations, apply_sd_error_params
+    values = self.parameterization(vector)
 
-    sdfac, sdb, sdadd = vector
-
-    if sdfac < 0 or sdb < 0 or sdadd < 0:
+    if values.SDFAC < 0 or values.SDB < 0 or values.SDADD < 0:
       f = 1e6
     else:
       orig_isigi = self.data['isigi'] * 1
-      apply_sd_error_params(self.data, sdfac, sdb, sdadd, self.squared)
+
+      self.apply_sd_error_params(self.data, values)
       all_sigmas_normalized = compute_normalized_deviations(self.data, self.indices)
       self.data['isigi'] = orig_isigi
 
@@ -352,11 +366,12 @@ class simplex_minimizer_refltable(simplex_minimizer):
         # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
         f += w * ((1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))**2)
 
-    print >> self.log, "f: % 12.1f, sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(f, sdfac, sdb, sdadd)
+    print >> self.log, "f: % 12.1f,"%f,
+    values.show(self.log)
     return f
 
-  def get_refined_params(self):
-    return self.x
+  def apply_sd_error_params(self, data, values):
+    apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD, False)
 
 class sdfac_refine_refltable(sdfac_refine):
   def get_binned_intensities(self, n_bins=100):
@@ -391,8 +406,8 @@ class sdfac_refine_refltable(sdfac_refine):
 
     return sels, binned_intensities
 
-  def run_minimzer(self, sdfac, sdb, sdadd, sels, **kwargs):
-   return simplex_minimizer_refltable(sdfac, sdb, sdadd, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log, kwargs['squared'])
+  def run_minimzer(self, values, sels, **kwargs):
+   return simplex_minimizer_refltable(values, self.parameterization, self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, kwargs['seed'], self.log)
 
   def adjust_errors(self):
     """
@@ -400,25 +415,20 @@ class sdfac_refine_refltable(sdfac_refine):
     """
     print >> self.log, "Starting adjust_errors"
     print >> self.log, "Computing initial estimates of sdfac, sdb and sdadd"
-    sdfac, sdb, sdadd = self.get_initial_sdparams_estimates()
+    values = self.parameterization(flex.double(self.get_initial_sdparams_estimates()))
 
-    assert self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation in ['evans2011', 'squared']
-    squared = self.scaler.params.raw_data.error_models.sdfac_refine.sigma_formulation == 'squared'
-
-    print >> self.log, "Initial estimates:", sdfac, sdb, sdadd
-
-    from xfel import compute_normalized_deviations, apply_sd_error_params
-
+    print >> self.log, "Initial estimates:",
+    values.show(self.log)
     print >> self.log, "Refining error correction parameters sdfac, sdb, and sdadd"
     sels, binned_intensities = self.get_binned_intensities()
     seed = self.scaler.params.raw_data.error_models.sdfac_refine.random_seed
-    minimizer = self.run_minimzer(sdfac, sdb, sdadd, sels, seed=seed, squared=squared)
-
-    sdfac, sdb, sdadd = minimizer.get_refined_params()
-    print >> self.log, "Final sdadd: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(sdfac, sdb, sdadd)
+    minimizer = self.run_minimzer(values, sels, seed=seed)
+    values = minimizer.get_refined_params()
+    print >> self.log, "Final",
+    values.show(self.log)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 1"
-    apply_sd_error_params(self.scaler.ISIGI, sdfac, sdb, sdadd, squared)
+    minimizer.apply_sd_error_params(self.scaler.ISIGI, values)
 
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)

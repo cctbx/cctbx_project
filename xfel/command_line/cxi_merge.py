@@ -167,10 +167,6 @@ raw_data {
         .help = Random seed. May be int or None. Only used for the simplex minimizer
         .type = int
         .expert_level = 1
-      sigma_formulation = *evans2011 squared
-        .type = choice
-        .help = Which formulation of inflated error to use.  Evans 2011, or a version where the Sdfac \
-                terms are squared.
       minimizer = *simplex lbfgs
         .type = choice
         .help = Which minimizer to use while refining the Sdfac terms

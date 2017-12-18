@@ -75,6 +75,8 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
    Squared not only uses the squared formulation of sigma', but also fixes 2 bugs:
    1) Use meanI not meanIprime
    2) When returning isigi, don't multiply by slope
+
+   If using squared, it is assumed that sdfac, sdb and sdadd have already been squared
    */
   SCITBX_ASSERT(ISIGI.contains("scaled_intensity"));
   SCITBX_ASSERT(ISIGI.contains("isigi"));
@@ -107,7 +109,7 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
     if (squared_params) {
       // compute meanI, which is the mean of all observations of this hkl
       double meanI = isum[miller_id[i]] / n_refl[miller_id[i]];
-      tmp = std::pow(sigmas[i],2) + std::pow(sdb,2) * meanI + std::pow(sdadd,2) * std::pow(meanI,2);
+      tmp = std::pow(sigmas[i],2) + sdb * meanI + sdadd * std::pow(meanI,2);
     }
     else {
       // compute meanIprime, which for each observation, is the mean of all other observations of this hkl
@@ -121,7 +123,7 @@ apply_sd_error_params(reflection_table ISIGI, const double sdfac, const double s
       tmp = minimum;
 
     if (squared_params) {
-      sigma_corrected = std::sqrt(std::pow(sdfac,2) * tmp);
+      sigma_corrected = std::sqrt(sdfac * tmp);
       SCITBX_ASSERT(sigma_corrected != 0.0);
       isigi[i] = scaled_intensity[i] / sigma_corrected;
     }
