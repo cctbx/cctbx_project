@@ -434,6 +434,15 @@ def get_average_direction(diffs=None, i=None,j=None):
     average_direction/=nn
     return average_direction.normalize()
 
+def get_chain_ids(hierarchy):
+  chain_ids=[]
+  if not hierarchy:
+    return chain_ids 
+  for model in hierarchy.models():
+    for chain in model.chains():
+      chain_ids.append(chain.id)
+  return chain_ids
+
 def get_chain_id(hierarchy):
   if not hierarchy:
     return None

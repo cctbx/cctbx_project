@@ -382,17 +382,111 @@ def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0):
   from phenix.loop_lib.sequence_similarity import sequence_similarity
   for s in unique_sequences:
     sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
-    if sim > min_similarity:
+    if sim >= min_similarity:
       return s # return the one it is similar to
   return None
+
+def extract_unique_part_of_sequences(sequence_list=None,
+    allow_mismatch_in_number_of_copies=True,
+    min_similarity=1.0,out=sys.stdout):
+
+  unique_sequences=[]
+  best_chain_copies_dict={}
+
+  unique_sequence_dict={}  # unique_sequence_dict[seq] is unique sequence sim
+                           # to seq
+
+  for seq in sequence_list:
+      if not seq: continue
+      similar_seq=seq_it_is_similar_to(
+         seq=seq,unique_sequences=unique_sequences,
+         min_similarity=min_similarity)  # check for similar...
+      if similar_seq:
+        seq=similar_seq
+        unique_sequence_dict[seq]=similar_seq
+      else:
+        unique_sequences.append(seq)
+        unique_sequence_dict[seq]=seq
+      if not seq in best_chain_copies_dict:
+        best_chain_copies_dict[seq]=0
+      best_chain_copies_dict[seq]+=1
+
+  copies_list=[]
+  for seq in unique_sequences:
+    copies_found=best_chain_copies_dict[seq]
+    if not copies_found in copies_list: copies_list.append(copies_found)
+  copies_list.sort()
+  print >>out,"Numbers of copies of sequences: %s" %(str(copies_list))
+  copies_base=copies_list[0]
+  all_ok=True
+  copies_in_unique={}
+  if len(copies_list)==1:
+    print >>out,"Number of copies of all sequences is: %s" %(copies_base)
+    for seq in unique_sequences:
+      copies_in_unique[seq]=1 # unique set has 1 of this one sequence
+    return copies_in_unique,copies_base,unique_sequence_dict
+  else:
+    for cf in copies_list[1:]:
+      if cf//copies_base != cf/copies_base:  # not integral
+        all_ok=False
+        break
+    if all_ok:
+      print >>out,"Copies are all multiples of %s...taking " %(
+          copies_base)
+      for seq in unique_sequences:
+        copies_found=best_chain_copies_dict[seq]
+        copies_in_unique[seq]=copies_found//copies_base
+      return copies_in_unique,copies_base,unique_sequence_dict
+    else:
+      print >>out,"Copies are not all multiples of %s...taking all" %(
+          copies_base)
+      for seq in unique_sequences:
+        copies_in_unique[seq]=best_chain_copies_dict[seq]
+      return copies_in_unique,copies_base,unique_sequence_dict
+
+def get_matching_ids(unique_seq=None,sequences=None,
+      chains=None,unique_sequence_dict=None):
+
+    matching_ids=[]
+    matching_chains=[]
+    for s1,c1 in zip(sequences,chains):
+      if unique_sequence_dict[s1]==unique_seq:
+          matching_ids.append(c1.id)
+          matching_chains.append(c1)
+    return matching_ids,matching_chains
+
+def get_sorted_matching_chains(
+   chains=None,
+   target_centroid_list=None):
+  sort_list=[]
+  for chain in chains:
+    if target_centroid_list:
+        xx=flex.vec3_double()
+        xx.append(chain.atoms().extract_xyz().mean())
+        dist=xx.min_distance_between_any_pair(target_centroid_list)
+    else:
+        dist=0.
+    sort_list.append([dist,chain])
+  sort_list.sort()
+  sorted_chains=[]
+  sorted_distances=[]
+  for dist,chain in sort_list:
+    sorted_chains.append(chain)
+    sorted_distances.append(dist)
+  return sorted_chains,sorted_distances
 
 def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
     min_similarity=1.0,out=sys.stdout):
+
+  # Container for unique chains:
+
   new_hierarchy=iotbx.pdb.input(
     source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
   mm=iotbx.pdb.hierarchy.model()
   new_hierarchy.append_model(mm)
+
+  # Target location:
 
   if target_ph:
     target_centroid_list=flex.vec3_double()
@@ -400,67 +494,59 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
       target_centroid_list.append(model.atoms().extract_xyz().mean())
   else:
     target_centroid_list=None
-  unique_sequences=[]
-  best_chain_dict={}
-  best_chain_copies_dict={}
-  best_chain_dist_dict={}
+
+  # Get unique set of sequences
+  # Also save all the chains associated with each one
+
+  sequences=[]
+  chains=[]
   for model in ph.models()[:1]:
     for chain in model.chains():
       try:
         seq=chain.as_padded_sequence()  # has XXX for missing residues
         seq=seq.replace("X","")
+        sequences.append(seq) 
+        chains.append(chain)
       except Exception, e:
-        seq=""
-      if not seq: continue
+        pass
+  copies_in_unique,base_copies,unique_sequence_dict=\
+        extract_unique_part_of_sequences(
+    sequence_list=sequences,
+    allow_mismatch_in_number_of_copies=allow_mismatch_in_number_of_copies,
+    min_similarity=min_similarity,out=out)
 
-      similar_seq=seq_it_is_similar_to(
-         seq=seq,unique_sequences=unique_sequences,
-         min_similarity=min_similarity)  # check for similar...
-      if similar_seq:
-        seq=similar_seq
-      else:
-        unique_sequences.append(seq)
+  sequences_matching_unique_dict={}
+  for seq in sequences:
+    unique_seq=unique_sequence_dict[seq]
+    if not unique_seq in sequences_matching_unique_dict.keys():
+      sequences_matching_unique_dict[unique_seq]=[]
+    sequences_matching_unique_dict[unique_seq].append(seq)
 
-      if target_centroid_list:
-        xx=flex.vec3_double()
-        xx.append(chain.atoms().extract_xyz().mean())
-        dist=xx.min_distance_between_any_pair(target_centroid_list)
-      else:
-        dist=0.
-      best_dist=best_chain_dist_dict.get(seq)
-      if not seq in best_chain_copies_dict:
-        best_chain_copies_dict[seq]=0
-      best_chain_copies_dict[seq]+=1
+  # Now we are going to return the unique set...if choice of which copies,
+  #  take those closest to the target (in that order)
 
-      if best_dist is None or dist<best_dist:
-        best_chain_dist_dict[seq]=dist
-        best_chain_dict[seq]=chain
+  unique_chains=[]
 
-  copies_found=None
-  all_ok=True
-  for seq in best_chain_dist_dict.keys():
-    chain=best_chain_dict[seq]
-    if copies_found is None:
-      copies_found=best_chain_copies_dict[seq]
-      print >>out,"Number of copies of chain %s: %s" %(chain.id,copies_found)
-    if not chain:
-      print >>out,"Missing chain for sequence %s" %(seq)
-    else:
+  print >>out,"Unique set of sequences. Copies of the unique set: %s" %(
+      base_copies)
+  print >>out,"Copies in unique set ID  sequence"
+  for unique_seq in copies_in_unique.keys():
+    matching_ids,matching_chains=get_matching_ids(
+      unique_seq=unique_seq,sequences=sequences,chains=chains,
+      unique_sequence_dict=unique_sequence_dict)
+    print >>out," %s    %s    %s " %(
+      copies_in_unique[unique_seq]," ".join(matching_ids),unique_seq)
+    sorted_matching_chains,sorted_matching_distances=get_sorted_matching_chains(
+      chains=matching_chains,
+      target_centroid_list=target_centroid_list)
+    for chain,dist in zip(
+        sorted_matching_chains[:copies_in_unique[unique_seq]],
+        sorted_matching_distances[:copies_in_unique[unique_seq]]):
       mm.append_chain(chain.detached_copy())
       print >>out, "Adding chain %s: %s (%s): %7.2f" %(
-         chain.id,seq,str(chain.atoms().extract_xyz()[0]),
-         best_chain_dist_dict[seq])
-
-    if best_chain_copies_dict[seq] != copies_found:
-      print >>out,"Mismatch in number of copies for chain %s: %s vs %s " %(
-        chain.id,best_chain_copies_dict[seq],copies_found)
-      all_ok=False
-  if not all_ok:
-    print >>out,"Selection of unique part of hierarchy failed...taking all"
-    return ph
-  else:
-    print >>out,"Selection of unique part of hierarchy successful"
-    return new_hierarchy
+         chain.id,unique_seq,str(chain.atoms().extract_xyz()[0]),
+         dist)
+  return new_hierarchy
 
 def run_all(params=None,out=sys.stdout):
   if params.control.verbose:

@@ -554,7 +554,7 @@ Residues far from target:    2  RMSD:   3.31"""
 
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
+    print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
 
   from libtbx.test_utils import approx_equal
@@ -611,8 +611,167 @@ SEQ SCORE is fraction (close and matching target sequence).
     raise AssertionError, "FAILED"
   print "OK"
 
+def tst_04():
+    print "Testing choosing unique sequences"
+
+    from mmtbx.validation.chain_comparison import \
+       extract_unique_part_of_sequences as eups
+
+    seqs=[ "abcdefgh","klafmalsd"]
+    print 
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+
+    seqs=[ "abcdefgh",
+           "klafmalsd",
+           "klafmalsd"]
+    print 
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+ 
+    seqs=[ 
+        "abcdefgh",
+        "klafmalsd",
+         ]
+    print 
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+
+    seqs=[ 
+        "abcdefgh",
+        "klafmalsd",
+        "abcdefgh",
+        "klafmalsd",
+         ]
+    print 
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+
+    seqs=[ 
+        "abcdefgh",
+        "klafmalsd",
+        "klafmalsd",
+        "abcdefgh",
+        "klafmalsd",
+        "klafmalsd",
+         ]
+    print 
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+
+
+target="""
+CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4
+ATOM      9  CA  LYS U   4     109.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP U   5     109.182  21.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL U   6     110.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET U   7     108.936  26.802  39.218  1.00 45.06      P9
+"""
+
+modela="""
+CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4
+ATOM      9  CA  LYS A   4     109.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP A   5     109.182  21.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL A   6     110.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET A   7     108.936  26.802  39.218  1.00 45.06      P9
+"""
+modelb="""
+ATOM     40  CA  SER B   8     205.419  28.211  39.036  1.00 41.81      P9
+ATOM     46  CA  THR B   9     203.906  27.616  35.600  1.00 37.71      P9
+ATOM     53  CA  LYS B  10     203.277  30.858  33.696  1.00 33.20      P9
+ATOM     62  CA  TYR B  11     200.215  31.269  31.467  1.00 29.03      P9
+"""
+
+modelaa="""
+ATOM      9  CA  LYS A   4     109.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP A   5     109.182  21.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL A   6     110.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET A   7     108.936  26.802  39.218  1.00 45.06      P9
+ATOM      9  CA  LYS C  14     209.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP C  15     209.182  21.755  43.110  1.00 47.90      P9
+ATOM     15  CA  VAL C  16     210.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET C  17     208.936  26.802  39.218  1.00 45.06      P9
+"""
+
+modelaab="""
+ATOM      9  CA  LYS A   4     109.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP A   5     109.182  21.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL A   6     110.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET A   7     108.936  26.802  39.218  1.00 45.06      P9
+ATOM      9  CA  LYS C  14     209.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP C  15     209.182  21.755  43.110  1.00 47.90      P9
+ATOM     15  CA  VAL C  16     210.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET C  17     208.936  26.802  39.218  1.00 45.06      P9
+ATOM     40  CA  SER B   8     205.419  28.211  39.036  1.00 41.81      P9
+ATOM     46  CA  THR B   9     203.906  27.616  35.600  1.00 37.71      P9
+ATOM     53  CA  LYS B  10     203.277  30.858  33.696  1.00 33.20      P9
+ATOM     62  CA  TYR B  11     200.215  31.269  31.467  1.00 29.03      P9
+"""
+
+modelaabaab="""
+ATOM      9  CA  LYS A   4     109.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP A   5     109.182  21.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL A   6     110.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET A   7     108.936  26.802  39.218  1.00 45.06      P9
+ATOM      9  CA  LYS C  14     209.976  18.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP C  15     209.182  21.755  43.110  1.00 47.90      P9
+ATOM     15  CA  VAL C  16     210.823  23.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET C  17     208.936  26.802  39.218  1.00 45.06      P9
+ATOM     40  CA  SER B   8     205.419  28.211  39.036  1.00 41.81      P9
+ATOM     46  CA  THR B   9     203.906  27.616  35.600  1.00 37.71      P9
+ATOM     53  CA  LYS B  10     203.277  30.858  33.696  1.00 33.20      P9
+ATOM     62  CA  TYR B  11     200.215  31.269  31.467  1.00 29.03      P9
+ATOM      9  CA  LYS F   4     109.976 118.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP F   5     109.182 121.755  43.110  1.00 47.90      P9
+ATOM     25  CA  VAL F   6     110.823 123.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET F   7     108.936 126.802  39.218  1.00 45.06      P9
+ATOM      9  CA  LYS H  14     209.976 118.221  44.266  1.00 48.61      P9
+ATOM     11  CA  TRP H  15     209.182 121.755  43.110  1.00 47.90      P9
+ATOM     15  CA  VAL H  16     210.823 123.654  40.250  1.00 46.89      P9
+ATOM     32  CA  MET H  17     208.936 126.802  39.218  1.00 45.06      P9
+ATOM     40  CA  SER G   8     205.419 128.211  39.036  1.00 41.81      P9
+ATOM     46  CA  THR G   9     203.906 127.616  35.600  1.00 37.71      P9
+ATOM     53  CA  LYS G  10     203.277 130.858  33.696  1.00 33.20      P9
+ATOM     62  CA  TYR G  11     200.215 131.269  31.467  1.00 29.03      P9
+"""
+
+def tst_05():
+  from mmtbx.validation.chain_comparison import \
+       extract_unique_part_of_hierarchy as euph
+  from mmtbx.secondary_structure.find_ss_from_ca import get_chain_ids
+
+  print "Testing extraction of unique part and unique matching"
+  for m in [modela,modelb,modelaa,modelaab,modelaabaab]:
+    import iotbx.pdb
+    from cctbx.array_family import flex
+    model_pdb_inp=iotbx.pdb.input(source_info='model',
+         lines=flex.split_lines(m))
+    crystal_symmetry=model_pdb_inp.crystal_symmetry()
+    model_hierarchy=model_pdb_inp.construct_hierarchy()
+   
+    print "\nExtraction of unique MODEL with %s residues" %(
+       model_hierarchy.overall_counts().n_residues)
+    query_hierarchy=iotbx.pdb.input(source_info='query',
+         lines=flex.split_lines(target)).construct_hierarchy()
+    unique_hierarchy=euph(model_hierarchy,target_ph=query_hierarchy)
+    print "FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy)))
+    
+
+
 
 if __name__=="__main__":
   tst_01()
   tst_02()
   tst_03()
+  tst_05()
+  tst_04()
