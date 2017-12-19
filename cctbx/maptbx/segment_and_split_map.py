@@ -686,7 +686,7 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Region weight default
        .help = Region_weight adjusted to be region_weight_default\
-               if no informatino available
+               if no information available
 
      target_b_iso_ratio = 5.9
        .type = float
