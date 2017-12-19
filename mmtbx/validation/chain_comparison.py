@@ -505,7 +505,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
       try:
         seq=chain.as_padded_sequence()  # has XXX for missing residues
         seq=seq.replace("X","")
-        sequences.append(seq) 
+        sequences.append(seq)
         chains.append(chain)
       except Exception, e:
         pass
