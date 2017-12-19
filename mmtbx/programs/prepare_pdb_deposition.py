@@ -1,5 +1,7 @@
 from __future__ import division, print_function
 
+import os
+
 import iotbx.pdb
 import iotbx.phil
 import mmtbx.model
@@ -77,8 +79,8 @@ class Program(ProgramTemplate):
     self.cif_model = model.model_as_mmcif(additional_blocks=self.cif_blocks)
 
     # write output file
-    self.output_file = self.data_manager.get_default_model_name().split('.')[0]+\
-                       '.deposit.cif'
+    self.output_file = os.path.splitext(
+      self.data_manager.get_default_model_name())[0] + '.deposit.cif'
     print ('Writing mmCIF', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
     with open(self.output_file, 'wb') as f:
