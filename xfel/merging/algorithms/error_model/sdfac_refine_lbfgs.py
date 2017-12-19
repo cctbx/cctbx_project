@@ -19,10 +19,6 @@ def finite_difference(target, values, p):
   return finite_g
 
 class sdfac_refine_refltable_lbfgs(sdfac_refine_refltable):
-  def __init__(self, scaler):
-    sdfac_refine_refltable.__init__(self, scaler)
-    self.parameterization = sdfac_sq_parameterization
-
   def get_initial_sdparams_estimates(self):
     sdfac, sdb, sdadd = super(sdfac_refine_refltable_lbfgs, self).get_initial_sdparams_estimates()
     sdadd = math.sqrt(sdadd)
@@ -30,31 +26,10 @@ class sdfac_refine_refltable_lbfgs(sdfac_refine_refltable):
     return sdfac, sdb, sdadd
 
   def run_minimzer(self, values, sels, **kwargs):
-    # base class uses non-squared values, but lbfgs version refines the squares.
-    values = self.parameterization(values.reference**2)
     refinery = sdfac_refinery(self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, self.log)
     return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log)
 
 from libtbx import adopt_init_args
-from xfel.cxi.postrefinement_legacy_rs import unpack_base
-class sdfac_sq_parameterization(unpack_base):
-  def __getattr__(YY,item):
-    try:
-      if item=="SDFAC" : return math.sqrt(YY.reference[0])
-      if item=="SDB"   : return math.sqrt(YY.reference[1])
-      if item=="SDADD" : return math.sqrt(YY.reference[2])
-    except ValueError:
-      return float("nan")
-    if item=="SDFACSQ" : return YY.reference[0]
-    if item=="SDBSQ"   : return YY.reference[1]
-    if item=="SDADDSQ" : return YY.reference[2]
-    raise AttributeError(item)
-
-  def show(YY, out):
-    print >> out, "Sdfac^2: % 15.12f"%YY.SDFACSQ,
-    print >> out, "SdB^2: % 15.12f"%YY.SDBSQ,
-    print >> out, "Sdadd^2: % 15.12f"%YY.SDADDSQ
-
 class sdfac_refinery(object):
   def __init__(self, ISIGI, indices, bins, log):
     adopt_init_args(self, locals())
@@ -136,21 +111,24 @@ class sdfac_refinery(object):
     sigma = self.ISIGI['scaled_intensity'] / self.ISIGI['isigi']
     imean = self.ISIGI['mean_scaled_intensity']
 
-    dsigmasq_dsdfacsq = sigma**2 + values.SDBSQ * imean + values.SDADDSQ * imean**2
+    dsigmasq_dsdfac = 2 * values.SDFAC
+    dsigmasq_dsdfacsq = (sigma**2 + values.SDBSQ * imean + values.SDADDSQ * imean**2) * dsigmasq_dsdfac
 
     return self.df_dpsq(values, all_sigmas_normalized, sigma_prime, dsigmasq_dsdfacsq, 0)
 
   def df_dsdbsq(self, values, all_sigmas_normalized, sigma_prime):
     imean = self.ISIGI['mean_scaled_intensity']
 
-    dsigmasq_dsddbsq = values.SDFACSQ * imean
+    dsigmasq_dsdb = 2 * values.SDB
+    dsigmasq_dsdbsq = values.SDFACSQ * imean * dsigmasq_dsdb
 
-    return self.df_dpsq(values, all_sigmas_normalized, sigma_prime, dsigmasq_dsddbsq, 1)
+    return self.df_dpsq(values, all_sigmas_normalized, sigma_prime, dsigmasq_dsdbsq, 1)
 
   def df_dsaddbsq(self, values, all_sigmas_normalized, sigma_prime):
     imean = self.ISIGI['mean_scaled_intensity']
 
-    dsigmasq_dsdaddsq = values.SDFACSQ * imean**2
+    dsigmasq_dsdadd = 2 * values.SDADD
+    dsigmasq_dsdaddsq = values.SDFACSQ * imean**2 * dsigmasq_dsdadd
 
     return self.df_dpsq(values, all_sigmas_normalized, sigma_prime, dsigmasq_dsdaddsq, 2)
 
