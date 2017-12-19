@@ -90,13 +90,6 @@ master_phil = iotbx.phil.parse("""
                 magnification is applied.
       .short_caption = Magnification NCS file
 
-    sharpening_map_file = sharpening_map.ccp4
-      .type = path
-      .help = Input map file with sharpening applied.  Only written if \
-                sharpening is applied.
-      .short_caption = Sharpened map file
-
-
     shifted_map_file = shifted_map.ccp4
       .type = path
       .help = Input map file shifted to new origin.
@@ -4130,7 +4123,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
     if params.map_modification.soft_mask:
       mask_data,map_data,half_map_data_list,\
-      dummy_solvent_fraction,smoothed_mask_data,\
+      soft_mask_solvent_fraction,smoothed_mask_data,\
       original_box_map_data=\
        get_and_apply_soft_mask_to_maps(
         resolution=params.crystal_info.resolution,
@@ -4139,6 +4132,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         map_data=map_data,crystal_symmetry=crystal_symmetry,
         half_map_data_list=half_map_data_list,
         out=out)
+      print >>out,"\nSolvent fraction from soft mask procedure: %7.2f\n" %(
+        soft_mask_solvent_fraction)
+      if not params.crystal_info.solvent_content:
+        print >>out,"(Not using this solvent fraction)"
 
 
   else:  # shift if necessary...
@@ -4850,8 +4847,19 @@ def get_solvent_fraction(params,
   solvent_fraction=1.-(volume_of_molecules/map_volume)
   solvent_fraction=max(0.001,min(0.999,solvent_fraction))
   if solvent_fraction==0.001 or solvent_fraction==0.999:
-    print >>out,"NOTE: solvent fraction very unlikely..."+\
-       "please check ncs_copies and sequence "
+    print >>out,"NOTE: solvent fraction of %7.2f very unlikely..." %(
+        solvent_fraction) + "please check ncs_copies and sequence "
+  print >>out,"Solvent content from composition: %7.2f" %(solvent_fraction)
+
+  if params.crystal_info.solvent_content:
+    solvent_fraction=params.crystal_info.solvent_content
+    if params.map_modification.soft_mask:
+      print >>out,"Solvent content from soft_mask procedure: %7.2f" %(
+        params.crystal_info.solvent_content)
+    else:
+      print >>out,"Solvent content from parameters: %7.2f" %(
+        params.crystal_info.solvent_content)
+    print >>out,"Solvent fraction from composition: %7.2f "%(solvent_fraction)
   print >>out, \
     "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
      map_volume,ncs_copies,volume_of_chains)
@@ -7205,11 +7213,12 @@ def get_overall_mask(
 
   # First mask out the map based on threshold
   mm=sd_map.as_1d().min_max_mean()
-  max_in_map=mm.max
+  max_in_sd_map=mm.max
   mean_in_map=mm.mean
   min_in_map=mm.min
-  print >>out,"Highest value in map is %7.2f. Mean is %7.2f .  Lowest is %7.2f " %(
-    max_in_map,
+  print >>out,\
+       "Highest value in SD map is %7.2f. Mean is %7.2f .  Lowest is %7.2f " %(
+    max_in_sd_map,
     mean_in_map,
     min_in_map)
 
@@ -7227,7 +7236,7 @@ def get_overall_mask(
   print >>out,"Model region of map "+\
     "(density above %7.3f )" %( threshold) +" includes %7.1f%% of map" %(
       100.*overall_mask.count(True)/overall_mask.size())
-  return overall_mask,max_in_map,sd_map
+  return overall_mask,max_in_sd_map,sd_map
 
 def get_skew(data=None):
   mean=data.min_max_mean().mean
@@ -7550,7 +7559,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
          args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
     if local_params.input_files.seq_file and \
-        not local_params.crystal_info.solvent_content:
+        not local_params.crystal_info.solvent_content and \
+        not solvent_fraction: # 2017-12-19
         solvent_fraction=get_solvent_fraction(local_params,
           crystal_symmetry=crystal_symmetry,
           ncs_copies=ncs_copies,out=out)
@@ -9540,7 +9550,7 @@ def get_one_au(tracking_data=None,
     tracking_data.params.segmentation.radius=radius
   print >>out,"\nRadius for AU identification: %7.2f A" %(radius)
 
-  overall_mask,max_in_map,sd_map=get_overall_mask(map_data=map_data,
+  overall_mask,max_in_sd_map,sd_map=get_overall_mask(map_data=map_data,
     mask_threshold=mask_threshold,
     crystal_symmetry=tracking_data.crystal_symmetry,
     resolution=tracking_data.params.crystal_info.resolution,
@@ -9561,18 +9571,22 @@ def get_one_au(tracking_data=None,
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map
-      high_points_mask=(sd_map>= 0.99*max_in_map)
-      for nth_point in [4,2,1]:
-        sites_cart=get_marked_points_cart(mask_data=high_points_mask,
-          unit_cell=unit_cell,every_nth_point=nth_point,
-          boundary_radius=radius)
+      for cutoff in [0.99,0.98,0.95,0.90,0.50]:
+        high_points_mask=(sd_map>= cutoff*max_in_sd_map)
+        sda=sd_map.as_1d().min_max_mean().max
+        for nth_point in [4,2,1]:
+          sites_cart=get_marked_points_cart(mask_data=high_points_mask,
+            unit_cell=unit_cell,every_nth_point=nth_point,
+            boundary_radius=radius)
+          if sites_cart.size()>0: break
         if sites_cart.size()>0: break
       assert sites_cart.size()>0
       del high_points_mask
       sites_cart=sites_cart[:1]
       xyz_frac=unit_cell.fractionalize(sites_cart[0])
       value=sd_map.value_at_closest_grid_point(xyz_frac)
-      print >>out,"High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
+      print >>out,\
+        "High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
         sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
 
 
@@ -9798,7 +9812,8 @@ def run(args,
     if ncs_group_obj and ncs_group_obj.ncs_group_list: # ok
       break
     elif ncs_obj and itry==0 and not is_iteration:# try again
-      print >>out,"No NCS groups identified on first try...taking entire NCS AU."
+      print >>out,\
+          "No NCS groups identified on first try...taking entire NCS AU."
       # Identify ncs au
       au_mask=get_one_au(tracking_data=tracking_data,
         ncs_obj=ncs_obj,
