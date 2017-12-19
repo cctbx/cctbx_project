@@ -618,7 +618,7 @@ def tst_04():
        extract_unique_part_of_sequences as eups
 
     seqs=[ "abcdefgh","klafmalsd"]
-    print 
+    print
     print seqs
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
@@ -627,35 +627,35 @@ def tst_04():
     seqs=[ "abcdefgh",
            "klafmalsd",
            "klafmalsd"]
-    print 
-    print seqs
-    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
-    for seq in copies_in_unique.keys():
-      print copies_in_unique[seq],base_copies,seq
- 
-    seqs=[ 
-        "abcdefgh",
-        "klafmalsd",
-         ]
-    print 
+    print
     print seqs
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
       print copies_in_unique[seq],base_copies,seq
 
-    seqs=[ 
-        "abcdefgh",
-        "klafmalsd",
+    seqs=[
         "abcdefgh",
         "klafmalsd",
          ]
-    print 
+    print
     print seqs
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
       print copies_in_unique[seq],base_copies,seq
 
-    seqs=[ 
+    seqs=[
+        "abcdefgh",
+        "klafmalsd",
+        "abcdefgh",
+        "klafmalsd",
+         ]
+    print
+    print seqs
+    copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
+    for seq in copies_in_unique.keys():
+      print copies_in_unique[seq],base_copies,seq
+
+    seqs=[
         "abcdefgh",
         "klafmalsd",
         "klafmalsd",
@@ -663,7 +663,7 @@ def tst_04():
         "klafmalsd",
         "klafmalsd",
          ]
-    print 
+    print
     print seqs
     copies_in_unique,base_copies,unique_sequence_dict=eups(seqs)
     for seq in copies_in_unique.keys():
@@ -758,14 +758,14 @@ def tst_05():
          lines=flex.split_lines(m))
     crystal_symmetry=model_pdb_inp.crystal_symmetry()
     model_hierarchy=model_pdb_inp.construct_hierarchy()
-   
+
     print "\nExtraction of unique MODEL with %s residues" %(
        model_hierarchy.overall_counts().n_residues)
     query_hierarchy=iotbx.pdb.input(source_info='query',
          lines=flex.split_lines(target)).construct_hierarchy()
     unique_hierarchy=euph(model_hierarchy,target_ph=query_hierarchy)
     print "FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy)))
-    
+
 
 
 
@@ -775,4 +775,3 @@ if __name__=="__main__":
   tst_03()
   tst_04()
   tst_05()
-
