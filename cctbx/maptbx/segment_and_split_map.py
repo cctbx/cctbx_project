@@ -4380,7 +4380,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
         shifted=shifted)
-
+     
   return ncs_object,tracking_data
 
 def score_threshold(b_vs_region=None,threshold=None,
@@ -4798,7 +4798,8 @@ def get_solvent_fraction(params,
     crystal_symmetry=tracking_data.crystal_symmetry
   map_volume=crystal_symmetry.unit_cell().volume()
   if tracking_data and not ncs_copies:
-    ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
+    #ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
+    ncs_copies=tracking_data.input_ncs_info.number_of_operators
   if not ncs_copies: ncs_copies=1
   if not params.input_files.seq_file:
     raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
