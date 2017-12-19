@@ -4808,17 +4808,34 @@ def get_solvent_fraction(params,
   elif not os.path.isfile(params.input_files.seq_file):
     raise Sorry(
      "The sequence file '%s' is missing." %(params.input_files.seq_file))
-  seq_as_string=open(params.input_files.seq_file).read()
-  seq_as_string=">\n"+seq_as_string  # so it always starts with >
-  seq_as_string=seq_as_string.replace("\n\n","\n>\n") # blank lines are like >
-  spl=seq_as_string.split(">")
+  print >>out,"\nReading sequence from %s " %(params.input_files.seq_file)
+  from iotbx.bioinformatics import get_sequences 
+  sequences=get_sequences(params.input_files.seq_file)
+  # get unique part of these sequences
+
+  from mmtbx.validation.chain_comparison import \
+       extract_unique_part_of_sequences as eups
+  print >>out,"Unique part of sequences:"
+  copies_in_unique,base_copies,unique_sequence_dict=eups(sequences)
+  all_unique_sequence=[]
+  for seq in copies_in_unique.keys():
+    print "Copies: %s  base copies: %s  Sequence: %s" %(
+       copies_in_unique[seq],base_copies,seq)
+    all_unique_sequence.append(seq) 
+  if base_copies != ncs_copies:
+    print >>out,"NOTE: %s copies of unique portion but ncs_copies=%s" %(
+       base_copies,ncs_copies)
+    if ncs_copies==1:
+      ncs_copies=base_copies
+      print >>out,"Using ncs_copies=%s instead" %(ncs_copies)
+    else:
+      print >>out,"Still using ncs_copies=%s" %(ncs_copies)
+
   volume_of_chains=0.
   n_residues=0
   chain_types_considered=[]
-  for s in spl:
-    if not s: continue
-    ss="".join(s.splitlines()[1:])
-    volume,nres,chain_type=get_volume_of_seq(ss,
+  for seq in all_unique_sequence:
+    volume,nres,chain_type=get_volume_of_seq(seq,
       chain_type=params.crystal_info.chain_type,out=out)
     if volume is None: continue
     volume_of_chains+=volume
@@ -4832,6 +4849,9 @@ def get_solvent_fraction(params,
   n_residues_times_ncs=n_residues*ncs_copies
   solvent_fraction=1.-(volume_of_molecules/map_volume)
   solvent_fraction=max(0.001,min(0.999,solvent_fraction))
+  if solvent_fraction==0.001 or solvent_fraction==0.999:
+    print >>out,"NOTE: solvent fraction very unlikely..."+\
+       "please check ncs_copies and sequence "
   print >>out, \
     "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
      map_volume,ncs_copies,volume_of_chains)

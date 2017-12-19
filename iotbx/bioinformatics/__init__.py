@@ -1818,6 +1818,25 @@ def clear_empty_lines(text):
     new_lines.append(line)
   return "\n".join(new_lines)+"\n"
 
+
+def get_sequences(file_name=None,text=None):
+  # return simple list of sequences in this file. duplicates included.
+  if not text:
+    if not file_name:
+      from libtbx.utils import Sorry
+      raise Sorry("Missing file for guess_chain_types_from_sequences: %s" %(
+        file_name))
+    text=open(file_name).read()
+  # clear any lines that have only > and nothing else
+  text=clear_empty_lines(text)
+
+  chain_types=[]
+  ( sequences, unknowns ) = parse_sequence( text )
+  simple_sequence_list=[]
+  for sequence in sequences:
+    simple_sequence_list.append(sequence.sequence)
+  return simple_sequence_list
+
 def guess_chain_types_from_sequences(file_name=None,text=None,
     return_as_dict=False,minimum_fraction=None):
   # Guess what chain types are in this sequence file
@@ -1876,7 +1895,6 @@ def text_from_chains_matching_chain_type(file_name=None,text=None,
         sequence_text+="""
 %s
  """ %(seq.format(width=width))
-  print sequence_text
   return sequence_text
 
 def count_letters(letters="",text="",only_count_non_allowed=None):
