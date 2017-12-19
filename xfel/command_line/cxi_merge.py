@@ -167,7 +167,7 @@ raw_data {
         .help = Random seed. May be int or None. Only used for the simplex minimizer
         .type = int
         .expert_level = 1
-      minimizer = *simplex lbfgs
+      minimizer = *simplex lbfgs LevMar
         .type = choice
         .help = Which minimizer to use while refining the Sdfac terms
     }
@@ -773,6 +773,8 @@ class scaling_manager (intensity_data) :
           from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
         elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'lbfgs':
           from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refine_refltable_lbfgs as error_modeler
+        elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'LevMar':
+          from xfel.merging.algorithms.error_model.sdfac_refine_levmar import sdfac_refine_refltable_levmar as error_modeler
 
       if self.params.raw_data.errors_from_sample_residuals:
         from xfel.merging.algorithms.error_model.errors_from_residuals import errors_from_residuals as error_modeler
