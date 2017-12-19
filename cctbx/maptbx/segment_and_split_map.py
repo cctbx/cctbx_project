@@ -4380,7 +4380,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
         shifted=shifted)
-     
+
   return ncs_object,tracking_data
 
 def score_threshold(b_vs_region=None,threshold=None,
@@ -4807,7 +4807,7 @@ def get_solvent_fraction(params,
     raise Sorry(
      "The sequence file '%s' is missing." %(params.input_files.seq_file))
   print >>out,"\nReading sequence from %s " %(params.input_files.seq_file)
-  from iotbx.bioinformatics import get_sequences 
+  from iotbx.bioinformatics import get_sequences
   sequences=get_sequences(params.input_files.seq_file)
   # get unique part of these sequences
 
@@ -4819,7 +4819,7 @@ def get_solvent_fraction(params,
   for seq in copies_in_unique.keys():
     print "Copies: %s  base copies: %s  Sequence: %s" %(
        copies_in_unique[seq],base_copies,seq)
-    all_unique_sequence.append(seq) 
+    all_unique_sequence.append(seq)
   if base_copies != ncs_copies:
     print >>out,"NOTE: %s copies of unique portion but ncs_copies=%s" %(
        base_copies,ncs_copies)
