@@ -1815,6 +1815,7 @@ def clear_empty_lines(text):
        line=""
     elif line.startswith(">"):
        line=""
+    line=line.replace("?","")
     new_lines.append(line)
   return "\n".join(new_lines)+"\n"
 
@@ -1824,7 +1825,7 @@ def get_sequences(file_name=None,text=None):
   if not text:
     if not file_name:
       from libtbx.utils import Sorry
-      raise Sorry("Missing file for guess_chain_types_from_sequences: %s" %(
+      raise Sorry("Missing file for get_sequences: %s" %(
         file_name))
     text=open(file_name).read()
   # clear any lines that have only > and nothing else
