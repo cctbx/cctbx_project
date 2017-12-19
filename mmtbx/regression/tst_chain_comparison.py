@@ -773,5 +773,6 @@ if __name__=="__main__":
   tst_01()
   tst_02()
   tst_03()
-  tst_05()
   tst_04()
+  tst_05()
+
