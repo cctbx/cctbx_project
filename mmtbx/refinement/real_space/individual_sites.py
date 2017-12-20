@@ -22,6 +22,7 @@ class easy(object):
         xray_structure,
         pdb_hierarchy,
         geometry_restraints_manager,
+        gradients_method,
         selection=None,
         rms_bonds_limit=0.015,
         rms_angles_limit=2.0,
@@ -29,6 +30,7 @@ class easy(object):
         w = None,
         states_accumulator=None,
         log=None):
+    assert gradients_method in ["fd", "linear", "quadratic"]
     adopt_init_args(self, locals())
     es = geometry_restraints_manager.geometry.energies_sites(
       sites_cart = xray_structure.sites_cart())
@@ -43,7 +45,8 @@ class easy(object):
         pdb_hierarchy               = self.pdb_hierarchy,
         geometry_restraints_manager = geometry_restraints_manager,
         rms_bonds_limit             = rms_bonds_limit,
-        rms_angles_limit            = rms_angles_limit)
+        rms_angles_limit            = rms_angles_limit,
+        gradients_method            = gradients_method)
       self.w = self.weight.weight
     if(selection is None):
       selection = flex.bool(self.xray_structure.scatterers().size(), True)
@@ -52,7 +55,8 @@ class easy(object):
       selection                   = selection,
       max_iterations              = max_iterations,
       geometry_restraints_manager = geometry_restraints_manager.geometry,
-      states_accumulator          = states_accumulator)
+      states_accumulator          = states_accumulator,
+      gradients_method            = gradients_method)
     refine_object.refine(weight = self.w, xray_structure = self.xray_structure)
     self.rmsd_bonds_final, self.rmsd_angles_final = refine_object.rmsds()
     self.xray_structure=self.xray_structure.replace_sites_cart(
@@ -65,6 +69,7 @@ class simple(object):
         target_map,
         selection,
         geometry_restraints_manager,
+        gradients_method,
         real_space_gradients_delta=1./4,
         selection_real_space=None,
         max_iterations=150,
@@ -88,6 +93,7 @@ class simple(object):
       self.site_symmetry_table = xray_structure.site_symmetry_table()
       self.refined = maptbx.real_space_refinement_simple.lbfgs(
         selection_variable              = self.selection,
+        gradients_method                = self.gradients_method,
         selection_variable_real_space   = self.selection_real_space,
         sites_cart                      = xray_structure.sites_cart(),
         density_map                     = self.target_map,
@@ -290,6 +296,7 @@ class box_refinement_manager(object):
                xray_structure,
                target_map,
                geometry_restraints_manager,
+               gradients_method,
                real_space_gradients_delta=1./4,
                max_iterations = 50,
                ncs_groups = None):
@@ -301,6 +308,7 @@ class box_refinement_manager(object):
     self.real_space_gradients_delta = real_space_gradients_delta
     self.weight_optimal = None
     self.ncs_groups = ncs_groups
+    self.gradients_method = gradients_method
 
   def update_xray_structure(self, new_xray_structure):
     self.xray_structure = new_xray_structure
@@ -342,7 +350,8 @@ class box_refinement_manager(object):
         selection                   = sel,
         real_space_gradients_delta  = self.real_space_gradients_delta,
         max_iterations              = self.max_iterations,
-        geometry_restraints_manager = geo_box)
+        geometry_restraints_manager = geo_box,
+        gradients_method            = self.gradients_method)
       real_space_result = refinery(
         refiner                  = rsr_simple_refiner,
         xray_structure           = box.xray_structure_box,

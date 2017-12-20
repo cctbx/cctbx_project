@@ -158,13 +158,13 @@ namespace cctbx { namespace maptbx {
     typename SiteFloatType>
   af::tiny<MapFloatType, 4>
   quadratic_interpolation_with_gradients(
-    //af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
-    af::const_ref<MapFloatType, af::flex_grid<> > const& map,
+    af::const_ref<MapFloatType, af::c_grid_padded<3> > const& map,
+    //af::const_ref<MapFloatType, af::flex_grid<> > const& map,
     scitbx::vec3<SiteFloatType> const& x_frac,
     scitbx::vec3<SiteFloatType> const& step)
   {
-    //typedef af::c_grid_padded<3>::index_type index_t;
-    typedef af::flex_grid<>::index_type index_t;
+    typedef af::c_grid_padded<3>::index_type index_t;
+    //typedef af::flex_grid<>::index_type index_t;
     typedef typename index_t::value_type iv_t;
     index_t const& grid_n = map.accessor().focus();
 

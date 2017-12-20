@@ -127,6 +127,16 @@ namespace {
                                     arg("sites_cart"),
                                     arg("delta"),
                                     arg("selection"))))
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
+             af::const_ref<bool> const&,
+             bool const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("selection"),
+                                    arg("use_quadratic_interpolation"))))
         .def("target", &w_t::target)
         .def("gradients", &w_t::gradients)
       ;
@@ -929,8 +939,8 @@ namespace {
          scitbx::vec3<double> const&)) eight_point_interpolation_with_gradients);
     def("quadratic_interpolation_with_gradients",
       (af::tiny<double, 4>(*)
-        (af::const_ref<double, af::flex_grid<> > const&,
-         //af::const_ref<double, af::c_grid_padded<3> > const&,
+        (//af::const_ref<double, af::flex_grid<> > const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
          scitbx::vec3<double> const&,
          scitbx::vec3<double> const&)) quadratic_interpolation_with_gradients);
     def("closest_grid_point",
