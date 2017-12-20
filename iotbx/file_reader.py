@@ -507,9 +507,7 @@ class any_file_input (object) :
       except AttributeError:
         return self._file_object.as_miller_arrays()[0].crystal_symmetry()
     elif(self._file_type == "ccp4_map"):
-      ucp = self._file_object.unit_cell_parameters
-      sgn = max(1, self._file_object.space_group_number)
-      return crystal.symmetry(ucp, sgn)
+      return self._file_object.crystal_symmetry()
     else:
       raise NotImplementedError()
 

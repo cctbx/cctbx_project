@@ -39,6 +39,7 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
       geometry_restraints_manager=geo_manager,
+      gradients_method="fd",
       real_space_target_weight=1,
       real_space_gradients_delta=d_min/3)
     geo_manager.energies_sites(sites_cart=minimized.sites_cart).show(f=out)
@@ -47,6 +48,7 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
       sites_cart=structure.sites_cart(),
       density_map=fft_map.real_map(),
       unit_cell=structure.unit_cell(),
+      gradients_method="fd",
       real_space_gradients_delta=d_min/3)
   rmsd_start = sites_cart.rms_difference(structure.sites_cart())
   rmsd_final = sites_cart.rms_difference(minimized.sites_cart)
