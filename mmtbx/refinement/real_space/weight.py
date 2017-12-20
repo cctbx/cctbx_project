@@ -10,7 +10,7 @@ class run(object):
       xray_structure,
       pdb_hierarchy,
       geometry_restraints_manager,
-      gradients_method,
+      gradients_method="fd",
       ncs_groups=None,
       rms_bonds_limit=0.015,
       rms_angles_limit=2.0,
