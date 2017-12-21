@@ -402,8 +402,8 @@ def extract_unique_part_of_sequences(sequence_list=None,
          seq=seq,unique_sequences=unique_sequences,
          min_similarity=min_similarity)  # check for similar...
       if similar_seq:
-        seq=similar_seq
         unique_sequence_dict[seq]=similar_seq
+        seq=similar_seq
       else:
         unique_sequences.append(seq)
         unique_sequence_dict[seq]=seq
