@@ -4082,7 +4082,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        "density_select")
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
-    box=run_map_box(args,crystal_symmetry=crystal_symmetry,log=out)
+    box=run_map_box(args,log=out)
 
     # Run again for helical symmetry
     if params.map_modification.restrict_z_distance_for_helical_symmetry:
@@ -4090,7 +4090,23 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
          args=args,crystal_symmetry=crystal_symmetry,box=box)
       print >>out,"\nRunning map-box again with restricted Z range ..."
       box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
-        crystal_symmetry=crystal_symmetry,log=out)
+        log=out)
+
+    if box.unit_cell_parameters_from_ccp4_map and \
+       box.unit_cell_parameters_deduced_from_map_grid and \
+       box.unit_cell_parameters_from_ccp4_map !=  \
+          box.unit_cell_parameters_deduced_from_map_grid:
+      print >>out,"Resetting original unit cell parameters based on "+\
+        "analysis of cell parameters and \nmap grid in map_box..."
+      print >>out,\
+        "Original unit cell parameters from CCP4 map \ngrid (used) are:" +\
+          "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f\n)" %tuple(
+          box.unit_cell_parameters_deduced_from_map_grid)
+      new_original_crystal_symmetry=crystal.symmetry(
+         unit_cell=box.unit_cell_parameters_deduced_from_map_grid,
+         space_group='p1')
+      tracking_data.set_original_crystal_symmetry(
+         crystal_symmetry=new_original_crystal_symmetry)
 
     origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
