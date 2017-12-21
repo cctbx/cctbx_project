@@ -669,6 +669,7 @@ def tst_04():
     for seq in copies_in_unique.keys():
       print copies_in_unique[seq],base_copies,seq
 
+    print "OK"
 
 target="""
 CRYST1  113.949  113.949   32.474  90.00  90.00  90.00 I 4
@@ -765,7 +766,7 @@ def tst_05():
          lines=flex.split_lines(target)).construct_hierarchy()
     unique_hierarchy=euph(model_hierarchy,target_ph=query_hierarchy)
     print "FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy)))
-
+  print "OK"
 
 
 
