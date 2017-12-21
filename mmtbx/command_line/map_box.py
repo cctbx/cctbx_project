@@ -283,10 +283,10 @@ Parameters:"""%h
 
   box.hierarchy=ph_box
 
-  if (inputs and inputs.crystal_symmetry and inputs.ccp4_map and 
-    inputs.crystal_symmetry.unit_cell().parameters() and 
+  if (inputs and inputs.crystal_symmetry and inputs.ccp4_map and
+    inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
-       inputs.crystal_symmetry.unit_cell().parameters() != 
+       inputs.crystal_symmetry.unit_cell().parameters() !=
        inputs.ccp4_map.unit_cell_parameters):
     print >>log,"\nNOTE: Mismatch of unit cell parameters from CCP4 map:"
     print >>log,"Unit cell from CCP4 map 'unit cell parameters': "+\
