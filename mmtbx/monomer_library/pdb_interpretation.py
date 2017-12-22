@@ -730,12 +730,20 @@ class counters(object):
     self.resolved = 0
     self.discarded_because_of_special_positions = 0
 
-def involves_special_positions(special_position_indices, i_seqs):
-  if (special_position_indices is None): return False
-  for i_seq in i_seqs:
-    if (i_seq in special_position_indices):
-      return True
-  return False
+class special_position_dict():
+  def __init__(self, special_position_indices):
+    self.spi = special_position_indices
+    self.iseq_mapping = {}
+
+  def involves_special_positions(self, i_seqs):
+    if self.spi is None: return False
+    for i_seq in i_seqs:
+      mapping = self.iseq_mapping.get(i_seq)
+      if mapping:
+        return True
+      elif mapping is None:
+        self.iseq_mapping[i_seq] = i_seq in self.spi
+    return False
 
 def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
   if (broken_bond_i_seq_pairs is None): return False
@@ -1535,18 +1543,18 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       bond_simple_proxy_registry=bond_simple_proxy_registry,
       use_neutron_distances=use_neutron_distances).counters
 
-  def add_angle_proxies(self, special_position_indices, angle_proxy_registry):
+  def add_angle_proxies(self, special_position_dict, angle_proxy_registry):
     self.angle_counters = add_angle_proxies(
       counters=counters(label="angle"),
       m_i=self,
       m_j=None,
       angle_list=self.monomer.angle_list,
       angle_proxy_registry=angle_proxy_registry,
-      special_position_indices=special_position_indices).counters
+      special_position_dict=special_position_dict).counters
 
   def add_dihedral_proxies(self,
         dihedral_function_type,
-        special_position_indices,
+        special_position_dict,
         dihedral_proxy_registry):
     self.dihedral_counters = add_dihedral_proxies(
       counters=counters(label="dihedral"),
@@ -1556,9 +1564,9 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       dihedral_function_type=dihedral_function_type,
       peptide_link_params=None,
       dihedral_proxy_registry=dihedral_proxy_registry,
-      special_position_indices=special_position_indices).counters
+      special_position_dict=special_position_dict).counters
 
-  def add_chirality_proxies(self, special_position_indices,
+  def add_chirality_proxies(self, special_position_dict,
                                   chirality_proxy_registry,
                                   chir_volume_esd):
     self.chirality_counters = add_chirality_proxies(
@@ -1567,10 +1575,10 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       m_j=None,
       chir_list=self.monomer.chir_list,
       chirality_proxy_registry=chirality_proxy_registry,
-      special_position_indices=special_position_indices,
+      special_position_dict=special_position_dict,
       chir_volume_esd=chir_volume_esd).counters
 
-  def add_planarity_proxies(self, special_position_indices,
+  def add_planarity_proxies(self, special_position_dict,
                                   planarity_proxy_registry):
     self.planarity_counters = add_planarity_proxies(
       counters=counters(label="planarity"),
@@ -1578,9 +1586,9 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       m_j=None,
       plane_list=self.monomer.get_planes(),
       planarity_proxy_registry=planarity_proxy_registry,
-      special_position_indices=special_position_indices).counters
+      special_position_dict=special_position_dict).counters
 
-  def add_parallelity_proxies(self, special_position_indices,
+  def add_parallelity_proxies(self, special_position_dict,
                                     parallelity_proxy_registry):
     self.parallelity_counters = add_parallelity_proxies(
       counters=counters(label="parallelity"),
@@ -1588,7 +1596,7 @@ Please contact cctbx@cci.lbl.gov for more information.""" % (id, id, h))
       m_j=self,
       plane_list=self.monomer.get_planes(),
       planarity_proxy_registry=planarity_proxy_registry,
-      special_position_indices=special_position_indices).counters
+      special_position_dict=special_position_dict).counters
 
 class link_match_one(object):
 
@@ -1891,7 +1899,7 @@ class add_angle_proxies(object):
         m_j,
         angle_list,
         angle_proxy_registry,
-        special_position_indices,
+        special_position_dict,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     if (m_j is None):
@@ -1930,7 +1938,7 @@ class add_angle_proxies(object):
       else:
         counters.resolved += 1
         i_seqs = [atom.i_seq for atom in atoms]
-        if (involves_special_positions(special_position_indices, i_seqs)):
+        if (special_position_dict.involves_special_positions(i_seqs)):
           counters.discarded_because_of_special_positions += 1
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
           pass
@@ -1955,7 +1963,7 @@ class add_dihedral_proxies(object):
         dihedral_function_type,
         peptide_link_params,
         dihedral_proxy_registry,
-        special_position_indices,
+        special_position_dict,
         sites_cart=None,
         chem_link_id=None,
         broken_bond_i_seq_pairs=None,
@@ -2012,7 +2020,7 @@ class add_dihedral_proxies(object):
         trans_cis_ids = [
           "TRANS", "PTRANS", "NMTRANS",
           "CIS",   "PCIS",   "NMCIS"]
-        if (involves_special_positions(special_position_indices, i_seqs)):
+        if (special_position_dict.involves_special_positions(i_seqs)):
           counters.discarded_because_of_special_positions += 1
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
           pass
@@ -2094,7 +2102,7 @@ class add_chirality_proxies(object):
         m_j,
         chir_list,
         chirality_proxy_registry,
-        special_position_indices,
+        special_position_dict,
         chir_volume_esd,
         lib_link=None,
         broken_bond_i_seq_pairs=None):
@@ -2158,7 +2166,7 @@ class add_chirality_proxies(object):
         else:
           counters.resolved += 1
           i_seqs = [atom.i_seq for atom in atoms]
-          if (involves_special_positions(special_position_indices, i_seqs)):
+          if (special_position_dict.involves_special_positions(i_seqs)):
             counters.discarded_because_of_special_positions += 1
           elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
             pass
@@ -2182,7 +2190,7 @@ class add_planarity_proxies(object):
         m_j,
         plane_list,
         planarity_proxy_registry,
-        special_position_indices,
+        special_position_dict,
         peptide_link_params=None,
         broken_bond_i_seq_pairs=None):
     self.counters = counters
@@ -2218,8 +2226,7 @@ class add_planarity_proxies(object):
         else:
           counters.resolved += 1
           i_seq = atom.i_seq
-          if (special_position_indices is not None
-              and i_seq in special_position_indices):
+          if (special_position_dict.involves_special_positions([i_seq])):
             counters.discarded_because_of_special_positions += 1
           else:
             i_seqs.append(i_seq)
@@ -2247,7 +2254,7 @@ class add_parallelity_proxies(object):
         m_i,
         m_j,
         parallelity_proxy_registry,
-        special_position_indices,
+        special_position_dict,
         broken_bond_i_seq_pairs=None,
         weight=0.05):
     # probably is not used anymore
@@ -2371,7 +2378,7 @@ class build_chain_proxies(object):
         pdb_hierarchy,
         pdb_atoms,
         sites_cart,
-        special_position_indices,
+        special_position_dict,
         keep_monomer_mappings,
         all_monomer_mappings,
         scattering_type_registry,
@@ -2568,7 +2575,7 @@ class build_chain_proxies(object):
               m_j=mm,
               angle_list=prev_mm.lib_link.angle_list,
               angle_proxy_registry=geometry_proxy_registries.angle,
-              special_position_indices=special_position_indices,
+              special_position_dict=special_position_dict,
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_angles \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -2580,7 +2587,7 @@ class build_chain_proxies(object):
               dihedral_function_type=dihedral_function_type,
               peptide_link_params=peptide_link_params,
               dihedral_proxy_registry=geometry_proxy_registries.dihedral,
-              special_position_indices=special_position_indices,
+              special_position_dict=special_position_dict,
               sites_cart=sites_cart,
               chem_link_id=prev_mm.lib_link.chem_link.id,
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs,
@@ -2595,7 +2602,7 @@ class build_chain_proxies(object):
               m_j=mm,
               chir_list=prev_mm.lib_link.chir_list,
               chirality_proxy_registry=geometry_proxy_registries.chirality,
-              special_position_indices=special_position_indices,
+              special_position_dict=special_position_dict,
               chir_volume_esd=chir_volume_esd,
               lib_link=prev_mm.lib_link,
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
@@ -2608,7 +2615,7 @@ class build_chain_proxies(object):
                 m_j=mm,
                 plane_list=prev_mm.lib_link.get_planes(),
                 planarity_proxy_registry=geometry_proxy_registries.planarity,
-                special_position_indices=special_position_indices,
+                special_position_dict=special_position_dict,
                 broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             _add_planarity_proxies()
             n_unresolved_chain_link_planarities \
@@ -2662,7 +2669,7 @@ class build_chain_proxies(object):
         n_unresolved_non_hydrogen_bonds \
           += mm.bond_counters.unresolved_non_hydrogen
         mm.add_angle_proxies(
-          special_position_indices=special_position_indices,
+          special_position_dict=special_position_dict,
           angle_proxy_registry=geometry_proxy_registries.angle)
         if (mm.angle_counters.corrupt_monomer_library_definitions > 0):
           corrupt_monomer_library_definitions[mm.residue_name] \
@@ -2673,7 +2680,7 @@ class build_chain_proxies(object):
           += mm.angle_counters.discarded_because_of_special_positions
         mm.add_dihedral_proxies(
           dihedral_function_type=dihedral_function_type,
-          special_position_indices=special_position_indices,
+          special_position_dict=special_position_dict,
           dihedral_proxy_registry=geometry_proxy_registries.dihedral)
         if (mm.dihedral_counters.corrupt_monomer_library_definitions > 0):
           corrupt_monomer_library_definitions[mm.residue_name] \
@@ -2683,7 +2690,7 @@ class build_chain_proxies(object):
         n_dihedrals_discarded_because_of_special_positions \
           += mm.dihedral_counters.discarded_because_of_special_positions
         mm.add_chirality_proxies(
-          special_position_indices=special_position_indices,
+          special_position_dict=special_position_dict,
           chirality_proxy_registry=geometry_proxy_registries.chirality,
           chir_volume_esd=chir_volume_esd)
         if (mm.chirality_counters.corrupt_monomer_library_definitions > 0):
@@ -2696,7 +2703,7 @@ class build_chain_proxies(object):
         n_chiralities_discarded_because_of_special_positions \
           += mm.chirality_counters.discarded_because_of_special_positions
         mm.add_planarity_proxies(
-          special_position_indices=special_position_indices,
+          special_position_dict=special_position_dict,
           planarity_proxy_registry=geometry_proxy_registries.planarity)
         if (mm.planarity_counters.corrupt_monomer_library_definitions > 0):
           corrupt_monomer_library_definitions[mm.residue_name] \
@@ -3132,6 +3139,9 @@ class build_all_chain_proxies(linking_mixins):
     else:
       self.special_position_indices = \
         self.site_symmetry_table().special_position_indices()
+
+    self.special_position_dict = special_position_dict(
+        special_position_indices=self.special_position_indices)
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
     self.conformation_dependent_restraints_list = []
@@ -3194,7 +3204,7 @@ class build_all_chain_proxies(linking_mixins):
             pdb_hierarchy=self.pdb_hierarchy,
             pdb_atoms=self.pdb_atoms,
             sites_cart=self.sites_cart,
-            special_position_indices=self.special_position_indices,
+            special_position_dict=self.special_position_dict,
             keep_monomer_mappings=keep_monomer_mappings,
             all_monomer_mappings=self.all_monomer_mappings,
             scattering_type_registry=self.scattering_type_registry,
@@ -3366,7 +3376,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               angle_list=link.angle_list,
               angle_proxy_registry=self.geometry_proxy_registries.angle,
-              special_position_indices=self.special_position_indices)
+              special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_angles \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -3378,7 +3388,7 @@ class build_all_chain_proxies(linking_mixins):
               dihedral_function_type=self.params.dihedral_function_type,
               peptide_link_params=self.params.peptide_link,
               dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
-              special_position_indices=self.special_position_indices,
+              special_position_dict=self.special_position_dict,
               sites_cart=self.sites_cart,
               chem_link_id=link.chem_link.id)
             raise_if_corrupt(link_resolution)
@@ -3390,7 +3400,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               chir_list=link.chir_list,
               chirality_proxy_registry=self.geometry_proxy_registries.chirality,
-              special_position_indices=self.special_position_indices,
+              special_position_dict=self.special_position_dict,
               chir_volume_esd=self.params.chir_volume_esd,
               lib_link=link)
             raise_if_corrupt(link_resolution)
@@ -3402,7 +3412,7 @@ class build_all_chain_proxies(linking_mixins):
               m_j=m_j,
               plane_list=link.get_planes(),
               planarity_proxy_registry=self.geometry_proxy_registries.planarity,
-              special_position_indices=self.special_position_indices)
+              special_position_dict=self.special_position_dict)
             raise_if_corrupt(link_resolution)
             n_unresolved_apply_cif_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -3907,7 +3917,7 @@ class build_all_chain_proxies(linking_mixins):
         m_j=m_j,
         angle_list=angle_list,
         angle_proxy_registry=self.geometry_proxy_registries.angle,
-        special_position_indices=self.special_position_indices,
+        special_position_dict=self.special_position_dict,
         )
     link.angle_list = angle_list
     return link
