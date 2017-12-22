@@ -19,6 +19,7 @@
 #include <dxtbx/model/beam.h>
 #include <boost/math/special_functions/erf.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
+#include <boost_adaptbx/python_streambuf.h>
 
 using boost::math::erf;
 using boost::math::isnan;
@@ -559,6 +560,7 @@ class nanoBragg {
 
     /* utility function for outputting an image to examine */
     void to_smv_format(std::string const& fileout, double intfile_scale, int debug_x, int debug_y);
+    void to_smv_format_streambuf(boost_adaptbx::python::streambuf &, double, int const&, int const&) const;
 };
 
 

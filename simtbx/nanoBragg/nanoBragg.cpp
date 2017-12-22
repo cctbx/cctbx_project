@@ -3696,8 +3696,70 @@ nanoBragg::add_noise()
 }
 // end of add_noise()
 
+void
+nanoBragg::to_smv_format_streambuf(boost_adaptbx::python::streambuf & output,
+    double intfile_scale, int const&debug_x, int const& debug_y) const {
+    boost_adaptbx::python::streambuf::ostream os(output);
+    const double* floatimage = raw_pixels.begin();
+    double max_value = (double)std::numeric_limits<unsigned short int>::max();
+    double saturation = floor(max_value - 1 );
+    /* output as ints */
 
+    unsigned short int intimage;
+    double max_I = this-> max_I;
+    double max_I_x = this-> max_I_x;
+    double max_I_y = this-> max_I_y;
+    if(intfile_scale <= 0.0){
+        /* need to auto-scale */
+        int i=0;
+        for(int spixel=0;spixel<spixels;++spixel)
+        {
+            for(int fpixel=0;fpixel<fpixels;++fpixel)
+            {
+                if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has value %g\n",i,fpixel,spixel,floatimage[i]);
+                if(i==0 || max_I < floatimage[i])
+                {
+                    max_I = floatimage[i];
+                    max_I_x = fpixel;
+                    max_I_y = spixel;
+                }
+                ++i;
+            }
+        }
+        if(verbose) printf("providing default scaling: max_I = %g @ (%g %g)\n",max_I,max_I_x,max_I_y);
+        intfile_scale = 1.0;
+        if(max_I>0.0) intfile_scale = 55000.0/(max_I);
+    }
+    if(verbose) printf("scaling data by: intfile_scale = %g\n",intfile_scale);
 
+    double sum = 0.0;
+    max_I = 0.0;
+    int i = 0;
+    for(int spixel=0;spixel<spixels;++spixel)
+    {
+        for(int fpixel=0;fpixel<fpixels;++fpixel)
+        {
+            /* no noise, just use intfile_scale */
+
+            intimage = (unsigned short int) (std::min(saturation, floatimage[i]*intfile_scale ));
+            os.write((char *) &intimage, sizeof(unsigned short int));
+
+            if(verbose>90) printf("DEBUG #%d %g -> %g -> %d\n",i,floatimage[i],floatimage[i]*intfile_scale,intimage);
+
+            if((double) intimage > max_I || i==0) {
+                max_I = (double) intimage;
+                max_I_x = fpixel;
+                max_I_y = spixel;
+            }
+            if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has int value %d\n",i,fpixel,spixel,intimage);
+
+            sum += intimage;
+            ++i;
+        }
+    }
+    // os << "Hello world";
+
+}
 
 void
 nanoBragg::to_smv_format(
