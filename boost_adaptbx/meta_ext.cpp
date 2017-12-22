@@ -13,6 +13,7 @@
 
 #include <boost_adaptbx/type_id_eq.h>
 #include <boost_adaptbx/python_streambuf.h>
+std::size_t boost_adaptbx::python::streambuf::default_buffer_size = 1024;
 
 #include <tbxx/libc_backtrace.hpp>
 

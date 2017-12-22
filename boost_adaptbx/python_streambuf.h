@@ -433,7 +433,11 @@ class streambuf : public std::basic_streambuf<char>
     };
 };
 
+/*Including the definition of default_buffer_size in more than
+  one object file appears to preclude linkage of the objects together.
+  Instead, define it only where it is needed in meta_ext.cpp.
 std::size_t streambuf::default_buffer_size = 1024;
+*/
 
 struct streambuf_capsule
 {
