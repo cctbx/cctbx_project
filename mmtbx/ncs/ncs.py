@@ -16,6 +16,14 @@ import scitbx.rigid_body
  # NOTE: symmetry operators map NCS position i on to NCS position 0 (they are
  #  inverses of the operators mapping position 0 on to i).
 
+# Defaults for tolerances: 
+# Set 2017-12-23 to match values in find_ncs.py; these are very relaxed...
+# previous values were tol_z=0.01, tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001
+
+default_tol_z=0.01
+default_tol_r=0.02
+default_abs_tol_t=2.0
+default_rel_tol_t=0.05
 
 def abs(aa):
   if aa>=0:return aa
@@ -54,7 +62,11 @@ def is_identity(r,t,tol=1.e-2):
     if abs(t[i]-identity_t[i])>tol: return False
   return True
 
-def is_same_transform(r1,t1,r2,t2,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
+def is_same_transform(r1,t1,r2,t2,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
+
     # require everything to be very similar
     for i in xrange(9):
       if abs(r1[i]-r2[i])>tol_r: return False
@@ -900,7 +912,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return rounded
 
   def is_point_group_symmetry(self,
-      tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
     # return True if any 2 sequential operations is a member of the
     #  set.  Test by sequentially applying all pairs of
     # operators and verifying that the result is a member of the set
@@ -968,7 +982,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return sorted_indices
 
   def is_helical_along_z(self,tol_z=0.01,
-     tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
     # This assumes the operators are in order, but allow special case
     #   where the identity operator is placed at the beginning but belongs
     #   at the end
@@ -1066,7 +1082,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     raise Sorry(
      "Unable to find forward and reverse operators for this helical symmetry")
 
-  def extend_helix_operators(self,z_range=None,tol_z=0.01,
+  def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
     assert self._have_helical_symmetry
     # extend the operators to go from -z_range to z_range
@@ -1833,7 +1849,10 @@ class ncs:
         n_max=ncs_group.n_ncs_oper()
     return n_max
 
-  def is_point_group_symmetry(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
+  def is_point_group_symmetry(self,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups[:1]:
@@ -1861,13 +1880,13 @@ class ncs:
     for ncs_group in self._ncs_groups:
       ncs_group.invert_matrices()
 
-  def sort_by_z_translation(self,tol_z=0.01):
+  def sort_by_z_translation(self,tol_z=default_tol_z):
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
       ncs_group.sort_by_z_translation(tol_z=tol_z)
 
-  def extend_helix_operators(self,z_range=None,tol_z=0.01,
+  def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
     if not self._ncs_groups:
       return
@@ -1875,7 +1894,10 @@ class ncs:
       ncs_group.extend_helix_operators(z_range=z_range,tol_z=tol_z,
         max_operators=max_operators)
 
-  def is_helical_along_z(self,tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001):
+  def is_helical_along_z(self,
+   tol_r=default_tol_r,
+   abs_tol_t=default_abs_tol_t,
+   rel_tol_t=default_rel_tol_t):
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups:
