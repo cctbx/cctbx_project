@@ -1839,7 +1839,8 @@ def get_sequences(file_name=None,text=None):
   return simple_sequence_list
 
 def guess_chain_types_from_sequences(file_name=None,text=None,
-    return_as_dict=False,minimum_fraction=None):
+    return_as_dict=False,minimum_fraction=None,
+    likely_chain_types=None):
   # Guess what chain types are in this sequence file
   if not text:
     if not file_name:
@@ -1856,7 +1857,8 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
   dd_n={}
   total_residues=0
   for sequence in sequences:
-    chain_type,n_residues=chain_type_and_residues(text=sequence.sequence)
+    chain_type,n_residues=chain_type_and_residues(text=sequence.sequence,
+      likely_chain_types=likely_chain_types)
     if chain_type is None and n_residues is None:
       continue
     if chain_type and not chain_type in chain_types:
@@ -1888,7 +1890,7 @@ def guess_chain_types_from_sequences(file_name=None,text=None,
 def text_from_chains_matching_chain_type(file_name=None,text=None,
     chain_type=None,width=80):
   dd=guess_chain_types_from_sequences(file_name=file_name,
-    text=text,return_as_dict=True)
+    text=text,return_as_dict=True,likely_chain_types=[chain_type])
   sequence_text=""
   for ct in dd.keys():
     if chain_type is None or ct==chain_type:
@@ -1910,10 +1912,11 @@ def count_letters(letters="",text="",only_count_non_allowed=None):
       n+=text.count(let)
   return n
 
-def chain_type_and_residues(text=None,chain_type=None):
+def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   # guess the type of chain from text string containing 1-letter codes
   # and count residues
   # if chain_type is specified, just use it
+  # if likely_chain_types are specified, use them if possible
   #
   # Assumptions:
   #  1. few or no letters that are not part of the correct dict (there
@@ -1922,6 +1925,7 @@ def chain_type_and_residues(text=None,chain_type=None):
   #     that if it were protein there would be a non-DNA letter)
   # Method:  Choose the chain-type that matches the most letters in text.
   #  If a tie, take the chain type that has the fewest letters.
+  #  If likely_chain_types are specified, use one from there first
 
   text=text.replace(" ","").replace("\n","").lower()
   if not text:
@@ -1973,6 +1977,16 @@ def chain_type_and_residues(text=None,chain_type=None):
   residues=best_score
   if len(ok_list)<1: return None,None
   if len(ok_list)==1: return ok_list[0],residues
+
+  # take one from the likely list
+  if likely_chain_types:
+    likely_results=[]
+    for lct in likely_chain_types:
+      if lct in ok_list:
+        likely_results.append(lct)
+
+    if len(likely_results)==1:
+      return likely_results[0],residues
 
   # decide which of the ones with the most matches is best..
   score_list=[]

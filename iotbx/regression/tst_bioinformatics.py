@@ -1787,6 +1787,10 @@ def exercise_guess_chain_types () :
 AGAAAAUUUUCAACGGUGGAUAUCUAGGUUCCCGUGACGAUGAAGAACGCAGCGAAAUGCGAUACGCAAUGCGAAUUGCA
 GAACCGCGAGUCAUCAGAUCUUUGAACGCAAGUGGUGGAGGUGUAAAAACCUUCAUGUUUGUUUCAGUGUGGAA
   """
+  text_ambiguous="""
+>4a17.pdb|Chain=A
+TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+  """
   text_protein="""
 >4a17.pdb|Chain=A
 GRVIRAQRKGRANGVYKSHKSGRIAPAQYRVYDFAERQGYIRGCIRDIVHEPGRGAPLAEVAFRDPYRYKTNKEHFIAAE
@@ -1839,6 +1843,11 @@ UGGAGAGUUUGAUCCU
     text_from_chains_matching_chain_type(text=text_misc_3))==["RNA"]
   assert guess_chain_types_from_sequences(text=
     text_from_chains_matching_chain_type(text=text_protein))==["PROTEIN"]
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_ambiguous))==['DNA']
+  assert guess_chain_types_from_sequences(text=text_ambiguous,
+       likely_chain_types=['PROTEIN','RNA']) == ['PROTEIN']
+
 
   print "OK"
 
