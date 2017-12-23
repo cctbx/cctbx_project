@@ -16,7 +16,7 @@ import scitbx.rigid_body
  # NOTE: symmetry operators map NCS position i on to NCS position 0 (they are
  #  inverses of the operators mapping position 0 on to i).
 
-# Defaults for tolerances: 
+# Defaults for tolerances:
 # Set 2017-12-23 to match values in find_ncs.py; these are very relaxed...
 # previous values were tol_z=0.01, tol_r=.01,abs_tol_t=.10,rel_tol_t=0.001
 
