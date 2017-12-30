@@ -1,0 +1,145 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage[margin=0.7in]{geometry}
+
+  %%%%%%%%%%%%
+  % PREAMBLE %
+  %%%%%%%%%%%%
+\begin{document}
+\selectlanguage{english}
+
+\section{The crystal state and associated parameter gradients}
+  The purpose of this document is to discuss the code in \texttt{g\_gradients.py} and \texttt{a\_g\_conversion.h}, which is presumably used for parameter refinement in \textit{DIALS}, per the Waterman (2016) paper, section B3.  Code such as this has been in the package at least since 2006.  Unfortunately, the following notes predate the current code, and I notice that slightly different conventions are used, \textit{e.g.}, the notes give the fractionalization matrix as upper triangular, but the comments in the code indicate lower triangular.  Therefore at some point these notes will have to be reconciled with the actual code.
+
+Let's begin by defining notation.  All formulae will be given here in terms of the reciprocal lattice, therefore the vectors $\mathbf{a}$, $\mathbf{b}$, and $\mathbf{c}$ will be understood to refer to the reciprocal cell basis vectors, even though these vectors may be denoted with superscript asterisks in most literature.  In addition we have the reciprocal space $\mathbf{A}$ matrix,
+
+  \begin{equation}
+    \mathbf{A} = 
+    \left[
+    \begin{array}{c c c}
+       a_{x}  & b_{x} & c_{x} \\
+       a_{y}  & b_{y} & c_{y} \\
+       a_{z}  & b_{z} & c_{z} \\
+    \end{array}
+    \right]
+    \text{,}
+    \label{eqn:expansion}
+  \end{equation}
+
+representing the state variables of the crystal (cell parameters and orientation), in terms of column vectors denoting the basis vectors expressed as laboratory $x,y,z$ components.
+
+In practice we express $\mathbf{A}$ as
+
+  \begin{equation}
+      \mathbf{A} = \mathbf{UF} 
+    \text{,}
+    \label{eqn:sabbrev}
+  \end{equation}
+
+
+with unitary matrix $\mathbf{U}$ expressing the crystal rotation ($e.g.$, as a composite resulting from Euler rotations $\phi$, $\theta$ and $\psi$), and a fractionalization matrix $\mathbf{F}$ given by  
+
+  \begin{equation}
+    \mathbf{F} = 
+    \left[
+    \begin{array}{c c c}
+       a_{x}  & b_{x} & c_{x} \\
+       0  & b_{y} & c_{y} \\
+       0  & 0 & c_{z} \\
+    \end{array}
+    \right]
+    \text{.}
+    \label{eqn:expansionF}
+  \end{equation}
+
+Here it is understood that $\mathbf{F}$ represents the standard orientation of the crystal, which by convention is taken to mean that the reciprocal $\mathbf{a}$ vector lies along laboratory $x$, with $\mathbf{b}$ in the $xy$ plane.  
+  
+In contrast to the state variables, the parameters most useful for model fitting turn out to be the elements of the reciprocal space symmetric metric tensor, 
+
+  \begin{equation}
+    \mathbf{G} = 
+    \left[
+    \begin{array}{c}
+       g_{11}  \\ g_{22} \\ g_{33} \\
+       g_{12}  \\ g_{13} \\ g_{23} 
+       \\
+    \end{array}
+    \right] = 
+    \left[
+    \begin{array}{c}
+       g_{0}  \\ g_{1} \\ g_{2} \\
+       g_{3}  \\ g_{4} \\ g_{5} 
+       \\
+    \end{array}
+    \right] = 
+     \left[
+    \begin{array}{c}
+       \mathbf{a}\cdot\mathbf{a}  \\ \mathbf{b}\cdot\mathbf{b} \\ \mathbf{c}\cdot\mathbf{c} \\
+       \mathbf{a}\cdot\mathbf{b}  \\ \mathbf{a}\cdot\mathbf{c} \\ \mathbf{b}\cdot\mathbf{c}
+       \\
+    \end{array}
+    \right]
+   \text{.}
+    \label{eqn:expansionG}
+  \end{equation}
+
+ The reason for prefering the metrical tensor components is that high-symmetry Bravais cells will only refine a subset of the six components, with monoclinic refining four, orthorhombic three, tetragonal and hexagonal two, and cubic only one.
+ 
+ A key strategy in parameter refinement is to use the chain rule.  Suppose we are performing iterative non-linear least-squares parameter refinement with a refinement target $\chi$ that is a function of $\mathbf{A}$.  Suppose that at an intermediate step of the calculation we have the gradient of the target with respect to each element $a_{ij}$, 
+ 
+   \begin{equation}
+    \frac {\partial \chi} {\partial a_{ij}}
+       \text{,}
+    \label{eqn:frac}
+  \end{equation}
+
+ where $i$ denotes the row and $j$ the column of the matrix $\mathbf{A}$.
+
+Then in order to calculate the gradient of the target with respect to the free parameters $g_{ij}$, one would employ the chain rule.  For the specfic example of $g_{11}$ this would be performed as follows over a total of nine terms:
+
+   \begin{equation}
+    \frac {\partial \chi} {\partial g_{11}} =
+    \frac {\partial \chi} {\partial a_{11}} \frac {\partial a_{11}}{\partial g_{11}}+
+    \frac {\partial \chi} {\partial a_{12}} \frac {\partial a_{12}}{\partial g_{11}}+
+    \frac {\partial \chi} {\partial a_{13}} \frac {\partial a_{13}}{\partial g_{11}}+
+    \ldots+
+    \frac {\partial \chi} {\partial a_{31}} \frac {\partial a_{31}}{\partial g_{11}}+
+    \frac {\partial \chi} {\partial a_{32}} \frac {\partial a_{32}}{\partial g_{11}}+
+    \frac {\partial \chi} {\partial a_{33}} \frac {\partial a_{33}}{\partial g_{11}}
+       \text{.}
+    \label{eqn:fracC}
+  \end{equation}
+
+It is important to note that \textit{DIALS} employs a related chain rule formula applicable to the special case where we start with the derivatives of the target with respect to the six non-zero elements of the fractionalization matrix,
+
+     \begin{equation}
+    \frac {\partial \chi} {\partial f_{ij}}
+       \text{.}
+    \label{eqn:fracF}
+  \end{equation}
+
+  However, I do not have the specific formulae documented here apart from the code itself.  
+  
+  In any case, the critical piece will then be the relationship between $\mathbf{F}$ and $\mathbf{G}$.  Here are the full equations to convert between the two, $\mathbf{F}$ to $\mathbf{G}$:  
+      \begin{flalign*}
+    &g_{0} = a_{x}^{2} &\\
+    &g_{1} = b_{x}^{2} + b_{y}^{2} &\\
+    &g_{2} = c_{x}^{2} + c_{y}^{2} + c_{z}^{2} &\\
+    &g_{3} = a_{x} b_{x} &\\
+    &g_{4} = a_{x} c_{x} &\\
+    &g_{5} = b_{x} c_{x} + b_{y} c_{y} &\\
+    \end{flalign*}
+  Note the use of two differing nomenclatures for the subscript of $g$, which are nevertheless equivalent.  In the $\mathbf{G}$ to $\mathbf{F}$ direction:
+      \begin{flalign*}
+    &a_{x} = g_{0}^{1/2} &\\
+    &b_{x} = g_{3} / a_{x} &\\
+    &c_{x} = g_{4} / a_{x} &\\
+    &b_{y} = (g_{1} - b_{x}^2)^{1/2} &\\
+    &c_{y} = \dfrac{g_{5} - b_{x}c_{x}}{b_{y}} &\\
+    &c_{z} = (g_{2} - c_{x}^2 - c_y^2)^{1/2} &\\
+    \end{flalign*}
+Notice the presence of the square root in three of the $\mathbf{G}$ to $\mathbf{F}$ formulae.  A negative value inside the radical should never occur, and if it did would represent an illegal trial value for a free parameter.
+  
+  
+      \end{document}
