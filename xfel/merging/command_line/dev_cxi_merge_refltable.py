@@ -100,8 +100,12 @@ class refltable_scaling_manager(scaling_manager):
                             'iobs':data.unscaled_obs[hkl][j]})
     data.ISIGI = reflections
 
+    from scitbx.matrix import sqr
+    ori = data.current_orientation
+    u_matrix = sqr(ori.reciprocal_matrix()) * \
+               sqr(ori.unit_cell().reciprocal().orthogonalization_matrix()).inverse()
     crystal_d = {'b_matrix':data.indexed_cell.reciprocal().orthogonalization_matrix(),
-                 'u_matrix':data.current_orientation.crystal_rotation_matrix(),
+                 'u_matrix':u_matrix.elems,
                  'wavelength':data.wavelength,
                  'n_refl':len(reflections)}
     if self.params.postrefinement.enable:
