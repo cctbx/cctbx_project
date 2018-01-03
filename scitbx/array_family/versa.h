@@ -18,51 +18,60 @@ namespace scitbx { namespace af {
       typedef versa_plain<ElementType, AccessorType> base_class;
       typedef typename base_class::base_array_type base_array_type;
 
+      typedef typename base_class::allocator_type  allocator_type;
+
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_value_type index_value_type;
       typedef versa<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
-      versa()
+      explicit
+      versa(allocator_type a = allocator_type())
+        : base_class(a)
       {}
 
       explicit
-      versa(AccessorType const& ac)
-        : base_class(ac)
+      versa(AccessorType const& ac, allocator_type a = allocator_type())
+        : base_class(ac, a)
       {}
 
       explicit
-      versa(index_value_type const& n0)
-        : base_class(n0)
+      versa(index_value_type const& n0, allocator_type a = allocator_type())
+        : base_class(n0, a)
       {}
 
-      versa(AccessorType const& ac, ElementType const& x)
-        : base_class(ac, x)
+      versa(AccessorType const& ac, ElementType const& x, allocator_type a = allocator_type())
+        : base_class(ac, x, a)
       {}
 
-      versa(index_value_type const& n0, ElementType const& x)
-        : base_class(n0, x)
+      versa(index_value_type const& n0, ElementType const& x, allocator_type a = allocator_type())
+        : base_class(n0, x, a)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
       template <typename FunctorType>
-      versa(AccessorType const& ac, init_functor<FunctorType> const& ftor)
-        : base_class(ac, ftor)
+      versa(AccessorType const& ac,
+            init_functor<FunctorType> const& ftor,
+            allocator_type a = allocator_type())
+        : base_class(ac, ftor, a)
       {}
 
       // non-std
       template <typename FunctorType>
-      versa(index_value_type const& n0, init_functor<FunctorType> const& ftor)
-        : base_class(n0, ftor)
+      versa(index_value_type const& n0,
+            init_functor<FunctorType> const& ftor,
+            allocator_type a = allocator_type())
+        : base_class(n0, ftor, a)
       {}
 #endif
 
       // non-std
       template <class E>
-      versa(expression<E> const &e)
+      versa(expression<E> const &e, allocator_type a = allocator_type())
         : base_class(e.accessor(base_class::accessor()),
-                     init_functor_null<ElementType>())
+                     init_functor_null<ElementType>(),
+                     a)
       {
         e.assign_to(this->ref());
       }
@@ -116,8 +125,8 @@ namespace scitbx { namespace af {
       {}
 
       template <typename OtherArrayType>
-      versa(array_adaptor<OtherArrayType> const& a_a)
-        : base_class(a_a)
+      versa(array_adaptor<OtherArrayType> const& a_a, allocator_type a = allocator_type())
+        : base_class(a_a, a)
       {}
 
       one_dim_type as_1d() {
@@ -125,9 +134,14 @@ namespace scitbx { namespace af {
       }
 
       this_type
-      deep_copy() const {
-        base_array_type c(this->begin(), this->end());
+      deep_copy(allocator_type a) const {
+        base_array_type c(this->begin(), this->end(), a);
         return this_type(c, this->m_accessor);
+      }
+
+      this_type
+      deep_copy() const {
+        return deep_copy(allocator_type());
       }
 
       this_type

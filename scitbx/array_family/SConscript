@@ -36,3 +36,23 @@ env_wd.Program(target="tst_accessors", source="tst_accessors.cpp")
 env_wd.Program(target="tst_unsigned_float_arithmetic",
             source="tst_unsigned_float_arithmetic.cpp")
 env_wd.Program(target="tst_optional_copy", source="tst_optional_copy.cpp")
+
+
+# PMR Tests
+env_test = env_wd.Clone()
+
+# If we have googletest, link it's components. Otherwise, add a definition
+# so that the simple, backup test framework is used
+conf = env_test.Configure()
+if conf.TryCompile("#include <gtest/gtest.h>", extension=".cpp"):
+  env_test.Append(LIBS=["gtest_main", "gtest"])
+else:
+  env_test.Append(CXXFLAGS=["-DNO_GTEST"])
+conf.Finish()
+
+env_test.Program(
+    target="test_pmr",
+    source=[
+        "tests/test_pmr.cpp", "tests/test_pmr_shared_plain.cpp",
+        "tests/testing_main.cpp"
+    ])
