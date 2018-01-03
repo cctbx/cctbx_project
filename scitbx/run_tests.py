@@ -18,6 +18,7 @@ tst_list = (
   "$B/array_family/tst_ref_matrix_facet",
   "$B/array_family/tst_accessors",
   "$B/array_family/tst_optional_copy",
+  "$B/array_family/test_pmr",
   "$D/array_family/boost_python/tst_flex_argument_passing.py",
   "$B/serialization/tst_base_256",
   "$D/math/tests/tst_minimum_covering_ellipsoid.py",
