@@ -1,9 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from docutils.parsers.rst import Directive
-#from docutils.parsers.rst import directives
-from docutils import nodes
-
+import docutils.nodes
+import docutils.statemachine
 
 def setup(app):
   app.add_directive('python_string', PythonStringDirective)
@@ -27,15 +26,7 @@ class PythonStringDirective(Directive):
 
     assert isinstance(python_string, basestring)
 
-
-    from docutils import statemachine
-    include_lines = statemachine.string2lines(python_string, 2,
-                                              convert_whitespace=True)
+    include_lines = docutils.statemachine.string2lines(
+        python_string, tab_width=2, convert_whitespace=True)
     self.state_machine.insert_input(include_lines, python_path)
     return []
-
-    text = python_string
-    text_nodes, messages = self.state.inline_text(text, self.lineno)
-    node = nodes.literal_block(text, '', *text_nodes)
-    self.add_name(node)
-    return [node] + messages
