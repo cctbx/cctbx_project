@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 from docutils.parsers.rst import Directive
-import docutils.nodes
 import docutils.statemachine
 
 def setup(app):
