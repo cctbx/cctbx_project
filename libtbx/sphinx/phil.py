@@ -1,9 +1,9 @@
-from __future__ import division
+from __future__ import absolute_import, division
 
+from cStringIO import StringIO
 from docutils.parsers.rst import Directive
 from docutils.parsers.rst import directives
 from docutils import nodes
-
 
 def setup(app):
   app.add_directive('phil', PhilDirective)
@@ -18,8 +18,6 @@ class PhilDirective(Directive):
                  'attributes-level': directives.nonnegative_int}
 
   def run(self):
-    from cStringIO import StringIO
-
     phil_include = self.arguments[0]
     expert_level = self.options.get('expert-level', None)
     attributes_level = self.options.get('attributes-level', 0)
@@ -30,7 +28,7 @@ class PhilDirective(Directive):
       s, expert_level=expert_level, attributes_level=attributes_level)
 
     text = s.getvalue()
-    text = text.replace('*', '\*')
+    text = text.replace('*', '\*').replace('|', '\|')
     text_nodes, messages = self.state.inline_text(text, 0)
     node = nodes.literal_block(text, '', *text_nodes)
     self.add_name(node)
