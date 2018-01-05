@@ -2518,7 +2518,7 @@ class manager(object):
   def geometry_statistics(self,
                           general_selection = None):
     scattering_table = \
-      self._xray_structure.scattering_type_registry().last_table()
+        self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
     ph = self.get_hierarchy(sync_with_xray_structure=True)
     hd_selection = self.get_hd_selection()

@@ -134,7 +134,16 @@ def run():
       assert r2.angle().mean < 1.0, "assertion %f < 1.0" % r2.angle().mean
       assert r2.bond().mean < 0.01, "assertion %f < 0.01" % r2.bond().mean
 
+def exercise_2():
+  inp = iotbx.pdb.input(lines=pdb_str_1, source_info=None)
+  model = mmtbx.model.manager(
+      model_input = inp)
+  model.setup_scattering_dictionaries(scattering_table="wk1995")
+  g_stat = model.geometry_statistics()
+
+
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
+  exercise_2()
   print "Time: %6.3f"%(time.time()-t0)
