@@ -50,7 +50,6 @@ class PhilDirective(Directive):
           import_path = phil_include
         else:
           import_path = "%s.%s" %(phil_include, i)
-        print(import_path)
         master_params = libtbx.utils.import_python_object(
           import_path=import_path,
           error_prefix="",
@@ -61,6 +60,7 @@ class PhilDirective(Directive):
           continue
         break
       except Exception, e:
+        print(import_path)
         print(e)
 
     # Check if the module attribute is a string, a scope, ...
