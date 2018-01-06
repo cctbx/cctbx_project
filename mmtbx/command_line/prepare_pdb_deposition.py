@@ -42,10 +42,11 @@ def run(args):
   params = input_objects.work.extract()
 
   # get files (will be handled by task.validate)
-  if (params.input.model_file is None):
-    raise Sorry('One model file is required.')
-  if (params.input.sequence_file is None):
-    raise Sorry('One sequence file is required.')
+  # already
+  # if (params.input.model_file is None):
+  #   raise Sorry('One model file is required.')
+  # if (params.input.sequence_file is None):
+  #   raise Sorry('One sequence file is required.')
 
   pdb_input = iotbx.pdb.input(params.input.model_file)
   model = mmtbx.model.manager(model_input=pdb_input, log=logger)
