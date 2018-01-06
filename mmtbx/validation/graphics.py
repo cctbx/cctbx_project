@@ -48,15 +48,15 @@ class rotarama_plot_mixin (object) :
     if (points is not None) :
       if (xyz is not None) : assert (len(xyz) == len(points))
       for i, (x, y, label, is_outlier) in enumerate(points) :
+        self._points.append((x,y))
         if is_outlier :
           self.plot.plot((x,),(y,), 'bo', markerfacecolor='red')
           if show_labels :
             self.plot.text(x, y, label, color='black')
-          self._points.append((x,y))
-          if (xyz is not None) :
-            self._xyz.append(xyz[i])
         else :
           self.plot.plot((x,),(y,), 'bo', markerfacecolor='white')
+        if (xyz is not None) :
+          self._xyz.append(xyz[i])
     self.canvas.draw()
 
 class residue_bin (slots_getstate_setstate) :
