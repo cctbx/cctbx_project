@@ -327,8 +327,90 @@ ATOM    303  HB3BALA A  25      21.224  -4.566  24.701  0.50 11.78           H
 type_list_known2 = ['alg1b', '3neigbs', 'prop', 'prop', 'prop', 'alg1b',
   '3neigbs', 'prop', 'prop', 'prop']
 
+
+# This fragment is from PDB model 1qjh
+# A residue (Arg 71 in 1qjh) is close to its symmetry mate.
+# The geo file lists two asu bond restraints for atom HH22 (there should be
+# only one, IMHO!).
+# The fact that HH22 has no simple bond proxy, but angle proxies, caused
+# an error (asu covalent bond restraints are currently ignored).
+
+pdb_str3 = """
+CRYST1   49.701   49.701   73.255  90.00  90.00  90.00 P 42 21 2     8
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.020120  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.020120  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.013651        0.00000
+ATOM    575  N   ARG A  71       4.405  19.140  21.765  1.00 56.18           N
+ATOM    576  CA  ARG A  71       4.384  20.597  21.643  1.00 50.81           C
+ATOM    577  C   ARG A  71       5.782  21.217  21.647  1.00 45.46           C
+ATOM    578  O   ARG A  71       5.933  22.440  21.582  1.00 46.55           O
+ATOM    579  CB  ARG A  71       3.558  21.214  22.773  1.00 51.01           C
+ATOM    580  CG  ARG A  71       2.166  20.635  22.956  1.00 52.13           C
+ATOM    581  CD  ARG A  71       1.358  20.625  21.661  1.00 60.92           C
+ATOM    582  NE  ARG A  71       1.134  21.965  21.122  1.00 63.41           N
+ATOM    583  CZ  ARG A  71       0.470  22.927  21.755  1.00 62.11           C
+ATOM    584  NH1 ARG A  71      -0.038  22.699  22.955  1.00 60.26           N
+ATOM    585  NH2 ARG A  71       0.310  24.119  21.188  1.00 62.26           N
+ATOM      0  H   ARG A  71       4.587  18.847  22.553  1.00 56.18           H
+ATOM      0  HA  ARG A  71       3.979  20.793  20.783  1.00 50.81           H
+ATOM      0  HB2 ARG A  71       4.047  21.109  23.604  1.00 51.01           H
+ATOM      0  HB3 ARG A  71       3.476  22.167  22.610  1.00 51.01           H
+ATOM      0  HG2 ARG A  71       2.238  19.729  23.295  1.00 52.13           H
+ATOM      0  HG3 ARG A  71       1.690  21.151  23.626  1.00 52.13           H
+ATOM      0  HD2 ARG A  71       1.822  20.088  20.999  1.00 60.92           H
+ATOM      0  HD3 ARG A  71       0.502  20.199  21.822  1.00 60.92           H
+ATOM      0  HE  ARG A  71       1.453  22.143  20.343  1.00 63.41           H
+ATOM      0 HH11 ARG A  71       0.062  21.929  23.325  1.00 60.26           H
+ATOM      0 HH12 ARG A  71      -0.468  23.321  23.365  1.00 60.26           H
+ATOM      0 HH21 ARG A  71       0.637  24.271  20.407  1.00 62.26           H
+ATOM      0 HH22 ARG A  71      -0.120  24.738  21.602  1.00 62.26           H
+"""
+
+type_list_known3 = ['alg1b', '3neigbs', '2tetra', '2tetra', '2tetra', '2tetra',
+ '2tetra', '2tetra', 'flat_2neigbs', 'alg1a', 'alg1a']
+
+def exercise3(pdb_str, type_list_known):
+  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    build_grm   = True)
+
+  pdb_hierarchy = model.get_hierarchy()
+  sites_cart = model.get_sites_cart()
+  atoms = pdb_hierarchy.atoms()
+
+  model.setup_riding_h_manager()
+  riding_h_manager = model.get_riding_h_manager()
+
+  h_para = riding_h_manager.h_parameterization
+
+  diagnostics = riding_h_manager.diagnostics(
+    sites_cart = sites_cart,
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  type_list     = diagnostics.type_list
+
+  number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_para) - h_para.count(None)
+
+  assert (number_h_para == number_h-2), 'Not all H atoms are parameterized'
+
+  for ih in h_distances:
+    labels = atoms[ih].fetch_labels()
+    assert (h_distances[ih] < 0.2), \
+      'distance too large: %s  atom: %s (%s) residue: %s ' \
+      % (h_para[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
+
+  for type1, type2 in zip(type_list, type_list_known):
+    assert (type1 == type2)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise(pdb_str = pdb_str1, type_list_known = type_list_known1)
   exercise(pdb_str = pdb_str2, type_list_known = type_list_known2)
+  exercise3(pdb_str = pdb_str3, type_list_known = type_list_known3)
+
   print "OK. Time: %8.3f"%(time.time()-t0)

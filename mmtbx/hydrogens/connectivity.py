@@ -129,6 +129,7 @@ class determine_connectivity(object):
         if (i_parent not in self.parents): continue
         bonded = [ih, i_parent]
         i_second = [x for x in ap.i_seqs if x not in bonded][0]
+        if (self.h_connectivity[ih] is None): continue
         #assert(self.h_connectivity[ih].a0['iseq'] == i_parent)
         if (self.h_connectivity[ih].a0['iseq'] != i_parent):
           raise Sorry  (
