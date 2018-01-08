@@ -101,6 +101,9 @@ tst_list = (
   "$D/regression/tst_miller_sort_asu.py",
   "$D/regression/tst_reflection_file_reader.py",
   "$D/regression/tst_xray_scale.py",
+  "$D/bioinformatics/test/tst_alignment_as_hsearch.py",
+  "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
+  "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
   )
 
 def run():
