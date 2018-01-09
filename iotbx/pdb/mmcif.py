@@ -143,7 +143,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       # atom_group(s)
       # defined by resname and altloc id
       current_altloc = alt_id[i_atom]
-      if current_altloc == ".": current_altloc = "" # Main chain atoms
+      if current_altloc == "." or current_altloc == "?":
+        current_altloc = "" # Main chain atoms
       current_resname = comp_id[i_atom]
       if (current_altloc, current_resname) not in atom_groups:
         atom_group = hierarchy.atom_group(

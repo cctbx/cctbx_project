@@ -47,10 +47,77 @@ def exercise_extract_header_misc () :
   r_rfree_sigma = cif_in.get_r_rfree_sigma(cif_file)
   r_rfree_sigma.show()
 
+def exercise_rows_splitted_by_newline():
+  cif_txt = """
+data_myblock
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   1    N  N   ? MET A 1 1   ? 34.204 -29.806 -27.207 1.00 48.27 ? 0   MET
+A N   1
+ATOM   2    C  CA  ? MET A 1 1   ? 34.593 -28.347 -27.188 1.00 47.97 ? 0   MET
+A CA  1
+ATOM   3    C  C   ? MET A 1 1   ? 34.888 -27.889 -25.763 1.00 46.15 ? 0   MET
+A C   1
+ATOM   4    O  O   ? MET A 1 1   ? 35.022 -28.720 -24.852 1.00 46.47 ? 0   MET
+A O   1
+ATOM   5    C  CB  ? MET A 1 1   ? 33.519 -27.457 -27.852 1.00 48.41 ? 0   MET
+A CB  1
+ATOM   6    C  CG  ? MET A 1 1   ? 32.163 -27.412 -27.138 1.00 49.22 ? 0   MET
+A CG  1
+ATOM   7    S  SD  ? MET A 1 1   ? 31.161 -25.921 -27.465 1.00 50.44 ? 0   MET
+A SD  1
+ATOM   8    C  CE  ? MET A 1 1   ? 32.261 -24.545 -27.108 1.00 50.23 ? 0   MET
+A CE  1
+#
+"""
+  cif_block = iotbx.cif.reader(input_string=cif_txt).model()["myblock"]
+  assert list(cif_block.get("_atom_site.group_PDB")) == ["ATOM"]*8, list(cif_block.get("_atom_site.group_PDB"))
+  assert list(cif_block.get("_atom_site.id")) == ['1','2','3','4','5','6','7','8'], list(cif_block.get("_atom_site.id"))
+  assert list(cif_block.get("_atom_site.type_symbol")) == ["N", "C", "C", "O", "C", "C", "S", "C"]
+  assert list(cif_block.get("_atom_site.label_atom_id")) == ["N", "CA", "C", "O", "CB", "CG", "SD", "CE"]
+  assert list(cif_block.get("_atom_site.label_alt_id")) == ["?"]*8
+  assert list(cif_block.get("_atom_site.label_comp_id")) == ["MET"]*8
+  assert list(cif_block.get("_atom_site.label_asym_id")) == ["A"]*8
+  assert list(cif_block.get("_atom_site.label_entity_id")) == ["1"]*8
+  assert list(cif_block.get("_atom_site.label_seq_id")) == ["1"]*8
+  assert list(cif_block.get("_atom_site.pdbx_PDB_ins_code")) == ["?"]*8
+  # assert list(cif_block.get("_atom_site.Cartn_x")) == []
+  # assert list(cif_block.get("_atom_site.Cartn_y")) == []
+  # assert list(cif_block.get("_atom_site.Cartn_z")) == []
+  assert list(cif_block.get("_atom_site.occupancy")) == ['1.00']*8, list(cif_block.get("_atom_site.occupancy"))
+  # assert list(cif_block.get("_atom_site.B_iso_or_equiv")) == []
+  assert list(cif_block.get("_atom_site.pdbx_formal_charge")) == ["?"]*8
+  assert list(cif_block.get("_atom_site.auth_seq_id")) == ["0"]*8
+  assert list(cif_block.get("_atom_site.auth_comp_id")) == ["MET"]*8
+  assert list(cif_block.get("_atom_site.auth_asym_id")) == ["A"]*8
+  assert list(cif_block.get("_atom_site.auth_atom_id")) == ["N", "CA", "C", "O", "CB", "CG", "SD", "CE"]
+  assert list(cif_block.get("_atom_site.pdbx_PDB_model_num")) == ["1"]*8
 
 def run():
   exercise_extract_f_model_core_constants()
   exercise_extract_header_misc()
+  exercise_rows_splitted_by_newline()
 
 if __name__ == '__main__':
   run()
