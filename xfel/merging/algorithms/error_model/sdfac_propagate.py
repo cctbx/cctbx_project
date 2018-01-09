@@ -60,7 +60,6 @@ class sdfac_propagate(error_modeler_base):
     ry = flex.mat3_double()
     u = flex.mat3_double()
     b = flex.mat3_double()
-    q = flex.vec3_double()
     wavelength = flex.double()
     G = flex.double()
     B = flex.double()
@@ -71,7 +70,7 @@ class sdfac_propagate(error_modeler_base):
     ex = col((1,0,0))
     ey = col((0,1,0))
 
-    for i in xrange(len(self.scaler.crystal_table)):
+    for i in xrange(len(ct)):
       n_refl = ct['n_refl'][i]
       rx.extend(flex.mat3_double(n_refl, ex.axis_and_angle_as_r3_rotation_matrix(ct['thetax'][i])))
       ry.extend(flex.mat3_double(n_refl, ey.axis_and_angle_as_r3_rotation_matrix(ct['thetay'][i])))
@@ -183,7 +182,7 @@ class sdfac_propagate(error_modeler_base):
     gstar_params = None
     gstar_derivatives = None
 
-    for i in xrange(len(self.scaler.crystal_table)):
+    for i in xrange(len(ct)):
       n_refl = ct['n_refl'][i]
       drx_dthetax.extend(flex.mat3_double(n_refl, ex.axis_and_angle_as_r3_derivative_wrt_angle(ct['thetax'][i])))
       dry_dthetay.extend(flex.mat3_double(n_refl, ey.axis_and_angle_as_r3_derivative_wrt_angle(ct['thetay'][i])))
@@ -225,7 +224,7 @@ class sdfac_propagate(error_modeler_base):
       drhsq_dp = 2 * (r['slen'] - (1/r['wavelength'])) * dslen_dp
       dPn_dp   = 2 * r['rs'] * drs_dp
       dPd_dp   = 2 * ((r['rs'] * drs_dp) + drhsq_dp)
-      dP_dp    = ((r['p_n'] * dPd_dp)-(r['p_d'] * dPn_dp))/(r['p_d']**2)
+      dP_dp    = ((r['p_d'] * dPn_dp)-(r['p_n'] * dPd_dp))/(r['p_d']**2)
       dI_dp    = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_dp
       return dI_dp
 
@@ -269,7 +268,12 @@ class sdfac_propagate(error_modeler_base):
         finite_g = self.finite_difference(parameter_name, table)
         print parameter_name
         for refl_id in xrange(min(10, len(refls))):
-          print "%d % 18.1f % 18.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id])
+          print "%d % 21.1f % 21.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id])
+        stats = flex.mean_and_variance(finite_g-derivatives)
+        stats_finite = flex.mean_and_variance(finite_g)
+        percent = 100*stats.mean()/stats_finite.mean() if stats_finite.mean() != 0 else 0
+        print "Mean difference between finite and analytical: % 24.4f +/- % 24.4f (%8.3f%% of finite d.)"%( \
+            stats.mean(), stats.unweighted_sample_standard_deviation(), percent)
 
     # Propagate errors
     refls['isigi'] = refls['scaled_intensity'] / flex.sqrt(((sigma_Iobs**2 * dI_dIobs**2) +
