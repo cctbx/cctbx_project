@@ -767,11 +767,100 @@ loop_
   assert approx_equal(
     pdb_atoms_recycled.extract_fdp(), [0, 0, 0, 0, 2.6871, 0])
 
+def exercise_multi_model_single_chain():
+  inp_txt = """
+data_5UZL
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM 1     N N    . ASN A 1 1  ? 1.329   0.000   0.000   1.00 1.00  ? 1  ASN A N    1
+ATOM 2     C CA   . ASN A 1 1  ? 2.093   -0.001  -1.242  1.00 64.21 ? 1  ASN A CA   1
+ATOM 3     C C    . ASN A 1 1  ? 1.973   -1.345  -1.954  1.00 21.54 ? 1  ASN A C    1
+ATOM 4     O O    . ASN A 1 1  ? 2.071   -1.423  -3.178  1.00 42.13 ? 1  ASN A O    1
+ATOM 5     C CB   . ASN A 1 1  ? 3.565   0.309   -0.960  1.00 52.42 ? 1  ASN A CB   1
+ATOM 6     C CG   . ASN A 1 1  ? 4.305   0.774   -2.199  1.00 64.34 ? 1  ASN A CG   1
+ATOM 7     O OD1  . ASN A 1 1  ? 4.331   0.081   -3.217  1.00 14.30 ? 1  ASN A OD1  1
+ATOM 8     N ND2  . ASN A 1 1  ? 4.913   1.952   -2.118  1.00 64.45 ? 1  ASN A ND2  1
+ATOM 1     N N    . ASN B 1 1  ? 1.329   0.000   0.000   1.00 1.00  ? 1  ASN B N    1
+ATOM 2     C CA   . ASN B 1 1  ? 2.093   -0.001  -1.242  1.00 64.21 ? 1  ASN B CA   1
+ATOM 3     C C    . ASN B 1 1  ? 1.973   -1.345  -1.954  1.00 21.54 ? 1  ASN B C    1
+ATOM 4     O O    . ASN B 1 1  ? 2.071   -1.423  -3.178  1.00 42.13 ? 1  ASN B O    1
+ATOM 5     C CB   . ASN B 1 1  ? 3.565   0.309   -0.960  1.00 52.42 ? 1  ASN B CB   1
+ATOM 6     C CG   . ASN B 1 1  ? 4.305   0.774   -2.199  1.00 64.34 ? 1  ASN B CG   1
+ATOM 7     O OD1  . ASN B 1 1  ? 4.331   0.081   -3.217  1.00 14.30 ? 1  ASN B OD1  1
+ATOM 8     N ND2  . ASN B 1 1  ? 4.913   1.952   -2.118  1.00 64.45 ? 1  ASN B ND2  1
+ATOM 542   N N    . ASN A 1 1  ? 1.728   -3.986  -1.323  1.00 51.14 ? 1  ASN A N    2
+ATOM 543   C CA   . ASN A 1 1  ? 2.250   -2.656  -1.616  1.00 71.03 ? 1  ASN A CA   2
+ATOM 544   C C    . ASN A 1 1  ? 1.152   -1.749  -2.162  1.00 53.34 ? 1  ASN A C    2
+ATOM 545   O O    . ASN A 1 1  ? 0.899   -1.718  -3.367  1.00 12.41 ? 1  ASN A O    2
+ATOM 546   C CB   . ASN A 1 1  ? 3.399   -2.747  -2.622  1.00 42.32 ? 1  ASN A CB   2
+ATOM 547   C CG   . ASN A 1 1  ? 4.579   -3.531  -2.082  1.00 65.14 ? 1  ASN A CG   2
+ATOM 548   O OD1  . ASN A 1 1  ? 5.209   -3.132  -1.102  1.00 55.44 ? 1  ASN A OD1  2
+ATOM 549   N ND2  . ASN A 1 1  ? 4.886   -4.654  -2.722  1.00 35.14 ? 1  ASN A ND2  2
+ATOM 1083  N N    . ASN A 1 1  ? 0.315   -4.452  -3.331  1.00 42.01 ? 1  ASN A N    3
+ATOM 1084  C CA   . ASN A 1 1  ? 0.480   -3.854  -2.011  1.00 52.12 ? 1  ASN A CA   3
+ATOM 1085  C C    . ASN A 1 1  ? 0.359   -2.335  -2.083  1.00 54.35 ? 1  ASN A C    3
+ATOM 1086  O O    . ASN A 1 1  ? 0.991   -1.690  -2.920  1.00 11.31 ? 1  ASN A O    3
+ATOM 1087  C CB   . ASN A 1 1  ? 1.836   -4.241  -1.419  1.00 2.14  ? 1  ASN A CB   3
+ATOM 1088  C CG   . ASN A 1 1  ? 1.801   -4.332  0.095   1.00 41.02 ? 1  ASN A CG   3
+ATOM 1089  O OD1  . ASN A 1 1  ? 1.394   -3.390  0.775   1.00 22.22 ? 1  ASN A OD1  3
+ATOM 1090  N ND2  . ASN A 1 1  ? 2.229   -5.470  0.629   1.00 42.11 ? 1  ASN A ND2  3
+ATOM 1624  N N    . ASN A 1 1  ? 0.304   3.617   0.905   1.00 11.20 ? 1  ASN A N    4
+ATOM 1625  C CA   . ASN A 1 1  ? 0.052   2.602   -0.112  1.00 4.42  ? 1  ASN A CA   4
+ATOM 1626  C C    . ASN A 1 1  ? 1.337   1.862   -0.471  1.00 21.12 ? 1  ASN A C    4
+ATOM 1627  O O    . ASN A 1 1  ? 2.321   2.471   -0.891  1.00 53.04 ? 1  ASN A O    4
+ATOM 1628  C CB   . ASN A 1 1  ? -0.547  3.244   -1.365  1.00 30.21 ? 1  ASN A CB   4
+ATOM 1629  C CG   . ASN A 1 1  ? 0.091   4.580   -1.692  1.00 41.01 ? 1  ASN A CG   4
+ATOM 1630  O OD1  . ASN A 1 1  ? 1.289   4.658   -1.967  1.00 74.10 ? 1  ASN A OD1  4
+ATOM 1631  N ND2  . ASN A 1 1  ? -0.708  5.640   -1.663  1.00 53.14 ? 1  ASN A ND2  4
+ATOM 2165  N N    . ASN A 1 1  ? 1.889   1.883   -2.225  1.00 51.45 ? 1  ASN A N    5
+ATOM 2166  C CA   . ASN A 1 1  ? 1.702   0.513   -1.762  1.00 4.32  ? 1  ASN A CA   5
+ATOM 2167  C C    . ASN A 1 1  ? 2.979   -0.302  -1.945  1.00 2.51  ? 1  ASN A C    5
+ATOM 2168  O O    . ASN A 1 1  ? 3.721   -0.105  -2.907  1.00 43.02 ? 1  ASN A O    5
+ATOM 2169  C CB   . ASN A 1 1  ? 0.548   -0.150  -2.516  1.00 42.12 ? 1  ASN A CB   5
+ATOM 2170  C CG   . ASN A 1 1  ? 0.810   -0.243  -4.007  1.00 71.20 ? 1  ASN A CG   5
+ATOM 2171  O OD1  . ASN A 1 1  ? 1.124   -1.314  -4.528  1.00 12.34 ? 1  ASN A OD1  5
+ATOM 2172  N ND2  . ASN A 1 1  ? 0.682   0.881   -4.702  1.00 14.44 ? 1  ASN A ND2  5
+"""
+  pdb_in = iotbx.pdb.input(lines=(inp_txt).splitlines(), source_info=None)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
+  # pdb_hierarchy.show()
+  assert len(pdb_hierarchy.models()) == 5
+  assert pdb_hierarchy.atoms_size() == 48, pdb_hierarchy.atoms_size()
+  for m_i, model in enumerate(pdb_hierarchy.models()):
+    if m_i == 0:
+      assert model.atoms_size() == 16, "%d, %s" % (model.atoms_size(), model.id)
+      assert len(model.chains()) == 2
+      for c in model.chains():
+        assert c.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
+    else:
+      assert model.atoms_size() == 8, "%d, %s" % (model.atoms_size(), model.id)
+      assert model.only_chain().atoms_size() == 8, "%d, %s" % (model.only_chain().atoms_size(), model.id)
 
 def run():
   exercise_fp_fdp()
   exercise_pdb_hierarchy_sequence_as_cif_block()
   exercise_pdb_hierachy_builder()
+  exercise_multi_model_single_chain()
 
 
 if __name__ == '__main__':

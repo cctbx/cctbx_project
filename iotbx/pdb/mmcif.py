@@ -110,7 +110,8 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       current_auth_asym_id = auth_asym_id[i_atom]
       if current_auth_asym_id == ".": current_auth_asym_id = " "
       assert current_label_asym_id is not None
-      if current_label_asym_id != last_label_asym_id:
+      if (current_label_asym_id != last_label_asym_id
+          or current_model_id != last_model_id):
         chain = hierarchy.chain(id=current_auth_asym_id)
         model.append_chain(chain)
       else:
@@ -125,9 +126,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       if pdb_ins_code is not None:
         current_ins_code = pdb_ins_code[i_atom]
         if current_ins_code in ("?", ".", None): current_ins_code = " "
-      if (current_residue_id != last_residue_id or
-          current_ins_code != last_ins_code or
-          current_label_asym_id != last_label_asym_id):
+      if (current_residue_id != last_residue_id
+          or current_ins_code != last_ins_code
+          or current_label_asym_id != last_label_asym_id
+          or current_model_id != last_model_id):
         try:
           resseq = hy36encode(width=4, value=int(current_residue_id))
         except ValueError, e:
