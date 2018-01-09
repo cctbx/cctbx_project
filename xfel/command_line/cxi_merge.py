@@ -1427,8 +1427,6 @@ class scaling_manager (intensity_data) :
     PF = factory(self.params)
     postrefinement_algorithm = PF.postrefinement_algorithm()
 
-    unscaled_obs = observations
-
     if self.params.postrefinement.enable:
       # Refactorization of the Sauter(2015) code; result should be same to 5 significant figures.
       # Lack of binary identity is due to the use of Python for old-code weighted correlation,
@@ -1492,7 +1490,7 @@ class scaling_manager (intensity_data) :
     print >> out, "Rejected %d reflections with negative intensities" % \
         data.n_rejected
 
-    data.unscaled_obs = {}
+    data.extra_stuff = {}
 
     # Apply the correlation coefficient threshold, if appropriate.
     if self.params.scaling.algorithm == 'mark0' and \
@@ -1521,8 +1519,10 @@ class scaling_manager (intensity_data) :
           data.ISIGI[index].append(isigi)
         else:
           data.ISIGI[index] = [isigi]
-          data.unscaled_obs[index] = flex.double()
-        data.unscaled_obs[index].append(unscaled_obs.data()[pair[1]])
+          data.extra_stuff[index] = flex.double(), flex.miller_index()
+
+        data.extra_stuff[index][0].append(observations_original_index.data()[pair[1]])
+        data.extra_stuff[index][1].append(observations_original_index.indices()[pair[1]])
 
         sigma = observations.sigmas()[pair[1]] / slope
         variance = sigma * sigma

@@ -27,6 +27,7 @@ xfel.merging.algorithms.error_model.errors_from_residuals.errors_from_residuals 
 def merging_reflection_table():
   table = flex.reflection_table()
   table['miller_index'] = flex.miller_index()
+  table['miller_index_original'] = flex.miller_index()
   table['scaled_intensity'] = flex.double()
   table['isigi'] = flex.double()
   table['slope'] = flex.double()
@@ -97,14 +98,18 @@ class refltable_scaling_manager(scaling_manager):
                             'slope': refl[2],
                             'miller_id':i,
                             'crystal_id':crystal_id,
-                            'iobs':data.unscaled_obs[hkl][j]})
+                            'iobs':data.extra_stuff[hkl][0][j],
+                            'miller_index_original':data.extra_stuff[hkl][1][j]})
+
     data.ISIGI = reflections
 
     from scitbx.matrix import sqr
     ori = data.current_orientation
-    u_matrix = sqr(ori.reciprocal_matrix()) * \
-               sqr(ori.unit_cell().reciprocal().orthogonalization_matrix()).inverse()
-    crystal_d = {'b_matrix':data.indexed_cell.reciprocal().orthogonalization_matrix(),
+    a_matrix = sqr(ori.reciprocal_matrix())
+    b_matrix = sqr(ori.unit_cell().fractionalization_matrix()).transpose()
+    u_matrix = a_matrix * b_matrix.inverse()
+
+    crystal_d = {'b_matrix':b_matrix.elems,
                  'u_matrix':u_matrix.elems,
                  'wavelength':data.wavelength,
                  'n_refl':len(reflections)}
