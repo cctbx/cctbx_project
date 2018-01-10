@@ -85,4 +85,3 @@ def tst_build_edge_list():
 
 if __name__ == "__main__":
   tst_build_edge_list()
-  print "OK"
