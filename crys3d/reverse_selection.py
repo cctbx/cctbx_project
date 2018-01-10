@@ -176,9 +176,14 @@ class mouse_selection_manager (object) :
       # reduce selection string to most grouped format
       if (hasattr(self, 'pdb_hierarchy')):
         from iotbx.pdb.atom_selection import selection_string_from_selection
-        selection_string = selection_string_from_selection(
-          self.pdb_hierarchy, atom_selection)
-      self.selection_string = selection_string
+        # reducing selection string will fail if the selection has alternate
+        # conformations, so just keep fully expanded form.
+        try:
+          selection_string = selection_string_from_selection(
+            self.pdb_hierarchy, atom_selection)
+        except AssertionError:
+          pass
+        self.selection_string = selection_string
     self.atom_selection = atom_selection
     self.selection_i_seqs = atom_selection.iselection()
     if self.selection_callback is not None :
