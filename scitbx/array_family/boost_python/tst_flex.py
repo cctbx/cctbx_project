@@ -11,6 +11,7 @@ try:
 except ImportError:
   import pickle
 import math
+import random
 import time
 import sys, os
 
@@ -623,7 +624,6 @@ def exercise_1d_slicing_core(a):
   except ValueError, e: assert str(e) == "slice step cannot be zero"
 
 def exercise_flex_sum_axis():
-  import random
   try:
     import numpy
   except ImportError:
@@ -746,7 +746,6 @@ def exercise_numpy_slicing_compatibility():
     return
   for j in range(50):
     for n_dim in (3,4,5,6):
-      from stdlib import random
       dim = [random.randint(3,15) for i in range(n_dim)]
       size = flex.product(flex.int(dim))
       a = flex.random_double(size)

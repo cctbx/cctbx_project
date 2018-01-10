@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division
 import sys
 
 def print_progress_dots(out,ii,n_monitor=10,width=80,offset=5, is_final=False):
@@ -55,15 +55,3 @@ def gss(f,a,b,eps=1e-7,N=1000,out=None,monitor_progress=False,n_monitor=1,offset
   else:
     if monitor_progress: print_progress_dots(out,i,n_monitor,width=40,offset=offset, is_final=True)
     return x2
-
-def function(x):
-  y = (x-3.5)**2.0
-  return y
-
-def tst_it():
-  opti = gss(function,-10,10)
-  assert abs(opti-3.5)<1e-4
-
-if __name__ == "__main__":
-  tst_it()
-  print "OK"
