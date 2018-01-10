@@ -11,7 +11,7 @@ try:
 except ImportError:
   import md5
   hashlib_md5 = md5.new
-from stdlib import math
+import math
 import warnings
 import shutil
 import glob
