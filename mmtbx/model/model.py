@@ -235,6 +235,7 @@ class manager(object):
     self._ss_manager = None
     self._site_symmetry_table = None
     self._mtrix_records_container = mtrix_records_container
+    self._biomt_records_container = None
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
@@ -417,22 +418,6 @@ class manager(object):
       self._site_symmetry_table = self.all_chain_proxies.site_symmetry_table()
     return self._site_symmetry_table
 
-  def get_model_statistics_info(self,
-      fmodel_x          = None,
-      fmodel_n          = None,
-      refinement_params = None,
-      general_selection = None,
-      use_molprobity    = True):
-    if self.model_statistics_info is None:
-      self.model_statistics_info = mmtbx.model.statistics.info(
-          model             = self,
-          fmodel_x          = fmodel_x,
-          fmodel_n          = fmodel_n,
-          refinement_params = refinement_params,
-          general_selection = general_selection,
-          use_molprobity    = use_molprobity)
-    return self.model_statistics_info
-
   def initialize_anomalous_scatterer_groups(
       self,
       find_automatically=True,
@@ -590,6 +575,13 @@ class manager(object):
     else:
       self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.crystal_symmetry())
+
+  def _update_xray_structure_from_hierarchy(self, hierarchy):
+    if self.get_xray_structure().scatterers().size() != hierarchy.atoms_size():
+      self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=self.crystal_symmetry())
+      self.restraints_manager = None
+    self._update_pdb_atoms()
 
   def get_mon_lib_srv(self):
     if self._mon_lib_srv is None:
@@ -2073,6 +2065,7 @@ class manager(object):
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
+    new._biomt_records_container = self._biomt_records_container
     # selecting anomalous_scatterer_groups one by one because they are simple list!
     new_anom_groups = []
     for an_gr in self._anomalous_scatterer_groups:
@@ -2515,6 +2508,22 @@ class manager(object):
     self._xray_structure.set_b_iso(values = b_isos)
     self.set_sites_cart_from_xrs()
 
+  def get_model_statistics_info(self,
+      fmodel_x          = None,
+      fmodel_n          = None,
+      refinement_params = None,
+      general_selection = None,
+      use_molprobity    = True):
+    if self.model_statistics_info is None:
+      self.model_statistics_info = mmtbx.model.statistics.info(
+          model             = self,
+          fmodel_x          = fmodel_x,
+          fmodel_n          = fmodel_n,
+          refinement_params = refinement_params,
+          general_selection = general_selection,
+          use_molprobity    = use_molprobity)
+    return self.model_statistics_info
+
   def geometry_statistics(self,
                           general_selection = None):
     scattering_table = \
@@ -2616,3 +2625,27 @@ class manager(object):
     if(selection_aniso is not None):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
+
+  def expand_with_BIOMT_records(self):
+    """
+    expanding current hierarchy and ss_annotations with BIOMT matrices.
+    Known limitations: will expand everything, regardless of what selections
+    were setted in BIOMT header.
+    """
+    # print self._mtrix_records_container
+    if self._mtrix_records_container is not None:
+      raise Sorry("Model has been already expanded using MTRIX")
+    self._biomt_records_container = self._model_input.process_BIOMT_records()
+    if (self._biomt_records_container is not None and
+        not self._biomt_records_container.is_empty() and
+        not len(self._biomt_records_container.r)==0 and
+        not self._biomt_records_container.validate()):
+      assert self._pdb_hierarchy is not None
+      self._pdb_hierarchy = self._pdb_hierarchy.apply_rotation_translation(
+        rot_matrices = self._biomt_records_container.r,
+        trans_vectors = self._biomt_records_container.t)
+      if self._ss_annotation is not None:
+        self._ss_annotation.multiply_to_asu(
+            n_copies=len(self._biomt_records_container.r)-1)
+      self._update_xray_structure_from_hierarchy(self._pdb_hierarchy)
+      self._update_atom_selection_cache()

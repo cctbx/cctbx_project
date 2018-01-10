@@ -2634,7 +2634,7 @@ def append_chain_id_suffixes(roots, suffixes=Auto):
   for root,suffix in zip(roots, suffixes):
     for model in root.models():
       for chain in model.chains():
-        assert len(chain.id) == 1
+        assert len(chain.id) == 1, len(chain.id)
         chain.id += suffix
 
 def join_roots(roots, chain_id_suffixes=Auto):

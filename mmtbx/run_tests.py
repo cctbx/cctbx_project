@@ -59,6 +59,7 @@ tst_list = (
   "$D/regression/tst_model.py",
   "$D/regression/tst_model_mtrix.py",
   "$D/regression/tst_model_2.py",
+  "$D/regression/tst_model_biomt_mtrix.py",
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
