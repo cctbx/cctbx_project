@@ -18,7 +18,7 @@ def exercise():
     pdb_hierarchy = pdb_hierarchy,
     outliers_only = False)
 
-  assert (len(r.results) == 3), 'Ramalyze results not available for all models.'
+  assert (len(r.results) == 3), 'Supposed to fail until fixed. Ramalyze results not available for all models.'
 
 pdb_str = """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
