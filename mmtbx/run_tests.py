@@ -222,6 +222,7 @@ tst_list = (
   "$D/validation/regression/tst_mp_geo.py",
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
+  "$D/validation/regression/tst_ramalyze2.py",
   "$D/validation/regression/tst_cbetadev.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_restraints.py",
