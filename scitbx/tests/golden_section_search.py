@@ -1,5 +1,4 @@
-from __future__ import division
-import sys
+from __future__ import absolute_import, division, print_function
 import scitbx.golden_section_search
 
 def function(x):
@@ -12,4 +11,3 @@ def tst_it():
 
 if __name__ == "__main__":
   tst_it()
-  print "OK"
