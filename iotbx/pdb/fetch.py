@@ -17,6 +17,10 @@
 # PDBj:
 # ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
 # ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
+#
+# PDB-REDO
+# https://pdb-redo.eu/db/1aba/1aba_final.pdb
+# https://pdb-redo.eu/db/1aba/1aba_final.cif
 
 from __future__ import division
 from libtbx.utils import Sorry, null_out
@@ -54,13 +58,13 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   :param id: 4-character PDB ID (e.g. '1hbb')
   :param data_type: type of content to download: pdb, xray, or fasta
   :param format: format of data: cif, pdb, or xml
-  :param mirror: remote site to use, either rcsb or pdbe
+  :param mirror: remote site to use, either rcsb, pdbe, pdbj or pdb-redo
 
   :returns: a filehandle-like object (with read() method)
   """
   assert data_type in ["pdb", "xray", "fasta", "seq"]
   assert format in ["cif", "pdb", "xml"]
-  assert mirror in ["rcsb", "pdbe", "pdbj"]
+  assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
   validate_pdb_id(id)
   if (log is None) : log = null_out()
 
@@ -116,6 +120,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   # No mirror found (or out of date), default to HTTP download
   url = None
   compressed = False
+  context = None
   if (mirror == "rcsb") :
     url_base = 'http://files.rcsb.org/download/'
     pdb_ext = ".pdb"
@@ -142,6 +147,13 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     if (url is None) and (data_type != "fasta") :
       raise Sorry("Can't determine PDBj download URL for this data/format "+
         "combination.")
+  elif mirror == "pdb-redo":
+    url_base = "https://pdb-redo.eu/db/"
+    pdb_ext = "_final.pdb"
+    sf_prefix = ""
+    sf_ext = "_final.cif"
+    import ssl
+    context = ssl._create_unverified_context()
   if (data_type in ["fasta", "seq"]) :
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
@@ -155,9 +167,12 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         raise
   elif data_type == "xray" :
     if (url is None) :
-      url = url_base + sf_prefix + id + sf_ext
+      if mirror == "pdb-redo":
+        url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
+      else:
+        url = url_base + sf_prefix + id + sf_ext
     try :
-      data = libtbx.utils.urlopen(url)
+      data = libtbx.utils.urlopen(url, context=context)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
@@ -166,11 +181,14 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   else :
     if (url is None) :
       if format == "pdb" :
-        url = url_base + id + pdb_ext
+        if mirror == "pdb-redo":
+          url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
+        else:
+          url = url_base + id + pdb_ext
       else :
         url = url_base + id + "." + format
     try :
-      data = libtbx.utils.urlopen(url)
+      data = libtbx.utils.urlopen(url, context=context)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
