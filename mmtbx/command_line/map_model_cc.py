@@ -22,6 +22,8 @@ master_params_str = """\
     .help = File name for pickle file with results
     .expert_level = 3
   include scope mmtbx.maps.map_model_cc.master_params
+  output_file_name_prefix=None
+    .type=str
 """
 
 def master_params():
@@ -132,9 +134,17 @@ Feedback:
   print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
   if results.fsc is not None:
     broadcast(m="Model-map FSC:", log=log)
-    print >> log, "    1/resolution    CC"
+    if(inputs.params.output_file_name_prefix is None):
+      out = log
+    else:
+      fsc_fn = "%s_fsc.log"%inputs.params.output_file_name_prefix
+      out = open(fsc_fn, "w")
+      print >> log, "  saved to:", fsc_fn
+    print >> out, "    1/resolution    CC"
     for a,b in zip(results.fsc.d_inv, results.fsc.fsc):
-      print >> log, "%15.9f %15.9f"%(a,b)
+      print >> out, "%15.9f %15.9f"%(a,b)
+    if(inputs.params.output_file_name_prefix is not None):
+      out.close()
   if len(results.cc_per_chain) + len(results.cc_per_residue) > 0:
     broadcast(m="Map-model CC (local):", log=log)
   # Per chain
