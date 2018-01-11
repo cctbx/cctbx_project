@@ -2636,6 +2636,9 @@ class manager(object):
     if self._mtrix_records_container is not None:
       raise Sorry("Model has been already expanded using MTRIX")
     self._biomt_records_container = self._model_input.process_BIOMT_records()
+    if(len(self._biomt_records_container.r)==1):
+      r,t=self._biomt_records_container.r[0],self._biomt_records_container.t[0]
+      if(r.is_r3_identity_matrix() and t.is_col_zero()): return
     if (self._biomt_records_container is not None and
         not self._biomt_records_container.is_empty() and
         not len(self._biomt_records_container.r)==0 and
