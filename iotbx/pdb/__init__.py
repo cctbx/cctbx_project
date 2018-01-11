@@ -800,7 +800,7 @@ class pdb_input_mixin(object):
     present = mtrix_biomt_container.validate()
     if(h is None):
       h = self.construct_hierarchy(sort_atoms=sort_atoms)
-    if(len(mtrix_biomt_container.r)==0 or not present): return h
+    if(len(mtrix_biomt_container.r)==0 or present): return h
     return h.apply_rotation_translation(
       rot_matrices = mtrix_biomt_container.r,
       trans_vectors = mtrix_biomt_container.t)
