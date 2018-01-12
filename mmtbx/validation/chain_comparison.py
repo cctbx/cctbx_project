@@ -22,17 +22,43 @@ master_phil = iotbx.phil.parse("""
               query_dir is set)
       .short_caption = Input PDB file
 
-    unique_only = True
+    unique_query_only = False
       .type = bool
-      .help = Use only unique chains in query (also counts only residues in \
-          unique chains of target for percentage found)
-      .short_caption = Unique only
+      .help = Use only unique chains in query. Normally use \
+         unique_query_only=False and unique_part_of_target_only=True.
+      .short_caption = Unique query only
 
     unique_target_pdb_in = None
       .type = path
       .help = Target model identifying which element is selected with \
-           unique_only. NOTE: must be specified by keyword.
+           unique_query_only. NOTE: must be specified by keyword.
       .short_caption = Target model
+
+    unique_part_of_target_only = True
+      .type = bool
+      .help = Use only unique chains in target (see also unique_query_only). \
+      .short_caption = Unique target only
+
+    test_unique_part_of_target_only = None
+      .type = bool
+      .help = Try both unique_part_of_target_only as True and False and \
+             report result for whichever gives higher value of \
+              fraction matching. Default is True if ncs_file is provided.
+      .short_caption = Test unique target only
+
+    allow_extensions = False
+      .type = bool
+      .help = If True, ignore parts of chains that do not overlap.  Normally \
+              use False: identity is identity of overlapping part times \
+              fraction of chain that overlaps.
+      .short_caption = Allow extensions
+
+    ncs_file = None
+      .type = path
+      .help = Select unique part of query. \
+               If unique_query_only is False (typically) \
+               apply NCS to it to generate full query.  Normally used with \
+               test_unique_part_of_target_only=True.
 
     query_dir = None
       .type = path
@@ -297,6 +323,7 @@ def apply_atom_selection(atom_selection,hierarchy=None):
 
 def extract_representative_chains_from_hierarchy(ph,
     min_similarity=0.90,
+    allow_extensions=False,
     allow_mismatch_in_number_of_copies=False,out=sys.stdout):
 
   unique_ph=extract_unique_part_of_hierarchy(ph,
@@ -333,10 +360,12 @@ def extract_representative_chains_from_hierarchy(ph,
   # ready with biggest chain
 
   copies_of_biggest_chain_ph=extract_copies_identical_to_target_from_hierarchy(
-     ph,target_ph=biggest_chain_hierarchy,out=sys.stdout)
+     ph,target_ph=biggest_chain_hierarchy,
+     allow_extensions=False,out=sys.stdout)
   return copies_of_biggest_chain_ph
 
 def extract_copies_identical_to_target_from_hierarchy(ph,
+     allow_extensions=False,
      min_similarity=None,target_ph=None,out=sys.stdout):
   new_hierarchy=iotbx.pdb.input(
     source_info="Model",lines=flex.split_lines("")).construct_hierarchy()
@@ -367,6 +396,7 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
         seq=""
       similar_seq=seq_it_is_similar_to(
          seq=seq,unique_sequences=[target_seq],
+         allow_extensions=allow_extensions,
          min_similarity=min_similarity)  # check for similar...
       if similar_seq:
         matching_chain_list.append(chain)
@@ -378,16 +408,21 @@ def extract_copies_identical_to_target_from_hierarchy(ph,
   print >>out,"Total chains extracted: %s" %(total_chains)
   return new_hierarchy
 
-def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0):
+def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0,
+   allow_extensions=False):
   from phenix.loop_lib.sequence_similarity import sequence_similarity
   for s in unique_sequences:
     sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
+    if not allow_extensions and len(seq)!=len(s):
+      fract_same=min(len(seq),len(s))/max(len(seq),len(s))
+      sim=sim*fract_same 
     if sim >= min_similarity:
       return s # return the one it is similar to
   return None
 
 def extract_unique_part_of_sequences(sequence_list=None,
     allow_mismatch_in_number_of_copies=True,
+    allow_extensions=False,
     min_similarity=1.0,out=sys.stdout):
 
   unique_sequences=[]
@@ -400,6 +435,7 @@ def extract_unique_part_of_sequences(sequence_list=None,
       if not seq: continue
       similar_seq=seq_it_is_similar_to(
          seq=seq,unique_sequences=unique_sequences,
+         allow_extensions=allow_extensions,
          min_similarity=min_similarity)  # check for similar...
       if similar_seq:
         unique_sequence_dict[seq]=similar_seq
@@ -477,6 +513,7 @@ def get_sorted_matching_chains(
 
 def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_mismatch_in_number_of_copies=True,
+    allow_extensions=False,
     min_similarity=1.0,out=sys.stdout):
 
   # Container for unique chains:
@@ -513,6 +550,7 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
         extract_unique_part_of_sequences(
     sequence_list=sequences,
     allow_mismatch_in_number_of_copies=allow_mismatch_in_number_of_copies,
+    allow_extensions=allow_extensions,
     min_similarity=min_similarity,out=out)
 
   sequences_matching_unique_dict={}
@@ -547,6 +585,36 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
          chain.id,unique_seq,str(chain.atoms().extract_xyz()[0]),
          dist)
   return new_hierarchy
+
+def run_test_unique_part_of_target_only(params=None,out=sys.stdout):
+  if params.control.verbose:
+    local_out=out
+  else:
+    local_out=null_out()
+  rv_list=[]
+  file_list=[]
+  best_rv=None
+  best_t=None
+  best_percent_close=None
+  for t in [True,False]:
+    local_params=deepcopy(params)
+    local_params.input_files.test_unique_part_of_target_only=False
+    local_params.input_files.unique_part_of_target_only=t
+    rv=run(params=local_params,out=local_out)
+    percent_close=rv.get_close_to_target_percent('close')
+    print >>out,"Percent close with unique_part_of_target_only=%s: %7.1f" %(
+      t,percent_close)
+    if best_percent_close is None or percent_close>best_percent_close:
+      best_percent_close=percent_close
+      best_rv=rv
+      best_t=t
+  print >>out
+  rv_list=[best_rv]
+  if best_t:
+    file_list=['Unique_target']
+  else:
+    file_list=['Entire_target']
+  write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
 
 def run_all(params=None,out=sys.stdout):
   if params.control.verbose:
@@ -690,6 +758,36 @@ def select_segments_that_match(params=None,
     params.output_files.match_pdb_file)
   return new_model
 
+def get_ncs_obj(file_name,out=sys.stdout):
+  from mmtbx.ncs.ncs import ncs
+  ncs_object=ncs()
+  ncs_object.read_ncs(file_name=file_name,log=out)
+  return ncs_object
+
+def apply_ncs_to_hierarchy(ncs_obj=None,
+        hierarchy=None,out=sys.stdout):
+  if not ncs_obj or ncs_obj.max_operators()<2:
+    return hierarchy
+  try:
+    from phenix.command_line.apply_ncs import apply_ncs as apply_ncs_to_atoms
+  except exception, e:
+    print "Need phenix for applying NCS"
+    return hierarchy
+
+  print >>out, "Applying NCS now..."
+  from phenix.autosol.get_pdb_inp import get_pdb_hierarchy
+  identity_copy=ncs_obj.identity_op_id_in_first_group()+1
+
+  args=['pdb_out=None','match_copy=%s' %(identity_copy),
+       'params_out=None' ]
+  args.append("use_space_group_symmetry=False")
+  an=apply_ncs_to_atoms(
+      args,hierarchy=hierarchy,
+      ncs_object=ncs_obj,
+      out=out)
+  new_hierarchy=get_pdb_hierarchy(text=an.output_text)
+  return new_hierarchy 
+
 def run(args=None,
    target_hierarchy=None,
    chain_hierarchy=None,
@@ -715,7 +813,12 @@ def run(args=None,
     pass # it is fine
   else:
     raise Sorry("Need target model (pdb_in)")
-  if params.input_files.unique_target_pdb_in and params.input_files.unique_only:
+  if params.input_files.unique_query_only and \
+     params.input_files.unique_part_of_target_only:
+    print >>out,"Warning: You have specified unique_query_only and" +\
+       " unique_part_of_target_only. \nThis is not normally appropriate "
+  if params.input_files.unique_target_pdb_in and \
+         params.input_files.unique_query_only:
     print >>out,"Using %s as target for unique chains" %(
        params.input_files.unique_target_pdb_in)
   if params.input_files.query_dir and \
@@ -724,6 +827,23 @@ def run(args=None,
     print >>out,"\nUsing all files in %s as queries\n" %(
        params.input_files.query_dir)
     return run_all(params=params,out=out)
+
+  if params.input_files.test_unique_part_of_target_only or \
+      (params.input_files.test_unique_part_of_target_only is None and
+        params.input_files.ncs_file):
+    print>>out,"\nTesting unique_part_of_target_only as True and False and "
+    print >>out,"reporting results for whichever gives higher fraction matched."
+    return run_test_unique_part_of_target_only(params=params,out=out)
+
+  if params.input_files.ncs_file:
+    ncs_obj=get_ncs_obj(params.input_files.ncs_file,out=out)
+    print >>out,"NCS with %s operators read from %s" %(ncs_obj.max_operators(),
+       params.input_files.ncs_file)
+    if ncs_obj.max_operators()<2:
+      print >>out,"Skipping NCS (no operators)"
+      ncs_obj=None
+  else:
+    ncs_obj=None
 
   if verbose is None:
     verbose=params.control.verbose
@@ -758,25 +878,51 @@ def run(args=None,
   target_unique_hierarchy=None
   if not chain_hierarchy or not target_hierarchy:
     assert chain_file and target_file
-    pdb_inp=get_pdb_inp(file_name=chain_file  )
+    pdb_inp=get_pdb_inp(file_name=chain_file)
     if params.input_files.unique_target_pdb_in:
       target_unique_hierarchy=get_pdb_inp(
         file_name=params.input_files.unique_target_pdb_in).construct_hierarchy()
     if not crystal_symmetry:
       crystal_symmetry=pdb_inp.crystal_symmetry_from_cryst1()
     chain_hierarchy=pdb_inp.construct_hierarchy()
-
     target_pdb_inp=get_pdb_inp(file_name=target_file)
     if not crystal_symmetry or not crystal_symmetry.unit_cell():
       crystal_symmetry=target_pdb_inp.crystal_symmetry_from_cryst1()
     target_hierarchy=target_pdb_inp.construct_hierarchy()
+  if target_unique_hierarchy:
+    target_ph=target_unique_hierarchy
+  else:
+    target_ph=chain_hierarchy
 
   # Take unique part of query if requested
-  if params.input_files.unique_only:
-    print >>out,"\nUsing only unique part of query\n"
+  if params.input_files.unique_query_only or ncs_obj:
+    print >>out,"\nExtracting unique part of query\n"
     chain_hierarchy=extract_unique_part_of_hierarchy(
-      chain_hierarchy,target_ph=target_unique_hierarchy,
+      chain_hierarchy,target_ph=target_ph,
+      allow_extensions=params.input_files.allow_extensions,
       min_similarity=min_similarity,out=local_out)
+    print >>out,"Residues in unique part of query hierarchy: %s" %(
+     chain_hierarchy.overall_counts().n_residues)
+    if ncs_obj and not params.input_files.unique_query_only:  
+      # apply NCS to unique part of query
+      print >>out,"Applying NCS to unique part of query"
+      chain_hierarchy=apply_ncs_to_hierarchy(ncs_obj=ncs_obj,
+        hierarchy=chain_hierarchy,out=out) 
+      print >>out,"Residues in full query hierarchy: %s" %(
+        chain_hierarchy.overall_counts().n_residues)
+    if not target_unique_hierarchy:
+      target_ph=chain_hierarchy
+
+  if params.input_files.unique_part_of_target_only:
+    print >>out,"\nUsing only unique part of target \n"
+    print >>out,"Residues in input target hierarchy: %s" %(
+     target_hierarchy.overall_counts().n_residues)
+    target_hierarchy=extract_unique_part_of_hierarchy(
+      target_hierarchy,target_ph=target_ph,
+      allow_extensions=params.input_files.allow_extensions,
+      min_similarity=min_similarity,out=local_out)
+    print >>out,"Residues in unique part of target hierarchy: %s" %(
+     target_hierarchy.overall_counts().n_residues)
 
   # remove hetero atoms as they are not relevant
   chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
@@ -789,10 +935,11 @@ def run(args=None,
        chain_hierarchy=chain_hierarchy,
        target_hierarchy=target_hierarchy,out=out)
 
-  if params.input_files.unique_only: # count unique residues/total
+  if params.input_files.unique_part_of_target_only:
     unique_part_of_target_hierarchy=extract_unique_part_of_hierarchy(
         target_hierarchy,
         min_similarity=min_similarity,
+        allow_extensions=params.input_files.allow_extensions,
         target_ph=target_unique_hierarchy,out=local_out)
     ratio_unique_to_total_target=\
        unique_part_of_target_hierarchy.overall_counts().n_residues/  \
@@ -852,6 +999,13 @@ def run(args=None,
   target_xyz_lines=select_atom_lines(target_ca)
   chain_xyz_cart=chain_ca.atoms().extract_xyz()
   target_xyz_cart=target_ca.atoms().extract_xyz()
+
+  if target_xyz_cart.size()<1:
+    print "No suitable atoms in target"
+    return rmsd_values()
+  if chain_xyz_cart.size()<1:
+    print "No suitable atoms in query"
+    return rmsd_values()
 
   # for each xyz in chain, figure out closest atom in target and dist
   best_i=None
