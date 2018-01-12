@@ -1559,8 +1559,8 @@ selfx:
     else:
       # fallback in case of virtualenv
       # https://github.com/pypa/virtualenv/issues/355
-      pythonpath = [self.as_relocatable_path(
-        op.join(sys.prefix,'lib',self.python_exe.basename(),'site-packages'))]
+      from distutils.sysconfig import get_python_lib
+      pythonpath = [self.as_relocatable_path(get_python_lib())]
     pythonpath.append(self.lib_path)
     for module in self.module_list:
       pythonpath.extend(module.assemble_pythonpath())
