@@ -254,16 +254,6 @@ def adopt_optional_init_args(obj, kwds):
                          % (k, obj.__class__))
     setattr(obj, k, v)
 
-class copy_init_args(object):
-
-  def __init__(self, args, exclude=()):
-    if ("self" in args): del args["self"]
-    else:                del args["O"]
-    del args["self"]
-    for param in exclude:
-      del args[param]
-    self.__dict__.update(args)
-
 class group_args(object):
   """
   Class to build an arbitrary object from a list of keyword arguments.
