@@ -575,6 +575,9 @@ def validate_params (params) :
     if (None in [struct.name, struct.pdb_file, struct.mtz_file]) :
       raise Sorry(("Structure #%d is missing either a PDB file or an MTZ "+
         "file or a structure name.") % (i+1))
+    for cfile in struct.cif_file:
+      if (file_reader.any_file(cfile).file_type == "pdb"):
+        raise Sorry("A restraint cif is file expected in the CIF file field.")
 #    elif (None in [struct.data_labels, struct.r_free_flags_label]) :
 #      raise Sorry(("Need both data labels and R-free flag label for MTZ file "+
 #        "%s (structure #%d).") % (struct.mtz_file, i+1))
