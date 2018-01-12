@@ -8,6 +8,10 @@ from scitbx.matrix import sqr, col
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import finite_difference
 
+"""
+Classes to support propagating erros after postrefinement in cxi.merge
+"""
+
 def r2d(radians):
   return 180*radians/math.pi
 
@@ -23,6 +27,7 @@ class sdfac_propagate(error_modeler_base):
     functional = target()
 
     if parameter_name.startswith('c'):
+      # Handle the crystal parameters
       from scitbx.matrix import sqr
       cryst_param = int(parameter_name.lstrip('c'))
       parameter_name = 'b_matrix'
@@ -53,21 +58,22 @@ class sdfac_propagate(error_modeler_base):
     refls = self.scaler.ISIGI
     ct = self.scaler.crystal_table
 
-    rx = flex.mat3_double()
-    ry = flex.mat3_double()
-    u = flex.mat3_double()
-    b = flex.mat3_double()
+    rx = flex.mat3_double() # crystal rotation around x
+    ry = flex.mat3_double() # crystal rotation around y
+    u = flex.mat3_double()  # U matrix (orientation)
+    b = flex.mat3_double()  # B matrix (cell parameters)
     wavelength = flex.double()
-    G = flex.double()
-    B = flex.double()
-    s0 = flex.vec3_double()
-    deff = flex.double()
-    eta = flex.double()
+    G = flex.double()       # scaling gfactor
+    B = flex.double()       # wilson B factor
+    s0 = flex.vec3_double() # beam vector
+    deff = flex.double()    # effective domain size
+    eta = flex.double()     # effective mosaic domain misorientation angle
 
-    ex = col((1,0,0))
-    ey = col((0,1,0))
+    ex = col((1,0,0))       # crystal rotation x axis
+    ey = col((0,1,0))       # crystal rotation y axis
 
     for i in xrange(len(ct)):
+      # Need to copy crystal specific terms for each reflection. Equivalent to a JOIN in SQL.
       n_refl = ct['n_refl'][i]
       rx.extend(flex.mat3_double(n_refl, ex.axis_and_angle_as_r3_rotation_matrix(ct['thetax'][i])))
       ry.extend(flex.mat3_double(n_refl, ey.axis_and_angle_as_r3_rotation_matrix(ct['thetay'][i])))
@@ -82,29 +88,27 @@ class sdfac_propagate(error_modeler_base):
 
     iobs       = refls['iobs']
     h          = refls['miller_index_original'].as_vec3_double()
-    q          = ry * rx * u * b * h
-    qlen       = q.norms()
-    d          = 1/q.norms()
-    #rs         = (1/deff)+(eta/(2*d))
-    rs         = 1/deff # assumes eta is zero
-    #eta        = flex.double(len(refls), 0)
-    #deff       = 1/rs # assumes eta is zero
-    s          = (s0+q)
-    slen       = s.norms()
-    rh         = slen-(1/wavelength)
-    rs_sq      = rs*rs
-    p_n        = rs_sq
-    p_d        = (2. * (rh * rh)) + rs_sq
+    q          = ry * rx * u * b * h                  # vector pointing from origin of reciprocal space to RLP
+    qlen       = q.norms()                            # length of q
+    d          = 1/q.norms()                          # resolution
+    #rs         = (1/deff)+(eta/(2*d))                # proper formulation of RS
+    rs         = 1/deff                               # assumes eta is zero
+    rs_sq      = rs*rs                                # square of rs
+    s          = (s0+q)                               # vector from center of Ewald sphere to RLP
+    slen       = s.norms()                            # length of s
+    rh         = slen-(1/wavelength)                  # distance from RLP to Ewald sphere
+    p_n        = rs_sq                                # numerator of partiality lorenzian expression
+    p_d        = (2. * (rh * rh)) + rs_sq             # denominator of partiality lorenzian expression
     partiality = p_n/p_d
     theta      = flex.asin(wavelength/(2*d))
-    epsilon    = -8*B*(flex.sin(theta)/wavelength)**2
-    eepsilon   = flex.exp(epsilon)
-    D          = partiality * G * eepsilon
-    thetah     = flex.asin(wavelength/(2*d))
+    epsilon    = -8*B*(flex.sin(theta)/wavelength)**2 # exponential term in partiality
+    eepsilon   = flex.exp(epsilon)                    # e^epsilon
+    D          = partiality * G * eepsilon            # denominator of partiality lorenzian expression
+    thetah     = flex.asin(wavelength/(2*d))          # reflecting angle
     sinthetah  = flex.sin(thetah)
-    er         = sinthetah/wavelength
+    er         = sinthetah/wavelength                 # ratio term in epsilon
 
-
+    # save all the columns
     r = flex.reflection_table()
     r['rx']         = rx
     r['ry']         = ry
@@ -134,15 +138,18 @@ class sdfac_propagate(error_modeler_base):
     return r
 
   def adjust_errors(self):
-    """ Propagate errors based on statistical error propagation and the observed population of
-    images to the scaled and merged intensity errors """
+    """ Propagate errors to the scaled and merged intensity errors based on statistical error propagation.
+    This uses 1) and estimate of the errors in the post-refined parametes from the observed population
+    and 2) partial derivatives of the scaled intensity with respect to each of the post-refined parameters.
+    """
     assert self.scaler.params.postrefinement.algorithm == 'rs'
 
     refls = self.scaler.ISIGI
     ct = self.scaler.crystal_table
 
-    # this version doesn't post-refine deff and eta directly so compute these values from the refined rs value
-    ct['deff'] = 1/ct['RS'] # assumes eta is zero
+    # Note, since the rs algorithm doesn't explicitly refine eta and deff separately, but insteads refines RS,
+    # assume rs only incorporates information from deff and set eta to zero.
+    ct['deff'] = 1/ct['RS']
     ct['eta'] = flex.double(len(ct), 0)
 
     # Compute errors by examining distributions of parameters
@@ -165,6 +172,8 @@ class sdfac_propagate(error_modeler_base):
     print >> self.log, "DEFF %.4f +/- %.4f"      %(    stats_deff.mean(),        sigma_deff)
     print >> self.log, "RS %.6f +/- %.6f"        %(    stats_rs.mean(),          sigma_rs)
 
+    # notation: dP1_dP2 is derivative of parameter 1 with respect to parameter 2. Here,
+    # for example, is the derivative of rx wrt thetax
     drx_dthetax = flex.mat3_double()
     dry_dthetay = flex.mat3_double()
     s0hat = flex.vec3_double(len(refls), (0,0,-1))
@@ -175,45 +184,50 @@ class sdfac_propagate(error_modeler_base):
     # Compute derivatives
     sre = symmetrize_reduce_enlarge(self.scaler.params.target_space_group.group())
     c_gstar_params = None
-    c_gstar_derivatives = None
     gstar_params = None
     gstar_derivatives = None
 
     for i in xrange(len(ct)):
       n_refl = ct['n_refl'][i]
+
+      # Derivatives of rx/y wrt thetax/y come from cctbx
       drx_dthetax.extend(flex.mat3_double(n_refl, ex.axis_and_angle_as_r3_derivative_wrt_angle(ct['thetax'][i])))
       dry_dthetay.extend(flex.mat3_double(n_refl, ey.axis_and_angle_as_r3_derivative_wrt_angle(ct['thetay'][i])))
 
+      # Derivatives of the B matrix wrt to the unit cell parameters also come from cctbx
       sre.set_orientation(orientation=ct['b_matrix'][i])
       p = sre.forward_independent_parameters()
       dB_dp = sre.forward_gradients()
       if gstar_params is None:
-        assert gstar_derivatives is None and c_gstar_params is None and c_gstar_derivatives is None
+        assert gstar_derivatives is None and c_gstar_params is None
         c_gstar_params = [flex.double() for j in xrange(len(p))]
-        c_gstar_derivatives = [flex.mat3_double() for j in xrange(len(p))]
         gstar_params = [flex.double() for j in xrange(len(p))]
         gstar_derivatives = [flex.mat3_double() for j in xrange(len(p))]
-      assert len(p) == len(dB_dp) == len(gstar_params) == len(gstar_derivatives) == len(c_gstar_params) == len(c_gstar_derivatives)
+      assert len(p) == len(dB_dp) == len(gstar_params) == len(gstar_derivatives) == len(c_gstar_params)
       for j in xrange(len(p)):
         c_gstar_params[j].append(p[j])
-        c_gstar_derivatives[j].append(tuple(dB_dp[j]))
         gstar_params[j].extend(flex.double(n_refl, p[j]))
         gstar_derivatives[j].extend(flex.mat3_double(n_refl, tuple(dB_dp[j])))
 
-    r = self.compute_intensity_parameters()
 
+    # Compute the error in the unit cell terms from the distribution of unit cell parameters provided
     print >> self.log, "Free G* parameters"
     sigma_gstar = []
-    sI_dgstar = []
     for j in xrange(len(gstar_params)):
       stats  = flex.mean_and_variance(c_gstar_params[j])
       print >> self.log, "G* %d %.4f *1e-5 +/- %.4f *1e-5"%(j, stats.mean()*1e5, stats.unweighted_sample_standard_deviation()*1e5)
       sigma_gstar.append(stats.unweighted_sample_standard_deviation())
 
+    # Compute the scalar terms used while computing derivatives
+    r = self.compute_intensity_parameters()
+
+    # Begin computing derivatives
     sigma_Iobs = refls['scaled_intensity']/refls['isigi']
     dI_dIobs = 1/r['D']
 
     def compute_dI_dp(dq_dp):
+      """ Deriviatives of the scaled intensity I wrt to thetax, thetay and the unit cell parameters
+      are computed the same, starting with the deriviatives of those parameters wrt to q """
       dqlen_dp = r['q'].dot(dq_dp)/r['qlen']
       dd_dp    = -(1/(r['qlen']**2)) * dqlen_dp
       drs_dp   = -(r['eta']/(2 * r['d']**2)) * dd_dp
@@ -225,13 +239,16 @@ class sdfac_propagate(error_modeler_base):
       dI_dp    = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_dp
       return dI_dp
 
+    # Derivatives wrt the unit cell parameters
     dI_dgstar = []
     for j in xrange(len(gstar_params)):
       dI_dgstar.append(compute_dI_dp(r['ry'] * r['rx'] * r['u'] * gstar_derivatives[j] * r['h']))
 
+    # Derivatives wrt the crystal orientation
     dI_dthetax = compute_dI_dp(r['ry'] * drx_dthetax * r['u'] * r['b'] * r['h'])
     dI_dthetay = compute_dI_dp(dry_dthetay * r['rx'] * r['u'] * r['b'] * r['h'])
 
+    # Derivatives wrt to the wavelength
     dthetah_dlambda  = 1/(flex.sqrt(1 - ((r['wavelength']/(2 * r['d']))**2)) * 2 * r['d'])
     den_dlambda      = flex.cos(r['thetah']) * dthetah_dlambda
     der_dlambda      = ((r['wavelength'] * den_dlambda) - r['sinthetah'])/r['wavelength']**2
@@ -243,12 +260,14 @@ class sdfac_propagate(error_modeler_base):
     dD_dlambda       = (r['G'] * r['eepsilon'] * dP_dlambda) + (r['partiality'] * r['G'] * r['eepsilon'] * depsilon_dlambda)
     dI_dlambda       = -(refls['iobs']/r['D']**2) * dD_dlambda
 
+    # Derivatives wrt to the deff
     drs_deff = -1/(r['deff']**2)
     dPn_deff = 2 * r['rs'] * drs_deff
     dPd_deff = 2 * r['rs'] * drs_deff
     dP_deff  = ((r['p_d'] * dPn_deff)-(r['p_n'] * dPd_deff))/(r['p_d']**2)
     dI_deff  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deff
 
+    # Derivatives wrt to eta
     drs_deta = 1/(2*r['d'])
     dPn_deta = 2 * r['rs'] * drs_deta
     dPd_deta = 2 * r['rs'] * drs_deta
@@ -256,7 +275,7 @@ class sdfac_propagate(error_modeler_base):
     dI_deta  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deta
 
     if True:
-      # Finite differences
+      # Show comparisons to finite differences
       n_cryst_params = sre.constraints.n_independent_params()
       print "Showing finite differences and derivatives for each parameter (first few reflections only)"
       for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff', 'eta'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
@@ -302,6 +321,7 @@ class sdfac_propagate(error_modeler_base):
       fns = five_number_summary(data)
       print >> self.log, "%20s % 20d % 20d % 20d"%(title, fns[1], fns[2], fns[3])
 
+    # Final terms for cxi.merge
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
