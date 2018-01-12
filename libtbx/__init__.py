@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import libtbx.forward_compatibility
 import os
 import sys
@@ -7,7 +7,7 @@ manual_date_stamp = 20090819
 
 def _STOP(exit_status=0):
   f = sys._getframe(1)
-  print "STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno)
+  print("STOP: %s(%d)" % (f.f_code.co_filename, f.f_lineno))
   sys.exit(exit_status)
 __builtins__["STOP"] = _STOP
 
@@ -44,9 +44,9 @@ class AutoType(object):
   ...        optional = 5
   ...    return optional
   ...
-  >>> print f()
+  >>> print(f())
   5
-  >>> print f(optional=10)
+  >>> print(f(optional=10))
   10
   """
   singleton = None
@@ -129,7 +129,7 @@ class slots_getstate_setstate_default_initializer (slots_getstate_setstate) :
   ...     __slots__ = ["i_seq", "j_seq"]
   ...
   >>> svm_pair(i_seq=1, j_seq=2)
-  >>> print svm_pair.i_seq
+  >>> print(svm_pair.i_seq)
   1
   """
   def __init__ (self, **kwds) :
@@ -262,7 +262,7 @@ class group_args(object):
   --------
   >>> from libtbx import group_args
   >>> obj = group_args(a=1, b=2, c=3)
-  >>> print obj.a, obj.b, obj.c
+  >>> print(obj.a, obj.b, obj.c)
   1 2 3
   """
 
