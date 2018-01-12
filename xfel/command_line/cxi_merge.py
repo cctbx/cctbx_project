@@ -1738,8 +1738,8 @@ Pred. Multiplicity = # predictions on all accepted images / # Miller indices the
   return result
 
 def show_overall_observations(
-  obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
-  n_bins=15, out=None, title=None, work_params=None):
+  obs, redundancy, summed_wt_I, summed_weight, ISIGI,
+  n_bins=15, out=None, title=None, work_params=None, redundancy_to_edge=None):
   if out is None:
     out = sys.stdout
   obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)
