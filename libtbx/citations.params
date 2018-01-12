@@ -1,0 +1,1211 @@
+journal {
+  name = Acta Cryst. D
+  name = Acta Crystallogr D Biol Crystallogr
+  name_full = Acta Crystallographica, Section D: Biological Crystallography
+  abbrev_CAS = Acta Crystallogr., Sect. D: Biol. Crystallogr.
+  id_ASTM = ABCRE6
+  id_ISSN = 0907-4449
+  id_CSD = 0766
+}
+
+journal {
+  name = Nature
+  name_full = Nature (London, United Kingdom)
+  abbrev_CAS = Nature (London, U. K.)
+  id_ASTM = NATUAS
+  id_ISSN = None
+  id_CSD = 0006
+}
+
+journal {
+  name = J. Mol. Biol.
+  name_full = Journal of Molecular Biology
+  abbrev_CAS = J. Mol. Biol.
+  id_ASTM = JMOBAK
+  id_ISSN = None
+  id_CSD = 0070
+}
+
+journal {
+  name = J. Synchrotron Rad.
+  name_full = Journal of Synchrotron Radiation
+  abbrev_CAS = J. Synchrotron Rad.
+  id_ASTM = JSYRES
+  id_ISSN = None
+  id_CSD = 1210
+}
+
+journal {
+  name = J. Appl. Cryst.
+  name = J Appl Crystallogr
+  name_full = Journal of Applied Crystallography
+  abbrev_CAS = J. Appl. Crystallogr.
+  id_ASTM = JACGAR
+  id_ISSN = None
+  id_CSD = 0228
+}
+
+journal {
+  name = J. Comput. Chem.
+  name_full = Journal of Computational Chemistry
+  abbrev_CAS = J. Comput. Chem.
+  id_ASTM = JCCHDD
+  id_ISSN = None
+  id_CSD = 0913
+}
+
+journal {
+  name = Biopolymers
+  abbrev_CAS = Biopolymers
+  id_ASTM = BIPMAA
+  id_ISSN = None
+  id_CSD = 0161
+}
+
+journal {
+  name = Nucleic Acids Research
+  name_full = Nucleic Acids Research
+  abbrev_CAS = Nucleic Acids Res.
+  id_ASTM = NARHAD
+  id_ISSN = None
+  id_CSD = 0389
+}
+
+journal {
+  name = Science
+  name_full = Science (Washington, DC, United States)
+  abbrev_CAS = Science (Washington, DC, U. S.)
+  id_ASTM = SCIEAS
+  id_ISSN = None
+  id_CSD = 0038
+}
+
+journal {
+  name = eLife
+  abbrev_CAS = eLife
+  id_ASTM = None
+  id_ISSN = None
+  id_CSD = None
+}
+
+journal {
+  name = Computational Crystallography Newsletter
+  abbrev_CAS = Comput. Cryst. Newsl.
+  id_ASTM = None
+  id_ISSN = None
+  id_CSD = None
+}
+
+citation {
+  article_id = hhpred
+  authors = Söding J
+  title = Protein homology detection by HMM-HMM comparison.
+  journal = Bioinformatics
+  volume = 21
+  pages = 951-60
+  year = 2005
+  doi_id = "10.1093/bioinformatics/bti125"
+  pmid = 15531603
+  external = True
+}
+
+citation {
+  article_id = erraser
+  authors = Chou FC, Sripakdeevong P, Dibrov SM, Hermann T, Das R
+  title = Correcting pervasive errors in RNA crystallography through enumerative structure prediction.
+  journal = Nat Methods
+  volume = 10
+  pages = 74-6
+  year = 2012
+  doi_id = "10.1038/nmeth.2262"
+  pmid = 23202432
+  external = True
+}
+
+citation {
+  article_id = rosetta_phaser
+  authors = Qian B, Raman S, Das R, Bradley P, McCoy AJ, Read RJ, Baker D
+  title = High-resolution structure prediction and the crystallographic phase problem.
+  journal = Nature
+  volume = 450
+  pages = 259-64
+  year = 2007
+  doi_id = "10.1038/nature06249"
+  pmid = 17934447
+}
+
+citation {
+  article_id = mr_rosetta
+  authors = DiMaio F, Terwilliger TC, Read RJ, Wlodawer A, Oberdorfer G, Wagner U, Valkov E, Alon A, Fass D, Axelrod HL, Das D, Vorobiev SM, Iwaï H, Pokkuluri PR, Baker D
+  title = Improved molecular replacement by density- and energy-guided protein structure optimization.
+  journal = Nature
+  volume = 473
+  pages = 540-3
+  year = 2011
+  doi_id = "10.1038/nature09964"
+  pmid = 21532589
+}
+
+citation {
+  article_id = mr_rosetta_icsg
+  authors = Terwilliger TC, Dimaio F, Read RJ, Baker D, Bunkóczi G, Adams PD, Grosse-Kunstleve RW, Afonine PV, Echols N
+  title = phenix.mr_rosetta: molecular replacement and model rebuilding with Phenix and Rosetta.
+  journal = J Struct Funct Genomics
+  volume = 13
+  pages = 81-90
+  year = 2012
+  doi_id = "10.1007/s10969-012-9129-3"
+  pmid = 22418934
+}
+
+citation {
+  article_id = seq_assign
+  authors = Terwilliger TC, Read RJ, Adams PD, Brunger AT, Afonine PV, Hung LW
+  title = Model morphing and sequence assignment after molecular replacement.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 69
+  pages = 2244-50
+  year = 2013
+  doi_id = "10.1107/S0907444913017770"
+  pmid = 24189236
+}
+
+citation {
+  article_id = morph_model
+  authors = Terwilliger TC, Read RJ, Adams PD, Brunger AT, Afonine PV, Grosse-Kunstleve RW, Hung LW
+  title = Improved crystallographic models through iterated local density-guided model deformation and reciprocal-space refinement.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 68
+  pages = 861-70
+  year = 2012
+  doi_id = "10.1107/S0907444912015636"
+  pmid = 22751672
+}
+
+
+citation {
+  article_id = rosetta_density
+  authors = DiMaio F, Tyka MD, Baker ML, Chiu W, Baker D
+  title = Refinement of protein structures into low-resolution density maps using rosetta.
+  journal = J Mol Biol
+  volume = 392
+  pages = 181-90
+  year = 2009
+  doi_id = "10.1016/j.jmb.2009.07.008"
+  pmid = 19596339
+  external = True
+}
+
+citation {
+  article_id = autobuild
+  authors = Terwilliger TC, Grosse-Kunstleve RW, Afonine PV, Moriarty NW, \
+    Zwart PH, Hung L-W, Read RJ, Adams PD
+  title = Iterative model building, structure refinement and density \
+    modification with the PHENIX AutoBuild wizard
+  year = 2008
+  journal = Acta Cryst. D
+  volume = 64
+  pages = 61-69
+  pmid = 18094468
+  doi_id = doi:10.1107/S090744490705024X
+}
+
+citation {
+  article_id = resolve_model_build
+  authors = Terwilliger TC
+  title = Automated main-chain model building by template matching and iterative fragment extension.
+  year = 2003
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 59
+  pages = 38-44
+  pmid = 12499537
+  doi_id = doi:10.1107/S0907444902018036
+}
+
+citation {
+  article_id = resolve_seq_assign
+  authors = Terwilliger TC
+  title = Automated side-chain model building and sequence assignment by template matching.
+  year = 2003
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 59
+  pages = 45-9
+  pmid = 12499538
+  doi_id = doi:10.1107/S0907444902018048
+}
+
+citation {
+  article_id = dm_pattern
+  authors = Terwilliger TC
+  title = Statistical density modification using local pattern matching.
+  year = 2003
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 59
+  pages = 1688-701
+  pmid = 14501107
+  doi_id = doi:10.1107/S0907444903015142
+}
+
+citation {
+  article_id = iterative_build
+  authors = Terwilliger TC
+  title = Improving macromolecular atomic models at moderate resolution by automated iterative model building, statistical density modification and refinement.
+  year = 2003
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 59
+  pages = 1174-82
+  pmid = 12832760
+  doi_id = doi:10.1107/S0907444903009922
+}
+
+citation {
+  article_id = protein_ligand_pipeline
+  authors = Echols N, Moriarty NW, Klei HE, Afonine PV, Bunkóczi G, Headd JJ, McCoy AJ, Oeffner RD, Read RJ, Terwilliger TC, Adams PD
+  title = Automating crystallographic structure solution and refinement of protein-ligand complexes.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 70
+  pages = 144-54
+  year = 2014
+  doi_id = "10.1107/S139900471302748X"
+  pmid = 24419387
+}
+
+
+citation {
+  article_id = glr
+  authors = Klei HE, Moriarty NW, Echols N, Terwilliger TC, Baldwin ET, Pokross M, Posy S, Adams PD
+  title = Ligand placement based on prior structures: the guided ligand-replacement method.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 70
+  pages = 134-43
+  year = 2014
+  doi_id = "10.1107/S1399004713030071"
+  pmid = 24419386
+}
+citation {
+  article_id = ligand_fit
+  authors = Terwilliger TC, Klei H, Adams PD, Moriarty NW, Cohn JD
+  title = Automated ligand fitting by core-fragment fitting and extension into density.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 62
+  pages = 915-22
+  year = 2006
+  doi_id = "10.1107/S0907444906017161"
+  pmid = 16855309
+}
+
+citation {
+  article_id = ligand_id
+  authors = Terwilliger TC, Adams PD, Moriarty NW, Cohn JD
+  title = Ligand identification using electron-density map correlations.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 63
+  pages = 101-7
+  year = 2006
+  doi_id = "10.1107/S0907444906046233"
+  pmid = 17164532
+}
+
+citation {
+  article_id = autobuild_omit
+  authors = Terwilliger TC, Grosse-Kunstleve RW, Afonine PV, Moriarty NW, \
+    Adams PD, Read RJ, Zwart PH, Hung L-W
+  title = Iterative-build OMIT maps: map improvement by iterative model \
+    building and refinement without model bias.
+  year = 2008
+  journal = Acta Cryst. D
+  volume = 64
+  pages = 515-524
+  pmid = 18453687
+  doi_id =  doi:10.1107/S0907444908004319
+}
+
+citation {
+  article_id = autobuild_mult
+  authors = Terwilliger TC, Grosse-Kunstleve RW, Afonine PV, \
+    Adams PD, Moriarty NW, \
+    Zwart PH, Read RJ, Turk D, Hung L-W
+  title = Interpretation of ensembles created by multiple iterative \
+      rebuilding of macromolecular models
+  year = 2007
+  journal = Acta Cryst. D
+  volume = 63
+  pages = 597-610
+  pmid = 17452785
+  doi_id = doi:10.1107/S0907444907009791
+}
+
+citation {
+  article_id = solve_resolve
+  authors = Terwilliger T
+  title = SOLVE and RESOLVE: automated structure solution, density modification and model building.
+  journal = J Synchrotron Radiat
+  volume = 11
+  pages = 49-52
+  year = 2003
+  doi_id =  doi:10.1107/S0909049503023938
+  pmid = 14646132
+}
+
+citation {
+  article_id = merritt_server
+  authors = Merritt EA
+  title = X-ray Anomalous Scattering
+  year = 2012
+  journal = http://www.bmsc.washington.edu/scatter
+  volume = None
+  pages = None
+  external = True
+}
+
+citation {
+  article_id = autosol
+  authors = Terwilliger TC, Adams PD, Read RJ, McCoy AJ, Moriarty NW, Grosse-Kunstleve RW, Afonine PV, Zwart PH, Hung LW
+  title = Decision-making in structure solution using Bayesian estimates of map quality: the PHENIX AutoSol wizard.
+  journal = Acta Crystallogr D Biol Crystallogr
+  year = 2009
+  volume = 65
+  pages = 582-601
+  doi_id = "10.1107/S0907444909012098"
+  pmid = 19465773
+}
+
+citation {
+  article_id = elbow
+  authors = Moriarty NW, Grosse-Kunstleve RW, Adams PD
+  title = electronic Ligand Builder and Optimization Workbench (eLBOW): a tool for ligand coordinate and restraint generation.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 65
+  pages = 1074-80
+  year = 2009
+  doi_id = "10.1107/S0907444909029436"
+  pmid = 19770504
+}
+
+citation {
+  article_id = find_ncs
+  authors = Terwilliger TC
+  title = Rapid automatic NCS identification using heavy-atom substructures.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 58
+  pages = 2213-5
+  year = 2002
+  doi_id =  doi:10.1107/S0907444902016384
+  pmid = 12454504
+}
+
+citation {
+  article_id = prime_and_switch
+  authors = Terwilliger TC
+  title = Using prime-and-switch phasing to reduce model bias in molecular replacement.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 60
+  pages = 2144-9
+  year = 2004
+  doi_id = "10.1107/S0907444904019535"
+  pmid = 15572767
+}
+
+
+citation {
+  article_id = bayes_fa
+  authors = Terwilliger TC
+  title = MAD phasing: Bayesian estimates of F(A).
+  journal = Acta Crystallogr D Biol Crystallogr
+  year = 1994
+  volume = 50
+  pages = 11-6
+  doi_id = "10.1107/S0907444993008224"
+  pmid = 15299471
+}
+
+citation {
+  article_id = resolve_oasis
+  authors = Wang JW, Chen JR, Gu YX, Zheng CD, Jiang F, Fan HF, Terwilliger TC, Hao Q
+  title = SAD phasing by combination of direct methods with the SOLVE/RESOLVE procedure.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 60
+  pages = 1244-53
+  year = 2004
+  doi_id = "10.1107/S0907444904010674"
+  pmid = 15213386
+}
+
+citation {
+  article_id = bss
+  authors = Afonine PV, Grosse-Kunstleve RW, Adams PD
+  title = A robust bulk-solvent correction and anisotropic scaling procedure.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 61
+  pages = 850-5
+  year = 2005
+  doi_id = "10.1107/S0907444905007894"
+  pmid = 15983406
+}
+
+citation {
+  article_id = cctbx
+  authors = Grosse-Kunstleve RW, Sauter NK, Moriarty NW, Adams PD
+  title = The Computational Crystallography Toolbox: crystallographic \
+    algorithms in a reusable software framework
+  year = 2002
+  journal = J. Appl. Cryst.
+  volume = 35
+  pages = 126-136
+  doi_id = doi:10.1107/S0021889801017824
+}
+
+citation {
+  article_id = hyss
+  authors = Grosse-Kunstleve RW, Adams PD
+  title = Substructure search procedures for macromolecular structures
+  year = 2003
+  journal = Acta Cryst. D
+  volume = 59
+  pages = 1966-1973.
+  doi_id = doi:10.1107/S0907444903018043
+}
+
+citation {
+  article_id = ias
+  authors = Afonine PV, Grosse-Kunstleve RW, Adams PD, Lunin VY, \
+    Urzhumtsev A
+  title = On macromolecular refinement at subatomic resolution with \
+    interatomic scatterers
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 63
+  pages = 1194-7
+  year = 2007
+  doi_id = "10.1107/S0907444907046148"
+  pmid = 18007035
+}
+
+citation {
+  article_id = kicked_maps
+  authors = Pražnikar J, Afonine PV, Guncar G, Adams PD, Turk D
+  title = Averaged kick maps: less noise, more signal... and probably less bias.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 65
+  pages = 921-31
+  year = 2009
+  doi_id = "10.1107/S0907444909021933"
+  pmid = 19690370
+}
+
+citation {
+  article_id = molprobity
+  authors = Chen VB, Arendall WB, Headd JJ, Keedy DA, Immormino RM, \
+    Kapral GJ, Murray LW, Richardson JS, Richardson DC
+  title = MolProbity: all-atom structure validation for macromolecular \
+    crystallography
+  year = 2010
+  journal = Acta Cryst. D
+  volume = 66
+  pages = 16-21
+  doi_id =  doi:10.1107/S0907444909042073
+}
+
+citation {
+  article_id = phaser
+  authors = McCoy AJ, Grosse-Kunstleve RW, Adams PD, Winn MD, Storoni LC, Read RJ
+  title = Phaser crystallographic software.
+  journal = J Appl Crystallogr
+  volume = 40
+  pages = 658-674
+  year = 2007
+  doi_id = "10.1107/S0021889807021206"
+  pmid = 19461840
+}
+
+citation {
+  article_id = sad_function
+  authors = McCoy AJ, Storoni LC, Read RJ
+  title = Simple algorithm for a maximum-likelihood SAD function.
+  journal = Acta Crystallogr D Biol Crystallogr
+  year = 2004
+  volume = 60
+  pages = 1220-8
+  doi_id = "10.1107/S0907444904009990"
+  pmid = 15213383
+}
+
+citation {
+  article_id = phenix2002
+  authors = Adams PD, Grosse-Kunstleve RW, Hung LW, Ioerger TR, McCoy AJ, Moriarty NW, Read RJ, Sacchettini JC, Sauter NK, Terwilliger TC
+  title = PHENIX: building new software for automated crystallographic structure determination.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 58
+  pages = 1948-54
+  year = 2002
+  doi_id = doi:10.1107/S0907444902016657
+  pmid = 12393927
+}
+
+citation {
+  article_id = phenix
+  authors = Adams PD, Afonine PV, Bunkoczi G, Chen VB, Davis IW, Echols N, Headd JJ, Hung LW, Kapral GJ, Grosse-Kunstleve RW, McCoy AJ, Moriarty NW, Oeffner R, Read RJ, Richardson DC, Richardson JS, Terwilliger TC, Zwart PH
+  title = PHENIX: a comprehensive Python-based system for macromolecular structure solution
+  year = 2010
+  journal = Acta Cryst. D
+  volume = 66
+  pages = 213-221
+  pmid = 20124702
+  doi_id = "10.1107/S0907444909052925"
+}
+
+citation {
+  article_id = phenix.refine
+  authors = Afonine PV, Grosse-Kunstleve RW, Echols N, Headd JJ, Moriarty NW, Mustyakimov M, Terwilliger TC, Urzhumtsev A, Zwart PH, Adams PD
+  title = Towards automated crystallographic structure refinement with phenix.refine.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 68
+  pages = 352-67
+  year = 2012
+  doi_id = "10.1107/S0907444912001308"
+  pmid = 22505256
+}
+
+citation {
+  article_id = polygon
+  authors = Urzhumtseva L, Afonine PV, Adams PD, Urzhumtsev A
+  title = Crystallographic model quality at a glance
+  year = 2009
+  journal = Acta Cryst. D
+  volume = 65
+  pages = 297-300
+  pmid = 19237753
+  doi_id = doi:10.1107/S0907444908044296
+}
+
+citation {
+  article_id = pulchra
+  authors = Rotkiewicz P, Skolnick J
+  title = Fast procedure for reconstruction of full-atom protein models from reduced representations.
+  journal = J Comput Chem
+  volume = 29
+  pages = 1460-5
+  year = 2008
+  doi_id = "10.1002/jcc.20906"
+  pmid = 18196502
+  external = True
+}
+
+citation {
+  article_id = rigid_body
+  authors = Afonine PV, Grosse-Kunstleve RW, Urzhumtsev A, Adams PD
+  title = Automatic multiple-zone rigid-body refinement with a large convergence radius.
+  journal = J Appl Crystallogr
+  volume = 42
+  pages = 607-615
+  year = 2009
+  doi_id = "10.1107/S0021889809023528"
+  pmid = 19649324
+}
+
+
+citation {
+  article_id = buccaneer
+  authors = Cowtan K
+  title = The Buccaneer software for automated model building. 1. Tracing protein chains.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 62
+  pages = 1002-11
+  year = 2006
+  doi_id = "10.1107/S0907444906022116"
+  pmid = 16929101
+  external = True
+}
+
+
+citation {
+  article_id = xtriage
+  authors = Zwart PH, Grosse-Kunstleve RW, Adams PD
+  title =  Xtriage and Fest: automatic assessment of X-ray data and \
+    substructure structure factor estimation
+  year = 2005
+  journal = CCP4 Newsletter
+  volume = Winter
+  pages = Contribution 7
+}
+
+citation {
+  article_id = ksdssp
+  authors = Kabsch W, Sander C
+  title = Dictionary of protein secondary structure: pattern recognition of hydrogen-bonded and geometrical features.
+  journal = Biopolymers
+  volume = 22
+  pages = 2577-637
+  year = 1984
+  doi_id = "10.1002/bip.360221211"
+  pmid = 6667333
+  external = True
+}
+
+citation {
+  article_id = muscle
+  authors = Edgar RC
+  title = MUSCLE: multiple sequence alignment with high accuracy and high throughput.
+  journal = Nucleic Acids Res
+  volume = 32
+  pages = 1792-7
+  year = 2004
+  doi_id = "10.1093/nar/gkh340"
+  pmid = 15034147
+  external = True
+}
+
+
+citation {
+  article_id = reference_model
+  authors = Headd JJ, Echols N, Afonine PV, Grosse-Kunstleve RW, Chen VB, Moriarty NW, Richardson DC, Richardson JS, Adams PD
+  title = Use of knowledge-based restraints in phenix.refine to improve macromolecular refinement at low resolution
+  year = 2012
+  journal = Acta Cryst. D
+  volume = 68
+  pages = 381-390
+  doi_id = "10.1107/S0907444911047834"
+}
+
+citation {
+  article_id = den_refine
+  authors = Schröder GF, Levitt M, Brunger AT
+  title = Super-resolution biomolecular crystallography with low-resolution data.
+  journal = Nature
+  volume = 464
+  pages = 1218-22
+  year = 2010
+  doi_id = "10.1038/nature08892"
+  pmid = 20376006
+  external = True
+}
+
+citation {
+  article_id = phenix_gui
+  authors = Echols N, Grosse-Kunstleve RW, Afonine PV, Bunkóczi G, Chen VB, Headd JJ, McCoy AJ, Moriarty NW, Read RJ, Richardson DC, Richardson JS, Terwilliger TC, Adams PD
+  title = Graphical tools for macromolecular crystallography in PHENIX.
+  year = 2012
+  journal = J. Appl. Cryst.
+  volume = 45
+  pages = 581-586
+  doi_id = "10.1107/S0021889812017293"
+}
+
+citation {
+  article_id = cc_star
+  authors = Karplus PA, Diederichs K
+  title = Linking crystallographic model and data quality.
+  year = 2012
+  journal = Science
+  volume = 336
+  pages = 1030-1033
+  doi_id = "10.1126/science.1218231"
+}
+
+citation {
+  article_id = ensemble_refinement
+  authors = Burnley BT, Afonine PV, Adams PD, Gros P.
+  title = Modelling dynamics in protein crystal structures by ensemble refinement.
+  year = 2012
+  journal = eLife
+  volume = 1
+  doi_id = "10.7554/eLife.00311"
+}
+
+citation {
+  article_id = coot
+  authors = Emsley P, Lohkamp B, Scott WG, Cowtan K.
+  title = Features and development of Coot.
+  year = 2010
+  journal = Acta Cryst. D
+  volume = 66
+  pages = 486-501
+  doi_id = "10.1107/S0907444910007493"
+}
+
+citation {
+  article_id = rosetta_refine
+  authors = DiMaio F, Echols N, Headd JJ, Terwilliger TC, Adams PD, Baker D
+  title = Improved low-resolution crystallographic refinement with Phenix and Rosetta.
+  journal = Nat Methods
+  volume = 10
+  pages = 1102-4
+  year = 2013
+  doi_id = "10.1038/nmeth.2648"
+  pmid = 24076763
+}
+
+citation {
+  article_id = rosetta_scripts
+  authors = Fleishman SJ, Leaver-Fay A, Corn JE, Strauch EM, Khare SD, Koga N, Ashworth J, Murphy P, Richter F, Lemmon G, Meiler J, Baker D
+  title = RosettaScripts: a scripting language interface to the Rosetta macromolecular modeling suite.
+  journal = PLoS One
+  volume = 6
+  pages = e20161
+  year = 2011
+  doi_id = "10.1371/journal.pone.0020161"
+  pmid = 21731610
+}
+
+citation {
+  article_id = sceds
+  authors = McCoy AJ, Nicholls RA, Schneider TR
+  title = SCEDS: protein fragments for molecular replacement in Phaser
+  year = 2013
+  journal = Acta Cryst. D
+  volume = 69
+  doi_id = "10.1107/S0907444913021811"
+}
+
+citation {
+  article_id = mrage
+  authors = Bunkóczi G, Echols N, McCoy AJ, Oeffner RD, Adams PD, Read RJ
+  title = Phaser.MRage: automated molecular replacement.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 69
+  pages = 2276-86
+  year = 2013
+  doi_id = "10.1107/S0907444913022750"
+  pmid = 24189240
+}
+
+citation {
+  article_id = anneal_omit
+  authors = Hodel A, Kim SH, Brunger AT
+  title = Model bias in macromolecular crystal structures
+  year = 1992
+  journal = Acta Cryst. A
+  volume = 48
+  pages = 851-858
+  doi_id = doi:10.1107/S0108767392006044
+}
+
+citation {
+  article_id = bss2
+  authors = Afonine PV, Grosse-Kunstleve RW, Adams PD, Urzhumtsev A
+  title = Bulk-solvent and overall scaling revisited: faster calculations, improved results.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 69
+  pages = 625-34
+  year = 2013
+  doi_id = "10.1107/S0907444913000462"
+  pmid = 23519671
+}
+
+citation {
+  article_id = brunger_rfree
+  authors = Brünger AT
+  title = Free R value: a novel statistical quantity for assessing the accuracy of crystal structures.
+  journal = Nature
+  volume = 355
+  pages = 472-5
+  year = 2008
+  doi_id = doi:10.1038/355472a0
+  pmid = 18481394
+  external = True
+}
+
+citation {
+  article_id = brunger_anneal
+  authors = Brünger AT, Kuriyan J, Karplus M
+  title = Crystallographic R factor refinement by molecular dynamics.
+  journal = Science
+  volume = 235
+  pages = 458-60
+  year = 1987
+  doi_id = "10.1126/science.235.4787.458"
+  pmid = 17810339
+}
+
+citation {
+  article_id = mccoy_likelihood
+  authors = McCoy AJ
+  title = Liking likelihood.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 60
+  pages = 2169-83
+  year = 2004
+  doi_id = "10.1107/S0907444904016038"
+  pmid = 15572770
+}
+
+citation {
+  article_id = zwart_pseudosymm
+  authors = Zwart PH, Grosse-Kunstleve RW, Lebedev AA, Murshudov GN, Adams PD
+  title = Surprises and pitfalls arising from (pseudo)symmetry.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 64
+  pages = 99-107
+  year = 2008
+  doi_id = "10.1107/S090744490705531X"
+  pmid = 18094473
+}
+
+citation {
+  article_id = ramachandran
+  authors = Ramachandran GN, Ramakrishnan C, Sasisekharan V
+  title = Stereochemistry of polypeptide chain configurations.
+  journal = J Mol Biol
+  volume = 7
+  pages = 95-9
+  year = 1963
+  doi_id = 10.1016/S0022-2836(63)80023-6
+  pmid = 13990617
+}
+
+citation {
+  article_id = terwilliger_find_helices
+  authors = Terwilliger TC
+  title = Rapid model building of alpha-helices in electron-density maps.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 66
+  pages = 268-75
+  year = 2010
+  doi_id = "10.1107/S0907444910000314"
+  pmid = 20179338
+}
+
+citation {
+  article_id = terwilliger_find_sheets
+  authors = Terwilliger TC
+  title = Rapid model building of beta-sheets in electron-density maps.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 66
+  pages = 276-84
+  year = 2010
+  doi_id = "10.1107/S0907444910000302"
+  pmid = 20179339
+}
+
+citation {
+  article_id = terwilliger_trace_chain
+  authors = Terwilliger TC
+  title = Rapid chain tracing of polypeptide backbones in electron-density maps.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 66
+  pages = 285-94
+  year = 2010
+  doi_id = "10.1107/S0907444910000272"
+  pmid = 20179340
+}
+
+citation {
+  article_id = read_sigmaa
+  authors = Read RJ
+  title = Improved Fourier coefficients for maps using phases from partial structures with errors.
+  journal = Acta Crystallographica
+  volume = 42
+  year = 1986
+  pages = 140-149
+  doi_id =  doi:10.1107/S0108767386099622
+}
+
+citation {
+  article_id = mpscore
+  authors = Keedy DA, Williams CJ, Headd JJ, Arendall WB, Chen VB, Kapral GJ, Gillespie RA, Block JN, Zemla A, Richardson DC, Richardson JS
+  title = The other 90% of the protein: assessment beyond the Calphas for CASP8 template-based and high-accuracy models.
+  journal = Proteins
+  volume = 77 Suppl 9
+  pages = 29-49
+  year = 2009
+  doi_id = "10.1002/prot.22551"
+  pmid = 19731372
+}
+
+citation {
+  article_id = lovell_geometry
+  authors = Lovell SC, Davis IW, Arendall WB, de Bakker PI, Word JM, Prisant MG, Richardson JS, Richardson DC
+  title = Structure validation by Calpha geometry: phi,psi and Cbeta deviation.
+  journal = Proteins
+  volume = 50
+  year = 2003
+  pages = 437-50
+  doi_id = "10.1002/prot.10286"
+  pmid = 12557186
+}
+
+citation {
+  article_id = ncs_from_density
+  authors = Terwilliger TC
+  title = Finding non-crystallographic symmetry in density maps of macromolecular structures.
+  journal = J Struct Funct Genomics
+  volume = 14
+  pages = 91-5
+  year = 2013
+  doi_id = "10.1007/s10969-013-9157-7"
+  pmid = 23881095
+}
+
+citation {
+  article_id = dm_ncs
+  authors = Terwilliger TC
+  title = Statistical density modification with non-crystallographic symmetry.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 58
+  pages = 2082-6
+  year = 2002
+  doi_id = doi:10.1107/S0907444902016360
+  pmid = 12454468
+}
+
+citation {
+  article_id = resolve
+  authors = Terwilliger TC
+  title = Maximum-likelihood density modification.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 56
+  pages = 965-72
+  year = 2000
+  doi_id = doi:10.1107/S0907444900005072
+  pmid = 10944333
+}
+
+citation {
+  article_id = map_ml_phase
+  authors = Terwilliger TC
+  title = Map-likelihood phasing.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 57
+  pages = 1763-75
+  year = 2001
+  doi_id =  doi:10.1107/S0907444901013749
+  pmid = 11717488
+}
+
+citation {
+  article_id = phaser_frf
+  authors = Storoni LC, McCoy AJ, Read RJ
+  title = Likelihood-enhanced fast rotation functions.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 60
+  pages = 432-8
+  year = 2004
+  doi_id = "10.1107/S0907444903028956"
+  pmid = 14993666
+}
+
+citation {
+  article_id = phaser_ftf
+  authors = McCoy AJ, Grosse-Kunstleve RW, Storoni LC, Read RJ
+  title = Likelihood-enhanced fast translation functions.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 61
+  pages = 458-64
+  year = 2005
+  doi_id = "10.1107/S0907444905001617"
+  pmid = 15805601
+}
+
+
+citation {
+  article_id = dm_motifs
+  authors = Terwilliger TC
+  title = Maximum-likelihood density modification using pattern recognition of structural motifs.
+  year = 2001
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 57
+  pages = 1755-62
+  pmid = 11717487
+  doi_id = doi:10.1107/S0907444901013737
+}
+
+citation {
+  article_id = r_meas
+  authors = Diederichs K, Karplus PA
+  title = Improved R-factors for diffraction data analysis in macromolecular crystallography.
+  journal = Nat Struct Biol
+  volume = 4
+  pages = 269-75
+  year = 1997
+  doi_id = None
+  pmid = 9095194
+}
+
+citation {
+  article_id = evans_data_reduction
+  authors = Evans PR
+  title = An introduction to data reduction: space-group determination, scaling and intensity statistics.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 67
+  pages = 282-92
+  year = 2011
+  doi_id = "10.1107/S090744491003982X"
+  pmid = 21460446
+}
+
+citation {
+  article_id = weiss_r_pim
+  authors = Weiss MS
+  title = Global indicators of data quality
+  journal = J. Appl. Cryst.
+  volume = 34
+  year = 2001
+  pages = 130-135
+  doi_id = "10.1107/S0021889800018227"
+}
+
+citation {
+  article_id = cdl
+  authors = Berkholz DS, Shapovalov MV, Dunbrack RL, Karplus PA
+  title = Conformation dependence of backbone geometry in proteins.
+  journal = Structure
+  volume = 17
+  pages = 1316-25
+  year = 2009
+  doi_id = "10.1016/j.str.2009.08.012"
+  pmid = 19836332
+}
+
+citation {
+  article_id = cdl_tnt
+  authors = Tronrud DE, Berkholz DS, Karplus PA
+  title = Using a conformation-dependent stereochemical library improves crystallographic refinement of proteins.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 66
+  pages = 834-42
+  year = 2010
+  doi_id = "10.1107/S0907444910019207"
+  pmid = 20606264
+}
+
+citation {
+  article_id = ssm
+  authors = Krissinel E, Henrick K
+  title = Secondary-structure matching (SSM), a new tool for fast protein structure alignment in three dimensions.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 60
+  pages = 2256-68
+  year = 2004
+  doi_id = "10.1107/S0907444904026460"
+  pmid = 15572779
+}
+
+citation {
+  article_id = leontis_westhof
+  authors = Leontis NB, Westhof E
+  title = Geometric nomenclature and classification of RNA base pairs.
+  journal = RNA
+  volume = 7
+  pages = 499-512
+  year = 2001
+  pmid = 11345429
+}
+
+citation {
+  article_id = sculptor
+  authors = Bunkóczi G, Read RJ
+  title = Improvement of molecular-replacement models with Sculptor.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 67
+  pages = 303-12
+  year = 2011
+  doi_id = "10.1107/S0907444910051218"
+  pmid = 21460448
+}
+
+citation {
+  article_id = ion_placement
+  authors = Echols N, Morshed N, Afonine PV, McCoy AJ, Miller MD, Read RJ, Richardson JS, Terwilliger TC, Adams PD
+  title = Automated identification of elemental ions in macromolecular crystal structures.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 70
+  pages = 1104-14
+  year = 2014
+  doi_id = "10.1107/S1399004714001308"
+  pmid = 24699654
+}
+
+citation {
+  article_id = torsion_ncs
+  authors = Headd JJ, Echols N, Afonine PV, Moriarty NW, Gildea RJ, Adams PD
+  title = Flexible torsion-angle noncrystallographic symmetry restraints for improved macromolecular structure refinement.
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 70
+  pages = 1346-56
+  year = 2014
+  doi_id = "10.1107/S1399004714003277"
+  pmid = 24816103
+}
+
+citation {
+  article_id = domain_parser
+  authors = Xu Y, Xu D, Gabow HN
+  title = Protein domain decomposition using a graph-theoretic approach.
+  journal = Bioinformatics
+  volume = 16
+  pages = 1091-1104
+  year = 2000
+  doi_id = "10.1093/bioinformatics/16.12.1091"
+  pmid = 11159328
+}
+
+citation {
+  article_id = stoer_wagner_min_cut
+  authors = Stoer M, Wagner F
+  title = A simple min-cut algorithm.
+  journal = Journal of the ACM
+  volume = 44
+  pages = 585-591
+  year = 1997
+  doi_id = "10.1145/263867.263872"
+}
+
+citation {
+  article_id = boykov_kolmogorov_max_flow
+  authors = Boykov Y, Kolmogorov V
+  title = An Experimental Comparison of Min-Cut/Max-Flow Algorithms for Energy Minimization in Vision.
+  journal = IEEE Transactions on Pattern Analysis and Machine Intelligence
+  volume = 26
+  pages = 1124-1137
+  year = 2004
+}
+
+citation {
+  article_id = graph_cut_enumeration
+  authors = Yeh L-P, Wang B-F, Su H-H
+  title = Efficient Algorithms for the Problems of Enumerating Cut by Non-decreasing Weights
+  journal = Algoritmica
+  volume = 5626
+  pages = 297-312
+  year = 2010
+}
+
+citation {
+  article_id = fem
+  authors = Afonine PV, Moriarty NW, Mustyakimov M, Sobolev OV, Terwilliger TC, Turk D, Urzhumtsev A, Adams PD
+  title = FEM: feature-enhanced map
+  journal = Acta Cryst. D
+  volume = 71
+  pages = 646-666
+  year = 2015
+}
+
+citation {
+  article_id = tech_parallelity
+  authors = Sobolev OV, Afonine PV, Adams PD, Urzhumtsev A
+  title = Programming new geometry restraints: parallelity of atomic groups
+  journal = J. Appl. Cryst.
+  volume = 48
+  pages = 1130-1141
+  year = 2015
+}
+
+citation {
+  article_id = phenix.real_space_refine_CCN
+  authors = Afonine PV,  Headd JJ, Terwilliger TC, Adams PD
+  title = New tool: phenix.real_space_refine
+  journal = Computational Crystallography Newsletter
+  volume = 4
+  pages = 43-44
+  year = 2013
+}
+
+citation {
+  article_id = phenix.polder
+  authors = Liebschner D, Afonine PV, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD
+  title = Polder maps: improving OMIT maps by excluding bulk solvent
+  journal = Acta Cryst. D
+  volume = 73
+  pages = 148-157
+  year = 2017
+  doi_id = "10.1107/S2059798316018210"
+}
