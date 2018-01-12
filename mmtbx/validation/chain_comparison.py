@@ -415,7 +415,7 @@ def seq_it_is_similar_to(seq=None,unique_sequences=None,min_similarity=1.0,
     sim=sequence_similarity().run(seq,s,use_fasta=True,verbose=False)
     if not allow_extensions and len(seq)!=len(s):
       fract_same=min(len(seq),len(s))/max(len(seq),len(s))
-      sim=sim*fract_same 
+      sim=sim*fract_same
     if sim >= min_similarity:
       return s # return the one it is similar to
   return None
@@ -786,7 +786,7 @@ def apply_ncs_to_hierarchy(ncs_obj=None,
       ncs_object=ncs_obj,
       out=out)
   new_hierarchy=get_pdb_hierarchy(text=an.output_text)
-  return new_hierarchy 
+  return new_hierarchy
 
 def run(args=None,
    target_hierarchy=None,
@@ -903,11 +903,11 @@ def run(args=None,
       min_similarity=min_similarity,out=local_out)
     print >>out,"Residues in unique part of query hierarchy: %s" %(
      chain_hierarchy.overall_counts().n_residues)
-    if ncs_obj and not params.input_files.unique_query_only:  
+    if ncs_obj and not params.input_files.unique_query_only:
       # apply NCS to unique part of query
       print >>out,"Applying NCS to unique part of query"
       chain_hierarchy=apply_ncs_to_hierarchy(ncs_obj=ncs_obj,
-        hierarchy=chain_hierarchy,out=out) 
+        hierarchy=chain_hierarchy,out=out)
       print >>out,"Residues in full query hierarchy: %s" %(
         chain_hierarchy.overall_counts().n_residues)
     if not target_unique_hierarchy:
