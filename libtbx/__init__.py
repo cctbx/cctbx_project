@@ -168,23 +168,9 @@ def only_element(sequence):
     s = "contains %d elements" % n
   raise RuntimeError("sequence %s (exactly one element expected)" % s)
 
-if (getattr(sys, "api_version", 0) >= 1013):
-
-  class dict_with_default_0(dict):
-
-    def __missing__(self, key):
-      return 0
-
-else:
-
-  class dict_with_default_0(dict):
-
-    def __getitem__(self, key):
-      try: return dict.__getitem__(self, key)
-      except KeyError: pass
-      val = 0
-      dict.__setitem__(self, key, val)
-      return val
+class dict_with_default_0(dict):
+  def __missing__(self, key):
+    return 0
 
 def adopt_init_args(obj, args, exclude=(), hide=False):
   """
