@@ -3,7 +3,7 @@ from dials.array_family import flex
 import math
 from rstbx.symmetry.constraints.parameter_reduction \
     import symmetrize_reduce_enlarge
-from scitbx.matrix import col
+from scitbx.matrix import sqr, col
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import finite_difference
@@ -12,7 +12,7 @@ def r2d(radians):
   return 180*radians/math.pi
 
 class sdfac_propagate(error_modeler_base):
-  def finite_difference(self, parameter_name, table):
+  def finite_difference(self, parameter_name, table, DELTA = 1.E-7):
     """ Compute finite difference given a parameter name """
     refls = self.scaler.ISIGI
 
@@ -21,10 +21,8 @@ class sdfac_propagate(error_modeler_base):
       return refls['iobs'] / r['D']
 
     functional = target()
-    DELTA = 1.E-7
 
     if parameter_name.startswith('c'):
-      from cctbx.uctbx import unit_cell
       from scitbx.matrix import sqr
       cryst_param = int(parameter_name.lstrip('c'))
       parameter_name = 'b_matrix'
@@ -33,11 +31,10 @@ class sdfac_propagate(error_modeler_base):
       sre = symmetrize_reduce_enlarge(self.scaler.params.target_space_group.group())
       for i in xrange(len(table)):
         sre.set_orientation(orientation=table['b_matrix'][i])
-        ruc = sre.orientation.unit_cell().reciprocal()
-        mm = list(ruc.metrical_matrix())
-        mm[sre.constraints.independent_indices[cryst_param]] += DELTA
-        ruc = unit_cell(metrical_matrix=mm)
-        table['b_matrix'][i] = sqr(ruc.orthogonalization_matrix()).transpose()
+        vals = list(sre.forward_independent_parameters())
+        vals[cryst_param] += DELTA
+        newB = sqr(sre.backward_orientation(vals).reciprocal_matrix())
+        table['b_matrix'][i] = newB
     else:
       current = table[parameter_name]
       table[parameter_name] = current + DELTA
@@ -109,13 +106,13 @@ class sdfac_propagate(error_modeler_base):
 
 
     r = flex.reflection_table()
-    r['rx'] = rx
-    r['ry'] = ry
-    r['u'] = u
-    r['b'] = b
-    r['h'] = h
-    r['q'] = q
-    r['qlen'] = qlen
+    r['rx']         = rx
+    r['ry']         = ry
+    r['u']          = u
+    r['b']          = b
+    r['h']          = h
+    r['q']          = q
+    r['qlen']       = qlen
     r['D']          = D
     r['rs']         = rs
     r['eta']        = eta
@@ -239,41 +236,43 @@ class sdfac_propagate(error_modeler_base):
     den_dlambda      = flex.cos(r['thetah']) * dthetah_dlambda
     der_dlambda      = ((r['wavelength'] * den_dlambda) - r['sinthetah'])/r['wavelength']**2
     depsilon_dlambda = -16 * r['B'] * r['er'] * der_dlambda
-    ds0_dlambda      = s0hat
+    ds0_dlambda      = s0hat*(-1/r['wavelength']**2)
     dslen_dlambda    = r['s'].dot(ds0_dlambda)/r['slen']
-    drhsq_dlambda    = 2*(r['slen']-(1/r['wavelength']))*dslen_dlambda
-    dP_dlambda       = -(1/r['p_d']) * drhsq_dlambda
+    drhsq_dlambda    = 2*(r['slen']-(1/r['wavelength']))*(dslen_dlambda+(1/r['wavelength']**2))
+    dP_dlambda       = -2*(r['p_n']/r['p_d']**2) * drhsq_dlambda
     dD_dlambda       = (r['G'] * r['eepsilon'] * dP_dlambda) + (r['partiality'] * r['G'] * r['eepsilon'] * depsilon_dlambda)
     dI_dlambda       = -(refls['iobs']/r['D']**2) * dD_dlambda
 
-    drs_deff = 1/(r['deff']**2)
+    drs_deff = -1/(r['deff']**2)
     dPn_deff = 2 * r['rs'] * drs_deff
-    dPd_deff = r['rs']**3
-    dP_deff  = ((r['p_n'] * dPd_deff)-(r['p_d'] * dPn_deff))/(r['p_d']**2)
+    dPd_deff = 2 * r['rs'] * drs_deff
+    dP_deff  = ((r['p_d'] * dPn_deff)-(r['p_n'] * dPd_deff))/(r['p_d']**2)
     dI_deff  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deff
 
     drs_deta = 1/(2*r['d'])
     dPn_deta = 2 * r['rs'] * drs_deta
-    dPd_deta = 3*r['deff']*(r['rs']**2)*drs_deta
-    dP_deta  = ((r['p_n']*dPd_deta)-(r['p_d']*dPn_deta))/(r['p_d']**2)
+    dPd_deta = 2 * r['rs'] * drs_deta
+    dP_deta  = ((r['p_d']*dPn_deta)-(r['p_n']*dPd_deta))/(r['p_d']**2)
     dI_deta  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deta
 
     if True:
       # Finite differences
       n_cryst_params = sre.constraints.n_independent_params()
       print "Showing finite differences and derivatives for each parameter (first few reflections only)"
-      for parameter_name, table, derivatives in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff', 'eta'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
+      for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff', 'eta'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
                                                     [refls, ct, ct, ct, ct, ct] + [ct]*n_cryst_params,
-                                                    [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar):
-        finite_g = self.finite_difference(parameter_name, table)
+                                                    [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar,
+                                                    [1e-7]*6 + [1e-11]*n_cryst_params):
+        finite_g = self.finite_difference(parameter_name, table, delta)
         print parameter_name
         for refl_id in xrange(min(10, len(refls))):
           print "%d % 21.1f % 21.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id])
         stats = flex.mean_and_variance(finite_g-derivatives)
         stats_finite = flex.mean_and_variance(finite_g)
-        percent = 100*stats.mean()/stats_finite.mean() if stats_finite.mean() != 0 else 0
+        percent = 0 if stats_finite.mean() == 0 else 100*stats.mean()/stats_finite.mean()
         print "Mean difference between finite and analytical: % 24.4f +/- % 24.4f (%8.3f%% of finite d.)"%( \
             stats.mean(), stats.unweighted_sample_standard_deviation(), percent)
+        print
 
     # Propagate errors
     refls['isigi'] = refls['scaled_intensity'] / flex.sqrt(((sigma_Iobs**2 * dI_dIobs**2) +
