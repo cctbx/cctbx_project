@@ -52,3 +52,22 @@ class samosa:
       in the memory.shared_array_allocation phil parameter""")
     if self.param.backend != "Flex":
       raise Sorry("""For samosa, we are only using the Flex backend at present""")
+
+    # samosa.scale requires mtz_file to be set & file to be readable in order to produce isomorphous stats
+    if self.param.scaling.mtz_file is not None:
+      from iotbx import mtz
+      mtz_object = mtz.object(file_name=self.param.scaling.mtz_file)
+      comparison_column_found = False
+      obs_labels = []
+      for array in mtz_object.as_miller_arrays():
+        this_label = array.info().label_string().lower()
+        if array.observation_type() is not None:
+          obs_labels.append(this_label.split(',')[0])
+        if this_label.find(self.param.scaling.mtz_column_F)==0:
+          comparison_column_found = True
+          break
+      if not comparison_column_found:
+        raise Sorry(self.param.scaling.mtz_file +
+                  " has labels [" +
+                  ", ".join(obs_labels) +
+                  "].  Please set scaling.mtz_column_F to one of these.")
