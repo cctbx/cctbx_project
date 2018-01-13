@@ -290,11 +290,11 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
     for x in xyz2_new[info.j]:
       new_value.append(x+distance_per_site)
     xyz2_new[info.j]=tuple(new_value)
- 
+
     return get_best_match(xyz1,xyz2_new,crystal_symmetry=crystal_symmetry,
          distance_per_site=distance_per_site,used_j_list=used_j_list+[info.j],
          removed_j=True)
-   
+
   return info
 
 def get_pdb_inp(text=None,file_name=None,source_info="string"):
@@ -797,7 +797,7 @@ def get_target_length(target_chain_ids=None,hierarchy=None,
 
 def select_segments_that_match(params=None,
    chain_hierarchy=None,
-   target_hierarchy=None, 
+   target_hierarchy=None,
    out=sys.stdout,
    ncs_obj=None,
    target_file=None, # model
