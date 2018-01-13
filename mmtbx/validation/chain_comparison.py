@@ -285,7 +285,6 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
   if (not removed_j) and used_j_list and info.j in used_j_list:
     # move atom j away and try again
     xyz2_new=xyz2.deep_copy()
-    from scitbx.matrix import col
     new_value=[]
     for x in xyz2_new[info.j]:
       new_value.append(x+distance_per_site)
