@@ -97,7 +97,7 @@ class xscale6e(object):
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     if kwargs.has_key("experiments"):
       self.helper.set_wavelength([e.beam.get_wavelength() for e in kwargs["experiments"]])
-      self.helper.set_domain_size([2.*e.crystal.domain_size for e in kwargs["experiments"]])#ad hoc factor of 2
+      self.helper.set_domain_size([2.*e.crystal.get_domain_size_ang() for e in kwargs["experiments"]])#ad hoc factor of 2
       self.helper.set_Astar_matrix([e.crystal.get_A() for e in kwargs["experiments"]])
 
     bitflags = choice_as_bitflag(self.params.levmar.parameter_flags)
