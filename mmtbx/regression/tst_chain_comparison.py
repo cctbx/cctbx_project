@@ -594,17 +594,16 @@ def tst_03():
   args=["query_dir=files","model.pdb"]
   r=run(args,out=f)
   expected_text="""
-
 SEQ SCORE is fraction (close and matching target sequence).
 
 
 
-               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %
-     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED FOUND   CA                   SEQ
-               RMSD   N    RMSD   N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
-     query.pdb 1.52   59    4.3    2     16      31      12   43.4   0.29     6.8        0.03"""
-
+     query.pdb 1.52   59      2     16      31      12   43.4   0.29     6.8        0.03
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
@@ -830,12 +829,12 @@ SEQ SCORE is fraction (close and matching target sequence).
 
 
 
-               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %
-     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED FOUND   CA                   SEQ
-               RMSD   N    RMSD   N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
- Unique_target 1.67   70    5.1   52     18      33      19   51.5   0.31     7.1        0.04"""
-
+ Unique_target 1.67   70     52     18      33      19   51.5   0.31     7.1        0.04
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
