@@ -284,10 +284,12 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
 
   if (not removed_j) and used_j_list and info.j in used_j_list:
     # move atom j away and try again
+    if not distance_per_site:
+      distance_per_site=4. # just need to move it away
     xyz2_new=xyz2.deep_copy()
     new_value=[]
     for x in xyz2_new[info.j]:
-      new_value.append(x+distance_per_site)
+      new_value.append(x+distance_per_site*2.)
     xyz2_new[info.j]=tuple(new_value)
 
     return get_best_match(xyz1,xyz2_new,crystal_symmetry=crystal_symmetry,
