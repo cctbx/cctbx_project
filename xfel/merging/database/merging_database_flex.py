@@ -156,7 +156,7 @@ class read_experiments(object):
     import cPickle as pickle
     from dxtbx.model import BeamFactory
     from dxtbx.model import DetectorFactory
-    from dxtbx.model.crystal import crystal_model
+    from dxtbx.model.crystal import CrystalFactory
     from cctbx.crystal_orientation import crystal_orientation,basis_type
     from dxtbx.model import Experiment, ExperimentList
     from scitbx import matrix
@@ -187,7 +187,17 @@ class read_experiments(object):
 'res_ori_1','res_ori_2','res_ori_3','res_ori_4','res_ori_5','res_ori_6','res_ori_7','res_ori_8','res_ori_9']])
       ORI = crystal_orientation(reciprocal_matrix, basis_type.reciprocal)
       direct = matrix.sqr(ORI.direct_matrix())
-      crystal = crystal_model(
+      transfer_dict = dict(__id__="crystal",
+                           ML_half_mosaicity_deg=float(tokens[order_dict["half_mosaicity_deg"]]),
+                           ML_domain_size_ang=float(tokens[order_dict["domain_size_ang"]]),
+                           real_space_a = matrix.row(direct[0:3]),
+                           real_space_b = matrix.row(direct[3:6]),
+                           real_space_c = matrix.row(direct[6:9]),
+                           space_group_hall_symbol = self.params.target_space_group.type().hall_symbol(),
+                           mosaicity = float(tokens[order_dict["half_mosaicity_deg"]]))
+      crystal = CrystalFactory.from_dict(transfer_dict)
+      """ old code reflects python-based crystal model
+      crystal = Crystal(
         real_space_a = matrix.row(direct[0:3]),
         real_space_b = matrix.row(direct[3:6]),
         real_space_c = matrix.row(direct[6:9]),
@@ -195,6 +205,7 @@ class read_experiments(object):
         mosaicity = float(tokens[order_dict["half_mosaicity_deg"]]),
       )
       crystal.domain_size = float(tokens[order_dict["domain_size_ang"]])
+      """
       #if isoform is not None:
       #  newB = matrix.sqr(isoform.fractionalization_matrix()).transpose()
       #  crystal.set_B(newB)
@@ -225,7 +236,7 @@ class read_experiments(object):
     c = flex.double([u[2] for u in uc])
     stats=flex.mean_and_variance(c)
     print "Unit cell c mean and standard deviation:",stats.mean(),stats.unweighted_sample_standard_deviation()
-    d = flex.double([e.crystal.domain_size for e in self.experiments])
+    d = flex.double([e.crystal.get_domain_size_ang() for e in self.experiments])
     stats=flex.mean_and_variance(d)
     # NOTE XXX FIXME:  cxi.index seems to record the half-domain size; report here the full domain size
     print "Domain size mean and standard deviation:",2.*stats.mean(),2.*stats.unweighted_sample_standard_deviation()
