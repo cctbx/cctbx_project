@@ -666,6 +666,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
       set_attr(sc=sc, a=a)
 
+  #MARKED_FOR_DELETION_OLEG
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
     LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
@@ -686,6 +687,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     result = iotbx.pdb.hierarchy.join_roots(roots=roots)
     result.reset_i_seq_if_necessary()
     return result
+  # END_MARKED_FOR_DELETION_OLEG
 
   def remove_residue_groups_with_atoms_on_special_positions_selective(self,
         crystal_symmetry):
@@ -2637,6 +2639,7 @@ def append_chain_id_suffixes(roots, suffixes=Auto):
         assert len(chain.id) == 1, len(chain.id)
         chain.id += suffix
 
+# MARKED_FOR_DELETION_OLEG
 def join_roots(roots, chain_id_suffixes=Auto):
   """
   Combine two root objects.
@@ -2647,6 +2650,7 @@ def join_roots(roots, chain_id_suffixes=Auto):
   for rt in roots:
     result.transfer_chains_from_other(other=rt)
   return result
+# END_MARKED_FOR_DELETION_OLEG
 
 # XXX: Nat's utility functions
 def new_hierarchy_from_chain (chain) :

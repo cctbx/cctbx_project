@@ -52,6 +52,9 @@ from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 
+ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+from iotbx_pdb_hierarchy_ext import *
+
 from cStringIO import StringIO
 from copy import deepcopy
 import sys
@@ -169,13 +172,13 @@ class manager(object):
       build_grm = False,  # build GRM straight away, without waiting for get_restraints_manager() call
       stop_for_unknowns = True,
       log = None,
+      expand_with_mtrix = True,
       # for GRM, selections etc. Do not use when creating an object.
                      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
                      pdb_hierarchy = None,  # remove later
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
-                     mtrix_records_container = None,
                      ):
 
     self._xray_structure = xray_structure
@@ -234,12 +237,9 @@ class manager(object):
     self._original_model_format = None
     self._ss_manager = None
     self._site_symmetry_table = None
-    self._mtrix_records_container = mtrix_records_container
-    self._biomt_records_container = None
 
     # here we start to extract and fill appropriate field one by one
     # depending on what's available.
-    # print "self._crystal_symmetry1", self._crystal_symmetry
     if self._model_input is not None:
       s = str(type(model_input))
       if s.find("cif") > 0:
@@ -250,16 +250,8 @@ class manager(object):
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._model_input.crystal_symmetry()
-      if self._mtrix_records_container is None and self._pdb_hierarchy is None:
-        self._mtrix_records_container = self._model_input.process_MTRIX_records()
-        if self._mtrix_records_container.is_empty():
-          self._mtrix_records_container = None
-        else:
-          self._pdb_hierarchy = self._model_input.construct_hierarchy_MTRIX_expanded(
-              sort_atoms=self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
-          self._ss_annotation = self._model_input.construct_ss_annotation_expanded(
-              exp_type='mtrix')
-    # print "self._crystal_symmetry2", self._crystal_symmetry
+      if expand_with_mtrix:
+        self.expand_with_MTRIX_records()
 
     if process_input or build_grm:
       assert self._processed_pdb_file is None
@@ -272,7 +264,9 @@ class manager(object):
         self.all_chain_proxies = self._processed_pdb_file.all_chain_proxies
         self._pdb_hierarchy = self.all_chain_proxies.pdb_hierarchy
       elif self._model_input is not None:
-        self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
+        # self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
+        self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
+            self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
     self._update_atom_selection_cache()
     self._update_pdb_atoms()
 
@@ -293,8 +287,6 @@ class manager(object):
 
     if self._xray_structure is not None:
       assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
-
-    # print "self._crystal_symmetry21", self._crystal_symmetry
 
     # if self.crystal_symmetry() is None:
     #   self._crystal_symmetry = self._xray_structure.crystal_symmetry()
@@ -575,13 +567,6 @@ class manager(object):
     else:
       self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
           crystal_symmetry=self.crystal_symmetry())
-
-  def _update_xray_structure_from_hierarchy(self, hierarchy):
-    if self.get_xray_structure().scatterers().size() != hierarchy.atoms_size():
-      self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.crystal_symmetry())
-      self.restraints_manager = None
-    self._update_pdb_atoms()
 
   def get_mon_lib_srv(self):
     if self._mon_lib_srv is None:
@@ -2053,11 +2038,11 @@ class manager(object):
       model_input                = self._model_input, # any selection here?
       processed_pdb_file         = self._processed_pdb_file,
       restraints_manager         = new_restraints_manager,
+      expand_with_mtrix          = False,
       xray_structure             = self._xray_structure.select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
-      mtrix_records_container    = self._mtrix_records_container,
       log                        = self.log)
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
@@ -2065,7 +2050,6 @@ class manager(object):
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
-    new._biomt_records_container = self._biomt_records_container
     # selecting anomalous_scatterer_groups one by one because they are simple list!
     new_anom_groups = []
     for an_gr in self._anomalous_scatterer_groups:
@@ -2626,29 +2610,102 @@ class manager(object):
       self._xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
 
+  def _expand_symm_helper(self, records_container):
+    """
+    This will expand hierarchy and ss annotations. In future anything else that
+    should be expanded have to be added here. e.g. TLS.
+    LIMITATION: ANISOU records in resulting hierarchy will be invalid!!!
+    """
+    from iotbx.pdb.utils import all_chain_ids
+    roots=[]
+    all_cids = all_chain_ids()
+    duplicate_prevention = {}
+    chain_ids_match_dict = {} # {'old chain id': [new ids]}
+    for m in self.get_hierarchy().models():
+      for c in m.chains():
+        chain_id_key = "%s%s" % (m.id, c.id)
+        if chain_id_key in duplicate_prevention:
+          continue
+        duplicate_prevention[chain_id_key] = False
+        chain_ids_match_dict[c.id] = []
+        cid = c.id if len(c.id) == 2 else " "+c.id
+        try:
+          ind = all_cids.index(cid)
+        except ValueError:
+          ind = -1
+        if ind >= 0:
+          del all_cids[ind]
+    cid_counter = 0
+    for r,t in zip(records_container.r, records_container.t):
+      leave_chain_ids = False
+      if r.is_r3_identity_matrix() and t.is_col_zero():
+        leave_chain_ids = True
+      for mm in self.get_hierarchy().models():
+        root = iotbx.pdb.hierarchy.root()
+        m = iotbx.pdb.hierarchy.model()
+        for k in duplicate_prevention.keys():
+          duplicate_prevention[k] = False
+        for c in mm.chains():
+          c = c.detached_copy()
+          if not leave_chain_ids and not duplicate_prevention["%s%s" % (mm.id, c.id)]:
+            new_cid = all_cids[cid_counter]
+            chain_ids_match_dict[c.id].append(new_cid)
+            duplicate_prevention["%s%s" % (mm.id, c.id)] = True
+            c.id = new_cid
+            cid_counter += 1
+          xyz = c.atoms().extract_xyz()
+          new_xyz = r.elems*xyz+t
+          c.atoms().set_xyz(new_xyz)
+          m.append_chain(c)
+        root.append_model(m)
+        roots.append(root)
+    result = iotbx.pdb.hierarchy.root()
+    for rt in roots:
+      result.transfer_chains_from_other(other=rt)
+    #validation
+    vals = chain_ids_match_dict.values()
+    for v in vals:
+      assert len(vals[0]) == len(v), chain_ids_match_dict
+    result.reset_i_seq_if_necessary()
+    self._pdb_hierarchy = result
+
+    # Now deal with SS annotations
+    if self._ss_annotation is not None:
+      self._ss_annotation.multiply_to_asu_2(chain_ids_match_dict)
+    self._update_pdb_atoms()
+    self._xray_structure = None
+    self._all_chain_proxies = None
+    self._update_atom_selection_cache()
+
+  def _biomt_mtrix_container_is_good(self, records_container):
+    if records_container is None:
+      return False
+    if len(records_container.r)==1:
+      r, t = records_container.r[0], records_container.t[0]
+      if r.is_r3_identity_matrix() and t.is_col_zero():
+        return False
+    if (records_container.is_empty() or
+        len(records_container.r) == 0 or
+        records_container.validate()):
+      return False
+    return True
+
+  def expand_with_MTRIX_records(self):
+    mtrix_records_container = self._model_input.process_MTRIX_records()
+    if not self._biomt_mtrix_container_is_good(mtrix_records_container):
+      return
+    if self.get_hierarchy() is None:
+      self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
+          self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
+    self._expand_symm_helper(mtrix_records_container)
+
   def expand_with_BIOMT_records(self):
     """
     expanding current hierarchy and ss_annotations with BIOMT matrices.
     Known limitations: will expand everything, regardless of what selections
     were setted in BIOMT header.
     """
-    # print self._mtrix_records_container
-    if self._mtrix_records_container is not None:
-      raise Sorry("Model has been already expanded using MTRIX")
-    self._biomt_records_container = self._model_input.process_BIOMT_records()
-    if(len(self._biomt_records_container.r)==1):
-      r,t=self._biomt_records_container.r[0],self._biomt_records_container.t[0]
-      if(r.is_r3_identity_matrix() and t.is_col_zero()): return
-    if (self._biomt_records_container is not None and
-        not self._biomt_records_container.is_empty() and
-        not len(self._biomt_records_container.r)==0 and
-        not self._biomt_records_container.validate()):
-      assert self._pdb_hierarchy is not None
-      self._pdb_hierarchy = self._pdb_hierarchy.apply_rotation_translation(
-        rot_matrices = self._biomt_records_container.r,
-        trans_vectors = self._biomt_records_container.t)
-      if self._ss_annotation is not None:
-        self._ss_annotation.multiply_to_asu(
-            n_copies=len(self._biomt_records_container.r)-1)
-      self._update_xray_structure_from_hierarchy(self._pdb_hierarchy)
-      self._update_atom_selection_cache()
+    biomt_records_container = self._model_input.process_BIOMT_records()
+    if not self._biomt_mtrix_container_is_good(biomt_records_container):
+      return
+    self._expand_symm_helper(biomt_records_container)

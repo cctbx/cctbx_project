@@ -5,6 +5,7 @@ from libtbx.utils import format_cpu_times, null_out
 
 pdb_str_1="""
 HELIX    1   1 THR A    1  THR A    2  1                                   6
+HELIX    1   1 THR B    1  THR B    2  1                                   6
 SHEET    1   A 2 THR A   1  THR A   3  0
 SHEET    2   A 2 THR B   4  THR B   5 -1  O  THR B   4   N  THR A   2
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -60,8 +61,12 @@ def exercise_1():
   assert model.get_hierarchy().atoms_size() == 21
   assert model.get_xray_structure().scatterers().size() == 21
   ss = model.get_ss_annotation()
-  ss.get_n_helices == 3
-  ss.get_n_sheets == 3
+  # print ss.as_pdb_str()
+  # STOP()
+  assert ss.get_n_helices() == 3
+  # because the second strand contains chain B which is not in ATOM records
+  # whole sheet got discarded.
+  assert ss.get_n_sheets() == 0
   rm = model.get_restraints_manager()
   assert rm.geometry.pair_proxies().bond_proxies.simple.size() == 6
   # since No NCS was set, these functions return the whole thing and no
@@ -108,6 +113,10 @@ def exercise_2():
       process_input=True,
       log = null_out())
   # model.get_xray_structure()
+  ss = model.get_ss_annotation()
+  assert ss.get_n_helices() == 3
+  assert ss.get_n_sheets() == 3
+
   assert not model.ncs_constraints_present()
   assert model.get_ncs_obj() is not None
   model.setup_ncs_constraints_groups()

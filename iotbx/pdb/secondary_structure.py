@@ -928,6 +928,50 @@ class annotation(structure_base):
     self.helices = new_helices
     self.sheets = new_sheets
 
+  def multiply_to_asu_2(self, chain_ids_dict):
+    def get_new_chain_id(old_chain_id, n_copy):
+      if n_copy == 0 and old_chain_id in chain_ids_dict:
+        return old_chain_id
+      return chain_ids_dict[old_chain_id][n_copy-1]
+    n_copies = len(chain_ids_dict.values()[0]) + 1
+    new_helices = []
+    new_sheets = []
+    new_h_serial = 1
+    new_sheet_id = 1
+    for n_copy in xrange(n_copies):
+      for helix in self.helices:
+        new_helix = copy.deepcopy(helix)
+        new_helix.erase_hbond_list()
+        try:
+          new_helix.set_new_chain_ids(
+              get_new_chain_id(new_helix.start_chain_id, n_copy))
+          new_helix.set_new_serial(new_h_serial, adopt_as_id=True)
+          new_h_serial += 1
+          new_helices.append(new_helix)
+        except KeyError:
+          continue
+      for sheet in self.sheets:
+        new_sheet = copy.deepcopy(sheet)
+        new_sheet.sheet_id = new_sheet_id
+        new_sheet_id += 1
+        new_sheet.erase_hbond_list()
+        try:
+          for strand in new_sheet.strands:
+            strand.set_new_chain_ids(
+                get_new_chain_id(strand.start_chain_id, n_copy))
+            strand.sheet_id = "%s" % new_sheet_id
+          for reg in new_sheet.registrations:
+            if reg is not None:
+              reg.set_new_cur_chain_id(
+                  get_new_chain_id(reg.cur_chain_id, n_copy))
+              reg.set_new_prev_chain_id(
+                  get_new_chain_id(reg.prev_chain_id, n_copy))
+        except KeyError:
+          continue
+        new_sheets.append(new_sheet)
+    self.helices = new_helices
+    self.sheets = new_sheets
+
   def remove_1hb_helices(self):
     filtered_helices = []
     for h in self.helices:

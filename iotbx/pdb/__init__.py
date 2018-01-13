@@ -793,6 +793,15 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
+  def deposition_date(self):
+    """
+    Placeholder to match mmCIF functionality. Probably could parse
+    REVDAT.
+    """
+    return None
+
+  # MARKED_FOR_DELETION_OLEG
+  # REASON: moved to mmtbx.model.manager
   def _expand_hierarchy_helper(self,
       mtrix_biomt_container,
       h=None,
@@ -807,13 +816,6 @@ class pdb_input_mixin(object):
     return h.apply_rotation_translation(
       rot_matrices = mtrix_biomt_container.r,
       trans_vectors = mtrix_biomt_container.t)
-
-  def deposition_date(self):
-    """
-    Placeholder to match mmCIF functionality. Probably could parse
-    REVDAT.
-    """
-    return None
 
   def construct_hierarchy_MTRIX_expanded(self, sort_atoms=True):
     return self._expand_hierarchy_helper(
@@ -839,6 +841,8 @@ class pdb_input_mixin(object):
         not present):
       ss_ann.multiply_to_asu(n_copies=len(exp_container.r)-1)
     return ss_ann
+  # END_MARKED_FOR_DELETION_OLEG
+
 
   def special_position_settings(self,
         special_position_settings=None,
