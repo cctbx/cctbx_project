@@ -504,24 +504,24 @@ Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
 
 Looking for chain similarity for None (61 residues) in the model None (136 residues)
 
-Residues matching in forward direction:     16  RMSD:   1.45
-Residues matching in reverse direction:     31  RMSD:   1.40
-Residues near but not matching one-to-one:  12  RMSD:   1.87
+Residues matching in forward direction:     14  RMSD:   1.68
+Residues matching in reverse direction:     29  RMSD:   1.39
+Residues near but not matching one-to-one:  11  RMSD:   1.75
 
-All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  43.4
-Residues far from target:    2  RMSD:   4.27"""
-
+All residues near target:   54  RMSD:   1.55 Seq match (%):  9.3  % Found:  39.7
+Residues far from target:    7
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
   from libtbx.test_utils import approx_equal
   print r.get_values("forward")
-  assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
+  assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
   print r.get_values("reverse")
-  assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
+  assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
   print r.get_values("close")
-  assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
+  assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
   print r.get_values("all_far")
   assert approx_equal(r.get_values("all_far"),(0,0))
   print "OK"
@@ -545,13 +545,13 @@ Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
 
 Looking for chain similarity for None (61 residues) in the model None (136 residues)
 
-Residues matching in forward direction:     16  RMSD:   1.45
-Residues matching in reverse direction:     31  RMSD:   1.40
-Residues near but not matching one-to-one:  12  RMSD:   1.87
+Residues matching in forward direction:     14  RMSD:   1.68
+Residues matching in reverse direction:     29  RMSD:   1.39
+Residues near but not matching one-to-one:  11  RMSD:   1.75
 
-All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  43.4
-Residues far from target:    2  RMSD:   4.27"""
-
+All residues near target:   54  RMSD:   1.55 Seq match (%):  9.3  % Found:  39.7
+Residues far from target:    7
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
@@ -559,11 +559,11 @@ Residues far from target:    2  RMSD:   4.27"""
 
   from libtbx.test_utils import approx_equal
   print r.get_values("forward")
-  assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
+  assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
   print r.get_values("reverse")
-  assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
+  assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
   print r.get_values("close")
-  assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
+  assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
   print r.get_values("all_far")
   assert approx_equal(r.get_values("all_far"),(0,0))
   print "OK"
@@ -602,7 +602,7 @@ SEQ SCORE is fraction (close and matching target sequence).
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
                RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
-     query.pdb 1.52   59      2     16      31      12   43.4   0.29     6.8        0.03
+     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
 """
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
@@ -833,7 +833,7 @@ SEQ SCORE is fraction (close and matching target sequence).
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
                RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
- Unique_target 1.67   70     52     18      33      19   51.5   0.31     7.1        0.04
+ Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04
 """
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):

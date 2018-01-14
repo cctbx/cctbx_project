@@ -145,7 +145,6 @@ class rmsd_values:
     self.n_list=[]
     self.match_percent_list=[]
     self.target_length_list=[]
-    self.ratio_unique_to_total_target=None
     self.total_target=None
     self.total_query=None
     self.used_target=None
@@ -185,8 +184,7 @@ class rmsd_values:
     rmsd,n=self.get_values(id=id)
     if target_length is not None and n is not None:
       value=100.*n/max(1.,target_length)
-      if self.ratio_unique_to_total_target:
-         value=value/self.ratio_unique_to_total_target
+      # ZZZ may need to scale by self.used_target/self.total_target
       return value
 
 
@@ -282,19 +280,23 @@ def get_best_match(xyz1,xyz2,crystal_symmetry=None,
     from libtbx import group_args
     info=group_args(i=i,j=j,distance=distance)
 
-  if (not removed_j) and used_j_list and info.j in used_j_list:
-    # move atom j away and try again
-    if not distance_per_site:
-      distance_per_site=4. # just need to move it away
-    xyz2_new=xyz2.deep_copy()
-    new_value=[]
-    for x in xyz2_new[info.j]:
-      new_value.append(x+distance_per_site*2.)
-    xyz2_new[info.j]=tuple(new_value)
+  if used_j_list and info.j in used_j_list: # used an atom twice
 
-    return get_best_match(xyz1,xyz2_new,crystal_symmetry=crystal_symmetry,
-         distance_per_site=distance_per_site,used_j_list=used_j_list+[info.j],
-         removed_j=True)
+    if removed_j: # we already tried it...give up
+      return None
+    else:
+      # move atom j away and try again
+      if not distance_per_site:
+        distance_per_site=4. # just need to move it away
+      xyz2_new=xyz2.deep_copy()
+      new_value=[]
+      for x in xyz2_new[info.j]:
+        new_value.append(x+distance_per_site*2.)
+      xyz2_new[info.j]=tuple(new_value)
+
+      info=get_best_match(xyz1,xyz2_new,crystal_symmetry=crystal_symmetry,
+           distance_per_site=distance_per_site,used_j_list=used_j_list+[info.j],
+           removed_j=True)
 
   return info
 
@@ -631,24 +633,15 @@ def run_test_unique_part_of_target_only(params=None,
   best_rv=None
   best_t=None
   best_percent_close=None
-  best_rv_reverse=None
   for t in [True,False]:
-    rv_reverse=None
-    for reverse in [True,False]:
       local_params=deepcopy(params)
       local_params.input_files.test_unique_part_of_target_only=False
       local_params.input_files.unique_part_of_target_only=t
-      if reverse:
-       local_chain_hierarchy=target_hierarchy
-       local_target_hierarchy=chain_hierarchy
-      else:
-       local_chain_hierarchy=chain_hierarchy
-       local_target_hierarchy=target_hierarchy
 
       rv=run(params=local_params,out=local_out,
           ncs_obj=ncs_obj,
-          target_hierarchy=local_target_hierarchy,
-          chain_hierarchy=local_chain_hierarchy,
+          target_hierarchy=target_hierarchy,
+          chain_hierarchy=chain_hierarchy,
           crystal_symmetry=crystal_symmetry,
           max_dist=max_dist,
           quiet=quiet,
@@ -659,13 +652,10 @@ def run_test_unique_part_of_target_only(params=None,
           distance_per_site=distance_per_site,
           min_similarity=min_similarity,
           )
-      if reverse: # save number far from target
-        rv_reverse=rv
-      else:
-        percent_close=rv.get_close_to_target_percent('close')
-        print >>out,"Percent close with unique_part_of_target_only=%s: %7.1f" %(
+      percent_close=rv.get_close_to_target_percent('close')
+      print >>out,"Percent close with unique_part_of_target_only=%s: %7.1f" %(
           t,percent_close)
-        if best_percent_close is None or percent_close>best_percent_close:
+      if best_percent_close is None or percent_close>best_percent_close:
           best_percent_close=percent_close
           best_rv=rv
           best_t=t
@@ -765,8 +755,6 @@ def write_summary(params=None,file_list=None,rv_list=None,
     (rmsd,n)=rv.get_values('close')
     target_length=rv.get_target_length('close')
     score=n/(max(1,target_length)*max(0.1,rmsd))
-    if rv.ratio_unique_to_total_target:
-         score=score/rv.ratio_unique_to_total_target
     score_list.append([score,full_f])
   score_list.sort()
   score_list.reverse()
@@ -959,7 +947,7 @@ def run(args=None,
        params.input_files.ncs_file)
     if ncs_obj.max_operators()<2:
       print >>out,"Skipping NCS (no operators)"
-      ncs_obj=None
+      ncs_obj=ncs_obj.set_unit_ncs()
 
   if verbose is None:
     verbose=params.control.verbose
@@ -1072,22 +1060,6 @@ def run(args=None,
        chain_hierarchy=chain_hierarchy,
        target_hierarchy=target_hierarchy,out=out)
 
-  if params.input_files.unique_part_of_target_only:
-    unique_part_of_target_hierarchy=extract_unique_part_of_hierarchy(
-        target_hierarchy,
-        min_similarity=min_similarity,
-        allow_extensions=params.input_files.allow_extensions,
-        target_ph=target_unique_hierarchy,out=local_out)
-    ratio_unique_to_total_target=\
-       unique_part_of_target_hierarchy.overall_counts().n_residues/  \
-       max(1,target_hierarchy.overall_counts().n_residues)
-    print >>out,"Counting unique residues in target when calculating "+\
-      "\npercentage built (fraction=%.2f)" %(ratio_unique_to_total_target)
-  else:
-    ratio_unique_to_total_target=1.
-    print >>out,"Counting all residues in target when calculating "+\
-      "percentage built"
-
   used_target=target_hierarchy.overall_counts().n_residues
   used_chain=chain_hierarchy.overall_counts().n_residues
 
@@ -1156,7 +1128,6 @@ def run(args=None,
   chain_xyz_fract=crystal_symmetry.unit_cell().fractionalize(chain_xyz_cart)
   target_xyz_fract=crystal_symmetry.unit_cell().fractionalize(target_xyz_cart)
   far_away_match_list=[]
-  far_away_match_rmsd_list=flex.double()
   if use_crystal_symmetry:
     working_crystal_symmetry=crystal_symmetry
   else:
@@ -1177,13 +1148,13 @@ def run(args=None,
       info=get_best_match(
         flex.vec3_double([chain_xyz_cart[i]]),target_xyz_cart,
         used_j_list=used_j_list)
-      distance=info.distance
+      if info:
+        distance=info.distance
     if info and (best_dd is None or distance<best_dd):
         best_dd=distance
         best_j=info.j
-    if best_dd > max_dist:
+    if info is None or best_dd > max_dist:
       far_away_match_list.append(i)
-      far_away_match_rmsd_list.append(best_dd**2)
       if (not quiet) and verbose:
         print >>out,"%s" %(chain_ca_lines[i])
       continue
@@ -1191,7 +1162,7 @@ def run(args=None,
       best_i=i
       best_i_dd=best_dd
       best_pair=[i,best_j]
-      used_j_list.append(best_j)
+    used_j_list.append(best_j)
     pair_list.append([i,best_j,best_dd])
   n_forward=0
   n_reverse=0
@@ -1296,11 +1267,8 @@ def run(args=None,
   rv.add_rmsd(id=id,rmsd=rmsd,n=n)
 
   id='far_away'
-  if far_away_match_rmsd_list.size():
-      rmsd=far_away_match_rmsd_list.min_max_mean().mean**0.5
-  else:
-      rmsd=None
-  n=far_away_match_rmsd_list.size()
+  rmsd=None
+  n=len(far_away_match_list)
   rv.add_rmsd(id=id,rmsd=rmsd,n=n)
 
   if not quiet:
@@ -1362,9 +1330,6 @@ def run(args=None,
       rv.add_match_percent(id='close',match_percent=match_percent)
 
       percent_close=rv.get_close_to_target_percent('close')
-      if ratio_unique_to_total_target:
-        percent_close=percent_close/ratio_unique_to_total_target
-
 
       print >>out,\
         "\nAll residues near target: "+\
@@ -1378,8 +1343,8 @@ def run(args=None,
     rmsd,n=rv.get_values(id='far_away')
     if n:
       print >>out,\
-        "Residues far from target: %4d  RMSD: %6.2f" %(
-         n,rmsd)
+        "Residues far from target: %4d " %(
+         n)
       if verbose:
         for i in far_away_match_list:
           print >>out,"ID:%d  RESIDUES:  \n%s" %(i,chain_ca_lines[i])
@@ -1388,7 +1353,6 @@ def run(args=None,
   rv.n_reverse=n_reverse
   rv.n=len(pair_list)
   rv.max_dist=params.comparison.max_dist
-  rv.ratio_unique_to_total_target=ratio_unique_to_total_target
   rv.total_target=total_target
   rv.total_chain=total_chain
   rv.used_target=used_target
