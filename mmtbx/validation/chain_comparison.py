@@ -34,16 +34,16 @@ master_phil = iotbx.phil.parse("""
            unique_query_only. NOTE: must be specified by keyword.
       .short_caption = Target model
 
-    unique_part_of_target_only = True
+    unique_part_of_target_only = None
       .type = bool
       .help = Use only unique chains in target (see also unique_query_only). \
       .short_caption = Unique target only
 
-    test_unique_part_of_target_only = None
+    test_unique_part_of_target_only = True
       .type = bool
       .help = Try both unique_part_of_target_only as True and False and \
              report result for whichever gives higher value of \
-              fraction matching. Default is True if ncs_file is provided.
+              fraction matching.
       .short_caption = Test unique target only
 
     allow_extensions = False
@@ -633,7 +633,17 @@ def run_test_unique_part_of_target_only(params=None,
   best_rv=None
   best_t=None
   best_percent_close=None
-  for t in [True,False]:
+  if params.input_files.unique_part_of_target_only==True:
+    to_test=[True]
+    print>>out,"\nTesting unique_part_of_target_only as True"
+  elif params.input_files.unique_part_of_target_only==False:
+    to_test=[False]
+    print>>out,"\nTesting unique_part_of_target_only as False "
+  else:
+    to_test=[True,False]
+    print>>out,"\nTesting unique_part_of_target_only as True and False and "
+    print >>out,"reporting results for whichever gives higher fraction matched."
+  for t in to_test:
       local_params=deepcopy(params)
       local_params.input_files.test_unique_part_of_target_only=False
       local_params.input_files.unique_part_of_target_only=t
@@ -669,6 +679,7 @@ def run_test_unique_part_of_target_only(params=None,
   else:
     file_list=['Entire_target']
   write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
+  return best_rv
 
 def run_all(params=None,
        out=sys.stdout,
@@ -1002,8 +1013,6 @@ def run(args=None,
   if params.input_files.test_unique_part_of_target_only or \
       (params.input_files.test_unique_part_of_target_only is None and
         params.input_files.ncs_file):
-    print>>out,"\nTesting unique_part_of_target_only as True and False and "
-    print >>out,"reporting results for whichever gives higher fraction matched."
     return run_test_unique_part_of_target_only(params=params,out=out,
           ncs_obj=ncs_obj,
           target_hierarchy=target_hierarchy,

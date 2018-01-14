@@ -500,16 +500,15 @@ def tst_01():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
+SEQ SCORE is fraction (close and matching target sequence).
 
-Looking for chain similarity for None (61 residues) in the model None (136 residues)
 
-Residues matching in forward direction:     14  RMSD:   1.68
-Residues matching in reverse direction:     29  RMSD:   1.39
-Residues near but not matching one-to-one:  11  RMSD:   1.75
 
-All residues near target:   54  RMSD:   1.55 Seq match (%):  9.3  % Found:  39.7
-Residues far from target:    7
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
 """
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
@@ -541,16 +540,15 @@ def tst_02():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
+SEQ SCORE is fraction (close and matching target sequence).
 
-Looking for chain similarity for None (61 residues) in the model None (136 residues)
 
-Residues matching in forward direction:     14  RMSD:   1.68
-Residues matching in reverse direction:     29  RMSD:   1.39
-Residues near but not matching one-to-one:  11  RMSD:   1.75
 
-All residues near target:   54  RMSD:   1.55 Seq match (%):  9.3  % Found:  39.7
-Residues far from target:    7
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
 """
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
