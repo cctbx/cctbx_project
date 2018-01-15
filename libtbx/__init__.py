@@ -273,10 +273,10 @@ class group_args(object):
     Overwrites matching fields!!!"""
     self.__dict__.update(other.__dict__)
 
-if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
+if os.environ.get("LIBTBX_PRINT_TRACE"):
   import libtbx.start_print_trace
 
-if (sys.platform == "cygwin"):
+if sys.platform == "cygwin":
   # work around cygwin problem: open() doesn't work on symbolic links
   builtin_open = __builtins__["open"]
   def open_realpath(name, mode="r", buffering=-1):
