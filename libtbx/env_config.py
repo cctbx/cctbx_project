@@ -86,12 +86,12 @@ def get_darwin_gcc_build_number(gcc='gcc'):
 
 def is_llvm_compiler(gcc='gcc') :
   from libtbx import easy_run
-  try :
+  try:
     gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
                            .raise_if_errors()
                            .stdout_lines[0].strip())
-    return ("llvm" in gcc_version)
-  except Exception, e :
+    return "llvm" in gcc_version
+  except Exception:
     return False
 
 def get_gcc_version(command_name="gcc"):
@@ -115,12 +115,11 @@ def get_gcc_version(command_name="gcc"):
   return ((num[0]*100)+num[1])*100+num[2]
 
 def get_hostname():
-  try: import socket
-  except KeyboardInterrupt: raise
-  except Exception: return None
-  try: return socket.gethostname()
-  except KeyboardInterrupt: raise
-  except Exception: return None
+  try:
+    import socket
+    return socket.gethostname()
+  except Exception:
+    return None
 
 def get_ldd_output(target=None):
   if (target is None): target = sys.executable
@@ -223,7 +222,7 @@ def write_do_not_edit(f, win_bat=False):
 def open_info(path, mode="w", info="   "):
   print info, path.basename()
   try: return path.open(mode)
-  except IOError, e:
+  except IOError as e:
     raise RuntimeError(str(e))
 
 class common_setpaths(object):
@@ -341,14 +340,14 @@ def _windows_pathext():
       result.insert(0, ext)
   return result
 
-if (os.name == "nt"):
+if os.name == "nt":
   windows_pathext = _windows_pathext()
 
 def remove_or_rename(path):
   assert path is not None
-  if (not isinstance(path, str)):
+  if not isinstance(path, str):
     path = abs(path)
-  if (op.isfile(path)):
+  if op.isfile(path):
     try: os.remove(path)
     except OSError:
       try: os.remove(path+".old")
@@ -800,20 +799,6 @@ Wait for the command to finish, then try again.""" % vars())
   def dispatcher_precall_commands(self):
     if (self._dispatcher_precall_commands is None):
       lines = []
-      if (    self.python_version_major_minor == (2,2)
-          and sys.platform.startswith("linux")
-          and op.isfile("/etc/redhat-release")):
-        try: red_hat_linux_release = open("/etc/redhat-release").readline()
-        except KeyboardInterrupt: raise
-        except Exception: pass
-        else:
-          if (    red_hat_linux_release.startswith("Red Hat Linux release")
-              and red_hat_linux_release.split()[4] == "9"):
-            lines.extend([
-              'if [ ! -n "$LD_ASSUME_KERNEL" ]; then',
-              '  LD_ASSUME_KERNEL=2.4.1',
-              '  export LD_ASSUME_KERNEL',
-              'fi'])
       self._dispatcher_precall_commands = lines
     return self._dispatcher_precall_commands
 
