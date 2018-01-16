@@ -93,7 +93,7 @@ class FormatXTCCspad(FormatXTC):
 # Delete later
   def get_image_file(self, index=None):
     print 'get_image_file Overload!'
-
+#XXX Implement recursive version 
   def _detector(self, index=None):
     import psana
     from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology

@@ -5,9 +5,10 @@ from dxtbx.format.FormatMultiImage import FormatMultiImage
 from libtbx.phil import parse
 
 locator_scope = parse("""
-  locator = None
+  data_source = None
     .type = str
     .help = file format as specified at LCLS,eg. exp=mfxo1916:run=20:smd
+            More info at https://confluence.slac.stanford.edu/display/PSDM/Manual#Manual-Datasetspecification
   detector_address = None
     .type = str
     .help = detector used for collecting the data at LCLS
@@ -26,45 +27,45 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
 
   @staticmethod
   def understand(image_file):
-    ''' Extracts the locator and detector_address from the image_file and then feeds it to PSANA
+    ''' Extracts the datasource and detector_address from the image_file and then feeds it to PSANA
         If PSANA fails to read it, then input may not be an xtc/smd file. If success, then OK.
         If detector_address is not provided, a command line promp will try to get the address
         from the user '''
     try:
       from psana import DataSource, DetNames
-      try:
-        params = FormatXTC.params_from_phil(image_file)
-      except Exception,e:
-        return False
-      if params.locator is None:
-        return False
-      else:
-        FormatXTC._img = params.locator
-        FormatXTC._src = params.detector_address
-
-      ds = DataSource(FormatXTC._img)
-      if FormatXTC._src is None:
-        print 'This is an XTC file and can be read by PSANA'
-        print 'Listed Below are the detector names associated with the experiment'
-        names = DetNames('detectors')
-        headers = ['Full Name','DAQ Alias','User Alias']
-        maxlen = [len(h) for h in headers]
-        for ntuple in names:
-          lengths = [len(n) for n in ntuple]
-          maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
-        template = "{0:%d} | {1:%d} | {2:%d}" % tuple(maxlen)
-        header = template.format("Full Name", "     DAQ Alias", "User Alias")
-        print '-'*len(header)
-        print header
-        print '-'*len(header)
-        for i, n in enumerate(names):
-          print '%3d'%(i+1) + ') '+template.format(*n)
-        print '-'*len(header)
-
-        FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
-      return True
     except Exception,e:
       return False
+    try:
+      params = FormatXTC.params_from_phil(image_file)
+    except Exception,e:
+      return False
+    if params.data_source is None:
+      return False
+    else:
+      FormatXTC._img = params.data_source
+      FormatXTC._src = params.detector_address
+
+    ds = DataSource(FormatXTC._img)
+    if FormatXTC._src is None:
+      print 'This is an XTC file and can be read by PSANA'
+      print 'Listed Below are the detector names associated with the experiment'
+      names = DetNames('detectors')
+      headers = ['Full Name','DAQ Alias','User Alias']
+      maxlen = [len(h) for h in headers]
+      for ntuple in names:
+        lengths = [len(n) for n in ntuple]
+        maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
+      template = "{0:%d} | {1:%d} | {2:%d}" % tuple(maxlen)
+      header = template.format("Full Name", "     DAQ Alias", "User Alias")
+      print '-'*len(header)
+      print header
+      print '-'*len(header)
+      for i, n in enumerate(names):
+        print '%3d'%(i+1) + ') '+template.format(*n)
+      print '-'*len(header)
+
+      FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
+    return True
 
   @staticmethod
   def params_from_phil(image_file):
@@ -80,10 +81,10 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     from psana import DataSource
 
     params = self.params_from_phil(image_file)
-    if params.locator is None:
+    if params.data_source is None:
       return False
     else:
-      img = params.locator
+      img = params.data_source
     return DataSource(img)
 
 if __name__ == '__main__':
