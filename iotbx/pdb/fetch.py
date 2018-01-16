@@ -120,7 +120,6 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   # No mirror found (or out of date), default to HTTP download
   url = None
   compressed = False
-  context = None
   if (mirror == "rcsb") :
     url_base = 'http://files.rcsb.org/download/'
     pdb_ext = ".pdb"
@@ -152,8 +151,6 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     pdb_ext = "_final.pdb"
     sf_prefix = ""
     sf_ext = "_final.cif"
-    import ssl
-    context = ssl._create_unverified_context()
   if (data_type in ["fasta", "seq"]) :
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
@@ -172,7 +169,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       else:
         url = url_base + sf_prefix + id + sf_ext
     try :
-      data = libtbx.utils.urlopen(url, context=context)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download structure factors for %s." % id)
@@ -188,7 +185,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       else :
         url = url_base + id + "." + format
     try :
-      data = libtbx.utils.urlopen(url, context=context)
+      data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
       if e.getcode() == 404 :
         raise RuntimeError("Couldn't download model for %s." % id)
