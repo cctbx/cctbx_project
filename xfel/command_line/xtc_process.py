@@ -39,7 +39,7 @@ xtc_phil_str = '''
       .expert_level = 2
       .help = This is to specify which datasource should be used for processing data at LCLS \
               Format is exp=<experiment_name>:run=<run_number>:<mode> \
-              eg. exp=mfxo1916:run=20:xtc
+              eg. exp=mfxo1916:run=20:xtc \
               More info at https://confluence.slac.stanford.edu/display/PSDM/Manual#Manual-Datasetspecification
     hit_finder{
       enable = True
