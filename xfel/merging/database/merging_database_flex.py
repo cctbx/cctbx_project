@@ -194,7 +194,7 @@ class read_experiments(object):
                            real_space_b = matrix.row(direct[3:6]),
                            real_space_c = matrix.row(direct[6:9]),
                            space_group_hall_symbol = self.params.target_space_group.type().hall_symbol(),
-                           mosaicity = float(tokens[order_dict["half_mosaicity_deg"]]))
+                           )
       crystal = CrystalFactory.from_dict(transfer_dict)
       """ old code reflects python-based crystal model
       crystal = Crystal(

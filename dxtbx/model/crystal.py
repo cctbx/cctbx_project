@@ -30,9 +30,8 @@ class CrystalFactory(object):
       if d['ML_half_mosaicity_deg'] is None or d['ML_domain_size_ang'] is None:
         assert d['ML_half_mosaicity_deg'] is None and d['ML_domain_size_ang'] is None
       else:
-        # comment verbose warning out, but keep here for documentation purposes:
-        # if 'mosaicity' in d and d['mosaicity'] > 0:
-          # print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
+        if 'mosaicity' in d and d['mosaicity'] > 0:
+          print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
         from dxtbx.model import MosaicCrystalSauter2014
         return MosaicCrystalSauter2014.from_dict(d)
     if 'mosaicity' in d:
