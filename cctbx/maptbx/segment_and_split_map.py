@@ -3414,7 +3414,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
           identify_ncs_id=identify_ncs_id,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       else:
-        ncs_obj=Non
+        ncs_obj=None
         score,cc_avg=None,None
 
       if best_score is None or score>best_score:
