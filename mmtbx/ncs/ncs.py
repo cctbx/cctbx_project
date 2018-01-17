@@ -964,7 +964,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         if delta is None:
           delta=delta_z
         elif abs(delta-delta_z)>tol_z:
-          is_helical=False
+          is_helical=False # XX not used
       sorted_indices.append(i1)
       sorted_z.append(z)
     if n_minus_one>n_plus_one:
@@ -978,8 +978,26 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       self._rota_matrices[i2]=rota_matrices_sav[i1]
       self._translations_orth[i2]=translations_orth_sav[i1]
     self.delete_inv() # remove the inv matrices/rotations so they regenerate
+    if len(self._rota_matrices)<2:
+      self._helix_theta=None
+    else:
+      self._helix_theta=self.get_theta_along_z(
+        self._rota_matrices[0],self._rota_matrices[1])
     self.get_inverses()
     return sorted_indices
+
+  def get_trans_along_z(self,t0,t1):
+    return t1[2]-t0[2]
+
+  def get_theta_along_z(self,m0,m1):
+    import math
+    cost=m0[0]
+    sint=m0[1]
+    t0=180.*math.atan2(sint,cost)/3.14159
+    cost=m1[0]
+    sint=m1[1]
+    t1=180.*math.atan2(sint,cost)/3.14159
+    return t1 - t0
 
   def is_helical_along_z(self,tol_z=0.01,
    tol_r=default_tol_r,
@@ -1081,6 +1099,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     from libtbx.utils import Sorry
     raise Sorry(
      "Unable to find forward and reverse operators for this helical symmetry")
+
+  def get_helix_parameters(self,tol_z=default_tol_z):
+    from libtbx import group_args
+    helix_z_translation=self.get_helix_z_translation()
+    helix_theta=self.get_helix_theta()
+    if helix_z_translation is not None and helix_theta is not None:
+      return group_args(helix_z_translation=helix_z_translation,
+        helix_theta=helix_theta)
 
   def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
@@ -1196,6 +1222,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     assert self._have_helical_symmetry
     if hasattr(self,'_helix_z_translation'):
       return self._helix_z_translation
+    return None
+
+  def get_helix_theta(self):
+    assert self._have_helical_symmetry
+    if hasattr(self,'_helix_theta'):
+      return self._helix_theta
     return None
 
   def helix_rt_reverse(self):
@@ -1893,6 +1925,13 @@ class ncs:
     for ncs_group in self._ncs_groups:
       ncs_group.extend_helix_operators(z_range=z_range,tol_z=tol_z,
         max_operators=max_operators)
+
+  def get_helix_parameters(self,z_range=None,tol_z=default_tol_z,
+      max_operators=None):
+    if not self._ncs_groups:
+      return
+    # return values for group 0
+    return self._ncs_groups[0].get_helix_parameters(tol_z=tol_z,)
 
   def is_helical_along_z(self,
    tol_r=default_tol_r,

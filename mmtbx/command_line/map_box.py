@@ -247,7 +247,7 @@ Parameters:"""%h
     print >>log,"\nOutput map will be within input map"
   if params.lower_bounds and params.upper_bounds:
     print >>log,"Bounds for cut out map are (%s,%s,%s) to (%s,%s,%s)" %(
-     tuple(list(lower_bounds)+list(upper_bounds)))
+     tuple(list(params.lower_bounds)+list(params.upper_bounds)))
 
   box = mmtbx.utils.extract_box_around_model_and_map(
     xray_structure   = xray_structure,

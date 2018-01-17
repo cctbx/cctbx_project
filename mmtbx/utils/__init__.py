@@ -2978,7 +2978,6 @@ class extract_box_around_model_and_map(object):
       if restrict_map_size:
         self.gridding_first=[max(0,g) for g in self.gridding_first]
         self.gridding_last=[min(n,g) for n,g in zip(na,self.gridding_last)]
-
     self.map_box = self.cut_and_copy_map(map_data=self.map_data)
     secondary_shift_frac = [
       -self.map_box.origin()[i]/self.map_data.all()[i] for i in xrange(3)]
