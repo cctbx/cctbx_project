@@ -2036,6 +2036,7 @@ class manager(object):
       new_riding_h_manager = self.riding_h_manager.select(selection)
     new = manager(
       model_input                = self._model_input, # any selection here?
+      crystal_symmetry           = self._crystal_symmetry,
       processed_pdb_file         = self._processed_pdb_file,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
