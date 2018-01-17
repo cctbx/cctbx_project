@@ -81,7 +81,7 @@ class FormatXTCCspad(FormatXTC):
   def get_scan(self, index=None):
       return None
 
-#XXX Implement recursive version 
+#XXX Implement recursive version
   def _detector(self, index=None):
     import psana
     from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology
@@ -133,9 +133,7 @@ class FormatXTCCspad(FormatXTC):
           p.set_name(val)
 
     try:
-      # Get wavelength of beam. Ideally should be event dependent
-      # However detector does not have the option to take in event
-      beam = self._beam()
+      beam = self._beam(index)
     except Exception as e:
       print 'No beam object initialized. Returning CSPAD detector without parallax corrections'
       return d
