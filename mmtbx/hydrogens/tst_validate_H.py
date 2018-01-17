@@ -2,7 +2,6 @@ from __future__ import division
 import time
 import mmtbx.model
 import iotbx.pdb
-#from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens.validate_H import validate_H
@@ -128,7 +127,7 @@ END
 """
 
 # exercise1 a) The C beta DB2 and DB3 atoms are swapped
-pdb_str1 = """
+pdb_str1a = """
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
 SCALE1      0.055695  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.075347  0.000000        0.00000
@@ -164,7 +163,7 @@ ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
 """
 
 # exercise1 b) The C beta HB2 and HB3 atoms are swapped
-pdb_str2 = """
+pdb_str1b = """
 CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
 SCALE1      0.055695  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.075347  0.000000        0.00000
@@ -196,6 +195,76 @@ ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
 ATOM     25  DD2BTYR A 139       8.974   6.264   8.835  0.50 10.00           D
 ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
 ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
+ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
+"""
+
+pdb_str2 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  HA ATYR A 139      10.443   8.186   7.059  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.50 10.00           H
+ATOM     15  HB3ATYR A 139      11.014   5.853   7.567  0.50 10.00           H
+ATOM     16  HD1ATYR A 139       8.799   5.277   4.695  0.50  8.00           H
+ATOM     17  HD2ATYR A 139       8.974   6.264   8.835  0.50 10.00           H
+ATOM     18  HE1ATYR A 139       6.400   4.801   4.908  0.50 10.00           H
+ATOM     19  HE2ATYR A 139       6.575   5.788   9.051  0.50 10.00           H
+ATOM     20  HH ATYR A 139       4.564   5.706   7.633  0.60 10.00           H
+ATOM     21  DA BTYR A 139      10.543   8.286   7.059  0.50 10.00           D
+ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  0.50 10.00           D
+ATOM     23  DB3BTYR A 139      11.014   5.853   7.567  0.50 10.00           D
+ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
+ATOM     25  DD2BTYR A 139       8.974   6.264   8.835  0.50 10.00           D
+ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
+ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
+ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.40 10.00           D
+"""
+
+pdb_str3 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  HA ATYR A 139      10.443   8.186   7.059  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.50 10.00           H
+ATOM     15  HB3ATYR A 139      11.014   5.853   7.567  0.50 10.00           H
+ATOM     16  HD1ATYR A 139       8.799   5.277   4.695  0.50 10.00           H
+ATOM     17  HD2ATYR A 139       8.974   6.264   8.835  0.40 10.00           H
+ATOM     18  HE1ATYR A 139       6.400   4.801   4.908  0.50 10.00           H
+ATOM     19  HE2ATYR A 139       6.575   5.788   9.051  0.50 10.00           H
+ATOM     20  HH ATYR A 139       4.710   5.148   8.037  0.50 10.00           H
+ATOM     21  DA BTYR A 139      10.443   8.186   7.059  0.50 10.00           D
+ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  0.50 10.00           D
+ATOM     23  DB3BTYR A 139      11.014   5.853   7.567  0.50 10.00           D
+ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
+ATOM     25  DD2BTYR A 139       8.974   6.264   8.835  0.50 10.00           D
+ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
+ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.60 10.00           D
 ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
 """
 
@@ -288,7 +357,7 @@ def exercise1():
   # a) DB2 and DB3 swapped
   results1 = get_results_from_validate_H(
     neutron_distances = True,
-    pdb_str = pdb_str1)
+    pdb_str = pdb_str1a)
 
   for entry, answer in zip(results1.renamed, renamed_answer):
     oldname = entry[2].strip()
@@ -299,7 +368,7 @@ def exercise1():
   # HB2 and HB3 swapped --> D atoms are renamed
   results2 = get_results_from_validate_H(
     neutron_distances = True,
-    pdb_str = pdb_str2)
+    pdb_str = pdb_str1b)
 
   for entry, answer in zip(results1.renamed, renamed_answer):
     oldname = entry[2].strip()
@@ -307,10 +376,71 @@ def exercise1():
     assert(oldname == answer[0])
     assert(newname == answer[1])
 
+# ------------------------------------------------------------------------------
+# Input has H and D everywhere (all exchanged)
+# a) HA and DA have different coordinates
+# b) HD1 and DD1 have different B factors
+# c) HH and DH have different coordinates but are within cutoff distance to
+#    create a warning for zero scattering sum
+# ------------------------------------------------------------------------------
+def exercise2():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str2)
+  hd_sites_analysis  = results.hd_sites_analysis
+
+  assert (len(results.hd_exchanged_sites.keys()) == 8)
+
+  sites_different_xyz = hd_sites_analysis.sites_different_xyz
+  xyz_answer = [
+    ('pdb=" HA ATYR A 139 "', 'pdb=" DA BTYR A 139 "', 0.141),
+    ('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.704)]
+  for item, answer in zip(sites_different_xyz, xyz_answer):
+    assert approx_equal(item[2],answer[2], 1.e-2)
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[1].strip() == answer[1].strip())
+
+  sites_different_b   = hd_sites_analysis.sites_different_b
+  b_answer = [('pdb=" HD1ATYR A 139 "', 'pdb=" DD1BTYR A 139 "', -2)]
+  for item, answer in zip(sites_different_b, b_answer):
+    assert approx_equal(item[2],answer[2], 1.e-1)
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[1].strip() == answer[1].strip())
+
+  sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
+  sum_scatt_answer=[('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.6, 0.4)]
+  for item, answer in zip(sites_occ_sum_no_scattering, sum_scatt_answer):
+    assert approx_equal(item[3], answer[3], 1.e-2)
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[1].strip() == answer[1].strip())
+
+
+# ------------------------------------------------------------------------------
+# Input has H and D everywhere (all exchanged)
+# a) HD2 and DD2 have sum occupancy < 1
+# b) HE2 and DD2 have sum occupancy > 1
+# ------------------------------------------------------------------------------
+def exercise3():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str3)
+  hd_sites_analysis  = results.hd_sites_analysis
+  sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
+
+  sum_occ_answer=[
+    ('pdb=" HD2ATYR A 139 "', 'pdb=" DD2BTYR A 139 "', 0.9),
+    ('pdb=" HE2ATYR A 139 "', 'pdb=" DE2BTYR A 139 "', 1.1)]
+  for item, answer in zip(sites_sum_occ_not_1, sum_occ_answer):
+    assert approx_equal(item[2], answer[2], 1.e-2)
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[1].strip() == answer[1].strip())
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
   exercise1()
+  exercise2()
+  exercise3()
   print "OK. Time: %8.3f"%(time.time()-t0)
 

@@ -244,7 +244,10 @@ class validate_H():
     delta_occ_sum = 0.001
     occ_h_zero_scattering = 0.64 # value for which sum occ H and D is zero
     eps_occ_zero_scatt = 0.05
-    max_distance_between_rotatable_H = 1.0
+    # For rotatable H, H and D may be at different positions
+    # However, when they are close to each other, cancellation may occur
+    # Introduce max distance, approx. 45 deg between O-D and O-H
+    max_distance_between_rotatable_H = 0.8
     for iseq in self.hd_exchanged_sites:
       atom_H = self.hd_exchanged_sites[iseq][0]
       atom_D = self.hd_exchanged_sites[iseq][1]
@@ -264,7 +267,7 @@ class validate_H():
       if (abs(1-occupancy_sum) >= delta_occ_sum):
         sites_sum_occ_not_1.append(
           (atom_H.id_str(),atom_D.id_str(),occupancy_sum,atom_H.xyz,atom_D.xyz))
-      # rotatable H/D with zero scattering sum
+      # rotatable H/D with zero scattering sum, if closer than cut off apart
       if ((atom_H.i_seq in rotatable_hd_selection) and
           (atom_D.i_seq in rotatable_hd_selection)):
         if (atom_H.distance(atom_D) < max_distance_between_rotatable_H):
