@@ -161,6 +161,9 @@ raw_data {
   errors_from_sample_residuals = False
     .type = bool
     .help = Use sample residuals as error estimates. Not compatible with sdfac_auto or sdfac_refine.
+  propagate_errors = False
+    .type = bool
+    .help = Propagate errors from estimated parameters
   error_models {
     sdfac_refine {
       random_seed = None
@@ -766,6 +769,12 @@ class scaling_manager (intensity_data) :
     high_res_count = (self.d_min_values <= self.params.d_min).count(True)
     print >> self.log, "Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
       (self.n_accepted, high_res_count, self.params.d_min)
+
+    if self.params.raw_data.propagate_errors:
+      assert self.params.postrefinement.enable
+      from xfel.merging.algorithms.error_model.sdfac_propagate import sdfac_propagate
+      error_modeler = sdfac_propagate(self)
+      error_modeler.adjust_errors()
 
     if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals:
       if self.params.raw_data.sdfac_refine:
@@ -1738,8 +1747,8 @@ Pred. Multiplicity = # predictions on all accepted images / # Miller indices the
   return result
 
 def show_overall_observations(
-  obs, redundancy, redundancy_to_edge, summed_wt_I, summed_weight, ISIGI,
-  n_bins=15, out=None, title=None, work_params=None):
+  obs, redundancy, summed_wt_I, summed_weight, ISIGI,
+  n_bins=15, out=None, title=None, work_params=None, redundancy_to_edge=None):
   if out is None:
     out = sys.stdout
   obs.setup_binner(d_max=100000, d_min=work_params.d_min, n_bins=n_bins)

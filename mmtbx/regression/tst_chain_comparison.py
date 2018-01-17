@@ -500,28 +500,27 @@ def tst_01():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
+SEQ SCORE is fraction (close and matching target sequence).
 
-Looking for chain similarity for None (61 residues) in the model None (136 residues)
 
-Residues matching in forward direction:     16  RMSD:   1.45
-Residues matching in reverse direction:     31  RMSD:   1.40
-Residues near but not matching one-to-one:  12  RMSD:   1.87
 
-All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  43.4
-Residues far from target:    2  RMSD:   4.27"""
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
     raise AssertionError, "FAILED"
   from libtbx.test_utils import approx_equal
   print r.get_values("forward")
-  assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
+  assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
   print r.get_values("reverse")
-  assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
+  assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
   print r.get_values("close")
-  assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
+  assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
   print r.get_values("all_far")
   assert approx_equal(r.get_values("all_far"),(0,0))
   print "OK"
@@ -541,17 +540,16 @@ def tst_02():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-Space group: I 4 Unit cell:  113.95  113.95   32.47    90.00   90.00   90.00
+SEQ SCORE is fraction (close and matching target sequence).
 
-Looking for chain similarity for None (61 residues) in the model None (272 residues)
 
-Residues matching in forward direction:     16  RMSD:   1.45
-Residues matching in reverse direction:     31  RMSD:   1.40
-Residues near but not matching one-to-one:  12  RMSD:   1.87
 
-All residues near target:   59  RMSD:   1.52 Seq match (%):  6.8  % Found:  43.4
-Residues far from target:    2  RMSD:   3.31"""
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
@@ -559,11 +557,11 @@ Residues far from target:    2  RMSD:   3.31"""
 
   from libtbx.test_utils import approx_equal
   print r.get_values("forward")
-  assert approx_equal(r.get_values("forward"),(1.4473857036049544, 16))
+  assert approx_equal(r.get_values("forward"),(1.6751069901864204, 14))
   print r.get_values("reverse")
-  assert approx_equal(r.get_values("reverse"),(1.3969610738798282, 31))
+  assert approx_equal(r.get_values("reverse"),(1.388466550576198, 29))
   print r.get_values("close")
-  assert approx_equal(r.get_values("close"),(1.5184018499613678, 59))
+  assert approx_equal(r.get_values("close"),(1.545835235099158, 54))
   print r.get_values("all_far")
   assert approx_equal(r.get_values("all_far"),(0,0))
   print "OK"
@@ -594,17 +592,16 @@ def tst_03():
   args=["query_dir=files","model.pdb"]
   r=run(args,out=f)
   expected_text="""
-
 SEQ SCORE is fraction (close and matching target sequence).
 
 
 
-               ----ALL RESIDUES----     CLOSE RESIDUES ONLY    %
-     MODEL     --CLOSE-    ---FAR--    FORWARD REVERSE MIXED FOUND   CA                   SEQ
-               RMSD   N    RMSD   N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
 
-     query.pdb 1.52   59    3.3    2     16      31      12   43.4   0.29     6.8        0.03"""
-
+     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04
+"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
@@ -746,6 +743,43 @@ ATOM     53  CA  LYS G  10     203.277 130.858  33.696  1.00 33.20      P9
 ATOM     62  CA  TYR G  11     200.215 131.269  31.467  1.00 29.03      P9
 """
 
+ncs_spec="""
+Summary of NCS information
+Fri Jan 12 11:58:49 2018
+/net/anaconda/raid1/terwill/misc/junk
+
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth  112.2897   27.5224   23.1305
+CHAIN A
+RMSD 0
+MATCHING 136
+  RESSEQ 4:139
+
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth   -405.0000  -405.0000  -405.0000
+
+center_orth  517.2897  432.5224  428.1305
+CHAIN B
+RMSD 4.32467304409e-13
+MATCHING 136
+  RESSEQ 4:139
+
+"""
 def tst_05():
   from mmtbx.validation.chain_comparison import \
        extract_unique_part_of_hierarchy as euph
@@ -768,7 +802,43 @@ def tst_05():
     print "FINAL chain ids: %s \n" %(" ".join(get_chain_ids(unique_hierarchy)))
   print "OK"
 
+def tst_06():
+  print "Comparing mixed model with target with 2 chains...using ncs"
+  import iotbx.pdb
+  from cctbx.array_family import flex
+  model_pdb_inp=iotbx.pdb.input(source_info='model',
+       lines=flex.split_lines(model1))
+  crystal_symmetry=model_pdb_inp.crystal_symmetry()
+  f=open('ncs.ncs_spec','w')
+  print >>f,ncs_spec
+  f.close()
+  f=open('model.pdb','w')
+  print >>f,model1 #model_hierarchy.as_pdb_string()
+  f.close()
+  f=open('query.pdb','w')
+  print >>f,query #query_hierarchy.as_pdb_string()
+  f.close()
 
+  f=StringIO()
+  args=['model.pdb','query.pdb','ncs_file=ncs.ncs_spec']
+  r=run(args,out=f)
+  expected_text="""
+SEQ SCORE is fraction (close and matching target sequence).
+
+
+
+               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
+     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE
+
+ Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04
+"""
+  found_text="\n".join(f.getvalue().splitlines()[-10:])
+  if remove_blank(found_text)!=remove_blank(expected_text):
+    print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
+    raise AssertionError, "FAILED"
+
+  print "OK"
 
 if __name__=="__main__":
   tst_01()
@@ -776,3 +846,4 @@ if __name__=="__main__":
   tst_03()
   tst_04()
   tst_05()
+  tst_06()

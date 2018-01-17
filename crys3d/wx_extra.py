@@ -1,8 +1,16 @@
 from __future__ import division
 import wx
 
-from libtbx import copy_init_args
 import libtbx.object_oriented_patterns as oop
+
+class copy_init_args(object):
+  def __init__(self, args, exclude=()):
+    if ("self" in args): del args["self"]
+    else:                del args["O"]
+    del args["self"]
+    for param in exclude:
+      del args[param]
+    self.__dict__.update(args)
 
 class _extended_wxDC(oop.injector, wx.DC):
 

@@ -1,8 +1,6 @@
 from __future__ import division
 import iotbx.pdb
 import mmtbx.model
-from libtbx.utils import Sorry
-import sys
 import time
 
 """
@@ -354,6 +352,7 @@ def exercise_mtrix():
   assert model.get_hierarchy().atoms_size() == 900
   assert model.get_xray_structure().scatterers().size() == 900
   ss_ann = model.get_ss_annotation()
+  # print ss_ann.as_pdb_str()
   assert ss_ann.get_n_helices() == 6
   assert ss_ann.get_n_sheets() == 3
 
@@ -377,43 +376,26 @@ def exercise_biomt():
   assert ss_ann.get_n_sheets() == 3
 
 def exercise_both():
-  """
-  In current code base this is not possible because of
-  File "iotbx/command_line/biomt_reconstruction.py", line 39, in <module>
-    run(args=sys.argv[1:])
-  File "iotbx/command_line/biomt_reconstruction.py", line 21, in run
-    h = pdb_inp.construct_hierarchy_BIOMT_expanded()
-  File "cctbx_project/iotbx/pdb/__init__.py", line 823, in construct_hierarchy_BIOMT_expanded
-    sort_atoms = sort_atoms)
-  File "iotbx/pdb/__init__.py", line 806, in _expand_hierarchy_helper
-    trans_vectors = mtrix_biomt_container.t)
-  File "iotbx/pdb/hierarchy.py", line 686, in apply_rotation_translation
-    result = iotbx.pdb.hierarchy.join_roots(roots=roots)
-  File "iotbx/pdb/hierarchy.py", line 2645, in join_roots
-    append_chain_id_suffixes(roots=roots, suffixes=chain_id_suffixes)
-  File "iotbx/pdb/hierarchy.py", line 2637, in append_chain_id_suffixes
-    assert len(chain.id) == 1, len(chain.id)
-  """
   inp = iotbx.pdb.input(lines=mtrix_txt+biomt_txt+ss_txt+atoms_txt, source_info=None)
   model = mmtbx.model.manager(
     model_input = inp)
-  # assert model.get_number_of_atoms() == 900, model.get_number_of_atoms()
-  # assert model.get_hierarchy().atoms_size() == 900
-  # assert model.get_xray_structure().scatterers().size() == 900
-  # ss_ann = model.get_ss_annotation()
-  # assert ss_ann.get_n_helices() == 6
-  # assert ss_ann.get_n_sheets() == 3
-  # model.expand_with_BIOMT_records()
-  # assert model.get_number_of_atoms() == 1800, model.get_number_of_atoms()
-  # assert model.get_hierarchy().atoms_size() == 1800
-  # assert model.get_xray_structure().scatterers().size() == 1800, model.get_xray_structure().scatterers().size()
-  # ss_ann = model.get_ss_annotation()
-  # assert ss_ann.get_n_helices() == 18
-  # assert ss_ann.get_n_sheets() == 9
-  try:
-    model.expand_with_BIOMT_records()
-  except Sorry as e:
-    assert e.message.startswith("Model has been already expanded")
+  assert model.get_number_of_atoms() == 900, model.get_number_of_atoms()
+  assert model.get_hierarchy().atoms_size() == 900
+  assert model.get_xray_structure().scatterers().size() == 900
+  ss_ann = model.get_ss_annotation()
+  # print ss_ann.as_pdb_str()
+  # print "="*30
+  assert ss_ann.get_n_helices() == 6
+  assert ss_ann.get_n_sheets() == 3
+  model.expand_with_BIOMT_records()
+  assert model.get_number_of_atoms() == 2700, model.get_number_of_atoms()
+  assert model.get_hierarchy().atoms_size() == 2700
+  assert model.get_xray_structure().scatterers().size() == 2700, model.get_xray_structure().scatterers().size()
+  ss_ann = model.get_ss_annotation()
+  # print ss_ann.as_pdb_str()
+  assert ss_ann.get_n_helices() == 18
+  assert ss_ann.get_n_sheets() == 9
+  return
 
 
 if (__name__ == "__main__"):

@@ -3,7 +3,7 @@ import libtbx
 from libtbx import easy_run
 import iotbx.pdb
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 
 pdb_str_0 = """\
 REMARK 350   BIOMT1   1  1.000000 -0.000000  0.000000        0.00000
@@ -586,17 +586,18 @@ def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
   # chain expanding which made chain ids in hierarchy.py:join_roots()
   # not compatible with those used in secondary_structure.py:multiply_to_asu
   chain_ids = [h.start_chain_id for h in a.helices]
-  assert chain_ids == ['A1', 'A2', 'A3'], chain_ids
+  assert chain_ids == ['A', 'C', 'E'], chain_ids
   # checking sheets
-  for i, sh in enumerate(a.sheets):
-    assert sh.n_strands == 2
-    assert sh.registrations[0] == None
-    assert sh.registrations[1].cur_chain_id == 'B%d' % (i+1)
-    assert sh.registrations[1].prev_chain_id == 'A%d' % (i+1)
-    assert sh.strands[0].start_chain_id == 'A%d' % (i+1), sh.strands[0].start_chain_id
-    assert sh.strands[0].end_chain_id == 'A%d' % (i+1)
-    assert sh.strands[1].start_chain_id == 'B%d' % (i+1), sh.strands[1].start_chain_id
-    assert sh.strands[1].end_chain_id == 'B%d' % (i+1)
+  assert not show_diff (a.as_pdb_str(),"""\
+HELIX    1   1 THR A    1  THR A    2  1                                   6
+HELIX    2   2 THR C    1  THR C    2  1                                   6
+HELIX    3   3 THR E    1  THR E    2  1                                   6
+SHEET    1   2 2 THR A   1  THR A   3  0
+SHEET    2   2 2 THR B   4  THR B   5 -1  O  THR B   4   N  THR A   2
+SHEET    1   3 2 THR C   1  THR C   3  0
+SHEET    2   3 2 THR D   4  THR D   5 -1  O  THR D   4   N  THR C   2
+SHEET    1   4 2 THR E   1  THR E   3  0
+SHEET    2   4 2 THR F   4  THR F   5 -1  O  THR F   4   N  THR E   2""")
 
 def exercise_002(file_name="tst_mtrix_biomt_cmdl_002.pdb"):
   """

@@ -2621,6 +2621,9 @@ class show_summary(input):
         level_id=level_id,
         level_id_exception=level_id_exception)
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: functionality is moved to mmtbx.model and uses better all_chain_ids
+# function from iotbx.pdb.utils
 def suffixes_for_chain_ids(suffixes=Auto):
   if (suffixes is Auto):
     suffixes="123456789" \
@@ -2647,6 +2650,7 @@ def join_roots(roots, chain_id_suffixes=Auto):
   for rt in roots:
     result.transfer_chains_from_other(other=rt)
   return result
+# END_MARKED_FOR_DELETION_OLEG
 
 # XXX: Nat's utility functions
 def new_hierarchy_from_chain (chain) :

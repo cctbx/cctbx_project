@@ -6,7 +6,7 @@ Phenix (or any other derived software).
 
 from __future__ import division
 from installer_utils import *
-from optparse import OptionParser
+from optparse import SUPPRESS_HELP, OptionParser
 import os.path as op
 import shutil
 import time
@@ -45,7 +45,8 @@ def run (args, out=sys.stdout) :
   parser.add_option("--overwrite", dest="overwrite", action="store_true",
     help="Overwrite temporary files")
   parser.add_option("--no_compression", dest="no_compression",
-    action="store_true", help="Skip final compression step")
+    action="store_true", help=SUPPRESS_HELP) # legacy parameter
+    # .pkg files are already compressed. Double-compressing is pointless.
   options, args = parser.parse_args(args)
   arch_type = os.uname()[-1]
   system_type = "64-bit Intel Macs"
@@ -205,13 +206,6 @@ our website).""" % { "package" : options.package_name,
   print >> out, "Calling productbuild:", product_args
   call(product_args, out)
   assert op.exists(pkg_name)
-  if (not options.no_compression) :
-    print >> out, "  compressing installer. . ."
-    zip_args = [ "ditto", "-c", "-k", "-rsrc", pkg_name, pkg_name + ".zip" ]
-    call(zip_args, out)
-    assert op.isfile(pkg_name + ".zip")
-    # Remove uncompressed .pkg.
-    os.unlink(pkg_name)
   return True
 
 if (__name__ == "__main__") :

@@ -77,26 +77,6 @@ if (vers_info < (2,6)):
   # end of the copy
   warnings.catch_warnings = catch_warnings
 
-  if (vers_info > (2,2)):
-    import itertools
-    def izip_longest(*args, **kwds):
-      """ Make an iterator that aggregates elements from each of the iterables.
-      If the iterables are of uneven length, missing values are filled-in with
-      fillvalue. Iteration continues until the longest iterable is exhausted.
-      Synopsis: izip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
-      """
-      fillvalue = kwds.get('fillvalue')
-      def sentinel(counter = ([fillvalue]*(len(args)-1)).pop):
-        yield counter() # yields the fillvalue, or raises IndexError
-      fillers = itertools.repeat(fillvalue)
-      iters = [itertools.chain(it, sentinel(), fillers) for it in args]
-      try:
-        for tup in itertools.izip(*iters):
-          yield tup
-      except IndexError:
-        pass
-    itertools.izip_longest = izip_longest
-
   if (vers_info in [(2,3),(2,4),(2,5)]
         and not hasattr(frozenset, "isdisjoint")):
     # Python 2.3, 2.4, 2.5 compatibility

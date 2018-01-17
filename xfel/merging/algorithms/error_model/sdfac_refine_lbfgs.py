@@ -5,11 +5,10 @@ import math
 from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine_refltable
 from xfel.merging.algorithms.error_model import compute_normalized_deviations, apply_sd_error_params
 
-def finite_difference(target, values, p):
+def finite_difference(target, values, p, DELTA = 1.e-7):
   """ Compute finite difference given a target function """
   import copy
   functional = target(values)
-  DELTA = 1.E-7
   tempvals = copy.deepcopy(values)
   tempvals.reference[p] += DELTA
 

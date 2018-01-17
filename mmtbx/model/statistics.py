@@ -597,7 +597,7 @@ class info(object):
         self.model.torsion_NCS_as_pdb()]:
       if len(info_pdb_str) > 0:
         print >> out, prefix
-        print >> out, info_pdb_str
+        print >> out, info_pdb_str,
 
   def as_cif_block(self, cif_block=None):
     if cif_block is None:

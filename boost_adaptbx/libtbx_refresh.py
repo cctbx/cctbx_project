@@ -1,4 +1,4 @@
-from __future__ import division, with_statement
+from __future__ import absolute_import, division, print_function
 import re
 
 # Find Boost version at configuration time by parsing boost/version.hpp

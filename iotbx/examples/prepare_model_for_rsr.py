@@ -1,7 +1,7 @@
 from __future__ import division
 import iotbx.pdb
 import mmtbx.model
-from libtbx.utils import null_out
+from libtbx.utils import null_out, Sorry
 import sys
 
 """

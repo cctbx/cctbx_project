@@ -28,6 +28,8 @@ class samosa:
     if self.allow_model==False and self.param.model is not None:
       raise Sorry("""For samosa, no PDB structural model is used for frame-to-frame
       scaling, therefore the model phil parameter must be set to None.""")
+    if self.param.target_unit_cell is None or self.param.target_space_group is None:
+      raise Sorry("""For samosa, target_unit_cell and space_group must be given""")
     if not self.param.scaling.algorithm in ['mark1','levmar']:
       raise Sorry("""Must specify either mark1 or levmar algorithm for scaling.
       (Both algorithms have the same effect within samosa.""")
@@ -45,3 +47,27 @@ class samosa:
     if "PartialityDeff" in self.param.levmar.parameter_flags and \
        "PartialityEtaDeff" in self.param.levmar.parameter_flags:
       raise Sorry("""Only one partiality model""")
+    if self.param.memory.shared_array_allocation is None:
+      raise Sorry("""For samosa.join, the expected number of measurements must be given
+      in the memory.shared_array_allocation phil parameter""")
+    if self.param.backend != "Flex":
+      raise Sorry("""For samosa, we are only using the Flex backend at present""")
+
+    # samosa.scale requires mtz_file to be set & file to be readable in order to produce isomorphous stats
+    if self.param.scaling.mtz_file is not None:
+      from iotbx import mtz
+      mtz_object = mtz.object(file_name=self.param.scaling.mtz_file)
+      comparison_column_found = False
+      obs_labels = []
+      for array in mtz_object.as_miller_arrays():
+        this_label = array.info().label_string().lower()
+        if array.observation_type() is not None:
+          obs_labels.append(this_label.split(',')[0])
+        if this_label.find(self.param.scaling.mtz_column_F)==0:
+          comparison_column_found = True
+          break
+      if not comparison_column_found:
+        raise Sorry(self.param.scaling.mtz_file +
+                  " has labels [" +
+                  ", ".join(obs_labels) +
+                  "].  Please set scaling.mtz_column_F to one of these.")
