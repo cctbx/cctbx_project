@@ -3408,10 +3408,15 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
        ncs_obj_to_check=ncs_obj_to_check,
        out=null_out(),
        )
-      ncs_obj=ncs_list[0]
-      score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
+      if ncs_list:
+        ncs_obj=ncs_list[0]
+        score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
           identify_ncs_id=identify_ncs_id,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
+      else:
+        ncs_obj=Non
+        score,cc_avg=None,None
+
       if best_score is None or score>best_score:
         best_cc_avg=cc_avg
         best_score=score
