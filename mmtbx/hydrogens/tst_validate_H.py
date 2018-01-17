@@ -144,7 +144,7 @@ def exercise():
 
   c = validate_H(model)
   r = c.validate_inputs()
-  if r != 0:
+  if r == 0:
     return()
   c.run()
   results = c.get_results()

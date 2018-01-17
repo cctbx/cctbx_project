@@ -33,6 +33,7 @@ class validate_H():
     if not self.model.has_hd:
       #raise Sorry("There are no H or D atoms in the model.")
       return 0
+    # XXX probably check if grm exists?
 
   def get_missing_h_in_residue(self, residue, mon_lib_srv):
     missing = []
@@ -241,7 +242,7 @@ class validate_H():
     eps_xyz = 0.001
     eps_b = 0.01
     delta_occ_sum = 0.001
-    occ_h_zero_scattering = 0.64
+    occ_h_zero_scattering = 0.64 # value for which sum occ H and D is zero
     eps_occ_zero_scatt = 0.05
     max_distance_between_rotatable_H = 1.0
     for iseq in self.hd_exchanged_sites:

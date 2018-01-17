@@ -176,7 +176,8 @@ Usage:
     pi_params = self.get_pdb_interpretation_params()
     model = mmtbx.model.manager(
         model_input               = self.pdb_inp,
-        process_input             = True,
+#        process_input             = True,
+        build_grm                 = True,
         pdb_interpretation_params = pi_params,
         restraint_objects         = self.input_objects.cif_objects)
 
