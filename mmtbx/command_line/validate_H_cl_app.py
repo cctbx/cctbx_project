@@ -85,11 +85,10 @@ Usage:
     print('*'*79, file=self.log)
     print('The following atoms were renamed:', file=self.log)
     for entry in renamed:
-      atom = entry['atom']
-      oldname = entry['oldname']
-      newname = atom.name
-      print('Residue %s atom %s --> %s' % \
-        (atom.id_str()[10:-1], oldname, newname), file=self.log)
+      id_str = entry[0]
+      oldname = entry[2]
+      newname = entry[1]
+      print('%s atom %s --> %s' % (id_str, oldname, newname), file=self.log)
 
   def print_atoms_occ_0(self, hd_atoms_with_occ_0):
     print('*'*79, file=self.log)

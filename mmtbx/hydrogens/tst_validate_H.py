@@ -2,7 +2,7 @@ from __future__ import division
 import time
 import mmtbx.model
 import iotbx.pdb
-from libtbx.utils import null_out
+#from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from libtbx.test_utils import approx_equal
 from mmtbx.hydrogens.validate_H import validate_H
@@ -127,27 +127,28 @@ TER
 END
 """
 
-def exercise():
-  log = null_out()
+def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
   pi_params = pdb_interpretation_phil.extract()
-  pi_params.pdb_interpretation.use_neutron_distances = True
-
-  #validate_H_params = iotbx.phil.parse(master_params_str, process_includes=True)
+  pi_params.pdb_interpretation.use_neutron_distances = neutron_distances
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   model = mmtbx.model.manager(
       model_input = pdb_inp,
-      process_input = True,
+      build_grm   = True,
       pdb_interpretation_params = pi_params)
 
   c = validate_H(model)
   r = c.validate_inputs()
-  if r == 0:
-    return()
   c.run()
   results = c.get_results()
+  return results
+
+def exercise():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str)
 
   oc = results.overall_counts_hd
   hd_atoms_with_occ_0 = oc.hd_atoms_with_occ_0
@@ -172,8 +173,8 @@ def exercise():
     ('DB3', 'DB2'),('DB2', 'DB3'), ('DB3', 'DB2')]
   renamed = results.renamed
   for entry, answer in zip(renamed, renamed_answer):
-    oldname = entry['oldname'].strip()
-    newname = entry['atom'].name.strip()
+    oldname = entry[2].strip()
+    newname = entry[1].strip()
     assert(oldname == answer[0])
     assert(newname == answer[1])
 

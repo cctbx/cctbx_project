@@ -4,6 +4,9 @@ from libtbx import group_args
 #from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
 
+protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
+  "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
+
 def is_hydrogen(atom):
   answer = False
   if (atom.element.strip().upper() == 'H'):
@@ -96,8 +99,6 @@ class validate_H():
   def missing_H(self):
     missing_HD_atoms = []
     from mmtbx.rotamer import rotamer_eval
-    #protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-    #  "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
@@ -182,10 +183,10 @@ class validate_H():
         name = atom_D_new_name)
       if atom_with_same_target_name is not None:
         atom_with_same_target_name.set_name(atom_D_old_name)
-        self.renamed.append({
-          'atom':atom_with_same_target_name, 'oldname': atom_D_new_name})
+        self.renamed.append((atom_with_same_target_name.id_str(),
+          atom_with_same_target_name.name, atom_D_new_name))
       atom_D.set_name(atom_D_new_name)
-      self.renamed.append({'atom':atom_D, 'oldname': atom_D_old_name})
+      self.renamed.append((atom_D.id_str(), atom_D.name, atom_D_old_name))
     else:
       atom_H_old_name = atom_H.name
       atom_H_new_name = atom_D.name.replace('D','H',1)
@@ -196,17 +197,16 @@ class validate_H():
         name = atom_H_new_name)
       if atom_with_same_target_name is not None:
         atom_with_same_target_name.set_name(atom_H_old_name)
-        self.renamed.append({
-          'atom':atom_with_same_target_name, 'oldname': atom_H_new_name})
+        self.renamed.append((atom_with_same_target_name.id_str(),
+          atom_with_same_target_name.name, atom_H_new_name))
       atom_H.set_name(atom_H_new_name)
-      self.renamed.append({'atom':atom_H, 'oldname': atom_H_old_name})
+      self.renamed.append((atom_H.id_str(), atom_H.name, atom_H_old_name))
 
   def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
     self.renamed = []
-    geometry_restraints = self.model.get_restraints_manager().geometry
+    #geometry_restraints = self.model.get_restraints_manager().geometry
+    geometry_restraints = self.model.restraints_manager.geometry
     fsc1 = geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
-    protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-      "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
     hd_exchanged_sites = {}
     for residue_group in pdb_hierarchy.residue_groups():
@@ -294,8 +294,6 @@ class validate_H():
 
   def count_hd_atoms(self):
     count_h, count_d, n_water = self.get_overall_counts()
-    protein = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
-      "modified_rna_dna", "ccp4_mon_lib_rna_dna"]
     get_class = common_residue_names_get_class
     count_hd_atoms_protein = 0
     count_h_protein, count_d_protein = 0, 0
