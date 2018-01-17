@@ -149,8 +149,16 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   elif mirror == "pdb-redo":
     url_base = "https://pdb-redo.eu/db/"
     pdb_ext = "_final.pdb"
+    cif_ext = "_final.cif"
     sf_prefix = ""
-    sf_ext = "_final.cif"
+    sf_ext = "_final.mtz"
+    if (data_type == 'pdb'):
+      if (format == 'pdb'):
+        url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
+      elif (format == 'cif'):
+        url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
+    elif (data_type == 'xray'):
+      url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
   if (data_type in ["fasta", "seq"]) :
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
