@@ -117,8 +117,14 @@ class FormatCBFMini(FormatCBF):
 
     pixel_x, pixel_y = map(float, pixel_xy)
 
-    thickness = float(
-      self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
+    if 'Silicon' in self._cif_header_dictionary:
+      thickness = float(
+        self._cif_header_dictionary['Silicon'].split()[2]) * 1000.0
+      material = 'Si'
+    elif 'CdTe' in self._cif_header_dictionary:
+      thickness = float(
+        self._cif_header_dictionary['CdTe'].split()[2]) * 1000.0
+      material = 'CdTe'
 
     nx = int(
         self._cif_header_dictionary['X-Binary-Size-Fastest-Dimension'])
@@ -144,7 +150,7 @@ class FormatCBFMini(FormatCBF):
         ParallaxCorrectedPxMmStrategy(mu, t0))
 
     detector[0].set_thickness(thickness)
-    detector[0].set_material('Si')
+    detector[0].set_material(material)
     detector[0].set_mu(mu)
 
     return detector
