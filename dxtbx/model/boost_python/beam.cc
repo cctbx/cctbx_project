@@ -42,6 +42,34 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_flux(),
         obj.get_transmission());
     }
+
+    static
+    boost::python::tuple getstate(boost::python::object obj)
+    {
+      const Beam &beam = boost::python::extract<const Beam &>(obj)();
+      return boost::python::make_tuple(
+          obj.attr("__dict__"),
+          beam.get_s0_at_scan_points());
+    }
+
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state)
+    {
+      Beam &beam = boost::python::extract<Beam&>(obj)();
+      DXTBX_ASSERT(boost::python::len(state) == 2);
+
+      // restore the object's __dict__
+      boost::python::dict d = boost::python::extract<boost::python::dict>(
+          obj.attr("__dict__"))();
+      d.update(state[0]);
+
+      // restore the internal state of the C++ object
+      scitbx::af::const_ref< vec3<double> > s0_list = boost::python::extract<
+        scitbx::af::const_ref< vec3<double> > >(state[1]);
+      beam.set_s0_at_scan_points(s0_list);
+    }
+
+    static bool getstate_manages_dict() { return true; }
   };
 
   template <>
