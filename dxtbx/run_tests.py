@@ -1,8 +1,7 @@
-from __future__ import absolute_import, division
-from libtbx import test_utils
-import libtbx.load_env
+from __future__ import absolute_import, division, print_function
+from libtbx.test_utils.pytest import discover
 
-tst_list = (
+tst_list = [
     "$D/tests/tst_dxtbx.py",
     "$D/tests/tst_imageset.py",
     "$D/tests/tst_datablock.py",
@@ -28,12 +27,4 @@ tst_list = (
     "$D/tests/serialize/tst_xds.py",
     "$D/tests/serialize/tst_filename.py",
     "$D/tests/serialize/tst_crystal_model_serialize.py",
-    )
-
-def run () :
-  build_dir = libtbx.env.under_build("dxtbx")
-  dist_dir = libtbx.env.dist_path("dxtbx")
-  test_utils.run_tests(build_dir, dist_dir, tst_list)
-
-if (__name__ == "__main__"):
-  run()
+    ] + discover()
