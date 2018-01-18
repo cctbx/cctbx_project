@@ -1,8 +1,10 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.mpi.cluster_two_merge
 from __future__ import division
 import sys,time
+from libtbx.utils import Usage
 
 from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
+
 class scaling_manager_mpi(scaling_manager_base):
 
   def mpi_initialize (self, file_names) :
@@ -64,11 +66,50 @@ from xfel.merging.command_line.dev_cxi_merge import Script as base_Script
 
 class Script(base_Script):
 
-  def validate(self):
+  def validate(self,comm):
     base_Script.validate(self)
     if (self.params.rescale_with_average_cell):
       raise Usage("""Rescaling_with_average_cell not supported with MPI
       (Would require a second round of scaling, inefficient).""")
+    if(self.params.mpi.cs==True and comm.Get_size()<=1):
+      raise Usage("Client-server algorithm requires a minimum size of 2 MPI ranks to process data. Currently size=%d"%comm.Get_size())
+  
+  def initialize(self):
+    '''Initialise the script.'''
+    from dials.util.options import OptionParser
+    from iotbx.phil import parse
+    from xfel.command_line.cxi_merge import master_phil
+    help_message = '''
+    MPI enabled script for merging xfel data 
+    '''
+    phil_mpi = """
+    mpi {
+    logging = False
+      .type = bool
+      .help = logging Used to report timing information on the MPI operations. All strings are of the format '~<UNIQUE_STRING> START/END RANK=<MPI_RANK> TIME=<Unix time>;'
+    cs = False
+      .type = bool
+      .help = cs This enables the client-server work distribution duing merging. A minimum of 2 ranks are needed for this processing method.
+      .help = Default operation is set to false, which chunks the data evenly over all available ranks.
+    }
+    """
+    phil_scope = parse(master_phil + phil_mpi)
+    # Create the parser
+    self.parser = OptionParser(
+      usage=self.usage,
+      phil=phil_scope,
+      epilog=help_message)
+    self.parser.add_option(
+        '--plots',
+        action='store_true',
+        default=False,
+        dest='show_plots',
+        help='Show some plots.')
+
+    # Parse the command line. quick_parse is required for MPI compatibility
+    params, options = self.parser.parse_args(show_diff_phil=True,quick_parse=True)
+    self.params = params
+    self.options = options
 
   def run(self,comm,timing=False):
     rank = comm.Get_rank()
@@ -77,10 +118,13 @@ class Script(base_Script):
 
     # set things up
     if rank == 0:
-      if timing: print "SETUP START RANK=%d TIME=%f"%(rank,tt())
       self.initialize()
-      self.validate()
+      self.validate(comm)
       self.read_models()
+
+      timing = self.params.mpi.logging
+      if timing: print "~SETUP START RANK=%d TIME=%f;"%(rank,tt())
+
       scaler_master = self.scaler_class(
         miller_set=self.miller_set,
         i_model=self.i_model,
@@ -92,32 +136,62 @@ class Script(base_Script):
                               miller_set=self.miller_set,
                               model = self.i_model,
                               params = self.params )
-      if timing: print "SETUP END RANK=%d TIME=%f"%(rank,tt())
+      if timing: print "~SETUP END RANK=%d TIME=%f;"%(rank,tt())
 
     else:
-      if timing: print "SETUP START RANK=%d TIME=%f"%(rank,tt())
+      if timing: print "~SETUP START RANK=%d TIME=%f;"%(rank,tt())
       transmitted_info = None
-      if timing: print "SETUP END RANK=%d TIME=%f"%(rank,tt())
+      if timing: print "~SETUP END RANK=%d TIME=%f;"%(rank,tt())
 
-    if timing: print "BROADCAST START RANK=%d TIME=%f"%(rank,tt())
+    if timing: print "~BROADCAST START RANK=%d TIME=%f;"%(rank,tt())
     transmitted_info = comm.bcast(transmitted_info, root = 0)
-    if timing: print "BROADCAST END RANK=%d TIME=%f"%(rank,tt())
+    if timing: print "~BROADCAST END RANK=%d TIME=%f;"%(rank,tt())
 
     # now actually do the work
-    if timing: print "SCALER_WORKER_SETUP START RANK=%d TIME=%f"%(rank,tt())
+    if timing: print "~SCALER_WORKER_SETUP START RANK=%d TIME=%f;"%(rank,tt())
     scaler_worker = self.scaler_class(transmitted_info["miller_set"],
                                        transmitted_info["model"],
                                        transmitted_info["params"],
                                        log = sys.stdout)
-    if timing: print "SCALER_WORKER_SETUP END RANK=%d TIME=%f"%(rank,tt())
+    if timing: print "~SCALER_WORKER_SETUP END RANK=%d TIME=%f;"%(rank,tt())
     assert scaler_worker.params.backend == 'FS' # only option that makes sense
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
-    file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
-    if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
-    scaler_worker._scale_all_serial(file_names, db_mgr)
-    if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())
-    scaler_worker.finished_db_mgr = db_mgr
+
+    # Use client-server distribution of work to the available MPI ranks. 
+    # Each free rank requests a TAR ID and proceeds to process it.
+    if self.params.mpi.cs==True:
+      tar_file_names = transmitted_info["file_names"]
+      if timing: print "~SCALER_WORKERS START RANK=%d TIME=%f;"%(rank,tt())
+      if rank == 0:
+        for ix in xrange(len(tar_file_names)):
+          rankreq = comm.recv(source=MPI.ANY_SOURCE)
+          comm.send(ix,dest=rankreq)
+        for rankreq in range(size-1):
+          rankreq = comm.recv(source=MPI.ANY_SOURCE)
+          comm.send('endrun',dest=rankreq)
+        scaler_worker.finished_db_mgr = db_mgr
+      else:
+        while True:
+          comm.send(rank,dest=0)
+          idx = comm.recv(source=0)
+          if idx == 'endrun':
+            scaler_worker.finished_db_mgr = db_mgr
+            break
+          if timing: print "~SCALER_WORKER START=%d RANK=%d TIME=%f;"%(idx, rank, tt())
+          scaler_worker._scale_all_serial([tar_file_names[idx],], db_mgr)
+          if timing: print "~SCALER_WORKER END=%d RANK=%d TIME=%f;"%(idx, rank, tt())
+      if timing: print "~SCALER_WORKERS END RANK=%d TIME=%f;"%(rank, tt())
+
+    # Distribute chunks of TAR files to each MPI rank. 
+    # The files are equidistributed across all the available ranks.
+    else:
+      file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
+      if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
+      scaler_worker._scale_all_serial(file_names, db_mgr)
+      if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())
+      scaler_worker.finished_db_mgr = db_mgr
+
     # might want to clean up a bit before returning
     del scaler_worker.log
     del scaler_worker.params
@@ -126,34 +200,33 @@ class Script(base_Script):
     del scaler_worker.reverse_lookup
 
     # gather reports and all add together
-    if timing: print "GATHER START RANK=%d TIME=%f"%(rank, tt())
+    if timing: print "~GATHER START RANK=%d TIME=%f;"%(rank, tt())
     reports = comm.gather(scaler_worker,root=0)
-    if timing: print "GATHER END RANK=%d TIME=%f"%(rank, tt())
+    if timing: print "~GATHER END RANK=%d TIME=%f;"%(rank, tt())
     if rank == 0:
       print "Processing reports from %d ranks"%(len(reports))
       ireport = 0
       for item in reports:
-        if timing: print "SCALER_MASTER_ADD START RANK=%d TIME=%f"%(rank, tt())
+        if timing: print "~SCALER_MASTER_ADD START RANK=%d TIME=%f;"%(rank, tt())
         scaler_master._add_all_frames(item)
-
-        if timing: print "SCALER_MASTER_ADD END RANK=%d TIME=%f"%(rank, tt())
+        if timing: print "~SCALER_MASTER_ADD END RANK=%d TIME=%f;"%(rank, tt())
         print "processing %d calls from report %d"%(len(item.finished_db_mgr.sequencer),ireport); ireport += 1
 
         for call_instance in item.finished_db_mgr.sequencer:
           if call_instance["call"] == "insert_frame":
-            if timing: print "SCALER_MASTER_INSERT_FRAME START RANK=%d TIME=%f"%(rank, tt())
+            if timing: print "~SCALER_MASTER_INSERT_FRAME START RANK=%d TIME=%f;"%(rank, tt())
             frame_id_zero_base = scaler_master.master_db_mgr.insert_frame(**call_instance["data"])
-            if timing: print "SCALER_MASTER_INSERT_FRAME END RANK=%d TIME=%f"%(rank, tt())
+            if timing: print "~SCALER_MASTER_INSERT_FRAME END RANK=%d TIME=%f;"%(rank, tt())
           elif call_instance["call"] == "insert_observation":
-            if timing: print "SCALER_MASTER_INSERT_OBS START RANK=%d TIME=%f"%(rank, tt())
+            if timing: print "~SCALER_MASTER_INSERT_OBS START RANK=%d TIME=%f;"%(rank, tt())
             call_instance["data"]['frame_id_0_base'] = [frame_id_zero_base] * len(call_instance["data"]['frame_id_0_base'])
             scaler_master.master_db_mgr.insert_observation(**call_instance["data"])
-            if timing: print "SCALER_MASTER_INSERT_OBS END RANK=%d TIME=%f"%(rank, tt())
+            if timing: print "~SCALER_MASTER_INSERT_OBS END RANK=%d TIME=%f;"%(rank, tt())
 
-      if timing: print "SCALER_MASTER_FINALISE START RANK=%d TIME=%f"%(rank, tt())
+      if timing: print "~SCALER_MASTER_FINALISE START RANK=%d TIME=%f;"%(rank, tt())
       scaler_master.master_db_mgr.join() # database written, finalize the manager
       scaler_master.mpi_finalize()
-      if timing: print "SCALER_MASTER_FINALISE END RANK=%d TIME=%f"%(rank, tt())
+      if timing: print "~SCALER_MASTER_FINALISE END RANK=%d TIME=%f;"%(rank, tt())
 
       return self.finalize(scaler_master)
 
@@ -161,7 +234,7 @@ if (__name__ == "__main__"):
   from mpi4py import MPI
   comm = MPI.COMM_WORLD
   rank = comm.Get_rank()
-
+  
   script = Script(scaling_manager_mpi)
   result = script.run(comm=comm,timing=False)
   if rank == 0:
