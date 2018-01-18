@@ -158,6 +158,26 @@ namespace dxtbx { namespace model { namespace boost_python {
     beam.rotate_around_origin(axis, angle_rad);
   }
 
+  static
+  void Beam_set_s0_at_scan_points_from_tuple(Beam &beam, boost::python::tuple l) {
+    scitbx::af::shared< vec3<double> > s0_list;
+    for (std::size_t i = 0; i < boost::python::len(l); ++i) {
+      vec3<double> s0 = boost::python::extract< vec3<double> >(l[i]);
+      s0_list.push_back(s0);
+    }
+    beam.set_s0_at_scan_points(s0_list.const_ref());
+  }
+
+  static
+  void Beam_set_s0_at_scan_points_from_list(Beam &beam, boost::python::list l) {
+    scitbx::af::shared< vec3<double> > s0_list;
+    for (std::size_t i = 0; i < boost::python::len(l); ++i) {
+      vec3<double> s0 = boost::python::extract< vec3<double> >(l[i]);
+      s0_list.push_back(s0);
+    }
+    beam.set_s0_at_scan_points(s0_list.const_ref());
+  }
+
   void export_beam()
   {
     // Export BeamBase
@@ -208,6 +228,21 @@ namespace dxtbx { namespace model { namespace boost_python {
         &BeamBase::get_transmission)
       .def("set_transmission",
         &BeamBase::set_transmission)
+      .add_property("num_scan_points", &BeamBase::get_num_scan_points)
+      .def("get_num_scan_points",
+        &BeamBase::get_num_scan_points)
+      .def("set_s0_at_scan_points",
+        &BeamBase::set_s0_at_scan_points)
+      .def("set_s0_at_scan_points",
+        &Beam_set_s0_at_scan_points_from_tuple)
+      .def("set_s0_at_scan_points",
+        &Beam_set_s0_at_scan_points_from_list)
+      .def("get_s0_at_scan_points",
+        &BeamBase::get_s0_at_scan_points)
+      .def("get_s0_at_scan_point",
+        &BeamBase::get_s0_at_scan_point)
+      .def("reset_scan_points",
+        &BeamBase::reset_scan_points)
       .def("rotate_around_origin",
           &rotate_around_origin, (
             arg("axis"),
