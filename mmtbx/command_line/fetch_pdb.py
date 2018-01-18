@@ -37,9 +37,9 @@ fetch_pdb
     .type = choice
     .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
     .style = bold
-  site = *rcsb pdbe pdbj
+  site = *rcsb pdbe pdbj pdb-redo
     .type = choice
-    .caption = RCSB PDBe PDBj
+    .caption = RCSB PDBe PDBj PDB-REDO
     .short_caption = Mirror site
     .style = bold
 }""")
@@ -132,9 +132,9 @@ Command-line options:
       format = "cif"
     elif (arg.startswith("--mirror=")) :
       mirror = arg.split("=")[1]
-      if (not mirror in ["rcsb", "pdbe", "pdbj"]) :
+      if (not mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]) :
         raise Sorry(
-          "Unrecognized mirror site '%s' (choices: rcsb, pdbe, pdbj)" %
+          "Unrecognized mirror site '%s' (choices: rcsb, pdbe, pdbj, pdb-redo)" %
           mirror)
     else :
       ids.append(arg)

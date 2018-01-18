@@ -172,10 +172,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         raise
   elif data_type == "xray" :
     if (url is None) :
-      if mirror == "pdb-redo":
-        url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
-      else:
-        url = url_base + sf_prefix + id + sf_ext
+      url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
@@ -186,10 +183,7 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   else :
     if (url is None) :
       if format == "pdb" :
-        if mirror == "pdb-redo":
-          url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
-        else:
-          url = url_base + id + pdb_ext
+        url = url_base + id + pdb_ext
       else :
         url = url_base + id + "." + format
     try :
