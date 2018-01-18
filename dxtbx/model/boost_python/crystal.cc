@@ -352,7 +352,7 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("space_group_symbol"))))
       .def_pickle(CrystalPickleSuite());
 
-    class_ <MosaicCrystalKabsch2010, bases <CrystalBase> > ("MosaicCrystalKabsch2010", no_init)
+    class_ <MosaicCrystalKabsch2010, bases <Crystal> > ("MosaicCrystalKabsch2010", no_init)
       .def(init<const MosaicCrystalKabsch2010&>())
       .def(init<const Crystal&>())
       .def("__init__",
@@ -384,7 +384,7 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("deg")=true))
       .def_pickle(MosaicCrystalKabsch2010PickleSuite());
 
-    class_ <MosaicCrystalSauter2014, bases <CrystalBase> > ("MosaicCrystalSauter2014", no_init)
+    class_ <MosaicCrystalSauter2014, bases <Crystal> > ("MosaicCrystalSauter2014", no_init)
       .def(init<const MosaicCrystalSauter2014&>())
       .def(init<const Crystal&>())
       .def("__init__",
