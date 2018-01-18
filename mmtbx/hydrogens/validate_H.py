@@ -306,6 +306,7 @@ class validate_H():
     count_water_altconf = 0
     count_water_no_oxygen = 0
     hd_atoms_with_occ_0 = []
+    single_hd_atoms_occ_lt_1 = []
     for residue_group in self.pdb_hierarchy.residue_groups():
       for resname in residue_group.unique_resnames():
         if (get_class(name=resname) == 'common_water'):
@@ -340,12 +341,14 @@ class validate_H():
           count_hd_atoms_protein += 1
           if (atom.occ == 0):
             hd_atoms_with_occ_0.append((atom.id_str(), atom.xyz))
+          if (atom.occ <1 and atom.occ > 0 and atom.parent().altloc == ''):
+            single_hd_atoms_occ_lt_1.append(
+              (atom.id_str(), atom.occ, atom.xyz))
           if (is_hydrogen(atom)):
             count_h_protein += 1
           elif (is_deuterium(atom)):
             count_d_protein += 1
         elif (get_class(name=resname) == 'common_water'):
-          #if (not atom.element_is_hydrogen()): continue
           if (is_hydrogen(atom)):
             count_h_water += 1
           elif (is_deuterium(atom)):
@@ -368,7 +371,8 @@ class validate_H():
       count_water_2h        = count_water_2h,
       count_water_altconf   = count_water_altconf,
       count_water_no_oxygen = count_water_no_oxygen,
-      hd_atoms_with_occ_0   = hd_atoms_with_occ_0
+      hd_atoms_with_occ_0   = hd_atoms_with_occ_0,
+      single_hd_atoms_occ_lt_1 = single_hd_atoms_occ_lt_1
       )
 
   def run(self):

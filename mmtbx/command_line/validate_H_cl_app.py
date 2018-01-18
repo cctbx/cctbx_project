@@ -90,11 +90,16 @@ Usage:
       newname = entry[1]
       print('%s atom %s --> %s' % (id_str, oldname, newname), file=self.log)
 
-  def print_atoms_occ_0(self, hd_atoms_with_occ_0):
-    print('*'*79, file=self.log)
-    print('The following H (or D) atoms have zero occupancy:', file=self.log)
-    for item in hd_atoms_with_occ_0:
-      print(item[0][5:-1])
+  def print_atoms_occ_lt_1(self, hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1):
+    if hd_atoms_with_occ_0:
+      print('*'*79, file=self.log)
+      print('H (or D) atoms with zero occupancy:', file=self.log)
+      for item in hd_atoms_with_occ_0:
+        print(item[0])
+    if single_hd_atoms_occ_lt_1:
+      print('H (or D) atoms with occupancy < 1:', file=self.log)
+      for item in single_hd_atoms_occ_lt_1:
+        print('%s with occupancy %s' %(item[0], item[1]), file=self.log)
 
   def print_results_hd_sites(
         self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd):
@@ -143,12 +148,13 @@ Usage:
     hd_sites_analysis  = results.hd_sites_analysis
     missing_HD_atoms   = results.missing_HD_atoms
     hd_atoms_with_occ_0 = overall_counts_hd.hd_atoms_with_occ_0
+    single_hd_atoms_occ_lt_1 = overall_counts_hd.single_hd_atoms_occ_lt_1
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd)
     if renamed:
       self.print_renamed(renamed)
-    if hd_atoms_with_occ_0:
-      self.print_atoms_occ_0(hd_atoms_with_occ_0)
+    if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
+      self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1)
     if len(list(hd_exchanged_sites.keys())) != 0:
       self.print_results_hd_sites(
         hd_exchanged_sites, hd_sites_analysis, overall_counts_hd)

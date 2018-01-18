@@ -251,17 +251,16 @@ ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
 ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
 ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
 ATOM     13  HA ATYR A 139      10.443   8.186   7.059  0.50 10.00           H
-ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.00 10.00           H
 ATOM     15  HB3ATYR A 139      11.014   5.853   7.567  0.50 10.00           H
-ATOM     16  HD1ATYR A 139       8.799   5.277   4.695  0.50 10.00           H
+ATOM     16  HD1 TYR A 139       8.799   5.277   4.695  0.50 10.00           H
 ATOM     17  HD2ATYR A 139       8.974   6.264   8.835  0.40 10.00           H
 ATOM     18  HE1ATYR A 139       6.400   4.801   4.908  0.50 10.00           H
 ATOM     19  HE2ATYR A 139       6.575   5.788   9.051  0.50 10.00           H
 ATOM     20  HH ATYR A 139       4.710   5.148   8.037  0.50 10.00           H
 ATOM     21  DA BTYR A 139      10.443   8.186   7.059  0.50 10.00           D
-ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  0.50 10.00           D
+ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  1.00 10.00           D
 ATOM     23  DB3BTYR A 139      11.014   5.853   7.567  0.50 10.00           D
-ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
 ATOM     25  DD2BTYR A 139       8.974   6.264   8.835  0.50 10.00           D
 ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
 ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.60 10.00           D
@@ -414,17 +413,19 @@ def exercise2():
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
-
 # ------------------------------------------------------------------------------
-# Input has H and D everywhere (all exchanged)
+# OCCUPANCIES
 # a) HD2 and DD2 have sum occupancy < 1
 # b) HE2 and DD2 have sum occupancy > 1
+# c) HB2 has 0 occupancy (while having exchanged partner DB2)
+# d) HD1 has occupancy < 1 (no exchanged partner)
 # ------------------------------------------------------------------------------
 def exercise3():
   results = get_results_from_validate_H(
     neutron_distances = True,
     pdb_str = pdb_str3)
   hd_sites_analysis  = results.hd_sites_analysis
+
   sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
 
   sum_occ_answer=[
@@ -435,6 +436,18 @@ def exercise3():
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
+  oc = results.overall_counts_hd
+  hd_atoms_with_occ_0 = oc.hd_atoms_with_occ_0
+  single_hd_atoms_occ_lt_1 = oc.single_hd_atoms_occ_lt_1
+
+  occ_0_answer = ['pdb=" HB2ATYR A 139 "']
+  for item, answer in zip(hd_atoms_with_occ_0, occ_0_answer):
+    assert(item[0].strip() == answer.strip())
+
+  occ_lt_1_answer = [('pdb=" HD1 TYR A 139 "', 0.5)]
+  for item, answer in zip(single_hd_atoms_occ_lt_1, occ_lt_1_answer):
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[1] == answer[1])
 
 if (__name__ == "__main__"):
   t0 = time.time()
