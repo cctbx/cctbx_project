@@ -58,14 +58,18 @@ class validate_H():
         #  atom_name_list.append(hd_aliases[atom_name])
       if not ca_xyz:
         ca_xyz = xyz
-      reference_H = []
+      # Step 1: Get list of expected H and non-H atoms
+      reference = []
       atom_dict = mlq.atom_dict()
       for at in atom_dict:
-        reference_H.append(at)
+        reference.append(at)
+      # Step 2: Get list of expected non-H atoms
       reference_non_H = []
       for non in mlq.non_hydrogen_atoms():
         reference_non_H.append(non.atom_id.strip().upper())
-      reference_list = [x for x in reference_H if x not in reference_non_H]
+      # Step 3: Get list of expected H atoms only
+      reference_hydrogens = [x for x in reference if x not in reference_non_H]
+      # Step 4: There can be naming differences: HB1+HB2 or HB2+HB3
       alternative_names = [
         ('HA1', 'HA2', 'HA3'),
         ('HB1', 'HB2', 'HB3'),
@@ -75,14 +79,14 @@ class validate_H():
         ('HG11', 'HG12', 'HG13')
         ]
       for alts in alternative_names:
-        if (alts[0] in reference_list and alts[1] in reference_list):
+        if (alts[0] in reference_hydrogens and alts[1] in reference_hydrogens):
           if (atom_dict[alts[0]].type_energy == 'HCH2' and
               atom_dict[alts[1]].type_energy == 'HCH2'):
-            reference_list.append(alts[2])
-            reference_list.remove(alts[0])
+            reference_hydrogens.append(alts[2])
+            reference_hydrogens.remove(alts[0])
             if alts[2].replace('H','D',1) in atom_name_list:
               atom_name_list.append(alts[2])
-      for atom_name in reference_list:
+      for atom_name in reference_hydrogens:
         if atom_name not in atom_name_list:
           if (atom_name == 'H' and
             ('H1' in atom_name_list and 'H2' in atom_name_list and 'H3' in atom_name_list)):
@@ -375,9 +379,24 @@ class validate_H():
       single_hd_atoms_occ_lt_1 = single_hd_atoms_occ_lt_1
       )
 
+  def get_hd_state(self):
+    hd_state = None
+    sel_h = self.pdb_hierarchy.atom_selection_cache().selection(
+      string = 'element H')
+    sel_d = self.pdb_hierarchy.atom_selection_cache().selection(
+      string = 'element D')
+    if sel_h.count(True) != 0 and sel_d.count(True) == 0:
+      hd_state = 'all_h'
+    elif sel_h.count(True) == 0 and sel_d.count(True) != 0:
+      hd_state = 'all_D'
+    else:
+      hd_state = 'h_and_d'
+    return hd_state
+
   def run(self):
-    self.get_exchanged_sites_and_curate_swapped(
-      pdb_hierarchy = self.pdb_hierarchy)
+    if self.get_hd_state() == 'h_and_d':
+      self.get_exchanged_sites_and_curate_swapped(
+        pdb_hierarchy = self.pdb_hierarchy)
     self.count_hd_atoms()
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()

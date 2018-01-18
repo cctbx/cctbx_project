@@ -267,6 +267,31 @@ ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.60 10.00           D
 ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
 """
 
+pdb_str4 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  HA  TYR A 139      10.443   8.186   7.059  1.00 10.00           H
+ATOM     15  HB3 TYR A 139      11.014   5.853   7.567  1.00 10.00           H
+ATOM     16  HD1 TYR A 139       8.799   5.277   4.695  1.00 10.00           H
+ATOM     17  HD2 TYR A 139       8.974   6.264   8.835  1.00 10.00           H
+ATOM     19  HE2 TYR A 139       6.575   5.788   9.051  1.00 10.00           H
+ATOM     20  HH  TYR A 139       4.710   5.148   8.037  1.00 10.00           H
+"""
+
 def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
@@ -347,7 +372,7 @@ def exercise():
 
 # ------------------------------------------------------------------------------
 # Input has H and D everywhere (all exchanged)
-# a) The C beta DB2 and DB3 atoms are swapped with respect to their H partners
+# a) The C beta DB2 and DB3 atoms are swapped
 # b) The C beta HB2 and HB3 atoms are swapped
 # ------------------------------------------------------------------------------
 def exercise1():
@@ -376,11 +401,12 @@ def exercise1():
     assert(newname == answer[1])
 
 # ------------------------------------------------------------------------------
-# Input has H and D everywhere (all exchanged)
+# PROPERTIES H/D SITES
 # a) HA and DA have different coordinates
 # b) HD1 and DD1 have different B factors
-# c) HH and DH have different coordinates but are within cutoff distance to
-#    create a warning for zero scattering sum
+# c) HH and DH have different coordinates and are within cutoff distance to
+#    create a warning for zero scattering sum (Note that HH and DH may be at
+#    different positions)
 # ------------------------------------------------------------------------------
 def exercise2():
   results = get_results_from_validate_H(
@@ -449,11 +475,58 @@ def exercise3():
     assert (item[0].strip() == answer[0].strip())
     assert (item[1] == answer[1])
 
+# ------------------------------------------------------------------------------
+# MISSING ATOMS
+# Model has only H atoms
+# H, HE1 and HB2 are missing
+# (takes into account naming ambiguity HB1+HB2 and HB2+HB3)
+# ------------------------------------------------------------------------------
+def exercise4():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str4)
+  missing = results.missing_HD_atoms
+
+  missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HB2'])]
+  for item, answer in zip(missing, missing_answer):
+    assert (item[0].strip() == answer[0].strip())
+    for atom, aatom in zip(item[1], answer[1]):
+      assert (atom.strip() == aatom.strip())
+
+
+# ------------------------------------------------------------------------------
+# CHECK HD STATE (hd_state)
+# This is not a result but used internally to decide if H/D site analysis is
+# necessary or not
+# ------------------------------------------------------------------------------
+def exercise_hd_state():
+  pdb_interpretation_phil = iotbx.phil.parse(
+    input_string = grand_master_phil_str, process_includes = True)
+
+  pdb_inp = iotbx.pdb.input(lines=pdb_str4.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+#      build_grm   = True,
+      pdb_interpretation_params = pdb_interpretation_phil.extract())
+  c = validate_H(model)
+  assert (c.get_hd_state() == 'all_h')
+
+  pdb_inp = iotbx.pdb.input(lines=pdb_str3.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+#      build_grm   = True,
+      pdb_interpretation_params = pdb_interpretation_phil.extract())
+  c = validate_H(model)
+  assert (c.get_hd_state() == 'h_and_d')
+
+
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise()
   exercise1()
   exercise2()
   exercise3()
+  exercise4()
+  exercise_hd_state()
   print "OK. Time: %8.3f"%(time.time()-t0)
 
