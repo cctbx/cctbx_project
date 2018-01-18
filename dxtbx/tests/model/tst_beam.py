@@ -91,11 +91,59 @@ def tst_from_phil():
 
   print 'OK'
 
+def tst_scan_varying():
+
+  from scitbx import matrix
+  direction = matrix.col((0.013142, 0.002200, 1.450476))
+  unit_direction = direction.normalize()
+  wavelength = 0.689400
+  s0 = -unit_direction * 1.0 / wavelength
+
+  # Create the beam
+  b = Beam(s0)
+
+  assert b.get_num_scan_points() == 0
+  assert b.get_s0_at_scan_points().size() == 0
+  try:
+    b.get_s0_at_scan_point(0) # should raise RuntimeError
+  except RuntimeError:
+    pass
+
+  # set varying beam
+  num_scan_points = 11
+  s0_static = matrix.col(b.get_s0())
+  s0_as_scan_points = [s0_static]
+  axis = matrix.col.random(3, -1., 1.).normalize()
+  for i in range(num_scan_points-1):
+    s0_as_scan_points.append(
+      s0_as_scan_points[-1].rotate_around_origin(axis, angle=0.01, deg=True))
+  b.set_s0_at_scan_points(s0_as_scan_points)
+  assert b.get_num_scan_points() == 11
+  assert b.get_s0_at_scan_points().size() == 11
+
+  for t in range(num_scan_points):
+    s0_t = matrix.col(b.get_s0_at_scan_point(t))
+    assert s0_t == s0_as_scan_points[t]
+
+  # also test setting as tuple
+  b.set_s0_at_scan_points(tuple(s0_as_scan_points))
+  assert b.get_num_scan_points() == 11
+  assert b.get_s0_at_scan_points().size() == 11
+
+  # test resetting
+  b.reset_scan_points()
+  assert b.get_num_scan_points() == 0
+  assert b.get_s0_at_scan_points().size() == 0
+
+  print 'OK'
+
+
 def run():
   """Test the beam object"""
   tst_set_direction_wavelength()
   tst_set_s0()
   tst_from_phil()
+  tst_scan_varying()
 
 if __name__ == '__main__':
   run()
