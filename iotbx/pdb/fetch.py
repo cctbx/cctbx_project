@@ -4,19 +4,23 @@
 # http://www.rcsb.org/pdb/static.do?p=download/http/index.html
 #
 # File format  Compression   Example URL
-# PDB  uncompressed http://www.rcsb.org/pdb/files/2vz8.pdb
-# CIF  uncompressed http://www.rcsb.org/pdb/files/2vz8.cif
-# XML  uncompressed http://www.rcsb.org/pdb/files/2vz8.xml
-# Data uncompressed http://www.rcsb.org/pdb/files/2vz8-sf.cif
-# CIF  uncompressed http://www.rcsb.org/pdb/files/ligand/ATP.cif
+# PDB  uncompressed https://www.rcsb.org/pdb/files/2vz8.pdb
+# CIF  uncompressed https://www.rcsb.org/pdb/files/2vz8.cif
+# XML  uncompressed https://www.rcsb.org/pdb/files/2vz8.xml
+# Data uncompressed https://www.rcsb.org/pdb/files/2vz8-sf.cif
+# CIF  uncompressed https://www.rcsb.org/pdb/files/ligand/ATP.cif
 #
 # PDBe:
-# http://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
-# http://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
+# https://www.ebi.ac.uk/pdbe-srv/view/files/2vz8.ent
+# https://www.ebi.ac.uk/pdbe-srv/view/files/r2vz8sf.ent
 #
 # PDBj:
 # ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/vz/pdb2vz8.ent.gz
 # ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/structure_factors/vz/r2vz8sf.ent.gz
+#
+# PDB-REDO
+# https://pdb-redo.eu/db/1aba/1aba_final.pdb
+# https://pdb-redo.eu/db/1aba/1aba_final.cif
 
 from __future__ import division
 from libtbx.utils import Sorry, null_out
@@ -54,13 +58,13 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   :param id: 4-character PDB ID (e.g. '1hbb')
   :param data_type: type of content to download: pdb, xray, or fasta
   :param format: format of data: cif, pdb, or xml
-  :param mirror: remote site to use, either rcsb or pdbe
+  :param mirror: remote site to use, either rcsb, pdbe, pdbj or pdb-redo
 
   :returns: a filehandle-like object (with read() method)
   """
   assert data_type in ["pdb", "xray", "fasta", "seq"]
   assert format in ["cif", "pdb", "xml"]
-  assert mirror in ["rcsb", "pdbe", "pdbj"]
+  assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
   validate_pdb_id(id)
   if (log is None) : log = null_out()
 
@@ -117,12 +121,12 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   url = None
   compressed = False
   if (mirror == "rcsb") :
-    url_base = 'http://files.rcsb.org/download/'
+    url_base = 'https://files.rcsb.org/download/'
     pdb_ext = ".pdb"
     sf_prefix = ""
     sf_ext = "-sf.cif"
   elif (mirror == "pdbe") :
-    url_base = "http://www.ebi.ac.uk/pdbe-srv/view/files/"
+    url_base = "https://www.ebi.ac.uk/pdbe-srv/view/files/"
     pdb_ext = ".ent"
     sf_prefix = "r"
     sf_ext = "sf.ent"
@@ -138,14 +142,27 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       compressed = True
       url = url_base + "structure_factors/%s/r%ssf.ent.gz" % (id[1:3], id)
     elif (data_type in ["fasta", "seq"]) :
-      url = "http://pdbj.org/app//downloadFasta4PDBID?pdbid=%s" % id
+      url = "https://pdbj.org/rest/downloadPDBfile?format=fasta&id=%s" % id
     if (url is None) and (data_type != "fasta") :
       raise Sorry("Can't determine PDBj download URL for this data/format "+
         "combination.")
+  elif mirror == "pdb-redo":
+    url_base = "https://pdb-redo.eu/db/"
+    pdb_ext = "_final.pdb"
+    cif_ext = "_final.cif"
+    sf_prefix = ""
+    sf_ext = "_final.mtz"
+    if (data_type == 'pdb'):
+      if (format == 'pdb'):
+        url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
+      elif (format == 'cif'):
+        url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
+    elif (data_type == 'xray'):
+      url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
   if (data_type in ["fasta", "seq"]) :
     # XXX the RCSB doesn't appear to have a simple URL for FASTA files
     if (url is None) : # TODO PDBe equivalent doesn't exist?
-      url = "http://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
+      url = "https://www.rcsb.org/pdb/download/downloadFastaFiles.do?structureIdList=%s&compressionType=uncompressed" % id
     try :
       data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
@@ -155,7 +172,10 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         raise
   elif data_type == "xray" :
     if (url is None) :
-      url = url_base + sf_prefix + id + sf_ext
+      if mirror == "pdb-redo":
+        url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
+      else:
+        url = url_base + sf_prefix + id + sf_ext
     try :
       data = libtbx.utils.urlopen(url)
     except urllib2.HTTPError, e :
@@ -166,7 +186,10 @@ def fetch (id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   else :
     if (url is None) :
       if format == "pdb" :
-        url = url_base + id + pdb_ext
+        if mirror == "pdb-redo":
+          url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
+        else:
+          url = url_base + id + pdb_ext
       else :
         url = url_base + id + "." + format
     try :
