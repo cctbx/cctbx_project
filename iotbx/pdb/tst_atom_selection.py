@@ -208,6 +208,8 @@ END
     59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
   assert list(isel("within(3, resname PRO)")) == [7, 8, 9, 17, 18, 19, 20, 21,
     22, 23, 24, 25, 32, 33, 73, 77, 80]
+  assert list(isel("residues_within(3, resname PRO)")) == \
+    range(6, 40) + [72, 73, 77, 79, 80]
   #
   try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:

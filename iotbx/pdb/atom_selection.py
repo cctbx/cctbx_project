@@ -523,6 +523,20 @@ class cache(slots_getstate_setstate):
       distance_cutoff=radius).neighbors_of(
         primary_selection=primary_selection)
 
+  def sel_residues_within(self, radius, primary_selection):
+    sel_within = self.sel_within(radius, primary_selection)
+    atoms = self.root.atoms()
+    residue_groups = []
+    for atom, sel in zip(atoms, sel_within):
+      if sel:
+        res_id = atom.parent().parent().id_str()
+        if res_id not in residue_groups:
+          residue_groups.append(res_id)
+          residue_group = atom.parent().parent()
+          for at in residue_group.atoms():
+            sel_within[at.i_seq] = True
+    return sel_within
+
   def selection_tokenizer(self, string, contiguous_word_characters=None):
     return selection_tokenizer(string, contiguous_word_characters)
 
@@ -689,7 +703,7 @@ class cache(slots_getstate_setstate):
                 result_stack.append(self.sel_bfactor(op, val))
               else :
                 result_stack.append(self.sel_occupancy(op, val))
-        elif ((lword == "within") and
+        elif ((lword == "within" or lword=='residues_within') and
               (self.special_position_settings is not None)) :
           assert word_iterator.pop().value == "("
           radius = float(word_iterator.pop().value)
@@ -698,8 +712,12 @@ class cache(slots_getstate_setstate):
             word_iterator=word_iterator,
             callback=callback,
             expect_nonmatching_closing_parenthesis=True)
-          result_stack.append(self.sel_within(radius=radius,
-            primary_selection=sel))
+          if lword=='within':
+            result_stack.append(self.sel_within(radius=radius,
+                                                primary_selection=sel))
+          elif lword=='residues_within':
+            result_stack.append(self.sel_residues_within(radius=radius,
+                                                         primary_selection=sel))
         elif (callback is not None):
           if (not callback(
                     word=word,
