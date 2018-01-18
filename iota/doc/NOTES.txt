@@ -40,6 +40,8 @@ error (merge.d_max was set to high-res rather than low-res)
 15. Input search scrubs "_tmp*" image files
 16. Chart picking now shows the correct image associated with plotted data
 17. Gain automatically set in cctbx.xfel processing
+18. XTerm IOTA correctly sets output path in auto mode
+19. XTerm IOTA correctly inteprets centering_type and lattice_type if None
 
 PRIME BUGFIXES
 
