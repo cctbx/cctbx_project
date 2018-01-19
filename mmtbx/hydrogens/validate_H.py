@@ -101,7 +101,7 @@ class validate_H():
             missing.append(atom_name)
     return xyz, missing
 
-  def missing_H(self):
+  def missing_hydrogens(self):
     missing_HD_atoms = []
     from mmtbx.rotamer import rotamer_eval
     get_class = common_residue_names_get_class
@@ -112,16 +112,18 @@ class validate_H():
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
             if (get_class(name=residue.resname ) == 'common_water'): continue
-            residue_id = residue.id_str()
             xyz, missing_list = self.get_missing_h_in_residue(
-              residue=residue,
-              mon_lib_srv=self.model.get_mon_lib_srv())
+              residue     = residue,
+              mon_lib_srv = self.model.get_mon_lib_srv())
             if missing_list:
               for atom_name in missing_list:
                 if atom_name not in missing:
                   missing.append(atom_name)
           if missing:
-            missing_HD_atoms.append((residue_id, missing, xyz))
+            missing_HD_atoms.append(
+                                    (residue.id_str(),
+                                     missing,
+                                     xyz))
     self.missing_HD_atoms = missing_HD_atoms
 
   def get_atom(self, residue_group, name):
@@ -187,10 +189,15 @@ class validate_H():
         name = atom_D_new_name)
       if atom_with_same_target_name is not None:
         atom_with_same_target_name.set_name(atom_D_old_name)
-        self.renamed.append((atom_with_same_target_name.id_str(),
-          atom_with_same_target_name.name, atom_D_new_name))
+        self.renamed.append(
+                            (atom_with_same_target_name.id_str(),
+                             atom_with_same_target_name.name,
+                             atom_D_new_name))
       atom_D.set_name(atom_D_new_name)
-      self.renamed.append((atom_D.id_str(), atom_D.name, atom_D_old_name))
+      self.renamed.append(
+                          (atom_D.id_str(),
+                           atom_D.name,
+                           atom_D_old_name))
     else:
       atom_H_old_name = atom_H.name
       atom_H_new_name = atom_D.name.replace('D','H',1)
@@ -201,10 +208,15 @@ class validate_H():
         name = atom_H_new_name)
       if atom_with_same_target_name is not None:
         atom_with_same_target_name.set_name(atom_H_old_name)
-        self.renamed.append((atom_with_same_target_name.id_str(),
-          atom_with_same_target_name.name, atom_H_new_name))
+        self.renamed.append(
+                            (atom_with_same_target_name.id_str(),
+                             atom_with_same_target_name.name,
+                             atom_H_new_name))
       atom_H.set_name(atom_H_new_name)
-      self.renamed.append((atom_H.id_str(), atom_H.name, atom_H_old_name))
+      self.renamed.append(
+                          (atom_H.id_str(),
+                           atom_H.name,
+                           atom_H_old_name))
 
   def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
     self.renamed = []
@@ -250,7 +262,7 @@ class validate_H():
     eps_occ_zero_scatt = 0.05
     # For rotatable H, H and D may be at different positions
     # However, when they are close to each other, cancellation may occur
-    # Introduce max distance, approx. 45 deg between O-D and O-H
+    # Introduce max distance, corresponds to approx. 45 deg between O-D and O-H
     max_distance_between_rotatable_H = 0.8
     for iseq in self.hd_exchanged_sites:
       atom_H = self.hd_exchanged_sites[iseq][0]
@@ -259,26 +271,44 @@ class validate_H():
       delta_xyz = atom_H.distance(atom_D)
       if (delta_xyz >= eps_xyz):
         sites_different_xyz.append(
-          (atom_H.id_str(),atom_D.id_str(),delta_xyz,atom_H.xyz,atom_D.xyz))
+                                  (atom_H.id_str(),
+                                   atom_D.id_str(),
+                                   delta_xyz,
+                                   atom_H.xyz,
+                                   atom_D.xyz))
       # H/D with different B
       delta_b = abs(atom_H.b - atom_D.b)
       if (delta_b >= eps_b):
         delta_b = atom_H.b - atom_D.b
         sites_different_b.append(
-          (atom_H.id_str(), atom_D.id_str(), delta_b, atom_H.xyz, atom_D.xyz))
+                                (atom_H.id_str(),
+                                 atom_D.id_str(),
+                                 delta_b,
+                                 atom_H.xyz,
+                                 atom_D.xyz))
       # H/D with sum of occupancies lt or gt 1
       occupancy_sum = atom_H.occ + atom_D.occ
       if (abs(1-occupancy_sum) >= delta_occ_sum):
         sites_sum_occ_not_1.append(
-          (atom_H.id_str(),atom_D.id_str(),occupancy_sum,atom_H.xyz,atom_D.xyz))
+                                  (atom_H.id_str(),
+                                   atom_D.id_str(),
+                                   occupancy_sum,
+                                   atom_H.xyz,
+                                   atom_D.xyz))
       # rotatable H/D with zero scattering sum, if closer than cut off apart
       if ((atom_H.i_seq in rotatable_hd_selection) and
           (atom_D.i_seq in rotatable_hd_selection)):
         if (atom_H.distance(atom_D) < max_distance_between_rotatable_H):
           if ((abs(atom_H.occ-occ_h_zero_scattering) <= eps_occ_zero_scatt)
-              and (abs(atom_D.occ-(1-occ_h_zero_scattering)) <= eps_occ_zero_scatt)):
+              and
+              (abs(atom_D.occ-(1-occ_h_zero_scattering))<= eps_occ_zero_scatt)):
             sites_occ_sum_no_scattering.append(
-              (atom_H.id_str(),atom_D.id_str(),atom_H.occ,atom_D.occ,atom_H.xyz))
+                                              (atom_H.id_str(),
+                                               atom_D.id_str(),
+                                               atom_H.occ,
+                                               atom_D.occ,
+                                               atom_H.xyz,
+                                               atom_D.xyz))
 
     self.hd_sites_analysis = group_args(
       sites_different_xyz = sites_different_xyz,
@@ -344,10 +374,14 @@ class validate_H():
             continue
           count_hd_atoms_protein += 1
           if (atom.occ == 0):
-            hd_atoms_with_occ_0.append((atom.id_str(), atom.xyz))
+            hd_atoms_with_occ_0.append(
+                                       (atom.id_str(),
+                                        atom.xyz))
           if (atom.occ <1 and atom.occ > 0 and atom.parent().altloc == ''):
             single_hd_atoms_occ_lt_1.append(
-              (atom.id_str(), atom.occ, atom.xyz))
+                                            (atom.id_str(),
+                                             atom.occ,
+                                             atom.xyz))
           if (is_hydrogen(atom)):
             count_h_protein += 1
           elif (is_deuterium(atom)):
@@ -388,26 +422,37 @@ class validate_H():
     if sel_h.count(True) != 0 and sel_d.count(True) == 0:
       hd_state = 'all_h'
     elif sel_h.count(True) == 0 and sel_d.count(True) != 0:
-      hd_state = 'all_D'
+      hd_state = 'all_d'
     else:
       hd_state = 'h_and_d'
     return hd_state
 
+  def bond_angle_outliers(self):
+    pass
+
   def run(self):
+    # if H and D are present, analyse and curate potential H/D states
     if self.get_hd_state() == 'h_and_d':
       self.get_exchanged_sites_and_curate_swapped(
         pdb_hierarchy = self.pdb_hierarchy)
+    # Get overall counts of H and D
     self.count_hd_atoms()
+    # If H/D sites are present, analyze for mismatches
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()
-    self.missing_H()
+    # Find missing H atoms
+    self.missing_hydrogens()
+    # Find bond and angle outliers
+    self.bond_angle_outliers()
 
   def get_results(self):
     return group_args(
         overall_counts_hd     = self.overall_counts_hd,
         hd_exchanged_sites    = self.hd_exchanged_sites,
         hd_sites_analysis     = self.hd_sites_analysis,
-        pdb_hierarchy_curated = self.pdb_hierarchy,
         renamed               = self.renamed,
         missing_HD_atoms      = self.missing_HD_atoms
         )
+
+  def get_curated_hierarchy(self):
+    return self.pdb_hierarchy,

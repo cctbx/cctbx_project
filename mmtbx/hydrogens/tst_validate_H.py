@@ -610,6 +610,14 @@ def exercise_hd_state():
   c = validate_H(model)
   assert (c.get_hd_state() == 'all_h')
 
+  pdb_inp = iotbx.pdb.input(lines=pdb_str5.split("\n"), source_info=None)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+#      build_grm   = True, # to speed up test
+      pdb_interpretation_params = pdb_interpretation_phil.extract())
+  c = validate_H(model)
+  assert (c.get_hd_state() == 'all_d')
+
   pdb_inp = iotbx.pdb.input(lines=pdb_str3.split("\n"), source_info=None)
   model = mmtbx.model.manager(
       model_input = pdb_inp,
