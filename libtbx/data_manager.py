@@ -54,6 +54,10 @@ class DataManager(object):
   def remove_model(self, filename):
     return self._remove('model', filename)
 
+  def has_models(self, expected_n=1, exact_count=False):
+    return self._has_data('model', expected_n=expected_n,
+                          exact_count=exact_count)
+
   # ---------------------------------------------------------------------------
   # Sequences
   def add_sequence(self, filename, data):
@@ -73,6 +77,10 @@ class DataManager(object):
 
   def remove_sequence(self, filename):
     return self._remove('sequence', filename)
+
+  def has_sequences(self, expected_n=1, exact_count=False):
+    return self._has_data('sequence', expected_n=expected_n,
+                          exact_count=exact_count)
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -132,5 +140,19 @@ class DataManager(object):
       self._get_current_storage().pop(filename)
       if (filename == self._get_current_default()):
         setattr(self, self._current_default, None)
+
+  def _has_data(self, datatype, expected_n=1, exact_count=False):
+    self.set_datatype(datatype)
+    actual_n = len(self._get_names(datatype))
+    v = cmp(actual_n, expected_n)
+    if (exact_count):
+      # exact count required
+      if (v != 0):
+        raise Sorry('%i %s(s) found. Expected exactly %i.' %
+                    (actual_n, datatype, expected_n))
+      else:
+        return True
+    else:
+      return (v >= 0)
 
 # =============================================================================

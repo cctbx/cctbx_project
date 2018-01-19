@@ -11,6 +11,9 @@ def test_data_manager():
   assert (a.get_model() == 'b')
   assert (a.get_model('a') == 'b')
   assert (a.get_model('c') == 'd')
+  assert (a.has_models())
+  assert (a.has_models(exact_count=True, expected_n=2))
+  assert (not a.has_models(expected_n=3))
 
   a.set_default_model('c')
   assert (a.get_model() == 'd')
