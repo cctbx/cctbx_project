@@ -155,7 +155,7 @@ class torsion_ncs(object):
           h_i = self.pdb_hierarchy.select(isel)
           h_j = self.pdb_hierarchy.select(jsel)
           # chain matching procedure
-          matching_chain_numbers = []
+          # matching_chain_numbers = []
           matching_chains = []
           for ii, i_chain in enumerate(h_i.chains()):
             for jj, j_chain in enumerate(h_j.chains()):
@@ -166,7 +166,7 @@ class torsion_ncs(object):
               if (i_chain.atoms_size() == j_chain.atoms_size()
                   # and i_chain.is_similar_hierarchy(j_chain)
                   and i_chain.as_sequence() == j_chain.as_sequence()):
-                matching_chain_numbers.append((ii, jj))
+                # matching_chain_numbers.append((ii, jj))
                 matching_chains.append((i_chain, j_chain))
                 break
           # residue matching

@@ -24,7 +24,7 @@ class manager(object):
 
   def __init__(self,
         geometry=None,
-        ncs_groups=None,
+        ncs_groups=None, # Cartesian NCS restraints
         normalization=False,
         use_amber=False,
         use_sander=False,

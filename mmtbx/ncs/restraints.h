@@ -15,9 +15,19 @@ namespace mmtbx { namespace ncs { namespace restraints {
   struct pair_registry : boost::noncopyable
   {
     private:
+      // Terminology:
+      // i_seq - i_seq of atoms belong to master
+      // j_seq - i_seq of atoms belong to copies
+      // j_ncs - index number of NCS copy
+
+      // 2D array for matching i_seq and j_ncs with j_seq:
+      // tab_i_seqs_[i_seq][j_ncs] contains j_seq
       std::vector<scitbx::auto_array<unsigned> > tab_i_seqs_;
+      // Contains  for each j_seq
       std::vector<unsigned> tab_ref_i_seqs_;
+      // Array with j_ncs for each j_seq
       std::vector<unsigned> tab_i_ncs_;
+      // Array for counting number of atoms in each ncs copy
       std::vector<unsigned> counts_;
     public:
 
