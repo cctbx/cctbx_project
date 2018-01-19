@@ -83,12 +83,15 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["polarization_fraction"] = obj.get_polarization_fraction();
     result["flux"] = obj.get_flux();
     result["transmission"] = obj.get_transmission();
+    if(obj.get_num_scan_points() > 0){
+      result["s0_at_scan_points"] = obj.get_s0_at_scan_points();
+    }
     return result;
   }
 
   template <>
   Beam* from_dict<Beam>(boost::python::dict obj) {
-    return new Beam(
+    Beam* b = new Beam(
       boost::python::extract< vec3<double> >(obj["direction"]),
       boost::python::extract< double >(obj["wavelength"]),
       deg_as_rad(
@@ -100,6 +103,12 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< double >(obj.get("polarization_fraction", 0.999)),
       boost::python::extract< double >(obj.get("flux", 0)),
       boost::python::extract< double >(obj.get("transmission", 1)));
+    if(obj.has_key("s0_at_scan_points")){
+      scitbx::af::const_ref< vec3<double> > s0_at_scan_points;
+      s0_at_scan_points = boost::python::extract< scitbx::af::const_ref< vec3<double> > >(obj["s0_at_scan_points"]);
+      b->set_s0_at_scan_points(s0_at_scan_points);
+    }
+    return b;
   }
 
   static Beam* make_beam(vec3<double> sample_to_source, double wavelength,

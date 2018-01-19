@@ -9,6 +9,7 @@ class Test(object):
 
   def run(self):
     self.tst_beam()
+    self.tst_beam_with_scan_points()
     self.tst_detector()
     self.tst_goniometer()
     self.tst_scan()
@@ -26,6 +27,7 @@ class Test(object):
     assert(abs(d['divergence'] - 0.1) <= 1e-7)
     assert(abs(d['sigma_divergence'] - 0.1) <= 1e-7)
     assert(b1 == b2)
+    assert 's0_at_scan_points' not in d
 
     # Test with a template and partial dictionary
     d2 = {'direction' : (0, 1, 0), 'divergence' : 0.2 }
@@ -35,6 +37,25 @@ class Test(object):
     assert(abs(b3.get_divergence() - 0.2) <= 1e-7)
     assert(abs(b3.get_sigma_divergence() - 0.1) <= 1e-7)
     assert(b2 != b3)
+    print 'OK'
+
+  def tst_beam_with_scan_points(self):
+    from dxtbx.model import Beam, BeamFactory
+    b1 = Beam((1, 0, 0), 2, 0.1, 0.1)
+    from scitbx import matrix
+    s0_static = matrix.col(b1.get_s0())
+    s0_as_scan_points = [s0_static] * 5
+    b1.set_s0_at_scan_points([s0_static] * 5)
+    d = b1.to_dict()
+    b2 = BeamFactory.from_dict(d)
+
+    for s0comp in d['s0_at_scan_points']:
+      assert matrix.col(s0comp) == s0_static
+
+    for s0comp in b2.get_s0_at_scan_points():
+      assert matrix.col(s0comp) == s0_static
+
+    assert(b1 == b2)
     print 'OK'
 
   def tst_detector(self):
