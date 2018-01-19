@@ -137,6 +137,36 @@ def tst_scan_varying():
 
   print 'OK'
 
+def exercise_comparison():
+
+  from scitbx import matrix
+  direction = matrix.col((0.013142, 0.002200, 1.450476))
+  unit_direction = direction.normalize()
+  wavelength = 0.689400
+  s0 = -unit_direction * 1.0 / wavelength
+
+  # Equal beams with scan-points set
+  b1 = Beam(s0)
+  b1.set_s0_at_scan_points([s0] * 5)
+  b2 = Beam(s0)
+  b2.set_s0_at_scan_points([s0] * 5)
+
+  assert b1 == b2
+  assert b1.is_similar_to(b2)
+
+  # Different direction
+  b3 = Beam(-s0)
+  b3.set_s0_at_scan_points([-s0] * 5)
+  assert b1 != b3
+  assert not b1.is_similar_to(b3)
+
+  # Different wavelength
+  b4 = Beam(s0 * 1.5)
+  b4.set_s0_at_scan_points([s0 * 1.5] * 5)
+  assert b1 != b4
+  assert not b1.is_similar_to(b4)
+
+  print 'OK'
 
 def run():
   """Test the beam object"""
@@ -144,6 +174,7 @@ def run():
   tst_set_s0()
   tst_from_phil()
   tst_scan_varying()
+  exercise_comparison()
 
 if __name__ == '__main__':
   run()
