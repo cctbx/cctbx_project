@@ -292,6 +292,60 @@ ATOM     19  HE2 TYR A 139       6.575   5.788   9.051  1.00 10.00           H
 ATOM     20  HH  TYR A 139       4.710   5.148   8.037  1.00 10.00           H
 """
 
+pdb_str5 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  DA  TYR A 139      10.443   8.186   7.059  1.00 10.00           D
+ATOM     15  DB3 TYR A 139      11.014   5.853   7.567  1.00 10.00           D
+ATOM     16  DD1 TYR A 139       8.799   5.277   4.695  1.00 10.00           D
+ATOM     17  DD2 TYR A 139       8.974   6.264   8.835  1.00 10.00           D
+ATOM     19  DE2 TYR A 139       6.575   5.788   9.051  1.00 10.00           D
+ATOM     20  DH  TYR A 139       4.710   5.148   8.037  1.00 10.00           D
+"""
+
+pdb_str6 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  HA ATYR A 139      10.443   8.186   7.059  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.50 10.00           H
+ATOM     15  HB3ATYR A 139      11.014   5.853   7.567  0.50 10.00           H
+ATOM     16  HD1ATYR A 139       8.799   5.277   4.695  0.50 10.00           H
+ATOM     19  HE2ATYR A 139       6.575   5.788   9.051  0.50 10.00           H
+ATOM     20  HH  TYR A 139       4.710   5.148   8.037  1.00 10.00           H
+ATOM     21  DA BTYR A 139      10.443   8.186   7.059  0.50 10.00           D
+ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  0.50 10.00           D
+ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
+ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
+ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
+"""
+
 def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
@@ -459,6 +513,7 @@ def exercise3():
     ('pdb=" HE2ATYR A 139 "', 'pdb=" DE2BTYR A 139 "', 1.1)]
   for item, answer in zip(sites_sum_occ_not_1, sum_occ_answer):
     assert approx_equal(item[2], answer[2], 1.e-2)
+    assert (item[3] is not None and item[4] is not None) # make sure xyz exist
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
@@ -468,12 +523,14 @@ def exercise3():
 
   occ_0_answer = ['pdb=" HB2ATYR A 139 "']
   for item, answer in zip(hd_atoms_with_occ_0, occ_0_answer):
-    assert(item[0].strip() == answer.strip())
+    assert (item[0].strip() == answer.strip())
+    assert (item[1] is not None) # make sure xyz exist
 
   occ_lt_1_answer = [('pdb=" HD1 TYR A 139 "', 0.5)]
   for item, answer in zip(single_hd_atoms_occ_lt_1, occ_lt_1_answer):
     assert (item[0].strip() == answer[0].strip())
     assert (item[1] == answer[1])
+    assert (item[2] is not None) # make sure xyz exist
 
 # ------------------------------------------------------------------------------
 # MISSING ATOMS
@@ -490,9 +547,51 @@ def exercise4():
   missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HB2'])]
   for item, answer in zip(missing, missing_answer):
     assert (item[0].strip() == answer[0].strip())
+    assert (item[2] is not None) # make sure xyz exist
     for atom, aatom in zip(item[1], answer[1]):
       assert (atom.strip() == aatom.strip())
 
+# ------------------------------------------------------------------------------
+# MISSING ATOMS
+# Model has only D atoms
+# H, HE1 and HB2 are missing --> result uses H naming convention!
+# (takes into account naming ambiguity HB1+HB2 and HB2+HB3)
+# ------------------------------------------------------------------------------
+def exercise5():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str5)
+  missing = results.missing_HD_atoms
+
+  missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HB2'])]
+  for item, answer in zip(missing, missing_answer):
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[2] is not None) # make sure xyz exist
+    for atom, aatom in zip(item[1], answer[1]):
+      assert (atom.strip() == aatom.strip())
+
+# ------------------------------------------------------------------------------
+# MISSING ATOMS
+# Model has exchanged sites
+# H --> missing
+# HD2 --> missing
+# CG --> missing, should not be in results because it is non-H atom
+# HE1 --> is present as DE1 in conf B but missing HE1 in conf A
+# HB3 --> is present as HB3 in conf A but missing DB3 in conf B
+# ------------------------------------------------------------------------------
+def exercise6():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str6)
+  missing = results.missing_HD_atoms
+
+  missing_answer = [('pdbres="TYR A 139 "', ['HE1', 'H', 'HD2', 'HB3'])]
+  for item, answer in zip(missing, missing_answer):
+    assert (item[0].strip() == answer[0].strip())
+    assert (item[2] is not None) # make sure xyz exist
+    for atom, aatom in zip(item[1], answer[1]):
+      assert (atom.strip() == aatom.strip())
+      assert (atom.strip() != 'CG')
 
 # ------------------------------------------------------------------------------
 # CHECK HD STATE (hd_state)
@@ -506,7 +605,7 @@ def exercise_hd_state():
   pdb_inp = iotbx.pdb.input(lines=pdb_str4.split("\n"), source_info=None)
   model = mmtbx.model.manager(
       model_input = pdb_inp,
-#      build_grm   = True,
+#      build_grm   = True, # to speed up test
       pdb_interpretation_params = pdb_interpretation_phil.extract())
   c = validate_H(model)
   assert (c.get_hd_state() == 'all_h')
@@ -514,7 +613,7 @@ def exercise_hd_state():
   pdb_inp = iotbx.pdb.input(lines=pdb_str3.split("\n"), source_info=None)
   model = mmtbx.model.manager(
       model_input = pdb_inp,
-#      build_grm   = True,
+#      build_grm   = True, # to speed up test
       pdb_interpretation_params = pdb_interpretation_phil.extract())
   c = validate_H(model)
   assert (c.get_hd_state() == 'h_and_d')
@@ -527,6 +626,8 @@ if (__name__ == "__main__"):
   exercise2()
   exercise3()
   exercise4()
+  exercise5()
+  exercise6()
   exercise_hd_state()
   print "OK. Time: %8.3f"%(time.time()-t0)
 

@@ -155,7 +155,7 @@ Usage:
       self.print_renamed(renamed)
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
       self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1)
-    if len(list(hd_exchanged_sites.keys())) != 0:
+    if hd_exchanged_sites:
       self.print_results_hd_sites(
         hd_exchanged_sites, hd_sites_analysis, overall_counts_hd)
     if missing_HD_atoms:

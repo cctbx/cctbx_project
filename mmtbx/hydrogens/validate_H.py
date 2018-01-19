@@ -46,12 +46,13 @@ class validate_H():
       #hd_aliases = mlq.hydrogen_deuterium_aliases()
       atom_name_list = []
       for atom in residue.atoms():
-        if atom.name == " CA ":
+        atom_name = atom.name.strip().upper()
+        if atom_name == "CA":
           ca_xyz = atom.xyz
         if (not atom.element_is_hydrogen()):
           xyz = atom.xyz
-        atom_name = atom.name.strip().upper()
-        atom_name_list.append(atom_name)
+        else:
+          atom_name_list.append(atom_name)
         if is_deuterium(atom):
           atom_name_list.append(atom_name.replace('D','H',1))
         #if atom_name in hd_aliases:
@@ -84,18 +85,18 @@ class validate_H():
               atom_dict[alts[1]].type_energy == 'HCH2'):
             reference_hydrogens.append(alts[2])
             reference_hydrogens.remove(alts[0])
-            if alts[2].replace('H','D',1) in atom_name_list:
-              atom_name_list.append(alts[2])
+#            if alts[2].replace('H','D',1) in atom_name_list:
+#              atom_name_list.append(alts[2])
       for atom_name in reference_hydrogens:
         if atom_name not in atom_name_list:
           if (atom_name == 'H' and
             ('H1' in atom_name_list and 'H2' in atom_name_list and 'H3' in atom_name_list)):
             continue
           atom_temp = atom_name.replace("*", "'")
-          if atom_name.upper() == "O1P":
-            atom_temp = "OP1"
-          elif atom_name.upper() == "O2P":
-            atom_temp = "OP2"
+#          if atom_name.upper() == "O1P":
+#            atom_temp = "OP1"
+#          elif atom_name.upper() == "O2P":
+#            atom_temp = "OP2"
           if atom_temp not in atom_name_list:
             missing.append(atom_name)
     return xyz, missing
@@ -111,7 +112,6 @@ class validate_H():
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
             if (get_class(name=residue.resname ) == 'common_water'): continue
-            #if (get_class(name=residue.resname)) not in protein: continue
             residue_id = residue.id_str()
             xyz, missing_list = self.get_missing_h_in_residue(
               residue=residue,
