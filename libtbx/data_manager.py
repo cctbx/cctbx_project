@@ -54,9 +54,9 @@ class DataManager(object):
   def remove_model(self, filename):
     return self._remove('model', filename)
 
-  def has_models(self, expected_n=1, exact_count=False):
+  def has_models(self, expected_n=1, exact_count=False, raise_sorry=True):
     return self._has_data('model', expected_n=expected_n,
-                          exact_count=exact_count)
+                          exact_count=exact_count, raise_sorry=raise_sorry)
 
   # ---------------------------------------------------------------------------
   # Sequences
@@ -78,9 +78,9 @@ class DataManager(object):
   def remove_sequence(self, filename):
     return self._remove('sequence', filename)
 
-  def has_sequences(self, expected_n=1, exact_count=False):
+  def has_sequences(self, expected_n=1, exact_count=False, raise_sorry=True):
     return self._has_data('sequence', expected_n=expected_n,
-                          exact_count=exact_count)
+                          exact_count=exact_count, raise_sorry=raise_sorry)
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -141,18 +141,26 @@ class DataManager(object):
       if (filename == self._get_current_default()):
         setattr(self, self._current_default, None)
 
-  def _has_data(self, datatype, expected_n=1, exact_count=False):
+  def _has_data(self, datatype, expected_n=1, exact_count=False,
+                raise_sorry=True):
     self.set_datatype(datatype)
     actual_n = len(self._get_names(datatype))
     v = cmp(actual_n, expected_n)
     if (exact_count):
       # exact count required
       if (v != 0):
-        raise Sorry('%i %s(s) found. Expected exactly %i.' %
-                    (actual_n, datatype, expected_n))
+        if (raise_sorry):
+          raise Sorry('%i %s(s) found. Expected exactly %i.' %
+                      (actual_n, datatype, expected_n))
+        else:
+          return False
       else:
         return True
     else:
+      if (raise_sorry):
+        if (v < 0):
+          raise Sorry('%i %s(s) found. Expected at least %i.' %
+                      (actual_n, datatype, expected_n))
       return (v >= 0)
 
 # =============================================================================
