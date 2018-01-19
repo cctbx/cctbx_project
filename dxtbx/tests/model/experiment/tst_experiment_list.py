@@ -623,6 +623,7 @@ class TestExperimentListDumper(object):
     self.tst_dump_empty_sweep()
     self.tst_dump_with_lookup()
     self.tst_dump_with_bad_lookup()
+    self.tst_dump_scan_varying()
 
   def tst_dump_formats(self):
     from uuid import uuid4
@@ -656,6 +657,34 @@ class TestExperimentListDumper(object):
     filename = 'temp%s.pickle' % uuid4().hex
     dump.as_pickle(filename)
     elist2 = ExperimentListFactory.from_pickle_file(filename)
+    self.check(elist1, elist2)
+
+  def tst_dump_scan_varying(self):
+    from uuid import uuid4
+    from os.path import join
+    import os
+
+    os.environ['DIALS_REGRESSION'] = self.path
+
+    # Get all the filenames
+    filename1 = join(self.path, 'experiment_test_data', 'experiment_1.json')
+
+    # Read the experiment list in
+    elist1 = ExperimentListFactory.from_json_file(filename1)
+
+    # Make trivial scan-varying models
+    crystal = elist1[0].crystal
+    beam = elist1[0].beam
+    crystal.set_A_at_scan_points([crystal.get_A()] * 5)
+    beam.set_s0_at_scan_points([beam.get_s0()] * 5)
+
+    # Create the experiment list dumper
+    dump = ExperimentListDumper(elist1)
+
+    # Dump as JSON file and reload
+    filename = 'temp%s.json' % uuid4().hex
+    dump.as_json(filename)
+    elist2 = ExperimentListFactory.from_json_file(filename)
     self.check(elist1, elist2)
 
   def tst_dump_empty_sweep(self):
