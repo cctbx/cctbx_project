@@ -1,22 +1,51 @@
+# -*- coding: utf-8 -*-
 from __future__ import division, print_function
 
 import os
 
 import iotbx.pdb
-import iotbx.phil
 import mmtbx.model
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
 
-'''
-Code will be changed once new command-line parser is functioning
-'''
+# just for testing
+import libtbx.phil
+program_citations = libtbx.phil.parse('''
+citation {
+  article_id = hhpred
+  authors = Söding J
+  title = Protein homology detection by HMM-HMM comparison.
+  journal = Bioinformatics
+  volume = 21
+  pages = 951-60
+  year = 2005
+  doi_id = "10.1093/bioinformatics/bti125"
+  pmid = 15531603
+  external = True
+}
+
+citation {
+  article_id = erraser
+  authors = Chou FC, Sripakdeevong P, Dibrov SM, Hermann T, Das R
+  title = Correcting pervasive errors in RNA crystallography through enumerative structure prediction.
+  journal = Nat Methods
+  volume = 10
+  pages = 74-6
+  year = 2012
+  doi_id = "10.1038/nmeth.2262"
+  pmid = 23202432
+  external = True
+}
+
+''')
+# end testing
 
 # =============================================================================
-description = '''
+class Program(ProgramTemplate):
+
+  description = '''
 Program for preparing model and data files for depostion into the Proten Data
-Bank
+Bank\n
 
 Minimum required data:
   Model file
@@ -24,41 +53,28 @@ Minimum required data:
 
 The sequence file should have a sequence for each chain in the model file.
 
-Currently, this program only combines the model and sequence into a single mmCIF
-file. More functionality is planned.
+Currently, this program only combines the model and sequence into a single
+mmCIF file. More functionality is planned.
 '''
 
-# =============================================================================
-master_params_str = '''
-input {
-  model_file = None
-    .type = path
-  sequence_file = None
-    .type = path
-}
+  master_phil_str = '''
 sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
 }
 '''
 
-master_params = iotbx.phil.parse(master_params_str, process_includes=True)
+  # just for testing
+  citations = program_citations
+  known_article_ids = ['phenix', 'phenix.polder']
+  # end testing
 
-# =============================================================================
-class Program(ProgramTemplate):
-
+  # ---------------------------------------------------------------------------
   def validate(self):
     print('Validating inputs', file=self.logger)
-    if (len(self.data_manager.get_model_names()) == 0):
-      raise Sorry('One model file is required.')
-    if (len(self.data_manager.get_sequence_names()) == 0):
-      raise Sorry('One sequence file is required.')
+    self.data_manager.has_models()
+    self.data_manager.has_sequences()
 
-    print ('Input files:', file=self.logger)
-    print ('  Model file = %s' % self.data_manager.get_default_model_name(),
-           file=self.logger)
-    print ('  Sequence file = %s' %
-           self.data_manager.get_default_sequence_name(), file=self.logger)
-
+  # ---------------------------------------------------------------------------
   def run(self):
     model = self.data_manager.get_model()
     self.cif_blocks = list()
@@ -92,8 +108,10 @@ class Program(ProgramTemplate):
     self.data_manager.add_model(self.output_file, model)
     self.data_manager.set_default_model(self.output_file)
 
+  # ---------------------------------------------------------------------------
   def get_results(self):
     return group_args(output_file=self.output_file,
                       cif_model=self.cif_model)
 
 # =============================================================================
+# end

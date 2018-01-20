@@ -2,73 +2,39 @@ from __future__ import division, print_function
 
 import os, sys
 
-import iotbx.pdb
-import mmtbx.model
-
-from iotbx.file_reader import any_file
-from libtbx.data_manager import DataManager
-from libtbx.utils import multi_out, Sorry
+from iotbx.cli_parser import CCTBXParser
+from libtbx.utils import multi_out, show_total_time
 from mmtbx.programs import prepare_pdb_deposition
-
-# =============================================================================
-# roll into command-line parser
-def show_usage(logger=None):
-  if (logger is None):
-    logger = sys.stdout
-  print(prepare_pdb_deposition.description +
-        '\n mmtbx.prepare_pdb_depostion <model file> <sequence file>\n',
-        file=logger)
 
 # =============================================================================
 def run(args):
 
+  # create parser
   logger = multi_out() #logging.getLogger('main')
   logger.register('stdout', sys.stdout)
 
-  # replace command-line parser
-  # ---------------------------------------------------------------------------
-  if (len(args) == 0):
-    show_usage(logger=logger)
-    sys.exit()
+  parser = CCTBXParser(
+    program_class=prepare_pdb_deposition.Program,
+    logger=logger)
+  namespace = parser.parse_args(sys.argv[1:])
 
-  input_objects = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil=prepare_pdb_deposition.master_params,
-    pdb_file_def='input.model_file',
-    seq_file_def='input.sequence_file'
-  )
-
-  # get program settings
-  params = input_objects.work.extract()
-
-  # get files (will be handled by task.validate)
-  # already
-  # if (params.input.model_file is None):
-  #   raise Sorry('One model file is required.')
-  # if (params.input.sequence_file is None):
-  #   raise Sorry('One sequence file is required.')
-
-  pdb_input = iotbx.pdb.input(params.input.model_file)
-  model = mmtbx.model.manager(model_input=pdb_input, log=logger)
-
-  sequence = any_file(params.input.sequence_file)
-  sequence.check_file_type('seq')
-  sequence = sequence.file_object
-
-  # construct data manager
-  data_manager = DataManager()
-  data_manager.add_model(params.input.model_file, model)
-  data_manager.add_sequence(params.input.sequence_file, sequence)
-
-  # ---------------------------------------------------------------------------
   # start program
-  task = prepare_pdb_deposition.Program(data_manager, params, logger=logger)
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = prepare_pdb_deposition.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=logger)
 
   # validate inputs
   task.validate()
 
   # run program
   task.run()
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  show_total_time(out=logger)
 
 # =============================================================================
 if __name__ == '__main__':
