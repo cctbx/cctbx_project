@@ -904,7 +904,3 @@ class groups(object):
     for group in self.members:
       members.append(group.select(iselection=iselection))
     return groups(members=members)
-
-
-
-
