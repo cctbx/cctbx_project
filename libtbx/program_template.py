@@ -31,7 +31,33 @@ import logging
 
 # =============================================================================
 class ProgramTemplate(object):
+  # Class variables
 
+  # description of the program
+  description = '''
+Program Description
+'''
+
+  # master PHIL string for the program (required)
+  master_phil_str = '''
+program {}
+'''
+
+  # unique citations for the program. list of citation phil extract objects
+  # see libtbx/citations.py for the PHIL format.
+  citations = None
+
+  # common citations used by the program that exist in libtbx/citations.params
+  # list of article_id strings, e.g. ["polder", "elbow"]).
+  known_article_ids = list()
+
+  # text shown at the end of the command-line program
+  epilog = '''
+For additional help, you can contact the developers at cctbx@cci.lbl.gov
+
+'''
+
+  # ---------------------------------------------------------------------------
   def __init__(self, data_manager, params, logger=None):
     '''
     Common constructor for all programs
