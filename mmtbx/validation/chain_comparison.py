@@ -1016,7 +1016,7 @@ def run(args=None,
   chain_hierarchy=apply_atom_selection(atom_selection,chain_hierarchy)
   target_hierarchy=apply_atom_selection(atom_selection,target_hierarchy)
 
-  
+
   total_target=target_hierarchy.overall_counts().n_residues
   total_chain=chain_hierarchy.overall_counts().n_residues
 
