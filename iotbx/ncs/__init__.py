@@ -1791,9 +1791,10 @@ class input(object):
     [['(Chain A)','(chain C)','(chain E)'],['(chain B)','(chain D)','(chain F)']]
     """
     result = []
-    for master, copies in self.ncs_to_asu_selection.iteritems():
+    sorted_keys = sort_dict_keys(self.ncs_to_asu_selection)
+    for master in sorted_keys:
       group = [master]
-      for cp in copies:
+      for cp in self.ncs_to_asu_selection[master]:
         group.append(cp)
       result.append(group)
     return result

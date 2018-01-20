@@ -224,12 +224,14 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         coordinate_sigma=coordinate_sigma,
         b_factor_weight=b_factor_weight,
         special_position_warnings_only=False))
-  energies_adp_iso = groups.energies_adp_iso(u_isos=u_isos, average_power=1)
+  cart_manager = ncs.restraints.cartesian_ncs_manager(model=None, ncs_params=None,
+      ext_groups=groups)
+  energies_adp_iso = cart_manager.energies_adp_iso(u_isos=u_isos, average_power=1)
   assert energies_adp_iso.number_of_restraints == 220
   assert eps_eq(energies_adp_iso.residual_sum, 4.2807726061)
   assert eps_eq(energies_adp_iso.target, energies_adp_iso.residual_sum)
   assert eps_eq(energies_adp_iso.gradients.norm(), 17.3806790658)
-  energies_adp_iso = groups.energies_adp_iso(
+  energies_adp_iso = cart_manager.energies_adp_iso(
     u_isos=u_isos, average_power=1, normalization=True)
   assert energies_adp_iso.number_of_restraints == 220
   assert eps_eq(energies_adp_iso.residual_sum, 4.2807726061)
@@ -240,12 +242,12 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
       assert eps_eq(
         rms, energies_adp_iso_no_gradients.rms_with_respect_to_average)
   assert energies_adp_iso.rms_with_respect_to_averages[2] is None
-  energies_sites = groups.energies_sites(sites_cart=sites_cart)
+  energies_sites = cart_manager.energies_sites(sites_cart=sites_cart)
   assert energies_sites.number_of_restraints == 220
   assert eps_eq(energies_sites.residual_sum, 8767.54961571)
   assert eps_eq(energies_sites.target, energies_sites.residual_sum)
   assert eps_eq(energies_sites.gradients.norm(), 4187.49319181)
-  energies_sites = groups.energies_sites(
+  energies_sites = cart_manager.energies_sites(
     sites_cart=sites_cart, normalization=True)
   assert energies_sites.number_of_restraints == 220
   assert eps_eq(energies_sites.residual_sum, 8767.54961571)
@@ -257,7 +259,7 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         rms, energies_sites_no_gradients.rms_with_respect_to_average)
   assert energies_sites.rms_with_respect_to_averages[1] is None
   out = StringIO()
-  groups.show_adp_iso_differences_to_average(
+  cart_manager.show_adp_iso_differences_to_average(
     u_isos=u_isos, site_labels=site_labels, out=out, prefix="W@")
   assert not show_diff(out.getvalue(), """\
 W@NCS restraint group 1:
@@ -271,7 +273,7 @@ W@NCS restraint group 3:
 W@  b_factor_weight: None  =>  restraints disabled
 """, selections=[range(5),range(-3,0)])
   out = StringIO()
-  groups.show_operators(sites_cart=sites_cart, out=out, prefix="K&")
+  cart_manager.show_operators(sites_cart=sites_cart, out=out, prefix="K&")
   assert not show_diff(out.getvalue(), """\
 K&NCS restraint group 1:
 K&  NCS operator 1:
@@ -289,7 +291,7 @@ K&      0.988659 - 1.132195: 3
 K&    RMS difference with respect to the reference: 0.724248
 """, selections=[range(3),range(15,21),range(-3,0)])
   out = StringIO()
-  groups.show_sites_distances_to_average(
+  cart_manager.show_sites_distances_to_average(
     sites_cart=sites_cart, site_labels=site_labels, out=out, prefix="[")
   assert not show_diff(out.getvalue(), """\
 [NCS restraint group 1:
@@ -312,12 +314,12 @@ K&    RMS difference with respect to the reference: 0.724248
 [    " C   THR D   6 ":   0.4017
 """, selections=[range(6),range(120,129),range(-1,0)])
   #
-  selection = groups.selection_restrained()
+  selection = cart_manager.selection_restrained()
   assert selection.size() == 132
   assert selection.count(True) == 110
   out = StringIO()
   rm = model.get_restraints_manager()
-  rm.ncs_groups = groups
+  rm.ncs_groups = cart_manager
   out = model.restraints_as_geo()
   # print out
   for i, l in enumerate(out.split('\n')):
@@ -362,10 +364,10 @@ ENDMDL
   #
   for group in groups.members:
     assert group.registry.number_of_additional_isolated_sites == 0
-  groups.register_additional_isolated_sites(number=10)
+  cart_manager.register_additional_isolated_sites(number=10)
   for group in groups.members:
     assert group.registry.number_of_additional_isolated_sites == 10
-  groups.register_additional_isolated_sites(number=3)
+  cart_manager.register_additional_isolated_sites(number=3)
   for group in groups.members:
     assert group.registry.number_of_additional_isolated_sites == 13
 

@@ -9,7 +9,7 @@ restraints.
 from __future__ import division
 
 from libtbx.test_utils import approx_equal
-from libtbx.utils import Sorry, user_plus_sys_time
+from libtbx.utils import Sorry, user_plus_sys_time, null_out
 from libtbx import group_args, str_utils
 
 import iotbx.pdb
@@ -36,6 +36,7 @@ import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
 from mmtbx import utils
+from mmtbx import ncs
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
@@ -994,11 +995,17 @@ class manager(object):
     """
     return self._ncs_groups
 
-  def setup_cartesian_ncs_groups(self, ncs_groups):
+  def setup_cartesian_ncs_groups(self, ncs_params, log=null_out()):
+    cartesian_ncs = ncs.restraints.cartesian_ncs_manager(
+        model=self,
+        ncs_params=ncs_params)
     rm = self.get_restraints_manager()
-    if ncs_groups is not None and len(ncs_groups.members) > 0:
+    if cartesian_ncs.get_n_groups() > 0:
       assert rm is not None
-      rm.ncs_groups = ncs_groups
+      rm.ncs_groups = cartesian_ncs
+    else:
+      print >> self.log, "No NCS restraint groups specified."
+      print >> self.log
 
   def cartesian_NCS_as_pdb(self):
     result = StringIO()
