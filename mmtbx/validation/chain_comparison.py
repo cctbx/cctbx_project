@@ -1007,6 +1007,16 @@ def run(args=None,
     chain_hierarchy=apply_atom_selection('not hetero',chain_hierarchy)
     target_hierarchy=apply_atom_selection('not hetero',target_hierarchy)
 
+  # get the CA residues
+  if chain_type in ["RNA","DNA"]:
+    atom_selection="name P"
+  else:
+    atom_selection="name ca and (not element Ca)"
+
+  chain_hierarchy=apply_atom_selection(atom_selection,chain_hierarchy)
+  target_hierarchy=apply_atom_selection(atom_selection,target_hierarchy)
+
+  
   total_target=target_hierarchy.overall_counts().n_residues
   total_chain=chain_hierarchy.overall_counts().n_residues
 
@@ -1107,16 +1117,14 @@ def run(args=None,
     raise Sorry("Need crystal symmetry in at least one input file")
   # get the CA residues
   if chain_type in ["RNA","DNA"]:
-    atom_selection="name P"
     if not distance_per_site:
       distance_per_site=8.
   else:
-    atom_selection="name ca and (not element Ca)"
     if not distance_per_site:
       distance_per_site=3.8
-  chain_ca=apply_atom_selection(atom_selection,chain_hierarchy)
+  chain_ca=chain_hierarchy
   chain_ca_lines=select_atom_lines(chain_ca)
-  target_ca=apply_atom_selection(atom_selection,target_hierarchy)
+  target_ca=target_hierarchy
   target_xyz_lines=select_atom_lines(target_ca)
   chain_xyz_cart=chain_ca.atoms().extract_xyz()
   target_xyz_cart=target_ca.atoms().extract_xyz()
