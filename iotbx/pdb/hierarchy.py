@@ -1431,12 +1431,11 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       atom = atoms[i_seq]
       atom.set_charge(charge)
 
-  def truncate_to_poly_gly(self):
+  def truncate_to_poly(self, atom_names_set=set()):
     pdb_atoms = self.atoms()
     pdb_atoms.reset_i_seq()
     from iotbx.pdb import amino_acid_codes
     aa_resnames = iotbx.pdb.amino_acid_codes.one_letter_given_three_letter
-    gly_atom_names = set([" N  ", " CA ", " C  ", " O  "])
     for model in self.models():
       for chain in model.chains():
         for rg in chain.residue_groups():
@@ -1448,8 +1447,16 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
           if (have_amino_acid()):
             for ag in rg.atom_groups():
               for atom in ag.atoms():
-                if (atom.name not in gly_atom_names):
+                if (atom.name not in atom_names_set):
                   ag.remove_atom(atom=atom)
+
+  def truncate_to_poly_gly(self):
+    self.truncate_to_poly(
+        atom_names_set=set([" N  ", " CA ", " C  ", " O  "]))
+
+  def truncate_to_poly_ala(self):
+    self.truncate_to_poly(
+        atom_names_set=set([" N  ", " CA ", " C  ", " O  ", " CB "]))
 
   def convert_semet_to_met(self):
     for i_seq, atom in enumerate(self.atoms()):

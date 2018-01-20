@@ -158,6 +158,11 @@ truncate_to_polyala = False
   .help = Truncate a model to poly-Ala.
   .short_caption = Truncate to poly-Ala
   .style = noauto
+truncate_to_polygly  = False
+  .type = bool
+  .help = Truncate a model to poly-Gly.
+  .short_caption = Truncate to poly-Gly
+  .style = noauto
 remove_alt_confs = False
   .type = bool
   .help = Deletes atoms whose altloc identifier is not blank or 'A', and \
@@ -268,6 +273,7 @@ class modify(object):
        self.params.convert_met_to_semet or
        self.params.set_charge.charge or
        self.params.truncate_to_polyala or
+       self.params.truncate_to_polygly or
        self.params.remove_alt_confs or
        self.params.move_waters_last or
        self.params.remove_fraction or
@@ -280,6 +286,7 @@ class modify(object):
       self._convert_semet_to_met()
       self._convert_met_to_semet()
       self._set_atomic_charge()
+      self._truncate_to_poly_ala()
       self._truncate_to_poly_gly()
       self._remove_alt_confs()
       self._move_waters()
@@ -349,9 +356,14 @@ class modify(object):
         always_keep_one_conformer = self.params.always_keep_one_conformer)
 
   def _truncate_to_poly_gly(self):
-    if(self.params.truncate_to_polyala):
+    if(self.params.truncate_to_polygly):
       print >> self.log, "Truncate to poly-gly"
       self.pdb_hierarchy.truncate_to_poly_gly()
+
+  def _truncate_to_poly_ala(self):
+    if(self.params.truncate_to_polyala):
+      print >> self.log, "Truncate to poly-ala"
+      self.pdb_hierarchy.truncate_to_poly_ala()
 
   def _set_atomic_charge(self):
     if(self.params.set_charge.charge_selection is not None):
