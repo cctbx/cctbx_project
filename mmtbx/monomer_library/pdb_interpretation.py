@@ -3273,7 +3273,10 @@ class build_all_chain_proxies(linking_mixins):
         for i_seq in self.disulfide_bond_exclusions_selection:
           a = self.pdb_atoms[i_seq]
           print >> log, "  %s"%a.format_atom_record()
-          e = a.determine_chemical_element_simple().strip().upper()
+          dces = a.determine_chemical_element_simple()
+          if dces is None:
+            raise Sorry("Atom '%s' has unknown chemical element symbol" % a.format_atom_record())
+          e = dces.strip().upper()
           if(e!="S"):
             raise Sorry("disulfide_bond_exclusions_selection_string must select CYS sulfur.")
         print >>log
