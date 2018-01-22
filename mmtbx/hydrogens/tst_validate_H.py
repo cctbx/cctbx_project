@@ -435,6 +435,41 @@ ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
 ATOM     28  DH BTYR A 139       4.823   5.165   8.210  0.50 10.00           D
 """
 
+pdb_str10 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      10.241   7.920   5.000  1.00 10.00           N
+ATOM      2  CA  TYR A 139      10.853   7.555   6.271  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.362   7.771   6.227  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.955   8.272   7.181  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.540   6.098   6.617  1.00 10.00           C
+ATOM      6  CG  TYR A 139       9.063   5.805   6.749  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.316   5.391   5.654  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.414   5.943   7.969  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.966   5.122   5.770  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.064   5.676   8.095  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.345   5.266   6.993  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.000   5.000   7.113  1.00 10.00           O
+ATOM     13  HA ATYR A 139      10.583   7.992   7.177  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.938   5.457   5.830  0.50 10.00           H
+ATOM     15  HB3ATYR A 139      11.014   5.853   7.567  0.50 10.00           H
+ATOM     16  HD1ATYR A 139       8.799   5.277   4.695  0.50 10.00           H
+ATOM     17  HD2ATYR A 139       8.974   6.264   8.835  0.50 10.00           H
+ATOM     18  HE1ATYR A 139       6.400   4.801   4.908  0.50 10.00           H
+ATOM     19  HE2ATYR A 139       6.575   5.788   9.051  0.50 10.00           H
+ATOM     20  HH ATYR A 139       4.710   5.148   8.037  0.50 10.00           H
+ATOM     21  DA BTYR A 139      10.557   8.334   6.899  0.50 10.00           D
+ATOM     22  DB2BTYR A 139      10.938   5.457   5.830  0.50 10.00           D
+ATOM     23  DB3BTYR A 139      11.014   5.853   7.567  0.50 10.00           D
+ATOM     24  DD1BTYR A 139       8.799   5.277   4.695  0.50 10.00           D
+ATOM     25  DD2BTYR A 139       8.974   6.264   8.835  0.50 10.00           D
+ATOM     26  DE1BTYR A 139       6.400   4.801   4.908  0.50 10.00           D
+ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
+ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
+"""
+
 def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
@@ -706,7 +741,7 @@ def exercise7():
     assert (item[0].strip() == answer[0].strip()) # pdb_str
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
-    assert approx_equal(item[4],answer[2], 1.e-1) # delta
+    assert approx_equal(item[4],answer[2], 1.e-1) # target
 
 # ------------------------------------------------------------------------------
 # BOND OUTLIERS
@@ -732,7 +767,7 @@ def exercise8():
     assert (item[0].strip() == answer[0].strip()) # pdb_str
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
-    assert approx_equal(item[4],answer[2], 1.e-1) # delta
+    assert approx_equal(item[4],answer[2], 1.e-1) # target
 
 # ------------------------------------------------------------------------------
 # BOND OUTLIERS
@@ -758,7 +793,23 @@ def exercise9():
     assert (item[0].strip() == answer[0].strip()) # pdb_str
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
-    assert approx_equal(item[4],answer[2], 1.e-1) # delta
+    assert approx_equal(item[4],answer[2], 1.e-1) # target
+
+def exercise10():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str10)
+  outliers_angles = results.outliers_angles
+
+  outliers_angles_answer = [
+    [' A 139 ATYR  HA ',  123.01, 110.0, (10.583, 7.992, 7.177)],
+    [' A 139 BTYR  DA ',  121.11, 109.0, (10.557, 8.334, 6.899)]  ]
+
+  for item, answer in zip(outliers_angles, outliers_angles_answer):
+    assert (item[0].strip() == answer[0].strip()) # pdb_str
+    assert (item[5] is not None)                  # make sure xyz exist
+    assert approx_equal(item[2],answer[1], 1.e-2) # angle in model
+    assert approx_equal(item[4],answer[2], 1.e-1) # target
 
 # ------------------------------------------------------------------------------
 # CHECK HD STATE (hd_state)
@@ -803,6 +854,8 @@ def run():
   exercise6()
   exercise7()
   exercise8()
+  exercise9()
+  exercise10()
   exercise_hd_state()
 
 if (__name__ == "__main__"):

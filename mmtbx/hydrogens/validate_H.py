@@ -472,6 +472,22 @@ class validate_H():
                              atom_info_hd.xyz] )
     self.outliers_bonds = outliers_bonds
 
+    outliers_angles = []
+    for result in rc.angles.results:
+      atom_info_hd = get_atom_info_if_hd(atoms_info = result.atoms_info)
+      # Consider only H/D atoms
+      if atom_info_hd is not None:
+        if result.is_outlier():
+          atoms_str = mp_geo.get_atoms_str(atoms_info=result.atoms_info)
+          outliers_angles.append(
+                            [atom_info_hd.id_str(),
+                             atoms_str,
+                             result.model,
+                             result.delta,
+                             result.target,
+                             atom_info_hd.xyz] )
+    self.outliers_angles = outliers_angles
+
   def run(self):
     # Find bond and angle outliers
     self.bond_angle_outliers()
@@ -494,7 +510,8 @@ class validate_H():
         hd_sites_analysis     = self.hd_sites_analysis,
         renamed               = self.renamed,
         missing_HD_atoms      = self.missing_HD_atoms,
-        outliers_bonds        = self.outliers_bonds
+        outliers_bonds        = self.outliers_bonds,
+        outliers_angles       = self.outliers_angles
         )
 
   def get_curated_hierarchy(self):
