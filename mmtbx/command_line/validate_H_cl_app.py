@@ -141,6 +141,13 @@ Usage:
     for item in missing_HD_atoms:
       print('%s : %s ' % (item[0][8:-1], ", ".join(item[1])), file=self.log)
 
+  def print_outliers_bonds(self, outliers_bonds):
+    print('*'*79, file=self.log)
+    print('BOND OUTLIERS:\n', file=self.log)
+    for item in outliers_bonds:
+      print('Bond %s, observed: %s, delta from target: %s' % \
+        (item[1], item[2], item[3]), file=self.log)
+
   def print_results(self, results):
     overall_counts_hd  = results.overall_counts_hd
     hd_exchanged_sites = results.hd_exchanged_sites
@@ -149,6 +156,7 @@ Usage:
     missing_HD_atoms   = results.missing_HD_atoms
     hd_atoms_with_occ_0 = overall_counts_hd.hd_atoms_with_occ_0
     single_hd_atoms_occ_lt_1 = overall_counts_hd.single_hd_atoms_occ_lt_1
+    outliers_bonds     = results.outliers_bonds
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd)
     if renamed:
@@ -160,6 +168,8 @@ Usage:
         hd_exchanged_sites, hd_sites_analysis, overall_counts_hd)
     if missing_HD_atoms:
       self.print_missing_HD_atoms(missing_HD_atoms)
+    if outliers_bonds:
+      self.print_outliers_bonds(outliers_bonds)
 
   def get_pdb_interpretation_params(self):
     pdb_interpretation_phil = iotbx.phil.parse(

@@ -1,6 +1,8 @@
 from __future__ import division
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
+from mmtbx.validation import restraints
+from mmtbx.validation.molprobity import mp_geo
 #from libtbx.utils import Sorry
 from mmtbx.rotamer import rotamer_eval
 
@@ -19,6 +21,15 @@ def is_deuterium(atom):
     answer = True
   return answer
 
+def get_atom_info_if_hd(atoms_info):
+  # returns atom_info for H atom, always last H atom in list of atoms_info items
+  atom_info_hd = None
+  for atom_info in atoms_info:
+    element = atom_info.element.strip().upper()
+    if element == 'H' or element == 'D':
+      atom_info_hd = atom_info
+  return atom_info_hd
+
 class validate_H():
   """ This class is for the validation of H and D atoms, especially for models
   obtained by neutron diffraction."""
@@ -31,6 +42,7 @@ class validate_H():
     self.hd_sites_analysis = None
     self.renamed = None
     self.missing_HD_atoms = None
+    self.outliers_bonds = None
 
   def validate_inputs(self):
     if not self.model.has_hd:
@@ -428,9 +440,41 @@ class validate_H():
     return hd_state
 
   def bond_angle_outliers(self):
-    pass
+    get_class = common_residue_names_get_class
+    rc = restraints.combined(
+           pdb_hierarchy  = self.pdb_hierarchy,
+           xray_structure = self.model.get_xray_structure(),
+           geometry_restraints_manager = self.model.restraints_manager.geometry,
+           ignore_hd      = False, # important
+           outliers_only  = False,
+           use_segids_in_place_of_chainids = False)
+
+    bond_mean_delta, n_bonds, bond_mean = 0, 0, 0
+    outliers_bonds = []
+    for result in rc.bonds.results:
+      atom_info_hd = get_atom_info_if_hd(atoms_info = result.atoms_info)
+      # Consider only H/D atoms
+      if atom_info_hd is not None:
+        # Calculate mean bond length and delta for non-water
+        # --> used to get rough idea if H are at X-ray or neutron bond lengths.
+        if (get_class(name=atom_info_hd.resname) != 'common_water'):
+          bond_mean_delta = bond_mean_delta + result.delta
+          bond_mean = bond_mean + result.model
+          n_bonds += 1
+        if result.is_outlier():
+          atoms_str = mp_geo.get_atoms_str(atoms_info=result.atoms_info)
+          outliers_bonds.append(
+                            [atom_info_hd.id_str(),
+                             atoms_str,
+                             result.model,
+                             result.delta,
+                             result.target,
+                             atom_info_hd.xyz] )
+    self.outliers_bonds = outliers_bonds
 
   def run(self):
+    # Find bond and angle outliers
+    self.bond_angle_outliers()
     # if H and D are present, analyse and curate potential H/D states
     if self.get_hd_state() == 'h_and_d':
       self.get_exchanged_sites_and_curate_swapped(
@@ -442,8 +486,6 @@ class validate_H():
       self.analyze_hd_sites()
     # Find missing H atoms
     self.missing_hydrogens()
-    # Find bond and angle outliers
-    self.bond_angle_outliers()
 
   def get_results(self):
     return group_args(
@@ -451,7 +493,8 @@ class validate_H():
         hd_exchanged_sites    = self.hd_exchanged_sites,
         hd_sites_analysis     = self.hd_sites_analysis,
         renamed               = self.renamed,
-        missing_HD_atoms      = self.missing_HD_atoms
+        missing_HD_atoms      = self.missing_HD_atoms,
+        outliers_bonds        = self.outliers_bonds
         )
 
   def get_curated_hierarchy(self):
