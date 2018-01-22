@@ -4166,11 +4166,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         map_data=map_data,crystal_symmetry=crystal_symmetry,
         half_map_data_list=half_map_data_list,
         out=out)
-      print >>out,"\nSolvent fraction from soft mask procedure: %7.2f\n" %(
+      print >>out,\
+        "\nSolvent fraction from soft mask procedure: %7.2f (not used)\n" %(
         soft_mask_solvent_fraction)
-      if not params.crystal_info.solvent_content:
-        print >>out,"(Not using this solvent fraction)"
-
 
   else:  # shift if necessary...
     shift_needed = not \
