@@ -24,7 +24,7 @@ class manager(object):
 
   def __init__(self,
         geometry=None,
-        ncs_groups=None, # Cartesian NCS restraints
+        cartesian_ncs_manager=None,
         normalization=False,
         use_amber=False,
         use_sander=False,
@@ -32,7 +32,7 @@ class manager(object):
         use_afitt=False, #afitt
         afitt_object=None) :
     self.geometry = geometry
-    self.ncs_groups = ncs_groups
+    self.cartesian_ncs_manager = cartesian_ncs_manager
     self.normalization = normalization
     # amber
     self.use_amber = use_amber
@@ -124,16 +124,16 @@ class manager(object):
         geometry = self.geometry.select(iselection=selection)
       else:
         geometry = self.geometry.select(selection=selection)
-    if (self.ncs_groups is None):
-      ncs_groups = None
+    if (self.cartesian_ncs_manager is None):
+      cartesian_ncs_manager = None
     else:
       if(not isinstance(selection, flex.size_t)):
         selection = selection.iselection()
-      ncs_groups = self.ncs_groups.select(iselection=selection)
+      cartesian_ncs_manager = self.cartesian_ncs_manager.select(iselection=selection)
 
     return manager(
       geometry=geometry,
-      ncs_groups=ncs_groups,
+      cartesian_ncs_manager=cartesian_ncs_manager,
       normalization=self.normalization,
       use_amber=self.use_amber,
       amber_structs=self.amber_structs,
@@ -231,15 +231,15 @@ class manager(object):
           disable_asu_cache=disable_asu_cache,
           normalization=False)
       result += result.geometry
-    if (self.ncs_groups is None):
-      result.ncs_groups = None
+    if (self.cartesian_ncs_manager is None):
+      result.cartesian_ncs_manager = None
     else:
-      result.ncs_groups = self.ncs_groups.energies_sites(
+      result.cartesian_ncs_manager = self.cartesian_ncs_manager.energies_sites(
         sites_cart=sites_cart,
         compute_gradients=compute_gradients,
         gradients=result.gradients,
         normalization=False)
-      result += result.ncs_groups
+      result += result.cartesian_ncs_manager
     result.finalize_target_and_gradients()
     return result
 
@@ -278,15 +278,15 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients)
       result += result.geometry
-    if (self.ncs_groups is None):
-      result.ncs_groups = None
+    if (self.cartesian_ncs_manager is None):
+      result.cartesian_ncs_manager = None
     else:
-      result.ncs_groups = self.ncs_groups.energies_adp_iso(
+      result.cartesian_ncs_manager = self.cartesian_ncs_manager.energies_adp_iso(
         u_isos=xray_structure.extract_u_iso_or_u_equiv(),
         average_power=parameters.average_power,
         compute_gradients=compute_gradients,
         gradients=result.gradients)
-      result += result.ncs_groups
+      result += result.cartesian_ncs_manager
     result.finalize_target_and_gradients()
     if(compute_gradients):
        #XXX highly inefficient code: do something asap by adopting new scatters flags
@@ -392,21 +392,21 @@ class manager(object):
       header=header,
       file_descriptor=outf_descriptor)
     n_excessive = 0
-    if [self.ncs_groups, xray_structure].count(None) == 0:
-      n_excessive = self.ncs_groups.show_sites_distances_to_average(
+    if [self.cartesian_ncs_manager, xray_structure].count(None) == 0:
+      n_excessive = self.cartesian_ncs_manager.show_sites_distances_to_average(
           sites_cart=sites_cart,
           site_labels=site_labels,
           excessive_distance_limit=excessive_distance_limit,
           out=outf_descriptor)
       print >> outf_descriptor
-      self.ncs_groups.show_adp_iso_differences_to_average(
+      self.cartesian_ncs_manager.show_adp_iso_differences_to_average(
           u_isos=xray_structure.extract_u_iso_or_u_equiv(),
           site_labels=site_labels,
           out=outf_descriptor)
       print >> outf_descriptor
       # show_atoms_without_ncs_restraints
       show_selected_atoms(
-          selection = ~self.ncs_groups.selection_restrained(
+          selection = ~self.cartesian_ncs_manager.selection_restrained(
               n_seq=hierarchy.atoms_size()),
           hierarchy = hierarchy,
           header_lines = ["Atoms without NCS restraints:"],

@@ -976,15 +976,6 @@ class manager(object):
   def get_master_selection(self):
     return self._master_sel
 
-  def extract_ncs_groups(self):
-    """ This is groups for Cartesian NCS"""
-    result = None
-    if (self.get_restraints_manager() is not None and
-        self.get_restraints_manager().ncs_groups is not None):
-      result = self.get_restraints_manager().ncs_groups.extract_ncs_groups(
-        sites_cart = self._xray_structure.sites_cart())
-    return result
-
   def get_ncs_obj(self):
     return self._ncs_obj
 
@@ -1002,7 +993,7 @@ class manager(object):
     rm = self.get_restraints_manager()
     if cartesian_ncs.get_n_groups() > 0:
       assert rm is not None
-      rm.ncs_groups = cartesian_ncs
+      rm.cartesian_ncs_manager = cartesian_ncs
     else:
       print >> self.log, "No NCS restraint groups specified."
       print >> self.log
@@ -1010,8 +1001,8 @@ class manager(object):
   def cartesian_NCS_as_pdb(self):
     result = StringIO()
     if (self.restraints_manager is not None and
-        self.restraints_manager.ncs_groups is not None):
-      self.restraints_manager.ncs_groups.as_pdb(
+        self.restraints_manager.cartesian_ncs_manager is not None):
+      self.restraints_manager.cartesian_ncs_manager.as_pdb(
           sites_cart=self.get_sites_cart(),
           out=result)
     return result.getvalue()
@@ -1062,11 +1053,15 @@ class manager(object):
     return ncs_ens_loop, ncs_dom_loop, ncs_dom_lim_loop, ncs_oper_loop, ncs_ens_gen_loop
 
   def cartesian_NCS_present(self):
-    if (self.get_restraints_manager() is not None and
-        self.get_restraints_manager().ncs_groups is not None and
-        self.get_restraints_manager().ncs_groups.get_n_groups() > 0):
-      return True
+    c_ncs = self.get_cartesian_NCS_manager()
+    if c_ncs is not None:
+      return c_ncs.get_n_groups() > 0
     return False
+
+  def get_cartesian_NCS_manager(self):
+    if self.get_restraints_manager() is not None:
+      return self.get_restraints_manager().cartesian_ncs_manager
+    return None
 
   def cartesian_NCS_as_cif_block(self, cif_block=None):
     if not self.cartesian_NCS_present():
@@ -1075,8 +1070,8 @@ class manager(object):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     if (self.get_restraints_manager() is not None and
-        self.get_restraints_manager().ncs_groups is not None):
-      cif_block = self.get_restraints_manager().ncs_groups.as_cif_block(
+        self.get_restraints_manager().cartesian_ncs_manager is not None):
+      cif_block = self.get_restraints_manager().cartesian_ncs_manager.as_cif_block(
           loops=loops, cif_block=cif_block, sites_cart=self.get_sites_cart())
     return cif_block
 
@@ -2320,10 +2315,11 @@ class manager(object):
         nonbonded_charges=nonbonded_charges)
       self.restraints_manager = mmtbx.restraints.manager(
         geometry      = geometry,
-        ncs_groups    = self.restraints_manager.ncs_groups,
+        cartesian_ncs_manager    = self.restraints_manager.cartesian_ncs_manager,
         normalization = self.restraints_manager.normalization)
-      if (self.restraints_manager.ncs_groups is not None):
-        self.restraints_manager.ncs_groups.register_additional_isolated_sites(
+      c_ncs_m = self.get_cartesian_NCS_manager()
+      if (c_ncs_m is not None):
+        c_ncs_m.register_additional_isolated_sites(
           number=number_of_new_atoms)
       self.restraints_manager.geometry.update_plain_pair_sym_table(
         sites_frac = self._xray_structure.sites_frac())

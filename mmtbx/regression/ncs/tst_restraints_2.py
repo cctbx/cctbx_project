@@ -319,7 +319,7 @@ K&    RMS difference with respect to the reference: 0.724248
   assert selection.count(True) == 110
   out = StringIO()
   rm = model.get_restraints_manager()
-  rm.ncs_groups = cart_manager
+  rm.cartesian_ncs_manager = cart_manager
   out = model.restraints_as_geo()
   # print out
   for i, l in enumerate(out.split('\n')):
