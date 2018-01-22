@@ -4897,17 +4897,21 @@ def get_solvent_fraction(params,
 
 
 
-  if params.input_files.seq_file and \
-       not params.crystal_info.solvent_content:
-    params.crystal_info.solvent_content,n_residues,n_residues_times_ncs=\
+  if params.input_files.seq_file: 
+    solvent_content,n_residues,n_residues_times_ncs=\
          get_solvent_content_from_seq_file(
      params,
      seq_file=params.input_files.seq_file,
      ncs_copies=ncs_copies,
      map_volume=map_volume,
      out=out)
-    print >>out,"Solvent fraction from composition: %7.2f "%(
+    if not params.crystal_info.solvent_content:
+      params.crystal_info.solvent_content=solvent_content
+      print >>out,"Solvent fraction from composition: %7.2f "%(
        params.crystal_info.solvent_content)
+    else:
+      print >>out,"Solvent content from parameters: %7.2f" %(
+        params.crystal_info.solvent_content)
 
   else:
     if params.crystal_info.solvent_content:
