@@ -3911,8 +3911,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   params=set_sharpen_params(params,out)
 
   if not params.map_modification.auto_sharpen and (
-    not params.crystal_info.molecular_mass and 
-    not params.crystal_info.solvent_content and 
+    not params.crystal_info.molecular_mass and
+    not params.crystal_info.solvent_content and
     not params.input_files.seq_file):
      raise Sorry("Please use auto_sharpen or supply molecular mass or "+
         "solvent_content or a sequence file")
@@ -4900,7 +4900,7 @@ def get_solvent_fraction(params,
 
 
   if params.input_files.seq_file and \
-       not params.crystal_info.solvent_content: 
+       not params.crystal_info.solvent_content:
     params.crystal_info.solvent_content,n_residues,n_residues_times_ncs=\
          get_solvent_content_from_seq_file(
      params,
@@ -9800,7 +9800,7 @@ def run(args,
       local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
       from cctbx.maptbx.auto_sharpen import run as auto_sharpen
       map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
-         args=[],params=local_params, 
+         args=[],params=local_params,
         map_data=map_data,
         crystal_symmetry=tracking_data.crystal_symmetry,
         write_output_files=False,
