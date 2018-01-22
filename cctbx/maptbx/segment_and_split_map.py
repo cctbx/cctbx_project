@@ -3910,6 +3910,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   from cctbx.maptbx.auto_sharpen import set_sharpen_params
   params=set_sharpen_params(params,out)
 
+  if not params.map_modification.auto_sharpen and (
+    not params.crystal_info.molecular_mass and 
+    not params.crystal_info.solvent_content and 
+    not params.input_files.seq_file):
+     raise Sorry("Please use auto_sharpen or supply molecular mass or "+
+        "solvent_content or a sequence file")
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \
       params.map_modification.auto_sharpen
