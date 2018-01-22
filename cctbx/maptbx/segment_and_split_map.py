@@ -22,7 +22,9 @@ master_phil = iotbx.phil.parse("""
                1-letter code, chains separated by \
                blank line or greater-than sign.)  \
                Can have chains that are DNA/RNA/protein and\
-               all can be present in one file.
+               all can be present in one file. \
+               If not supplied, must supply molecular mass or \
+               solvent content.
 
     map_file = None
       .type = path
@@ -217,12 +219,17 @@ master_phil = iotbx.phil.parse("""
        .help = Unit Cell (used for boxed maps)
        .style = hidden
 
+     molecular_mass = None
+       .type = float
+       .help = Molecular mass of molecule in Da. Used as alternative method \
+                 of specifying solvent content.
+       .short_caption = Molecular mass in Da
+
      solvent_content = None
        .type = float
        .help = Solvent fraction of the cell. Used for ID of \
                solvent content in boxed maps.
        .short_caption = Solvent content
-       .style = hidden
 
      solvent_content_iterations = 3
        .type = int
@@ -4812,24 +4819,17 @@ def create_rna_dna(cns_dna_rna_residue_names):
     dd[cns_dna_rna_residue_names[key]]=key
   return dd
 
-def get_solvent_fraction(params,
-     ncs_object=None,ncs_copies=None,
-     crystal_symmetry=None,tracking_data=None,out=sys.stdout):
-  if tracking_data and not crystal_symmetry:
-    crystal_symmetry=tracking_data.crystal_symmetry
-  map_volume=crystal_symmetry.unit_cell().volume()
-  if tracking_data and not ncs_copies:
-    #ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
-    ncs_copies=tracking_data.input_ncs_info.number_of_operators
-  if not ncs_copies: ncs_copies=1
-  if not params.input_files.seq_file:
-    raise Sorry("Please specify a sequence file with seq_file=myseq.seq")
-  elif not os.path.isfile(params.input_files.seq_file):
+def get_solvent_content_from_seq_file(params,
+    seq_file=None,
+    ncs_copies=None,
+    map_volume=None,
+    out=sys.stdout):
+  if not os.path.isfile(seq_file):
     raise Sorry(
-     "The sequence file '%s' is missing." %(params.input_files.seq_file))
-  print >>out,"\nReading sequence from %s " %(params.input_files.seq_file)
+     "The sequence file '%s' is missing." %(seq_file))
+  print >>out,"\nReading sequence from %s " %(seq_file)
   from iotbx.bioinformatics import get_sequences
-  sequences=get_sequences(params.input_files.seq_file)
+  sequences=get_sequences(seq_file)
   # get unique part of these sequences
 
   from mmtbx.validation.chain_comparison import \
@@ -4872,32 +4872,58 @@ def get_solvent_fraction(params,
     print >>out,"NOTE: solvent fraction of %7.2f very unlikely..." %(
         solvent_fraction) + "please check ncs_copies and sequence "
   print >>out,"Solvent content from composition: %7.2f" %(solvent_fraction)
-
-  if params.crystal_info.solvent_content:
-    solvent_fraction=params.crystal_info.solvent_content
-    if params.map_modification.soft_mask:
-      print >>out,"Solvent content from soft_mask procedure: %7.2f" %(
-        params.crystal_info.solvent_content)
-    else:
-      print >>out,"Solvent content from parameters: %7.2f" %(
-        params.crystal_info.solvent_content)
-    print >>out,"Solvent fraction from composition: %7.2f "%(solvent_fraction)
   print >>out, \
     "Cell volume: %.1f  NCS copies: %d   Volume of unique chains: %.1f" %(
      map_volume,ncs_copies,volume_of_chains)
   print >>out,\
     "Total residues: %d  Volume of all chains: %.1f  Solvent fraction: %.3f "%(
        n_residues_times_ncs,volume_of_molecules,solvent_fraction)
+  return solvent_fraction,n_residues,n_residues_times_ncs
+
+def get_solvent_fraction(params,
+     ncs_object=None,ncs_copies=None,
+     crystal_symmetry=None,tracking_data=None,out=sys.stdout):
+  if tracking_data and not crystal_symmetry:
+    crystal_symmetry=tracking_data.crystal_symmetry
+  map_volume=crystal_symmetry.unit_cell().volume()
+  if tracking_data and not ncs_copies:
+    #ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
+    ncs_copies=tracking_data.input_ncs_info.number_of_operators
+  if not ncs_copies: ncs_copies=1
+
+
+
+  if params.input_files.seq_file and \
+       not params.crystal_info.solvent_content: 
+    params.crystal_info.solvent_content,n_residues,n_residues_times_ncs=\
+         get_solvent_content_from_seq_file(
+     params,
+     seq_file=params.input_files.seq_file,
+     ncs_copies=ncs_copies,
+     map_volume=map_volume,
+     out=out)
+    print >>out,"Solvent fraction from composition: %7.2f "%(
+       params.crystal_info.solvent_content)
+
+  else:
+    if params.crystal_info.solvent_content:
+      print >>out,"Solvent content from parameters: %7.2f" %(
+        params.crystal_info.solvent_content)
+    else:
+      print >>out,"Getting solvent content automatically."
+
   if tracking_data:
-    tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
-    n_residues=n_residues)
-    tracking_data.set_solvent_fraction(solvent_fraction)
-    tracking_data.set_n_residues(
-      n_residues=n_residues_times_ncs)
+    if params.input_files.seq_file:
+      tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
+        n_residues=n_residues)
+      tracking_data.set_n_residues(
+        n_residues=n_residues_times_ncs)
+    if params.crystal_info.solvent_content:
+      tracking_data.set_solvent_fraction(params.crystal_info.solvent_content)
 
     return tracking_data
   else:
-    return solvent_fraction
+    return params.crystal_info.solvent_content
 
 def top_key(dd):
   if not dd:
@@ -6653,12 +6679,14 @@ def iterate_search(params,
     new_params.output_files.au_output_file_stem=None
 
   fraction=params.segmentation.iteration_fraction
-  new_n_residues=int(tracking_data.n_residues*fraction)
+  if tracking_data.n_residues:
+    new_n_residues=int(tracking_data.n_residues*fraction)
   new_solvent_fraction=max(0.001,min(0.999,
       1- (1-tracking_data.solvent_fraction)*fraction))
 
   new_tracking_data=deepcopy(tracking_data)
-  new_tracking_data.set_n_residues(new_n_residues)
+  if new_tracking_data.n_residues:
+    new_tracking_data.set_n_residues(new_n_residues)
   new_tracking_data.set_solvent_fraction(new_solvent_fraction)
   new_tracking_data.set_origin_shift() # sets it to zero
   new_tracking_data.params.segmentation.starting_density_threshold=new_params.segmentation.starting_density_threshold # this is new
@@ -7494,7 +7522,7 @@ def get_iterated_solvent_fraction(map=None,
 def set_up_si(var_dict=None,crystal_symmetry=None,
       is_crystal=None,
       ncs_copies=None,n_residues=None,
-      solvent_fraction=None,pdb_inp=None,map=None,
+      solvent_fraction=None,molecular_mass=None,pdb_inp=None,map=None,
       auto_sharpen=True,half_map_data_list=None,verbose=None,
       out=sys.stdout):
     si=sharpening_info(n_real=map.all())
@@ -7581,6 +7609,20 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        else:
          args.append("%s=%s" %(param,x))
     local_params=get_params_from_args(args)
+
+    # Set solvent content from molecular_mass if present
+    if molecular_mass and \
+       not solvent_fraction:
+     map_volume=crystal_symmetry.unit_cell().volume()
+     density_factor=1000*1.23 # just protein density, close enough...
+     mm=molecular_mass
+     if mm > 1000: mm=mm/1000  # was in Da
+     solvent_fraction=max(0.01,min(1.,1 - (
+         mm*density_factor/map_volume)))
+     print >>out,"Solvent content of %7.2f from molecular mass of %7.1f kDa" %(
+     solvent_fraction,mm)
+
+
     if local_params.input_files.seq_file and \
         not local_params.crystal_info.solvent_content and \
         not solvent_fraction: # 2017-12-19
@@ -8198,6 +8240,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
     args=[
         'resolution=%s' %(si.resolution),
         'seq_file=%s' %(si.seq_file),
+        'solvent_content=%s' %(si.solvent_fraction),
         'auto_sharpen=False', # XXX could sharpen overall
         'write_output_maps=True',
         'add_neighbors=False',
@@ -8513,6 +8556,7 @@ def auto_sharpen_map_or_map_coeffs(
         fraction_complete=None,
         n_real=None,
         solvent_content=None,
+        molecular_mass=None,
         region_weight=None,
         sa_percent=None,
         n_bins=None,
@@ -8633,6 +8677,7 @@ def auto_sharpen_map_or_map_coeffs(
         crystal_symmetry=crystal_symmetry,
         is_crystal=is_crystal,
         solvent_fraction=solvent_content,
+        molecular_mass=molecular_mass,
         auto_sharpen=auto_sharpen,
         map=map,
         verbose=verbose,
@@ -9748,18 +9793,20 @@ def run(args,
       local_params=deepcopy(params)
       local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
       from cctbx.maptbx.auto_sharpen import run as auto_sharpen
-      map_data=auto_sharpen(args=[],params=local_params,
+      map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
+         args=[],params=local_params, 
         map_data=map_data,
         crystal_symmetry=tracking_data.crystal_symmetry,
         write_output_files=False,
         pdb_inp=sharpening_target_pdb_inp,
         ncs_obj=ncs_obj,
-        return_map_data_only=True,
+        return_map_data_only=False,
         half_map_data_list=half_map_data_list,
         n_residues=tracking_data.n_residues,
         ncs_copies=tracking_data.input_ncs_info.number_of_operators,
         out=out)
-
+      if not tracking_data.solvent_fraction:
+        tracking_data.solvent_fraction=new_si.solvent_fraction
       update_tracking_data_with_sharpening(
              map_data=map_data,
              tracking_data=tracking_data,out=out)

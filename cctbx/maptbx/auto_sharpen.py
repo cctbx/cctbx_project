@@ -149,6 +149,12 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Solvent fraction iterations
        .style = hidden
 
+     molecular_mass = None
+       .type = float
+       .help = Molecular mass of molecule in Da. Used as alternative method \
+                 of specifying solvent content.
+       .short_caption = Molecular mass in Da
+
       ncs_copies = None
         .type = int
         .help = You can specify ncs copies and seq file to define solvent \
@@ -638,8 +644,8 @@ def get_params(args,out=sys.stdout):
   params=set_sharpen_params(params,out)
   return params
 
-def set_sharpen_params(params,out=sys.stdout):
 
+def set_sharpen_params(params,out=sys.stdout):
 
   if params.map_modification.resolution_dependent_b==[0,0,0]:
     params.map_modification.resolution_dependent_b=[0,0,1.e-10]
@@ -680,7 +686,6 @@ def set_sharpen_params(params,out=sys.stdout):
      print >>out,"Set optimize_k_sharpen=False as neither b_iso_to_d_cut nor"+\
          " b_iso are used"
      params.map_modification.optimize_k_sharpen=False
-
   return params
 
 
@@ -853,6 +858,7 @@ def run(args=None,params=None,
         map=map_data,
         half_map_data_list=half_map_data_list,
         solvent_content=params.crystal_info.solvent_content,
+        molecular_mass=params.crystal_info.molecular_mass,
         input_weight_map_pickle_file=\
             params.input_files.input_weight_map_pickle_file,
         output_weight_map_pickle_file=\
