@@ -3966,9 +3966,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     tracking_data.set_params(params)
 
   # PDB file
-  print >>out,"\nInput PDB file to be shifted only: %s\n" %(
-     params.input_files.pdb_file)
   if params.input_files.pdb_file:
+    print >>out,"\nInput PDB file to be shifted only: %s\n" %(
+       params.input_files.pdb_file)
     pdb_inp = iotbx.pdb.input(file_name=params.input_files.pdb_file)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
     pdb_atoms = pdb_hierarchy.atoms()
@@ -4897,7 +4897,7 @@ def get_solvent_fraction(params,
 
 
 
-  if params.input_files.seq_file: 
+  if params.input_files.seq_file:
     solvent_content,n_residues,n_residues_times_ncs=\
          get_solvent_content_from_seq_file(
      params,
