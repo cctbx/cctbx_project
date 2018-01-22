@@ -71,19 +71,8 @@ map_coeff_params_base_str = """\
   }
 """
 
-ncs_average_param_str = """
-ncs_average = False
-  .type = bool
-  .expert_level = 2
-  .help = Perform NCS averaging on map using RESOLVE (without density \
-      modification).  Will be ignored if NCS is not present.
-  .short_caption = NCS average
-"""
-
-# for phenix.maps
+# for phenix.maps and phenix.refine
 map_coeff_params_str = map_coeff_params_base_str % ""
-# for phenix.refine
-map_coeff_params_ncs_str = map_coeff_params_base_str % ncs_average_param_str
 
 map_params_base_str ="""\
   map
@@ -149,20 +138,12 @@ map_params_base_str ="""\
 """
 
 map_params_str = map_params_base_str % ""
-map_params_ncs_str = map_params_base_str % ncs_average_param_str
 
-# XXX for phenix.maps
+# XXX for phenix.maps and phenix.refine
 map_and_map_coeff_params_str = """\
 %s
 %s
 """%(map_coeff_params_str, map_params_str)
-
-# XXX for phenix.refine
-map_and_map_coeff_params_ncs_str = """\
-%s
-%s
-"""%(map_coeff_params_ncs_str, map_params_ncs_str)
-
 
 def map_and_map_coeff_master_params():
   return iotbx.phil.parse(map_and_map_coeff_params_str, process_includes=False)
@@ -407,8 +388,6 @@ def map_coefficients_from_fmodel(
     fill_missing       = params.fill_missing_f_obs,
     isotropize         = params.isotropize,
     exclude_free_r_reflections=params.exclude_free_r_reflections,
-    ncs_average=getattr(params, "ncs_average", False),
-    post_processing_callback=post_processing_callback,
     pdb_hierarchy=pdb_hierarchy,
     merge_anomalous=True)
   if (coeffs is None) : return None

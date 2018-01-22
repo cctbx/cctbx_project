@@ -9,9 +9,7 @@ from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
-import libtbx.phil
 from libtbx.utils import null_out
-from libtbx import adopt_init_args
 import mmtbx
 import libtbx
 import random
@@ -162,10 +160,8 @@ class electron_density_map(object):
                        exclude_free_r_reflections=False,
                        fill_missing=False,
                        fill_missing_method="f_model",
-                       ncs_average=False,
                        isotropize=True,
                        sharp=False,
-                       post_processing_callback=None,
                        pdb_hierarchy=None, # XXX required for map_type=llg
                        merge_anomalous=None,
                        use_shelx_weight=False,
@@ -238,13 +234,6 @@ class electron_density_map(object):
       coeffs = coeffs.select(~r_free_flags.data())
       scale_array = scale_array.select(~r_free_flags.data())
     scale=None
-    if (ncs_average) and (post_processing_callback is not None) :
-      # XXX NCS averaging done here
-      assert hasattr(post_processing_callback, "__call__")
-      coeffs = post_processing_callback(
-        map_coeffs=coeffs,
-        fmodel=self.fmodel,
-        map_type=map_type)
     if(isotropize):
       if(scale is None):
         if (scale_array.anomalous_flag()) and (not coeffs.anomalous_flag()) :
@@ -639,116 +628,3 @@ def anomalous_residual_map_coefficients (fmodel, weighted=False,
   return miller.array(
     miller_set=map_coeffs,
     data=map_coeffs.data()/(2j))
-
-ncs_averaging_params = """
-resolution_factor = 0.25
-  .type = float
-use_molecule_mask = False
-  .type = bool
-averaging_radius = 5.0
-  .type = float
-solvent_content = 0.5
-  .type = float
-exclude_hd = True
-  .type = bool
-skip_difference_map = Auto
-  .type = bool
-"""
-
-# XXX it would be more useful to have this integrated with the rest of the
-# code, instead of making map averaging an afterthought.  however, the
-# external overhead is currently substantial.
-class ncs_averager (object) :
-  """
-  Callable wrapper class for running RESOLVE NCS averaging on any map
-  coefficients array.
-
-  Parameters
-  ----------
-  ncs_object: mmtbx.ncs.ncs.ncs_group object
-  params: phil scope_extract object containing parameters
-  log: filehandle-like object
-
-  Examples
-  --------
-  >>> average = ncs_averager(ncs_object, log=null_out())
-  >>> for array in map_coeffs :
-  >>>   array = average(array, fmodel)
-  """
-  def __init__ (self, ncs_object, params=None, log=None, verbose=False) :
-    if (params is None) :
-      params = libtbx.phil.parse(ncs_averaging_params).extract()
-    if (log is None) :
-      log = null_out()
-    adopt_init_args(self, locals())
-    self.mask = None
-
-  def __call__ (self,
-                map_coeffs,
-                fmodel,
-                generate_new_mask=False,
-                map_type=None) :
-    # XXX probably not a good idea to average anomalous maps
-    #if (map_type is not None) and (map_type.lower().startswith("anom")) :
-    #  return map_coeffs
-    from solve_resolve.resolve_python.resolve_utils import get_map_mask_sg_cell
-    from solve_resolve.resolve_python.ncs_average import ncs_average
-    from cctbx import maptbx
-    from scitbx.array_family import flex
-    if (map_coeffs.anomalous_flag()) :
-      map_coeffs = map_coeffs.average_bijvoet_mates()
-    fft_map = map_coeffs.fft_map(
-      symmetry_flags=maptbx.use_space_group_symmetry,
-      resolution_factor=self.params.resolution_factor)
-    map = fft_map.apply_volume_scaling().real_map_unpadded().as_float()
-    if (self.verbose) :
-      out = self.log
-    else :
-      out = null_out()
-    if (self.mask is None) or (generate_new_mask) :
-      if (self.params.use_molecule_mask) :
-        self.mask = flex.float(real_map.size(), 0)
-        sites_cart = fmodel.xray_structure.sites_cart()
-        if (self.params.exclude_hd) :
-          sites_cart = sites_cart.select(~fmodel.xray_structure.hd_selection())
-        indices = maptbx.grid_indices_around_sites(
-          unit_cell=map_coeffs.unit_cell(),
-          fft_n_real=real_map.focus(),
-          fft_m_real=real_map.all(),
-          sites_cart=sites_cart,
-          site_radii=flex.double(sites_cart.size(),
-            self.params.averaging_radius))
-        mask.set_selected(indices, 1)
-        mask.reshape(real_map.accessor())
-      else :
-        mask_map_coeffs = fmodel.electron_density_map().map_coefficients(
-            map_type="2mFo-DFc")
-        mask_fft_map = mask_map_coeffs.fft_map(
-          symmetry_flags=maptbx.use_space_group_symmetry,
-          resolution_factor=self.params.resolution_factor)
-        mask_map = mask_fft_map.apply_volume_scaling().real_map_unpadded().as_float()
-        map_db,mask_map_db,space_group_object,unit_cell_object=\
-          get_map_mask_sg_cell(
-            map_coeffs=mask_map_coeffs,
-            map=mask_map,
-            space_group=map_coeffs.space_group(),
-            unit_cell=map_coeffs.unit_cell(),
-            solvent_content=self.params.solvent_content,
-            wang_radius=self.params.averaging_radius,
-            resolution=map_coeffs.d_min(),
-            out=out,
-            resolve_command_list=None)
-        #map = map_db.map
-        self.mask = mask_map_db.map
-    averaged = ncs_average(
-      map=map,
-      mask=self.mask,
-      ncs_object=self.ncs_object,
-      space_group=map_coeffs.space_group(),
-      unit_cell=map_coeffs.unit_cell(),
-      resolution=map_coeffs.d_min(),
-      out=out)
-    new_map_coeffs = map_coeffs.structure_factors_from_map(
-      map=averaged.average_map.as_double(),
-      use_sg=True)
-    return new_map_coeffs
