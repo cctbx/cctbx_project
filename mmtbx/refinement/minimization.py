@@ -192,7 +192,7 @@ class lbfgs(object):
           else:
             self.XYZ_diff_curr=max_elem
           if(max_elem>=self.qblib_params.skip_divcon_threshold):
-               self.tmp_XYZ = self.model.gett_sites_cart()
+               self.tmp_XYZ = self.model.get_sites_cart()
         else:
           self.tmp_XYZ = self.model.get_sites_cart()
         if (self.macro_cycle != self.qblib_params.macro_cycle_to_skip):
