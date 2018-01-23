@@ -987,7 +987,8 @@ class manager(object):
     return self._ncs_groups
 
   def setup_cartesian_ncs_groups(self, ncs_params, log=null_out()):
-    cartesian_ncs = ncs.restraints.cartesian_ncs_manager(
+    import mmtbx.ncs.restraints
+    cartesian_ncs = mmtbx.ncs.restraints.cartesian_ncs_manager(
         model=self,
         ncs_params=ncs_params)
     rm = self.get_restraints_manager()

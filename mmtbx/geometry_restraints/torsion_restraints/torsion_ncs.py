@@ -8,13 +8,9 @@ from cctbx.array_family import flex
 import iotbx.phil
 from libtbx.str_utils import make_sub_header
 import sys, math
-from mmtbx.ncs import restraints
 from libtbx.utils import Sorry
 from mmtbx.geometry_restraints.torsion_restraints import utils, rotamer_search
-from mmtbx import ncs
-import mmtbx.utils
 from libtbx import Auto
-import time
 from libtbx.str_utils import line_breaker
 
 # Refactoring notes 11 May 2015
