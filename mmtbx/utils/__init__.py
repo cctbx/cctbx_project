@@ -26,7 +26,6 @@ from iotbx import pdb
 from cStringIO import StringIO
 from cctbx import adptbx
 from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from iotbx.pdb import combine_unique_pdb_files
