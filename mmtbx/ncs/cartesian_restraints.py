@@ -269,6 +269,12 @@ class cartesian_ncs_manager(object):
     return result
 
 class group(object):
+  """
+  DO NOT USE THIS CLASS ANYWERE ELSE.
+  This class is exclusively used in cartesian NCS restraints.
+  It is being created by cartesian_ncs_manager here and not used anywhere
+  outside this file.
+  """
   def __init__(self,
         selection_strings,
         registry,
