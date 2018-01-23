@@ -508,23 +508,12 @@ namespace dxtbx { namespace model {
       DetectorData(Detector *detector)
         : root(detector) {}
 
+      DetectorData(Detector *detector, const Panel &panel)
+        : root(detector, panel) {}
+
       Node root;
       std::vector<Node::pointer> panels;
     };
-
-    /**
-     * Copy the detector node
-     */
-    void copy_node(Node::pointer self, Node::const_pointer other) {
-      for (Node::const_iterator it = other->begin(); it != other->end(); ++it) {
-        if (it->is_panel()) {
-          self->add_panel(*it, it->index());
-        } else {
-          copy_node(self->add_group(*it), &*it);
-        }
-      }
-    }
-
 
     /**
      * Initialise the detector
@@ -533,16 +522,13 @@ namespace dxtbx { namespace model {
       : data_(boost::make_shared<DetectorData>(this)) {}
 
     /**
-     * Copy the detector
+     * Copy another detector
      */
     Detector(const Detector &other)
-      : data_(boost::make_shared<DetectorData>(this)) {
-      Node::pointer self = root();
-      Node::const_pointer node = other.root();
-      Panel *self_panel_data = (Panel *)self;
-      const Panel *other_panel_data = (const Panel *)node;
-      *self_panel_data = *other_panel_data;
-      copy_node(self, node);
+        : data_(boost::make_shared<DetectorData>(this, *(other.root()))) {
+      // The initializer copies the main panel data; now do the rest
+      copy_node_subtree(root(), other.root());
+      // Validate that everything appears to have been copied
       DXTBX_ASSERT(size() == other.size());
       for (std::size_t i = 0; i < size(); ++i) {
         DXTBX_ASSERT(at(i) != NULL);
@@ -847,6 +833,24 @@ namespace dxtbx { namespace model {
 
     boost::shared_ptr<DetectorData> data_;
 
+  private:
+   /**
+    * Copy the child panels and groups, recursively, of a detector node.
+    *
+    * Note that this doesn't touch the Panel/detector contents of the
+    * destination node.
+    *
+    * Panel children are assumed to be leafs without further hierarchy.
+    */
+    void copy_node_subtree(Node::pointer dest, Node::const_pointer source) {
+     for (Node::const_iterator it = source->begin(); it != source->end(); ++it) {
+       if (it->is_panel()) {
+         dest->add_panel(*it, it->index());
+       } else {
+         copy_node_subtree(dest->add_group(*it), &*it);
+       }
+     }
+    }
   };
 
 
