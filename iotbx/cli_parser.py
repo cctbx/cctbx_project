@@ -117,6 +117,11 @@ class CCTBXParser(ParserBase):
     self.prog = os.getenv('LIBTBX_DISPATCHER_NAME')
     if (self.prog is None):
       self.prog = sys.argv[0]
+    self.prefix = self.prog.split('.')[-1]
+
+    # PHIL filenames
+    self.modified_filename = self.prefix + '_modified.eff'
+    self.all_filename = self.prefix + '_all.eff'
 
     border = '-' * 79
     description = border + program_class.description + border
@@ -154,6 +159,11 @@ class CCTBXParser(ParserBase):
       nargs='?', const=1, type=int, choices=range(0,4),
       help='show parameters with attributes (default=0)'
     )
+
+    # --write-modified
+    # switch for writing only modified PHIL parameters
+    self.add_argument('--write-modified', '--write_modified',
+                      action='store_true')
 
     # --citations will use the default format
     # --citations=<format> will use the specified format
@@ -222,7 +232,9 @@ class CCTBXParser(ParserBase):
     May be rolled into DataManager class
     '''
     print('Processing files:', file=self.logger)
-    print('='*79, file=self.logger)
+    print('-'*79, file=self.logger)
+    printed_something = False
+
     for filename in file_list:
       a = any_file(filename)
       # models
@@ -231,11 +243,17 @@ class CCTBXParser(ParserBase):
         model = mmtbx.model.manager(model_input=model_in, log=self.logger)
         self.data_manager.add_model(a.file_name, model)
         print('  Found model, %s' % a.file_name, file=self.logger)
+        printed_something = True
       # sequences
       elif (a.file_type == 'seq'):
         self.data_manager.add_sequence(a.file_name, a.file_object)
         print('  Found sequence, %s' % a.file_name, file=self.logger)
+        printed_something = True
       # more file types to come!
+
+    if (not printed_something):
+      print('  No files found', file=self.logger)
+
     print('', file=self.logger)
 
   # ---------------------------------------------------------------------------
@@ -247,7 +265,7 @@ class CCTBXParser(ParserBase):
     command-line options
     '''
     print('Processing PHIL parameters:')
-    print('='*79, file=self.logger)
+    print('-'*79, file=self.logger)
     printed_something = False
 
     sources = list()
@@ -273,6 +291,11 @@ class CCTBXParser(ParserBase):
       phil_diff.show(prefix='  ', out=self.logger)
       printed_something = True
 
+      # write differences
+      if (self.namespace.write_modified):
+        with open(self.modified_filename, 'w') as f:
+          phil_diff.show(out=f)
+
     # show unrecognized parameters
     if (len(unused_phil) > 0):
       print('  Unrecognized PHIL parameters:', file=self.logger)
@@ -284,6 +307,10 @@ class CCTBXParser(ParserBase):
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
 
+    # write all parameters
+    with open(self.all_filename, 'w') as f:
+      self.working_phil.show(expert_level=3, out=f)
+
     print('', file=self.logger)
 
   # ---------------------------------------------------------------------------
@@ -291,7 +318,7 @@ class CCTBXParser(ParserBase):
     '''
     '''
     print('Processing directories:')
-    print('='*79, file=self.logger)
+    print('-'*79, file=self.logger)
     print('', file=self.logger)
 
   # ---------------------------------------------------------------------------
