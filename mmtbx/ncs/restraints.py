@@ -114,9 +114,8 @@ class cartesian_ncs_manager(object):
       group.register_additional_isolated_sites(number=number)
 
   def compute_operators(self, sites_cart):
-    self.groups_obj.operators = []
     for group in self.groups_obj.members:
-      self.groups_obj.operators.append(group.operators(sites_cart=sites_cart))
+      group.compute_operators(sites_cart=sites_cart)
 
   def energies_sites(self,
         sites_cart,
@@ -131,10 +130,10 @@ class cartesian_ncs_manager(object):
       gradients_factory=flex.vec3_double,
       normalization=normalization)
     result.rms_with_respect_to_averages = []
-    for operators in self.groups_obj.operators:
-      if (    operators.group.coordinate_sigma is not None
-          and operators.group.coordinate_sigma > 0):
-        contribution = operators.energies_sites(
+    for group in self.groups_obj.members:
+      if (    group.coordinate_sigma is not None
+          and group.coordinate_sigma > 0):
+        contribution = group.energies_sites(
           sites_cart=sites_cart,
           compute_gradients=compute_gradients,
           gradients=result.gradients)
@@ -149,30 +148,21 @@ class cartesian_ncs_manager(object):
   def show_operators(self, sites_cart, out=None, prefix=""):
     for i_group,group in enumerate(self.groups_obj.members):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
-      ncs_operators = group.operators(sites_cart=sites_cart)
-      ncs_operators.show(sites_cart=sites_cart, out=out, prefix=prefix+"  ")
-
-  def extract_ncs_groups(self, sites_cart):
-    result = []
-    for group in self.groups_obj.members:
-      ncs_operators = group.operators(sites_cart=sites_cart)
-      result.append(ncs_operators)
-    return result
+      group.show_operators(sites_cart=sites_cart, out=out, prefix=prefix+"  ")
 
   def as_pdb(self, sites_cart, out):
     result = out
-    ncs_groups = self.extract_ncs_groups(sites_cart=sites_cart)
     pr = "REMARK   3  "
     print >> result, pr+"NCS DETAILS."
-    print >> result, pr+" NUMBER OF NCS GROUPS : %-6d"%len(ncs_groups)
-    for i_group, ncs_group in enumerate(ncs_groups):
+    print >> result, pr+" NUMBER OF NCS GROUPS : %-6d" % self.get_n_groups()
+    for i_group, group in enumerate(self.groups_obj.members):
       print >>result,pr+" NCS GROUP : %-6d"%(i_group+1)
-      selection_strings = ncs_group.group.selection_strings
+      selection_strings = group.selection_strings
       for i_op,pair,mx,rms in zip(
           count(1),
-          ncs_group.group.selection_pairs,
-          ncs_group.matrices,
-          ncs_group.rms):
+          group.selection_pairs,
+          group.matrices,
+          group.rms):
         print >> result,pr+"  NCS OPERATOR : %-d" % i_op
         lines = line_breaker(selection_strings[0], width=34)
         for i_line, line in enumerate(lines):
@@ -197,21 +187,20 @@ class cartesian_ncs_manager(object):
         ncs_ens_gen_loop) = loops
 
     oper_id = 0
-    ncs_groups = self.extract_ncs_groups(sites_cart=sites_cart)
-    if ncs_groups is not None:
-      for i_group, ncs_group in enumerate(ncs_groups):
+    if self.get_n_groups > 0:
+      for i_group, group in enumerate(self.groups_obj.members):
         ncs_ens_loop.add_row((i_group+1, "?"))
-        selection_strings = ncs_group.group.selection_strings
-        matrices = ncs_group.matrices
-        rms = ncs_group.rms
-        pair_count = len(ncs_group.group.selection_pairs[0])
+        selection_strings = group.selection_strings
+        matrices = group.matrices
+        rms = group.rms
+        pair_count = len(group.selection_pairs[0])
         for i_domain, domain_selection in enumerate(selection_strings):
           ncs_dom_loop.add_row((i_domain+1, i_group+1, "?"))
           # XXX TODO: export individual sequence ranges from selection
           ncs_dom_lim_loop.add_row(
             (i_group+1, i_domain+1, "?", "?", "?", "?", domain_selection))
           if i_domain > 0:
-            rt_mx = ncs_group.matrices[i_domain-1]
+            rt_mx = group.matrices[i_domain-1]
             oper_id += 1
             row = [oper_id, "given"]
             row.extend(rt_mx.r)
@@ -222,7 +211,7 @@ class cartesian_ncs_manager(object):
     cif_block.add_loop(ncs_ens_loop)
     cif_block.add_loop(ncs_dom_loop)
     cif_block.add_loop(ncs_dom_lim_loop)
-    if ncs_groups is not None:
+    if self.get_n_groups > 0:
       cif_block.add_loop(ncs_oper_loop)
       cif_block.add_loop(ncs_ens_gen_loop)
     return cif_block
@@ -233,6 +222,7 @@ class cartesian_ncs_manager(object):
          excessive_distance_limit=None,
          out=None,
          prefix=""):
+    self.compute_operators(sites_cart)
     n_excessive = 0
     for i_group,group in enumerate(self.groups_obj.members):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
@@ -240,8 +230,7 @@ class cartesian_ncs_manager(object):
           and group.coordinate_sigma > 0):
         print >> out, prefix + "  coordinate_sigma: %.6g" % (
           group.coordinate_sigma)
-        operators = group.operators(sites_cart=sites_cart)
-        energies_sites = operators.energies_sites(
+        energies_sites = group.energies_sites(
           sites_cart=sites_cart,
           compute_gradients=False)
         print >> out, prefix + "  weight:  %.6g" % energies_sites.weight
@@ -250,6 +239,7 @@ class cartesian_ncs_manager(object):
           excessive_distance_limit=excessive_distance_limit,
           out=out,
           prefix=prefix+"  ")
+        print n_excessive
       else:
         print >> out, \
           prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
@@ -275,11 +265,13 @@ class group(object):
   def __init__(self,
         selection_strings,
         registry,
-        coordinate_sigma,
-        b_factor_weight,
+        coordinate_sigma, # XXX Global
+        b_factor_weight,  # XXX Global
         u_average_min):
       adopt_init_args(self, locals())
       self.selection_pairs = registry.selection_pairs()
+      self.matrices = []
+      self.rms = []
 
   def register_additional_isolated_sites(self, number):
     self.registry.register_additional_isolated_sites(number=number)
@@ -294,8 +286,53 @@ class group(object):
       b_factor_weight=self.b_factor_weight,
       u_average_min=self.u_average_min)
 
-  def operators(self, sites_cart):
-    return _operators(group=self, sites_cart=sites_cart)
+  def compute_operators(self, sites_cart):
+    for pair in self.selection_pairs:
+      superposition = superpose.least_squares_fit(
+        reference_sites=sites_cart.select(pair[0]),
+        other_sites=sites_cart.select(pair[1]))
+      rtmx = matrix.rt((superposition.r, superposition.t))
+      self.matrices.append(rtmx)
+      x = sites_cart.select(pair[0])
+      y = rtmx * sites_cart.select(pair[1])
+      d_sq = (x-y).dot()
+      self.rms.append(flex.mean(d_sq)**0.5)
+
+  def show_operators(self,
+      sites_cart,
+      n_slots_difference_histogram=6,
+      out=None,
+      prefix=""):
+    self.compute_operators(sites_cart)
+    if (out is None): out = sys.stdout
+    # selection_strings = self.group.selection_strings
+    for i_op,pair,mx,rms in zip(
+          count(1),
+          self.selection_pairs,
+          self.matrices,
+          self.rms):
+      print >> out, prefix + "NCS operator %d:" % i_op
+      print >> out, prefix + "  Reference selection:", \
+        show_string(self.selection_strings[0])
+      print >> out, prefix + "      Other selection:", \
+        show_string(self.selection_strings[i_op])
+      print >> out, prefix + "  Number of atom pairs:", len(pair[0])
+      print >> out, mx.r.mathematica_form(
+        label="Rotation", format="%.6g", one_row_per_line=True,
+        prefix=prefix+"  ")
+      print >> out, mx.t.mathematica_form(
+        label="Translation", format="%.6g", prefix=prefix+"  ")
+      x = sites_cart.select(pair[0])
+      y = mx * sites_cart.select(pair[1])
+      d_sq = (x-y).dot()
+      if (n_slots_difference_histogram is not None):
+        print >> out, prefix + "  Histogram of differences:"
+        diff_histogram = flex.histogram(
+          data=flex.sqrt(d_sq), n_slots=n_slots_difference_histogram)
+        diff_histogram.show(
+          f=out, prefix=prefix+"    ", format_cutoffs="%8.6f")
+      print >> out, \
+        prefix + "  RMS difference with respect to the reference: %8.6f" %(rms)
 
   def energies_adp_iso(self,
         u_isos,
@@ -308,6 +345,18 @@ class group(object):
       average_power=average_power,
       compute_gradients=compute_gradients,
       gradients=gradients)
+
+  def energies_sites(self,
+        sites_cart,
+        compute_gradients=True,
+        gradients=None,
+        sites_average=None):
+    return _energies_sites(
+      group=self,
+      sites_cart=sites_cart,
+      compute_gradients=compute_gradients,
+      gradients=gradients,
+      sites_average=sites_average)
 
 class _energies_adp_iso(scitbx.restraints.energies):
 
@@ -392,74 +441,11 @@ class _energies_adp_iso(scitbx.restraints.energies):
     for i_ncs,pair in zip(count(1), self.group.selection_pairs):
       show_selection(i_ncs=i_ncs, pair=pair)
 
-class _operators(object):
-
-  def __init__(self, group, sites_cart):
-    self.group = group
-    self.matrices = []
-    self.rms = []
-    for pair in self.group.selection_pairs:
-      superposition = superpose.least_squares_fit(
-        reference_sites=sites_cart.select(pair[0]),
-        other_sites=sites_cart.select(pair[1]))
-      rtmx = matrix.rt((superposition.r, superposition.t))
-      self.matrices.append(rtmx)
-      x = sites_cart.select(pair[0])
-      y = rtmx * sites_cart.select(pair[1])
-      d_sq = (x-y).dot()
-      self.rms.append(flex.mean(d_sq)**0.5)
-
-  def show(self,
-        sites_cart,
-        n_slots_difference_histogram=6,
-        out=None,
-        prefix=""):
-    if (out is None): out = sys.stdout
-    selection_strings = self.group.selection_strings
-    for i_op,pair,mx,rms in zip(
-          count(1),
-          self.group.selection_pairs,
-          self.matrices,
-          self.rms):
-      print >> out, prefix + "NCS operator %d:" % i_op
-      print >> out, prefix + "  Reference selection:", \
-        show_string(selection_strings[0])
-      print >> out, prefix + "      Other selection:", \
-        show_string(selection_strings[i_op])
-      print >> out, prefix + "  Number of atom pairs:", len(pair[0])
-      print >> out, mx.r.mathematica_form(
-        label="Rotation", format="%.6g", one_row_per_line=True,
-        prefix=prefix+"  ")
-      print >> out, mx.t.mathematica_form(
-        label="Translation", format="%.6g", prefix=prefix+"  ")
-      x = sites_cart.select(pair[0])
-      y = mx * sites_cart.select(pair[1])
-      d_sq = (x-y).dot()
-      if (n_slots_difference_histogram is not None):
-        print >> out, prefix + "  Histogram of differences:"
-        diff_histogram = flex.histogram(
-          data=flex.sqrt(d_sq), n_slots=n_slots_difference_histogram)
-        diff_histogram.show(
-          f=out, prefix=prefix+"    ", format_cutoffs="%8.6f")
-      print >> out, \
-        prefix + "  RMS difference with respect to the reference: %8.6f" %(rms)
-
-  def energies_sites(self,
-        sites_cart,
-        compute_gradients=True,
-        gradients=None,
-        sites_average=None):
-    return _energies_sites(
-      operators=self,
-      sites_cart=sites_cart,
-      compute_gradients=compute_gradients,
-      gradients=gradients,
-      sites_average=sites_average)
 
 class _energies_sites(scitbx.restraints.energies):
 
   def __init__(self,
-        operators,
+        group,
         sites_cart,
         compute_gradients,
         gradients,
@@ -470,9 +456,9 @@ class _energies_sites(scitbx.restraints.energies):
       gradients_size=sites_cart.size(),
       gradients_factory=flex.vec3_double,
       normalization=False)
-    self.operators = operators
+    self.group = group
     self.sites_cart = sites_cart
-    selection_pairs = self.operators.group.selection_pairs
+    selection_pairs = self.group.selection_pairs
     max_index = 0
     for pair in selection_pairs:
       max_index = max(max_index, pair[0][-1])
@@ -481,7 +467,7 @@ class _energies_sites(scitbx.restraints.energies):
     for pair in selection_pairs:
       sites_sum.set_selected(pair[0], sites_cart.select(pair[0]))
       sites_count.set_selected(pair[0], 1)
-    for pair,op in zip(selection_pairs, self.operators.matrices):
+    for pair,op in zip(selection_pairs, self.group.matrices):
       sites_sum.add_selected(pair[0], op*sites_cart.select(pair[1]))
       sites_count.set_selected(pair[0], sites_count.select(pair[0])+1)
     sel = sites_count == 0
@@ -492,8 +478,8 @@ class _energies_sites(scitbx.restraints.energies):
       sites_average = sites_sum / sites_count.as_double()
     sites_count.set_selected(sel, 0)
     sel = (~sel).iselection()
-    assert self.operators.group.coordinate_sigma > 0
-    self.weight = 1/self.operators.group.coordinate_sigma**2
+    assert self.group.coordinate_sigma > 0
+    self.weight = 1/self.group.coordinate_sigma**2
     self.rms_with_respect_to_average = flex.double()
     if (self.gradients is not None):
       self.gradients.add_selected(
@@ -501,7 +487,7 @@ class _energies_sites(scitbx.restraints.energies):
         self.residual_contribution(
           sites_current=sites_cart.select(sel),
           sites_average=sites_average.select(sel)))
-      for pair,op in zip(selection_pairs, self.operators.matrices):
+      for pair,op in zip(selection_pairs, self.group.matrices):
         self.gradients.add_selected(
           pair[1],
           self.residual_contribution(
@@ -511,7 +497,7 @@ class _energies_sites(scitbx.restraints.energies):
       self.residual_contribution(
         sites_current=sites_cart.select(sel),
         sites_average=sites_average.select(sel))
-      for pair,op in zip(selection_pairs, self.operators.matrices):
+      for pair,op in zip(selection_pairs, self.group.matrices):
         self.residual_contribution(
           sites_current=sites_cart.select(pair[1]),
           sites_average=op.inverse() * sites_average.select(pair[0]))
@@ -540,7 +526,7 @@ class _energies_sites(scitbx.restraints.energies):
     fmt = "  %%%ds: %%8.4f" % max_label_size
     def show_selection(i_ncs, pair, op):
       print >> out, prefix + "NCS selection:", \
-        show_string(self.operators.group.selection_strings[i_ncs])
+        show_string(self.group.selection_strings[i_ncs])
       print >> out, prefix + " "*(max_label_size+2) \
         + "  Distance to NCS average"
       sites_current = self.sites_cart.select(pair[1])
@@ -561,8 +547,8 @@ class _energies_sites(scitbx.restraints.energies):
     sel = (self.sites_count != 0).iselection()
     n_excessive = show_selection(i_ncs=0, pair=[sel, sel], op=None)
     for i_ncs,pair,op in zip(count(1),
-                             self.operators.group.selection_pairs,
-                             self.operators.matrices):
+                             self.group.selection_pairs,
+                             self.group.matrices):
       n_excessive += show_selection(i_ncs=i_ncs, pair=pair, op=op)
     return n_excessive
 
@@ -573,7 +559,6 @@ class groups(object):
       self.members = []
     else:
       self.members = members
-    self.operators = None
 
   def select(self, iselection):
     members = []
