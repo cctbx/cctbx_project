@@ -34,7 +34,7 @@ xtc_phil_str = '''
     find_spots = True
       .type = bool
       .help = Whether to do spotfinding. Needed for indexing/integration
-    data_source_name = None
+    datasource = None
       .type = str
       .expert_level = 2
       .help = This is to specify which datasource should be used for processing data at LCLS \
@@ -451,7 +451,7 @@ class InMemScript(DialsProcessScript):
 
     try:
       params, options = self.parser.parse_args(
-        show_diff_phil=True)
+        show_diff_phil=True, quick_parse=True)
     except Exception, e:
       if "Unknown command line parameter definition" in str(e) or \
           "The following definitions were not recognised" in str(e):
@@ -613,33 +613,33 @@ class InMemScript(DialsProcessScript):
     if params.input.cfg is not None:
       psana.setConfigFile(params.input.cfg)
     # all cores in stripe mode and the master in client-server mode read smd
-    if params.dispatch.datasource_name is None:
-      dataset_name = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,'smd')
+    if params.dispatch.datasource is None:
+      datasource = "exp=%s:run=%s:%s"%(params.input.experiment,params.input.run_num,'smd')
       if params.input.xtc_dir is not None:
         if params.input.use_ffb:
           raise Sorry("Cannot specify the xtc_dir and use SLAC's ffb system")
-        dataset_name += ":dir=%s"%params.input.xtc_dir
+        datasource += ":dir=%s"%params.input.xtc_dir
       elif params.input.use_ffb:
       # as ffb is only at SLAC, ok to hardcode /reg/d here
-        dataset_name += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
+        datasource += ":dir=/reg/d/ffb/%s/%s/xtc"%(params.input.experiment[0:3],params.input.experiment)
       if params.input.stream is not None and len(params.input.stream) > 0:
-        dataset_name += ":stream=%s"%(",".join(["%d"%stream for stream in params.input.stream]))
+        datasource += ":stream=%s"%(",".join(["%d"%stream for stream in params.input.stream]))
       if params.input.calib_dir is not None:
         psana.setOption('psana.calib-dir',params.input.calib_dir)
       if params.mp.method == "mpi" and params.mp.mpi.method == 'client_server' and size > 2:
-        dataset_name_client = dataset_name.replace(":smd",":rax")
+        dataset_name_client = datasource.replace(":smd",":rax")
       # for client-server, master reads smd - clients read rax
         if rank == 0:
-          ds = psana.DataSource(dataset_name)
+          ds = psana.DataSource(datasource)
         else:
           ds = psana.DataSource(dataset_name_client)
 
       else:
       # for stripe, all cores read smd
-        ds = psana.DataSource(dataset_name)
+        ds = psana.DataSource(datasource)
     else:
-      dataset_name = params.dispatch.data_source_name
-      ds = psana.DataSource(dataset_name)
+      datasource = params.dispatch.datasource
+      ds = psana.DataSource(datasource)
 
     if params.format.file_format == "cbf":
       self.psana_det = psana.Detector(params.input.address, ds.env())
