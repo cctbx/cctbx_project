@@ -134,7 +134,6 @@ WINLIBTIFF32 = "libtiff4.0.6x32.zip"
 # collaborators)
 dependency_tarballs = {
   "scons":  ("http://cci.lbl.gov/hot", "scons_hot.tar.gz"),
-  "annlib": ("http://cci.lbl.gov/hot", "annlib_hot.tar.gz"),
 }
 # External SVN repositories that may be required for certain components of
 # CCTBX to work.  This includes forked versions (with minimal changes) of the
@@ -142,7 +141,6 @@ dependency_tarballs = {
 subversion_repositories = {
   "ccp4io": "http://cci.lbl.gov/svn/ccp4io/trunk",
   "ccp4io_adaptbx": "http://cci.lbl.gov/svn/ccp4io_adaptbx/trunk",
-  "annlib_adaptbx": "http://cci.lbl.gov/svn/annlib_adaptbx/trunk",
   "gui_resources": "http://cci.lbl.gov/svn/gui_resources/trunk",
   "tntbx": "http://cci.lbl.gov/svn/tntbx/trunk",
   "ksdssp": "http://cci.lbl.gov/svn/ksdssp/trunk",

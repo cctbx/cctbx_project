@@ -831,8 +831,10 @@ class ccp4io_adaptbx(SourceModule):
 
 class annlib_adaptbx(SourceModule):
   module = 'annlib_adaptbx'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/annlib_adaptbx.gz']
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@cci.lbl.gov/annlib_adaptbx/trunk']
+  anonymous = ['git',
+               'git@github.com:cctbx/annlib_adaptbx.git',
+               'https://github.com/cctbx/annlib_adaptbx.git',
+               'https://github.com/cctbx/annlib_adaptbx/archive/master.zip']
 
 class tntbx_module(SourceModule):
   module = 'tntbx'
