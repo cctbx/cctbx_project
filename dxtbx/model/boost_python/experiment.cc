@@ -31,7 +31,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_scan(),
         obj.get_crystal(),
         obj.get_profile(),
-        obj.get_imageset());
+        obj.get_imageset(),
+        obj.get_scaling_model());
     }
   };
 
@@ -94,6 +95,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           boost::shared_ptr<Scan>,
           boost::shared_ptr<CrystalBase>,
           boost::python::object,
+          boost::python::object,
           boost::python::object>((
               arg("beam")       = boost::shared_ptr<BeamBase>(),
               arg("detector")   = boost::shared_ptr<Detector>(),
@@ -101,7 +103,8 @@ namespace dxtbx { namespace model { namespace boost_python {
               arg("scan")       = boost::shared_ptr<Scan>(),
               arg("crystal")    = boost::shared_ptr<CrystalBase>(),
               arg("profile")    = boost::python::object(),
-              arg("imageset")   = boost::python::object())))
+              arg("imageset")   = boost::python::object(),
+              arg("scaling_model") = boost::python::object())))
       .add_property(
           "beam",
           &Experiment::get_beam,
@@ -130,6 +133,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           "imageset",
           &Experiment::get_imageset,
           &Experiment::set_imageset)
+      .add_property(
+          "scaling_model",
+          &Experiment::get_scaling_model,
+          &Experiment::set_scaling_model)
       .def("__contains__", experiment_contains_pointers::beam())
       .def("__contains__", experiment_contains_pointers::detector())
       .def("__contains__", experiment_contains_pointers::goniometer())

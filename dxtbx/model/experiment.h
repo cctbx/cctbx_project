@@ -39,6 +39,7 @@ namespace dxtbx { namespace model {
    *   - scan The scan model
    *   - crystal The crystal model
    *   - profile The profile model
+   *   - scaling_model The scaling model
    *
    * Some of these may be set to "None"
    *
@@ -58,14 +59,16 @@ namespace dxtbx { namespace model {
           boost::shared_ptr<Scan> scan,
           boost::shared_ptr<CrystalBase> crystal,
           boost::python::object profile,
-          boost::python::object imageset)
+          boost::python::object imageset,
+          boost::python::object scaling_model)
       : beam_(beam),
         detector_(detector),
         goniometer_(goniometer),
         scan_(scan),
         crystal_(crystal),
         profile_(profile),
-        imageset_(imageset) {}
+        imageset_(imageset),
+        scaling_model_(scaling_model){}
 
     /**
      * Check if the beam model is the same.
@@ -122,7 +125,7 @@ namespace dxtbx { namespace model {
       } else if (get_crystal.check()) {
         return contains(get_crystal());
       }
-      return profile_ == obj || imageset_ == obj;
+      return profile_ == obj || imageset_ == obj || scaling_model_ == obj;
     }
 
     /**
@@ -134,7 +137,8 @@ namespace dxtbx { namespace model {
           && detector_   == other.detector_
           && goniometer_ == other.goniometer_
           && scan_       == other.scan_
-          && profile_    == other.profile_;
+          && profile_    == other.profile_
+          && scaling_model_ == other.scaling_model_;
     }
 
     /**
@@ -241,6 +245,20 @@ namespace dxtbx { namespace model {
     boost::python::object get_imageset() const {
       return imageset_;
     }
+      
+    /**
+    * Set the scaling model
+    */
+    void set_scaling_model(boost::python::object scaling_model) {
+      scaling_model_ = scaling_model;
+    }
+    
+    /**
+    * Get the scaling model
+    */
+    boost::python::object get_scaling_model() const {
+      return scaling_model_;
+    }
 
   protected:
 
@@ -251,6 +269,7 @@ namespace dxtbx { namespace model {
     boost::shared_ptr<CrystalBase> crystal_;
     boost::python::object profile_;
     boost::python::object imageset_;
+    boost::python::object scaling_model_;
 
   };
 

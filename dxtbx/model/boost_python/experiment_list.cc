@@ -262,7 +262,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         arg("scan")       = boost::shared_ptr<Scan>(),
         arg("crystal")    = boost::shared_ptr<CrystalBase>(),
         arg("profile")    = boost::python::object(),
-        arg("imageset")   = boost::python::object()))
+        arg("imageset")   = boost::python::object(),
+        arg("scaling_model")   = boost::python::object()))
       .def("is_consistent", &ExperimentList::is_consistent)
       .def("__len__", &ExperimentList::size)
       .def_pickle(ExperimentListPickleSuite());

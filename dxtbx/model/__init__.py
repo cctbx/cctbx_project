@@ -396,6 +396,11 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     ''' Get a list of the unique profile models (includes None). '''
     from libtbx.containers import OrderedSet
     return list(OrderedSet([e.profile for e in self]))
+  
+  def scaling_models(self):
+    from libtbx.containers import OrderedSet
+    return list(OrderedSet([e.scaling_model for e in self]))
+      
 
   def imagesets(self):
     ''' Get a list of the unique imagesets (includes None).
@@ -454,6 +459,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     clist = self.crystals()
     ilist = self.imagesets()
     plist = self.profiles()
+    scalelist = self.scaling_models()
 
     # Create the output dictionary
     result = OrderedDict()
@@ -483,6 +489,8 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
         obj['crystal'] = find_index(clist, e.crystal)
       if e.profile is not None:
         obj['profile'] = find_index(plist, e.profile)
+      if e.scaling_model is not None:
+        obj['scaling_model'] = find_index(scalelist, e.scaling_model)
       if e.imageset is not None:
         same = [e.imageset is imset for imset in ilist]
         assert(same.count(True) == 1)
@@ -542,6 +550,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     result['scan']       = [s.to_dict() for s in slist if s is not None]
     result['crystal']    = [c.to_dict() for c in clist if c is not None]
     result['profile']    = [p.to_dict() for p in plist if p is not None]
+    result['scaling_model']    = [s.to_dict() for s in scalelist if s is not None]
 
     # Return the dictionary
     return result
