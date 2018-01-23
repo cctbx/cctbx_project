@@ -97,11 +97,12 @@ class DataManager(object):
     '''
     # sanity checks
     if (type(phil) == libtbx.phil.scope):
-      phil_extract = phil.extract()
+      working_phil = self.master_phil.fetch(source=phil)
     elif (type(phil) == libtbx.phil.scope_extract):
-      phil_extract = phil
+      working_phil = self.master_phil.format(python_object=phil)
     else:
       raise Sorry('A libtbx.phil.scope or libtbx.phil.scope_extract object is required')
+    phil_extract = working_phil.extract()
 
     if (not hasattr(phil_extract, 'data_manager')):
       raise Sorry('The phil scope does not have a DataManager scope.')
@@ -110,11 +111,10 @@ class DataManager(object):
     for datatype in DataManager._datatypes:
       filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
                           None)
-      if (filenames is not None):
-        for filename in filenames:
-          # call type-specific function (e.g. self.process_model())
-          # checks if file is already in DataManager
-          getattr(self, 'process_%s_file' % datatype)(filename)
+      for filename in filenames:
+        # call type-specific function (e.g. self.process_model())
+        # checks if file is already in DataManager
+        getattr(self, 'process_%s_file' % datatype)(filename)
 
   # ---------------------------------------------------------------------------
   # Models
