@@ -20,9 +20,9 @@ class cartesian_ncs_manager(object):
   def __init__(self, model, ncs_params, ext_groups=None):
     # create bunch of group objects
     if ext_groups is not None:
-      self.groups_obj = ext_groups
+      self.groups_list = ext_groups
     else:
-      many_groups = []
+      self.groups_list = []
       ncs_obj = model.get_ncs_obj()
       ncs_groups_selection_string_list = ncs_obj.get_array_of_selections()
       ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
@@ -47,14 +47,16 @@ class cartesian_ncs_manager(object):
             coordinate_sigma=ncs_params.coordinate_sigma, # XXX GLOBAL
             b_factor_weight=ncs_params.b_factor_weight, # XXX GLOBAL
             u_average_min=1.e-6,)
-        many_groups.append(g)
-      self.groups_obj = groups(members=many_groups)
+        self.groups_list.append(g)
 
   def select(self, iselection):
+    ext_groups = []
+    for group in self.groups_list:
+      ext_groups.append(group.select(iselection))
     return cartesian_ncs_manager(
         model=None,
         ncs_params=None,
-        ext_groups=self.groups_obj.select(iselection))
+        ext_groups=ext_groups)
 
   def energies_adp_iso(self,
         u_isos,
@@ -69,7 +71,7 @@ class cartesian_ncs_manager(object):
       gradients_factory=flex.double,
       normalization=normalization)
     result.rms_with_respect_to_averages = []
-    for group in self.groups_obj.members:
+    for group in self.groups_list:
       if (    group.b_factor_weight is not None
           and group.b_factor_weight > 0):
         contribution = group.energies_adp_iso(
@@ -90,7 +92,7 @@ class cartesian_ncs_manager(object):
          site_labels,
          out=None,
          prefix=""):
-    for i_group,group in enumerate(self.groups_obj.members):
+    for i_group,group in enumerate(self.groups_list):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
       if (    group.b_factor_weight is not None
           and group.b_factor_weight > 0):
@@ -107,14 +109,14 @@ class cartesian_ncs_manager(object):
             str(group.b_factor_weight))
 
   def get_n_groups(self):
-    return len(self.groups_obj.members)
+    return len(self.groups_list)
 
   def register_additional_isolated_sites(self, number):
-    for group in self.groups_obj.members:
+    for group in self.groups_list:
       group.register_additional_isolated_sites(number=number)
 
   def compute_operators(self, sites_cart):
-    for group in self.groups_obj.members:
+    for group in self.groups_list:
       group.compute_operators(sites_cart=sites_cart)
 
   def energies_sites(self,
@@ -130,7 +132,7 @@ class cartesian_ncs_manager(object):
       gradients_factory=flex.vec3_double,
       normalization=normalization)
     result.rms_with_respect_to_averages = []
-    for group in self.groups_obj.members:
+    for group in self.groups_list:
       if (    group.coordinate_sigma is not None
           and group.coordinate_sigma > 0):
         contribution = group.energies_sites(
@@ -146,7 +148,7 @@ class cartesian_ncs_manager(object):
     return result
 
   def show_operators(self, sites_cart, out=None, prefix=""):
-    for i_group,group in enumerate(self.groups_obj.members):
+    for i_group,group in enumerate(self.groups_list):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
       group.show_operators(sites_cart=sites_cart, out=out, prefix=prefix+"  ")
 
@@ -155,7 +157,7 @@ class cartesian_ncs_manager(object):
     pr = "REMARK   3  "
     print >> result, pr+"NCS DETAILS."
     print >> result, pr+" NUMBER OF NCS GROUPS : %-6d" % self.get_n_groups()
-    for i_group, group in enumerate(self.groups_obj.members):
+    for i_group, group in enumerate(self.groups_list):
       print >>result,pr+" NCS GROUP : %-6d"%(i_group+1)
       selection_strings = group.selection_strings
       for i_op,pair,mx,rms in zip(
@@ -188,7 +190,7 @@ class cartesian_ncs_manager(object):
 
     oper_id = 0
     if self.get_n_groups > 0:
-      for i_group, group in enumerate(self.groups_obj.members):
+      for i_group, group in enumerate(self.groups_list):
         ncs_ens_loop.add_row((i_group+1, "?"))
         selection_strings = group.selection_strings
         matrices = group.matrices
@@ -224,7 +226,7 @@ class cartesian_ncs_manager(object):
          prefix=""):
     self.compute_operators(sites_cart)
     n_excessive = 0
-    for i_group,group in enumerate(self.groups_obj.members):
+    for i_group,group in enumerate(self.groups_list):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
       if (    group.coordinate_sigma is not None
           and group.coordinate_sigma > 0):
@@ -249,13 +251,13 @@ class cartesian_ncs_manager(object):
   def selection_restrained(self, n_seq=None):
     if (n_seq is None):
       n_seq = -1
-      for group in self.groups_obj.members:
+      for group in self.groups_list:
         for pair in group.selection_pairs:
           for sel in pair:
             n_seq = max(n_seq, flex.max(sel))
       n_seq += 1
     result = flex.bool(n_seq, False)
-    for group in self.groups_obj.members:
+    for group in self.groups_list:
       for pair in group.selection_pairs:
         for sel in pair:
           result.set_selected(sel, True)
@@ -551,17 +553,3 @@ class _energies_sites(scitbx.restraints.energies):
                              self.group.matrices):
       n_excessive += show_selection(i_ncs=i_ncs, pair=pair, op=op)
     return n_excessive
-
-class groups(object):
-
-  def __init__(self, members=None):
-    if (members is None):
-      self.members = []
-    else:
-      self.members = members
-
-  def select(self, iselection):
-    members = []
-    for group in self.members:
-      members.append(group.select(iselection=iselection))
-    return groups(members=members)
