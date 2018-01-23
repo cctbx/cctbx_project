@@ -3,7 +3,7 @@ from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_ncs_cartesian_restraints_ext")
-from mmtbx_ncs_restraints_ext import *
+from mmtbx_ncs_cartesian_restraints_ext import *
 
 from cctbx import adptbx
 import scitbx.restraints
@@ -15,10 +15,14 @@ from libtbx import adopt_init_args
 from itertools import count
 import sys
 from libtbx.str_utils import line_breaker
+from mmtbx.ncs.ncs_params import global_ncs_params
 
 class cartesian_ncs_manager(object):
   def __init__(self, model, ncs_params, ext_groups=None):
     # create bunch of group objects
+    self.ncs_params = ncs_params
+    if self.ncs_params is None:
+      self.ncs_params = global_ncs_params.extract()
     if ext_groups is not None:
       self.groups_list = ext_groups
     else:
@@ -44,8 +48,6 @@ class cartesian_ncs_manager(object):
                 self.selection_strings[i_pair+1])]))
         g = group(selection_strings=ncs_groups_selection_string_list[i_gr],
             registry=registry,
-            coordinate_sigma=ncs_params.coordinate_sigma, # XXX GLOBAL
-            b_factor_weight=ncs_params.b_factor_weight, # XXX GLOBAL
             u_average_min=1.e-6,)
         self.groups_list.append(g)
 
@@ -55,7 +57,7 @@ class cartesian_ncs_manager(object):
       ext_groups.append(group.select(iselection))
     return cartesian_ncs_manager(
         model=None,
-        ncs_params=None,
+        ncs_params=self.ncs_params,
         ext_groups=ext_groups)
 
   def energies_adp_iso(self,
@@ -71,19 +73,20 @@ class cartesian_ncs_manager(object):
       gradients_factory=flex.double,
       normalization=normalization)
     result.rms_with_respect_to_averages = []
-    for group in self.groups_list:
-      if (    group.b_factor_weight is not None
-          and group.b_factor_weight > 0):
+    if (self.ncs_params.b_factor_weight is None
+        or self.ncs_params.b_factor_weight <= 0):
+      result.rms_with_respect_to_averages = [None]*len(self.groups_list)
+    else:
+      for group in self.groups_list:
         contribution = group.energies_adp_iso(
-          u_isos=u_isos,
-          average_power=average_power,
-          compute_gradients=compute_gradients,
-          gradients=result.gradients)
+            u_isos=u_isos,
+            b_factor_weight=self.ncs_params.b_factor_weight,
+            average_power=average_power,
+            compute_gradients=compute_gradients,
+            gradients=result.gradients)
         result += contribution
         result.rms_with_respect_to_averages.append(
-          contribution.rms_with_respect_to_average)
-      else:
-        result.rms_with_respect_to_averages.append(None)
+            contribution.rms_with_respect_to_average)
     result.finalize_target_and_gradients()
     return result
 
@@ -92,21 +95,21 @@ class cartesian_ncs_manager(object):
          site_labels,
          out=None,
          prefix=""):
+    if (self.ncs_params.b_factor_weight is None
+        or self.ncs_params.b_factor_weight <= 0):
+      print >> out, \
+        prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
+          str(self.ncs_params.b_factor_weight))
     for i_group,group in enumerate(self.groups_list):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
-      if (    group.b_factor_weight is not None
-          and group.b_factor_weight > 0):
-        energies_adp_iso = group.energies_adp_iso(
-          u_isos=u_isos,
-          average_power=1,
-          compute_gradients=False)
-        print >> out, prefix + "  weight: %.6g" % energies_adp_iso.weight
-        energies_adp_iso.show_differences_to_average(
-          site_labels=site_labels, out=out, prefix=prefix+"  ")
-      else:
-        print >> out, \
-          prefix+"  b_factor_weight: %s  =>  restraints disabled" % (
-            str(group.b_factor_weight))
+      energies_adp_iso = group.energies_adp_iso(
+        u_isos=u_isos,
+        b_factor_weight=self.ncs_params.b_factor_weight,
+        average_power=1,
+        compute_gradients=False)
+      print >> out, prefix + "  weight: %.6g" % energies_adp_iso.weight
+      energies_adp_iso.show_differences_to_average(
+        site_labels=site_labels, out=out, prefix=prefix+"  ")
 
   def get_n_groups(self):
     return len(self.groups_list)
@@ -132,18 +135,19 @@ class cartesian_ncs_manager(object):
       gradients_factory=flex.vec3_double,
       normalization=normalization)
     result.rms_with_respect_to_averages = []
-    for group in self.groups_list:
-      if (    group.coordinate_sigma is not None
-          and group.coordinate_sigma > 0):
+    if (self.ncs_params.coordinate_sigma is None
+        or self.ncs_params.coordinate_sigma <= 0):
+      result.rms_with_respect_to_averages = [None]*len(self.groups_list)
+    else:
+      for group in self.groups_list:
         contribution = group.energies_sites(
-          sites_cart=sites_cart,
-          compute_gradients=compute_gradients,
-          gradients=result.gradients)
+            sites_cart=sites_cart,
+            coordinate_sigma = self.ncs_params.coordinate_sigma,
+            compute_gradients=compute_gradients,
+            gradients=result.gradients)
         result += contribution
         result.rms_with_respect_to_averages.append(
-          contribution.rms_with_respect_to_average)
-      else:
-        result.rms_with_respect_to_averages.append(None)
+            contribution.rms_with_respect_to_average)
     result.finalize_target_and_gradients()
     return result
 
@@ -226,26 +230,27 @@ class cartesian_ncs_manager(object):
          prefix=""):
     self.compute_operators(sites_cart)
     n_excessive = 0
+    if (self.ncs_params.coordinate_sigma is None or
+        self.ncs_params.coordinate_sigma <= 0):
+      print >> out, \
+        prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
+          str(self.ncs_params.coordinate_sigma))
+      return n_excessive
     for i_group,group in enumerate(self.groups_list):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
-      if (    group.coordinate_sigma is not None
-          and group.coordinate_sigma > 0):
-        print >> out, prefix + "  coordinate_sigma: %.6g" % (
-          group.coordinate_sigma)
-        energies_sites = group.energies_sites(
-          sites_cart=sites_cart,
-          compute_gradients=False)
-        print >> out, prefix + "  weight:  %.6g" % energies_sites.weight
-        n_excessive += energies_sites.show_distances_to_average(
-          site_labels=site_labels,
-          excessive_distance_limit=excessive_distance_limit,
-          out=out,
-          prefix=prefix+"  ")
-        print n_excessive
-      else:
-        print >> out, \
-          prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
-            str(group.coordinate_sigma))
+      print >> out, prefix + "  coordinate_sigma: %.6g" % (
+        self.ncs_params.coordinate_sigma)
+      energies_sites = group.energies_sites(
+        sites_cart=sites_cart,
+        coordinate_sigma = self.ncs_params.coordinate_sigma,
+        compute_gradients=False)
+      print >> out, prefix + "  weight:  %.6g" % energies_sites.weight
+      n_excessive += energies_sites.show_distances_to_average(
+        site_labels=site_labels,
+        excessive_distance_limit=excessive_distance_limit,
+        out=out,
+        prefix=prefix+"  ")
+      print n_excessive
     return n_excessive
 
   def selection_restrained(self, n_seq=None):
@@ -267,8 +272,6 @@ class group(object):
   def __init__(self,
         selection_strings,
         registry,
-        coordinate_sigma, # XXX Global
-        b_factor_weight,  # XXX Global
         u_average_min):
       adopt_init_args(self, locals())
       self.selection_pairs = registry.selection_pairs()
@@ -284,8 +287,6 @@ class group(object):
     return group(
       selection_strings=self.selection_strings,
       registry=self.registry.proxy_select(iselection=iselection),
-      coordinate_sigma=self.coordinate_sigma,
-      b_factor_weight=self.b_factor_weight,
       u_average_min=self.u_average_min)
 
   def compute_operators(self, sites_cart):
@@ -338,24 +339,28 @@ class group(object):
 
   def energies_adp_iso(self,
         u_isos,
+        b_factor_weight,
         average_power,
         compute_gradients=True,
         gradients=None):
     return _energies_adp_iso(
       group=self,
       u_isos=u_isos,
+      b_factor_weight=b_factor_weight,
       average_power=average_power,
       compute_gradients=compute_gradients,
       gradients=gradients)
 
   def energies_sites(self,
         sites_cart,
+        coordinate_sigma,
         compute_gradients=True,
         gradients=None,
         sites_average=None):
     return _energies_sites(
       group=self,
       sites_cart=sites_cart,
+      coordinate_sigma=coordinate_sigma,
       compute_gradients=compute_gradients,
       gradients=gradients,
       sites_average=sites_average)
@@ -365,6 +370,7 @@ class _energies_adp_iso(scitbx.restraints.energies):
   def __init__(self,
         group,
         u_isos,
+        b_factor_weight,
         average_power,
         compute_gradients,
         gradients):
@@ -409,7 +415,7 @@ class _energies_adp_iso(scitbx.restraints.energies):
       residual_contribution(
         u_isos_current=u_isos.select(pair[1]),
         u_isos_average=u_isos_average.select(pair[0]))
-    self.weight = self.group.b_factor_weight
+    self.weight = b_factor_weight
     self.residual_sum = self.group.registry.adp_iso_residual_sum(
       weight=self.weight,
       average_power=self.average_power,
@@ -449,6 +455,7 @@ class _energies_sites(scitbx.restraints.energies):
   def __init__(self,
         group,
         sites_cart,
+        coordinate_sigma,
         compute_gradients,
         gradients,
         sites_average):
@@ -480,8 +487,8 @@ class _energies_sites(scitbx.restraints.energies):
       sites_average = sites_sum / sites_count.as_double()
     sites_count.set_selected(sel, 0)
     sel = (~sel).iselection()
-    assert self.group.coordinate_sigma > 0
-    self.weight = 1/self.group.coordinate_sigma**2
+    assert coordinate_sigma > 0
+    self.weight = 1/coordinate_sigma**2
     self.rms_with_respect_to_average = flex.double()
     if (self.gradients is not None):
       self.gradients.add_selected(
