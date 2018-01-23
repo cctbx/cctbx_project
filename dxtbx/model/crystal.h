@@ -1011,10 +1011,10 @@ namespace dxtbx { namespace model {
      */
     bool is_similar_to(
         const CrystalBase &other,
-        double angle_tolerance=0.01,
-        double uc_rel_length_tolerance=0.01,
-        double uc_abs_angle_tolerance=1.0,
-        double mosaicity_tolerance=0.8) const {
+        double angle_tolerance,
+        double uc_rel_length_tolerance,
+        double uc_abs_angle_tolerance,
+        double mosaicity_tolerance) const {
 
       // mosaicity test
       const MosaicCrystalKabsch2010* mosaic_other = dynamic_cast<const MosaicCrystalKabsch2010*>(&other);
@@ -1033,6 +1033,15 @@ namespace dxtbx { namespace model {
       }
 
       return Crystal::is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance);
+    }
+
+    bool is_similar_to(
+        const CrystalBase &other,
+        double angle_tolerance=0.01,
+        double uc_rel_length_tolerance=0.01,
+        double uc_abs_angle_tolerance=1.0) const /* override */ {
+      // Call with a default mosaicity tolerance
+      return is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance, 0.8);
     }
 
     /**
@@ -1135,10 +1144,10 @@ namespace dxtbx { namespace model {
      */
     bool is_similar_to(
         const CrystalBase &other,
-        double angle_tolerance=0.01,
-        double uc_rel_length_tolerance=0.01,
-        double uc_abs_angle_tolerance=1.0,
-        double half_mosaicity_tolerance=0.4,
+        double angle_tolerance,
+        double uc_rel_length_tolerance,
+        double uc_abs_angle_tolerance,
+        double half_mosaicity_tolerance,
         double domain_size_tolerance=1.0) const {
 
       // mosaicity test
@@ -1162,6 +1171,17 @@ namespace dxtbx { namespace model {
       }
 
       return Crystal::is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance);
+    }
+
+    /// Check if models are similar
+    bool is_similar_to(
+        const CrystalBase &other,
+        double angle_tolerance=0.01,
+        double uc_rel_length_tolerance=0.01,
+        double uc_abs_angle_tolerance=1.0) const /* override */ {
+      // Call with a default half-mosaicity tolerance
+      // Use the function-default domain_size_tolerance
+      return is_similar_to(other, angle_tolerance, uc_rel_length_tolerance, uc_abs_angle_tolerance, 0.4);
     }
 
     /**
