@@ -724,7 +724,6 @@ def get_map_and_model(params=None,
 
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
-  acc=None
   if map_data and crystal_symmetry:
     pass # we are set
 
@@ -969,7 +968,7 @@ def run(args=None,params=None,
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
-    if acc is not None:  # we offset the map to match original 
+    if acc is not None:  # we offset the map to match original
       print >>out,\
        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
          str(offset_map_data.origin()),output_map_file)
@@ -991,7 +990,6 @@ def run(args=None,params=None,
       new_map_coeffs:
     output_map_coeffs_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_coeffs_file)
-    from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     new_map_coeffs.as_mtz_dataset(column_root_label='FWT').mtz_object().write(
        file_name=output_map_coeffs_file)
     print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
@@ -1003,7 +1001,7 @@ def run(args=None,params=None,
     map_to_return=new_map_data
 
   if return_map_data_only:
-    return map_to_return 
+    return map_to_return
   else:  #usual
     return map_to_return,new_map_coeffs,crystal_symmetry,si
 
