@@ -2,7 +2,7 @@ from __future__ import division
 from scitbx.array_family import flex
 
 import boost.python
-ext = boost.python.import_ext("mmtbx_ncs_restraints_ext")
+ext = boost.python.import_ext("mmtbx_ncs_cartesian_restraints_ext")
 from mmtbx_ncs_restraints_ext import *
 
 from cctbx import adptbx

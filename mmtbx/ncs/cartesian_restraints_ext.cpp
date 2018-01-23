@@ -4,10 +4,10 @@
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/register_ptr_to_python.hpp>
-#include <mmtbx/ncs/restraints.h>
+#include <mmtbx/ncs/cartesian_restraints.h>
 #include <scitbx/boost_python/container_conversions.h>
 
-namespace mmtbx { namespace ncs { namespace restraints {
+namespace mmtbx { namespace ncs { namespace cartesian_restraints {
 namespace {
 
   void
@@ -65,9 +65,9 @@ namespace {
   }
 
 } // namespace <anonymous>
-}}} // namespace mmtbx::ncs::restraints
+}}} // namespace mmtbx::ncs::cartesian_restraints
 
-BOOST_PYTHON_MODULE(mmtbx_ncs_restraints_ext)
+BOOST_PYTHON_MODULE(mmtbx_ncs_cartesian_restraints_ext)
 {
-  mmtbx::ncs::restraints::init_module();
+  mmtbx::ncs::cartesian_restraints::init_module();
 }

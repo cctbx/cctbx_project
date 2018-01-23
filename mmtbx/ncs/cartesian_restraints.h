@@ -1,5 +1,5 @@
-#ifndef MMTBX_NCS_RESTRAINTS_H
-#define MMTBX_NCS_RESTRAINTS_H
+#ifndef MMTBX_NCS_CARTESIAN_RESTRAINTS_H
+#define MMTBX_NCS_CARTESIAN_RESTRAINTS_H
 
 #include <mmtbx/error.h>
 #include <scitbx/array_family/shared.h>
@@ -8,7 +8,7 @@
 #include <map>
 #include <vector>
 
-namespace mmtbx { namespace ncs { namespace restraints {
+namespace mmtbx { namespace ncs { namespace cartesian_restraints {
 
   namespace af = scitbx::af;
 
@@ -249,6 +249,6 @@ namespace mmtbx { namespace ncs { namespace restraints {
     }
   };
 
-}}} // namespace mmtbx::ncs::restraints
+}}} // namespace mmtbx::ncs::cartesian_restraints
 
-#endif // MMTBX_NCS_RESTRAINTS_H
+#endif // MMTBX_NCS_CARTESIAN_RESTRAINTS_H

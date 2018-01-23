@@ -7,8 +7,8 @@ if (not env_etc.no_boost_python):
     paths=env_etc.mmtbx_common_includes)
   env_bpl.Prepend(LIBS=["cctbx"])
   env_bpl.SharedLibrary(
-    target="#lib/mmtbx_ncs_restraints_ext",
-    source=["restraints_ext.cpp"])
+    target="#lib/mmtbx_ncs_cartesian_restraints_ext",
+    source=["cartesian_restraints_ext.cpp"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_ncs_ext",
     source=["tncs_ext.cpp"])

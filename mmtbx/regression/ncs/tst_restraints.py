@@ -1,19 +1,19 @@
 from __future__ import division
 from mmtbx import ncs
-import mmtbx.ncs.restraints
+import mmtbx.ncs.cartesian_restraints
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import format_cpu_times
 
 def exercise_pair_registry_basic():
-  registry = ncs.restraints.pair_registry(30, 3)
+  registry = ncs.cartesian_restraints.pair_registry(30, 3)
   assert registry.n_seq() == 30
   assert registry.number_of_additional_isolated_sites == 0
   selection_pairs = registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == []
   assert zip(*selection_pairs[1]) == []
-  registry = ncs.restraints.pair_registry(30, 3)
+  registry = ncs.cartesian_restraints.pair_registry(30, 3)
   assert registry.enter(i_seq=0, j_seq=20, j_ncs=1) == (0, 0)
   assert registry.enter(i_seq=0, j_seq=20, j_ncs=1) == (0, 1)
   assert registry.enter(i_seq=20, j_seq=0, j_ncs=1) == (2, 1)
@@ -189,7 +189,7 @@ def exercise_adp_iso_analytical():
 def exercise_pair_registry_adp_iso():
   mersenne_twister = flex.mersenne_twister(seed=0)
   for n_seq in xrange(2,20):
-    registry = ncs.restraints.pair_registry(n_seq=n_seq, n_ncs=n_seq)
+    registry = ncs.cartesian_restraints.pair_registry(n_seq=n_seq, n_ncs=n_seq)
     for j_seq in xrange(1,n_seq):
       assert registry.enter(i_seq=0, j_seq=j_seq, j_ncs=j_seq) == (0, 0)
     selection_pairs = registry.selection_pairs()
