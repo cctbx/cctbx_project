@@ -50,6 +50,7 @@ class ExperimentListDict(object):
     self._slist = self._extract_models('scan')
     self._clist = self._extract_models('crystal')
     self._plist = self._extract_models('profile')
+    self._scalelist = self._extract_models('scaling_model')
 
     # Go through all the imagesets and make sure the dictionary
     # references by an index rather than a file path. Experiments
@@ -413,6 +414,12 @@ class ExperimentListDict(object):
     return ProfileModelFactory.from_dict(obj)
 
   @staticmethod
+  def _scaling_model_from_dict(obj):
+    ''' Get the scaling model from a dictionary. '''
+    from dials_scratch.jbe.scaling_code.ScalingModelFactory import ScalingModelFactory
+    return ScalingModelFactory.from_dict(obj)
+
+  @staticmethod
   def _from_file(filename):
     ''' Load a model dictionary from a file. '''
     from dxtbx.serialize.load import _decode_dict
@@ -493,6 +500,7 @@ class ExperimentListDumper(object):
       to_write = [(filename, dictionary)]
 
     for fname, obj  in to_write:
+      print(obj.keys())
       if compact:
         text = json.dumps(obj, separators=(',',':'), ensure_ascii=True)
       else:
