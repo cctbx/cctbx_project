@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 import locale
 import shutil
 import os
@@ -213,7 +213,7 @@ def makedirs (path) :
   """
   try :
     os.makedirs(path)
-  except OSError, e :
+  except OSError as e :
     from libtbx.utils import Sorry
     raise Sorry(str(e))
 
@@ -461,7 +461,7 @@ class clean_out_directory (object) :
 
   def run (self, out=sys.stdout) :
     self.show(out=out)
-    print >> out, "Deleting all selected files and directories..."
+    print("Deleting all selected files and directories...", file=out)
     for file_name in self.file_paths :
       os.remove(file_name)
     for dir_name in self.dir_paths :
@@ -477,17 +477,17 @@ class clean_out_directory (object) :
 
   def show (self, out=sys.stdout) :
     if (self.n_dirs > 0) :
-      print >> out, "The following %d directories will deleted:" % \
-        self.n_dirs
+      print("The following %d directories will deleted:" % \
+        self.n_dirs, file=out)
       for dir_name in sorted(self.dir_paths) :
-        print >> out, "  %s" % dir_name
+        print("  %s" % dir_name, file=out)
     if (self.n_files > 0) :
-      print >> out, "The following %d files will be deleted:" % \
-        self.n_files
+      print("The following %d files will be deleted:" % \
+        self.n_files, file=out)
       for file_name in sorted(self.file_paths) :
-        print >> out, "  %s" % file_name
+        print("  %s" % file_name, file=out)
     if (self.n_bytes > 0) :
-      print >> out, "%s of disk space will be freed." % self.get_freed_space()
+      print("%s of disk space will be freed." % self.get_freed_space(), file=out)
 
 # http://stackoverflow.com/questions/1392413/calculating-a-directory-size-using-python
 def directory_size(path):
