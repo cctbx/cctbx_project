@@ -124,13 +124,13 @@ def qstat_parse():
   if (len(qstat_out) == 0):
     return result
   qstat = iter(qstat_out)
-  try: header = qstat.next()
+  try: header = next(qstat)
   except StopIteration: header = ""
   expected_header = \
     "job-ID prior name user state submit/start at queue slots ja-task-ID"
   if (" ".join(header.split()) != expected_header):
     raise RuntimeError("Unexpected qstat header: %s" % header)
-  line = qstat.next()
+  line = next(qstat)
   if (len(line.strip().replace("-","")) != 0):
     raise RuntimeError("Unexpected qstat header seperator line: %s" % line)
   i_job_id = 0

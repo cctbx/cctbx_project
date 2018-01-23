@@ -16,7 +16,7 @@ def run(args, command_name="libtbx.extract_code_from_txt"):
         destination = line[len(markup_extract_begin):].strip()
         buffer = [("  # ---- line %d " % (i_line+1) + "-"*75)[:79]]
         def check_next_is_empty_line():
-          i_line,line = i_line_lines.next()
+          i_line,line = next(i_line_lines)
           if (len(line) != 0):
             raise RuntimeError(
               "Markup must be followed by an empty line (line %d)" %

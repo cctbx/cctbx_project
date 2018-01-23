@@ -102,7 +102,7 @@ class _advertise_subprocess(object):
     self.target = target
 
   def __call__(self, *args, **kwargs):
-    if (os.environ.has_key("LIBTBX_BUILD")):
+    if ("LIBTBX_BUILD" in os.environ):
       import libtbx.load_env
       if (   libtbx.env.full_testing
           or libtbx.env.is_development_environment()):

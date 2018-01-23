@@ -49,7 +49,7 @@ def import_modules():
         print full_module
         try:
           exec("import %s" % full_module)
-        except ImportError, e:
+        except ImportError as e:
           if full_module not in ok_to_fail:
             raise e
 

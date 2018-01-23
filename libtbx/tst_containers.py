@@ -30,7 +30,7 @@ def exercise_odict():
   from libtbx.containers import OrderedDict as odict
   d = odict([('banana',3), ('apple',4), ('pear',1)])
   d.setdefault('orange', 2)
-  assert d.has_key('orange')
+  assert 'orange' in d
   assert d['orange'] == 2
   assert d.keys() == ['banana', 'apple', 'pear', 'orange']
   assert d.values() == [3, 4, 1, 2]

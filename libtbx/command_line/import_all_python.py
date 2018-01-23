@@ -64,7 +64,7 @@ def run (args) :
       continue
     try :
       module = __import__(module_name)
-    except ImportError, e :
+    except ImportError as e:
       print >> sys.stderr, e
       continue
     assert len(module.__path__) == 1
@@ -103,7 +103,7 @@ def run (args) :
               has_stdout.append(import_name)
               if (options.verbose) :
                 print >> sys.stderr, out.getvalue()
-          except ImportError, e :
+          except ImportError as e :
             print >> sys.stderr, e
           finally :
             sys.stdout = stdout_old

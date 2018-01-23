@@ -81,7 +81,7 @@ def discover(module=None, pytestargs=None):
   class TestDiscoveryPlugin:
     def pytest_itemcollected(self, item):
       global _pytest_unique_counter
-      testarray = L([ "libtbx.python", "-m", "pytest", '-rsxX', '--basetemp=pytest/t%03d' % _pytest_unique_counter.next(),
+      testarray = L([ "libtbx.python", "-m", "pytest", '-rsxX', '--basetemp=pytest/t%03d' % next(_pytest_unique_counter),
         '"%s"' % (item.fspath + '::' + item.nodeid.split('::', 1)[1]) ])
       testclass = module + '.' + item.location[0].replace(os.path.sep, '.')
       if testclass.endswith('.py'):

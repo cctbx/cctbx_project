@@ -72,7 +72,7 @@ source $%(env_prefix)s/build/setpaths.csh
 def makedirs(path):
   try:
     os.makedirs(path)
-  except Exception, e:
+  except Exception:
     print "Directory already exists: %s"%path
 
 def archive(source, destination, tarfile=None):
@@ -99,7 +99,7 @@ def archive(source, destination, tarfile=None):
         ignore=shutil.ignore_patterns('*.lib', '*.pyc', '*.pyo', '.svn', '.git', '.swp', '.sconsign', '.o', '*.obj', '*.ilk'),
         symlinks=True
         )
-  except Exception, err:
+  except Exception as err:
     # workaround for possible very long path problem on Windows
     if sys.platform == "win32" and type(err)==shutil.Error:
       for e in err[0]:

@@ -10,7 +10,7 @@ class single_pooler(object):
   @staticmethod
   def submit_one_job(calcsiter, manager):
 
-    ( target, args, kwargs ) = calcsiter.next()
+    ( target, args, kwargs ) = next(calcsiter)
     return (
       manager.submit( target = target, args = args, kwargs = kwargs ),
       ( target, args, kwargs ),
@@ -266,7 +266,7 @@ class iterator(object):
   def process_next_one(self):
 
     try:
-      ( identifier, result ) = self.manager.results().next() # raise StopIteration
+      ( identifier, result ) = next(self.manager.results()) # raise StopIteration
       processed = self.pooler.process_one_job(
         calculation = self.calculation_data_for[ identifier ],
         result = result,

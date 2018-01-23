@@ -117,7 +117,7 @@ class Pool(multiprocessing_Pool):
       raise RuntimeError(mp_problem)
     self.processes = get_processes(processes)
     if (fixed_func is not None):
-      key = fixed_func_registry_key_generator.next()
+      key = next(fixed_func_registry_key_generator)
       self.fixed_func_proxy = fixed_func_proxy(key, fixed_func)
     else:
       self.fixed_func_proxy = None
@@ -570,7 +570,7 @@ def parallel_map (
       try:
         jfactory = technology.jfactory( platform = method, command = qsub_command )
 
-      except SetupError, e:
+      except SetupError as e:
         raise Sorry, e
 
       from libtbx.scheduling import file_queue
@@ -624,7 +624,7 @@ def parallel_map (
         results.append( result )
         callback( result )
 
-    except SetupError, e:
+    except SetupError as e:
       raise Sorry, e
 
     manager.shutdown()

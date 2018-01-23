@@ -263,7 +263,7 @@ class FileRequestHandler(SocketServer.StreamRequestHandler):
 
         # call method
         try:
-          result = apply(meth_obj,args,kw)
+          result = meth_obj(*args, **kw)
           pickle.dump(result,self.wfile,1) # binary by default
         except Exception:
           try:

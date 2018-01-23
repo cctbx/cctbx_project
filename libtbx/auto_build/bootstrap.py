@@ -96,7 +96,7 @@ def tar_extract(workdir, archive, modulename=None):
     if modulename:
       if modulename != tarfoldername:
         os.rename(tarfoldername, modulename)
-  except Exception, e:
+  except Exception as e:
     raise Exception("Extracting tar archive resulted in error: " + str(e) + "\n" \
       + traceback.format_exc())
     return 1
@@ -157,7 +157,7 @@ class ShellCommand(object):
         if os.path.exists(directory):
           print 'Deleting directory : %s' % directory
           try: shutil.rmtree(directory)
-          except OSError, e:
+          except OSError:
             print "Strangely couldn't delete %s" % directory
       return 0
     if 0:
@@ -179,7 +179,7 @@ class ShellCommand(object):
         stderr=stderr,
         env=env,
       )
-    except Exception, e: # error handling
+    except Exception as e: # error handling
       if not self.kwargs.get('haltOnFailure'):
         return 1
       if isinstance(e, OSError):
@@ -217,7 +217,7 @@ class Toolbox(object):
     if os.path.dirname(file):
       try:
         os.makedirs(os.path.dirname(file))
-      except Exception, e:
+      except Exception:
         pass
 
     localcopy = os.path.isfile(file)
@@ -276,7 +276,7 @@ class Toolbox(object):
         return -2
       # otherwise pass on the error message
       raise
-    except (pysocket.timeout, urllib2.HTTPError), e:
+    except (pysocket.timeout, urllib2.HTTPError) as e:
       if isinstance(e, urllib2.HTTPError) and etag and e.code == 304:
         # When using ETag. a 304 error means everything is fine
         log.write("local copy is current (etag)\n")
@@ -411,7 +411,7 @@ class Toolbox(object):
             os.makedirs(filename)
           elif upperdirs and not os.path.exists(upperdirs):
             os.makedirs(upperdirs)
-        except Exception, e: pass
+        except Exception: pass
         if not is_directory:
           source = z.open(member)
           target = file(filename, "wb")
@@ -693,7 +693,7 @@ class SourceModule(object):
     repo = None
     try:
       repo = self.get_authenticated(auth=auth)
-    except KeyError, e:
+    except KeyError as e:
       repo = self.get_anonymous()
       if not repo:
         raise Exception('No anonymous access method defined for module: %s. Try with --%s'%(self.module, e.args[0]))

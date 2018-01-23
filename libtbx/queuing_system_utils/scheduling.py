@@ -1749,7 +1749,7 @@ class ProcessPool(object):
       pid = self.recycleds.popleft()
 
     except IndexError:
-      pid = self.pid_assigner.next()
+      pid = next(self.pid_assigner)
 
     process = self.job_factory(
       target = pool_process_cycle,
@@ -1935,7 +1935,7 @@ class NoPooler(object):
   @classmethod
   def pack(cls, calcsiter, manager):
 
-    ( target, args, kwargs ) = calcsiter.next() # raise StopIteration
+    ( target, args, kwargs ) = next(calcsiter) # raise StopIteration
     identifier = manager.submit(
       target = target,
       args = args,
@@ -2105,12 +2105,12 @@ class ParallelForIterator(object):
   def next(self, orderer):
 
     if not self.resiter.has_next():
-      result = self.manager.results.next() # raise StopIteration
+      result = next(self.manager.results) # raise StopIteration
       self.pooler.unpack( result = result, resiter = self.resiter )
 
     self.process( orderer = orderer )
     assert self.resiter.has_next()
-    r = self.resiter.next()
+    r = next(self.resiter)
     return ( r.identifier, r )
 
 

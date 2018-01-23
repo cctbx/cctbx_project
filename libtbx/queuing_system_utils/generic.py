@@ -77,7 +77,7 @@ class Queue(object):
 
   def put(self, obj):
 
-    index = self.count.next()
+    index = next(self.count)
     # Writing a tempfile and renaming it may prevent reading incomplete files
     tmp_name = "%s.%d.tmp" % ( self.root, index )
     assert not os.path.exists( tmp_name )
@@ -102,7 +102,7 @@ class Queue(object):
         predicate = NoTimeout()
 
     while True:
-      fname = self.next()
+      fname = next(self)
 
       if fname is not None:
         break

@@ -284,7 +284,7 @@ def archive_dist (dir_name, create_tarfile=True, use_shutil=True) :
     try :
       call("svnversion %s > %s/.svnversion" % (module_name, module_name),
         log=sys.stdout)
-    except RuntimeError, e :
+    except RuntimeError as e:
       print e
   find_and_delete_files(local_path, file_ext=".pyc")
   find_and_delete_files(local_path, file_ext=".pyo")

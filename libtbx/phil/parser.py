@@ -85,7 +85,7 @@ def collect_objects(
       active_definition = None
       scope = libtbx.phil.scope(
         name=lead_word.value,
-        primary_id=primary_id_generator.next(),
+        primary_id=next(primary_id_generator),
         is_disabled=is_disabled,
         where_str=lead_word.where_str())
       while True:
@@ -132,7 +132,7 @@ def collect_objects(
         active_definition = libtbx.phil.definition(
           name=lead_word.value,
           words=collect_assigned_words(word_iterator, lead_word),
-          primary_id=primary_id_generator.next(),
+          primary_id=next(primary_id_generator),
           is_disabled=is_disabled,
           where_str=lead_word.where_str())
         primary_parent_scope.adopt(active_definition)

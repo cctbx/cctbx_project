@@ -198,7 +198,7 @@ def run (args) :
       print "Removing existing Applications directory:", app_root_dir
       try:
         shutil.rmtree(app_root_dir)
-      except Exception, e:
+      except Exception as e:
         print e
 
       print "hide_mac_package_contents?", params.hide_mac_package_contents
@@ -207,7 +207,7 @@ def run (args) :
           options.version)
         pkg_prefix = app_root_dir + "/Contents"
         try: os.makedirs(pkg_prefix)
-        except Exception, e: pass
+        except Exception: pass
 
       call("./install --prefix=%s --compact --no-app" % pkg_prefix)
       install_dir = "%s/%s-%s" % (pkg_prefix,params.pkg_prefix,options.version)

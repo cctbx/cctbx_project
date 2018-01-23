@@ -534,7 +534,7 @@ class manager(object):
       pid = self.recycleds.popleft()
 
     except IndexError:
-      pid = self.pid_assigner.next()
+      pid = next(self.pid_assigner)
 
     process = self.job_factory(
       target = pool_process_cycle,

@@ -75,7 +75,7 @@ class server(object):
 
   def fetch(self):
 
-    ( jobid, result ) = self.resource.results().next()
+    ( jobid, result ) = next(self.resource.results())
     identifier = self.submitter_for[ jobid ]
     del self.submitter_for[ jobid ]
     self.results_submitted_through[ identifier ].append( ( jobid, result ) )

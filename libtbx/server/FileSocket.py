@@ -72,7 +72,7 @@ class SocketConnection:
   def __repr__(self):
     try:
       return '\n '+'-'*10+' '+self.host+' ('+self.IP+') '+ \
-             '\n '+'-'*10+' '+apply(os.path.join,tuple(self.dir))+ \
+             '\n '+'-'*10+' '+os.path.join(*tuple(self.dir))+ \
              '\n '+'-'*10+' Port '+str(self.port)+' PID '+str(self.pid)
     except Exception:
       return 'socket connection '+str(self.__dict__)
@@ -104,7 +104,7 @@ class SocketConnection:
     return self.IP
 
   def GetDir(self):
-    dir = apply(os.path.join,self.dir)
+    dir = os.path.join(*self.dir)
     dir = replace(dir,'\\','/')
     return dir
 

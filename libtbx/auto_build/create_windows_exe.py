@@ -12,7 +12,7 @@ from __future__ import division
 try :
   import libtbx.load_env
   libtbx_env = libtbx.env
-except ImportError, e :
+except ImportError:
   libtbx_env = None
 import optparse
 import shutil

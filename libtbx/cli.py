@@ -47,7 +47,7 @@ class PhilArgumentFactory(object):
       try:
         return self.interpreter.process( arg = argument )
 
-      except Exception, e:
+      except Exception as e:
         raise argparse.ArgumentTypeError( "Cannot interpret assignment '%s': %s" % ( argument, e ) )
 
     import os.path
@@ -213,7 +213,7 @@ class Parser(argparse.ArgumentParser):
     try:
       merged = self.master_phil.fetch( sources = args.phils )
 
-    except Exception, e:
+    except Exception as e:
       self.error( "Error while merging arguments: %s" % e )
 
     delattr( args, "phils" )
@@ -222,7 +222,7 @@ class Parser(argparse.ArgumentParser):
     try:
       args.phil_extract = args.phil.extract()
 
-    except RuntimeError, e:
+    except RuntimeError as e:
       self.error( str( e ) )
 
     return args

@@ -84,7 +84,7 @@ class Profiler:
   def __del__(self):
     self.end = time.clock()
     self.end_el = time.time()
-    if not timing_singleton.has_key(self.message):
+    if self.message not in timing_singleton:
       timing_singleton[self.message]=[0.,0.,0]
     timing_singleton[self.message][0]+=self.end-self.start
     timing_singleton[self.message][1]+=self.end_el-self.start_el

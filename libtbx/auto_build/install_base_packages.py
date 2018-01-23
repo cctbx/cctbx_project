@@ -394,7 +394,7 @@ class installer (object) :
         '-c',
         'import sys; print("%d:%d:%d:%s" % (sys.version_info[0], sys.version_info[1], sys.hexversion, sys.version))',
         ])
-    except (OSError, RuntimeError), e:
+    except (OSError, RuntimeError):
       print >> self.log, """
 Error: Could not determine version of Python installed at:
   %s
@@ -440,7 +440,7 @@ Found Python version:
     print >> self.log,  "Checking for write permissions:", site_packages
     try:
       f = tempfile.TemporaryFile(dir=site_packages)
-    except (OSError, RuntimeError), e:
+    except (OSError, RuntimeError):
       print >> self.log, """
 Error: You don't appear to have write access to
 the Python site-packages directory:
@@ -665,10 +665,10 @@ Installation of Python packages may fail.
         try:
           check_output(compiler)
           found.append(compiler)
-        except RuntimeError, e:
+        except RuntimeError:
           # Found compiler, but error like "no input files"
           found.append(compiler)
-        except OSError, e:
+        except OSError:
           # Command not found
           pass
       if not found:
@@ -850,7 +850,7 @@ def _replace_sysconfig_paths(d):
 _replace_sysconfig_paths(build_time_vars)
 """ % self.base_dir)
         fh.close()
-    except Exception, e:
+    except Exception as e:
       print >> log, "Could not make python relocatable:"
       print >> log, e
 

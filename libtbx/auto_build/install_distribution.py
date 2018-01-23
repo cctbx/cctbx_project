@@ -489,7 +489,7 @@ class installer(object):
         print >> self.out, "Generating Mac app launcher for %s..."%app_name
         try :
           call(args=" ".join(args), log=log)
-        except RuntimeError, e :
+        except RuntimeError as e:
           print "  ERROR:"
           print "  " + str(e)
           print "  installation will continue anyway."
@@ -526,7 +526,7 @@ class installer(object):
     if apps_built and (not "SSH_CLIENT" in os.environ):
       try:
         call(args=["open", self.dest_dir], log=self.out)
-      except Exception, e:
+      except Exception:
         # Will fail in non-interactive environments.
         pass
 
@@ -598,7 +598,7 @@ class installer(object):
             full_path = op.join(dirname, file_name)
             try :
               os.remove(full_path)
-            except Exception, e :
+            except Exception as e:
               print >> self.out, "  WARNING: error removing %s" % full_path
               print >> self.out, str(e)
             else :

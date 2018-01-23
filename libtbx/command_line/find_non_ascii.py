@@ -12,7 +12,7 @@ def visit(arg, dirname, names):
         f = file(filename, 'r')
         lines = f.readlines()
         f.close()
-      except IOError, e:
+      except IOError:
         continue
 
       for j, line in enumerate(lines):

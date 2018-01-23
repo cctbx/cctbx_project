@@ -7,7 +7,7 @@ try :
   import libtbx.load_env
 # can be either ImportError or SyntaxError, depending on whether we're using
 # the bundled Python version or something more ancient
-except Exception, e :
+except Exception:
   libtbx_env = None
 else :
   libtbx_env = libtbx.env
@@ -56,7 +56,7 @@ def run (args, out=sys.stdout) :
     return 1
   try :
     import py2app.script_py2applet
-  except ImportError, e :
+  except ImportError:
     print >> out, "py2app not installed."
     return 1
   app_name = program_name

@@ -97,7 +97,7 @@ class FixLinuxRpath(object):
         lib, found = fields[0], fields[2]
         if "not found" in found:
           ret.append(lib.strip())
-      except Exception, e:
+      except Exception as e:
         print "PARSER ERROR:", e
         print fields
     return ret
@@ -168,7 +168,7 @@ class FixMacRpath(object):
       print "\n==== Target:", f
       try:
         libs = self.find_deps(f)
-      except Exception, e:
+      except Exception:
         continue
 
       # Set the install_name id.

@@ -268,7 +268,7 @@ def exercise(args=None):
   if (os.name == "nt"):
     pyexe = "call " + pyexe
   #
-  if (os.environ.has_key("PYTHONPATH")):
+  if ("PYTHONPATH" in os.environ):
     if (not hasattr(os, "unsetenv")):
       os.environ["PYTHONPATH"] = ""
     else:
@@ -405,7 +405,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   assert result.stdout_lines[-5:] == ["4","3","2","1","0"]
   #
   try: fb(command="C68649356116218352").raise_if_errors()
-  except RuntimeError, e:
+  except RuntimeError as e:
     if (verbose): print e
     # Just check for RuntimeError; there are now additional
     # specific error messages.
@@ -420,7 +420,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
           command=cat_command,
           stdin_lines=[str(i) for i in xrange(n)],
           stdout_splitlines=stdout_splitlines).raise_if_output()
-      except RuntimeError, e:
+      except RuntimeError as e:
         if (verbose): print e
         assert str(e).startswith("unexpected child process output:\n")
         if (stdout_splitlines):

@@ -58,13 +58,13 @@ class logger(object):
   def flush(self):
     try:
       self.ch.flush()
-    except Exception, e:
+    except Exception:
       pass
 
   def close(self):
     try:
       self.ch.close()
-    except Exception, e:
+    except Exception:
       pass
 
   def set_quiet(self, state=True):

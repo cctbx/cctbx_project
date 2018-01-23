@@ -618,7 +618,7 @@ class PagingDecoder(object):
 
         try:
             while 1:
-                cp = codepoints.next()
+                cp = next(codepoints)
                 if cp != END_OF_INFO_CODE:
                     yield cp
                 else:
