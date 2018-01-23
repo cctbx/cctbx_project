@@ -715,7 +715,7 @@ class InMemScript(DialsProcessScript):
           if rank == 0:
             # server process
             self.mpi_log_write("MPI START\n")
-            for nevt, evt in enumerate(ds.events()):
+            for nevt, evt in enumerate(run.events()):
               if nevt == max_events: break
               self.mpi_log_write("Getting next available process\n")
               offset = evt.get(psana.EventOffset)
@@ -762,7 +762,7 @@ class InMemScript(DialsProcessScript):
 
         would_process = -1
         nevent = mem = first = last = 0
-        for nevent, evt in enumerate(ds.events()):
+        for nevent, evt in enumerate(run.events()):
           if nevent%size != rank: continue
           if nevent >= max_events: break
           would_process += 1
