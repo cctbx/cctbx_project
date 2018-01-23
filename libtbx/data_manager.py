@@ -2,37 +2,119 @@ from __future__ import division, print_function
 '''
 '''
 
+import iotbx.pdb
+import libtbx.phil
+import mmtbx.model
+
+from iotbx.file_reader import any_file
 from libtbx.utils import Sorry
+
+# mapping from DataManager datatypes to any_file file types
+any_file_type = {
+  'model':'pdb',
+  'sequence':'seq',
+  'phil':'phil'
+}
 
 # =============================================================================
 class DataManager(object):
 
-  def __init__(self):
+  # PHIL scope for DataManager
+  master_phil_str = '''
+  data_manager {
+
+    model_files = None
+      .type = path
+      .multiple = True
+    default_model = None
+      .type = path
+
+    sequence_files = None
+      .type = path
+      .multiple = True
+    default_sequence = None
+      .type = path
+
+    phil_files = None
+      .type = path
+      .multiple = True
+    default_phil = None
+      .type = path
+
+  }
+  '''
+
+  _datatypes = ['model', 'sequence', 'phil']
+
+  def __init__(self, phil=None):
     '''
     '''
-    self._datatypes = ['model', 'sequence']
+
+    self.master_phil = libtbx.phil.parse(DataManager.master_phil_str)
+
     self._storage = '_%ss'
     self._default = '_default_%s'
     self._current_storage = None
     self._current_default = None
 
     # generate storage for each data type
-    for datatype in self._datatypes:
+    for datatype in DataManager._datatypes:
       # data attributes for each data type
       # e.g self._models, self._default_model
       self.set_datatype(datatype)
       setattr(self, self._current_storage, dict())
       setattr(self, self._current_default, None)
 
+    # load information from phil
+    if (phil is not None):
+      self.load_phil_scope(phil)
+
   # ---------------------------------------------------------------------------
-  def set_datatype(self, datatype):
+  def export_phil_scope(self):
     '''
+    Function for exporting DataManager information into a PHIL scope
+    The returned PHIL scope can be used to recreate the DataManager object with
+    the load_phil_scope function
+
+    This assumes that the key names in the data structures are valid filenames.
     '''
-    if (datatype not in self._datatypes):
-      msg = '"%s" is not a recognized datatype. Only\n %s\n are recognized'
-      raise Sorry( msg % (datatype, '\n  '.join(self._datatypes)))
-    self._current_storage = self._storage % datatype
-    self._current_default = self._default % datatype
+    phil_extract = self.master_phil.extract()
+    for datatype in DataManager._datatypes:
+      filenames = self._get_names(datatype)
+      default = self._get_default_name(datatype)
+      setattr(phil_extract.data_manager, '%s_files' % datatype, filenames)
+      setattr(phil_extract.data_manager, 'default_%s' % datatype, default)
+
+    working_phil = self.master_phil.format(python_object=phil_extract)
+
+    return working_phil
+
+  # ---------------------------------------------------------------------------
+  def load_phil_scope(self, phil):
+    '''
+    Function for loading information from a PHIL scope. This will append files
+    to the existing ones and will NOT override the current default file
+    '''
+    # sanity checks
+    if (type(phil) == libtbx.phil.scope):
+      phil_extract = phil.extract()
+    elif (type(phil) == libtbx.phil.scope_extract):
+      phil_extract = phil
+    else:
+      raise Sorry('A libtbx.phil.scope or libtbx.phil.scope_extract object is required')
+
+    if (not hasattr(phil_extract, 'data_manager')):
+      raise Sorry('The phil scope does not have a DataManager scope.')
+
+    # append files, default file is not overridden
+    for datatype in DataManager._datatypes:
+      filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
+                          None)
+      if (filenames is not None):
+        for filename in filenames:
+          # call type-specific function (e.g. self.process_model())
+          # checks if file is already in DataManager
+          getattr(self, 'process_%s_file' % datatype)(filename)
 
   # ---------------------------------------------------------------------------
   # Models
@@ -58,6 +140,17 @@ class DataManager(object):
     return self._has_data('model', expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
+  def process_model_file(self, filename):
+    # unique because any_file does not return a model object
+    if (filename not in self.get_model_names()):
+      a = any_file(filename)
+      if (a.file_type != 'pdb'):
+        raise Sorry('%s is not a recognized model file' % filename)
+      else:
+        model_in = iotbx.pdb.input(a.file_name)
+        model = mmtbx.model.manager(model_input=model_in)
+        self.add_model(filename, model)
+
   # ---------------------------------------------------------------------------
   # Sequences
   def add_sequence(self, filename, data):
@@ -81,6 +174,46 @@ class DataManager(object):
   def has_sequences(self, expected_n=1, exact_count=False, raise_sorry=True):
     return self._has_data('sequence', expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
+
+  def process_sequence_file(self, filename):
+    return self._process_file('sequence', filename)
+
+  # ---------------------------------------------------------------------------
+  # PHIL
+  def add_phil(self, filename, data):
+    return self._add('phil', filename, data)
+
+  def set_default_phil(self, filename):
+    return self._set_default('phil', filename)
+
+  def get_phil(self, filename=None):
+    return self._get('phil', filename)
+
+  def get_phil_names(self):
+    return self._get_names('phil')
+
+  def get_default_phil_name(self):
+    return self._get_default_name('phil')
+
+  def remove_phil(self, filename):
+    return self._remove('phil', filename)
+
+  def has_phils(self, expected_n=1, exact_count=False, raise_sorry=True):
+    return self._has_data('phil', expected_n=expected_n,
+                          exact_count=exact_count, raise_sorry=raise_sorry)
+
+  def process_phil_file(self, filename):
+    return self._process_file('phil', filename)
+
+  # ---------------------------------------------------------------------------
+  def set_datatype(self, datatype):
+    '''
+    '''
+    if (datatype not in DataManager._datatypes):
+      msg = '"%s" is not a recognized datatype. Only\n %s\n are recognized'
+      raise Sorry( msg % (datatype, '\n  '.join(DataManager._datatypes)))
+    self._current_storage = self._storage % datatype
+    self._current_default = self._default % datatype
 
   # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
@@ -163,4 +296,13 @@ class DataManager(object):
                       (actual_n, datatype, expected_n))
       return (v >= 0)
 
+  def _process_file(self, datatype, filename):
+    if (filename not in self._get_names(datatype)):
+      a = any_file(filename)
+      if (a.file_type != any_file_type[datatype]):
+        raise Sorry('%s is not a recognized %s file' % (filename, datatype))
+      else:
+        self._add(datatype, filename, a.file_object)
+
 # =============================================================================
+# end
