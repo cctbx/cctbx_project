@@ -235,6 +235,8 @@ class CCTBXParser(ParserBase):
     print('-'*79, file=self.logger)
     printed_something = False
 
+    unused_files = list()
+
     for filename in file_list:
       a = any_file(filename)
       # models
@@ -250,6 +252,16 @@ class CCTBXParser(ParserBase):
         print('  Found sequence, %s' % a.file_name, file=self.logger)
         printed_something = True
       # more file types to come!
+      else:
+        unused_files.append(filename)
+
+    # show unrecognized files
+    if (len(unused_files) > 0):
+      print('  Unrecognized files:', file=self.logger)
+      print('  -------------------', file=self.logger)
+      for filename in unused_files:
+        print('  %s' % filename, file=self.logger)
+      printed_something = True
 
     if (not printed_something):
       print('  No files found', file=self.logger)
