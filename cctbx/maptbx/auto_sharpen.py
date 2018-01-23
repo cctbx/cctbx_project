@@ -820,6 +820,7 @@ def run(args=None,params=None,
     pdb_inp=None,
     ncs_obj=None,
     return_map_data_only=False,
+    return_unshifted_map=False,
     half_map_data_list=None,
     ncs_copies=None,
     n_residues=None,
@@ -959,14 +960,16 @@ def run(args=None,params=None,
 
   # write out the new map_coeffs and map if requested:
 
+  offset_map_data=new_map_data.deep_copy()
+  if acc is not None:  # offset the map to match original if possible
+    offset_map_data.reshape(acc)
+
   if write_output_files and params.output_files.sharpened_map_file and \
-      new_map_data:
+      offset_map_data:
     output_map_file=os.path.join(params.output_files.output_directory,
         params.output_files.sharpened_map_file)
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
-    offset_map_data=new_map_data.deep_copy()
-    if acc is not None:  # offset the map to match original if possible
-      offset_map_data.reshape(acc)
+    if acc is not None:  # we offset the map to match original 
       print >>out,\
        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
          str(offset_map_data.origin()),output_map_file)
@@ -994,10 +997,15 @@ def run(args=None,params=None,
     print >>out,"\nWrote sharpened map_coeffs (origin at 0,0,0)\n to %s\n" %(
        output_map_coeffs_file)
 
+  if return_unshifted_map:
+    map_to_return=offset_map_data
+  else:
+    map_to_return=new_map_data
+
   if return_map_data_only:
-    return new_map_data
+    return map_to_return 
   else:  #usual
-    return new_map_data,new_map_coeffs,crystal_symmetry,si
+    return map_to_return,new_map_coeffs,crystal_symmetry,si
 
 # =============================================================================
 # GUI-specific bits for running command
