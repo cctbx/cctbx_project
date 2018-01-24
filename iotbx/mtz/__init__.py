@@ -482,18 +482,46 @@ class _(boost.python.injector, ext.object):
         raise_sorry_if_incompatible_unit_cell=True)
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
+
     # transform & symmetrize per-batch unit cell to support Scala 6.0 (NKS)
-    # re-zero the U-matrix so nobody tries to use it downstream
+    # MTZ stores umat corresponding to Busing & Levy convention
+
+    def mosflm_B(unit_cell):
+      from math import cos, sin, radians
+
+      params = unit_cell.parameters()
+      rparams = unit_cell.reciprocal_parameters()
+
+      a, b, c = params[:3]
+      alpha, beta, gamma = [radians(a) for a in params[3:]]
+      ra, rb, rc = rparams[:3]
+      ralpha, rbeta, rgamma = [radians(a) for a in rparams[3:]]
+
+      B = (ra, rb * cos(rgamma),  rc * cos(rbeta),
+           0, rb * sin(rgamma), -rc * sin(rbeta) * cos(alpha),
+           0, 0, 1/c)
+
+      return B
+
+    from scitbx import matrix
     for batch in self.batches():
       batch_uc = uctbx.unit_cell(list(batch.cell()))
+      B = matrix.sqr(mosflm_B(batch_uc))
+      U = matrix.sqr(batch.umat()).transpose()
+      A = U * B
+      direct_matrix = A.inverse()
+      M = cb_op.c_inv().r().transpose().as_rational()
+      new_direct_matrix = M * direct_matrix
+      new_uc = batch_uc.change_basis(cb_op=cb_op)
+      new_B = matrix.sqr(mosflm_B(new_uc))
+      new_U = (new_direct_matrix.inverse() * new_B.inverse()).transpose()
       batch_crystal_symmetry = cctbx.crystal.symmetry(
-        unit_cell=batch_uc.change_basis(cb_op=cb_op),
+        unit_cell=new_uc,
         space_group_info=new_space_group_info,
         assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
       batch.set_cell(flex.float(
         batch_crystal_symmetry.unit_cell().parameters()))
-      batch.set_umat(flex.float(
-        (0,0,0,0,0,0,0,0,0)))
+      batch.set_umat(flex.float(new_U))
 
   def as_miller_arrays(self,
         crystal_symmetry=None,
