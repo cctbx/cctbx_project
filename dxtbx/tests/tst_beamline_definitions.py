@@ -8,6 +8,7 @@
 # Tests for the beamline definition database
 
 from __future__ import absolute_import, division
+
 import dxtbx.data.beamline_defs as dxbd
 
 def test_lookup_unknown_detector():
@@ -34,4 +35,3 @@ def test_lookup_known_detector():
 if __name__ == '__main__':
   test_lookup_unknown_detector()
   test_lookup_known_detector()
-

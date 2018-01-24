@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division
-from dxtbx.datablock import DataBlockFactory
-import libtbx.load_env
+
 import os
+
+import libtbx.load_env
+from dxtbx.datablock import DataBlockFactory
 
 def run():
   # https://github.com/dials/dials/issues/226

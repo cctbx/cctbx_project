@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+
 from dxtbx.model import Beam
 
 def tst_set_direction_wavelength():

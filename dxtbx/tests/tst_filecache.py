@@ -8,6 +8,7 @@
 # Tests for the filecache classes. This compares behaviour against StringIO.
 
 from __future__ import absolute_import, division
+
 import os
 
 def test_filecache():

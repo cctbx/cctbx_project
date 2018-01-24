@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division
-from dxtbx.model import Detector
 
+from dxtbx.model import Detector
 
 class Test2:
 

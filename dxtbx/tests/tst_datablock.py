@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division
+
+from os.path import join
+
 import libtbx.load_env
 from dxtbx.datablock import DataBlockFactory
 from dxtbx.imageset import ImageSweep
-from os.path import join
 
 class Test(object):
 

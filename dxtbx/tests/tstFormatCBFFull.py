@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+
 def exercise_multi_axis_goniometer():
   import libtbx.load_env
   from libtbx.test_utils import approx_equal

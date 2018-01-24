@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
-from dxtbx.model import Panel, Detector
+
+from dxtbx.model import Detector, Panel
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 

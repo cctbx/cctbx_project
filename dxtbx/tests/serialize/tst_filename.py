@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
-from dxtbx.serialize.filename import temp_chdir, load_path
+
+from dxtbx.serialize.filename import load_path, temp_chdir
 
 class Test(object):
 

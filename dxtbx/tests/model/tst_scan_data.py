@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+
 from dxtbx.model import Scan
 
 def tst_is_angle_valid(scan):
