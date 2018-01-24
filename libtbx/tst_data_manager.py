@@ -25,12 +25,12 @@ def test_data_manager():
   assert(working_phil.extract().data_manager.model_files == ['a', 'c'])
 
   try:
-    a.has_models(expected_n=3)
+    a.has_models(expected_n=3, raise_sorry=True)
   except Sorry:
     pass
 
   try:
-    a.has_models(exact_count=True)
+    a.has_models(exact_count=True, raise_sorry=True)
   except Sorry:
     pass
 

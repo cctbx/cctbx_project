@@ -111,7 +111,8 @@ class DataManager(object):
     for datatype in DataManager._datatypes:
       filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
                           None)
-      for filename in filenames:
+      # filenames are reversed to preserve original order
+      for filename in reversed(filenames):
         # call type-specific function (e.g. self.process_model())
         # checks if file is already in DataManager
         getattr(self, 'process_%s_file' % datatype)(filename)
@@ -136,7 +137,7 @@ class DataManager(object):
   def remove_model(self, filename):
     return self._remove('model', filename)
 
-  def has_models(self, expected_n=1, exact_count=False, raise_sorry=True):
+  def has_models(self, expected_n=1, exact_count=False, raise_sorry=False):
     return self._has_data('model', expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
@@ -171,7 +172,7 @@ class DataManager(object):
   def remove_sequence(self, filename):
     return self._remove('sequence', filename)
 
-  def has_sequences(self, expected_n=1, exact_count=False, raise_sorry=True):
+  def has_sequences(self, expected_n=1, exact_count=False, raise_sorry=False):
     return self._has_data('sequence', expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
@@ -198,7 +199,7 @@ class DataManager(object):
   def remove_phil(self, filename):
     return self._remove('phil', filename)
 
-  def has_phils(self, expected_n=1, exact_count=False, raise_sorry=True):
+  def has_phils(self, expected_n=1, exact_count=False, raise_sorry=False):
     return self._has_data('phil', expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
@@ -275,7 +276,7 @@ class DataManager(object):
         setattr(self, self._current_default, None)
 
   def _has_data(self, datatype, expected_n=1, exact_count=False,
-                raise_sorry=True):
+                raise_sorry=False):
     self.set_datatype(datatype)
     actual_n = len(self._get_names(datatype))
     v = cmp(actual_n, expected_n)
