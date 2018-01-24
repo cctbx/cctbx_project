@@ -23,6 +23,7 @@ input_model_fname = None
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=True)
 
+
 class cl_validate_H():
   def __init__(self, cl_args):
     self.help_message = """\
@@ -154,6 +155,12 @@ Usage:
         print('Angle %s, observed: %s, delta from target: %s' % \
           (item[1], item[2], item[3]), file=self.log)
 
+  def print_xray_distance_warning(self):
+    print('*'*79, file=self.log)
+    print('WARNING: Model has a majority of X-H bonds with X-ray bond lengths.\n \
+          Input was to use neutron distances. Please check your model carefully.',
+          file=self.log)
+
   def print_results(self, results):
     overall_counts_hd  = results.overall_counts_hd
     hd_exchanged_sites = results.hd_exchanged_sites
@@ -164,6 +171,7 @@ Usage:
     single_hd_atoms_occ_lt_1 = overall_counts_hd.single_hd_atoms_occ_lt_1
     outliers_bonds     = results.outliers_bonds
     outliers_angles    = results.outliers_angles
+    bond_results       = results.bond_results
     if overall_counts_hd:
       self.print_overall_results(overall_counts_hd)
     if renamed:
@@ -177,13 +185,15 @@ Usage:
       self.print_missing_HD_atoms(missing_HD_atoms)
     if outliers_bonds or outliers_angles:
       self.print_outliers_bonds_angles(outliers_bonds, outliers_angles)
+    if bond_results.xray_distances_used:
+      self.print_xray_distance_warning()
 
   def get_pdb_interpretation_params(self):
     pdb_interpretation_phil = iotbx.phil.parse(
       input_string = grand_master_phil_str, process_includes = True)
     pi_params = pdb_interpretation_phil.extract()
     pi_params.pdb_interpretation.use_neutron_distances = \
-      self.params.use_neutron_distances
+      self.work_params.use_neutron_distances
     #pi_params.pdb_interpretation.restraints_library.cdl=False
     return pi_params
 
@@ -207,7 +217,8 @@ Usage:
       getattr(self.work_params, self.pdbf_def), file=self.log)
 
     # If needed, this could be wrapped in try...except to catch errors.
-    c = validate_H(model = model)
+    c = validate_H(model = model,
+                   use_neutron_distances = pi_params.pdb_interpretation.use_neutron_distances)
     c.validate_inputs()
     c.run()
     results = c.get_results()

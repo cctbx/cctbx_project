@@ -470,6 +470,33 @@ ATOM     27  DE2BTYR A 139       6.575   5.788   9.051  0.50 10.00           D
 ATOM     28  DH BTYR A 139       4.710   5.148   8.037  0.50 10.00           D
 """
 
+pdb_str11 = """
+CRYST1   17.955   13.272   13.095  90.00  90.00  90.00 P 1
+SCALE1      0.055695  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.075347  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.076365        0.00000
+ATOM      1  N   TYR A 139      11.036   5.830   4.803  1.00 10.00           N
+ATOM      2  CA  TYR A 139      11.024   6.967   5.716  1.00 10.00           C
+ATOM      3  C   TYR A 139      12.431   7.528   5.890  1.00 10.00           C
+ATOM      4  O   TYR A 139      12.649   8.448   6.679  1.00 10.00           O
+ATOM      5  CB  TYR A 139      10.449   6.559   7.076  1.00 10.00           C
+ATOM      6  CG  TYR A 139       8.999   6.118   7.041  1.00 10.00           C
+ATOM      7  CD1 TYR A 139       8.187   6.397   5.948  1.00 10.00           C
+ATOM      8  CD2 TYR A 139       8.444   5.421   8.106  1.00 10.00           C
+ATOM      9  CE1 TYR A 139       6.865   5.994   5.918  1.00 10.00           C
+ATOM     10  CE2 TYR A 139       7.123   5.014   8.084  1.00 10.00           C
+ATOM     11  CZ  TYR A 139       6.339   5.303   6.988  1.00 10.00           C
+ATOM     12  OH  TYR A 139       5.023   4.900   6.962  1.00 10.00           O
+ATOM     13  HA ATYR A 139      10.470   7.671   5.345  0.50 10.00           H
+ATOM     14  HB2ATYR A 139      10.973   5.821   7.425  0.50 10.00           H
+ATOM     15  HB3ATYR A 139      10.511   7.317   7.679  0.50 10.00           H
+ATOM     16  HD1ATYR A 139       8.536   6.863   5.223  0.50 10.00           H
+ATOM     17  HD2ATYR A 139       8.970   5.224   8.847  0.50 10.00           H
+ATOM     18  HE1ATYR A 139       6.334   6.188   5.179  0.50 10.00           H
+ATOM     19  HE2ATYR A 139       6.765   4.548   8.805  0.50 10.00           H
+ATOM     20  HH ATYR A 139       4.834   4.492   7.672  0.50 10.00           H
+"""
+
 def get_results_from_validate_H(neutron_distances, pdb_str):
   pdb_interpretation_phil = iotbx.phil.parse(
     input_string = grand_master_phil_str, process_includes = True)
@@ -482,7 +509,8 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
       build_grm   = True,
       pdb_interpretation_params = pi_params)
 
-  c = validate_H(model)
+  c = validate_H(model = model,
+                 use_neutron_distances = neutron_distances)
   r = c.validate_inputs()
   c.run()
   results = c.get_results()
@@ -795,6 +823,12 @@ def exercise9():
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
     assert approx_equal(item[4],answer[2], 1.e-1) # target
 
+# ------------------------------------------------------------------------------
+# ANGLE OUTLIERS
+# Model has H and D atoms, and only the two following outliers
+# Angle 'N-CA-HA', observed: 123.01, delta from target: -13.01
+# Angle 'CB-CA-DA',observed: 121.11, delta from target: -12.11
+# ------------------------------------------------------------------------------
 def exercise10():
   results = get_results_from_validate_H(
     neutron_distances = True,
@@ -812,6 +846,19 @@ def exercise10():
     assert approx_equal(item[4],answer[2], 1.e-1) # target
 
 # ------------------------------------------------------------------------------
+# Mismatch between expected restraints and X-H(D) bond lengths
+# Input model has H at X-ray distances but use_neutron_distances flag is True
+# --> xray_distances_used flag should be True
+# ------------------------------------------------------------------------------
+def exercise11():
+  results = get_results_from_validate_H(
+    neutron_distances = True,
+    pdb_str = pdb_str11)
+  bond_results = results.bond_results
+
+  assert(bond_results.xray_distances_used == True)
+
+# ------------------------------------------------------------------------------
 # CHECK HD STATE (hd_state)
 # This is not a result but used internally to decide if H/D site analysis is
 # necessary or not
@@ -825,7 +872,8 @@ def exercise_hd_state():
       model_input = pdb_inp,
 #      build_grm   = True, # to speed up test
       pdb_interpretation_params = pdb_interpretation_phil.extract())
-  c = validate_H(model)
+  c = validate_H(model = model,
+                 use_neutron_distances = True)
   assert (c.get_hd_state() == 'all_h')
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str5.split("\n"), source_info=None)
@@ -833,7 +881,8 @@ def exercise_hd_state():
       model_input = pdb_inp,
 #      build_grm   = True, # to speed up test
       pdb_interpretation_params = pdb_interpretation_phil.extract())
-  c = validate_H(model)
+  c = validate_H(model = model,
+                 use_neutron_distances = True)
   assert (c.get_hd_state() == 'all_d')
 
   pdb_inp = iotbx.pdb.input(lines=pdb_str3.split("\n"), source_info=None)
@@ -841,7 +890,8 @@ def exercise_hd_state():
       model_input = pdb_inp,
 #      build_grm   = True, # to speed up test
       pdb_interpretation_params = pdb_interpretation_phil.extract())
-  c = validate_H(model)
+  c = validate_H(model = model,
+                 use_neutron_distances = True)
   assert (c.get_hd_state() == 'h_and_d')
 
 def run():
@@ -856,6 +906,7 @@ def run():
   exercise8()
   exercise9()
   exercise10()
+  exercise11()
   exercise_hd_state()
 
 if (__name__ == "__main__"):

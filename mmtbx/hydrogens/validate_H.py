@@ -33,8 +33,11 @@ def get_atom_info_if_hd(atoms_info):
 class validate_H():
   """ This class is for the validation of H and D atoms, especially for models
   obtained by neutron diffraction."""
-  def __init__(self, model):
+  def __init__(self, model, use_neutron_distances):
+  # input
     self.model = model
+    self.use_neutron_distances = use_neutron_distances
+  # derived
     self.pdb_hierarchy = self.model.get_hierarchy()
   # results
     self.overall_counts_hd = None
@@ -43,6 +46,8 @@ class validate_H():
     self.renamed = None
     self.missing_HD_atoms = None
     self.outliers_bonds = None
+    self.outliers_angles = None
+    self.bond_results = None
 
   def validate_inputs(self):
     if not self.model.has_hd:
@@ -450,6 +455,8 @@ class validate_H():
            use_segids_in_place_of_chainids = False)
 
     bond_mean_delta, n_bonds, bond_mean = 0, 0, 0
+
+    # bond outliers involving hydrogens
     outliers_bonds = []
     for result in rc.bonds.results:
       atom_info_hd = get_atom_info_if_hd(atoms_info = result.atoms_info)
@@ -472,6 +479,22 @@ class validate_H():
                              atom_info_hd.xyz] )
     self.outliers_bonds = outliers_bonds
 
+    bond_mean_delta = bond_mean_delta/n_bonds
+    bond_mean = bond_mean/n_bonds
+
+    xray_distances_used = False
+    # value 0.08 was obtained by checking all 123 neutron models deposited
+    # until Sep 2017 and by analysing delta
+    if (bond_mean_delta >= 0.08 and self.use_neutron_distances):
+      xray_distances_used = True
+
+    self.bond_results = group_args(
+      bond_mean_delta = bond_mean_delta,
+      bond_mean = bond_mean,
+      xray_distances_used = xray_distances_used
+      )
+
+    # angle outliers involving hydrogens
     outliers_angles = []
     for result in rc.angles.results:
       atom_info_hd = get_atom_info_if_hd(atoms_info = result.atoms_info)
@@ -511,7 +534,8 @@ class validate_H():
         renamed               = self.renamed,
         missing_HD_atoms      = self.missing_HD_atoms,
         outliers_bonds        = self.outliers_bonds,
-        outliers_angles       = self.outliers_angles
+        outliers_angles       = self.outliers_angles,
+        bond_results          = self.bond_results
         )
 
   def get_curated_hierarchy(self):
