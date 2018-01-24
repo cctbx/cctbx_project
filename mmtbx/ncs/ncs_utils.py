@@ -19,6 +19,9 @@ __author__ = 'Youval, massively rewritten by Oleg'
 
 def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=None):
   """
+  XXX
+  XXX not used, only tested. May have some value.
+  XXX
   This function will actually modify hierarchy by making necessary flips
   in ncs-related residues. Flip will be made by exchanging atom coordinates.
   Will make all copies consistent with master.
@@ -41,6 +44,11 @@ def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=N
 def concatenate_rot_tran(transforms_obj=None,
                          ncs_restraints_group_list=None):
   """
+  XXX
+  XXX Remove transforms_obj parameter
+  XXX Make it method of class_ncs_restraints_group_list
+  XXX
+
   Concatenate rotation angles, corresponding to the rotation
   matrices and scaled translation vectors to a single long flex.double object
 
@@ -66,6 +74,12 @@ def concatenate_rot_tran(transforms_obj=None,
 def get_rotation_translation_as_list(transforms_obj=None,
                                      ncs_restraints_group_list=None):
   """
+  XXX
+  XXX Consider deletion. Used only in tests tst_minimization_ncs_constraints_real_space.py,
+  XXX tst_ncs_utils.py
+  XXX Alternatively, make it method of class_ncs_restraints_group_list
+  XXX
+
   Get rotations and translations vectors from ncs_restraints_group_list or
   transforms_obj
 
@@ -85,7 +99,13 @@ def get_rotation_translation_as_list(transforms_obj=None,
   return r,t
 
 def update_transforms(transforms_obj,rm,tv):
-  """ Update transforms_obj with the rotation matrices (rm) and translation
+  """
+  XXX
+  XXX Consider removing it. Only used in
+  XXX mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py
+  XXX
+
+  Update transforms_obj with the rotation matrices (rm) and translation
   vectors (tv) """
   assert len(transforms_obj.transform_order) == len(rm)
   assert len(rm) == len(tv)
@@ -94,8 +114,11 @@ def update_transforms(transforms_obj,rm,tv):
     transforms_obj.ncs_transform[tr].t = t
   return transforms_obj
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: not used not tested
 def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
-  """ Update ncs_restraints_group_list with the rotation matrices (rm) and
+  """
+  Update ncs_restraints_group_list with the rotation matrices (rm) and
   translation vectors (tv) """
   assert len(rm) == len(tv)
   new_list = []
@@ -105,9 +128,15 @@ def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
       tr.t = tv.pop(0)
     new_list.append(gr)
   return new_list
+# END_MARKED_FOR_DELETION_OLEG
 
 def update_rot_tran(x,transforms_obj=None,ncs_restraints_group_list=None):
   """
+  XXX
+  XXX Make it method of class_ncs_restraints_group_list
+  XXX Remove transforms_obj parameter.
+  XXX
+
   Convert the refinable parameters, rotations angles and
   scaled translations, back to rotation matrices and translation vectors and
   updates the transforms_obj (ncs_restraints_group_list)
@@ -199,6 +228,11 @@ def rotation_to_angles(rotation, deg=False):
 
 def angles_to_rotation(angles_xyz, deg=False, rotation_is_tuple=False):
   """
+  XXX
+  XXX Not used anywhere, only tested in mmtbx/regression/ncs/tst_ncs_utils.py
+  XXX Consider deletion.
+  XXX
+
   Calculate rotation matrix R, such that R = Rx(alpha)*Ry(beta)*Rz(gamma)
 
   Args:
@@ -226,6 +260,11 @@ def shake_transformations(x,
                           shake_angles_sigma      = 0.035,
                           shake_translation_sigma = 0.5):
   """
+  XXX
+  XXX Used here in get_weight().
+  XXX Not clear what relation MTRIX have to this function at all...
+  XXX
+
   Shake rotation matrices and translation vectors of a rotation matrices and
   translation vectors from the MTRIX records in a PDB file.
 
@@ -255,6 +294,11 @@ def compute_transform_grad(grad_wrt_xyz,
                            ncs_restraints_group_list=None,
                            transforms_obj=None):
   """
+  XXX
+  XXX Remove transforms_obj from parameter list.
+  XXX Consider making it method of class_ncs_restraints_group_list
+  XXX
+
   Compute gradient in respect to the rotation angles and the translation
   vectors. R = Rx(the)Ry(psi)Rz(phi)
 
@@ -309,6 +353,13 @@ def get_ncs_sites_cart(ncs_obj=None,
                        sites_cart=None,
                        extended_ncs_selection=None):
   """
+  XXX The same name of the function as in cctbx/maptbx/segment_and_split_map.py
+  XXX The only call is from minimization_ncs_constraints.py, passing whole
+  XXX lbfgs class as 'ncs_obj'!
+  XXX TODO: remove ncs_obj parameter, pass everything needed explicitly
+  XXX not yet clear the goal of this func
+  XXX
+
   Args::
     ncs_obj: an object that contains fmodel, sites_cart or xray_structure
       and an atom selection flags for a single NCS copy.
@@ -530,6 +581,9 @@ def get_extended_ncs_selection(ncs_restraints_group_list,
                                refine_selection=None,
                                assume_strick_ncs =False):
   """
+  XXX
+  XXX Should be a method of class_ncs_restraints_group_list()
+  XXX
   Args:
     ncs_restraints_group_list: list of ncs_restraint_group objects
     refine_selection (flex.siz_t): of all ncs related copies and
@@ -571,6 +625,10 @@ def get_extended_ncs_selection(ncs_restraints_group_list,
 
 def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
   """
+  XXX Not used anywhere, only tested.
+  XXX Should be a method of class_ncs_restraints_group_list()
+  XXX
+
   Args:
     ncs_restraints_group_list (list): list of ncs_restraint_group objects
     asu_size (int): the total size of the ASU
@@ -594,6 +652,10 @@ def get_ncs_related_selection(ncs_restraints_group_list,asu_size):
 
 def shift_translation_to_center(shifts, ncs_restraints_group_list):
   """
+  XXX
+  XXX Should be a method of class_ncs_restraints_group_list()
+  XXX
+
   Add shifts to the translation component of ncs_restraints_group_list
   towards the center of coordinates
 
@@ -620,6 +682,10 @@ def shift_translation_to_center(shifts, ncs_restraints_group_list):
 
 def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
   """
+  XXX
+  XXX Should be a method of class_ncs_restraints_group_list()
+  XXX
+
   shifts to the translation component of ncs_restraints_group_list from the
   center of coordinates back to place
 
@@ -647,6 +713,11 @@ def shift_translation_back_to_place(shifts, ncs_restraints_group_list):
 
 def get_ncs_groups_centers(xray_structure, ncs_restraints_group_list):
   """
+  XXX
+  XXX Should be a method of class_ncs_restraints_group_list()
+  XXX Should take sites_cart only, no need of xrs.
+  XXX
+
   calculate the center of coordinate for the master of each ncs copy
 
   Args:
@@ -668,6 +739,10 @@ def get_ncs_groups_centers(xray_structure, ncs_restraints_group_list):
       shifts.append(mu_m)
   return shifts
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: bad duplication of def deep_dopy() of class_ncs_restraints_group_list
+#         more than that, it is not deep_copy because selections are passed by
+#         reference (not deep copied)!
 def ncs_restraints_group_list_copy(ncs_restraints_group_list):
   """
   Deep copy of ncs_restraints_group_list
@@ -691,9 +766,15 @@ def ncs_restraints_group_list_copy(ncs_restraints_group_list):
       new_nrg.copies.append(new_ncs_copy)
     new_list.append(new_nrg)
   return new_list
+# END_MARKED_FOR_DELETION_OLEG
 
 def ncs_groups_selection(ncs_restraints_group_list,selection):
   """
+  XXX
+  XXX Move to iotbx/ncs/__init__.py, member func of class_ncs_restraints_group_list()
+  XXX Figure out difference between this and def select() there.
+  XXX
+
   Modifies the selections of master and copies according the "selection"
   - Keep the order of selected atoms
   - Keep only atoms that appear in master and ALL copies
@@ -846,6 +927,8 @@ def get_refine_selection(refine_selection=None,number_of_atoms=None):
       refine_selection = flex.size_t(selection_list)
   return refine_selection
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: not used anywhere, only tested in mmtbx/regression/ncs/tst_ncs_utils.py
 def iselection_ncs_to_asu(iselection_ncs,ncs_chain_id,hierarchy_asu):
   """
   Convert iselection of NCS related atoms in the NCS copy to the ASU iselection
@@ -884,6 +967,7 @@ def iselection_asu_to_ncs(iselection_asu,ncs_chain_id,hierarchy_asu):
   ph_ncs_select = atom_cache.selection('chain ' + ncs_chain_id)
   chain_start =  min(list(ph_ncs_select.iselection(True)))
   return iselection_asu - chain_start
+# END_MARKED_FOR_DELETION_OLEG
 
 def check_ncs_group_list(
     ncs_restraints_group_list,
