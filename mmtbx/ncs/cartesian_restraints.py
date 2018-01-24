@@ -46,7 +46,7 @@ class cartesian_ncs_manager(object):
               "  Reference selection: %s" % show_string(self.selection_strings[0]),
               "      Other selection: %s" % show_string(
                 self.selection_strings[i_pair+1])]))
-        g = group(selection_strings=ncs_groups_selection_string_list[i_gr],
+        g = _group(selection_strings=ncs_groups_selection_string_list[i_gr],
             registry=registry,
             u_average_min=1.e-6,)
         self.groups_list.append(g)
@@ -268,7 +268,7 @@ class cartesian_ncs_manager(object):
           result.set_selected(sel, True)
     return result
 
-class group(object):
+class _group(object):
   """
   DO NOT USE THIS CLASS ANYWERE ELSE.
   This class is exclusively used in cartesian NCS restraints.
@@ -290,7 +290,7 @@ class group(object):
   def select(self, iselection):
     if(not isinstance(iselection, flex.size_t)):
       iselection = iselection.iselection()
-    return group(
+    return _group(
       selection_strings=self.selection_strings,
       registry=self.registry.proxy_select(iselection=iselection),
       u_average_min=self.u_average_min)
