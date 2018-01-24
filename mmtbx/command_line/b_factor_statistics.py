@@ -9,6 +9,7 @@ import os
 import sys
 import iotbx.cif
 import iotbx.pdb
+import iotbx.phil
 
 master_phil = """
 adp_statistics
@@ -42,7 +43,6 @@ def run (args=(), params=None, out=None) :
   if (out is None) :
     out = sys.stdout
   if (params is None) :
-    import iotbx.phil
     cmdline = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil_string=master_phil,
