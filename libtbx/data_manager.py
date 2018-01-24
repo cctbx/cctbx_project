@@ -113,7 +113,7 @@ class DataManager(object):
                           None)
       # filenames are reversed to preserve original order
       for filename in reversed(filenames):
-        # call type-specific function (e.g. self.process_model())
+        # call type-specific function (e.g. self.process_model_file())
         # checks if file is already in DataManager
         getattr(self, 'process_%s_file' % datatype)(filename)
 
