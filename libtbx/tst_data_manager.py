@@ -69,6 +69,7 @@ data_manager {
   a.load_phil_scope(test_phil)
 
   assert('data_manager_test.eff' in a.get_phil_names())
+  assert(a.get_default_phil_name() == 'data_manager_test.eff')
 
   os.remove('data_manager_test.eff')
 
