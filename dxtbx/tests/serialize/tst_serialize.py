@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 import libtbx.load_env
 import os
 
@@ -37,7 +37,6 @@ class Test(object):
     assert(abs(b3.get_divergence() - 0.2) <= 1e-7)
     assert(abs(b3.get_sigma_divergence() - 0.1) <= 1e-7)
     assert(b2 != b3)
-    print 'OK'
 
   def tst_beam_with_scan_points(self):
     from dxtbx.model import Beam, BeamFactory
@@ -56,10 +55,9 @@ class Test(object):
       assert matrix.col(s0comp) == s0_static
 
     assert(b1 == b2)
-    print 'OK'
 
   def tst_detector(self):
-    print 'OK'
+    pass
 
   def tst_goniometer(self):
     from dxtbx.model import Goniometer, GoniometerFactory
@@ -76,8 +74,6 @@ class Test(object):
     assert(g3.get_rotation_axis() == (0, 1, 0))
     assert(g3.get_fixed_rotation() == (1, 0, 0, 0, 1, 0, 0, 0, 1))
     assert(g2 != g3)
-
-    print 'OK'
 
   def tst_scan(self):
     from dxtbx.model import Scan, ScanFactory
@@ -106,98 +102,10 @@ class Test(object):
     assert(abs(s4.get_epochs()[2] - 0.3) < 1e-7)
     assert(abs(s4.get_epochs()[9] - 1.0) < 1e-7)
 
-    print 'OK'
-
-  # def tst_sweep(self):
-  #   from dxtbx.serialize import load
-  #   from dxtbx.serialize.helpers import tuple_almost_equal
-  #   path = libtbx.env.dist_path('dials_regression')
-
-  #   filename = os.path.join(path, "centroid_test_data", "test_sweep.json")
-  #   sweep = load.imageset(filename)
-  #   b = sweep.get_beam()
-  #   d = sweep.get_detector()
-  #   g = sweep.get_goniometer()
-  #   s = sweep.get_scan()
-  #   eps = 1e-7
-  #   assert(len(d) == 1)
-  #   assert(tuple_almost_equal(b.get_direction(), (0.0, 0.0, 1.0)))
-  #   assert(abs(b.get_wavelength() - 0.9795) < eps)
-  #   assert(abs(b.get_divergence() - 0.0) < eps)
-  #   assert(abs(b.get_sigma_divergence() - 0.058) < eps)
-  #   assert(d[0].get_type() == "SENSOR_PAD")
-  #   assert(d[0].get_name() == "Panel")
-  #   assert(tuple_almost_equal(d[0].get_fast_axis(), (1.0, 0.0, 0.0)))
-  #   assert(tuple_almost_equal(d[0].get_slow_axis(), (0.0, -1.0, 0.0)))
-  #   assert(tuple_almost_equal(d[0].get_origin(), (-211.5, 219.5, -192.7)))
-  #   assert(tuple_almost_equal(d[0].get_pixel_size(), (0.172, 0.172)))
-  #   assert(tuple_almost_equal(d[0].get_image_size(), (2463, 2527)))
-  #   assert(tuple_almost_equal(d[0].get_trusted_range(), (-1.0, 495976.0)))
-  #   assert(tuple_almost_equal(g.get_rotation_axis(), (1.0, 0.0, 0.0)))
-  #   assert(tuple_almost_equal(g.get_fixed_rotation(),
-  #       (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)))
-  #   assert(tuple_almost_equal(s.get_image_range(), (1, 3)))
-  #   assert(tuple_almost_equal(s.get_oscillation(), (0.0, 0.2)))
-  #   assert(abs(s.get_exposure_times()[0] - 0.2) < eps)
-
-  #   print 'OK'
-
-  # def tst_cspad_hierarchy(self):
-  #   from dxtbx.serialize import dump, load
-  #   from dxtbx.imageset import ImageSetFactory
-  #   import os
-  #   from glob import glob
-  #   path = libtbx.env.dist_path('dials_regression')
-
-  #   # Get the imageset
-  #   filename = os.path.join(path, "spotfinding_test_data", "idx*.cbf")
-  #   imageset = ImageSetFactory.new(glob(filename))
-  #   assert(len(imageset) == 1)
-  #   imageset = imageset[0]
-
-  #   # Dump and reload
-  #   from uuid import uuid4
-  #   filename = '%s.json' % uuid4().hex
-  #   dump.imageset(imageset, filename)
-  #   imageset2 = load.imageset(filename)
-
-  #   # Check they're are the same
-  #   assert(imageset2.get_beam() == imageset.get_beam())
-  #   d1 = imageset.get_detector()
-  #   d2 = imageset2.get_detector()
-  #   assert(len(d1) == len(d2))
-  #   for i, (p1, p2) in enumerate(zip(d1, d2)):
-  #     assert(p1 == p2)
-  #   assert(imageset2.get_detector() == imageset.get_detector())
-  #   assert(imageset2 == imageset)
-
-  #   # Test passed
-  #   print 'OK'
-
-  # def tst_no_image_data(self):
-  #   from dxtbx.serialize import load
-  #   from dxtbx.imageset import ImageSweep, NullReader
-  #   path = libtbx.env.dist_path('dials_regression')
-  #   filename = os.path.join(
-  #     path,
-  #     'centroid_test_data',
-  #     'sweep_no_image_data.json')
-
-  #   imageset = load.imageset(filename)
-  #   assert(isinstance(imageset, ImageSweep))
-  #   assert(isinstance(imageset.reader(), NullReader))
-  #   try:
-  #     imageset[0]
-  #     assert(False)
-  #   except Exception:
-  #     pass
-
-  #   print 'OK'
-
 if __name__ == '__main__':
   if libtbx.env.has_module("dials") and \
      libtbx.env.has_module("dials_regression"):
     test = Test()
     test.run()
   else:
-    print "Skipping test: dials or dials_regression not present"
+    print("Skipping test: dials or dials_regression not present")
