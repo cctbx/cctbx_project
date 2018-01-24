@@ -11,9 +11,7 @@ PHIL scope and citations for a program.
 
 import argparse, getpass, logging, os, sys, time
 
-import iotbx.pdb
 import iotbx.phil
-import mmtbx.model
 
 from iotbx.file_reader import any_file
 from libtbx import citations
@@ -120,6 +118,7 @@ class CCTBXParser(ParserBase):
     self.prefix = self.prog.split('.')[-1]
 
     # PHIL filenames
+    self.data_filename = self.prefix + '_data.eff'
     self.modified_filename = self.prefix + '_modified.eff'
     self.all_filename = self.prefix + '_all.eff'
 
@@ -160,10 +159,29 @@ class CCTBXParser(ParserBase):
       help='show parameters with attributes (default=0)'
     )
 
+    # --write-data
+    # switch for writing only DataManager PHIL parameters
+    self.add_argument(
+      '--write-data', '--write_data', action='store_true',
+      help='write DataManager PHIL parameters to file (%s)' % \
+      self.data_filename
+    )
+
     # --write-modified
     # switch for writing only modified PHIL parameters
-    self.add_argument('--write-modified', '--write_modified',
-                      action='store_true')
+    self.add_argument(
+      '--write-modified', '--write_modified', action='store_true',
+      help='write modifed PHIL parameters to file (%s)' % \
+      self.modified_filename
+    )
+
+    # --write-all
+    # switch for writing all PHIL parameters
+    self.add_argument(
+      '--write-all', '--write_all', action='store_true',
+      help='write all (modified + default + data) PHIL parameters to file (%s)' %
+      self.all_filename
+    )
 
     # --citations will use the default format
     # --citations=<format> will use the specified format
@@ -207,7 +225,7 @@ class CCTBXParser(ParserBase):
     if (self.parse_files):
       self.process_files(self.namespace.files)
 
-    # process phil
+    # process phil and phil files
     if (self.parse_phil):
       self.process_phil(self.namespace.phil)
 
@@ -241,15 +259,17 @@ class CCTBXParser(ParserBase):
       a = any_file(filename)
       # models
       if (a.file_type == 'pdb'):
-        model_in = iotbx.pdb.input(a.file_name)
-        model = mmtbx.model.manager(model_input=model_in, log=self.logger)
-        self.data_manager.add_model(a.file_name, model)
-        print('  Found model, %s' % a.file_name, file=self.logger)
+        self.data_manager.process_model_file(filename)
+        print('  Found model, %s' % filename, file=self.logger)
         printed_something = True
       # sequences
       elif (a.file_type == 'seq'):
-        self.data_manager.add_sequence(a.file_name, a.file_object)
-        print('  Found sequence, %s' % a.file_name, file=self.logger)
+        self.data_manager.add_sequence(filename, a.file_object)
+        print('  Found sequence, %s' % filename, file=self.logger)
+        printed_something = True
+      elif (a.file_type == 'phil'):
+        self.data_manager.add_phil(filename, a.file_object)
+        print('  Found PHIL, %s' % filename)
         printed_something = True
       # more file types to come!
       else:
@@ -263,8 +283,22 @@ class CCTBXParser(ParserBase):
         print('  %s' % filename, file=self.logger)
       printed_something = True
 
+    # process PHIL files for DataManager scope in ascending order
+    # files are appended and the default is not overridden
+    # files from the command-line take precedence
+    phil_names = self.data_manager.get_phil_names()
+    phil_names.sort()
+    for name in phil_names:
+      phil = self.data_manager.get_phil(name)
+      if (hasattr(phil.extract(), 'data_manager')):
+        self.data_manager.load_phil_scope(phil)
+
     if (not printed_something):
       print('  No files found', file=self.logger)
+
+    if (self.namespace.write_data):
+      with open(self.data_filename, 'w') as f:
+        self.data_manager.export_phil_scope().show(out=f)
 
     print('', file=self.logger)
 
@@ -280,9 +314,20 @@ class CCTBXParser(ParserBase):
     print('-'*79, file=self.logger)
     printed_something = False
 
+    data_sources = list()
     sources = list()
     unused_phil = list()
 
+    # PHIL files are processed in ascending order
+    if (self.data_manager.has_phils()):
+      phil_names = self.data_manager.get_phil_names()
+      phil_names.sort()
+      phil = list()
+      for name in phil_names:
+        phil.append(self.data_manager.get_phil(name))
+      data_sources.extend(phil)
+
+    # command-line PHIL arguments override any previous settings
     def custom_processor(arg):
       unused_phil.append(arg)
       return True
@@ -293,7 +338,8 @@ class CCTBXParser(ParserBase):
       phil_list, custom_processor=custom_processor)
     if (len(working) > 0):
       sources.extend(working)
-    self.working_phil = self.master_phil.fetch(sources=sources)
+    self.working_phil = self.master_phil.fetch(
+      sources=data_sources + sources)
 
     # show differences
     if (len(sources) > 0):
@@ -303,7 +349,7 @@ class CCTBXParser(ParserBase):
       phil_diff.show(prefix='  ', out=self.logger)
       printed_something = True
 
-      # write differences
+      # write differences (no DataManager scope)
       if (self.namespace.write_modified):
         with open(self.modified_filename, 'w') as f:
           phil_diff.show(out=f)
@@ -319,9 +365,11 @@ class CCTBXParser(ParserBase):
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
 
-    # write all parameters
-    with open(self.all_filename, 'w') as f:
-      self.working_phil.show(expert_level=3, out=f)
+    # write all parameters (DataManager + Program)
+    if (self.namespace.write_all):
+      with open(self.all_filename, 'w') as f:
+        self.data_manager.export_phil_scope().show(out=f)
+        self.working_phil.show(expert_level=3, out=f)
 
     print('', file=self.logger)
 
