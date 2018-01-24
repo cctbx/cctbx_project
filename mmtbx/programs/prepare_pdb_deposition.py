@@ -58,8 +58,12 @@ mmCIF file. More functionality is planned.
 '''
 
   master_phil_str = '''
-sequence_alignment {
+mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
+}
+output {
+  output_suffix = '.deposit.cif'
+    .type = str
 }
 '''
 
@@ -71,21 +75,25 @@ sequence_alignment {
   # ---------------------------------------------------------------------------
   def validate(self):
     print('Validating inputs', file=self.logger)
-    self.data_manager.has_models()
-    self.data_manager.has_sequences()
+    self.data_manager.has_models(raise_sorry=True)
+    self.data_manager.has_sequences(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
   def run(self):
+    print('Using model: %s' % self.data_manager.get_default_model_name())
+    print('Using sequence: %s' % self.data_manager.get_default_sequence_name())
+
     model = self.data_manager.get_model()
+    sequence = self.data_manager.get_sequence()
+
     self.cif_blocks = list()
 
     # sequence block
     print ('Creating mmCIF block for sequence', file=self.logger)
-    sequence = self.data_manager.get_sequence()
     hierarchy = model._pdb_hierarchy
     seq_block = hierarchy.as_cif_block_with_sequence(
       sequence, crystal_symmetry=model.crystal_symmetry(),
-      alignment_params=self.params.sequence_alignment)
+      alignment_params=self.params.mmtbx.validation.sequence.sequence_alignment)
     self.cif_blocks.append(seq_block)
 
     # create additional cif blocks?
@@ -96,7 +104,8 @@ sequence_alignment {
 
     # write output file
     self.output_file = os.path.splitext(
-      self.data_manager.get_default_model_name())[0] + '.deposit.cif'
+      self.data_manager.get_default_model_name())[0] + \
+      self.params.output.output_suffix
     print ('Writing mmCIF', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
     with open(self.output_file, 'wb') as f:
