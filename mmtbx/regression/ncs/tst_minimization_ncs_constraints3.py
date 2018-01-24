@@ -27,9 +27,8 @@ class TestMinimizationFunctions(unittest.TestCase):
     asu_length = ncs_inp.total_asu_length
     #
     refine_selection = nu.get_refine_selection(number_of_atoms=asu_length)
-    extended_ncs_selection =  nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=nrgl,
-      refine_selection=refine_selection)
+    extended_ncs_selection = nrgl.get_extended_ncs_selection(
+        refine_selection=refine_selection)
     #
     self.assertEqual(asu_length, ph.atoms_size())
     self.assertEqual(asu_length, 18)

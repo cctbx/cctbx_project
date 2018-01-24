@@ -39,7 +39,6 @@ from mmtbx import utils
 from mmtbx import ncs
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-from mmtbx.ncs.ncs_utils import filter_ncs_restraints_group_list
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     add_reference_dihedral_restraints_if_requested, reference_model_str
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
@@ -958,8 +957,8 @@ class manager(object):
       ncs_group_list = ncs_obj.get_ncs_restraints_group_list(
           raise_sorry=False)
       # set up new groups for refinements
-      self._ncs_groups = filter_ncs_restraints_group_list(
-          self.get_hierarchy(), self.ncs_restr_group_list)
+      self._ncs_groups = self.ncs_restr_group_list.filter_ncs_restraints_group_list(
+          self.get_hierarchy())
     if len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)

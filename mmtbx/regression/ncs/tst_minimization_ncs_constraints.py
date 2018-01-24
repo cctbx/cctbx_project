@@ -171,9 +171,8 @@ class ncs_minimization_test(object):
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # refine both ncs related and not related atoms
     self.refine_selection = flex.size_t(range(tr_obj.total_asu_length))
-    self.extended_ncs_selection = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=tr_obj.get_ncs_restraints_group_list(),
-      refine_selection=self.refine_selection)
+    self.extended_ncs_selection = tr_obj.get_ncs_restraints_group_list().get_extended_ncs_selection(
+        refine_selection=self.refine_selection)
     assert self.refine_selection.size() == 21, self.refine_selection.size()
     self.fmodel = mmtbx.f_model.manager(
       f_obs                        = self.f_obs,

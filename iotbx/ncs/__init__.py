@@ -7,6 +7,8 @@ from libtbx.utils import Sorry
 import libtbx.phil
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
+from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
+    NCS_restraint_group, NCS_copy
 from scitbx import matrix
 import math
 import re
@@ -1434,7 +1436,7 @@ class input(object):
 
     This should be cached so the work is done only once.
     """
-    ncs_restraints_group_list = []
+    ncs_restraints_group_list = class_ncs_restraints_group_list()
     chain_max_rmsd = max(self.chain_max_rmsd, chain_max_rmsd)
     # assert 0number_of_ncs_groups
     group_id_list = sort_dict_keys(self.ncs_group_map)
@@ -1475,9 +1477,8 @@ class input(object):
       if self.original_hierarchy.atoms_size() == self.total_asu_length:
         import mmtbx.ncs.ncs_utils as nu
         # print "number of atoms in original h", self.original_hierarchy.atoms_size()
-        nrgl_ok = nu.check_ncs_group_list(
-          ncs_restraints_group_list,
-          self.original_hierarchy,
+        nrgl_ok = ncs_restraints_group_list.check_for_max_rmsd(
+          sites_cart=self.original_hierarchy.atoms().extract_xyz(),
           chain_max_rmsd=chain_max_rmsd,
           log=self.log)
         if not nrgl_ok:
@@ -1824,8 +1825,8 @@ class input(object):
 
     if self.number_of_ncs_groups == 0: return None
     nrgl = self.get_ncs_restraints_group_list()
-    for group_number in range(len(nrgl)):
-      group_isel = nu.ncs_group_iselection(nrgl,group_number)
+    for group_number, group in enumerate(nrgl):
+      group_isel = group.whole_group_iselection()
       # XXX This should be consistent with ncs_domain_pdb parameter in
       # get_ncs_info_as_spec()
       file_name = stem+'group_'+str(group_number+1)+'.pdb'
@@ -2463,84 +2464,3 @@ def insure_identity_is_in_transform_info(transform_info):
   ti.serial_number = t_sn
   ti.coordinates_present = t_cp
   return ti
-
-
-class NCS_copy():
-
-  def __init__(self,copy_iselection, rot, tran):
-    """
-    used for NCS groups list copies
-
-    Attributes:
-      iselection (flex.size_t): NCS copy selection
-      r (matrix obj): rotation matrix from master to this copy
-      t (matrix obj): translation vector from master to this copy
-    """
-    self.iselection = copy_iselection
-    self.r = rot
-    self.t = tran
-
-  def deep_copy(self):
-    res = NCS_copy(self.iselection.deep_copy(), self.r, self.t)
-    return res
-
-  def select(self, selection):
-    self.iselection = iselection_select(self.iselection, selection)
-
-def iselection_select(isel, sel):
-  # x = flex.bool(sel.size(), isel)
-  x = flex.bool(sel.size(), False)
-  x.set_selected(isel, True)
-  res = x.select(sel).iselection()
-  return res
-
-class NCS_restraint_group(object):
-
-  def __init__(self,master_iselection):
-    """
-    used for NCS groups list
-
-    Attributes:
-      master_iselection (flex.size_t): NCS group master copy selection
-      copies (list): list of NCS_copy objects
-    """
-    self.master_iselection = master_iselection
-    self.copies = []
-
-  def get_iselections_list(self):
-    """
-    Returns all iselections in the group in one list
-    """
-    return [self.master_iselection] + [c.iselection for c in self.copies]
-
-  def get_number_of_copies(self):
-    return len(self.copies)
-
-  def deep_copy(self):
-    result = NCS_restraint_group(self.master_iselection.deep_copy())
-    for c in self.copies:
-      result.copies.append(c.deep_copy())
-    return result
-
-  def select(self, selection):
-    assert isinstance(selection, flex.bool)
-    self.master_iselection = iselection_select(self.master_iselection, selection)
-    for c in self.copies:
-      c.select(selection)
-
-class class_ncs_restraints_group_list(list):
-  def __init__(self, *args):
-    super(class_ncs_restraints_group_list, self).__init__(*args)
-
-  def deep_copy(self):
-    result = class_ncs_restraints_group_list()
-    for gr in self:
-      result.append(gr.deep_copy())
-    return result
-
-  def select(self, selection):
-    assert isinstance(selection, flex.bool)
-    result = self.deep_copy()
-    for gr in result:
-      gr.select(selection)
-    return result

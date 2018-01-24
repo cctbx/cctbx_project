@@ -231,31 +231,6 @@ class Test_ncs_utils(unittest.TestCase):
     assert approx_equal(tran_results,tran_expected,1.0e-4)
     assert approx_equal(rot_results,rot_expected,1.0e-4)
 
-  def test_angles_to_matrix(self):
-    """
-    Verify derivation of rotation matrix R = Rx Ry Rz
-    from alpha:
-    rotation around x, beta: rotation around y, gamma: around z
-    """
-    # print sys._getframe().f_code.co_name
-    angles = self.rot_angles1
-    expected = self.rot1.as_double()
-    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
-    assert approx_equal(expected,result,1e-4)
-    # convert to Degrees
-    angles = self.rot_angles1/math.pi*180
-    result = nu.angles_to_rotation(angles_xyz=angles,deg=True)
-    assert approx_equal(expected,result,1e-4)
-    # test the rotations with sin(beta)==0
-    angles = self.rot_angles2
-    expected = self.rot2.as_double()
-    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
-    assert approx_equal(expected,result,1e-4)
-    angles = self.rot_angles3
-    expected = self.rot3.as_double()
-    result = nu.angles_to_rotation(angles_xyz=angles,deg=False)
-    assert approx_equal(expected,result,1e-4)
-
   def test_matrix_to_angles(self):
     """
     Note that there are two possible sets of angles for a rotation
@@ -349,68 +324,6 @@ class Test_ncs_utils(unittest.TestCase):
       for c in rec.copies:
         r = c.r.round(round_val)
         r_elems.append(r.elems)
-
-  def test_ncs_selection(self):
-    """
-    verify that extended_ncs_selection, which include the master ncs copy and
-    the portion of the protein we want to refine.
-    """
-    # print sys._getframe().f_code.co_name
-    refine_selection = flex.size_t(range(30))
-    result = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=self.ncs_restraints_group_list,
-      refine_selection=refine_selection)
-    expected = [0, 1, 2, 3, 4, 5, 6, 21, 22, 23, 24, 25, 26, 27, 28, 29]
-    assert list(result) == expected
-
-  def test_ncs_related_selection(self):
-    # print sys._getframe().f_code.co_name
-    result = nu.get_ncs_related_selection(
-      ncs_restraints_group_list=self.ncs_restraints_group_list,
-      asu_size=25)
-    # ASU length is set to 25 (not 21)
-    expected = [True, True, True, True, True, True, True,
-                True, True, True, True, True, True, True,
-                True, True, True, True, True, True, True,
-                False, False, False, False]
-    assert list(result) == expected
-
-  def test_center_of_coordinates_shift(self):
-    """
-    test shifting translation to and from the center of coordinates of the
-    master ncs copy
-    """
-    # print sys._getframe().f_code.co_name
-
-    xrs = self.pdb_inp.xray_structure_simple()
-    nrg = self.ncs_restraints_group_list
-
-    shifts = nu.get_ncs_groups_centers(
-      xray_structure = xrs,
-      ncs_restraints_group_list=nrg)
-
-    xyz = self.pdb_inp.atoms().extract_xyz()
-    center_of_coor = (flex.vec3_double([xyz.sum()]) * (1/xyz.size())).round(8)
-    # test shifts
-    t1 = shifts[0].round(8)
-    t2 = shifts[1].round(8)
-    d1 = flex.sqrt((center_of_coor-t1).dot()).min_max_mean().as_tuple()
-    d2 = flex.sqrt((center_of_coor-t2).dot()).min_max_mean().as_tuple()
-    assert (d1 == d2) and (d1 == (0,0,0))
-
-    # test shift to center
-    new_nrg = nu.shift_translation_to_center(
-      shifts = shifts,
-      ncs_restraints_group_list=nrg)
-    expected = (-4.62169, -5.42257, 5.288)
-    assert (new_nrg[0].copies[0].t.round(5)).elems == expected
-    # back to original coordinates system
-    old_nrg = nu.shift_translation_back_to_place(
-      shifts=shifts,
-      ncs_restraints_group_list=new_nrg)
-    expected = (old_nrg[0].copies[0].t.round(5)).elems
-    result = (nrg[0].copies[0].t.round(5)).elems
-    assert result == expected
 
   def test_nrg_selection(self):
     """
@@ -524,41 +437,6 @@ class Test_ncs_utils(unittest.TestCase):
       map_data       = map_data,
       d_min          = d_min)
 
-  def test_iselection_ncs_to_asu(self):
-    # print sys._getframe().f_code.co_name
-    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
-    ph = pdb_inp.construct_hierarchy()
-    isel_asu = flex.size_t([8,9,13])
-    isel_ncs = isel_asu - 7
-    results = nu.iselection_ncs_to_asu(isel_ncs,'B',ph)
-    self.assertEqual(list(isel_asu),list(results))
-
-  def test_iselection_asu_to_ncs(self):
-    # print sys._getframe().f_code.co_name
-    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
-    ph = pdb_inp.construct_hierarchy()
-    isel_asu = flex.size_t([8,9,13])
-    isel_ncs = isel_asu - 7
-    results = nu.iselection_asu_to_ncs(isel_asu,'B',ph)
-    self.assertEqual(list(isel_ncs),list(results))
-
-  def test_check_ncs_group_list(self):
-    """ Test that ncs_restraints_group_list test is working properly """
-    phil_groups = ncs_group_master_phil.fetch(
-        iotbx.phil.parse(phil_str)).extract()
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
-    ncs_obj_phil = ncs.input(
-        hierarchy=pdb_inp.construct_hierarchy(),
-        ncs_phil_groups=phil_groups.ncs_group)
-    nrgl = ncs_obj_phil.get_ncs_restraints_group_list()
-    pdb_inp = iotbx.pdb.input(lines=test_pdb_str_2,source_info=None)
-    ph = pdb_inp.construct_hierarchy()
-    # passing test
-    self.assertTrue(nu.check_ncs_group_list(nrgl,ph,chain_max_rmsd=1))
-    # make sure test fails when it suppose to
-    nrgl[0].copies[1].t = matrix.col([100, -89.7668, 5.8996])
-    self.assertFalse(nu.check_ncs_group_list(nrgl,ph,chain_max_rmsd=1))
-
   def test_make_unique_chain_names(self):
     """ Test that new chain names are produced properly """
     # check single letter names
@@ -570,49 +448,6 @@ class Test_ncs_utils(unittest.TestCase):
     unique_chain_names.update(set(string.ascii_lowercase))
     new_names = nu.make_unique_chain_names(unique_chain_names,5)
     self.assertEqual(new_names,['AA', 'AB', 'AC', 'BA', 'BB'])
-
-  def test_ncs_group_iselection(self):
-    """ selection of a complete NCS group """
-    phil_groups = ncs_group_master_phil.fetch(
-        iotbx.phil.parse(phil_str)).extract()
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str_2)
-    ncs_obj = ncs.input(hierarchy=pdb_inp.construct_hierarchy(),
-        ncs_phil_groups=phil_groups.ncs_group)
-    nrgl = ncs_obj.get_ncs_restraints_group_list()
-    self.assertEqual(len(nrgl),2)
-    isel = nu.ncs_group_iselection(nrgl,1)
-    expected = [4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23]
-    self.assertEqual(list(isel),expected)
-    isel = nu.ncs_group_iselection(nrgl,0)
-    expected = [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19]
-    self.assertEqual(list(isel),expected)
-
-  def test_transform_update(self):
-    """ Test update of rotation and translation using selection """
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer_0)
-    ncs_obj = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
-    pdb_inp = iotbx.pdb.input(lines=pdb_answer_0,source_info=None)
-    nrgl = ncs_obj.get_ncs_restraints_group_list()
-    asu_site_cart = pdb_inp.atoms().extract_xyz()
-    # reference matrices
-    r1 = nrgl[0].copies[0].r
-    t1 = nrgl[0].copies[0].t
-    r2 = nrgl[0].copies[1].r
-    t2 = nrgl[0].copies[1].t
-    # modify matrices in the ncs group list
-    nrgl[0].copies[0].r = r1 + r2
-    nrgl[0].copies[0].t = t1 + t2
-    nrgl[0].copies[1].r = r1 + r2
-    nrgl[0].copies[1].t = t1 + t2
-    nu.recalculate_ncs_transforms(nrgl,asu_site_cart)
-    # Get the updated values
-    r1_n = nrgl[0].copies[0].r
-    t1_n = nrgl[0].copies[0].t
-    r2_n = nrgl[0].copies[1].r
-    t2_n = nrgl[0].copies[1].t
-    #
-    self.assertTrue(is_same_transform(r1,t1,r1_n,t1_n))
-    self.assertTrue(is_same_transform(r2,t2,r2_n,t2_n))
 
 def run_selected_tests():
   """  Run selected tests

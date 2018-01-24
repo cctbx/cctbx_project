@@ -153,9 +153,8 @@ class target_function_and_grads_geometry_minimization(object):
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
       number_of_atoms=self.xray_structure.sites_cart().size())
-    self.extended_ncs_selection = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=ncs_restraints_group_list,
-      refine_selection=self.refine_selection)
+    self.extended_ncs_selection = ncs_restraints_group_list.get_extended_ncs_selection(
+        refine_selection=self.refine_selection)
     self.unit_cell = self.xray_structure.unit_cell()
 
   def target_and_gradients(self,compute_gradients,xray_structure,x):
@@ -203,9 +202,8 @@ class target_function_and_grads_real_space(object):
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
       number_of_atoms=self.xray_structure.sites_cart().size())
-    self.extended_ncs_selection = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=ncs_restraints_group_list,
-      refine_selection=self.refine_selection)
+    self.extended_ncs_selection = ncs_restraints_group_list.get_extended_ncs_selection(
+        refine_selection=self.refine_selection)
     self.unit_cell = self.xray_structure.unit_cell()
     # get selection to refine
     asu_size = xray_structure.scatterers().size()
@@ -287,9 +285,8 @@ class target_function_and_grads_reciprocal_space(object):
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
       number_of_atoms=asu_size)
-    self.extended_ncs_selection = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=ncs_restraints_group_list,
-      refine_selection=self.refine_selection)
+    self.extended_ncs_selection = ncs_restraints_group_list.get_extended_ncs_selection(
+        refine_selection=self.refine_selection)
     self.fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     self.x_target_functor = self.fmodel.target_functor()
     self.xray_structure = self.fmodel.xray_structure
@@ -394,12 +391,10 @@ class lbfgs(object):
       refine_selection=self.refine_selection,
       number_of_atoms=self.xray_structure.sites_cart().size())
     self.use_ncs_constraints = target_and_grads_object.use_ncs_constraints
-    self.ncs_restraints_group_list = nu.ncs_restraints_group_list_copy(
-      ncs_restraints_group_list)
+    self.ncs_restraints_group_list = ncs_restraints_group_list.deep_copy()
     self.ncs_groups_coordinates_centers = []
-    self.extended_ncs_selection = nu.get_extended_ncs_selection(
-      ncs_restraints_group_list=self.ncs_restraints_group_list,
-      refine_selection=self.refine_selection)
+    self.extended_ncs_selection = self.ncs_restraints_group_list.get_extended_ncs_selection(
+        refine_selection=self.refine_selection)
     assert [self.refine_sites,
             self.refine_u_iso, self.refine_transformations].count(True) == 1
     self.total_asu_length = len(xray_structure.sites_cart())
@@ -417,12 +412,10 @@ class lbfgs(object):
       self.x = xray_structure_one_ncs_copy.extract_u_iso_or_u_equiv()
     elif self.refine_transformations:
       # move refinable parameters to coordinate center
-      self.ncs_groups_coordinates_centers = nu.get_ncs_groups_centers(
-        xray_structure=self.xray_structure,
-        ncs_restraints_group_list=self.ncs_restraints_group_list)
-      self.ncs_restraints_group_list = nu.shift_translation_to_center(
-        shifts = self.ncs_groups_coordinates_centers,
-        ncs_restraints_group_list = self.ncs_restraints_group_list)
+      self.ncs_groups_coordinates_centers = self.ncs_restraints_group_list.get_ncs_groups_centers(
+          sites_cart=self.xray_structure.sites_cart())
+      self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_to_center(
+          shifts = self.ncs_groups_coordinates_centers)
       self.x = nu.concatenate_rot_tran(
         ncs_restraints_group_list=self.ncs_restraints_group_list)
     minimizer = scitbx.lbfgs.run(
@@ -436,9 +429,8 @@ class lbfgs(object):
         ignore_line_search_failed_maxfev=True))
     # change transforms to the original coordinate system
     if self.refine_transformations:
-      self.ncs_restraints_group_list = nu.shift_translation_back_to_place(
-          shifts = self.ncs_groups_coordinates_centers,
-          ncs_restraints_group_list = self.ncs_restraints_group_list)
+      self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_back_to_place(
+          shifts = self.ncs_groups_coordinates_centers)
     if(getattr(self.target_and_grads_object, "finalize", None)):
       self.target_and_grads_object.finalize()
     # pass the refined ncs_restraints_group_list to original object
