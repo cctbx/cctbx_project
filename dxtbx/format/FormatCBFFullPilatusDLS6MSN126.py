@@ -35,7 +35,7 @@ class FormatCBFFullPilatusDLS6MSN126(FormatCBFFullPilatus):
 
     for record in header.split('\n'):
       if '# Detector' in record and \
-             'PILATUS' in record and 'S/N 60-0126 Diamond' in header:
+             'PILATUS' in record and 'S/N 60-0126' in header:
         return True
 
     return False
@@ -56,7 +56,7 @@ class FormatCBFFullPilatusDLS6MSN126(FormatCBFFullPilatus):
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
 
-    self._dynamic_shadowing = self.dynamic_shadowing(**kwargs)
+    self._dynamic_shadowing = self.has_dynamic_shadowing(**kwargs)
     FormatCBFFullPilatus.__init__(self, image_file, **kwargs)
 
   def get_mask(self, goniometer=None):
