@@ -13,7 +13,6 @@ from wxtbx import bitmaps
 import numpy as np
 
 from simtbx.nanoBragg import nanoBragg_gui_frames as frm
-from simtbx.nanoBragg import nanoBragg_gui_dialogs as dlg
 from simtbx.nanoBragg import nanoBragg_input as inp
 
 

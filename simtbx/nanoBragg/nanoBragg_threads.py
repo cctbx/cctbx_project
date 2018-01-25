@@ -11,7 +11,6 @@ import os
 import wx
 from threading import Thread
 
-from libtbx.easy_mp import parallel_map
 from libtbx import easy_run
 from scitbx.array_family import flex
 

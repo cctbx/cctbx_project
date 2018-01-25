@@ -7,17 +7,10 @@ Last Changed: 12/12/2017
 Description : IOTA GUI Dialogs
 '''
 
-import os
 import wx
-from wx.lib.scrolledpanel import ScrolledPanel
-from wx.lib.buttons import GenToggleButton
 from wxtbx import bitmaps
 
-from iotbx import phil as ip
-
-import iota.components.iota_controls as ct
-from iota.components.iota_input import master_phil
-from iota.components.iota_misc import UnicodeCharacters, WxFlags, noneset
+from iota.components.iota_misc import UnicodeCharacters, WxFlags
 
 
 # Platform-specific stuff
