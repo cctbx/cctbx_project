@@ -2218,43 +2218,8 @@ nanoBragg::show_mosaic_blocks()
 // end of show_mosaic_blocks()
 
 
-/* return the unitary matrices U that define the mosaic block distribution, cctbx format please */
-af::shared<mat3>
-nanoBragg::get_mosaic_blocks() {
-    /* assume init_mosaicity() was already run? */
-    af::shared<mat3> result;
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
-        result.push_back(mat3( *(mosaic_umats+9*mos_tic+0), *(mosaic_umats+9*mos_tic+1), *(mosaic_umats+9*mos_tic+2),
-                               *(mosaic_umats+9*mos_tic+3), *(mosaic_umats+9*mos_tic+4), *(mosaic_umats+9*mos_tic+5),
-                               *(mosaic_umats+9*mos_tic+6), *(mosaic_umats+9*mos_tic+7), *(mosaic_umats+9*mos_tic+8)));
-    }
-    return result;
-}
-// end of get_mosaic_blocks()
 
-/* set the mosaic domains */
-void
-nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
-    /* free any previous allocations */
-    if(mosaic_umats!=NULL) free(mosaic_umats);
 
-    /* allocate enough space */
-    mosaic_domains = umat_in.size();
-    if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
-    mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
-
-    /* now actually create the orientation of each domain */
-    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
-      int offset = 9 * mos_tic;
-      mat3& domain = umat_in[mos_tic];
-      mosaic_umats[0+offset]=domain[0];mosaic_umats[1+offset]=domain[1];mosaic_umats[2+offset]=domain[2];
-      mosaic_umats[3+offset]=domain[3];mosaic_umats[4+offset]=domain[4];mosaic_umats[5+offset]=domain[5];
-      mosaic_umats[6+offset]=domain[6];mosaic_umats[7+offset]=domain[7];mosaic_umats[8+offset]=domain[8];
-   }
-
-    if(verbose) printf("  created a total of %d mosaic domains\n",mosaic_domains);
-}
-// end of init_mosaicity()
 
 
 /* reconcile different conventions of beam center input and detector position */
@@ -3696,70 +3661,8 @@ nanoBragg::add_noise()
 }
 // end of add_noise()
 
-void
-nanoBragg::to_smv_format_streambuf(boost_adaptbx::python::streambuf & output,
-    double intfile_scale, int const&debug_x, int const& debug_y) const {
-    boost_adaptbx::python::streambuf::ostream os(output);
-    const double* floatimage = raw_pixels.begin();
-    double max_value = (double)std::numeric_limits<unsigned short int>::max();
-    double saturation = floor(max_value - 1 );
-    /* output as ints */
 
-    unsigned short int intimage;
-    double max_I = this-> max_I;
-    double max_I_x = this-> max_I_x;
-    double max_I_y = this-> max_I_y;
-    if(intfile_scale <= 0.0){
-        /* need to auto-scale */
-        int i=0;
-        for(int spixel=0;spixel<spixels;++spixel)
-        {
-            for(int fpixel=0;fpixel<fpixels;++fpixel)
-            {
-                if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has value %g\n",i,fpixel,spixel,floatimage[i]);
-                if(i==0 || max_I < floatimage[i])
-                {
-                    max_I = floatimage[i];
-                    max_I_x = fpixel;
-                    max_I_y = spixel;
-                }
-                ++i;
-            }
-        }
-        if(verbose) printf("providing default scaling: max_I = %g @ (%g %g)\n",max_I,max_I_x,max_I_y);
-        intfile_scale = 1.0;
-        if(max_I>0.0) intfile_scale = 55000.0/(max_I);
-    }
-    if(verbose) printf("scaling data by: intfile_scale = %g\n",intfile_scale);
 
-    double sum = 0.0;
-    max_I = 0.0;
-    int i = 0;
-    for(int spixel=0;spixel<spixels;++spixel)
-    {
-        for(int fpixel=0;fpixel<fpixels;++fpixel)
-        {
-            /* no noise, just use intfile_scale */
-
-            intimage = (unsigned short int) (std::min(saturation, floatimage[i]*intfile_scale ));
-            os.write((char *) &intimage, sizeof(unsigned short int));
-
-            if(verbose>90) printf("DEBUG #%d %g -> %g -> %d\n",i,floatimage[i],floatimage[i]*intfile_scale,intimage);
-
-            if((double) intimage > max_I || i==0) {
-                max_I = (double) intimage;
-                max_I_x = fpixel;
-                max_I_y = spixel;
-            }
-            if(fpixel==debug_x && spixel==debug_y) printf("DEBUG: pixel # %d at (%d,%d) has int value %d\n",i,fpixel,spixel,intimage);
-
-            sum += intimage;
-            ++i;
-        }
-    }
-    // os << "Hello world";
-
-}
 
 void
 nanoBragg::to_smv_format(
@@ -4751,9 +4654,11 @@ double fmedian(unsigned int n, double arr[])
 double fmedian_with_rejection(unsigned int n, double arr[],double sigma_cutoff, double *final_mad, int *final_n)
 {
     double median_value;
-    int i,done;
-    double deviate,mad;
+    int i,orig_n,done;
+    double min_frac,deviate,mad;
 
+    orig_n = n;
+    min_frac = 0.7;
 
     done = 0;
     while(! done)
