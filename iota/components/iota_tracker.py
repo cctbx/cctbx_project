@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 10/25/2017
+Last Changed: 01/25/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -133,33 +133,6 @@ class TrackChart(wx.Panel):
     self.track_axes.set_ylabel('Found Spots')
     self.track_axes.set_xlabel('Frame')
 
-    self.track_figure.patch.set_visible(False)
-    self.track_axes.patch.set_visible(False)
-
-    self.xdata = []
-    self.ydata = []
-    self.x_min = 0
-    self.x_max = 1
-    self.y_max = 1
-    self.bracket_set = False
-    self.button_hold = False
-    self.plot_zoom = False
-    self.chart_range = None
-    self.selector = None
-    self.max_lock = True
-    self.patch_x = 0
-    self.patch_x_last = 1
-    self.patch_width = 1
-    self.start_edge = 0
-    self.end_edge = 1
-
-    self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
-    self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
-    self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
-    self.highlight = self.track_axes.axvspan(0.5, 0.5, ls='--', alpha=0,
-                                             fc='#deebf7', ec='#2171b5')
-    self.track_axes.set_autoscaley_on(True)
-
     self.track_figure.set_tight_layout(True)
     self.track_canvas = FigureCanvas(self, -1, self.track_figure)
     self.track_axes.patch.set_visible(False)
@@ -169,6 +142,8 @@ class TrackChart(wx.Panel):
 
     self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
     self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
+
+    self.reset_chart()
 
     # Scroll bar binding
     self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
@@ -270,13 +245,34 @@ class TrackChart(wx.Panel):
         self.zoom_span.set_visible(True)
         self.select_span.set_visible(False)
 
-  def clear_all(self):
+  def reset_chart(self):
     self.track_axes.clear()
+    self.track_figure.patch.set_visible(False)
+    self.track_axes.patch.set_visible(False)
+
+    self.xdata = []
+    self.ydata = []
+    self.x_min = 0
+    self.x_max = 1
+    self.y_max = 1
+    self.bracket_set = False
+    self.button_hold = False
+    self.plot_zoom = False
+    self.chart_range = None
+    self.selector = None
+    self.max_lock = True
+    self.patch_x = 0
+    self.patch_x_last = 1
+    self.patch_width = 1
+    self.start_edge = 0
+    self.end_edge = 1
+
     self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
     self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
     self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
+    self.highlight = self.track_axes.axvspan(0.5, 0.5, ls='--', alpha=0,
+                                             fc='#deebf7', ec='#2171b5')
     self.track_axes.set_autoscaley_on(True)
-    self.track_canvas.flush_events()
 
   def draw_bragg_line(self):
     min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
@@ -582,16 +578,7 @@ class TrackerWindow(wx.Frame):
     self.info_file = os.path.join(os.curdir, '.spotfinding_info')
     self.folder_file = os.path.join(os.curdir, '.data_info')
 
-    self.frame_count = []
-    self.obs_counts = []
-    self.done_list = []
-    self.new_frames = []
-    self.new_counts = []
-    self.spotfinding_info = []
-    self.all_info = []
-    self.current_min_bragg = 0
-    self.waiting = False
-    self.terminated = False
+    self.reset_spotfinder()
 
     # Setup main sizer
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -685,6 +672,7 @@ class TrackerWindow(wx.Frame):
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
     self.Bind(thr.EVT_SPFALLDONE, self.onSpfAllDone)
+    self.Bind(thr.EVT_SPFTERM, self.onSpfTerminated)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
 
     # Settings bindings
@@ -693,6 +681,18 @@ class TrackerWindow(wx.Frame):
               self.tracker_panel.min_bragg.ctr)
     self.Bind(wx.EVT_SPINCTRL, self.onChartRange,
               self.tracker_panel.chart_window.ctr)
+
+  def reset_spotfinder(self):
+    self.frame_count = []
+    self.obs_counts = []
+    self.done_list = []
+    self.new_frames = []
+    self.new_counts = []
+    self.spotfinding_info = []
+    self.all_info = []
+    self.current_min_bragg = 0
+    self.waiting = False
+    self.terminated = False
 
   def onSelView(self, e):
     idxs = []
@@ -742,6 +742,10 @@ class TrackerWindow(wx.Frame):
       self.data_folder = open_dlg.GetPath()
       open_dlg.Destroy()
       self.remove_term_file()
+      self.reset_spotfinder()
+
+      self.tracker_panel.chart.reset_chart()
+      self.tracker_panel.spf_options.Enable()
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
       # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
       timer_txt = '[ ------ ]'
@@ -810,10 +814,11 @@ class TrackerWindow(wx.Frame):
     ''' Start timer and perform spotfinding on found images '''
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), True)
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
+    self.toolbar.EnableTool(self.tb_btn_open.GetId(), False)
     self.params = self.phil.extract()
     self.processor = IOTADialsProcessor(params=self.params)
-
     self.tracker_panel.spf_options.Disable()
+
 
     with open(self.folder_file, 'w') as f:
       f.write(self.data_folder)
@@ -828,13 +833,6 @@ class TrackerWindow(wx.Frame):
     self.tracker_panel.status_txt.SetLabel('{} {}'
                                            ''.format(timer_txt, self.msg))
     self.timer.Stop()
-    self.new_frames = []
-    self.new_counts = []
-    self.spotfinding_info = []
-    self.results = []
-    self.data_list = []
-    self.done_list = []
-    self.tracker_panel.spf_options.Enable()
 
   def run_spotfinding(self):
     ''' Generate the spot-finder thread and run it '''
@@ -847,24 +845,31 @@ class TrackerWindow(wx.Frame):
   def onSpfOneDone(self, e):
     ''' Occurs on every wx.PostEvent instance; updates lists of images with
     spotfinding results '''
-    if e.GetValue() is not None:
-      info = e.GetValue()
-      idx = info[0] + len(self.done_list)
-      obs_count = info[1]
-      img_path = info[2]
-      self.obs_counts[idx] = obs_count
-      self.new_frames.append(idx)
-      self.new_counts.append(obs_count)
-      self.spotfinding_info.append([idx, obs_count, img_path])
-      self.all_info.append([idx, obs_count, img_path])
-    self.plot_results()
+    if not self.terminated:
+      if e.GetValue() is not None:
+        info = e.GetValue()
+        idx = info[0] + len(self.done_list)
+        obs_count = info[1]
+        img_path = info[2]
+        self.obs_counts[idx] = obs_count
+        self.new_frames.append(idx)
+        self.new_counts.append(obs_count)
+        self.spotfinding_info.append([idx, obs_count, img_path])
+        self.all_info.append([idx, obs_count, img_path])
+      self.plot_results()
 
   def onSpfAllDone(self, e):
-    if e.GetValue() == []:
-      self.stop_run()
-    else:
-      self.done_list.extend(e.GetValue())
-      self.find_new_images()
+    self.done_list.extend(e.GetValue())
+    self.find_new_images()
+    # if e.GetValue() == []:
+    #   self.stop_run()
+    # else:
+    #   self.done_list.extend(e.GetValue())
+    #   self.find_new_images()
+
+  def onSpfTerminated(self, e):
+    self.stop_run()
+    self.toolbar.EnableTool(self.tb_btn_open.GetId(), True)
 
   def find_new_images(self):
     if self.done_list != []:

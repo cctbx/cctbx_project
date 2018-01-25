@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 09/20/2017
+Last Changed: 01/25/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -263,6 +263,9 @@ EVT_SPFALLDONE = wx.PyEventBinder(tp_EVT_SPFALLDONE, 1)
 tp_EVT_SLICEDONE = wx.NewEventType()
 EVT_SLICEDONE = wx.PyEventBinder(tp_EVT_SLICEDONE)
 
+tp_EVT_SPFTERM = wx.NewEventType()
+EVT_SPFTERM = wx.PyEventBinder(tp_EVT_SPFTERM)
+
 class IOTATermination(Exception):
   def __init__(self, termination):
     Exception.__init__(self, termination)
@@ -282,6 +285,13 @@ class SpotFinderOneDone(wx.PyCommandEvent):
     self.info = info
   def GetValue(self):
     return self.info
+
+class SpotFinderTerminated(wx.PyCommandEvent):
+  ''' Send event when spotfinder terminated '''
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+  def GetValue(self):
+    return None
 
 # class SpotFinderOneThread():
 #   def __init__(self, parent, processor, term_file):
@@ -326,6 +336,8 @@ class SpotFinderThread(Thread):
     try:
       if self.terminated:
         print 'RUN TERMINATED!'
+        evt = SpotFinderTerminated(tp_EVT_SPFTERM, -1)
+        wx.PostEvent(self.parent, evt)
       info = self.data_list
       evt = SpotFinderOneDone(tp_EVT_SPFALLDONE, -1, info=info)
       wx.PostEvent(self.parent, evt)
