@@ -151,8 +151,6 @@ class DataManager(object):
         model_in = iotbx.pdb.input(a.file_name)
         model = mmtbx.model.manager(model_input=model_in)
         self.add_model(filename, model)
-        if (self.get_default_model_name() is None):
-          self.set_default_model(filename)
 
   # ---------------------------------------------------------------------------
   # Sequences
@@ -306,8 +304,6 @@ class DataManager(object):
         raise Sorry('%s is not a recognized %s file' % (filename, datatype))
       else:
         self._add(datatype, filename, a.file_object)
-        if (self._get_default_name(datatype) is None):
-          self._set_default(datatype, filename)
 
 # =============================================================================
 # end
