@@ -143,8 +143,6 @@ class TrackChart(wx.Panel):
     self.main_fig_sizer.Add(self.track_canvas, 1, wx.EXPAND)
     self.main_fig_sizer.Add(self.plot_sb, flag=wx.EXPAND)
 
-    self.reset_chart()
-
     # Scroll bar binding
     self.Bind(wx.EVT_SCROLL, self.onScroll, self.plot_sb)
 
@@ -152,17 +150,9 @@ class TrackChart(wx.Panel):
     self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
     # self.track_figure.canvas.mpl_connect('scroll_event', self.onScroll)
 
-    self.select_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
-                                    direction='horizontal',
-                                    rectprops=dict(alpha=0.5, ls = ':',
-                                            fc='#deebf7', ec='#2171b5'))
-    self.select_span.set_active(False)
+    self.reset_chart()
 
-    self.zoom_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
-                                  direction='horizontal',
-                                  rectprops=dict(alpha=0.5, ls = ':',
-                                                 fc='#ffffd4', ec='#8c2d04'))
-    self.zoom_span.set_active(False)
+
 
   def onSelect(self, xmin, xmax):
     ''' Called when SpanSelector is used (i.e. click-drag-release); passes on
@@ -273,6 +263,18 @@ class TrackChart(wx.Panel):
     self.highlight = self.track_axes.axvspan(0.5, 0.5, ls='--', alpha=0,
                                              fc='#deebf7', ec='#2171b5')
     self.track_axes.set_autoscaley_on(True)
+
+    self.select_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
+                                    direction='horizontal',
+                                    rectprops=dict(alpha=0.5, ls = ':',
+                                            fc='#deebf7', ec='#2171b5'))
+    self.select_span.set_active(False)
+
+    self.zoom_span = SpanSelector(ax=self.track_axes, onselect=self.onSelect,
+                                  direction='horizontal',
+                                  rectprops=dict(alpha=0.5, ls = ':',
+                                                 fc='#ffffd4', ec='#8c2d04'))
+    self.zoom_span.set_active(False)
 
   def draw_bragg_line(self):
     min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
