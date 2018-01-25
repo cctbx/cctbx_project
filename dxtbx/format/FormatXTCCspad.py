@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division
 from dxtbx.format.FormatXTC import FormatXTC
-from xfel.cxi.cspad_ana import cspad_tbx
-from xfel.cftbx.detector import cspad_cbf_tbx
+try:
+  from xfel.cxi.cspad_ana import cspad_tbx
+  from xfel.cftbx.detector import cspad_cbf_tbx
+except ImportError:
+  # xfel not configured
+  pass
+
 class FormatXTCCspad(FormatXTC):
 
   def __init__(self, image_file, **kwargs):
