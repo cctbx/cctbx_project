@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/06/2017
+Last Changed: 01/25/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -274,9 +274,9 @@ class FileListCtrl(ct.CustomListCtrl):
                             buttons=ct.MiniButtonBoxInput(self.ctr))
 
     self.Bind(wx.EVT_CHOICE, self.onTypeChoice, item.type.type)
-    item.buttons.btn_mag.Bind(wx.EVT_BUTTON, self.onMagButton)
-    item.buttons.btn_delete.Bind(wx.EVT_BUTTON, self.onDelButton)
-    item.buttons.btn_info.Bind(wx.EVT_BUTTON, self.onInfoButton)
+    self.Bind(wx.EVT_BUTTON, self.onMagButton, item.buttons.btn_mag)
+    self.Bind(wx.EVT_BUTTON, self.onDelButton, item.buttons.btn_delete)
+    self.Bind(wx.EVT_BUTTON, self.onInfoButton, item.buttons.btn_info)
 
     # Insert list item
     idx = self.ctr.InsertStringItem(self.ctr.GetItemCount() + 1, '')
@@ -1774,7 +1774,7 @@ class ProcWindow(wx.Frame):
           easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
           print 'JOB NAME = ', self.job_id
         except thr.IOTATermination, e:
-          print e
+          print 'IOTA: JOB TERMINATED',  e
       else:
         print 'IOTA ERROR: COMMAND NOT ISSUED!'
         return
@@ -1931,7 +1931,7 @@ class ProcWindow(wx.Frame):
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
         except Exception, e:
-          print e
+          print 'OBJECT_ERROR:', e
           pass
 
     self.chart_tab.init = self.init

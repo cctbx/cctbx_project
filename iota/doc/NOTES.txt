@@ -41,6 +41,7 @@ error (merge.d_max was set to high-res rather than low-res)
 16. Chart picking now shows the correct image associated with plotted data
 17. Gain automatically set in cctbx.xfel processing
 18. Image tracker: can now stop spotfinding and re-start w/ new folder
+19. Grad buttons work in IOTA file list control
 
 PRIME BUGFIXES
 

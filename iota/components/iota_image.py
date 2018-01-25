@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/03/2017
+Last Changed: 01/25/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -144,7 +144,7 @@ class SingleImage(object):
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
     except Exception, e:
-      print e
+      print 'IOTA IMPORT ERROR:', e
       loaded_img = None
       pass
 
