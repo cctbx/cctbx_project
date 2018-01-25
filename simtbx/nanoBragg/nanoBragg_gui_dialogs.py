@@ -8,8 +8,6 @@ Description : IOTA GUI Dialogs
 '''
 
 import wx
-from wxtbx import bitmaps
-
 from iota.components.iota_misc import UnicodeCharacters, WxFlags
 
 
