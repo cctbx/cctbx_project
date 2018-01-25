@@ -165,6 +165,8 @@ class ProcThread(Thread):
       return proc_image
     except IOTATermination, e:
       raise e
+    except Exception, e:
+      pass
 
 class ImageFinderThread(Thread):
   ''' Worker thread generated to poll filesystem on timer. Will check to see

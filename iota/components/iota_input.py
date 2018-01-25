@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/128/2018
+Last Changed: 11/03/2017
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -382,11 +382,11 @@ def process_input(args,
   params = final_phil.extract()
 
   if mode == 'auto':
-    params.output = os.path.abspath(os.curdir)
+    output_dir = os.path.abspath(os.curdir)
     if params.advanced.integrate_with == 'dials':
-      params.dials.target = os.path.join(params.output, 'dials.phil')
+      params.dials.target = os.path.join(output_dir, 'dials.phil')
     elif params.advanced.integrate_with == 'cctbx':
-      params.cctbx.target = os.path.join(params.output, 'cctbx.phil')
+      params.cctbx.target = os.path.join(output_dir, 'cctbx.phil')
 
   # Check for -r option and set random subset parameter
   if args.random > 0:

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/18/2018
+Last Changed: 11/06/2017
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
@@ -183,8 +183,8 @@ class Integrator(object):
       self.args.extend(['target_cell="{}"'.format(' '.join(t_uc))])
 
     # Translate / add target lattice if exists
-    t_lat = str(self.params.cctbx.target_lattice_type).lower()
-    if t_lat != 'none':
+    t_lat = self.params.cctbx.target_lattice_type
+    if t_lat is not None:
       if t_lat == 'triclinic':
         known_setting = 1
       elif t_lat == 'monoclinic':
@@ -200,8 +200,8 @@ class Integrator(object):
       self.args.extend(['known_setting={}'.format(known_setting)])
 
     # Centering type if exists
-    t_ctype = str(self.params.cctbx.target_centering_type).lower()
-    if t_ctype != 'none':
+    t_ctype = self.params.cctbx.target_centering_type
+    if t_ctype is not None:
       self.args.extend(['target_cell_centring_type={}'.format(t_ctype)])
 
     # Resolution, if exists

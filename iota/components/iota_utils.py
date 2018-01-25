@@ -20,6 +20,7 @@ from collections import Counter
 class InputFinder():
   def __init__(self):
     self.images = ['cbf', 'img', 'corr', 'mccd', 'marccd', 'mar']
+    self.datafiles = ['mtz', 'hkl']
     self.sequences = ['seq', 'fasta']
     self.pickles = ['pickle', 'int']
     self.texts = ['txt', 'lst', 'phil', 'param']
@@ -114,7 +115,11 @@ class InputFinder():
       elif e in self.texts:
         filetype = 'text'
       elif e == 'mtz':
-        filetype = 'reference MTZ'
+        filetype = 'data (MTZ)'
+      elif e == 'hkl':
+        filetype = 'data (HKL)'
+      elif e == 'pdb':
+        filetype = 'coordinates'
       else:
         filetype = 'unidentified'
 
@@ -247,7 +252,6 @@ class InputFinder():
           suffix = 'list'
       else:
         input_list = [os.path.abspath(path)]
-        input_type = self.identify_file_type(path)
     elif os.path.isdir(path):
       input_list = self.get_file_list(path, last=last)
       suffix = "folder"
@@ -255,7 +259,7 @@ class InputFinder():
     if input_list is None:
       return [], None
 
-    if len(input_list) > 0:
+    if len(input_list) > 1:
       input_pairs = [(filepath, self.identify_file_type(filepath)) for
         filepath in input_list]
 

@@ -12,6 +12,7 @@ import wx
 import wx.richtext
 import wx.lib.agw.floatspin as fs
 import wx.lib.agw.ultimatelistctrl as ulc
+import wx.lib.agw.knobctrl as kc
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin, ColumnSorterMixin
 from wxtbx import metallicbutton as mb
 from wxtbx import bitmaps
@@ -114,12 +115,22 @@ class MiniButtonBoxInput(wx.Panel):
 
     self.index = None
     self.btn_box = wx.BoxSizer(wx.HORIZONTAL)
+
     viewmag_bmp = bitmaps.fetch_icon_bitmap('actions', 'viewmag', size=16)
-    self.btn_mag = btn.GenBitmapButton(self, bitmap=viewmag_bmp)
+    # self.btn_mag = btn.GenBitmapButton(self, bitmap=viewmag_bmp)
+    self.btn_mag =GradButton(self, bmp=viewmag_bmp, size=(31, 30),
+                             gradient_percent=0)
+
     del_bmp = bitmaps.fetch_icon_bitmap('actions', 'editdelete', size=16)
-    self.btn_delete = btn.GenBitmapButton(self, bitmap=del_bmp)
+    # self.btn_delete = btn.GenBitmapButton(self, bitmap=del_bmp)
+    self.btn_delete = GradButton(self, bmp=del_bmp, size=(31, 30),
+                                 gradient_percent=0)
+
     info_bmp = bitmaps.fetch_icon_bitmap('actions', 'info', size=16)
-    self.btn_info = btn.GenBitmapButton(self, bitmap=info_bmp)
+    # self.btn_info = btn.GenBitmapButton(self, bitmap=info_bmp)
+    self.btn_info = GradButton(self, bmp=info_bmp, size=(31, 30),
+                               gradient_percent=0)
+
     self.btn_box.Add(self.btn_mag)
     self.btn_box.Add(self.btn_delete, flag=wx.LEFT, border=5)
     self.btn_box.Add(self.btn_info, flag=wx.LEFT, border=5)
@@ -143,8 +154,11 @@ class InputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin):
 
   def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
-    ulc.UltimateListCtrl.__init__(self, parent, ID, pos, size, agwStyle=style)
+    ulc.UltimateListCtrl.__init__(self, parent, ID, pos,
+                                  size=size,
+                                  agwStyle=style)
     ListCtrlAutoWidthMixin.__init__(self)
+
 
 class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
                            ColumnSorterMixin):
@@ -228,8 +242,8 @@ class InputListItem(object):
                                         'already been processed. Use these if '
                                         'you only intend to run the "selection" '
                                         'part of the IOTA process.',
-                 'raw image':'This is a single raw diffraction image file',
-                 'image pickle':'This is a single diffraction image file '
+                 'raw image file':'This is a single raw diffraction image file',
+                 'image pickle file':'This is a single diffraction image file '
                                 'converted to Python pickle format',
                  'image object':'This is a Python pickle file containing '
                                 'information about a single diffraction '
@@ -240,7 +254,12 @@ class InputListItem(object):
                                   'an isomorphous reference for scaling, '
                                   'post-refinement and merging.',
                  'sequence': 'Sequence of the protein of interest, used for '
-                             'pseudo-Wilson scaling'
+                             'pseudo-Wilson scaling',
+                 'coordinates': 'Structure coordinates in PDB format',
+                 'structure factors': 'Structure factors in MTZ format',
+                 'background' : 'Radially averaged background (in sin(theta) '
+                                '/ lambda'
+
     }
 
 class FileListItem(object):
@@ -539,7 +558,7 @@ class SpinCtrl(CtrlBase):
       self.toggle = wx.CheckBox(self, label=checkbox_label, size=label_size)
       self.toggle.SetValue(self.checkbox_state)
 
-    ctr_box = wx.FlexGridSizer(1, cols, 0, 10)
+    ctr_box = wx.FlexGridSizer(1, cols, 0, 5)
 
     self.txt = wx.StaticText(self, label=label.decode('utf-8'),
                              size=label_size)
@@ -715,9 +734,68 @@ class TwoButtonCtrl(CtrlBase):
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
 
+class KnobCtrl(CtrlBase):
+  ''' From AGW KnobCtrl class, with attendant spin controls '''
+
+  def __init__(self, parent,
+               label='',
+               label_size=(100, -1),
+               label_style='normal',
+               knob_size=(100, 100),
+               spin_ctr_size=(60, -1),
+               tags=True,
+               tags_start=0,
+               tags_end=360,
+               tags_step=10,
+               values_start=0,
+               values_end=360,
+               values_step=1,
+               value=0):
+    CtrlBase.__init__(self, parent=parent, label_style=label_style)
+
+    self.knob_ctr = kc.KnobCtrl(self, -1, size=knob_size)
+    if tags:
+      self.knob_ctr.SetTags(range(tags_start, tags_end, tags_step))
+    self.knob_ctr.SetAngularRange(values_start, values_end)
+    self.knob_ctr.SetValue(value)
+    self.knob_ctr.SetBoundingColour(wx.BLACK)
+    self.knob_ctr.SetFirstGradientColour(self.GetBackgroundColour())
+    self.knob_ctr.SetSecondGradientColour(self.GetBackgroundColour())
+
+    self.value_ctr = SpinCtrl(self,
+                              label=label,
+                              label_size=label_size,
+                              label_style=label_style,
+                              ctrl_size=spin_ctr_size,
+                              ctrl_value=str(value),
+                              ctrl_max=values_end,
+                              ctrl_min=values_start,
+                              ctrl_step=values_step)
+
+    ctrl_box = wx.FlexGridSizer(2, 1, 0, 10)
+
+    ctrl_box.Add(self.knob_ctr)
+    ctrl_box.Add(self.value_ctr)
+
+    self.SetSizer(ctrl_box)
+
+    self.Bind(kc.EVT_KC_ANGLE_CHANGING, self.onKC_Angle_Change, self.knob_ctr)
+    self.Bind(fs.EVT_FLOATSPIN, self.onFS_Value_Change, self.value_ctr.ctr)
+
+  def onKC_Angle_Change(self, e):
+    print self.knob_ctr.GetMaxValue()
+    self.value_ctr.ctr.SetValue(self.knob_ctr.GetValue())
+    e.Skip()
+
+  def onFS_Value_Change(self, e):
+    self.knob_ctr.SetValue(self.value_ctr.ctr.GetValue())
+
+
+
 class CustomListCtrl(CtrlBase):
   def __init__(self, parent, size=wx.DefaultSize, content_style='normal'):
-    CtrlBase.__init__(self, parent=parent, content_style=content_style)
+    CtrlBase.__init__(self, parent=parent, content_style=content_style,
+                      size=size)
 
     self.sizer = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(self.sizer)
@@ -733,7 +811,6 @@ class CustomListCtrl(CtrlBase):
                                    ulc.ULC_NO_HIGHLIGHT)
     self.control_sizer.Add(self.ctr, -1, flag=wx.EXPAND)
     self.sizer.Add(self.control_sizer, 1, flag=wx.EXPAND)
-
 
 
 class CustomImageListCtrl(CtrlBase):
