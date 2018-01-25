@@ -1,15 +1,11 @@
 from __future__ import division
 from scitbx.array_family import flex
-from scitbx.math import superpose
-from libtbx.utils import Sorry
 from scitbx import matrix
 import scitbx.rigid_body
 from cctbx import xray
 import string
 import random
 import math
-import sys
-from copy import deepcopy
 import mmtbx.monomer_library.server
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flip_residue

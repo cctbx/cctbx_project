@@ -1,5 +1,4 @@
 from __future__ import division
-from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
@@ -11,8 +10,6 @@ import iotbx.pdb
 import unittest
 import string
 import math
-from iotbx.ncs import ncs_group_master_phil
-import iotbx.phil
 
 __author__ = 'Youval'
 
