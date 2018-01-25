@@ -146,6 +146,7 @@ class ExperimentListDict(object):
       scan = ExperimentListDict.model_or_none(self._slist, eobj, 'scan')
       crystal = ExperimentListDict.model_or_none(self._clist, eobj, 'crystal')
       profile = ExperimentListDict.model_or_none(self._plist, eobj, 'profile')
+      scaling_model = ExperimentListDict.model_or_none(self._scalelist, eobj, 'scaling_model')
       key = (eobj.get('imageset'), eobj.get('scan'))
       try:
         imageset = imagesets[key]
@@ -298,7 +299,8 @@ class ExperimentListDict(object):
         goniometer=goniometer,
         scan=scan,
         crystal=crystal,
-        profile=profile))
+        profile=profile,
+        scaling_model=scaling_model))
 
     # Return the experiment list
     return el
@@ -416,7 +418,7 @@ class ExperimentListDict(object):
   @staticmethod
   def _scaling_model_from_dict(obj):
     ''' Get the scaling model from a dictionary. '''
-    from dials_scratch.jbe.scaling_code.ScalingModelFactory import ScalingModelFactory
+    from dxtbx.model import ScalingModelFactory
     return ScalingModelFactory.from_dict(obj)
 
   @staticmethod
@@ -470,6 +472,8 @@ class ExperimentListDumper(object):
                   for i, d in enumerate(dictionary['crystal'])]
       plist = [('%s_profile_%d.json' % (basepath, i), d)
                   for i, d in enumerate(dictionary['profile'])]
+      scalelist = [('%s_scaling_model_%d.json' % (basepath, i), d)
+                  for i, d in enumerate(dictionary['scaling_model'])]
 
       # Get the list of experiments
       edict = OrderedDict([
@@ -493,14 +497,15 @@ class ExperimentListDumper(object):
           e['crystal'] = clist[e['crystal']][0]
         if 'profile' in e:
           e['profile'] = plist[e['profile']][0]
+        if 'scaling_model' in e:
+          e['scaling_model'] = plist[e['scaling_model']][0]
 
       to_write = ilist + blist + dlist + glist + \
-                 slist + clist + plist + [(filename, edict)]
+                 slist + clist + plist + scalelist + [(filename, edict)]
     else:
       to_write = [(filename, dictionary)]
 
     for fname, obj  in to_write:
-      print(obj.keys())
       if compact:
         text = json.dumps(obj, separators=(',',':'), ensure_ascii=True)
       else:
