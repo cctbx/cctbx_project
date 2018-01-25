@@ -13,6 +13,7 @@ from cctbx.array_family import flex
 import os
 import math
 import logging
+logger = logging.getLogger(__name__)
 from xfel.clustering.singleframe import SingleFrame, SingleDialsFrame, SingleDialsFrameFromFiles
 from xfel.clustering.singleframe import SingleDialsFrameFromJson
 from cctbx.uctbx.determine_unit_cell import NCDist
@@ -189,7 +190,7 @@ class Cluster:
       if hasattr(this_frame, 'crystal_symmetry'):
           data.append(this_frame)
       else:
-          logging.info('skipping item {}'.format(item))
+          logger.info('skipping item {}'.format(item))
     print "%d lattices will be analyzed"%(len(data))
 
     return cls(data, _prefix, _message)
@@ -231,7 +232,7 @@ class Cluster:
       if hasattr(this_frame, 'crystal_symmetry'):
           data.append(this_frame)
       else:
-          logging.info('skipping item {}'.format(item))
+          logger.info('skipping item {}'.format(item))
     print "%d lattices will be analyzed"%(len(data))
 
     return cls(data, _prefix, _message)
@@ -293,7 +294,7 @@ class Cluster:
           if done():
             break
         else:
-          logging.info('skipping reflections {} and experiments {}'.format(r, e))
+          logger.info('skipping reflections {} and experiments {}'.format(r, e))
     elif json:
       if raw_input is not None:
         r, e = sort_dials_raw_input(raw_input)
@@ -319,7 +320,7 @@ class Cluster:
           if done():
             break
         else:
-          logging.info('skipping file {}'.format(os.path.basename(path)))
+          logger.info('skipping file {}'.format(os.path.basename(path)))
       print "%d lattices will be analyzed"%(len(data))
 
     return cls(data, _prefix, _message)
@@ -354,7 +355,7 @@ class Cluster:
         if done():
           break
       else:
-        logging.info('skipping invalid experiment #{}'.format(i))
+        logger.info('skipping invalid experiment #{}'.format(i))
 
     return cls(data, _prefix, _message)
 
@@ -427,7 +428,7 @@ class Cluster:
     :param completeness: the desired completeness of the subset
     :param multiplicity: the desired multiplicity of the subset
     """
-    logging.info(("Performing intensity filtering, aiming for {}% overall "
+    logger.info(("Performing intensity filtering, aiming for {}% overall "
                   "completenes at {} A resolution").format(
       completeness_threshold * 100, res))
 
@@ -446,7 +447,7 @@ class Cluster:
     if res == '':
       res = sorted_cluster[0].d_min()  # Use the high-res limit from the
       # brightest image. ToDo: make this better
-      logging.warning(("no resolution limit specified, using the res limit of"
+      logger.warning(("no resolution limit specified, using the res limit of"
                        "the top-rankeed image: {} A").format(res))
 
     # 2. Incrementally merge frames until criterion are matched
@@ -458,13 +459,13 @@ class Cluster:
       current_completeness = temp_miller_indicies.merge_equivalents() \
                                                 .array() \
                                                 .completeness()
-      logging.debug(
+      logger.debug(
         "{} images: {:.2f}% complete".format(idx, current_completeness * 100))
       if current_completeness <= completeness_threshold:
         temp_miller_indicies.concatenate(image,
                                          assert_is_similar_symmetry=False)
         if idx + 1 == len(sorted_cluster[1:]):
-          logging.warning("Desired completeness could not be acheived, sorry.")
+          logger.warning("Desired completeness could not be acheived, sorry.")
           file_threshold = idx
           break
       else:
@@ -504,7 +505,7 @@ class Cluster:
       around symmetry boundaries.
     """
 
-    logging.info("Hierarchical clustering of unit cells")
+    logger.info("Hierarchical clustering of unit cells")
     import scipy.spatial.distance as dist
     import scipy.cluster.hierarchy as hcluster
 
@@ -514,26 +515,26 @@ class Cluster:
 
     # 2. Do hierarchichal clustering, using the find_distance method above.
     if schnell:
-      logging.info("Using Euclidean distance")
+      logger.info("Using Euclidean distance")
       pair_distances = dist.pdist(g6_cells, metric='euclidean')
       metric = 'euclidean'
     else:
-      logging.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
+      logger.info("Using Andrews-Bernstein distance from Andrews & Bernstein "
                    "J Appl Cryst 47:346 (2014)")
       pair_distances = dist.pdist(g6_cells,
                                 metric=lambda a, b: NCDist(a, b))
       metric = lambda a, b: NCDist(a, b)
     if len(pair_distances) > 0:
-      logging.info("Distances have been calculated")
+      logger.info("Distances have been calculated")
       this_linkage = hcluster.linkage(pair_distances,
                                       method=linkage_method,
                                       metric=metric)
       cluster_ids = hcluster.fcluster(this_linkage,
                                       threshold,
                                       criterion=method)
-      logging.debug("Clusters have been calculated")
+      logger.debug("Clusters have been calculated")
     else:
-      logging.debug("No distances were calculated. Aborting clustering.")
+      logger.debug("No distances were calculated. Aborting clustering.")
       return [], None
 
     # 3. Create an array of sub-cluster objects from the clustering
@@ -640,7 +641,7 @@ class Cluster:
       return theta % 360, phi, r
 
     def xy_lat_lon_from_orientation(orientation_array, axis_id):
-      logging.debug("axis_id: {}".format(axis_id))
+      logger.debug("axis_id: {}".format(axis_id))
       dist = math.sqrt(orientation_array[axis_id][0] ** 2 +
                        orientation_array[axis_id][1] ** 2 +
                        orientation_array[axis_id][2] ** 2)
@@ -714,7 +715,7 @@ class Cluster:
           sym_lat.append(sym_la)
 
       # Plot each image as a yellow sphere
-      logging.debug(len(x_coords))
+      logger.debug(len(x_coords))
       euler_map.plot(x_coords, y_coords, 'oy',
                      markersize=4,
                      markeredgewidth=0.5)
@@ -884,7 +885,7 @@ class Cluster:
         if m.miller_fullies:
           miller_array = m.miller_fullies
         else:
-          logging.warning("Fully recoreded array has not been calculated")
+          logger.warning("Fully recorded array has not been calculated")
       else:
         miller_array = m.miller_array
 
@@ -950,7 +951,7 @@ class Cluster:
     mtz_obj = mtz_out.mtz_object()
     mtz_obj.write(mtz_name)
 
-    logging.info("MTZ file written to {}".format(mtz_name))
+    logger.info("MTZ file written to {}".format(mtz_name))
 
   def to_pandas(self):
     import pandas as pd
