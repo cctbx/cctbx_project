@@ -9,6 +9,7 @@ from dxtbx.model.detector import *
 from dxtbx.model.scan import *
 from dxtbx.model.crystal import *
 from dxtbx.model.profile import *
+from dxtbx.model.scaling_model import *
 
 class DetectorAux(boost.python.injector, Detector):
   def iter_panels(self):
@@ -398,6 +399,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     return list(OrderedSet([e.profile for e in self]))
   
   def scaling_models(self):
+    ''' Get a list of the unique scaling models (includes None). '''
     from libtbx.containers import OrderedSet
     return list(OrderedSet([e.scaling_model for e in self]))
       
