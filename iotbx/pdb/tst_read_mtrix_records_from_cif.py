@@ -1,5 +1,4 @@
 from __future__ import division
-import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
@@ -26,8 +25,8 @@ class TestMtrixRecFromCif(unittest.TestCase):
     nrg1 = trans_obj1.get_ncs_restraints_group_list()
     nrg2 = trans_obj2.get_ncs_restraints_group_list()
 
-    x1 = nu.concatenate_rot_tran(ncs_restraints_group_list=nrg1)
-    x2 = nu.concatenate_rot_tran(ncs_restraints_group_list=nrg2)
+    x1 = nrg1.concatenate_rot_tran()
+    x2 = nrg2.concatenate_rot_tran()
 
     x = (x1 - x2).as_double()
     self.assertEqual(x.min_max_mean().as_tuple(), (0,0,0))

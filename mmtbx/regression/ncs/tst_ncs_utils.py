@@ -202,32 +202,6 @@ class Test_ncs_utils(unittest.TestCase):
     self.ncs_restraints_group_list = \
       self.tr_obj1.get_ncs_restraints_group_list()
 
-  def test_concatenate_rot_tran(self):
-    """ Verify correct concatenation of rotation and translations """
-    # print sys._getframe().f_code.co_name
-    results = nu.concatenate_rot_tran(self.tr_obj1)
-    expected = flex.double([
-      -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
-      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    assert approx_equal(results,expected,1.0e-4)
-
-  def test_update_rot_tran(self):
-    """
-    Verify correct conversion from angles and translation
-    to rotation matrices and translations """
-    # print sys._getframe().f_code.co_name
-    x = flex.double([
-      -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
-      2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
-    self.tr_obj1 = nu.update_rot_tran(
-      x=x,transforms_obj=self.tr_obj1)
-    rot_results, tran_results = nu.get_rotation_translation_as_list(
-      transforms_obj=self.tr_obj1)
-    rot_expected = [self.rotation1, self.rotation2]
-    tran_expected = [self.translation1,self.translation2]
-    assert approx_equal(tran_results,tran_expected,1.0e-4)
-    assert approx_equal(rot_results,rot_expected,1.0e-4)
-
   def test_matrix_to_angles(self):
     """
     Note that there are two possible sets of angles for a rotation
@@ -283,44 +257,45 @@ class Test_ncs_utils(unittest.TestCase):
     assert approx_equal(expected_angles,angles,1e-3)
 
 
-  def test_update_x(self):
-    """    Verify that transforms are getting updated    """
-    # print sys._getframe().f_code.co_name
-    x1 = nu.concatenate_rot_tran(self.tr_obj1)
-    x2 = nu.shake_transformations(
-      x = x1,
-      shake_angles_sigma=0.035,
-      shake_translation_sigma=0.5)
-    # update with shaken parameters
-    self.tr_obj1 = nu.update_rot_tran(
-      x=x2, transforms_obj=self.tr_obj1)
-    self.ncs_restraints_group_list = nu.update_rot_tran(
-      x=x2, ncs_restraints_group_list=self.ncs_restraints_group_list)
+  # XXX Should it go?
+  # def test_update_x(self):
+  #   """    Verify that transforms are getting updated    """
+  #   # print sys._getframe().f_code.co_name
+  #   x1 = nu.concatenate_rot_tran(self.tr_obj1)
+  #   x2 = nu.shake_transformations(
+  #     x = x1,
+  #     shake_angles_sigma=0.035,
+  #     shake_translation_sigma=0.5)
+  #   # update with shaken parameters
+  #   self.tr_obj1 = nu.update_rot_tran(
+  #     x=x2, transforms_obj=self.tr_obj1)
+  #   self.ncs_restraints_group_list = nu.update_rot_tran(
+  #     x=x2, ncs_restraints_group_list=self.ncs_restraints_group_list)
 
-    x3 = nu.concatenate_rot_tran(
-      ncs_restraints_group_list=self.ncs_restraints_group_list)
-    x4 = nu.concatenate_rot_tran(
-      transforms_obj=self.tr_obj1)
-    assert abs(sum(list(x3-x4))) < 1.0e-3
+  #   x3 = nu.concatenate_rot_tran(
+  #     ncs_restraints_group_list=self.ncs_restraints_group_list)
+  #   x4 = nu.concatenate_rot_tran(
+  #     transforms_obj=self.tr_obj1)
+  #   assert abs(sum(list(x3-x4))) < 1.0e-3
 
-    the,psi,phi =x2[6:9]
-    rot = scitbx.rigid_body.rb_mat_xyz(
-      the=the, psi=psi, phi=phi, deg=False)
-    a3 = rot.rot_mat()
+  #   the,psi,phi =x2[6:9]
+  #   rot = scitbx.rigid_body.rb_mat_xyz(
+  #     the=the, psi=psi, phi=phi, deg=False)
+  #   a3 = rot.rot_mat()
 
-    the,psi,phi =x4[6:9]
-    rot = scitbx.rigid_body.rb_mat_xyz(
-      the=the, psi=psi, phi=phi, deg=False)
-    a4 = rot.rot_mat()
-    assert abs(sum(list(a3-a4))) < 1.0e-3
+  #   the,psi,phi =x4[6:9]
+  #   rot = scitbx.rigid_body.rb_mat_xyz(
+  #     the=the, psi=psi, phi=phi, deg=False)
+  #   a4 = rot.rot_mat()
+  #   assert abs(sum(list(a3-a4))) < 1.0e-3
 
-    # test that update_rot_tran dose not unintentionally change x
-    round_val = 3
-    r_elems = []
-    for rec in self.ncs_restraints_group_list:
-      for c in rec.copies:
-        r = c.r.round(round_val)
-        r_elems.append(r.elems)
+  #   # test that update_rot_tran dose not unintentionally change x
+  #   round_val = 3
+  #   r_elems = []
+  #   for rec in self.ncs_restraints_group_list:
+  #     for c in rec.copies:
+  #       r = c.r.round(round_val)
+  #       r_elems.append(r.elems)
 
   def test_nrg_selection(self):
     """

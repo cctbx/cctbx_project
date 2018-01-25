@@ -36,69 +36,12 @@ def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=N
           if should_be_flipped(r_m, r_c):
             flip_residue(r_c, mon_lib_srv)
 
-
-def concatenate_rot_tran(transforms_obj=None,
-                         ncs_restraints_group_list=None):
-  """
-  XXX
-  XXX Remove transforms_obj parameter
-  XXX Make it method of class_ncs_restraints_group_list
-  XXX
-
-  Concatenate rotation angles, corresponding to the rotation
-  matrices and scaled translation vectors to a single long flex.double object
-
-  Args:
-    transforms_obj : (mmtbx.refinement.minimization_ncs_constraints
-      ncs_group_object) containing information on Rotation matrices (lists of
-      objects matrix.rec) and Translation vectors (lists of objects matrix.rec)
-    ncs_restraints_group_list : a list of ncs_restraint_group objects
-
-  Returns:
-    flex.double : [(alpha_1,beta_1,gamma_1,Tx_1,Ty_1,Tz_1)...]
-  """
-  x = []
-  if (not ncs_restraints_group_list) and transforms_obj:
-    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  if ncs_restraints_group_list:
-    for gr in ncs_restraints_group_list:
-      for tr in gr.copies:
-        x.extend(list(rotation_to_angles(rotation=tr.r.elems))
-                 + list(tr.t.elems))
-  return flex.double(x)
-
-def get_rotation_translation_as_list(transforms_obj=None,
-                                     ncs_restraints_group_list=None):
-  """
-  XXX
-  XXX Consider deletion. Used only in tests tst_minimization_ncs_constraints_real_space.py,
-  XXX tst_ncs_utils.py
-  XXX Alternatively, make it method of class_ncs_restraints_group_list
-  XXX
-
-  Get rotations and translations vectors from ncs_restraints_group_list or
-  transforms_obj
-
-  Returns:
-    r (list): list of rotation matrices
-    t (list): list of translation vectors
-  """
-  r = []
-  t = []
-  if (not ncs_restraints_group_list) and transforms_obj:
-    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  if ncs_restraints_group_list:
-    for nrg in ncs_restraints_group_list:
-      for tr in nrg.copies:
-        r.append(tr.r)
-        t.append(tr.t)
-  return r,t
-
 def update_transforms(transforms_obj,rm,tv):
   """
   XXX
   XXX Consider removing it. Only used in
   XXX mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py
+  XXX Warning: transforms_obj here is iotbx.ncs.input() class
   XXX
 
   Update transforms_obj with the rotation matrices (rm) and translation
@@ -109,68 +52,6 @@ def update_transforms(transforms_obj,rm,tv):
     transforms_obj.ncs_transform[tr].r = r
     transforms_obj.ncs_transform[tr].t = t
   return transforms_obj
-
-# MARKED_FOR_DELETION_OLEG
-# REASON: not used not tested
-def update_ncs_restraints_group_list(ncs_restraints_group_list,rm,tv):
-  """
-  Update ncs_restraints_group_list with the rotation matrices (rm) and
-  translation vectors (tv) """
-  assert len(rm) == len(tv)
-  new_list = []
-  for gr in ncs_restraints_group_list:
-    for tr in gr.copies:
-      tr.r = rm.pop(0)
-      tr.t = tv.pop(0)
-    new_list.append(gr)
-  return new_list
-# END_MARKED_FOR_DELETION_OLEG
-
-def update_rot_tran(x,transforms_obj=None,ncs_restraints_group_list=None):
-  """
-  XXX
-  XXX Make it method of class_ncs_restraints_group_list
-  XXX Remove transforms_obj parameter.
-  XXX
-
-  Convert the refinable parameters, rotations angles and
-  scaled translations, back to rotation matrices and translation vectors and
-  updates the transforms_obj (ncs_restraints_group_list)
-
-  Args:
-    x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
-      theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
-      transformations.
-    transforms_obj : (ncs_group_object) containing information on Rotation
-      matrices, Translation vectors and NCS
-  ncs_restraints_group_list : a list of ncs_restraint_group objects
-
-  Returns:
-    The same type of input object with converted transforms
-  """
-  assert bool(transforms_obj) == (not bool(ncs_restraints_group_list))
-  if transforms_obj:
-    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  if ncs_restraints_group_list:
-    i = 0
-    for gr in ncs_restraints_group_list:
-      copies = []
-      for tr in gr.copies:
-        the,psi,phi =x[i*6:i*6+3]
-        rot = scitbx.rigid_body.rb_mat_xyz(
-          the=the, psi=psi, phi=phi, deg=False)
-        tran = matrix.rec(x[i*6+3:i*6+6],(3,1))
-        tr.r = (rot.rot_mat())
-        tr.t = tran
-        copies.append(tr)
-        i += 1
-      gr.copies = copies
-    if transforms_obj:
-      transforms_obj.update_using_ncs_restraints_group_list(
-        ncs_restraints_group_list)
-      return transforms_obj
-    else:
-      return ncs_restraints_group_list
 
 def rotation_to_angles(rotation, deg=False):
   """
@@ -437,8 +318,7 @@ def get_weight(fmodel=None,
   elif u_iso:
     fmdc.xray_structure.shake_adp()
   elif transformations and have_transforms:
-    x = concatenate_rot_tran(
-      ncs_restraints_group_list = ncs_restraints_group_list)
+    x = ncs_restraints_group_list.concatenate_rot_tran()
     x = shake_transformations(
       x = x,
       shake_angles_sigma=0.035,

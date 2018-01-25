@@ -9,6 +9,8 @@ import math
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 from time import time
+from libtbx.test_utils import approx_equal
+
 
 test_pdb_str = '''\
 ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
@@ -244,12 +246,39 @@ def test_whole_group_iselection():
   expected = [0, 1, 2, 3, 8, 9, 10, 11, 16, 17, 18, 19]
   assert list(isel) == expected
 
+def test_concatenate_rot_tran():
+  """ Verify correct concatenation of rotation and translations """
+  c = commons()
+  results = c.ncs_restraints_group_list.concatenate_rot_tran()
+  expected = flex.double([
+    -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
+    2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+  assert approx_equal(results,expected,1.0e-4)
+
+def test_update_rot_tran():
+  """
+  Verify correct conversion from angles and translation
+  to rotation matrices and translations """
+  # print sys._getframe().f_code.co_name
+  c = commons()
+  rot_results, tran_results = c.ncs_restraints_group_list.get_rotation_translation_as_list()
+
+  x = flex.double([
+    -0.40177529, 1.20019851, 2.64221706, 0.5, -0.5, 0.0,
+    2.24044161,  1.57079633, 0.0,        0.0,  0.0, 0.0])
+  rot_expected = [c.rotation1, c.rotation2]
+  tran_expected = [c.translation1,c.translation2]
+  assert approx_equal(tran_results,tran_expected,1.0e-4)
+  assert approx_equal(rot_results,rot_expected,1.0e-4)
+
 def run_tests():
   test_transform_update()
   test_check_for_max_rmsd()
   test_center_of_coordinates_shift()
   test_ncs_selection()
   test_whole_group_iselection()
+  test_concatenate_rot_tran()
+  test_update_rot_tran()
 
 if __name__=='__main__':
   t0 = time()

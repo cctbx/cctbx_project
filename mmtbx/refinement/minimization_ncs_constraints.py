@@ -416,8 +416,7 @@ class lbfgs(object):
           sites_cart=self.xray_structure.sites_cart())
       self.ncs_restraints_group_list = self.ncs_restraints_group_list.shift_translation_to_center(
           shifts = self.ncs_groups_coordinates_centers)
-      self.x = nu.concatenate_rot_tran(
-        ncs_restraints_group_list=self.ncs_restraints_group_list)
+      self.x = self.ncs_restraints_group_list.concatenate_rot_tran()
     minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
       termination_params=scitbx.lbfgs.termination_parameters(
@@ -456,8 +455,7 @@ class lbfgs(object):
     if not x: x = self.x
     if self.refine_transformations:
       # update the ncs_restraint_groups transforms
-      self.ncs_restraints_group_list = nu.update_rot_tran(
-        x=x, ncs_restraints_group_list=self.ncs_restraints_group_list)
+      self.ncs_restraints_group_list.update_rot_tran(x=x)
       # Use the new transformations to create the ASU
       x_ncs = nu.get_ncs_sites_cart(self).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)

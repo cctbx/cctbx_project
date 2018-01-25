@@ -134,13 +134,14 @@ def run(prefix="tst", d_min=1.0):
     hierarchy = ph_poor_obj.construct_hierarchy(),
     rotations=rm,
     translations=tv)
-  x = nu.concatenate_rot_tran(transforms_obj=transforms_obj)
+  x = transforms_obj.get_ncs_restraints_group_list().concatenate_rot_tran()
   x = nu.shake_transformations(
     x = x,
     shake_angles_sigma=1*math.pi/180,
     shake_translation_sigma=0.1)
-  transforms_obj = nu.update_rot_tran(x=x, transforms_obj=transforms_obj)
-  rm,tv = nu.get_rotation_translation_as_list(transforms_obj=transforms_obj)
+  nrgl = transforms_obj.get_ncs_restraints_group_list()
+  nrgl.update_rot_tran(x=x)
+  rm,tv = nrgl.get_rotation_translation_as_list()
   # just to see how result of shaking looks like
   rm_ = ir+rm
   tv_ = it+tv
@@ -178,8 +179,7 @@ def run(prefix="tst", d_min=1.0):
     #
     ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
       add_identity=False)
-    rm,tv = nu.get_rotation_translation_as_list(
-      ncs_restraints_group_list= ncs_restraints_group_list)
+    rm,tv = ncs_restraints_group_list.get_rotation_translation_as_list()
   #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 

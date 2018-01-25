@@ -3,6 +3,8 @@ from StringIO import StringIO
 from scitbx.math import superpose
 from scitbx.array_family import flex
 from scitbx import matrix
+import mmtbx.ncs.ncs_utils as nu
+import scitbx.rigid_body
 
 
 class NCS_copy():
@@ -281,3 +283,69 @@ class class_ncs_restraints_group_list(list):
     else:
       # if refine_selection is None
       return flex.size_t(list(total_master_ncs_selection))
+
+  def concatenate_rot_tran(self):
+    """
+    Concatenate rotation angles, corresponding to the rotation
+    matrices and scaled translation vectors to a single long flex.double object
+
+    Returns:
+      flex.double : [(alpha_1,beta_1,gamma_1,Tx_1,Ty_1,Tz_1)...]
+    """
+    x = []
+    for gr in self:
+      for tr in gr.copies:
+        x.extend(list(nu.rotation_to_angles(rotation=tr.r.elems))
+                 + list(tr.t.elems))
+    return flex.double(x)
+
+  def update_rot_tran(self, x):
+    """
+    Convert the refinable parameters, rotations angles and
+    scaled translations, back to rotation matrices and translation vectors and
+    updates the transforms_obj (ncs_restraints_group_list)
+    !!! IN PLACE !!!
+
+    Args:
+      x : a flex.double of the form (theta_1,psi_1,phi_1,tx_1,ty_1,tz_1,..
+        theta_n,psi_n,phi_n,tx_n/s,ty_n/s,tz_n/s). where n is the number of
+        transformations.
+
+    Returns:
+      Nothing
+    """
+    i = 0
+    for gr in self:
+      copies = []
+      for tr in gr.copies:
+        the,psi,phi =x[i*6:i*6+3]
+        rot = scitbx.rigid_body.rb_mat_xyz(
+          the=the, psi=psi, phi=phi, deg=False)
+        tran = matrix.rec(x[i*6+3:i*6+6],(3,1))
+        tr.r = (rot.rot_mat())
+        tr.t = tran
+        copies.append(tr)
+        i += 1
+      gr.copies = copies
+
+  def get_rotation_translation_as_list(self):
+    """
+    XXX
+    XXX Consider deletion. Used only in tests tst_minimization_ncs_constraints_real_space.py,
+    XXX tst_ncs_utils.py
+    XXX
+
+    Get rotations and translations vectors from ncs_restraints_group_list or
+    transforms_obj
+
+    Returns:
+      r (list): list of rotation matrices
+      t (list): list of translation vectors
+    """
+    r = []
+    t = []
+    for nrg in self:
+      for tr in nrg.copies:
+        r.append(tr.r)
+        t.append(tr.t)
+    return r,t
