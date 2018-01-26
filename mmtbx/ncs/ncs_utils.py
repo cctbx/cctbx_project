@@ -138,11 +138,9 @@ def shake_transformations(x,
 def compute_transform_grad(grad_wrt_xyz,
                            xyz_asu,
                            x,
-                           ncs_restraints_group_list=None,
-                           transforms_obj=None):
+                           ncs_restraints_group_list):
   """
   XXX
-  XXX Remove transforms_obj from parameter list.
   XXX Consider making it method of class_ncs_restraints_group_list
   XXX
 
@@ -162,9 +160,6 @@ def compute_transform_grad(grad_wrt_xyz,
   Returns:
     g (flex.double): the gradient
   """
-  assert bool(transforms_obj) == (not bool(ncs_restraints_group_list))
-  if transforms_obj:
-    ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
   g = []
   grad_wrt_xyz = flex.vec3_double(grad_wrt_xyz)
   i = 0
@@ -551,26 +546,13 @@ def get_list_of_best_ncs_copy_map_correlation(
     mp = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       fmodel = fmodel)
   for nrg in ncs_groups:
-    selections = [nrg.master_iselection]
-    for ncs in nrg.copies:
-      selections.append(ncs.iselection)
+    selections = nrg.get_iselections_list()
     cc = mp.cc(selections=selections)
     i_seq = cc.index(max(cc)) # best matching copy
     if(i_seq == 0): continue
     #
     c_i = i_seq-1
-    # switch master and copy selection
-    nrg.master_iselection, nrg.copies[c_i].iselection = \
-      nrg.copies[c_i].iselection, nrg.master_iselection
-    # Adjust rotation and translation for the new master
-    r = nrg.copies[c_i].r = (nrg.copies[c_i].r.transpose())
-    t = nrg.copies[c_i].t = -(nrg.copies[c_i].r * nrg.copies[c_i].t)
-    # change all other rotations and translations to the new master
-    for i in xrange(len(nrg.copies)):
-      if i == c_i: continue
-      # change translation before rotation
-      nrg.copies[i].t = (nrg.copies[i].r * t + nrg.copies[i].t)
-      nrg.copies[i].r = (nrg.copies[i].r * r)
+    nrg.make_nth_copy_master(c_i)
 
 def get_refine_selection(refine_selection=None,number_of_atoms=None):
   """ populate refine_selection with all atoms if no selection is given  """

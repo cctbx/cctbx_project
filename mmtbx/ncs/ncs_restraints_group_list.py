@@ -75,6 +75,25 @@ class NCS_restraint_group(object):
     # make sure sequential order of selection indices
     return flex.sorted(isel)
 
+  def make_nth_copy_master(self, n):
+    """
+    n - index of the copy to become master, starting with 0
+    master becomes nth copy
+    """
+    # switch master and copy selection
+    assert n < self.get_number_of_copies()
+    self.master_iselection, self.copies[n].iselection = \
+      self.copies[n].iselection, self.master_iselection
+    # Adjust rotation and translation for the new master
+    r = self.copies[n].r = (self.copies[n].r.transpose())
+    t = self.copies[n].t = -(self.copies[n].r * self.copies[n].t)
+    # change all other rotations and translations to the new master
+    for i, c in enumerate(self.copies):
+      if i == n: continue
+      # change translation before rotation
+      c.t = (c.r * t + c.t)
+      c.r = (c.r * r)
+
 class class_ncs_restraints_group_list(list):
   def __init__(self, *args):
     super(class_ncs_restraints_group_list, self).__init__(*args)
