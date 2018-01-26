@@ -1,4 +1,4 @@
 {
-  "modules_required_for_use": ["cctbx", "fable", "ucif", "smtbx", "dxtbx"],
-  "optional_modules": ["ccp4io", "cbflib"],
+  "modules_required_for_use": ["cctbx", "fable", "ucif", "smtbx"],
+  "optional_modules": ["ccp4io", "cbflib","dxtbx"],
 }
