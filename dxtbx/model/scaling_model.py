@@ -67,6 +67,6 @@ class ScalingModelFactory(object):
       return None
     Class = ScalingModelFactory.find(obj['__id__'])
     if Class is None:
-      warn('No profile class %s registered' % obj['__id__'])
+      warn('No scaling_model class %s registered' % obj['__id__'])
       return None
     return Class.from_dict(obj)
