@@ -254,7 +254,15 @@ class DataManager(object):
       else:
         return self._get(datatype, filename=default_filename)
     elif (filename not in self._get_current_storage().keys()):
-      raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
+      try:
+        # try to load file if not already available
+        # use type-specific function call instead of _process_file because
+        # process_model_file is unique
+        # change to _process_file after any_file is updated
+        getattr(self, 'process_%s_file' % datatype)(filename)
+        return self._get_current_storage()[filename]
+      except Sorry:
+        raise Sorry('"%s" is not a known %s type.' % (filename, datatype))
     else:
       return self._get_current_storage()[filename]
 

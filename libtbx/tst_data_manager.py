@@ -20,10 +20,11 @@ def test_data_manager():
   assert (a.has_models(exact_count=True, expected_n=2))
   assert (not a.has_models(expected_n=3, raise_sorry=False))
 
-  # test exporting phil
+  # exporting phil
   working_phil = a.export_phil_scope()
   assert(working_phil.extract().data_manager.model_files == ['a', 'c'])
 
+  # data tracking
   try:
     a.has_models(expected_n=3, raise_sorry=True)
   except Sorry:
@@ -56,7 +57,7 @@ def test_data_manager():
 
   assert (a.get_sequence_names() == [])
 
-  # test loading from phil
+  # phil functions
   test_phil_str = '''
 data_manager {
   phil_files = data_manager_test.eff
@@ -65,6 +66,14 @@ data_manager {
   with open('data_manager_test.eff', 'w') as f:
     f.write(test_phil_str)
 
+  # loading file with get function
+  assert(len(a.get_phil_names()) == 0)
+  p = a.get_phil('data_manager_test.eff')
+  assert(type(p) == libtbx.phil.scope)
+  assert('data_manager_test.eff' in a.get_phil_names())
+
+  # loading file with phil
+  a = DataManager()
   test_phil = libtbx.phil.parse(test_phil_str)
   a.load_phil_scope(test_phil)
 
