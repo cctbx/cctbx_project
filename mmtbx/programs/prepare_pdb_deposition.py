@@ -90,7 +90,9 @@ output {
 
     # sequence block
     print ('Creating mmCIF block for sequence', file=self.logger)
-    hierarchy = model._pdb_hierarchy
+    hierarchy = model.get_hierarchy()
+    # Sequence output should be incorporated into mmtbx.model or sequence obj
+    # should be able to present itself in mmCIF and PDB formats.
     seq_block = hierarchy.as_cif_block_with_sequence(
       sequence, crystal_symmetry=model.crystal_symmetry(),
       alignment_params=self.params.mmtbx.validation.sequence.sequence_alignment)

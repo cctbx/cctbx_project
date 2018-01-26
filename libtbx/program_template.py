@@ -27,6 +27,7 @@ task, but the above functions define a consistent interface.
 More documentation to come
 '''
 
+# Should we stick with multi_out by default here?
 import logging
 
 # =============================================================================
