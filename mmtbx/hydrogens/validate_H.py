@@ -48,6 +48,7 @@ class validate_H():
     self.outliers_bonds = None
     self.outliers_angles = None
     self.bond_results = None
+    self.curated_hierarchy = None
 
   def validate_inputs(self):
     if not self.model.has_hd:
@@ -207,14 +208,16 @@ class validate_H():
       if atom_with_same_target_name is not None:
         atom_with_same_target_name.set_name(atom_D_old_name)
         self.renamed.append(
-                            (atom_with_same_target_name.id_str(),
-                             atom_with_same_target_name.name,
-                             atom_D_new_name))
+                            (atom_with_same_target_name.id_str(), # id_str
+                             atom_with_same_target_name.name,     # new name
+                             atom_D_new_name,                     # old name
+                             atom_with_same_target_name.xyz))     # xyz
       atom_D.set_name(atom_D_new_name)
       self.renamed.append(
                           (atom_D.id_str(),
                            atom_D.name,
-                           atom_D_old_name))
+                           atom_D_old_name,
+                           atom_D.xyz))
     else:
       atom_H_old_name = atom_H.name
       atom_H_new_name = atom_D.name.replace('D','H',1)
@@ -228,12 +231,14 @@ class validate_H():
         self.renamed.append(
                             (atom_with_same_target_name.id_str(),
                              atom_with_same_target_name.name,
-                             atom_H_new_name))
+                             atom_H_new_name,
+                             atom_with_same_target_name.xyz))
       atom_H.set_name(atom_H_new_name)
       self.renamed.append(
                           (atom_H.id_str(),
                            atom_H.name,
-                           atom_H_old_name))
+                           atom_H_old_name,
+                           atom_H.xyz))
 
   def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
     self.renamed = []
@@ -265,6 +270,8 @@ class validate_H():
               if atom_H_new is not None:
                 hd_exchanged_sites[atom_H_new.i_seq] = [atom_H_new, atom_D_new]
     self.hd_exchanged_sites = hd_exchanged_sites
+    if self.renamed is not None:
+      self.curated_hierarchy = pdb_hierarchy
 
   def analyze_hd_sites(self):
     sites_different_xyz = []
@@ -471,12 +478,12 @@ class validate_H():
         if result.is_outlier():
           atoms_str = mp_geo.get_atoms_str(atoms_info=result.atoms_info)
           outliers_bonds.append(
-                            [atom_info_hd.id_str(),
+                            (atom_info_hd.id_str(),
                              atoms_str,
                              result.model,
                              result.delta,
                              result.target,
-                             atom_info_hd.xyz] )
+                             atom_info_hd.xyz) )
     self.outliers_bonds = outliers_bonds
 
     bond_mean_delta = bond_mean_delta/n_bonds
@@ -512,19 +519,19 @@ class validate_H():
     self.outliers_angles = outliers_angles
 
   def run(self):
-    # Find bond and angle outliers
-    self.bond_angle_outliers()
-    # if H and D are present, analyse and curate potential H/D states
-    if self.get_hd_state() == 'h_and_d':
-      self.get_exchanged_sites_and_curate_swapped(
-        pdb_hierarchy = self.pdb_hierarchy)
     # Get overall counts of H and D
     self.count_hd_atoms()
+    # Find bond and angle outliers
+    self.bond_angle_outliers()
+    # Find missing H atoms
+    self.missing_hydrogens()
+    # if H and D are both present, analyse and curate potential H/D states
+    if self.get_hd_state() == 'h_and_d':
+      self.get_exchanged_sites_and_curate_swapped(
+        pdb_hierarchy = self.pdb_hierarchy.deep_copy())
     # If H/D sites are present, analyze for mismatches
     if self.hd_exchanged_sites:
       self.analyze_hd_sites()
-    # Find missing H atoms
-    self.missing_hydrogens()
 
   def get_results(self):
     return group_args(
@@ -539,4 +546,4 @@ class validate_H():
         )
 
   def get_curated_hierarchy(self):
-    return self.pdb_hierarchy,
+    return self.curated_hierarchy

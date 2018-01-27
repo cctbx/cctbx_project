@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.validate_H
 import sys, time
-#from libtbx.utils import Sorry
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 import iotbx.phil
 import mmtbx.model

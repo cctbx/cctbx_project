@@ -548,6 +548,7 @@ def exercise():
     newname = entry[1].strip()
     assert(oldname == answer[0])
     assert(newname == answer[1])
+    assert (entry[3] is not None)
 
   hd_exchanged_sites = results.hd_exchanged_sites
   assert (len(results.hd_exchanged_sites.keys()) == 22)
@@ -584,7 +585,7 @@ def exercise():
 def exercise1():
   renamed_answer = [('DB2', 'DB3')]
 
-  # a) DB2 and DB3 swapped
+  # DB2 and DB3 swapped
   results1 = get_results_from_validate_H(
     neutron_distances = True,
     pdb_str = pdb_str1a)
@@ -594,6 +595,7 @@ def exercise1():
     newname = entry[1].strip()
     assert(oldname == answer[0])
     assert(newname == answer[1])
+    assert (entry[3] is not None)
 
   # HB2 and HB3 swapped --> D atoms are renamed
   results2 = get_results_from_validate_H(
@@ -605,14 +607,14 @@ def exercise1():
     newname = entry[1].strip()
     assert(oldname == answer[0])
     assert(newname == answer[1])
+    assert (entry[3] is not None)
 
 # ------------------------------------------------------------------------------
 # PROPERTIES H/D SITES
 # a) HA and DA have different coordinates
 # b) HD1 and DD1 have different B factors
 # c) HH and DH have different coordinates and are within cutoff distance to
-#    create a warning for zero scattering sum (Note that HH and DH may be at
-#    different positions)
+#    create a warning for zero scattering sum
 # ------------------------------------------------------------------------------
 def exercise2():
   results = get_results_from_validate_H(
@@ -628,6 +630,7 @@ def exercise2():
     ('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.704)]
   for item, answer in zip(sites_different_xyz, xyz_answer):
     assert approx_equal(item[2],answer[2], 1.e-2)
+    assert (item[3] is not None and item[4] is not None) # make sure xyz exist
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
@@ -635,6 +638,7 @@ def exercise2():
   b_answer = [('pdb=" HD1ATYR A 139 "', 'pdb=" DD1BTYR A 139 "', -2)]
   for item, answer in zip(sites_different_b, b_answer):
     assert approx_equal(item[2],answer[2], 1.e-1)
+    assert (item[3] is not None and item[4] is not None) # make sure xyz exist
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
@@ -642,6 +646,7 @@ def exercise2():
   sum_scatt_answer=[('pdb=" HH ATYR A 139 "', 'pdb=" DH BTYR A 139 "', 0.6, 0.4)]
   for item, answer in zip(sites_occ_sum_no_scattering, sum_scatt_answer):
     assert approx_equal(item[3], answer[3], 1.e-2)
+    assert (item[3] is not None and item[4] is not None) # make sure xyz exist
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
