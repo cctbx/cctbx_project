@@ -58,28 +58,6 @@ class Transform(object):
     self.ncs_group_id = ncs_group_id
     self.rmsd = rmsd
 
-class Score_record(object):
-
-  def __init__(self,score=-10000,origin=(0,0)):
-    """
-    score object used when aligning sequences
-
-    Attributes:
-      score (int)
-      consecutive_matches (int): num of consecutive matches in current segment
-      match_count (int): number of matching residues
-      origin (tuple): (row,col) of the matrix cell we from the previous
-        alignment step. Used to trace back optimal alignment
-      no_altloc (list of bool): False when residue has alternate location
-      gap_residue (list of bool): True for the
-          residues of the same chain coming after TER or after another
-          chain
-    """
-    self.score = score
-    self.consecutive_matches = 0
-    self.match_count = 0
-    self.gap_penalty = 1
-    self.origin = origin
 
 class Chains_info(object):
   """ Container for hierarchy analysis """
@@ -141,27 +119,14 @@ def find_ncs_in_hierarchy(ph,
     chain_max_rmsd=chain_max_rmsd,
     residue_match_radius=residue_match_radius,
     log=None)
-  #
-  # match_dict = clean_chain_matching(
-  #   chain_match_list=chain_match_list,
-  #   ph=ph,
-  #   chain_max_rmsd=chain_max_rmsd,
-  #   residue_match_radius=residue_match_radius)
-  # print "match_dict.keys()", match_dict.keys()
-  # print "match_dict"
-  # for k, v in match_dict.iteritems():
-  #   print "  ", k, list(v[0]), list(v[1])
-  # assert 0
-  #
-
-
   # new, the basic way of processing, by Oleg.
   return ncs_grouping_and_group_dict(match_dict, ph)
 
 
-def get_rmsds2(master_xyz, copy_xyz, cur_ttg):
+def _get_rmsds2(master_xyz, copy_xyz, cur_ttg):
   """
-  This function is for debugging purposes and not called.
+  This function is for debugging purposes and should not be called (not used
+  presently).
   """
   xyz = cur_ttg[2][0].elems * master_xyz + cur_ttg[2][1]
   # rmsd1 = 0
@@ -174,7 +139,7 @@ def get_rmsds2(master_xyz, copy_xyz, cur_ttg):
   # print "rmsds:", rmsd1, rmsd2
   return rmsd1, rmsd2
 
-def get_rmsds(hierarchy, cache, cur_ttg, master, copy):
+def _get_rmsds(hierarchy, cache, cur_ttg, master, copy):
   """
   This function is for debugging purposes and not called.
   Similar check will be performed later in execution and in case of
@@ -214,7 +179,7 @@ def get_bool_selection_to_keep(big_selection, small_selection):
   Rather fast algorithm but may be beneficial to transfer to C++
   O(n+m), where n,m - sizes of selections
   """
-  assert big_selection.size >= small_selection.size()
+  assert big_selection.size() >= small_selection.size()
   result = flex.bool(big_selection.size(), False)
   i_in_big = 0
   i_in_small = 0
