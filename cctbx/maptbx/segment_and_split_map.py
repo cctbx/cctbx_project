@@ -7524,6 +7524,10 @@ def get_iterated_solvent_fraction(map=None,
       "The input map seems to be on a grid incompatible with crystal symmetry"+
          "\n(symmetry equivalents of a grid point must be on "+
           "an integer grid point)")
+    elif str(e).find("maximum size for resolve is")>-1:
+      raise Sorry(str(e)+
+       "\nIt may be possible to go on by supplying solvent content")
+
 
     return None  # was not available
 
@@ -8702,7 +8706,10 @@ def auto_sharpen_map_or_map_coeffs(
         resolve_size=si.resolve_size,
         map=map,
         out=out)
-    print >>out,"Estimated solvent fraction: %.2f" %(si.solvent_fraction)
+    if si.solvent_fraction:
+      print >>out,"Estimated solvent content: %.2f" %(si.solvent_fraction)
+    else:
+      raise Sorry("Unable to estimate solvent content...please supply it")
     # Determine if we are running half-map or model_sharpening
     if half_map_data_list and len(half_map_data_list)==2:
       first_half_map_data=half_map_data_list[0]
