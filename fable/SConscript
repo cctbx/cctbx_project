@@ -1,7 +1,7 @@
-import libtbx.load_env
 Import("env_etc")
 
-env_etc.fable_include = libtbx.env.dist_path("fable")
+import fable
+env_etc.fable_include = fable.__path__[0]
 
 if (not env_etc.no_boost_python and hasattr(env_etc, "boost_adaptbx_include")):
   Import("env_no_includes_boost_python_ext")
