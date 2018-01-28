@@ -1,9 +1,7 @@
-from __future__ import division
-from libtbx import test_utils
-import libtbx.load_env
+from __future__ import absolute_import, division, print_function
+from libtbx.test_utils.pytest import discover
 
-def run():
-  tst_list = (
+tst_list = [
   "$D/tst_ext.py",
   "$D/tst_equivalence.py",
   "$D/tst_read.py",
@@ -13,12 +11,4 @@ def run():
   "$D/test/tst_separate_files.py",
   "$D/test/tst_io.py",
   ["$D/tst_cout_compile.py", "stop"],
-  )
-
-  build_dir = libtbx.env.under_build("fable")
-  dist_dir = libtbx.env.dist_path("fable")
-
-  test_utils.run_tests(build_dir, dist_dir, tst_list)
-
-if (__name__ == "__main__"):
-  run()
+] + discover()
