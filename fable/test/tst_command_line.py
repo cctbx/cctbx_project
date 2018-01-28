@@ -21,7 +21,7 @@ def run(args):
         ('fable.cout "%scommon_variants.f"',
           'Writing file: "fable_cout_common_report"'),
         ('fable.cout "%ssubroutine_3.f" --top-procedure=sub3'
-         ' --fortran-file_comments',
+         ' --fortran-file-comments',
           'nums(i) = i * 20;'),
         ('fable.cout --compile "%swrite_star.f"',
           'placeholder_please_replace::program_prog);'),
