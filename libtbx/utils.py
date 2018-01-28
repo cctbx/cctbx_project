@@ -5,14 +5,15 @@ try: import gzip
 except ImportError: gzip = None
 try: import bz2
 except ImportError: bz2 = None
-try:
-  import hashlib
-  hashlib_md5 = hashlib.md5
-except ImportError:
-  import md5
-  hashlib_md5 = md5.new
-import math
+import hashlib
 import warnings
+
+def hashlib_md5(*args, **kwargs):
+  '''Compatibility function. This may be imported from other places'''
+  warnings.warn("libtbx.utils.hashlib_md5 is deprecated. Use hashlib.md5 instead", DeprecationWarning)
+  return hashlib.md5(*args, **kwargs)
+
+import math
 import shutil
 import glob
 import time
@@ -295,7 +296,7 @@ def warn_if_unexpected_md5_hexdigest(
   bool
       False if md5 hash of file does not appear in expected_md5_hexdigests.
   """
-  m = hashlib_md5()
+  m = hashlib.md5()
   m.update("\n".join(open(path).read().splitlines()))
   current_md5_hexdigest = m.hexdigest()
   if (m.hexdigest() in expected_md5_hexdigests): return False
@@ -320,12 +321,12 @@ def md5_hexdigest(filename=None, blocksize=256):
       The file is read by chunks of `blocksize` MB.
   """
   blocksize *= 1024**2
-  m = hashlib_md5()
-  f = open(filename, 'rb')
-  buf = f.read(blocksize)
-  while buf:
-    m.update(buf)
+  m = hashlib.md5()
+  with open(filename, 'rb') as f:
     buf = f.read(blocksize)
+    while buf:
+      m.update(buf)
+      buf = f.read(blocksize)
   return m.hexdigest()
 
 def get_memory_from_string(mem_str):
