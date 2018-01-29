@@ -177,7 +177,8 @@ namespace dxtbx {
         beams_(boost::python::len(reader)),
         detectors_(boost::python::len(reader)),
         goniometers_(boost::python::len(reader)),
-        scans_(boost::python::len(reader)) {
+        scans_(boost::python::len(reader)),
+        reject_(boost::python::len(reader)) {
       DXTBX_ASSERT(boost::python::len(reader) == boost::python::len(masker));
     }
 
@@ -293,6 +294,40 @@ namespace dxtbx {
     std::string get_image_identifier(std::size_t index) const {
       return boost::python::extract< std::string >(
         reader_.attr("identifiers")()[index])();
+    }
+
+    /**
+     * Mark the image for rejection
+     * @param index The image index
+     * @param reject True/False reject
+     */
+    void mark_for_rejection(std::size_t index, bool reject) {
+      DXTBX_ASSERT(index < reject_.size());
+      reject_[index] = reject;
+    }
+
+    /**
+     * @param index The image index
+     * @returns If the image is marked for rejection
+     */
+    bool is_marked_for_rejection(std::size_t index) const {
+      DXTBX_ASSERT(index < reject_.size());
+      return reject_[index];
+    }
+
+    /**
+     * Get the array of booleans for image rejection
+     */
+    scitbx::af::shared<bool> get_reject_list() const {
+      return reject_;
+    }
+
+    /**
+     * Set the array of booleans for image rejection
+     */
+    void set_reject_list(const scitbx::af::const_ref<bool> &reject) {
+      DXTBX_ASSERT(reject_.size() == reject.size());
+      std::copy(reject.begin(), reject.end(), reject_.begin());
     }
 
     /**
@@ -513,6 +548,7 @@ namespace dxtbx {
     scitbx::af::shared<detector_ptr> detectors_;
     scitbx::af::shared<goniometer_ptr> goniometers_;
     scitbx::af::shared<scan_ptr> scans_;
+    scitbx::af::shared<bool> reject_;
     ExternalLookup external_lookup_;
 
     std::string template_;
@@ -985,9 +1021,28 @@ namespace dxtbx {
      * @param index The image index
      * @returns The image identifier
      */
-    std::string get_image_identifier(std::size_t index) {
+    std::string get_image_identifier(std::size_t index) const {
       DXTBX_ASSERT(index < indices_.size());
       return data_.get_image_identifier(indices_[index]);
+    }
+
+    /**
+     * Mark the image for rejection
+     * @param index The image index
+     * @param reject True/False reject
+     */
+    void mark_for_rejection(std::size_t index, bool reject) {
+      DXTBX_ASSERT(index < indices_.size());
+      data_.mark_for_rejection(indices_[index], reject);
+    }
+
+    /**
+     * @param index The image index
+     * @returns If the image is marked for rejection
+     */
+    bool is_marked_for_rejection(std::size_t index) const {
+      DXTBX_ASSERT(index < indices_.size());
+      return data_.is_marked_for_rejection(indices_[index]);
     }
 
     /**
