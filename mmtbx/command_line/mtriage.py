@@ -10,6 +10,7 @@ from cctbx import crystal
 import mmtbx.maps.mtriage
 from iotbx import ccp4_map
 from scitbx.array_family import flex
+from libtbx.str_utils import format_value
 
 master_params_GUI_str = """\
   include scope libtbx.phil.interface.tracking_params
@@ -191,26 +192,24 @@ Feedback:
     half_map_data_1  = inputs.half_map_data_1,
     half_map_data_2  = inputs.half_map_data_2,
     pdb_hierarchy    = inputs.pdb_hierarchy)
-  task_obj.validate()
-  task_obj.run()
   results = task_obj.get_results()
   #
   # Map statistics
   #
   broadcast(m="Map statistics:", log=log)
   print >> log, "Map:"
-  print >> log, "  origin:      ", results.map_counts.origin
-  print >> log, "  last:        ", results.map_counts.last
-  print >> log, "  focus:       ", results.map_counts.focus
-  print >> log, "  all:         ", results.map_counts.all
-  print >> log, "  min,max,mean:", results.map_counts.min_max_mean
+  print >> log, "  origin:      ", results.masked.map_counts.origin
+  print >> log, "  last:        ", results.masked.map_counts.last
+  print >> log, "  focus:       ", results.masked.map_counts.focus
+  print >> log, "  all:         ", results.masked.map_counts.all
+  print >> log, "  min,max,mean:", results.masked.map_counts.min_max_mean
   #
   print >> log, "Half-maps:"
   if(inputs.half_map_data_1 is None):
     print >> log, "  Half-maps are not provided."
   else:
-    for i, m in enumerate([results.half_map_1_counts,
-                           results.half_map_2_counts]):
+    for i, m in enumerate([results.masked.half_map_1_counts,
+                           results.masked.half_map_2_counts]):
       print >> log, "  half-map:", i+1
       print >> log, "    origin:", m.origin
       print >> log, "    last:  ", m.last
@@ -218,51 +217,66 @@ Feedback:
       print >> log, "    all:   ", m.all
       print >> log, "    min,max,mean:", m.min_max_mean
   #
-  print >> log, "Histogram(s) of map values:"
-  show_histogram(map_histograms = results.map_histograms, log = log)
+  if(results.masked is not None):
+    print >> log, "Histogram(s) of map values (masked):"
+    show_histogram(map_histograms = results.masked.map_histograms, log = log)
+  if(results.unmasked is not None):
+    print >> log, "Histogram(s) of map values (unmasked):"
+    show_histogram(map_histograms = results.unmasked.map_histograms, log = log)
   # show results
-  print >> log, "Map resolution estimates:"
-  print >> log, "  using map alone (d99)            :", results.d99
-  print >> log, "  comparing with model (d_model)   :", results.d_model
-  print >> log, "    b_iso_overall                  :", results.b_iso_overall
-  print >> log, "  comparing with model (d_model_b0):", results.d_model_b0
+  fv = format_value
+  fs = "%8.2f"
+  rm = results.masked
+  ru = results.unmasked
+  print >> log, "Map resolution estimates:              masked unmasked"
+  print >> log, "  using map alone (d99)            :", fv(fs,rm.d99)          , fv(fs,ru.d99)
+  print >> log, "  comparing with model (d_model)   :", fv(fs,rm.d_model)      , fv(fs,ru.d_model)
+  print >> log, "    b_iso_overall                  :", fv(fs,rm.b_iso_overall), fv(fs,ru.b_iso_overall)
+  print >> log, "  comparing with model (d_model_b0):", fv(fs,rm.d_model_b0)   , fv(fs,ru.d_model_b0)
   print >> log, "    b_iso_overall=0"
   print >> log, "  d_fsc_model:"
-  print >> log, "    FSC(map,model map)=0           :", results.d_fsc_model_0
-  print >> log, "    FSC(map,model map)=0.143       :", results.d_fsc_model_0143
-  print >> log, "    FSC(map,model map)=0.5         :", results.d_fsc_model
-  print >> log, "  d99 (half map 1)                 :", results.d99_1
-  print >> log, "  d99 (half map 2)                 :", results.d99_2
-  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", results.d_fsc
+  print >> log, "    FSC(map,model map)=0           :", fv(fs,rm.d_fsc_model_0)   , fv(fs,ru.d_fsc_model_0)
+  print >> log, "    FSC(map,model map)=0.143       :", fv(fs,rm.d_fsc_model_0143), fv(fs,ru.d_fsc_model_0143)
+  print >> log, "    FSC(map,model map)=0.5         :", fv(fs,rm.d_fsc_model_05)  , fv(fs,ru.d_fsc_model_05)
+  print >> log, "  d99 (half map 1)                 :", fv(fs,rm.d99_1)           , fv(fs,ru.d99_1)
+  print >> log, "  d99 (half map 2)                 :", fv(fs,rm.d99_2)           , fv(fs,ru.d99_2)
+  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", fv(fs,rm.d_fsc)           , fv(fs,ru.d_fsc)
   print >> log
   #
-  print >> log, "Radius used for mask smoothing:", results.radius_smooth
+  print >> log, "Radius used for mask smoothing:", format_value("%6.2f", results.masked.radius_smooth)
   print >> log
   #
-  file_name = "%s.mtriage.log"%inputs.params.fsc_model_plot_file_name_prefix
-  task_obj.write_fsc_curve_model_plot_data(file_name = file_name)
-  print >> log, "FSC(model map, map) is written to %s"%file_name
+  for r in [(results.masked, "masked"),(results.unmasked, "unmasked")]:
+    if(r[0] is None): continue
+    # FSC_model curve
+    if(r[0].fsc_curve_model is not None):
+      file_name = "%s.%s.mtriage.log"%(
+        inputs.params.fsc_model_plot_file_name_prefix, r[1])
+      of = open(file_name,"w")
+      for a,b in zip(r[0].fsc_curve_model.d_inv, r[0].fsc_curve_model.fsc):
+        print >> of, "%15.9f %15.9f"%(a,b)
+      of.close()
+      print >> log, "FSC(model map, map) is written to %s"%file_name
+    # Mask
+    if(inputs.params.write_mask_file and r[0].mask is not None):
+      print >> log, "Mask is written to %s"%inputs.params.mask_file_name
+      ccp4_map.write_ccp4_map(
+        file_name   = inputs.params.mask_file_name,
+        unit_cell   = inputs.crystal_symmetry.unit_cell(),
+        space_group = inputs.crystal_symmetry.space_group(),
+        map_data    = r[0].mask,
+        labels      = flex.std_string(["mask"]))
+    # FSC (half-maps) curve
+    if(r[0].fsc_curve is not None):
+      file_name = "%s.%s.mtriage.log"%(
+        inputs.params.fsc_half_maps_file_name_prefix, r[1])
+      of = open(file_name,"w")
+      for a,b in zip(r[0].fsc_curve.fsc.d_inv, r[0].fsc_curve.fsc.fsc):
+        print >> of, "%15.9f %15.9f"%(a,b)
+      of.close()
+      print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
   #
-  file_name = "%s.mtriage.log"%inputs.params.fsc_half_maps_file_name_prefix
-  task_obj.write_fsc_curve_plot_data(file_name = file_name)
-  print >> log, "FSC(half map 1, half map 1) is written to %s"%file_name
-  #
-  if(inputs.params.write_mask_file and results.mask is not None):
-    print >> log, "Mask is written to %s"%inputs.params.mask_file_name
-    ccp4_map.write_ccp4_map(
-      file_name   = inputs.params.mask_file_name,
-      unit_cell   = inputs.crystal_symmetry.unit_cell(),
-      space_group = inputs.crystal_symmetry.space_group(),
-      map_data    = results.mask,
-      labels      = flex.std_string(["mask"]))
-  #
-  # required for GUI
-  return results
-
-# =============================================================================
-# XXX THIS SHOULD GO TO GUI SPECIFIC LOCATION AS THIS HAS NOTHING TO DO WITH
-# XXX COMMAND LINE!
-# XXX
+  return results # required for GUI
 
 # GUI-specific class for running command
 # required for GUI
@@ -280,8 +294,6 @@ class launcher (runtime_utils.target_with_save_result) :
     os.chdir(self.output_dir)
     result = run(args=self.args, log=sys.stdout)
     return result
-
-# =============================================================================
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

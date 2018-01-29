@@ -132,19 +132,19 @@ Feedback:
   print >> log, "  CC_mask  : %s" % format_value("%6.4f", results.cc_mask)
   print >> log, "  CC_volume: %s" % format_value("%6.4f", results.cc_volume)
   print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
+  log.flush()
   if results.fsc is not None:
     broadcast(m="Model-map FSC:", log=log)
     if(inputs.params.output_file_name_prefix is None):
-      out = log
+      fsc_fn = "map_model_fsc.log"
     else:
       fsc_fn = "%s_fsc.log"%inputs.params.output_file_name_prefix
-      out = open(fsc_fn, "w")
-      print >> log, "  saved to:", fsc_fn
+    out = open(fsc_fn, "w")
+    print >> log, "  saved to:", fsc_fn
     print >> out, "    1/resolution    CC"
     for a,b in zip(results.fsc.d_inv, results.fsc.fsc):
       print >> out, "%15.9f %15.9f"%(a,b)
-    if(inputs.params.output_file_name_prefix is not None):
-      out.close()
+    out.close()
   if len(results.cc_per_chain) + len(results.cc_per_residue) > 0:
     broadcast(m="Map-model CC (local):", log=log)
   # Per chain
@@ -157,9 +157,17 @@ Feedback:
   # Per residue
   if len(results.cc_per_residue) > 0:
     print >> log, "Per residue:"
+    if(inputs.params.output_file_name_prefix is None):
+      fn = "cc_per_residue.log"
+    else:
+      fn = "%s_cc_per_residue.log"%inputs.params.output_file_name_prefix
+    out = open(fn, "w")
+    print >> log, "  saved to:", fn
     fmt = "%s %s %s %7.4f %8.3f %4.2f"
     for r in results.cc_per_residue:
-      print fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
+      print >> out, fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
+    out.close()
+    #
   return None
 
 if (__name__ == "__main__"):

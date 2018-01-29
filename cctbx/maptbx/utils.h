@@ -174,6 +174,7 @@ af::shared<FloatType> cc_complex_complex(
   af::shared<FloatType> num_term(ss.size());
   af::shared<FloatType> d2_term(ss.size());
   af::shared<FloatType> f_1_i_sq(ss.size());
+  FloatType d1 = 0.;
   for(int i = 0; i < ss.size(); i++) {
     FloatType f_2_scaled = std::abs(f_2[i] * std::exp(-b_iso*ss[i]));
     FloatType f_1_abs = std::abs(f_1[i]);
@@ -182,6 +183,7 @@ af::shared<FloatType> cc_complex_complex(
     num_term[i] = f_1_abs*f_2_scaled*std::cos(f_2_arg-f_1_arg);
     d2_term[i] = f_2_scaled*f_2_scaled;
     f_1_i_sq[i] = f_1_abs*f_1_abs;
+    d1 += f_1_i_sq[i];
   }
 
   FloatType cc_best=-1.;
@@ -192,7 +194,6 @@ af::shared<FloatType> cc_complex_complex(
     FloatType d_min = d_mins[j];
     FloatType num = 0.;
     FloatType den = 0.;
-    FloatType d1 = 0.;
     FloatType d2 = 0.;
     FloatType cc = 0.;
     for(int i = 0; i < ss_size; i++) {
@@ -200,7 +201,6 @@ af::shared<FloatType> cc_complex_complex(
         num += num_term[i];
         d2 += d2_term[i];
       }
-      d1 += f_1_i_sq[i];
     }
     cc = num / (std::sqrt(d1*d2));
     if(cc>cc_best) {

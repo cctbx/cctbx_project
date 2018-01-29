@@ -83,14 +83,22 @@ class map_model_cc(object):
     if(self.params.compute_fsc):
       mtriage_params = mtriage.master_params().extract()
       mtriage_params.scattering_table = self.params.scattering_table
-      mtriage_params.compute_d_model=False
-      mtriage_params.compute_d99=False
+      mtriage_params.compute.map_counts = False
+      mtriage_params.compute.fsc_curve_model = True
+      mtriage_params.compute.d_fsc_model_05 = False
+      mtriage_params.compute.d_fsc_model_0 = False
+      mtriage_params.compute.d_fsc_model_0143 = False
+      mtriage_params.compute.d_model = False
+      mtriage_params.compute.d_model_b0 = False
+      mtriage_params.compute.d99 = False
+      mtriage_params.mask_maps = True
       mtriage_params.radius_smooth = self.atom_radius
+      #mtriage_params.show_time=True
       self.fsc = mtriage.mtriage(
         map_data         = self.map_data,
         pdb_hierarchy    = self.pdb_hierarchy,
         crystal_symmetry = self.crystal_symmetry,
-        params           = mtriage_params).run().get_results().fsc_curve_model.fsc
+        params           = mtriage_params).get_results().masked.fsc_curve_model
     #
     cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs,

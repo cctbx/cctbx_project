@@ -6,8 +6,7 @@ from cctbx import maptbx
 from cctbx import miller
 import scitbx.math.curve_fitting
 import iotbx.pdb
-
-DEBUG=False
+from libtbx import group_args
 
 def canal(x, y, simple=False, assert_concave_up=False,
           use_longest_slope_criteria=False, show=False, smooth=False,
@@ -155,40 +154,6 @@ def get_fo_fc_adjust_d_min_start(map, fc, xrs, d_mins):
   d_mins = d_mins.select(s)
   return f_obs, fc, d_mins
 
-def mask_out(map, f_obs, fc, xrs, d_mins, radius):
-#  ########## EXPERIMENTAL START
-#  cg = maptbx.crystal_gridding(
-#    unit_cell             = xrs.unit_cell(),
-#    space_group_info      = xrs.space_group_info(),
-#    pre_determined_n_real = map.accessor().all())
-#  mask = maptbx.mask(
-#    xray_structure              = xrs,
-#    n_real                      = map.accessor().all(),
-#    mask_value_inside_molecule  = 1,
-#    mask_value_outside_molecule = 0,
-#    solvent_radius              = 0,
-#    atom_radius                 = radius)
-#  fft_map = miller.fft_map(
-#    crystal_gridding     = cg,
-#    fourier_coefficients = fc)
-#  fft_map.apply_volume_scaling()
-#  map_calc = fft_map.real_map_unpadded()
-#  map_calc = map_calc*mask
-#  map  = map*mask
-#  f_obs = f_obs.structure_factors_from_map(
-#      map            = map,
-#      use_scale      = True,
-#      anomalous_flag = False,
-#      use_sg         = False)
-#  fc = f_obs.structure_factors_from_map(
-#      map            = map_calc,
-#      use_scale      = True,
-#      anomalous_flag = False,
-#      use_sg         = False)
-#  ########## EXPERIMENTAL END
-  return f_obs, fc
-
-############################
 def _resolution_from_map_and_model_helper_2(
       map,
       f_obs, fc,
@@ -197,11 +162,7 @@ def _resolution_from_map_and_model_helper_2(
       nproc,
       simple,
       d_mins,
-      radius,
       ofn=None):
-  f_obs, fc = mask_out(map=map, xrs=xray_structure, f_obs=f_obs, fc=fc,
-    d_mins=d_mins, radius=radius)
-
   ccs    = flex.double()
   bs     = flex.double()
   d_min_opt = flex.double()
@@ -233,71 +194,6 @@ def _resolution_from_map_and_model_helper_2(
         b_result=bs[i]
   return d_min_result, b_result, cc_result
 
-def strip_model(map_data, xray_structure, pdb_hierarchy, d_min, radius, b_iso):
-  from mmtbx.maps import correlation
-  ### Remove H or D
-  asc=pdb_hierarchy.atom_selection_cache()
-  sel = asc.selection("not (element H or element D)")
-  xray_structure = xray_structure.select(sel)
-  pdb_hierarchy = pdb_hierarchy.select(sel)
-  pdb_hierarchy.atoms().reset_i_seq()
-  ###
-  size_start = xray_structure.scatterers().size()
-  xray_structure = xray_structure.set_b_iso(value=b_iso)
-  crystal_gridding = maptbx.crystal_gridding(
-    unit_cell             = xray_structure.unit_cell(),
-    space_group_info      = xray_structure.space_group_info(),
-    pre_determined_n_real = map_data.accessor().all(),
-    symmetry_flags        = maptbx.use_space_group_symmetry)
-  f_calc = xray_structure.structure_factors(d_min=d_min).f_calc()
-  fft_map = miller.fft_map(
-    crystal_gridding     = crystal_gridding,
-    fourier_coefficients = f_calc)
-  map_calc = fft_map.real_map_unpadded()
-  selection = flex.size_t()
-  class cc(object):
-    def __init__(self, map1, map2, unit_cell, radius):
-      adopt_init_args(self, locals())
-    def compute(self, xyz):
-      return correlation.from_map_map_atoms( map_1=self.map1, map_2=self.map2,
-        sites_cart=xyz, unit_cell=self.unit_cell, radius=self.radius)
-  cc_calculator = cc(map1=map_data, map2=map_calc, unit_cell=f_calc.unit_cell(),
-    radius=radius)
-  get_class = iotbx.pdb.common_residue_names_get_class
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        for residue in residue_group.atom_groups():
-          if(get_class(residue.resname) == "common_amino_acid"):
-            sel_bb = flex.size_t()
-            sel_sc = flex.size_t()
-            xyz_bb = flex.vec3_double()
-            xyz_sc = flex.vec3_double()
-            for atom in residue.atoms():
-              if(atom.name.strip().upper() in ["CA","CB","C","O","N"]):
-                sel_bb.append(atom.i_seq)
-                xyz_bb.append(atom.xyz)
-              else:
-                sel_sc.append(atom.i_seq)
-                xyz_sc.append(atom.xyz)
-            cc = cc_calculator.compute(xyz = xyz_bb)
-            if(cc>0.5): selection.extend(sel_bb)
-            cc = cc_calculator.compute(xyz = xyz_sc)
-            if(cc>0.5): selection.extend(sel_sc)
-          else:
-            sel = residue.atoms().extract_i_seq()
-            xyz = residue.atoms().extract_xyz()
-            cc = cc_calculator.compute(xyz = xyz)
-            if(cc>0.5): selection.extend(sel)
-  xray_structure = xray_structure.select(selection)
-  size_final = xray_structure.scatterers().size()
-  fr = size_final*100./size_start
-  if(DEBUG): print "Fraction remains: %6.4f"%fr
-  if(fr < 50):
-    return None
-  else:
-    return xray_structure
-
 def get_trial_resolutions(map_data, unit_cell, d_min_min):
   d_min_end = round(maptbx.d_min_from_map(
     map_data=map_data, unit_cell=unit_cell, resolution_factor=0.1),1)
@@ -316,7 +212,7 @@ def get_trial_resolutions(map_data, unit_cell, d_min_min):
   s &= l<=d_min_end
   return l.select(s)
 
-def run_at_b0(map_data, xray_structure, d_min_min=None):
+def run_at_b(b, map_data, xray_structure, d_min_min=None):
   m1 = flex.mean(map_data)
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
   d_mins = get_trial_resolutions(
@@ -334,8 +230,34 @@ def run_at_b0(map_data, xray_structure, d_min_min=None):
   ss = 1./flex.pow2(d_spacings) / 4.
   m2 = flex.mean(map_data)
   assert approx_equal(m1, m2)
-  return run_loop(fc=fc, f_obs=f_obs, b_iso=0.0, map=map, d_mins=d_mins,
+  return run_loop(fc=fc, f_obs=f_obs, b_iso=b, map=map, d_mins=d_mins,
     d_spacings=d_spacings, ss=ss)
+
+def run_fast(map_data, f_obs, d_fsc_model, xray_structure):
+  #fo = f_obs.resolution_filter(d_min = d_fsc_model)
+  xrs = xray_structure.deep_copy_scatterers()
+  xrs = xrs.set_b_iso(value=0)
+  fc = f_obs.structure_factors_from_scatterers(xray_structure = xrs).f_calc()
+  fo = f_obs.resolution_filter(d_min = d_fsc_model)
+  fo, fc, = fo.common_sets(fc)
+  del xrs
+  cc = -999
+  b=None
+  ss = 1./flex.pow2(fc.d_spacings().data()) / 4.
+  data = fc.data()
+  for b_ in range(-500,500,1):
+    sc = flex.exp(-b_*ss)
+    fc_ = fc.customized_copy(data = data*sc)
+    cc_ = fo.map_correlation(other = fc_)
+    if(cc_>cc):
+      cc = cc_
+      b = b_
+  o = run_at_b(
+    b                = b,
+    map_data         = map_data,
+    xray_structure   = xray_structure,
+    d_min_min        = 1.7)
+  return group_args(d_min = o.d_min, b_iso = b)
 
 class run(object):
   def __init__(self, map_data, xray_structure, pdb_hierarchy, d_min_min=None,
@@ -356,13 +278,9 @@ class run(object):
     assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
     d_min_start = flex.min(d_mins)
     fc = xrs.structure_factors(d_min=d_min_start).f_calc()
-
-    f_obs, fc, d_mins = get_fo_fc_adjust_d_min_start(map=map_data, xrs=xrs, fc=fc,
-      d_mins=d_mins)
-
-    #b_range=list(range(-500,-100,50)+range(-100,100,25)+range(100,505,50))
+    f_obs, fc, d_mins = get_fo_fc_adjust_d_min_start(map=map_data, xrs=xrs,
+      fc=fc, d_mins=d_mins)
     b_range=list(range(-500,510,10))
-    self.radius=5.
     self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper_2(
       map            = map_data,
       f_obs=f_obs, fc=fc,
@@ -370,53 +288,5 @@ class run(object):
       b_range        = b_range,
       d_mins         = d_mins,
       nproc          = nproc,
-      radius = 5,
       simple=True,
       ofn=None)
-    #if(DEBUG): print self.d_min, self.b_iso, self.cc, self.radius, "<<HERE"
-    if(self.d_min is not None):
-      xray_structure = strip_model(
-        map_data       = map_data,
-        xray_structure = xray_structure,
-        pdb_hierarchy  = pdb_hierarchy,
-        d_min          = self.d_min,
-        radius         = 3.,
-        b_iso          = self.b_iso
-        )
-      if(xray_structure is None):
-        self.d_min, self.b_iso, self.cc = None,None,None
-      if(xray_structure is not None):
-        xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
-        assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
-        fc = f_obs.structure_factors_from_scatterers(xray_structure=xrs).f_calc()
-
-        self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper_2(
-          map            = map_data,
-          f_obs=f_obs, fc=fc,
-          xray_structure = xray_structure,
-          b_range        = b_range,
-          d_mins         = d_mins,
-          nproc          = nproc,
-          radius =5.,
-          simple=False,
-          ofn=ofn)
-
-
-#        cc_best=-1.e+9
-#        for radius in [2,2.25,2.5,2.75, 3,3.25,3.5, 4,5,6]:
-#          d_min, b_iso, cc = _resolution_from_map_and_model_helper_2(
-#            map            = map_data,
-#            f_obs=f_obs, fc=fc,
-#            xray_structure = xray_structure,
-#            b_range        = b_range,
-#            d_mins         = d_mins,
-#            nproc          = nproc,
-#            radius = radius,
-#            simple=False,
-#            ofn=ofn)
-#          if(cc is not None and cc>cc_best):
-#            cc_best=cc
-#            self.d_min, self.b_iso, self.cc, self.radius = d_min,b_iso,cc,radius
-#          if(DEBUG): print "   ", d_min, b_iso, cc, "<<HERE2", radius
-    if(DEBUG):
-      print "RESULT:", self.d_min, self.b_iso, self.cc, self.radius

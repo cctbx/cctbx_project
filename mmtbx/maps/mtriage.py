@@ -18,16 +18,33 @@ master_params_str = """
   scattering_table = wk1995  it1992  n_gaussian  neutron *electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
-  compute_fsc_curve_model = True
-    .type = bool
-    .help = Compute model-map CC in reciprocal space: FSC(model map, data map)
-  compute_d_model = True
-    .type = bool
-    .help = Resolution estimate using model and map
-  compute_d99 = True
-    .type = bool
-    .help = Resolution estimate d99
-  mask_maps = True
+  compute {
+    map_counts = True
+      .type = bool
+      .help = Compute map counts
+    fsc_curve_model = True
+      .type = bool
+      .help = Compute model-map CC in reciprocal space: FSC(model map, data map)
+    d_fsc_model_05 = True
+      .type = bool
+      .help = Compute d_fsc_model (FSC=0.5)
+    d_fsc_model_0 = True
+      .type = bool
+      .help = Compute d_fsc_model (FSC=0)
+    d_fsc_model_0143 = True
+      .type = bool
+      .help = Compute d_fsc_model (FSC=0.143)
+    d_model = True
+      .type = bool
+      .help = Resolution estimate using model and map
+    d_model_b0 = True
+      .type = bool
+      .help = Resolution estimate using model and map, assumin all atoms B=0
+    d99 = True
+      .type = bool
+      .help = Resolution estimate d99
+  }
+  mask_maps = None
     .type = bool
     .help = Mask out region outside molecule
   radius_smooth = None
@@ -37,6 +54,9 @@ master_params_str = """
   nproc = 1
     .type = int
     .help = Number of processors to use
+  show_time = False
+    .type = bool
+    .help = Show individual run times for each step
 """
 
 def get_atom_radius(xray_structure=None, d_min=None, map_data=None,
@@ -117,6 +137,58 @@ class mtriage(object):
   def __init__(self,
                map_data,
                crystal_symmetry,
+               params         =None,
+               half_map_data_1=None,
+               half_map_data_2=None,
+               pdb_hierarchy=None):
+    adopt_init_args(self, locals())
+    self.results_masked   = None
+    self.results_unmasked = None
+    if(self.params is None):
+      self.params = master_params().extract()
+
+  def _run(self, slim):
+    if(self.params.mask_maps is None):
+      self.params.mask_maps = True
+      self.results_masked = _mtriage(
+        map_data         = self.map_data,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        half_map_data_1  = self.half_map_data_1,
+        half_map_data_2  = self.half_map_data_2,
+        pdb_hierarchy    = self.pdb_hierarchy
+      ).validate().run().get_results(slim=slim)
+      self.params.mask_maps = False
+      self.results_unmasked = _mtriage(
+        map_data         = self.map_data,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        half_map_data_1  = self.half_map_data_1,
+        half_map_data_2  = self.half_map_data_2,
+        pdb_hierarchy    = self.pdb_hierarchy
+      ).validate().run().get_results(slim=slim)
+    else:
+      result = _mtriage(
+        map_data         = self.map_data,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        half_map_data_1  = self.half_map_data_1,
+        half_map_data_2  = self.half_map_data_2,
+        pdb_hierarchy    = self.pdb_hierarchy
+      ).validate().run().get_results(slim=slim)
+      if(self.params.mask_maps): self.results_masked = result
+      else:                      self.results_unmasked = result
+
+  def get_results(self, slim=False):
+    self._run(slim=slim)
+    return group_args(
+      masked   = self.results_masked,
+      unmasked = self.results_unmasked)
+
+class _mtriage(object):
+  def __init__(self,
+               map_data,
+               crystal_symmetry,
                params=master_params().extract(),
                half_map_data_1=None,
                half_map_data_2=None,
@@ -129,8 +201,6 @@ class mtriage(object):
       self.half_map_data_2 = self.half_map_data_2.deep_copy()
     if(self.pdb_hierarchy is not None):
       self.pdb_hierarchy = self.pdb_hierarchy.deep_copy()
-    #
-    assert [half_map_data_1, half_map_data_2].count(None) in [0,2]
     # Results
     self.d9               = None
     self.d99              = None
@@ -141,7 +211,7 @@ class mtriage(object):
     self.d_model_b0       = None
     self.b_iso_overall    = None
     self.d_fsc            = None
-    self.d_fsc_model      = None
+    self.d_fsc_model_05   = None
     self.d_fsc_model_0    = None
     self.d_fsc_model_0143 = None
     self.fsc_curve        = None
@@ -150,20 +220,18 @@ class mtriage(object):
     self.radius_smooth    = self.params.radius_smooth
     # Info (results)
     self.crystal_symmetry = crystal_symmetry
-    self.map_counts        = get_map_counts(map_data = self.map_data)
-    self.half_map_1_counts = get_map_counts(map_data = self.half_map_data_1)
-    self.half_map_2_counts = get_map_counts(map_data = self.half_map_data_2)
-    self.map_histograms = get_map_histograms(
-      data    = self.map_data,
-      n_slots = 20,
-      data_1  = self.half_map_data_1,
-      data_2  = self.half_map_data_2)
+    self.map_counts        = None
+    self.half_map_1_counts = None
+    self.half_map_2_counts = None
+    self.map_histograms    = None
     # Internal work objects
     self.f   = None
     self.f1  = None
     self.f2  = None
     self.box = None
     self.xray_structure = None
+    self.f_obs_box  = None
+    self.f_calc_box = None
 
   def validate(self):
     if(not [self.half_map_data_1, self.half_map_data_2].count(None) in [0,2]):
@@ -179,19 +247,24 @@ class mtriage(object):
         Sorry_message="Half-maps and full map have different gridding.")
     if(self.crystal_symmetry.space_group().type().number()!=1):
       raise Sorry("Symmetry must be P1")
+    return self
 
-  def call(self, func, prefix, show_time=False):
+  def call(self, func, prefix):
     t0 = time.time()
     func()
-    if(show_time):
+    if(self.params.show_time):
       print prefix, ":", time.time()-t0
       sys.stdout.flush()
 
   def run(self):
+    # Compute basic map counts
+    self.call(func=self._map_counts, prefix="Basic map counts")
     # Extract xrs from pdb_hierarchy
     self.call(func=self._get_xray_structure, prefix="xrs from pdb_hierarchy")
     # Shift origin if needed
     self.call(func=self._shift_origin, prefix="Shift origin if needed")
+    # Compute radius
+    self.call(func=self._compute_radius, prefix="Compute radius")
     # Compute mask
     self.call(func=self._compute_mask, prefix="Compute mask")
     # Apply mask to map data
@@ -202,13 +275,33 @@ class mtriage(object):
     self.call(func=self._compute_d99, prefix="Compute d99")
     # Compute d_model at B=0
     self.call(func=self._compute_d_model_b0, prefix="Compute d_model_b0")
-    # Compute d_model
-    self.call(func=self._compute_d_model, prefix="Compute d_model")
     # Compute half-map FSC
     self.call(func=self._compute_half_map_fsc, prefix="Compute half-map FSC")
-    # Map-model FSC and d_fsc_model
-    self.call(func=self._compute_model_map_fsc, prefix="Map-model FSC and d_fsc_model")
+    # Fobs, Fcalc in box
+    self.call(func=self._compute_f_obs_f_calc, prefix="Compute f_obs_box, f_calc_box")
+    # Map-model FSC curve
+    self.call(func=self._compute_fsc_curve_model, prefix="Compute fsc_curve_model")
+    # d_fsc_model_0
+    self.call(func=self._compute_f_fsc_model_0, prefix="Compute d_fsc_model_0")
+    # d_fsc_model_0143
+    self.call(func=self._compute_f_fsc_model_0143, prefix="Compute d_fsc_model_0143")
+    # d_fsc_model_05
+    self.call(func=self._compute_f_fsc_model_05, prefix="Compute d_fsc_model_05")
+    # Compute d_model
+    self.call(func=self._compute_d_model, prefix="Compute d_model")
+
     return self
+
+  def _map_counts(self):
+    if(self.params.compute.map_counts):
+      self.map_counts        = get_map_counts(map_data = self.map_data)
+      self.half_map_1_counts = get_map_counts(map_data = self.half_map_data_1)
+      self.half_map_2_counts = get_map_counts(map_data = self.half_map_data_2)
+      self.map_histograms = get_map_histograms(
+        data    = self.map_data,
+        n_slots = 20,
+        data_1  = self.half_map_data_1,
+        data_2  = self.half_map_data_2)
 
   def _get_xray_structure(self):
     if(self.pdb_hierarchy is not None):
@@ -240,7 +333,7 @@ class mtriage(object):
         crystal_symmetry = None)
       self.half_map_data_2 = soin.map_data
 
-  def _compute_mask(self):
+  def _compute_radius(self):
     if(not self.params.mask_maps): return
     if(self.pdb_hierarchy is None): return
     self.radius_smooth = get_atom_radius(
@@ -248,6 +341,10 @@ class mtriage(object):
       map_data         = self.map_data,
       crystal_symmetry = self.crystal_symmetry,
       radius           = self.radius_smooth)
+
+  def _compute_mask(self):
+    if(not self.params.mask_maps): return
+    if(self.pdb_hierarchy is None): return
     self.mask_object = masks.smooth_mask(
       xray_structure = self.xray_structure,
       n_real         = self.map_data.all(),
@@ -269,7 +366,7 @@ class mtriage(object):
         xray_structure = self.xray_structure)
 
   def _compute_d99(self):
-    if(not self.params.compute_d99): return
+    if(not self.params.compute.d99): return
     d99_obj = maptbx.d99(
       map              = self.map_data,
       crystal_symmetry = self.crystal_symmetry)
@@ -291,21 +388,23 @@ class mtriage(object):
       self.f2 = d99_obj_2.f
 
   def _compute_d_model_b0(self):
-    o = resolution_from_map_and_model.run_at_b0(
+    if(self.pdb_hierarchy is None): return
+    if(not self.params.compute.d_model_b0): return
+    o = resolution_from_map_and_model.run_at_b(
+      b                = 0.0,
       map_data         = self.box.map_data,
       xray_structure   = self.box.xray_structure,
       d_min_min        = 1.7)
     self.d_model_b0 = o.d_min
 
   def _compute_d_model(self):
-    if(not self.params.compute_d_model): return
+    if(not self.params.compute.d_model): return
     if(self.pdb_hierarchy is not None):
-      o = resolution_from_map_and_model.run(
+      o = resolution_from_map_and_model.run_fast(
         map_data         = self.box.map_data,
-        xray_structure   = self.box.xray_structure,
-        pdb_hierarchy    = self.box.pdb_hierarchy,
-        d_min_min        = 1.7,
-        nproc            = self.params.nproc)
+        f_obs            = self.f_obs_box,
+        d_fsc_model      = self.d_fsc_model_0,
+        xray_structure   = self.box.xray_structure)
       self.d_model       = o.d_min
       self.b_iso_overall = o.b_iso
 
@@ -315,36 +414,43 @@ class mtriage(object):
         other = self.f2, bin_width=100, fsc_cutoff=0.143)
       self.d_fsc = self.fsc_curve.d_min
 
-  def _compute_model_map_fsc(self):
-    if(not self.params.compute_fsc_curve_model): return
+  def _compute_f_obs_f_calc(self):
+    if(self.pdb_hierarchy is None): return
+    flags = [self.params.compute.fsc_curve_model,
+             self.params.compute.d_fsc_model_0,
+             self.params.compute.d_fsc_model_05,
+             self.params.compute.d_fsc_model_0143
+    ]
+    if(flags.count(True)==0): return
+    self.f_obs_box = miller.structure_factor_box_from_map(
+      map              = self.box.map_data,
+      crystal_symmetry = self.box.xray_structure.crystal_symmetry())
+    self.f_calc_box = self.f_obs_box.structure_factors_from_scatterers(
+      xray_structure = self.box.xray_structure).f_calc()
+
+  def _compute_fsc_curve_model(self):
+    if(not self.params.compute.fsc_curve_model): return
     if(self.pdb_hierarchy is not None):
-      f_obs = miller.structure_factor_box_from_map(
-        map              = self.box.map_data,
-        crystal_symmetry = self.box.xray_structure.crystal_symmetry())
-      f_calc = f_obs.structure_factors_from_scatterers(
-        xray_structure = self.box.xray_structure).f_calc()
-      self.fsc_curve_model = f_calc.d_min_from_fsc(
-        other=f_obs, bin_width=100, fsc_cutoff=0.5)
-      self.d_fsc_model = self.fsc_curve_model.d_min
-      self.d_fsc_model_0 = f_calc.d_min_from_fsc(
-        other=f_obs, bin_width=100, fsc_cutoff=0.).d_min
-      self.d_fsc_model_0143 = f_calc.d_min_from_fsc(
-        other=f_obs, bin_width=100, fsc_cutoff=0.143).d_min
+      self.fsc_curve_model = self.f_calc_box.fsc(
+        other=self.f_obs_box, bin_width=100)
 
-  def write_fsc_curve_model_plot_data(self, file_name):
-    if(self.fsc_curve_model is not None):
-      of = open(file_name,"w")
-      for a,b in zip(self.fsc_curve_model.fsc.d_inv,
-                     self.fsc_curve_model.fsc.fsc):
-        print >> of, "%15.9f %15.9f"%(a,b)
-      of.close()
+  def _compute_f_fsc_model_05(self):
+    if(not self.params.compute.d_fsc_model_05): return
+    assert self.fsc_curve_model is not None
+    self.d_fsc_model_05 = self.f_calc_box.d_min_from_fsc(
+      fsc_curve=self.fsc_curve_model, fsc_cutoff=0.5).d_min
 
-  def write_fsc_curve_plot_data(self, file_name):
-    if(self.fsc_curve is not None):
-      of = open(file_name,"w")
-      for a,b in zip(self.fsc_curve.fsc.d_inv, self.fsc_curve.fsc.fsc):
-        print >> of, "%15.9f %15.9f"%(a,b)
-      of.close()
+  def _compute_f_fsc_model_0(self):
+    if(not self.params.compute.d_fsc_model_0): return
+    assert self.fsc_curve_model is not None
+    self.d_fsc_model_0 = self.f_calc_box.d_min_from_fsc(
+      fsc_curve=self.fsc_curve_model, fsc_cutoff=0.).d_min
+
+  def _compute_f_fsc_model_0143(self):
+    if(not self.params.compute.d_fsc_model_0143): return
+    assert self.fsc_curve_model is not None
+    self.d_fsc_model_0143 = self.f_calc_box.d_min_from_fsc(
+      fsc_curve=self.fsc_curve_model, fsc_cutoff=0.143).d_min
 
   def show_summary(self, log=None, fsc_file_prefix="fsc_curve"):
     if(log is None): log = sys.stdout
@@ -355,7 +461,7 @@ class mtriage(object):
     print >> log, "d_model                : ", r.d_model
     print >> log, "b_iso_overall          : ", r.b_iso_overall
     print >> log, "d_fsc                  : ", r.d_fsc
-    print >> log, "d_fsc_model (FSC=0.5)  : ", r.d_fsc_model
+    print >> log, "d_fsc_model (FSC=0.5)  : ", r.d_fsc_model_05
     print >> log, "d_fsc_model (FSC=0.143): ", r.d_fsc_model_0143
     print >> log, "d_fsc_model (FSC=0)    : ", r.d_fsc_model_0
     print >> log, "CC(half_map1,half_map2 : ", r.map_histograms.half_map_histogram_cc
@@ -372,10 +478,16 @@ class mtriage(object):
       of.close()
 
   def get_results(self, slim=False):
-    mask = None
+    mask            = None
+    map_histograms  = None
+    fsc_curve       = None
+    fsc_curve_model = None
     if(not slim):
       if(self.mask_object is not None):
         mask = self.mask_object.mask_smooth
+      map_histograms  = self.map_histograms
+      fsc_curve       = self.fsc_curve
+      fsc_curve_model = self.fsc_curve_model
     return group_args(
       d9                = self.d9,
       d99               = self.d99,
@@ -386,16 +498,16 @@ class mtriage(object):
       d_model_b0        = self.d_model_b0,
       b_iso_overall     = self.b_iso_overall,
       d_fsc             = self.d_fsc,
-      d_fsc_model       = self.d_fsc_model,
+      d_fsc_model_05    = self.d_fsc_model_05,
       d_fsc_model_0     = self.d_fsc_model_0,
       d_fsc_model_0143  = self.d_fsc_model_0143,
-      fsc_curve         = self.fsc_curve,
-      fsc_curve_model   = self.fsc_curve_model,
+      fsc_curve         = fsc_curve,
+      fsc_curve_model   = fsc_curve_model,
       crystal_symmetry  = self.crystal_symmetry,
       map_counts        = self.map_counts,
       half_map_1_counts = self.half_map_1_counts,
       half_map_2_counts = self.half_map_2_counts,
-      map_histograms    = self.map_histograms,
+      map_histograms    = map_histograms,
       mask              = mask,
       radius_smooth     = self.radius_smooth)
 

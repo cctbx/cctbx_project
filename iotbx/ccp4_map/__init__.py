@@ -45,6 +45,16 @@ class _(boost.python.injector, ext.map_reader) :
   def map_data(self):
     return self.data.as_double()
 
+  def is_similar_map(self, other):
+    f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
+    s = self.map_data()
+    o = other.map_data()
+    f2 = s.focus()  == o.focus()
+    f3 = s.origin() == o.origin()
+    f4 = s.all()    == o.all()
+    if([f1,f2,f3,f4].count(False)>0): return False
+    else: return True
+
   def grid_unit_cell (self) :
     """
     If we want to use maptbx.non_crystallographic_eight_point_interpolation,

@@ -4031,33 +4031,38 @@ class array(set):
     s = flex.sort_permutation(d_inv)
     return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
 
-  def d_min_from_fsc(self, other, bin_width=1000, fsc_cutoff=0.143):
+  def d_min_from_fsc(self, other=None, fsc_curve=None, bin_width=1000,
+                           fsc_cutoff=0.143):
     """
     Compute Fourier Shell Correlation (FSC) and derive resolution based on
     specified cutoff.
     """
-    fsc_result = self.fsc(other=other, bin_width=bin_width)
+    if(fsc_curve is None):
+      assert other is not None
+      fsc_curve = self.fsc(other=other, bin_width=bin_width)
+    else:
+      assert other is None
     i_mid = None
-    for i in xrange(fsc_result.fsc.size()):
-      if(fsc_result.fsc[i]<fsc_cutoff):
+    for i in xrange(fsc_curve.fsc.size()):
+      if(fsc_curve.fsc[i]<fsc_cutoff):
         i_mid = i
         break
-    #print "i_mid, cc:", fsc_result.d[i_mid], fsc_result.d_inv[i_mid]
+    #print "i_mid, cc:", fsc_curve.d[i_mid], fsc_curve.d_inv[i_mid]
     d_min = None
     d_mid = None
     if(i_mid is not None):
-      d_mid = fsc_result.d[i_mid]
+      d_mid = fsc_curve.d[i_mid]
       if(i_mid is not None):
         i_min = i_mid-5
         i_max = i_mid+6
         on_slope=True
         if(fsc_cutoff>0.): # does not have to be on slope around fsc_cutoff=0
           on_slope = [
-            fsc_result.fsc[i_min]>fsc_cutoff,
-            fsc_result.fsc[i_max]<fsc_cutoff].count(True)==2
+            fsc_curve.fsc[i_min]>fsc_cutoff,
+            fsc_curve.fsc[i_max]<fsc_cutoff].count(True)==2
         if(on_slope or fsc_cutoff):
-          x = fsc_result.d_inv[i_min:i_max]
-          y = fsc_result.fsc[i_min:i_max]
+          x = fsc_curve.d_inv[i_min:i_max]
+          y = fsc_curve.fsc[i_min:i_max]
           from scitbx.math import curve_fitting
           c,b,a = curve_fitting.univariate_polynomial_fit(x_obs=x, y_obs=y,
             degree=2, number_of_cycles=5).params
@@ -4078,9 +4083,9 @@ class array(set):
               else:            d_min = d2
               if(abs(d_mid-d_min)>0.25): d_min = None
     if(d_min is None): d_min = d_mid
-    return group_args(fsc=fsc_result, d_min=d_min)
+    return group_args(fsc=fsc_curve, d_min=d_min)
 
-  def map_correlation(self, other, bin_width=1000):
+  def map_correlation(self, other):
     d1 = flex.abs(self.data())
     d2 = flex.abs(other.data())
     p1 = self.phases().data()

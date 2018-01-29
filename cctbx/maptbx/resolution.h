@@ -23,7 +23,7 @@ public:
     CCTBX_ASSERT(f.size() == hkl.size());
     d_min_cc9_=-1., d_min_cc99_=-1., d_min_cc999_=-1.;
     af::shared<double> w(f.size());
-    af::shared<double> data_sq(f.size());
+    af::shared<double> data_sq_w(f.size());
     double sum_all = 0.;
     for(int i = 0; i < f.size(); i++) {
       miller::index<> h = hkl[i];
@@ -32,7 +32,7 @@ public:
       double f_abs = std::abs(f[i]);
       double f_abs_sq = f_abs*f_abs;
       sum_all += (w[i]*f_abs_sq);
-      data_sq[i] = f_abs_sq;
+      data_sq_w[i] = w[i]*f_abs_sq;
     }
     CCTBX_ASSERT(sum_all != 0.);
     double step=0.01;
@@ -42,7 +42,7 @@ public:
       double sum_num = 0.;
       for(int i = 0; i < f.size(); i++) {
         if(d_spacings[i]>d) {
-          sum_num += (w[i]*data_sq[i]);
+          sum_num += data_sq_w[i];
         }
       }
       double cc = std::sqrt(sum_num/sum_all);
@@ -54,6 +54,7 @@ public:
         step=0.1;
       }
       if(d_min_cc9_<0 && cc<0.9) d_min_cc9_=d;
+      if(cc<0.9) break; // Perhaps this should be a paraameter.
     }
   }
 
