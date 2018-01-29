@@ -3,9 +3,7 @@ from cctbx.array_family import flex
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
 from cctbx import maptbx
-from cctbx import miller
 import scitbx.math.curve_fitting
-import iotbx.pdb
 from libtbx import group_args
 
 def canal(x, y, simple=False, assert_concave_up=False,
