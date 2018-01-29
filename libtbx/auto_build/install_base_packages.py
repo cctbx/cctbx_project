@@ -49,6 +49,7 @@ class installer (object) :
   ****************************************************************************
 """
     dist_dir = op.dirname(op.dirname(op.dirname(__file__)))
+    print dist_dir, 'DISTRIBUTION DIR'
     parser = OptionParser()
     # Basic options
     parser.add_option("--build_dir", dest="build_dir", action="store",
@@ -122,7 +123,7 @@ class installer (object) :
     self.flag_is_mac = (sys.platform == "darwin")
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
-    self.with_conda = if options.with_conda
+    self.with_conda = options.with_conda
 
     # set default macOS flags
     if (self.flag_is_mac):
@@ -689,10 +690,16 @@ Installation of Python packages may fail.
 
     # no-op
 
-  def install_with_conda(self, packages=None, extra_opts=[])
+  def install_with_conda(self, packages=None, extra_opts=[]):
     import subprocess
+    print os.getcwd()
     if op.isdir(self.base_dir):
       print ' ############ Base Directory exists ###############'
+      os.rmdir(self.base_dir)
+    fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
+    conda_call = [fpath]+packages
+    subprocess.call(conda_call)
+    exit() 
 
   def build_dependencies(self, packages=None):
     # Build in the correct dependency order.
@@ -769,6 +776,7 @@ Installation of Python packages may fail.
     ]
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:
+      os.chdir(op.join(self.base_dir,'..'))
       self.install_with_conda(conda_pkg_list, extra_opts=[])
     packages_order = []
     for i in packages:
