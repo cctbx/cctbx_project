@@ -256,14 +256,14 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("indices", experiment_list_indices_pointers::crystal())
       .def("indices", experiment_list_indices_pointers::object())
       .def("where", &ExperimentList::where, (
-        arg("beam")       = boost::shared_ptr<BeamBase>(),
-        arg("detector")   = boost::shared_ptr<Detector>(),
+        arg("beam") = boost::shared_ptr<BeamBase>(),
+        arg("detector") = boost::shared_ptr<Detector>(),
         arg("goniometer") = boost::shared_ptr<Goniometer>(),
-        arg("scan")       = boost::shared_ptr<Scan>(),
-        arg("crystal")    = boost::shared_ptr<CrystalBase>(),
-        arg("profile")    = boost::python::object(),
-        arg("imageset")   = boost::python::object(),
-        arg("scaling_model")   = boost::python::object()))
+        arg("scan") = boost::shared_ptr<Scan>(),
+        arg("crystal") = boost::shared_ptr<CrystalBase>(),
+        arg("profile") = boost::python::object(),
+        arg("imageset") = boost::python::object(),
+        arg("scaling_model") = boost::python::object()))
       .def("is_consistent", &ExperimentList::is_consistent)
       .def("__len__", &ExperimentList::size)
       .def_pickle(ExperimentListPickleSuite());

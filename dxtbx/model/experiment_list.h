@@ -412,10 +412,11 @@ namespace dxtbx { namespace model {
       }
       scitbx::af::shared<std::size_t> result;
       for (std::size_t i = 0; i < size(); ++i) {
-         if (data_[i].get_profile() == obj || data_[i].get_imageset() == obj ||
-           data_[i].get_scaling_model() == obj) {
-           result.push_back(i);
-         }
+        if (data_[i].get_profile() == obj ||
+            data_[i].get_imageset() == obj ||
+            data_[i].get_scaling_model() == obj) {
+          result.push_back(i);
+        }
       }
       return result;
     }

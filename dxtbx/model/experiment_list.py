@@ -9,6 +9,7 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 from __future__ import absolute_import, division
+import pkg_resources
 from dxtbx.model import Experiment, ExperimentList
 
 class InvalidExperimentListError(RuntimeError):
@@ -418,8 +419,10 @@ class ExperimentListDict(object):
   @staticmethod
   def _scaling_model_from_dict(obj):
     ''' Get the scaling model from a dictionary. '''
-    from dxtbx.model import ScalingModelFactory
-    return ScalingModelFactory.from_dict(obj)
+    for entry_point in pkg_resources.iter_entry_points(
+      'dxtbx.scaling_model_ext'):
+      if entry_point.name == obj['__id__']:
+        return entry_point.load().from_dict(obj) 
 
   @staticmethod
   def _from_file(filename):
@@ -498,7 +501,7 @@ class ExperimentListDumper(object):
         if 'profile' in e:
           e['profile'] = plist[e['profile']][0]
         if 'scaling_model' in e:
-          e['scaling_model'] = plist[e['scaling_model']][0]
+          e['scaling_model'] = scalelist[e['scaling_model']][0]
 
       to_write = ilist + blist + dlist + glist + \
                  slist + clist + plist + scalelist + [(filename, edict)]

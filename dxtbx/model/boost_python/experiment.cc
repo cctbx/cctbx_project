@@ -97,13 +97,13 @@ namespace dxtbx { namespace model { namespace boost_python {
           boost::python::object,
           boost::python::object,
           boost::python::object>((
-              arg("beam")       = boost::shared_ptr<BeamBase>(),
-              arg("detector")   = boost::shared_ptr<Detector>(),
+              arg("beam") = boost::shared_ptr<BeamBase>(),
+              arg("detector") = boost::shared_ptr<Detector>(),
               arg("goniometer") = boost::shared_ptr<Goniometer>(),
-              arg("scan")       = boost::shared_ptr<Scan>(),
-              arg("crystal")    = boost::shared_ptr<CrystalBase>(),
-              arg("profile")    = boost::python::object(),
-              arg("imageset")   = boost::python::object(),
+              arg("scan") = boost::shared_ptr<Scan>(),
+              arg("crystal") = boost::shared_ptr<CrystalBase>(),
+              arg("profile") = boost::python::object(),
+              arg("imageset") = boost::python::object(),
               arg("scaling_model") = boost::python::object())))
       .add_property(
           "beam",
