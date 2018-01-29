@@ -1882,6 +1882,7 @@ class DIALSBuilder(CCIBuilder):
   def add_conda(self, extra_opts=[]):
     super(DIALSBuilder, self).add_conda(
       extra_opts=['--dials',
+                  '--with-conda',
                   #'--wxpython3'
                  ] + extra_opts)
 
