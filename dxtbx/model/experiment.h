@@ -132,12 +132,12 @@ namespace dxtbx { namespace model {
      * Compare this experiment with another
      */
     bool operator==(const Experiment &other) const {
-      return imageset_   == other.imageset_
-          && beam_       == other.beam_
-          && detector_   == other.detector_
+      return imageset_ == other.imageset_
+          && beam_ == other.beam_
+          && detector_ == other.detector_
           && goniometer_ == other.goniometer_
-          && scan_       == other.scan_
-          && profile_    == other.profile_
+          && scan_ == other.scan_
+          && profile_ == other.profile_
           && scaling_model_ == other.scaling_model_;
     }
 
