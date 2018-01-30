@@ -4,7 +4,6 @@ import scitbx.lbfgs
 from cctbx import maptbx
 from cctbx.array_family import flex
 from mmtbx import utils
-import mmtbx.ncs.ncs_utils as ncs_utils
 from libtbx.test_utils import approx_equal
 from cctbx import crystal
 import mmtbx.refinement.minimization_ncs_constraints
