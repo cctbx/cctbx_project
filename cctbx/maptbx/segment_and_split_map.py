@@ -4257,6 +4257,30 @@ def get_bounds_for_helical_symmetry(params,
 
   return lower_bounds,upper_bounds
 
+def check_memory(map_data=None,ratio_needed=None,maximum_fraction_to_use=0.90,
+    out=sys.stdout):
+  map_size=map_data.size()/(1024*1024*1024)
+  needed_memory=ratio_needed*map_size
+  from libtbx.utils import guess_total_memory # returns total memory
+
+  bytes_total_memory=guess_total_memory()
+  if bytes_total_memory:
+    total_memory=bytes_total_memory/(1024*1024*1024)
+  else:
+    total_memory=None
+  print >>out,"\nMap size is " +\
+      "%.2f GB.  This will require about %.1f GB of memory" %(
+      map_size,needed_memory) +"\nfor this stage of analysis\n"
+  if total_memory:
+    print >>out,"Total memory on this computer is about %.1f GB." %(
+      total_memory)
+    if (needed_memory>= 0.5* total_memory):
+      print >>out,"\n ** WARNING:  It is possible that this computer may not"+\
+       " have **\n *** sufficient memory to complete this job. ***\n"
+    if (needed_memory >= maximum_fraction_to_use*total_memory):
+      raise Sorry("This computer does not have sufficient "+
+        "memory (%.0f GB needed) \nto run this job" %(needed_memory))
+
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   params=get_params_from_args(args)
@@ -4361,6 +4385,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     half_map_data_list.append(iotbx.ccp4_map.map_reader(
        file_name=params.input_files.half_map_file[1]).data.as_double())
 
+
+  # check on size right away
+  check_memory(map_data=map_data,ratio_needed=50,out=out)
 
   if params.map_modification.magnification and \
        params.map_modification.magnification!=1.0:
