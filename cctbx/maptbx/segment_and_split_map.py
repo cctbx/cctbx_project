@@ -1030,6 +1030,17 @@ master_phil = iotbx.phil.parse("""
         .type = int
         .help = "Size of resolve to use. "
         .style = hidden
+
+     memory_check = True
+        .type = bool
+        .help = Map-to-model checks to make sure you have enough memory on \
+                  your machine to run.  You can disable this by setting this \
+                  keyword to False. The estimates are approximate so it is \
+                  possible your job could run even if the check fails.  Note \
+                  the check does not take any other uses of the memory on \
+                  your machine into account.
+        .short_caption = Memory check
+
    }
 """, process_includes=True)
 master_params = master_phil
@@ -4258,8 +4269,11 @@ def get_bounds_for_helical_symmetry(params,
   return lower_bounds,upper_bounds
 
 def check_memory(map_data=None,ratio_needed=None,maximum_fraction_to_use=0.90,
+    maximum_map_size=1,
     out=sys.stdout):
   map_size=map_data.size()/(1024*1024*1024)
+  if map_size>maximum_map_size:
+     raise Sorry("Maximum map size for this tool is %s GB" %(maximum_map_size))
   needed_memory=ratio_needed*map_size
   from libtbx.utils import guess_total_memory # returns total memory
 
@@ -4387,7 +4401,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
 
   # check on size right away
-  check_memory(map_data=map_data,ratio_needed=50,out=out)
+  if params.control.memory_check:
+    # map_box and mask generation use about 50GB of memory for 
+    #    map with 1 billion elements
+    check_memory(map_data=map_data,ratio_needed=50,out=out)
 
   if params.map_modification.magnification and \
        params.map_modification.magnification!=1.0:
