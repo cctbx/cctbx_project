@@ -799,7 +799,7 @@ master_phil = iotbx.phil.parse("""
               the map. Also select just NCS operators relevant to that box. \
               Default is true if number of operators is at least \
               n_ops_to_use_au_box
-      .short_caption = select au box 
+      .short_caption = select au box
 
     n_ops_to_use_au_box = 20
       .type = int
@@ -810,7 +810,7 @@ master_phil = iotbx.phil.parse("""
     n_au_box = 3
       .type = int
       .help = Number of NCS copies to try and get inside au_box
-      .short_caption = N au box 
+      .short_caption = N au box
 
 
     lower_bounds = None
@@ -3283,7 +3283,7 @@ def select_remaining_ncs_ops( map_data=None,
     out=sys.stdout):
 
   # identify which NCS ops still apply.  Choose the ones that maximize
-  # scoring with score_ncs_in_map 
+  # scoring with score_ncs_in_map
 
   used_ncs_id_list=[ncs_object.ncs_groups()[0].identity_op_id()]
   ncs_copies=ncs_object.max_operators()
@@ -3297,7 +3297,7 @@ def select_remaining_ncs_ops( map_data=None,
 
   while improving:
     improving=False
-    working_best_ops_to_keep=deepcopy(best_ops_to_keep) 
+    working_best_ops_to_keep=deepcopy(best_ops_to_keep)
     working_score=None
     for ncs_id in xrange(ncs_copies):
       if ncs_id in best_ops_to_keep:continue
@@ -3306,7 +3306,7 @@ def select_remaining_ncs_ops( map_data=None,
       ncs_used_obj=ncs_object.deep_copy(ops_to_keep=ops_to_keep)
       score,ncs_cc=score_ncs_in_map(map_data=map_data,ncs_object=ncs_used_obj,
         ncs_in_cell_only=True,
-        allow_score_with_pg=False, 
+        allow_score_with_pg=False,
         sites_orth=closest_sites,
         crystal_symmetry=crystal_symmetry,out=null_out())
       if score is None: continue
@@ -3317,8 +3317,8 @@ def select_remaining_ncs_ops( map_data=None,
         best_score is None or working_score>best_score):
       improving=True
       best_score=working_score
-      best_ops_to_keep=deepcopy(working_best_ops_to_keep) 
-    
+      best_ops_to_keep=deepcopy(working_best_ops_to_keep)
+
   ncs_used_obj=ncs_object.deep_copy(ops_to_keep=best_ops_to_keep)
   return ncs_used_obj
 
@@ -3576,7 +3576,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
 
   if not ncs_object or ncs_object.max_operators()<2:
     return None,None
-     
+
   ncs_group=ncs_object.ncs_groups()[0]
       # don't use point-group symmetry if we have only some of the ops
   if allow_score_with_pg and (
@@ -3585,8 +3585,8 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
      map_data=map_data,ncs_object=ncs_object,
      sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
 
-	# This version does not assume point-group symmetry: find the NCS
-	#  operator that maps each point on to all others the best, then save
+        # This version does not assume point-group symmetry: find the NCS
+        #  operator that maps each point on to all others the best, then save
   #  that list of values
 
   identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
@@ -3624,7 +3624,7 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
          new_sites_cart)
       values=flex.double()
       for site_frac in new_sites_fract:
-        if (not ncs_in_cell_only) or ( 
+        if (not ncs_in_cell_only) or (
               site_frac[0]>=0 and site_frac[0]<=1 and  \
               site_frac[1]>=0 and site_frac[1]<=1 and  \
               site_frac[2]>=0 and site_frac[2]<=1):
@@ -4050,7 +4050,7 @@ def get_closest_sites(
     local_sites_cart=sites_cart[id:id+1]
     local_sites_cart.extend(get_ncs_sites_cart(sites_cart=local_sites_cart,
        ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
-       ncs_in_cell_only=True)) 
+       ncs_in_cell_only=True))
     if local_sites_cart.size() <ncs_copies: continue  # some were out of range
 
     xx=col((0.,0.,0.,))
@@ -4118,7 +4118,7 @@ def get_range(sites=None,unit_cell=None,map_data=None,
   print >>out,"            X        Y        Z"
   print >>out," LOW:  %7d    %7d     %7d " %(tuple([i_min,j_min,k_min]))
   print >>out," HIGH: %7d    %7d     %7d \n" %(tuple([i_max,j_max,k_max]))
- 
+
   return lower_bounds,upper_bounds
 
 def get_bounds_for_au_box(params,
@@ -4161,10 +4161,10 @@ def get_bounds_for_au_box(params,
      tuple(cutout_center))
 
   # now figure out box that contains at least one copy of each ncs-related
-  #  point.   
+  #  point.
 
-  # Find closest ncs-related points for each unique random point to this 
-  # center. Starting box is the box that contains all of these. 
+  # Find closest ncs-related points for each unique random point to this
+  # center. Starting box is the box that contains all of these.
 
   closest_sites=get_closest_sites(
     high_points=high_points,
@@ -4275,7 +4275,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   from cctbx.maptbx.auto_sharpen import set_sharpen_params
   params=set_sharpen_params(params,out)
 
-  if (not params.map_modification.auto_sharpen or 
+  if (not params.map_modification.auto_sharpen or
        params.map_modification.b_iso is not None) and (
     not params.crystal_info.molecular_mass and
     not params.crystal_info.solvent_content and
@@ -4442,7 +4442,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
-          
+
     print >>out,"\nTrimming map to density..."
     # turn off density_select_in_auto_sharpen in case it was on...
     if params.map_modification.density_select_in_auto_sharpen:
@@ -4523,7 +4523,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         random_points=params.reconstruction_symmetry.random_points,
         ncs_object=box.ncs_object,
         out=out)
-       
+
     score,ncs_cc=score_ncs_in_map(map_data=box.map_box.as_double(),
         allow_score_with_pg=False,
         ncs_object=box.ncs_object,ncs_in_cell_only=True,
@@ -4598,7 +4598,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       from mmtbx.ncs.ncs import ncs
       shifted_ncs_object=ncs()
       shifted_ncs_object.set_unit_ncs()
- 
+
   else:  # shift if necessary...
     shift_needed = not \
         (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
@@ -4645,7 +4645,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   map_ncs_center=matrix.col(map_ncs_center)+matrix.col(origin_shift) # New ctr
 
 
-  # Get or check NCS operators 
+  # Get or check NCS operators
   ncs_obj_to_check=None
   if params.reconstruction_symmetry.ncs_type and (not params.input_files.ncs_file):
     center_try_list=[True,False]
