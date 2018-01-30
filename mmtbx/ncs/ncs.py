@@ -1459,6 +1459,11 @@ class ncs:
     self._ncs_read=True
 
 
+  def select_first_ncs_group(self):
+    # just keep the first ncs group and remove others:
+    self._ncs_groups=self._ncs_groups[:1]
+    return self
+
   def set_unit_ncs(self):  # just make a single ncs operator
 
     self.init_ncs_group()

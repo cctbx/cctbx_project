@@ -793,6 +793,39 @@ master_phil = iotbx.phil.parse("""
 
   segmentation {
 
+    select_au_box = None
+      .type = bool
+      .help = Select box containing at least one representative region of \
+              the map. Also select just NCS operators relevant to that box. \
+              Default is true if number of operators is at least \
+              n_ops_to_use_au_box
+      .short_caption = select au box 
+
+    n_ops_to_use_au_box = 20
+      .type = int
+      .help = If number of operators is this big or more and \
+              select_au_box is None, set it to True.
+      .short_caption = N ops to use au_box
+
+    n_au_box = 3
+      .type = int
+      .help = Number of NCS copies to try and get inside au_box
+      .short_caption = N au box 
+
+
+    lower_bounds = None
+      .type = ints
+      .help = You can select a part of your map for analysis with \
+              lower_bounds and upper_bounds.
+      .short_caption = Lower bounds
+
+    upper_bounds = None
+      .type = ints
+      .help = You can select a part of your map for analysis with \
+              lower_bounds and upper_bounds.
+      .short_caption = Upper bounds
+
+
     density_select = True
       .type = bool
       .help = Run map_box with density_select=True to cut out the region \
@@ -3199,7 +3232,7 @@ def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
     map_data=fft_map.real_map_unpadded()
     return map_data
 
-def find_ncs_center(map_data,crystal_symmetry=None):
+def find_ncs_center(map_data,crystal_symmetry=None,out=sys.stdout):
   # find center if necessary:
   origin=list(map_data.origin())
   all=list(map_data.all())
@@ -3226,11 +3259,11 @@ def find_ncs_center(map_data,crystal_symmetry=None):
       centroid_w[ai]+=mean_value
     if centroid_w[ai]>0:
       centroid_wx[ai]=centroid_wx[ai]/centroid_w[ai]
-  print "CENTROID OF DENSITY: (%7.2f, %7.2f, %7.2f) (grid units) " %(
+  print >>out,"CENTROID OF DENSITY: (%7.2f, %7.2f, %7.2f) (grid units) " %(
     tuple((centroid_wx[0],centroid_wx[1],centroid_wx[2],)))
   xyz_fract=matrix.col((centroid_wx[0]/all[0],centroid_wx[1]/all[1],centroid_wx[2]/all[2],))
   xyz_cart=crystal_symmetry.unit_cell().orthogonalize(xyz_fract)
-  print "CENTROID (A): (%7.3f, %7.3f, %7.3f) " %(
+  print >>out,"CENTROID (A): (%7.3f, %7.3f, %7.3f) " %(
     tuple(xyz_cart))
   return xyz_cart
 
@@ -3240,6 +3273,54 @@ def get_center_of_map(map_data,crystal_symmetry):
   sx,sy,sz=[all[0]/2+origin[0],all[1]/2+origin[1],all[2]/2+origin[2]]
   site_fract=matrix.col((sx/all[0],sy/all[1],sz/all[2],))
   return crystal_symmetry.unit_cell().orthogonalize(site_fract)
+
+
+def select_remaining_ncs_ops( map_data=None,
+    crystal_symmetry=None,
+    random_points=None,
+    closest_sites=None,
+    ncs_object=None,
+    out=sys.stdout):
+
+  # identify which NCS ops still apply.  Choose the ones that maximize
+  # scoring with score_ncs_in_map 
+
+  used_ncs_id_list=[ncs_object.ncs_groups()[0].identity_op_id()]
+  ncs_copies=ncs_object.max_operators()
+
+  # find ncs_id that maximizes score (if any)
+  improving=True
+  from copy import deepcopy
+  best_ops_to_keep=deepcopy(used_ncs_id_list)
+  working_best_ops_to_keep=None
+  best_score=None
+
+  while improving:
+    improving=False
+    working_best_ops_to_keep=deepcopy(best_ops_to_keep) 
+    working_score=None
+    for ncs_id in xrange(ncs_copies):
+      if ncs_id in best_ops_to_keep:continue
+      ops_to_keep=deepcopy(best_ops_to_keep)
+      ops_to_keep.append(ncs_id)
+      ncs_used_obj=ncs_object.deep_copy(ops_to_keep=ops_to_keep)
+      score,ncs_cc=score_ncs_in_map(map_data=map_data,ncs_object=ncs_used_obj,
+        ncs_in_cell_only=True,
+        allow_score_with_pg=False, 
+        sites_orth=closest_sites,
+        crystal_symmetry=crystal_symmetry,out=null_out())
+      if score is None: continue
+      if working_score is None or score >working_score:
+        working_score=score
+        working_best_ops_to_keep=deepcopy(ops_to_keep)
+    if working_score is not None and (
+        best_score is None or working_score>best_score):
+      improving=True
+      best_score=working_score
+      best_ops_to_keep=deepcopy(working_best_ops_to_keep) 
+    
+  ncs_used_obj=ncs_object.deep_copy(ops_to_keep=best_ops_to_keep)
+  return ncs_used_obj
 
 def get_ncs_from_map(map_data=None,
       map_ncs_center=None,
@@ -3251,12 +3332,14 @@ def get_ncs_from_map(map_data=None,
       op_max=None,
       crystal_symmetry=None,
       optimize_center=None,
+      sites_orth=None,
       random_points=None,
       n_rescore=None,
       use_center_of_map_as_center=None,
       min_ncs_cc=None,
       identify_ncs_id=None,
       ncs_obj_to_check=None,
+      ncs_in_cell_only=False,
       out=sys.stdout):
 
   # Purpose: check through standard point groups and helical symmetry to see
@@ -3285,8 +3368,10 @@ def get_ncs_from_map(map_data=None,
     print >>out,"Using center of map as NCS center"
     ncs_center=map_ncs_center
   else: # Find it
-    print >>out,"Finding NCS center as it is not supplied"
-    ncs_center=find_ncs_center(map_data,crystal_symmetry=crystal_symmetry)
+    if not ncs_obj_to_check:
+      print >>out,"Finding NCS center as it is not supplied"
+    ncs_center=find_ncs_center(map_data,crystal_symmetry=crystal_symmetry,
+       out=out)
   print >>out,"Center of NCS (A): (%7.3f, %7.3f, %7.3f) " %(
     tuple(ncs_center))
 
@@ -3303,7 +3388,9 @@ def get_ncs_from_map(map_data=None,
    )
 
   print >>out,"Total of %d NCS types to examine..." %(len(ncs_list))
-  sites_orth=get_points_in_map(map_data,n=random_points,crystal_symmetry=crystal_symmetry)
+  if not sites_orth:
+    sites_orth=get_points_in_map(
+     map_data,n=random_points,crystal_symmetry=crystal_symmetry)
   # some random points in the map
 
   # Now make sure symmetry applied to points in points_list gives similar values
@@ -3312,13 +3399,14 @@ def get_ncs_from_map(map_data=None,
   for ncs_obj,ncs_type in zip(ncs_list,ncs_type_list):
     score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
        identify_ncs_id=identify_ncs_id,
+       ncs_in_cell_only=ncs_in_cell_only,
       sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
     if score is None:
       print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
     else:
       results_list.append([score,cc_avg,ncs_obj,ncs_type])
   if not results_list:
-    return None
+    return None,None,None
 
   results_list.sort()
   results_list.reverse()
@@ -3333,6 +3421,7 @@ def get_ncs_from_map(map_data=None,
     for orig_score,orig_cc_avg,ncs_obj,ncs_type in results_list[:n_rescore]:
       score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
         identify_ncs_id=identify_ncs_id,
+        ncs_in_cell_only=ncs_in_cell_only,
         sites_orth=new_sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       if score is None:
         print >>out,"ncs_type:",ncs_type," no score",ncs_obj.max_operators()
@@ -3361,18 +3450,19 @@ def get_ncs_from_map(map_data=None,
        op_max=op_max,
        identify_ncs_id=identify_ncs_id,
        ncs_obj_to_check=ncs_obj_to_check,
+       ncs_in_cell_only=ncs_in_cell_only,
        helical_trans_z_angstrom=helical_trans_z_angstrom,out=out)
     print >>out,"New center: (%7.3f, %7.3f, %7.3f)" %(tuple(ncs_center))
 
   if cc_avg < min_ncs_cc:
     print >>out,"No suitable symmetry found with center of map as center...\n"
-    return None
+    return None,None,None
 
   print >>out,"\nBest NCS type is: ",
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   print >>out," %6.2f  %5.2f    %2d          %s" %(
        score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
-  return ncs_obj
+  return ncs_obj,cc_avg,score
 
 
 def optimize_center_position(map_data,sites_orth,crystal_symmetry,
@@ -3382,6 +3472,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      op_max=None,
      identify_ncs_id=None,
      ncs_obj_to_check=None,
+     ncs_in_cell_only=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
   ncs_type=ncs_info.split()[0]
@@ -3419,6 +3510,7 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
         ncs_obj=ncs_list[0]
         score,cc_avg=score_ncs_in_map(map_data=map_data,ncs_object=ncs_obj,
           identify_ncs_id=identify_ncs_id,
+          ncs_in_cell_only=ncs_in_cell_only,
           sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
       else:
         ncs_obj=None
@@ -3478,21 +3570,33 @@ def get_cc_among_value_lists(all_value_lists):
 
 def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
      identify_ncs_id=None,
+     ncs_in_cell_only=None,
+     allow_score_with_pg=True,
      crystal_symmetry=None,out=sys.stdout):
 
+  if not ncs_object or ncs_object.max_operators()<2:
+    return None,None
+     
   ncs_group=ncs_object.ncs_groups()[0]
-  if (not identify_ncs_id) or ncs_group.is_point_group_symmetry():
+      # don't use point-group symmetry if we have only some of the ops
+  if allow_score_with_pg and (
+     (not identify_ncs_id) or ncs_group.is_point_group_symmetry()):
     return score_ncs_in_map_point_group_symmetry(
      map_data=map_data,ncs_object=ncs_object,
      sites_orth=sites_orth,crystal_symmetry=crystal_symmetry,out=out)
 
-  # This version does not assume point-group symmetry: find the NCS
-  #  operator that maps each point on to all others the best, then save
+	# This version does not assume point-group symmetry: find the NCS
+	#  operator that maps each point on to all others the best, then save
   #  that list of values
 
   identify_ncs_id_list=list(xrange(ncs_group.n_ncs_oper()))+[None]
 
   all_value_lists=[]
+
+  if not sites_orth:
+    sites_orth=get_points_in_map(map_data,n=100,
+    minimum_fraction_of_max=0.05,
+    crystal_symmetry=crystal_symmetry)
 
   for site in sites_orth:
     best_id=0
@@ -3519,8 +3623,15 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
       new_sites_fract=crystal_symmetry.unit_cell().fractionalize(
          new_sites_cart)
       values=flex.double()
-      for site_fract in new_sites_fract:
-        values.append(map_data.value_at_closest_grid_point(site_fract))
+      for site_frac in new_sites_fract:
+        if (not ncs_in_cell_only) or ( 
+              site_frac[0]>=0 and site_frac[0]<=1 and  \
+              site_frac[1]>=0 and site_frac[1]<=1 and  \
+              site_frac[2]>=0 and site_frac[2]<=1):
+          values.append(map_data.value_at_closest_grid_point(site_frac))
+        else:
+          values.append(0.)
+
       score=values.standard_deviation_of_the_sample()
       if real_thing or (best_score is None or score < best_score):
           best_score=score
@@ -3540,21 +3651,37 @@ def score_ncs_in_map(map_data=None,ncs_object=None,sites_orth=None,
     new_all_values_lists.append(values_by_site_dict[i])
   return get_cc_among_value_lists(new_all_values_lists)
 
-def get_points_in_map(map_data,n=None,max_tries_ratio=100,crystal_symmetry=None):
+def get_points_in_map(map_data,n=None,
+      minimum_fraction_of_max=0.,
+      random_xyz=None,
+      max_tries_ratio=100,crystal_symmetry=None):
   map_1d=map_data.as_1d()
   map_mean=map_1d.min_max_mean().mean
   map_max=map_1d.min_max_mean().max
+  minimum_value=map_mean+minimum_fraction_of_max*(map_max-map_mean)
   points_list=flex.vec3_double()
   import random
+  random.seed(1)
+
   nu,nv,nw=map_data.all()
-  xyz_fract=crystal_symmetry.unit_cell().fractionalize(tuple((17.4,27.40128571,27.32985714,)))
+  xyz_fract=crystal_symmetry.unit_cell().fractionalize(
+       tuple((17.4,27.40128571,27.32985714,)))
   for i in xrange(int(max_tries_ratio*n)): # max tries
     ix=random.randint(0,nu-1)
     iy=random.randint(0,nv-1)
     iz=random.randint(0,nw-1)
     xyz_fract=matrix.col((ix/nu,iy/nv,iz/nw,))
     value=map_data.value_at_closest_grid_point(xyz_fract)
-    if value > map_mean and value <map_max:
+    if value > minimum_value and value <map_max:
+      if random_xyz:
+         offset=[]
+         for i in xrange(3):
+           offset.append((random.random()-0.5)*2.*random_xyz)
+         offset=crystal_symmetry.unit_cell().fractionalize(matrix.col(offset))
+         new_xyz_fract=[]
+         for x,o in zip(xyz_fract,offset):
+           new_xyz_fract.append(max(0,min(1,x+o)))
+         xyz_fract=matrix.col(new_xyz_fract)
       points_list.append(xyz_fract)
       if points_list.size()>=n: break
   sites_orth=crystal_symmetry.unit_cell().orthogonalize(points_list)
@@ -3873,8 +4000,250 @@ def get_max_z_range_for_helical_symmetry(params,out=sys.stdout):
       " apply\n Z restriction\n"
   return max_z
 
+def dist(x,y):
+  dd=0.
+  for a,b in zip(x,y):
+    dd+=(a-b)**2
+  return dd**0.5
 
-def get_bounds_for_helical_symmetry(params,args=None,
+def get_ncs_closest_sites(
+    closest_sites=None,
+    sites_cart=None,
+    used_ncs_id_list=None,
+    box_ncs_object=None,
+    box_crystal_symmetry=None,
+    out=sys.stdout):
+
+  # try to find NCS ops mapping sites_cart close to closest_sites
+
+  best_id=None
+  best_rms=None
+  best_sites=closest_sites.deep_copy()
+  for ncs_id in xrange(box_ncs_object.max_operators()):
+    if ncs_id in used_ncs_id_list: continue
+
+    test_sites=closest_sites.deep_copy()
+    ncs_sites_cart=get_ncs_sites_cart(sites_cart=sites_cart,
+       ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
+       ncs_id=ncs_id,
+       ncs_in_cell_only=False)
+    test_sites.extend(ncs_sites_cart)
+    rms=radius_of_gyration_of_vector(test_sites)
+    if best_rms is None or rms < best_rms:
+      best_rms=rms
+      best_ncs_id=ncs_id
+      best_sites=test_sites.deep_copy()
+  used_ncs_id_list.append(best_ncs_id)
+  return best_sites,used_ncs_id_list
+
+def get_closest_sites(
+    high_points=None,
+    sites_cart=None,
+    box_ncs_object=None,
+    box_crystal_symmetry=None,
+    out=sys.stdout):
+
+  ncs_copies=box_ncs_object.max_operators()
+  closest_sites=high_points
+  from scitbx.matrix import col
+  for id in xrange(sites_cart.size()):
+    local_sites_cart=sites_cart[id:id+1]
+    local_sites_cart.extend(get_ncs_sites_cart(sites_cart=local_sites_cart,
+       ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
+       ncs_in_cell_only=True)) 
+    if local_sites_cart.size() <ncs_copies: continue  # some were out of range
+
+    xx=col((0.,0.,0.,))
+    for site in closest_sites:
+      xx+=col(site)
+    xx=xx/max(1,closest_sites.size())
+    target=flex.vec3_double()
+    target.append(xx)
+
+    dd,id1,id2=target.min_distance_between_any_pair_with_id(
+       local_sites_cart)
+    best_points=local_sites_cart[id2:id2+1]
+    closest_sites.extend(best_points)
+  return closest_sites[1:]
+
+def get_range(sites=None,unit_cell=None,map_data=None,
+   boundary_tolerance=None,out=sys.stdout):
+  x_values=flex.double()
+  y_values=flex.double()
+  z_values=flex.double()
+  for site_cart in sites:
+    (x,y,z)=tuple(site_cart)
+    x_values.append(x)
+    y_values.append(y)
+    z_values.append(z)
+  x_min_max_mean=x_values.min_max_mean()
+  x_min=x_min_max_mean.min
+  x_max=x_min_max_mean.max
+  y_min_max_mean=y_values.min_max_mean()
+  y_min=y_min_max_mean.min
+  y_max=y_min_max_mean.max
+  z_min_max_mean=z_values.min_max_mean()
+  z_min=z_min_max_mean.min
+  z_max=z_min_max_mean.max
+  print >>out,"\nRange for box:"
+  print >>out,"            X        Y        Z"
+  print >>out," LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min]))
+  print >>out," HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max]))
+
+  # move to 0, 1 if near ends
+  if x_min<=boundary_tolerance: x_min=0.
+  if y_min<=boundary_tolerance: y_min=0.
+  if z_min<=boundary_tolerance: z_min=0.
+  a,b,c,al,bet,gam=unit_cell.parameters()
+  if x_min>=a-boundary_tolerance: x_min=a
+  if y_min>=b-boundary_tolerance: y_min=b
+  if z_min>=c-boundary_tolerance: z_min=c
+  print >>out,"\nAdjusted range for box:"
+  print >>out,"            X        Y        Z"
+  print >>out," LOW:  %7.1f    %7.1f     %7.1f " %(tuple([x_min,y_min,z_min]))
+  print >>out," HIGH: %7.1f    %7.1f     %7.1f \n" %(tuple([x_max,y_max,z_max]))
+
+  nx,ny,nz=map_data.all()
+  # convert to grid units
+  i_min=max(0,min(nx,int(0.5+nx*x_min/a)))
+  j_min=max(0,min(ny,int(0.5+ny*y_min/b)))
+  k_min=max(0,min(nz,int(0.5+nz*z_min/c)))
+  i_max=max(0,min(nx,int(0.5+nx*x_max/a)))
+  j_max=max(0,min(ny,int(0.5+ny*y_max/b)))
+  k_max=max(0,min(nz,int(0.5+nz*z_max/c)))
+  lower_bounds=[i_min,j_min,k_min]
+  upper_bounds=[i_max,j_max,k_max]
+
+  print >>out,"\nGrid bounds for box:"
+  print >>out,"            X        Y        Z"
+  print >>out," LOW:  %7d    %7d     %7d " %(tuple([i_min,j_min,k_min]))
+  print >>out," HIGH: %7d    %7d     %7d \n" %(tuple([i_max,j_max,k_max]))
+ 
+  return lower_bounds,upper_bounds
+
+def get_bounds_for_au_box(params,
+     box=None,out=sys.stdout):
+
+  # Try to get bounds for a box that include one au
+
+  if not box.ncs_object or box.ncs_object.max_operators()<2:
+    return None,None,None
+
+  box_ncs_object=box.ncs_object
+  box_map_data=box.map_box.as_double()
+  box_crystal_symmetry=box.box_crystal_symmetry
+  random_points=10*params.reconstruction_symmetry.random_points
+
+  sites_cart=get_points_in_map(box_map_data,n=random_points,
+    minimum_fraction_of_max=params.segmentation.density_select_threshold,
+    random_xyz=params.crystal_info.resolution*2.,
+    crystal_symmetry=box_crystal_symmetry)
+  assert sites_cart.size() >0
+
+  # apply symmetry to sites_orth and see where the molecule is
+  ncs_sites_cart=get_ncs_sites_cart(sites_cart=sites_cart,
+       ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
+       ncs_in_cell_only=True)
+
+  low_res_map_data=get_low_res_map_data(sites_cart=ncs_sites_cart,
+    d_min=params.crystal_info.resolution*7.,
+    map_data=box_map_data,
+    crystal_symmetry=box_crystal_symmetry,
+    out=out)
+
+  high_points=get_high_points_from_map(  # actually returns just one.
+        map_data=low_res_map_data,
+        unit_cell=box_crystal_symmetry.unit_cell(),out=out)
+  from scitbx.matrix import col
+  high_points=high_points[0:1]
+  cutout_center=col(high_points[0])
+  print "Center of box will be near (%7.1f,%7.1f,%7.1f)" %(
+     tuple(cutout_center))
+
+  # now figure out box that contains at least one copy of each ncs-related
+  #  point.   
+
+  # Find closest ncs-related points for each unique random point to this 
+  # center. Starting box is the box that contains all of these. 
+
+  closest_sites=get_closest_sites(
+    high_points=high_points,
+    sites_cart=sites_cart,
+    box_ncs_object=box_ncs_object,
+    box_crystal_symmetry=box_crystal_symmetry,
+    out=out)
+  if closest_sites.size()<1:
+    print >>out,"\nNo sites representing au of map found...skipping au box\n"
+    return None,None,None
+
+  print >>out,"\nTotal of %d sites representing 1 au found" %(
+      closest_sites.size())
+
+  # write out closest_sites to match original position
+  coordinate_offset=-1*matrix.col(box.shift_cart)
+  write_atoms(file_name='one_au.pdb',
+      crystal_symmetry=box_crystal_symmetry,sites=closest_sites+coordinate_offset)
+
+  unique_closest_sites=closest_sites.deep_copy()
+  # Now if desired, find NCS-related groups of sites
+  if params.segmentation.n_au_box >1:
+    print >>out,"\nFinding up to %d related au" %(params.segmentation.n_au_box)
+    print >>out,"Starting RMSD of sites: %7.1f A " %(
+       radius_of_gyration_of_vector(closest_sites))
+
+    sites_orig=closest_sites.deep_copy()
+    used_ncs_id_list=[box_ncs_object.ncs_groups()[0].identity_op_id()]
+    for i in xrange(params.segmentation.n_au_box-1):
+      closest_sites,used_ncs_id_list=get_ncs_closest_sites(
+        used_ncs_id_list=used_ncs_id_list,
+        closest_sites=closest_sites,
+        sites_cart=sites_orig,
+        box_ncs_object=box_ncs_object,
+        box_crystal_symmetry=box_crystal_symmetry,
+        out=out)
+    print >>out,"\nNew total of %d sites representing %d au found" %(
+      closest_sites.size(),params.segmentation.n_au_box)
+    print >>out,"New rmsd: %7.1f A " %(
+       radius_of_gyration_of_vector(closest_sites))
+    write_atoms(file_name='more_au.pdb',crystal_symmetry=box_crystal_symmetry,sites=closest_sites+coordinate_offset)
+    write_ccp4_map(box_crystal_symmetry,"more_au.ccp4",box_map_data)
+
+  lower_bounds,upper_bounds=get_range(
+     sites=closest_sites,map_data=box_map_data,
+     boundary_tolerance=params.crystal_info.resolution,
+     unit_cell=box_crystal_symmetry.unit_cell(),
+     out=out)
+  return lower_bounds,upper_bounds,unique_closest_sites+coordinate_offset
+
+def get_low_res_map_data(sites_cart=None,
+    map_data=None,
+    crystal_symmetry=None,
+    d_min=None,
+    out=sys.stdout):
+
+    from cctbx import xray
+    xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
+    unit_cell=crystal_symmetry.unit_cell()
+    sites_fract=unit_cell.fractionalize(sites_cart)
+    for xyz_fract in sites_fract:
+      scatterers.append( xray.scatterer(scattering_type="H", label="H",
+        site=xyz_fract, u=0, occupancy=1.0))
+    xrs = xray.structure(xrs, scatterers=scatterers)
+    f_array,phases=get_f_phases_from_map(map_data=map_data,
+       crystal_symmetry=crystal_symmetry,
+       d_min=d_min,
+       scale_max=100000.,
+       get_remove_aniso_object=False,# don't need it
+       out=out)
+
+    weight_f_array=f_array.structure_factors_from_scatterers(
+      algorithm = 'direct',
+      xray_structure = xrs).f_calc()
+
+    return get_map_from_map_coeffs(map_coeffs=weight_f_array,
+      crystal_symmetry=crystal_symmetry)
+
+def get_bounds_for_helical_symmetry(params,
      box=None,crystal_symmetry=None):
   original_cell=box.map_data.all()
   new_cell=box.map_box.all()
@@ -3892,11 +4261,7 @@ def get_bounds_for_helical_symmetry(params,args=None,
   lower_bounds[2]=new_z_first
   upper_bounds[2]=new_z_last
 
-  new_args=[]
-  for arg in args:
-    if not arg.startswith('density_select'):
-      new_args.append(arg)
-  return new_args,lower_bounds,upper_bounds
+  return lower_bounds,upper_bounds
 
 def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
@@ -3910,7 +4275,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   from cctbx.maptbx.auto_sharpen import set_sharpen_params
   params=set_sharpen_params(params,out)
 
-  if not params.map_modification.auto_sharpen and (
+  if (not params.map_modification.auto_sharpen or 
+       params.map_modification.b_iso is not None) and (
     not params.crystal_info.molecular_mass and
     not params.crystal_info.solvent_content and
     not params.input_files.seq_file):
@@ -3960,7 +4326,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     print >>out,"Loading tracking data from %s" %(
       params.input_files.info_file)
     tracking_data=easy_pickle.load(params.input_files.info_file)
-    return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
+    return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
   else:
     tracking_data=info_object()
     tracking_data.set_params(params)
@@ -4076,13 +4442,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
+          
     print >>out,"\nTrimming map to density..."
     # turn off density_select_in_auto_sharpen in case it was on...
     if params.map_modification.density_select_in_auto_sharpen:
       params.map_modification.density_select_in_auto_sharpen=False
       print >>out,"Turning off density_select_in_auto_sharpen as "+\
          "it will be done here"
-    args=["density_select=True","output_format=ccp4"]
+    args= ["output_format=ccp4"]
     if params.segmentation.density_select_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
        params.segmentation.density_select_threshold)
@@ -4100,15 +4467,72 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        "density_select")
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
-    box=run_map_box(args,log=out)
 
-    # Run again for helical symmetry
-    if params.map_modification.restrict_z_distance_for_helical_symmetry:
-      args,lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
-         args=args,crystal_symmetry=crystal_symmetry,box=box)
+    if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
+      bounds_supplied=True
+      print >>out,"\nRunning map_box with supplied bounds"
+      box=run_map_box(args,lower_bounds=params.segmentation.lower_bounds,
+          upper_bounds=params.segmentation.upper_bounds, log=out)
+    else:
+      bounds_supplied=False
+      box=run_map_box(["density_select=True"]+args,log=out)
+      #box=run_map_box(["keep_map_size=True"]+args,log=out)
+
+    # Run again to select au box
+    shifted_unique_closest_sites=None
+    if params.segmentation.select_au_box is None and  box.ncs_object and \
+        box.ncs_object.max_operators() >= params.segmentation.n_ops_to_use_au_box:
+      params.segmentation.select_au_box=True
+      print >>out,"Setting select_au_box to True as there are % operators" %(
+        box.ncs_object.max_operators())
+    if params.segmentation.select_au_box and not bounds_supplied:
+      bounds_supplied=True
+      lower_bounds,upper_bounds,unique_closest_sites=get_bounds_for_au_box(
+         params, box=box,out=out) #unique_closest_sites relative to original map
+
+      score,ncs_cc=score_ncs_in_map(map_data=box.map_box.as_double(),
+        allow_score_with_pg=False,
+        sites_orth=unique_closest_sites+box.shift_cart,
+        ncs_object=box.ncs_object,ncs_in_cell_only=True,
+        crystal_symmetry=box.box_crystal_symmetry,out=null_out())
+      print >>out,"NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
+         ncs_cc,score,box.ncs_object.max_operators())
+
+      if lower_bounds and upper_bounds:
+        print >>out,"\nRunning map-box again with boxed range ..."
+        box=run_map_box(args,lower_bounds=lower_bounds,
+          upper_bounds=upper_bounds, log=out)
+      shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
+
+    # Or run again for helical symmetry
+    elif params.map_modification.restrict_z_distance_for_helical_symmetry and \
+       not bounds_supplied:
+      bounds_supplied=True
+      lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
+         crystal_symmetry=crystal_symmetry,box=box)
       print >>out,"\nRunning map-box again with restricted Z range ..."
       box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
         log=out)
+
+    if bounds_supplied and box.ncs_object:
+      print >>out,"Selecting remaining NCS operators"
+      box.ncs_object=select_remaining_ncs_ops(
+        map_data=box.map_box.as_double(),
+        crystal_symmetry=box.box_crystal_symmetry,
+        closest_sites=shifted_unique_closest_sites,
+        random_points=params.reconstruction_symmetry.random_points,
+        ncs_object=box.ncs_object,
+        out=out)
+       
+    score,ncs_cc=score_ncs_in_map(map_data=box.map_box.as_double(),
+        allow_score_with_pg=False,
+        ncs_object=box.ncs_object,ncs_in_cell_only=True,
+        sites_orth=shifted_unique_closest_sites,
+        crystal_symmetry=box.box_crystal_symmetry,out=null_out())
+
+    if score is not None:
+      print >>out,"NCS CC after selections: %7.2f   SCORE: %7.1f " %(
+       ncs_cc,score)
 
     if box.unit_cell_parameters_from_ccp4_map and \
        box.unit_cell_parameters_deduced_from_map_grid and \
@@ -4169,7 +4593,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       print >>out,\
         "\nSolvent fraction from soft mask procedure: %7.2f (not used)\n" %(
         soft_mask_solvent_fraction)
-
+    shifted_ncs_object=box.ncs_object
+    if not shifted_ncs_object:
+      from mmtbx.ncs.ncs import ncs
+      shifted_ncs_object=ncs()
+      shifted_ncs_object.set_unit_ncs()
+ 
   else:  # shift if necessary...
     shift_needed = not \
         (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
@@ -4200,21 +4629,29 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       half_map_data_list=new_half_map_data_list
     else:
       origin_shift=(0.,0.,0.)
+    # Get NCS object if any
+    if params.input_files.ncs_file:
+      ncs_obj,dummy_obj=get_ncs(file_name=params.input_files.ncs_file)
+      shifted_ncs_object=ncs_obj.coordinate_offset(
+        coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
+    else:
+      shifted_ncs_object=ncs()
+      shifted_ncs_object.set_unit_ncs()
+
 
   # Set origin shift now
   tracking_data.set_origin_shift(origin_shift)
 
   map_ncs_center=matrix.col(map_ncs_center)+matrix.col(origin_shift) # New ctr
 
-  # Get NCS operators if needed and user did not supply them
+
+  # Get or check NCS operators 
   ncs_obj_to_check=None
   if params.reconstruction_symmetry.ncs_type and (not params.input_files.ncs_file):
     center_try_list=[True,False]
   elif params.input_files.ncs_file and params.control.check_ncs:
     center_try_list=[True]
-    ncs_obj_to_check,dummy_obj=get_ncs(file_name=params.input_files.ncs_file)
-    ncs_obj_to_check=ncs_obj_to_check.coordinate_offset(
-       coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
+    ncs_obj_to_check=shifted_ncs_object
   elif params.reconstruction_symmetry.optimize_center:
     center_try_list=[None]
   else:
@@ -4227,7 +4664,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     looking_for_ncs=False
 
   for use_center_of_map in center_try_list: # only if ncs_file missing
-    new_ncs_obj=get_ncs_from_map(map_data=map_data,
+    new_ncs_obj,ncs_cc,ncs_score=get_ncs_from_map(map_data=map_data,
       map_ncs_center=map_ncs_center,
       ncs_type=params.reconstruction_symmetry.ncs_type,
       ncs_center=params.reconstruction_symmetry.ncs_center,
@@ -4261,7 +4698,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       break # found it, no need to continue
   if params.control.check_ncs:
     print >>out,"Done checking NCS"
-    return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
+    return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,None
 
   if looking_for_ncs and (not found_ncs) and \
          params.reconstruction_symmetry.ncs_type != 'ANY':
@@ -4276,8 +4713,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
        map_data=map_data,
        expand_target=params.segmentation.expand_target,
        out=out)
-
-  return params,map_data,half_map_data_list,pdb_hierarchy,tracking_data
+  return params,map_data,half_map_data_list,pdb_hierarchy,\
+     tracking_data,shifted_ncs_object
 
 def get_and_apply_soft_mask_to_maps(
     resolution=None,  #params.crystal_info.resolution
@@ -4335,7 +4772,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
      ncs_object=None,out=sys.stdout):
   if not file_name:
     file_name=params.input_files.ncs_file
-  if file_name: print >>out,"Reading ncs from %s" %(file_name)
+  if (not ncs_object) and file_name: print >>out,"Reading ncs from %s" %(file_name)
   is_helical_symmetry=None
   if not ncs_object and not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
@@ -4354,6 +4791,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       except Exception,e: # try as regular ncs object
         ncs_object.read_ncs(file_name=file_name,log=out)
       #ncs_object.display_all(log=out)
+    ncs_object.select_first_ncs_group()
     if ncs_object.max_operators()==0:
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
@@ -4383,7 +4821,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
   if not ncs_object or ncs_object.max_operators()<1:
     raise Sorry("Need ncs information from an ncs_info file")
   if tracking_data:
-    tracking_data.set_input_ncs_info(file_name=file_name,
+    tracking_data.set_input_ncs_info(file_name=file_name,  # XXX may be updated ops
       number_of_operators=ncs_object.max_operators())
 
   if tracking_data and is_helical_symmetry: # update shifted_ncs_info
@@ -4412,7 +4850,6 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       tracking_data.update_ncs_info(
         number_of_operators=ncs_object.max_operators(),is_helical_symmetry=True,
         shifted=shifted)
-
   return ncs_object,tracking_data
 
 def score_threshold(b_vs_region=None,threshold=None,
@@ -4888,11 +5325,12 @@ def get_solvent_fraction(params,
      ncs_object=None,ncs_copies=None,
      crystal_symmetry=None,tracking_data=None,out=sys.stdout):
   if tracking_data and not crystal_symmetry:
+    #crystal_symmetry=tracking_data.original_crystal_symmetry not used
     crystal_symmetry=tracking_data.crystal_symmetry
   map_volume=crystal_symmetry.unit_cell().volume()
   if tracking_data and not ncs_copies:
     #ncs_copies=tracking_data.input_ncs_info.original_number_of_operators
-    ncs_copies=tracking_data.input_ncs_info.number_of_operators
+    ncs_copies=tracking_data.input_ncs_info.number_of_operators # 2018-01-29 put back
   if not ncs_copies: ncs_copies=1
 
 
@@ -5628,6 +6066,9 @@ def get_dist_to_first_dict(ncs_group_obj=None,
             dist_to_first_dict[y],inter_region_dist_dict[x][y])
           changing=True
   return dist_to_first_dict
+
+def radius_of_gyration_of_vector(xyz):
+  return (xyz-xyz.mean()).rms_length()
 
 def get_radius_of_gyration(ncs_group_obj=None,
     selected_regions=None):
@@ -6893,6 +7334,7 @@ def apply_shift_to_pdb_hierarchy(
 
 def apply_origin_shift(origin_shift=None,
     ncs_object=None,
+    shifted_ncs_object=None,
     pdb_hierarchy=None,
     target_hierarchy=None,
     map_data=None,
@@ -6938,8 +7380,9 @@ def apply_origin_shift(origin_shift=None,
        out=out)
 
     from scitbx.math import  matrix
-    ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=matrix.col(origin_shift))
+    if ncs_object and not shifted_ncs_object:
+      shfted_ncs_object=ncs_object.coordinate_offset(
+         coordinate_offset=matrix.col(origin_shift))
 
 
   if shifted_pdb_file and pdb_hierarchy:
@@ -6955,21 +7398,22 @@ def apply_origin_shift(origin_shift=None,
       n_residues=pdb_hierarchy.overall_counts().n_residues)
 
 
-  if shifted_ncs_file:
-      ncs_object.format_all_for_group_specification(
+  if shifted_ncs_file and shifted_ncs_object:
+      shifted_ncs_object.format_all_for_group_specification(
          file_name=shifted_ncs_file)
       print >>out,"Wrote %s NCS operators for shifted map to %s" %(
-         ncs_object.max_operators(),
+         shifted_ncs_object.max_operators(),
          shifted_ncs_file)
       if tracking_data.input_ncs_info.has_updated_operators():
         print >>out,\
-        "NOTE: these may include additional operators added to fill the cell"
+        "NOTE: these may include additional operators added to fill the cell"+\
+        " or\nhave fewer operators if not all applied."
       tracking_data.set_shifted_ncs_info(file_name=shifted_ncs_file,
-        number_of_operators=ncs_object.max_operators(),
+        number_of_operators=shifted_ncs_object.max_operators(),
         is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
       tracking_data.shifted_ncs_info.show_summary(out=out)
 
-  return ncs_object,pdb_hierarchy,target_hierarchy,tracking_data,\
+  return shifted_ncs_object,pdb_hierarchy,target_hierarchy,tracking_data,\
      sharpening_target_pdb_inp
 
 def restore_pdb(params,tracking_data=None,out=sys.stdout):
@@ -7032,7 +7476,7 @@ def remove_points(mask,remove_points=None):
   new_mask=(mask & keep_points)
   return new_mask
 
-def get_ncs_sites_cart(sites_cart=None,
+def get_ncs_sites_cart(sites_cart=None,ncs_id=None,
      ncs_obj=None, unit_cell=None, ncs_in_cell_only=True):
 
   ncs_sites_cart=flex.vec3_double()
@@ -7047,6 +7491,7 @@ def get_ncs_sites_cart(sites_cart=None,
   for xyz_cart in sites_cart:
     for i0 in xrange(len(ncs_group.translations_orth())):
       if i0==identity_op: continue
+      if ncs_id is not None and i0!=ncs_id: continue
       r=ncs_group.rota_matrices_inv()[i0] # inverse maps pos 0 on to pos i
       t=ncs_group.translations_orth_inv()[i0]
       new_xyz_cart=r * matrix.col(xyz_cart) + t
@@ -7183,7 +7628,6 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
   else:
     boundary_grid_points=0
 
-
   marked_points=maptbx.marked_grid_points(
     map_data=mask_data,
     every_nth_point=every_nth_point).result()
@@ -7195,9 +7639,9 @@ def get_marked_points_cart(mask_data=None,unit_cell=None,
          grid_point[0]<boundary_grid_points or \
          grid_point[0]>nx-boundary_grid_points or \
          grid_point[1]<boundary_grid_points or \
-         grid_point[0]>ny-boundary_grid_points or \
+         grid_point[1]>ny-boundary_grid_points or \
          grid_point[2]<boundary_grid_points or \
-         grid_point[0]>nz-boundary_grid_points:
+         grid_point[2]>nz-boundary_grid_points:  # XXX was typo previously
         boundary_points_skipped+=1
         continue
     sites_frac.append(
@@ -9608,6 +10052,31 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           all=map_data.all(),
           b_sharpen=None)
 
+def get_high_points_from_map(
+     map_data=None,
+     boundary_radius=5.,
+     unit_cell=None,
+     out=sys.stdout):
+    max_in_map_data=map_data.as_1d().min_max_mean().max
+    for cutoff in [0.99,0.98,0.95,0.90,0.50]:
+      high_points_mask=(map_data>= cutoff*max_in_map_data)
+      sda=map_data.as_1d().min_max_mean().max
+      for nth_point in [4,2,1]:
+        sites_cart=get_marked_points_cart(mask_data=high_points_mask,
+          unit_cell=unit_cell,every_nth_point=nth_point,
+          boundary_radius=boundary_radius)
+        if sites_cart.size()>0: break
+      if sites_cart.size()>0: break
+    assert sites_cart.size()>0
+    del high_points_mask
+    sites_cart=sites_cart[:1]
+    xyz_frac=unit_cell.fractionalize(sites_cart[0])
+    value=map_data.value_at_closest_grid_point(xyz_frac)
+    print >>out,\
+        "High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
+        sites_cart[0][0],sites_cart[0][1],sites_cart[0][2],value)
+    return sites_cart
+
 def get_one_au(tracking_data=None,
     sites_cart=None,
     ncs_obj=None,
@@ -9654,24 +10123,10 @@ def get_one_au(tracking_data=None,
     print >>out,"New size of overall mask: ",overall_mask.count(True)
   else:
     if not sites_cart: # pick top of map
-      for cutoff in [0.99,0.98,0.95,0.90,0.50]:
-        high_points_mask=(sd_map>= cutoff*max_in_sd_map)
-        sda=sd_map.as_1d().min_max_mean().max
-        for nth_point in [4,2,1]:
-          sites_cart=get_marked_points_cart(mask_data=high_points_mask,
-            unit_cell=unit_cell,every_nth_point=nth_point,
-            boundary_radius=radius)
-          if sites_cart.size()>0: break
-        if sites_cart.size()>0: break
-      assert sites_cart.size()>0
-      del high_points_mask
-      sites_cart=sites_cart[:1]
-      xyz_frac=unit_cell.fractionalize(sites_cart[0])
-      value=sd_map.value_at_closest_grid_point(xyz_frac)
-      print >>out,\
-        "High point in map at (%7.2f %7.2f %7.2f) with value of %7.2f " %(
-        sites_cart[0][0],sites_cart[0][1],sites_cart[0][1],value)
-
+      sites_cart=get_high_points_from_map(
+        boundary_radius=radius,
+        map_data=sd_map,
+        unit_cell=unit_cell,out=out)
 
     starting_mask=mask_from_sites_and_map( # starting au mask
       map_data=sd_map,unit_cell=unit_cell,
@@ -9742,9 +10197,9 @@ def run(args,
     tracking_data.show_summary(out=out)
   else:
     # get the parameters and map_data (magnified, shifted...)
-    params,map_data,half_map_data_list,pdb_hierarchy,tracking_data=get_params(
+    params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,\
+        shifted_ncs_object=get_params(
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,out=out)
-
     if params.control.shift_only or params.control.check_ncs:
       return None,None,tracking_data
 
@@ -9753,7 +10208,7 @@ def run(args,
       return None,None,tracking_data
     # read and write the ncs (Normally point-group NCS)
     ncs_obj,tracking_data=get_ncs(params=params,tracking_data=tracking_data,
-       ncs_object=ncs_obj,
+       ncs_object=shifted_ncs_object,
        out=out)
 
     if params.input_files.target_ncs_au_file: # read in target
@@ -9761,7 +10216,7 @@ def run(args,
       target_hierarchy=iotbx.pdb.input(
          file_name=params.input_files.target_ncs_au_file).construct_hierarchy()
 
-    print >>out,"\nShifting map, model and NCS based on origin shift (if any)"
+    print >>out,"\nShifting model based on origin shift (if any)"
     print >>out,"Coordinate shift is (%7.2f,%7.2f,%7.2f)" %(
         tuple(tracking_data.origin_shift))
     if not map_data:
@@ -9779,7 +10234,7 @@ def run(args,
           tracking_data.params.output_files.output_directory,
           params.output_files.shifted_pdb_file),
         origin_shift=tracking_data.origin_shift,
-        ncs_object=ncs_obj,
+        shifted_ncs_object=shifted_ncs_object,
         pdb_hierarchy=pdb_hierarchy,
         target_hierarchy=target_hierarchy,
         map_data=map_data,
