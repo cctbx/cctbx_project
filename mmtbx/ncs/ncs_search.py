@@ -702,45 +702,6 @@ def remove_far_atoms(list_a, list_b,
       # print "removing poorly matching residue:",i,max_d - min_d
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
-
-# def find_same_transform(r,t,transforms):
-#   """
-
-#   Not used.
-
-#   Check if the rotation r and translation t exist in the transform dictionary.
-#   Note that there can be both inverse and regular match. Return the
-#   non-transpose if exist.
-
-#   Args:
-#     r (matrix.sqr): rotation
-#     t (matrix.col): translation
-#     transforms (dict): dictionary of all transforms
-
-#   Returns:
-#     tr_num: (str) transform serial number
-#     is_transpose: (bool) True if the matching transform is transpose
-#   """
-
-#   is_transpose = False
-#   tr_num = None
-#   for k,v in transforms.iteritems():
-#     if hasattr(v,'r'):
-#       rr = v.r
-#       tt = v.t
-#     else:
-#       (rr,tt) = v[2]
-#     is_the_same, is_transpose_flag = is_same_transform(r, t, rr, tt)
-#     if is_the_same:
-#       if is_transpose_flag:
-#         # when transpose is found, keep it but continue the search
-#         tr_num = k
-#         is_transpose  = True
-#       else:
-#         # found non-transform match
-#         return k, False
-#   return tr_num, is_transpose
-
 def get_sequence_from_array(arr):
   from iotbx.pdb import amino_acid_codes
   aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter

@@ -2270,22 +2270,6 @@ def is_identity(r,t):
   """ test if r, rotation matrix is identity, and t, translation is zero """
   return r.is_r3_identity_matrix() and t.is_col_zero()
 
-# def all_ncs_copies_present(transform_info):
-#   """
-#   Check if all transforms coordinates are present,
-#   if the complete ASU is present
-
-#   Args:
-#     transform_info: (transformation object)
-
-#   Returns:
-#     (bool)
-#   """
-#   test = True
-#   for cp in transform_info.coordinates_present:
-#     test = test and cp
-#   return test
-
 def sensible_unit_cell_volume(
         pdb_h=None,
         pdb_inp=None,
