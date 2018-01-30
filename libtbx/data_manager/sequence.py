@@ -2,8 +2,6 @@ from __future__ import division, print_function
 '''
 '''
 
-import iotbx.bioinformatics
-
 from libtbx.data_manager import DataManagerBase
 
 # =============================================================================
