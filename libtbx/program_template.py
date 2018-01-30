@@ -39,6 +39,11 @@ class ProgramTemplate(object):
 Program Description
 '''
 
+  # datatypes for program
+  # see libtbx/data_manager/<datatype>.py for list of supported datatypes
+  # default datatypes are set in libtbx/data_manager/__init__.py
+  datatypes = None
+
   # master PHIL string for the program (required)
   master_phil_str = '''
 program {}
