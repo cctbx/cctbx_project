@@ -277,8 +277,7 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # Verify that spec object are produced properly
-    spec_output = trans_obj.get_ncs_info_as_spec(
-      pdb_hierarchy_asu=self.ph)
+    spec_output = trans_obj.get_ncs_info_as_spec()
     trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
     t1 = trans_obj.ncs_transform['0000000002'].r

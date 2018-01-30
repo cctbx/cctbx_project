@@ -1608,11 +1608,6 @@ class input(object):
 
   def get_ncs_info_as_spec(
           self,
-          # XXX Choose one of those or pass coordinates straight away
-          pdb_hierarchy_asu=None,
-          xrs=None,
-          fmodel=None,
-          # =============
           exclude_h=None,
           exclude_d=None,
           stem=None,
@@ -1635,11 +1630,6 @@ class input(object):
     for example "resseq 49" will include "resid 49" and "resid 49A"
 
     Args:
-      XXX Just pick one of those or pass coordinates straight away:
-      pdb_hierarchy_asu: (pdb_hierarchy object)
-      xrs: (xray structure) for coordinates
-      XXX ========
-      fmodel: (fmodel object) - to extract xrs and then coordinates
       write: (bool) when False, will not write to file or print
       exclude_h,exclude_d : parameters of the ncs object
     Return:
@@ -1651,30 +1641,17 @@ class input(object):
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
     if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
       self.set_common_res_dict()
-    if [bool(xrs),bool(pdb_hierarchy_asu),bool(fmodel)].count(True) == 0:
-      # if not input containing coordinates is given
-      if self.truncated_hierarchy:
-        if (self.truncated_hierarchy.atoms_size() == self.total_asu_length):
-          xyz = self.truncated_hierarchy.atoms().extract_xyz()
-        else:
-          # get the ASU coordinates
-          nrg = self.get_ncs_restraints_group_list()
-          # print "nrg", nrg
-          # print self.truncated_hierarchy.as_pdb_string()
-          # print "self.total_asu_length", self.total_asu_length
-          # print "self.ncs_atom_selection", self.ncs_atom_selection
-          xyz = nu.apply_transforms(
-            ncs_coordinates = self.truncated_hierarchy.atoms().extract_xyz(),
-            ncs_restraints_group_list = nrg,
-            total_asu_length =  self.total_asu_length,
-            extended_ncs_selection = self.ncs_atom_selection)
-    elif fmodel:
-      xrs = fmodel.xray_structure
-    if xrs and (not pdb_hierarchy_asu):
-      xyz = xrs.sites_cart()
-    elif pdb_hierarchy_asu:
-      xyz = pdb_hierarchy_asu.atoms().extract_xyz()
-    # break groups with more than one chain in master
+    if self.truncated_hierarchy:
+      if (self.truncated_hierarchy.atoms_size() == self.total_asu_length):
+        xyz = self.truncated_hierarchy.atoms().extract_xyz()
+      else:
+        # get the ASU coordinates
+        nrg = self.get_ncs_restraints_group_list()
+        xyz = nu.apply_transforms(
+          ncs_coordinates = self.truncated_hierarchy.atoms().extract_xyz(),
+          ncs_restraints_group_list = nrg,
+          total_asu_length =  self.total_asu_length,
+          extended_ncs_selection = self.ncs_atom_selection)
     ncs_groups_by_chains = {}
 
     # for gr in self.ncs_group_map.itervalues(): old method 2015-05-03 TT
@@ -1748,6 +1725,7 @@ class input(object):
         ncs_domain_pdb = ncs_domain_pdb)
     #
     # There is absolutely no need to put self into spec object.
+    # Although lot of output is being done via this class in ncs.ncs.ncs
     #
     spec_object._ncs_obj = self
     return spec_object

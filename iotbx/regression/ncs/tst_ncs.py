@@ -237,8 +237,7 @@ def exercise_00():
   pdb_h = pdb_inp.construct_hierarchy()
   trans_obj = ncs.input(hierarchy=pdb_h, transform_info=t_i)
   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-  spec_output = trans_obj.get_ncs_info_as_spec(
-    pdb_hierarchy_asu=pdb_inp.construct_hierarchy_MTRIX_expanded())
+  spec_output = trans_obj.get_ncs_info_as_spec()
   trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
   t1 = trans_obj.ncs_transform['0000000002'].r
   t2 = trans_obj2.ncs_transform['0000000002'].r
@@ -349,8 +348,7 @@ def exercise_03():
   transforms_obj = iotbx.ncs.input(
     hierarchy=pdb_inp.construct_hierarchy())
   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-  transforms_obj.get_ncs_info_as_spec(
-    pdb_hierarchy_asu=pdb_inp.construct_hierarchy_MTRIX_expanded())
+  transforms_obj.get_ncs_info_as_spec()
 
 def exercise_04():
   """Test MTRIX record processing"""
