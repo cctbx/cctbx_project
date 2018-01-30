@@ -807,7 +807,7 @@ master_phil = iotbx.phil.parse("""
               select_au_box is None, set it to True.
       .short_caption = N ops to use au_box
 
-    n_au_box = 3
+    n_au_box = 5
       .type = int
       .help = Number of NCS copies to try and get inside au_box
       .short_caption = N au box
@@ -4130,7 +4130,7 @@ def get_bounds_for_au_box(params,
     return None,None,None
 
   box_ncs_object=box.ncs_object
-  box_map_data=box.map_box.as_double()
+  box_map_data=box.map_box
   box_crystal_symmetry=box.box_crystal_symmetry
   random_points=10*params.reconstruction_symmetry.random_points
 
@@ -4145,9 +4145,9 @@ def get_bounds_for_au_box(params,
        ncs_obj=box_ncs_object,unit_cell=box_crystal_symmetry.unit_cell(),
        ncs_in_cell_only=True)
 
+  # generate this in a lower-memory way XXX
   low_res_map_data=get_low_res_map_data(sites_cart=ncs_sites_cart,
     d_min=params.crystal_info.resolution*7.,
-    map_data=box_map_data,
     crystal_symmetry=box_crystal_symmetry,
     out=out)
 
@@ -4216,7 +4216,6 @@ def get_bounds_for_au_box(params,
   return lower_bounds,upper_bounds,unique_closest_sites+coordinate_offset
 
 def get_low_res_map_data(sites_cart=None,
-    map_data=None,
     crystal_symmetry=None,
     d_min=None,
     out=sys.stdout):
@@ -4229,13 +4228,8 @@ def get_low_res_map_data(sites_cart=None,
       scatterers.append( xray.scatterer(scattering_type="H", label="H",
         site=xyz_fract, u=0, occupancy=1.0))
     xrs = xray.structure(xrs, scatterers=scatterers)
-    f_array,phases=get_f_phases_from_map(map_data=map_data,
-       crystal_symmetry=crystal_symmetry,
-       d_min=d_min,
-       scale_max=100000.,
-       get_remove_aniso_object=False,# don't need it
-       out=out)
-
+    # generate f_array to d_min with xrs
+    f_array= xrs.structure_factors(d_min=d_min, anomalous_flag=False).f_calc()
     weight_f_array=f_array.structure_factors_from_scatterers(
       algorithm = 'direct',
       xray_structure = xrs).f_calc()
@@ -4481,27 +4475,30 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     # Run again to select au box
     shifted_unique_closest_sites=None
     if params.segmentation.select_au_box is None and  box.ncs_object and \
-        box.ncs_object.max_operators() >= params.segmentation.n_ops_to_use_au_box:
+      box.ncs_object.max_operators() >= params.segmentation.n_ops_to_use_au_box:
       params.segmentation.select_au_box=True
-      print >>out,"Setting select_au_box to True as there are % operators" %(
+      print >>out,"Setting select_au_box to True as there are %d operators" %(
         box.ncs_object.max_operators())
     if params.segmentation.select_au_box and not bounds_supplied:
       bounds_supplied=True
       lower_bounds,upper_bounds,unique_closest_sites=get_bounds_for_au_box(
          params, box=box,out=out) #unique_closest_sites relative to original map
 
-      score,ncs_cc=score_ncs_in_map(map_data=box.map_box.as_double(),
+      score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
         allow_score_with_pg=False,
         sites_orth=unique_closest_sites+box.shift_cart,
         ncs_object=box.ncs_object,ncs_in_cell_only=True,
         crystal_symmetry=box.box_crystal_symmetry,out=null_out())
-      print >>out,"NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
+      print >>out,\
+          "NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
          ncs_cc,score,box.ncs_object.max_operators())
 
       if lower_bounds and upper_bounds:
         print >>out,"\nRunning map-box again with boxed range ..."
+        del box
         box=run_map_box(args,lower_bounds=lower_bounds,
           upper_bounds=upper_bounds, log=out)
+        box.map_box=box.map_box.as_double()  # Do we need double?
       shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
 
     # Or run again for helical symmetry
@@ -4517,14 +4514,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     if bounds_supplied and box.ncs_object:
       print >>out,"Selecting remaining NCS operators"
       box.ncs_object=select_remaining_ncs_ops(
-        map_data=box.map_box.as_double(),
+        map_data=box.map_box,
         crystal_symmetry=box.box_crystal_symmetry,
         closest_sites=shifted_unique_closest_sites,
         random_points=params.reconstruction_symmetry.random_points,
         ncs_object=box.ncs_object,
         out=out)
 
-    score,ncs_cc=score_ncs_in_map(map_data=box.map_box.as_double(),
+    score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
         allow_score_with_pg=False,
         ncs_object=box.ncs_object,ncs_in_cell_only=True,
         sites_orth=shifted_unique_closest_sites,
@@ -4553,7 +4550,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
     #   total_shift_cart and origin_shift both positive
-    map_data=box.map_box.as_double()
+    map_data=box.map_box
     map_data=scale_map(map_data,out=out)
     crystal_symmetry=box.box_crystal_symmetry
     print >>out,"New unit cell: %7.2f %7.2f %7.2f %7.2f %7.2f %7.2f " %(
@@ -8311,7 +8308,7 @@ def select_box_map_data(si=None,
     lower_bounds=box.gridding_first
     upper_bounds=box.gridding_last
 
-    box_map=box.map_box.as_double()
+    box_map=box.map_box
     box_map=scale_map(box_map,out=out)
     box_crystal_symmetry=box.box_crystal_symmetry
     box_pdb_inp=box.hierarchy.as_pdb_input()

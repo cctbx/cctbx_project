@@ -321,7 +321,7 @@ Parameters:"""%h
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.ccp4"%output_prefix
     else: file_name = "%s.ccp4"%params.output_file_name_prefix
-    print >> log, "writing map to CCP4 formatted file:   %s"%file_name
+    print >> log, "Writing map to CCP4 formatted file:   %s"%file_name
     box.write_ccp4_map(file_name=file_name)
   if("xplor" in params.output_format):
     if(params.output_file_name_prefix is None):
