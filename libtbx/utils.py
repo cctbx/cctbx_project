@@ -2384,7 +2384,7 @@ def to_str(text, codec=None):
     return None
 
 def guess_total_memory(meminfo_file='/proc/meminfo'):
-  if (sys.platform == 'win32'): 
+  if (sys.platform == 'win32'):
      return None # don't have an easy way to do it
   elif (sys.platform=='darwin'):
     # Copied from https://apple.stackexchange.com/questions/4286/is-there-a-mac-os-x-terminal-version-of-the-free-command-in-linux-systems
@@ -2393,7 +2393,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
     # Get process info
     ps = subprocess.Popen(['ps', '-caxm', '-orss,comm'],
        stdout=subprocess.PIPE).communicate()[0].decode()
-    
+
     # Iterate processes
     processLines = ps.split('\n')
     sep = re.compile('[\s]+')
@@ -2403,25 +2403,24 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
         rowElements = sep.split(rowText)
         try:
             rss = float(rowElements[0]) * 1024
-        except:
+        except Exception,e:
             rss = 0 # ignore...
         rssTotal += rss
-    
+
     return rssTotal
 
   elif os.path.isfile(meminfo_file):
     for line in open(meminfo_file).readlines():
       if line.lower().startswith("memtotal"):
         spl=line.split()
-        if len(spl)!=3: 
+        if len(spl)!=3:
           return None
         try:
-          mem=int(spl[1]) 
-          if spl[2].lower()=='kb':
-            mem=mem*1024
-          elif spl[2].lwer()=='mb':
-            mem=mem*1024*1024
+          mem=int(spl[1])
         except Exception,e:
-          mem=None
+          return None
+        if spl[2].lower()=='kb':
+          mem=mem*1024
+        elif spl[2].lwer()=='mb':
+          mem=mem*1024*1024
         return mem
-
