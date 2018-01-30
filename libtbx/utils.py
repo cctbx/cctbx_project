@@ -2407,7 +2407,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
             rss = 0 # ignore...
         rssTotal += rss
     
-   return rssTotal
+    return rssTotal
 
   elif os.path.isfile(meminfo_file):
     for line in open(meminfo_file).readlines():
