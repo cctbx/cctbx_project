@@ -4268,7 +4268,7 @@ def get_bounds_for_helical_symmetry(params,
 
   return lower_bounds,upper_bounds
 
-def check_memory(map_data=None,ratio_needed=None,maximum_fraction_to_use=0.90,
+def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
     maximum_map_size=1,
     out=sys.stdout):
   map_size=map_data.size()/(1024*1024*1024)
@@ -4402,7 +4402,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # check on size right away
   if params.control.memory_check:
-    # map_box and mask generation use about 50GB of memory for 
+    # map_box and mask generation use about 50GB of memory for
     #    map with 1 billion elements
     check_memory(map_data=map_data,ratio_needed=50,out=out)
 
