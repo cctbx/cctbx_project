@@ -1827,50 +1827,52 @@ class input(object):
           file_name=full_file_name,
           crystal_symmetry=self.crystal_symmetry)
 
-  def build_asu_hierarchy(self,
-                          pdb_hierarchy,
-                          round_coordinates=True):
-    """
-    Build ASU hierarchy
+  # Not used, not tested.
+  # moreover, hierarchy is expanded by default with mmtbx.model.manager.
+  # def build_asu_hierarchy(self,
+  #                         pdb_hierarchy,
+  #                         round_coordinates=True):
+  #   """
+  #   Build ASU hierarchy
 
-    Arguments:
-    pdb_hierarchy: pdb hierarchy of the master NCS
-    round_coordinates: (bool) round coordinates of new NCS copies,
-                        for sites_cart constancy
-    Return:
-    ASU hierarchy
-    """
-    if len(pdb_hierarchy.models()) > 1:
-      raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-    # Build only for PDB when there is a single NCS group
-    # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
-    assert self.number_of_ncs_groups < 2
-    new_ph = pdb_hierarchy.deep_copy()
-    ncs_restraints_group_list = self.get_ncs_restraints_group_list()
-    new_sites = nu.apply_transforms(
-      ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
-      ncs_restraints_group_list = ncs_restraints_group_list,
-      total_asu_length =  self.total_asu_length,
-      extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms_size()),
-      round_coordinates = round_coordinates)
-    model = new_ph.models()[0]
-    tr_assignment_order = []
-    for tr in self.transform_order:
-      for (ch_id, (sel_start,sel_end)) in self.model_order_chain_ids:
-        key = 'chain ' + ch_id
-        tr_key  =  key + '_' + tr
-        ncs_selection = self.asu_to_ncs_map[key][sel_start:sel_end]
-        tr_assignment_order.append([tr_key,ncs_selection])
-    for tr,ncs_selection in tr_assignment_order:
-      new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
-      new_chain = iotbx.pdb.hierarchy.ext.chain()
-      new_chain.id = self.ncs_copies_chains_names[tr]
-      for res in new_part.residue_groups():
-        new_chain.append_residue_group(res.detached_copy())
-      model.append_chain(new_chain)
-    new_ph.atoms().set_xyz(new_sites)
-    # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
-    return new_ph
+  #   Arguments:
+  #   pdb_hierarchy: pdb hierarchy of the master NCS
+  #   round_coordinates: (bool) round coordinates of new NCS copies,
+  #                       for sites_cart constancy
+  #   Return:
+  #   ASU hierarchy
+  #   """
+  #   if len(pdb_hierarchy.models()) > 1:
+  #     raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
+  #   # Build only for PDB when there is a single NCS group
+  #   # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
+  #   assert self.number_of_ncs_groups < 2
+  #   new_ph = pdb_hierarchy.deep_copy()
+  #   ncs_restraints_group_list = self.get_ncs_restraints_group_list()
+  #   new_sites = nu.apply_transforms(
+  #     ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
+  #     ncs_restraints_group_list = ncs_restraints_group_list,
+  #     total_asu_length =  self.total_asu_length,
+  #     extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms_size()),
+  #     round_coordinates = round_coordinates)
+  #   model = new_ph.models()[0]
+  #   tr_assignment_order = []
+  #   for tr in self.transform_order:
+  #     for (ch_id, (sel_start,sel_end)) in self.model_order_chain_ids:
+  #       key = 'chain ' + ch_id
+  #       tr_key  =  key + '_' + tr
+  #       ncs_selection = self.asu_to_ncs_map[key][sel_start:sel_end]
+  #       tr_assignment_order.append([tr_key,ncs_selection])
+  #   for tr,ncs_selection in tr_assignment_order:
+  #     new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
+  #     new_chain = iotbx.pdb.hierarchy.ext.chain()
+  #     new_chain.id = self.ncs_copies_chains_names[tr]
+  #     for res in new_part.residue_groups():
+  #       new_chain.append_residue_group(res.detached_copy())
+  #     model.append_chain(new_chain)
+  #   new_ph.atoms().set_xyz(new_sites)
+  #   # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
+  #   return new_ph
 
   def show(self,
            format=None,
@@ -1897,7 +1899,6 @@ class input(object):
     """
     if not log: log = self.log
     out_str = ''
-    # assert 0
     if (not format) or (format.lower() == 'cctbx'):
       out_str = self.__repr__(prefix)
       print >> log, out_str
