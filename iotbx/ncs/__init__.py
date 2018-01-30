@@ -157,11 +157,13 @@ class input(object):
     self.transform_to_ncs = {}
     # master ncs and non-ncs selection in a string and a flex.bool types
     self.ncs_atom_selection = None
-    self.ncs_selection_str = ''
+    self.ncs_selection_str = '' # XXX This should be eliminated...
+
     # iselection of all part in ASU that are not related via NCS operators
-    self.non_ncs_region_selection = flex.size_t([])
+    self.non_ncs_region_selection = flex.size_t([]) # XXX Not used anywhere
     # All master ncs atoms selection
-    self.all_master_ncs_selections = flex.size_t([])
+    self.all_master_ncs_selections = flex.size_t([]) # XXX Not used anywhere
+
     # list of selection strings of master NCS
     self.ncs_chain_selection = []
     # unique chains or selection identifiers
@@ -179,7 +181,7 @@ class input(object):
     # flag indicating if ncs operation found
     self.found_ncs_transforms = False
     # Collect messages, recommendation and errors
-    self.messages = ''
+    self.messages = '' # Not used outside...
     self.old_i_seqs = None
     self.exclude_selection = None
     self.original_hierarchy = None
@@ -218,7 +220,9 @@ class input(object):
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # self.truncated_hierarchy.atoms().reset_i_seq()
       self.truncated_hierarchy.reset_atom_i_seqs()
+      self.truncated_h_asc = self.truncated_hierarchy.atom_selection_cache()
       # self.truncated_hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
+
 
       if self.truncated_hierarchy.atoms_size() == 0:
         self.total_asu_length = 0
@@ -250,7 +254,8 @@ class input(object):
     elif validated_ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_phil_groups=validated_ncs_phil_groups,
-        pdb_h= self.truncated_hierarchy)
+        pdb_h = self.truncated_hierarchy,
+        asc = self.truncated_h_asc)
     elif spec_ncs_groups:
       self.build_ncs_obj_from_spec_file(
         pdb_h= self.truncated_hierarchy,
@@ -622,8 +627,9 @@ class input(object):
     self.finalize_pre_process(pdb_h=pdb_h)
 
   def build_ncs_obj_from_phil(self,
-                              ncs_phil_groups = None,
-                              pdb_h = None):
+                              ncs_phil_groups,
+                              pdb_h,
+                              asc):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
@@ -632,6 +638,7 @@ class input(object):
       ncs_phil_string : Phil parameters
       ncs_phil_groups :
       pdb_h : iotbx.pdb.hierarchy
+      asc : atom_selection_cache for hierarchy
 
     Phil structure
     ncs_group (multiple)
@@ -653,7 +660,9 @@ class input(object):
     #   ncs_phil_groups = working_phil.ncs_group
     # else:
     assert ncs_phil_groups is not None
+    assert pdb_h is not None
     assert self.ncs_selection_str == ''
+    assert asc is not None
     unique_selections = set()
     transform_sn = 0
     ncs_group_id = 0
@@ -678,6 +687,7 @@ class input(object):
         unique_selections = uniqueness_test(unique_selections,asu_select)
         r, t, rmsd, msg = ncs_search.get_rot_trans(
           ph=pdb_h,
+          asc=asc,
           master_selection=gns,
           copy_selection=asu_select,
           chain_max_rmsd=100)
@@ -2185,22 +2195,23 @@ def separate_selection_string(s):
       s_list.append(new_s)
   return s_list
 
-def get_pdb_header(pdb_str):
-  """
-  Collect CRYST and SCALE records
+  # Not used, not tested
+# def get_pdb_header(pdb_str):
+#   """
+#   Collect CRYST and SCALE records
 
-  Args:
-    pdb_str: (str) pdb type string
+#   Args:
+#     pdb_str: (str) pdb type string
 
-  Returns:
-    the portion of the pdb_str till the first ATOM
-  """
-  pdb_str = pdb_str.splitlines()
-  pdb_header_lines = []
-  for x in pdb_str:
-    if x.startswith('ATOM'): break
-    else: pdb_header_lines.append(x)
-  return '\n'.join(pdb_header_lines)
+#   Returns:
+#     the portion of the pdb_str till the first ATOM
+#   """
+#   pdb_str = pdb_str.splitlines()
+#   pdb_header_lines = []
+#   for x in pdb_str:
+#     if x.startswith('ATOM'): break
+#     else: pdb_header_lines.append(x)
+#   return '\n'.join(pdb_header_lines)
 
 def get_center_orth(xyz,selection):
   """
@@ -2235,6 +2246,11 @@ def format_num_as_str(n):
 
 def ncs_only(transform_info):
   """
+  XXX
+  XXX Should be member function of Transform, but the rest of the code
+  XXX should be rewritten in OOP so all tiny functions and logics don't have
+  XXX to process it is being None
+  XXX
   Verify that all transforms are not present
   (excluding the identity transform)
 
@@ -2257,12 +2273,14 @@ def is_identity(r,t):
   return r.is_r3_identity_matrix() and t.is_col_zero()
 
 def sensible_unit_cell_volume(
-        pdb_h=None,
-        pdb_inp=None,
+        pdb_h,
         crystal_symmetry=None,
         transform_info=None,
         rotations=None):
   """
+  XXX
+  XXX Not clear if this is working, but it is not tested...
+  XXX
   Rough evaluation if the number of atoms of all NCS copies can fit in
   the unit cell.
 
@@ -2278,37 +2296,31 @@ def sensible_unit_cell_volume(
     (bool): False indicates that the complete ASU does not fit in the unit cell
   """
   # fixme : finish function and add test
-  if pdb_h is None and pdb_inp is None:
-    raise Sorry('Need to provide pdb_h or pdb_inp object')
+  assert pdb_h is not None
+  assert crystal_symmetry is not None
   n_transforms = 0
-  cs = crystal_symmetry
-  hierarchy = pdb_h
-  if pdb_inp is not None:
-    cs = pdb_inp.crystal_symmetry()
-    hierarchy = pdb_inp.construct_hierarchy()
 
   # todo:  check units of unit_cell().volume()
-  if cs:
-    n_atoms_in_ncs = hierarchy.atoms_size()
-    unit_cell_volume = cs.unit_cell().volume()
-    # get z, the number of ASU in the cell unit
-    space_group = cs.space_group_info()
-    z = space_group.type().number()
-    if transform_info:
-      for r,cp in zip(transform_info.r,transform_info.coordinates_present):
-        if (not r.is_r3_identity_matrix()) and (not cp):
-          n_transforms +=1
-    elif rotations:
-      for r in rotations:
-        if not r.is_r3_identity_matrix():
-          n_transforms += 1
-    # Approximate the volume of an atom as 4*pi(1.5A)^3/3
-    atom_r = 1.5
-    v_atom = 4*math.pi*(atom_r**3)/3
-    all_atoms_volume_estimate = (v_atom * n_atoms_in_ncs * z) * n_transforms
-    if unit_cell_volume:
-      test = (all_atoms_volume_estimate < unit_cell_volume)
-  return True
+  n_atoms_in_ncs = pdb_h.atoms_size()
+  unit_cell_volume = crystal_symmetry.unit_cell().volume()
+  # get z, the number of ASU in the cell unit
+  space_group = crystal_symmetry.space_group_info()
+  z = space_group.type().number()
+  if transform_info:
+    for r,cp in zip(transform_info.r,transform_info.coordinates_present):
+      if (not r.is_r3_identity_matrix()) and (not cp):
+        n_transforms +=1
+  elif rotations:
+    for r in rotations:
+      if not r.is_r3_identity_matrix():
+        n_transforms += 1
+  # Approximate the volume of an atom as 4*pi(1.5A)^3/3
+  atom_r = 1.5
+  v_atom = 4*math.pi*(atom_r**3)/3
+  all_atoms_volume_estimate = (v_atom * n_atoms_in_ncs * z) * n_transforms
+  if unit_cell_volume:
+    test = (all_atoms_volume_estimate < unit_cell_volume)
+  return test
 
 def uniqueness_test(unique_selection_set,new_item):
   """
@@ -2390,6 +2402,11 @@ def sort_dict_keys(d):
 
 def insure_identity_is_in_transform_info(transform_info):
   """
+  XXX
+  XXX Should be member function of Transform, but the rest of the code
+  XXX should be rewritten in OOP so all tiny functions and logics don't have
+  XXX to process it is being None
+  XXX
   Add the identity matrix in cases where the pdb or mmcif files do not
   contain it
 

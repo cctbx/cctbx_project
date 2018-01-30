@@ -10,6 +10,7 @@ from cStringIO import StringIO
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 from time import time
+import iotbx.pdb
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
@@ -702,6 +703,7 @@ def remove_far_atoms(list_a, list_b,
       # print "removing poorly matching residue:",i,max_d - min_d
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
+
 def get_sequence_from_array(arr):
   from iotbx.pdb import amino_acid_codes
   aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
@@ -1124,6 +1126,7 @@ def my_get_rot_trans(
 
 
 def get_rot_trans(ph,
+                  asc,
                   master_selection,
                   copy_selection,
                   chain_max_rmsd=0.02):
@@ -1154,40 +1157,34 @@ def get_rot_trans(ph,
   r_zero = matrix.sqr([0]*9)
   t_zero = matrix.col([0,0,0])
   #
-  if ph:
-    cache = ph.atom_selection_cache().selection
-    master_ncs_ph = ph.select(cache(master_selection))
-    ncs_copy_ph = ph.select(cache(copy_selection))
-    seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
-    seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
-    res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
-        seq_m, seq_c, min_percent=0)
-    # res_sel_m, res_sel_c, similarity = res_alignment(
-    #   seq_a=seq_m,seq_b=seq_c,
-    #   min_contig_length=0,min_percent=0)
-    m_atoms = master_ncs_ph.atoms()
-    c_atoms = ncs_copy_ph.atoms()
-    # Check that master and copy are identical
-    if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
-      return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
-    # master
-    other_sites = m_atoms.extract_xyz()
-    # copy
-    ref_sites = c_atoms.extract_xyz()
-    if ref_sites.size() > 0:
-      lsq_fit_obj = superpose.least_squares_fit(
-          reference_sites = ref_sites,
-          other_sites     = other_sites)
-      r = lsq_fit_obj.r
-      t = lsq_fit_obj.t
-      rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
-      if rmsd > chain_max_rmsd:
-        return r_zero,t_zero,0,msg
-    else:
-      return r_zero,t_zero,0,'No sites to compare.\n'
-    return r,t,round(rmsd,4),msg
+  assert ph is not None
+  master_ncs_ph = ph.select(asc.selection(master_selection))
+  ncs_copy_ph = ph.select(asc.selection(copy_selection))
+  seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
+  seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
+  res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
+      seq_m, seq_c, min_percent=0)
+  m_atoms = master_ncs_ph.atoms()
+  c_atoms = ncs_copy_ph.atoms()
+  # Check that master and copy are identical
+  if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
+    return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
+  # master
+  other_sites = m_atoms.extract_xyz()
+  # copy
+  ref_sites = c_atoms.extract_xyz()
+  if ref_sites.size() > 0:
+    lsq_fit_obj = superpose.least_squares_fit(
+        reference_sites = ref_sites,
+        other_sites     = other_sites)
+    r = lsq_fit_obj.r
+    t = lsq_fit_obj.t
+    rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
+    if rmsd > chain_max_rmsd:
+      return r_zero,t_zero,0,msg
   else:
-    return r_zero,t_zero,0,msg
+    return r_zero,t_zero,0,'No sites to compare.\n'
+  return r,t,round(rmsd,4),msg
 
 
 def get_residue_sequence(ph):
@@ -1202,12 +1199,14 @@ def get_residue_sequence(ph):
     res_list_new (list of str): list of residues names
     resid_list_new (list of str): list of residues number
   """
+  get_class = iotbx.pdb.common_residue_names_get_class
+
   res_list_new = []
   resid_list_new = []
-  for res_info in ph.atom_groups():
-    x = res_info.resname
-    if x.lower() != 'hoh':
+  for ag in ph.atom_groups():
+    cl = get_class(ag.resname)
+    if cl != "common_water":
       # Exclude water
-      res_list_new.append(x)
-      resid_list_new.append(res_info.parent().resseq)
+      res_list_new.append(ag.resname)
+      resid_list_new.append(ag.parent().resseq)
   return res_list_new,resid_list_new
