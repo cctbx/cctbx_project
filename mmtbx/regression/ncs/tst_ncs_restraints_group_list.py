@@ -271,6 +271,54 @@ def test_update_rot_tran():
   assert approx_equal(tran_results,tran_expected,1.0e-4)
   assert approx_equal(rot_results,rot_expected,1.0e-4)
 
+def test_selection():
+  """
+  test that a atom selection propagates correctly to ncs_restraints_group_list
+  """
+  # print sys._getframe().f_code.co_name
+  c = commons()
+  nrg = c.ncs_restraints_group_list
+  m1 = list(nrg[0].master_iselection)
+  c1 = list(nrg[0].copies[0].iselection)
+  c2 = list(nrg[0].copies[1].iselection)
+
+  assert len(m1) == len(c1)  #                                           renumbering
+  assert m1 == [0,   1,  2,  3,  4,  5,  6] #   0,  1, X,  3, X,  5, X | 0, 1, 3
+  assert c1 == [7,   8,  9, 10, 11, 12, 13] #   7,  8, 9,  X, X, 12, X | 4, 5, 7
+  assert c2 == [14, 15, 16, 17, 18, 19, 20] #  14, 15, X, 17, X, 19, X | 8, 9, 11
+
+  selection1 = flex.size_t([0,1,5,3,100,101])
+  selection2 = flex.size_t([0,1,5,3,7,8,9,12,100,101])
+  selection3 = flex.size_t([0,1,5,3,7,8,9,12,14,15,19,17,100,101])
+  # gone iseqs for selection3: 2,4,6,10,11,13,16,18,20-99
+
+  new_nrg = nrg.select(flex.bool(102, selection1))
+  # only atoms in master are selected
+  mt = list(new_nrg[0].master_iselection)
+  c1t = list(new_nrg[0].copies[0].iselection)
+
+  assert mt == []
+  assert c1t == []
+
+  # atoms selected in both master and copies
+  new_nrg = nrg.select(flex.bool(102, selection2))
+  # only atoms in master are selected
+  mt = list(new_nrg[0].master_iselection)
+  c1t = list(new_nrg[0].copies[0].iselection)
+
+  assert mt == []
+  assert c1t == []
+
+  new_nrg = nrg.select(flex.bool(102, selection3))
+  # only atoms in master are selected
+  mt = list(new_nrg[0].master_iselection)
+  c1t = list(new_nrg[0].copies[0].iselection)
+  c2t = list(new_nrg[0].copies[1].iselection)
+
+  assert mt == [0, 1, 3], list(mt)
+  assert c1t == [4, 5, 7], list(c1t)
+  assert c2t == [8, 9, 11], list(c2t)
+
 def run_tests():
   test_transform_update()
   test_check_for_max_rmsd()
@@ -279,6 +327,7 @@ def run_tests():
   test_whole_group_iselection()
   test_concatenate_rot_tran()
   test_update_rot_tran()
+  test_selection()
 
 if __name__=='__main__':
   t0 = time()

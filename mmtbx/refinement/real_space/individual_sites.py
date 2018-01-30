@@ -375,9 +375,7 @@ class box_refinement_manager(object):
       xrs = self.xray_structure.select(selection)
       sel = flex.bool(xrs.scatterers().size(), True)
       size = self.xray_structure.scatterers().size()
-      ncs_groups_ = ncs_utils.ncs_groups_selection(
-        ncs_restraints_group_list = self.ncs_groups,
-        selection                 = selection)
+      ncs_groups_ = self.ncs_groups.select(selection=selection)
       #
       rsr_simple_refiner = simple(
         target_map                  = self.target_map,

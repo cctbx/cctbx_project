@@ -63,7 +63,47 @@ class NCS_restraint_group(object):
     return result
 
   def select(self, selection):
+    """
+    Modifies the selections of master and copies according the "selection"
+    - Keep the order of selected atoms
+    - Keep only atoms that appear in master and ALL copies
+    Also modify "selection" to include ncs related atoms only if selected in
+    both master and ALL ncs copies (The modified selection is not returned in
+    current version)
+
+    Args:
+      selection (flex.bool): atom selection
+    """
+    from mmtbx.ncs.ncs_utils import selected_positions, remove_items_from_selection
     assert isinstance(selection, flex.bool)
+
+
+    iselection = selection.iselection(True)
+    sel_set = set(iselection)
+    m = set(self.master_iselection)
+    m_list = [(pos,indx) for pos,indx in enumerate(list(self.master_iselection))]
+    m_in_sel = m.intersection(sel_set)
+    common_selection_pos = {pos for (pos,indx) in m_list if indx in m_in_sel}
+    for ncs in self.copies:
+      c = set(ncs.iselection)
+      c_list = [(pos,indx) for pos,indx in enumerate(list(ncs.iselection))]
+      copy_in_sel = c.intersection(sel_set)
+      include_set = {pos for (pos,indx) in c_list if indx in copy_in_sel}
+      common_selection_pos.intersection_update(include_set)
+      if not bool(common_selection_pos): break
+    # use the common_selection_pos to update all selections
+    self.master_iselection, not_included = selected_positions(
+      self.master_iselection,common_selection_pos)
+    iselection = remove_items_from_selection(iselection,not_included)
+    for ncs in self.copies:
+      ncs.iselection, not_included = selected_positions(
+        ncs.iselection,common_selection_pos)
+      iselection = remove_items_from_selection(iselection,not_included)
+    for c in self.copies:
+      assert self.master_iselection.size() == c.iselection.size(), "%s\n%s" % (
+          list(self.master_iselection), list(c.iselection))
+
+    # This is to handle renumbering properly
     self.master_iselection = iselection_select(self.master_iselection, selection)
     for c in self.copies:
       c.select(selection)
@@ -246,6 +286,17 @@ class class_ncs_restraints_group_list(list):
     else:
       new_list = ncs_restraints_group_list
     return new_list
+
+  def _show(self):
+    """
+    For debugging
+    """
+    for group in self:
+      print list(group.master_iselection)
+      for c in group.copies:
+        print list(c.iselection)
+      print "="*30
+
 
   def get_ncs_groups_centers(self, sites_cart):
     """

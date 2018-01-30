@@ -297,59 +297,6 @@ class Test_ncs_utils(unittest.TestCase):
   #       r = c.r.round(round_val)
   #       r_elems.append(r.elems)
 
-  def test_nrg_selection(self):
-    """
-    test that a atom selection propagates correctly to ncs_restraints_group_list
-    """
-    # print sys._getframe().f_code.co_name
-
-    nrg = self.ncs_restraints_group_list
-    m1 = list(nrg[0].master_iselection)
-    c1 = list(nrg[0].copies[0].iselection)
-    c2 = list(nrg[0].copies[1].iselection)
-
-    assert len(m1) == len(c1)
-    assert m1 == [0,   1,  2,  3,  4,  5,  6]
-    assert c1 == [7,   8,  9, 10, 11, 12, 13]
-    assert c2 == [14, 15, 16, 17, 18, 19, 20]
-
-    selection1 = flex.size_t([0,1,5,3,100,101])
-    selection2 = flex.size_t([0,1,5,3,7,8,9,12,100,101])
-    selection3 = flex.size_t([0,1,5,3,7,8,9,12,14,15,19,17,100,101])
-
-    new_nrg = nu.ncs_groups_selection(
-      ncs_restraints_group_list=nrg,
-      selection=selection1)
-    # only atoms in master are selected
-    mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].iselection)
-
-    assert mt == []
-    assert c1t == []
-
-    # atoms selected in both master and copies
-    new_nrg = nu.ncs_groups_selection(
-      ncs_restraints_group_list=nrg,
-      selection=selection2)
-    # only atoms in master are selected
-    mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].iselection)
-
-    assert mt == []
-    assert c1t == []
-
-    new_nrg = nu.ncs_groups_selection(
-      ncs_restraints_group_list=nrg,
-      selection=selection3)
-    # only atoms in master are selected
-    mt = list(new_nrg[0].master_iselection)
-    c1t = list(new_nrg[0].copies[0].iselection)
-    c2t = list(new_nrg[0].copies[1].iselection)
-
-    assert mt == [0, 1, 5]
-    assert c1t == [7, 8, 12]
-    assert c2t == [14, 15, 19]
-
   def test_selected_positions(self):
     # print sys._getframe().f_code.co_name
 

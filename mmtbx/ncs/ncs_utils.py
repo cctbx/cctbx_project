@@ -417,55 +417,6 @@ def apply_transforms(ncs_coordinates,
   else:
     return flex.vec3_double(asu_xyz)
 
-def ncs_groups_selection(ncs_restraints_group_list,selection):
-  """
-  XXX
-  XXX Move to iotbx/ncs/__init__.py, member func of class_ncs_restraints_group_list()
-  XXX Figure out difference between this and def select() there.
-  XXX
-
-  Modifies the selections of master and copies according the "selection"
-  - Keep the order of selected atoms
-  - Keep only atoms that appear in master and ALL copies
-  Also modify "selection" to include ncs related atoms only if selected in
-  both master and ALL ncs copies (The modified selection is not returned in
-  current version)
-
-  Args:
-    ncs_restraints_group_list (list): list of ncs_restraints_group objects
-    selection (flex.bool or flex.size_t): atom selection
-
-  Returns:
-    new_nrg_list (list): list of modified ncs_restraints_group objects
-  """
-  if isinstance(selection,flex.bool): selection = selection.iselection(True)
-  sel_set = set(selection)
-  new_nrg_list = ncs_restraints_group_list.deep_copy()
-  # check what are the selection that shows in both master and all copies
-  for nrg in new_nrg_list:
-    m = set(nrg.master_iselection)
-    m_list = [(pos,indx) for pos,indx in enumerate(list(nrg.master_iselection))]
-    m_in_sel = m.intersection(sel_set)
-    common_selection_pos = {pos for (pos,indx) in m_list if indx in m_in_sel}
-    for ncs in nrg.copies:
-      c = set(ncs.iselection)
-      c_list = [(pos,indx) for pos,indx in enumerate(list(ncs.iselection))]
-      copy_in_sel = c.intersection(sel_set)
-      include_set = {pos for (pos,indx) in c_list if indx in copy_in_sel}
-      common_selection_pos.intersection_update(include_set)
-      if not bool(common_selection_pos): break
-    # use the common_selection_pos to update all selections
-    nrg.master_iselection, not_included = selected_positions(
-      nrg.master_iselection,common_selection_pos)
-    selection = remove_items_from_selection(selection,not_included)
-    for ncs in nrg.copies:
-      ncs.iselection, not_included = selected_positions(
-        ncs.iselection,common_selection_pos)
-      selection = remove_items_from_selection(selection,not_included)
-
-  return new_nrg_list
-
-
 def selected_positions(selection,positions):
   """
   Returns only the selected indices in the positions specified in "positions"
