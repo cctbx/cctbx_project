@@ -137,6 +137,10 @@ class DataManagerBase(object):
       setattr(self, self._current_storage, dict())
       setattr(self, self._current_default, None)
 
+    # track output files for internal use
+    self._output_files = list()
+    self._output_types = list()
+
     # load information from phil
     if (phil is not None):
       self.load_phil_scope(phil)
@@ -294,6 +298,22 @@ class DataManagerBase(object):
         raise Sorry('%s is not a recognized %s file' % (filename, datatype))
       else:
         self._add(datatype, filename, a.file_object)
+
+  def _write_text(self, datatype, filename, text_str, overwrite=False):
+    '''
+    Convenience function for writing text to file
+    '''
+    if (os.path.isfile(filename) and (not overwrite)):
+      raise Sorry('%s already exists and overwrite is set to %s.' %
+                  (filename, overwrite))
+    if (not isinstance(text_str, str)):
+      raise Sorry('Please provide a text string for writing.')
+
+    with open(filename, 'w') as f:
+      f.write(text_str)
+
+    self._output_files.append(filename)
+    self._output_types.append(datatype)
 
 # =============================================================================
 # end

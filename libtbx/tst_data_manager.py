@@ -84,6 +84,24 @@ data_manager {
 
   os.remove('data_manager_test.eff')
 
+  # writing
+  a = DataManager(datatypes=['model', 'phil', 'sequence'])
+  a.add_model('a','b')
+  a.add_phil('c','d')
+  a.add_sequence('e','f')
+
+  a.write_model_file('a.dat', a.get_model(), overwrite=True)
+  a.write_phil_file('c.dat', a.get_phil(), overwrite=True)
+  a.write_sequence_file('e.dat', a.get_sequence(), overwrite=True)
+
+  with open('a.dat', 'r') as f:
+    lines = f.readlines()
+  assert(lines[0] == 'b')
+
+  os.remove('a.dat')
+  os.remove('c.dat')
+  os.remove('e.dat')
+
 if (__name__ == '__main__'):
 
   test_data_manager()

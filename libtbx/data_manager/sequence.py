@@ -2,6 +2,8 @@ from __future__ import division, print_function
 '''
 '''
 
+import iotbx.bioinformatics
+
 from libtbx.data_manager import DataManagerBase
 
 # =============================================================================
@@ -35,6 +37,10 @@ class SequenceDataManager(DataManagerBase):
 
   def process_sequence_file(self, filename):
     return self._process_file(SequenceDataManager.datatype, filename)
+
+  def write_sequence_file(self, filename, sequence_str, overwrite=False):
+    self._write_text(SequenceDataManager.datatype, filename,
+                     sequence_str, overwrite=overwrite)
 
 # =============================================================================
 # end

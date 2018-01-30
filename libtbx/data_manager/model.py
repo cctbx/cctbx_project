@@ -49,5 +49,9 @@ class ModelDataManager(DataManagerBase):
         model = mmtbx.model.manager(model_input=model_in)
         self.add_model(filename, model)
 
+  def write_model_file(self, filename, model_str, overwrite=False):
+    self._write_text(ModelDataManager.datatype, filename,
+                     model_str, overwrite=overwrite)
+
 # =============================================================================
 # end
