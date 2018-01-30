@@ -1117,7 +1117,7 @@ class input(object):
     if t1 and t2 and t3:
       temp = pdb_h.atom_selection_cache()
       # check if pdb_h contain only the master NCS copy
-      pdb_length = len(pdb_h.atoms())
+      pdb_length = pdb_h.atoms_size()
       self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
       ncs_length = self.ncs_atom_selection.count(True)
       # keep track on the asu copy number
@@ -1485,135 +1485,141 @@ class input(object):
           raise Sorry('NCS copies do not match well')
     return class_ncs_restraints_group_list(ncs_restraints_group_list)
 
-  def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
-    """
-    Update ncs_group_object rotations and transformations.
+  # Not used, not tested.
+  # def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
+  #   """
+  #   Update ncs_group_object rotations and transformations.
 
-    Note that to insure proper assignment the ncs_restraints_group_list
-    should be produced using the get_ncs_restraints_group_list method
+  #   Note that to insure proper assignment the ncs_restraints_group_list
+  #   should be produced using the get_ncs_restraints_group_list method
 
-    Args:
-      ncs_restraints_group_list: a list of ncs_restraint_group objects
-    """
-    assert len(ncs_restraints_group_list) == len(self.ncs_group_map)
-    group_id_list = sort_dict_keys(self.ncs_group_map)
-    for k in group_id_list:
-      v = self.ncs_group_map[k]
-      nrg = ncs_restraints_group_list.pop(0)
-      for tr in sorted(list(v[1])):
-        if self.transform_to_ncs.has_key(tr):
-          ncs_copy = nrg.copies.pop(0)
-          self.ncs_transform[tr].r = ncs_copy.r
-          self.ncs_transform[tr].t = ncs_copy.t
-          # Test that the correct transforms are updated
-          ncs_isel = flex.size_t([])
-          for sel in self.transform_to_ncs[tr]:
-            ncs_isel.extend(self.ncs_to_asu_map[sel])
-          assert ncs_copy.iselection == ncs_isel
+  #   Args:
+  #     ncs_restraints_group_list: a list of ncs_restraint_group objects
+  #   """
+  #   assert len(ncs_restraints_group_list) == len(self.ncs_group_map)
+  #   group_id_list = sort_dict_keys(self.ncs_group_map)
+  #   for k in group_id_list:
+  #     v = self.ncs_group_map[k]
+  #     nrg = ncs_restraints_group_list.pop(0)
+  #     for tr in sorted(list(v[1])):
+  #       if self.transform_to_ncs.has_key(tr):
+  #         ncs_copy = nrg.copies.pop(0)
+  #         self.ncs_transform[tr].r = ncs_copy.r
+  #         self.ncs_transform[tr].t = ncs_copy.t
+  #         # Test that the correct transforms are updated
+  #         ncs_isel = flex.size_t([])
+  #         for sel in self.transform_to_ncs[tr]:
+  #           ncs_isel.extend(self.ncs_to_asu_map[sel])
+  #         assert ncs_copy.iselection == ncs_isel
 
-  def get_transform_records(self, file_name=None,
-                          ncs_only=True,
-                          pdb_hierarchy=None,
-                          xrs=None,
-                          fmodel=None,
-                          crystal_symmetry=None,
-                          mtrix=None,
-                          biomt=None,
-                          write=False,
-                          log = None):
-    """
-    Write to a file or prints transformation records.
-    with or without PDB atoms and Cryst records.
-    If no pdb_hierarchy, xray structure or fmodel are provided, the function
-    will return only the MTRIX/BIOMT records
+  # Not used, not tested. In case this is used somewhere (Maybe in secret Tom's
+  # repositories), I would recommend at least to add simple test ensuring that the
+  # function just exists and explain where it is used.
+  # def get_transform_records(self, file_name=None,
+  #                         ncs_only=True,
+  #                         pdb_hierarchy=None,
+  #                         xrs=None,
+  #                         fmodel=None,
+  #                         crystal_symmetry=None,
+  #                         mtrix=None,
+  #                         biomt=None,
+  #                         write=False,
+  #                         log = None):
+  #   """
+  #   Write to a file or prints transformation records.
+  #   with or without PDB atoms and Cryst records.
+  #   If no pdb_hierarchy, xray structure or fmodel are provided, the function
+  #   will return only the MTRIX/BIOMT records
 
-    Args:
-      file_name: (str) output file name
-      ncs_only: (bool) When False, the comple ASU will be printed (applicable
-                only with MTRIX records)
-      pdb_hierarchy: (pdb_hierarchy object)
-      xrs: (xray structure) for crystal symmetry
-      fmodel: (fmodel object)
-      crystal_symmetry: crystal symmetry records
-      mtrix: (bool) When True -> write MTRIX records
-      biomt: (bool) When True -> write BIOMT records
-      write: (bool) when False, will will not write to file or print
+  #   Args:
+  #     file_name: (str) output file name
+  #     ncs_only: (bool) When False, the comple ASU will be printed (applicable
+  #               only with MTRIX records)
+  #     pdb_hierarchy: (pdb_hierarchy object)
+  #     xrs: (xray structure) for crystal symmetry
+  #     fmodel: (fmodel object)
+  #     crystal_symmetry: crystal symmetry records
+  #     mtrix: (bool) When True -> write MTRIX records
+  #     biomt: (bool) When True -> write BIOMT records
+  #     write: (bool) when False, will will not write to file or print
 
-    Return:
-      PDB string
-    """
-    if not log: log = sys.stdout
-    if (not mtrix) and (not biomt):
-      mtrix = True
-      biomt = False
-    assert bool(mtrix) == (not bool(biomt))
-    if biomt: ncs_only = True
-    mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
-    pdb_header_str = ''
-    new_ph_str = ''
-    transform_rec = ''
-    #
-    if fmodel:
-      xrs = fmodel.xray_structure
-    if xrs and self.original_hierarchy and (not pdb_hierarchy):
-      pdb_hierarchy = self.original_hierarchy
-      pdb_str = xrs.as_pdb_file()
-      pdb_header_str = get_pdb_header(pdb_str)
-      xyz = pdb_hierarchy.atoms().extract_xyz()
-      new_xyz = xrs.sites_cart()
-      if new_xyz.size() > xyz.size():
-        ncs_only = True
-        xrs = xrs.select(self.ncs_atom_selection)
-        new_xyz = xrs.sites_cart()
-      assert new_xyz.size() == xyz.size()
-      pdb_hierarchy.atoms().set_xyz(new_xyz)
-    if pdb_hierarchy:
-      ph = pdb_hierarchy
-      if not crystal_symmetry:
-        if self.crystal_symmetry: crystal_symmetry = self.crystal_symmetry
-        elif xrs:
-          crystal_symmetry = xrs.crystal_symmetry()
-      pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
-      if not pdb_header_str:
-       pdb_header_str = get_pdb_header(pdb_str)
-      if ncs_only:
-        new_ph = ph.select(self.ncs_atom_selection)
-      else:
-        msg = 'The complete ASU hierarchy need to be provided !!!\n'
-        assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
-        new_ph = ph
-      new_ph_str = new_ph.as_pdb_string(crystal_symmetry=None)
-    #
-    if mtrix:
-      transform_rec = mtrix_object.as_pdb_string()
-    elif biomt:
-      transform_rec = mtrix_object.format_BOIMT_pdb_string()
-    #
-    if write:
-      if file_name:
-        f = open(file_name,'w')
-        print >> f, pdb_header_str
-        print >> f, transform_rec
-        print >> f, new_ph_str
-        f.close()
-      else:
-        print >> log,pdb_header_str
-        print >> log,transform_rec
-        print >> log,new_ph_str
-    return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
+  #   Return:
+  #     PDB string
+  #   """
+  #   if not log: log = sys.stdout
+  #   if (not mtrix) and (not biomt):
+  #     mtrix = True
+  #     biomt = False
+  #   assert bool(mtrix) == (not bool(biomt))
+  #   if biomt: ncs_only = True
+  #   mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
+  #   pdb_header_str = ''
+  #   new_ph_str = ''
+  #   transform_rec = ''
+  #   #
+  #   if fmodel:
+  #     xrs = fmodel.xray_structure
+  #   if xrs and self.original_hierarchy and (not pdb_hierarchy):
+  #     pdb_hierarchy = self.original_hierarchy
+  #     pdb_str = xrs.as_pdb_file()
+  #     pdb_header_str = get_pdb_header(pdb_str)
+  #     xyz = pdb_hierarchy.atoms().extract_xyz()
+  #     new_xyz = xrs.sites_cart()
+  #     if new_xyz.size() > xyz.size():
+  #       ncs_only = True
+  #       xrs = xrs.select(self.ncs_atom_selection)
+  #       new_xyz = xrs.sites_cart()
+  #     assert new_xyz.size() == xyz.size()
+  #     pdb_hierarchy.atoms().set_xyz(new_xyz)
+  #   if pdb_hierarchy:
+  #     ph = pdb_hierarchy
+  #     if not crystal_symmetry:
+  #       if self.crystal_symmetry: crystal_symmetry = self.crystal_symmetry
+  #       elif xrs:
+  #         crystal_symmetry = xrs.crystal_symmetry()
+  #     pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
+  #     if not pdb_header_str:
+  #      pdb_header_str = get_pdb_header(pdb_str)
+  #     if ncs_only:
+  #       new_ph = ph.select(self.ncs_atom_selection)
+  #     else:
+  #       msg = 'The complete ASU hierarchy need to be provided !!!\n'
+  #       assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
+  #       new_ph = ph
+  #     new_ph_str = new_ph.as_pdb_string(crystal_symmetry=None)
+  #   #
+  #   if mtrix:
+  #     transform_rec = mtrix_object.as_pdb_string()
+  #   elif biomt:
+  #     transform_rec = mtrix_object.format_BOIMT_pdb_string()
+  #   #
+  #   if write:
+  #     if file_name:
+  #       f = open(file_name,'w')
+  #       print >> f, pdb_header_str
+  #       print >> f, transform_rec
+  #       print >> f, new_ph_str
+  #       f.close()
+  #     else:
+  #       print >> log,pdb_header_str
+  #       print >> log,transform_rec
+  #       print >> log,new_ph_str
+  #   return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
   def get_ncs_info_as_spec(
           self,
+          # XXX Choose one of those or pass coordinates straight away
           pdb_hierarchy_asu=None,
           xrs=None,
           fmodel=None,
+          # =============
           exclude_h=None,
           exclude_d=None,
           stem=None,
           write_ncs_domain_pdb=False,
           log = None):
     """
-    This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
+    XXX This function should be transfered to mmtbx/ncs/ncs.py:ncs class as
     its classmethod, because it creates an object and this is the task of
     a constructor. And it definetely should be decoupled from file creation!
 
@@ -1629,10 +1635,11 @@ class input(object):
     for example "resseq 49" will include "resid 49" and "resid 49A"
 
     Args:
-      file_name_prefix: (str) output file names prefix
-      pdb_hierarchy: (pdb_hierarchy object)
-      xrs: (xray structure) for crystal symmetry
-      fmodel: (fmodel object)
+      XXX Just pick one of those or pass coordinates straight away:
+      pdb_hierarchy_asu: (pdb_hierarchy object)
+      xrs: (xray structure) for coordinates
+      XXX ========
+      fmodel: (fmodel object) - to extract xrs and then coordinates
       write: (bool) when False, will not write to file or print
       exclude_h,exclude_d : parameters of the ncs object
     Return:
