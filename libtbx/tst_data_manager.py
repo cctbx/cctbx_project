@@ -8,7 +8,7 @@ from libtbx.utils import Sorry
 from libtbx.data_manager import DataManager
 
 def test_data_manager():
-  a = DataManager()
+  a = DataManager(datatypes=['model'])
 
   a.add_model('a', 'b')
   a.add_model('c', 'd')
@@ -55,7 +55,9 @@ def test_data_manager():
   except Sorry:
     pass
 
+  a = DataManager(datatypes=['sequence', 'phil'])
   assert (a.get_sequence_names() == [])
+  assert (not hasattr(a, 'get_model'))
 
   # phil functions
   test_phil_str = '''
@@ -73,7 +75,7 @@ data_manager {
   assert('data_manager_test.eff' in a.get_phil_names())
 
   # loading file with phil
-  a = DataManager()
+  a = DataManager(datatypes=['phil'])
   test_phil = libtbx.phil.parse(test_phil_str)
   a.load_phil_scope(test_phil)
 
