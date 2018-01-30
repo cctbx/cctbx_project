@@ -3,8 +3,6 @@ from __future__ import division, print_function
 
 import os
 
-import iotbx.pdb
-import mmtbx.model
 from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 
@@ -62,6 +60,8 @@ mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
 }
 output {
+  overwrite = False
+    .type = bool
   output_suffix = '.deposit.cif'
     .type = str
 }
@@ -110,14 +110,8 @@ output {
       self.params.output.output_suffix
     print ('Writing mmCIF', file=self.logger)
     print ('  Output file = %s' % self.output_file, file=self.logger)
-    with open(self.output_file, 'wb') as f:
-      f.write(self.cif_model)
-
-    # update data manager for any downstream applications
-    pdb_input = iotbx.pdb.input(self.output_file)
-    model = mmtbx.model.manager(model_input=pdb_input, log=self.logger)
-    self.data_manager.add_model(self.output_file, model)
-    self.data_manager.set_default_model(self.output_file)
+    self.data_manager.write_model_file(
+      self.output_file, self.cif_model, self.params.output.overwrite)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
