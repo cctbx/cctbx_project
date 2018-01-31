@@ -43,6 +43,7 @@ def step_1(file_name, crystal_symmetry, write_name):
   ph2 = pdb_inp.construct_hierarchy()
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   ph = pdb_inp.construct_hierarchy_MTRIX_expanded()
+  ph.reset_atom_i_seqs()
   xrs_asu = ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   ph.write_pdb_file(file_name=write_name, crystal_symmetry=crystal_symmetry)
   pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
@@ -165,11 +166,14 @@ class ncs_minimization_test(object):
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
       write_name='asu_shaken.pdb')
     tr_obj = iotbx.ncs.input(
-      hierarchy = ph,
+      hierarchy = ph2,
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
-      transform_info = transform_info,
+      chain_max_rmsd = 20,
+      # transform_info = transform_info,
       exclude_selection=None)
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
+    # self.ncs_restraints_group_list._show()
+    # print ph2.as_pdb_string()
     # refine both ncs related and not related atoms
     self.refine_selection = flex.size_t(range(tr_obj.total_asu_length))
     self.extended_ncs_selection = tr_obj.get_ncs_restraints_group_list().get_extended_ncs_selection(

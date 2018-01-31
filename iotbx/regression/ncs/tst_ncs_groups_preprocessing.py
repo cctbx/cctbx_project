@@ -305,31 +305,33 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
     # self.assertEqual(t2,t2_exp)
 
-  def test_rotaion_translation_input(self):
-    """ Verify correct processing    """
-    r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
-                     0.248227,0.426599,-0.869711,
-                     -0.161362,-0.867058,-0.471352])
-    r2 = matrix.sqr([-0.994267,-0.046533,-0.096268,
-                     -0.065414,-0.447478,0.89189,
-                     -0.084580,0.893083,0.441869])
-    t1 = matrix.col([167.54320,-4.09250,41.98070])
-    t2 = matrix.col([176.73730,27.41760,-5.85930])
-    trans_obj = ncs.input(
-      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str2).construct_hierarchy(),
-      rotations=[r1,r2],
-      translations=[t1,t2])
-    nrg = trans_obj.get_ncs_restraints_group_list()[0]
-    self.assertEqual(list(nrg.master_iselection),[0, 1, 2, 3, 4, 5, 6, 7, 8])
-    c1 = nrg.copies[0]
-    self.assertEqual(list(c1.iselection),[9,10,11,12,13,14,15,16,17])
-    c2 = nrg.copies[1]
-    self.assertEqual(list(c2.iselection),[18,19,20,21,22,23,24,25,26])
-    #
-    self.assertEqual(r1,c1.r)
-    self.assertEqual(r2,c2.r)
-    self.assertEqual(t1,c1.t)
-    self.assertEqual(t2,c2.t)
+  # Removed with removal of transform_info, rotations, translations from
+  # iotbx.ncs.input constructor
+  # def test_rotaion_translation_input(self):
+  #   """ Verify correct processing    """
+  #   r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
+  #                    0.248227,0.426599,-0.869711,
+  #                    -0.161362,-0.867058,-0.471352])
+  #   r2 = matrix.sqr([-0.994267,-0.046533,-0.096268,
+  #                    -0.065414,-0.447478,0.89189,
+  #                    -0.084580,0.893083,0.441869])
+  #   t1 = matrix.col([167.54320,-4.09250,41.98070])
+  #   t2 = matrix.col([176.73730,27.41760,-5.85930])
+  #   trans_obj = ncs.input(
+  #     hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str2).construct_hierarchy(),
+  #     rotations=[r1,r2],
+  #     translations=[t1,t2])
+  #   nrg = trans_obj.get_ncs_restraints_group_list()[0]
+  #   self.assertEqual(list(nrg.master_iselection),[0, 1, 2, 3, 4, 5, 6, 7, 8])
+  #   c1 = nrg.copies[0]
+  #   self.assertEqual(list(c1.iselection),[9,10,11,12,13,14,15,16,17])
+  #   c2 = nrg.copies[1]
+  #   self.assertEqual(list(c2.iselection),[18,19,20,21,22,23,24,25,26])
+  #   #
+  #   self.assertEqual(r1,c1.r)
+  #   self.assertEqual(r2,c2.r)
+  #   self.assertEqual(t1,c1.t)
+  #   self.assertEqual(t2,c2.t)
 
   def test_print_ncs_phil_param(self):
     """ Verify correct printout of NCS phil parameters.
@@ -388,14 +390,17 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_correct_grouping(self):
     """ test correct representation of groups in .ncs file"""
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_4)
-    h = pdb_inp.construct_hierarchy()
-    ncs_obj = iotbx.ncs.input(
-        hierarchy=h,
-        transform_info=pdb_inp.process_MTRIX_records(eps=0.01))
-    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    gr = ncs_obj.print_ncs_phil_param()
-    self.assertEqual(gr,answer_4)
+    pass
+    # Removed with removal of transform_info, rotations, translations from
+    # iotbx.ncs.input constructor
+    # pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_4)
+    # h = pdb_inp.construct_hierarchy()
+    # ncs_obj = iotbx.ncs.input(
+    #     hierarchy=h,
+    #     transform_info=pdb_inp.process_MTRIX_records(eps=0.01))
+    # self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    # gr = ncs_obj.print_ncs_phil_param()
+    # self.assertEqual(gr,answer_4)
 
     # Removed because we don't want to create iotbx.ncs.input without hierarchy
     # anymore

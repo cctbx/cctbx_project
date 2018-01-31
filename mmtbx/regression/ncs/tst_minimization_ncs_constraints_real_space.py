@@ -125,15 +125,13 @@ def run(prefix="tst", d_min=1.0):
     add_identity=True)
   ncs_obj_poor.write_pdb_file(file_name="asu.pdb",
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
-  rm = ncs_obj_poor.back_rotation_matrices
-  tv = ncs_obj_poor.back_translation_vectors
-  ir = [rm[0]]
-  it = [tv[0]]
   # create transformation object
   transforms_obj = ncs.input(
-    hierarchy = ph_poor_obj.construct_hierarchy(),
-    rotations=rm,
-    translations=tv)
+    # hierarchy = ph_poor_obj.construct_hierarchy(),
+    hierarchy=ph_answer,
+    # rotations=rm,
+    # translations=tv,
+    )
   x = transforms_obj.get_ncs_restraints_group_list().concatenate_rot_tran()
   x = nu.shake_transformations(
     x = x,
@@ -143,8 +141,8 @@ def run(prefix="tst", d_min=1.0):
   nrgl.update_rot_tran(x=x)
   rm,tv = nrgl.get_rotation_translation_as_list()
   # just to see how result of shaking looks like
-  rm_ = ir+rm
-  tv_ = it+tv
+  rm_ = [rm[0]]+rm
+  tv_ = [tv[0]]+tv
   ncs_obj_poor.back_rotation_matrices=rm_
   ncs_obj_poor.back_translation_vectors=tv_
   ncs_obj_poor.update_sites_cart(

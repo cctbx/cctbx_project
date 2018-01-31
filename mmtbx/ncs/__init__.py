@@ -3,6 +3,9 @@ from scitbx.array_family import flex
 from scitbx.math import superpose
 import scitbx.matrix
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: used only for testing implying iotbx.ncs.input can be constructed from
+# matrices, which is not going to be true soon.
 class asu_ncs_converter(object):
   """
   Simple method of converting multiple NCS copy ASU content into one NCS copy
@@ -100,3 +103,4 @@ class asu_ncs_converter(object):
       print >> of, self.pdb_hierarchy.as_pdb_string(
         crystal_symmetry = crystal_symmetry)
     of.close()
+# END_MARKED_FOR_DELETION_OLEG

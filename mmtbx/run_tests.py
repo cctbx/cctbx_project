@@ -68,7 +68,9 @@ tst_list = (
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
   "$D/maps/tst_correlation.py",
-  "$D/regression/ncs/tst_ncs_utils.py",
+  # Removed with removal of transform_info, rotations, translations from
+  # iotbx.ncs.input constructor
+  # "$D/regression/ncs/tst_ncs_utils.py",
   "$D/regression/ncs/tst_ncs_restraints_group_list.py",
   "$D/regression/ncs/tst_ncs_search.py",
   "$D/regression/ncs/tst_ncs_search_flips.py",

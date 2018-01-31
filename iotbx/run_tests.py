@@ -91,12 +91,14 @@ tst_list = (
   "$D/regression/tst_export_scalepack_unmerged.py",
   ["$D/dsn6/tst.py", "P31"],
   "$D/regression/ncs/tst_mtrix_biomt_cmdl.py",
-  "$D/regression/ncs/tst_ncs.py",
   "$D/regression/ncs/tst_ncs_search_ligs.py",
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",
-  "$D/pdb/tst_read_mtrix_records_from_cif.py",
+  # Removed with removal of transform_info, rotations, translations from
+  # iotbx.ncs.input constructor
+  # "$D/pdb/tst_read_mtrix_records_from_cif.py",
+  # "$D/regression/ncs/tst_ncs.py",
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",
   "$D/regression/tst_reflection_file_reader.py",
