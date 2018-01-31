@@ -14,6 +14,7 @@ import math
 import re
 import os
 import sys
+from iotbx.pdb.utils import all_chain_ids
 
 ncs_search_options = """\
 ncs_search
@@ -228,7 +229,8 @@ class input(object):
     validated_ncs_phil_groups = None
     validated_ncs_phil_groups = self.validate_ncs_phil_groups(
       pdb_h = self.truncated_hierarchy,
-      ncs_phil_groups   = ncs_phil_groups)
+      ncs_phil_groups   = ncs_phil_groups,
+      asc = self.truncated_h_asc)
     # print "ncs_phil_groups", ncs_phil_groups
     # print "validated_ncs_phil_groups", validated_ncs_phil_groups
     # transform_info = insure_identity_is_in_transform_info(transform_info)
@@ -297,18 +299,7 @@ class input(object):
     # print "tmp2 in pdb_h_into_chain", list(new_chain.atoms().extract_tmp_as_size_t())
     return new_chain
 
-  def get_next_ch_id(self, cur_ch_id):
-    if len(cur_ch_id) == 1 and cur_ch_id < 'Z':
-      return chr(ord(cur_ch_id) + 1)
-    elif len(cur_ch_id) == 1 and cur_ch_id == 'Z':
-      return "AA"
-    elif len(cur_ch_id) == 2 and cur_ch_id[1] < 'Z':
-      return cur_ch_id[0] + chr(ord(cur_ch_id[1]) + 1)
-    elif len(cur_ch_id) == 2 and cur_ch_id[1] == 'Z':
-      return chr(ord(cur_ch_id[0]) + 1) + 'A'
-
-
-  def validate_ncs_phil_groups(self, pdb_h, ncs_phil_groups):
+  def validate_ncs_phil_groups(self, pdb_h, ncs_phil_groups, asc):
     """
     Note that the result of this procedure is corrected ncs_phil_groups.
     These groups will be later submitted to build_ncs_obj_from_phil
@@ -372,7 +363,6 @@ class input(object):
       return ncs_phil_groups
     if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
       msg="Empty selection in NCS group definition: %s"
-      asc = pdb_h.atom_selection_cache()
       for ncs_group in ncs_phil_groups:
         print >> self.log, "  Validating:"
         show_particular_ncs_group(ncs_group)
@@ -415,11 +405,12 @@ class input(object):
         #
         combined_h = iotbx.pdb.hierarchy.root()
         combined_h.append_model(iotbx.pdb.hierarchy.model())
-        cur_ch_id = 'A'
+        all_c_ids = all_chain_ids()
+        cur_ch_id_n = 0
         master_chain = self.pdb_h_into_chain(pdb_h.select(
-            user_original_reference_iselection),ch_id=cur_ch_id)
+            user_original_reference_iselection),ch_id=all_c_ids[cur_ch_id_n])
         # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
-        cur_ch_id = self.get_next_ch_id(cur_ch_id)
+        cur_ch_id_n += 1
         combined_h.only_model().append_chain(master_chain)
 
         # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
@@ -427,9 +418,9 @@ class input(object):
         for uocis in user_original_copies_iselections:
           # print "adding selection to combined:", s_string
           sel_chain = self.pdb_h_into_chain(pdb_h.select(
-            uocis),ch_id=cur_ch_id)
+            uocis),ch_id=all_c_ids[cur_ch_id_n])
           combined_h.only_model().append_chain(sel_chain)
-          cur_ch_id = self.get_next_ch_id(cur_ch_id)
+          cur_ch_id_n += 1
 
         # save old i_seqs in tmp
         # for chain in combined_h.only_model().chains():
