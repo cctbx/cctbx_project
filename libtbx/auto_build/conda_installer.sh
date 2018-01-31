@@ -41,8 +41,8 @@ while test $# -gt 0; do
       shift
       base_pkgs=($@)
       echo ${base_pkgs[@]}
-      export PATH="$PWD/base/bin:$PATH"
-      source activate root
+      export PATH="$PWD/../newconda/bin:$PATH"
+      source activate base
       conda clean --index-cache
       install_pkgs_conda ${base_pkgs[@]} 
       break

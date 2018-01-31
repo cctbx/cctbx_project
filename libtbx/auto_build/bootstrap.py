@@ -1089,8 +1089,8 @@ class Builder(object):
 
     if conda:
       import subprocess
-      fpath = os.path.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-      subprocess.call([fpath,"--install-miniconda"])
+      #fpath = os.path.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
+      #subprocess.call([fpath,"--install-miniconda"])
       extra_opts = ["--nproc=%s" % str(self.nproc)]
       if enable_shared:
         extra_opts.append("--python-shared")

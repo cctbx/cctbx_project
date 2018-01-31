@@ -756,13 +756,13 @@ Installation of Python packages may fail.
     ]
     conda_pkg_list = [
       'python=2.7.14',
-      'mpich2',
       'mpi4py'
     ]
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:
-      os.chdir(op.join(self.tmp_dir,'..'))
-      self.install_with_conda(conda_pkg_list, extra_opts=[])
+      print 'installation with conda enabled'
+      #os.chdir(op.join(self.tmp_dir,'..'))
+      #self.install_with_conda(conda_pkg_list, extra_opts=[])
     packages_order = []
     for i in packages:
       assert i in order, "Installation order unknown for %s" % i
