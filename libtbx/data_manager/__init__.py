@@ -194,6 +194,14 @@ class DataManagerBase(object):
         getattr(self, 'process_%s_file' % datatype)(filename)
 
   # ---------------------------------------------------------------------------
+  def supports(self, datatype):
+    '''
+    Function that checks if the DataManager instance supports a particular
+    datatype
+    '''
+    return (datatype in self.datatypes)
+
+  # ---------------------------------------------------------------------------
   # Generic functions for manipulating data
   def _set_datatype(self, datatype):
     '''

@@ -55,6 +55,8 @@ Currently, this program only combines the model and sequence into a single
 mmCIF file. More functionality is planned.
 '''
 
+  datatypes = ['model', 'phil', 'sequence']
+
   master_phil_str = '''
 mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil

@@ -247,7 +247,6 @@ class CCTBXParser(ParserBase):
 
     Use iotbx.file_reader.any_file to process files.
     Will need updating to work with mmtbx.model.manager class more efficiently
-    May be rolled into DataManager class
     '''
     print('Processing files:', file=self.logger)
     print('-'*79, file=self.logger)
@@ -258,16 +257,19 @@ class CCTBXParser(ParserBase):
     for filename in file_list:
       a = any_file(filename)
       # models
-      if (a.file_type == 'pdb'):
+      if ( (a.file_type == 'pdb') and
+           self.data_manager.supports('model') ):
         self.data_manager.process_model_file(filename)
         print('  Found model, %s' % filename, file=self.logger)
         printed_something = True
       # sequences
-      elif (a.file_type == 'seq'):
+      elif ( (a.file_type == 'seq') and
+             self.data_manager.supports('sequence') ):
         self.data_manager.add_sequence(filename, a.file_object)
         print('  Found sequence, %s' % filename, file=self.logger)
         printed_something = True
-      elif (a.file_type == 'phil'):
+      elif ( (a.file_type == 'phil') and
+             self.data_manager.supports('phil') ):
         self.data_manager.add_phil(filename, a.file_object)
         print('  Found PHIL, %s' % filename)
         printed_something = True
@@ -277,17 +279,16 @@ class CCTBXParser(ParserBase):
 
     # show unrecognized files
     if (len(unused_files) > 0):
-      print('  Unrecognized files:', file=self.logger)
-      print('  -------------------', file=self.logger)
+      print('  Files not used by program:', file=self.logger)
+      print('  --------------------------', file=self.logger)
       for filename in unused_files:
         print('  %s' % filename, file=self.logger)
       printed_something = True
 
-    # process PHIL files for DataManager scope in ascending order
+    # process PHIL files for DataManager scope in order from command-line
     # files are appended and the default is not overridden
     # files from the command-line take precedence
     phil_names = self.data_manager.get_phil_names()
-    phil_names.sort()
     for name in phil_names:
       phil = self.data_manager.get_phil(name)
       if (hasattr(phil.extract(), 'data_manager')):
@@ -318,10 +319,9 @@ class CCTBXParser(ParserBase):
     sources = list()
     unused_phil = list()
 
-    # PHIL files are processed in ascending order
+    # PHIL files are processed in order from command-line
     if (self.data_manager.has_phils()):
       phil_names = self.data_manager.get_phil_names()
-      phil_names.sort()
       phil = list()
       for name in phil_names:
         phil.append(self.data_manager.get_phil(name))
@@ -341,18 +341,27 @@ class CCTBXParser(ParserBase):
     self.working_phil = self.master_phil.fetch(
       sources=data_sources + sources)
 
-    # show differences
-    if (len(sources) > 0):
+    try:
       phil_diff = self.master_phil.fetch_diff(self.working_phil)
+    except RuntimeError as err:
+      raise Sorry(err)
+    is_different = (len(phil_diff.as_str()) > 0)
+
+    # show differences
+    if (is_different):
       print('  Non-default PHIL parameters:', file=self.logger)
       print('  ----------------------------', file=self.logger)
       phil_diff.show(prefix='  ', out=self.logger)
       printed_something = True
 
-      # write differences (no DataManager scope)
-      if (self.namespace.write_modified):
+    # write differences
+    if (self.namespace.write_modified):
+      if (is_different):
         with open(self.modified_filename, 'w') as f:
           phil_diff.show(out=f)
+      else:
+        print('  No PHIL modifications to write', file=self.logger)
+        printed_something = True
 
     # show unrecognized parameters
     if (len(unused_phil) > 0):
@@ -364,6 +373,20 @@ class CCTBXParser(ParserBase):
 
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
+    print('', file=self.logger)
+
+    # show final processed phil scope
+    try:
+      data_diff = self.data_manager.master_phil.fetch_diff(
+        self.data_manager.export_phil_scope())
+    except RuntimeError as err:
+      raise Sorry(err)
+    is_different = ( (len(data_diff.as_str()) + len(phil_diff.as_str())) > 0 )
+    if (is_different):
+      print('Final processed PHIL parameters:')
+      print('-'*79, file=self.logger)
+      data_diff.show(prefix='  ', out=self.logger)
+      phil_diff.show(prefix='  ', out=self.logger)
 
     # write all parameters (DataManager + Program)
     if (self.namespace.write_all):
