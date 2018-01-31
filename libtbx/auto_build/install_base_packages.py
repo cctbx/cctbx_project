@@ -49,7 +49,6 @@ class installer (object) :
   ****************************************************************************
 """
     dist_dir = op.dirname(op.dirname(op.dirname(__file__)))
-    print dist_dir, 'DISTRIBUTION DIR'
     parser = OptionParser()
     # Basic options
     parser.add_option("--build_dir", dest="build_dir", action="store",
@@ -145,12 +144,13 @@ class installer (object) :
     self.pkg_dirs = options.pkg_dirs
     self.base_dir = op.join(self.build_dir, "base")
     self.prefix = "--prefix=\"%s\""%self.base_dir
-    if options.skip_if_exists and os.path.exists(self.base_dir) and os.listdir(self.base_dir):
+    if options.skip_if_exists and os.path.exists(self.base_dir) and os.listdir(self.base_dir) and not options.with_conda:
       print >> log, "Base directory already exists and --skip-if-exists set; exiting."
       return
     print >> log, "Setting up directories..."
     for dir_name in [self.tmp_dir,self.build_dir,self.base_dir]:
       if (not op.isdir(dir_name)) :
+        if self.with_conda and dir_name == self.base_dir: continue 
         print >> log, "  creating %s" % dir_name
         os.makedirs(dir_name)
     self.check_python_dependencies()
@@ -231,7 +231,7 @@ class installer (object) :
 
     # Set package config.
     pkg_config_dir = op.join(self.base_dir, "lib", "pkgconfig")
-    if (not op.isdir(pkg_config_dir) and not options.download_only):
+    if (not op.isdir(pkg_config_dir) and not options.download_only and not options.with_conda):
       os.makedirs(pkg_config_dir)
     pkg_config_paths = [pkg_config_dir] + os.environ.get("PKG_CONFIG_PATH", "").split(":")
     os.environ['PKG_CONFIG_PATH'] = ":".join(pkg_config_paths)
@@ -692,14 +692,13 @@ Installation of Python packages may fail.
 
   def install_with_conda(self, packages=None, extra_opts=[]):
     import subprocess
-    print os.getcwd()
+    if not op.isdir(self.base_dir):
+      raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
     if op.isdir(self.base_dir):
-      print ' ############ Base Directory exists ###############'
-      os.rmdir(self.base_dir)
+      print "base directory present"
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-    conda_call = [fpath]+packages
+    conda_call = [fpath]+["--install-packages"]+ packages
     subprocess.call(conda_call)
-    exit() 
 
   def build_dependencies(self, packages=None):
     # Build in the correct dependency order.
@@ -751,32 +750,13 @@ Installation of Python packages may fail.
       'wxpython',
     ]
     conda_pkg_list = [
-      'openssl=1.0.2',
       'python=2.7.14',
-      'certifi',
-      'numpy=1.8.2',
-      'cython=0.22',
-      'libpng',
-      'pytest',
-      'jinja=2.9.6',
-      'biopython=1.68',
-      'docutils=0.12',
-      'sphinx',
-      'pyopengl',
-      'freetype',
-      'matplotlib=2.0.0',
-      'pillow',
-      'glib',
-      'expat=2.1.0',
-      'fontconfig',
-      'pixman=0.34',
-      'libtiff=4.0.6',
-      'cairo',
-      'wxpython'
+      'mpich2',
+      'mpi4py'
     ]
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:
-      os.chdir(op.join(self.base_dir,'..'))
+      os.chdir(op.join(self.tmp_dir,'..'))
       self.install_with_conda(conda_pkg_list, extra_opts=[])
     packages_order = []
     for i in packages:
@@ -784,7 +764,7 @@ Installation of Python packages may fail.
     for i in order:
       if i in packages:
         if i in self.options.skip_base: continue
-        if self.options.with_conda and i in conda_pkg_list: continue
+        #if self.options.with_conda and i in conda_pkg_list: continue
         packages_order.append(i)
 
     if self.options.download_only:
