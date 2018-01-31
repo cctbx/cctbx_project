@@ -205,6 +205,10 @@ namespace cctbx { namespace xray {
               }
               contr += gaussian_ft.as_real_[i] * e;
             }
+            /*
+            Ideally an assertion i_map<real_map_.size() should be here.
+            Perhaps it is not here for performance reasons.
+            */
             map_begin[i_map] += contr;
           }
 #endif

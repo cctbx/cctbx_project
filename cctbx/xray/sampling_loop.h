@@ -48,7 +48,13 @@
         FloatType f0 = FloatType(gp0) / grid_f[0] - coor_frac[0];
         FloatType c00 = orth_mx[0] * f0;
       for(int i_gp1=0;i_gp1<n_gp1;i_gp1++) {
+        /* It is possible that (g01+gp1g[i_gp1]) and grid_a[2] are large enough
+           so that their product is greater than INT_MAX, resulting in g0112
+           negative. Later asigning it to std::size_t this leads to a disaster.
         int g0112 = (g01+gp1g[i_gp1]) * grid_a[2];
+        */
+        std::size_t g0112 = (std::size_t(g01)+std::size_t(gp1g[i_gp1])) *
+                                                         std::size_t(grid_a[2]);
         FloatType c01 = o1f1_[i_gp1] + c00;
         FloatType c11 = o4f1_[i_gp1];
       for(int i_gp2=0;i_gp2<n_gp2;i_gp2++) {
@@ -58,5 +64,8 @@
           o8f2_[i_gp2]);
         FloatType d_sq = d.length_sq();
         if (d_sq > sampling_box.max_d_sq) continue;
+        /* See comment above: g0112 can become negative.
         std::size_t i_map = g0112 + gp2g[i_gp2];
+        */
+        std::size_t i_map = g0112 + std::size_t(gp2g[i_gp2]);
 #endif // DOXYGEN_SHOULD_SKIP_THIS
