@@ -230,39 +230,40 @@ ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
 END
 """
 
-def exercise_00():
-  """ Verify that spec object are produced properly """
-  pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-  t_i = pdb_inp.process_MTRIX_records()
-  pdb_h = pdb_inp.construct_hierarchy()
-  trans_obj = ncs.input(hierarchy=pdb_h, transform_info=t_i)
-  pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-  spec_output = trans_obj.get_ncs_info_as_spec()
-  trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
-  t1 = trans_obj.ncs_transform['0000000002'].r
-  t2 = trans_obj2.ncs_transform['0000000002'].r
-  assert approx_equal(t1, t2)
-  assert len(trans_obj.ncs_transform) == len(trans_obj2.ncs_transform)
-  t1 = trans_obj.ncs_to_asu_selection
-  t1_expected = {'chain A or chain B':
-                   ['chain C or chain D', 'chain E or chain F']}
-  assert t1 == t1_expected
-  t2 = trans_obj2.ncs_to_asu_selection
-  t2_expected = {
-    'chain A and (resseq 1:3 or resseq 6:7)':
-      ['chain C and (resseq 1:3 or resseq 6:7)',
-       'chain E and (resseq 1:3 or resseq 6:7)'],
-    'chain B and (resseq 4:5)':
-      ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
-  assert t2 == t2_expected
-  t1 = trans_obj.tr_id_to_selection['chain A_0000000003']
-  t1_expected = ('chain A',
-                 'chain E')
-  assert t1 == t1_expected
-  t2 = trans_obj2.tr_id_to_selection['chain A_0000000003']
-  t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
-                 'chain E and (resseq 1:3 or resseq 6:7)')
-  assert t2 == t2_expected
+# Commenting out iotbx.pdb.input creation from spec.
+# def exercise_00():
+#   """ Verify that spec object are produced properly """
+#   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
+#   t_i = pdb_inp.process_MTRIX_records()
+#   pdb_h = pdb_inp.construct_hierarchy()
+#   trans_obj = ncs.input(hierarchy=pdb_h, transform_info=t_i)
+#   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
+#   spec_output = trans_obj.get_ncs_info_as_spec()
+#   trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
+#   t1 = trans_obj.ncs_transform['0000000002'].r
+#   t2 = trans_obj2.ncs_transform['0000000002'].r
+#   assert approx_equal(t1, t2)
+#   assert len(trans_obj.ncs_transform) == len(trans_obj2.ncs_transform)
+#   t1 = trans_obj.ncs_to_asu_selection
+#   t1_expected = {'chain A or chain B':
+#                    ['chain C or chain D', 'chain E or chain F']}
+#   assert t1 == t1_expected
+#   t2 = trans_obj2.ncs_to_asu_selection
+#   t2_expected = {
+#     'chain A and (resseq 1:3 or resseq 6:7)':
+#       ['chain C and (resseq 1:3 or resseq 6:7)',
+#        'chain E and (resseq 1:3 or resseq 6:7)'],
+#     'chain B and (resseq 4:5)':
+#       ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
+#   assert t2 == t2_expected
+#   t1 = trans_obj.tr_id_to_selection['chain A_0000000003']
+#   t1_expected = ('chain A',
+#                  'chain E')
+#   assert t1 == t1_expected
+#   t2 = trans_obj2.tr_id_to_selection['chain A_0000000003']
+#   t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
+#                  'chain E and (resseq 1:3 or resseq 6:7)')
+#   assert t2 == t2_expected
 
 def exercise_01():
   """
@@ -472,7 +473,7 @@ def exercise_08():
           h.atoms().extract_xyz())
 
 if(__name__=='__main__'):
-  exercise_00()
+  # exercise_00() # Commenting out iotbx.pdb.input creation from spec.
   exercise_01()
   exercise_02()
   exercise_03()

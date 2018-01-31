@@ -192,46 +192,47 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
       # reading and processing the spec file
 
-      spec_object = mmtbx.ncs.ncs.ncs()
-      spec_object.read_ncs(file_name="test_ncs_spec_simple_ncs_from_pdb.ncs_spec")
-      trans_obj = ncs.input(
-        spec_ncs_groups=spec_object,
-        # spec_file_str=test_ncs_spec,  # use output string directly
-        hierarchy = self.pdb_inp.construct_hierarchy())
+      # Commenting out iotbx.pdb.input creation from spec.
+      # spec_object = mmtbx.ncs.ncs.ncs()
+      # spec_object.read_ncs(file_name="test_ncs_spec_simple_ncs_from_pdb.ncs_spec")
+      # trans_obj = ncs.input(
+      #   spec_ncs_groups=spec_object,
+      #   # spec_file_str=test_ncs_spec,  # use output string directly
+      #   hierarchy = self.pdb_inp.construct_hierarchy())
 
-      # test created object
-      self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-      expected = "(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))"
-      self.assertEqual(trans_obj.ncs_selection_str,expected)
-      # check that static parts are included in NCS and ASU
-      self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
-      self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
-      #
-      expected = {
-        "chain A and (resseq 151:159)":
-          ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
-        "chain D and (resseq 1:7)":
-          ["chain E and (resseq 1:7)"]}
-      self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
+      # # test created object
+      # self.assertEqual(len(trans_obj.transform_chain_assignment),3)
+      # expected = "(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))"
+      # self.assertEqual(trans_obj.ncs_selection_str,expected)
+      # # check that static parts are included in NCS and ASU
+      # self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
+      # self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
+      # #
+      # expected = {
+      #   "chain A and (resseq 151:159)":
+      #     ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
+      #   "chain D and (resseq 1:7)":
+      #     ["chain E and (resseq 1:7)"]}
+      # self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
 
-      # check ncs_transform
-      group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-      tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-      group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-      r1 = trans_obj.ncs_transform['0000000004'].r
-      r2 = trans_obj.ncs_transform['0000000002'].r
-      #
-      self.assertEqual(len(group_ids),5)
-      self.assertEqual(set(group_ids),{1,2})
-      self.assertEqual(tran_sn,{1,2,3,4,5})
-      self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
-      #
-      self.assertTrue(r1.is_r3_identity_matrix())
-      expected_r = matrix.sqr(
-        [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-      d = r2 - expected_r.transpose()
-      d = map(abs,d)
-      self.assertTrue(max(d)<0.01)
+      # # check ncs_transform
+      # group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
+      # tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
+      # group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
+      # r1 = trans_obj.ncs_transform['0000000004'].r
+      # r2 = trans_obj.ncs_transform['0000000002'].r
+      # #
+      # self.assertEqual(len(group_ids),5)
+      # self.assertEqual(set(group_ids),{1,2})
+      # self.assertEqual(tran_sn,{1,2,3,4,5})
+      # self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
+      # #
+      # self.assertTrue(r1.is_r3_identity_matrix())
+      # expected_r = matrix.sqr(
+      #   [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
+      # d = r2 - expected_r.transpose()
+      # d = map(abs,d)
+      # self.assertTrue(max(d)<0.01)
     else:
       print "phenix not available, skipping test_spec_reading()"
       pass
@@ -279,31 +280,30 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertTrue(max(d)<0.01)
 
     # Verify that spec object are produced properly
-    spec_output = trans_obj.get_ncs_info_as_spec()
-    trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_transform['0000000002'].r
-    t2 = trans_obj2.ncs_transform['0000000002'].r
-    self.assertEqual(t1,t2)
+    # Commenting out iotbx.pdb.input creation from spec.
+    # spec_output = trans_obj.get_ncs_info_as_spec()
+    # trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
 
-    t1 = trans_obj.ncs_to_asu_selection
-    t2 = trans_obj2.ncs_to_asu_selection
-    # Selection does not include the resseq if all the chain is selected
-    t1_exp = {"chain 'A'": ["chain 'B'", "chain 'C'"], "chain 'D'": ["chain 'E'"]}
-    self.assertEqual(t1,t1_exp)
-    t2_exp = {"chain A and (resseq 151:159)":
-                ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
-              "chain D and (resseq 1:7)": ["chain E and (resseq 1:7)"]}
-    self.assertEqual(t2,t2_exp)
-    #
-    # print "trans_obj.tr_id_to_selection", trans_obj.tr_id_to_selection
-    # print "trans_obj2.tr_id_to_selection", trans_obj2.tr_id_to_selection
-    # STOP()
-    t1 = trans_obj.tr_id_to_selection["chain 'A'_0000000003"]
-    t2 = trans_obj2.tr_id_to_selection["chain A_0000000003"]
-    self.assertEqual(t1,("chain 'A'", "chain 'C'"))
-    t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
-    self.assertEqual(t2,t2_exp)
+    # t1 = trans_obj.ncs_transform['0000000002'].r
+    # t2 = trans_obj2.ncs_transform['0000000002'].r
+    # self.assertEqual(t1,t2)
+
+    # t1 = trans_obj.ncs_to_asu_selection
+    # t2 = trans_obj2.ncs_to_asu_selection
+    # # Selection does not include the resseq if all the chain is selected
+    # t1_exp = {"chain 'A'": ["chain 'B'", "chain 'C'"], "chain 'D'": ["chain 'E'"]}
+    # self.assertEqual(t1,t1_exp)
+    # t2_exp = {"chain A and (resseq 151:159)":
+    #             ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
+    #           "chain D and (resseq 1:7)": ["chain E and (resseq 1:7)"]}
+    # self.assertEqual(t2,t2_exp)
+    # #
+    # t1 = trans_obj.tr_id_to_selection["chain 'A'_0000000003"]
+    # t2 = trans_obj2.tr_id_to_selection["chain A_0000000003"]
+    # self.assertEqual(t1,("chain 'A'", "chain 'C'"))
+    # t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
+    # self.assertEqual(t2,t2_exp)
 
   def test_rotaion_translation_input(self):
     """ Verify correct processing    """
@@ -354,13 +354,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     #
 
 
-    spec_object = mmtbx.ncs.ncs.ncs()
-    spec_object.read_ncs(lines=test_ncs_spec.splitlines())
-    trans_obj = ncs.input(
-      spec_ncs_groups=spec_object,
-      hierarchy = self.pdb_inp.construct_hierarchy())
-    result = trans_obj.print_ncs_phil_param(write=False)
-    self.assertEqual(result,test_phil_3)
+    # Commenting out iotbx.pdb.input creation from spec.
+    # spec_object = mmtbx.ncs.ncs.ncs()
+    # spec_object.read_ncs(lines=test_ncs_spec.splitlines())
+    # trans_obj = ncs.input(
+    #   spec_ncs_groups=spec_object,
+    #   hierarchy = self.pdb_inp.construct_hierarchy())
+    # result = trans_obj.print_ncs_phil_param(write=False)
+    # self.assertEqual(result,test_phil_3)
 
   def test_finding_partial_ncs(self):
     # print sys._getframe().f_code.co_name

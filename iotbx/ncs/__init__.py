@@ -85,7 +85,7 @@ class input(object):
           translations = None,
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
-          spec_ncs_groups=None,
+          # spec_ncs_groups=None,
           exclude_selection="element H or element D or water",
           chain_max_rmsd=2.0,
           log=None,
@@ -102,7 +102,7 @@ class input(object):
     2) transform_info
     3) ncs_phil_string
     4) ncs_phil_groups
-    5) spec file
+    # 5) spec file
     6) mmcif file
     7) iotbx.pdb.hierarchy.input object
 
@@ -251,10 +251,10 @@ class input(object):
         ncs_phil_groups=validated_ncs_phil_groups,
         pdb_h = self.truncated_hierarchy,
         asc = self.truncated_h_asc)
-    elif spec_ncs_groups:
-      self.build_ncs_obj_from_spec_file(
-        pdb_h= self.truncated_hierarchy,
-        spec_ncs_groups=spec_ncs_groups)
+    # elif spec_ncs_groups:
+    #   self.build_ncs_obj_from_spec_file(
+    #     pdb_h= self.truncated_hierarchy,
+    #     spec_ncs_groups=spec_ncs_groups)
     elif (self.truncated_hierarchy
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
@@ -890,136 +890,136 @@ class input(object):
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_h=pdb_h)
 
-  def build_ncs_obj_from_spec_file(self,
-                                   spec_ncs_groups=None,
-                                   pdb_h=None,
-                                   join_same_spec_groups = True):
-    """
-    read .spec files and build transforms object and NCS <-> ASU mapping
+  # def build_ncs_obj_from_spec_file(self,
+  #                                  spec_ncs_groups=None,
+  #                                  pdb_h=None,
+  #                                  join_same_spec_groups = True):
+  #   """
+  #   read .spec files and build transforms object and NCS <-> ASU mapping
 
-    Arguments:
-    pdb_h: pdb hierarchy
-    spec_ncs_groups: ncs_groups object or mmtbx.ncs.ncs.ncs object
-    join_same_spec_groups: (bool) True: combine groups with similar transforms
-    """
-    if not spec_ncs_groups: spec_ncs_groups = []
-    if isinstance(spec_ncs_groups, ncs.ncs):
-      spec_ncs_groups = spec_ncs_groups.ncs_groups()
-    if spec_ncs_groups:
-      transform_sn = 0
-      ncs_group_id = 0
-      for gr in spec_ncs_groups:
-        # create selection
-        spec_group_list =get_ncs_group_selection(gr.chain_residue_id())
-        gs = spec_group_list[0]
-        if join_same_spec_groups:
-          # leave groups with the same transforms separate
-          group_exist =self.look_and_combine_groups(gr,spec_group_list)
-          if group_exist: continue
-        ncs_group_id += 1
-        self.ncs_chain_selection.append(gs)
-        asu_locations = []
-        for i,ncs_copy_select in enumerate(spec_group_list):
-          # invert transform - the rotation in gr is from the copy to the master
-          r = gr.rota_matrices()[i]
-          t = gr.translations_orth()[i]
-          r,t = inverse_transform(r,t)
-          rmsd = round(gr.rmsd_list()[i],4)
-          transform_sn += 1
-          key = format_num_as_str(transform_sn)
-          self.update_tr_id_to_selection(gs,ncs_copy_select,key)
-          if not is_identity(r,t):
-            asu_locations.append(ncs_copy_select)
-          tr = ncs_search.Transform(
-            rotation = r,
-            translation = t,
-            serial_num = transform_sn,
-            coordinates_present = True,
-            ncs_group_id = ncs_group_id,
-            rmsd=rmsd)
-          # Update ncs_group dictionary and transform_to_ncs list
-          self.build_transform_dict(
-            transform_id = key,
-            transform = tr,
-            selection_id = gs)
-          self.ncs_group_map = update_ncs_group_map(
-            ncs_group_map=self.ncs_group_map,
-            ncs_group_id = ncs_group_id,
-            selection_ids = gs,
-            transform_id = key)
-          assert not self.ncs_transform.has_key(key)
-          self.ncs_transform[key] = tr
-          self.selection_ids.add(gs)
-          self.update_ncs_copies_chains_names(
-            masters = gs,copies = ncs_copy_select,tr_id = key)
-        self.ncs_to_asu_selection[gs] = asu_locations
-      self.number_of_ncs_groups = ncs_group_id
+  #   Arguments:
+  #   pdb_h: pdb hierarchy
+  #   spec_ncs_groups: ncs_groups object or mmtbx.ncs.ncs.ncs object
+  #   join_same_spec_groups: (bool) True: combine groups with similar transforms
+  #   """
+  #   if not spec_ncs_groups: spec_ncs_groups = []
+  #   if isinstance(spec_ncs_groups, ncs.ncs):
+  #     spec_ncs_groups = spec_ncs_groups.ncs_groups()
+  #   if spec_ncs_groups:
+  #     transform_sn = 0
+  #     ncs_group_id = 0
+  #     for gr in spec_ncs_groups:
+  #       # create selection
+  #       spec_group_list =get_ncs_group_selection(gr.chain_residue_id())
+  #       gs = spec_group_list[0]
+  #       if join_same_spec_groups:
+  #         # leave groups with the same transforms separate
+  #         group_exist =self.look_and_combine_groups(gr,spec_group_list)
+  #         if group_exist: continue
+  #       ncs_group_id += 1
+  #       self.ncs_chain_selection.append(gs)
+  #       asu_locations = []
+  #       for i,ncs_copy_select in enumerate(spec_group_list):
+  #         # invert transform - the rotation in gr is from the copy to the master
+  #         r = gr.rota_matrices()[i]
+  #         t = gr.translations_orth()[i]
+  #         r,t = inverse_transform(r,t)
+  #         rmsd = round(gr.rmsd_list()[i],4)
+  #         transform_sn += 1
+  #         key = format_num_as_str(transform_sn)
+  #         self.update_tr_id_to_selection(gs,ncs_copy_select,key)
+  #         if not is_identity(r,t):
+  #           asu_locations.append(ncs_copy_select)
+  #         tr = ncs_search.Transform(
+  #           rotation = r,
+  #           translation = t,
+  #           serial_num = transform_sn,
+  #           coordinates_present = True,
+  #           ncs_group_id = ncs_group_id,
+  #           rmsd=rmsd)
+  #         # Update ncs_group dictionary and transform_to_ncs list
+  #         self.build_transform_dict(
+  #           transform_id = key,
+  #           transform = tr,
+  #           selection_id = gs)
+  #         self.ncs_group_map = update_ncs_group_map(
+  #           ncs_group_map=self.ncs_group_map,
+  #           ncs_group_id = ncs_group_id,
+  #           selection_ids = gs,
+  #           transform_id = key)
+  #         assert not self.ncs_transform.has_key(key)
+  #         self.ncs_transform[key] = tr
+  #         self.selection_ids.add(gs)
+  #         self.update_ncs_copies_chains_names(
+  #           masters = gs,copies = ncs_copy_select,tr_id = key)
+  #       self.ncs_to_asu_selection[gs] = asu_locations
+  #     self.number_of_ncs_groups = ncs_group_id
 
-      self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
-      for i in range(1,len(self.ncs_chain_selection)):
-        self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
-      self.transform_chain_assignment=get_transform_order(self.transform_to_ncs)
-      self.finalize_pre_process(pdb_h=pdb_h)
+  #     self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
+  #     for i in range(1,len(self.ncs_chain_selection)):
+  #       self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
+  #     self.transform_chain_assignment=get_transform_order(self.transform_to_ncs)
+  #     self.finalize_pre_process(pdb_h=pdb_h)
 
-  def look_and_combine_groups(self,gr_new,spec_group_list):
-    """
-    In spec files groups of different masters and copies listed separately,
-    even if they have the same rotation/translation and can be combined.
-    This function combines them, updates the relevant object attributes and
-    returns True/False to indicate if group found
+  # def look_and_combine_groups(self,gr_new,spec_group_list):
+  #   """
+  #   In spec files groups of different masters and copies listed separately,
+  #   even if they have the same rotation/translation and can be combined.
+  #   This function combines them, updates the relevant object attributes and
+  #   returns True/False to indicate if group found
 
-    Args:
-      spec_group_list (list): selection string for each ncs copy in the group
-      gr_new (object): ncs group object
+  #   Args:
+  #     spec_group_list (list): selection string for each ncs copy in the group
+  #     gr_new (object): ncs group object
 
-    Returns:
-      found_same_group (bool): indicate if group found
-    """
-    gs_new = spec_group_list[0]
-    found_same_group = False
-    gr_r_list = gr_new.rota_matrices()
-    gr_t_list = gr_new.translations_orth()
-    # in spec files transforms are inverted
-    gr_new_list = [inverse_transform(r,t) for (r,t) in zip(gr_r_list,gr_t_list)]
-    for k,[_, tr_set] in self.ncs_group_map.iteritems():
-      # all transforms need to be the same to join
-      if len(gr_r_list) != len(tr_set): continue
-      same_transforms = [-1,]*len(tr_set)
-      tr_list = list(tr_set)
-      tr_list.sort()
-      for tr_key1 in tr_list:
-        r1 = self.ncs_transform[tr_key1].r
-        t1 = self.ncs_transform[tr_key1].t
-        for i,(r2,t2) in enumerate(gr_new_list):
-          if same_transforms[i] != -1: continue
-          same,transpose = ncs_search.is_same_transform(r1,t1,r2,t2)
-          test = (same and (not transpose))
-          if test:
-            same_transforms[i] = i
-            break
-      found_same_group = (same_transforms.count(-1) == 0)
-      # update dictionaries only if same group was found and then break
-      if found_same_group:
-        self.selection_ids.add(gs_new)
-        asu_locations = []
-        for i in same_transforms:
-          transform_id = tr_list[i]
-          ncs_copy_select = spec_group_list[i]
-          key = gs_new + '_' + transform_id
-          # look at self.ncs_copies_chains_names
-          self.update_ncs_copies_chains_names(
-            masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
-          r,t = gr_new_list[i]
-          self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
-          if not is_identity(r,t):
-            self.transform_to_ncs = add_to_dict(
-              d=self.transform_to_ncs,k=transform_id,v=key)
-            asu_locations.append(ncs_copy_select)
+  #   Returns:
+  #     found_same_group (bool): indicate if group found
+  #   """
+  #   gs_new = spec_group_list[0]
+  #   found_same_group = False
+  #   gr_r_list = gr_new.rota_matrices()
+  #   gr_t_list = gr_new.translations_orth()
+  #   # in spec files transforms are inverted
+  #   gr_new_list = [inverse_transform(r,t) for (r,t) in zip(gr_r_list,gr_t_list)]
+  #   for k,[_, tr_set] in self.ncs_group_map.iteritems():
+  #     # all transforms need to be the same to join
+  #     if len(gr_r_list) != len(tr_set): continue
+  #     same_transforms = [-1,]*len(tr_set)
+  #     tr_list = list(tr_set)
+  #     tr_list.sort()
+  #     for tr_key1 in tr_list:
+  #       r1 = self.ncs_transform[tr_key1].r
+  #       t1 = self.ncs_transform[tr_key1].t
+  #       for i,(r2,t2) in enumerate(gr_new_list):
+  #         if same_transforms[i] != -1: continue
+  #         same,transpose = ncs_search.is_same_transform(r1,t1,r2,t2)
+  #         test = (same and (not transpose))
+  #         if test:
+  #           same_transforms[i] = i
+  #           break
+  #     found_same_group = (same_transforms.count(-1) == 0)
+  #     # update dictionaries only if same group was found and then break
+  #     if found_same_group:
+  #       self.selection_ids.add(gs_new)
+  #       asu_locations = []
+  #       for i in same_transforms:
+  #         transform_id = tr_list[i]
+  #         ncs_copy_select = spec_group_list[i]
+  #         key = gs_new + '_' + transform_id
+  #         # look at self.ncs_copies_chains_names
+  #         self.update_ncs_copies_chains_names(
+  #           masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
+  #         r,t = gr_new_list[i]
+  #         self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
+  #         if not is_identity(r,t):
+  #           self.transform_to_ncs = add_to_dict(
+  #             d=self.transform_to_ncs,k=transform_id,v=key)
+  #           asu_locations.append(ncs_copy_select)
 
-        self.ncs_to_asu_selection[gs_new] = asu_locations
-        self.ncs_group_map[k][0].add(gs_new)
-        break
-    return found_same_group
+  #       self.ncs_to_asu_selection[gs_new] = asu_locations
+  #       self.ncs_group_map[k][0].add(gs_new)
+  #       break
+  #   return found_same_group
 
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
     masters = get_list_of_chains_selection(masters)
@@ -2344,26 +2344,26 @@ def update_selection_ref(selection_ref,new_selection):
   assert test,'Overlapping atom selection. Check phil parameters...\n'
   return selection_ref | new_selection
 
-def get_ncs_group_selection(chain_residue_id):
-  """
-  Args:
-    chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
+# def get_ncs_group_selection(chain_residue_id):
+#   """
+#   Args:
+#     chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
 
-  Returns:
-    selection lists, with selection string for each ncs copy in the group
-  """
-  chains = chain_residue_id[0]
-  res_ranges = chain_residue_id[1]
-  assert len(chains) == len(res_ranges)
-  ncs_selection = []
-  for c,rr in zip(chains, res_ranges):
-    c = c.strip()
-    assert c.find(' ') < 0,'Multiple chains in a single spec ncs group\n'
-    ch_selection = 'chain ' + c
-    res_range = ['resseq {0}:{1}'.format(s,e) for s,e in rr]
-    res_range = '(' + ' or '.join(res_range) + ')'
-    ncs_selection.append(ch_selection + ' and ' + res_range)
-  return ncs_selection
+#   Returns:
+#     selection lists, with selection string for each ncs copy in the group
+#   """
+#   chains = chain_residue_id[0]
+#   res_ranges = chain_residue_id[1]
+#   assert len(chains) == len(res_ranges)
+#   ncs_selection = []
+#   for c,rr in zip(chains, res_ranges):
+#     c = c.strip()
+#     assert c.find(' ') < 0,'Multiple chains in a single spec ncs group\n'
+#     ch_selection = 'chain ' + c
+#     res_range = ['resseq {0}:{1}'.format(s,e) for s,e in rr]
+#     res_range = '(' + ' or '.join(res_range) + ')'
+#     ncs_selection.append(ch_selection + ' and ' + res_range)
+#   return ncs_selection
 
 def get_transform_order(transform_to_ncs):
   """ order transforms mainly for proper chain naming """
