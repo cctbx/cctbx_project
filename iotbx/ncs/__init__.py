@@ -157,13 +157,7 @@ class input(object):
     self.transform_to_ncs = {}
     # master ncs and non-ncs selection in a string and a flex.bool types
     self.ncs_atom_selection = None
-    self.ncs_selection_str = '' # XXX This should be eliminated...
-
-    # iselection of all part in ASU that are not related via NCS operators
-    self.non_ncs_region_selection = flex.size_t([]) # XXX Not used anywhere
-    # All master ncs atoms selection
-    self.all_master_ncs_selections = flex.size_t([]) # XXX Not used anywhere
-
+    self.ncs_selection_str = '' # XXX This should be eliminated, but some effort is needed.
     # list of selection strings of master NCS
     self.ncs_chain_selection = []
     # unique chains or selection identifiers
@@ -186,6 +180,7 @@ class input(object):
     self.exclude_selection = None
     self.original_hierarchy = None
     self.truncated_hierarchy = None
+    self.truncated_h_asc = None
 
     extension = ''
     # set search parameters
@@ -629,7 +624,7 @@ class input(object):
   def build_ncs_obj_from_phil(self,
                               ncs_phil_groups,
                               pdb_h,
-                              asc):
+                              asc=None):
     """
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
@@ -660,9 +655,10 @@ class input(object):
     #   ncs_phil_groups = working_phil.ncs_group
     # else:
     assert ncs_phil_groups is not None
-    assert pdb_h is not None
+    # assert pdb_h is not None
     assert self.ncs_selection_str == ''
-    assert asc is not None
+    if asc is None and pdb_h is not None:
+      asc = pdb_h.atom_selection_cache()
     unique_selections = set()
     transform_sn = 0
     ncs_group_id = 0
@@ -890,7 +886,6 @@ class input(object):
     self.ncs_selection_str = ' or '.join(ncs_selection_str_list)
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
 
-    self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
     # add the ncs_atom_selection all the regions that are not NCS related
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_h=pdb_h)
@@ -1128,6 +1123,7 @@ class input(object):
       temp = pdb_h.atom_selection_cache()
       # check if pdb_h contain only the master NCS copy
       pdb_length = pdb_h.atoms_size()
+      # XXX Why actual selection in self.ncs_atom_selection is not used here???
       self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
       ncs_length = self.ncs_atom_selection.count(True)
       # keep track on the asu copy number
@@ -1149,19 +1145,13 @@ class input(object):
           asu_selection = temp.selection(asu_copy_ref)
           selection_ref = update_selection_ref(selection_ref,asu_selection)
           self.ncs_to_asu_map[k] = asu_selection.iselection(True)
-        self.non_ncs_region_selection = (~selection_ref).iselection(True)
         # add the non ncs regions to the master ncs copy
-        self.all_master_ncs_selections = self.ncs_atom_selection.iselection(True)
         self.ncs_atom_selection |= ~selection_ref
-        assert set(self.non_ncs_region_selection).intersection(
-          set(self.all_master_ncs_selections)) == set(), "%s" % (set(self.non_ncs_region_selection).intersection(
-              set(self.all_master_ncs_selections)))
       elif pdb_length == ncs_length:
         # this case is when the pdb hierarchy contain only the master NCS copy
         self.total_asu_length = self.get_asu_length(temp)
         ns = [True]*pdb_length + [False]*(self.total_asu_length - pdb_length)
         self.ncs_atom_selection = flex.bool(ns)
-        self.all_master_ncs_selections=self.ncs_atom_selection.iselection(True)
         sorted_keys = sorted(self.transform_to_ncs)
         for i,k in enumerate(sorted_keys):
           v = self.transform_to_ncs[k]
@@ -2279,6 +2269,9 @@ def sensible_unit_cell_volume(
         rotations=None):
   """
   XXX
+  XXX Consider removing this. It is only called when ncs.input is being
+  XXX created from rotations and translations, which is the case
+  XXX when creating from MTRIX, and this is currently done in mmtbx.model.manager.
   XXX Not clear if this is working, but it is not tested...
   XXX
   Rough evaluation if the number of atoms of all NCS copies can fit in
@@ -2296,8 +2289,8 @@ def sensible_unit_cell_volume(
     (bool): False indicates that the complete ASU does not fit in the unit cell
   """
   # fixme : finish function and add test
+  if crystal_symmetry is None: return True # Bunch of tests written without CS
   assert pdb_h is not None
-  assert crystal_symmetry is not None
   n_transforms = 0
 
   # todo:  check units of unit_cell().volume()

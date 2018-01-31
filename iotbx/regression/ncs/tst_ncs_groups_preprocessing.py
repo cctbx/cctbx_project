@@ -65,29 +65,31 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       print "phenix not available, skipping test_create_ncs_domain_pdb_files()"
       pass
 
-  def test_phil_param_read(self):
-    """ Verify that phil parameters are properly read   """
-    # print sys._getframe().f_code.co_name
-    # check correctness
-    expected_ncs_selection =['(chain A)','(chain A) or (chain B)']
-    expected_ncs_to_asu = [
-      {'chain A': ['chain B', 'chain C']},
-      {'chain A': ['chain C', 'chain E'], 'chain B': ['chain D', 'chain F']}]
-    expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
-    for i,phil_case in enumerate([user_phil1,user_phil2]):
-      phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(phil_case)).extract()
-      trans_obj = iotbx.ncs.input(
-        ncs_phil_groups=phil_groups.ncs_group)
-      self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
-      self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
-      self.assertEqual(trans_obj.ncs_chain_selection,expected_ncs_chains[i])
-    # error reporting
-    for pc in [user_phil3,user_phil4,user_phil5]:
-      phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(pc)).extract()
-      self.assertRaises(
-        IOError,iotbx.ncs.input,
-        # ncs_phil_string=pc
-        ncs_phil_groups=phil_groups.ncs_group)
+  # Removed because we don't want to create iotbx.ncs.input without hierarchy
+  # anymore
+  # def test_phil_param_read(self):
+  #   """ Verify that phil parameters are properly read   """
+  #   # print sys._getframe().f_code.co_name
+  #   # check correctness
+  #   expected_ncs_selection =['(chain A)','(chain A) or (chain B)']
+  #   expected_ncs_to_asu = [
+  #     {'chain A': ['chain B', 'chain C']},
+  #     {'chain A': ['chain C', 'chain E'], 'chain B': ['chain D', 'chain F']}]
+  #   expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
+  #   for i,phil_case in enumerate([user_phil1,user_phil2]):
+  #     phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(phil_case)).extract()
+  #     trans_obj = iotbx.ncs.input(
+  #       ncs_phil_groups=phil_groups.ncs_group)
+  #     self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
+  #     self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
+  #     self.assertEqual(trans_obj.ncs_chain_selection,expected_ncs_chains[i])
+  #   # error reporting
+  #   for pc in [user_phil3,user_phil4,user_phil5]:
+  #     phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(pc)).extract()
+  #     self.assertRaises(
+  #       IOError,iotbx.ncs.input,
+  #       # ncs_phil_string=pc
+  #       ncs_phil_groups=phil_groups.ncs_group)
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed
@@ -393,12 +395,15 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     gr = ncs_obj.print_ncs_phil_param()
     self.assertEqual(gr,answer_4)
-    phil_groups = ncs_group_master_phil.fetch(
-        iotbx.phil.parse(answer_4)).extract()
-    ncs_obj = iotbx.ncs.input(ncs_phil_groups=phil_groups.ncs_group)
-    self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    gr = ncs_obj.print_ncs_phil_param()
-    self.assertEqual(gr,answer_4)
+
+    # Removed because we don't want to create iotbx.ncs.input without hierarchy
+    # anymore
+    # phil_groups = ncs_group_master_phil.fetch(
+    #     iotbx.phil.parse(answer_4)).extract()
+    # ncs_obj = iotbx.ncs.input(ncs_phil_groups=phil_groups.ncs_group)
+    # self.assertEqual(ncs_obj.number_of_ncs_groups,1)
+    # gr = ncs_obj.print_ncs_phil_param()
+    # self.assertEqual(gr,answer_4)
 
   def tearDown(self):
     """ remove temp files and folder """

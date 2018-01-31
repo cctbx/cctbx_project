@@ -166,6 +166,7 @@ class ncs_minimization_test(object):
       write_name='asu_shaken.pdb')
     tr_obj = iotbx.ncs.input(
       hierarchy = ph,
+      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
       transform_info = transform_info,
       exclude_selection=None)
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
