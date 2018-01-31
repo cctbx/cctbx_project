@@ -4834,6 +4834,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       #ncs_object.display_all(log=out)
     ncs_object.select_first_ncs_group()
     if ncs_object.max_operators()==0:
+      from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
     print >>out,"\nTotal of %d NCS operators read\n" %(
