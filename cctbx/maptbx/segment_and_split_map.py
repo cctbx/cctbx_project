@@ -4272,7 +4272,7 @@ def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
     maximum_map_size=1,
     out=sys.stdout):
   map_size=map_data.size()/(1024*1024*1024)
-  if map_size>maximum_map_size:
+  if maximum_map_size and map_size>maximum_map_size:
      raise Sorry("Maximum map size for this tool is %s GB" %(maximum_map_size))
   needed_memory=ratio_needed*map_size
   from libtbx.utils import guess_total_memory # returns total memory
@@ -4404,7 +4404,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
   if params.control.memory_check:
     # map_box and mask generation use about 50GB of memory for
     #    map with 1 billion elements
-    check_memory(map_data=map_data,ratio_needed=50,out=out)
+    check_memory(map_data=map_data,maximum_map_size=None,
+      ratio_needed=50,out=out)
 
   if params.map_modification.magnification and \
        params.map_modification.magnification!=1.0:
@@ -4518,32 +4519,33 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
     # Run again to select au box
     shifted_unique_closest_sites=None
+    selected_au_box=None
     if params.segmentation.select_au_box is None and  box.ncs_object and \
       box.ncs_object.max_operators() >= params.segmentation.n_ops_to_use_au_box:
       params.segmentation.select_au_box=True
       print >>out,"Setting select_au_box to True as there are %d operators" %(
         box.ncs_object.max_operators())
     if params.segmentation.select_au_box and not bounds_supplied:
-      bounds_supplied=True
       lower_bounds,upper_bounds,unique_closest_sites=get_bounds_for_au_box(
          params, box=box,out=out) #unique_closest_sites relative to original map
-
-      score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
-        allow_score_with_pg=False,
-        sites_orth=unique_closest_sites+box.shift_cart,
-        ncs_object=box.ncs_object,ncs_in_cell_only=True,
-        crystal_symmetry=box.box_crystal_symmetry,out=null_out())
-      print >>out,\
+      if lower_bounds and upper_bounds:
+        bounds_supplied=True
+        selected_au_box=True
+        score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
+          allow_score_with_pg=False,
+          sites_orth=unique_closest_sites+box.shift_cart,
+          ncs_object=box.ncs_object,ncs_in_cell_only=True,
+          crystal_symmetry=box.box_crystal_symmetry,out=null_out())
+        print >>out,\
           "NCS CC before rerunning box: %7.2f   SCORE: %7.1f OPS: %d " %(
          ncs_cc,score,box.ncs_object.max_operators())
 
-      if lower_bounds and upper_bounds:
         print >>out,"\nRunning map-box again with boxed range ..."
         del box
         box=run_map_box(args,lower_bounds=lower_bounds,
           upper_bounds=upper_bounds, log=out)
         box.map_box=box.map_box.as_double()  # Do we need double?
-      shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
+        shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
 
     # Or run again for helical symmetry
     elif params.map_modification.restrict_z_distance_for_helical_symmetry and \
@@ -4555,6 +4557,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
         log=out)
 
+    #-----------------------------
     if bounds_supplied and box.ncs_object:
       print >>out,"Selecting remaining NCS operators"
       box.ncs_object=select_remaining_ncs_ops(
@@ -4565,25 +4568,31 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         ncs_object=box.ncs_object,
         out=out)
 
-    score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
-        allow_score_with_pg=False,
-        ncs_object=box.ncs_object,ncs_in_cell_only=True,
-        sites_orth=shifted_unique_closest_sites,
-        crystal_symmetry=box.box_crystal_symmetry,out=null_out())
+      score,ncs_cc=score_ncs_in_map(map_data=box.map_box,
+          allow_score_with_pg=False,
+          ncs_object=box.ncs_object,ncs_in_cell_only=True,
+          sites_orth=shifted_unique_closest_sites,
+          crystal_symmetry=box.box_crystal_symmetry,out=null_out())
 
-    if score is not None:
-      print >>out,"NCS CC after selections: %7.2f   SCORE: %7.1f " %(
-       ncs_cc,score)
+      if score is not None:
+        print >>out,"NCS CC after selections: %7.2f   SCORE: %7.1f  OPS: %d" %(
+         ncs_cc,score,box.ncs_object.max_operators())
+    #-----------------------------
 
     if box.unit_cell_parameters_from_ccp4_map and \
        box.unit_cell_parameters_deduced_from_map_grid and \
        box.unit_cell_parameters_from_ccp4_map !=  \
           box.unit_cell_parameters_deduced_from_map_grid:
+      if selected_au_box:
+        raise Sorry("Unable to select an au box because unit cell "+
+         "parameters in map file \nwere not consistent." +
+        " (See 'Mismatch of unit cell parameters' above)\n")
+
       print >>out,"Resetting original unit cell parameters based on "+\
         "analysis of cell parameters and \nmap grid in map_box..."
       print >>out,\
-        "Original unit cell parameters from CCP4 map \ngrid (used) are:" +\
-          "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f\n)" %tuple(
+        "Original unit cell parameters from CCP4 map \ngrid (used) are: " +\
+          "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)\n" %tuple(
           box.unit_cell_parameters_deduced_from_map_grid)
       new_original_crystal_symmetry=crystal.symmetry(
          unit_cell=box.unit_cell_parameters_deduced_from_map_grid,
