@@ -245,14 +245,14 @@ namespace dxtbx { namespace model {
     boost::python::object get_imageset() const {
       return imageset_;
     }
-      
+
     /**
     * Set the scaling model
     */
     void set_scaling_model(boost::python::object scaling_model) {
       scaling_model_ = scaling_model;
     }
-    
+
     /**
     * Get the scaling model
     */

@@ -422,7 +422,7 @@ class ExperimentListDict(object):
     for entry_point in pkg_resources.iter_entry_points(
       'dxtbx.scaling_model_ext'):
       if entry_point.name == obj['__id__']:
-        return entry_point.load().from_dict(obj) 
+        return entry_point.load().from_dict(obj)
 
   @staticmethod
   def _from_file(filename):
