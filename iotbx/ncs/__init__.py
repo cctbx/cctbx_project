@@ -1262,28 +1262,29 @@ class input(object):
       asu_total_length += ncs_selection.count(True)
     return asu_total_length
 
-  def build_MTRIX_object(self,ncs_only=True):
-    """
-    Build a MTRIX object from ncs_group_object
-    Used for testing
-    """
-    assert  self.number_of_ncs_groups < 2
-    import iotbx.mtrix_biomt
-    result = iotbx.mtrix_biomt.container()
-    tr_dict = self.ncs_transform
-    tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
-    for key in tr_sorted:
-      transform = self.ncs_transform[key]
-      r = transform.r
-      t = transform.t
-      identity_test = is_identity(r,t)
-      cp = (not ncs_only) or identity_test
-      result.add(
-        r=r,
-        t=t,
-        coordinates_present=cp,
-        serial_number=transform.serial_num)
-    return result
+  # Used only in self.get_transform_records(), which is not used, not tested.
+  # def build_MTRIX_object(self,ncs_only=True):
+  #   """
+  #   Build a MTRIX object from ncs_group_object
+  #   Used for testing
+  #   """
+  #   assert  self.number_of_ncs_groups < 2
+  #   import iotbx.mtrix_biomt
+  #   result = iotbx.mtrix_biomt.container()
+  #   tr_dict = self.ncs_transform
+  #   tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
+  #   for key in tr_sorted:
+  #     transform = self.ncs_transform[key]
+  #     r = transform.r
+  #     t = transform.t
+  #     identity_test = is_identity(r,t)
+  #     cp = (not ncs_only) or identity_test
+  #     result.add(
+  #       r=r,
+  #       t=t,
+  #       coordinates_present=cp,
+  #       serial_number=transform.serial_num)
+  #   return result
 
   # def make_chains_names(self,
   #                       transform_assignment,
@@ -1365,7 +1366,7 @@ class input(object):
   def set_common_res_dict(self):
     """
     Build common residues list and related RMSD
-    for use when writing spec files list of common residues
+    for use ONLY when writing spec files list of common residues
     for each chain - transform pair
     """
     # collect all master chain IDs
