@@ -268,6 +268,13 @@ class CCTBXParser(ParserBase):
         self.data_manager.add_sequence(filename, a.file_object)
         print('  Found sequence, %s' % filename, file=self.logger)
         printed_something = True
+      # restraints
+      elif ( (a.file_type == 'cif') and
+             self.data_manager.supports('restraint') ):
+        self.data_manager.add_restraint(filename, a.file_object.model)
+        print('  Found restraint, %s' % filename, file=self.logger)
+        printed_something = True
+      # phil
       elif ( (a.file_type == 'phil') and
              self.data_manager.supports('phil') ):
         self.data_manager.add_phil(filename, a.file_object)
@@ -338,8 +345,9 @@ class CCTBXParser(ParserBase):
       phil_list, custom_processor=custom_processor)
     if (len(working) > 0):
       sources.extend(working)
-    self.working_phil = self.master_phil.fetch(
-      sources=data_sources + sources)
+    self.working_phil, more_unused_phil = self.master_phil.fetch(
+      sources=data_sources + sources, track_unused_definitions=True)
+    unused_phil.extend(more_unused_phil)
 
     try:
       phil_diff = self.master_phil.fetch_diff(self.working_phil)
@@ -363,13 +371,15 @@ class CCTBXParser(ParserBase):
         print('  No PHIL modifications to write', file=self.logger)
         printed_something = True
 
-    # show unrecognized parameters
+    # show unrecognized parameters and abort
     if (len(unused_phil) > 0):
+      print('', file=self.logger)
       print('  Unrecognized PHIL parameters:', file=self.logger)
       print('  -----------------------------', file=self.logger)
       for phil in unused_phil:
         print('  %s' % phil, file=self.logger)
-      printed_something = True
+      print('', file=self.logger)
+      raise Sorry('Some PHIL parameters are not recognized by %s.\nPlease run this program with the --show-defaults option to see what parameters are available.' % self.prog)
 
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
