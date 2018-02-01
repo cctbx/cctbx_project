@@ -1701,7 +1701,7 @@ class input(object):
       # build group
       group_number += 1
       # XXX This should be consistent with full_file_name parameter in
-      # create_ncs_domain_pdb_files()
+      # simple_ncs_from_pdb.py: create_ncs_domain_pdb_files()
       # This is here just because we need to output filename of the domain
       # into the spec file if pdb file is going to be created...
       ncs_domain_pdb = None
@@ -1776,48 +1776,6 @@ class input(object):
         group.append(cp)
       result.append(group)
     return result
-
-  def create_ncs_domain_pdb_files(
-          self,
-          hierarchy=None,
-          exclude_chains=None,
-          stem='',
-          temp_dir=''):
-    """
-    Create a PDB file for each NCS group, that contains only the
-    group NCS related atoms
-
-    Args:
-      hierarchy: PDB hierarchy object
-      exclude_chains (list): list of chain IDs to ignore when writing NCS to pdb
-      temp_dir (str): temp directory path
-
-    XXX Refactoring ideas:
-    1. Make separate function to output one NCS group in a file and use it.
-    """
-    if not hierarchy: hierarchy = self.original_hierarchy
-    if not hierarchy: return None
-    if not stem : stem =''
-    else: stem += '_'
-
-    if self.number_of_ncs_groups == 0: return None
-    nrgl = self.get_ncs_restraints_group_list()
-    for group_number, group in enumerate(nrgl):
-      group_isel = group.whole_group_iselection()
-      # XXX This should be consistent with ncs_domain_pdb parameter in
-      # get_ncs_info_as_spec()
-      file_name = stem+'group_'+str(group_number+1)+'.pdb'
-      full_file_name=os.path.join(temp_dir,file_name)
-      ph = hierarchy.select(group_isel)
-      if exclude_chains is not None and len(exclude_chains) > 0:
-        asc = ph.atom_selection_cache()
-        excl_ch_arr = ["not chain '%s'" % x for x in exclude_chains ]
-        excl_str = " and ".join(excl_ch_arr)
-        sel = asc.selection(excl_str)
-        ph = ph.select(sel)
-      ph.write_pdb_file(
-          file_name=full_file_name,
-          crystal_symmetry=self.crystal_symmetry)
 
   # Not used, not tested.
   # moreover, hierarchy is expanded by default with mmtbx.model.manager.
