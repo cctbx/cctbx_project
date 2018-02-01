@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/25/2018
+Last Changed: 01/31/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -264,10 +264,10 @@ class SingleImage(object):
     width = data['SIZE1']
     height = data['SIZE2']
     pixels = data['DATA']
-    right = beam_x
-    left = width - beam_x
+    left = beam_x
+    right = width - left
     top = beam_y
-    bottom = height - beam_y
+    bottom = height - top
     new_pixels = pixels.deep_copy()
     new_size = None
 
@@ -280,7 +280,24 @@ class SingleImage(object):
       min_y = beam_y - new_half_size
       new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
       new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
-      new_pixels = pixels[min_y:min_y+new_size,min_x:min_x+new_size]
+
+      new_pixels = pixels[min_y:min_y+new_size, min_x:min_x+new_size]
+
+      # print
+      # print 'DEBUG: NEW HALF_-SIZE = ', new_half_size
+      # print 'DEBUG: ORIG X = ', beam_x
+      # print 'DEBUG: ORIG Y = ', beam_y
+      # print 'DEBUG: MIN_X = {}, MAX_X = {}, WIDTH = {}' \
+      #       ''.format(min_x, min_x + new_size, width)
+      # print 'DEBUG: MIN_Y = {}, MAX_Y = {}, HEIGHT = {}' \
+      #       ''.format(min_y, min_y + new_size, height)
+      # print
+      #
+      # print 'DEBUG: OLD SIZE = ', width, height
+      # print 'DEBUG: NEW SIZE = ', new_size, new_size
+      # print 'DEBUG: OLD PIXEL FOCUS = ', pixels.focus()
+      # print 'DEBUG: NEW PIXEL FOCUS = ', new_pixels.focus()
+
       assert new_pixels.focus()[0] == new_pixels.focus()[1]
 
     # the new image will be twice the size as the LARGEST distance between the
@@ -295,7 +312,10 @@ class SingleImage(object):
       new_pixels.resize(flex.grid(new_size, new_size))
       new_pixels.fill(-2)
 
-      new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
+      try:
+        new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
+      except Exception, e:
+        print e
 
     # save the results
     if new_size is not None:

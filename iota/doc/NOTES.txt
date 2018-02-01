@@ -9,8 +9,8 @@ are removed") to outlier_detection.py
 
 Features:
 
-1. Added function to write out list of inspected images to file (user can now
-pick out images to process from a large dataset via inspection)
+1. Image tracker: Added function to write out list of inspected images to file
+(user can now pick out images to process from a large dataset via inspection)
 
 
 Known issues:
