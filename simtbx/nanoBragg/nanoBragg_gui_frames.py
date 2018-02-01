@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/12/2017
-Last Changed: 12/12/2017
+Last Changed: 01/29/2018
 Description : SIMTBX (nanoBragg) GUI Windows / frames
 '''
 
@@ -344,7 +344,7 @@ class FileListCtrl(ct.CustomListCtrl):
                     'background',
                     'raw image file']
     preferred_selection = 0
-    inputs, input_type = ginp.get_input(path)
+    inputs, input_type = ginp.get_input(path, filter=False)
 
     if input_type == 'data (MTZ)':
       input_type = 'structure factors'
@@ -440,10 +440,6 @@ class FileListCtrl(ct.CustomListCtrl):
     if os.path.isfile(path):
       if type in ('raw image file', 'image pickle file'):
         self.view_images([path], img_type=type)
-      elif type in ('raw image list', 'image pickle list'):
-        with open(path, 'r') as f:
-          file_list = [i.replace('\n', '') for i in f.readlines()]
-          self.view_images(file_list, img_type=type)
       elif type == 'text':
         with open(path, 'r') as f:
           file_list = f.readlines()
@@ -453,9 +449,6 @@ class FileListCtrl(ct.CustomListCtrl):
       else:
         wx.MessageBox('Unknown file format', 'Warning',
                       wx.OK | wx.ICON_EXCLAMATION)
-    elif os.path.isdir(path):
-      file_list, _ = ginp.get_input(path, filter=True)
-      self.view_images(file_list, img_type=type)
 
   def view_images(self, img_list, img_type=None):
     ''' Launches image viewer (depending on backend) '''
