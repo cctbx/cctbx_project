@@ -4,7 +4,6 @@ from scitbx.array_family import flex
 import mmtbx.ncs.ncs_utils as nu
 import mmtbx.maps.correlation
 from scitbx import matrix
-import scitbx.rigid_body
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
@@ -12,16 +11,6 @@ import string
 import math
 
 __author__ = 'Youval'
-
-test_pdb_str = '''\
-ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
-ATOM      2  CA  THR A   1       9.559   8.931  10.615  1.00 20.00           C
-ATOM      3  C   THR A   1       9.634   7.903  11.739  1.00 20.00           C
-ATOM      4  O   THR B   1      10.449   8.027  12.653  1.00 20.00           O
-ATOM      5  CB  THR B   1      10.660   8.630   9.582  1.00 20.00           C
-ATOM      6  OG1 THR A   1      10.560   9.552   8.490  1.00 20.00           O
-ATOM      7  CG2 THR A   1      10.523   7.209   9.055  1.00 20.00
-'''
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -79,77 +68,6 @@ ATOM     21  CG2 THR C   1       7.842   4.986   8.114  1.00 10.00           C
 END
 """
 
-test_pdb_str_2 = '''\
-ATOM     45  N   PHEAa   6     219.693 144.930 112.416  1.00 50.00           N
-ATOM     46  CA  PHEAa   6     218.871 146.020 112.886  1.00 50.00           C
-ATOM     47  C   PHEAa   6     217.413 145.628 112.926  1.00 50.00           C
-ATOM     48  O   PHEAa   6     216.730 145.905 113.908  1.00 50.00           O
-TER
-ATOM   1244  N   ARGAb   6     303.367 160.705 103.239  1.00 50.00           N
-ATOM   1245  CA  ARGAb   6     302.396 160.991 104.331  1.00 50.00           C
-ATOM   1246  C   ARGAb   6     302.285 162.473 104.586  1.00 50.00           C
-ATOM   1247  O   ARGAb   6     302.837 163.292 103.851  1.00 50.00           O
-TER
-ATOM   2754  N   PHEAc   6     242.472 151.067 115.352  1.00 50.00           N
-ATOM   2755  CA  PHEAc   6     241.314 151.789 115.823  1.00 50.00           C
-ATOM   2756  C   PHEAc   6     240.094 150.900 115.864  1.00 50.00           C
-ATOM   2757  O   PHEAc   6     239.358 150.912 116.847  1.00 50.00           O
-TER
-ATOM   3953  N   ARGAd   6     314.882 195.854 106.123  1.00 50.00           N
-ATOM   3954  CA  ARGAd   6     313.875 195.773 107.215  1.00 50.00           C
-ATOM   3955  C   ARGAd   6     313.239 197.116 107.471  1.00 50.00           C
-ATOM   3956  O   ARGAd   6     313.460 198.078 106.736  1.00 50.00           O
-TER
-ATOM   5463  N   PHEAe   6     261.525 165.024 118.275  1.00 50.00           N
-ATOM   5464  CA  PHEAe   6     260.185 165.283 118.746  1.00 50.00           C
-ATOM   5465  C   PHEAe   6     259.365 164.014 118.787  1.00 50.00           C
-ATOM   5466  O   PHEAe   6     258.673 163.762 119.769  1.00 50.00           O
-TER
-ATOM   6662  N   ARGAf   6     313.035 232.818 109.051  1.00 50.00           N
-ATOM   6663  CA  ARGAf   6     312.124 232.379 110.143  1.00 50.00           C
-ATOM   6664  C   ARGAf   6     311.048 233.405 110.399  1.00 50.00           C
-ATOM   6665  O   ARGAf   6     310.909 234.383 109.665  1.00 50.00           O
-END
-'''
-
-phil_str = '''\
-ncs_group {
-  reference = chain 'Aa'
-  selection = chain 'Ac'
-  selection = chain 'Ae'
-}
-
-ncs_group {
-  reference = chain 'Ab'
-  selection = chain 'Ad'
-  selection = chain 'Af'
-}
-'''
-
-ncs_phil = '''\
-ncs_group {
-  reference = chain I
-  selection = chain K
-  selection = chain M
-}
-'''
-
-restraints_phil = '''\
-refinement.ncs.restraint_group {
-  reference = chain I
-  selection = chain K
-  selection = chain M
-}
-'''
-
-constraints_phil = '''\
-refinement.ncs.constraint_group {
-  reference = chain I
-  selection = chain K
-  selection = chain M
-}
-'''
-
 class Test_ncs_utils(unittest.TestCase):
   """
   Consider R = Rx(alpha)Ry(beta)Rz(gamma)
@@ -180,27 +98,6 @@ class Test_ncs_utils(unittest.TestCase):
       (-0.4017753, -math.pi/2, 2.6422171))
     self.rot_angles1_deg = flex.double(
       (-0.4017753, 1.2001985, 2.6422171)) * 180/math.pi
-    self.rotation1 = matrix.sqr(self.rot1.as_double())
-    self.rotation2 = matrix.sqr(self.rot2.as_double())
-    self.rotation3 = matrix.sqr(self.rot3.as_double())
-    self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
-    self.translation2 = matrix.rec((0,0,0),(3,1))
-    self.translation3 = matrix.rec((0,1,2),(3,1))
-    self.r_t = [[self.rotation1, self.translation1],
-                [self.rotation2, self.translation2],
-                [self.rotation3, self.translation3]]
-
-    self.pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str)
-    self.tr_obj1 = ncs.input(
-      hierarchy=self.pdb_inp.construct_hierarchy(),
-      rotations=[self.rotation1,self.rotation2],
-      translations=[self.translation1,self.translation2])
-    self.tr_obj2 = ncs.input(
-      hierarchy=self.pdb_inp.construct_hierarchy(),
-      rotations=[self.rotation1,self.rotation2,self.rotation3],
-      translations=[self.translation1,self.translation2,self.translation3])
-    self.ncs_restraints_group_list = \
-      self.tr_obj1.get_ncs_restraints_group_list()
 
   def test_matrix_to_angles(self):
     """
@@ -255,47 +152,6 @@ class Test_ncs_utils(unittest.TestCase):
     expected_angles = self.rot_angles1
     angles = nu.rotation_to_angles(rotation=r, deg=False)
     assert approx_equal(expected_angles,angles,1e-3)
-
-
-  # XXX Should it go?
-  # def test_update_x(self):
-  #   """    Verify that transforms are getting updated    """
-  #   # print sys._getframe().f_code.co_name
-  #   x1 = nu.concatenate_rot_tran(self.tr_obj1)
-  #   x2 = nu.shake_transformations(
-  #     x = x1,
-  #     shake_angles_sigma=0.035,
-  #     shake_translation_sigma=0.5)
-  #   # update with shaken parameters
-  #   self.tr_obj1 = nu.update_rot_tran(
-  #     x=x2, transforms_obj=self.tr_obj1)
-  #   self.ncs_restraints_group_list = nu.update_rot_tran(
-  #     x=x2, ncs_restraints_group_list=self.ncs_restraints_group_list)
-
-  #   x3 = nu.concatenate_rot_tran(
-  #     ncs_restraints_group_list=self.ncs_restraints_group_list)
-  #   x4 = nu.concatenate_rot_tran(
-  #     transforms_obj=self.tr_obj1)
-  #   assert abs(sum(list(x3-x4))) < 1.0e-3
-
-  #   the,psi,phi =x2[6:9]
-  #   rot = scitbx.rigid_body.rb_mat_xyz(
-  #     the=the, psi=psi, phi=phi, deg=False)
-  #   a3 = rot.rot_mat()
-
-  #   the,psi,phi =x4[6:9]
-  #   rot = scitbx.rigid_body.rb_mat_xyz(
-  #     the=the, psi=psi, phi=phi, deg=False)
-  #   a4 = rot.rot_mat()
-  #   assert abs(sum(list(a3-a4))) < 1.0e-3
-
-  #   # test that update_rot_tran dose not unintentionally change x
-  #   round_val = 3
-  #   r_elems = []
-  #   for rec in self.ncs_restraints_group_list:
-  #     for c in rec.copies:
-  #       r = c.r.round(round_val)
-  #       r_elems.append(r.elems)
 
   def test_selected_positions(self):
     # print sys._getframe().f_code.co_name
