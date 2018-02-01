@@ -11,6 +11,7 @@ import shutil
 import os
 from iotbx.ncs import ncs_group_master_phil
 import mmtbx.ncs.ncs
+import mmtbx.model
 
 __author__ = 'Youval'
 
@@ -36,32 +37,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
     self.ph = self.pdb_inp.construct_hierarchy()
     self.pdb_inp = pdb.input(source_info=None, lines=test_pdb_ncs_spec)
-
-  # Removed because we don't want to create iotbx.ncs.input without hierarchy
-  # anymore
-  # def test_phil_param_read(self):
-  #   """ Verify that phil parameters are properly read   """
-  #   # print sys._getframe().f_code.co_name
-  #   # check correctness
-  #   expected_ncs_selection =['(chain A)','(chain A) or (chain B)']
-  #   expected_ncs_to_asu = [
-  #     {'chain A': ['chain B', 'chain C']},
-  #     {'chain A': ['chain C', 'chain E'], 'chain B': ['chain D', 'chain F']}]
-  #   expected_ncs_chains = [['chain A'],['chain A', 'chain B']]
-  #   for i,phil_case in enumerate([user_phil1,user_phil2]):
-  #     phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(phil_case)).extract()
-  #     trans_obj = iotbx.ncs.input(
-  #       ncs_phil_groups=phil_groups.ncs_group)
-  #     self.assertEqual(trans_obj.ncs_selection_str,expected_ncs_selection[i])
-  #     self.assertEqual(trans_obj.ncs_to_asu_selection,expected_ncs_to_asu[i])
-  #     self.assertEqual(trans_obj.ncs_chain_selection,expected_ncs_chains[i])
-  #   # error reporting
-  #   for pc in [user_phil3,user_phil4,user_phil5]:
-  #     phil_groups = ncs_group_master_phil.fetch(iotbx.phil.parse(pc)).extract()
-  #     self.assertRaises(
-  #       IOError,iotbx.ncs.input,
-  #       # ncs_phil_string=pc
-  #       ncs_phil_groups=phil_groups.ncs_group)
 
   def test_phil_processing(self):
     """ Verify that phil parameters are properly processed
@@ -161,50 +136,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
       ncs_from_pdb=simple_ncs_from_pdb.run(
         args=["pdb_in=test_ncs_spec.pdb", "write_spec_files=True"],
         log=null_out())
-
-      # reading and processing the spec file
-
-      # Commenting out iotbx.pdb.input creation from spec.
-      # spec_object = mmtbx.ncs.ncs.ncs()
-      # spec_object.read_ncs(file_name="test_ncs_spec_simple_ncs_from_pdb.ncs_spec")
-      # trans_obj = ncs.input(
-      #   spec_ncs_groups=spec_object,
-      #   # spec_file_str=test_ncs_spec,  # use output string directly
-      #   hierarchy = self.pdb_inp.construct_hierarchy())
-
-      # # test created object
-      # self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-      # expected = "(chain A and (resseq 151:159)) or (chain D and (resseq 1:7))"
-      # self.assertEqual(trans_obj.ncs_selection_str,expected)
-      # # check that static parts are included in NCS and ASU
-      # self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
-      # self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
-      # #
-      # expected = {
-      #   "chain A and (resseq 151:159)":
-      #     ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
-      #   "chain D and (resseq 1:7)":
-      #     ["chain E and (resseq 1:7)"]}
-      # self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
-
-      # # check ncs_transform
-      # group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-      # tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-      # group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-      # r1 = trans_obj.ncs_transform['0000000004'].r
-      # r2 = trans_obj.ncs_transform['0000000002'].r
-      # #
-      # self.assertEqual(len(group_ids),5)
-      # self.assertEqual(set(group_ids),{1,2})
-      # self.assertEqual(tran_sn,{1,2,3,4,5})
-      # self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
-      # #
-      # self.assertTrue(r1.is_r3_identity_matrix())
-      # expected_r = matrix.sqr(
-      #   [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-      # d = r2 - expected_r.transpose()
-      # d = map(abs,d)
-      # self.assertTrue(max(d)<0.01)
     else:
       print "phenix not available, skipping test_spec_reading()"
       pass
@@ -251,60 +182,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     d = map(abs,d)
     self.assertTrue(max(d)<0.01)
 
-    # Verify that spec object are produced properly
-
-    # Commenting out iotbx.pdb.input creation from spec.
-    # spec_output = trans_obj.get_ncs_info_as_spec()
-    # trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
-
-    # t1 = trans_obj.ncs_transform['0000000002'].r
-    # t2 = trans_obj2.ncs_transform['0000000002'].r
-    # self.assertEqual(t1,t2)
-
-    # t1 = trans_obj.ncs_to_asu_selection
-    # t2 = trans_obj2.ncs_to_asu_selection
-    # # Selection does not include the resseq if all the chain is selected
-    # t1_exp = {"chain 'A'": ["chain 'B'", "chain 'C'"], "chain 'D'": ["chain 'E'"]}
-    # self.assertEqual(t1,t1_exp)
-    # t2_exp = {"chain A and (resseq 151:159)":
-    #             ["chain B and (resseq 151:159)","chain C and (resseq 151:159)"],
-    #           "chain D and (resseq 1:7)": ["chain E and (resseq 1:7)"]}
-    # self.assertEqual(t2,t2_exp)
-    # #
-    # t1 = trans_obj.tr_id_to_selection["chain 'A'_0000000003"]
-    # t2 = trans_obj2.tr_id_to_selection["chain A_0000000003"]
-    # self.assertEqual(t1,("chain 'A'", "chain 'C'"))
-    # t2_exp = ("chain A and (resseq 151:159)", "chain C and (resseq 151:159)")
-    # self.assertEqual(t2,t2_exp)
-
-  # Removed with removal of transform_info, rotations, translations from
-  # iotbx.ncs.input constructor
-  # def test_rotaion_translation_input(self):
-  #   """ Verify correct processing    """
-  #   r1 = matrix.sqr([-0.955168,0.257340,-0.146391,
-  #                    0.248227,0.426599,-0.869711,
-  #                    -0.161362,-0.867058,-0.471352])
-  #   r2 = matrix.sqr([-0.994267,-0.046533,-0.096268,
-  #                    -0.065414,-0.447478,0.89189,
-  #                    -0.084580,0.893083,0.441869])
-  #   t1 = matrix.col([167.54320,-4.09250,41.98070])
-  #   t2 = matrix.col([176.73730,27.41760,-5.85930])
-  #   trans_obj = ncs.input(
-  #     hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str2).construct_hierarchy(),
-  #     rotations=[r1,r2],
-  #     translations=[t1,t2])
-  #   nrg = trans_obj.get_ncs_restraints_group_list()[0]
-  #   self.assertEqual(list(nrg.master_iselection),[0, 1, 2, 3, 4, 5, 6, 7, 8])
-  #   c1 = nrg.copies[0]
-  #   self.assertEqual(list(c1.iselection),[9,10,11,12,13,14,15,16,17])
-  #   c2 = nrg.copies[1]
-  #   self.assertEqual(list(c2.iselection),[18,19,20,21,22,23,24,25,26])
-  #   #
-  #   self.assertEqual(r1,c1.r)
-  #   self.assertEqual(r2,c2.r)
-  #   self.assertEqual(t1,c1.t)
-  #   self.assertEqual(t2,c2.t)
-
   def test_print_ncs_phil_param(self):
     """ Verify correct printout of NCS phil parameters.
     need to supply exclude_selection=None because model consist only from UNK
@@ -326,16 +203,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     test = test or (pdb_test_data2_phil_reverse == result)
     self.assertTrue(test)
     #
-
-
-    # Commenting out iotbx.pdb.input creation from spec.
-    # spec_object = mmtbx.ncs.ncs.ncs()
-    # spec_object.read_ncs(lines=test_ncs_spec.splitlines())
-    # trans_obj = ncs.input(
-    #   spec_ncs_groups=spec_object,
-    #   hierarchy = self.pdb_inp.construct_hierarchy())
-    # result = trans_obj.print_ncs_phil_param(write=False)
-    # self.assertEqual(result,test_phil_3)
 
   def test_finding_partial_ncs(self):
     # print sys._getframe().f_code.co_name
@@ -359,29 +226,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected = '0123456789101112131415161718192021222324252627282930313233' \
                '3435363738394041424344 \\ \n4546474849'
     self.assertEqual(result,expected)
-
-  def test_correct_grouping(self):
-    """ test correct representation of groups in .ncs file"""
-    pass
-    # Removed with removal of transform_info, rotations, translations from
-    # iotbx.ncs.input constructor
-    # pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_4)
-    # h = pdb_inp.construct_hierarchy()
-    # ncs_obj = iotbx.ncs.input(
-    #     hierarchy=h,
-    #     transform_info=pdb_inp.process_MTRIX_records(eps=0.01))
-    # self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    # gr = ncs_obj.print_ncs_phil_param()
-    # self.assertEqual(gr,answer_4)
-
-    # Removed because we don't want to create iotbx.ncs.input without hierarchy
-    # anymore
-    # phil_groups = ncs_group_master_phil.fetch(
-    #     iotbx.phil.parse(answer_4)).extract()
-    # ncs_obj = iotbx.ncs.input(ncs_phil_groups=phil_groups.ncs_group)
-    # self.assertEqual(ncs_obj.number_of_ncs_groups,1)
-    # gr = ncs_obj.print_ncs_phil_param()
-    # self.assertEqual(gr,answer_4)
 
   def tearDown(self):
     """ remove temp files and folder """
@@ -516,27 +360,6 @@ ncs_group {
   reference = chain A and (resseq 151:159)
   selection = chain B and (resseq 151:159)
   selection = chain C and (resseq 151:159)
-}
-'''
-
-user_phil1 = '''\
-ncs_group {
-  reference = 'chain A'
-  selection = 'chain B'
-  selection = 'chain C'
-}
-'''
-
-user_phil2 = '''\
-ncs_group {
-  reference = 'chain A'
-  selection = 'chain C'
-  selection = 'chain E'
-}
-ncs_group {
-  reference = 'chain B'
-  selection = 'chain D'
-  selection = 'chain F'
 }
 '''
 
@@ -714,56 +537,6 @@ MATCHING 7
 
 
 
-'''
-
-pdb_str_4 = '''\
-CRYST1  528.530  366.470  540.070  90.00 104.83  90.00 C 1 2 1      16
-MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
-MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
-MTRIX3   1  0.000000  0.000000  1.000000        0.00000    1
-MTRIX1   2  0.559015 -0.422900  0.713158      -50.81488
-MTRIX2   2  0.810743  0.459314 -0.363308      -31.21577
-MTRIX3   2 -0.173835  0.780974  0.599701       69.57587
-ATOM   3482  N   MET A   1     205.179  29.038 232.768  1.00281.58           N
-ATOM   3483  CA  MET A   1     205.862  29.128 231.445  1.00281.58           C
-ATOM   3484  C   MET A   1     205.412  30.352 230.651  1.00281.58           C
-ATOM   3485  O   MET A   1     205.535  31.485 231.120  1.00281.58           O
-ATOM   3486  CB  MET A   1     205.598  27.863 230.623  1.00 94.42           C
-ATOM   3487  CG  MET A   1     204.127  27.515 230.456  1.00 94.42           C
-ATOM   3488  SD  MET A   1     203.838  26.529 228.978  1.00 94.42           S
-ATOM   3489  CE  MET A   1     204.921  25.148 229.294  1.00 94.42           C
-ATOM   3490  N   ASP A   2     204.893  30.116 229.448  1.00131.63           N
-ATOM   3491  CA  ASP A   2     204.431  31.194 228.579  1.00131.63           C
-ATOM   3492  C   ASP A   2     202.940  31.095 228.260  1.00131.63           C
-ATOM   3493  O   ASP A   2     202.503  30.175 227.571  1.00131.63           O
-ATOM   3494  CB  ASP A   2     205.231  31.193 227.274  1.00298.52           C
-ATOM   3495  CG  ASP A   2     204.788  32.283 226.318  1.00298.52           C
-ATOM   3496  OD1 ASP A   2     204.860  33.472 226.692  1.00298.52           O
-ATOM   3497  OD2 ASP A   2     204.367  31.951 225.190  1.00298.52           O
-TER
-ATOM   2314  N   MET B   1     184.057  37.254 249.800  1.00217.84           N
-ATOM   2315  CA  MET B   1     182.786  36.695 250.341  1.00217.84           C
-ATOM   2316  C   MET B   1     182.679  35.187 250.118  1.00217.84           C
-ATOM   2317  O   MET B   1     183.590  34.436 250.468  1.00217.84           O
-ATOM   2318  CB  MET B   1     181.587  37.403 249.704  1.00197.97           C
-ATOM   2319  CG  MET B   1     181.620  37.447 248.188  1.00197.97           C
-ATOM   2320  SD  MET B   1     180.083  38.072 247.490  1.00197.97           S
-ATOM   2321  CE  MET B   1     180.296  39.836 247.698  1.00197.97           C
-ATOM   2322  N   ASP B   2     181.568  34.748 249.531  1.00251.85           N
-ATOM   2323  CA  ASP B   2     181.339  33.327 249.283  1.00251.85           C
-ATOM   2324  C   ASP B   2     181.005  33.031 247.821  1.00251.85           C
-ATOM   2325  O   ASP B   2     179.919  33.354 247.354  1.00251.85           O
-ATOM   2326  CB  ASP B   2     180.199  32.831 250.182  1.00300.00           C
-ATOM   2327  CG  ASP B   2     180.001  31.329 250.106  1.00300.00           C
-ATOM   2328  OD1 ASP B   2     180.986  30.590 250.318  1.00300.00           O
-ATOM   2329  OD2 ASP B   2     178.862  30.886 249.846  1.00300.00           O
-'''
-
-answer_4 = '''\
-ncs_group {
-  reference = chain A or chain B
-  selection = chain C or chain D
-}
 '''
 
 def run_selected_tests():
