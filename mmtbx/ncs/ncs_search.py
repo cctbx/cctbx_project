@@ -533,77 +533,6 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   # assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
-# def make_flips_if_necessary(const_h, flip_h):
-#   """ 3 times slower than make_flips_if_necessary_torsion."""
-#   def dist(a,b):
-#     return math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)
-#   assert const_h.atoms_size() == flip_h.atoms_size()
-#   # this check takes quater of the runtime.
-#   if not const_h.contains_protein():
-#     return None
-#   asc = const_h.atom_selection_cache()
-#   # We do alignment only for main chain atoms so that flipped side chains
-#   # do not bias it.
-#   sel = asc.selection("name N or name CA or name C or name O")
-#   ref_sites = const_h.atoms().extract_xyz()
-#   other_sites = flip_h.atoms().extract_xyz()
-#   ref_sites_for_fit = const_h.atoms().extract_xyz().select(sel)
-#   other_sites_for_fit = flip_h.atoms().extract_xyz().select(sel)
-#   lsq_fit_obj = superpose.least_squares_fit(
-#     reference_sites = ref_sites_for_fit,
-#     other_sites     = other_sites_for_fit)
-#   r = lsq_fit_obj.r
-#   t = lsq_fit_obj.t
-#   flip_sites_best = r.elems*other_sites + t.elems
-#   # first reset i_seq to use them directly with sites arrays
-#   # they should not contain alt confs
-#   # XXX multiple chains when there is HETATM with a ligand after TER.
-#   flipped_other_selection = flex.size_t([])
-#   const_h.reset_atom_i_seqs()
-#   flip_h.reset_atom_i_seqs()
-#   for ch in const_h.only_model().chains():
-#     for residue in ch.only_conformer().residues():
-#       if (residue.resname in ["GLU", "ASP", "PHE", "HIS", "LEU",
-#                               "ASN", "GLN", "ARG", "VAL", "TYR"] and
-#           residue.atoms_size() > 1):
-#         # find interesting pair and decide on flip straight away
-#         flippable_iseqs = []
-#         atoms = residue.atoms()
-#         i = 0
-#         while i < len(atoms):
-#           iname = atoms[i].name.strip()
-#           i1name = atoms[i+1].name.strip() if i < len(atoms)-1 else ""
-#           if (len(iname) == len(i1name) == 3 and
-#               iname[-2] == i1name[-2] and
-#               iname[-1] == "1" and i1name[-1] == "2"):
-#             flippable_iseqs.append((atoms[i].i_seq, atoms[i+1].i_seq))
-#             is1 = atoms[i].i_seq
-#             is2 = atoms[i+1].i_seq
-#             dist_non_flip = dist(ref_sites[is1], flip_sites_best[is1]) + \
-#                 dist(ref_sites[is2], flip_sites_best[is2])
-#             dist_flip = dist(ref_sites[is1], flip_sites_best[is2]) + \
-#                 dist(ref_sites[is2], flip_sites_best[is1])
-#             # print "dist non flip, flip:", dist_non_flip, dist_flip
-#             if dist_flip < dist_non_flip - 0.5:
-#               flipped_other_selection.append(atoms[i+1].i_seq)
-#               flipped_other_selection.append(atoms[i].i_seq)
-#             else:
-#               flipped_other_selection.append(atoms[i].i_seq)
-#               flipped_other_selection.append(atoms[i+1].i_seq)
-#             i += 1
-#           else:
-#             flipped_other_selection.append(atoms[i].i_seq)
-#           i += 1
-#
-#       else:
-#         # residue is not flippable, goes straight to flipped_other_selection
-#         for a in residue.atoms():
-#           flipped_other_selection.append(a.i_seq)
-#   assert flipped_other_selection.size() == const_h.atoms_size()
-#   # print "flipped_other_selection", list(flipped_other_selection)
-#   return flipped_other_selection
-
-
 def get_match_rmsd(ph, match):
   assert len(ph.models()) == 1
   [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
@@ -624,7 +553,6 @@ def get_match_rmsd(ph, match):
   # Here we want to flip atom names, even before chain alignment, so
   # we will get correct chain RMSD
 
-  # flipped_other_selection = make_flips_if_necessary(ref_h.deep_copy(), other_h.deep_copy())
   flipped_other_selection = make_flips_if_necessary_torsion(
       ref_h.deep_copy(), other_h.deep_copy())
   # if flipped_other_selection is not None:

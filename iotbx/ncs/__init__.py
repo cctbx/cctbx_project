@@ -10,7 +10,6 @@ from mmtbx.ncs import ncs
 from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
     NCS_restraint_group, NCS_copy
 from scitbx import matrix
-import math
 import re
 import sys
 from iotbx.pdb.utils import all_chain_ids
@@ -230,32 +229,11 @@ class input(object):
       pdb_h = self.truncated_hierarchy,
       ncs_phil_groups   = ncs_phil_groups,
       asc = self.truncated_h_asc)
-    # print "ncs_phil_groups", ncs_phil_groups
-    # print "validated_ncs_phil_groups", validated_ncs_phil_groups
-    # transform_info = insure_identity_is_in_transform_info(transform_info)
-    # if transform_info or rotations:
-    #   if ncs_only(transform_info) or rotations:
-    #     if not sensible_unit_cell_volume(
-    #             pdb_h=self.truncated_hierarchy,
-    #             crystal_symmetry=self.crystal_symmetry):
-    #       raise Sorry('Unit cell is to small to contain all NCS copies')
-    #     self.build_ncs_obj_from_pdb_ncs(
-    #       pdb_h = self.truncated_hierarchy,
-    #       rotations=rotations,
-    #       translations=translations,
-    #       transform_info=transform_info)
-    #   else:
-    #     # in the case that all ncs copies are in pdb
-    #     self.build_ncs_obj_from_pdb_asu(pdb_h=self.truncated_hierarchy)
     if validated_ncs_phil_groups:
       self.build_ncs_obj_from_phil(
         ncs_phil_groups=validated_ncs_phil_groups,
         pdb_h = self.truncated_hierarchy,
         asc = self.truncated_h_asc)
-    # elif spec_ncs_groups:
-    #   self.build_ncs_obj_from_spec_file(
-    #     pdb_h= self.truncated_hierarchy,
-    #     spec_ncs_groups=spec_ncs_groups)
     elif (self.truncated_hierarchy
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
@@ -276,9 +254,7 @@ class input(object):
       print >> self.log, self.messages
 
   def pdb_h_into_chain(self, pdb_h, ch_id="A"):
-
     new_chain = iotbx.pdb.hierarchy.chain(id=ch_id)
-    # print "iseqs in pdb_h_into_chain", list(pdb_h.atoms().extract_i_seq())
     n_res_groups = 0
     for chain in pdb_h.only_model().chains():
       n_res_groups += chain.residue_groups_size()
@@ -294,8 +270,6 @@ class input(object):
           atom.tmp = orig_iseq
         new_resseq += 1
         new_chain.append_residue_group(residue_group=new_rg)
-    # print "iseqs2 in pdb_h_into_chain", list(new_chain.atoms().extract_i_seq())
-    # print "tmp2 in pdb_h_into_chain", list(new_chain.atoms().extract_tmp_as_size_t())
     return new_chain
 
   def validate_ncs_phil_groups(self, pdb_h, ncs_phil_groups, asc):
@@ -538,79 +512,6 @@ class input(object):
     #   print "  selection:", ncs_gr.selection
     return validated_ncs_groups
 
-  # def build_ncs_obj_from_pdb_ncs(self,
-  #                                pdb_h,
-  #                                transform_info=None,
-  #                                rotations = None,
-  #                                translations = None):
-  #   """
-  #   Build transforms objects and NCS <-> ASU mapping using PDB file containing
-  #   a single NCS copy and MTRIX  or BIOMT records
-
-  #   Args:
-  #     pdb_h : iotbx.pdb.hierarchy
-  #     transform_info : an object containing MTRIX or BIOMT transformation info
-  #     rotations : matrix.sqr 3x3 object
-  #     translations : matrix.col 3x1 object
-  #   """
-  #   self.collect_basic_info_from_pdb(pdb_h=pdb_h)
-  #   if bool(transform_info or (rotations and translations)):
-  #     if rotations:
-  #       # add rotations,translations to ncs_refinement_groups
-  #       self.add_transforms_to_ncs_refinement_groups(
-  #         rotations=rotations,
-  #         translations=translations)
-  #     else:
-  #       # use only MTRIX/BIOMT records from PDB
-  #       self.process_pdb(transform_info=transform_info)
-  #     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
-  #     self.ncs_copies_chains_names = self.make_chains_names(
-  #       transform_assignment=self.transform_chain_assignment,
-  #       unique_chain_names = self.model_unique_chains_ids)
-  #     # build self.ncs_to_asu_selection
-  #     if self.old_i_seqs is not None:
-  #       len_old_i_seq = self.old_i_seqs.size()
-  #       max_old_i_seq = self.old_i_seqs[-1]
-  #       n = 1
-  #     group_by_tr = {}
-  #     for k in self.transform_chain_assignment:
-  #       if self.old_i_seqs is not None:
-  #         new_part = []
-  #         for a in range(len_old_i_seq):
-  #           kkk = self.old_i_seqs[a]+n*(max_old_i_seq+1)
-  #           new_part.append(self.old_i_seqs[a]+n*(max_old_i_seq+1))
-  #         self.old_i_seqs.extend(flex.size_t(new_part))
-  #         n += 1
-  #       selection_str = 'chain ' + self.ncs_copies_chains_names[k]
-  #       key,tr_id =  k.split('_')
-  #       # build master and copies selections
-  #       self.tr_id_to_selection[k] = (key,selection_str)
-  #       r = self.ncs_transform[tr_id].r
-  #       t = self.ncs_transform[tr_id].t
-  #       if not is_identity(r,t):
-  #         if group_by_tr.has_key(tr_id):
-  #           if not(key in group_by_tr[tr_id][0]):
-  #             group_by_tr[tr_id][0].append(key)
-  #             group_by_tr[tr_id][1].append(selection_str)
-  #         else:
-  #           group_by_tr[tr_id] = [[key],[selection_str]]
-  #     group_key = set([' or '.join(group_by_tr[x][0]) for x in group_by_tr])
-  #     group_val = [' or '.join(group_by_tr[x][1]) for x in group_by_tr]
-  #     assert len(group_key) == 1, group_key
-  #     gk = list(group_key)[0]
-  #     self.ncs_to_asu_selection[gk] = group_val
-  #     # add the identity case to tr_id_to_selection
-  #     for key in  self.ncs_copies_chains_names.iterkeys():
-  #       if not self.tr_id_to_selection.has_key(key):
-  #         sel = key.split('_')[0]
-  #         self.tr_id_to_selection[key] = (sel,sel)
-  #     self.number_of_ncs_groups = 1
-  #     # self.finalize_pre_process(pdb_h=pdb_h)
-  #   else:
-  #     # No NCS transform information
-  #     pass
-  #   self.finalize_pre_process(pdb_h=pdb_h)
-
   def build_ncs_obj_from_phil(self,
                               ncs_phil_groups,
                               pdb_h,
@@ -632,18 +533,6 @@ class input(object):
       selection = ''   (multiple)
     }
     """
-    # if(ncs_phil_string is not None):
-    #   ncs_phil_string = nu.convert_phil_format(ncs_phil_string)
-    # process params
-    # if ncs_phil_string:
-    #   if isinstance(ncs_phil_string,str):
-    #     ncs_phil_string = parse(ncs_phil_string)
-    #   phil_param =  master_phil.fetch(
-    #     source=ncs_phil_string,track_unused_definitions=True)
-    #   working_phil = phil_param[0].extract()
-    #   assert  phil_param[1] == [],'Check phil parameters...\n'
-    #   ncs_phil_groups = working_phil.ncs_group
-    # else:
     assert ncs_phil_groups is not None
     # assert pdb_h is not None
     assert self.ncs_selection_str == ''
@@ -880,137 +769,6 @@ class input(object):
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_h=pdb_h)
 
-  # def build_ncs_obj_from_spec_file(self,
-  #                                  spec_ncs_groups=None,
-  #                                  pdb_h=None,
-  #                                  join_same_spec_groups = True):
-  #   """
-  #   read .spec files and build transforms object and NCS <-> ASU mapping
-
-  #   Arguments:
-  #   pdb_h: pdb hierarchy
-  #   spec_ncs_groups: ncs_groups object or mmtbx.ncs.ncs.ncs object
-  #   join_same_spec_groups: (bool) True: combine groups with similar transforms
-  #   """
-  #   if not spec_ncs_groups: spec_ncs_groups = []
-  #   if isinstance(spec_ncs_groups, ncs.ncs):
-  #     spec_ncs_groups = spec_ncs_groups.ncs_groups()
-  #   if spec_ncs_groups:
-  #     transform_sn = 0
-  #     ncs_group_id = 0
-  #     for gr in spec_ncs_groups:
-  #       # create selection
-  #       spec_group_list =get_ncs_group_selection(gr.chain_residue_id())
-  #       gs = spec_group_list[0]
-  #       if join_same_spec_groups:
-  #         # leave groups with the same transforms separate
-  #         group_exist =self.look_and_combine_groups(gr,spec_group_list)
-  #         if group_exist: continue
-  #       ncs_group_id += 1
-  #       self.ncs_chain_selection.append(gs)
-  #       asu_locations = []
-  #       for i,ncs_copy_select in enumerate(spec_group_list):
-  #         # invert transform - the rotation in gr is from the copy to the master
-  #         r = gr.rota_matrices()[i]
-  #         t = gr.translations_orth()[i]
-  #         r,t = inverse_transform(r,t)
-  #         rmsd = round(gr.rmsd_list()[i],4)
-  #         transform_sn += 1
-  #         key = format_num_as_str(transform_sn)
-  #         self.update_tr_id_to_selection(gs,ncs_copy_select,key)
-  #         if not is_identity(r,t):
-  #           asu_locations.append(ncs_copy_select)
-  #         tr = ncs_search.Transform(
-  #           rotation = r,
-  #           translation = t,
-  #           serial_num = transform_sn,
-  #           coordinates_present = True,
-  #           ncs_group_id = ncs_group_id,
-  #           rmsd=rmsd)
-  #         # Update ncs_group dictionary and transform_to_ncs list
-  #         self.build_transform_dict(
-  #           transform_id = key,
-  #           transform = tr,
-  #           selection_id = gs)
-  #         self.ncs_group_map = update_ncs_group_map(
-  #           ncs_group_map=self.ncs_group_map,
-  #           ncs_group_id = ncs_group_id,
-  #           selection_ids = gs,
-  #           transform_id = key)
-  #         assert not self.ncs_transform.has_key(key)
-  #         self.ncs_transform[key] = tr
-  #         self.selection_ids.add(gs)
-  #         self.update_ncs_copies_chains_names(
-  #           masters = gs,copies = ncs_copy_select,tr_id = key)
-  #       self.ncs_to_asu_selection[gs] = asu_locations
-  #     self.number_of_ncs_groups = ncs_group_id
-
-  #     self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
-  #     for i in range(1,len(self.ncs_chain_selection)):
-  #       self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
-  #     self.transform_chain_assignment=get_transform_order(self.transform_to_ncs)
-  #     self.finalize_pre_process(pdb_h=pdb_h)
-
-  # def look_and_combine_groups(self,gr_new,spec_group_list):
-  #   """
-  #   In spec files groups of different masters and copies listed separately,
-  #   even if they have the same rotation/translation and can be combined.
-  #   This function combines them, updates the relevant object attributes and
-  #   returns True/False to indicate if group found
-
-  #   Args:
-  #     spec_group_list (list): selection string for each ncs copy in the group
-  #     gr_new (object): ncs group object
-
-  #   Returns:
-  #     found_same_group (bool): indicate if group found
-  #   """
-  #   gs_new = spec_group_list[0]
-  #   found_same_group = False
-  #   gr_r_list = gr_new.rota_matrices()
-  #   gr_t_list = gr_new.translations_orth()
-  #   # in spec files transforms are inverted
-  #   gr_new_list = [inverse_transform(r,t) for (r,t) in zip(gr_r_list,gr_t_list)]
-  #   for k,[_, tr_set] in self.ncs_group_map.iteritems():
-  #     # all transforms need to be the same to join
-  #     if len(gr_r_list) != len(tr_set): continue
-  #     same_transforms = [-1,]*len(tr_set)
-  #     tr_list = list(tr_set)
-  #     tr_list.sort()
-  #     for tr_key1 in tr_list:
-  #       r1 = self.ncs_transform[tr_key1].r
-  #       t1 = self.ncs_transform[tr_key1].t
-  #       for i,(r2,t2) in enumerate(gr_new_list):
-  #         if same_transforms[i] != -1: continue
-  #         same,transpose = ncs_search.is_same_transform(r1,t1,r2,t2)
-  #         test = (same and (not transpose))
-  #         if test:
-  #           same_transforms[i] = i
-  #           break
-  #     found_same_group = (same_transforms.count(-1) == 0)
-  #     # update dictionaries only if same group was found and then break
-  #     if found_same_group:
-  #       self.selection_ids.add(gs_new)
-  #       asu_locations = []
-  #       for i in same_transforms:
-  #         transform_id = tr_list[i]
-  #         ncs_copy_select = spec_group_list[i]
-  #         key = gs_new + '_' + transform_id
-  #         # look at self.ncs_copies_chains_names
-  #         self.update_ncs_copies_chains_names(
-  #           masters=gs_new, copies=ncs_copy_select, tr_id=transform_id)
-  #         r,t = gr_new_list[i]
-  #         self.update_tr_id_to_selection(gs_new,ncs_copy_select,transform_id)
-  #         if not is_identity(r,t):
-  #           self.transform_to_ncs = add_to_dict(
-  #             d=self.transform_to_ncs,k=transform_id,v=key)
-  #           asu_locations.append(ncs_copy_select)
-
-  #       self.ncs_to_asu_selection[gs_new] = asu_locations
-  #       self.ncs_group_map[k][0].add(gs_new)
-  #       break
-  #   return found_same_group
-
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
     masters = get_list_of_chains_selection(masters)
     copies = get_list_of_chains_selection(copies)
@@ -1030,78 +788,6 @@ class input(object):
     for k,c,m in zip(tr_keys,copies_selection_list,master_selection_list):
       key = k + '_' + tr_id
       self.tr_id_to_selection[key] = (m,c)
-
-  # def add_transforms_to_ncs_refinement_groups(self,rotations,translations):
-  #   """
-  #   Add rotation matrices and translations vectors
-  #   to ncs_refinement_groups
-  #   """
-  #   assert len(rotations) == len(translations)
-  #   assert not self.ncs_transform, 'ncs_transform should be empty\n'
-  #   sn = {1}
-  #   self.add_identity_transform(ncs_selection=self.ncs_selection_str)
-  #   n = 1
-  #   for (r,t) in zip(rotations,translations):
-  #     # check if transforms are the identity transform
-  #     if not is_identity(r,t):
-  #       n += 1
-  #       sn.add(n)
-  #       tr_sn = n
-  #     else:
-  #       tr_sn = 1
-  #     key = format_num_as_str(tr_sn)
-  #     tr = ncs_search.Transform(
-  #       rotation = r,
-  #       translation = t,
-  #       serial_num = tr_sn,
-  #       coordinates_present = False,
-  #       ncs_group_id = 1)
-  #     self.ncs_transform[key] = tr
-  #     for select in self.ncs_chain_selection:
-  #       self.build_transform_dict(
-  #         transform_id = key,
-  #         transform = tr,
-  #         selection_id = select)
-  #       self.selection_ids.add(select)
-  #       chain_id = get_list_of_chains_selection(select)
-  #       assert len(chain_id) == 1
-  #       chain_id = chain_id[0]
-  #       self.tr_id_to_selection[chain_id + "'%s'_%s" %(chain_id, key)] = (select,select)
-  #     self.ncs_group_map = update_ncs_group_map(
-  #       ncs_group_map=self.ncs_group_map,
-  #       ncs_group_id = 1,
-  #       selection_ids = self.ncs_chain_selection,
-  #       transform_id = key)
-
-  # def collect_basic_info_from_pdb(self,pdb_h):
-  #   """
-  #   Build chain selection string and collect chains IDs from pdb
-  #   Consider that chains can be not continuous
-  #   """
-  #   assert pdb_h is not None
-  #   if len(pdb_h.models()) > 1:
-  #     raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-  #   model  = pdb_h.models()[0]
-  #   chain_ids = {x.id for x in model.chains()}
-  #   # Collect order if chains IDs and unique IDs
-  #   self.model_unique_chains_ids = tuple(sorted(chain_ids))
-  #   model_order_ch_ids = [(x.id,x.atoms_size()) for x in model.chains()]
-  #   ch_n_atoms = {x:None for x in self.model_unique_chains_ids}
-  #   for (ch,n) in model_order_ch_ids:
-  #     if ch_n_atoms[ch] is None:
-  #       ch_n_atoms[ch] = [(0,n)]
-  #     else:
-  #       _,last_n = ch_n_atoms[ch][-1]
-  #       ch_n_atoms[ch].append((last_n, last_n + n))
-  #   for ch,n in model_order_ch_ids:
-  #     selection_range = ch_n_atoms[ch].pop(0)
-  #     self.model_order_chain_ids.append((ch,selection_range))
-  #   s = ' or chain '.join(self.model_unique_chains_ids)
-  #   self.ncs_selection_str = 'chain ' + s
-  #   assert self.ncs_chain_selection == []
-  #   self.ncs_chain_selection =\
-  #     ['chain ' + s for s in self.model_unique_chains_ids]
-  #   self.ncs_chain_selection.sort()
 
   def compute_ncs_asu_coordinates_map(self,pdb_h):
     """ Calculates coordinates maps from ncs to asu and from asu to ncs """
@@ -1182,45 +868,6 @@ class input(object):
       selection_ids = ncs_selection,
       transform_id = id_str)
 
-  # def process_pdb(self,transform_info):
-  #   """
-  #   Process PDB Hierarchy object
-  #   Args:
-  #     transform_info
-
-  #   Remarks:
-  #   The information on a chain in a PDB file does not have to be continuous.
-  #   Every time the chain name changes in the pdb file, a new chain is added
-  #   to the model, even if the chain ID already exist. so there model.
-  #   chains() might contain several chains that have the same chain ID
-  #   """
-  #   transform_info_available = bool(transform_info) and bool(transform_info.r)
-  #   if transform_info_available:
-  #     ti = transform_info
-  #     for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
-  #       n = int(n)
-  #       key = format_num_as_str(n)
-  #       tr = ncs_search.Transform(
-  #         rotation = r,
-  #         translation = t,
-  #         serial_num = n,
-  #         coordinates_present = cp,
-  #         ncs_group_id = 1)
-  #       for select in self.ncs_chain_selection:
-  #         self.build_transform_dict(
-  #           transform_id = key,
-  #           transform = tr,
-  #           selection_id = select)
-  #         self.selection_ids.add(select)
-  #       self.ncs_group_map = update_ncs_group_map(
-  #         ncs_group_map=self.ncs_group_map,
-  #         ncs_group_id = 1,
-  #         selection_ids = self.ncs_chain_selection,
-  #         transform_id = key)
-  #       # if ncs selection was not provided in phil parameter
-  #       assert not self.ncs_transform.has_key(key)
-  #       self.ncs_transform[key] = tr
-
   def build_transform_dict(self,
                            transform_id,
                            transform,
@@ -1251,70 +898,6 @@ class input(object):
       ncs_selection = atom_selection_cache.selection(key)
       asu_total_length += ncs_selection.count(True)
     return asu_total_length
-
-  # Used only in self.get_transform_records(), which is not used, not tested.
-  # def build_MTRIX_object(self,ncs_only=True):
-  #   """
-  #   Build a MTRIX object from ncs_group_object
-  #   Used for testing
-  #   """
-  #   assert  self.number_of_ncs_groups < 2
-  #   import iotbx.mtrix_biomt
-  #   result = iotbx.mtrix_biomt.container()
-  #   tr_dict = self.ncs_transform
-  #   tr_sorted = sorted(tr_dict,key=lambda k:tr_dict[k].serial_num)
-  #   for key in tr_sorted:
-  #     transform = self.ncs_transform[key]
-  #     r = transform.r
-  #     t = transform.t
-  #     identity_test = is_identity(r,t)
-  #     cp = (not ncs_only) or identity_test
-  #     result.add(
-  #       r=r,
-  #       t=t,
-  #       coordinates_present=cp,
-  #       serial_number=transform.serial_num)
-  #   return result
-
-  # def make_chains_names(self,
-  #                       transform_assignment,
-  #                       unique_chain_names):
-  #   """
-  #   Create a dictionary names for the new NCS copies
-  #   keys: (str) chain_name + '_' + serial_num
-  #   values: (str) (one or two chr long)
-
-  #   Chain names might repeat themselves several times in a pdb file
-  #   We want copies of chains with the same name to still have the
-  #   same name after similar BIOMT/MTRIX transformation
-
-  #   Arguments:
-  #   transform_assignment : (list) transformation assignment order
-  #   unique_chain_names : (tuple) a set of unique chain names
-
-  #   Returns:
-  #   new_names : a dictionary. {'A_1': 'G', 'A_2': 'H',....} map a chain
-  #   name and a transform number to a new chain name
-  #   """
-  #   if not transform_assignment or not unique_chain_names: return {}
-  #   # create list of character from which to assemble the list of names
-  #   # total_chains_number = len(i_transforms)*len(unique_chain_names)
-  #   total_chains_number = len(transform_assignment)
-  #   dictionary_values = nu.make_unique_chain_names(
-  #     unique_chain_names,total_chains_number)
-  #   # create the dictionary
-  #   zippedlists = zip(transform_assignment,dictionary_values)
-  #   new_names_dictionary = {x:y for (x,y) in zippedlists}
-  #   # add the master NCS to dictionary
-  #   tr_set  = {format_num_as_str(x) for x in self.transform_to_be_used}
-  #   for k,v in self.ncs_group_map.iteritems():
-  #     tr_str = (v[1] - tr_set)
-  #     assert len(tr_str) == 1
-  #     tr_str = tr_str.pop()
-  #     for ch_sel in v[0]:
-  #       if not ' or ' in ch_sel:
-  #         new_names_dictionary[ch_sel+'_'+tr_str] = ch_sel.replace('chain ','')
-  #   return new_names_dictionary
 
   def finalize_pre_process(self,pdb_h=None):
     """
@@ -1475,127 +1058,6 @@ class input(object):
         if not nrgl_ok:
           raise Sorry('NCS copies do not match well')
     return class_ncs_restraints_group_list(ncs_restraints_group_list)
-
-  # Not used, not tested.
-  # def update_using_ncs_restraints_group_list(self,ncs_restraints_group_list):
-  #   """
-  #   Update ncs_group_object rotations and transformations.
-
-  #   Note that to insure proper assignment the ncs_restraints_group_list
-  #   should be produced using the get_ncs_restraints_group_list method
-
-  #   Args:
-  #     ncs_restraints_group_list: a list of ncs_restraint_group objects
-  #   """
-  #   assert len(ncs_restraints_group_list) == len(self.ncs_group_map)
-  #   group_id_list = sort_dict_keys(self.ncs_group_map)
-  #   for k in group_id_list:
-  #     v = self.ncs_group_map[k]
-  #     nrg = ncs_restraints_group_list.pop(0)
-  #     for tr in sorted(list(v[1])):
-  #       if self.transform_to_ncs.has_key(tr):
-  #         ncs_copy = nrg.copies.pop(0)
-  #         self.ncs_transform[tr].r = ncs_copy.r
-  #         self.ncs_transform[tr].t = ncs_copy.t
-  #         # Test that the correct transforms are updated
-  #         ncs_isel = flex.size_t([])
-  #         for sel in self.transform_to_ncs[tr]:
-  #           ncs_isel.extend(self.ncs_to_asu_map[sel])
-  #         assert ncs_copy.iselection == ncs_isel
-
-  # Not used, not tested. In case this is used somewhere (Maybe in secret Tom's
-  # repositories), I would recommend at least to add simple test ensuring that the
-  # function just exists and explain where it is used.
-  # def get_transform_records(self, file_name=None,
-  #                         ncs_only=True,
-  #                         pdb_hierarchy=None,
-  #                         xrs=None,
-  #                         fmodel=None,
-  #                         crystal_symmetry=None,
-  #                         mtrix=None,
-  #                         biomt=None,
-  #                         write=False,
-  #                         log = None):
-  #   """
-  #   Write to a file or prints transformation records.
-  #   with or without PDB atoms and Cryst records.
-  #   If no pdb_hierarchy, xray structure or fmodel are provided, the function
-  #   will return only the MTRIX/BIOMT records
-
-  #   Args:
-  #     file_name: (str) output file name
-  #     ncs_only: (bool) When False, the comple ASU will be printed (applicable
-  #               only with MTRIX records)
-  #     pdb_hierarchy: (pdb_hierarchy object)
-  #     xrs: (xray structure) for crystal symmetry
-  #     fmodel: (fmodel object)
-  #     crystal_symmetry: crystal symmetry records
-  #     mtrix: (bool) When True -> write MTRIX records
-  #     biomt: (bool) When True -> write BIOMT records
-  #     write: (bool) when False, will will not write to file or print
-
-  #   Return:
-  #     PDB string
-  #   """
-  #   if not log: log = sys.stdout
-  #   if (not mtrix) and (not biomt):
-  #     mtrix = True
-  #     biomt = False
-  #   assert bool(mtrix) == (not bool(biomt))
-  #   if biomt: ncs_only = True
-  #   mtrix_object = self.build_MTRIX_object(ncs_only=ncs_only)
-  #   pdb_header_str = ''
-  #   new_ph_str = ''
-  #   transform_rec = ''
-  #   #
-  #   if fmodel:
-  #     xrs = fmodel.xray_structure
-  #   if xrs and self.original_hierarchy and (not pdb_hierarchy):
-  #     pdb_hierarchy = self.original_hierarchy
-  #     pdb_str = xrs.as_pdb_file()
-  #     pdb_header_str = get_pdb_header(pdb_str)
-  #     xyz = pdb_hierarchy.atoms().extract_xyz()
-  #     new_xyz = xrs.sites_cart()
-  #     if new_xyz.size() > xyz.size():
-  #       ncs_only = True
-  #       xrs = xrs.select(self.ncs_atom_selection)
-  #       new_xyz = xrs.sites_cart()
-  #     assert new_xyz.size() == xyz.size()
-  #     pdb_hierarchy.atoms().set_xyz(new_xyz)
-  #   if pdb_hierarchy:
-  #     ph = pdb_hierarchy
-  #     if not crystal_symmetry:
-  #       if self.crystal_symmetry: crystal_symmetry = self.crystal_symmetry
-  #       elif xrs:
-  #         crystal_symmetry = xrs.crystal_symmetry()
-  #     pdb_str = ph.as_pdb_string(crystal_symmetry=crystal_symmetry)
-  #     if not pdb_header_str:
-  #      pdb_header_str = get_pdb_header(pdb_str)
-  #     if ncs_only:
-  #       new_ph = ph.select(self.ncs_atom_selection)
-  #     else:
-  #       msg = 'The complete ASU hierarchy need to be provided !!!\n'
-  #       assert len(self.ncs_atom_selection) == len(ph.atoms()),msg
-  #       new_ph = ph
-  #     new_ph_str = new_ph.as_pdb_string(crystal_symmetry=None)
-  #   #
-  #   if mtrix:
-  #     transform_rec = mtrix_object.as_pdb_string()
-  #   elif biomt:
-  #     transform_rec = mtrix_object.format_BOIMT_pdb_string()
-  #   #
-  #   if write:
-  #     if file_name:
-  #       f = open(file_name,'w')
-  #       print >> f, pdb_header_str
-  #       print >> f, transform_rec
-  #       print >> f, new_ph_str
-  #       f.close()
-  #     else:
-  #       print >> log,pdb_header_str
-  #       print >> log,transform_rec
-  #       print >> log,new_ph_str
-  #   return '\n'.join([pdb_header_str,transform_rec,new_ph_str])
 
   def get_ncs_info_as_spec(
           self,
@@ -1775,53 +1237,6 @@ class input(object):
         group.append(cp)
       result.append(group)
     return result
-
-  # Not used, not tested.
-  # moreover, hierarchy is expanded by default with mmtbx.model.manager.
-  # def build_asu_hierarchy(self,
-  #                         pdb_hierarchy,
-  #                         round_coordinates=True):
-  #   """
-  #   Build ASU hierarchy
-
-  #   Arguments:
-  #   pdb_hierarchy: pdb hierarchy of the master NCS
-  #   round_coordinates: (bool) round coordinates of new NCS copies,
-  #                       for sites_cart constancy
-  #   Return:
-  #   ASU hierarchy
-  #   """
-  #   if len(pdb_hierarchy.models()) > 1:
-  #     raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
-  #   # Build only for PDB when there is a single NCS group
-  #   # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
-  #   assert self.number_of_ncs_groups < 2
-  #   new_ph = pdb_hierarchy.deep_copy()
-  #   ncs_restraints_group_list = self.get_ncs_restraints_group_list()
-  #   new_sites = nu.apply_transforms(
-  #     ncs_coordinates = pdb_hierarchy.atoms().extract_xyz(),
-  #     ncs_restraints_group_list = ncs_restraints_group_list,
-  #     total_asu_length =  self.total_asu_length,
-  #     extended_ncs_selection = flex.size_t_range(pdb_hierarchy.atoms_size()),
-  #     round_coordinates = round_coordinates)
-  #   model = new_ph.models()[0]
-  #   tr_assignment_order = []
-  #   for tr in self.transform_order:
-  #     for (ch_id, (sel_start,sel_end)) in self.model_order_chain_ids:
-  #       key = 'chain ' + ch_id
-  #       tr_key  =  key + '_' + tr
-  #       ncs_selection = self.asu_to_ncs_map[key][sel_start:sel_end]
-  #       tr_assignment_order.append([tr_key,ncs_selection])
-  #   for tr,ncs_selection in tr_assignment_order:
-  #     new_part = pdb_hierarchy.select(ncs_selection).deep_copy()
-  #     new_chain = iotbx.pdb.hierarchy.ext.chain()
-  #     new_chain.id = self.ncs_copies_chains_names[tr]
-  #     for res in new_part.residue_groups():
-  #       new_chain.append_residue_group(res.detached_copy())
-  #     model.append_chain(new_chain)
-  #   new_ph.atoms().set_xyz(new_sites)
-  #   # print "self.number_of_ncs_groups in build_asu_hierarchy", self.number_of_ncs_groups
-  #   return new_ph
 
   def show(self,
            format=None,
@@ -2134,24 +1549,6 @@ def separate_selection_string(s):
       s_list.append(new_s)
   return s_list
 
-  # Not used, not tested
-# def get_pdb_header(pdb_str):
-#   """
-#   Collect CRYST and SCALE records
-
-#   Args:
-#     pdb_str: (str) pdb type string
-
-#   Returns:
-#     the portion of the pdb_str till the first ATOM
-#   """
-#   pdb_str = pdb_str.splitlines()
-#   pdb_header_lines = []
-#   for x in pdb_str:
-#     if x.startswith('ATOM'): break
-#     else: pdb_header_lines.append(x)
-#   return '\n'.join(pdb_header_lines)
-
 def get_center_orth(xyz,selection):
   """
   Compute the center of coordinates of selected coordinates
@@ -2182,87 +1579,9 @@ def format_num_as_str(n):
   else:
     return "%010d" % int(n)
 
-
-# def ncs_only(transform_info):
-#   """
-#   XXX
-#   XXX Should be member function of Transform, but the rest of the code
-#   XXX should be rewritten in OOP so all tiny functions and logics don't have
-#   XXX to process it is being None
-#   XXX
-#   Verify that all transforms are not present
-#   (excluding the identity transform)
-
-#   Args:
-#     transform_info: (transformation object)
-
-#   Returns:
-#     (bool): True if all transforms are not present
-#   """
-#   present = False
-#   if transform_info:
-#     ti = transform_info
-#     for (r,t,n,cp) in zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present):
-#       if not is_identity(r,t):
-#         present = present or cp
-#   return not present
-
 def is_identity(r,t):
   """ test if r, rotation matrix is identity, and t, translation is zero """
   return r.is_r3_identity_matrix() and t.is_col_zero()
-
-# def sensible_unit_cell_volume(
-#         pdb_h,
-#         crystal_symmetry=None,
-#         transform_info=None,
-#         rotations=None):
-#   """
-#   XXX
-#   XXX Consider removing this. It is only called when ncs.input is being
-#   XXX created from rotations and translations, which is the case
-#   XXX when creating from MTRIX, and this is currently done in mmtbx.model.manager.
-#   XXX Not clear if this is working, but it is not tested...
-#   XXX
-#   Rough evaluation if the number of atoms of all NCS copies can fit in
-#   the unit cell.
-
-#   Use this only when the pdb_hierarchy contains a single NCS copy
-
-#   Args:
-#     crystal_symmetry
-#     pdb_h
-#     transform_info
-#     rotations
-
-#   Returns:
-#     (bool): False indicates that the complete ASU does not fit in the unit cell
-#   """
-#   # fixme : finish function and add test
-#   if crystal_symmetry is None: return True # Bunch of tests written without CS
-#   assert pdb_h is not None
-#   n_transforms = 0
-
-#   # todo:  check units of unit_cell().volume()
-#   n_atoms_in_ncs = pdb_h.atoms_size()
-#   unit_cell_volume = crystal_symmetry.unit_cell().volume()
-#   # get z, the number of ASU in the cell unit
-#   space_group = crystal_symmetry.space_group_info()
-#   z = space_group.type().number()
-#   if transform_info:
-#     for r,cp in zip(transform_info.r,transform_info.coordinates_present):
-#       if (not r.is_r3_identity_matrix()) and (not cp):
-#         n_transforms +=1
-#   elif rotations:
-#     for r in rotations:
-#       if not r.is_r3_identity_matrix():
-#         n_transforms += 1
-#   # Approximate the volume of an atom as 4*pi(1.5A)^3/3
-#   atom_r = 1.5
-#   v_atom = 4*math.pi*(atom_r**3)/3
-#   all_atoms_volume_estimate = (v_atom * n_atoms_in_ncs * z) * n_transforms
-#   if unit_cell_volume:
-#     test = (all_atoms_volume_estimate < unit_cell_volume)
-#   return test
 
 def uniqueness_test(unique_selection_set,new_item):
   """
@@ -2293,27 +1612,6 @@ def update_selection_ref(selection_ref,new_selection):
   assert test,'Overlapping atom selection. Check phil parameters...\n'
   return selection_ref | new_selection
 
-# def get_ncs_group_selection(chain_residue_id):
-#   """
-#   Args:
-#     chain_residue_id: [[chain id's],[[[residues range]],[[...]]]
-
-#   Returns:
-#     selection lists, with selection string for each ncs copy in the group
-#   """
-#   chains = chain_residue_id[0]
-#   res_ranges = chain_residue_id[1]
-#   assert len(chains) == len(res_ranges)
-#   ncs_selection = []
-#   for c,rr in zip(chains, res_ranges):
-#     c = c.strip()
-#     assert c.find(' ') < 0,'Multiple chains in a single spec ncs group\n'
-#     ch_selection = 'chain ' + c
-#     res_range = ['resseq {0}:{1}'.format(s,e) for s,e in rr]
-#     res_range = '(' + ' or '.join(res_range) + ')'
-#     ncs_selection.append(ch_selection + ' and ' + res_range)
-#   return ncs_selection
-
 def get_transform_order(transform_to_ncs):
   """ order transforms mainly for proper chain naming """
   transform_order = sorted(transform_to_ncs)
@@ -2341,55 +1639,3 @@ def update_ncs_group_map(
 def sort_dict_keys(d):
   """ sort dictionary d by values """
   return sorted(d,key=lambda k:d[k])
-
-# def insure_identity_is_in_transform_info(transform_info):
-#   """
-#   XXX
-#   XXX Should be member function of Transform, but the rest of the code
-#   XXX should be rewritten in OOP so all tiny functions and logics don't have
-#   XXX to process it is being None
-#   XXX
-#   Add the identity matrix in cases where the pdb or mmcif files do not
-#   contain it
-
-#   Args:
-#     transform_info (transformation object): contain rotation, translation,
-#       serial number and indication if present
-
-#   Return:
-#     transform_info : Add or reorder the transform_info so that the
-#       identity matrix has serial number 1
-#   """
-#   if transform_info is None:
-#     return None
-#   ti = transform_info
-#   ti_zip =  zip(ti.r,ti.t,ti.serial_number,ti.coordinates_present)
-#   identity_sn = []
-#   t_r = []
-#   t_t = []
-#   t_cp = []
-#   for i,(r,t,sn,cp) in enumerate(ti_zip):
-#     if is_identity(r=r,t=t):
-#       identity_sn.append([i,sn])
-#       if (i == 0) and (sn == 1):
-#         t_r.append(r)
-#         t_t.append(t)
-#         t_cp.append(cp)
-#     else:
-#       t_r.append(r)
-#       t_t.append(t)
-#       t_cp.append(cp)
-#   if identity_sn == [[0,1]]: return transform_info
-#   # identity transform is missing or not in the first location
-#   # add identity transform as the first transform
-#   t_r.insert(0,matrix.sqr([1,0,0,0,1,0,0,0,1]))
-#   t_t.insert(0,matrix.col([0,0,0]))
-#   t_cp.insert(0,True)
-#   # re-assign serial numbers
-#   s = '{0:3d}'
-#   t_sn = [s.format(i+1) for i in range(len(t_cp))]
-#   ti.r = t_r
-#   ti.t = t_t
-#   ti.serial_number = t_sn
-#   ti.coordinates_present = t_cp
-#   return ti
