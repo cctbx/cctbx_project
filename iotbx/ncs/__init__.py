@@ -12,7 +12,6 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
 from scitbx import matrix
 import math
 import re
-import os
 import sys
 from iotbx.pdb.utils import all_chain_ids
 
