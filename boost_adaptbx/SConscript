@@ -265,10 +265,15 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       libs.append('rt')
     if boost_thread_uses_winthreads:
       libs.append('boost_chrono')
-    env_boost_threads.StaticLibrary(
-      target='#lib/boost_thread',
-      source=boost_thread_src,
-      LIBS=libs)
+      env_boost_threads.StaticLibrary(
+        target='#lib/boost_thread',
+        source=boost_thread_src,
+        LIBS=libs)
+    else:
+      env_boost_threads.SharedLibrary(
+        target='#lib/boost_thread',
+        source=boost_thread_src,
+        LIBS=libs)
     
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
@@ -281,9 +286,14 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       # For Windows (c.f. point 2 above)
       env_boost_system.Append(
         CPPDEFINES={'BOOST_SYSTEM_DYN_LINK':1})
-      env_boost_system.StaticLibrary(
-        target='#lib/boost_system',
-        source=boost_system_src)
+      if boost_thread_uses_winthreads:
+        env_boost_system.StaticLibrary(
+          target='#lib/boost_system',
+          source=boost_system_src)
+      else:
+        env_boost_system.SharedLibrary(
+          target='#lib/boost_system',
+          source=boost_system_src)
 
     #Boost.Chrono?
     if boost_thread_uses_winthreads:
@@ -309,9 +319,14 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env_etc.include_registry.append(
       env=env_boost_threads_test,
       paths=[env_etc.boost_adaptbx_include])
-    env_boost_threads_test.StaticLibrary(
-      target="#lib/boost_adaptbx_boost_thread_test_ext",
-      source="tests/boost_thread_test.cpp")
+    if boost_thread_uses_winthreads:
+      env_boost_threads_test.StaticLibrary(
+        target="#lib/boost_adaptbx_boost_thread_test_ext",
+        source="tests/boost_thread_test.cpp")
+    else:
+      env_boost_threads_test.SharedLibrary(
+        target="#lib/boost_adaptbx_boost_thread_test_ext",
+        source="tests/boost_thread_test.cpp")
 
   env = env_base.Clone(LIBS=env_etc.libs_python)
   env.Append(LIBPATH=env_etc.libpath_python)
