@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/04/2017
+Last Changed: 01/31/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -362,10 +362,11 @@ class Integrator(object):
         try:
           print "{:-^100}\n".format(" INDEXING: ")
           self.index()
-          print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: ".format(len(self.indexed)))
+          if self.indexed is not None:
+           print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
+                                       "".format(len(self.indexed)))
         except Exception, e:
           if hasattr(e, "classname"):
-            print e.classname, "for %s:"%self.img[0],
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
             print "Indexing error for %s:"%self.img[0],

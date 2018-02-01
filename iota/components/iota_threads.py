@@ -16,6 +16,7 @@ from libtbx import easy_pickle as ep
 from libtbx import easy_run
 
 from dxtbx.datablock import DataBlockFactory
+import multiprocessing
 
 from iota.components.iota_utils import InputFinder
 import iota.components.iota_image as img
@@ -323,11 +324,12 @@ class SpotFinderThread(Thread):
     self.terminated = False
 
   def run(self):
+    total_procs = multiprocessing.cpu_count()
     try:
       parallel_map(iterable=self.data_list,
                    func=self.spf_wrapper,
                    callback=self.callback,
-                   processes=None)
+                   processes=total_procs-5)
     except IOTATermination, e:
       self.terminated = True
       print e

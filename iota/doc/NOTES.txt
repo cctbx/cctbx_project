@@ -1,49 +1,19 @@
-IOTA v1.1.025 - interface updates
+IOTA v1.1.026 - interface updates
 
-1. PHIL script hidden, showable if user wants to modify
-2. Basic/Advanced/Developer - level options (This is in lieu of any auto-PHIL
-dialogs; it seems like it might be wiser to wait until we switch to PyQt.)
-3. Option widgets for target params (inserted during processing):
-    a. target_cell, known_setting, target_cell_centring_type for Labelit
-    b. unit_cell, space_group for DIALS
-    c. Resolution limits for Labelit
-    d. Turn FFT3D on/off for DIALS
-    e. These are new settings in IOTA param files, too
-4. BUGFIX: Log displayed when run is recovered
-5. Searchable log in IOTA GUI
-6. LSF queue jobs now abort cleanly (via 'bkill' command)
-7. IOTA opens at mouse position
-8. Added run number in recovery dialog
-9. Recovery dialog sized to content
-10. Added significance filter to DIALS options
-11. Summary chart now clickable (double-click to view corresponding images)
+Bugfixes:
 
-MORE BUGFIXES:
+1. Added more descriptive error message ("No reflections left after outliers
+are removed") to outlier_detection.py
+2. Image tracker: went to update by timer; interface works smoother
+3. More sophisticated filter for file-finding; can now filter by any keyword
 
-1. Eliminated iCCP warning by removing the offending iCCP chunk from many (not
-all) icons, both Crystal and custom using ImageMagick (NOT COMMITTED YET):
-     mogrify -strip <filename>
-2. Fixed errors in PHIL handling for DIALS and Labelit option dialogs
-3. Corrected target param panel parentage for DIALS options dialog
-4. Expert level drop-down choice is now set to Basic if running on Linux
-5. Tweaked Recovery option to accept new settings if missing in old PHIL
-6. Fixed PRIME input auto-create, which caused a mysterious 'zero reflections'
-error (merge.d_max was set to high-res rather than low-res)
-7. IOTA actually won't look for new images if monitor mode is off
-8. Hidden files (as in '.filename') are not accepted into a list of images
-9. Fixed silent bug in TableCtrl
-10. Fixed processing summary chart "cut off" at the bottom (on Linux)
-11. Fixed monitor mode when no new images found (now keeps waiting w/o timeout)
-12. Fixed DIALS triage - now has same modified settings as Processor
-13. Input search avoids Nonetype paths
-14. LSF queue abort exits cleanly if job has not yet been submitted
-15. Input search scrubs "_tmp*" image files
-16. Chart picking now shows the correct image associated with plotted data
-17. Gain automatically set in cctbx.xfel processing
-18. Image tracker: can now stop spotfinding and re-start w/ new folder
-19. Grad buttons work in IOTA file list control
+Features:
 
-PRIME BUGFIXES
+1. Added function to write out list of inspected images to file (user can now
+pick out images to process from a large dataset via inspection)
 
-1. Preferences dialog resizes automatically
-2. Queue options not blanked when Advanced Options opened
+
+Known issues:
+
+1. Cropping / padding for Labelit fails if beamX > beamY (why?!)
+2. Image tracker: interface could use to be faster w/ large datasets
