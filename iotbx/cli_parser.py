@@ -16,6 +16,7 @@ import iotbx.phil
 from iotbx.file_reader import any_file
 from libtbx import citations
 from libtbx.data_manager import DataManager
+from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
 # =============================================================================
@@ -138,7 +139,7 @@ class CCTBXParser(ParserBase):
 
     self.master_phil = iotbx.phil.parse(
       program_class.master_phil_str, process_includes=True)
-    required_output_phil = iotbx.phil.parse(program_class.output_phil_str)
+    required_output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)
     self.master_phil.adopt_scope(required_output_phil)
     self.working_phil = None
 
