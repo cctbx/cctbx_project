@@ -554,9 +554,12 @@ class find_outliers_from_matches(find_outliers):
 
   def get_cache_status(self):
     value = flex.bool()
-    for status in self.cache_status:
-      value.append( status==SpotClass.GOOD )
-    return value
+    if self.cache_status is None:
+      raise Exception('No reflections left after removing outliers!')
+    else:
+      for status in self.cache_status:
+        value.append( status==SpotClass.GOOD )
+      return value
 
   def update(self,horizon_phil,matches,status_with_marked_outliers,verbose=False):
     # first time through: status with marked outliers is None; no input information
