@@ -78,13 +78,8 @@ ncs_group_master_phil = libtbx.phil.parse(ncs_group_phil_str)
 class input(object):
   def __init__(self,
           hierarchy=None,
-          crystal_symmetry=None, # if sensible_unit_cell_volume() check is needed
-          # transform_info=None,
-          # rotations = None,
-          # translations = None,
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
-          # spec_ncs_groups=None,
           exclude_selection="element H or element D or water",
           chain_max_rmsd=2.0,
           log=None,
@@ -192,8 +187,6 @@ class input(object):
       self.log = sys.stdout
     else:
       self.log = log
-
-    self.crystal_symmetry=crystal_symmetry
 
     if hierarchy:
       # for a in hierarchy.atoms():
