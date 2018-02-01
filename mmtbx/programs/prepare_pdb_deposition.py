@@ -62,8 +62,6 @@ mmtbx.validation.sequence.sequence_alignment {
   include scope mmtbx.validation.sequence.master_phil
 }
 output {
-  overwrite = False
-    .type = bool
   output_suffix = '.deposit.cif'
     .type = str
 }

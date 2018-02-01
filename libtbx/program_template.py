@@ -46,7 +46,23 @@ Program Description
 
   # master PHIL string for the program (required)
   master_phil_str = '''
-program {}
+# example
+program {
+  parameter = None
+    .type = bool
+}
+'''
+
+  # reserved phil scope for output
+  # this will be automatically added to the master_phil_str
+  # you can add your own output phil scope, but these parameters will be added
+  # as well
+  output_phil_str = '''
+output {
+  overwrite = False
+    .type = bool
+    .help = Overwrite files when set to True
+}
 '''
 
   # unique citations for the program. list of citation phil extract objects

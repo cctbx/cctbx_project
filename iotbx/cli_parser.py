@@ -135,9 +135,13 @@ class CCTBXParser(ParserBase):
     if (self.logger is None):
       self.logger = logging.getLogger('main')
     self.data_manager = DataManager(datatypes=program_class.datatypes)
-    self.master_phil = iotbx.phil.parse(program_class.master_phil_str,
-                                        process_includes=True)
+
+    self.master_phil = iotbx.phil.parse(
+      program_class.master_phil_str, process_includes=True)
+    required_output_phil = iotbx.phil.parse(program_class.output_phil_str)
+    self.master_phil.adopt_scope(required_output_phil)
     self.working_phil = None
+
     self.add_default_options()
 
   # ---------------------------------------------------------------------------
@@ -181,6 +185,13 @@ class CCTBXParser(ParserBase):
       '--write-all', '--write_all', action='store_true',
       help='write all (modified + default + data) PHIL parameters to file (%s)' %
       self.all_filename
+    )
+
+    # --overwrite
+    # switch for overwriting files, takes precedence over PHIL definition
+    self.add_argument(
+      '--overwrite', action='store_true', default=False,
+      help='overwrite files, this overrides the output.overwrite PHIL parameter'
     )
 
     # --citations will use the default format
@@ -305,8 +316,9 @@ class CCTBXParser(ParserBase):
       print('  No files found', file=self.logger)
 
     if (self.namespace.write_data):
-      with open(self.data_filename, 'w') as f:
-        self.data_manager.export_phil_scope().show(out=f)
+      self.data_manager.write_phil_file(
+        self.data_filename, self.data_manager.export_phil_scope().as_str(),
+        overwrite=self.namespace.overwrite)
 
     print('', file=self.logger)
 
@@ -345,6 +357,8 @@ class CCTBXParser(ParserBase):
       phil_list, custom_processor=custom_processor)
     if (len(working) > 0):
       sources.extend(working)
+    if (self.namespace.overwrite):  # override overwrite if True
+      sources.append(iotbx.phil.parse('output.overwrite=True'))
     self.working_phil, more_unused_phil = self.master_phil.fetch(
       sources=data_sources + sources, track_unused_definitions=True)
     unused_phil.extend(more_unused_phil)
@@ -365,8 +379,9 @@ class CCTBXParser(ParserBase):
     # write differences
     if (self.namespace.write_modified):
       if (is_different):
-        with open(self.modified_filename, 'w') as f:
-          phil_diff.show(out=f)
+        self.data_manager.write_phil_file(
+          self.modified_filename, phil_diff.as_str(),
+          overwrite=self.namespace.overwrite)
       else:
         print('  No PHIL modifications to write', file=self.logger)
         printed_something = True
@@ -379,7 +394,11 @@ class CCTBXParser(ParserBase):
       for phil in unused_phil:
         print('  %s' % phil, file=self.logger)
       print('', file=self.logger)
-      raise Sorry('Some PHIL parameters are not recognized by %s.\nPlease run this program with the --show-defaults option to see what parameters are available.' % self.prog)
+      error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
+                      self.prog
+      error_message += 'Please run this program with the --show-defaults option to see what parameters are available.\n'
+      error_message += 'PHIL parameters in files should be fully specifed (e.g. "output.overwrite" instead of just "overwrite")'
+      raise Sorry(error_message)
 
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
@@ -400,9 +419,10 @@ class CCTBXParser(ParserBase):
 
     # write all parameters (DataManager + Program)
     if (self.namespace.write_all):
-      with open(self.all_filename, 'w') as f:
-        self.data_manager.export_phil_scope().show(out=f)
-        self.working_phil.show(expert_level=3, out=f)
+      all_phil = self.data_manager.export_phil_scope().as_str()
+      all_phil += self.working_phil.as_str(expert_level=3)
+      self.data_manager.write_phil_file(
+        self.all_filename, all_phil, overwrite=self.namespace.overwrite)
 
     print('', file=self.logger)
 

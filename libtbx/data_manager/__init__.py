@@ -318,8 +318,12 @@ class DataManagerBase(object):
     if (not isinstance(text_str, str)):
       raise Sorry('Please provide a text string for writing.')
 
-    with open(filename, 'w') as f:
-      f.write(text_str)
+    try:
+      with open(filename, 'w') as f:
+        f.write(text_str)
+    except IOError as err:
+      raise Sorry('There was an error with writing %s.\n%s' %
+                  (filename, err))
 
     self._output_files.append(filename)
     self._output_types.append(datatype)
