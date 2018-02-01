@@ -397,7 +397,7 @@ class CCTBXParser(ParserBase):
       error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
                       self.prog
       error_message += 'Please run this program with the --show-defaults option to see what parameters are available.\n'
-      error_message += 'PHIL parameters in files should be fully specifed (e.g. "output.overwrite" instead of just "overwrite")'
+      error_message += 'PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")'
       raise Sorry(error_message)
 
     if (not printed_something):
