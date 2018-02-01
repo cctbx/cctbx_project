@@ -763,7 +763,20 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
   /* X-ray wavelength */
   static double get_lambda_A(nanoBragg const& nanoBragg) {return nanoBragg.lambda0*1e10;}
-  static void   set_lambda_A(nanoBragg& nanoBragg, double const& value) {nanoBragg.lambda0 = value/1e10;}
+  static void   set_lambda_A(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.lambda0 = value/1e10;
+
+      /* override any other provided lambda values, so they don't override us */
+      int n = nanoBragg.pythony_source_lambda.size();
+      if(n > 0 ) {
+          printf("WARNING: resetting %d source wavelengths to %f A\n",n,value);
+          for(int i=0;i<n;++i){
+            nanoBragg.pythony_source_lambda[i] = value;
+          }
+      }
+      /* re-initialize source table */
+      nanoBragg.init_sources();
+  }
   /* X-ray wavelength from energy */
   static double get_energy_eV(nanoBragg const& nanoBragg) {return 12398.42/(nanoBragg.lambda0*1e10);}
   static void   set_energy_eV(nanoBragg& nanoBragg, double const& value) {nanoBragg.lambda0 = (12398.42/value)/1e10;}
