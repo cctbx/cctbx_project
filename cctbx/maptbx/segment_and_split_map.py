@@ -4685,6 +4685,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       shifted_ncs_object=ncs_obj.coordinate_offset(
         coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
     else:
+      from mmtbx.ncs.ncs import ncs
       shifted_ncs_object=ncs()
       shifted_ncs_object.set_unit_ncs()
 
