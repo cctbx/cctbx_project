@@ -97,8 +97,8 @@ tst_list = (
   "$D/regression/ncs/tst_ncs_user_selections.py",
   # Removed with removal of transform_info, rotations, translations from
   # iotbx.ncs.input constructor
-  # "$D/pdb/tst_read_mtrix_records_from_cif.py",
   # "$D/regression/ncs/tst_ncs.py",
+  "$D/pdb/tst_read_mtrix_records_from_cif.py",
   "$D/regression/tst_show_systematic_absences.py",
   "$D/regression/tst_miller_sort_asu.py",
   "$D/regression/tst_reflection_file_reader.py",

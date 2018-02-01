@@ -1,46 +1,8 @@
 from __future__ import division
-import iotbx.ncs as ncs
+import iotbx.ncs
 import iotbx.pdb
-import unittest
-import sys
-
-class TestMtrixRecFromCif(unittest.TestCase):
-  '''Compare the results of reading MTRIX records of PDB and CIF files'''
-
-  # @unittest.SkipTest
-  def test_compare_rotation_and_translation(self):
-    print 'Running ',sys._getframe().f_code.co_name
-    pdb_inp1 = iotbx.pdb.input(source_info=None, lines=test_pdb)
-    pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
-    trans_obj1 = ncs.input(
-        hierarchy=pdb_inp1.construct_hierarchy(),
-        transform_info=pdb_inp1.process_MTRIX_records())
-    trans_obj2 = ncs.input(
-        hierarchy=pdb_inp2.construct_hierarchy(),
-        transform_info=pdb_inp2.process_MTRIX_records())
-
-    # trans_obj1 = ncs.input(pdb_string=test_pdb)
-    # trans_obj2 = ncs.input(cif_string=test_cif)
-    #
-    nrg1 = trans_obj1.get_ncs_restraints_group_list()
-    nrg2 = trans_obj2.get_ncs_restraints_group_list()
-
-    x1 = nrg1.concatenate_rot_tran()
-    x2 = nrg2.concatenate_rot_tran()
-
-    x = (x1 - x2).as_double()
-    self.assertEqual(x.min_max_mean().as_tuple(), (0,0,0))
-    #
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_cif)
-    transform_info = pdb_inp.process_MTRIX_records()
-    results = transform_info.as_pdb_string()
-
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb)
-    transform_info = pdb_inp.process_MTRIX_records()
-    expected = transform_info.as_pdb_string()
-
-    self.assertEqual(results,expected)
-
+import mmtbx.model
+from libtbx.test_utils import approx_equal
 
 test_pdb = """\
 CRYST1   94.730   94.730  250.870  90.00  90.00 120.00 P 65         12
@@ -171,5 +133,34 @@ ATOM 16   O OD2 . ASP A 1 2   ? 11.821 44.453 18.866  1.00 70.41  ? ? ? ? ? ? 2 
 #
 """
 
+
+def exercise():
+  pdb_inp1 = iotbx.pdb.input(source_info=None, lines=test_pdb)
+  pdb_inp2 = iotbx.pdb.input(source_info=None, lines=test_cif)
+  model1 = mmtbx.model.manager(pdb_inp1)
+  model2 = mmtbx.model.manager(pdb_inp1)
+  trans_obj1 = iotbx.ncs.input(hierarchy=model1.get_hierarchy())
+  trans_obj2 = iotbx.ncs.input(hierarchy=model2.get_hierarchy())
+
+  nrg1 = trans_obj1.get_ncs_restraints_group_list()
+  nrg2 = trans_obj2.get_ncs_restraints_group_list()
+
+  x1 = nrg1.concatenate_rot_tran()
+  x2 = nrg2.concatenate_rot_tran()
+
+  x = (x1 - x2).as_double()
+  assert approx_equal(x.min_max_mean().as_tuple(), (0,0,0))
+  #
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=test_cif)
+  transform_info = pdb_inp.process_MTRIX_records()
+  results = transform_info.as_pdb_string()
+
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb)
+  transform_info = pdb_inp.process_MTRIX_records()
+  expected = transform_info.as_pdb_string()
+
+  assert approx_equal(results,expected)
+
 if __name__ == "__main__":
-  unittest.main(verbosity=0)
+  exercise()
+  print "OK"
