@@ -26,16 +26,6 @@ ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
 TER
 """
 
-pdb_str_2="""\
-ATOM      1  N   THR A   1       9.670  10.289  11.135  1.00 20.00           N
-ATOM      2  CA  THR A   2       9.559   8.931  10.615  1.00 20.00           C
-ATOM      3  C   THR A   3       9.634   7.903  11.739  1.00 20.00           C
-ATOM      4  O   THR B   4      10.449   8.027  12.653  1.00 20.00           O
-ATOM      5  CB  THR B   5      10.660   8.630   9.582  1.00 20.00           C
-ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
-ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
-"""
-
 pdb_str_3="""
 REMARK   0 Test molecule with BIOMOLECULE: 1
 REMARK   0
@@ -179,37 +169,6 @@ ATOM    799  NH2 ARG B 152       9.192   0.096 -38.482  1.00 48.06           N
 END
 """
 
-pdb_str_6="""\
-MTRIX1   1  0.309017 -0.809017  0.500000        0.00000
-MTRIX2   1  0.809017  0.500000  0.309017        0.00000
-MTRIX3   1 -0.500000  0.309017  0.809017        0.00000
-MTRIX1   2 -0.809017 -0.500000  0.309017        0.00000
-MTRIX2   2  0.500000 -0.309017  0.809017        0.00000
-MTRIX3   2 -0.309017  0.809017  0.500000        0.00000
-MTRIX1   3  1.000000  0.000000  0.000000        0.00000    1
-MTRIX2   3  0.000000  1.000000  0.000000        0.00000    1
-MTRIX3   3  0.000000  0.000000  1.000000        0.00000    1
-ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
-ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
-TER
-ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
-END
-"""
-
-pdb_str_7="""\
-MTRIX1   1  0.309017 -0.809017  0.500000        0.00000
-MTRIX2   1  0.809017  0.500000  0.309017        0.00000
-MTRIX3   1 -0.500000  0.309017  0.809017        0.00000
-MTRIX1   2 -0.809017 -0.500000  0.309017        0.00000
-MTRIX2   2  0.500000 -0.309017  0.809017        0.00000
-MTRIX3   2 -0.309017  0.809017  0.500000        0.00000
-ATOM    749  O   UNK A  90      28.392  67.262  97.682  1.00  0.00           O
-ATOM    750  N   UNK A  91      30.420  66.924  98.358  1.00  0.00           N
-TER
-ATOM   1495  N   UNK B  67      33.124   2.704 114.920  1.00  0.00           N
-END
-"""
-
 pdb_str_8 = """\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
 MTRIX2   1  0.000000  1.000000  0.000000        0.00000    1
@@ -229,115 +188,6 @@ ATOM      6  OG1 THR A   6      10.560   9.552   8.490  1.00 20.00           O
 ATOM      7  CG2 THR A   7      10.523   7.209   9.055  1.00 20.00           C
 END
 """
-
-# Commenting out iotbx.pdb.input creation from spec.
-# def exercise_00():
-#   """ Verify that spec object are produced properly """
-#   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-#   t_i = pdb_inp.process_MTRIX_records()
-#   pdb_h = pdb_inp.construct_hierarchy()
-#   trans_obj = ncs.input(hierarchy=pdb_h, transform_info=t_i)
-#   pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-#   spec_output = trans_obj.get_ncs_info_as_spec()
-#   trans_obj2 = ncs.input(spec_ncs_groups=spec_output)
-#   t1 = trans_obj.ncs_transform['0000000002'].r
-#   t2 = trans_obj2.ncs_transform['0000000002'].r
-#   assert approx_equal(t1, t2)
-#   assert len(trans_obj.ncs_transform) == len(trans_obj2.ncs_transform)
-#   t1 = trans_obj.ncs_to_asu_selection
-#   t1_expected = {'chain A or chain B':
-#                    ['chain C or chain D', 'chain E or chain F']}
-#   assert t1 == t1_expected
-#   t2 = trans_obj2.ncs_to_asu_selection
-#   t2_expected = {
-#     'chain A and (resseq 1:3 or resseq 6:7)':
-#       ['chain C and (resseq 1:3 or resseq 6:7)',
-#        'chain E and (resseq 1:3 or resseq 6:7)'],
-#     'chain B and (resseq 4:5)':
-#       ['chain D and (resseq 4:5)', 'chain F and (resseq 4:5)']}
-#   assert t2 == t2_expected
-#   t1 = trans_obj.tr_id_to_selection['chain A_0000000003']
-#   t1_expected = ('chain A',
-#                  'chain E')
-#   assert t1 == t1_expected
-#   t2 = trans_obj2.tr_id_to_selection['chain A_0000000003']
-#   t2_expected = ('chain A and (resseq 1:3 or resseq 6:7)',
-#                  'chain E and (resseq 1:3 or resseq 6:7)')
-#   assert t2 == t2_expected
-
-def exercise_01():
-  """
-  Verify that processing of transforms provided manually is done properly """
-  pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str_2)
-  r = [matrix.sqr([0.1,1.0,1.0,0.2,0.5,0.6,0.7,0.8,0.9])]
-  r.append(matrix.sqr([1.0,0.2,1.0,0.2,0.5,0.6,0.7,0.8,0.4]))
-  t = [matrix.col([0,2,1])]
-  t.append(matrix.col([-1,3,-2]))
-  transforms_obj = ncs.input(
-    hierarchy = pdb_obj.hierarchy,
-    rotations=r,
-    translations=t)
-  result = transforms_obj.transform_to_ncs
-  expected = {'0000000002': ['chain A_0000000002', 'chain B_0000000002'],
-              '0000000003': ['chain A_0000000003', 'chain B_0000000003']}
-  assert result == expected
-  result = transforms_obj.ncs_selection_str
-  expected = 'chain A or chain B'
-  assert result == expected
-  # check that if transforms are provided MTRIX record ignored
-  pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str_1)
-  pdb_h = pdb.input(source_info=None, lines=pdb_str_1).construct_hierarchy()
-  transforms_obj = ncs.input(
-    hierarchy = pdb_h,
-    rotations=r,
-    translations=t)
-  result = transforms_obj.transform_to_ncs
-  expected = {'0000000002': ['chain A_0000000002', 'chain B_0000000002'],
-              '0000000003': ['chain A_0000000003', 'chain B_0000000003']}
-  assert result == expected
-  result = transforms_obj.ncs_selection_str
-  expected = 'chain A or chain B'
-  assert result == expected
-  # transforms that are not present
-  result = transforms_obj.transform_to_ncs.keys()
-  expected = ['0000000002', '0000000003']
-  assert result == expected
-  # all transforms
-  result = transforms_obj.ncs_transform.keys()
-  expected = ['0000000001', '0000000002', '0000000003']
-  result.sort()
-  assert result == expected
-
-def exercise_02():
-  """
-  Verify that transform order is kept even when chain selection is complex
-  """
-  pdb_inp = pdb.input(source_info=None, lines=pdb_str_1)
-  pdb_obj = pdb.hierarchy.input(pdb_string=pdb_str_1)
-  transform_info = pdb_inp.process_MTRIX_records()
-  transforms_obj = ncs.input(
-    transform_info=transform_info,
-    hierarchy=pdb_inp.construct_hierarchy())
-  expected = ['chain A_0000000002', 'chain B_0000000002', 'chain A_0000000003', 'chain B_0000000003']
-  assert transforms_obj.transform_chain_assignment == expected
-  expected = {
-    'chain A_0000000002': 'C','chain A_0000000003': 'E','chain A_0000000001': 'A',
-    'chain B_0000000002': 'D','chain B_0000000003': 'F','chain B_0000000001': 'B'}
-  assert transforms_obj.ncs_copies_chains_names == expected
-  expected = [0, 1, 2, 5, 6]
-  results = list(transforms_obj.asu_to_ncs_map['chain A'])
-  assert results == expected
-  expected = [3, 4]
-  results = list(transforms_obj.asu_to_ncs_map['chain B'])
-  assert results == expected
-  expected = [7, 8, 9, 12, 13]
-  results = list(transforms_obj.ncs_to_asu_map['chain A_0000000002'])
-  assert results == expected
-  expected = [17, 18]
-  results = list(transforms_obj.ncs_to_asu_map['chain B_0000000003'])
-  assert results == expected
-  assert len(transforms_obj.ncs_atom_selection) == 21
-  assert transforms_obj.ncs_atom_selection.count(True) == 7
 
 def exercise_03():
   """
@@ -439,29 +289,6 @@ def exercise_06():
     elif method == 1:
       assert ncs_obj.number_of_ncs_groups == 2
 
-def exercise_07():
-  """
-  Verify that insertion and reordering of the identity transform is done
-  properly
-  need to use exclude_selection=None because test pdb files contain only UNK
-  residues.
-  """
-  for pdb_str in [pdb_str_6,pdb_str_7]:
-    pdb_inp = pdb.input(source_info=None, lines=pdb_str)
-    t_i=pdb_inp.process_MTRIX_records()
-    pdb_h = pdb_inp.construct_hierarchy()
-    ncs_inp = ncs.input(
-      hierarchy=pdb_h,
-      exclude_selection=None,
-      transform_info=t_i)
-    transform_info = ncs_inp.build_MTRIX_object()
-    assert len(transform_info.r) == 3
-    assert len(transform_info.t) == 3
-    assert transform_info.r[0].is_r3_identity_matrix()
-    assert transform_info.t[0].is_col_zero()
-    sn = [int(x) for x in transform_info.serial_number]
-    assert sn == [1,2,3]
-
 def exercise_08():
   """
   Test for MTRIX record when copies already present in file
@@ -473,12 +300,8 @@ def exercise_08():
           h.atoms().extract_xyz())
 
 if(__name__=='__main__'):
-  # exercise_00() # Commenting out iotbx.pdb.input creation from spec.
-  exercise_01()
-  exercise_02()
   exercise_03()
   exercise_04()
   exercise_05()
   exercise_06()
-  exercise_07()
   exercise_08()
