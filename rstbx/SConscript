@@ -40,7 +40,7 @@ if (not env_etc.no_boost_python):
   Import("env_boost_python_ext")
   env_rstbx_boost_python_ext = env_boost_python_ext.Clone()
   env_rstbx_boost_python_ext.Prepend(
-                 LIBS=["rstbx", "cctbx", "scitbx_boost_python"])
+                 LIBS=["rstbx", "ann", "cctbx", "scitbx_boost_python"])
   env_rstbx_boost_python_ext.SharedLibrary(
                  target="#lib/rstbx_ext", source="ext.cpp")
   env_rstbx_boost_python_ext.SharedLibrary(

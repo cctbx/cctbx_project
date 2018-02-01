@@ -32,8 +32,9 @@ print("BOOST_VERSION: %i" %env_etc.boost_version)
 # any issue.
 if (libtbx.env.build_options.enable_boost_threads and
   env_etc.boost_thread_support):
-  boost_thread_uses_winthreads = (sys.platform == 'win32' and
-                                  not env_etc.compiler.endswith('mingw'))
+  boost_thread_uses_winthreads = (sys.platform == 'win32')
+  # MinGW compiler 5.3.0 appears to compile boost_threads 
+  # with the same condition as win32.
   # This environment is to be used latter to build Boost libraries
   # So we need a clean one without extra library linking.
   env_boost_shlibs_base = env_base.Copy()
@@ -264,11 +265,11 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       libs.append('rt')
     if boost_thread_uses_winthreads:
       libs.append('boost_chrono')
-    env_boost_threads.SharedLibrary(
+    env_boost_threads.StaticLibrary(
       target='#lib/boost_thread',
       source=boost_thread_src,
       LIBS=libs)
-
+    
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
       env_boost_system = env_boost_thread_and_co.Copy()
@@ -280,7 +281,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       # For Windows (c.f. point 2 above)
       env_boost_system.Append(
         CPPDEFINES={'BOOST_SYSTEM_DYN_LINK':1})
-      env_boost_system.SharedLibrary(
+      env_boost_system.StaticLibrary(
         target='#lib/boost_system',
         source=boost_system_src)
 
@@ -294,7 +295,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
           os.path.join(env_etc.boost_dist, 'libs', 'chrono', 'src', '*.cpp'))]
       # For Windows (c.f. point 2 above)
       env_boost_chrono.Append(CPPDEFINES={'BOOST_CHRONO_DYN_LINK':1})
-      env_boost_chrono.SharedLibrary(
+      env_boost_chrono.StaticLibrary(
         target='#lib/boost_chrono',
         source=boost_chrono_src,
         LIBS=['boost_system'])
@@ -308,7 +309,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env_etc.include_registry.append(
       env=env_boost_threads_test,
       paths=[env_etc.boost_adaptbx_include])
-    env_boost_threads_test.SharedLibrary(
+    env_boost_threads_test.StaticLibrary(
       target="#lib/boost_adaptbx_boost_thread_test_ext",
       source="tests/boost_thread_test.cpp")
 
