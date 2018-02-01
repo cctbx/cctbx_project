@@ -51,13 +51,26 @@ class simple_controller():
         self._cache_tag = None
         self._pid = currentpid
         # NB: Explicitly do not close the cache in this case. Would be pointless.
+
+      # If tag has changed then we are changing cache contents
       if tag != self._cache_tag:
         if self._cache is not None:
 #         print "(%5s) Controller %s closing previous cache on %s" % (os.getpid(), format(id(self), '#x'), self._cache_tag)
-          self._cache.close()
-        self._cache_tag = tag
-#       print "(%5s) Controller %s opening cache on %s" % (os.getpid(), format(id(self), '#x'), self._cache_tag)
-        self._cache = dxtbx.filecache.lazy_file_cache(open_method())
+          try:
+            self._cache.close()
+          finally:
+            self._cache = None
+            self._cache_tag = None
+
+#       print "(%5s) Controller %s opening cache on %s" % (os.getpid(), format(id(self), '#x'), self._tag)
+        try:
+          self._cache_tag = tag
+          self._cache = dxtbx.filecache.lazy_file_cache(open_method())
+        except:
+          # Make sure we leave in a valid state
+          self._cache_tag = None
+          self._cache = None
+          raise
 #     else:
 #       print "(%5s) Controller %s reporting cache hit on %s" % (os.getpid(), format(id(self), '#x'), self._cache_tag)
       return self._cache.open()
