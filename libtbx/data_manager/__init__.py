@@ -13,8 +13,9 @@ from libtbx.utils import Sorry
 # mapping from DataManager datatypes to any_file file types
 any_file_type = {
   'model':'pdb',
+  'phil':'phil',
+  'restraint':'cif',
   'sequence':'seq',
-  'phil':'phil'
 }
 
 # build list of supported datatypes
@@ -28,7 +29,7 @@ supported_datatypes.sort()
 for i in range(len(supported_datatypes)):
   supported_datatypes[i] = supported_datatypes[i].split('.')[0]
 
-default_datatypes = ['model', 'phil', 'sequence']
+default_datatypes = ['model', 'phil', 'restraint', 'sequence']
 
 # =============================================================================
 def load_datatype_modules(datatypes=None):

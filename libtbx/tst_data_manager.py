@@ -5,10 +5,10 @@ import os
 import libtbx.phil
 
 from libtbx.utils import Sorry
-from libtbx.data_manager import DataManager
+from libtbx.data_manager import DataManager, supported_datatypes
 
 def test_data_manager():
-  a = DataManager(datatypes=['model'])
+  a = DataManager(supported_datatypes)
 
   a.add_model('a', 'b')
   a.add_model('c', 'd')
