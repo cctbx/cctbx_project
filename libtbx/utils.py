@@ -8,10 +8,7 @@ except ImportError: bz2 = None
 import hashlib
 import warnings
 
-def hashlib_md5(*args, **kwargs):
-  '''Compatibility function. This may be imported from other places'''
- # warnings.warn("libtbx.utils.hashlib_md5 is deprecated. Use hashlib.md5 instead", DeprecationWarning)
-  return hashlib.md5(*args, **kwargs)
+hashlib_md5 = hashlib.md5
 
 import math
 import shutil
