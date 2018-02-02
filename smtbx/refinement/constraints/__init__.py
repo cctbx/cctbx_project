@@ -223,11 +223,11 @@ class reparametrisation(ext.reparametrisation):
   def apply_shifts(self, shifts):
     ext.reparametrisation.apply_shifts(self, shifts)
 
-  class component_annotations(libtbx.property):
-    def fget(self):
-      return self.__dict__.setdefault(
-        "_component_annotations",
-        self.asu_scatterer_parameters.component_annotations().split(',')[:-1])
+  @property
+  def component_annotations(self):
+    return self.__dict__.setdefault(
+      "_component_annotations",
+      self.asu_scatterer_parameters.component_annotations().split(',')[:-1])
 
   def jacobian_transpose_matching_grad_fc(self):
     """ The columns of self.jacobian_transpose corresponding to crystallographic

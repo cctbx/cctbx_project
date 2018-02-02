@@ -615,56 +615,56 @@ class density_modification(object):
     n_ncs_oper=na.n_nc_oper
     self.map = average_map.as_double()
 
-  class f_obs_active(libtbx.property):
-    def fget(self):
-      return self.f_obs_complete.select_indices(self.active_indices)
+  @property
+  def f_obs_active(self):
+    return self.f_obs_complete.select_indices(self.active_indices)
 
-  class active_indices(libtbx.property):
-    def fget(self):
-      if self.i_cycle == 0 and not hasattr(self, "_active_indices"):
-        self._active_indices = None
-      if (self.params.phase_extension and
-          self.params.d_min < self.params.initial_d_min and
-          self.i_cycle > self.params.initial_steps and
-          self.i_cycle < (self.params.initial_steps + self.params.shrink_steps)):
-        self._active_indices = None
-      if self._active_indices is None:
-        sel = (self.ref_flags_array.d_spacings().data() >= self.d_min) & self.ref_flags
-        self._active_indices = self.ref_flags_array.select(sel).indices()
-      return self._active_indices
+  @property
+  def active_indices(self):
+    if self.i_cycle == 0 and not hasattr(self, "_active_indices"):
+      self._active_indices = None
+    if (self.params.phase_extension and
+        self.params.d_min < self.params.initial_d_min and
+        self.i_cycle > self.params.initial_steps and
+        self.i_cycle < (self.params.initial_steps + self.params.shrink_steps)):
+      self._active_indices = None
+    if self._active_indices is None:
+      sel = (self.ref_flags_array.d_spacings().data() >= self.d_min) & self.ref_flags
+      self._active_indices = self.ref_flags_array.select(sel).indices()
+    return self._active_indices
 
   def miller_array_in_original_setting(self, miller_array):
     if self.change_of_basis_op is not None:
       return miller_array.change_basis(self.change_of_basis_op.inverse())
     return miller_array
 
-  class map_coeffs_in_original_setting(libtbx.property):
-    def fget(self):
-      return self.miller_array_in_original_setting(self.map_coeffs)
+  @property
+  def map_coeffs_in_original_setting(self):
+    return self.miller_array_in_original_setting(self.map_coeffs)
 
-  class hl_coeffs_in_original_setting(libtbx.property):
-    def fget(self):
-      return self.miller_array_in_original_setting(self.hl_coeffs)
+  @property
+  def hl_coeffs_in_original_setting(self):
+    return self.miller_array_in_original_setting(self.hl_coeffs)
 
-  class radius(libtbx.property):
-    def fget(self):
-      if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
-        return self.params.solvent_mask.averaging_radius.initial
-      elif self.i_cycle < (self.params.initial_steps + self.params.shrink_steps):
-        return (self.params.solvent_mask.averaging_radius.initial -
-                (self.radius_delta * (self.i_cycle - self.params.initial_steps + 1)))
-      else:
-        return self.params.solvent_mask.averaging_radius.final
+  @property
+  def radius(self):
+    if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
+      return self.params.solvent_mask.averaging_radius.initial
+    elif self.i_cycle < (self.params.initial_steps + self.params.shrink_steps):
+      return (self.params.solvent_mask.averaging_radius.initial -
+              (self.radius_delta * (self.i_cycle - self.params.initial_steps + 1)))
+    else:
+      return self.params.solvent_mask.averaging_radius.final
 
-  class d_min(libtbx.property):
-    def fget(self):
-      if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
-        return self.params.initial_d_min
-      elif self.i_cycle < (self.params.initial_steps + self.params.shrink_steps):
-        return (self.params.initial_d_min -
-                (self.phase_extend_step * (self.i_cycle - self.params.initial_steps + 1)))
-      else:
-        return self.params.d_min
+  @property
+  def d_min(self):
+    if self.i_cycle == 0 or self.i_cycle < self.params.initial_steps:
+      return self.params.initial_d_min
+    elif self.i_cycle < (self.params.initial_steps + self.params.shrink_steps):
+      return (self.params.initial_d_min -
+              (self.phase_extend_step * (self.i_cycle - self.params.initial_steps + 1)))
+    else:
+      return self.params.d_min
 
 class dm_stats (object) :
   def __init__ (self) :

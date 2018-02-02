@@ -45,13 +45,13 @@ class crystallographic_ls(
     self.taken_step = None
     self.restraints_normalisation_factor = None
 
-  class xray_structure(libtbx.property):
-    def fget(self):
-      return self.reparametrisation.structure
+  @property
+  def xray_structure(self):
+    return self.reparametrisation.structure
 
-  class twin_fractions(libtbx.property):
-    def fget(self):
-      return self.reparametrisation.twin_fractions
+  @property
+  def twin_fractions(self):
+    return self.reparametrisation.twin_fractions
 
   def build_up(self, objective_only=False):
     if self.f_mask is not None:

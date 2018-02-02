@@ -44,14 +44,14 @@ class connectivity_table(object):
     self.pair_sym_table = self.pair_asu_table.extract_pair_sym_table()
 
 
-  class pair_asu_table(libtbx.property):
-    def fget(self):
-      if self._pair_asu_table_needs_updating:
-        self._pair_asu_table = crystal.pair_asu_table(
-          asu_mappings=self._pair_asu_table.asu_mappings())
-        self._pair_asu_table.add_pair_sym_table(self.pair_sym_table)
-        self.pair_sym_table = self._pair_asu_table.extract_pair_sym_table()
-      return self._pair_asu_table
+  @property
+  def pair_asu_table(self):
+    if self._pair_asu_table_needs_updating:
+      self._pair_asu_table = crystal.pair_asu_table(
+        asu_mappings=self._pair_asu_table.asu_mappings())
+      self._pair_asu_table.add_pair_sym_table(self.pair_sym_table)
+      self.pair_sym_table = self._pair_asu_table.extract_pair_sym_table()
+    return self._pair_asu_table
 
   def remove_bond(self, i_seq, j_seq, rt_mx_ji=sgtbx.rt_mx()):
     space_group = self.pair_asu_table.asu_mappings().space_group()

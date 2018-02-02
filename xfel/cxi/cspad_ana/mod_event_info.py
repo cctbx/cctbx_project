@@ -195,9 +195,9 @@ class laser_status(object):
   def __init__(self, laser_id, status=None):
     self._status = status
 
-  class status(libtbx.property):
-    def fget(self):
-      return self._status
+  @property
+  def status(self):
+    return self._status
 
   def set_status(self, status, evt_time):
     if self._status is not None and self._status != status:

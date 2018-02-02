@@ -81,9 +81,9 @@ class gaussian(function_base):
            a * (x_obs - b) / c**2 * exponential_part,
            a * flex.pow2(x_obs - b) / c**3 * exponential_part)
 
-  class sigma(libtbx.property):
-    def fget(self):
-      return abs(self.params[2])
+  @property
+  def sigma(self):
+    return abs(self.params[2])
 
 class skew_normal(function_base):
 
@@ -316,21 +316,22 @@ class minimiser_base(object):
       pyplot.plot(self.x_obs, y_calc)
     pyplot.show()
 
-  class functions(libtbx.property):
-    def fget(self):
-      x = self.x.deep_copy()
-      for i, f in enumerate(self._functions):
-        f = self._functions[i]
-        self._functions[i] = f.__class__(*x[:len(f.params)])
-        x = x[len(f.params):]
-      return self._functions
+  @property
+  def functions(self):
+    x = self.x.deep_copy()
+    for i, f in enumerate(self._functions):
+      f = self._functions[i]
+      self._functions[i] = f.__class__(*x[:len(f.params)])
+      x = x[len(f.params):]
+    return self._functions
 
-    def fset(self, functions):
-      self._functions = functions
-      x = []
-      for f in self._functions:
-        x.extend(f.params)
-      self.x = flex.double(x)
+  @functions.setter
+  def functions(self, functions):
+    self._functions = functions
+    x = []
+    for f in self._functions:
+      x.extend(f.params)
+    self.x = flex.double(x)
 
 
 class lbfgs_minimiser(minimiser_base):

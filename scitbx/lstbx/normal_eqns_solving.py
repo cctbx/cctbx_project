@@ -218,12 +218,14 @@ class levenberg_marquardt_iterations(iterations):
 
   tau = 1e-3
 
-  class mu(libtbx.property):
-    def fget(self):
-      return self._mu
-    def fset(self, value):
-      self.mu_history.append(value)
-      self._mu = value
+  @property
+  def mu(self):
+    return self._mu
+
+  @mu.setter
+  def mu(self, value):
+    self.mu_history.append(value)
+    self._mu = value
 
   def do(self):
     self.mu_history = flex.double()
