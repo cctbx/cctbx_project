@@ -1402,9 +1402,9 @@ nanoBragg::init_cell()
     sin_alpha = a_star[0]*V_cell/b_A[0]/c_A[0];
     sin_beta  = b_star[0]*V_cell/a_A[0]/c_A[0];
     sin_gamma = c_star[0]*V_cell/a_A[0]/b_A[0];
-    cos_alpha = dot_product(b,c)/b_A[0]/c_A[0];
-    cos_beta  = dot_product(a,c)/a_A[0]/c_A[0];
-    cos_gamma = dot_product(a,b)/a_A[0]/b_A[0];
+    cos_alpha = dot_product(b_A,c_A)/b_A[0]/c_A[0];
+    cos_beta  = dot_product(a_A,c_A)/a_A[0]/c_A[0];
+    cos_gamma = dot_product(a_A,b_A)/a_A[0]/b_A[0];
     if(sin_alpha>1.0000001 || sin_alpha<-1.0000001 ||
        sin_beta >1.0000001 || sin_beta <-1.0000001 ||
        sin_gamma>1.0000001 || sin_gamma<-1.0000001 ||
