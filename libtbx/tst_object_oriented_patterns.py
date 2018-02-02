@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import object_oriented_patterns as oop
 from libtbx.test_utils import approx_equal, Exception_expected
-import libtbx
 
 def exercise_injector():
   class a(object):

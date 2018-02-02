@@ -1,4 +1,4 @@
-from __future__ import division, absolute_import
+from __future__ import division, absolute_import, print_function
 import boost.python
 ext = boost.python.import_ext("smtbx_refinement_least_squares_ext")
 from smtbx_refinement_least_squares_ext import *
@@ -6,7 +6,6 @@ from smtbx_refinement_least_squares_ext import *
 
 import smtbx.refinement.weighting_schemes # import dependency
 from cctbx import xray
-import libtbx
 from libtbx import adopt_optional_init_args
 from scitbx import linalg
 from scitbx.lstbx import normal_eqns

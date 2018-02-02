@@ -2,7 +2,6 @@ from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection, convert_wildcards_in_chain_id
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
-import mmtbx.ncs.ncs_utils as nu
 from libtbx.utils import Sorry
 import libtbx.phil
 import iotbx.pdb.hierarchy
@@ -948,7 +947,6 @@ class input(object):
     if self.original_hierarchy and raise_sorry:
       # check that hierarchy is for the complete ASU
       if self.original_hierarchy.atoms_size() == self.truncated_hierarchy.atoms_size():
-        import mmtbx.ncs.ncs_utils as nu
         # print "number of atoms in original h", self.original_hierarchy.atoms_size()
         nrgl_ok = ncs_restraints_group_list.check_for_max_rmsd(
           sites_cart=self.original_hierarchy.atoms().extract_xyz(),
