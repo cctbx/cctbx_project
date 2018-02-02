@@ -1,14 +1,13 @@
 from __future__ import division
 import fable.cout
+import hashlib
 
 def compute_hexdigest(text):
-  from libtbx.utils import hashlib_md5
-  m = hashlib_md5()
+  m = hashlib.md5()
   m.update(text)
   return m.hexdigest()
 
 def check_fingerprint(file_name):
-  from libtbx.utils import hashlib_md5
   lines = open(file_name).read().splitlines()
   if (len(lines) == 0): return None
   flds = lines[0].split()

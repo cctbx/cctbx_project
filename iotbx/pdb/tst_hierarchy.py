@@ -3,7 +3,8 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.str_utils import show_string
-from libtbx.utils import hashlib_md5, Sorry, format_cpu_times
+import hashlib
+from libtbx.utils import Sorry, format_cpu_times
 import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
@@ -4654,7 +4655,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   h = pdb_inp.construct_hierarchy(set_atom_i_seq=False, sort_atoms=False)
   for i in xrange(2):
     s = h.as_pdb_string()
-    d = hashlib_md5(s).hexdigest()
+    d = hashlib.md5(s).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
       assert d == "c4089359af431bb2962d6a8e457dd86f"
     else:

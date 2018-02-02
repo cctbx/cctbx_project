@@ -7,7 +7,7 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-from libtbx.utils import hashlib_md5
+import hashlib
 from libtbx import adopt_init_args
 from itertools import count
 from cStringIO import StringIO
@@ -1412,9 +1412,9 @@ def exercise_coordination_sequences_shell_asu_tables():
   structure.show_distances(pair_asu_table=s1_asu_table, out=s)
   print >> s
   s = s.getvalue().replace("-0.0000", " 0.0000")
-  if (hashlib_md5(s).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
+  if (hashlib.md5(s).hexdigest() != "f5c02727352d26dc36762de0834199fd"):
     sys.stderr.write(s)
-    print "New hexdigest:", hashlib_md5(s).hexdigest()
+    print "New hexdigest:", hashlib.md5(s).hexdigest()
     raise AssertionError("Unexpected show_distances() output.")
 
 def exercise_ext_symmetry():

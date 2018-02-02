@@ -3,7 +3,8 @@ from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, hashlib_md5, \
+import hashlib
+from libtbx.utils import Sorry, \
   user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
@@ -772,7 +773,7 @@ def exercise_input_pickling():
       "\n".join(getattr(l, section)()),
       "\n".join(getattr(pdb_inp, section)()))
   s = "\n".join(l.__getinitargs__()[1])
-  d = hashlib_md5(s).hexdigest()
+  d = hashlib.md5(s).hexdigest()
   if (pdb.hierarchy.atom.has_siguij()):
     assert d == "bf987c40cc8672e2f2324d91d6de3e2b"
   else:
