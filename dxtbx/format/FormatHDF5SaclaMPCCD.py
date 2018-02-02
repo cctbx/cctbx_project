@@ -295,3 +295,8 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
       self._beam_instance = self._beam()
 
     return self._beam_instance
+
+if __name__ == '__main__':
+  import sys
+  print FormatHDF5SaclaMPCCD.understand(sys.argv[1])
+  FormatHDF5SaclaMPCCD(sys.argv[1])
