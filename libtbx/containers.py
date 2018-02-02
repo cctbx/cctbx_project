@@ -4,16 +4,16 @@ import collections
 MutableSet = collections.MutableSet
 OrderedDict = collections.OrderedDict
 
-class OrderedSet(MutableSet):
+class OrderedSet(collections.MutableSet):
   """
-  http://code.activestate.com/recipes/528878-ordered-set/
-  Minor changes for Python 2.3 compatibility.
+  http://code.activestate.com/recipes/576694/ rev9
+  recommended replacement: https://pypi.python.org/pypi/orderedset
   """
 
   def __init__(self, iterable=None):
     self.end = end = []
-    end += [None, end, end] # sentinel node for doubly linked list
-    self.map = {}           # key --> [key, prev, next]
+    end += [None, end, end]         # sentinel node for doubly linked list
+    self.map = {}                   # key --> [key, prev, next]
     if iterable is not None:
       self |= iterable
 
@@ -26,40 +26,33 @@ class OrderedSet(MutableSet):
   def add(self, key):
     if key not in self.map:
       end = self.end
-      PREV, NEXT = 1,2
-      curr = end[PREV]
-      curr[NEXT] = end[PREV] = self.map[key] = [key, curr, end]
+      curr = end[1]
+      curr[2] = end[1] = self.map[key] = [key, curr, end]
 
   def discard(self, key):
     if key in self.map:
       key, prev, next = self.map.pop(key)
-      PREV, NEXT = 1,2
-      prev[NEXT] = next
-      next[PREV] = prev
+      prev[2] = next
+      next[1] = prev
 
   def __iter__(self):
     end = self.end
-    KEY, NEXT = 0,2
-    curr = end[NEXT]
+    curr = end[2]
     while curr is not end:
-      yield curr[KEY]
-      curr = curr[NEXT]
+      yield curr[0]
+      curr = curr[2]
 
   def __reversed__(self):
     end = self.end
-    KEY, PREV = 0,1
-    curr = end[PREV]
+    curr = end[1]
     while curr is not end:
-      yield curr[KEY]
-      curr = curr[PREV]
+      yield curr[0]
+      curr = curr[1]
 
   def pop(self, last=True):
     if not self:
       raise KeyError('set is empty')
-    if (last):
-      for key in self.__reversed__(): break
-    else:
-      for key in self.__iter__(): break
+    key = self.end[1][0] if last else self.end[2][0]
     self.discard(key)
     return key
 
@@ -71,13 +64,7 @@ class OrderedSet(MutableSet):
   def __eq__(self, other):
     if isinstance(other, OrderedSet):
       return len(self) == len(other) and list(self) == list(other)
-    return not self.isdisjoint(other)
-
-  def __ne__(self, other):
-    return not self.__eq__(other)
-
-  def __del__(self):
-    self.clear() # remove circular references
+    return set(self) == set(other)
 
   def __copy__(self):
     from copy import copy
