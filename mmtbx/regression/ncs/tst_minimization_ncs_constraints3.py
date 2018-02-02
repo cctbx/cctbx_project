@@ -24,7 +24,7 @@ class TestMinimizationFunctions(unittest.TestCase):
     xrs =  pdb_inp.xray_structure_simple()
     #
     nrgl = ncs_inp.get_ncs_restraints_group_list()
-    asu_length = ncs_inp.total_asu_length
+    asu_length = ncs_inp.truncated_hierarchy.atoms_size()
     #
     refine_selection = nu.get_refine_selection(number_of_atoms=asu_length)
     extended_ncs_selection = nrgl.get_extended_ncs_selection(

@@ -167,15 +167,13 @@ class ncs_minimization_test(object):
       write_name='asu_shaken.pdb')
     tr_obj = iotbx.ncs.input(
       hierarchy = ph2,
-      crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
       chain_max_rmsd = 20,
-      # transform_info = transform_info,
       exclude_selection=None)
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # self.ncs_restraints_group_list._show()
     # print ph2.as_pdb_string()
     # refine both ncs related and not related atoms
-    self.refine_selection = flex.size_t(range(tr_obj.total_asu_length))
+    self.refine_selection = flex.size_t(range(tr_obj.truncated_hierarchy.atoms_size()))
     self.extended_ncs_selection = tr_obj.get_ncs_restraints_group_list().get_extended_ncs_selection(
         refine_selection=self.refine_selection)
     assert self.refine_selection.size() == 21, self.refine_selection.size()

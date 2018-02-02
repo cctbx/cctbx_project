@@ -108,7 +108,7 @@ class input(object):
       residue_match_radius (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
-    self.total_asu_length = None
+
     # iselection maps, each master ncs to its copies position in the asu
     # {'selection string_001':iselection, ... '':}
     self.ncs_to_asu_map = {}
@@ -190,7 +190,6 @@ class input(object):
 
 
       if self.truncated_hierarchy.atoms_size() == 0:
-        self.total_asu_length = 0
         return
 
     #
@@ -591,7 +590,6 @@ class input(object):
     if len(pdb_h.models()) > 1:
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
-    self.total_asu_length = pdb_h.atoms_size()
     if len(chain_ids) > 1:
       chains_info = ncs_search.get_chains_info(pdb_h)
       group_dict = ncs_search.find_ncs_in_hierarchy(
@@ -602,7 +600,6 @@ class input(object):
         log=self.log,
         residue_match_radius=self.residue_match_radius)
       # process atom selections
-      self.total_asu_length = pdb_h.atoms_size()
       self.build_ncs_obj_from_group_dict(group_dict, pdb_h, asc, chains_info)
       if not self.model_unique_chains_ids:
         model = pdb_h.models()[0]
@@ -631,8 +628,6 @@ class input(object):
               ncs_group_id (int): group ID of the group containing this transform
               rmsd (float): RMS distance between ncs copies
     """
-    ph = pdb_h
-    asc =  ph.atom_selection_cache()
     # print "in build_ncs_obj_from_group_dict, group_dict"
     # for k,v in group_dict.iteritems():
     #   print "  ", k,
@@ -644,10 +639,10 @@ class input(object):
     #     print "    ", z.serial_num, z.ncs_group_id, z.coordinates_present
       # print "    ", v.transforms
 
-    self.ncs_atom_selection = flex.bool([False]*self.total_asu_length)
+    self.ncs_atom_selection = flex.bool([False]*pdb_h.atoms_size())
     if chains_info is None:
-      chains_info = ncs_search.get_chains_info(ph)
-    ncs_related_atoms = flex.bool([False]*self.total_asu_length)
+      chains_info = ncs_search.get_chains_info(pdb_h)
+    ncs_related_atoms = flex.bool([False]*pdb_h.atoms_size())
     sorted_group_keys = sorted(group_dict)
     for gr_n,key in enumerate(sorted_group_keys):
       ncs_gr = group_dict[key]
@@ -660,7 +655,7 @@ class input(object):
       m_all_list.sort()
       m_all_isel = flex.size_t(m_all_list)
       all_m_select_str = selection_string_from_selection(
-          ph,
+          pdb_h,
           m_all_isel,
           chains_info=chains_info,
           atom_selection_cache=asc)
@@ -676,13 +671,13 @@ class input(object):
           m_isel = ncs_gr.iselections[0][j]
           m_ch_id = ncs_gr.copies[0][j]
           m_select_str = selection_string_from_selection(
-              ph,
+              pdb_h,
               m_isel,
               chains_info=chains_info,
               atom_selection_cache=asc)
           c_isel = ncs_gr.iselections[i][j]
           c_select_str = selection_string_from_selection(
-              ph,
+              pdb_h,
               c_isel,
               chains_info=chains_info,
               atom_selection_cache=asc)
@@ -706,7 +701,7 @@ class input(object):
             transform_id = tr_id)
           if i == 0:
             # master copy
-            master_sel = flex.bool(self.total_asu_length,m_isel)
+            master_sel = flex.bool(pdb_h.atoms_size(),m_isel)
             self.ncs_atom_selection |=  master_sel
             ncs_related_atoms |=  master_sel
           else:
@@ -715,7 +710,7 @@ class input(object):
             # example key: "chain A_s002"
             self.transform_to_ncs = add_to_dict(
               d=self.transform_to_ncs,k=tr_id,v=key2)
-            copy_sel = flex.bool(self.total_asu_length,c_isel)
+            copy_sel = flex.bool(pdb_h.atoms_size(),c_isel)
             ncs_related_atoms |=  copy_sel
         # Get complete master and copies selections
         if i != 0:
@@ -723,7 +718,7 @@ class input(object):
           c_all_list.sort()
           c_all_isel = flex.size_t(c_all_list)
           c_select_str = selection_string_from_selection(
-              ph,
+              pdb_h,
               c_all_isel,
               chains_info=chains_info,
               atom_selection_cache=asc)
@@ -775,7 +770,6 @@ class input(object):
       # keep track on the asu copy number
       copy_count = {}
       if pdb_length > ncs_length:
-        self.total_asu_length = pdb_length
         selection_ref = flex.bool([False]*pdb_length)
         for k in self.transform_chain_assignment:
           key =  k.split('_')[0]
@@ -795,20 +789,19 @@ class input(object):
         self.ncs_atom_selection |= ~selection_ref
       elif pdb_length == ncs_length:
         # this case is when the pdb hierarchy contain only the master NCS copy
-        self.total_asu_length = self.get_asu_length(asc)
-        ns = [True]*pdb_length + [False]*(self.total_asu_length - pdb_length)
+        ns = [True]*pdb_length
         self.ncs_atom_selection = flex.bool(ns)
         sorted_keys = sorted(self.transform_to_ncs)
         for i,k in enumerate(sorted_keys):
           v = self.transform_to_ncs[k]
           for transform_key in v:
             key =  transform_key.split('_')[0]
-            ncs_selection =flex.bool(self.total_asu_length,asc.iselection(key))
+            ncs_selection =flex.bool(pdb_length,asc.iselection(key))
             if not self.asu_to_ncs_map.has_key(key):
               self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
             # make the selection at the proper location at the ASU
             temp_iselection = self.asu_to_ncs_map[key] + ((i + 1) * ncs_length)
-            asu_selection = flex.bool(self.total_asu_length,temp_iselection)
+            asu_selection = flex.bool(pdb_length,temp_iselection)
             self.ncs_to_asu_map[transform_key] = asu_selection.iselection(True)
 
   def add_identity_transform(self,ncs_selection,ncs_group_id=1,transform_sn=1):
@@ -1018,7 +1011,7 @@ class input(object):
     # When hierarchy available, test ncs_restraints_group_list
     if self.original_hierarchy and raise_sorry:
       # check that hierarchy is for the complete ASU
-      if self.original_hierarchy.atoms_size() == self.total_asu_length:
+      if self.original_hierarchy.atoms_size() == self.truncated_hierarchy.atoms_size():
         import mmtbx.ncs.ncs_utils as nu
         # print "number of atoms in original h", self.original_hierarchy.atoms_size()
         nrgl_ok = ncs_restraints_group_list.check_for_max_rmsd(
@@ -1064,17 +1057,7 @@ class input(object):
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
     if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
       self.set_common_res_dict()
-    if self.truncated_hierarchy:
-      if (self.truncated_hierarchy.atoms_size() == self.total_asu_length):
-        xyz = self.truncated_hierarchy.atoms().extract_xyz()
-      else:
-        # get the ASU coordinates
-        nrg = self.get_ncs_restraints_group_list()
-        xyz = nu.apply_transforms(
-          ncs_coordinates = self.truncated_hierarchy.atoms().extract_xyz(),
-          ncs_restraints_group_list = nrg,
-          total_asu_length =  self.total_asu_length,
-          extended_ncs_selection = self.ncs_atom_selection)
+    xyz = self.truncated_hierarchy.atoms().extract_xyz()
     ncs_groups_by_chains = {}
 
     # for gr in self.ncs_group_map.itervalues(): old method 2015-05-03 TT

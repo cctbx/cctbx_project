@@ -151,7 +151,7 @@ def run(prefix="tst", d_min=1.0):
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
-  refine_selection = flex.size_t(xrange(transforms_obj.total_asu_length))
+  refine_selection = flex.size_t(xrange(transforms_obj.truncated_hierarchy.atoms_size()))
   for i in xrange(5):
     data_weight = 1
     tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
