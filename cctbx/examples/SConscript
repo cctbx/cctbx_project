@@ -13,12 +13,7 @@ for source in ["getting_started",
                "convert_ccp4_symop_lib",
                "lattice_symmetry",
                "find_distances",
-               "sys_abs_equiv_space_groups",
-               "trial"]:
-  if (source == "trial"
-      and not os.path.isfile(libtbx.env.under_dist(
-        "cctbx", "examples/trial.cpp"))):
-    continue
+               "sys_abs_equiv_space_groups"]:
   target = "cctbx." + source
   exe = env.Program(
     target="#exe_dev/"+env["PROGPREFIX"]+target+env["PROGSUFFIX"],
