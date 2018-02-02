@@ -68,7 +68,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     self.assertEqual(set(group_ids),{1,2})
     self.assertEqual(tran_sn,{1,2,3,4,5,6})
     self.assertEqual(group_keys,{'0000000005','0000000004','0000000006','0000000001','0000000003','0000000002'})
-    self.assertEqual(trans_obj.ncs_atom_selection.count(True),4)
 
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb
@@ -154,8 +153,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     expected = "(chain 'A') or (chain 'D')"
     self.assertEqual(trans_obj.ncs_selection_str,expected)
     # check that static parts are included in NCS and ASU
-    self.assertEqual(len(trans_obj.ncs_atom_selection),3*9+2*7+3+3)
-    self.assertEqual(trans_obj.ncs_atom_selection.count(True),9+7+3+3)
     #
     expected = {
       "chain 'A'": ["chain 'B'", "chain 'C'"],
