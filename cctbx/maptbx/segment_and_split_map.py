@@ -4062,15 +4062,15 @@ def get_closest_sites(
        "with %d ops" %( box_ncs_object.max_ncs_operators())
 
     ncs_object=box_ncs_object.deep_copy(extract_point_group_symmetry=True)
-    if ncs_object:  
+    if ncs_object:
       print >>out,\
           "New number of operators satisfying point-group symmetry: %d" %(
         ncs_object.max_ncs_operators())
       box_ncs_object=ncs_object
-    
+
     else:
       print >>out,"No point-group symmetry found"
- 
+
 
   ncs_copies=box_ncs_object.max_operators()
   closest_sites=high_points
