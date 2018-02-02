@@ -92,42 +92,20 @@ class input(object):
     Select method to build ncs_group_object
 
     order of implementation:
-    # 1) rotations,translations
-    # 2) transform_info
-    3) ncs_phil_string
-    4) ncs_phil_groups
-    # 5) spec file
-    6) mmcif file
-    7) iotbx.pdb.hierarchy.input object
+    1) ncs_phil_groups - user-supplied definitions are filtered
+    2) hierarchy only - Performing NCS search
 
     Args:
     -----
-      pdb_hierarchy_inp: iotbx.pdb.hierarchy.input
-      transform_info: object containing MTRIX or BIOMT transformation info
-        iotbx.pdb._mtrix_and_biomt_records_container, obtainable by
-        iotbx.pdb.input.process_mtrix_records() function.
-      rotations: matrix.sqr 3x3 object
-      translations: matrix.col 3x1 object
-      ncs_phil_string: Phil parameters
-        Phil structure
-           ncs_group (multiple)
-           {
-             reference = ''
-             selection = ''   (multiple)
-           }
       ncs_phil_groups: a list of ncs_groups_container object, containing
         master NCS selection and a list of NCS copies selection
-      spec_ncs_groups: ncs_groups object of class mmtbx.ncs.ncs.ncs
       chain_max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       min_percent (float): Threshold for similarity between chains
         similarity define as:
         (number of matching res) / (number of res in longer chain)
-      similarity_threshold (float): min similarity between matching chains
-      min_contig_length (int): minimum length of matching chain segments
-      exclude_misaligned_residues (bool): check and exclude individual residues
-        alignment quality
-      match_radius (float): max allow distance difference between pairs of matching
+      chain_similarity_threshold (float): min similarity between matching chains
+      residue_match_radius (float): max allow distance difference between pairs of matching
         atoms of two residues
     """
     self.total_asu_length = None
@@ -162,12 +140,12 @@ class input(object):
     self.transform_to_be_used = set()
     # order of transforms  - used when concatenating or separating them
     self.transform_order = []
+
+
     # keep hierarchy for writing (To have a source of atoms labels)
     self.hierarchy = None
     # residues common to NCS copies. Used for .spec representation
     self.common_res_dict = {}
-    # flag indicating if ncs operation found
-    self.found_ncs_transforms = False
     # Collect messages, recommendation and errors
     self.messages = '' # Not used outside...
     self.old_i_seqs = None
@@ -230,7 +208,9 @@ class input(object):
     elif (self.truncated_hierarchy
         and validated_ncs_phil_groups is None):
       # print "Last chance, building from hierarchy"
-      self.build_ncs_obj_from_pdb_asu(pdb_h=self.truncated_hierarchy)
+      self.build_ncs_obj_from_pdb_asu(
+          pdb_h=self.truncated_hierarchy,
+          asc=self.truncated_h_asc)
     else:
       pass
       # raise Sorry('Please provide one of the supported input')
@@ -238,8 +218,7 @@ class input(object):
 
 
     # error handling
-    self.found_ncs_transforms = (len(self.transform_to_be_used) > 0)
-    if self.found_ncs_transforms == 0:
+    if len(self.transform_to_be_used) == 0:
       print >> self.log,'========== WARNING! ============\n'
       print >> self.log,'  No NCS relation were found !!!\n'
       print >> self.log,'================================\n'
@@ -598,9 +577,9 @@ class input(object):
       self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
 
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
-    self.finalize_pre_process(pdb_h=pdb_h)
+    self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
 
-  def build_ncs_obj_from_pdb_asu(self,pdb_h):
+  def build_ncs_obj_from_pdb_asu(self,pdb_h, asc):
     """
     Build transforms objects and NCS <-> ASU mapping from a complete ASU
     Note that the MTRIX record are ignored, they are produced in the
@@ -624,13 +603,13 @@ class input(object):
         residue_match_radius=self.residue_match_radius)
       # process atom selections
       self.total_asu_length = pdb_h.atoms_size()
-      self.build_ncs_obj_from_group_dict(group_dict, pdb_h, chains_info)
+      self.build_ncs_obj_from_group_dict(group_dict, pdb_h, asc, chains_info)
       if not self.model_unique_chains_ids:
         model = pdb_h.models()[0]
         chain_ids = {x.id for x in model.chains()}
         self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
-  def build_ncs_obj_from_group_dict(self,group_dict,pdb_h, chains_info=None):
+  def build_ncs_obj_from_group_dict(self,group_dict,pdb_h, asc, chains_info=None):
     """
     Use group_dict to build ncs object
 
@@ -760,7 +739,7 @@ class input(object):
 
     # add the ncs_atom_selection all the regions that are not NCS related
     self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
-    self.finalize_pre_process(pdb_h=pdb_h)
+    self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
 
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
     masters = get_list_of_chains_selection(masters)
@@ -782,18 +761,16 @@ class input(object):
       key = k + '_' + tr_id
       self.tr_id_to_selection[key] = (m,c)
 
-  def compute_ncs_asu_coordinates_map(self,pdb_h):
+  def compute_ncs_asu_coordinates_map(self,pdb_h, asc):
     """ Calculates coordinates maps from ncs to asu and from asu to ncs """
     # check is coordinates maps already calculated
-    t1 = not bool(self.ncs_atom_selection)
-    t2 = not bool(self.asu_to_ncs_map)
-    t3 = not bool(self.ncs_to_asu_map)
-    if t1 and t2 and t3:
-      temp = pdb_h.atom_selection_cache()
+    if (not bool(self.ncs_atom_selection) and
+        not bool(self.asu_to_ncs_map) and
+        not bool(self.ncs_to_asu_map)):
       # check if pdb_h contain only the master NCS copy
       pdb_length = pdb_h.atoms_size()
       # XXX Why actual selection in self.ncs_atom_selection is not used here???
-      self.ncs_atom_selection = temp.selection(self.ncs_selection_str)
+      self.ncs_atom_selection = asc.selection(self.ncs_selection_str)
       ncs_length = self.ncs_atom_selection.count(True)
       # keep track on the asu copy number
       copy_count = {}
@@ -802,7 +779,7 @@ class input(object):
         selection_ref = flex.bool([False]*pdb_length)
         for k in self.transform_chain_assignment:
           key =  k.split('_')[0]
-          ncs_selection = temp.selection(key)
+          ncs_selection = asc.selection(key)
           if not self.asu_to_ncs_map.has_key(key):
             copy_count[key] = 0
             selection_ref = (selection_ref | ncs_selection)
@@ -811,14 +788,14 @@ class input(object):
             copy_count[key] += 1
           # ncs_to_asu_selection is a list of all the copies of a master
           asu_copy_ref = self.ncs_to_asu_selection[key][copy_count[key]]
-          asu_selection = temp.selection(asu_copy_ref)
+          asu_selection = asc.selection(asu_copy_ref)
           selection_ref = update_selection_ref(selection_ref,asu_selection)
           self.ncs_to_asu_map[k] = asu_selection.iselection(True)
         # add the non ncs regions to the master ncs copy
         self.ncs_atom_selection |= ~selection_ref
       elif pdb_length == ncs_length:
         # this case is when the pdb hierarchy contain only the master NCS copy
-        self.total_asu_length = self.get_asu_length(temp)
+        self.total_asu_length = self.get_asu_length(asc)
         ns = [True]*pdb_length + [False]*(self.total_asu_length - pdb_length)
         self.ncs_atom_selection = flex.bool(ns)
         sorted_keys = sorted(self.transform_to_ncs)
@@ -826,7 +803,7 @@ class input(object):
           v = self.transform_to_ncs[k]
           for transform_key in v:
             key =  transform_key.split('_')[0]
-            ncs_selection =flex.bool(self.total_asu_length,temp.iselection(key))
+            ncs_selection =flex.bool(self.total_asu_length,asc.iselection(key))
             if not self.asu_to_ncs_map.has_key(key):
               self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
             # make the selection at the proper location at the ASU
@@ -892,12 +869,12 @@ class input(object):
       asu_total_length += ncs_selection.count(True)
     return asu_total_length
 
-  def finalize_pre_process(self,pdb_h=None):
+  def finalize_pre_process(self,pdb_h=None, asc=None):
     """
     Steps that are common to most method of transform info
     """
     if pdb_h:
-      self.compute_ncs_asu_coordinates_map(pdb_h=pdb_h)
+      self.compute_ncs_asu_coordinates_map(pdb_h=pdb_h, asc=asc)
       # print "self.old_i_seqs", list(self.old_i_seqs)
       # print "self.ncs_to_asu_map in finalize"
       # for k, v in self.ncs_to_asu_map.iteritems():
