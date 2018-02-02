@@ -114,7 +114,7 @@ class input(object):
     self.ncs_to_asu_map = {}
     # iselection maps of each ncs copy to its master ncs
     self.asu_to_ncs_map = {}
-    # keys are items in ncs_chain_selection, values are lists of selection str
+    # keys are items in ncs_chain_selection(deleted), values are lists of selection str
     self.ncs_to_asu_selection = {}
     self.ncs_copies_chains_names = {}
     self.tr_id_to_selection = {}
@@ -127,14 +127,9 @@ class input(object):
     self.transform_chain_assignment = []
     # map transform to list of master ncs parts in its ncs groups
     self.transform_to_ncs = {}
-    # master ncs and non-ncs selection in a string and a flex.bool types
-    self.ncs_atom_selection = None
-    self.ncs_selection_str = '' # XXX This should be eliminated, but some effort is needed.
-    # list of selection strings of master NCS
-    self.ncs_chain_selection = []
+
     # unique chains or selection identifiers
     self.model_unique_chains_ids = tuple()
-    self.selection_ids = set()
     # transform application order
     self.model_order_chain_ids = []
     self.transform_to_be_used = set()
@@ -506,7 +501,6 @@ class input(object):
     """
     assert ncs_phil_groups is not None
     # assert pdb_h is not None
-    assert self.ncs_selection_str == ''
     if asc is None and pdb_h is not None:
       asc = pdb_h.atom_selection_cache()
     unique_selections = set()
@@ -515,7 +509,6 @@ class input(object):
     # populate ncs selection and ncs to copies location
     for group in ncs_phil_groups:
       gns = group.reference
-      self.ncs_chain_selection.append(gns)
       unique_selections = uniqueness_test(unique_selections,gns)
       ncs_group_id += 1
       transform_sn += 1
@@ -565,15 +558,10 @@ class input(object):
           transform_id = key)
         assert not self.ncs_transform.has_key(key)
         self.ncs_transform[key] = tr
-        self.selection_ids.add(gns)
         self.update_ncs_copies_chains_names(
             masters = gns,copies = asu_select, tr_id = key)
       self.ncs_to_asu_selection[gns] = asu_locations
       self.number_of_ncs_groups = ncs_group_id
-
-    self.ncs_selection_str = '('+ self.ncs_chain_selection[0] +')'
-    for i in range(1,len(self.ncs_chain_selection)):
-      self.ncs_selection_str += ' or (' + self.ncs_chain_selection[i] + ')'
 
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
@@ -639,7 +627,6 @@ class input(object):
     #     print "    ", z.serial_num, z.ncs_group_id, z.coordinates_present
       # print "    ", v.transforms
 
-    self.ncs_atom_selection = flex.bool([False]*pdb_h.atoms_size())
     if chains_info is None:
       chains_info = ncs_search.get_chains_info(pdb_h)
     ncs_related_atoms = flex.bool([False]*pdb_h.atoms_size())
@@ -689,7 +676,6 @@ class input(object):
           self.asu_to_ncs_map[key1] = m_isel.deep_copy()
           self.ncs_to_asu_map[key2] = c_isel.deep_copy()
           self.tr_id_to_selection[key0] = (m_select_str,c_select_str)
-          self.selection_ids.add(m_select_str)
           self.update_ncs_copies_chains_names(
             masters = m_select_str,
             copies = c_select_str,
@@ -702,7 +688,6 @@ class input(object):
           if i == 0:
             # master copy
             master_sel = flex.bool(pdb_h.atoms_size(),m_isel)
-            self.ncs_atom_selection |=  master_sel
             ncs_related_atoms |=  master_sel
           else:
             # non-identity transforms
@@ -725,15 +710,10 @@ class input(object):
           self.ncs_to_asu_selection[all_m_select_str].append(c_select_str)
     #
     self.number_of_ncs_groups = len(group_dict)
-    ncs_selection_str_list = []
-    selection_ids = sorted(self.selection_ids)
-    for sel in selection_ids:
-      ncs_selection_str_list.append('(' + sel + ')')
-    self.ncs_selection_str = ' or '.join(ncs_selection_str_list)
+
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
 
     # add the ncs_atom_selection all the regions that are not NCS related
-    self.ncs_atom_selection = self.ncs_atom_selection | (~ncs_related_atoms)
     self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
 
   def update_ncs_copies_chains_names(self,masters, copies, tr_id):
@@ -759,50 +739,25 @@ class input(object):
   def compute_ncs_asu_coordinates_map(self,pdb_h, asc):
     """ Calculates coordinates maps from ncs to asu and from asu to ncs """
     # check is coordinates maps already calculated
-    if (not bool(self.ncs_atom_selection) and
-        not bool(self.asu_to_ncs_map) and
+    if (not bool(self.asu_to_ncs_map) and
         not bool(self.ncs_to_asu_map)):
-      # check if pdb_h contain only the master NCS copy
-      pdb_length = pdb_h.atoms_size()
-      # XXX Why actual selection in self.ncs_atom_selection is not used here???
-      self.ncs_atom_selection = asc.selection(self.ncs_selection_str)
-      ncs_length = self.ncs_atom_selection.count(True)
       # keep track on the asu copy number
       copy_count = {}
-      if pdb_length > ncs_length:
-        selection_ref = flex.bool([False]*pdb_length)
-        for k in self.transform_chain_assignment:
-          key =  k.split('_')[0]
-          ncs_selection = asc.selection(key)
-          if not self.asu_to_ncs_map.has_key(key):
-            copy_count[key] = 0
-            selection_ref = (selection_ref | ncs_selection)
-            self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
-          else:
-            copy_count[key] += 1
-          # ncs_to_asu_selection is a list of all the copies of a master
-          asu_copy_ref = self.ncs_to_asu_selection[key][copy_count[key]]
-          asu_selection = asc.selection(asu_copy_ref)
-          selection_ref = update_selection_ref(selection_ref,asu_selection)
-          self.ncs_to_asu_map[k] = asu_selection.iselection(True)
-        # add the non ncs regions to the master ncs copy
-        self.ncs_atom_selection |= ~selection_ref
-      elif pdb_length == ncs_length:
-        # this case is when the pdb hierarchy contain only the master NCS copy
-        ns = [True]*pdb_length
-        self.ncs_atom_selection = flex.bool(ns)
-        sorted_keys = sorted(self.transform_to_ncs)
-        for i,k in enumerate(sorted_keys):
-          v = self.transform_to_ncs[k]
-          for transform_key in v:
-            key =  transform_key.split('_')[0]
-            ncs_selection =flex.bool(pdb_length,asc.iselection(key))
-            if not self.asu_to_ncs_map.has_key(key):
-              self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
-            # make the selection at the proper location at the ASU
-            temp_iselection = self.asu_to_ncs_map[key] + ((i + 1) * ncs_length)
-            asu_selection = flex.bool(pdb_length,temp_iselection)
-            self.ncs_to_asu_map[transform_key] = asu_selection.iselection(True)
+      selection_ref = flex.bool([False]*pdb_h.atoms_size())
+      for k in self.transform_chain_assignment:
+        key =  k.split('_')[0]
+        ncs_selection = asc.selection(key)
+        if not self.asu_to_ncs_map.has_key(key):
+          copy_count[key] = 0
+          selection_ref = (selection_ref | ncs_selection)
+          self.asu_to_ncs_map[key] = ncs_selection.iselection(True)
+        else:
+          copy_count[key] += 1
+        # ncs_to_asu_selection is a list of all the copies of a master
+        asu_copy_ref = self.ncs_to_asu_selection[key][copy_count[key]]
+        asu_selection = asc.selection(asu_copy_ref)
+        selection_ref = update_selection_ref(selection_ref,asu_selection)
+        self.ncs_to_asu_map[k] = asu_selection.iselection(True)
 
   def add_identity_transform(self,ncs_selection,ncs_group_id=1,transform_sn=1):
     """    Add identity transform
@@ -824,7 +779,6 @@ class input(object):
       transform_id = id_str,
       transform = transform_obj,
       selection_id = ncs_selection)
-    self.selection_ids.add(ncs_selection)
     self.ncs_group_map = update_ncs_group_map(
       ncs_group_map=self.ncs_group_map,
       ncs_group_id = ncs_group_id,
@@ -852,15 +806,6 @@ class input(object):
       # example key: "chain A_002"
       self.transform_to_ncs = add_to_dict(
         d=self.transform_to_ncs,k=transform_id,v=key)
-
-  def get_asu_length(self,atom_selection_cache):
-    """" Collect the length of all ncs copies """
-    asu_total_length = self.ncs_atom_selection.count(True)
-    for k in self.transform_chain_assignment:
-      key =  k.split('_')[0]
-      ncs_selection = atom_selection_cache.selection(key)
-      asu_total_length += ncs_selection.count(True)
-    return asu_total_length
 
   def finalize_pre_process(self,pdb_h=None, asc=None):
     """
@@ -908,23 +853,14 @@ class input(object):
     # collect all master chain IDs
 
     sorted_keys = sort_dict_keys(self.ncs_copies_chains_names)
-    only_master_ncs_in_hierarchy = False
-    if (self.truncated_hierarchy is not None and self.ncs_atom_selection is not None and
-        self.ncs_atom_selection.count(True) == self.truncated_hierarchy.atoms_size()):
-      only_master_ncs_in_hierarchy = True
-    sc = self.truncated_hierarchy.atom_selection_cache()
+    asc = self.truncated_h_asc
     #
     for key in sorted_keys:
       master_sel_str, ncs_sel_str = self.tr_id_to_selection[key]
-      if only_master_ncs_in_hierarchy:
-        # use master ncs for ncs copy residues indices
-        copy_selection_indices = sc.iselection(master_sel_str)
-        rmsd = 0
-      else:
-        copy_selection_indices = sc.iselection(ncs_sel_str)
-        tr_num = key.split('_')[1]
-        tr = self.ncs_transform[tr_num]
-        rmsd = tr.rmsd
+      copy_selection_indices = asc.iselection(ncs_sel_str)
+      tr_num = key.split('_')[1]
+      tr = self.ncs_transform[tr_num]
+      rmsd = tr.rmsd
       # get continuous res ids
       range_list = []
       if len(copy_selection_indices) == 0:

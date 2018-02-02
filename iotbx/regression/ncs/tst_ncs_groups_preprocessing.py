@@ -52,9 +52,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         hierarchy=pdb_inp.construct_hierarchy(),
         exclude_selection=None)
 
-    expected = "(chain 'A') or (chain 'B' or chain 'C')"
-    self.assertEqual(trans_obj.ncs_selection_str,expected)
-
     expected = {"chain 'A'": ["chain 'D'", "chain 'G'"],
                 "chain 'B' or chain 'C'": ["chain 'E' or chain 'F'",
                                        "chain 'H' or chain 'I'"]}
@@ -83,9 +80,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
         hierarchy=pdb_inp.construct_hierarchy(),
         exclude_selection=None)
 
-    # print "trans_obj.ncs_selection_str", trans_obj.ncs_selection_str
-    # print "trans_obj.ncs_to_asu_selection", trans_obj.ncs_to_asu_selection
-    self.assertEqual(trans_obj.ncs_selection_str,"(chain 'A') or (chain 'B')")
     expected = {"chain 'A'": ["chain 'C'", "chain 'E'"],
                 "chain 'B'": ["chain 'D'", "chain 'F'"]}
     self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
@@ -150,8 +144,6 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
     # test created object
     self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-    expected = "(chain 'A') or (chain 'D')"
-    self.assertEqual(trans_obj.ncs_selection_str,expected)
     # check that static parts are included in NCS and ASU
     #
     expected = {
