@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx import object_oriented_patterns as oop
 from libtbx.test_utils import approx_equal, Exception_expected
 import libtbx
@@ -172,8 +172,6 @@ def run():
   exercise_injector()
   exercise_memoize()
   exercise_null()
-  exercise_easy_property()
-  print 'OK'
 
 if __name__ == '__main__':
   run()
