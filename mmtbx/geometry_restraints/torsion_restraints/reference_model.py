@@ -278,8 +278,7 @@ class reference_model(object):
         )
     # For each found NCS group we going to do matching procedure between
     # copies
-    for group_list in ncs_obj.get_ncs_restraints_group_list(
-        raise_sorry=False):
+    for group_list in ncs_obj.get_ncs_restraints_group_list():
       # combine selections from master and copies into one list...
       n_total_selections = len(group_list.copies) + 1
       ncs_iselections = [group_list.master_iselection]

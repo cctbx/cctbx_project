@@ -136,6 +136,7 @@ class input(object):
     self.transform_order = []
 
 
+    self.ncs_restraints_group_list = None
     # keep hierarchy for writing (To have a source of atoms labels)
     self.hierarchy = None
     # residues common to NCS copies. Used for .spec representation
@@ -380,21 +381,13 @@ class input(object):
         # Most likely this is not the best way to validate user selections.
 
         # selection_list
-        chain_info = ncs_search.get_chains_info(
-            ph = combined_h,
-            selection_list=None)
-        # print "chain_info", chain_info
-        # Here we want to use relaxed criteria to extract maximum from
-        # user's selection
-        match_dict = ncs_search.search_ncs_relations(
+        group_dict, _ = ncs_search.find_ncs_in_hierarchy(
             ph=combined_h,
-            chains_info=chain_info,
-            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
+            chains_info=None,
             chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
-            residue_match_radius=max(self.residue_match_radius, 1000.0),
-            )
-        group_dict = ncs_search.ncs_grouping_and_group_dict(
-            match_dict, combined_h)
+            log=None,
+            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
+            residue_match_radius=max(self.residue_match_radius, 1000.0))
         # print "group_dict", group_dict
         # hopefully, we will get only 1 ncs group
         # ncs_group.selection = []
@@ -511,6 +504,7 @@ class input(object):
     transform_sn = 0
     ncs_group_id = 0
     # populate ncs selection and ncs to copies location
+    self.ncs_restraints_group_list = class_ncs_restraints_group_list()
     for group in ncs_phil_groups:
       gns = group.reference
       unique_selections = uniqueness_test(unique_selections,gns)
@@ -526,12 +520,23 @@ class input(object):
             masters = gns,copies = gns, tr_id = key)
       self.update_tr_id_to_selection(gns,gns,key)
       asu_locations = []
+      gns_isel = asc.iselection(gns)
+      g = NCS_restraint_group(
+          master_iselection=gns_isel,
+          str_selection=gns)
       for asu_select in group.selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
+        copy_iselection = asc.iselection(asu_select)
         r, t, rmsd = ncs_search.my_get_rot_trans(
           ph=pdb_h,
-          master_selection=asc.selection(gns),
-          copy_selection=asc.selection(asu_select))
+          master_selection=gns_isel,
+          copy_selection=copy_iselection)
+        c = NCS_copy(
+            copy_iselection=copy_iselection,
+            rot=r,
+            tran=t,
+            str_selection=asu_select)
+        g.append_copy(c)
         # print "rmsd in build_ncs_from_phil", rmsd
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
@@ -562,8 +567,10 @@ class input(object):
         self.update_ncs_copies_chains_names(
             masters = gns,copies = asu_select, tr_id = key)
       self.ncs_to_asu_selection[gns] = asu_locations
-      self.number_of_ncs_groups = ncs_group_id
+      self.ncs_restraints_group_list.append(g)
 
+    filter_out_small_groups = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
+    self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
 
@@ -581,13 +588,16 @@ class input(object):
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
       chains_info = ncs_search.get_chains_info(pdb_h)
-      group_dict = ncs_search.find_ncs_in_hierarchy(
+      group_dict, self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
         chains_info=chains_info,
         chain_similarity_threshold=self.chain_similarity_threshold,
         chain_max_rmsd=self.chain_max_rmsd,
         log=self.log,
         residue_match_radius=self.residue_match_radius)
+      self.ncs_restraints_group_list = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
+      self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
+
       # process atom selections
       self.build_ncs_obj_from_group_dict(group_dict, pdb_h, asc, chains_info)
       if not self.model_unique_chains_ids:
@@ -821,7 +831,12 @@ class input(object):
       # print "self.asu_to_ncs_map in finalize"
       # for k, v in self.asu_to_ncs_map.iteritems():
       #   print "  ", k, list(v)
+
       if self.old_i_seqs is not None:
+        # self.ncs_restraints_group_list._show()
+        self.ncs_restraints_group_list.update_i_seqs(self.old_i_seqs)
+        # self.ncs_restraints_group_list._show()
+        # STOP()
         for k, v in self.ncs_to_asu_map.iteritems():
           for i in range(len(v)):
             # print v[i], "-->", self.old_i_seqs[v[i]]
@@ -898,21 +913,18 @@ class input(object):
       range_list.sort()
       self.common_res_dict[key] = ([range_list,copy_selection_indices],rmsd)
 
-  def get_ncs_restraints_group_list(self,chain_max_rmsd=10, raise_sorry=True):
+  def get_ncs_restraints_group_list(self):
     """
     Create a list of ncs_restraint_group objects
-
-    When using phil parameters or badly related copies, consider increasing
-    "chain_max_rmsd" value
 
     Args:
       raise_sorry (bool): When True, raise Sorry if NCS copies don't match
 
     This should be cached so the work is done only once.
     """
+    if self.ncs_restraints_group_list is not None:
+      return self.ncs_restraints_group_list
     ncs_restraints_group_list = class_ncs_restraints_group_list()
-    chain_max_rmsd = max(self.chain_max_rmsd, chain_max_rmsd)
-    # assert 0number_of_ncs_groups
     group_id_list = sort_dict_keys(self.ncs_group_map)
     # print "self.ncs_group_map", self.ncs_group_map
     # print "self.asu_to_ncs_map", self.asu_to_ncs_map, list(self.asu_to_ncs_map["chain 'A1'"])
@@ -945,18 +957,8 @@ class input(object):
           new_nrg.copies.append(new_ncs_copy)
       # compare master_isel_test and master_isel
       ncs_restraints_group_list.append(new_nrg)
-    # When hierarchy available, test ncs_restraints_group_list
-    if self.original_hierarchy and raise_sorry:
-      # check that hierarchy is for the complete ASU
-      if self.original_hierarchy.atoms_size() == self.truncated_hierarchy.atoms_size():
-        # print "number of atoms in original h", self.original_hierarchy.atoms_size()
-        nrgl_ok = ncs_restraints_group_list.check_for_max_rmsd(
-          sites_cart=self.original_hierarchy.atoms().extract_xyz(),
-          chain_max_rmsd=chain_max_rmsd,
-          log=self.log)
-        if not nrgl_ok:
-          raise Sorry('NCS copies do not match well')
-    return class_ncs_restraints_group_list(ncs_restraints_group_list)
+    self.ncs_restraints_group_list = class_ncs_restraints_group_list(ncs_restraints_group_list)
+    return self.ncs_restraints_group_list
 
   def get_ncs_info_as_spec(
           self,

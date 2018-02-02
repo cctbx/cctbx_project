@@ -1274,6 +1274,8 @@ ncs_group {
       l1, l2, l3 = [1,2,3,4], [5,6,7,8], [9,10,11,12]
     else: assert 0
     ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+    # ncs_groups._show()
+    # STOP()
     assert len(ncs_groups) == 1, len(ncs_groups)
     ncs_group = ncs_groups[0]
     assert approx_equal(ncs_group.master_iselection, l1)
@@ -1281,7 +1283,9 @@ ncs_group {
     assert approx_equal(ncs_group.copies[0].iselection, l2)
     assert approx_equal(ncs_group.copies[1].iselection, l3)
   files_to_delete = []
-  for test_i, pdb_str in enumerate([pdb_str_1, pdb_str_2]):
+  for test_i, pdb_str in enumerate([
+      pdb_str_1,
+      pdb_str_2]):
     of = open(pdb_file_name, "w")
     files_to_delete.append(pdb_file_name)
     print >> of, pdb_str
@@ -1465,7 +1469,7 @@ def exercise_10():
   #
   chains_info = ncs_search.get_chains_info(ph)
   #
-  group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
+  group_dict, _ = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
   assert len(group_dict)==1
   gr_obj = group_dict[('A',)]
   assert len(gr_obj.transforms)==len(gr_obj.copies)

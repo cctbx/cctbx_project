@@ -951,11 +951,9 @@ class manager(object):
     supposedly NCS constraints
     """
     if self.get_ncs_obj() is not None:
-      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list(
-          chain_max_rmsd=chain_max_rmsd)
+      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
     if filter_groups:
-      ncs_group_list = ncs_obj.get_ncs_restraints_group_list(
-          raise_sorry=False)
+      ncs_group_list = ncs_obj.get_ncs_restraints_group_list()
       # set up new groups for refinements
       self._ncs_groups = self.ncs_restr_group_list.filter_ncs_restraints_group_list(
           self.get_hierarchy())

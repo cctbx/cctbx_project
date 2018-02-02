@@ -11,6 +11,9 @@ from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 from time import time
 import iotbx.pdb
+from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
+    NCS_restraint_group, NCS_copy
+
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
@@ -269,6 +272,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
   and build_group_dict.
   """
   group_dict = {}
+  ncs_restraints_group_list = class_ncs_restraints_group_list()
   preliminary_ncs_groups = get_preliminary_ncs_groups(match_dict)
 
   # now we need to just transform preliminary_ncs_groups using match_dict
@@ -370,6 +374,9 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         ncs_group_id=group_id,
         rmsd=0)
     tr_sn += 1
+    g = NCS_restraint_group(
+        master_iselection=min_master_selection,
+        str_selection=None)
     # master_sel, master_res, master_rmsd = get_info_from_match_dict(
     #     match_dict,key_with_smallest_selection, master)
     new_ncs_group.iselections.append([min_master_selection])
@@ -394,23 +401,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
             small_selection=min_master_selection)
         new_copy_sel = copy_sel.select(filter_sel)
       elif copy_sel.size() < min_master_selection.size():
-        # clean master sel and all other copies...
-        # should never be the case anymore
-        # print "master is bigger", copy_sel.size(), master_sel.size()
-        # print "sizes:", master_sel.size(), m_sel.size()
-        # print "master:", list(master_sel)
-        assert 0
-        # filter_sel = get_bool_selection_to_keep(
-        #     big_selection=master_sel,
-        #     small_selection=m_sel)
-        # # print list(filter_sel)
-        # new_master_sel = master_sel.select(filter_sel)
-        # # print "len new_master_sel", len(new_master_sel)
-        # for i in range(len(new_ncs_group.iselections)):
-        #   # print "new_ncs_group.iselections", new_ncs_group.iselections
-        #   new_ncs_group.iselections[i] = [new_ncs_group.iselections[i][0].select(filter_sel)]
-        # master_sel = new_master_sel
-        # master_size = master_sel.size()
+        assert 0, "This should never be the case"
       if new_master_sel.size() > 0 and new_copy_sel.size() > 0:
         r,t,copy_rmsd = my_get_rot_trans(
             ph=hierarchy,
@@ -423,6 +414,12 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
             coordinates_present=True,
             ncs_group_id=group_id,
             rmsd=copy_rmsd)
+        c = NCS_copy(
+            copy_iselection=new_copy_sel,
+            rot=r,
+            tran=t,
+            str_selection=None)
+        g.append_copy(c)
         assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
         new_ncs_group.iselections.append([new_copy_sel])
         new_ncs_group.residue_index_list.append([copy_res])
@@ -441,10 +438,10 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
     # print "new_ncs_group.copies", new_ncs_group.copies
     # print "new_ncs_group.residue_index_list", new_ncs_group.residue_index_list
     group_id += 1
-
+    ncs_restraints_group_list.append(g)
   # print "group_dict", group_dict
   # STOP()
-  return group_dict
+  return group_dict, ncs_restraints_group_list
 
 
 def get_info_from_match_dict(match_dict, key, chain):

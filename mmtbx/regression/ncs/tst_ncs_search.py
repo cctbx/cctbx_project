@@ -160,7 +160,7 @@ class TestSimpleAlignment(unittest.TestCase):
         chains_info=chains_info,
         chain_similarity_threshold=0.10,
         chain_max_rmsd=2.3)
-    group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
+    group_dict, _ = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
     # print group_dict
 
     a_res_list = group_dict[('A',)].residue_index_list[0]
@@ -226,7 +226,7 @@ class TestSimpleAlignment(unittest.TestCase):
   def test_groups_with_chains_of_different_size(self):
     # print sys._getframe().f_code.co_name
     pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_6)
-    ncs_results = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.construct_hierarchy())
+    ncs_results, _ = ncs_search.find_ncs_in_hierarchy(ph=pdb_inp.construct_hierarchy())
     # answer = ncs_results[('H','I')].residue_index_list
     # residue_index_list = [[[0, 1, 2], [0]], [[0, 1, 2], [0]], [[0, 1, 2], [0]]]
     # self.assertEqual(answer,residue_index_list)
@@ -261,7 +261,7 @@ class TestSimpleAlignment(unittest.TestCase):
     chains_info = ncs_search.get_chains_info(ph)
     match_dict = ncs_search.search_ncs_relations(ph=ph,
       chains_info=chains_info,chain_similarity_threshold=0.10)
-    group_dict = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
+    group_dict, _ = ncs_search.ncs_grouping_and_group_dict(match_dict, ph)
     #
     # r = transform_to_group[1][2][0]
     # t = transform_to_group[1][2][1]

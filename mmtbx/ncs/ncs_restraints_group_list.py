@@ -5,10 +5,10 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
-
+from libtbx.utils import Sorry
 
 class NCS_copy():
-  def __init__(self,copy_iselection, rot, tran):
+  def __init__(self,copy_iselection, rot, tran, str_selection=None):
     """
     used for NCS groups list copies
 
@@ -18,15 +18,17 @@ class NCS_copy():
       t (matrix obj): translation vector from master to this copy
     """
     self.iselection = copy_iselection
+    self.str_selection = str_selection
     self.r = rot
     self.t = tran
 
   def deep_copy(self):
-    res = NCS_copy(self.iselection.deep_copy(), self.r, self.t)
+    res = NCS_copy(self.iselection.deep_copy(), self.r, self.t, self.str_selection)
     return res
 
   def select(self, selection):
     self.iselection = iselection_select(self.iselection, selection)
+    self.str_selection = None # it is not valid anymore
 
 def iselection_select(isel, sel):
   x = flex.bool(sel.size(), False)
@@ -36,7 +38,7 @@ def iselection_select(isel, sel):
 
 class NCS_restraint_group(object):
 
-  def __init__(self,master_iselection):
+  def __init__(self,master_iselection, str_selection=None):
     """
     used for NCS groups list
 
@@ -45,6 +47,7 @@ class NCS_restraint_group(object):
       copies (list): list of NCS_copy objects
     """
     self.master_iselection = master_iselection
+    self.master_str_selection = None
     self.copies = []
 
   def get_iselections_list(self):
@@ -53,11 +56,26 @@ class NCS_restraint_group(object):
     """
     return [self.master_iselection] + [c.iselection for c in self.copies]
 
+  def update_i_seqs(self, old_i_seqs):
+    """
+    correct iseqs using supplied list
+    """
+    for n,i in enumerate(self.master_iselection):
+      self.master_iselection[n] = old_i_seqs[i]
+    for c in self.copies:
+      for n, i in enumerate(c.iselection):
+        c.iselection[n] = old_i_seqs[i]
+
+  def append_copy(self, copy):
+    self.copies.append(copy)
+
   def get_number_of_copies(self):
     return len(self.copies)
 
   def deep_copy(self):
-    result = NCS_restraint_group(self.master_iselection.deep_copy())
+    result = NCS_restraint_group(
+        master_iselection=self.master_iselection.deep_copy(),
+        str_selection=self.master_str_selection)
     for c in self.copies:
       result.copies.append(c.deep_copy())
     return result
@@ -105,6 +123,7 @@ class NCS_restraint_group(object):
 
     # This is to handle renumbering properly
     self.master_iselection = iselection_select(self.master_iselection, selection)
+    self.master_str_selection = None
     for c in self.copies:
       c.select(selection)
 
@@ -124,6 +143,9 @@ class NCS_restraint_group(object):
     assert n < self.get_number_of_copies()
     self.master_iselection, self.copies[n].iselection = \
       self.copies[n].iselection, self.master_iselection
+    t_sel = self.copies[n].str_selection
+    self.copies[n].str_selection = self.master_str_selection
+    self.master_str_selection = t_sel
     # Adjust rotation and translation for the new master
     r = self.copies[n].r = (self.copies[n].r.transpose())
     t = self.copies[n].t = -(self.copies[n].r * self.copies[n].t)
@@ -137,6 +159,8 @@ class NCS_restraint_group(object):
 class class_ncs_restraints_group_list(list):
   def __init__(self, *args):
     super(class_ncs_restraints_group_list, self).__init__(*args)
+    for g in self:
+      assert isinstance(g, NCS_restraint_group)
 
   def get_n_groups(self):
     return len(self)
@@ -153,6 +177,20 @@ class class_ncs_restraints_group_list(list):
     for gr in result:
       gr.select(selection)
     return result
+
+  def filter_out_small_groups(self, min_n_atoms=3):
+    new_groups = class_ncs_restraints_group_list()
+    for g in self:
+      if g.master_iselection.size() >= min_n_atoms:
+        new_groups.append(g.deep_copy())
+    return new_groups
+
+  def update_i_seqs(self, old_i_seqs):
+    """
+    correct iseqs using supplied list
+    """
+    for group in self:
+      group.update_i_seqs(old_i_seqs)
 
   def filter_ncs_restraints_group_list(self, whole_h):
     """ Remove ncs groups where master or copy does not cover whole chain
@@ -291,11 +329,13 @@ class class_ncs_restraints_group_list(list):
     """
     For debugging
     """
+    print "debugging output of ncs_restraints_group_list"
     for group in self:
       print list(group.master_iselection)
       for c in group.copies:
         print list(c.iselection)
       print "="*30
+    print "end debugging output of ncs_restraints_group_list"
 
 
   def get_ncs_groups_centers(self, sites_cart):
@@ -322,7 +362,7 @@ class class_ncs_restraints_group_list(list):
   def get_extended_ncs_selection(self, refine_selection):
     """
     Args:
-      refine_selection (flex.siz_t): of all ncs related copies and
+      refine_selection (flex.size_t): of all ncs related copies and
         non ncs related parts to be included in selection (to be refined)
 
     Returns:
@@ -343,6 +383,11 @@ class class_ncs_restraints_group_list(list):
     if refine_selection:
       # make sure all ncs related parts are in refine_selection
       all_ncs = total_master_ncs_selection | total_ncs_related_selection
+      # print all_ncs
+      # print total_master_ncs_selection
+      # print total_ncs_related_selection
+      # print refine_selection
+      # STOP()
       not_all_ncs_related_atoms_selected = bool(all_ncs - refine_selection)
       if not_all_ncs_related_atoms_selected:
         msg = 'refine_selection does not contain all ncs related atoms'
