@@ -295,11 +295,12 @@ class input(object):
         return None
     # Verify NCS selections
     # print "ncs_phil_groups", ncs_phil_groups
-    if pdb_h is None:
-      # if we are here and there is no pdb_hierarchy, we just return
-      # user-selections.
-      return ncs_phil_groups
-    if(ncs_phil_groups is not None and len(ncs_phil_groups)>0):
+    # if pdb_h is None:
+    #   Never the case
+    #   # if we are here and there is no pdb_hierarchy, we just return
+    #   # user-selections.
+    #   return ncs_phil_groups
+    if ncs_phil_groups is not None and len(ncs_phil_groups)>0:
       msg="Empty selection in NCS group definition: %s"
       for ncs_group in ncs_phil_groups:
         print >> self.log, "  Validating:"
@@ -310,7 +311,7 @@ class input(object):
         user_original_copies_iselections = []
         n_atoms_in_user_ncs = 0
         s_string = ncs_group.reference
-        if(s_string is not None):
+        if s_string is not None:
           sel = asc.iselection(s_string)
           selection_list.append(s_string)
           n_reference = sel.size()
@@ -482,6 +483,10 @@ class input(object):
                               pdb_h,
                               asc=None):
     """
+    XXX Here we are getting perfect phil definition (after validate_ncs_phil_groups)
+    XXX No any other checks needed. It would be better to make everything
+    XXX ready in validate, because we have all selections there.
+    XXX
     Build transforms objects and NCS <-> ASU mapping using phil selection
     strings and complete ASU
 
@@ -523,14 +528,11 @@ class input(object):
       asu_locations = []
       for asu_select in group.selection:
         unique_selections = uniqueness_test(unique_selections,asu_select)
-        r, t, rmsd, msg = ncs_search.get_rot_trans(
+        r, t, rmsd = ncs_search.my_get_rot_trans(
           ph=pdb_h,
-          asc=asc,
-          master_selection=gns,
-          copy_selection=asu_select,
-          chain_max_rmsd=100)
+          master_selection=asc.selection(gns),
+          copy_selection=asc.selection(asu_select))
         # print "rmsd in build_ncs_from_phil", rmsd
-        self.messages += msg
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
           self.messages += msg + '\n'

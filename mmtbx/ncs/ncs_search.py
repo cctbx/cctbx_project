@@ -1052,69 +1052,6 @@ def my_get_rot_trans(
   else:
     return None, None, None
 
-
-def get_rot_trans(ph,
-                  asc,
-                  master_selection,
-                  copy_selection,
-                  chain_max_rmsd=0.02):
-  """
-  Get rotation and translation using superpose.
-
-  This function is used only when phil parameters are provided. In this case
-  we require the selection of NCS master and copies to be correct.
-  Correct means:
-    1) residue sequence in master and copies is exactly the same
-    2) the number of atoms in master and copies is exactly the same
-
-  One can get exact selection strings by ncs_object.show(verbose=True)
-
-  Args:
-    ph : pdb.hierarchy
-    master/copy_selection (str): master and copy selection strings
-    chain_max_rmsd (float): limit of rms difference between chains to be considered
-      as copies
-
-  Returns:
-    r: rotation matrix
-    t: translation vector
-    rmsd (float): RMSD between master and copy
-    msg (str): error messages
-  """
-  msg = ''
-  r_zero = matrix.sqr([0]*9)
-  t_zero = matrix.col([0,0,0])
-  #
-  assert ph is not None
-  master_ncs_ph = ph.select(asc.selection(master_selection))
-  ncs_copy_ph = ph.select(asc.selection(copy_selection))
-  seq_m,res_ids_m  = get_residue_sequence(master_ncs_ph)
-  seq_c,res_ids_c = get_residue_sequence(ncs_copy_ph)
-  res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
-      seq_m, seq_c, min_percent=0)
-  m_atoms = master_ncs_ph.atoms()
-  c_atoms = ncs_copy_ph.atoms()
-  # Check that master and copy are identical
-  if (similarity != 1) or (m_atoms.size() != c_atoms.size()) :
-    return r_zero,t_zero,0,'Master and Copy selection do not exactly match'
-  # master
-  other_sites = m_atoms.extract_xyz()
-  # copy
-  ref_sites = c_atoms.extract_xyz()
-  if ref_sites.size() > 0:
-    lsq_fit_obj = superpose.least_squares_fit(
-        reference_sites = ref_sites,
-        other_sites     = other_sites)
-    r = lsq_fit_obj.r
-    t = lsq_fit_obj.t
-    rmsd = ref_sites.rms_difference(lsq_fit_obj.other_sites_best_fit())
-    if rmsd > chain_max_rmsd:
-      return r_zero,t_zero,0,msg
-  else:
-    return r_zero,t_zero,0,'No sites to compare.\n'
-  return r,t,round(rmsd,4),msg
-
-
 def get_residue_sequence(ph):
   """
   Get a list of residues numbers and names from hierarchy "ph", excluding
