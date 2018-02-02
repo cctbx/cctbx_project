@@ -4054,6 +4054,24 @@ def get_closest_sites(
     box_crystal_symmetry=None,
     out=sys.stdout):
 
+  if not box_ncs_object.is_point_group_symmetry() and not \
+      box_ncs_object.is_helical_along_z():
+    # extract point_group symmetry if present and box_ncs_object doesn't have it
+    print >>out,\
+      "Trying to extract point-group symmetry from box_ncs_object "+\
+       "with %d ops" %( box_ncs_object.max_ncs_operators())
+
+    ncs_object=box_ncs_object.deep_copy(extract_point_group_symmetry=True)
+    if ncs_object:  
+      print >>out,\
+          "New number of operators satisfying point-group symmetry: %d" %(
+        ncs_object.max_ncs_operators())
+      box_ncs_object=ncs_object
+    
+    else:
+      print >>out,"No point-group symmetry found"
+ 
+
   ncs_copies=box_ncs_object.max_operators()
   closest_sites=high_points
   from scitbx.matrix import col
@@ -4183,7 +4201,7 @@ def get_bounds_for_au_box(params,
     box_ncs_object=box_ncs_object,
     box_crystal_symmetry=box_crystal_symmetry,
     out=out)
-  if closest_sites.size()<1:
+  if not closest_sites or closest_sites.size()<1:
     print >>out,"\nNo sites representing au of map found...skipping au box\n"
     return None,None,None
 

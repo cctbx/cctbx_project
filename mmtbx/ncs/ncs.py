@@ -400,6 +400,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       coordinate_offset=None,
       new_unit_cell=None,
       scale_factor=None,
+      extract_point_group_symmetry=None,
       ops_to_keep=None,
       hierarchy_to_match_order=None):  # make full copy;
     # optionally apply change-of-basis operator (requires old, new unit cells)
@@ -407,10 +408,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # optionally sort operators to match order in hierarchy
     # optionally apply scale factor (magnification)
     # optionally keep only ops_to_keep operators
+    # optionaly extract point group symmetry
 
     # Can do only one of the above five things at most
     assert [change_of_basis_operator,scale_factor,
-      coordinate_offset,ops_to_keep,hierarchy_to_match_order].count(None)>=4
+      coordinate_offset,ops_to_keep,hierarchy_to_match_order,
+      extract_point_group_symmetry].count(None)>=4
 
     if hierarchy_to_match_order and self._chain_residue_id is not None:
       return self.deep_copy_order(
@@ -418,6 +421,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     if ops_to_keep:
       return self.deep_copy_ops_to_keep(ops_to_keep=ops_to_keep)
+
+    if extract_point_group_symmetry:
+      return self.extract_point_group_symmetry()
 
     from mmtbx.ncs.ncs import ncs
     from copy import deepcopy
@@ -911,20 +917,55 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       rounded=-1.*rounded
     return rounded
 
+  def extract_point_group_symmetry(self,
+   tol_r=None,
+   abs_tol_t=None,
+   rel_tol_t=None):
+    # sequentially remove operators until pg symmetry is achieved or none
+    # are left
+   ops_to_keep=[self.identity_op_id()]
+   n_ops=len(self.rota_matrices_inv())
+   for test_op in xrange(n_ops):
+     if test_op in ops_to_keep: continue
+     test_ops_to_keep=ops_to_keep+[test_op]
+     new_group=self.deep_copy(
+         ops_to_keep=test_ops_to_keep)
+     if new_group.is_point_group_symmetry(
+         tol_r=default_tol_r,
+         abs_tol_t=default_abs_tol_t,
+         rel_tol_t=default_rel_tol_t,
+         symmetry_to_match=self):  # test_op keeps us in the original set
+       ops_to_keep.append(test_op)
+   new_group=self.deep_copy(
+         ops_to_keep=ops_to_keep)
+   if new_group.is_point_group_symmetry(
+         tol_r=default_tol_r,
+         abs_tol_t=default_abs_tol_t,
+         rel_tol_t=default_rel_tol_t):
+     return new_group
+   else:
+     return None
+
   def is_point_group_symmetry(self,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
-   rel_tol_t=default_rel_tol_t):
+   rel_tol_t=default_rel_tol_t,
+   symmetry_to_match=None):
     # return True if any 2 sequential operations is a member of the
     #  set.  Test by sequentially applying all pairs of
     # operators and verifying that the result is a member of the set
+
+    # Allow checking self operators vs some other symmetry object if desired:
+    if symmetry_to_match is None:
+      symmetry_to_match=self
 
     for r,t in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
       for r1,t1 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
         new_r = r1 * r
         new_t = (r1 * t) + t1
         is_similar=False
-        for r2,t2 in zip(self.rota_matrices_inv(),self.translations_orth_inv()):
+        for r2,t2 in zip(symmetry_to_match.rota_matrices_inv(),
+           symmetry_to_match.translations_orth_inv()):
           if is_same_transform(new_r,new_t,r2,t2,tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
             is_similar=True
@@ -1354,6 +1395,7 @@ class ncs:
       scale_factor=None,
       new_unit_cell=None,
       ops_to_keep=None,
+      extract_point_group_symmetry=None,
       hierarchy_to_match_order=None):  # make a copy
     from mmtbx.ncs.ncs import ncs
 
@@ -1369,6 +1411,7 @@ class ncs:
          scale_factor=scale_factor,
          unit_cell=unit_cell,new_unit_cell=new_unit_cell,
          ops_to_keep=ops_to_keep,
+         extract_point_group_symmetry=extract_point_group_symmetry,
          hierarchy_to_match_order=hierarchy_to_match_order)
 
       new._ncs_groups.append(new_group)
