@@ -2295,7 +2295,7 @@ class UnitCellTab(BaseTab):
     self.tab_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.tab_panel.SetSizer(self.tab_sizer)
 
-    self.selection_columns_panel = wx.Panel(self, size=(100, 120))
+    self.selection_columns_panel = wx.Panel(self, size=(230, 120))
     self.selection_columns_box = wx.StaticBox(self.selection_columns_panel, label='Select tag sets')
     self.selection_columns_sizer = wx.StaticBoxSizer(self.selection_columns_box, wx.VERTICAL)
     self.selection_columns_panel.SetSizer(self.selection_columns_sizer)

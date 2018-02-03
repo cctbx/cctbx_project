@@ -94,7 +94,7 @@ class SettingsDialog(BaseDialog):
     BaseDialog.__init__(self, parent,
                         label_style=label_style,
                         content_style=content_style,
-                        size=(600, 200),
+                        size=(600, 230),
                         *args, **kwargs)
 
     self.params = params
