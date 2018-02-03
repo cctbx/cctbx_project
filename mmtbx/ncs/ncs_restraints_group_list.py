@@ -66,6 +66,39 @@ class NCS_restraint_group(object):
       for n, i in enumerate(c.iselection):
         c.iselection[n] = old_i_seqs[i]
 
+  def split_by_chains(self, hierarchy):
+    # actually splitting. Looking for chains only in master. If some corner
+    # case arise when it is not enough, will have to do something.
+    # For example, chains in master and copy do not match with each other by
+    # number of atoms. E.g. atoms belong to these chains:
+    # master: AAAAABBBB
+    #   copy: CCCDDDDDD
+    #
+    # Note, that I don't recalculate rotation/translation matrices!
+    #
+    from mmtbx.ncs.ncs_search import get_bool_selection_to_keep
+    if len(hierarchy.select(self.master_iselection).only_model().chains()) == 1:
+      return [self.deep_copy()]
+
+    result = []
+    for chain in hierarchy.select(self.master_iselection).only_model.chains():
+      c_iseqs = chain.atoms().extract_i_seq()
+      to_keep = get_bool_selection_to_keep(
+          big_selection=self.master_iselection,
+          small_selection=c_iseqs)
+      new_group = NCS_restraint_group(
+          master_iselection = self.master_iselection.select(to_keep),
+          str_selection = None)
+      for old_copy in self.copies:
+        new_copy = NCS_copy(
+            copy_iselection=old_copy.iselection.select(to_keep),
+            rot=old_copy.r.deep_copy(),
+            tran=old_copy.t.deep_copy(),
+            str_selection=None)
+        new_group.append_copy(new_copy)
+      result.append(new_group)
+    return result
+
   def append_copy(self, copy):
     self.copies.append(copy)
 
@@ -177,6 +210,13 @@ class class_ncs_restraints_group_list(list):
     for gr in result:
       gr.select(selection)
     return result
+
+  def split_by_chains(self, hierarchy):
+    new_groups = class_ncs_restraints_group_list()
+    for g in self:
+      new_gs = g.split_by_chains(hierarchy)
+      new_groups += new_gs
+    return new_groups
 
   def filter_out_small_groups(self, min_n_atoms=3):
     new_groups = class_ncs_restraints_group_list()

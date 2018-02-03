@@ -1377,7 +1377,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_update_atom_selections']
+  tests = ['test_split_groups_to_spec']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 
