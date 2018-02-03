@@ -4,13 +4,7 @@ import mmtbx.model
 import iotbx.pdb
 import iotbx.cif
 
-#-----------------------------------------------------------------------------
-# This test makes sure that H are corrected according to angle restraint
-# NH2 group is planar, but there are no dihedral restraints
-# Input model has wrong NH2 configuration --> idealize can correct it.
-#-----------------------------------------------------------------------------
-
-def exercise():
+def prepare_inputs(pdb_str, cif_str):
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   cif_object = iotbx.cif.reader(input_string = cif_str).model()
   # bla.cif does not exist, but cif_objects needs a filename in first position
@@ -22,17 +16,26 @@ def exercise():
     build_grm   = True,
     restraint_objects = cif_objects)
 
-  pdb_hierarchy = model.get_hierarchy()
-  sites_cart = model.get_sites_cart()
-  atoms = pdb_hierarchy.atoms()
-
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
+
+  return model
+
+#-----------------------------------------------------------------------------
+# This test makes sure that H are corrected according to angle restraint
+# NH2 group is planar, but there are no dihedral restraints
+# Input model has wrong NH2 configuration --> idealize can correct it.
+#-----------------------------------------------------------------------------
+
+def exercise1(pdb_str, cif_str):
+  model = prepare_inputs(pdb_str, cif_str)
+  riding_h_manager = model.get_riding_h_manager()
+  atoms = model.get_hierarchy().atoms()
 
   h_para = riding_h_manager.h_parameterization
 
   diagnostics = riding_h_manager.diagnostics(
-    sites_cart = sites_cart,
+    sites_cart = model.get_sites_cart(),
     threshold  = 0.05)
   h_distances   = diagnostics.h_distances
   type_list     = diagnostics.type_list
@@ -52,13 +55,30 @@ def exercise():
       'distance too large: %s  atom: %s (%s) residue: %s ' \
       % (h_para[ih].htype, atoms[ih].name, ih, labels.resseq.strip())
 
-  for type1, type2 in zip(type_list, type_list_known):
+  for type1, type2 in zip(type_list, type_list_known1):
     assert (type1 == type2)
     #print "'%s'," % type1,
 
-# Several fragments from pdb with double conformations which caused crashes
-# and which should now be mended
-pdb_str = """\
+def exercise2(pdb_str, cif_str):
+  model = prepare_inputs(pdb_str, cif_str)
+  riding_h_manager = model.get_riding_h_manager()
+  atoms = model.get_hierarchy().atoms()
+
+  h_para = riding_h_manager.h_parameterization
+
+  diagnostics = riding_h_manager.diagnostics(
+    sites_cart = model.get_sites_cart(),
+    threshold  = 0.05)
+  h_distances   = diagnostics.h_distances
+  type_list     = diagnostics.type_list
+
+# number of H atoms
+  number_h = model.get_hd_selection().count(True)
+  number_h_para = len(h_para) - h_para.count(None)
+
+  assert (number_h_para == 0), 'Not all H atoms are parameterized'
+
+pdb_str1 = """\
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=5 "02.updated.nomin..pdb"
 REMARK Date 2017-07-10 Time 12:11:01 PDT -0700 (1499713861.46 s)
 CRYST1   15.938   15.073   11.550  90.00  90.00  90.00 P 1
@@ -87,7 +107,7 @@ END
 """
 
 
-cif_str = """
+cif_str1 = """
 #
 data_comp_list
 loop_
@@ -245,10 +265,90 @@ _chem_comp_plane_atom.dist_esd
 3HA plan-3  C2     0.020
 """
 
-type_list_known = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
+type_list_known1 = ['flat_2neigbs', 'alg1b', 'flat_2neigbs', 'flat_2neigbs',
   'alg1a', 'alg1a']
+
+# Zundelion ( [H2O -- H -- OH2]+)
+
+pdb_str2 = """
+CRYST1   12.247   13.433   12.428  90.00  90.00  90.00 P 1
+SCALE1      0.081653  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.074444  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.080463        0.00000
+HETATM    1  O   ZDL A   1       0.414   0.852  -0.974  1.00 30.00           O
+HETATM    2  H1  ZDL A   1      -0.135   1.630  -0.847  1.00 30.00           H
+HETATM    3  H2  ZDL A   1       1.338   1.093  -0.875  1.00 30.00           H
+HETATM    4  O1  ZDL A   1      -0.233  -1.018   0.869  1.00 30.00           O
+HETATM    5  H3  ZDL A   1      -0.566  -1.803   0.427  1.00 30.00           H
+HETATM    6  H4  ZDL A   1      -0.909  -0.670   1.454  1.00 30.00           H
+HETATM    7  H5  ZDL A   1       0.091  -0.084  -0.054  1.00 30.00           H
+"""
+
+cif_str2 = """
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ZDL        ZDL 'zundel ion                  ' ligand 7 6 .
+#
+data_comp_ZDL
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ZDL         O      O   O      0    .       1.8400   38.7010   -3.2140
+ZDL         H1     H   H      0    .       1.3350   39.4980   -3.3000
+ZDL         H2     H   H      0    .       2.7520   38.9490   -3.2430
+ZDL         O1     O   O      0    .       1.0410   36.8380   -1.5510
+ZDL         H3     H   H      0    .       0.8620   35.9420   -1.8460
+ZDL         H4     H   H      0    .       0.5460   37.0160   -0.7480
+ZDL         H5     H   H     +1    .       1.2760   37.8090   -2.1650
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+_chem_comp_bond.value_dist_neutron
+ZDL   O       H1    single        0.960 0.020     0.960
+ZDL   O       H2    single        0.960 0.020     0.960
+ZDL   O       H5    single        1.350 0.350     1.350
+ZDL   O1      H5    single        1.350 0.350     1.350
+ZDL   O1      H4    single        0.960 0.020     0.960
+ZDL   O1      H3    single        0.960 0.020     0.960
+#
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+ZDL   H2      O       H1          109.47 3.000
+ZDL   H3      O1      H4          109.47 3.000
+ZDL   H1      O       H5          109.49 6.000
+ZDL   H2      O       H5          109.49 6.000
+ZDL   H3      O1      H5          109.49 6.000
+ZDL   H4      O1      H5          109.49 6.000
+ZDL   O       H5      O1          180.00 9.000
+"""
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise()
+  exercise1(pdb_str1, cif_str1)
+  exercise2(pdb_str2, cif_str2)
   print "OK. Time: %8.3f"%(time.time()-t0)
