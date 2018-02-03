@@ -127,8 +127,6 @@ class input(object):
     # map transform to list of master ncs parts in its ncs groups
     self.transform_to_ncs = {}
 
-    # unique chains or selection identifiers
-    self.model_unique_chains_ids = tuple()
     # transform application order
     self.model_order_chain_ids = []
     self.transform_to_be_used = set()
@@ -569,10 +567,26 @@ class input(object):
       self.ncs_to_asu_selection[gns] = asu_locations
       self.ncs_restraints_group_list.append(g)
 
-    filter_out_small_groups = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
-    self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
+    self.finalize_nrgl()
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
+
+  def finalize_nrgl(self):
+    self.ncs_restraints_group_list = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
+    self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
+    #
+    # Warning! str_selections updating with truncated hierarchy because
+    # there are tests
+    # phenix_regression/refinement/torsion_ncs/tst_refinement_torsion_ncs.py
+    # phenix_regression/refinement/ncs/tst_ncs_5.py
+    # that fail otherwise. It was ok for couple of years, so not rushing to fix.
+    #
+    self.ncs_restraints_group_list.update_str_selections_if_needed(
+        hierarchy=self.truncated_hierarchy,
+        asc=self.truncated_h_asc,
+        chains_info=None)
+    self.ncs_restraints_group_list.update_i_seqs(self.old_i_seqs)
+
 
   def build_ncs_obj_from_pdb_asu(self,pdb_h, asc):
     """
@@ -595,15 +609,10 @@ class input(object):
         chain_max_rmsd=self.chain_max_rmsd,
         log=self.log,
         residue_match_radius=self.residue_match_radius)
-      self.ncs_restraints_group_list = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
-      self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
+      self.finalize_nrgl()
 
       # process atom selections
       self.build_ncs_obj_from_group_dict(group_dict, pdb_h, asc, chains_info)
-      if not self.model_unique_chains_ids:
-        model = pdb_h.models()[0]
-        chain_ids = {x.id for x in model.chains()}
-        self.model_unique_chains_ids = tuple(sorted(chain_ids))
 
   def build_ncs_obj_from_group_dict(self,group_dict,pdb_h, asc, chains_info=None):
     """
@@ -834,7 +843,7 @@ class input(object):
 
       if self.old_i_seqs is not None:
         # self.ncs_restraints_group_list._show()
-        self.ncs_restraints_group_list.update_i_seqs(self.old_i_seqs)
+        # self.ncs_restraints_group_list.update_i_seqs(self.old_i_seqs)
         # self.ncs_restraints_group_list._show()
         # STOP()
         for k, v in self.ncs_to_asu_map.iteritems():
@@ -1312,7 +1321,10 @@ class input(object):
       prefix (str): a string to be added, padding the output, at the left of
         each line
     """
-    ids = sorted(self.model_unique_chains_ids)
+    model = self.truncated_hierarchy.models()[0]
+    chain_ids = {x.id for x in model.chains()}
+    model_unique_chains_ids = tuple(sorted(chain_ids))
+    ids = sorted(model_unique_chains_ids)
     str_out = ['\n{}Chains in model:'.format(prefix),'-'*51]
     n = len(ids)
     item_in_row = 10
@@ -1499,9 +1511,9 @@ def format_80(s):
   return ss
 
 def inverse_transform(r,t):
-  r = r.transpose()
-  t = - r*t
-  return r,t
+  rr = r.transpose()
+  tt = - r*t
+  return rr,tt
 
 def get_list_of_chains_selection(selection_str):
   """

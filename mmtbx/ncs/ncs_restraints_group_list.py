@@ -60,6 +60,8 @@ class NCS_restraint_group(object):
     """
     correct iseqs using supplied list
     """
+    if old_i_seqs is None:
+      return
     for n,i in enumerate(self.master_iselection):
       self.master_iselection[n] = old_i_seqs[i]
     for c in self.copies:
@@ -197,6 +199,29 @@ class class_ncs_restraints_group_list(list):
 
   def get_n_groups(self):
     return len(self)
+
+  def update_str_selections_if_needed(
+      self, hierarchy, asc=None, chains_info=None):
+    from mmtbx.ncs.ncs_search import get_chains_info
+    from iotbx.pdb.atom_selection import selection_string_from_selection
+    if asc is None:
+      asc = hierarchy.atom_selection_cache()
+    if chains_info is None:
+      chains_info = get_chains_info(hierarchy)
+    for gr in self:
+      if gr.master_str_selection is None:
+        gr.master_str_selection = selection_string_from_selection(
+            hierarchy,
+            gr.master_iselection,
+            chains_info,
+            asc)
+        for c in gr.copies:
+          if c.str_selection is None:
+            c.str_selection = selection_string_from_selection(
+                hierarchy,
+                gr.master_iselection,
+                chains_info,
+                asc)
 
   def deep_copy(self):
     result = class_ncs_restraints_group_list()
