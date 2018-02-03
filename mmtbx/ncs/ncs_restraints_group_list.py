@@ -219,7 +219,7 @@ class class_ncs_restraints_group_list(list):
           if c.str_selection is None:
             c.str_selection = selection_string_from_selection(
                 hierarchy,
-                gr.master_iselection,
+                c.iselection,
                 chains_info,
                 asc)
 
@@ -396,8 +396,10 @@ class class_ncs_restraints_group_list(list):
     """
     print "debugging output of ncs_restraints_group_list"
     for group in self:
+      print "Master str selection:", group.master_str_selection
       print list(group.master_iselection)
       for c in group.copies:
+        print "Copy str selection:", c.str_selection
         print list(c.iselection)
       print "="*30
     print "end debugging output of ncs_restraints_group_list"

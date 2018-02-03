@@ -182,7 +182,8 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     trans_obj = ncs.input(
       ncs_phil_groups=phil_groups.ncs_group,
       hierarchy=pdb_inp.construct_hierarchy(),
-      exclude_selection=None)
+      exclude_selection=None,
+      minimum_number_of_atoms_in_copy=0)
     result = trans_obj.print_ncs_phil_param(write=False)
     # print "="*50
     # print "resutl"
@@ -316,14 +317,14 @@ TER
 
 pdb_test_data2_phil = '''\
 ncs_group {
-  reference = chain A
-  selection = chain D
-  selection = chain G
+  reference = chain 'A'
+  selection = chain 'D'
+  selection = chain 'G'
 }
 ncs_group {
-  reference = chain B or chain C
-  selection = chain E or chain F
-  selection = chain H or chain I
+  reference = chain 'B' or chain 'C'
+  selection = chain 'E' or chain 'F'
+  selection = chain 'H' or chain 'I'
 }
 '''
 
@@ -535,7 +536,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_spec_reading']
+  tests = ['test_print_ncs_phil_param']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 

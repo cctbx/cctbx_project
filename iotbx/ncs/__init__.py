@@ -83,7 +83,8 @@ class input(object):
           chain_max_rmsd=2.0,
           log=None,
           chain_similarity_threshold=0.85,
-          residue_match_radius=4.0):
+          residue_match_radius=4.0,
+          minimum_number_of_atoms_in_copy=3):
     """
     TODO:
     1. Transfer get_ncs_info_as_spec() to ncs/ncs.py:ncs
@@ -133,7 +134,7 @@ class input(object):
     # order of transforms  - used when concatenating or separating them
     self.transform_order = []
 
-
+    self.minimum_number_of_atoms_in_copy = minimum_number_of_atoms_in_copy
     self.ncs_restraints_group_list = class_ncs_restraints_group_list()
     # keep hierarchy for writing (To have a source of atoms labels)
     self.hierarchy = hierarchy
@@ -566,13 +567,13 @@ class input(object):
             masters = gns,copies = asu_select, tr_id = key)
       self.ncs_to_asu_selection[gns] = asu_locations
       self.ncs_restraints_group_list.append(g)
-
     self.finalize_nrgl()
     self.transform_chain_assignment = get_transform_order(self.transform_to_ncs)
     self.finalize_pre_process(pdb_h=pdb_h, asc=asc)
 
   def finalize_nrgl(self):
-    self.ncs_restraints_group_list = self.ncs_restraints_group_list.filter_out_small_groups(min_n_atoms=3)
+    self.ncs_restraints_group_list = self.ncs_restraints_group_list.\
+        filter_out_small_groups(min_n_atoms=self.minimum_number_of_atoms_in_copy)
     self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
     #
     # Warning! str_selections updating with truncated hierarchy because
@@ -1002,8 +1003,8 @@ class input(object):
     if not stem : stem =''
     else: stem += '_'
     spec_object = ncs.ncs(exclude_h=exclude_h,exclude_d=exclude_d)
-    if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
-      self.set_common_res_dict()
+    # if len(self.common_res_dict) == 0 and self.truncated_hierarchy:
+    #   self.set_common_res_dict()
     xyz = self.truncated_hierarchy.atoms().extract_xyz()
     #===============================================================
     # New implementation
@@ -1186,12 +1187,12 @@ class input(object):
     """
     if not log: log = sys.stdout
     groups = []
-    for master, copies in self.ncs_to_asu_selection.iteritems():
-      master = format_80(master)
+    for gr in self.ncs_restraints_group_list:
+      master = format_80(gr.master_str_selection)
       groups.append('ncs_group {')
       groups.append("  reference = {}".format(master))
-      for cp in copies:
-        cp = format_80(cp)
+      for c in gr.copies:
+        cp = format_80(c.str_selection)
         groups.append("  selection = {}".format(cp))
       groups.append('}')
     gr = '\n'.join(groups)
@@ -1200,6 +1201,20 @@ class input(object):
       print >> log,gr
     return gr
 
+    # for master, copies in self.ncs_to_asu_selection.iteritems():
+    #   master = format_80(master)
+    #   groups.append('ncs_group {')
+    #   groups.append("  reference = {}".format(master))
+    #   for cp in copies:
+    #     cp = format_80(cp)
+    #     groups.append("  selection = {}".format(cp))
+    #   groups.append('}')
+    # gr = '\n'.join(groups)
+    # gr += '\n'
+    # if write:
+    #   print >> log,gr
+    # return gr
+
   def get_array_of_selections(self):
     """
     Returns array of phil selection strings e.g. for the exapmle above in
@@ -1207,12 +1222,17 @@ class input(object):
     [['(Chain A)','(chain C)','(chain E)'],['(chain B)','(chain D)','(chain F)']]
     """
     result = []
-    sorted_keys = sort_dict_keys(self.ncs_to_asu_selection)
-    for master in sorted_keys:
-      group = [master]
-      for cp in self.ncs_to_asu_selection[master]:
-        group.append(cp)
+    for gr in self.ncs_restraints_group_list:
+      group = [gr.master_str_selection]
+      for c in gr.copies:
+        group.append(c.str_selection)
       result.append(group)
+    # sorted_keys = sort_dict_keys(self.ncs_to_asu_selection)
+    # for master in sorted_keys:
+    #   group = [master]
+    #   for cp in self.ncs_to_asu_selection[master]:
+    #     group.append(cp)
+    #   result.append(group)
     return result
 
   def show(self,
@@ -1274,22 +1294,37 @@ class input(object):
       header (bool): When True, include header
       group_prefix (str): prefix for the group only
     """
+
     str_out = []
     if header:
       msg = '\n{}NCS phil parameters:'
       str_out = [msg.format(prefix),'-'*len(msg)]
     str_line = prefix + '  {:s} = {}'
     str_ncs_group =  prefix + group_prefix + 'ncs_group {\n%s' + prefix + '\n}'
-    master_sel_str = sorted(self.ncs_to_asu_selection)
-    for m_str in master_sel_str:
-      gr = self.ncs_to_asu_selection[m_str]
-      str_gr = [str_line.format('reference',m_str)]
-      for c_str in gr:
-        str_gr.append(str_line.format('selection',c_str))
+    for gr in self.ncs_restraints_group_list:
+      str_gr = [str_line.format('reference',gr.master_str_selection)]
+      for c in gr.copies:
+        str_gr.append(str_line.format('selection',c.str_selection))
       str_gr = '\n'.join(str_gr)
       str_out.append(str_ncs_group%str_gr)
     str_out = '\n'.join(str_out)
     return str_out
+    # str_out = []
+    # if header:
+    #   msg = '\n{}NCS phil parameters:'
+    #   str_out = [msg.format(prefix),'-'*len(msg)]
+    # str_line = prefix + '  {:s} = {}'
+    # str_ncs_group =  prefix + group_prefix + 'ncs_group {\n%s' + prefix + '\n}'
+    # master_sel_str = sorted(self.ncs_to_asu_selection)
+    # for m_str in master_sel_str:
+    #   gr = self.ncs_to_asu_selection[m_str]
+    #   str_gr = [str_line.format('reference',m_str)]
+    #   for c_str in gr:
+    #     str_gr.append(str_line.format('selection',c_str))
+    #   str_gr = '\n'.join(str_gr)
+    #   str_out.append(str_ncs_group%str_gr)
+    # str_out = '\n'.join(str_out)
+    # return str_out
 
   def show_search_parameters_values(self,prefix=''):
     """
@@ -1353,23 +1388,42 @@ class input(object):
     str_line = prefix + '{:<25s}:   {}'
     str_r = prefix + 'ROTA  {:2}{:10.4f}{:10.4f}{:10.4f}'
     str_t = prefix + 'TRANS   {:10.4f}{:10.4f}{:10.4f}'
-    ncs_group_n = sorted(self.ncs_group_map)
-    for i in ncs_group_n:
+    for i_gr, gr in enumerate(self.ncs_restraints_group_list):
       str_out.append(str_line.format('Group #',i))
-      gr = self.ncs_group_map[i]
-      transform_numbers = sorted(gr[1])
-      for j,tr_n in enumerate(transform_numbers):
-        tr = self.ncs_transform[tr_n]
+      for j, c in enumerate(gr.copies):
         str_out.append(str_line.format('Transform #',j + 1))
-        str_out.append(str_line.format('RMSD',tr.rmsd))
-        rot = [str_r.format(k,*x) for k,x in enumerate(tr.r.as_list_of_lists())]
+        # XXX - consider saving rmsd in ncs_copy
+        r,t,rmsd = ncs_search.my_get_rot_trans(
+          ph=self.truncated_hierarchy,
+          master_selection=gr.master_iselection,
+          copy_selection=c.iselection)
+        str_out.append(str_line.format('RMSD',rmsd))
+        rot = [str_r.format(k,*x) for k,x in enumerate(c.r.as_list_of_lists())]
         str_out.extend(rot)
-        tran = str_t.format(*[x for xi in tr.t.as_list_of_lists() for x in xi])
+        tran = str_t.format(*[x for xi in c.t.as_list_of_lists() for x in xi])
         str_out.append(tran)
         str_out.append('~ '*20)
     str_out.pop()
     str_out = '\n'.join(str_out)
     return str_out
+
+    # ncs_group_n = sorted(self.ncs_group_map)
+    # for i in ncs_group_n:
+    #   str_out.append(str_line.format('Group #',i))
+    #   gr = self.ncs_group_map[i]
+    #   transform_numbers = sorted(gr[1])
+    #   for j,tr_n in enumerate(transform_numbers):
+    #     tr = self.ncs_transform[tr_n]
+    #     str_out.append(str_line.format('Transform #',j + 1))
+    #     str_out.append(str_line.format('RMSD',tr.rmsd))
+    #     rot = [str_r.format(k,*x) for k,x in enumerate(tr.r.as_list_of_lists())]
+    #     str_out.extend(rot)
+    #     tran = str_t.format(*[x for xi in tr.t.as_list_of_lists() for x in xi])
+    #     str_out.append(tran)
+    #     str_out.append('~ '*20)
+    # str_out.pop()
+    # str_out = '\n'.join(str_out)
+    # return str_out
 
   def show_ncs_selections(self,prefix=''):
     """
@@ -1381,21 +1435,32 @@ class input(object):
     """
     str_out = ['\n{}NCS selections:'.format(prefix),'-'*51]
     str_line = prefix + '{:<25s}:   {}'
-    ncs_group_n = sorted(self.ncs_group_map)
-    for i in ncs_group_n:
-      gr = self.ncs_group_map[i]
-      if len(gr) == 3:
-        m_str = gr[2]
-        gr_copies = self.ncs_to_asu_selection[m_str]
-        str_out.append(str_line.format('Group #',i))
-        str_out.append(str_line.format('Master selection string',m_str))
-        for c_str in gr_copies:
-          str_out.append(str_line.format('Copy selection string',c_str))
+    for i, gr in enumerate(self.ncs_restraints_group_list):
+      str_out.append(str_line.format('Group #',i))
+      str_out.append(str_line.format('Master selection string',gr.master_str_selection))
+      for c in gr.copies:
+        str_out.append(str_line.format('Copy selection string',c_str))
     transforms_info = self.show_transform_info(prefix)
     str_out.append(transforms_info)
     str_out.append('. '*26)
     str_out = '\n'.join(str_out)
     return str_out
+
+    # ncs_group_n = sorted(self.ncs_group_map)
+    # for i in ncs_group_n:
+    #   gr = self.ncs_group_map[i]
+    #   if len(gr) == 3:
+    #     m_str = gr[2]
+    #     gr_copies = self.ncs_to_asu_selection[m_str]
+    #     str_out.append(str_line.format('Group #',i))
+    #     str_out.append(str_line.format('Master selection string',m_str))
+    #     for c_str in gr_copies:
+    #       str_out.append(str_line.format('Copy selection string',c_str))
+    # transforms_info = self.show_transform_info(prefix)
+    # str_out.append(transforms_info)
+    # str_out.append('. '*26)
+    # str_out = '\n'.join(str_out)
+    # return str_out
 
   def show_ncs_headers(self,prefix):
     """
@@ -1407,19 +1472,18 @@ class input(object):
     """
     str_out = ['\n{}NCS summary:'.format(prefix),'-'*51]
     str_line = prefix + '{:<25s}:   {}'
-    s = str_line.format('Number of NCS groups', self.number_of_ncs_groups)
+    s = str_line.format('Number of NCS groups', self.ncs_restraints_group_list.get_n_groups())
     str_out.append(s)
-    ncs_group_n = sorted(self.ncs_group_map)
-    for i in ncs_group_n:
-      gr = self.ncs_group_map[i]
+    # ncs_group_n = sorted(self.ncs_group_map)
+    for i, gr in self.ncs_restraints_group_list:
+      # gr = self.ncs_group_map[i]
       str_out.append(str_line.format('Group #', i))
-      str_out.append(str_line.format('Number of copies', len(gr[1])))
-      if len(gr) == 3:
-        m_str = gr[2]
-        cim = ', '.join(chains_in_string(m_str))
-        cic = ', '.join(chains_in_string(self.ncs_to_asu_selection[m_str]))
-        str_out.append(str_line.format('Chains in master',cim))
-        str_out.append(str_line.format('Chains in copies',cic))
+      str_out.append(str_line.format('Number of copies', gr.get_number_of_copies()))
+      sel_strings = self.get_array_of_selections()
+      cim = ', '.join(chains_in_string(sel_strings[0]))
+      cic = ', '.join(chains_in_string(sel_strings[1:]))
+      str_out.append(str_line.format('Chains in master',cim))
+      str_out.append(str_line.format('Chains in copies',cic))
     str_out.append('. '*26)
     str_out = '\n'.join(str_out)
     return str_out
