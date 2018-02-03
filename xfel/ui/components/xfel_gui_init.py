@@ -2882,7 +2882,7 @@ class TrialPanel(wx.Panel):
   ''' A scrolled panel that contains run blocks and trial controls '''
 
   def __init__(self, parent, db, trial, box_label=None):
-    wx.Panel.__init__(self, parent=parent, size=(200, 200))
+    wx.Panel.__init__(self, parent=parent, size=(270, 200))
 
     self.db = db
     self.trial = trial

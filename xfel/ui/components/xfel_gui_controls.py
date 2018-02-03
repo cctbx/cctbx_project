@@ -95,7 +95,7 @@ class RunBlockButton(GradButton):
     else:
       last = ' - {}'.format(self.last_run)
 
-    self.block_label = 'Block {}, runs {}{}'.format(self.rnum, first, last)
+    self.block_label = '[{}] runs {}{}'.format(self.rnum, first, last)
     self.SetLabel(self.block_label)
     self.Refresh()
 
