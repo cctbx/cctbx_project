@@ -303,6 +303,7 @@ def plot_multirun_stats(runs,
                         run_statuses=[],
                         minimalist=False,
                         interactive=False,
+                        easy_run=False,
                         compress_runs=True,
                         xsize=30,
                         ysize=10,
@@ -351,10 +352,23 @@ def plot_multirun_stats(runs,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff,
                               i_sigi_cutoff=i_sigi_cutoff)
-  png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
-    interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
+  if easy_run:
+    from libtbx import easy_run, easy_pickle
+    easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
+    result = easy_run.fully_buffered(command="cctbx.xfel.plot_run_stats_from_stats_pickle plot_run_stats_tmp.pickle")
+    #try:
+    #  png = result.stdout_lines[0]
+    #  if png == "None":
+    #    return None
+    #except Exception:
+    #  return None
+    return None
+  else:
+    png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+      interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png
 
 if __name__ == "__main__":
   import sys
-  plot_multirun_stats(sys.argv[1])
+  easy_run_plot_multirun_stats(sys.argv[1])
+
