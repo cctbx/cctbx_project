@@ -52,7 +52,8 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_image_range(),
         rad_as_deg(obj.get_oscillation()),
         obj.get_exposure_times(),
-        obj.get_epochs());
+        obj.get_epochs(),
+        obj.get_batch_offset());
     }
   };
 
@@ -60,6 +61,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   boost::python::dict to_dict<Scan>(const Scan &obj) {
     boost::python::dict result;
     result["image_range"] = obj.get_image_range();
+    result["batch_offset"] = obj.get_batch_offset();
     result["oscillation"] = rad_as_deg(obj.get_oscillation());
     result["exposure_time"] = boost::python::list(obj.get_exposure_times());
     result["epochs"] = boost::python::list(obj.get_epochs());
@@ -120,6 +122,7 @@ namespace dxtbx { namespace model { namespace boost_python {
   template <>
   Scan* from_dict<Scan>(boost::python::dict obj) {
     vec2<int> ir = boost::python::extract< vec2<int> >(obj["image_range"]);
+    std::size_t bo= boost::python::extract< std::size_t >(obj["batch_offset"]);
     vec2<double> osc = deg_as_rad(
       boost::python::extract< vec2<double> >(obj["oscillation"]));
     DXTBX_ASSERT(ir[1] >= ir[0]);
@@ -130,18 +133,21 @@ namespace dxtbx { namespace model { namespace boost_python {
           obj.get("exposure_time", boost::python::list()))),
       make_epochs(num,
         boost::python::extract<boost::python::list>(
-          obj.get("epochs", boost::python::list()))));
+          obj.get("epochs", boost::python::list()))),
+      bo);
   }
 
-  static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation, bool deg) {
+  static Scan* make_scan(vec2 <int> image_range, vec2 <double> oscillation,
+                         int batch_offset, bool deg) {
     Scan *scan = NULL;
     if (deg) {
       scan = new Scan(image_range,
         vec2 <double> (
           deg_as_rad(oscillation[0]),
-          deg_as_rad(oscillation[1])));
+          deg_as_rad(oscillation[1])),
+        batch_offset);
     } else {
-      scan = new Scan(image_range, oscillation);
+      scan = new Scan(image_range, oscillation, batch_offset);
     }
     return scan;
   }
@@ -149,16 +155,19 @@ namespace dxtbx { namespace model { namespace boost_python {
   static Scan* make_scan_w_epoch(vec2 <int> image_range,
       vec2 <double> oscillation,
       const scitbx::af::shared<double> &exposure_times,
-      const scitbx::af::shared<double> &epochs, bool deg) {
+      const scitbx::af::shared<double> &epochs,
+      int batch_offset, bool deg) {
     Scan *scan = NULL;
     if (deg) {
       scan = new Scan(image_range,
         vec2 <double> (
           deg_as_rad(oscillation[0]),
           deg_as_rad(oscillation[1])),
-        exposure_times, epochs);
+        exposure_times, epochs,
+        batch_offset);
     } else {
-      scan = new Scan(image_range, oscillation, exposure_times, epochs);
+      scan = new Scan(image_range, oscillation, exposure_times, epochs,
+                      batch_offset);
     }
     return scan;
   }
@@ -340,6 +349,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           default_call_policies(), (
           arg("image_range"),
           arg("oscillation"),
+          arg("batch_offset") = 0,
           arg("deg") = true)))
       .def("__init__",
           make_constructor(
@@ -349,11 +359,22 @@ namespace dxtbx { namespace model { namespace boost_python {
           arg("oscillation"),
           arg("exposure_times"),
           arg("epochs"),
+          arg("batch_offset") = 0,
           arg("deg") = true)))
       .def("get_image_range",
         &Scan::get_image_range)
       .def("set_image_range",
         &Scan::set_image_range)
+      .def("get_batch_offset",
+        &Scan::get_batch_offset)
+      .def("set_batch_offset",
+        &Scan::set_batch_offset)
+      .def("get_batch_for_image_index",
+        &Scan::get_batch_for_image_index)
+      .def("get_batch_for_array_index",
+        &Scan::get_batch_for_array_index)
+      .def("get_batch_range",
+        &Scan::get_batch_range)
       .def("get_array_range",
         &Scan::get_array_range)
       .def("get_oscillation",
@@ -396,6 +417,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("is_array_index_valid",
         &Scan::is_array_index_valid, (
           arg("index")))
+      .def("is_batch_valid",
+        &Scan::is_batch_valid, (
+          arg("batch")))
       .def("get_angle_from_image_index",
         &get_angle_from_image_index, (
           arg("index"),
