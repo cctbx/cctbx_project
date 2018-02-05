@@ -28,8 +28,7 @@ nanoBragg::nanoBragg(
     /* BEAM properties first */
 
     /* direction in 3-space of beam vector */
-    /* is this positive or negative? */
-    xyz = beam.get_direction();
+    xyz = beam.get_unit_s0();
     beam_vector[1] = xyz[0];
     beam_vector[2] = xyz[1];
     beam_vector[3] = xyz[2];
@@ -84,17 +83,17 @@ nanoBragg::nanoBragg(
     sdet_vector[2] = detector[0].get_slow_axis()[1];
     sdet_vector[3] = detector[0].get_slow_axis()[2];
     unitize(sdet_vector,sdet_vector);
-    /* must form an orthonormal system, but dxtbx distance is negative?  */
-    cross_product(sdet_vector,fdet_vector,odet_vector);
+    /* set orthogonal vector to the detector pixel array */
+    cross_product(fdet_vector,sdet_vector,odet_vector);
     unitize(odet_vector,odet_vector);
 
-    /* dxtbx origin is location of the first pixel? */
-    pix0_vector[1] = -detector[0].get_origin()[0]/1000.0;
-    pix0_vector[2] = -detector[0].get_origin()[1]/1000.0;
-    pix0_vector[3] = -detector[0].get_origin()[2]/1000.0;
+    /* dxtbx origin is location of outer corner of the first pixel */
+    pix0_vector[1] = detector[0].get_origin()[0]/1000.0;
+    pix0_vector[2] = detector[0].get_origin()[1]/1000.0;
+    pix0_vector[3] = detector[0].get_origin()[2]/1000.0;
     /* what is the point of closest approach between sample and detector? */
-    Fclose = Xclose = dot_product(pix0_vector,fdet_vector);
-    Sclose = Yclose = dot_product(pix0_vector,sdet_vector);
+    Fclose = Xclose = -dot_product(pix0_vector,fdet_vector);
+    Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
 
 
