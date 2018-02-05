@@ -61,9 +61,9 @@ with open(stolfile, "rb") as fp:
 # open the existing diffraction image: we need it for the background profile
 import dxtbx
 img = dxtbx.load(imgfile)
-panel = img.get_detector().to_dict()['panels'][0]
-pixel_size_mm = panel['pixel_size'][0]
-distance_mm = -panel['origin'][2]
+panel = img.get_detector()[0]
+pixel_size_mm = panel.get_pixel_size[0]
+distance_mm = panel.get_distance()
 #beam_center_mm =
 
 # create the simulation
