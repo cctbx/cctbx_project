@@ -298,7 +298,10 @@ class TestSimpleAlignment(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(lines=test_pdb_6,source_info=None)
     ph = pdb_inp.construct_hierarchy()
     ncs_obj = ncs.input(hierarchy=ph)
-    self.assertEqual(len(ncs_obj.ncs_copies_chains_names),6)
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+    self.assertEqual(nrgl.get_n_groups(), 2)
+    self.assertEqual(nrgl[0].get_number_of_copies(), 2)
+    self.assertEqual(nrgl[1].get_number_of_copies(), 2)
 
   def test_min_contig_length(self):
     """ Test correct handling of min_contig_length and min_percent
@@ -346,8 +349,9 @@ class TestSimpleAlignment(unittest.TestCase):
     '''  Test processing of overlapping identical chains  '''
     h = iotbx.pdb.input(source_info=None, lines=pdb_str10).construct_hierarchy()
     ncs_inp = ncs.input(hierarchy=h)
-    t = ncs_inp.ncs_group_map[1]
-    self.assertEqual(t,[{"chain 'A '"}, {'0000000001', '0000000002', '0000000003'}, "chain 'A '"])
+    nrgl = ncs_inp.get_ncs_restraints_group_list()
+    # nrgl._show()
+    self.assertEqual(nrgl[0].master_str_selection, "chain 'A '")
 
 
 test_pdb_1 = '''\
@@ -1377,7 +1381,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_split_groups_to_spec']
+  tests = ['test_processing_ncs_with_hierarchy_input']
   suite = unittest.TestSuite(map(TestSimpleAlignment,tests))
   return suite
 

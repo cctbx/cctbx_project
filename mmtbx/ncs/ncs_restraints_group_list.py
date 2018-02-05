@@ -6,6 +6,7 @@ from scitbx import matrix
 import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
 from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal
 
 class NCS_copy():
   def __init__(self,copy_iselection, rot, tran, str_selection=None):
@@ -21,6 +22,9 @@ class NCS_copy():
     self.str_selection = str_selection
     self.r = rot
     self.t = tran
+
+  def __eq__(self, other):
+    return approx_equal(self.r, other.r) and approx_equal(self.t, other.t)
 
   def deep_copy(self):
     res = NCS_copy(
@@ -53,6 +57,12 @@ class NCS_restraint_group(object):
     self.master_iselection = master_iselection
     self.master_str_selection = None
     self.copies = []
+
+  def __eq__(self, other):
+    result = True
+    for sc, oc in zip(self.copies, other.copies):
+      result &= sc == oc
+    return result
 
   def get_iselections_list(self):
     """
@@ -202,6 +212,12 @@ class class_ncs_restraints_group_list(list):
     super(class_ncs_restraints_group_list, self).__init__(*args)
     for g in self:
       assert isinstance(g, NCS_restraint_group)
+
+  def __eq__(self, other):
+    result = self.get_n_groups() == other.get_n_groups()
+    for sg, og in zip(self, other):
+      result &= (sg == og)
+    return result
 
   def get_n_groups(self):
     return len(self)
@@ -539,3 +555,17 @@ class class_ncs_restraints_group_list(list):
         r.append(tr.r)
         t.append(tr.t)
     return r,t
+
+  def get_array_of_str_selections(self):
+    """
+    Returns array of phil selection strings e.g. for the exapmle above in
+    print_ncs_phil_param:
+    [['(Chain A)','(chain C)','(chain E)'],['(chain B)','(chain D)','(chain F)']]
+    """
+    result = []
+    for gr in self:
+      group = [gr.master_str_selection]
+      for c in gr.copies:
+        group.append(c.str_selection)
+      result.append(group)
+    return result

@@ -28,8 +28,8 @@ class cartesian_ncs_manager(object):
     else:
       self.groups_list = []
       ncs_obj = model.get_ncs_obj()
-      ncs_groups_selection_string_list = ncs_obj.get_array_of_selections()
       ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
+      ncs_groups_selection_string_list = ncs_restraints_group_list.get_array_of_str_selections()
       for i_gr, gr in enumerate(ncs_restraints_group_list):
         n_copies = gr.get_number_of_copies()
         registry = pair_registry(n_seq=model.get_number_of_atoms(), n_ncs=n_copies+1)

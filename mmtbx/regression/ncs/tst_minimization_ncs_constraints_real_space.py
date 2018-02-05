@@ -126,12 +126,7 @@ def run(prefix="tst", d_min=1.0):
   ncs_obj_poor.write_pdb_file(file_name="asu.pdb",
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   # create transformation object
-  transforms_obj = ncs.input(
-    # hierarchy = ph_poor_obj.construct_hierarchy(),
-    hierarchy=ph_answer,
-    # rotations=rm,
-    # translations=tv,
-    )
+  transforms_obj = ncs.input(hierarchy=ph_answer)
   x = transforms_obj.get_ncs_restraints_group_list().concatenate_rot_tran()
   x = nu.shake_transformations(
     x = x,
@@ -149,7 +144,6 @@ def run(prefix="tst", d_min=1.0):
     sites_cart_master_ncs_copy=ncs_obj_poor.ph_first_chain.atoms().extract_xyz())
   ncs_obj_poor.write_pdb_file(file_name="asu2.pdb",
     crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
-  transforms_obj = nu.update_transforms(transforms_obj,rm,tv)
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
   refine_selection = flex.size_t(xrange(transforms_obj.truncated_hierarchy.atoms_size()))
   for i in xrange(5):

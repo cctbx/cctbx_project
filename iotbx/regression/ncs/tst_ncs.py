@@ -244,7 +244,7 @@ def exercise_05():
   assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.001)
 
 def exercise_06():
-  """ Test that when building bio-molecule and then finding NCS relatin
+  """ Test that when building bio-molecule and then finding NCS relations
   from it, we get the same rotation and translation"""
   pdb_strings = [pdb_str_4, pdb_str_5]
   for method,pdb_string in enumerate(pdb_strings):
@@ -276,18 +276,15 @@ def exercise_06():
     s = h.as_pdb_string(crystal_symmetry=crystal_symmetry)
     ncs_obj = ncs.input(hierarchy=pdb.input(
       source_info=None, lines=s).construct_hierarchy())
-    r1 = ncs_obj.ncs_transform['0000000002'].r
-    t1 = ncs_obj.ncs_transform['0000000002'].t
-    r2 = ncs_obj.ncs_transform['0000000003'].r
-    t2 = ncs_obj.ncs_transform['0000000003'].t
-    (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
-    assert the_same
-    (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
-    assert the_same
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+    assert approx_equal(r1_expected, nrgl[0].copies[0].r, eps=0.001)
+    assert approx_equal(t1_expected, nrgl[0].copies[0].t, eps=0.1)
+    assert approx_equal(r2_expected, nrgl[0].copies[1].r, eps=0.001)
+    assert approx_equal(t2_expected, nrgl[0].copies[1].t, eps=0.1)
     if method == 0:
-      assert ncs_obj.number_of_ncs_groups == 1
+      assert nrgl.get_n_groups() == 1
     elif method == 1:
-      assert ncs_obj.number_of_ncs_groups == 2
+      assert nrgl.get_n_groups() == 2
 
 def exercise_08():
   """

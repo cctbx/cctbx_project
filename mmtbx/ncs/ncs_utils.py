@@ -36,23 +36,6 @@ def flip_atoms_in_ncs_groups(hierarchy, ncs_restraints_group_list, mon_lib_srv=N
           if should_be_flipped(r_m, r_c):
             flip_residue(r_c, mon_lib_srv)
 
-def update_transforms(transforms_obj,rm,tv):
-  """
-  XXX
-  XXX Consider removing it. Only used in
-  XXX mmtbx/regression/ncs/tst_minimization_ncs_constraints_real_space.py
-  XXX Warning: transforms_obj here is iotbx.ncs.input() class
-  XXX
-
-  Update transforms_obj with the rotation matrices (rm) and translation
-  vectors (tv) """
-  assert len(transforms_obj.transform_order) == len(rm)
-  assert len(rm) == len(tv)
-  for tr,r,t in zip(transforms_obj.transform_order,rm,tv):
-    transforms_obj.ncs_transform[tr].r = r
-    transforms_obj.ncs_transform[tr].t = t
-  return transforms_obj
-
 def rotation_to_angles(rotation, deg=False):
   """
   Get the rotation angles around the axis x,y,z for rotation r

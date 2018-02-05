@@ -1363,16 +1363,6 @@ def exercise_03():
   assert approx_equal(sel_copy_2.iselection(), ng.copies[1].iselection)
   assert approx_equal(sel_copy_3.iselection(), ng.copies[2].iselection)
 
-def exercise_04():
-  """
-  Testing one ncs group and master ncs with two chains of different length
-  and chains are not in order
-  """
-  ncs_inp = ncs.input(pdb_string=pdb_str_6)
-  t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ['chain A or chain B']
-  assert t.values() == [['chain C or chain D', 'chain E or chain F']]
-
 def exercise_05():
   """
   Make sure that phil selection overrides ncs grouping
@@ -1393,9 +1383,10 @@ ncs_group {
   ncs_inp = ncs.input(
     hierarchy=pdb_inp.construct_hierarchy(),
     ncs_phil_groups=phil_groups.ncs_group)
-  expected = {'chain A': ['chain C'], 'chain B': ['chain D']}
-  assert ncs_inp.ncs_to_asu_selection.keys(), expected.keys()
-  assert ncs_inp.ncs_to_asu_selection.values(), expected.values()
+  nrgl = ncs_inp.get_ncs_restraints_group_list()
+  # print nrgl.get_array_of_str_selections()
+  assert nrgl.get_array_of_str_selections() == \
+      [["chain 'A'", "chain 'C'"], ["chain 'B'", "chain 'D'"]]
 
 def exercise_06():
   """
@@ -1404,12 +1395,10 @@ def exercise_06():
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_7)
   ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
-  t = ncs_inp.ncs_to_asu_selection
-  # assert t.keys() == ['chain D', 'chain A'], t.keys()
-  assert t.keys() == ["chain 'A'", "chain 'D'"], t.keys()
-  assert t.values() == [["chain 'B'", "chain 'C'"], ["chain 'E'"]], t.values()
-  assert ncs_inp.ncs_group_map[1][0] == {"chain 'A'"}, ncs_inp.ncs_group_map[1][0]
-  assert ncs_inp.ncs_group_map[2][0] == {"chain 'D'"}, ncs_inp.ncs_group_map[2][0]
+  nrgl = ncs_inp.get_ncs_restraints_group_list()
+  # print nrgl.get_array_of_str_selections()
+  assert nrgl.get_array_of_str_selections() == \
+      [["chain 'A'", "chain 'B'", "chain 'C'"], ["chain 'D'", "chain 'E'"]]
 
 def exercise_07():
   """
@@ -1418,24 +1407,11 @@ def exercise_07():
   """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
   ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
-  t = ncs_inp.ncs_to_asu_selection
-  assert t.keys() == ["chain 'A'"], t.keys()
-  assert t.values() == \
-      [["chain 'B'", "chain 'C'", "chain 'D'", "chain 'E'", "chain 'F'",
-        "chain 'G'", "chain 'H'", "chain 'I'"]], t.values()
-
-def exercise_08():
-  """
-  Test that minimal number of transformations in master ncs are selected
-  (not the minimal number of chains)
-  """
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_8)
-  ncs_inp = ncs.input(hierarchy=pdb_inp.construct_hierarchy())
-  t = ncs_inp.ncs_to_asu_selection
-  assert t.keys()==['chain A or chain B or chain C']
-  assert t.values()==\
-    [['chain D or chain E or chain F',
-      'chain G or chain H or chain I']]
+  nrgl = ncs_inp.get_ncs_restraints_group_list()
+  # print nrgl.get_array_of_str_selections()
+  assert nrgl.get_array_of_str_selections() == \
+      [["chain 'A'", "chain 'B'", "chain 'C'", "chain 'D'", "chain 'E'",
+        "chain 'F'", "chain 'G'", "chain 'H'", "chain 'I'"]]
 
 def exercise_09():
   """
@@ -1783,11 +1759,9 @@ if (__name__ == "__main__"):
   exercise_00(debug=debug)
   exercise_01(debug=debug)
   exercise_03()
-  # # exercise_04() # not grouping chains anymore
   exercise_05()
   exercise_06()
   exercise_07()
-  # exercise_08() # not grouping chains anymore
   exercise_09()
   exercise_10()
   exercise_11()

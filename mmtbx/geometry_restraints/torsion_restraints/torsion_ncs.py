@@ -105,8 +105,8 @@ class torsion_ncs(object):
     self.filter_phi_psi_outliers = params.filter_phi_psi_outliers
     self.restrain_to_master_chain = params.restrain_to_master_chain
     self.fmodel = fmodel
-    self.ncs_groups_selection_string_list = self.ncs_obj.get_array_of_selections()
     self.ncs_restraints_group_list = self.ncs_obj.get_ncs_restraints_group_list()
+    self.ncs_groups_selection_string_list = self.ncs_restraints_group_list.get_array_of_str_selections()
     self.log = log
     self.params = params
     self.dp_ncs = None

@@ -7,8 +7,6 @@ import iotbx.ncs
 import iotbx.pdb
 import sys
 from libtbx import easy_run
-from libtbx.test_utils import approx_equal
-
 
 pdb_string1 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -57,7 +55,6 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
       pdb_interpretation_params = pdb_int_params,
       build_grm = True)
   ncs_obj = iotbx.ncs.input(hierarchy=model.get_hierarchy())
-  original_ncs_transform = ncs_obj.ncs_transform
   ncs_restraints_group_list = ncs_obj.get_ncs_restraints_group_list()
   ncs_obj.show(format='phil')
   grm = model.get_restraints_manager()
@@ -88,11 +85,9 @@ def tst_1(prefix="gm_ncs_constr_tst1"):
   refined_pdb_h.adopt_xray_structure(tmp_xrs)
   refined_pdb_h.write_pdb_file("refined_%d.pdb" % cycle)
   new_ncs_obj = iotbx.ncs.input(hierarchy=refined_pdb_h)
-  new_ncs_transform = new_ncs_obj.ncs_transform
   spec =  new_ncs_obj.get_ncs_info_as_spec()
-  for k, v in original_ncs_transform.iteritems():
-    assert approx_equal(v.r.elems, new_ncs_transform[k].r.elems)
-    assert approx_equal(v.t, new_ncs_transform[k].t)
+  new_nrgl = new_ncs_obj.get_ncs_restraints_group_list()
+  assert ncs_restraints_group_list == new_nrgl
   overall_rmsd_after = spec.overall_rmsd()
   assert overall_rmsd_after < 1e-6
 

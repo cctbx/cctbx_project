@@ -12,6 +12,7 @@ import os
 from iotbx.ncs import ncs_group_master_phil
 import mmtbx.ncs.ncs
 import mmtbx.model
+from libtbx.test_utils import approx_equal
 
 __author__ = 'Youval'
 
@@ -50,21 +51,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     trans_obj = iotbx.ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
         hierarchy=pdb_inp.construct_hierarchy(),
-        exclude_selection=None)
-
-    expected = {"chain 'A'": ["chain 'D'", "chain 'G'"],
-                "chain 'B' or chain 'C'": ["chain 'E' or chain 'F'",
-                                       "chain 'H' or chain 'I'"]}
-    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
-    # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    #
-    self.assertEqual(len(group_ids),6)
-    self.assertEqual(set(group_ids),{1,2})
-    self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'0000000005','0000000004','0000000006','0000000001','0000000003','0000000002'})
+        exclude_selection=None,
+        minimum_number_of_atoms_in_copy=0)
+    nrgl = trans_obj.get_ncs_restraints_group_list()
+    # nrgl._show()
+    sels = nrgl.get_array_of_str_selections()
+    assert sels == [["chain 'A'", "chain 'D'", "chain 'G'"],
+        ["chain 'B' or chain 'C'", "chain 'E' or chain 'F'", "chain 'H' or chain 'I'"]]
 
   def test_superpos_pdb(self):
     """  verify creation of transformations using superpose_pdb
@@ -78,40 +71,16 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     trans_obj = ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
         hierarchy=pdb_inp.construct_hierarchy(),
-        exclude_selection=None)
-
-    expected = {"chain 'A'": ["chain 'C'", "chain 'E'"],
-                "chain 'B'": ["chain 'D'", "chain 'F'"]}
-    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
-    # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['0000000004'].r
-    r2 = trans_obj.ncs_transform['0000000002'].r
-    #
-    self.assertEqual(len(group_ids),6)
-    self.assertEqual(set(group_ids),{1,2})
-    self.assertEqual(tran_sn,{1,2,3,4,5,6})
-    self.assertEqual(group_keys,{'0000000005','0000000004','0000000006','0000000001','0000000003','0000000002'})
-    #
-    self.assertTrue(r1.is_r3_identity_matrix())
-    expected_r = matrix.sqr(
-      [0.309017,-0.809017,0.5,0.809017,0.5,0.309017,-0.5,0.309017,0.809017])
-    d = r2 - expected_r
-    d = map(abs,d)
-    self.assertTrue(max(d)<0.01)
-
-    # test that ncs_asu does not contain the identity transforms
-    expected = {"chain 'A'_0000000002", "chain 'A'_0000000003", "chain 'B'_0000000005", "chain 'B'_0000000006"}
-    self.assertEqual(expected,set(trans_obj.ncs_to_asu_map.keys()))
-
-    # test mapping of the different selection in the NCS
-    self.assertEqual(list(trans_obj.asu_to_ncs_map["chain 'A'"]),[0,1])
-    self.assertEqual(list(trans_obj.asu_to_ncs_map["chain 'B'"]),[2])
-
-    # test that transform_chain_assignment contains all transforms
-    self.assertEqual(expected,set(trans_obj.transform_chain_assignment))
+        exclude_selection=None,
+        minimum_number_of_atoms_in_copy=0)
+    nrgl = trans_obj.get_ncs_restraints_group_list()
+    # nrgl._show()
+    sels = nrgl.get_array_of_str_selections()
+    assert sels == [["chain 'A'", "chain 'C'", "chain 'E'"],
+        ["chain 'B'", "chain 'D'", "chain 'F'"]]
+    self.assertTrue(approx_equal(nrgl[0].copies[0].r,
+        matrix.sqr(
+      [0.309017,-0.809017,0.5,0.809017,0.5,0.309017,-0.5,0.309017,0.809017]), eps=0.01))
 
   def test_spec_reading(self):
     """ verify creating and processing spec
@@ -141,35 +110,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     # print sys._getframe().f_code.co_name
     # reading and processing the spec file
     trans_obj = ncs.input(hierarchy = self.pdb_inp.construct_hierarchy())
-
-    # test created object
-    self.assertEqual(len(trans_obj.transform_chain_assignment),3)
-    # check that static parts are included in NCS and ASU
-    #
-    expected = {
-      "chain 'A'": ["chain 'B'", "chain 'C'"],
-      "chain 'D'": ["chain 'E'"]}
-    self.assertEqual(trans_obj.ncs_to_asu_selection,expected)
-
-    # check ncs_transform
-    group_ids = [x.ncs_group_id for x in trans_obj.ncs_transform.itervalues()]
-    tran_sn = {x.serial_num for x in trans_obj.ncs_transform.itervalues()}
-    group_keys = {x for x in trans_obj.ncs_transform.iterkeys()}
-    r1 = trans_obj.ncs_transform['0000000004'].r
-    r2 = trans_obj.ncs_transform['0000000002'].r
-    #
-    self.assertEqual(len(group_ids),5)
-    self.assertEqual(set(group_ids),{0,1})
-    self.assertEqual(tran_sn,{1,2,3,4,5})
-    self.assertEqual(group_keys,{'0000000001', '0000000002', '0000000003', '0000000004', '0000000005'})
-    #
-    self.assertTrue(r1.is_r3_identity_matrix())
-    expected_r = matrix.sqr(
-      [0.4966,0.8679,-0.0102,-0.6436,0.3761,0.6666,0.5824,-0.3245,0.7453])
-    # the transformation in the spec files are from the copy to the master
-    d = r2 - expected_r.transpose()
-    d = map(abs,d)
-    self.assertTrue(max(d)<0.01)
+    nrgl = trans_obj.get_ncs_restraints_group_list()
+    # nrgl._show()
+    sels = nrgl.get_array_of_str_selections()
+    assert sels == [["chain 'A'", "chain 'B'", "chain 'C'"],
+        ["chain 'D'", "chain 'E'"]]
 
   def test_print_ncs_phil_param(self):
     """ Verify correct printout of NCS phil parameters.
@@ -199,13 +144,14 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     ncs_inp = ncs.input(
       hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
       chain_similarity_threshold=0.2)
-    t = ncs_inp.ncs_to_asu_selection
-    exp_t1 = {
-      "(chain 'A' and (name N or name CA or name C or name O ))":
-        ["chain 'B'",
-         "(chain 'C' and (name N or name CA or name C or name O ))"]}
-    self.assertEqual(t,exp_t1)
-    #
+    nrgl = ncs_inp.get_ncs_restraints_group_list()
+    # nrgl._show()
+    sels = nrgl.get_array_of_str_selections()
+    print sels
+    assert sels == [[
+        "(chain 'A' and (name N or name CA or name C or name O ))",
+        "chain 'B'",
+        "(chain 'C' and (name N or name CA or name C or name O ))"]]
 
   def test_format_string_longer_than_80(self):
     """ Check that strings longer that 80 characters are split correctly """
@@ -536,7 +482,7 @@ def run_selected_tests():
   2) Comment out unittest.main()
   3) Un-comment unittest.TextTestRunner().run(run_selected_tests())
   """
-  tests = ['test_print_ncs_phil_param']
+  tests = ['test_finding_partial_ncs']
   suite = unittest.TestSuite(map(TestNcsGroupPreprocessing,tests))
   return suite
 
