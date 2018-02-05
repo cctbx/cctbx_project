@@ -107,6 +107,14 @@ nanoBragg::nanoBragg(
 
     //adc_offset = detector[0].ADC_OFFSET;
 
+    /* SPINDLE properties */
+
+    /* By default align the rotation axis with the detector fast direction */
+    spindle_vector[1] = fdet_vector[1];
+    spindle_vector[2] = fdet_vector[2];
+    spindle_vector[3] = fdet_vector[3];
+    unitize(spindle_vector,spindle_vector);
+
     /* NOT IMPLEMENTED: read in any other stuff?  */
     show_params();
 
