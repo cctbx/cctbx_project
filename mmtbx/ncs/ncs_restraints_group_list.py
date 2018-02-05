@@ -23,7 +23,11 @@ class NCS_copy():
     self.t = tran
 
   def deep_copy(self):
-    res = NCS_copy(self.iselection.deep_copy(), self.r, self.t, self.str_selection)
+    res = NCS_copy(
+        self.iselection.deep_copy(),
+        matrix.sqr(self.r),
+        matrix.col(self.t),
+        self.str_selection)
     return res
 
   def select(self, selection):
@@ -78,6 +82,8 @@ class NCS_restraint_group(object):
     #
     # Note, that I don't recalculate rotation/translation matrices!
     #
+    # Looks like there's no tests for this functionality
+    #
     from mmtbx.ncs.ncs_search import get_bool_selection_to_keep
     if len(hierarchy.select(self.master_iselection).only_model().chains()) == 1:
       return [self.deep_copy()]
@@ -94,8 +100,8 @@ class NCS_restraint_group(object):
       for old_copy in self.copies:
         new_copy = NCS_copy(
             copy_iselection=old_copy.iselection.select(to_keep),
-            rot=old_copy.r.deep_copy(),
-            tran=old_copy.t.deep_copy(),
+            rot=matrix.sqr(old_copy.r),
+            tran=matrix.col(old_copy.t),
             str_selection=None)
         new_group.append_copy(new_copy)
       result.append(new_group)
@@ -401,6 +407,8 @@ class class_ncs_restraints_group_list(list):
       for c in group.copies:
         print "Copy str selection:", c.str_selection
         print list(c.iselection)
+        print "rot", list(c.r)
+        print "tran", list(c.t)
       print "="*30
     print "end debugging output of ncs_restraints_group_list"
 

@@ -1048,7 +1048,7 @@ class input(object):
         chain_id_list.append(chain_id)
         residue_range_list.append(ranges)
         residues_count.append(count)
-        t,r,rmsd = ncs_search.my_get_rot_trans(
+        _,_,rmsd = ncs_search.my_get_rot_trans(
             self.hierarchy,
             group.master_iselection,
             c.iselection)
@@ -1575,9 +1575,16 @@ def format_80(s):
   return ss
 
 def inverse_transform(r,t):
-  rr = r.transpose()
-  tt = - r*t
-  return rr,tt
+  #
+  # XXX. Have no idea why proper function (without changing input vars)
+  # lead to Tom's ncs.deep_copy not function properly...
+  #
+  r = r.transpose()
+  t = - r*t
+  return r,t
+  # rr = r.transpose()
+  # tt = - r*t
+  # return rr,tt
 
 def get_list_of_chains_selection(selection_str):
   """
