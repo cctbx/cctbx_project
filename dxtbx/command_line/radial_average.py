@@ -183,8 +183,12 @@ def run (args, image = None):
         results = flex.double(median_filter(results.as_numpy_array(), size = params.median_filter_size))
 
       # calculate standard devations
-      std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
-                  if counts[i] > 0 else 0 for i in xrange(len(sums))]
+      stddev_sel = ((sums_sq-sums*results) >= 0) & (counts > 0)
+      std_devs = flex.double(len(sums), 0)
+      std_devs.set_selected(stddev_sel,
+                           (sums_sq.select(stddev_sel)-sums.select(stddev_sel)* \
+                            results.select(stddev_sel))/counts.select(stddev_sel).as_double())
+      std_devs = flex.sqrt(std_devs)
 
       twotheta = flex.double(xrange(len(results)))*extent_two_theta/params.n_bins
       q_vals = 4*math.pi*flex.sin(math.pi*twotheta/360)/beam.get_wavelength()
