@@ -172,6 +172,15 @@ Tour
 
 Tour of the :ref:`cctbx <tour>`.
 
+Tutorials
+=========
+
+* `Free-electron laser data processing (cctbx.xfel) <http://cci.lbl.gov/xfel>`_
+* `IUCr 2008 (Software Fayre) (rigid_body_refinement_core.py) <http://cctbx.sourceforge.net/iucr2008/rigid_body_refinement_core.html>`_
+* `SBGrid 2008 (Quo Vadis) (iotbx.pdb) <http://cctbx.sourceforge.net/sbgrid2008/tutorial.html>`_
+* `Siena 2005 IUCr Crystallographic Computing School <http://cctbx.sourceforge.net/siena2005/>`_
+* `scitbx/rigid_body/essence subset <http://cctbx.sourceforge.net/scitbx_rigid_body_essence/>`_
+
 Installation
 ============
 
