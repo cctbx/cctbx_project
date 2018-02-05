@@ -261,6 +261,7 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
+      DXTBX_ASSERT(batch_offset_ == rhs.batch_offset_);
       // sometimes ticking through 0 the first difference is not helpful
       double diff_2pi = std::abs(mod_2pi(get_oscillation_range()[1]) -
                                  mod_2pi(rhs.get_oscillation_range()[0]));

@@ -77,6 +77,13 @@ def tst_scan_360_append():
   assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
   assert(scan.get_image_range() == (1, 720))
   assert(scan.get_batch_range() == (1, 720))
+
+  from libtbx.test_utils import Exception_expected
+  scan2.set_batch_offset(10)
+  try: scan = scan1 + scan2
+  except Exception: pass
+  else: raise Exception_expected
+
   print 'OK'
 
 def tst_swap():
