@@ -9,13 +9,13 @@ libtbx.phil - Python-based hierarchical interchange language
 **Links**
 
 The primary home of this document is:
-  http://cctbx.sourceforge.net/libtbx_phil.html
+  https://cctbx.github.io/libtbx/libtbx.phil.html
 
 The source code examples below are available as one file here:
-  http://cctbx.sourceforge.net/libtbx_phil_examples.py
+  https://github.com/cctbx/cctbx_project/blob/master/iotbx/examples/libtbx_phil_examples.py
 
 ``libtbx.phil`` is part of the cctbx open source libraries:
-  http://cctbx.sourceforge.net/
+  https://github.com/cctbx/cctbx_project
 
 ===============
  Phil overview
@@ -1426,7 +1426,7 @@ API documentation for PHIL definition
 .. autoclass:: libtbx.phil.scope
 
 ================================
-API documentation for PHIL scope 
+API documentation for PHIL scope
 ================================
 
 .. autoclass:: libtbx.phil.scope
