@@ -7,6 +7,7 @@ from string import ascii_letters as letters
 import iotbx.pdb
 
 from mmtbx.conformation_dependent_library.cdl_database import cdl_database
+from mmtbx.conformation_dependent_library.cdl_svl_database import cdl_svl_database
 import mmtbx.conformation_dependent_library.cdl_utils
 
 from mmtbx.conformation_dependent_library.multi_residue_class import \
@@ -90,9 +91,16 @@ def get_restraint_values(threes, interpolate=False):
       r = utils.interpolate_2d(grid, index)
       restraint_values.append(r)
   else:
-    key = threes.get_cdl_key()
-    if key is None: return None
-    restraint_values = cdl_database[res_type_group][key]
+    if threes.cis_group():
+      key = '%s/%s' % (['trans', 'cis'][threes.cis_group()],
+                       ['trans', 'cis'][threes.cis_group(omega_cdl=True)])
+      assert cdl_svl_database.get(key, None)
+      current = cdl_svl_database[key]
+      restraint_values = current[res_type_group]
+    else:
+      key = threes.get_cdl_key()
+      if key is None: return None
+      restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 
 def generate_residue_tuples(hierarchy,
@@ -306,7 +314,8 @@ def update_restraints(hierarchy,
                       current_geometry=None, # xray_structure!!
                       sites_cart=None,
                       cdl_proxies=None,
-                      use_cis_127=False,
+                      use_cis_127=False, # use EH99 for cis-PRO
+                      cdl_cis_svl=False, # use CDL-SVL for cis-peptides
                       ideal=True,
                       esd=True,
                       esd_factor=1.,
@@ -338,6 +347,8 @@ def update_restraints(hierarchy,
     if threes.cis_group():
       if use_cis_127:
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
+      elif cdl_cis_svl:
+        assert 0
       else:
         continue
     else:
@@ -356,7 +367,6 @@ def update_restraints(hierarchy,
                          esd_factor=esd_factor,
                          )
   if registry.n: threes.apply_average_updates(registry)
-#  restraints_manager.geometry.reset_internals()
   geometry.reset_internals()
   if verbose and threes and threes.errors:
     if log:
