@@ -216,6 +216,9 @@ Contact
 
 `cctbx@cci.lbl.gov <mailto:cctbx@cci.lbl.gov>`_
 
+There is also a mailing list (cctbxbb) where developers can answer questions from
+the community. To join/manage your subscription, please visit http://www.phenix-online.org/mailman/listinfo/cctbxbb.
+
 
 .. _Boost: http://www.boost.org/
 
