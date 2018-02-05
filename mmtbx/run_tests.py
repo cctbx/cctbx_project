@@ -170,6 +170,7 @@ general_tests = [
   "$D/conformation_dependent_library/tst_rdl.py",
   "$D/conformation_dependent_library/tst_hpdl.py",
   "$D/conformation_dependent_library/tst_cis_c_n_ca.py",
+  "$D/conformation_dependent_library/cdl_svl_database.py",
   "$D/conformation_dependent_library/tst_pH_mechanism.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_fix_rotamer_outliers.py",
