@@ -134,7 +134,7 @@ class sdfac_refinery(object):
 class lbfgs_minimizer(object):
   def __init__(self, current_x=None, parameterization=None, refinery=None,
                ISIGI = None, indices = None, bins = None, out=None,
-               min_iterations=0, max_calls=1000, max_drop_eps=1.e-5):
+               min_iterations=0, max_calls=1000, max_drop_eps=1.e-10):
     adopt_init_args(self, locals())
     self.n = current_x.size()
     self.x = current_x
