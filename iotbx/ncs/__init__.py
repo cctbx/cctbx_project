@@ -7,9 +7,8 @@ import libtbx.phil
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
 from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
-    NCS_restraint_group, NCS_copy
+    NCS_restraint_group
 from scitbx import matrix
-import re
 import sys
 from iotbx.pdb.utils import all_chain_ids
 
@@ -169,20 +168,11 @@ class input(object):
       pdb_h = self.truncated_hierarchy,
       ncs_phil_groups   = ncs_phil_groups,
       asc = self.truncated_h_asc)
-    if validated_ncs_phil_groups:
-      self.build_ncs_obj_from_phil(
-        ncs_phil_groups=validated_ncs_phil_groups,
-        pdb_h = self.truncated_hierarchy,
-        asc = self.truncated_h_asc)
-    elif (self.truncated_hierarchy
-        and validated_ncs_phil_groups is None):
+    if validated_ncs_phil_groups is None:
       # print "Last chance, building from hierarchy"
       self.build_ncs_obj_from_pdb_asu(
           pdb_h=self.truncated_hierarchy,
           asc=self.truncated_h_asc)
-    else:
-      pass
-      # raise Sorry('Please provide one of the supported input')
 
     # error handling
     if self.ncs_restraints_group_list.get_n_groups() == 0:
@@ -218,6 +208,7 @@ class input(object):
     procedure. This is sub-optimal and should be changed because
     everything is already processed here and ready to build proper
     NCS_restraint_group object.
+    add filtered groups in self.ncs_restraints_group_list
     """
     def show_particular_ncs_group(ncs_gr):
       p_obj = ncs_group_master_phil.extract()
@@ -327,13 +318,6 @@ class input(object):
         combined_h.only_model().append_chain(sel_chain)
         cur_ch_id_n += 1
 
-      # save old i_seqs in tmp
-      # for chain in combined_h.only_model().chains():
-      #   for rg in chain.residue_groups():
-      #     for ag in rg.atom_groups():
-      #       for atom in ag.atoms():
-      #         atom.tmp = atom.i_seq
-      #         print "  atom.tmp", atom.tmp
       combined_h.reset_atom_i_seqs()
       # combined_h.write_pdb_file("combined_in_validation.pdb")
       # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
@@ -366,13 +350,8 @@ class input(object):
       # User triggered the fail of this assert!
       selections_were_modified = False
       #
-      # ncs_gr here is ncs_search.NCS_groups_container
-      # .iselections = [master isel, c1 isel, c2 isel, ...]
-      # .residue_index_list - not used
-      # .copies - ??, not used
-      # .transforms = [], instances of ncs_search.Transform
-      #
       for ncs_gr in nrgl_fake_iseqs:
+        new_gr = ncs_gr.deep_copy()
         new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
         for i, isel in enumerate(ncs_gr.get_iselections_list()):
           m_all_isel = isel.deep_copy()
@@ -389,9 +368,14 @@ class input(object):
               atom_selection_cache=asc)
           # print "all_m_select_str", all_m_select_str
           if i == 0:
+            new_gr.master_iselection = original_m_all_isel
+            new_gr.master_str_selection = all_m_select_str
             new_ncs_group.reference=all_m_select_str
           else:
+            new_gr.copies[i-1].iselection = original_m_all_isel
+            new_gr.copies[i-1].str_selection = all_m_select_str
             new_ncs_group.selection.append(all_m_select_str)
+        self.ncs_restraints_group_list.append(new_gr)
         new_ncs_group.selection = new_ncs_group.selection[1:]
         validated_ncs_groups.append(new_ncs_group)
       # Finally, we may check the number of atoms in selections that will
@@ -413,62 +397,8 @@ class input(object):
     # for ncs_gr in validated_ncs_groups:
     #   print "  reference:", ncs_gr.reference
     #   print "  selection:", ncs_gr.selection
-    return validated_ncs_groups
-
-  def build_ncs_obj_from_phil(self,
-                              ncs_phil_groups,
-                              pdb_h,
-                              asc=None):
-    """
-    XXX Here we are getting perfect phil definition (after validate_ncs_phil_groups)
-    XXX No any other checks needed. It would be better to make everything
-    XXX ready in validate, because we have all selections there.
-    XXX
-    Build transforms objects and NCS <-> ASU mapping using phil selection
-    strings and complete ASU
-
-    Args:
-      ncs_phil_string : Phil parameters
-      ncs_phil_groups :
-      pdb_h : iotbx.pdb.hierarchy
-      asc : atom_selection_cache for hierarchy
-
-    Phil structure
-    ncs_group (multiple)
-    {
-      reference = ''
-      selection = ''   (multiple)
-    }
-    """
-    assert ncs_phil_groups is not None
-    if asc is None and pdb_h is not None:
-      asc = pdb_h.atom_selection_cache()
-    # populate ncs selection and ncs to copies location
-    self.ncs_restraints_group_list = class_ncs_restraints_group_list()
-    for group in ncs_phil_groups:
-      gns = group.reference
-      gns_isel = asc.iselection(gns)
-      g = NCS_restraint_group(
-          master_iselection=gns_isel,
-          str_selection=gns)
-      for asu_select in group.selection:
-        copy_iselection = asc.iselection(asu_select)
-        r, t, rmsd = ncs_search.my_get_rot_trans(
-          ph=pdb_h,
-          master_selection=gns_isel,
-          copy_selection=copy_iselection)
-        c = NCS_copy(
-            copy_iselection=copy_iselection,
-            rot=r,
-            tran=t,
-            str_selection=asu_select,
-            rmsd=rmsd)
-        g.append_copy(c)
-        if r.is_zero():
-          msg = 'Master NCS and Copy are very poorly related, check selection.'
-          self.messages += msg + '\n'
-      self.ncs_restraints_group_list.append(g)
     self.finalize_nrgl()
+    return validated_ncs_groups
 
   def finalize_nrgl(self):
     self.ncs_restraints_group_list = self.ncs_restraints_group_list.\
@@ -512,8 +442,7 @@ class input(object):
       self.finalize_nrgl()
 
   def get_ncs_restraints_group_list(self):
-    if self.ncs_restraints_group_list is not None:
-      return self.ncs_restraints_group_list
+    return self.ncs_restraints_group_list
 
   def get_ncs_info_as_spec(
           self,
@@ -691,12 +620,6 @@ class input(object):
       print >> log, out_str
       spec_obj = self.get_ncs_info_as_spec(write=False)
       out_str += spec_obj.display_all(log=log)
-    elif format.lower() == 'summary':
-      out_str = [self.show_chains_info(prefix)]
-      out_str.append(self.show_ncs_headers(prefix))
-      out_str.append(self.show_transform_info(prefix))
-      out_str = '\n'.join(out_str)
-      print >> log, out_str
     return out_str
 
   def show_phil_format(self,prefix='',header=True,group_prefix=''):
@@ -822,35 +745,10 @@ class input(object):
     str_out = '\n'.join(str_out)
     return str_out
 
-  def show_ncs_headers(self,prefix):
-    """
-    Returns a string of general info about NCS groups
-
-    Args:
-     prefix (str): a string to be added, padding the output, at the left of
-       each line
-    """
-    str_out = ['\n{}NCS summary:'.format(prefix),'-'*51]
-    str_line = prefix + '{:<25s}:   {}'
-    s = str_line.format('Number of NCS groups', self.ncs_restraints_group_list.get_n_groups())
-    str_out.append(s)
-    for i, gr in self.ncs_restraints_group_list:
-      str_out.append(str_line.format('Group #', i))
-      str_out.append(str_line.format('Number of copies', gr.get_number_of_copies()))
-      sel_strings = self.get_array_of_selections()
-      cim = ', '.join(chains_in_string(sel_strings[0]))
-      cic = ', '.join(chains_in_string(sel_strings[1:]))
-      str_out.append(str_line.format('Chains in master',cim))
-      str_out.append(str_line.format('Chains in copies',cic))
-    str_out.append('. '*26)
-    str_out = '\n'.join(str_out)
-    return str_out
-
   def __repr__(self,prefix=''):
     """ print NCS object info, padded with "prefix" on the left """
     str_out = [self.show_search_parameters_values(prefix)]
     str_out.append(self.show_chains_info(prefix))
-    str_out.append(self.show_ncs_headers(prefix))
     # print transforms
     str_out = '\n'.join(str_out)
     return str_out
@@ -887,24 +785,6 @@ def get_chain_and_ranges(hierarchy):
   ranges.append([first_id, last_id])
   return c_id, ranges, len(c.residue_groups())
 
-def chains_in_string(s):
-  """
-  Returns a string of chain IDs from a selection string or a selection
-  string list
-
-  >>> chains_in_string('chain D or (chain F and (resseq 2:10))')
-  ['D', 'F']
-
-  >>> chains_in_string(['chain D','(chain F and (resseq 2:10))'])
-  ['D', 'F']
-  """
-  if isinstance(s,set): s = list(s)
-  if isinstance(s,list): s = ' '.join(s)
-  chain_list = get_list_of_chains_selection(s)
-  chain_set = {x.split()[1] for x in chain_list}
-  chain_set = [x.strip() for x in chain_set]
-  return sorted(chain_set)
-
 def format_80(s):
   """
   Split string that is longer than 80 characters to several lines
@@ -937,32 +817,6 @@ def inverse_transform(r,t):
   # tt = - r*t
   # return rr,tt
 
-def get_list_of_chains_selection(selection_str):
-  """
-  Args:
-    selection_str: (str) selection string
-
-  Returns:
-    (list of str) of the format ['chain X', 'chain Y',...]
-  """
-  # selection_str = "chain ' '"
-  sstr = selection_str.replace(')',' ')
-  sstr = sstr.replace('CHAIN','chain')
-  sstr = sstr.replace('Chain','chain') + ' '
-  pos_list = [x.end() for x in re.finditer('chain ',sstr)]
-  ch_id_list = []
-  # sstr[i:sstr.find(' ',i)]
-  for i in pos_list:
-    new_el = None
-    if sstr.find("'",i+1) > 0:
-      new_el = sstr[i:sstr.find("'",i+1)+1]
-    else:
-      new_el = sstr[i:sstr.find(' ',i)]
-    ch_id_list.append(new_el)
-  # ch_id_list = [sstr[i:sstr.find("'",i+1)+1] for i in pos_list]
-  chain_list = ['chain ' + x for x in ch_id_list]
-  return chain_list
-
 def get_center_orth(xyz,selection):
   """
   Compute the center of coordinates of selected coordinates
@@ -981,7 +835,3 @@ def get_center_orth(xyz,selection):
   except RuntimeError:
     mean = (-100,-100,-100)
   return mean
-
-def is_identity(r,t):
-  """ test if r, rotation matrix is identity, and t, translation is zero """
-  return r.is_r3_identity_matrix() and t.is_col_zero()
