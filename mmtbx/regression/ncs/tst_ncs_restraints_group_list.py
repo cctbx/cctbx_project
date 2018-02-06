@@ -1,11 +1,9 @@
 from __future__ import division
 
-from mmtbx.ncs.ncs_search import is_same_transform
 from scitbx.array_family import flex
 from scitbx import matrix
 import iotbx.ncs as ncs
 import iotbx.pdb
-import math
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 from time import time
@@ -97,54 +95,6 @@ ncs_group {
 }
 '''
 
-# Removed with removal of transform_info, rotations, translations from
-# iotbx.ncs.input constructor
-# class commons(object):
-#   def __init__(self):
-#     # set_test_matrix
-#     self.rot1 = flex.vec3_double([
-#       (-0.317946, -0.173437, 0.932111),
-#       ( 0.760735, -0.633422, 0.141629),
-#       ( 0.565855,  0.754120, 0.333333)])
-#     self.rot2 = flex.vec3_double([
-#       (0       ,  0       , 1),
-#       (0.784042, -0.620708, 0),
-#       (0.620708,  0.784042, 0)])
-#     self.rot3 = flex.vec3_double([
-#       ( 0       ,  0       , -1),
-#       ( 0.097445, -0.995241,  0),
-#       (-0.995241, -0.097445,  0)])
-#     # Angles for rot, in radians
-#     self.rot_angles1 = flex.double(
-#       (-0.4017753, 1.2001985, 2.6422171))
-#     self.rot_angles2 = flex.double(
-#       (-0.4017753, math.pi/2, 2.6422171))
-#     self.rot_angles3 = flex.double(
-#       (-0.4017753, -math.pi/2, 2.6422171))
-#     self.rot_angles1_deg = flex.double(
-#       (-0.4017753, 1.2001985, 2.6422171)) * 180/math.pi
-#     self.rotation1 = matrix.sqr(self.rot1.as_double())
-#     self.rotation2 = matrix.sqr(self.rot2.as_double())
-#     self.rotation3 = matrix.sqr(self.rot3.as_double())
-#     self.translation1 = matrix.rec((0.5,-0.5,0),(3,1))
-#     self.translation2 = matrix.rec((0,0,0),(3,1))
-#     self.translation3 = matrix.rec((0,1,2),(3,1))
-#     self.r_t = [[self.rotation1, self.translation1],
-#                 [self.rotation2, self.translation2],
-#                 [self.rotation3, self.translation3]]
-
-#     self.pdb_inp = iotbx.pdb.input(source_info=None, lines=test_pdb_str)
-#     self.tr_obj1 = ncs.input(
-#       hierarchy=self.pdb_inp.construct_hierarchy(),
-#       rotations=[self.rotation1,self.rotation2],
-#       translations=[self.translation1,self.translation2])
-#     self.tr_obj2 = ncs.input(
-#       hierarchy=self.pdb_inp.construct_hierarchy(),
-#       rotations=[self.rotation1,self.rotation2,self.rotation3],
-#       translations=[self.translation1,self.translation2,self.translation3])
-#     self.ncs_restraints_group_list = \
-#       self.tr_obj1.get_ncs_restraints_group_list()
-
 def test_transform_update():
   """ Test update of rotation and translation using selection """
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer_0)
@@ -169,8 +119,10 @@ def test_transform_update():
   r2_n = nrgl[0].copies[1].r
   t2_n = nrgl[0].copies[1].t
   #
-  assert is_same_transform(r1,t1,r1_n,t1_n)
-  assert is_same_transform(r2,t2,r2_n,t2_n)
+  assert approx_equal(r1, r1_n, eps=0.001)
+  assert approx_equal(t1, t1_n, eps=0.1)
+  assert approx_equal(r2, r2_n, eps=0.001)
+  assert approx_equal(t2, t2_n, eps=0.1)
 
 def test_check_for_max_rmsd():
   """ Test that ncs_restraints_group_list test is working properly """

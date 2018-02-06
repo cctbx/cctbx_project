@@ -7,7 +7,6 @@ from scitbx import matrix
 import iotbx.ncs as ncs
 import iotbx.pdb
 import unittest
-import string
 import math
 
 __author__ = 'Youval'
@@ -211,18 +210,6 @@ class Test_ncs_utils(unittest.TestCase):
       xray_structure = xrs_poor,
       map_data       = map_data,
       d_min          = d_min)
-
-  def test_make_unique_chain_names(self):
-    """ Test that new chain names are produced properly """
-    # check single letter names
-    unique_chain_names = {'A','B','AA','+'}
-    new_names = nu.make_unique_chain_names(unique_chain_names,3)
-    self.assertEqual(new_names,['C', 'D', 'E'])
-    # Test double letter names
-    unique_chain_names = set(string.ascii_uppercase)
-    unique_chain_names.update(set(string.ascii_lowercase))
-    new_names = nu.make_unique_chain_names(unique_chain_names,5)
-    self.assertEqual(new_names,['AA', 'AB', 'AC', 'BA', 'BB'])
 
 def run_selected_tests():
   """  Run selected tests

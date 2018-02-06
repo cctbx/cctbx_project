@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.ncs
-from mmtbx.ncs.ncs_search import is_same_transform
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 import iotbx.ncs as ncs
@@ -268,10 +267,10 @@ def exercise_06():
     r2 = rec.r[2]
     t1 = rec.t[1]
     t2 = rec.t[2]
-    (the_same, transpose) = is_same_transform(r1,t1,r1_expected,t1_expected)
-    assert the_same
-    (the_same, transpose)= is_same_transform(r2,t2,r2_expected,t2_expected)
-    assert the_same
+    assert approx_equal(r1, r1_expected, eps=0.001)
+    assert approx_equal(t1, t1_expected, eps=0.1)
+    assert approx_equal(r2, r2_expected, eps=0.001)
+    assert approx_equal(t2, t2_expected, eps=0.1)
     # Look at the rotation and translation found by the NCS search
     s = h.as_pdb_string(crystal_symmetry=crystal_symmetry)
     ncs_obj = ncs.input(hierarchy=pdb.input(

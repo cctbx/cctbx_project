@@ -477,7 +477,7 @@ def get_copy_master_selections_from_match_dict(
 
 
 def make_flips_if_necessary_torsion(const_h, flip_h):
-  """ 3 times faster than other procedure."""
+  """ 3 times faster than other (removed) procedure."""
   assert len(flip_h.models()) == 1, len(flip_h.models())
   assert len(const_h.models()) == 1, len(const_h.models())
   # const_h.write_pdb_file(file_name="const.pdb")
@@ -627,15 +627,6 @@ def remove_far_atoms(list_a, list_b,
       pass
       # print "removing poorly matching residue:",i,max_d - min_d
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
-
-
-def get_sequence_from_array(arr):
-  from iotbx.pdb import amino_acid_codes
-  aa_3_as_1 = amino_acid_codes.one_letter_given_three_letter
-  res = ""
-  for r in arr:
-    res += aa_3_as_1.get(r)
-  return res
 
 def search_ncs_relations(ph=None,
                          chains_info = None,
@@ -946,71 +937,6 @@ def get_chains_info(ph, selection_list=None):
       gr = False
   return chains_info
 
-
-def inverse_transform(r,t):
-  """ inverse rotation and translation """
-  r = r.transpose()
-  t = - r*t
-  return r,t
-
-def angle_between_rotations(v1,v2):
-  """ get angle between two vectors"""
-  cos_angle = v1.dot(v2)
-  result = math.acos(min(1,cos_angle))
-  result *= 180/math.pi
-  return result
-
-def get_rotation_vec(r):
-  """ get the eigen vector associated with the eigen value 1"""
-  eigen = eigensystem.real_symmetric(r.as_sym_mat3())
-  eigenvectors = eigen.vectors()
-  eigenvalues = eigen.values()
-  i = list(eigenvalues.round(4)).index(1)
-  return eigenvectors[i:(i+3)]
-
-def is_same_transform(r1,t1,r2,t2):
-  """
-  Check if transform is the same by comparing rotations and the result of
-  applying rotation and translation on
-  a test vector
-
-  Args:
-    r1, r2: Rotation matrices
-    t1, t2: Translation vectors
-
-  Returns:
-    (bool,bool) (is_the_same, is_transpose)
-  """
-  # Allowed deviation for values and angle
-  eps=0.1
-  angle_eps=5.0
-  if (not r1.is_zero()) and (not r2.is_zero()):
-    assert r1.is_r3_rotation_matrix(rms_tolerance=0.001)
-    assert r2.is_r3_rotation_matrix(rms_tolerance=0.001)
-    # test vector
-    xyz = flex.vec3_double([(11,103,523),(-500.0,2.0,10.0),(0.0,523.0,-103.0)])
-    a_ref = (r1.elems * xyz + t1).as_double()
-    rt, tt = inverse_transform(r1,t1)
-    a_ref_transpose = (rt.elems * xyz + tt).as_double()
-    v1 = get_rotation_vec(r1)
-    v2 = get_rotation_vec(r2)
-    a = (r2.elems * xyz + t2).as_double()
-    d = (a_ref-a)
-    d = (d.dot(d))**.5/a.size()
-    dt = (a_ref_transpose-a)
-    dt = (dt.dot(dt))**.5/a.size()
-    ang = angle_between_rotations(v1,v2)
-    d_ang = min(ang, (180 - ang))
-    if (d_ang < angle_eps) and (d < eps):
-      return True, False
-    elif (d_ang < angle_eps) and (dt < eps):
-      return True, True
-    else:
-      return False, False
-  else:
-    return False, False
-
-
 def my_get_rot_trans(
     ph,
     master_selection,
@@ -1048,27 +974,3 @@ def my_get_rot_trans(
     return r,t,rmsd
   else:
     return None, None, None
-
-def get_residue_sequence(ph):
-  """
-  Get a list of residues numbers and names from hierarchy "ph", excluding
-  water molecules
-
-  Args:
-    ph (hierarchy): hierarchy of a single chain
-
-  Returns:
-    res_list_new (list of str): list of residues names
-    resid_list_new (list of str): list of residues number
-  """
-  get_class = iotbx.pdb.common_residue_names_get_class
-
-  res_list_new = []
-  resid_list_new = []
-  for ag in ph.atom_groups():
-    cl = get_class(ag.resname)
-    if cl != "common_water":
-      # Exclude water
-      res_list_new.append(ag.resname)
-      resid_list_new.append(ag.parent().resseq)
-  return res_list_new,resid_list_new
