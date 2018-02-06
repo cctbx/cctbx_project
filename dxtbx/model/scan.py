@@ -38,6 +38,11 @@ scan_phil_scope = libtbx.phil.parse('''
       .type = floats(size=2)
       .help = "Override the image oscillation"
       .short_caption = "Oscillation"
+
+    batch_offset = None
+      .type = int(value_min=0)
+      .help = "Override the batch offset"
+      .short_caption = "Batch offset"
   }
 ''')
 
@@ -86,6 +91,9 @@ class ScanFactory:
       if params.scan.oscillation is not None:
         scan.set_oscillation(params.scan.oscillation)
 
+    if params.scan.batch_offset is not None:
+      scan.set_batch_offset(params.scan.batch_offset)
+
     # Return the model
     return scan
 
@@ -113,11 +121,14 @@ class ScanFactory:
     if not isinstance(d['exposure_time'], list):
       d['exposure_time'] = [d['exposure_time']]
 
+    d.setdefault('batch_offset', 0) # backwards compatibility 20180205
+
     # Create the model from the dictionary
     return Scan.from_dict(d)
 
   @staticmethod
-  def make_scan(image_range, exposure_times, oscillation, epochs, deg=True):
+  def make_scan(image_range, exposure_times, oscillation, epochs,
+                batch_offset=0, deg=True):
     from scitbx.array_family import flex
 
     if not isinstance(exposure_times, list):
@@ -140,6 +151,7 @@ class ScanFactory:
         tuple(map(float, oscillation)),
         flex.double(list(map(float, exposure_times))),
         flex.double(list(map(float, epoch_list))),
+        batch_offset,
         deg)
 
   @staticmethod

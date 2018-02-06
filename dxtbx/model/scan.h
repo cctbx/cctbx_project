@@ -37,7 +37,8 @@ namespace dxtbx { namespace model {
     Scan() :
       image_range_(0, 0),
       oscillation_(0.0, 0.0),
-      num_images_(0) {}
+      num_images_(0),
+      batch_offset_(0) {}
 
     /**
      * Initialise the class
@@ -47,10 +48,12 @@ namespace dxtbx { namespace model {
      *                          image and the oscillation range of each frame
      */
     Scan(vec2 <int> image_range,
-         vec2 <double> oscillation)
+         vec2 <double> oscillation,
+         int batch_offset=0)
       : image_range_(image_range),
         oscillation_(oscillation),
         num_images_(1 + image_range_[1] - image_range_[0]),
+        batch_offset_(batch_offset),
         exposure_times_(num_images_, 0.0),
         epochs_(num_images_, 0.0) {
       DXTBX_ASSERT(num_images_ >= 0);
@@ -59,16 +62,19 @@ namespace dxtbx { namespace model {
     /**
      * Initialise the class
      * @param image_range The range of images covered by the scan
+     * @param batch_offset The batch offset for the scan
      * @param starting_angle The starting rotation angle
      * @param oscillation_range The oscillation range of each frame
      */
     Scan(vec2 <int> image_range,
          vec2 <double> oscillation,
          const scitbx::af::shared<double> &exposure_times,
-         const scitbx::af::shared<double> &epochs)
+         const scitbx::af::shared<double> &epochs,
+         int batch_offset=0)
       : image_range_(image_range),
         oscillation_(oscillation),
         num_images_(1 + image_range_[1] - image_range_[0]),
+        batch_offset_(batch_offset),
         exposure_times_(exposure_times),
         epochs_(epochs) {
       DXTBX_ASSERT(num_images_ >= 0);
@@ -91,6 +97,7 @@ namespace dxtbx { namespace model {
       : image_range_(rhs.image_range_),
         oscillation_(rhs.oscillation_),
         num_images_(rhs.num_images_),
+        batch_offset_(rhs.batch_offset_),
         exposure_times_(scitbx::af::reserve(rhs.exposure_times_.size())),
         epochs_(scitbx::af::reserve(rhs.epochs_.size())) {
       std::copy(rhs.epochs_.begin(), rhs.epochs_.end(),
@@ -105,6 +112,27 @@ namespace dxtbx { namespace model {
     /** Get the image range */
     vec2 <int> get_image_range() const {
       return image_range_;
+    }
+
+    /** Get the batch offset */
+    int get_batch_offset() const {
+      return batch_offset_;
+    }
+
+    /** Get the batch number for a given image index */
+    int get_batch_for_image_index(int index) const {
+      return index + batch_offset_;
+    }
+
+    /** Get the batch number for a given array index */
+    int get_batch_for_array_index(int index) const {
+      return index + batch_offset_ + 1;
+    }
+
+    /** Get the batch range */
+    vec2 <int> get_batch_range() const {
+      return vec2<int>(
+        image_range_[0] + batch_offset_, image_range_[1] + batch_offset_);
     }
 
     /** Get the array range (zero based) */
@@ -139,6 +167,11 @@ namespace dxtbx { namespace model {
       epochs_.resize(num_images_);
       exposure_times_.resize(num_images_);
       DXTBX_ASSERT(num_images_ > 0);
+    }
+
+    /** Set the batch_offset */
+    void set_batch_offset(int batch_offset) {
+      batch_offset_ = batch_offset;
     }
 
     /** Set the oscillation */
@@ -187,6 +220,7 @@ namespace dxtbx { namespace model {
     bool operator==(const Scan &rhs) const {
       double eps = 1e-7;
       return image_range_ == rhs.image_range_
+          && batch_offset_ == rhs.batch_offset_
           && std::abs(oscillation_[0] - rhs.oscillation_[0]) < eps
           && std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps
           && exposure_times_.const_ref().all_approx_equal(rhs.exposure_times_.const_ref(), eps)
@@ -227,6 +261,7 @@ namespace dxtbx { namespace model {
       DXTBX_ASSERT(std::abs(oscillation_[1]) > 0.0);
       DXTBX_ASSERT(image_range_[1] + 1 == rhs.image_range_[0]);
       DXTBX_ASSERT(std::abs(oscillation_[1] - rhs.oscillation_[1]) < eps);
+      DXTBX_ASSERT(batch_offset_ == rhs.batch_offset_);
       // sometimes ticking through 0 the first difference is not helpful
       double diff_2pi = std::abs(mod_2pi(get_oscillation_range()[1]) -
                                  mod_2pi(rhs.get_oscillation_range()[0]));
@@ -273,6 +308,12 @@ namespace dxtbx { namespace model {
     /** Check if the index is valid */
     bool is_image_index_valid(double index) const {
       return (image_range_[0] <= index && index <= image_range_[1]);
+    }
+
+    /** Check if a given batch is valid */
+    bool is_batch_valid(int batch) const {
+      vec2<int> batch_range = get_batch_range();
+      return (batch_range[0] <= batch && batch <= batch_range[1]);
     }
 
     /** Check if the array index is valid */
@@ -377,7 +418,8 @@ namespace dxtbx { namespace model {
       // Return scan
       return Scan(vec2<int>(image_index, image_index),
         get_image_oscillation(image_index ),
-        new_exposure_times, new_epochs);
+        new_exposure_times, new_epochs,
+        get_batch_offset());
     }
 
     friend std::ostream& operator<<(std::ostream &os, const Scan &s);
@@ -387,6 +429,7 @@ namespace dxtbx { namespace model {
     vec2 <int> image_range_;
     vec2 <double> oscillation_;
     int num_images_;
+    int batch_offset_;
     scitbx::af::shared<double> exposure_times_;
     scitbx::af::shared<double> epochs_;
   };

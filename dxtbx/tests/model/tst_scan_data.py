@@ -2,6 +2,17 @@ from __future__ import absolute_import, division
 
 from dxtbx.model import Scan
 
+def tst_is_batch_valid(scan):
+  """Check that the is_angle_valid function behaves properly."""
+  br1, br2 = scan.get_batch_range()
+  for i in range(0, br1):
+    assert(scan.is_batch_valid(i) == False)
+  for i in range(br1, br2+1):
+    assert(scan.is_batch_valid(i) == True)
+  for i in range(br2+1, br2+100):
+    assert(scan.is_batch_valid(i) == False)
+  print "OK"
+
 def tst_is_angle_valid(scan):
   """Check that the is_angle_valid function behaves properly."""
   oscillation_range = scan.get_oscillation_range()
@@ -53,6 +64,7 @@ def tst_scan_360_append():
   assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
   assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
   assert(scan.get_image_range() == (1, 720))
+  assert(scan.get_batch_range() == (1, 720))
   print 'OK'
 
   scan1 = Scan((1, 360), (0.0, 1.0))
@@ -64,6 +76,14 @@ def tst_scan_360_append():
   assert(abs(scan.get_oscillation()[0] - 0.0) < eps)
   assert(abs(scan.get_oscillation()[1] - 1.0) < eps)
   assert(scan.get_image_range() == (1, 720))
+  assert(scan.get_batch_range() == (1, 720))
+
+  from libtbx.test_utils import Exception_expected
+  scan2.set_batch_offset(10)
+  try: scan = scan1 + scan2
+  except Exception: pass
+  else: raise Exception_expected
+
   print 'OK'
 
 def tst_swap():
@@ -93,12 +113,18 @@ def tst_from_phil():
   assert s1.get_num_images() == 10
   assert s1.get_image_range() == (1, 10)
   assert s1.get_oscillation() == (-4, 0.1)
+  assert s1.get_batch_offset() == 0
+  assert s1.get_batch_range() == s1.get_image_range()
+  for i in range(s1.get_image_range()[0], s1.get_image_range()[1]+1):
+    assert s1.get_batch_for_image_index(i) == i
+    assert s1.get_batch_for_array_index(i-1) == i
 
   params = scan_phil_scope.fetch(parse('''
     scan {
       image_range = 1, 20
       extrapolate_scan = True
       oscillation = (20, 0.01)
+      batch_offset = 10
     }
   ''')).extract()
 
@@ -106,6 +132,12 @@ def tst_from_phil():
   assert s2.get_num_images() == 20
   assert s2.get_image_range() == (1, 20)
   assert s2.get_oscillation() == (20, 0.01)
+  assert s2.get_batch_offset() == 10
+  assert s2.get_batch_range() == (11, 30)
+  ir1, ir2 = s2.get_image_range()
+  for i in range(ir1, ir2):
+    assert s2.get_batch_for_image_index(i) == i + s2.get_batch_offset()
+    assert s2.is_batch_valid(s2.get_batch_for_image_index(i))
 
   print 'OK'
 
@@ -113,8 +145,10 @@ def run():
   image_range = (0, 1000)
   oscillation = (0, 0.1)
   scan = Scan(image_range, oscillation)
+  scan.set_batch_offset(100)
   tst_scan_oscillation_recycle(scan)
   tst_is_angle_valid(scan)
+  tst_is_batch_valid(scan)
   tst_is_frame_valid(scan)
   tst_get_angle_from_frame(scan)
   tst_get_frame_from_angle(scan)
