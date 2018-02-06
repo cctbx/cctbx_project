@@ -268,176 +268,157 @@ class input(object):
         ncs_phil_groups=None
         return None
     # Verify NCS selections
-    # print "ncs_phil_groups", ncs_phil_groups
-    # if pdb_h is None:
-    #   Never the case
-    #   # if we are here and there is no pdb_hierarchy, we just return
-    #   # user-selections.
-    #   return ncs_phil_groups
-    if ncs_phil_groups is not None and len(ncs_phil_groups)>0:
-      msg="Empty selection in NCS group definition: %s"
-      for ncs_group in ncs_phil_groups:
-        print >> self.log, "  Validating:"
-        show_particular_ncs_group(ncs_group)
-        selection_list = []
-        # first, check for selections producing 0 atoms
-        user_original_reference_iselection = None
-        user_original_copies_iselections = []
-        n_atoms_in_user_ncs = 0
-        s_string = ncs_group.reference
-        if s_string is not None:
-          sel = asc.iselection(s_string)
-          selection_list.append(s_string)
-          n_reference = sel.size()
-          n_atoms_in_user_ncs = n_reference
-          if(n_reference==0):
-            raise Sorry(msg%s_string)
-          user_original_reference_iselection = sel
-        for s_string in ncs_group.selection:
-          if(s_string is not None):
-            sel = asc.iselection(s_string)
-            selection_list.append(s_string)
-            n_copy = sel.size()
-            if(n_copy==0):
-              raise Sorry(msg%s_string)
-            user_original_copies_iselections.append(sel)
-        #
-        # The idea for user's groups is to pick them one by one,
-        # select only reference and selections from the model,
-        # If there are multiple chains in ref or selection -
-        # combine them in one chain,
-        # save atom original i_seq in atom.tmp
-        # run searching procedure for the resulting hierarchy
-        # if the user's selections were more or less OK - there should be
-        # one group, get atom.tmp values for the selected atoms and using
-        # original hierarchy convert them into string selections when needed.
-        # If multiple groups produced - use them, most likely the user
-        # provided something really wrong.
-        # Need to pay some attention to what came out as master and what order
-        # of references.
-        #
-        combined_h = iotbx.pdb.hierarchy.root()
-        combined_h.append_model(iotbx.pdb.hierarchy.model())
-        all_c_ids = all_chain_ids()
-        cur_ch_id_n = 0
-        master_chain = self.pdb_h_into_chain(pdb_h.select(
-            user_original_reference_iselection),ch_id=all_c_ids[cur_ch_id_n])
-        # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
-        cur_ch_id_n += 1
-        combined_h.only_model().append_chain(master_chain)
-
-        # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
-        # print "tmp combined_h1:", list(combined_h.atoms().extract_tmp_as_size_t())
-        for uocis in user_original_copies_iselections:
-          # print "adding selection to combined:", s_string
-          sel_chain = self.pdb_h_into_chain(pdb_h.select(
-            uocis),ch_id=all_c_ids[cur_ch_id_n])
-          combined_h.only_model().append_chain(sel_chain)
-          cur_ch_id_n += 1
-
-        # save old i_seqs in tmp
-        # for chain in combined_h.only_model().chains():
-        #   for rg in chain.residue_groups():
-        #     for ag in rg.atom_groups():
-        #       for atom in ag.atoms():
-        #         atom.tmp = atom.i_seq
-        #         print "  atom.tmp", atom.tmp
-        combined_h.reset_atom_i_seqs()
-        # combined_h.write_pdb_file("combined_in_validation.pdb")
-        # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
-
-
-        # XXX Here we will regenerate phil selections using the mechanism
-        # for finding NCS in this module. Afterwards we should have perfectly
-        # good phil selections, and later the object will be created from
-        # them.
-        # Most likely this is not the best way to validate user selections.
-
-        # selection_list
-        group_dict, _ = ncs_search.find_ncs_in_hierarchy(
-            ph=combined_h,
-            chains_info=None,
-            chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
-            log=None,
-            chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
-            residue_match_radius=max(self.residue_match_radius, 1000.0))
-        # print "group_dict", group_dict
-        # hopefully, we will get only 1 ncs group
-        # ncs_group.selection = []
-        if len(group_dict) == 0:
-          # this means that user's selection doesn't match
-          # print "ZERO NCS groups found"
-          rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
-          "Try to revise selections or adjust chain_similarity_threshold or \n" + \
-          "chain_max_rmsd parameters."
-          print >> self.log, rejected_msg
-          continue
-        # User triggered the fail of this assert!
-        # print "  N found ncs_groups:", len(group_dict)
-        # assert len(group_dict) == 1, "Got %d" % len(group_dict)
-        selections_were_modified = False
-        for key, ncs_gr in group_dict.iteritems():
-          # print "dir ncs_gr:", dir(ncs_gr)
-          new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
-          # print "  new reference:", new_ncs_group.reference
-          # print "  new selection:", new_ncs_group.selection
-
-          for i, isel in enumerate(ncs_gr.iselections):
-            m_all_list = [x for ix in isel for x in list(ix)]
-            m_all_list.sort()
-            m_all_isel = flex.size_t(m_all_list)
-            # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
-            original_m_all_isel = combined_h.atoms().\
-                select(m_all_isel).extract_tmp_as_size_t()
-            if n_atoms_in_user_ncs > original_m_all_isel.size():
-              selections_were_modified = True
-            # print "new isels", list(m_all_isel)
-            # print "old isels", list(original_m_all_isel)
-            all_m_select_str = selection_string_from_selection(
-                pdb_h=pdb_h,
-                selection=original_m_all_isel,
-                chains_info=None,
-                atom_selection_cache=asc)
-            # print "all_m_select_str", all_m_select_str
-            if i == 0:
-              new_ncs_group.reference=all_m_select_str
-            else:
-              new_ncs_group.selection.append(all_m_select_str)
-          new_ncs_group.selection = new_ncs_group.selection[1:]
-          validated_ncs_groups.append(new_ncs_group)
-        # Finally, we may check the number of atoms in selections that will
-        # go further
-        s_string = new_ncs_group.reference
-        # print "after validation user's phil:"
-        # print "  reference:", s_string
+    msg="Empty selection in NCS group definition: %s"
+    for ncs_group in ncs_phil_groups:
+      print >> self.log, "  Validating:"
+      show_particular_ncs_group(ncs_group)
+      selection_list = []
+      # first, check for selections producing 0 atoms
+      user_original_reference_iselection = None
+      user_original_copies_iselections = []
+      n_atoms_in_user_ncs = 0
+      s_string = ncs_group.reference
+      if s_string is not None:
+        sel = asc.iselection(s_string)
+        selection_list.append(s_string)
+        n_atoms_in_user_ncs = sel.size()
+        if(n_atoms_in_user_ncs==0):
+          raise Sorry(msg%s_string)
+        user_original_reference_iselection = sel
+      for s_string in ncs_group.selection:
         if(s_string is not None):
           sel = asc.iselection(s_string)
           selection_list.append(s_string)
-          n_reference = sel.size()
-          if(n_reference==0):
+          n_copy = sel.size()
+          if(n_copy==0):
             raise Sorry(msg%s_string)
-        for s_string in new_ncs_group.selection:
-          # print "  selection:", s_string
-          if(s_string is not None):
-            sel = asc.iselection(s_string)
-            n_copy = sel.size()
-            if(n_reference != n_copy):
-              raise Sorry(
-                "Bad NCS group selections: Natoms(copy)!=Natoms(reference)")
-            if(n_copy==0):
-              raise Sorry(msg%s_string)
-        ok_msg = "  OK. All atoms were included in" +\
-        " validated selection.\n"
-        modified_msg = "  MODIFIED. Some of the atoms were excluded from" + \
-        " your selection.\n  The most common reasons are:\n" + \
-        "    1. Missing residues in one or several copies in NCS group.\n" + \
-        "    2. Presence of alternative conformations (they are excluded).\n" + \
-        "    3. Residue mismatch in requested copies.\n" + \
-        "  Please check the validated selection further down.\n"
-        if selections_were_modified:
-          print >> self.log, modified_msg
-        else:
-          print >> self.log, ok_msg
+          user_original_copies_iselections.append(sel)
+      #
+      # The idea for user's groups is to pick them one by one,
+      # select only reference and selections from the model,
+      # If there are multiple chains in ref or selection -
+      # combine them in one chain,
+      # save atom original i_seq in atom.tmp
+      # run searching procedure for the resulting hierarchy
+      # if the user's selections were more or less OK - there should be
+      # one group, get atom.tmp values for the selected atoms and using
+      # original hierarchy convert them into string selections when needed.
+      # If multiple groups produced - use them, most likely the user
+      # provided something really wrong.
+      # Need to pay some attention to what came out as master and what order
+      # of references.
+      #
+      combined_h = iotbx.pdb.hierarchy.root()
+      combined_h.append_model(iotbx.pdb.hierarchy.model())
+      all_c_ids = all_chain_ids()
+      cur_ch_id_n = 0
+      master_chain = self.pdb_h_into_chain(pdb_h.select(
+          user_original_reference_iselection),ch_id=all_c_ids[cur_ch_id_n])
+      # print "tmp in master chain:", list(master_chain.atoms().extract_tmp_as_size_t())
+      cur_ch_id_n += 1
+      combined_h.only_model().append_chain(master_chain)
+
+      # combined_h = iotbx.pdb.hierarchy.new_hierarchy_from_chain(master_chain)
+      # print "tmp combined_h1:", list(combined_h.atoms().extract_tmp_as_size_t())
+      for uocis in user_original_copies_iselections:
+        # print "adding selection to combined:", s_string
+        sel_chain = self.pdb_h_into_chain(pdb_h.select(
+          uocis),ch_id=all_c_ids[cur_ch_id_n])
+        combined_h.only_model().append_chain(sel_chain)
+        cur_ch_id_n += 1
+
+      # save old i_seqs in tmp
+      # for chain in combined_h.only_model().chains():
+      #   for rg in chain.residue_groups():
+      #     for ag in rg.atom_groups():
+      #       for atom in ag.atoms():
+      #         atom.tmp = atom.i_seq
+      #         print "  atom.tmp", atom.tmp
+      combined_h.reset_atom_i_seqs()
+      # combined_h.write_pdb_file("combined_in_validation.pdb")
+      # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
+
+
+      # XXX Here we will regenerate phil selections using the mechanism
+      # for finding NCS in this module. Afterwards we should have perfectly
+      # good phil selections, and later the object will be created from
+      # them.
+      # Most likely this is not the best way to validate user selections.
+
+      # selection_list
+      group_dict, _ = ncs_search.find_ncs_in_hierarchy(
+          ph=combined_h,
+          chains_info=None,
+          chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
+          log=None,
+          chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
+          residue_match_radius=max(self.residue_match_radius, 1000.0))
+      # print "group_dict", group_dict
+      # hopefully, we will get only 1 ncs group
+      # ncs_group.selection = []
+      if len(group_dict) == 0:
+        # this means that user's selection doesn't match
+        # print "ZERO NCS groups found"
+        rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
+        "Try to revise selections or adjust chain_similarity_threshold or \n" + \
+        "chain_max_rmsd parameters."
+        print >> self.log, rejected_msg
+        continue
+      # User triggered the fail of this assert!
+      # print "  N found ncs_groups:", len(group_dict)
+      # assert len(group_dict) == 1, "Got %d" % len(group_dict)
+      selections_were_modified = False
+      #
+      # ncs_gr here is ncs_search.NCS_groups_container
+      # .iselections = [master isel, c1 isel, c2 isel, ...]
+      # .residue_index_list - not used
+      # .copies - ??, not used
+      # .transforms = [], instances of ncs_search.Transform
+      #
+      for key, ncs_gr in group_dict.iteritems():
+        # print "dir ncs_gr:", dir(ncs_gr)
+        new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
+        # print "  new reference:", new_ncs_group.reference
+        # print "  new selection:", new_ncs_group.selection
+
+        for i, isel in enumerate(ncs_gr.iselections):
+          m_all_list = [x for ix in isel for x in list(ix)]
+          m_all_list.sort()
+          m_all_isel = flex.size_t(m_all_list)
+          # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
+          original_m_all_isel = combined_h.atoms().\
+              select(m_all_isel).extract_tmp_as_size_t()
+          if n_atoms_in_user_ncs > original_m_all_isel.size():
+            selections_were_modified = True
+          # print "new isels", list(m_all_isel)
+          # print "old isels", list(original_m_all_isel)
+          all_m_select_str = selection_string_from_selection(
+              pdb_h=pdb_h,
+              selection=original_m_all_isel,
+              chains_info=None,
+              atom_selection_cache=asc)
+          # print "all_m_select_str", all_m_select_str
+          if i == 0:
+            new_ncs_group.reference=all_m_select_str
+          else:
+            new_ncs_group.selection.append(all_m_select_str)
+        new_ncs_group.selection = new_ncs_group.selection[1:]
+        validated_ncs_groups.append(new_ncs_group)
+      # Finally, we may check the number of atoms in selections that will
+      # go further.
+      # XXX Deleted, because this is taken care of previously
+      ok_msg = "  OK. All atoms were included in" +\
+      " validated selection.\n"
+      modified_msg = "  MODIFIED. Some of the atoms were excluded from" + \
+      " your selection.\n  The most common reasons are:\n" + \
+      "    1. Missing residues in one or several copies in NCS group.\n" + \
+      "    2. Presence of alternative conformations (they are excluded).\n" + \
+      "    3. Residue mismatch in requested copies.\n" + \
+      "  Please check the validated selection further down.\n"
+      if selections_were_modified:
+        print >> self.log, modified_msg
+      else:
+        print >> self.log, ok_msg
     # print "len(validated_ncs_groups)", len(validated_ncs_groups)
     # for ncs_gr in validated_ncs_groups:
     #   print "  reference:", ncs_gr.reference
@@ -490,7 +471,8 @@ class input(object):
             copy_iselection=copy_iselection,
             rot=r,
             tran=t,
-            str_selection=asu_select)
+            str_selection=asu_select,
+            rmsd=rmsd)
         g.append_copy(c)
         if r.is_zero():
           msg = 'Master NCS and Copy are very poorly related, check selection.'
@@ -619,11 +601,7 @@ class input(object):
         chain_id_list.append(chain_id)
         residue_range_list.append(ranges)
         residues_count.append(count)
-        _,_,rmsd = ncs_search.my_get_rot_trans(
-            self.hierarchy,
-            group.master_iselection,
-            c.iselection)
-        rmsd_list.append(rmsd)
+        rmsd_list.append(c.rmsd)
       # XXX This should be consistent with full_file_name parameter in
       # simple_ncs_from_pdb.py: create_ncs_domain_pdb_files()
       # This is here just because we need to output filename of the domain
@@ -823,12 +801,7 @@ class input(object):
       str_out.append(str_line.format('Group #',i))
       for j, c in enumerate(gr.copies):
         str_out.append(str_line.format('Transform #',j + 1))
-        # XXX - consider saving rmsd in ncs_copy
-        r,t,rmsd = ncs_search.my_get_rot_trans(
-          ph=self.truncated_hierarchy,
-          master_selection=gr.master_iselection,
-          copy_selection=c.iselection)
-        str_out.append(str_line.format('RMSD',rmsd))
+        str_out.append(str_line.format('RMSD',c.rmsd))
         rot = [str_r.format(k,*x) for k,x in enumerate(c.r.as_list_of_lists())]
         str_out.extend(rot)
         tran = str_t.format(*[x for xi in c.t.as_list_of_lists() for x in xi])

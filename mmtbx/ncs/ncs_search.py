@@ -1,10 +1,8 @@
 from __future__ import division
-from scitbx.linalg import eigensystem
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
 from scitbx import matrix
-import math
 import sys
 from cStringIO import StringIO
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
@@ -418,7 +416,8 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
             copy_iselection=new_copy_sel,
             rot=r,
             tran=t,
-            str_selection=None)
+            str_selection=None,
+            rmsd = copy_rmsd)
         g.append_copy(c)
         assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
         new_ncs_group.iselections.append([new_copy_sel])

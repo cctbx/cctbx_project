@@ -9,7 +9,7 @@ from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
 
 class NCS_copy():
-  def __init__(self,copy_iselection, rot, tran, str_selection=None):
+  def __init__(self,copy_iselection, rot, tran, str_selection=None, rmsd=999):
     """
     used for NCS groups list copies
 
@@ -22,6 +22,7 @@ class NCS_copy():
     self.str_selection = str_selection
     self.r = rot
     self.t = tran
+    self.rmsd = rmsd
 
   def __eq__(self, other):
     return approx_equal(self.r, other.r) and approx_equal(self.t, other.t)
@@ -31,12 +32,14 @@ class NCS_copy():
         self.iselection.deep_copy(),
         matrix.sqr(self.r),
         matrix.col(self.t),
-        self.str_selection)
+        self.str_selection,
+        self.rmsd)
     return res
 
   def select(self, selection):
     self.iselection = iselection_select(self.iselection, selection)
     self.str_selection = None # it is not valid anymore
+    self.rmsd = 999
 
 def iselection_select(isel, sel):
   x = flex.bool(sel.size(), False)
