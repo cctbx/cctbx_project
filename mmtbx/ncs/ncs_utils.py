@@ -172,50 +172,6 @@ def compute_transform_grad(grad_wrt_xyz,
       i += 1
   return flex.double(g)
 
-def get_ncs_sites_cart(ncs_obj=None,
-                       fmodel=None,
-                       xray_structure=None,
-                       sites_cart=None,
-                       extended_ncs_selection=None):
-  """
-  XXX The same name of the function as in cctbx/maptbx/segment_and_split_map.py
-  XXX The only call is from minimization_ncs_constraints.py, passing whole
-  XXX lbfgs class as 'ncs_obj'!
-  XXX TODO: remove ncs_obj parameter, pass everything needed explicitly
-  XXX not yet clear the goal of this func
-  XXX
-
-  Args::
-    ncs_obj: an object that contains fmodel, sites_cart or xray_structure
-      and an atom selection flags for a single NCS copy.
-
-  Returns:
-    (flex.vec3): coordinate sites cart of the single NCS copy
-  """
-  if ncs_obj:
-    if hasattr(ncs_obj, 'extended_ncs_selection'):
-      extended_ncs_selection = ncs_obj.extended_ncs_selection
-    else:
-      assert extended_ncs_selection
-    if hasattr(ncs_obj, 'sites_cart'):
-      return ncs_obj.sites_cart().select(extended_ncs_selection)
-    elif hasattr(ncs_obj, 'fmodel'):
-      xrs_one_ncs = ncs_obj.fmodel.xray_structure.select(extended_ncs_selection)
-      return xrs_one_ncs.sites_cart()
-    elif  hasattr(ncs_obj, 'xray_structure') or xray_structure:
-      xrs_one_ncs = ncs_obj.xray_structure.sites_cart()
-      return xrs_one_ncs.select(extended_ncs_selection)
-  else:
-    if sites_cart:
-      return sites_cart().select(extended_ncs_selection)
-    elif fmodel:
-      xrs_one_ncs = fmodel.xray_structure.select(extended_ncs_selection)
-      return xrs_one_ncs.sites_cart()
-    elif  xray_structure:
-      xrs_one_ncs = xray_structure.sites_cart()
-      return xrs_one_ncs.select(extended_ncs_selection)
-
-
 def get_weight(fmodel=None,
                restraints_manager=None,
                sites=None,

@@ -457,7 +457,8 @@ class lbfgs(object):
       # update the ncs_restraint_groups transforms
       self.ncs_restraints_group_list.update_rot_tran(x=x)
       # Use the new transformations to create the ASU
-      x_ncs = nu.get_ncs_sites_cart(self).as_double()
+      x_ncs = self.xray_structure.sites_cart().\
+          select(self.extended_ncs_selection).as_double()
       x_asu = self.refinable_params_one_ncs_to_asu(x_ncs)
       self.xray_structure.set_sites_cart(
         sites_cart = flex.vec3_double(x_asu))
