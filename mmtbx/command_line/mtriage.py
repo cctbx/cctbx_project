@@ -11,6 +11,8 @@ import mmtbx.maps.mtriage
 from iotbx import ccp4_map
 from scitbx.array_family import flex
 from libtbx.str_utils import format_value
+from libtbx import introspection
+from libtbx.utils import null_out
 
 master_params_GUI_str = """\
   include scope libtbx.phil.interface.tracking_params
@@ -164,6 +166,8 @@ Feedback:
   print >> log, "-"*79
   print >> log, run.__doc__
   print >> log, "-"*79
+  introspection.virtual_memory_info().show_if_available(out=null_out(),
+    show_max=True) # just to initialize something
   # Get inputs
   inputs = get_inputs(
     args          = args,
@@ -198,31 +202,19 @@ Feedback:
   #
   broadcast(m="Map statistics:", log=log)
   print >> log, "Map:"
-  print >> log, "  origin:      ", results.masked.map_counts.origin
-  print >> log, "  last:        ", results.masked.map_counts.last
-  print >> log, "  focus:       ", results.masked.map_counts.focus
-  print >> log, "  all:         ", results.masked.map_counts.all
-  print >> log, "  min,max,mean:", results.masked.map_counts.min_max_mean
+  print >> log, "  origin:      ", results.counts.origin
+  print >> log, "  last:        ", results.counts.last
+  print >> log, "  focus:       ", results.counts.focus
+  print >> log, "  all:         ", results.counts.all
+  print >> log, "  min,max,mean:", results.counts.min_max_mean
+  print >> log, "  d_min_corner:", "%7.3f"%results.counts.d_min_corner
   #
   print >> log, "Half-maps:"
   if(inputs.half_map_data_1 is None):
     print >> log, "  Half-maps are not provided."
-  else:
-    for i, m in enumerate([results.masked.half_map_1_counts,
-                           results.masked.half_map_2_counts]):
-      print >> log, "  half-map:", i+1
-      print >> log, "    origin:", m.origin
-      print >> log, "    last:  ", m.last
-      print >> log, "    focus: ", m.focus
-      print >> log, "    all:   ", m.all
-      print >> log, "    min,max,mean:", m.min_max_mean
   #
-  if(results.masked is not None):
-    print >> log, "Histogram(s) of map values (masked):"
-    show_histogram(map_histograms = results.masked.map_histograms, log = log)
-  if(results.unmasked is not None):
-    print >> log, "Histogram(s) of map values (unmasked):"
-    show_histogram(map_histograms = results.unmasked.map_histograms, log = log)
+  print >> log, "Histogram(s) of map values (masked):"
+  show_histogram(map_histograms = results.histograms, log = log)
   # show results
   fv = format_value
   fs = "%8.2f"
@@ -230,6 +222,7 @@ Feedback:
   ru = results.unmasked
   print >> log, "Map resolution estimates:              masked unmasked"
   print >> log, "  using map alone (d99)            :", fv(fs,rm.d99)          , fv(fs,ru.d99)
+  print >> log, "  using map alone (d9999)          :", fv(fs,rm.d9999)        , fv(fs,ru.d9999)
   print >> log, "  comparing with model (d_model)   :", fv(fs,rm.d_model)      , fv(fs,ru.d_model)
   print >> log, "    b_iso_overall                  :", fv(fs,rm.b_iso_overall), fv(fs,ru.b_iso_overall)
   print >> log, "  comparing with model (d_model_b0):", fv(fs,rm.d_model_b0)   , fv(fs,ru.d_model_b0)

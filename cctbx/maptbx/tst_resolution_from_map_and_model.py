@@ -448,15 +448,13 @@ TER
 END
 """
 
-def run(pdb_str, d_min, b, randomize):
+def run(pdb_str, d_min, b):
   #
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_box)
   cs = pdb_inp.crystal_symmetry()
   ph = pdb_inp.construct_hierarchy()
   xrs = ph.extract_xray_structure(crystal_symmetry=cs)
   xrs = xrs.set_b_iso(value=b)
-  if(randomize):
-    xrs.shake_adp(spread=25)
   fc = xrs.structure_factors(d_min=d_min).f_calc()
   cg = maptbx.crystal_gridding(
     unit_cell         = cs.unit_cell(),
@@ -470,19 +468,17 @@ def run(pdb_str, d_min, b, randomize):
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   xrs = ph.extract_xray_structure(crystal_symmetry=cs)
   o = maptbx.resolution_from_map_and_model.run(map_data=map_obs,
-    xray_structure=xrs, d_min_min=1.5, pdb_hierarchy=ph)
-  return o.d_min, o.b_iso, o.cc
+    xray_structure=xrs)
+  return o.d_min, o.b_iso, o.d_fsc_model
 
 if (__name__ == "__main__"):
   for pdb_str in [pdb_str_5bb, pdb_str_5]:
-    for d_min in [2., 3., 4., 5., 6., 7., 8., 9.]:
+    for d_min in [2., 3., 4., 5.]:
       for b in [20,80,100,200]:
         if((d_min==2. or d_min==3.) and b>50.): continue
-        for randomize in [True, False]:
-          result, b_result, cc = run(pdb_str=pdb_str, d_min=d_min, b=b,
-            randomize=randomize)
-          print b, d_min, "<>", b_result, result, "<>", cc
-          #XXX assert approx_equal(d_min, result, 0.11)
-          #XXX assert cc>0.9
-          #XXX if(not randomize):
-          #XXX   assert approx_equal(b, b_result,5.+1)
+        result, b_result, d_fsc_model = run(pdb_str=pdb_str, d_min=d_min, b=b)
+        print b, d_min, "<>", b_result, result, d_fsc_model
+        #assert approx_equal(d_min, result)
+        #XXX assert cc>0.9
+        #XXX if(not randomize):
+        #XXX   assert approx_equal(b, b_result,5.+1)

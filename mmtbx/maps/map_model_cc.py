@@ -74,11 +74,9 @@ class map_model_cc(object):
       compute_cc_peaks  = self.params.compute_cc_peaks)
     # Atom radius
     self.atom_radius = mtriage.get_atom_radius(
-      xray_structure   = xrs,
-      d_min            = self.params.resolution,
-      map_data         = map_data,
-      crystal_symmetry = self.crystal_symmetry,
-      radius           = self.params.atom_radius)
+      xray_structure = xrs,
+      resolution     = self.params.resolution,
+      radius         = self.params.atom_radius)
     # Model-map FSC
     if(self.params.compute_fsc):
       mtriage_params = mtriage.master_params().extract()
@@ -93,7 +91,7 @@ class map_model_cc(object):
       mtriage_params.compute.d99 = False
       mtriage_params.mask_maps = True
       mtriage_params.radius_smooth = self.atom_radius
-      #mtriage_params.show_time=True
+      mtriage_params.resolution = self.params.resolution
       self.fsc = mtriage.mtriage(
         map_data         = self.map_data,
         pdb_hierarchy    = self.pdb_hierarchy,

@@ -421,7 +421,7 @@ def tst_0():
   b_values,occs=get_b_and_occ(hierarchy=pdb_hierarchy_new,
      atom_selection="name CA and (resid 5 or resid 15)")
   print "\nBvalues (resolutions): for %s: %s" %(method,str(b_values))
-  assert  approx_equal(b_values,[8.286411404892835, 2.1497394511476364],eps=.05)
+  assert  approx_equal(b_values,[6.445270631983037, 2.1496054788946237],eps=.05)
 
 
 def tst_1():

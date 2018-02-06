@@ -3,6 +3,7 @@ from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_map_cc
 
 import sys
+import time
 import iotbx.pdb
 from libtbx import group_args, easy_pickle
 from libtbx.utils import Sorry
@@ -171,4 +172,6 @@ Feedback:
   return None
 
 if (__name__ == "__main__"):
+  t0 = time.time()
   assert run(args=sys.argv[1:]) is None # assert here is intentional
+  print "Total time: %8.3f"%(time.time()-t0)

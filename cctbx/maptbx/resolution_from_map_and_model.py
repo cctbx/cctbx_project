@@ -5,6 +5,8 @@ from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 import scitbx.math.curve_fitting
 from libtbx import group_args
+import time
+from cctbx import miller
 
 def canal(x, y, simple=False, assert_concave_up=False,
           use_longest_slope_criteria=False, show=False, smooth=False,
@@ -121,15 +123,14 @@ def moving_average(y):
 
 
 class run_loop(object):
-  def __init__(self, fc, f_obs, b_iso, map, d_mins, d_spacings, ss):
-    adopt_init_args(self, locals())
+  def __init__(self, fc, f_obs, b_iso, d_mins, d_spacings, ss):
     result = maptbx.cc_complex_complex(
-      f_1        = self.f_obs.data(),
-      f_2        = self.fc.data(),
-      d_spacings = self.d_spacings,
-      ss         = self.ss,
-      d_mins     = self.d_mins,
-      b_iso      = self.b_iso)
+      f_1        = f_obs.data(),
+      f_2        = fc.data(),
+      d_spacings = d_spacings,
+      ss         = ss,
+      d_mins     = d_mins,
+      b_iso      = b_iso)
     self.d_min, self.cc = result[0], result[1]
 
 def get_fo_fc_adjust_d_min_start(map, fc, xrs, d_mins):
@@ -192,99 +193,60 @@ def _resolution_from_map_and_model_helper_2(
         b_result=bs[i]
   return d_min_result, b_result, cc_result
 
-def get_trial_resolutions(map_data, unit_cell, d_min_min):
-  d_min_end = round(maptbx.d_min_from_map(
-    map_data=map_data, unit_cell=unit_cell, resolution_factor=0.1),1)
-  d_min_start = round(maptbx.d_min_from_map(
-    map_data=map_data, unit_cell=unit_cell, resolution_factor=0.5),1)
-  if(d_min_min is not None and d_min_start<d_min_min):
-    d_min_start=d_min_min
-  d_min_end = max(8,d_min_end)
-  l1 = [i/10. for i in range(int(d_min_min*10),30)]
-  #l2 = [i/100. for i in range(300,625,25)]
+def get_trial_resolutions(d_start):
+  if(  d_start<5):  d_end = 10.
+  elif(d_start<10): d_end = 20.
+  elif(d_start<20): d_end = 40.
+  else:             d_end = 100.
+  l1 = [i/10. for i in range(int(d_start*10),30)]
   l2 = [i/100. for i in range(300,610,10)]
   l3 = [i/10. for i in range(65,105,1)]
   l4 = [i*1. for i in range(11,100,1)]
   l = flex.double(l1+l2+l3+l4)
-  s  = l>=d_min_start
-  s &= l<=d_min_end
+  s  = l>=d_start
+  s &= l<=d_end
   return l.select(s)
 
-def run_at_b(b, map_data, xray_structure, d_min_min=None):
-  m1 = flex.mean(map_data)
-  xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
-  d_mins = get_trial_resolutions(
-    map_data  = map_data,
-    unit_cell = xray_structure.unit_cell(),
-    d_min_min = d_min_min)
-  d_min_start = flex.min(d_mins)
-  fc = xrs.structure_factors(d_min=d_min_start).f_calc()
-  f_obs, fc, d_mins = get_fo_fc_adjust_d_min_start(
-    map    = map_data,
-    xrs    = xrs,
-    fc     = fc,
-    d_mins = d_mins)
-  d_spacings = fc.d_spacings().data()
+def run_at_b(b, f_map, f_calc=None, xray_structure=None):
+  d_mins = get_trial_resolutions(d_start = f_map.d_min())
+  if(f_calc is None):
+    assert xray_structure is not None
+    xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
+    f_calc = f_map.structure_factors_from_scatterers(
+      xray_structure = xrs).f_calc()
+  else:
+    assert xray_structure is None
+  d_spacings = f_calc.d_spacings().data()
   ss = 1./flex.pow2(d_spacings) / 4.
-  m2 = flex.mean(map_data)
-  assert approx_equal(m1, m2)
-  return run_loop(fc=fc, f_obs=f_obs, b_iso=b, map=map, d_mins=d_mins,
+  result = run_loop(fc=f_calc, f_obs=f_map, b_iso=b, d_mins=d_mins,
     d_spacings=d_spacings, ss=ss)
+  return result
 
-def run_fast(map_data, f_obs, d_fsc_model, xray_structure):
-  #fo = f_obs.resolution_filter(d_min = d_fsc_model)
-  xrs = xray_structure.deep_copy_scatterers()
-  xrs = xrs.set_b_iso(value=0)
-  fc = f_obs.structure_factors_from_scatterers(xray_structure = xrs).f_calc()
-  fo = f_obs.resolution_filter(d_min = d_fsc_model)
-  fo, fc, = fo.common_sets(fc)
+def run(xray_structure, f_map=None, map_data=None, d_fsc_model=None):
+  assert [f_map, map_data].count(None) == 1
+  xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
+  if(f_map is None):
+    f_map = miller.structure_factor_box_from_map(
+      map              = map_data,
+      crystal_symmetry = xray_structure.crystal_symmetry())
+  fc = f_map.structure_factors_from_scatterers(xray_structure = xrs).f_calc()
+  d_model_b0 = run_at_b(b=0, f_map=f_map, f_calc=fc).d_min
   del xrs
+  if(d_fsc_model is None):
+    d_fsc_model = fc.d_min_from_fsc(other=f_map, fsc_cutoff=0).d_min
+  fo = f_map.resolution_filter(d_min = d_fsc_model)
+  fo, fc, = fo.common_sets(fc)
   cc = -999
   b=None
   ss = 1./flex.pow2(fc.d_spacings().data()) / 4.
   data = fc.data()
-  for b_ in range(-500,500,1):
+  for b_ in range(-500,500,5):
     sc = flex.exp(-b_*ss)
     fc_ = fc.customized_copy(data = data*sc)
     cc_ = fo.map_correlation(other = fc_)
     if(cc_>cc):
       cc = cc_
       b = b_
-  o = run_at_b(
-    b                = b,
-    map_data         = map_data,
-    xray_structure   = xray_structure,
-    d_min_min        = 1.7)
-  return group_args(d_min = o.d_min, b_iso = b)
-
-class run(object):
-  def __init__(self, map_data, xray_structure, pdb_hierarchy, d_min_min=None,
-                     nproc=1, ofn=None):
-    """
-    Given map and model estimate resolution by maximizing map CC(map, model-map).
-    As a by-product, also provides CC and optimal overall B-factor.
-    """
-    # XXX xray_structure, pdb_hierarchy are modified!
-    xray_structure = xray_structure.deep_copy_scatterers()
-    pdb_hierarchy  = pdb_hierarchy.deep_copy()
-    #
-    unit_cell = xray_structure.unit_cell()
-    d_mins = get_trial_resolutions(map_data=map_data,
-      unit_cell=xray_structure.unit_cell(), d_min_min=d_min_min)
-    ###
-    xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
-    assert approx_equal(flex.mean(xrs.extract_u_iso_or_u_equiv()),0.)
-    d_min_start = flex.min(d_mins)
-    fc = xrs.structure_factors(d_min=d_min_start).f_calc()
-    f_obs, fc, d_mins = get_fo_fc_adjust_d_min_start(map=map_data, xrs=xrs,
-      fc=fc, d_mins=d_mins)
-    b_range=list(range(-500,510,10))
-    self.d_min, self.b_iso, self.cc = _resolution_from_map_and_model_helper_2(
-      map            = map_data,
-      f_obs=f_obs, fc=fc,
-      xray_structure = xray_structure,
-      b_range        = b_range,
-      d_mins         = d_mins,
-      nproc          = nproc,
-      simple=True,
-      ofn=None)
+  o = run_at_b(b = b, f_map = fo, f_calc = fc)
+  return group_args(d_min = o.d_min, b_iso = b, d_model_b0 = d_model_b0,
+    d_fsc_model=d_fsc_model)

@@ -3996,30 +3996,10 @@ class array(set):
     ds = ds.select(s)
     d1 = d1.select(s)
     d2 = d2.select(s)
-    # Get bin limits
-    n      = flex.int()
-    n_next = flex.int()
-    i=0
-    while i < ds.size():
-      sc = 1
-      if(min(i+bin_width*2, d1.size()-1)==d1.size()-1): sc = 2
-      p = min(i+bin_width*sc, d1.size()-1)
-      if(p!=i):
-        n_next.append(p)
-        n.append(i)
-      i+=bin_width*sc
-    # Compute FSC
-    d_inv, d, fsc = flex.double(),flex.double(),flex.double()
-    for i,j in zip(n, n_next):
-      n_next = min(n+bin_width, d1.size()-1)
-      d_sel = ds[i:j]
-      cc = maptbx.cc_complex_complex(
-        f_1        = d1[i:j],
-        f_2        = d2[i:j])
-      d_mean = flex.mean(d_sel)
-      d_inv.append(1/d_mean)
-      d.append(d_mean)
-      fsc.append(cc)
+    r = maptbx.fsc(f1=d1, f2=d2, d_spacings=ds, step=bin_width)
+    fsc = r.fsc()
+    d = r.d()
+    d_inv = r.d_inv()
     # Smooth FSC curve
     half_window=50
     ratio=d_inv.size()/half_window
@@ -5684,8 +5664,7 @@ def patterson_map(crystal_gridding, f_patt, f_000=None,
 
 def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
                                   anomalous_flag=False, include_000=False,
-                                  f_000=None):
-  assert crystal_symmetry.space_group().type().number()==1 # must be P1 box
+                                  f_000=None, d_min=None):
   #assert [map, n_real].count(None) in [0,2]
   if(map    is not None): assert n_real is None
   if(n_real is not None): assert map is None
@@ -5696,6 +5675,8 @@ def structure_factor_box_from_map(crystal_symmetry, map=None, n_real=None,
     crystal_symmetry = crystal_symmetry,
     anomalous_flag   = anomalous_flag,
     max_index        = max_index)
+  if(d_min is not None):
+    complete_set = complete_set.resolution_filter(d_min=d_min)
   if(include_000 or f_000 is not None):
     indices = complete_set.indices()
     indices.append((0,0,0))

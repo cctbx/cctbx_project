@@ -10,6 +10,7 @@
 #include <boost/python/args.hpp>
 #include <cctbx/maptbx/histogram.h>
 #include <cctbx/maptbx/resolution.h>
+#include <cctbx/maptbx/fsc.h>
 #include <cctbx/maptbx/sphericity.h>
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
@@ -262,11 +263,31 @@ namespace {
                      arg("hkl"),
                      arg("d_min"),
                      arg("d_max"))))
-        .def("ccs",         &w_t::ccs)
-        .def("d_mins",      &w_t::d_mins)
-        .def("d_min_cc9",   &w_t::d_min_cc9)
-        .def("d_min_cc99",  &w_t::d_min_cc99)
-        .def("d_min_cc999", &w_t::d_min_cc999)
+        .def("d_min_cc9",      &w_t::d_min_cc9)
+        .def("d_min_cc99",     &w_t::d_min_cc99)
+        .def("d_min_cc999",    &w_t::d_min_cc999)
+        .def("d_min_cc9999",   &w_t::d_min_cc9999)
+        .def("d_min_cc99999",  &w_t::d_min_cc99999)
+        .def("d_min_cc999999", &w_t::d_min_cc999999)
+      ;
+    }
+
+    {
+      typedef fsc w_t;
+
+      class_<w_t>("fsc", no_init)
+        .def(init<
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          int const& >(
+                    (arg("f1"),
+                     arg("f2"),
+                     arg("d_spacings"),
+                     arg("step"))))
+        .def("fsc",   &w_t::cc)
+        .def("d",     &w_t::d)
+        .def("d_inv", &w_t::d_inv)
       ;
     }
 
