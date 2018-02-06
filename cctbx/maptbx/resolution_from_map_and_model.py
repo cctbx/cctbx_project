@@ -1,7 +1,6 @@
 from __future__ import division
 from cctbx.array_family import flex
 from cctbx import maptbx
-import scitbx.math.curve_fitting
 from libtbx import group_args
 from cctbx import miller
 

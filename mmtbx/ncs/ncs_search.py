@@ -2,7 +2,6 @@ from __future__ import division
 from scitbx.array_family import flex
 from scitbx.math import superpose
 from libtbx.utils import Sorry
-from scitbx import matrix
 import sys
 from cStringIO import StringIO
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
