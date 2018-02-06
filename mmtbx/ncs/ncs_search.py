@@ -15,51 +15,6 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
 
 __author__ = 'Youval, massively rewritten by Oleg'
 
-class NCS_groups_container(object):
-
-  def __init__(self):
-    """
-    A Container for ncs groups
-    Note that the first copy is the master ncs
-
-    Attributes:
-      iselections (list of flex.size_t):selection array for the complete ASU
-      residue_index_list (list): list of list of matching residues indices
-      copies (list of lists):List of lists of the ncs copies chain IDs
-      transforms (list of transform objects):
-    """
-    self.iselections = []
-    self.residue_index_list = []
-    self.copies = []
-    self.transforms = []
-
-class Transform(object):
-
-  def __init__(self,
-               rotation = None,
-               translation = None,
-               serial_num = None,
-               coordinates_present = None,
-               ncs_group_id = None,
-               rmsd = 0):
-    """
-    Basic transformation properties
-
-    Args:
-      rotation : Rotation matrix object
-      translation: Translation matrix object
-      serial_num : (int) Transform serial number
-      coordinates_present: equals 1 when coordinates are presents in PDB file
-      ncs_group_id : (int) The group ID of the group containing this transform
-      rmsd (float): RMS distance between ncs copies
-    """
-    self.r = rotation
-    self.t = translation
-    self.serial_num = serial_num
-    self.coordinates_present = bool(coordinates_present)
-    self.ncs_group_id = ncs_group_id
-    self.rmsd = rmsd
-
 
 class Chains_info(object):
   """ Container for hierarchy analysis """
@@ -105,10 +60,7 @@ def find_ncs_in_hierarchy(ph,
     chain_similarity_threshold (float): min similarity between matching chains
 
   Return:
-    groups_list (list of NCS_groups_container objects)
-    group_dict (dict):
-      keys: tuple of master chain IDs
-      values: NCS_groups_container objects
+    groups_list - class_ncs_restraints_group_list
   """
   if not log: log = sys.stdout
   if chains_info is None:
@@ -266,15 +218,13 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
   """
   The implementation of simplest way to do NCS grouping. Maximum one chain
   in selection.
-  Do the job of minimal_master_ncs_grouping/minimal_ncs_operators_grouping
-  and build_group_dict.
+  Do the job of minimal_master_ncs_grouping/minimal_ncs_operators_grouping.
   """
-  group_dict = {}
   ncs_restraints_group_list = class_ncs_restraints_group_list()
   preliminary_ncs_groups = get_preliminary_ncs_groups(match_dict)
 
   # now we need to just transform preliminary_ncs_groups using match_dict
-  # into group_dict. This means that for every dict in preliminary_ncs_groups
+  # into ncs_restraints_group_list. This means that for every dict in preliminary_ncs_groups
   # we need to determine master, and find out rot and transl functions for all
   # the rest chains (selections). Master is going to be the first in
   # alphabetical order.
@@ -360,28 +310,10 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
           min_master_selection = min_master_selection.intersection(master_sel)
     # print "size of min_master_selection", min_master_selection.size()
 
-    #
-    #
     # create a new group
-    new_ncs_group = NCS_groups_container()
-    tr = Transform(
-        rotation=matrix.sqr([1,0,0,0,1,0,0,0,1]),
-        translation=matrix.col([0,0,0]),
-        serial_num=tr_sn,
-        coordinates_present=True,
-        ncs_group_id=group_id,
-        rmsd=0)
-    tr_sn += 1
     g = NCS_restraint_group(
         master_iselection=min_master_selection,
         str_selection=None)
-    # master_sel, master_res, master_rmsd = get_info_from_match_dict(
-    #     match_dict,key_with_smallest_selection, master)
-    new_ncs_group.iselections.append([min_master_selection])
-    new_ncs_group.residue_index_list.append([master_res])
-    new_ncs_group.copies.append([master])
-    new_ncs_group.transforms.append(tr)
-
     for ch_copy in sorted_gr_chains:
       master_size = min_master_selection.size()
       copy_sel, copy_res, m_sel = get_copy_master_selections_from_match_dict(
@@ -405,13 +337,6 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
             ph=hierarchy,
             master_selection=new_master_sel,
             copy_selection=new_copy_sel)
-        tr = Transform(
-            rotation=r,
-            translation=t,
-            serial_num=tr_sn,
-            coordinates_present=True,
-            ncs_group_id=group_id,
-            rmsd=copy_rmsd)
         c = NCS_copy(
             copy_iselection=new_copy_sel,
             rot=r,
@@ -420,27 +345,8 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
             rmsd = copy_rmsd)
         g.append_copy(c)
         assert master_size == new_copy_sel.size(), "%d %d" % (master_size, new_copy_sel.size())
-        new_ncs_group.iselections.append([new_copy_sel])
-        new_ncs_group.residue_index_list.append([copy_res])
-        new_ncs_group.copies.append([ch_copy])
-        new_ncs_group.transforms.append(tr)
-        # print "  appended new copy:", ch_copy
-        tr_sn += 1
-    group_dict[tuple(master)] = new_ncs_group
-    master_size = new_ncs_group.iselections[0][0].size()
-    for isel_arr in new_ncs_group.iselections[1:]:
-      assert master_size ==isel_arr[0].size(), "%d %d" % (master_size, isel_arr[0].size().size())
-
-    # print "new_ncs_group.ise", new_ncs_group.iselections
-    # for isele_arr in new_ncs_group.iselections:
-    #   print "final selections are:", list(isele_arr[0])
-    # print "new_ncs_group.copies", new_ncs_group.copies
-    # print "new_ncs_group.residue_index_list", new_ncs_group.residue_index_list
-    group_id += 1
     ncs_restraints_group_list.append(g)
-  # print "group_dict", group_dict
-  # STOP()
-  return group_dict, ncs_restraints_group_list
+  return ncs_restraints_group_list
 
 
 def get_info_from_match_dict(match_dict, key, chain):

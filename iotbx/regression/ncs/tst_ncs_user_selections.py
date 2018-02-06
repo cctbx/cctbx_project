@@ -1182,6 +1182,7 @@ ncs_group {
 
 
   ncs_groups = get_ncs_groups(phil_str1, pdb_str)
+  # ncs_groups._show()
   assert len(ncs_groups) == 2
   assert len(ncs_groups[0].copies) == 1
   assert len(ncs_groups[1].copies) == 1
@@ -1191,13 +1192,13 @@ ncs_group {
   # print selection_string_from_selection(pdb_h, ncs_groups[0].master_iselection)
   # print selection_string_from_selection(pdb_h, ncs_groups[0].copies[0].iselection)
   # STOP()
-  assert approx_equal(ncs_groups[0].master_iselection,
-      asc.iselection("chain AB"))
-  assert approx_equal(ncs_groups[0].copies[0].iselection,
-      asc.iselection("chain GA"))
   assert approx_equal(ncs_groups[1].master_iselection,
-      asc.iselection("chain 1"))
+      asc.iselection("chain AB"))
   assert approx_equal(ncs_groups[1].copies[0].iselection,
+      asc.iselection("chain GA"))
+  assert approx_equal(ncs_groups[0].master_iselection,
+      asc.iselection("chain 1"))
+  assert approx_equal(ncs_groups[0].copies[0].iselection,
       asc.iselection("chain FB"))
 
 

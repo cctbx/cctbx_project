@@ -346,17 +346,16 @@ class input(object):
       # Most likely this is not the best way to validate user selections.
 
       # selection_list
-      group_dict, _ = ncs_search.find_ncs_in_hierarchy(
+      nrgl_fake_iseqs = ncs_search.find_ncs_in_hierarchy(
           ph=combined_h,
           chains_info=None,
           chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
           log=None,
           chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
           residue_match_radius=max(self.residue_match_radius, 1000.0))
-      # print "group_dict", group_dict
       # hopefully, we will get only 1 ncs group
       # ncs_group.selection = []
-      if len(group_dict) == 0:
+      if nrgl_fake_iseqs.get_n_groups() == 0:
         # this means that user's selection doesn't match
         # print "ZERO NCS groups found"
         rejected_msg = "  REJECTED because copies don't match good enough.\n" + \
@@ -365,8 +364,6 @@ class input(object):
         print >> self.log, rejected_msg
         continue
       # User triggered the fail of this assert!
-      # print "  N found ncs_groups:", len(group_dict)
-      # assert len(group_dict) == 1, "Got %d" % len(group_dict)
       selections_were_modified = False
       #
       # ncs_gr here is ncs_search.NCS_groups_container
@@ -375,17 +372,10 @@ class input(object):
       # .copies - ??, not used
       # .transforms = [], instances of ncs_search.Transform
       #
-      for key, ncs_gr in group_dict.iteritems():
-        # print "dir ncs_gr:", dir(ncs_gr)
+      for ncs_gr in nrgl_fake_iseqs:
         new_ncs_group = ncs_group_master_phil.extract().ncs_group[0]
-        # print "  new reference:", new_ncs_group.reference
-        # print "  new selection:", new_ncs_group.selection
-
-        for i, isel in enumerate(ncs_gr.iselections):
-          m_all_list = [x for ix in isel for x in list(ix)]
-          m_all_list.sort()
-          m_all_isel = flex.size_t(m_all_list)
-          # print "tmp:", list(combined_h.atoms().extract_tmp_as_size_t())
+        for i, isel in enumerate(ncs_gr.get_iselections_list()):
+          m_all_isel = isel.deep_copy()
           original_m_all_isel = combined_h.atoms().\
               select(m_all_isel).extract_tmp_as_size_t()
           if n_atoms_in_user_ncs > original_m_all_isel.size():
@@ -512,7 +502,7 @@ class input(object):
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
       chains_info = ncs_search.get_chains_info(pdb_h)
-      group_dict, self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
+      self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
         chains_info=chains_info,
         chain_similarity_threshold=self.chain_similarity_threshold,
