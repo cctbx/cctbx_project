@@ -12,6 +12,23 @@
 from __future__ import absolute_import, division
 
 from dxtbx.format.RegistryHelpers import LoadFormatClasses
+from libtbx.utils import Sorry
+from .Format import Format
+
+class SorryIOError(IOError, Sorry):
+  """Fusion of Sorry and IO Errors.
+
+  This is so we can send a better user-error, but still allow the simplicity
+  of just catching an IOError in any parent scopes.
+  """
+  def __init__(self, ioerror):
+    self.errno = ioerror.errno
+    self.strerror = ioerror.strerror
+    self.filename = ioerror.filename
+    super(SorryIOError, self).__init__("{}: {}".format(self.strerror, self.filename))
+
+  def __str__(self):
+    return self.message
 
 class _Registry:
   '''A class to handle all of the recognised image formats within xia2
@@ -79,6 +96,15 @@ class _Registry:
           return recurse(format, image_file)
       except Exception:
         pass
+
+    # Try opening the file; this could be an easy reason for failure
+    if not Format.is_url(image_file):
+      try:
+        with open(image_file) as f:
+          pass
+      except IOError as e:
+        # Assume that the OS file error makes sense to the user
+        raise SorryIOError(e)
 
     raise IOError('no format support found for %s' % image_file)
 
