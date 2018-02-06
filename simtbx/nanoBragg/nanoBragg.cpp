@@ -96,6 +96,10 @@ nanoBragg::nanoBragg(
     Sclose = Yclose = -dot_product(pix0_vector,sdet_vector);
     close_distance = distance =  dot_product(pix0_vector,odet_vector);
 
+    /* set beam centre */
+    scitbx::vec2<double> dials_bc = detector[0].get_beam_centre(beam.get_s0());
+    Xbeam = dials_bc[0]/1000.0;
+    Ybeam = dials_bc[1]/1000.0;
 
     /* detector sensor layer properties */
     detector_thick   = detector[0].get_thickness();
