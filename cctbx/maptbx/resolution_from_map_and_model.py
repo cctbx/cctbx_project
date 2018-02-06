@@ -1,11 +1,8 @@
 from __future__ import division
 from cctbx.array_family import flex
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
 from cctbx import maptbx
 import scitbx.math.curve_fitting
 from libtbx import group_args
-import time
 from cctbx import miller
 
 def canal(x, y, simple=False, assert_concave_up=False,
