@@ -828,6 +828,12 @@ def convert_wildcards_in_chain_id(chain_id):
   chain_id = chain_id.replace("*", "\*")
   return chain_id
 
+def chain_is_needed(selection, chain_selections):
+  if len(chain_selections) == 0:
+    return False
+  return (chain_selections[0][0] <= selection[0] and selection[0] <= chain_selections[-1][-1] or
+    chain_selections[0][0] <= selection[0] and selection[0] <= chain_selections[-1][-1])
+
 def selection_string_from_selection(pdb_h,
                                     selection,
                                     chains_info=None,
@@ -879,10 +885,12 @@ def selection_string_from_selection(pdb_h,
     # print "chains_info[ch_id].atom_selection", chains_info[ch_id].atom_selection
     # this "unfolds" the atom_selection array which is [[],[],[],[]...] into
     # a set
+    if not chain_is_needed(selection, chains_info[ch_id].atom_selection): continue
     a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
-    ch_sel = "chain '%s'" % convert_wildcards_in_chain_id(ch_id)
     test_set = a_sel.intersection(selection_set)
     if not test_set: continue
+    ch_sel = "chain '%s'" % convert_wildcards_in_chain_id(ch_id)
+    # Chain should be present, so do all the work.
     # if there is water in chain, specify residues numbers
     water_present = (len(a_sel) != chains_info[ch_id].chains_atom_number)
     complete_ch_not_present = (test_set != a_sel) or water_present
