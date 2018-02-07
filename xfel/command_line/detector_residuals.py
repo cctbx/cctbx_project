@@ -215,7 +215,7 @@ plots {
     .help = As stats_by_2theta, but reflections are binned by panelgroup.
   trumpet_plot = False
     .type = bool
-    .help = Show trumpet plot from Sauter 2015 for the first experiment
+    .help = Show trumpet plot from Sauter 2014 for the first experiment
 }
 
 save_pdf = False
