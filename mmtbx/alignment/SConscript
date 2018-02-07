@@ -1,0 +1,11 @@
+Import("env_etc")
+
+if (not env_etc.no_boost_python):
+  Import("env_scitbx_boost_python_ext")
+  env_bpl = env_scitbx_boost_python_ext.Clone()
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[env_etc.mmtbx_include] + env_etc.scitbx_common_includes)
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_alignment_ext",
+    source=["alignment_ext.cpp"])

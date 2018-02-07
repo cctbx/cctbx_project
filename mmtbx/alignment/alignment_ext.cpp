@@ -3,7 +3,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
-#include <mmtbx/alignment.h>
+#include <mmtbx/alignment/alignment.h>
 
 namespace mmtbx { namespace alignment {
 namespace {
