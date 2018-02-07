@@ -483,8 +483,6 @@ blosum62_similarity_scores = [
   [ -2, -2, -3, -2,  3, -3,  2, -1, -2, -1, -1, -2, -3, -1, -2, -2, -2, -1,  2,  7 ],
   ]
 
-gap_penalty = -8
-
 def identity(a, b):
   return int(a == b)
 
