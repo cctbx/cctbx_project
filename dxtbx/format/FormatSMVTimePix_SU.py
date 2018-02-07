@@ -30,7 +30,7 @@ class FormatSMVTimePix_SU(FormatSMV):
     size, header = FormatSMV.get_smv_header(image_file)
 
     # only recognise TimePix_SU
-    if header.get('BEAMLINE').upper() != 'TIMEPIX_SU': return False
+    if header.get('BEAMLINE', '').upper() != 'TIMEPIX_SU': return False
 
     # check the header contains the things we're going to use
     wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
