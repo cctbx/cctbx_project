@@ -1045,6 +1045,7 @@ class Builder(object):
       skip_base="",
       force_base_build=False,
       enable_shared=False,
+      mpi_build=False,
       python3=False,
     ):
     if nproc is None:
@@ -1084,6 +1085,7 @@ class Builder(object):
     self.download_only = download_only
     self.skip_base = skip_base
     self.force_base_build = force_base_build
+    self.mpi_build=mpi_build
     self.add_init()
 
     # Cleanup
@@ -1806,6 +1808,8 @@ class XFELBuilder(CCIBuilder):
   ]
 
   def add_base(self, extra_opts=[]):
+    if self.mpi_build:
+      extra_opts=['--mpi-build']+extra_opts
     super(XFELBuilder, self).add_base(
       extra_opts=['--labelit'] + extra_opts)
 
@@ -2300,6 +2304,11 @@ def run(root=None):
                     dest="enable_shared",
                     action="store_true",
                     default=False)
+  parser.add_option("--mpi-build",
+                    dest="mpi_build",
+                    help="Builds software with mpi functionality",
+                    action="store_true",
+                    default=False)
   parser.add_option("--python3",
                     dest="python3",
                     help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
@@ -2374,6 +2383,7 @@ def run(root=None):
     skip_base=options.skip_base,
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
+    mpi_build=options.mpi_build
     python3=options.python3,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)

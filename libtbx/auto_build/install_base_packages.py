@@ -69,6 +69,8 @@ class installer (object) :
       help="Use the system Python interpreter", action="store_true")
     parser.add_option("--python3", dest="python3", action="store_true", default=False,
       help="Install a Python3 interpreter. This is unsupported and purely for development purposes.")
+    parser.add_option("--mpi-build", dest="mpi_build", action="store_true", default=False,
+      help="Installs software with MPI functionality. Currently for testing purposes and only for DIALS.")
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
       help="Build in debugging mode", default=False)
     # Package set options.
@@ -318,6 +320,10 @@ class installer (object) :
     # Package dependencies.
     if 'pillow' in packages:
       packages += ['freetype']
+
+    # mpi4py installation
+    if options.mpi_build:
+      packages +=['mpi4py']
 
     return set(packages)
 
@@ -697,6 +703,7 @@ Installation of Python packages may fail.
       'ipython',
       'pyopengl',
       'scipy',
+      'mpi4py',
       'py2app',
       'misc',
       'lz4_plugin',
@@ -1064,6 +1071,12 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name=SCIPY_PKG,
       pkg_name_label="SciPy",
       confirm_import_module="scipy")
+
+  def build_mpi4py(self):
+    self.build_python_module_pip(
+      package_name='mpi4py',
+      package_version=MPI4PY_VERSION,
+      confirm_import_module="mpi4py")
 
   def build_py2app(self):
     self.build_python_module_simple(
