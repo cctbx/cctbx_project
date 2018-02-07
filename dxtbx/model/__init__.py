@@ -306,6 +306,13 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
 
     print >> out, "\n".join(msg)
 
+  def get_A_as_sqr(self): # required for lunus
+    from scitbx.matrix import sqr
+    return sqr(self.get_A())
+
+  def get_A_inverse_as_sqr(self):
+    return self.get_A_as_sqr().inverse()
+
   def __str__(self):
     from cStringIO import StringIO
     s = StringIO()
