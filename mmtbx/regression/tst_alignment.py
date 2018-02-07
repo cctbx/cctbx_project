@@ -1,8 +1,11 @@
 from __future__ import division
 from mmtbx.alignment import align
-from mmtbx.alignment import amino_acid_codes, blosum62
+from mmtbx.alignment import amino_acid_codes, blosum62, dayhoff_mdm78_similarity_scores, \
+    blosum50_similarity_scores, pairwise_global, dayhoff, blosum50, blosum62, \
+    identity
 import sys
 from scitbx.array_family import flex
+from libtbx.test_utils import approx_equal
 
 import operator
 import unittest
@@ -53,6 +56,118 @@ def exercise_align():
          j_seqs == flex.size_t([0, 1, 2, 8, 9, 10])
 
 
+def exercise_2():
+  A = "AAAGGTT"
+  B = "AAATT"
+  obj = align(A,B)
+  obj.show_matrices()
+
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+  print alignment.match_codes
+  print alignment.a
+  print alignment.identity_matches()
+  print alignment.b
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP".lower()
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function=dayhoff,style="global")
+
+  print "\n1rra vs. 1bli; GLOBAL allignment; mdm78"
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+
+  print alignment.match_codes
+  print alignment.a
+  print alignment.dayhoff_matches()
+  print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.330645)
+
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gap_opening_penalty=150,gap_extension_penalty=20,similarity_function="dayhoff",style="local")
+
+  print "\n1rra vs. 1bli; LOCAL allignment; mdm78"
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+
+  print alignment.match_codes
+  print alignment.a
+  print alignment.dayhoff_matches()
+  print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.341880)
+
+
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function=blosum50,style="global")
+
+  print "\n1rra vs. 1bli; GLOBAL allignment; blosum50"
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+
+  print alignment.match_codes
+  print alignment.a
+  print alignment.matches()
+  print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.362903)
+
+  # 1rra vs. 1bli
+  A = "AESSADKFKRQHMDTEGPSKSSPTYCNQMMKRQGMTKGSCKPVNTFVHEPLEDVQAICSQGQVTCKNGRNNCHKSSSTLRITDCRLKGSSKYPNCDYTTTDSQKHIIIACDGNPYVPVHFDASV"
+  B = "DNSRYTHFLTQHYDAKPQGRDDRYCESIMRRRGLTSPCKDINTFIHGNKRSIKAICENKNGNPHRENLRISKSSFQVTTCKLHGGSPWPPCQYRATAGFRNVVVACENGLPVHLDQSIFRRP"
+  obj = align(A,B,gap_opening_penalty=10,gap_extension_penalty=2,similarity_function="blosum50",style="local")
+
+  print "\n1rra vs. 1bli; LOCAL allignment; blosum50"
+  print "score=%.1f" % obj.score()
+  alignment = obj.extract_alignment()
+
+  print alignment.match_codes
+  print alignment.a
+  print alignment.matches(similarity_function=blosum50, is_similar_threshold=0)
+  print alignment.b
+  assert approx_equal(alignment.calculate_sequence_identity(), 0.368852)
+  print
+  alignment.pretty_print(
+    matches = None,
+    out = None,
+    block_size = 50,
+    n_block = 1,
+    top_name = "1rra",
+    bottom_name = "1bli",
+    comment = """pretty_print is pretty pretty""")
+
+  # example from PDB ID 2dex
+  A = "GTLIRVTPEQPTHAVCVLGTLTQLDICSSAPXXXTSFSINASPGVVVDI"
+  B = "GPLGSPEFMAQGTLIRVTPEQPTHAVCVLGTLTQLDICSSAPEDCTSFSINASPGVVVDI"
+  obj = align(A, B, similarity_function=identity)
+  alignment = obj.extract_alignment()
+  assert alignment.match_codes == 'iiiiiiiiiiimmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm'
+  assert alignment.a == '-----------GTLIRVTPEQPTHAVCVLGTLTQLDICSSAPXXXTSFSINASPGVVVDI'
+  assert alignment.b == 'GPLGSPEFMAQGTLIRVTPEQPTHAVCVLGTLTQLDICSSAPEDCTSFSINASPGVVVDI'
+
+  print "OK" # necessary for auto_build checking
+
+def exercise_similarity_scores():
+  from scitbx.array_family import flex
+  for m in [dayhoff_mdm78_similarity_scores, blosum50_similarity_scores]:
+    assert flex.double(m).matrix_is_symmetric(relative_epsilon=1e-15)
+
+def exercise_ext():
+  seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY"
+  seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG"
+  pg = pairwise_global(seq1,seq2.lower())
+  assert pg.result1 == "THEQUICKBOWNFOXJUMPSOVE-THELAZY---"
+  assert pg.result2 == "---QUICKBRWNF-XJUMPS-VERTH3LAZYDOG"
+  pg = pairwise_global_wrapper(seq1,seq2)
+  assert pg.range_matches_from_aligned_sequences() == (
+  [[3, 13], [14, 20], [21, 23], [23, 30]], [[0, 10], [10, 16], [16, 18], [19, 26]])
+  assert ("%.2f" % pg.calculate_sequence_identity()) == "0.92"
+
 class test_blosum62(unittest.TestCase):
 
   def testSymmetric(self):
@@ -97,6 +212,9 @@ alltests = unittest.TestSuite(
 
 def exercise():
   exercise_align()
+  exercise_2()
+  exercise_similarity_scores()
+  exercise_ext
   sys.stdout.flush()
   unittest.TextTestRunner(stream=sys.stdout, verbosity = 2 ).run( alltests )
 
