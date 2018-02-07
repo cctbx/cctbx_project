@@ -1037,17 +1037,16 @@ def selection_string_from_selection(pdb_h,
   # When ready to remove, don't forget to remove atom_selection_cache
   # parameter as well.
   # Current removal date: Jan 22, 2017
-  if atom_selection_cache is None:
-    atom_selection_cache = pdb_h.atom_selection_cache()
-  isel = atom_selection_cache.iselection(sel_str)
-  # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
-  # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
-  assert len(isel) == len(selection), ""+\
-      "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
-      % (len(isel), len(selection)) +\
-      "String lead to error: '%s'" % sel_str
-  # print "sel_str", sel_str
-  # STOP()
+  # Removed on Feb, 7, 2018.
+  # if atom_selection_cache is None:
+  #   atom_selection_cache = pdb_h.atom_selection_cache()
+  # isel = atom_selection_cache.iselection(sel_str)
+  # # pdb_h.select(isel).write_pdb_file("selected_string.pdb")
+  # # pdb_h.select(selection).write_pdb_file("selected_isel.pdb")
+  # assert len(isel) == len(selection), ""+\
+  #     "%d (result) != %d (input): conversion to string selects different number of atoms!.\n" \
+  #     % (len(isel), len(selection)) +\
+  #     "String lead to error: '%s'" % sel_str
   return sel_str
 
 def get_atom_str(atom_str):
