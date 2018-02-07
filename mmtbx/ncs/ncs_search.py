@@ -822,6 +822,8 @@ def get_chains_info(ph, selection_list=None):
   """
 
   chains_info =  {}
+  if ph.models_size() == 0:
+    return None
   # asc = ph.atom_selection_cache()
   model  = ph.models()[0]
   # build chains_info from hierarchy
