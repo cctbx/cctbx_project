@@ -831,8 +831,11 @@ def convert_wildcards_in_chain_id(chain_id):
 def chain_is_needed(selection, chain_selections):
   if len(chain_selections) == 0:
     return False
-  return (chain_selections[0][0] <= selection[0] and selection[0] <= chain_selections[-1][-1] or
+  result1 = (chain_selections[0][0] <= selection[0] and selection[0] <= chain_selections[-1][-1] or
     chain_selections[0][0] <= selection[0] and selection[0] <= chain_selections[-1][-1])
+  result2 = (selection[0] <= chain_selections[0][0] and chain_selections[0][0] <= selection[-1] or
+    selection[0] <= chain_selections[-1][-1] and chain_selections[-1][-1] <= selection[-1])
+  return result1 or result2
 
 def selection_string_from_selection(pdb_h,
                                     selection,
