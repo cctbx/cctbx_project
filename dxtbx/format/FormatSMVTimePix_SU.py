@@ -7,11 +7,8 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
-"""Implementation of a format class to specifically recognise images
-from a Timepix-based detector, installed on a JEOL-2100 electron microscope at
-Stockholm University, which have been preprocessed by Wei Wan's RED software,
-to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
-The detector itself has a 2x2 array of Timepix modules"""
+"""Format classes to specifically recognise images from an electron detector
+with a 2x2 array of Timepix modules, converted to SMV in various ways."""
 
 from __future__ import absolute_import, division
 import time
@@ -19,22 +16,21 @@ from dxtbx.format.FormatSMV import FormatSMV
 from dxtbx.model.detector import Detector
 
 class FormatSMVTimePix_SU(FormatSMV):
-  '''A class for reading SMV format images from the RED software, where the
-  main identifying feature is BEAMLINE=TimePix_SU. This is intended to
-  construct a model for an electron diffraction experiment using a microscope
-  at Stockholm University.'''
+  '''Base format class to specifically recognise images from a Timepix-based
+  detector, installed on a JEOL-2100 electron microscope at Stockholm
+  University, which have been preprocessed by Wei Wan's RED software,
+  to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
+  The detector itself has a 2x2 array of Timepix modules. Derived classes will
+  either treat these separately as a multi-panel model, or as a single panel
+  model.'''
 
   @staticmethod
   def understand(image_file):
-    '''Check to see if this looks like an ADSC SMV format image, i.e. we
-    can make sense of it. Essentially that will be if it contains all of
-    the keys we are looking for and not some we are not (i.e. that belong
-    to a Rigaku Saturn.)'''
 
     size, header = FormatSMV.get_smv_header(image_file)
 
     # only recognise TimePix_SU
-    if header.get('BEAMLINE') != 'TimePix_SU': return False
+    if header.get('BEAMLINE').upper() != 'TIMEPIX_SU': return False
 
     # check the header contains the things we're going to use
     wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
@@ -44,13 +40,6 @@ class FormatSMVTimePix_SU(FormatSMV):
     for header_item in wanted_header_items:
       if not header_item in header:
         return False
-
-    # check the pixel size is 55 microns
-    if not float(header['PIXEL_SIZE']) == 0.055: return False
-
-    # check there are 512*512 pixels
-    if not (header['SIZE1']) == '512': return False
-    if not (header['SIZE2']) == '512': return False
 
     return True
 
@@ -81,6 +70,69 @@ class FormatSMVTimePix_SU(FormatSMV):
     detector slow or fast axes.'''
 
     return self._goniometer_factory.known_axis((-0.755, -0.656, 0.0))
+
+  def _beam(self):
+    '''Return an unpolarized beam model.'''
+
+    wavelength = float(self._header_dictionary['WAVELENGTH'])
+
+    return self._beam_factory.make_polarized_beam(
+        sample_to_source=(0.0, 0.0, 1.0),
+        wavelength=wavelength,
+        polarization=(0, 1, 0),
+        polarization_fraction=0.5)
+
+  def _scan(self):
+    '''Return the scan information for this image.'''
+    import calendar
+
+    format = self._scan_factory.format('SMV')
+    exposure_time = float(self._header_dictionary['TIME'])
+    epoch = None
+
+    # PST, PDT timezones not recognised by default...
+
+    epoch = 0
+    try:
+      date_str = self._header_dictionary['DATE']
+      date_str = date_str.replace('PST', '').replace('PDT', '')
+    except KeyError:
+      date_str = ''
+    for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
+      try:
+        epoch = calendar.timegm(time.strptime(date_str, format_string))
+        break
+      except ValueError:
+        pass
+
+    # assert(epoch)
+    osc_start = float(self._header_dictionary['OSC_START'])
+    osc_range = float(self._header_dictionary['OSC_RANGE'])
+
+    return self._scan_factory.single(
+        self._image_file, format, exposure_time,
+        osc_start, osc_range, epoch)
+
+class FormatSMVTimePix_SU_512x512(FormatSMVTimePix_SU):
+  '''Implementation of a format class to specifically recognise images from a
+  Timepix-based detector, installed on a JEOL-2100 electron microscope at
+  Stockholm University, which have been preprocessed by Wei Wan's RED software,
+  to produce SMV files. See https://doi.org/10.1107/S0021889813027714 for RED.
+  The detector itself has a 2x2 array of Timepix modules.'''
+
+  @staticmethod
+  def understand(image_file):
+
+    size, header = FormatSMVTimePix_SU.get_smv_header(image_file)
+
+    # check the pixel size is 55 microns
+    if not float(header['PIXEL_SIZE']) == 0.055: return False
+
+    # check there are 512*512 pixels
+    if not (header['SIZE1']) == '512': return False
+    if not (header['SIZE2']) == '512': return False
+
+    return True
 
   def _detector(self):
     '''4 panel detector, 55 micron pixels except for pixels at the outer
@@ -151,7 +203,8 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     # the beam centre is defined from the origin along fast, slow. To determine
     # the lab frame origin we place the beam centre down the -z axis
-    cntr = matrix.col((0.0, 0.0, -1 * float(self._header_dictionary['DISTANCE'])))
+    dist = float(self._header_dictionary['DISTANCE'])
+    cntr = matrix.col((0.0, 0.0, -1 * dist))
     orig = cntr - bx_mm * fast - by_mm * slow
 
     d = Detector()
@@ -223,48 +276,6 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     return d
 
-  def _beam(self):
-    '''Return an unpolarized beam model.'''
-
-    wavelength = float(self._header_dictionary['WAVELENGTH'])
-
-    return self._beam_factory.make_polarized_beam(
-        sample_to_source=(0.0, 0.0, 1.0),
-        wavelength=wavelength,
-        polarization=(0, 1, 0),
-        polarization_fraction=0.5)
-
-  def _scan(self):
-    '''Return the scan information for this image.'''
-    import calendar
-
-    format = self._scan_factory.format('SMV')
-    exposure_time = float(self._header_dictionary['TIME'])
-    epoch = None
-
-    # PST, PDT timezones not recognised by default...
-
-    epoch = 0
-    try:
-      date_str = self._header_dictionary['DATE']
-      date_str = date_str.replace('PST', '').replace('PDT', '')
-    except KeyError:
-      date_str = ''
-    for format_string in ['%a %b %d %H:%M:%S %Y', '%a %b %d %H:%M:%S %Z %Y']:
-      try:
-        epoch = calendar.timegm(time.strptime(date_str, format_string))
-        break
-      except ValueError:
-        pass
-
-    # assert(epoch)
-    osc_start = float(self._header_dictionary['OSC_START'])
-    osc_range = float(self._header_dictionary['OSC_RANGE'])
-
-    return self._scan_factory.single(
-        self._image_file, format, exposure_time,
-        osc_start, osc_range, epoch)
-
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
     flex array of integers.)'''
@@ -297,9 +308,111 @@ class FormatSMVTimePix_SU(FormatSMV):
 
     return tuple(self._raw_data)
 
+class FormatSMVTimePix_SU_516x516(FormatSMVTimePix_SU):
+  '''A class for reading SMV format images for the Timepix-based electron
+  detector where the wider edge pixels have been split into three normal-sized
+  pixels. The whole 516*516 detector can then be described as a single panel'''
+
+  @staticmethod
+  def understand(image_file):
+
+    size, header = FormatSMVTimePix_SU.get_smv_header(image_file)
+
+    # check there are 516*516 pixels
+    if not (header['SIZE1']) == '516': return False
+    if not (header['SIZE2']) == '516': return False
+
+    return True
+
+  def _goniometer(self):
+    '''Return a model for a simple single-axis goniometer. For this beamline
+    this should be close to the provided values and neither aligned with the
+    detector slow or fast axes.'''
+
+    #import numpy as np
+    #angle = np.radians(-40) #-0.672  # radians
+    #axis = np.cos(angle), -np.cos(angle+np.pi/2), 0
+
+    #axis = (0.755, -0.656, 0.0)
+    axis = (0.7826, -0.6226, 0.0)
+    return self._goniometer_factory.known_axis(axis)
+
+  def _detector(self):
+    '''Return a model for a simple detector, presuming no one has
+    one of these on a two-theta stage. Assert that the beam centre is
+    provided in the Mosflm coordinate frame.'''
+
+    distance = float(self._header_dictionary['DISTANCE'])  # mm
+
+    beam_x = float(self._header_dictionary['BEAM_CENTER_X'])  # px
+    beam_y = float(self._header_dictionary['BEAM_CENTER_Y'])  # px
+
+    # wavelength = float(self._header_dictionary['WAVELENGTH'])  # Angstrom
+
+    pixelsize = float(self._header_dictionary['PIXEL_SIZE'])  # mm
+
+    thickness = 0.3  # mm
+    material = 'Si'
+
+    nx = int(self._header_dictionary['SIZE1'])  # number of pixels
+    ny = int(self._header_dictionary['SIZE2'])  # number of pixels
+
+    underload, overload = (-1, 65535)
+
+    detector = self._detector_factory.simple(
+        sensor='PAD',
+        distance=distance,
+        beam_centre=(beam_x * pixelsize, beam_y * pixelsize),
+        fast_direction='+x',
+        slow_direction='-y',
+        pixel_size=(pixelsize, pixelsize),
+        image_size=(nx, ny),
+        trusted_range=(underload, overload),
+        )
+
+    detector[0].set_thickness(thickness)
+    detector[0].set_material(material)
+    detector[0].mask = []  # can we mask the cross here?
+
+    return detector
+
+  def get_raw_data(self):
+    '''Get the pixel intensities (i.e. read the image and return as a
+    flex array of integers.)'''
+
+    from boost.python import streambuf
+    from dxtbx import read_uint16, read_uint16_bs, is_big_endian
+    from scitbx.array_family import flex
+    f = self.open_file(self._image_file, 'rb')
+    f.read(self._header_size)
+
+    nx = int(self._header_dictionary['SIZE1'])  # number of pixels
+    ny = int(self._header_dictionary['SIZE2'])  # number of pixels
+
+    if self._header_dictionary['BYTE_ORDER'] == 'big_endian':
+      big_endian = True
+    else:
+      big_endian = False
+
+    if big_endian == is_big_endian():
+      raw_data = read_uint16(streambuf(f), int(nx * ny))
+    else:
+      raw_data = read_uint16_bs(streambuf(f), int(nx * ny))
+
+    # note that x and y are reversed here
+    raw_data.reshape(flex.grid(ny, nx))
+
+    self._raw_data = raw_data
+
+    return self._raw_data
+
 if __name__ == '__main__':
 
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVTimePix_SU.understand(arg)
+    print "FormatSMVTimePix_SU:", FormatSMVTimePix_SU.understand(arg)
+    print ("FormatSMVTimePix_SU_512x512:",
+           FormatSMVTimePix_SU_512x512.understand(arg))
+    print ("FormatSMVTimePix_SU_516x516:",
+           FormatSMVTimePix_SU_516x516.understand(arg))
