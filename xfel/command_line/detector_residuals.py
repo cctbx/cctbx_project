@@ -213,6 +213,9 @@ plots {
   stats_by_panelgroup = False
     .type = bool
     .help = As stats_by_2theta, but reflections are binned by panelgroup.
+  trumpet_plot = False
+    .type = bool
+    .help = Show trumpet plot from Sauter 2015 for the first experiment
 }
 
 save_pdf = False
@@ -1051,6 +1054,30 @@ class Script(DCScript):
                               "R/T RMSD ratio",
                               "Delta two theta (degrees)"],
                              "%sData by panelgroup"%tag)
+
+      # Trumpet plot
+      if params.plots.trumpet_plot:
+        expt_id = min(set(reflections['id']))
+        half_mosaicity_deg = experiments[expt_id].crystal.get_half_mosaicity_deg()
+        domain_size_ang = experiments[expt_id].crystal.get_domain_size_ang()
+        refls = reflections.select(reflections['id'] == expt_id)
+        fig = plt.figure()
+        two_thetas = refls['two_theta_cal']
+        delpsi = refls['delpsical.rad']*180/math.pi
+        plt.scatter(two_thetas, delpsi)
+
+        LR = flex.linear_regression(two_thetas, delpsi)
+        model_y = LR.slope()*two_thetas + LR.y_intercept()
+        plt.plot(two_thetas, model_y, "k-")
+
+        tan_phi_deg = (experiments[expt_id].crystal.get_unit_cell().d(refls['miller_index']) / domain_size_ang)*180/math.pi
+        tan_outer_deg = tan_phi_deg + (half_mosaicity_deg/2)
+
+        plt.title("%d: mosaicity FW=%4.2f deg, Dsize=%5.0fA on %d spots"%(expt_id, 2*half_mosaicity_deg, domain_size_ang, len(two_thetas)))
+        plt.plot(two_thetas, tan_phi_deg, "r.")
+        plt.plot(two_thetas, -tan_phi_deg, "r.")
+        plt.plot(two_thetas, tan_outer_deg, "g.")
+        plt.plot(two_thetas, -tan_outer_deg, "g.")
 
       if self.params.save_pdf:
         pp = PdfPages('residuals_%s.pdf'%(tag.strip()))
