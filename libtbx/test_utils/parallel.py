@@ -72,8 +72,6 @@ def run_command(command,
                 out=None):
   try:
     t0=time.time()
-    print("Running " + command)
-    sys.stdout.flush()
     cmd_result = easy_run.fully_buffered(
       command=command,
       )
