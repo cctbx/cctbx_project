@@ -2,7 +2,7 @@ from __future__ import division, print_function
 '''
 '''
 
-import os, re, sys
+import inspect, os, re, sys
 import importlib
 
 import libtbx.phil
@@ -103,6 +103,17 @@ def DataManager(datatypes=None, phil=None):
                            for tmp_str in datatype.split('_')) + 'DataManager'
     manager_classes.append(getattr(sys.modules[module_name], class_name))
 
+  # check inheritance and add datatypes if necessary
+  class_datatypes = set()
+  for manager_class in manager_classes:
+    if (hasattr(manager_class, 'datatype')):
+      class_datatypes.add(manager_class.datatype)
+    # get full inheritance order and check
+    for parent_class in inspect.getmro(manager_class)[1:]:
+      if (hasattr(parent_class, 'datatype')):
+        class_datatypes.add(parent_class.datatype)
+  datatypes = list(class_datatypes)
+
   # construct new class and return instance
   data_manager_class = type('DataManager', tuple(manager_classes), dict())
   return data_manager_class(datatypes=datatypes, phil=phil)
@@ -115,6 +126,8 @@ class DataManagerBase(object):
     '''
 
     self.datatypes = datatypes
+    if (hasattr(self,'datatype') and (self.datatype not in self.datatypes)):
+      self.datatypes.append(self.datatype)
 
     # dynamically construct master PHIL string
     self.master_phil_str = 'data_manager {'
