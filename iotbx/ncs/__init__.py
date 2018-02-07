@@ -122,6 +122,7 @@ class input(object):
     self.original_hierarchy = None
     self.truncated_hierarchy = None
     self.truncated_h_asc = None
+    self.chains_info = None
 
     extension = ''
     # set search parameters
@@ -156,6 +157,7 @@ class input(object):
       self.truncated_hierarchy.reset_atom_i_seqs()
       self.truncated_h_asc = self.truncated_hierarchy.atom_selection_cache()
       # self.truncated_hierarchy.write_pdb_file("in_ncs_pre_after.pdb")
+      self.chains_info = ncs_search.get_chains_info(self.truncated_hierarchy)
 
 
       if self.truncated_hierarchy.atoms_size() == 0:
@@ -364,7 +366,7 @@ class input(object):
           all_m_select_str = selection_string_from_selection(
               pdb_h=pdb_h,
               selection=original_m_all_isel,
-              chains_info=None,
+              chains_info=self.chains_info,
               atom_selection_cache=asc)
           # print "all_m_select_str", all_m_select_str
           if i == 0:
@@ -414,7 +416,7 @@ class input(object):
     self.ncs_restraints_group_list.update_str_selections_if_needed(
         hierarchy=self.truncated_hierarchy,
         asc=self.truncated_h_asc,
-        chains_info=None)
+        chains_info=self.chains_info)
     self.ncs_restraints_group_list.update_i_seqs(self.old_i_seqs)
 
 
@@ -431,10 +433,9 @@ class input(object):
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
-      chains_info = ncs_search.get_chains_info(pdb_h)
       self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
         ph=pdb_h,
-        chains_info=chains_info,
+        chains_info=self.chains_info,
         chain_similarity_threshold=self.chain_similarity_threshold,
         chain_max_rmsd=self.chain_max_rmsd,
         log=self.log,

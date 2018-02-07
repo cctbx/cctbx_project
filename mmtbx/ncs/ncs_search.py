@@ -436,7 +436,6 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   return flipped_other_selection
 
 def my_selection(ph, ch_id, sel_list_extended):
-  sel_list_extended.sort()
   min_iseq = sel_list_extended[0]
   new_h = None
   for chain in ph.only_model().chains():
@@ -464,6 +463,8 @@ def get_match_rmsd(ph, match):
   [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
   sel_list_extended_a = [x for y in list_a for x in y]
   sel_list_extended_b = [x for y in list_b for x in y]
+  sel_list_extended_a.sort()
+  sel_list_extended_b.sort()
 
   if len(sel_list_extended_a) == 0 or len(sel_list_extended_b) == 0:
     # e.g. 3liy (whole chain in AC)
