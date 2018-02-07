@@ -2660,6 +2660,7 @@ def join_roots(roots, chain_id_suffixes=Auto):
 # END_MARKED_FOR_DELETION_OLEG
 
 # XXX: Nat's utility functions
+# also used in ncs_search.py
 def new_hierarchy_from_chain (chain) :
   """
   Given a chain object, create an entirely new hierarchy object contaning only

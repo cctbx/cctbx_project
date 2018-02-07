@@ -4,12 +4,12 @@ from scitbx.math import superpose
 from libtbx.utils import Sorry
 import sys
 from cStringIO import StringIO
-from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
-    flippable_sidechains
-from time import time
 import iotbx.pdb
+from iotbx.pdb.hierarchy import new_hierarchy_from_chain
 from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list, \
     NCS_restraint_group, NCS_copy
+from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
+    flippable_sidechains
 
 
 __author__ = 'Youval, massively rewritten by Oleg'
@@ -434,26 +434,59 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   # assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
+def my_selection(ph, ch_id, sel_list_extended):
+  sel_list_extended.sort()
+  min_iseq = sel_list_extended[0]
+  new_h = None
+  for chain in ph.only_model().chains():
+    if chain.id == ch_id:
+      if new_h is None:
+        # append first chain and tweak selections
+        new_h = new_hierarchy_from_chain(chain)
+        min_iseq = chain.atoms()[0].i_seq
+        for i in range(len(sel_list_extended)):
+          sel_list_extended[i] -= min_iseq
+      else:
+        # append extra chain and tweak selection
+        new_start_iseq = new_h.atoms_size()
+        old_start_iseq = chain.atoms()[0].i_seq
+        dif = old_start_iseq - new_start_iseq - min_iseq
+        new_h.only_model().append_chain(chain.detached_copy())
+        for i in range(len(sel_list_extended)):
+          if sel_list_extended[i] >= old_start_iseq-min_iseq:
+            # new = old - old + new
+            sel_list_extended[i] -= dif
+  return new_h.select(flex.size_t(sel_list_extended))
+
 def get_match_rmsd(ph, match):
   assert len(ph.models()) == 1
   [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-  # print "Cleaning chains", ch_a_id, ch_b_id, similarity,
-  t0 = time()
-  sel_a = make_selection_from_lists(list_a)
-  sel_b = make_selection_from_lists(list_b)
-  # print "debug: lista, listb", list_a, list_b
-  if sel_a.size() == 0 or sel_b.size() == 0:
+  sel_list_extended_a = [x for y in list_a for x in y]
+  sel_list_extended_b = [x for y in list_b for x in y]
+
+  if len(sel_list_extended_a) == 0 or len(sel_list_extended_b) == 0:
     # e.g. 3liy (whole chain in AC)
     return None, None, None, None, None
-
-  other_h = ph.select(sel_a)
+  #
+  # attempt to avoid selection of huge model
+  # This is absolutely necessary for models of size > ~ 50 Mb in PDB format.
+  # This brings runtime of this function alone for:
+  # 3iyw ( 75 Mb)  88 -> 10 seconds. Total runtime  220 -> 160s.
+  # 5vu2 (150 Mb) 506 -> 22 seconds. Total runtime 1067 -> 573s.
+  # As one can easily see, now runtime of this function is ~N,
+  # where N - size of molecule.
+  # More shocking results should be expected for
+  # even larger molecules (1.2Gb is currently the max).
+  # At this point no hierarchy selections left in this module.
+  #
+  other_h = my_selection(ph, ch_a_id, sel_list_extended_a)
+  ref_h = my_selection(ph, ch_b_id, sel_list_extended_b)
+  #
   other_atoms = other_h.atoms()
-  ref_h = ph.select(sel_b)
   ref_atoms = ref_h.atoms()
   #
   # Here we want to flip atom names, even before chain alignment, so
   # we will get correct chain RMSD
-
   flipped_other_selection = make_flips_if_necessary_torsion(
       ref_h.deep_copy(), other_h.deep_copy())
   # if flipped_other_selection is not None:
@@ -672,7 +705,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
   # alignment.pretty_print()
 
   if sim1 < min_percent:
-    # chains are to different, return empty arrays
+    # chains are too different, return empty arrays
     return flex.size_t([]), flex.size_t([]), 0
   return al_a, al_b, sim1
 
@@ -764,14 +797,6 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   else:
     msg = ''
   return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
-
-def make_selection_from_lists(sel_list):
-  """ Convert a list of lists to flex.size_t selection array  """
-  sel_list_extended = [x for y in sel_list for x in y]
-  sel_set = set(sel_list_extended)
-  assert len(sel_list_extended) == len(sel_set)
-  sel_list_extended.sort()
-  return flex.size_t(sel_list_extended)
 
 def get_chains_info(ph, selection_list=None):
   """

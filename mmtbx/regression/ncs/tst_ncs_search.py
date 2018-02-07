@@ -134,7 +134,9 @@ class TestSimpleAlignment(unittest.TestCase):
     res_n_b = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     list_a = [flex.size_t(x) for x in info_ab['A'].atom_selection]
     list_b = [flex.size_t(x) for x in info_ab['B'].atom_selection]
-    sel_a = ncs_search.make_selection_from_lists(list_a)
+    xxx = [x for y in list_a for x in y]
+    xxx.sort()
+    sel_a = flex.size_t(xxx)
     other_sites = ph.select(sel_a).atoms().extract_xyz()
     ref_sites = ph_b.atoms().extract_xyz()
     self.assertEqual(other_sites.size(),ref_sites.size())
