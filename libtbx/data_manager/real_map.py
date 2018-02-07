@@ -3,8 +3,6 @@ from __future__ import division, print_function
 '''
 import os
 
-# from Boost.Python import ArgumentError
-
 from libtbx.data_manager import DataManagerBase
 from libtbx.utils import Sorry
 from scitbx.array_family import flex
