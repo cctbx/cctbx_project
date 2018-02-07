@@ -807,16 +807,9 @@ def format_80(s):
   return ss
 
 def inverse_transform(r,t):
-  #
-  # XXX. Have no idea why proper function (without changing input vars)
-  # lead to Tom's ncs.deep_copy not function properly...
-  #
-  r = r.transpose()
-  t = - r*t
-  return r,t
-  # rr = r.transpose()
-  # tt = - r*t
-  # return rr,tt
+  r_inv = r.transpose()
+  t_inv = - r_inv*t
+  return r_inv,t_inv
 
 def get_center_orth(xyz,selection):
   """
