@@ -228,8 +228,6 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
   # the rest chains (selections). Master is going to be the first in
   # alphabetical order.
 
-  group_id = 0
-  tr_sn = 1
   for prel_gr_dict in preliminary_ncs_groups:
     # print "==============="
     sorted_gr_chains = sorted(prel_gr_dict.keys())
@@ -314,6 +312,7 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         master_iselection=min_master_selection,
         str_selection=None)
     for ch_copy in sorted_gr_chains:
+      # print "ch_copy", ch_copy
       master_size = min_master_selection.size()
       copy_sel, copy_res, m_sel = get_copy_master_selections_from_match_dict(
           match_dict, prel_gr_dict, master, ch_copy)
@@ -335,7 +334,9 @@ def ncs_grouping_and_group_dict(match_dict, hierarchy):
         r,t,copy_rmsd = my_get_rot_trans(
             ph=hierarchy,
             master_selection=new_master_sel,
-            copy_selection=new_copy_sel)
+            copy_selection=new_copy_sel,
+            master_chain_id = master,
+            copy_chain_id = ch_copy)
         c = NCS_copy(
             copy_iselection=new_copy_sel,
             rot=r,
@@ -869,7 +870,9 @@ def get_chains_info(ph, selection_list=None):
 def my_get_rot_trans(
     ph,
     master_selection,
-    copy_selection):
+    copy_selection,
+    master_chain_id,
+    copy_chain_id):
   """
   Get rotation and translation using superpose.
 
@@ -886,11 +889,11 @@ def my_get_rot_trans(
     master/copy_selection: master and copy iselections
   """
 
-  atoms = ph.atoms()
-  # master
-  other_sites = atoms.select(master_selection).extract_xyz()
-  # copy
-  ref_sites = atoms.select(copy_selection).extract_xyz()
+  other_h = my_selection(ph,master_chain_id, list(master_selection))
+  ref_h = my_selection(ph,copy_chain_id, list(copy_selection))
+  other_sites = other_h.atoms().extract_xyz()
+  ref_sites = ref_h.atoms().extract_xyz()
+
   assert other_sites.size() == ref_sites.size(), "%d, %d" % (
       other_sites.size(), ref_sites.size())
   if ref_sites.size() > 0:
