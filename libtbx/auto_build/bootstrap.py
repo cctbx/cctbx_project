@@ -297,7 +297,7 @@ class Toolbox(object):
       # if url fails to open, try using curl
       # temporary fix for old OpenSSL in system Python on macOS
       # https://github.com/cctbx/cctbx_project/issues/33
-      subprocess.call(['/usr/bin/curl', '-o', file, url], stdout=sys.stdout,
+      subprocess.call(['/usr/bin/curl', '-Lo', file, url], stdout=sys.stdout,
                       stderr=sys.stderr)
       socket = None     # prevent later socket code from being run
       received = 1      # satisfy (filesize > 0) checks later on
