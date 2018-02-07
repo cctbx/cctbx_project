@@ -14,9 +14,13 @@ from libtbx.utils import Sorry
 any_file_type = {
   'model':'pdb',
   'phil':'phil',
+  'real_map':'ccp4_map',
   'restraint':'cif',
   'sequence':'seq',
 }
+
+# reverse dictionary to map any_file types to DataManager datatypes
+data_manager_type = {value:key for key,value in any_file_type.items()}
 
 # build list of supported datatypes
 # datatypes have corresponding modules in libtbx/data_manager
@@ -29,7 +33,7 @@ supported_datatypes.sort()
 for i in range(len(supported_datatypes)):
   supported_datatypes[i] = supported_datatypes[i].split('.')[0]
 
-default_datatypes = ['model', 'phil', 'restraint', 'sequence']
+default_datatypes = ['model', 'phil', 'real_map', 'restraint', 'sequence']
 
 # =============================================================================
 def load_datatype_modules(datatypes=None):
@@ -94,6 +98,9 @@ def DataManager(datatypes=None, phil=None):
   for datatype in datatypes:
     module_name = 'libtbx.data_manager.' + datatype
     class_name =  datatype.capitalize() + 'DataManager'
+    if ('_' in datatype): # real_map becomes RealMapDataManager
+      class_name = ''.join(tmp_str.capitalize()
+                           for tmp_str in datatype.split('_')) + 'DataManager'
     manager_classes.append(getattr(sys.modules[module_name], class_name))
 
   # construct new class and return instance

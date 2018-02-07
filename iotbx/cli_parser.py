@@ -15,7 +15,7 @@ import iotbx.phil
 
 from iotbx.file_reader import any_file
 from libtbx import citations
-from libtbx.data_manager import DataManager
+from libtbx.data_manager import DataManager, data_manager_type
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 
@@ -262,37 +262,19 @@ class CCTBXParser(ParserBase):
     '''
     print('Processing files:', file=self.logger)
     print('-'*79, file=self.logger)
+    print('', file=self.logger)
     printed_something = False
 
     unused_files = list()
 
     for filename in file_list:
       a = any_file(filename)
-      # models
-      if ( (a.file_type == 'pdb') and
-           self.data_manager.supports('model') ):
-        self.data_manager.process_model_file(filename)
-        print('  Found model, %s' % filename, file=self.logger)
+      process_function = 'process_%s_file' % data_manager_type[a.file_type]
+      if (hasattr(self.data_manager, process_function)):
+        getattr(self.data_manager, process_function)(filename)
+        print('  Found %s, %s' % (data_manager_type[a.file_type], filename),
+              file=self.logger)
         printed_something = True
-      # sequences
-      elif ( (a.file_type == 'seq') and
-             self.data_manager.supports('sequence') ):
-        self.data_manager.add_sequence(filename, a.file_object)
-        print('  Found sequence, %s' % filename, file=self.logger)
-        printed_something = True
-      # restraints
-      elif ( (a.file_type == 'cif') and
-             self.data_manager.supports('restraint') ):
-        self.data_manager.add_restraint(filename, a.file_object.model)
-        print('  Found restraint, %s' % filename, file=self.logger)
-        printed_something = True
-      # phil
-      elif ( (a.file_type == 'phil') and
-             self.data_manager.supports('phil') ):
-        self.data_manager.add_phil(filename, a.file_object)
-        print('  Found PHIL, %s' % filename)
-        printed_something = True
-      # more file types to come!
       else:
         unused_files.append(filename)
 
@@ -331,8 +313,10 @@ class CCTBXParser(ParserBase):
     Will add inclusion of PHIL files from data_manager first, then
     command-line options
     '''
-    print('Processing PHIL parameters:')
+    print('Processing PHIL parameters:', file=self.logger)
     print('-'*79, file=self.logger)
+    print('', file=self.logger)
+
     printed_something = False
 
     data_sources = list()
