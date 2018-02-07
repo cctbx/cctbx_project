@@ -1085,7 +1085,6 @@ class Builder(object):
     self.download_only = download_only
     self.skip_base = skip_base
     self.force_base_build = force_base_build
-    self.mpi_build=mpi_build
     self.add_init()
 
     # Cleanup
@@ -1116,6 +1115,8 @@ class Builder(object):
       extra_opts = ["--nproc=%s" % str(self.nproc)]
       if enable_shared:
         extra_opts.append("--python-shared")
+      if mpi_build:
+        extra_opts.append("--mpi-build")
       self.add_base(extra_opts=extra_opts)
 
     # Configure, make, get revision numbers
@@ -1808,10 +1809,8 @@ class XFELBuilder(CCIBuilder):
   ]
 
   def add_base(self, extra_opts=[]):
-    if self.mpi_build:
-      extra_opts=['--mpi-build']+extra_opts
     super(XFELBuilder, self).add_base(
-      extra_opts=['--labelit'] + extra_opts)
+      extra_opts=['--labelit', '--mpi-build'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
@@ -2383,7 +2382,7 @@ def run(root=None):
     skip_base=options.skip_base,
     force_base_build=options.force_base_build,
     enable_shared=options.enable_shared,
-    mpi_build=options.mpi_build
+    mpi_build=options.mpi_build,
     python3=options.python3,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)
