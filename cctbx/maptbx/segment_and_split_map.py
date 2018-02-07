@@ -4662,7 +4662,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
         "\nSolvent fraction from soft mask procedure: %7.2f (not used)\n" %(
         soft_mask_solvent_fraction)
     shifted_ncs_object=box.ncs_object
-    if not shifted_ncs_object:
+    if not shifted_ncs_object or shifted_ncs_object.max_operators()<2:
       from mmtbx.ncs.ncs import ncs
       shifted_ncs_object=ncs()
       shifted_ncs_object.set_unit_ncs()
