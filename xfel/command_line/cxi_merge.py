@@ -173,6 +173,10 @@ raw_data {
       minimizer = *simplex lbfgs LevMar
         .type = choice
         .help = Which minimizer to use while refining the Sdfac terms
+      refine_propagated_errors = False
+        .type = bool
+        .help = If True and if propagate_errors is True, then during sdfac refinement, also \
+                refine the estimated error used for error propagation.
     }
   }
 }
@@ -770,18 +774,22 @@ class scaling_manager (intensity_data) :
     print >> self.log, "Of %d accepted images, %d accepted to %5.2f Angstrom resolution" % \
       (self.n_accepted, high_res_count, self.params.d_min)
 
-    if self.params.raw_data.propagate_errors:
+    if self.params.raw_data.propagate_errors and not self.params.raw_data.error_models.sdfac_refine.refine_propagated_errors:
       assert self.params.postrefinement.enable
       from xfel.merging.algorithms.error_model.sdfac_propagate import sdfac_propagate
       error_modeler = sdfac_propagate(self)
       error_modeler.adjust_errors()
 
-    if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals:
+    if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals or \
+        self.params.raw_data.refine_propagated_errors:
       if self.params.raw_data.sdfac_refine:
         if self.params.raw_data.error_models.sdfac_refine.minimizer == 'simplex':
           from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
         elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'lbfgs':
-          from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refine_refltable_lbfgs as error_modeler
+          if self.params.raw_data.error_models.sdfac_refine.refine_propagated_errors:
+            from xfel.merging.algorithms.error_model.sdfac_propagate_and_refine import sdfac_propagate_and_refine as error_modeler
+          else:
+            from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refine_refltable_lbfgs as error_modeler
         elif self.params.raw_data.error_models.sdfac_refine.minimizer == 'LevMar':
           from xfel.merging.algorithms.error_model.sdfac_refine_levmar import sdfac_refine_refltable_levmar as error_modeler
 
