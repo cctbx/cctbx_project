@@ -36,6 +36,13 @@ class sdfac_propagate_parameterization(unpack_base):
     print >> out
 
 class sdfac_propagate_refinery(sdfac_refinery):
+  def __init__(self, scaler, indices, bins, log):
+    super(sdfac_propagate_refinery, self).__init__(scaler, indices, bins, log)
+    self.propagator = sdfac_propagate(self.scaler, verbose=False)
+
+    # Get derivatives from error propagation
+    self.dI_derrorterms = self.propagator.dI_derrorterms()
+
   def fvec_callable(self, values):
     """ Compute the functional by first propagating errors from postrefinement and then
     applying the current values for the sd parameters to the input data, then computing
@@ -47,9 +54,8 @@ class sdfac_propagate_refinery(sdfac_refinery):
     refls['isigi'] = refls['scaled_intensity']/refls['original_sigmas']
 
     # Propagate errors from postrefinement
-    propagator = sdfac_propagate(self.scaler, verbose=False)
-    propagator.error_terms = error_terms.from_x(values.propagate_terms)
-    propagator.adjust_errors()
+    self.propagator.error_terms = error_terms.from_x(values.propagate_terms)
+    self.propagator.adjust_errors(dI_derrorterms=self.dI_derrorterms, compute_sums=False)
 
     # Apply SD terms
     all_sigmas_normalized, _ = self.get_normalized_sigmas(values)
@@ -72,19 +78,15 @@ class sdfac_propagate_refinery(sdfac_refinery):
     refls = self.scaler.ISIGI
     refls['isigi'] = refls['scaled_intensity']/refls['original_sigmas']
 
-    # Get derivatives from error propagation
-    propagator = sdfac_propagate(self.scaler, verbose=False)
-    propagator.error_terms = error_terms.from_x(values.propagate_terms)
-    dI_derrorterms = propagator.dI_derrorterms()[1:] # don't need dI wrt iobs
-
     # Propagate errors from postrefinement
-    propagator.adjust_errors(compute_sums=False)
+    self.propagator.error_terms = error_terms.from_x(values.propagate_terms)
+    self.propagator.adjust_errors(dI_derrorterms=self.dI_derrorterms, compute_sums=False)
 
     all_sigmas_normalized, sigma_prime = self.get_normalized_sigmas(values)
 
     # et: error term
     df_derrorterms = []
-    for et, dI_det in zip(values.propagate_terms, dI_derrorterms):
+    for et, dI_det in zip(values.propagate_terms, self.dI_derrorterms[1:]): # don't need dI wrt iobs
       dsigmasq_det = 2 * et
       dsigmasq_detsq = dI_det**2 * dsigmasq_det
       dsigprimesq_detsq = values.SDFACSQ * dsigmasq_detsq
@@ -102,7 +104,8 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
 
   def run_minimzer(self, values, sels, **kwargs):
     refinery = sdfac_propagate_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
-    return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log)
+    return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log,
+      show_finite_differences = self.scaler.params.raw_data.error_models.sdfac_refine.show_finite_differences)
 
   def adjust_errors(self):
     print >> self.log, "Starting adjust_errors"

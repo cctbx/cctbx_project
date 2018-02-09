@@ -336,7 +336,7 @@ class sdfac_propagate(error_modeler_base):
 
     return [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar
 
-  def adjust_errors(self, compute_sums = True):
+  def adjust_errors(self, dI_derrorterms = None, compute_sums = True):
     """ Propagate errors to the scaled and merged intensity errors based on statistical error propagation.
     This uses 1) and estimate of the errors in the post-refined parametes from the observed population
     and 2) partial derivatives of the scaled intensity with respect to each of the post-refined parameters.
@@ -349,9 +349,10 @@ class sdfac_propagate(error_modeler_base):
     if self.error_terms is None:
       self.initial_estimates()
 
-    derivatives = self.dI_derrorterms()
-    dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta = derivatives[0:6]
-    dI_dgstar = derivatives[6:]
+    if dI_derrorterms is None:
+      dI_derrorterms = self.dI_derrorterms()
+    dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta = dI_derrorterms[0:6]
+    dI_dgstar = dI_derrorterms[6:]
     sigma_Iobs = refls['scaled_intensity']/refls['isigi']
     r = self.r
 

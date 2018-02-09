@@ -177,6 +177,9 @@ raw_data {
         .type = bool
         .help = If True and if propagate_errors is True, then during sdfac refinement, also \
                 refine the estimated error used for error propagation.
+      show_finite_differences = False
+        .type = bool
+        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
     }
   }
 }

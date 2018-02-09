@@ -26,7 +26,8 @@ class sdfac_refine_refltable_lbfgs(sdfac_refine_refltable):
 
   def run_minimzer(self, values, sels, **kwargs):
     refinery = sdfac_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
-    return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log)
+    return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log,
+      show_finite_differences = self.scaler.params.raw_data.error_models.sdfac_refine.show_finite_differences)
 
 from libtbx import adopt_init_args
 class sdfac_refinery(object):
@@ -135,7 +136,8 @@ class sdfac_refinery(object):
 class lbfgs_minimizer(object):
   def __init__(self, current_x=None, parameterization=None, refinery=None,
                ISIGI = None, indices = None, bins = None, out=None,
-               min_iterations=0, max_calls=1000, max_drop_eps=1.e-10):
+               min_iterations=0, max_calls=1000, max_drop_eps=1.e-10,
+               show_finite_differences = False):
     adopt_init_args(self, locals())
     self.n = current_x.size()
     self.x = current_x
@@ -162,16 +164,17 @@ class lbfgs_minimizer(object):
     fvec = self.refinery.fvec_callable(values)
     self.func = functional = self.refinery.functional(fvec)
     self.f = functional
-    finite_g = flex.double()
-    for x in xrange(self.n):
-      finite_g.append(finite_difference(
-        lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
-        values, x))
-
     self.g = self.refinery.gradients(values)
 
-    for x in xrange(self.n):
-      print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
+    if self.show_finite_differences:
+      finite_g = flex.double()
+      for x in xrange(self.n):
+        finite_g.append(finite_difference(
+          lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
+          values, x))
+
+      for x in xrange(self.n):
+        print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
 
     print >> self.out, "functional value % 20.3f"%functional,
     values.show(self.out)
