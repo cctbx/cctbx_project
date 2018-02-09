@@ -7,6 +7,7 @@ ext = boost.python.import_ext("mmtbx_alignment_ext")
 
 """
 Written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger).
+Originally in Python, Oleg Sobolev moved to C++ for better performance.
 Send comments or suggestions to: ioerger@cs.tamu.edu
 
 This implementation provides algorithms for aligning two protein
@@ -62,7 +63,7 @@ import sys
 #   log-likelihoods, scaled up by a factor of 10, with mean=0
 #   so gaps cost approx 1.5+0.22*len per "match"
 
-class align(object):
+class align(ext.align):
 
   def __init__(self,
         seq_a,
@@ -72,66 +73,39 @@ class align(object):
         gap_extension_penalty=1,
         similarity_function="identity"):
     assert style in ["global", "local", "no_end_gaps"]
+    sim_fun_str = similarity_function
+    self.similarity_function_call = None
     if (   similarity_function is None
         or similarity_function == "identity"):
-      similarity_function = identity
+      self.similarity_function_call = identity
     elif (similarity_function == "dayhoff"):
-      similarity_function = dayhoff
+      self.similarity_function_call = dayhoff
     elif (similarity_function == "blosum50"):
-      similarity_function = blosum50
+      self.similarity_function_call = blosum50
     elif (isinstance(similarity_function, str)):
       raise RuntimeError(
         'Unknown similarity_function: "%s"' % similarity_function)
     if isinstance(seq_a, basestring):
       seq_a = seq_a.upper()
       seq_b = seq_b.upper()
-    adopt_init_args(self, locals())
-    A,B = seq_a, seq_b
-    m,n = self.m,self.n = len(A),len(B)
+    else:
+      seq_a = flex.std_string(seq_a)
+      seq_b = flex.std_string(seq_b)
 
-    # Mij is score of align of A[1..i] with B[1..j] ending in a match
-    # Dij is score of align of A[1..i] with B[1..j] ending in a deletion (Ai,gap)
-    # Iij is score of align of A[1..i] with B[1..j] ending in an insertion (gap,Bj)
-    # E is direction matrix: -1=del, 0=match, +1=ins
-    M = self.make_matrix(m+1,n+1)
-    D = self.make_matrix(m+1,n+1)
-    I = self.make_matrix(m+1,n+1)
-    E = self.make_matrix(m+1,n+1)
+    super(align, self).__init__(
+        seq_a=seq_a,
+        seq_b=seq_b,
+        style=style,
+        gap_opening_penalty=gap_opening_penalty,
+        gap_extension_penalty=gap_extension_penalty,
+        similarity_function=sim_fun_str,
+        )
 
-    # initialize the matrices
-    if style=="global":
-      for i in range(0,m+1): M[i][0] = -self.gap_cost(i)
-      for i in range(0,n+1): M[0][i] = -self.gap_cost(i)
-      #M[0][0] = 0
-    # else (LOCAL, NO_END_GAPS) whole matrix initialized to 0 by default
-
-    # fill in the matrices using dynamic programming
-    for i in range(1,m+1):
-      for j in range(1,n+1):
-
-        if i==1: D[i][j] = M[i-1][j]-self.gap_cost(1)
-        else: D[i][j] = max(M[i-1][j]-self.gap_cost(1),D[i-1][j]-gap_extension_penalty)
-
-        if j==1: I[i][j] = M[i][j-1]-self.gap_cost(1)
-        else: I[i][j] = max(M[i][j-1]-self.gap_cost(1),I[i][j-1]-gap_extension_penalty)
-
-        M[i][j] = max(M[i-1][j-1]+similarity_function(A[i-1],B[j-1]),D[i][j],I[i][j])
-        if style=="local": M[i][j] = max(M[i][j],0)
-
-        if M[i][j]==D[i][j]: E[i][j] = 1    # deletion, i.e. of A[i]
-        elif M[i][j]==I[i][j]: E[i][j] = -1 # insertion, i.e. of B[j]
-        else: E[i][j] = 0
-
-    (self.M,self.D,self.I,self.E) = (M,D,I,E)
-
-  def gap_cost(self, width):
-    return self.gap_opening_penalty + width * self.gap_extension_penalty
-
-  def make_matrix(self,m,n):
-    R = []
-    for i in xrange(m):
-      R.append([0]*n)
-    return R
+    self.seq_a = seq_a
+    self.seq_b = seq_b
+    self.style = style
+    self.similarity_function = sim_fun_str
+    m,n = self.m,self.n = len(seq_a),len(seq_b)
 
   def show_matrix(self, data, label=None, out=None):
     if (out is None): out = sys.stdout
@@ -140,9 +114,10 @@ class align(object):
     for a in '  '+self.seq_b: print >> out, "%5c" % a,
     print >> out
     seq = ' '+self.seq_a
-    for i,row in enumerate(data):
+    for i in range(self.m):
       print >> out, "%5c" % seq[i],
-      for x in row: print >> out, "%5.1f" % x,
+      for j in range(self.n):
+        print >> out, "%5.1f" % data[i,j],
       print >> out
 
   def show_matrices(self, out=None):
@@ -155,27 +130,27 @@ class align(object):
 
   def score(self):
     (i,j) = self.endpt()
-    return self.M[i][j]
+    return self.M[i,j]
 
   def endpt(self):
     if self.style=="global":
       return (self.m,self.n)
 
     elif self.style=="local":
-      (best,ii,jj) = (self.M[0][0],0,0)
+      (best,ii,jj) = (self.M[0,0],0,0)
       for i in xrange(self.m+1):
         for j in xrange(self.n+1):
-          if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
+          if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
 
     else: # NO_END_GAPS, search edges of matrix
-      (best,ii,jj) = (self.M[0][0],0,0)
+      (best,ii,jj) = (self.M[0,0],0,0)
       for i in xrange(self.m+1):
         j = self.n
-        if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
+        if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       for j in xrange(self.n+1):
         i = self.m
-        if self.M[i][j]>best: (best,ii,jj) = (self.M[i][j],i,j)
+        if self.M[i,j]>best: (best,ii,jj) = (self.M[i,j],i,j)
       return (ii,jj)
 
   def extract_alignment(self):
@@ -193,18 +168,18 @@ class align(object):
     (i,j) = self.endpt()
     if self.style=="global":
       while i>0 and j>0:
-        if E[i][j]==-1: mcap('i'); j -= 1
-        elif E[i][j]==1: mcap('d'); i -= 1
-        elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
+        if E[i,j]==-1: mcap('i'); j -= 1
+        elif E[i,j]==1: mcap('d'); i -= 1
+        elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
       while i>0: mcap('d'); i -= 1
       while j>0: mcap('i'); j -= 1
       F,G = range(len(self.seq_a)), range(len(self.seq_b))
     else:
       (p,q) = (i,j)
-      while M[i][j]>0:
-        if E[i][j]==-1: mcap('i'); j -= 1
-        elif E[i][j]==1: mcap('d'); i -= 1
-        elif E[i][j]==0: mcap('m'); i -= 1; j -= 1
+      while M[i,j]>0:
+        if E[i,j]==-1: mcap('i'); j -= 1
+        elif E[i,j]==1: mcap('d'); i -= 1
+        elif E[i,j]==0: mcap('m'); i -= 1; j -= 1
       F,G = range(i,p+1),range(j,q+1) # sub-sequences
     match_codes.reverse()
     match_codes = "".join(match_codes)
@@ -240,7 +215,7 @@ class align(object):
       sa = "".join(sa)
       sb = "".join(sb)
     return alignment(
-      similarity_function=self.similarity_function,
+      similarity_function=self.similarity_function_call,
       a=sa, b=sb,
       i_seqs_a=ia, i_seqs_b=ib,
       match_codes=match_codes)

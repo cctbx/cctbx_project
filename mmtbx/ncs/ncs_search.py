@@ -693,6 +693,8 @@ def mmtbx_res_alignment(seq_a, seq_b,
       one_letter = merged_one_given_three.get(l.strip(), 'X')
       norm_seq_b += one_letter
   from mmtbx.alignment import align
+  # print norm_seq_a
+  # STOP()
   obj = align(
       norm_seq_a,
       norm_seq_b,
