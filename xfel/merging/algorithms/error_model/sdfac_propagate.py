@@ -24,18 +24,16 @@ class error_terms(group_args):
     return error_terms(sigma_thetax  = x[0],
                        sigma_thetay  = x[1],
                        sigma_lambda  = x[2],
-                       sigma_eta     = x[3],
-                       sigma_deff    = x[4],
-                       sigma_rs      = x[5],
-                       sigma_gstar   = x[6:])
+                       sigma_deff    = x[3],
+                       sigma_eta     = x[4],
+                       sigma_gstar   = x[5:])
 
   def to_x(self):
     x = flex.double([self.sigma_thetax,
                      self.sigma_thetay,
                      self.sigma_lambda,
-                     self.sigma_eta,
                      self.sigma_deff,
-                     self.sigma_rs])
+                     self.sigma_eta])
     x.extend(self.sigma_gstar)
     return x
 
@@ -219,9 +217,8 @@ class sdfac_propagate(error_modeler_base):
     self.error_terms = error_terms(sigma_thetax  = sigma_thetax,
                                    sigma_thetay  = sigma_thetay,
                                    sigma_lambda  = sigma_lambda,
-                                   sigma_eta     = sigma_eta,
                                    sigma_deff    = sigma_deff,
-                                   sigma_rs      = sigma_rs,
+                                   sigma_eta     = sigma_eta,
                                    sigma_gstar   = sigma_gstar)
 
   def dI_derrorterms(self):
@@ -339,7 +336,7 @@ class sdfac_propagate(error_modeler_base):
 
     return [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar
 
-  def adjust_errors(self):
+  def adjust_errors(self, compute_sums = True):
     """ Propagate errors to the scaled and merged intensity errors based on statistical error propagation.
     This uses 1) and estimate of the errors in the post-refined parametes from the observed population
     and 2) partial derivatives of the scaled intensity with respect to each of the post-refined parameters.
@@ -360,13 +357,13 @@ class sdfac_propagate(error_modeler_base):
 
     # Propagate errors
     refls['isigi'] = refls['scaled_intensity'] / \
-                     flex.sqrt(((sigma_Iobs**2 * dI_dIobs**2) +
+                     flex.sqrt((sigma_Iobs**2 * dI_dIobs**2) +
                      sum([self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2 for j in xrange(len(self.error_terms.sigma_gstar))]) +
                      (self.error_terms.sigma_thetax**2 * dI_dthetax**2) +
                      (self.error_terms.sigma_thetay**2 * dI_dthetay**2) +
                      (self.error_terms.sigma_lambda**2 * dI_dlambda**2) +
                      (self.error_terms.sigma_deff**2 * dI_deff**2) +
-                     (self.error_terms.sigma_eta**2 * dI_deta**2)))
+                     (self.error_terms.sigma_eta**2 * dI_deta**2))
 
     if self.verbose:
       # Show results of propagation
@@ -388,15 +385,16 @@ class sdfac_propagate(error_modeler_base):
         fns = five_number_summary(data)
         print >> self.log, "%20s % 20d % 20d % 20d"%(title, fns[1], fns[2], fns[3])
 
-    # Final terms for cxi.merge
-    self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
-    self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
+    if compute_sums:
+      # Final terms for cxi.merge
+      self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
+      self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
-    Intensity = refls['scaled_intensity']
-    sigma = Intensity / refls['isigi']
-    variance = sigma * sigma
+      Intensity = refls['scaled_intensity']
+      sigma = Intensity / refls['isigi']
+      variance = sigma * sigma
 
-    for i in xrange(len(refls)):
-      j = refls['miller_id'][i]
-      self.scaler.summed_wt_I[j] += Intensity[i] / variance[i]
-      self.scaler.summed_weight[j] += 1 / variance[i]
+      for i in xrange(len(refls)):
+        j = refls['miller_id'][i]
+        self.scaler.summed_wt_I[j] += Intensity[i] / variance[i]
+        self.scaler.summed_weight[j] += 1 / variance[i]

@@ -171,7 +171,7 @@ class lbfgs_minimizer(object):
     self.g = self.refinery.gradients(values)
 
     for x in xrange(self.n):
-      print >> self.out, "p%d finite % 20.7f analytical % 20.7f"%(x, finite_g[x], self.g[x])
+      print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
 
     print >> self.out, "functional value % 20.3f"%functional,
     values.show(self.out)

@@ -16,17 +16,16 @@ class sdfac_propagate_parameterization(unpack_base):
     if item=="sigma_thetax" : return YY.reference[3]
     if item=="sigma_thetay" : return YY.reference[4]
     if item=="sigma_lambda" : return YY.reference[5]
-    if item=="sigma_eta"    : return YY.reference[6]
-    if item=="sigma_deff"   : return YY.reference[7]
-    if item=="sigma_rs"     : return YY.reference[8]
-    if item=="sigma_gstar"  : return YY.reference[9:]
+    if item=="sigma_deff"   : return YY.reference[6]
+    if item=="sigma_eta"    : return YY.reference[7]
+    if item=="sigma_gstar"  : return YY.reference[8:]
     if item=="sd_terms"        : return YY.reference[0:3]
     if item=="propagate_terms" : return YY.reference[3:]
     raise AttributeError(item)
 
   def show(YY, out):
     print >> out, "sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(YY.SDFAC, YY.SDB, YY.SDADD)
-    for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_eta", "sigma_deff", "sigma_rs":
+    for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_deff", "sigma_eta":
       if 'theta' in item:
         print >> out, "%s: %8.5f"%(item, r2d(getattr(YY, item))),
       else:
@@ -76,19 +75,19 @@ class sdfac_propagate_refinery(sdfac_refinery):
     # Get derivatives from error propagation
     propagator = sdfac_propagate(self.scaler, verbose=False)
     propagator.error_terms = error_terms.from_x(values.propagate_terms)
-    dI_derrorterms = propagator.dI_derrorterms()
+    dI_derrorterms = propagator.dI_derrorterms()[1:] # don't need dI wrt iobs
 
     # Propagate errors from postrefinement
-    propagator.adjust_errors()
+    propagator.adjust_errors(compute_sums=False)
 
     all_sigmas_normalized, sigma_prime = self.get_normalized_sigmas(values)
 
     # et: error term
     df_derrorterms = []
     for et, dI_det in zip(values.propagate_terms, dI_derrorterms):
-      dsigmasq_detsq = dI_det**2
+      dsigmasq_det = 2 * et
+      dsigmasq_detsq = dI_det**2 * dsigmasq_det
       dsigprimesq_detsq = values.SDFACSQ * dsigmasq_detsq
-      #dsigprimesq_det = 2 * et * dsigprimesq_detsq
       df_detsq = self.df_dpsq(all_sigmas_normalized, sigma_prime, dsigprimesq_detsq)
       df_derrorterms.append(df_detsq)
 
