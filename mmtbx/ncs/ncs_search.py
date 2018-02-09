@@ -11,7 +11,6 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
 
-
 __author__ = 'Youval, massively rewritten by Oleg'
 
 
@@ -39,6 +38,83 @@ class Chains_info(object):
     print >> res, "self.center_of_coordinates", self.center_of_coordinates
     return res.getvalue()
 
+def get_chain_xyz(hierarchy, chain_id):
+  for chain in hierarchy.only_model().chains():
+    if chain.id == chain_id:
+      return chain.atoms().extract_xyz()
+
+def shortcut_1(
+    hierarchy,
+    chains_info,
+    chain_similarity_threshold,
+    chain_max_rmsd,
+    log,
+    residue_match_radius):
+  """
+  Checking the case when whole hierarchy was produced by multiplication of
+  molecule with BIOMT or MTRIX matrices (or both). In this case we are expecting
+  to find identical chains with 0 rmsd between them.
+  """
+  def flatten_list_of_list(lofl):
+    return [x for y in lofl for x in y]
+  assert chains_info is not None
+  assert len(chains_info) > 1
+  empty_result = class_ncs_restraints_group_list()
+
+  # new convenience structure: {<n_atoms>:[ch_id, ch_id, ch_id]}
+  n_atom_chain_id_dict = {}
+  for k,v in chains_info.iteritems():
+    if v.chains_atom_number not in n_atom_chain_id_dict:
+      n_atom_chain_id_dict[v.chains_atom_number] = [k]
+    else:
+      n_atom_chain_id_dict[v.chains_atom_number].append(k)
+  print >> log, "n_atom_chain_id_dict", n_atom_chain_id_dict
+  for k,v in n_atom_chain_id_dict.iteritems():
+    if len(v) == 1:
+      print >> log, "No shortcut, there is a chain with unique number of atoms:", v
+      return empty_result
+  # now we starting to check atom names, align chains, check rmsd and
+  # populate result. If at some point we are not satisfied with any measure,
+  # we will return empty result.
+  result = class_ncs_restraints_group_list()
+  for n_atoms, chains_list in n_atom_chain_id_dict.iteritems():
+    # this should make one ncs group
+    master_chain_id = chains_list[0]
+    master_iselection = flatten_list_of_list(
+        chains_info[master_chain_id].atom_selection)
+    ncs_gr = NCS_restraint_group(
+        master_iselection=flex.size_t(master_iselection),
+        str_selection="chain '%s'" % master_chain_id)
+    master_xyz = get_chain_xyz(hierarchy, master_chain_id)
+    for copy_chain_id in chains_list[1:]:
+      # these are copies
+      if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
+        print >> log, "No shortcut, atom names are not identical"
+        return empty_result
+      copy_iselection = flatten_list_of_list(
+        chains_info[copy_chain_id].atom_selection)
+      copy_xyz = get_chain_xyz(hierarchy, copy_chain_id)
+      lsq_fit_obj = superpose.least_squares_fit(
+          reference_sites = copy_xyz,
+          other_sites     = master_xyz)
+      r = lsq_fit_obj.r
+      t = lsq_fit_obj.t
+      rmsd = copy_xyz.rms_difference(lsq_fit_obj.other_sites_best_fit())
+      print >> log, "rmsd", master_chain_id, copy_chain_id, rmsd
+      if rmsd is None or rmsd > 0.2:
+        print >> log, "No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id
+        return empty_result
+      # seems like a good enough copy
+      c = NCS_copy(
+          copy_iselection=flex.size_t(copy_iselection),
+          rot=r,
+          tran=t,
+          str_selection="chain '%s'" % copy_chain_id,
+          rmsd=rmsd)
+      ncs_gr.append_copy(c)
+    result.append(ncs_gr)
+  print >> log, "Shortcut complete."
+  return result
 
 def find_ncs_in_hierarchy(ph,
                           chains_info=None,

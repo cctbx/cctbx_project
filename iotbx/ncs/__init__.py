@@ -2,7 +2,7 @@ from __future__ import division
 from iotbx.pdb.atom_selection import selection_string_from_selection
 from scitbx.array_family import flex
 from mmtbx.ncs import ncs_search
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 import libtbx.phil
 import iotbx.pdb.hierarchy
 from mmtbx.ncs import ncs
@@ -11,6 +11,7 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
 from scitbx import matrix
 import sys
 from iotbx.pdb.utils import all_chain_ids
+from time import time
 
 ncs_search_options = """\
 ncs_search
@@ -45,6 +46,11 @@ ncs_search
     .type = float
     .help = Max allowed distance difference between pairs of matching \
         atoms of two residues
+    .expert_level = 0
+  try_shortcuts = False
+    .type = bool
+    .help = Trt very quick check and rapid process when chains are identical. \
+        if not, procedure will perform proper search automatically.
     .expert_level = 0
 }
 """
@@ -83,7 +89,8 @@ class input(object):
           log=None,
           chain_similarity_threshold=0.85,
           residue_match_radius=4.0,
-          minimum_number_of_atoms_in_copy=3):
+          minimum_number_of_atoms_in_copy=3,
+          try_shortcuts = False):
     """
     TODO:
     1. Transfer get_ncs_info_as_spec() to ncs/ncs.py:ncs
@@ -123,6 +130,7 @@ class input(object):
     self.truncated_hierarchy = None
     self.truncated_h_asc = None
     self.chains_info = None
+    self.try_shortcuts = try_shortcuts
 
     extension = ''
     # set search parameters
@@ -433,13 +441,28 @@ class input(object):
       raise Sorry('Multi-model PDB (with MODEL-ENDMDL) is not supported.')
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
-      self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
-        ph=pdb_h,
-        chains_info=self.chains_info,
-        chain_similarity_threshold=self.chain_similarity_threshold,
-        chain_max_rmsd=self.chain_max_rmsd,
-        log=self.log,
-        residue_match_radius=self.residue_match_radius)
+      t0 = time()
+      if self.try_shortcuts:
+        # probably the most parameters are not necessary, since
+        # we are going after cases where molecule was multiplied using
+        # BIOMT or MTRIX, so we are expecting identical chains with 0 rmsd.
+        self.ncs_restraints_group_list = ncs_search.shortcut_1(
+            hierarchy=pdb_h,
+            chains_info=self.chains_info,
+            chain_similarity_threshold=self.chain_similarity_threshold,
+            chain_max_rmsd=self.chain_max_rmsd,
+            log=null_out(),
+            residue_match_radius=self.residue_match_radius)
+      # print >> self.log, "Time spend for trying shortcut: %.2f" % (time()-t0)
+      if self.ncs_restraints_group_list.get_n_groups() == 0:
+        # shortcuts failed
+        self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
+          ph=pdb_h,
+          chains_info=self.chains_info,
+          chain_similarity_threshold=self.chain_similarity_threshold,
+          chain_max_rmsd=self.chain_max_rmsd,
+          log=self.log,
+          residue_match_radius=self.residue_match_radius)
       self.finalize_nrgl()
 
   def get_ncs_restraints_group_list(self):
