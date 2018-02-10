@@ -165,10 +165,12 @@ class ncs_minimization_test(object):
       file_name="one_ncs_in_asu_shaken.pdb",
       crystal_symmetry=self.xrs_one_ncs.crystal_symmetry(),
       write_name='asu_shaken.pdb')
+    p = iotbx.ncs.input.get_default_params()
+    p.ncs_search.chain_max_rmsd=20
+    p.ncs_search.exclude_selection=None
     tr_obj = iotbx.ncs.input(
       hierarchy = ph2,
-      chain_max_rmsd = 20,
-      exclude_selection=None)
+      params=p.ncs_search)
     self.ncs_restraints_group_list = tr_obj.get_ncs_restraints_group_list()
     # self.ncs_restraints_group_list._show()
     # print ph2.as_pdb_string()

@@ -578,7 +578,9 @@ TER
   assert list(ncs_groups[0].copies[0].iselection) == [14,15,16,17,18,19]
 
   # Here we modifying default exclude_selection parameter to keep waters
-  ncs_groups = get_ncs_groups(phil_str1, pdb_str, exclude_selection=None)
+  p = iotbx.ncs.input.get_default_params()
+  p.ncs_search.exclude_selection=None
+  ncs_groups = get_ncs_groups(phil_str1, pdb_str, params=p.ncs_search)
   assert len(ncs_groups) == 1
   assert len(ncs_groups[0].copies) == 1
   assert list(ncs_groups[0].master_iselection) == [0,1,2,3,4,5,6], list(ncs_groups[0].master_iselection)
@@ -799,8 +801,9 @@ ncs_group {
   # show file:
   # pdb_h.write_pdb_file("user_ncs_phil_ex9.pdb")
   asc = pdb_h.atom_selection_cache()
-
-  ncs_groups = get_ncs_groups(phil_str1,pdb_str, exclude_selection=None)
+  p = iotbx.ncs.input.get_default_params()
+  p.ncs_search.exclude_selection = None
+  ncs_groups = get_ncs_groups(phil_str1,pdb_str, params=p.ncs_search)
   assert len(ncs_groups)==1
   assert len(ncs_groups[0].copies) == 1
   assert approx_equal(ncs_groups[0].master_iselection,
@@ -808,7 +811,7 @@ ncs_group {
   assert approx_equal(ncs_groups[0].copies[0].iselection,
       asc.iselection("chain G and not ((resid 2 or resid 4) and name CG1)"))
 
-  ncs_groups = get_ncs_groups(phil_str2,pdb_str, exclude_selection=None)
+  ncs_groups = get_ncs_groups(phil_str2,pdb_str, params=p.ncs_search)
   assert len(ncs_groups)==1
   assert len(ncs_groups[0].copies) == 1
   assert approx_equal(ncs_groups[0].master_iselection,
@@ -850,7 +853,10 @@ ncs_group {
 }
 """
   ### user-supplied
-  ncs_groups = get_ncs_groups(phil_str,pdb_str_15, exclude_selection=None)
+  p = iotbx.ncs.input.get_default_params()
+  p.ncs_search.exclude_selection = None
+
+  ncs_groups = get_ncs_groups(phil_str,pdb_str_15, params=p.ncs_search)
   # group 1
   assert len(ncs_groups)==1
   assert len(ncs_groups[0].copies) == 1

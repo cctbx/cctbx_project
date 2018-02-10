@@ -304,7 +304,7 @@ class manager(object):
     """
     Get parsed parameters (in form of Python objects). Use this function to
     avoid importing pdb_interpretation phil strings and think about how to
-    parse it. Does need the instance of class (staticmethod).
+    parse it. Does not need the instance of class (staticmethod).
     Then modify what needed to be modified and init this class normally.
     """
     return iotbx.phil.parse(

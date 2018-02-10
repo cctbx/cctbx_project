@@ -1605,7 +1605,11 @@ def exercise_17():
   """
   asc = iotbx.pdb.input(source_info=None,
     lines=pdb_str_14).construct_hierarchy().atom_selection_cache()
-  ncs_inp = ncs.input(hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_14).construct_hierarchy(), exclude_selection=None)
+  p = ncs.input.get_default_params()
+  p.ncs_search.exclude_selection=None
+  ncs_inp = ncs.input(
+      hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str_14).construct_hierarchy(),
+      params=p.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups)==1
   assert ncs_groups[0].master_iselection.all_eq(asc.selection(

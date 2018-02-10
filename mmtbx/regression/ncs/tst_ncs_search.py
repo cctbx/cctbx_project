@@ -30,6 +30,7 @@ class TestSimpleAlignment(unittest.TestCase):
     self.chain_b = self.ph.models()[0].chains()[1]
     self.hierarchy_a = self.ph.select(cache.selection('chain A'))
     self.hierarchy_b = self.ph.select(cache.selection('chain B'))
+    self.p = ncs.input.get_default_params()
 
   def test_1(self):
     # print sys._getframe().f_code.co_name
@@ -83,7 +84,7 @@ class TestSimpleAlignment(unittest.TestCase):
     no_water_h = self.ph.select(asc.selection("not water"))
     match_dict = ncs_search.search_ncs_relations(
       ph=no_water_h,
-      chain_similarity_threshold=0.70)
+      chain_similarity_threshold=0.7)
 
     chain_a_id, chain_b_id = match_dict.keys()[0]
     sel_a,sel_b,r1,r2,_,_,_ = match_dict[chain_a_id, chain_b_id]
@@ -276,11 +277,12 @@ class TestSimpleAlignment(unittest.TestCase):
     query         AAKDVKFGNDARVKMLRGVNVLADAVKVTVAS-----------TATVLAQAI
     """
     h = iotbx.pdb.input(source_info=None, lines=test_pdb_8).construct_hierarchy()
+    self.p.ncs_search.chain_max_rmsd=10
+    self.p.ncs_search.residue_match_radius=1000
+    self.p.ncs_search.chain_similarity_threshold=0.5
     ncs_obj = ncs.input(
         hierarchy=h,
-        chain_max_rmsd=10,
-        residue_match_radius=1000,
-        chain_similarity_threshold=0.5)
+        params=self.p.ncs_search)
     self.assertEqual(ncs_obj.number_of_ncs_groups,1)
     ncs_groups = ncs_obj.get_ncs_restraints_group_list()
     assert len(ncs_groups) == 1
@@ -298,10 +300,11 @@ class TestSimpleAlignment(unittest.TestCase):
       'ATOM      4  C   ASP A   5      90.136 -30.762  71.617  1.00 77.70           C'
     ]
     h = iotbx.pdb.input(source_info=None, lines='\n'.join(pdb_lines)).construct_hierarchy()
+    self.p.ncs_search.chain_max_rmsd=10
+    self.p.ncs_search.chain_similarity_threshold=0.20
     ncs_obj = ncs.input(
         hierarchy=h,
-        chain_max_rmsd=10,
-        chain_similarity_threshold=0.20)
+        params=self.p.ncs_search)
     # x = ncs_obj.get_ncs_info_as_spec(write=True,show_ncs_phil=True)
     # x = ncs_obj.show(format='spec')
     # check another pdb string

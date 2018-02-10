@@ -268,14 +268,10 @@ class reference_model(object):
     temp_h = combined_h.deep_copy()
     temp_h.atoms().reset_i_seq()
 
-    search_options = self.params.search_options
     # combined_h.write_pdb_file(fn+"_combined.pdb")
     ncs_obj = iotbx.ncs.input(
         hierarchy=temp_h,
-        residue_match_radius=search_options.residue_match_radius,
-        chain_similarity_threshold=search_options.chain_similarity_threshold,
-        chain_max_rmsd=search_options.chain_max_rmsd,
-        )
+        params = self.params.search_options)
     # For each found NCS group we going to do matching procedure between
     # copies
     for group_list in ncs_obj.get_ncs_restraints_group_list():

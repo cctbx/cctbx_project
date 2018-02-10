@@ -5841,7 +5841,6 @@ class process(object):
     return self._xray_structure
 
   def search_for_ncs(self, hierarchy):
-    params = self.all_chain_proxies.params.ncs_search
     ncs_phil_groups = self.all_chain_proxies.params.ncs_group
     # This function may alter pdb_hierarchy, e.g. when chain_id is blank
     # it substitutes them with "A". Therefore deep_copy() is necessary.
@@ -5851,10 +5850,7 @@ class process(object):
     ncs_obj = iotbx.ncs.input(
       ncs_phil_groups             = ncs_phil_groups,
       hierarchy                   = new_h,
-      chain_similarity_threshold  = params.chain_similarity_threshold,
-      exclude_selection           = params.exclude_selection,
-      chain_max_rmsd              = params.chain_max_rmsd,
-      residue_match_radius        = params.residue_match_radius,
+      params                      = self.all_chain_proxies.params.ncs_search,
       log                         = self.log)
     print >> self.log, "Found NCS groups:"
     print >> self.log, ncs_obj.print_ncs_phil_param()

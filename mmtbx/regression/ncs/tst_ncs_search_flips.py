@@ -432,13 +432,15 @@ TER     312      ALA B  22
 END
 """
 
+ncs_pars = iotbx.ncs.input.get_default_params()
+ncs_pars.ncs_search.chain_max_rmsd=0.1
 
 def test_1():
   h = iotbx.pdb.input(source_info=None, lines=test_pdb_1).construct_hierarchy()
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups) == 1
   # group 1
@@ -455,7 +457,7 @@ def test_2():
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups) == 1
   # group 1
@@ -474,7 +476,7 @@ def test_3():
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups) == 1
   # group 1
@@ -491,7 +493,7 @@ def test_4():
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups) == 1
   # group 1
@@ -509,7 +511,7 @@ def test_5():
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
   assert len(ncs_groups) == 1
   # group 1
@@ -526,7 +528,7 @@ def test_6():
   asc = h.atom_selection_cache()
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
   nu.flip_atoms_in_ncs_groups(h, ncs_groups)
@@ -568,7 +570,7 @@ TER
 
   ncs_inp = iotbx.ncs.input(
       hierarchy=h,
-      chain_max_rmsd=0.01)
+      params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
   nu.flip_atoms_in_ncs_groups(h, ncs_groups)
@@ -886,7 +888,7 @@ TER
 
   ncs_inp = iotbx.ncs.input(
     hierarchy=h,
-    chain_max_rmsd=0.01)
+    params=ncs_pars.ncs_search)
   ncs_groups = ncs_inp.get_ncs_restraints_group_list()
 
   nu.flip_atoms_in_ncs_groups(h, ncs_groups)

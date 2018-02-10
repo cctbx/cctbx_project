@@ -101,6 +101,10 @@ def shortcut_1(
       t = lsq_fit_obj.t
       rmsd = copy_xyz.rms_difference(lsq_fit_obj.other_sites_best_fit())
       print >> log, "rmsd", master_chain_id, copy_chain_id, rmsd
+      #
+      # XXX should we compare rmsd to chain_max_rmsd to be more relaxed and
+      #     process more structures quickly?
+      #
       if rmsd is None or rmsd > 0.2:
         print >> log, "No shortcut, low rmsd:", rmsd, "for chains", master_chain_id, copy_chain_id
         return empty_result

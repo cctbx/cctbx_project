@@ -48,11 +48,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data2)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
+    p = iotbx.ncs.input.get_default_params()
+    p.ncs_search.exclude_selection=None
+    p.ncs_search.minimum_number_of_atoms_in_copy=0
     trans_obj = iotbx.ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
         hierarchy=pdb_inp.construct_hierarchy(),
-        exclude_selection=None,
-        minimum_number_of_atoms_in_copy=0)
+        params=p.ncs_search)
     nrgl = trans_obj.get_ncs_restraints_group_list()
     # nrgl._show()
     sels = nrgl.get_array_of_str_selections()
@@ -68,11 +70,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     pdb_inp = pdb.input(source_info=None, lines=pdb_test_data1)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data1_phil)).extract()
+    p = iotbx.ncs.input.get_default_params()
+    p.ncs_search.exclude_selection=None
+    p.ncs_search.minimum_number_of_atoms_in_copy=0
     trans_obj = ncs.input(
         ncs_phil_groups=phil_groups.ncs_group,
         hierarchy=pdb_inp.construct_hierarchy(),
-        exclude_selection=None,
-        minimum_number_of_atoms_in_copy=0)
+        params=p.ncs_search)
     nrgl = trans_obj.get_ncs_restraints_group_list()
     # nrgl._show()
     sels = nrgl.get_array_of_str_selections()
@@ -124,11 +128,13 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
     pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_test_data2)
     phil_groups = ncs_group_master_phil.fetch(
         iotbx.phil.parse(pdb_test_data2_phil)).extract()
+    p = iotbx.ncs.input.get_default_params()
+    p.ncs_search.exclude_selection=None
+    p.ncs_search.minimum_number_of_atoms_in_copy=0
     trans_obj = ncs.input(
       ncs_phil_groups=phil_groups.ncs_group,
       hierarchy=pdb_inp.construct_hierarchy(),
-      exclude_selection=None,
-      minimum_number_of_atoms_in_copy=0)
+      params = p.ncs_search)
     result = trans_obj.print_ncs_phil_param(write=False)
     # print "="*50
     # print "resutl"
@@ -141,9 +147,11 @@ class TestNcsGroupPreprocessing(unittest.TestCase):
 
   def test_finding_partial_ncs(self):
     # print sys._getframe().f_code.co_name
+    params = ncs.input.get_default_params()
+    params.ncs_search.chain_similarity_threshold = 0.2
     ncs_inp = ncs.input(
       hierarchy=iotbx.pdb.input(source_info=None, lines=pdb_str).construct_hierarchy(),
-      chain_similarity_threshold=0.2)
+      params = params.ncs_search)
     nrgl = ncs_inp.get_ncs_restraints_group_list()
     # nrgl._show()
     sels = nrgl.get_array_of_str_selections()

@@ -49,9 +49,14 @@ ncs_search
     .expert_level = 0
   try_shortcuts = False
     .type = bool
-    .help = Trt very quick check and rapid process when chains are identical. \
+    .help = Try very quick check and rapid process when chains are identical. \
         if not, procedure will perform proper search automatically.
     .expert_level = 0
+  minimum_number_of_atoms_in_copy = 3
+    .type = int
+    .help = Do not create ncs groups where master and copies would contain \
+        less than specified amount of atoms
+    .expert_level = 3
 }
 """
 
@@ -84,13 +89,9 @@ class input(object):
           hierarchy=None,
           # XXX warning, ncs_phil_groups can be changed inside...
           ncs_phil_groups = None,
-          exclude_selection="element H or element D or water",
-          chain_max_rmsd=2.0,
+          params = None,
           log=None,
-          chain_similarity_threshold=0.85,
-          residue_match_radius=4.0,
-          minimum_number_of_atoms_in_copy=3,
-          try_shortcuts = False):
+          ):
     """
     TODO:
     1. Transfer get_ncs_info_as_spec() to ncs/ncs.py:ncs
@@ -117,7 +118,6 @@ class input(object):
 
     self.number_of_ncs_groups = 0 # consider removing/replacing with function
 
-    self.minimum_number_of_atoms_in_copy = minimum_number_of_atoms_in_copy
     self.ncs_restraints_group_list = class_ncs_restraints_group_list()
     # keep hierarchy for writing (To have a source of atoms labels)
     self.hierarchy = hierarchy
@@ -130,14 +130,12 @@ class input(object):
     self.truncated_hierarchy = None
     self.truncated_h_asc = None
     self.chains_info = None
-    self.try_shortcuts = try_shortcuts
 
     extension = ''
     # set search parameters
-    self.exclude_selection = exclude_selection
-    self.chain_max_rmsd = chain_max_rmsd
-    self.residue_match_radius = residue_match_radius
-    self.chain_similarity_threshold = chain_similarity_threshold
+    self.params = params
+    if self.params is None:
+      self.params = input.get_default_params().ncs_search
     #
     if log is None:
       self.log = sys.stdout
@@ -151,10 +149,10 @@ class input(object):
       hierarchy.reset_i_seq_if_necessary()
       self.original_hierarchy = hierarchy.deep_copy()
       self.original_hierarchy.reset_atom_i_seqs()
-      if self.exclude_selection is not None:
+      if self.params.exclude_selection is not None:
         # pdb_hierarchy_inp.hierarchy.write_pdb_file("in_ncs_pre_before.pdb")
         cache = hierarchy.atom_selection_cache()
-        sel = cache.selection("not (%s)" % self.exclude_selection)
+        sel = cache.selection("not (%s)" % self.params.exclude_selection)
         self.truncated_hierarchy = hierarchy.select(sel)
       else:
         # this could be to save iseqs but I'm not sure
@@ -191,6 +189,19 @@ class input(object):
       print >> self.log,'================================\n'
     if self.messages != '':
       print >> self.log, self.messages
+
+  @staticmethod
+  def get_default_params():
+    """
+    Get parsed parameters (in form of Python objects). Use this function to
+    avoid importing ncs_search phil strings and think about how to
+    parse it. Does not need the instance of class (staticmethod).
+    Then modify what needed to be modified and init this class normally.
+    """
+    import iotbx.phil
+    return iotbx.phil.parse(
+          input_string=ncs_search_options,
+          process_includes=True).extract()
 
   def pdb_h_into_chain(self, pdb_h, ch_id="A"):
     new_chain = iotbx.pdb.hierarchy.chain(id=ch_id)
@@ -343,10 +354,10 @@ class input(object):
       nrgl_fake_iseqs = ncs_search.find_ncs_in_hierarchy(
           ph=combined_h,
           chains_info=None,
-          chain_max_rmsd=max(self.chain_max_rmsd, 10.0),
+          chain_max_rmsd=max(self.params.chain_max_rmsd, 10.0),
           log=None,
-          chain_similarity_threshold=min(self.chain_similarity_threshold, 0.5),
-          residue_match_radius=max(self.residue_match_radius, 1000.0))
+          chain_similarity_threshold=min(self.params.chain_similarity_threshold, 0.5),
+          residue_match_radius=max(self.params.residue_match_radius, 1000.0))
       # hopefully, we will get only 1 ncs group
       # ncs_group.selection = []
       if nrgl_fake_iseqs.get_n_groups() == 0:
@@ -412,7 +423,7 @@ class input(object):
 
   def finalize_nrgl(self):
     self.ncs_restraints_group_list = self.ncs_restraints_group_list.\
-        filter_out_small_groups(min_n_atoms=self.minimum_number_of_atoms_in_copy)
+        filter_out_small_groups(min_n_atoms=self.params.minimum_number_of_atoms_in_copy)
     self.number_of_ncs_groups = self.ncs_restraints_group_list.get_n_groups()
     #
     # Warning! str_selections updating with truncated hierarchy because
@@ -442,27 +453,27 @@ class input(object):
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
       t0 = time()
-      if self.try_shortcuts:
+      if self.params.try_shortcuts:
         # probably the most parameters are not necessary, since
         # we are going after cases where molecule was multiplied using
         # BIOMT or MTRIX, so we are expecting identical chains with 0 rmsd.
         self.ncs_restraints_group_list = ncs_search.shortcut_1(
             hierarchy=pdb_h,
             chains_info=self.chains_info,
-            chain_similarity_threshold=self.chain_similarity_threshold,
-            chain_max_rmsd=self.chain_max_rmsd,
+            chain_similarity_threshold=self.params.chain_similarity_threshold,
+            chain_max_rmsd=self.params.chain_max_rmsd,
             log=null_out(),
-            residue_match_radius=self.residue_match_radius)
+            residue_match_radius=self.params.residue_match_radius)
       # print >> self.log, "Time spend for trying shortcut: %.2f" % (time()-t0)
       if self.ncs_restraints_group_list.get_n_groups() == 0:
         # shortcuts failed
         self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(
           ph=pdb_h,
           chains_info=self.chains_info,
-          chain_similarity_threshold=self.chain_similarity_threshold,
-          chain_max_rmsd=self.chain_max_rmsd,
+          chain_similarity_threshold=self.params.chain_similarity_threshold,
+          chain_max_rmsd=self.params.chain_max_rmsd,
           log=self.log,
-          residue_match_radius=self.residue_match_radius)
+          residue_match_radius=self.params.residue_match_radius)
       self.finalize_nrgl()
 
   def get_ncs_restraints_group_list(self):
