@@ -2293,11 +2293,23 @@ def run(root=None):
     python bootstrap.py --builder=cctbx --sfuser=metalheadd hot update build tests
 
   """
+  builders = {
+    'cctbxlite': CCTBXLiteBuilder,
+    'cctbx': CCTBXBuilder,
+    'phenix': PhenixBuilder,
+    'xfel': XFELBuilder,
+    'labelit': LABELITBuilder,
+    'dials': DIALSBuilder,
+    'external': PhenixExternalRegression,
+    'molprobity':MOLPROBITYBuilder,
+    'qrefine': QRBuilder,
+  }
+
   parser = optparse.OptionParser(usage=usage)
   # parser.add_option("--root", help="Root directory; this will contain base, modules, build, etc.")
   parser.add_option(
     "--builder",
-    help="Builder: cctbx, phenix, xfel, dials, labelit, molprobity",
+    help="Builder: " + ",".join(builders.keys()),
     default="cctbx")
   parser.add_option("--cciuser", help="CCI SVN username.")
   parser.add_option("--sfuser", help="SourceForge SVN username.")
@@ -2374,17 +2386,6 @@ def run(root=None):
   print "Performing actions:", " ".join(actions)
 
   # Check builder
-  builders = {
-    'cctbxlite': CCTBXLiteBuilder,
-    'cctbx': CCTBXBuilder,
-    'phenix': PhenixBuilder,
-    'xfel': XFELBuilder,
-    'labelit': LABELITBuilder,
-    'dials': DIALSBuilder,
-    'external': PhenixExternalRegression,
-    'molprobity':MOLPROBITYBuilder,
-    'qrefine': QRBuilder,
-  }
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
 
