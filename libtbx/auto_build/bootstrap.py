@@ -1737,6 +1737,49 @@ class MOLPROBITYBuilder(Builder):
   def rebuild_docs(self):
     pass
 
+class CCTBXLiteBuilder(CCIBuilder):
+  BASE_PACKAGES = 'cctbx'
+    # Checkout these codebases
+  CODEBASES = [
+    'boost',
+    'cctbx_project',
+    'gui_resources',
+    'ccp4io_adaptbx',
+    'annlib_adaptbx',
+    'tntbx',
+    'clipper'
+  ]
+  # Configure for these cctbx packages
+  LIBTBX = [
+    'cctbx',
+    'scitbx',
+    'libtbx',
+    'iotbx',
+    'mmtbx',
+    'smtbx',
+    'gltbx',
+    'wxtbx',
+  ]
+
+  def add_tests(self):
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
+
+  def add_base(self, extra_opts=[]):
+    if self.skip_base is None or len(self.skip_base) == 0:
+      self.skip_base = "hdf5,lz4_plugin"
+    else:
+      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin'])
+    super(CCTBXLiteBuilder, self).add_base(
+      extra_opts=['--cctbx',
+                 ] + extra_opts)
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
 class CCTBXBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
   def add_tests(self):
@@ -2332,6 +2375,7 @@ def run(root=None):
 
   # Check builder
   builders = {
+    'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
     'xfel': XFELBuilder,

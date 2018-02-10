@@ -192,5 +192,10 @@ if __name__ == '__main__':
   print "OK"
 
   # run a similar test for a B matrix
-  test_B_matrix()
-  print "OK"
+  try:
+    import dxtbx # import dependency
+  except ImportError:
+    pass
+  else:
+    test_B_matrix()
+    print "OK"
