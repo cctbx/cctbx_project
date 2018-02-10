@@ -11,7 +11,7 @@
 #include <scitbx/random.h>
 #include <scitbx/math/linear_correlation.h>
 
-#include <cctbx/maptbx/eight_point_interpolation.h> //indirect import?
+#include <cctbx/maptbx/interpolation.h> //indirect import?
 
 namespace cctbx { namespace maptbx {
 

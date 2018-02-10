@@ -1,7 +1,7 @@
 #ifndef CCTBX_MAPTBX_TARGET_AND_GRADIENTS_H
 #define CCTBX_MAPTBX_TARGET_AND_GRADIENTS_H
 
-#include <cctbx/maptbx/eight_point_interpolation.h>
+#include <cctbx/maptbx/interpolation.h>
 
 namespace cctbx {
   namespace maptbx {

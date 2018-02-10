@@ -155,6 +155,7 @@ flex.double.eight_point_interpolation_with_gradients = \
 flex.double.quadratic_interpolation_with_gradients = \
   quadratic_interpolation_with_gradients
 flex.double.tricubic_interpolation = tricubic_interpolation
+flex.double.tricubic_interpolation_with_gradients = tricubic_interpolation_with_gradients
 
 def cc_peak(cutoff, map_1=None,map_2=None, map_coeffs_1=None,map_coeffs_2=None):
   """
@@ -1336,6 +1337,13 @@ Fourier image of specified resolution, etc.
     xrs = xray.structure(sp, scatterers)
     xrs.scattering_type_registry(table = self.scattering_table)
     return xrs
+
+  def exact_density_at_r(self, r, b_iso):
+    return self.scr.gaussian(self.scattering_type).electron_density(r, b_iso)
+
+  def exact_gradient_at_r(self, r, t, t0, b_iso):
+    return self.scr.gaussian(self.scattering_type).gradient(r=r, t=t, t0=t0,
+      b_iso=b_iso)
 
   def exact_density(self, b_iso, radius_max=5., radius_step=0.001):
     r = 0.0

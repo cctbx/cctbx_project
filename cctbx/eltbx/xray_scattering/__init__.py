@@ -47,6 +47,17 @@ class _(boost.python.injector, ext.gaussian):
       result += self.c() * ft(0)
     return result
 
+  def gradient(self, r, t, t0, b_iso):
+    from math import pi, exp
+    result = 0
+    def ft(b):
+      return -2*(t-t0)*(4*pi/(b+b_iso))**(5/2) * exp(-4*pi**2*r**2/(b+b_iso))
+    for a,b in zip(self.array_of_a(), self.array_of_b()):
+      result += a * ft(b)
+    if (self.use_c()):
+      result += self.c() * ft(0)
+    return result
+
 def best_approximation(scattering_type):
   if (scattering_type == "const"):
     return gaussian(1)

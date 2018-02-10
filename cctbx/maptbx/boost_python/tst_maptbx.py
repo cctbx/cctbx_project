@@ -420,10 +420,14 @@ def exercise_eight_point_interpolation():
     for index in flex.nested_loop(map.focus()):
       x_frac = [float(i)/n+shift for i,n in zip(index, map.focus())]
       assert approx_equal(maptbx.eight_point_interpolation(map, x_frac), 10)
+      assert approx_equal(
+        maptbx.eight_point_interpolation_with_gradients(map, x_frac,[1,1,1])[0], 10)
       assert maptbx.closest_grid_point(map.accessor(), x_frac) == index
   for i in xrange(100):
     x_frac = [3*random.random()-1 for i in xrange(3)]
     assert approx_equal(map.eight_point_interpolation(x_frac), 10)
+    assert approx_equal(
+      map.eight_point_interpolation_with_gradients(x_frac,[1,1,1])[0], 10)
   map = flex.double(range(30))
   map.resize(flex.grid(2,3,5))
   for shift in [0,1,-1]:

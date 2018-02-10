@@ -93,6 +93,8 @@ tst_list = (
   ["$D/regression/tst_maptbx_structure_factors.py", "P31"],
   ["$D/regression/tst_map_weights_for_symmetry_summation.py", "Pmmm"],
   "$D/maptbx/tst_real_space_refinement_simple.py",
+  "$D/maptbx/tst_interpolation.py",
+  "$D/maptbx/tst_interpolation_2.py",
   "$D/regression/tst_loc_res.py",
   "$D/maptbx/tst_target_and_gradients.py",
   ["$D/regression/tst_miller_merge_equivalents.py", "P31"],

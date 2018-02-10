@@ -4,7 +4,7 @@
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/math/utils.h>
-#include <cctbx/maptbx/eight_point_interpolation.h>
+#include <cctbx/maptbx/interpolation.h>
 #include <scitbx/math/linear_correlation.h>
 #include <cctbx/maptbx/histogram.h>
 

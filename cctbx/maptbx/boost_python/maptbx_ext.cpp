@@ -968,6 +968,11 @@ namespace {
       (af::c_grid_padded<3>::index_type(*)
         (af::flex_grid<> const&,
          fractional<double> const&)) closest_grid_point);
+    def("tricubic_interpolation_with_gradients",
+      (af::tiny<double, 4>(*)
+        (af::const_ref<double, af::c_grid_padded<3> > const&,
+         scitbx::vec3<double> const&,
+         scitbx::vec3<double> const&)) tricubic_interpolation_with_gradients);
     def("tricubic_interpolation",
       (double(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
