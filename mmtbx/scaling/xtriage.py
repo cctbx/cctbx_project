@@ -683,7 +683,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.plan_sad_experiment_stats= None
     if ((unmerged_obs is not None) and
         (unmerged_obs.is_xray_intensity_array())) :
-        from phenix.command_line.anomalous_signal import anomalous_signal 
+        from phenix.command_line.anomalous_signal import anomalous_signal
         self.plan_sad_experiment_stats= anomalous_signal(
           i_obs=unmerged_obs,
           d_min=params.scaling.input.xray_data.high_resolution,
