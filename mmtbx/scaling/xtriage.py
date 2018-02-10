@@ -683,6 +683,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     self.plan_sad_experiment_stats= None
     if ((unmerged_obs is not None) and
         (unmerged_obs.is_xray_intensity_array())) :
+      try :
         from phenix.command_line.anomalous_signal import anomalous_signal
         self.plan_sad_experiment_stats= anomalous_signal(
           i_obs=unmerged_obs,
@@ -691,6 +692,10 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
           sites=params.scaling.input.asu_contents.n_sites,
           skip_scaling=True,
           out=null_out()).analysis
+      except Exception, e :
+        print >> text_out, \
+          "WARNING: calculation of anomalous statistics failed"
+        print >> text_out, "  error: %s\n" % str(e)
     ###
     make_big_header("Basic statistics", out=text_out)
     n_copies_solc = 1.0
