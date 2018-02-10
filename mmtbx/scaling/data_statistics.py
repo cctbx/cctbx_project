@@ -746,7 +746,11 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
     # Signal-to-noise and completeness
     self.i_sig_i = None
     self.i_sig_i_table = None
+    self.overall_i_sig_i = None
     if tmp_miller.sigmas() is not None:
+      self.overall_i_sig_i = tmp_miller.i_over_sig_i(use_binning=False,
+        return_fail=0)
+
       i_over_sigma = tmp_miller.i_over_sig_i(use_binning=True,
         return_fail=0)
       self.i_sig_i = i_over_sigma.data[1:len(i_over_sigma.data)-1]
@@ -813,6 +817,10 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
 
   def _show_impl (self, out) :
     out.show_header("Data strength and completeness")
+
+    if (self.overall_i_sig_i is not None):
+      out.show("Overall <I/sigma> for this dataset is %7.1f" %(
+        self.overall_i_sig_i))
     if (self.data_strength is not None) :
       self.data_strength.show(out)
     if self.low_resolution_completeness is not None:
@@ -836,6 +844,9 @@ or omission of reflections by data-processing software.""")
       return self.data_strength.resolution_at_least
     else:
       return self.data_strength.resolution_cut
+
+  def overall_i_sig_i(self) :
+      return self.overall_i_sig_i
 
   def i_over_sigma_outer_shell (self) :
     if (self.i_sig_i is not None) :
@@ -864,7 +875,8 @@ or omission of reflections by data-processing software.""")
     return issues
 
 class anomalous (scaling.xtriage_analysis) :
-  def __init__ (self, miller_array, merging_stats=None) :
+  def __init__ (self, miller_array, merging_stats=None,
+      plan_sad_experiment_stats=None) :
     assert miller_array.anomalous_flag()
     tmp_miller = miller_array.deep_copy()
     tmp_miller.setup_binner_d_star_sq_step(auto_binning=True)
@@ -872,6 +884,9 @@ class anomalous (scaling.xtriage_analysis) :
     self.cc_anom_table = None
     if (merging_stats is not None) :
       self.cc_anom_table = merging_stats.cc_anom_table
+    self.plan_sad_experiment_stats=None
+    if (plan_sad_experiment_stats is not None):
+      self.plan_sad_experiment_stats=plan_sad_experiment_stats
     self.measurability = None
     # Get measurability if data is anomalous
     if (tmp_miller.sigmas() is not None) :
@@ -912,6 +927,13 @@ class anomalous (scaling.xtriage_analysis) :
         out.show_table(self.cc_anom_table)
     if (self.measurability is not None) :
       self.measurability.show(out)
+
+    if self.plan_sad_experiment_stats:
+       out.show_header(
+       "Analysis of probability of finding %d sites with this anomalous data" %(
+          self.plan_sad_experiment_stats.sites))
+       self.plan_sad_experiment_stats.show_summary(out=out)
+
 
 class wilson_scaling (scaling.xtriage_analysis) :
   """

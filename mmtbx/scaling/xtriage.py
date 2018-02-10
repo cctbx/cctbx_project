@@ -55,6 +55,10 @@ input {
       .type=float
       .help="Number of nucleotides in structural unit"
       .short_caption = Number of nucleotides
+    n_sites=5
+      .type=int
+      .help="Number of atoms in anomalous substructure"
+      .short_caption = Atoms in anomalous substructure
     n_copies_per_asu=None
       .type=float
       .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
@@ -307,10 +311,12 @@ The program options are summarized below
    keys: * n_residues :: Number of residues per monomer/unit
          * n_bases :: Number of nucleotides per monomer/unit
          * n_copies_per_asu :: Number of copies in the ASU.
+         * n_sites :: Number of atoms in anomalous sub-structure
 
    These keywords control the determination of the absolute scale.
    If the number of residues/bases is not specified, a solvent content of 50%%
-   is assumed.
+   is assumed.  n_sites is used in analysis of probability of
+   finding the sub-structure
 
 
 2a.scope: xray_data
@@ -611,7 +617,7 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
   :param miller_ref: array with 'reference' data, for instance a data set with
                      an alternative indexing scheme
   :param text_out: A filehandle or other object with a write method
-  :parma params: An extracted PHIL parameter block, derived from master_params
+  :param params: An extracted PHIL parameter block, derived from master_params
   """
   new_format = True # XXX used by Phenix GUI
   def __init__(self,
@@ -673,6 +679,18 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
         print >> text_out, \
           "WARNING: calculation of merging statistics failed"
         print >> text_out, "  error: %s" % str(e)
+
+    self.plan_sad_experiment_stats= None
+    if ((unmerged_obs is not None) and
+        (unmerged_obs.is_xray_intensity_array())) :
+        from phenix.command_line.anomalous_signal import anomalous_signal 
+        self.plan_sad_experiment_stats= anomalous_signal(
+          i_obs=unmerged_obs,
+          d_min=params.scaling.input.xray_data.high_resolution,
+          d_max=params.scaling.input.xray_data.low_resolution,
+          sites=params.scaling.input.asu_contents.n_sites,
+          skip_scaling=True,
+          out=null_out()).analysis
     ###
     make_big_header("Basic statistics", out=text_out)
     n_copies_solc = 1.0
@@ -722,7 +740,9 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     if miller_obs.anomalous_flag() :
       self.anomalous_info = data_statistics.anomalous(
         miller_array=miller_obs,
-        merging_stats=self.merging_stats).show(out=text_out)
+        merging_stats=self.merging_stats,
+        plan_sad_experiment_stats=self.plan_sad_experiment_stats).show(
+          out=text_out)
     # Wilson statistics
     self.wilson_scaling = data_statistics.wilson_scaling(
       miller_array=miller_obs,
@@ -864,6 +884,10 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     anomalous substructures search.  Used in AutoSol.
     """
     return getattr(self.anomalous_info, "low_d_cut", None)
+
+  @property
+  def overall_i_sig_i(self) :
+    return self.data_strength_and_completeness.overall_i_sig_i
 
   @property
   def i_over_sigma_outer_shell (self) :

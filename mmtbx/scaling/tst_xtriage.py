@@ -523,6 +523,11 @@ def exercise_2 () :
   assert approx_equal(result.l_test_mean_l, 0.493, eps=0.1)
   assert approx_equal(result.l_test_mean_l_squared, 0.326, eps=0.1)
   assert approx_equal(result.i_over_sigma_outer_shell, 3.25, eps=0.1)
+  assert approx_equal(result.overall_i_sig_i,10.34,eps=0.1)
+  assert approx_equal(result.anomalous_info.plan_sad_experiment_stats.get_overall(
+      item="i_over_sigma_dict"),10.61,eps=0.1)
+  assert approx_equal(result.anomalous_info.plan_sad_experiment_stats.get_overall(
+      item="anom_signal_dict"),15.35,eps=0.1)
   assert ("No significant pseudotranslation is detected" in
           result.patterson_verdict)
   # test consistency of output after pickling and unpickling
