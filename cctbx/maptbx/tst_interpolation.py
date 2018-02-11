@@ -96,15 +96,15 @@ def exercise(f,gx,gy,gz,function_type, eps = 1.e-6):
     if(function_type=="L"):
       cntr+=1
       for it in [tl,gxl,gyl,gzl, tq,gxq,gyq,gzq, tt,gxt,gyt,gzt]:
-        assert approx_equal(it, 0.0)
+        assert approx_equal(it, 0.0, 1.e-4)
     if(function_type=="Q"):
       cntr+=1
       for it in [tq,gxq,gyq,gzq, tt,gxt,gyt,gzt]:
-        assert approx_equal(it, 0.0)
+        assert approx_equal(it, 0.0, 1.e-4)
     if(function_type=="C"):
       cntr+=1
       for it in [tt,gxt,gyt,gzt]:
-        assert approx_equal(it, 0.0)
+        assert approx_equal(it, 0.0, 1.e-4)
       if(abs(tl)>eps and abs(tq)>eps): assert tl >=tq
     if(function_type=="F"):
       cntr+=1
