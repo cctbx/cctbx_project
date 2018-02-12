@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 01/25/2018
+Last Changed: 02/12/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -26,6 +26,8 @@ from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
 
+import time
+assert time # going to keep time around for testing
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -164,6 +166,8 @@ class TrackChart(wx.Panel):
       self.patch_x_last = int(xmax) + 1
       self.patch_width = self.patch_x_last - self.patch_x
       self.bracket_set = True
+
+
       self.main_window.update_image_list()
       self.main_window.tracker_panel.image_list_panel.Show()
       self.main_window.tracker_panel.Layout()
@@ -692,6 +696,7 @@ class TrackerWindow(wx.Frame):
     self.frame_count = []
     self.obs_counts = []
     self.done_list = []
+    self.data_list = []
     self.new_frames = []
     self.new_counts = []
     self.spotfinding_info = []
@@ -917,8 +922,14 @@ class TrackerWindow(wx.Frame):
                                        filter_type='image',
                                        last=last_file)
 
-    self.data_list = [i for i in found_files if i not in self.done_list]
+    if found_files != []:
+      print 'DEBUG: FIRST FILE - {}'.format(found_files[0])
+
+    self.data_list = list(set(found_files) - set(self.done_list))
     self.data_list = [i for i in self.data_list if not 'tmp' in i]
+
+    print 'DEBUG: FOUND {} FILES\n'.format(len(self.data_list))
+
     if len(self.data_list) == 0:
       self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
       self.waiting = True

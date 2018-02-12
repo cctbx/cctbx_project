@@ -6,14 +6,18 @@ Bugfixes:
 are removed") to outlier_detection.py
 2. Image tracker: went to update by timer; interface works smoother
 3. More sophisticated filter for file-finding; can now filter by any keyword
+4. Added an advanced 'flip_beamXY' param:
+   - flips X and Y axes when cropping / padding image (orientation unaffected)
+   - flips beamXY coordinates to match
+   - this resolves a "beamX > beamY" bug during image modification for cctbx
 
 Features:
 
 1. Image tracker: Added function to write out list of inspected images to file
 (user can now pick out images to process from a large dataset via inspection)
+2. Added separate spotfinder thread; tracker runs a bit faster as a result
 
 
 Known issues:
 
-1. Cropping / padding for Labelit fails if beamX > beamY (why?!)
-2. Image tracker: interface could use to be faster w/ large datasets
+1. Image tracker: interface could use to be faster w/ large datasets

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/31/2018
+Last Changed: 02/12/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -278,25 +278,18 @@ class SingleImage(object):
       new_size = new_half_size * 2
       min_x = beam_x - new_half_size
       min_y = beam_y - new_half_size
-      new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
-      new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
+      max_x = beam_x + new_half_size
+      max_y = beam_y + new_half_size
 
-      new_pixels = pixels[min_y:min_y+new_size, min_x:min_x+new_size]
+      if self.params.advanced.flip_beamXY:
+        new_beam_x = data['BEAM_CENTER_X'] - min_y * pixel_size
+        new_beam_y = data['BEAM_CENTER_Y'] - min_x * pixel_size
+        new_pixels = pixels[min_x:max_x, min_y:max_y]
+      else:
+        new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
+        new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
+        new_pixels = pixels[min_y:max_y, min_x:max_x]
 
-      # print
-      # print 'DEBUG: NEW HALF_-SIZE = ', new_half_size
-      # print 'DEBUG: ORIG X = ', beam_x
-      # print 'DEBUG: ORIG Y = ', beam_y
-      # print 'DEBUG: MIN_X = {}, MAX_X = {}, WIDTH = {}' \
-      #       ''.format(min_x, min_x + new_size, width)
-      # print 'DEBUG: MIN_Y = {}, MAX_Y = {}, HEIGHT = {}' \
-      #       ''.format(min_y, min_y + new_size, height)
-      # print
-      #
-      # print 'DEBUG: OLD SIZE = ', width, height
-      # print 'DEBUG: NEW SIZE = ', new_size, new_size
-      # print 'DEBUG: OLD PIXEL FOCUS = ', pixels.focus()
-      # print 'DEBUG: NEW PIXEL FOCUS = ', new_pixels.focus()
 
       assert new_pixels.focus()[0] == new_pixels.focus()[1]
 
@@ -307,24 +300,30 @@ class SingleImage(object):
       new_size = new_half_size * 2
       delta_x = new_half_size - beam_x
       delta_y = new_half_size - beam_y
-      new_beam_x = data['BEAM_CENTER_X'] + delta_x * pixel_size
-      new_beam_y = data['BEAM_CENTER_Y'] + delta_y * pixel_size
       new_pixels.resize(flex.grid(new_size, new_size))
       new_pixels.fill(-2)
 
-      try:
+      if self.params.advanced.flip_beamXY:
+        new_beam_x = data['BEAM_CENTER_X'] + delta_y * pixel_size
+        new_beam_y = data['BEAM_CENTER_Y'] + delta_x * pixel_size
+        new_pixels.matrix_paste_block_in_place(pixels, delta_x, delta_y)
+      else:
+        new_beam_x = data['BEAM_CENTER_X'] + delta_x * pixel_size
+        new_beam_y = data['BEAM_CENTER_Y'] + delta_y * pixel_size
         new_pixels.matrix_paste_block_in_place(pixels, delta_y, delta_x)
-      except Exception, e:
-        print e
+
+    else:
+      new_beam_x = data['BEAM_CENTER_X']
+      new_beam_y = data['BEAM_CENTER_Y']
 
     # save the results
     if new_size is not None:
       data['DATA'] = new_pixels
       data['SIZE1'] = new_size
       data['SIZE2'] = new_size
+      data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
       data['BEAM_CENTER_X'] = new_beam_x
       data['BEAM_CENTER_Y'] = new_beam_y
-      data['ACTIVE_AREAS'] = flex.int([0 , 0, new_size, new_size])
 
     return data
 

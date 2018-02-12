@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 11/03/2017
+Last Changed: 02/12/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -274,6 +274,9 @@ advanced
   estimate_gain = True
     .type = bool
     .help = Estimates detector gain (helps improve spotfinding in DIALS)
+  flip_beamXY = True
+    .type = bool
+    .help = flip beamX and beamY parameters when modifying image for cctbx
   debug = False
     .type = bool
     .help = Used for various debugging purposes.
