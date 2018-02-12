@@ -260,7 +260,15 @@ class reference_model(object):
     m_sel = m_cache.selection(model_selection_str)
     ref_sel = ref_cache.selection(ref_selection_str)
     combined_h = model_h.select(m_sel).deep_copy()
+    if combined_h.atoms_size() == 0:
+      msg = "Selection '%s' selected 0 atoms in refined model.\n" % (model_selection_str) +\
+          "Please check if the selection provided is correct."
+      raise Sorry(msg)
     ref_h = ref_h.select(ref_sel).deep_copy()
+    if ref_h.atoms_size() == 0:
+      msg = "Reference selection '%s' selected 0 atoms in %s.\n" % (ref_selection_str, fn) +\
+          "Please check if the selection provided is correct."
+      raise Sorry(msg)
     for chain in ref_h.only_model().chains():
       chain.id +="ref"
     combined_h.transfer_chains_from_other(ref_h)
