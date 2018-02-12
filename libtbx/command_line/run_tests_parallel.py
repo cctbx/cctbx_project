@@ -78,36 +78,12 @@ def run (args, return_list_of_tests=None) :
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
     all_tests.extend(module_tests)
-  #
+
   if return_list_of_tests:
     return all_tests
 
-  # postpone some tests
-  #
-  import time
-  ptime = 1462301849+(60*60*24*14)
-  plist = [
-    "phenix_regression/model_vs_data/tst_00.py",
-    ]
-  if ptime>time.time():
-    print '\n%s' % ('='*80)
-    print '\n  POSTPONING THE FOLLOWING TESTS FOR %0.1f HOURS' % (
-      (ptime-time.time())/(60*60))
-    while plist:
-      for s in plist:
-        for i, t in enumerate(all_tests):
-          if t.find(s)>-1:
-            print '    %s' % t
-            del all_tests[i]
-            break
-        plist.remove(s)
-    print '\n%s' % ('='*80)
-  #
-  #
-  #
   if (len(all_tests) == 0) :
     raise Sorry("No test scripts found in %s." % params.directory)
-  # all_tests = ['libtbx.python "/net/anaconda/raid1/olegs/phenix_test/modules/phenix_regression/real_space_refine/tst_24.py"']
   if (params.shuffle) :
     random.shuffle(all_tests)
   if (params.quiet) :
