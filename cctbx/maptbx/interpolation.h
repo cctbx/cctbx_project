@@ -1,5 +1,5 @@
-#ifndef CCTBX_MAPTBX_EIGHT_POINT_INTERPOLATION_H
-#define CCTBX_MAPTBX_EIGHT_POINT_INTERPOLATION_H
+#ifndef CCTBX_MAPTBX_INTERPOLATION_H
+#define CCTBX_MAPTBX_INTERPOLATION_H
 
 #include <cctbx/coordinates.h>
 #include <scitbx/math/modulo.h>
@@ -411,7 +411,15 @@ namespace cctbx { namespace maptbx {
     get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
     // Is this faster (and the same)? (used above)
     // Why this is not done in eight_point_interpolation?
-    cctbx::fractional<> xn = cctbx::fractional<>(x_frac).mod_positive();
+    //cctbx::fractional<> xn = cctbx::fractional<>(x_frac).mod_positive();
+    af::tiny<SiteFloatType, 3> xn;
+    for (unsigned k = 0; k < 3; k++) {
+      if (x_frac[k] < 0) {
+        xn[k] = fmod((1.+x_frac[k])*static_cast<SiteFloatType>(grid_n[k]), 1.0);
+      } else {
+        xn[k] = fmod(x_frac[k]*static_cast<SiteFloatType>(grid_n[k]), 1.0);
+      }
+    }
 
     MapFloatType f[4][4][4];
     for (int i = -1; i < 3; i++) {
@@ -638,4 +646,4 @@ namespace cctbx { namespace maptbx {
 
 }} // namespace cctbx::maptbx
 
-#endif // CCTBX_MAPTBX_EIGHT_POINT_INTERPOLATION_H
+#endif // CCTBX_MAPTBX_INTERPOLATION_H

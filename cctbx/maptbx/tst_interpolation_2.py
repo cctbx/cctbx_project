@@ -16,7 +16,7 @@ if(1):
 
 def get_map(xrs,ms):
   fc = ms.structure_factors_from_scatterers(
-    xray_structure=xrs, algorithm="fft").f_calc()
+    xray_structure=xrs, algorithm="direct").f_calc()
   fft_map = fc.fft_map(resolution_factor=1./10)
   fft_map.apply_sigma_scaling()
   return fft_map.real_map_unpadded()
@@ -78,9 +78,9 @@ def run():
     run_group(i, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12)
   assert approx_equal([flex.mean(err_l), flex.mean(err_q), flex.mean(err_t)],
     [0,0,0], 1.e-3)
-  assert flex.mean(err_lt1)  < 4.
-  assert flex.mean(err_lt2)  < 4.
-  assert flex.mean(err_lt12) < 4.
+  assert flex.mean(err_lt1)  < 7., flex.mean(err_lt1)
+  assert flex.mean(err_lt2)  < 7., flex.mean(err_lt2)
+  assert flex.mean(err_lt12) < 7., flex.mean(err_lt12)
 
 if (__name__ == "__main__"):
   t0 = time.time()
