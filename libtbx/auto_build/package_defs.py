@@ -69,6 +69,7 @@ PILLOW_VERSION = "4.2.1"
 PYTEST_VERSION="3.2.3"
 SIX_VERSION="1.11.0"
 SPHINX_VERSION="1.4.4" # for documentation
+MPI4PY_VERSION="3.0.0"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
