@@ -818,7 +818,8 @@ class data_strength_and_completeness (scaling.xtriage_analysis) :
   def _show_impl (self, out) :
     out.show_header("Data strength and completeness")
 
-    if (self.overall_i_sig_i is not None):
+    if (hasattr(self, 'overall_i_sig_i') and
+        (self.overall_i_sig_i is not None)):
       out.show("Overall <I/sigma> for this dataset is %7.1f" %(
         self.overall_i_sig_i))
     if (self.data_strength is not None) :
@@ -844,9 +845,6 @@ or omission of reflections by data-processing software.""")
       return self.data_strength.resolution_at_least
     else:
       return self.data_strength.resolution_cut
-
-  def overall_i_sig_i(self) :
-      return self.overall_i_sig_i
 
   def i_over_sigma_outer_shell (self) :
     if (self.i_sig_i is not None) :
@@ -928,7 +926,8 @@ class anomalous (scaling.xtriage_analysis) :
     if (self.measurability is not None) :
       self.measurability.show(out)
 
-    if self.plan_sad_experiment_stats:
+    if (hasattr(self, 'plan_sad_experiment_stats') and
+        (self.plan_sad_experiment_stats is not None)):
        out.show_header(
        "Analysis of probability of finding %d sites with this anomalous data" %(
           self.plan_sad_experiment_stats.sites))
