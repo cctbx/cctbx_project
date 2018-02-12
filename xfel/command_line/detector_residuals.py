@@ -1151,11 +1151,18 @@ class Script(DCScript):
       refls = reflections.select((reflections['two_theta_obs'] >= bin_low[i]) & (reflections['two_theta_obs'] < bin_high[i]))
       n = len(refls)
       n_refls.append(n)
-      rmsds.append(1000*math.sqrt(flex.sum_sq(refls['difference_vector_norms'])/n))
-      radial_rmsds.append(1000*math.sqrt(flex.sum_sq(refls['radial_displacements'])/n))
-      transverse_rmsds.append(1000*math.sqrt(flex.sum_sq(refls['transverse_displacements'])/n))
-      rt_ratio.append(radial_rmsds[-1]/transverse_rmsds[-1])
-      rmsd_delta_two_theta.append(math.sqrt(flex.sum_sq(refls['two_theta_obs']-refls['two_theta_cal'])/n))
+      if n == 0:
+        rmsds.append(0)
+        radial_rmsds.append(0)
+        transverse_rmsds.append(0)
+        rt_ratio.append(0)
+        rmsd_delta_two_theta.append(0)
+      else:
+        rmsds.append(1000*math.sqrt(flex.sum_sq(refls['difference_vector_norms'])/n))
+        radial_rmsds.append(1000*math.sqrt(flex.sum_sq(refls['radial_displacements'])/n))
+        transverse_rmsds.append(1000*math.sqrt(flex.sum_sq(refls['transverse_displacements'])/n))
+        rt_ratio.append(radial_rmsds[-1]/transverse_rmsds[-1])
+        rmsd_delta_two_theta.append(math.sqrt(flex.sum_sq(refls['two_theta_obs']-refls['two_theta_cal'])/n))
       #delta_two_theta.append(flex.mean(refls['two_theta_obs']-refls['two_theta_cal']))
     assert len(reflections) == flex.sum(n_refls)
 
