@@ -200,14 +200,10 @@ def run(args, log = sys.stdout):
   #
   pdb_inp = mmtbx.utils.pdb_inp_from_multiple_files(pdb_file_names, log=sys.stdout)
   model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      process_input=True,
-      crystal_symmetry = crystal_symmetry,
-      log = sys.stdout)
-  # mmtbx_pdb_file = mmtbx.utils.pdb_file(
-  #   pdb_file_names   = pdb_file_names,
-  #   crystal_symmetry = crystal_symmetry,
-  #   log              = sys.stdout)
+    model_input      = pdb_inp,
+    process_input    = False,
+    crystal_symmetry = crystal_symmetry,
+    log              = sys.stdout)
   if(model.get_number_of_models()>1): #XXX support multi-models
     raise Sorry("Multiple model file not supported in this tool.")
   # XXX Twining not supported
