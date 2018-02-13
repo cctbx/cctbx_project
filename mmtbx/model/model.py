@@ -943,7 +943,7 @@ class manager(object):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
 
-  def setup_ncs_constraints_groups(self, chain_max_rmsd=10, filter_groups=False):
+  def setup_ncs_constraints_groups(self, filter_groups=False):
     """
     This will be used directly (via get_ncs_groups) in
     mmtbx/refinement/minimization.py, mmtbx/refinement/adp_refinement.py
