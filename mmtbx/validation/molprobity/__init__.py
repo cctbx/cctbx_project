@@ -321,6 +321,17 @@ class molprobity (slots_getstate_setstate) :
     elif (fmodel_neutron is not None):
       self.wilson_b = fmodel_neutron.wilson_b()
 
+    # write probe file if needed (CLI and GUI)
+    if (save_probe_unformatted_file is not None):
+      pcm = self.clashes.probe_clashscore_manager
+      try:
+        with open(save_probe_unformatted_file, 'w') as f:
+          f.write(pcm.probe_unformatted)
+        self.clashes.probe_file = save_probe_unformatted_file
+      except IOError as err:
+        raise Sorry('%s could not be written correctly.\n%s' %
+                    (coot_probe_file, err))
+
   def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False,
       show_percentiles=False) :
     """

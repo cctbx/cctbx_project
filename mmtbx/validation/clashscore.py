@@ -55,6 +55,7 @@ class clashscore(validation):
     "list_dict",
     "b_factor_cutoff",
     "probe_file",
+    "probe_clashscore_manager"
   ]
   program_description = "Analyze clashscore for protein model"
   gui_list_headers = ["Atom 1", "Atom 2", "Overlap"]
@@ -70,7 +71,6 @@ class clashscore(validation):
       force_unique_chain_ids=False,
       time_limit=120,
       b_factor_cutoff=None,
-      save_probe_unformatted_file=None,
       save_modified_hierarchy=False,
       verbose=False,
       do_flips=False,
@@ -113,28 +113,26 @@ class clashscore(validation):
       mdc = model.detached_copy()
       r.append_model(mdc)
       occ_max = flex.max(r.atoms().extract_occ())
-      pcm = probe_clashscore_manager(
+      self.probe_clashscore_manager = probe_clashscore_manager(
         h_pdb_string=input_str,
         nuclear=nuclear,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
-        verbose=verbose,
-        printable_probe_output=save_probe_unformatted_file)
+        verbose=verbose)
       if (save_modified_hierarchy) :
         self.pdb_hierarchy = iotbx.pdb.hierarchy.input(
-          pdb_string=pcm.h_pdb_string).hierarchy
-      self.clash_dict[model.id] = pcm.clashscore
-      self.clash_dict_b_cutoff[model.id] = pcm.clashscore_b_cutoff
-      self.list_dict[model.id] = pcm.bad_clashes
+          pdb_string=self.probe_clashscore_manager.h_pdb_string).hierarchy
+      self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
+      self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
+                                           clashscore_b_cutoff
+      self.list_dict[model.id] = self.probe_clashscore_manager.bad_clashes
       if (n_models == 1) or (self.clashscore is None) :
-        self.results = pcm.bad_clashes
+        self.results = self.probe_clashscore_manager.bad_clashes
         self.n_outliers = len(self.results)
-        self.clashscore = pcm.clashscore
-        self.clashscore_b_cutoff = pcm.clashscore_b_cutoff
-      if (save_probe_unformatted_file is not None) and (n_models == 1) :
-        open(save_probe_unformatted_file, "w").write(pcm.probe_unformatted)
-        self.probe_file = save_probe_unformatted_file
+        self.clashscore = self.probe_clashscore_manager.clashscore
+        self.clashscore_b_cutoff = self.probe_clashscore_manager.\
+                                   clashscore_b_cutoff
 
   def get_clashscore(self):
     return self.clashscore
@@ -230,8 +228,7 @@ class probe_clashscore_manager(object):
                largest_occupancy=10,
                b_factor_cutoff=None,
                use_segids=False,
-               verbose=False,
-               printable_probe_output=None):
+               verbose=False):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -287,7 +284,7 @@ class probe_clashscore_manager(object):
     if verbose:
       print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
-    self.run_probe_clashscore(self.h_pdb_string, printable_probe_output)
+    self.run_probe_clashscore(self.h_pdb_string)
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
@@ -342,17 +339,16 @@ class probe_clashscore_manager(object):
       self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
-  def run_probe_clashscore(self, pdb_string, printable_probe_output=None):
+  def run_probe_clashscore(self, pdb_string):
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
-    if printable_probe_output:
-      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
-        stdin_lines=pdb_string)
-      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
+    printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
+                                                  stdin_lines=pdb_string)
+    self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
 
     temp = self.process_raw_probe_output(probe_unformatted)
 
