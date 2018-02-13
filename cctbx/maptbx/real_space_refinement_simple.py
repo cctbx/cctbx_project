@@ -87,16 +87,7 @@ class lbfgs(object):
       assert selection_variable_real_space.size() == sites_cart.size()
     else:
       selection_variable_real_space = flex.bool(sites_cart.size(), True)
-    #
     O.gradients_method = gradients_method
-    O.use_quadratic_interpolation=None
-    if(not O.gradients_method=="fd"):
-      if(gradients_method=="linear"):
-        O.use_quadratic_interpolation=False
-      else:
-        O.use_quadratic_interpolation=True
-        assert gradients_method=="quadratic"
-    #
     O.x_previous = None
     O.states_collector = states_collector
     O.density_map = density_map
@@ -161,11 +152,11 @@ class lbfgs(object):
             selection   = O.selection_variable_real_space)
         else:
           o = maptbx.target_and_gradients_simple(
-            unit_cell                   = O.unit_cell,
-            map_target                  = O.density_map,
-            sites_cart                  = O.sites_cart_variable,
-            selection                   = O.selection_variable_real_space,
-            use_quadratic_interpolation = O.use_quadratic_interpolation)
+            unit_cell     = O.unit_cell,
+            map_target    = O.density_map,
+            sites_cart    = O.sites_cart_variable,
+            selection     = O.selection_variable_real_space,
+            interpolation = O.gradients_method)
         rs_f = o.target()
         rs_g = o.gradients()
       else:

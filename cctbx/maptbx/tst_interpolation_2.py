@@ -24,7 +24,7 @@ def get_map(xrs,ms):
 def get_err(x,y):
   return abs(x-y)/abs(x+y)*2*100
 
-def run_group(symbol, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12):
+def run_group(symbol, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12, err_qt1):
   group = space_group_info(symbol)
   elements = ('C', )*10
   xrs = random_structure.xray_structure(
@@ -65,7 +65,8 @@ def run_group(symbol, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12):
       err_lt1.append( get_err(l1,t1))
       err_lt2.append( get_err(l2,t2))
       err_lt12.append(get_err(l1,t2))
-
+      #
+      err_qt1.append(get_err(l1,q1))
 
 def run():
   err_l    = flex.double()
@@ -74,13 +75,15 @@ def run():
   err_lt1  = flex.double()
   err_lt2  = flex.double()
   err_lt12 = flex.double()
+  err_qt1  = flex.double()
   for i in xrange(1,231):
-    run_group(i, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12)
+    run_group(i, err_l, err_q, err_t, err_lt1, err_lt2, err_lt12, err_qt1)
   assert approx_equal([flex.mean(err_l), flex.mean(err_q), flex.mean(err_t)],
     [0,0,0], 1.e-3)
-  assert flex.mean(err_lt1)  < 7., flex.mean(err_lt1)
-  assert flex.mean(err_lt2)  < 7., flex.mean(err_lt2)
-  assert flex.mean(err_lt12) < 7., flex.mean(err_lt12)
+  assert flex.mean(err_lt1)  < 2.
+  assert flex.mean(err_lt2)  < 2.
+  assert flex.mean(err_lt12) < 2.
+  assert flex.mean(err_qt1)  < 2.
 
 if (__name__ == "__main__"):
   t0 = time.time()

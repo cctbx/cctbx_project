@@ -105,11 +105,6 @@ def exercise(f,gx,gy,gz,function_type, eps = 1.e-6):
       cntr+=1
       for it in [tt,gxt,gyt,gzt]:
         assert approx_equal(it, 0.0, 1.e-4)
-      if(abs(tl)>eps and abs(tq)>eps): assert tl >=tq
-    if(function_type=="F"):
-      cntr+=1
-      if(abs(tl)>eps and abs(tt)>eps): assert tl >=tt
-      if(abs(tq)>eps and abs(tt)>eps): assert tq >=tt
     assert cntr==1
 
 if (__name__ == "__main__"):
@@ -118,7 +113,6 @@ if (__name__ == "__main__"):
   ("L", "3*(x-5)**1-2*(y-5)**1+6*(z-5)**1", "3*(x-5)**0","-2*(y-5)**0", "6*(z-5)**0"),
   ("Q", "3*(x-5)**2-2*(y-5)**2+6*(z-5)**2", "6*(x-5)**1","-4*(y-5)**1","12*(z-5)**1"),
   ("C", "3*(x-5)**3-2*(y-5)**3+6*(z-5)**3", "9*(x-5)**2","-6*(y-5)**2","18*(z-5)**2"),
-  ("F", "3*(x-5)**4-2*(y-5)**4+6*(z-5)**4","12*(x-5)**3","-8*(y-5)**3","24*(z-5)**3")
   ]
   for it in fgs:
     function_type, f,gx,gy,gz = it

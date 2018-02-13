@@ -166,9 +166,7 @@ namespace cctbx { namespace maptbx {
     //typedef af::flex_grid<>::index_type index_t;
     typedef typename index_t::value_type iv_t;
     index_t const& grid_n = map.accessor().focus();
-    cctbx::fractional<> x_frac_mp = cctbx::fractional<>(x_frac).mod_positive();
-    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac_mp);
-    //get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
+    get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
     MapFloatType f_000, f_100, f_010, f_110, f_001, f_101, f_011, f_111;
     MapFloatType f_m100, f_0m10, f_00m1;
     MapFloatType f_200, f_020, f_002;
@@ -409,18 +407,6 @@ namespace cctbx { namespace maptbx {
     typedef typename index_t::value_type iv_t;
     index_t const& grid_n = map.accessor().focus();
     get_corner<index_t, SiteFloatType> corner(grid_n, x_frac);
-    // Is this faster (and the same)? (used above)
-    // Why this is not done in eight_point_interpolation?
-    //cctbx::fractional<> xn = cctbx::fractional<>(x_frac).mod_positive();
-    af::tiny<SiteFloatType, 3> xn;
-    for (unsigned k = 0; k < 3; k++) {
-      if (x_frac[k] < 0) {
-        xn[k] = fmod((1.+x_frac[k])*static_cast<SiteFloatType>(grid_n[k]), 1.0);
-      } else {
-        xn[k] = fmod(x_frac[k]*static_cast<SiteFloatType>(grid_n[k]), 1.0);
-      }
-    }
-
     MapFloatType f[4][4][4];
     for (int i = -1; i < 3; i++) {
       iv_t u = (corner.i_grid[0] + i) % grid_n[0];
@@ -432,23 +418,22 @@ namespace cctbx { namespace maptbx {
         }
       }
     }
-    SiteFloatType x = xn[0];
-    SiteFloatType y = xn[1];
-    SiteFloatType z = xn[2];
+    SiteFloatType x = corner.weights_[0][1];
+    SiteFloatType y = corner.weights_[1][1];
+    SiteFloatType z = corner.weights_[2][1];
     // All three must be the same
     // Comment out any two for performance
     MapFloatType r0 = cubic<MapFloatType>(
       z, fxyq(f, x,y,-1), fxyq(f, x,y,0),
          fxyq(f, x,y,1),  fxyq(f, x,y,2));
-    MapFloatType r1 = cubic<MapFloatType>(
-      x, fqyz(f, y,z,-1), fqyz(f, y,z,0),
-         fqyz(f, y,z,1),  fqyz(f, y,z,2));
-    MapFloatType r2 = cubic<MapFloatType>(
-      y, fxqz(f, x,z,-1), fxqz(f, x,z,0),
-         fxqz(f, x,z,1),  fxqz(f, x,z,2));
-    // Comment out any two for performance
-    CCTBX_ASSERT(std::abs(r0-r2)<1.e-6);
-    CCTBX_ASSERT(std::abs(r0-r1)<1.e-6);
+    //MapFloatType r1 = cubic<MapFloatType>(
+    //  x, fqyz(f, y,z,-1), fqyz(f, y,z,0),
+    //     fqyz(f, y,z,1),  fqyz(f, y,z,2));
+    //MapFloatType r2 = cubic<MapFloatType>(
+    //  y, fxqz(f, x,z,-1), fxqz(f, x,z,0),
+    //     fxqz(f, x,z,1),  fxqz(f, x,z,2));
+    //CCTBX_ASSERT(std::abs(r0-r2)<1.e-6);
+    //CCTBX_ASSERT(std::abs(r0-r1)<1.e-6);
     MapFloatType gx = gcubic<MapFloatType>(
       x, fqyz(f, y,z,-1), fqyz(f, y,z,0),
          fqyz(f, y,z,1),  fqyz(f, y,z,2));
@@ -460,7 +445,6 @@ namespace cctbx { namespace maptbx {
          fxyq(f, x,y,1),  fxyq(f, x,y,2));
     return af::tiny<MapFloatType, 4>(r0, gx/step[0],gy/step[1],gz/step[2]);
   }
-
 
   template <
     typename MapFloatType,

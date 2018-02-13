@@ -106,7 +106,6 @@ public:
         target_ += eight_point_interpolation(
           map_data,
           unit_cell.fractionalize(sites_cart[i_site]));
-        //
         scitbx::vec3<FloatType> piv = sites_cart[i_site];
         scitbx::vec3<FloatType> piv_d = piv;
         for(unsigned i_axis=0;i_axis<3;i_axis++) {
@@ -121,7 +120,6 @@ public:
           piv_d[i_axis] = piv[i_axis];
           (*res)[i_axis] = (densities[0] - densities[1]) / (2 * delta);
         }
-        //
       }
     }
   }
@@ -131,7 +129,7 @@ public:
     af::const_ref<FloatType, af::c_grid_padded<3> > const& map_data,
     af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
     af::const_ref<bool> const& selection,
-    bool const& use_quadratic_interpolation)
+    std::string const& interpolation)
   {
     gradients_.resize(sites_cart.size(), scitbx::vec3<FloatType>(0,0,0));
     af::c_grid_padded<3> a = map_data.accessor();
@@ -143,17 +141,26 @@ public:
     for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
       if(selection[i_site]) {
         af::tiny<FloatType, 4> result;
-        if(use_quadratic_interpolation) {
+        if(interpolation == "linear") {
+          result = eight_point_interpolation_with_gradients(
+            map_data,
+            unit_cell.fractionalize(sites_cart[i_site]),
+            step);
+        }
+        else if(interpolation=="quadratic") {
           result = quadratic_interpolation_with_gradients(
             map_data,
             unit_cell.fractionalize(sites_cart[i_site]),
             step);
         }
-        else {
-          result = eight_point_interpolation_with_gradients(
+        else if(interpolation=="tricubic") {
+          result = tricubic_interpolation_with_gradients(
             map_data,
             unit_cell.fractionalize(sites_cart[i_site]),
             step);
+        }
+        else {
+          throw std::runtime_error("Unknown interpolation mode.");
         }
         target_ += result[0];
         gradients_[i_site]=scitbx::vec3<FloatType>(

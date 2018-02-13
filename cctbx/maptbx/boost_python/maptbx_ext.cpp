@@ -132,12 +132,12 @@ namespace {
              af::const_ref<double, af::c_grid_padded<3> > const&,
              af::const_ref<scitbx::vec3<double> > const&,
              af::const_ref<bool> const&,
-             bool const& >((
+             std::string const& >((
                                     arg("unit_cell"),
                                     arg("map_target"),
                                     arg("sites_cart"),
                                     arg("selection"),
-                                    arg("use_quadratic_interpolation"))))
+                                    arg("interpolation"))))
         .def("target", &w_t::target)
         .def("gradients", &w_t::gradients)
       ;
