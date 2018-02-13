@@ -53,5 +53,14 @@ class ModelDataManager(DataManagerBase):
     self._write_text(ModelDataManager.datatype, filename,
                      model_str, overwrite=overwrite)
 
+  def update_pdb_interpretation_for_model(
+      self, filename, pdb_interpretation_extract):
+    default_scope = mmtbx.model.manager.get_default_pdb_interpretation_scope()
+    working_scope = default_scope.format(pdb_interpretation_extract)
+    phil_diff = default_scope.fetch_diff(source=working_scope)
+    if (len(phil_diff.as_str()) > 0):
+      self.get_model(filename=filename).set_pdb_interpretation_params(
+        pdb_interpretation_extract)
+
 # =============================================================================
 # end

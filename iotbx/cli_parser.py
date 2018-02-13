@@ -245,6 +245,9 @@ class CCTBXParser(ParserBase):
     if (self.parse_dir):
       self.process_dir(self.namespace.dir)
 
+    # post processing after all arguments are parsed
+    self.post_process()
+
     if (self.working_phil is None):
       self.working_phil = self.master_phil
 
@@ -418,6 +421,22 @@ class CCTBXParser(ParserBase):
     print('Processing directories:')
     print('-'*79, file=self.logger)
     print('', file=self.logger)
+
+  # ---------------------------------------------------------------------------
+  def post_process(self):
+    '''
+    Post processing of inputs after all arguments are parsed
+    '''
+
+    working_phil_extract = self.working_phil.extract()
+
+    # update default model if a pdb_interpretation scope is present
+    if (hasattr(working_phil_extract, 'pdb_interpretation')):
+      if (self.data_manager.supports('model') and
+          (self.data_manager.get_default_model_name() is not None)):
+        self.data_manager.update_pdb_interpretation_for_model(
+          self.data_manager.get_default_model_name(),
+          working_phil_extract.pdb_interpretation)
 
   # ---------------------------------------------------------------------------
   def show_citations(self):

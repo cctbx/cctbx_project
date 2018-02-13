@@ -300,16 +300,23 @@ class manager(object):
         hierarchy = self._pdb_hierarchy)
 
   @staticmethod
-  def get_default_pdb_interpretation_params():
+  def get_default_pdb_interpretation_scope():
     """
-    Get parsed parameters (in form of Python objects). Use this function to
+    Get parsed parameters (libtbx.phil.scope). Use this function to
     avoid importing pdb_interpretation phil strings and think about how to
     parse it. Does not need the instance of class (staticmethod).
     Then modify what needed to be modified and init this class normally.
     """
     return iotbx.phil.parse(
           input_string=grand_master_phil_str+reference_model_str,
-          process_includes=True).extract()
+          process_includes=True)
+
+  @staticmethod
+  def get_default_pdb_interpretation_params():
+    """
+    Get the default extract object (libtbx.phil.scope_extract)
+    """
+    return manager.get_default_pdb_interpretation_scope().extract()
 
   def set_log(self, log):
     self.log = log
