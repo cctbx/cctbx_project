@@ -396,14 +396,16 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     if len(self.cif_model) == 0:
       raise Sorry("mmCIF file must contain at least one data block")
     self.cif_block = self.cif_model.values()[0]
-    self.builder = pdb_hierarchy_builder(self.cif_block)
-    self.hierarchy = self.builder.hierarchy
     self._source_info = "file %s" %file_name
+    self.hierarchy = None
+    self.builder = None
 
   def file_type (self) :
     return "mmcif"
 
   def construct_hierarchy(self, set_atom_i_seq=True, sort_atoms=True):
+    self.builder = pdb_hierarchy_builder(self.cif_block)
+    self.hierarchy = self.builder.hierarchy
     if sort_atoms:
       self.hierarchy.sort_atoms_in_place()
       if (set_atom_i_seq) :
@@ -416,12 +418,18 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return self._source_info
 
   def atoms(self):
+    if self.hierarchy is None:
+      self.construct_hierarchy()
     return self.hierarchy.atoms()
 
   def atoms_with_labels(self):
+    if self.hierarchy is None:
+      self.construct_hierarchy()
     return self.hierarchy.atoms_with_labels()
 
   def model_indices(self):
+    if self.hierarchy is None:
+      self.construct_hierarchy()
     return flex.size_t([m.atoms_size() for m in self.hierarchy.models()])
 
   def ter_indices(self):
@@ -431,6 +439,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystal_symmetry(self,
                        crystal_symmetry=None,
                        weak_symmetry=False):
+    if self.hierarchy is None:
+      self.construct_hierarchy()
     self_symmetry = self.builder.crystal_symmetry
     if (crystal_symmetry is None):
       return self_symmetry
@@ -441,6 +451,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       force=not weak_symmetry)
 
   def crystal_symmetry_from_cryst1(self):
+    if self.hierarchy is None:
+      self.construct_hierarchy()
     return self.builder.crystal_symmetry
 
   def extract_cryst1_z_columns(self):
