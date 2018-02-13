@@ -330,7 +330,7 @@ class molprobity (slots_getstate_setstate) :
         self.clashes.probe_file = save_probe_unformatted_file
       except IOError as err:
         raise Sorry('%s could not be written correctly.\n%s' %
-                    (coot_probe_file, err))
+                    (save_probe_unformatted_file, err))
 
   def show (self, out=sys.stdout, outliers_only=True, suppress_summary=False,
       show_percentiles=False) :
