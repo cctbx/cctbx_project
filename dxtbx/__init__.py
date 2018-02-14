@@ -24,15 +24,16 @@ class IncorrectFormatError(RuntimeError):
 
 
 def load(filename):
-  """Use DXTBX to get the files from the input filename.
+  """Use DXTBX to load the input filename.
 
-  Params:
-      filename The input filename
-
-  Returns:
-      The dxtbx format instance
-
+  :param filename:  The input filename
+  :type filename:   str or py.path
+  :returns:         A dxtbx Format-subclass instance for the file type
+  :raises IOError:  if the file format could not be determined
   """
   from dxtbx.format.Registry import Registry
+  # Unwrap py.path objects into strings
+  if hasattr(filename, "strpath"):
+    filename = filename.strpath
   format_instance = Registry.find(filename)
   return format_instance(filename)
