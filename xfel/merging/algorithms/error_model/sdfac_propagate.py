@@ -120,7 +120,6 @@ class sdfac_propagate(error_modeler_base):
       deff.extend(flex.double(n_refl, ct['deff'][i]))
       eta.extend(flex.double(n_refl, ct['eta'][i]))
 
-    iobs       = refls['iobs']
     h          = refls['miller_index_original'].as_vec3_double()
     q          = ry * rx * u * b * h                  # vector pointing from origin of reciprocal space to RLP
     qlen       = q.norms()                            # length of q
@@ -184,7 +183,7 @@ class sdfac_propagate(error_modeler_base):
     sigma_thetay = stats_thetay.unweighted_sample_standard_deviation()
     sigma_lambda = stats_lambda.unweighted_sample_standard_deviation()
     sigma_eta    = 0 #stats_eta.unweighted_sample_standard_deviation()
-    sigma_deff   = stats_deff.unweighted_sample_standard_deviation()
+    sigma_deff   = stats_deff.unweighted_standard_error_of_mean()
     sigma_rs     = stats_rs.unweighted_sample_standard_deviation()
     print >> self.log, "ThetaX %.4f +/- %.4f"    %(r2d(stats_thetax.mean()), r2d(sigma_thetax))
     print >> self.log, "Thetay %.4f +/- %.4f"    %(r2d(stats_thetay.mean()), r2d(sigma_thetay))

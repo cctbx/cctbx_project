@@ -24,15 +24,15 @@ class sdfac_propagate_parameterization(unpack_base):
     raise AttributeError(item)
 
   def show(YY, out):
-    print >> out, "sdfac: %8.5f, sdb: %8.5f, sdadd: %8.5f"%(YY.SDFAC, YY.SDB, YY.SDADD)
+    print >> out, "sdfac: %20.10f, sdb: %20.10f, sdadd: %20.10f"%(YY.SDFAC, YY.SDB, YY.SDADD)
     for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_deff", "sigma_eta":
       if 'theta' in item:
-        print >> out, "%s: %8.5f"%(item, r2d(getattr(YY, item))),
+        print >> out, "%s: %20.10f"%(item, r2d(getattr(YY, item))),
       else:
-        print >> out, "%s: %8.5f"%(item, getattr(YY, item)),
+        print >> out, "%s: %20.10f"%(item, getattr(YY, item)),
     print >> out
     for v_id, v in enumerate(YY.sigma_gstar):
-      print >> out, "sigma_gstar_%d: %8.5f * 1e-5"%(v_id, v*1e5),
+      print >> out, "sigma_gstar_%d: %20.10f * 1e-5"%(v_id, v*1e5),
     print >> out
 
 class sdfac_propagate_refinery(sdfac_refinery):
@@ -110,13 +110,15 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
   def adjust_errors(self):
     print >> self.log, "Starting adjust_errors"
 
+    # Save original sigmas
     refls = self.scaler.ISIGI
     refls['original_sigmas'] = refls['scaled_intensity']/refls['isigi']
 
     print >> self.log, "Computing initial estimates of parameters"
     propagator = sdfac_propagate(self.scaler, verbose=False)
-    init_params = flex.double(self.get_initial_sdparams_estimates())
     propagator.initial_estimates()
+    propagator.adjust_errors(compute_sums=False)
+    init_params = flex.double(self.get_initial_sdparams_estimates())
     init_params.extend(propagator.error_terms.to_x())
     values = self.parameterization(init_params)
 
