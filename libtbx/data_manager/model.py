@@ -38,7 +38,7 @@ class ModelDataManager(DataManagerBase):
     return self._has_data(ModelDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
-  def process_model_file(self, filename):
+  def process_model_file(self, filename, pdb_interpretation_extract=None):
     # unique because any_file does not return a model object
     if (filename not in self.get_model_names()):
       a = any_file(filename)
@@ -46,8 +46,16 @@ class ModelDataManager(DataManagerBase):
         raise Sorry('%s is not a recognized model file' % filename)
       else:
         model_in = iotbx.pdb.input(a.file_name)
-        model = mmtbx.model.manager(model_input=model_in)
+        model = mmtbx.model.manager(
+          model_input=model_in,
+          pdb_interpretation_params=pdb_interpretation_extract)
         self.add_model(filename, model)
+
+  def process_model_str(self, label, model_str, pdb_interpretation_extract=None):
+    model = mmtbx.model.manager(
+      model_input=iotbx.pdb.input(source_info=None, lines=model_str),
+      pdb_interpretation_params=pdb_interpretation_extract)
+    self.add_model(label, model)
 
   def write_model_file(self, filename, model_str, overwrite=False):
     self._write_text(ModelDataManager.datatype, filename,
