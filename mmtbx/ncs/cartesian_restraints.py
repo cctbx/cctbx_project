@@ -22,7 +22,7 @@ class cartesian_ncs_manager(object):
     # create bunch of group objects
     self.ncs_params = ncs_params
     if self.ncs_params is None:
-      self.ncs_params = global_ncs_params.extract()
+      self.ncs_params = global_ncs_params.extract().ncs
     if ext_groups is not None:
       self.groups_list = ext_groups
     else:
