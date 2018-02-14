@@ -45,7 +45,6 @@ def mangle_git_repository(module, config):
   t = Toolbox()
   print("Git repository found:", module)
   t.set_git_repository_config_to_rebase(config)
-  t.install_git_hooks(module, config)
 
 def set_git_defaults_to_rebase():
   result = libtbx.easy_run.fully_buffered("git config --global --list")
