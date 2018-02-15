@@ -29,7 +29,7 @@ class easy(object):
         w = None,
         states_accumulator=None,
         log=None):
-    assert gradients_method in ["fd", "linear", "quadratic"]
+    assert gradients_method in ["fd", "linear", "quadratic", "tricubic"]
     adopt_init_args(self, locals())
     es = geometry_restraints_manager.geometry.energies_sites(
       sites_cart = xray_structure.sites_cart())
