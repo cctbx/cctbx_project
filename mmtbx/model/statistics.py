@@ -302,6 +302,22 @@ class geometry(object):
     cif_block.add_loop(loop)
     return cif_block
 
+class occupancy(object):
+  def __init__(self, hierarchy):
+    occ = hierarchy.atoms().extract_occ()
+    mean = flex.mean(occ)
+    zero_count = (occ<0.01).count(True)
+    zero_fraction = zero_count*100./occ.size()
+    greater_than_1_count = (occ>1.01).count(True)
+    greater_than_1_fraction = greater_than_1_count/occ.size()
+    self.result = group_args(
+      mean                    = mean,
+      zero_count              = zero_count,
+      zero_fraction           = zero_fraction,
+      greater_than_1_count    = greater_than_1_count,
+      greater_than_1_fraction = greater_than_1_fraction)
+
+
 class adp(object):
   def __init__(self, model, wilson_b = None, n_histogram_slots = 10,
       selection=None):

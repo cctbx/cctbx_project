@@ -107,7 +107,7 @@ def exercise_five_cc():
   ph.adopt_xray_structure(xrs)
   #ph.write_pdb_file(file_name="m2.pdb")
   o = correlation.five_cc(map=m1, xray_structure=xrs, d_min=2.0,
-    compute_cc_box=True, compute_cc_image=True, box=False)
+    compute_cc_box=True, compute_cc_image=True, box=False).result
   assert approx_equal(o.cc_box, 1.0)
   assert approx_equal(o.cc_image  , 1.0)
   assert approx_equal(o.cc_mask   , 1.0)

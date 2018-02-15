@@ -20,6 +20,7 @@ class five_cc(object):
                xray_structure,
                d_min,
                box=None,
+               keep_map_calc=False,
                compute_cc_box=False,
                compute_cc_image=False,
                compute_cc_mask=True,
@@ -32,11 +33,11 @@ class five_cc(object):
     else:
       box=False
     #
-    self.cc_box    = None
-    self.cc_image  = None
-    self.cc_mask   = None
-    self.cc_volume = None
-    self.cc_peaks  = None
+    cc_box    = None
+    cc_image  = None
+    cc_mask   = None
+    cc_volume = None
+    cc_peaks  = None
     #
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell             = xray_structure.unit_cell(),
@@ -54,23 +55,33 @@ class five_cc(object):
     self.n_nodes_inside = self.sel_inside.size()
     del bs_mask
     #
-    map_calc = self.get_map_calc()
+    map_calc = self._get_map_calc()
     #
     if(compute_cc_mask):
-      self.cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,
+      cc_mask = from_map_map_selection(map_1=self.map, map_2=map_calc,
         selection = self.sel_inside)
     del self.sel_inside
     if(compute_cc_box):
-      self.cc_box = from_map_map(map_1=self.map, map_2=map_calc)
+      cc_box = from_map_map(map_1=self.map, map_2=map_calc)
     if(compute_cc_image):
       self.atom_radius = self._atom_radius()
-      self.cc_image = self._cc_image(map_calc = map_calc)
+      cc_image = self._cc_image(map_calc = map_calc)
     if(compute_cc_volume):
-      self.cc_volume = self._cc_volume(map_calc=map_calc)
+      cc_volume = self._cc_volume(map_calc=map_calc)
     if(compute_cc_peaks):
-      self.cc_peaks = self._cc_peaks(map_calc=map_calc)
+      cc_peaks = self._cc_peaks(map_calc=map_calc)
+    #
+    if(not keep_map_calc): map_calc=None
+    self.result = group_args(
+      cc_box      = cc_box,
+      cc_image    = cc_image,
+      cc_mask     = cc_mask,
+      cc_volume   = cc_volume,
+      cc_peaks    = cc_peaks,
+      map_calc    = map_calc,
+      atom_radius = self.atom_radius)
 
-  def get_map_calc(self):
+  def _get_map_calc(self):
     if(self.box is True):
       f_calc = miller.structure_factor_box_from_map(
         crystal_symmetry = self.xray_structure.crystal_symmetry(),

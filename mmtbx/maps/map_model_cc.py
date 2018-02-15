@@ -14,27 +14,40 @@ map_model_cc {
   resolution = None
     .type = float
     .help = Data (map) resolution
+    .expert_level=0
   scattering_table = wk1995  it1992  *n_gaussian  neutron electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
+    .expert_level=0
   atom_radius = None
     .type = float
     .help = Atom radius for masking. If undefined then calculated automatically
-  compute_cc_per_chain = True
+    .expert_level=0
+  keep_map_calc = False
     .type = bool
-    .help = Compute local model-map CC for each chain
-  compute_cc_per_residue = True
-    .type = bool
-    .help = Compute local model-map CC for each residue
-  compute_fsc = True
-    .type = bool
-    .help = Compute FSC
-  compute_cc_mask = True
-    .type = bool
-  compute_cc_volume = True
-    .type = bool
-  compute_cc_peaks = True
-    .type = bool
+    .help = Keep model-calculated map
+    .expert_level=3
+  compute {
+    cc_per_chain = True
+      .type = bool
+      .help = Compute local model-map CC for each chain
+    cc_per_residue = True
+      .type = bool
+      .help = Compute local model-map CC for each residue
+    fsc = True
+      .type = bool
+      .help = Compute FSC
+    cc_mask = True
+      .type = bool
+    cc_volume = True
+      .type = bool
+    cc_peaks = True
+      .type = bool
+    cc_box = True
+      .type = bool
+    cc_image = False
+      .type = bool
+  }
 }
 """
 
@@ -65,20 +78,23 @@ class map_model_cc(object):
       crystal_symmetry = self.crystal_symmetry)
     map_data = soin.map_data
     xrs.set_sites_cart(soin.sites_cart)
-    self.five_cc_result = mmtbx.maps.correlation.five_cc(
+    self.five_cc = mmtbx.maps.correlation.five_cc(
       map               = map_data,
       xray_structure    = xrs,
+      keep_map_calc     = self.params.keep_map_calc,
       d_min             = self.params.resolution,
-      compute_cc_mask   = self.params.compute_cc_mask,
-      compute_cc_volume = self.params.compute_cc_volume,
-      compute_cc_peaks  = self.params.compute_cc_peaks)
+      compute_cc_mask   = self.params.compute.cc_mask,
+      compute_cc_volume = self.params.compute.cc_volume,
+      compute_cc_peaks  = self.params.compute.cc_peaks,
+      compute_cc_box    = self.params.compute.cc_box,
+      compute_cc_image  = self.params.compute.cc_image)
     # Atom radius
     self.atom_radius = mtriage.get_atom_radius(
       xray_structure = xrs,
       resolution     = self.params.resolution,
       radius         = self.params.atom_radius)
     # Model-map FSC
-    if(self.params.compute_fsc):
+    if(self.params.compute.fsc):
       mtriage_params = mtriage.master_params().extract()
       mtriage_params.scattering_table = self.params.scattering_table
       mtriage_params.compute.map_counts = False
@@ -96,7 +112,9 @@ class map_model_cc(object):
         map_data         = self.map_data,
         pdb_hierarchy    = self.pdb_hierarchy,
         crystal_symmetry = self.crystal_symmetry,
-        params           = mtriage_params).get_results().masked.fsc_curve_model
+        params           = mtriage_params).get_results(
+          include_curves = True,
+          include_mask   = False).masked.fsc_curve_model
     #
     cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs,
@@ -112,7 +130,7 @@ class map_model_cc(object):
         cc         = cc_calculator.cc(selection = sel, atom_radius = atom_radius),
         xyz_mean   = atoms.extract_xyz().mean())
     # CC per chain
-    if(self.params.compute_cc_per_chain):
+    if(self.params.compute.cc_per_chain):
       for chain in self.pdb_hierarchy.chains():
         cd = get_common_data(atoms=chain.atoms(), atom_radius=self.atom_radius)
         self.cc_per_chain.append(group_args(
@@ -122,7 +140,7 @@ class map_model_cc(object):
           n_atoms    = cd.n_atoms,
           cc         = cd.cc))
     # CC per residue
-    if(self.params.compute_cc_per_residue):
+    if(self.params.compute.cc_per_residue):
       for rg in self.pdb_hierarchy.residue_groups():
         for conformer in rg.conformers():
           for residue in conformer.residues():
@@ -141,9 +159,11 @@ class map_model_cc(object):
 
   def get_results(self):
     return group_args(
-      cc_mask        = self.five_cc_result.cc_mask,
-      cc_volume      = self.five_cc_result.cc_volume,
-      cc_peaks       = self.five_cc_result.cc_peaks,
+      cc_mask        = self.five_cc.result.cc_mask,
+      cc_volume      = self.five_cc.result.cc_volume,
+      cc_peaks       = self.five_cc.result.cc_peaks,
+      cc_box         = self.five_cc.result.cc_box,
+      map_calc       = self.five_cc.result.map_calc,
       cc_per_chain   = self.cc_per_chain,
       cc_per_residue = self.cc_per_residue,
       atom_radius    = self.atom_radius,

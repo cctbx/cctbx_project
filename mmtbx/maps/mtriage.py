@@ -244,7 +244,20 @@ class mtriage(object):
                half_map_data_1 = None,
                half_map_data_2 = None,
                pdb_hierarchy   = None):
-    adopt_init_args(self, locals())
+    #adopt_init_args(self, locals())
+    self.crystal_symmetry = crystal_symmetry
+    self.params           = params
+    self.map_data         = map_data.deep_copy()
+    self.half_map_data_1 = None
+    if(half_map_data_1 is not None):
+      self.half_map_data_1 = half_map_data_1.deep_copy()
+    self.half_map_data_2 = None
+    if(half_map_data_2 is not None):
+      self.half_map_data_2 = half_map_data_2.deep_copy()
+    self.pdb_hierarchy = None
+    if(pdb_hierarchy is not None):
+      self.pdb_hierarchy = pdb_hierarchy.deep_copy()
+    #
     self.results_masked   = None
     self.results_unmasked = None
     self.time_cumulative  = 0
@@ -272,7 +285,7 @@ class mtriage(object):
       sys.stdout.flush()
     return result
 
-  def _run(self, base, slim):
+  def _run(self, base, include_curves, include_mask):
     if(self.params.mask_maps is None):
       # No masking
       self.params.mask_maps = False
@@ -280,7 +293,9 @@ class mtriage(object):
         base   = base,
         caller = self.caller,
         params = self.params,
-      ).run().get_results(slim=slim)
+      ).run().get_results(
+        include_curves = include_curves,
+        include_mask   = include_mask)
       # Masking
       if(self.params.radius_smooth is None):
         self.params.radius_smooth = self.results_unmasked.d99
@@ -289,19 +304,25 @@ class mtriage(object):
         base   = base,
         caller = self.caller,
         params = self.params,
-      ).run().get_results(slim=slim)
+      ).run().get_results(
+        include_curves = include_curves,
+        include_mask   = include_mask)
     else:
       result = _mtriage(
         base   = base,
         caller = self.caller,
         params = self.params,
-      ).run().get_results(slim=slim)
+      ).run().get_results(
+        include_curves = include_curves,
+        include_mask   = include_mask)
       if(self.params.mask_maps): self.results_masked = result
       else:                      self.results_unmasked = result
 
-  def get_results(self, slim=False):
+  def get_results(self, include_curves, include_mask):
     _base = self.call(func=self._create_base, prefix="Create base")
-    self._run(base=_base, slim=slim)
+    self._run(base           = _base,
+              include_curves = include_curves,
+              include_mask   = include_mask)
     return group_args(
       crystal_symmetry = _base.crystal_symmetry(),
       counts           = _base.counts(),
@@ -493,14 +514,14 @@ class _mtriage(object):
     self.d_fsc_model_05 = self.f_calc.d_min_from_fsc(
       fsc_curve=self.fsc_curve_model, fsc_cutoff=0.5).d_min
 
-  def get_results(self, slim=False):
-    mask            = None
+  def get_results(self, include_curves, include_mask):
+    mask = None
+    if(self.mask_object is not None and include_mask):
+      mask = self.mask_object.mask_smooth
     map_histograms  = None
     fsc_curve       = None
     fsc_curve_model = None
-    if(not slim):
-      if(self.mask_object is not None):
-        mask = self.mask_object.mask_smooth
+    if(include_curves):
       map_histograms  = self.map_histograms
       fsc_curve       = self.fsc_curve
       fsc_curve_model = self.fsc_curve_model

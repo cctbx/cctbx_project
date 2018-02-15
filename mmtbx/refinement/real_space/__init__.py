@@ -63,9 +63,9 @@ class rsr_model(object):
       compute_cc_image  = False,
       compute_cc_mask   = True,
       compute_cc_volume = False,
-      compute_cc_peaks  = False)
+      compute_cc_peaks  = False).result
     self.cc_mask = five_cc_o.cc_mask
-    self.cc_box = five_cc_o.cc_box
+    self.cc_box  = five_cc_o.cc_box
     if(self.geometry_restraints_manager is not None):
       es = self.geometry_restraints_manager.energies_sites(
         sites_cart = self.xray_structure.sites_cart())
@@ -520,9 +520,9 @@ class structure_monitor(object):
     self.stats_evaluations.append(
         group_args(
           cc = group_args(
-              cc_mask   = self.five_cc.cc_mask,
-              cc_volume = self.five_cc.cc_volume,
-              cc_peaks  = self.five_cc.cc_peaks),
+              cc_mask   = self.five_cc.result.cc_mask,
+              cc_volume = self.five_cc.result.cc_volume,
+              cc_peaks  = self.five_cc.result.cc_peaks),
           geometry = mso,
           rmsd_a = self.rmsd_a,
           rmsd_b = self.rmsd_b))

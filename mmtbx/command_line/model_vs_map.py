@@ -130,9 +130,9 @@ def run(args, log=sys.stdout):
   atom_radius = five_cc_result.atom_radius
   if atom_radius is None:
     atom_radius = five_cc_result._atom_radius()
-  print >> log, "  CC_mask  : %6.4f"%five_cc_result.cc_mask
-  print >> log, "  CC_volume: %6.4f"%five_cc_result.cc_volume
-  print >> log, "  CC_peaks : %6.4f"%five_cc_result.cc_peaks
+  print >> log, "  CC_mask  : %6.4f"%five_cc_result.result.cc_mask
+  print >> log, "  CC_volume: %6.4f"%five_cc_result.result.cc_volume
+  print >> log, "  CC_peaks : %6.4f"%five_cc_result.result.cc_peaks
   # Compute FSC(map, model)
   broadcast(m="Model-map FSC:", log=log)
   fsc = mmtbx.maps.correlation.fsc_model_vs_map(

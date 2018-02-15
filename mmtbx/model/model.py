@@ -275,7 +275,7 @@ class manager(object):
 
     # do GRM
     if self.restraints_manager is None and build_grm:
-      self._build_grm()
+      self.setup_restraints_manager()
 
     # do xray_structure
 
@@ -351,7 +351,7 @@ class manager(object):
       if hasattr(params, "reference_model"):
         full_params.reference_model = params.reference_model
       self._pdb_interpretation_params = full_params
-    self.restraints_manager = None
+    self.unset_restraints_manager()
 
   def check_consistency(self):
     """
@@ -511,7 +511,7 @@ class manager(object):
     if self.restraints_manager is not None:
       return self.restraints_manager
     else:
-      self._build_grm()
+      self.setup_restraints_manager()
       return self.restraints_manager
 
   def set_non_unit_occupancy_implies_min_distance_sym_equiv_zero(self,value):
@@ -818,7 +818,10 @@ class manager(object):
     else:
       self._atom_selection_cache = self.get_hierarchy().atom_selection_cache()
 
-  def _build_grm(
+  def unset_restraints_manager(self):
+    self.restraints_manager = None
+
+  def setup_restraints_manager(
       self,
       grm_normalization = True,
       external_energy_function = None,
@@ -826,6 +829,7 @@ class manager(object):
       custom_nb_excl=None,
       file_descriptor_for_geo_in_case_of_failure=None,
       ):
+    if(self.restraints_manager is not None): return
     if self._processed_pdb_file is None:
       self._process_input_model()
 
@@ -1263,7 +1267,7 @@ class manager(object):
       hierarchy to agree with the xray_structure scatterers.  Will fail if the
       scatterer labels do not match the atom labels.
     """
-    if(sync_with_xray_structure):
+    if(sync_with_xray_structure and self._xray_structure is not None):
       self._pdb_hierarchy.adopt_xray_structure(
         xray_structure = self._xray_structure)
     return self._pdb_hierarchy
@@ -1788,7 +1792,7 @@ class manager(object):
         build_grm = False,
         log = StringIO()
         )
-    self._build_grm(
+    self.setup_restraints_manager(
         plain_pairs_radius = ppr,
         grm_normalization = norm)
     self.set_refinement_flags(flags)
@@ -2537,6 +2541,10 @@ class manager(object):
     return mmtbx.model.statistics.geometry(
       pdb_hierarchy               = ph,
       geometry_restraints_manager = rm.geometry)
+
+  def occupancy_statistics(self):
+    return mmtbx.model.statistics.occupancy(
+      hierarchy = self.get_hierarchy(sync_with_xray_structure=True)).result
 
   def adp_statistics(self):
     return mmtbx.model.statistics.adp(model = self)
