@@ -1,37 +1,27 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-from docutils.parsers.rst import Directive
-from docutils.parsers.rst import directives
-from docutils import statemachine
-
+import docutils.parsers.rst
 
 def setup(app):
   app.add_directive('pubmed', PubMedDirective)
 
-
-class PubMedDirective(Directive):
+class PubMedDirective(docutils.parsers.rst.Directive):
 
   # this disables content in the directive
   has_content = False
   required_arguments = 1
   optional_arguments = 1
   final_argument_whitespace = True
-  option_spec = {'reprint-url': directives.unicode_code}
+  option_spec = {'reprint-url': docutils.parsers.rst.directives.unicode_code}
 
   def run(self):
-
     PMID = self.arguments[0]
-    description = self.arguments[1] # this isn't used at all
     reprint_url = self.options.get('reprint-url', None)
 
     from Bio import Entrez
-
-    handle = Entrez.efetch(
-      db="pubmed",id=PMID, # must be a quoted string of comma-separated PMIDs
-      retmode="xml")
+    Entrez.email = 'cctbxbb@phenix-online.org'
+    handle = Entrez.efetch(db="pubmed", id=PMID, retmode="xml")
     XML = Entrez.read(handle)['PubmedArticle']
-
-    text = []
 
     def raw_html_link_new_tab(identifier, link_text, link):
       return '.. |%s| raw:: html\n\n' %identifier + \
@@ -39,6 +29,7 @@ class PubMedDirective(Directive):
           link, link_text)
 
     raw_directives = []
+    text = []
 
     for i in xrange(len(XML)):
       # Title/doi link:
@@ -46,7 +37,10 @@ class PubMedDirective(Directive):
                        if idx.attributes["IdType"]=="doi" ]
       article = XML[i]["MedlineCitation"]["Article"]
       get_title = article["ArticleTitle"]
-      get_title = get_title.strip(".")
+      # Remove trailing dot and all control characters, including newline chars, from title.
+      print(PMID, get_title)
+      get_title = ''.join(c for c in get_title.rstrip('.') if ord(c) >= 32)
+
       doi_link_text = None
       if len(possible_doi) > 0:
         text.append('| |%s|' %possible_doi[0])
@@ -88,15 +82,17 @@ class PubMedDirective(Directive):
       for directive in raw_directives:
         text.append("\n%s\n" %directive)
 
-    #try:
-      #print "\n".join(text)
-    #except Exception:
-      #pass
+#   try:
+#     print("vvv")
+#     print("\n".join(text))
+#     print("^^^")
+#   except Exception:
+#     pass
 
     # insert rst
     source = self.state_machine.input_lines.source(
       self.lineno - self.state_machine.input_offset - 1)
-    lines = statemachine.string2lines(
+    lines = docutils.statemachine.string2lines(
       "\n".join(text), self.state.document.settings.tab_width, convert_whitespace=True)
     self.state_machine.insert_input(lines, source)
     return []
