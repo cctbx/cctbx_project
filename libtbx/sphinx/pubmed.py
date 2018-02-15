@@ -36,10 +36,8 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       possible_doi = [ idx for idx in XML[i]["PubmedData"]["ArticleIdList"]
                        if idx.attributes["IdType"]=="doi" ]
       article = XML[i]["MedlineCitation"]["Article"]
-      get_title = article["ArticleTitle"]
       # Remove trailing dot and all control characters, including newline chars, from title.
-      print(PMID, get_title)
-      get_title = ''.join(c for c in get_title.rstrip('.') if ord(c) >= 32)
+      get_title = ''.join(c for c in article['ArticleTitle'].rstrip('.') if ord(c) >= 32)
 
       doi_link_text = None
       if len(possible_doi) > 0:
