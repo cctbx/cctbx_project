@@ -1518,24 +1518,8 @@ class DataList(object):
     return self.num_images
 
   def __getitem__(self, index):
-    from scitbx.array_family import flex
-    import numpy as np
     d = self.lookup[index]
     i = index - self.offset[d]
-
-    # Keeping this in for the moment to allow evaluation of speed etc
-    # aiming to resolve dials#148
-    # mode_148 = True
-
-    # if mode_148:
-    #   # allocate empty array, copy data in
-    #   data = np.empty((self.height, self.width), dtype='uint32')
-    #   self.datasets[d].read_direct(data, np.s_[i,:,:], np.s_[:,:])
-    # else:
-    #   data = self.datasets[d][i,:,:]
-    #   if data.dtype == np.uint16:
-    #     data = data.astype(np.uint32)
-    # data_as_flex = flex.int(data)
     N, height, width = self.datasets[d].shape
     data_as_flex = dataset_as_flex_int(
       self.datasets[d].id.id,
@@ -1611,7 +1595,6 @@ class MultiPanelDataList(object):
 
   def __getitem__(self, index):
     from scitbx.array_family import flex
-    import numpy as np
     d = self.lookup[index]
     i = index - self.offset[d]
 
