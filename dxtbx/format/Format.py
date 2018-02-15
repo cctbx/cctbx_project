@@ -267,8 +267,7 @@ class Format(object):
     return "no dxtbx Format vendortype"
 
   def detectorbase_start(self):
-    print "Overload detectorbase_start"
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
   def get_detectorbase(self):
     '''Return the instance of detector base.'''

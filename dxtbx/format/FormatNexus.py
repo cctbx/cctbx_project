@@ -151,7 +151,7 @@ class FormatNexus(FormatHDF5):
     return self._image_file
 
   def get_detectorbase(self, index=None):
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
 from dxtbx.format.FormatStill import FormatStill
 class FormatNexusStill(FormatNexus, FormatStill):

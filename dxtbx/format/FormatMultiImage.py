@@ -94,7 +94,7 @@ class FormatMultiImage(object):
     pass
 
   def get_num_images(self):
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
   def get_goniometer(self, index=None):
     return self._goniometer_instance
@@ -109,16 +109,16 @@ class FormatMultiImage(object):
     return self._scan_instance
 
   def get_raw_data(self, index=None):
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
   def get_mask(self, index=None, goniometer=None):
     return None
 
   def get_detectorbase(self, index=None):
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
   def get_image_file(self, index=None):
-    raise RuntimeError('Overload!')
+    raise NotImplementedError
 
   @classmethod
   def get_reader(Class):
