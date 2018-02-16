@@ -1,8 +1,8 @@
-/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           9-17-17
+/* perfect-lattice nanocrystal diffraction simulator            -James Holton and Ken Frankel           2-3-18
 
 example:
 
-gcc -O -o nanoBragg nanoBragg.c -lm
+gcc -O3 -o nanoBragg nanoBragg.c -lm -fopenmp
 
 ./nanoBragg -mat auto.mat -hkl P1.hkl -distance 2500
 
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
     int progress_meter=1;
     int babble=1;
     int printout = 0;
-    int printout_spixel,printout_fpixel=-1;
+    int printout_spixel=-1,printout_fpixel=-1;
 
     /* x-ray beam properties */
     double beam_vector[4]  = {0,1,0,0};
@@ -241,7 +241,7 @@ int main(int argc, char** argv)
     double distance = 100.0e-3;
     double detsize_f = 102.4e-3;
     double detsize_s = 102.4e-3;
-    double detector_mu=0.0,detector_thick=0.0,detector_thickstep,parallax,capture_fraction;
+    double detector_mu=0.0,detector_thick=0.0,detector_thickstep=-1.0,parallax,capture_fraction;
     int    detector_thicksteps=-1,thick_tic;
     double fdet_vector[4]  = {0,0,0,1};
     double sdet_vector[4]  = {0,0,-1,0};
@@ -295,6 +295,9 @@ int main(int argc, char** argv)
     int steps;
     int roi_xmin=-1,roi_xmax=-1,roi_ymin=-1,roi_ymax=-1;
     int oversample = -1,recommended_oversample,subS,subF;
+    int oversample_thick = 0;
+    int oversample_polar = 0;
+    int oversample_omega = 0;
     double subpixel_size;
 
     /* spindle */
@@ -327,15 +330,16 @@ int main(int argc, char** argv)
 
     /* image file data */
     float *floatimage;
+    int imgidx;
     SMVinfo maskfile;
     unsigned short int *maskimage = NULL;
 //    float *sinimage;
 //    float *cosimage;
-    unsigned short int *intimage;
-    unsigned char *pgmimage;
+    unsigned short int *intimage = NULL;
+    unsigned char *pgmimage = NULL;
     char *byte_order = get_byte_order();
     SMVinfo imginfile;
-    float *imginfileimage;
+    float *imginfileimage = NULL;
 
     /* misc variables */
     int i,j,n;
@@ -445,10 +449,10 @@ int main(int argc, char** argv)
             if(! isnan(test)) twotheta = test/RTD;
 
             maskimage = (unsigned short int*) calloc(pixels+10,sizeof(unsigned short int));
-            j = maskfile.header_size / sizeof(unsigned short int);
+            imgidx = maskfile.header_size / sizeof(unsigned short int);
             for(i=0;i<pixels;++i){
-                maskimage[i] = (float) maskfile.mmapdata[j];
-                 ++j;
+                maskimage[i] = (float) maskfile.mmapdata[imgidx];
+                 ++imgidx;
             }
         }
     }
@@ -488,10 +492,10 @@ int main(int argc, char** argv)
             if(! isnan(test)) twotheta = test/RTD;
 
             imginfileimage = (float *) calloc(pixels+10,sizeof(float));
-            j = imginfile.header_size / sizeof(unsigned short int);
+            imgidx = imginfile.header_size / sizeof(unsigned short int);
             for(i=0;i<pixels;++i){
-                imginfileimage[i] = (float) imginfile.mmapdata[j];
-                 ++j;
+                imginfileimage[i] = (float) imginfile.mmapdata[imgidx];
+                 ++imgidx;
             }
         }
     }
@@ -506,18 +510,22 @@ int main(int argc, char** argv)
             if(strstr(argv[i], "-Na") && (argc > (i+1)))
             {
                 Na = atoi(argv[i+1]);
+                continue;
             }
             if(strstr(argv[i], "-Nb") && (argc > (i+1)))
             {
                 Nb = atoi(argv[i+1]);
+                continue;
             }
             if(strstr(argv[i], "-Nc") && (argc > (i+1)))
             {
                 Nc = atoi(argv[i+1]);
+                continue;
             }
             if(0==strcmp(argv[i], "-N") && (argc > (i+1)))
             {
                 Na = Nb = Nc = atoi(argv[i+1]);
+                continue;
             }
             if(strstr(argv[i], "-cell") && (argc > (i+1)))
             {
@@ -562,7 +570,7 @@ int main(int argc, char** argv)
                 sample_y = atof(argv[i+1])/1000;
                 sample_z = atof(argv[i+1])/1000;
             }
-            if((strstr(argv[i], "-sample_thick") || strstr(argv[i], "-sample_x") || strstr(argv[i], "-thick")) && (argc > (i+1)))
+            if((strstr(argv[i], "-sample_thick") || strstr(argv[i], "-sample_x") ) && (argc > (i+1)))
             {
                 sample_x = atof(argv[i+1])/1000;
             }
@@ -580,7 +588,7 @@ int main(int argc, char** argv)
                 sample_y = atof(argv[i+1])/1000;
                 sample_z = atof(argv[i+1])/1000;
             }
-            if((strstr(argv[i], "-xtal_thick") || strstr(argv[i], "-xtal_x") || strstr(argv[i], "-thick")) && (argc > (i+1)))
+            if((strstr(argv[i], "-xtal_thick") || strstr(argv[i], "-xtal_x") ) && (argc > (i+1)))
             {
                 sample_x = atof(argv[i+1])/1000;
             }
@@ -748,6 +756,10 @@ int main(int argc, char** argv)
             {
                 detector_thicksteps = atoi(argv[i+1]);
             }
+            if(strstr(argv[i], "-thicksteps") && (argc >= (i+1)))
+            {
+                detector_thicksteps = atoi(argv[i+1]);
+            }
             if(strstr(argv[i], "-twotheta") && (argc > (i+1)))
             {
                 detector_twotheta = atof(argv[i+1])/RTD;
@@ -810,6 +822,21 @@ int main(int argc, char** argv)
             if(strstr(argv[i], "-nopolar") )
             {
                 nopolar = 1;
+            }
+            if(strstr(argv[i], "-oversample_thick") )
+            {
+                oversample_thick = 1;
+                continue;
+            }
+            if(strstr(argv[i], "-oversample_polar") )
+            {
+                oversample_polar = 1;
+                continue;
+            }
+            if(strstr(argv[i], "-oversample_omega") )
+            {
+                oversample_omega = 1;
+                continue;
             }
             if(strstr(argv[i], "-oversample") && (argc > (i+1)))
             {
@@ -1270,6 +1297,9 @@ int main(int argc, char** argv)
         printf("\t-round_xtal      \tspecify ellipsoidal crystal shape (sort of)\n");
         printf("\t-tophat_spots    \tclip lattice transform at fwhm: no inter-Bragg maxima\n");
         printf("\t-oversample      \tnumber of sub-pixels per pixel. use this if xtalsize/lambda > distance/pixel\n");
+        printf("\t-oversample_thick \tre-calculate thickness effect for sub-pixels (not the default)\n");
+        printf("\t-oversample_polar \tre-calculate polarization effect for sub-pixels (not the default)\n");
+        printf("\t-oversample_omega \tre-calculate solid-angle effect for sub-pixels (not the default)\n");
         printf("\t-lambda          \tincident x-ray wavelength in Angstrom. may also use -energy in eV\n");
         printf("\t-mosaic          \tisotropic mosaic spread in degrees (use 90 for powder)\n");
         printf("\t-mosaic_domains  \tnumber of randomly-oriented mosaic domains to render\n");
@@ -2354,15 +2384,20 @@ int main(int argc, char** argv)
     for(source=0;source<sources;++source){
 
         /* retrieve stuff from cache */
-        X = source_X[source];
-        Y = source_Y[source];
-        Z = source_Z[source];
+        X = vector[1] = source_X[source];
+        Y = vector[2] = source_Y[source];
+        Z = vector[3] = source_Z[source];
         I = source_I[source];
         lambda = source_lambda[source];
 
+        /* make sure these are unit vectors */
+        unitize(vector,vector);
+        source_X[source] = vector[1];
+        source_Y[source] = vector[2];
+        source_Z[source] = vector[3];
+
         printf("%g %g %g   %g %g\n",X,Y,Z,I,lambda);
     }
-
 
     /* allocate enough space */
     mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
@@ -2427,7 +2462,11 @@ int main(int argc, char** argv)
     printf("  %d sources\n",sources);
     printf("  %d mosaic domains over mosaic spread of %g degrees\n",mosaic_domains,mosaic_spread*RTD);
     printf("  %d phi steps from %g to %g degrees\n",phisteps,phi0*RTD,(phi0+osc)*RTD);
-    printf("  %dx%d pixel oversample steps\n",oversample,oversample);
+    printf("  %dx%d pixel oversample steps",oversample,oversample);
+    if(oversample_thick) printf(" +thick");
+    if(oversample_polar) printf(" +polar");
+    if(oversample_omega) printf(" +omega");
+    printf("\n");
     if(maskimage != NULL) printf("  skipping zero-flagged pixels in %s\n",maskfilename);
 //    printf("  coherent source: %d\n",coherent);
     if(calculate_noise){
@@ -2436,57 +2475,180 @@ int main(int argc, char** argv)
         printf("  water droplet size: %g m\n",water_size);
     }
 
+    /* pre-calculaate background from something amorphous */
+    F_bg = water_F;
+    I_bg = F_bg*F_bg*r_e_sqr*fluence*water_size*water_size*water_size*1e6*Avogadro/water_MW;
+
 
     /* sweep over detector */
     sum = sumsqr = 0.0;
-    j = sumn = 0;
+    sumn = 0;
     progress_pixel = 0;
     omega_sum = 0.0;
+
+#if defined(_OPENMP)
+//    omp_set_num_threads(72);
+#endif
+
+
+int debug_printed_thread = 0;
+int debug_printed = 0;
+    #pragma omp parallel for \
+    schedule(auto) \
+    private(fpixel,spixel)\
+    firstprivate(imgidx,subS,subF,Fdet,Sdet,Fdet0,Sdet0,Odet,stol,twotheta,\
+        theta,vector,newvector,pixel_pos,\
+        airpath,source_path,lambda,\
+        diffracted,diffracted0,d_r,incident,scattering,parallax,\
+        fdet_vector,sdet_vector,odet_vector,beam_vector,pix0_vector,polar_vector,spindle_vector,\
+        hdiv_tic,vdiv_tic,disp_tic,mos_tic,phi_tic,thick_tic,source,\
+        phi,\
+        phi0,osc,phistep,phisteps,\
+        a,b,c,ap,bp,cp,a_star,b_star,c_star,a_cross_b,b_cross_c,c_cross_a,\
+        h,k,l,h0,k0,l0,h0_flr,k0_flr,l0_flr,\
+        h_interp,k_interp,l_interp,h_interp_d,k_interp_d,l_interp_d,hrad_sqr,\
+        i1,i2,i3,\
+        Ewald0,Ewald,relp,\
+        xd,yd,zd,xd0,yd0,zd0,\
+        capture_fraction,\
+        I,I_bg,F_bg,\
+        F_cell,F_latt,polar,omega_pixel,\
+        test,i,sub_Fhkl,\
+        Fhkl,\
+        debug_printed_thread)\
+    shared(debug_printed,\
+        floatimage,maskimage,\
+        fpixels,spixels,pixels,pixel_size,subpixel_size,\
+        oversample,oversample_thick,oversample_polar,oversample_omega,\
+        Xbeam,Ybeam,\
+        interpolate,integral_form,curved_detector,\
+        polarization,nopolar,\
+        point_pixel,coherent,babble,\
+        distance,close_distance,\
+        source_X,source_Y,source_Z,source_lambda,\
+        sources,\
+        progress_meter,progress_pixels,\
+        a0,b0,c0,V_cell,\
+        Na,Nb,Nc,\
+        h_min,h_max,h_range,k_min,k_max,k_range,l_min,l_max,l_range,hkls,\
+        dmin,\
+        xtal_shape,fudge,\
+        fluence,r_e_sqr,\
+        lambda0,dispersion,dispstep,dispsteps,\
+        source_distance,\
+        default_F,water_F,water_size,water_MW,\
+        steps,\
+        hdiv,hdivrange,hdivstep,hdivsteps,vdiv,vdivrange,vdivstep,vdivsteps,round_div,\
+        mosaic_spread,mosaic_umats,mosaic_domains,\
+        detector_thick,detector_thickstep,detector_thicksteps,detector_mu,\
+        roi_xmin,roi_xmax,roi_ymin,roi_ymax,\
+        max_I,max_I_x,max_I_y,\
+        printout,printout_fpixel,printout_spixel,stdout)\
+     reduction(+:sum,sumsqr,sumn,omega_sum,progress_pixel)\
+     default(none)
     for(spixel=0;spixel<spixels;++spixel)
     {
+
+#if defined(_OPENMP)
+//if(! debug_printed) {
+//    debug_printed = 1;
+//    printf("OMP: %d of %d threads\n", omp_get_thread_num(),omp_get_num_threads());
+//}
+if(! debug_printed_thread) {
+    /* avoid memory contention: make a copy of each dynamically-allocated array for each thread *
+    double *newptr;
+    double **newpptr;
+    double ***newFhkl;
+    newptr = (double *) calloc((h_range+1)*(k_range+1)*(l_range+1),sizeof(double));
+    newpptr = (double **) calloc((h_range+1)*(k_range+1),sizeof(double *));
+    newFhkl = (double ***) calloc((h_range+1),sizeof(double **));
+    for (h0=0; h0<=h_range;h0++) {
+        newFhkl[h0] = newpptr;
+        for (k0=0; k0<=k_range;k0++) {
+            newFhkl[h0][k0] = newptr;
+            memcpy(newptr,*(*(Fhkl +h0)+k0),(l_range+1)*sizeof(double));
+            newptr += l_range+1;
+        }
+        ++newpptr;
+    }
+    Fhkl = newFhkl;
+    /* */
+//    newptr = (double *) calloc(sources+10,sizeof(double));
+//    memcpy(newptr,source_X,sources*sizeof(double));
+//    source_X = newptr;
+//    newptr = (double *) calloc(sources+10,sizeof(double));
+//    memcpy(newptr,source_Y,sources*sizeof(double));
+//    source_Y = newptr;
+//    newptr = (double *) calloc(sources+10,sizeof(double));
+//    memcpy(newptr,source_Z,sources*sizeof(double));
+//    source_Z = newptr;
+//    newptr = (double *) calloc(sources+10,sizeof(double));
+//    memcpy(newptr,source_lambda,sources*sizeof(double));
+//    source_lambda = newptr;
+//    newptr = (double *) calloc(mosaic_domains+10,9*sizeof(double));
+//    memcpy(newptr,mosaic_umats,9*mosaic_domains*sizeof(double));
+//    printf("thread: %d mosaic_umats = %p\n", omp_get_thread_num(),mosaic_umats);
+//    mosaic_umats = newptr;
+    printf("thread: %d mosaic_umats = %p\n", omp_get_thread_num(),mosaic_umats);
+    debug_printed_thread = 1;
+}
+#endif
+
         for(fpixel=0;fpixel<fpixels;++fpixel)
         {
-
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             {
-                ++j; continue;
+                continue;
             }
+
+            /* position in pixel array */
+            imgidx = spixel*fpixels+fpixel;
+
             /* allow for the use of a mask */
             if(maskimage != NULL)
             {
                 /* skip any flagged pixels in the mask */
-                if(maskimage[j] == 0)
+                if(maskimage[imgidx] == 0)
                 {
-                    ++j; continue;
+                    continue;
                 }
             }
 
-            /* reset photon count for this pixel */
-            I = 0;
+            /* reset uncorrected photon count for this pixel */
+            I = I_bg;
 
-            /* add background from something amorphous */
-            F_bg = water_F;
-            I_bg = F_bg*F_bg*r_e_sqr*fluence*polar*water_size*water_size*water_size*1e6*Avogadro/water_MW*omega_pixel;
+            /* reset polarization factor, in case we want to cache it */
+            polar = 0.0;
+            if (nopolar) polar = 1.0;
 
-            /* add this now to avoid problems with skipping later */
-            floatimage[j] = I_bg;
+            /* reset pixel solid angle, in case we want to cache it */
+            omega_pixel = 0.0;
 
-            /* loop over sub-pixels */
-            for(subS=0;subS<oversample;++subS)
+            /* add this now to avoid problems with skipping later? */
+//            floatimage[imgidx] = I_bg;
+
+            /* loop over detector layers */
+            for(thick_tic=0;thick_tic<detector_thicksteps;++thick_tic)
             {
-                for(subF=0;subF<oversample;++subF)
-                {
-                    /* absolute mm position on detector (relative to its origin) */
-                    Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
-                    Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
-//                  Fdet = pixel_size*fpixel;
-//                  Sdet = pixel_size*spixel;
+                /* assume "distance" is to the front of the detector sensor layer */
+                Odet = thick_tic*detector_thickstep;
 
-                    for(thick_tic=0;thick_tic<detector_thicksteps;++thick_tic)
+                /* reset capture fraction, in case we want to cache it */
+                capture_fraction = 0.0;
+                /* or if we are not modelling detector thickness */
+                if(detector_thick == 0.0) capture_fraction = 1.0;
+
+                /* loop over sub-pixels */
+                for(subS=0;subS<oversample;++subS)
+                {
+                    for(subF=0;subF<oversample;++subF)
                     {
-                        /* assume "distance" is to the front of the detector sensor layer */
-                        Odet = thick_tic*detector_thickstep;
+                        /* absolute mm position on detector (relative to its origin) */
+                        Fdet = subpixel_size*(fpixel*oversample + subF ) + subpixel_size/2.0;
+                        Sdet = subpixel_size*(spixel*oversample + subS ) + subpixel_size/2.0;
+    //                  Fdet = pixel_size*fpixel;
+    //                  Sdet = pixel_size*spixel;
 
                         /* construct detector subpixel position in 3D space */
 //                      pixel_X = distance;
@@ -2499,8 +2661,8 @@ int main(int argc, char** argv)
                         if(curved_detector) {
                             /* construct detector pixel that is always "distance" from the sample */
                             vector[1] = distance*beam_vector[1];
-                            vector[2]=distance*beam_vector[2] ;
-                            vector[3]=distance*beam_vector[3];
+                            vector[2] = distance*beam_vector[2] ;
+                            vector[3] = distance*beam_vector[3];
                             /* treat detector pixel coordinates as radians */
                             rotate_axis(vector,newvector,sdet_vector,pixel_pos[2]/distance);
                             rotate_axis(newvector,pixel_pos,fdet_vector,pixel_pos[3]/distance);
@@ -2510,22 +2672,24 @@ int main(int argc, char** argv)
                         airpath = unitize(pixel_pos,diffracted);
 
                         /* solid angle subtended by a pixel: (pix/airpath)^2*cos(2theta) */
-                        omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
-                        /* option to turn off obliquity effect, inverse-square-law only */
-                        if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        if(omega_pixel == 0.0 || oversample_omega)
+                        {
+                            /* this is either the first time for this pixel, or we are oversampling omega */
+                            omega_pixel = pixel_size*pixel_size/airpath/airpath*close_distance/airpath;
+                            /* option to turn off obliquity effect, inverse-square-law only */
+                            if(point_pixel) omega_pixel = 1.0/airpath/airpath;
+                        }
+                        /* keep track for final statistics */
                         omega_sum += omega_pixel;
 
                         /* now calculate detector thickness effects */
-                        if(detector_thick > 0.0)
+                        if(capture_fraction == 0.0 || oversample_thick)
                         {
                             /* inverse of effective thickness increase */
                             parallax = dot_product(diffracted,odet_vector);
+                            /* fraction of incoming photons absorbed by this detector layer */
                             capture_fraction = exp(-thick_tic*detector_thickstep*detector_mu/parallax)
                                               -exp(-(thick_tic+1)*detector_thickstep*detector_mu/parallax);
-                        }
-                        else
-                        {
-                            capture_fraction = 1.0;
                         }
 
                         /* loop over sources now */
@@ -2538,7 +2702,8 @@ int main(int argc, char** argv)
                             lambda = source_lambda[source];
 
                             /* construct the incident beam unit vector while recovering source distance */
-                            source_path = unitize(incident,incident);
+                            /* source arrays should already be unit vectors */
+//                            source_path = unitize(incident,incident);
 
                             /* construct the scattering vector for this pixel */
                             scattering[1] = (diffracted[1]-incident[1])/lambda;
@@ -2555,6 +2720,13 @@ int main(int argc, char** argv)
                                 {
                                     continue;
                                 }
+                            }
+
+                            /* we now have enough to fix the polarization factor */
+                            if (polar == 0.0 || oversample_polar)
+                            {
+                                /* need to compute polarization factor */
+                                polar = polarization_factor(polarization,incident,diffracted,polar_vector);
                             }
 
                             /* sweep over phi angles */
@@ -2783,18 +2955,13 @@ int main(int argc, char** argv)
 
                                     /* now we have the structure factor for this pixel */
 
-                                    /* polarization factor */
-                                    if(! nopolar){
-                                        /* need to compute polarization factor */
-                                        polar = polarization_factor(polarization,incident,diffracted,polar_vector);
-                                    }
-                                    else
-                                    {
-                                        polar = 1.0;
-                                    }
-
                                     /* convert amplitudes into intensity (photons per steradian) */
-                                    I += F_cell*F_cell*F_latt*F_latt*capture_fraction;
+                                    I += F_cell*F_cell*F_latt*F_latt;
+                                    
+                                    /* only do this if we need to */
+                                    if(oversample_thick) I *= capture_fraction;
+                                    if(oversample_polar) I *= polar;
+                                    if(oversample_omega) I *= omega_pixel;
                                 }
                                 /* end of mosaic loop */
                             }
@@ -2802,22 +2969,29 @@ int main(int argc, char** argv)
                         }
                         /* end of source loop */
                     }
-                    /* end of detector thickness loop */
+                    /* end of sub-pixel y loop */
                 }
-                /* end of sub-pixel y loop */
+                /* end of sub-pixel x loop */
             }
-            /* end of sub-pixel x loop */
+            /* end of detector thickness loop */
 
+            /* convert pixel intensity into photon units */
+            test = r_e_sqr*fluence*I/steps;
 
-            floatimage[j] += r_e_sqr*fluence*polar*I/steps*omega_pixel;
-//          floatimage[j] = test;
-            if(floatimage[j] > max_I) {
-                max_I = floatimage[j];
+            /* do the corrections now, if they haven't been applied already */
+            if(! oversample_thick) test *= capture_fraction;
+            if(! oversample_polar) test *= polar;
+            if(! oversample_omega) test *= omega_pixel;
+            floatimage[imgidx] += test;
+
+            /* now keep track of statistics */
+            if(floatimage[imgidx] > max_I) {
+                max_I = floatimage[imgidx];
                 max_I_x = Fdet;
                 max_I_y = Sdet;
             }
-            sum += floatimage[j];
-            sumsqr += floatimage[j]*floatimage[j];
+            sum += floatimage[imgidx];
+            sumsqr += floatimage[imgidx]*floatimage[imgidx];
             ++sumn;
 
             if( printout )
@@ -2834,7 +3008,7 @@ int main(int argc, char** argv)
                     printf("polar   %15.10g\n", polar);
                     printf("omega   %15.10g\n", omega_pixel);
                     printf("capfrac %15.10g\n", capture_fraction);
-                    printf("pixel   %15.10g\n", floatimage[j]);
+                    printf("pixel   %15.10g\n", floatimage[imgidx]);
                     printf("real-space cell vectors (Angstrom):\n");
                     printf("     %-10s  %-10s  %-10s\n","a","b","c");
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
@@ -2852,10 +3026,11 @@ int main(int argc, char** argv)
                         (progress_pixel % (progress_pixels/100) == 0)))
                     {
                         printf("%lu%% done\n",progress_pixel*100/progress_pixels);
+                        fflush(stdout);
                     }
                 }
             }
-            ++j;
+
             ++progress_pixel;
         }
     }
@@ -2869,17 +3044,19 @@ int main(int argc, char** argv)
     if(sumn<=1) sumn=2;
     rms = sqrt(sumsqr/(sumn-1));
     sumsqr = 0.0;
-    j = sumn = 0;
+    sumn = 0;
     for(spixel=0;spixel<spixels;++spixel)
     {
         for(fpixel=0;fpixel<fpixels;++fpixel)
         {
-            ++j;
+            /* position in pixel array */
+            imgidx = spixel*fpixels+fpixel;
+
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             {
                 continue;
             }
-            test = floatimage[j]-avg;
+            test = floatimage[imgidx]-avg;
             sumsqr += test*test;
             ++sumn;
         }
@@ -2898,7 +3075,7 @@ int main(int argc, char** argv)
     fclose(outfile);
 
     /* output as ints */
-    j = 0;
+    imgidx = 0;
     printf("max_I = %g  at %g %g\n",max_I,max_I_x,max_I_y);
     printf("mean= %g rms= %g rmsd= %g\n",avg,rms,rmsd);
     if(intfile_scale <= 0.0){
@@ -2912,14 +3089,17 @@ int main(int argc, char** argv)
         {
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             {
-               ++j; continue;
+               continue;
             }
-            test = floatimage[j] *intfile_scale+adc_offset;
+
+            /* position in pixel array */
+            imgidx = spixel*fpixels+fpixel;
+
+            test = floatimage[imgidx] *intfile_scale+adc_offset;
             if(test > 65535.0) test = 65535.0;
             if(test < 0.0) test = 0.0;
-            intimage[j] = (unsigned short int) ( floorf(test+0.5) );
-//          printf("%d %d = %d\n",fpixel,spixel,intimage[j]);
-            ++j;
+            intimage[imgidx] = (unsigned short int) ( floorf(test+0.5) );
+//          printf("%d %d = %d\n",fpixel,spixel,intimage[imgidx]);
         }
     }
 
@@ -2953,26 +3133,26 @@ int main(int argc, char** argv)
     if(write_pgm)
     {
         /* output as pgm */
-        j = 0;
+        imgidx = 0;
         if(pgm_scale <= 0.0){
             pgm_scale = intfile_scale;
             if(rmsd > 0.0) pgm_scale = 250.0/(5.0*rmsd);
         }
         printf("pgm_scale = %g\n",pgm_scale);
-        j = 0;
+        imgidx = 0;
         for(spixel=0;spixel<spixels;++spixel)
         {
             for(fpixel=0;fpixel<fpixels;++fpixel)
             {
                 if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
                 {
-                    ++j; continue;
+                    ++imgidx; continue;
                 }
-                test = floatimage[j] * pgm_scale;
+                test = floatimage[imgidx] * pgm_scale;
                 if(test > 255.0) test = 255.0;
-                pgmimage[j] = (unsigned char) ( test );
-//              printf("%d %d = %d\n",fpixel,spixel,pgmimage[j]);
-                ++j;
+                pgmimage[imgidx] = (unsigned char) ( test );
+//              printf("%d %d = %d\n",fpixel,spixel,pgmimage[imgidx]);
+                ++imgidx;
             }
         }
 
@@ -2996,7 +3176,7 @@ int main(int argc, char** argv)
     }
 
     /* simulate Poisson noise */
-    j = 0;
+    imgidx = 0;
     sum = 0.0;
     overloads = 0;
     for(spixel=0;spixel<spixels;++spixel)
@@ -3005,9 +3185,9 @@ int main(int argc, char** argv)
         {
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax)
             {
-                ++j; continue;
+                ++imgidx; continue;
             }
-            test = poidev( floatimage[j], &seed );
+            test = poidev( floatimage[imgidx], &seed );
             sum += test;
             test += adc_offset;
             if(test > 65535.0)
@@ -3015,9 +3195,9 @@ int main(int argc, char** argv)
                 test = 65535.0;
                 ++overloads;
             }
-            intimage[j] = (unsigned short int) test;
-//          printf("%d %d = %d\n",fpixel,spixel,intimage[j]);
-            ++j;
+            intimage[imgidx] = (unsigned short int) test;
+//          printf("%d %d = %d\n",fpixel,spixel,intimage[imgidx]);
+            ++imgidx;
         }
     }
     printf("%.0f photons on noise image (%d overloads)\n",sum,overloads);
@@ -3639,7 +3819,7 @@ size_t read_text_file(char *filename, size_t nargs, ... )
     const char numberstuf[] = "0123456789-+.EGeg";
 
     unsigned long line,lines;
-    unsigned long i,j,m;
+    unsigned long i,j;
     double value;
     double *data;
     double **pointer;
@@ -3819,7 +3999,7 @@ double dot_product(double *x, double *y) {
 double polarization_factor(double kahn_factor, double *incident, double *diffracted, double *axis)
 {
     double cos2theta,cos2theta_sqr,sin2theta_sqr;
-    double twotheta,psi;
+    double psi=0;
     double E_in[4];
     double B_in[4];
     double E_out[4];
@@ -3892,7 +4072,7 @@ SMVinfo GetFrame(char *filename)
     char *string;
     SMVinfo frame;
     char *byte_order = get_byte_order();
-    unsigned short int tempint;
+//    unsigned short int tempint;
 
     /* try to open the file... */
     frame.handle = fopen(filename, "rb");
@@ -3973,6 +4153,7 @@ SMVinfo GetFrame(char *filename)
             if(frame.mmapdata == NULL)
             {
                 perror("calloc:");
+                exit(9);
             }
             fseek(frame.handle,0,SEEK_SET);
             printf("reading %s\n",frame.filename);

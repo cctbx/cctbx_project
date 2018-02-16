@@ -475,6 +475,7 @@ nanoBragg::init_defaults()
 
     /* unit cell stuff */
     user_cell = 0;
+    user_matrix = 0;
 //    double a[4] = {0,0,0,0}; this->a = a;
 //    double b[4] = {0,0,0,0}; this->b = b;
 //    double c[4] = {0,0,0,0}; this->c = c;
@@ -1226,7 +1227,7 @@ void
 nanoBragg::init_cell()
 {
     /* do not run if things are not going to work */
-    if(! user_cell && matfilename == NULL)
+    if(! user_cell && ! user_matrix && matfilename == NULL)
     {
         if(verbose) printf("ERROR: cannot initialize without a cell\n");
         return;
@@ -1508,9 +1509,9 @@ void
 nanoBragg::update_oversample()
 {
     /* now we know the cell, calculate crystal size in meters */
-    if(xtal_size_x > 0) Na = ceil(xtal_size_x/a[0]);
-    if(xtal_size_y > 0) Nb = ceil(xtal_size_y/b[0]);
-    if(xtal_size_z > 0) Nc = ceil(xtal_size_z/c[0]);
+    if(xtal_size_x > 0) Na = ceil(xtal_size_x/a[0]-1e-6);
+    if(xtal_size_y > 0) Nb = ceil(xtal_size_y/b[0]-1e-6);
+    if(xtal_size_z > 0) Nc = ceil(xtal_size_z/c[0]-1e-6);
     if(Na <= 1.0) Na = 1.0;
     if(Nb <= 1.0) Nb = 1.0;
     if(Nc <= 1.0) Nc = 1.0;
@@ -1774,7 +1775,7 @@ nanoBragg::init_background()
         /* allocate memory for counting how many of these get used */
         /* starting point for pixel value data for each stol-bin */
         if(verbose>6) printf("allocating %d %ld-byte double *s for bin_start\n",stols,sizeof(double *));
-        bin_start = (double **) calloc(stols,sizeof(double *));
+        bin_start = (double **) calloc(stols+2,sizeof(double *));
         /* storage for counting number of pixels in each bin */
         if(verbose>6) printf("allocating %d %ld-byte unsigned ints for pixels_in\n",stols,sizeof(unsigned int));
         pixels_in = (unsigned int *) calloc(stols,sizeof(unsigned int));
@@ -2218,8 +2219,43 @@ nanoBragg::show_mosaic_blocks()
 // end of show_mosaic_blocks()
 
 
+/* return the unitary matrices U that define the mosaic block distribution, cctbx format please */
+af::shared<mat3>
+nanoBragg::get_mosaic_blocks() {
+    /* assume init_mosaicity() was already run? */
+    af::shared<mat3> result;
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
+        result.push_back(mat3( *(mosaic_umats+9*mos_tic+0), *(mosaic_umats+9*mos_tic+1), *(mosaic_umats+9*mos_tic+2),
+                               *(mosaic_umats+9*mos_tic+3), *(mosaic_umats+9*mos_tic+4), *(mosaic_umats+9*mos_tic+5),
+                               *(mosaic_umats+9*mos_tic+6), *(mosaic_umats+9*mos_tic+7), *(mosaic_umats+9*mos_tic+8)));
+    }
+    return result;
+}
+// end of get_mosaic_blocks()
 
+/* set the mosaic domains */
+void
+nanoBragg::set_mosaic_blocks(af::shared<mat3> umat_in) {
+    /* free any previous allocations */
+    if(mosaic_umats!=NULL) free(mosaic_umats);
 
+    /* allocate enough space */
+    mosaic_domains = umat_in.size();
+    if(verbose>6) printf("allocating enough space for %d mosaic domain orientation matrices\n",mosaic_domains);
+    mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
+
+    /* now actually create the orientation of each domain */
+    for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic) {
+      int offset = 9 * mos_tic;
+      mat3& domain = umat_in[mos_tic];
+      mosaic_umats[0+offset]=domain[0];mosaic_umats[1+offset]=domain[1];mosaic_umats[2+offset]=domain[2];
+      mosaic_umats[3+offset]=domain[3];mosaic_umats[4+offset]=domain[4];mosaic_umats[5+offset]=domain[5];
+      mosaic_umats[6+offset]=domain[6];mosaic_umats[7+offset]=domain[7];mosaic_umats[8+offset]=domain[8];
+   }
+
+    if(verbose) printf("  created a total of %d mosaic domains\n",mosaic_domains);
+}
+// end of init_mosaicity()
 
 
 /* reconcile different conventions of beam center input and detector position */
@@ -3177,7 +3213,7 @@ nanoBragg::extract_background(int source)
     /* now we need to organize Fpixel data into bins */
 
     /* set up pointers with enough space after each of them (2*n for median/mad filter) */
-    bin_start[0]= (double *) calloc(2*pixels+10*stols,sizeof(float));
+    bin_start[0]= (double *) calloc(2*pixels+10*stols,sizeof(double));
     ++bin_start[0];
     for(bin=1;bin<stols-1;++bin)
     {

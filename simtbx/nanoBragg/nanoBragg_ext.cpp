@@ -309,12 +309,65 @@ namespace boost_python { namespace {
       nanoBragg.c_star[2] = value(2,1);
       nanoBragg.c_star[3] = value(2,2);
       nanoBragg.user_cell = 0;
+      nanoBragg.user_matrix = 1;
       /* re-generate cell structure and apply any missetting angles to it */
       nanoBragg.init_cell();
 //      reconcile_parameters();
   }
+  static void   set_Amatrix_NKS_implementation(nanoBragg& nanoBragg, mat3 const& value) {
+      // Input is direct space A matrix in angstroms.
+      nanoBragg.user_cell = 1;
+      // Assume input is A=UB.  No additional missetting angles accepted.
+      nanoBragg.a_A[1] = value[0];
+      nanoBragg.a_A[2] = value[1];
+      nanoBragg.a_A[3] = value[2];
+      nanoBragg.b_A[1] = value[3];
+      nanoBragg.b_A[2] = value[4];
+      nanoBragg.b_A[3] = value[5];
+      nanoBragg.c_A[1] = value[6];
+      nanoBragg.c_A[2] = value[7];
+      nanoBragg.c_A[3] = value[8];
+      /* now convert Angstrom to meters */
+      magnitude(nanoBragg.a_A);
+      magnitude(nanoBragg.b_A);
+      magnitude(nanoBragg.c_A);
+      //SCITBX_EXAMINE(nanoBragg.a_A[0]);
+      //SCITBX_EXAMINE(nanoBragg.b_A[0]);
+      //SCITBX_EXAMINE(nanoBragg.c_A[0]);
+      vector_scale(nanoBragg.a_A,nanoBragg.a,1e-10);
+      vector_scale(nanoBragg.b_A,nanoBragg.b,1e-10);
+      vector_scale(nanoBragg.c_A,nanoBragg.c,1e-10);
+      cctbx::uctbx::unit_cell cell(value.transpose());
+      nanoBragg.alpha = cell.parameters()[3]/RTD;
+      nanoBragg.beta = cell.parameters()[4]/RTD;
+      nanoBragg.gamma = cell.parameters()[5]/RTD;
+      //SCITBX_EXAMINE(cell.parameters()[3]);
+      //SCITBX_EXAMINE(cell.parameters()[4]);
+      //SCITBX_EXAMINE(cell.parameters()[5]);
 
-
+      /* define phi=0 mosaic=0 crystal orientation */
+      vector_scale(nanoBragg.a,nanoBragg.a0,1.0);
+      vector_scale(nanoBragg.b,nanoBragg.b0,1.0);
+      vector_scale(nanoBragg.c,nanoBragg.c0,1.0);
+      /* define phi=0 crystal orientation */
+      vector_scale(nanoBragg.a,nanoBragg.ap,1.0);
+      vector_scale(nanoBragg.b,nanoBragg.bp,1.0);
+      vector_scale(nanoBragg.c,nanoBragg.cp,1.0);
+      /* Now set the reciprocal cell */
+      mat3 invAmat = value.inverse();
+      nanoBragg.a_star[1] = invAmat[0];
+      nanoBragg.a_star[2] = invAmat[3];
+      nanoBragg.a_star[3] = invAmat[6];
+      magnitude(nanoBragg.a_star);
+      nanoBragg.b_star[1] = invAmat[1];
+      nanoBragg.b_star[2] = invAmat[4];
+      nanoBragg.b_star[3] = invAmat[7];
+      magnitude(nanoBragg.b_star);
+      nanoBragg.c_star[1] = invAmat[2];
+      nanoBragg.c_star[2] = invAmat[5];
+      nanoBragg.c_star[3] = invAmat[8];
+      magnitude(nanoBragg.c_star);
+  }
 
   /* crystal misseting angles, will be added after any matrix */
   static vec3 get_misset_deg(nanoBragg const& nanoBragg) {
@@ -1221,6 +1274,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_Amatrix,rbv()),
                      make_function(&set_Amatrix,dcp()),
                      "unit cell, wavelength, and crystal orientation as Arndt & Wonacott A=UB matrix")
+      /* crystal orientation as an A=UB matrix. No further missetting angles to be applied */
+      .add_property("Amatrix_RUB",
+                     make_function(&get_Amatrix,rbv()),
+                     make_function(&set_Amatrix_NKS_implementation,dcp()),
+                     "unit cell, wavelength, and crystal orientation as Arndt & Wonacott A=UB matrix")
 
       /* beam center, in convention specified below */
       .add_property("beam_center_mm",
@@ -1481,6 +1539,15 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_mosaic_domains,rbv()),
                      make_function(&set_mosaic_domains,dcp()),
                      "number of discrete mosaic domains to generate, speed is inversely proportional to this")
+      .def          ("show_mosaic_blocks",
+                     &nanoBragg::show_mosaic_blocks,
+                     "print out individual mosaic domain orientations")
+      .def          ("get_mosaic_blocks",
+                     &nanoBragg::get_mosaic_blocks,
+                     "return the unitary matrices U that define the mosaic block distribution")
+      .def          ("set_mosaic_blocks",
+                     &nanoBragg::set_mosaic_blocks,
+                     "enter an arbitrary list of unitary matrices U to define the mosaic block distribution")
 
       /* hkl and F */
       .add_property("indices",

@@ -411,6 +411,7 @@ class nanoBragg {
 
     /* unit cell stuff */
     int user_cell; // = 0;
+    int user_matrix; // = False;
     double a_A[4],b_A[4],c_A[4];  // cell vectors in Angstrom
     double a[4];                  // cell vectors in meters
     double b[4];
@@ -476,22 +477,39 @@ class nanoBragg {
        */
 
       printf("free all memory within nanoBragg\n");
+      if(verbose>9)printf("pixels_in %p\n",pixels_in);
       free(pixels_in);
+      if(verbose>9)printf("bin_start %p\n",bin_start);
       free(bin_start);
+      if(verbose>9)printf("source_X %p\n",source_X);
       free(source_X);
+      if(verbose>9)printf("source_Y %p\n",source_Y);
       free(source_Y);
+      if(verbose>9)printf("source_Z %p\n",source_Z);
       free(source_Z);
+      if(verbose>9)printf("source_I %p\n",source_I);
       free(source_I);
+      if(verbose>9)printf("source_lambda %p\n",source_lambda);
       free(source_lambda);
+      if(verbose>9)printf("stol_of %p\n",stol_of);
       free(stol_of);
+      if(verbose>9)printf("Fbg_of %p\n",Fbg_of);
       free(Fbg_of);
+      if(verbose>9)printf("mosaic_umats %p\n",mosaic_umats);
       free(mosaic_umats);
+      if(verbose>9)printf("invalid_pixel %p\n",invalid_pixel);
       free(invalid_pixel);
+      if(verbose>9)printf("pgmimage %p\n",pgmimage);
       free(pgmimage);
+      if(verbose>9)printf("intimage %p\n",intimage);
       free(intimage);
+      if(verbose>9)printf("bin_of %p\n",bin_of);
       free(bin_of);
+      if(verbose>9)printf("stolimage %p\n",stolimage);
       free(stolimage);
+      if(verbose>9)printf("Fimage %p\n",Fimage);
       free(Fimage);
+      if(verbose>9)printf("diffimage %p\n",diffimage);
       free(diffimage);
       /* free any previous allocations */
       if(Fhkl != NULL) {
@@ -533,6 +551,8 @@ class nanoBragg {
     void show_phisteps();       // print out everything to screen, enumerate all phi steps
     void show_detector_thicksteps();  // print out all detector layers
     void show_mosaic_blocks();  // print out individual mosaic block orientations to screen
+    af::shared<mat3> get_mosaic_blocks();  // get the individual mosaic block orientations as array
+    void set_mosaic_blocks(af::shared<mat3>);  // set the individual mosaic block orientations from array
     void show_params();         // print out everything to screen, just like standalone program
     void show_sources();        // print out internal source information to screen
 

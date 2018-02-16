@@ -8,6 +8,15 @@ from cctbx import crystal
 
 import os
 
+# allow command-line options
+GOFAST = False
+import sys
+if len(sys.argv)>1:
+  if sys.argv[1] == "fast":
+    print "SPEEDING UP! "
+    GOFAST = True
+
+
 # get the structure factor of spots
 mtzfile = "model_nophase.mtz"
 stolfile = "./bg.stol"
@@ -177,14 +186,17 @@ SIM.readout_noise_adu = 1.5
 SIM.show_sources()
 
 # speedups, comment out for realism
-#SIM.divergence_hv_mrad = ( 0,0 )
-#SIM.dispersion_pct = 0
-#SIM.mosaic_spread_deg = 0
-#SIM.region_of_interest=((1450,1850),(1550,1950))
-SIM.printout_pixel_fastslow=(1782,1832)
-# set this to 0 or -1 to trigger automatic radius.  could be very slow with bright images
-#SIM.detector_psf_kernel_radius_pixels=5;
+if GOFAST:
+  SIM.divergence_hv_mrad = ( 0,0 )
+  SIM.dispersion_pct = 0
+  SIM.mosaic_spread_deg = 0
+    # set this to 0 or -1 to trigger automatic radius.  could be very slow with bright images
+  SIM.detector_psf_kernel_radius_pixels=5;
 
+# use one pixel for diagnostics?
+SIM.printout_pixel_fastslow=(1782,1832)
+# debug only a little patch
+#SIM.region_of_interest=((1450,1850),(1550,1950))
 
 SIM.amorphous_sample_thick_mm = 0.1
 SIM.amorphous_density_gcm3 = 7e-7
@@ -196,6 +208,10 @@ SIM.raw_pixels = img.get_raw_data().as_double()
 #print SIM.Fbg_vs_stol[100]
 SIM.extract_background()
 #print SIM.Fbg_vs_stol[100]
+
+# maybe edit background trace here?
+# or, forget it, reset to old one:
+SIM.Fbg_vs_stol = Fbg_vs_stol
 
 # now clear the pixels
 SIM.raw_pixels*=0;
@@ -211,14 +227,16 @@ print "oversample=",SIM.oversample
 SIM.to_smv_format(fileout="intimage_001.img",intfile_scale=1)
 
 # three clusters of mosaic domains
-SIM.fluence /= 3
-SIM.missets_deg = ( 96.9473, -52.0932, -32.518 )
-#SIM.missets_deg = ( 96.544, -51.9673, -32.4243 )
-SIM.add_nanoBragg_spots()
-SIM.to_smv_format(fileout="intimage_002.img",intfile_scale=1)
-SIM.missets_deg = ( 97.5182, -52.3404, -32.7289 )
-SIM.add_nanoBragg_spots()
-SIM.to_smv_format(fileout="intimage_003.img",intfile_scale=1)
+if GOFAST == False:
+  SIM.fluence /= 3
+  SIM.missets_deg = ( 96.9473, -52.0932, -32.518 )
+  #SIM.missets_deg = ( 96.544, -51.9673, -32.4243 )
+  SIM.add_nanoBragg_spots()
+  SIM.to_smv_format(fileout="intimage_002.img",intfile_scale=1)
+  SIM.missets_deg = ( 97.5182, -52.3404, -32.7289 )
+  SIM.add_nanoBragg_spots()
+  SIM.to_smv_format(fileout="intimage_003.img",intfile_scale=1)
+
 SIM.missets_deg = ( 97.1251, -52.2242, -32.751 )
 SIM.add_nanoBragg_spots()
 SIM.to_smv_format(fileout="intimage_004.img",intfile_scale=1)
@@ -251,3 +269,11 @@ print "dispersion_pct=",SIM.dispersion_pct
 print "dispsteps=",SIM.dispsteps
 print "divergence_hv_mrad=",SIM.divergence_hv_mrad
 print "divergence_hv=",SIM.divsteps_hv
+
+print "GOT HERE 1"
+
+SIM.verbose=999
+SIM.free_all()
+
+print "GOT HERE 2"
+
