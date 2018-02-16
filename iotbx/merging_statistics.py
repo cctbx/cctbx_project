@@ -624,7 +624,7 @@ class dataset_statistics (object) :
 
   @property
   def cc_anom_table (self) :
-    column_labels = ["1/d**2", "CC(anom)"]
+    column_labels = ["d_min", "CC(anom)"]
     graph_columns = [[0,1]]
     graph_names = ["CC(anom)"]
     table = data_plots.table_data(
