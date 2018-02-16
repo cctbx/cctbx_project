@@ -371,6 +371,9 @@ class manager(object):
     #     assert 0
 
 
+  def get_model_input(self):
+    return self._model_input
+
   def crystal_symmetry(self):
     return self._crystal_symmetry
 
