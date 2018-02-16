@@ -22,22 +22,25 @@ class sdfac_helper(per_frame_helper):
       for j, der_r in enumerate(grad_r):
         jacobian.matrix_paste_column_in_place(der_r,j)
         #print >> pfh.out, "COL",j, list(der_r)
-      pfh.add_equations(residuals, jacobian, weights=pfh.refinery.weights)
+      # note the minus sign on the jacobian
+      pfh.add_equations(residuals, -jacobian, weights=pfh.refinery.weights)
     #print >> pfh.out, "rms %10.3f"%math.sqrt(flex.mean(pfh.refinery.weights*residuals*residuals)),
     print >> pfh.out, "functional value % 20.3f"%pfh.refinery.functional(residuals),
     values.show(pfh.out)
 
 class sdfac_refine_refltable_levmar(sdfac_refine_refltable_lbfgs):
   def run_minimzer(self, values, sels, **kwargs):
-    # base class uses non-squared values, but lbfgs version refines the squares.
-    values = self.parameterization(values.reference**2)
-    self.refinery = sdfac_refinery(self.scaler.ISIGI, self.scaler.miller_set.indices(), sels, self.log)
+    self.refinery = sdfac_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
     self.helper = sdfac_helper(current_x = values.reference,
                                parameterization = self.parameterization, refinery = self.refinery,
                                out = self.log )
-    self.iterations = normal_eqns_solving.naive_iterations(non_linear_ls = self.helper,
-                                                           step_threshold = 0.0001,
-                                                           gradient_threshold = 1.E-10)
+    self.iterations = normal_eqns_solving.levenberg_marquardt_iterations(
+      non_linear_ls = self.helper,
+      track_all=True,
+      gradient_threshold=1e-08,
+      step_threshold=1e-08,
+      tau=1e-08,
+      n_max_iterations=200)
     return self
 
   def get_refined_params(self):
