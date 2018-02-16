@@ -162,6 +162,27 @@ class lbfgs_minimizer(object):
       elif self.minimizer.is_terminated():
         break
 
+  def compute_functional_and_gradients(self):
+    values = self.parameterization(self.x)
+    fvec = self.refinery.fvec_callable(values)
+    self.func = functional = self.refinery.functional(fvec)
+    self.f = functional
+    self.g = self.refinery.gradients(values)
+
+    if self.show_finite_differences:
+      finite_g = flex.double()
+      for x in xrange(self.n):
+        finite_g.append(finite_difference(
+          lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
+          values, x))
+
+      for x in xrange(self.n):
+        print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
+
+    print >> self.out, "functional value % 20.3f"%functional,
+    values.show(self.out)
+    return self.f, self.g
+
   def get_refined_params(self):
     return self.parameterization(self.x)
 
