@@ -784,7 +784,7 @@ class scaling_manager (intensity_data) :
       error_modeler.adjust_errors()
 
     if self.params.raw_data.sdfac_refine or self.params.raw_data.errors_from_sample_residuals or \
-        self.params.raw_data.refine_propagated_errors:
+        self.params.raw_data.error_models.sdfac_refine.refine_propagated_errors:
       if self.params.raw_data.sdfac_refine:
         if self.params.raw_data.error_models.sdfac_refine.minimizer == 'simplex':
           from xfel.merging.algorithms.error_model.sdfac_refine import sdfac_refine as error_modeler
