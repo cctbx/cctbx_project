@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_validation
 
-import os, sys
+import sys
 
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time

@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
 
-import os
-
-from libtbx import group_args
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.secondary_structure import ss_validation

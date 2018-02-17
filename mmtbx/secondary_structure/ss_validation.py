@@ -3,7 +3,6 @@ from __future__ import division
 from mmtbx.secondary_structure import manager
 import iotbx.pdb
 import iotbx.phil
-from scitbx.array_family import flex
 from libtbx.utils import Sorry, safe_div
 import cStringIO
 import sys
