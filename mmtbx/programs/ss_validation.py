@@ -24,19 +24,7 @@ Usage examples:
 
   datatypes = ['model', 'phil']
 
-  master_phil_str = '''
-ss_validation {
-  nproc = 1
-    .type = int
-  bad_hbond_cutoff = 3.5
-    .type = float
-  mediocre_hbond_cutoff = 3.0
-    .type = float
-  filter_annotation = False
-    .type = bool
-    .help = Output filtered annotations
-}
-'''
+  master_phil_str = ss_validation.master_phil_str
 
   # ---------------------------------------------------------------------------
   def validate(self):
@@ -48,21 +36,20 @@ ss_validation {
     # I'm guessing self.data_manager, self.params and self.logger
     # are already defined here...
     print('Using model: %s' % self.data_manager.get_default_model_name())
-    # print(dir(self.params))
+    print(dir(self.params))
+    print(self.params.ss_validation.nproc)
 
     # this must be mmtbx.model.manager?
     model = self.data_manager.get_model()
 
-    self.results = ss_validation.run(pdb_inp=model.get_model_input(),
-        pdb_hierarchy=model.get_hierarchy(),
-        cs=model.crystal_symmetry(),
+    self.val_obj = ss_validation.validate(
+        model=model,
         params = self.params.ss_validation,
-        out = self.logger)
-
+        log = self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
-    return self.results
+    return self.val_obj.get_results()
 
 # =============================================================================
 # end

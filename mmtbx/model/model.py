@@ -246,7 +246,6 @@ class manager(object):
         self._original_model_format = "mmcif"
       elif s.find("pdb") > 0:
         self._original_model_format = "pdb"
-      self._ss_annotation = self._model_input.extract_secondary_structure()
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
         self._crystal_symmetry = self._model_input.crystal_symmetry()
@@ -380,7 +379,12 @@ class manager(object):
   def get_restraint_objects(self):
     return self._restraint_objects
 
-  def get_ss_annotation(self):
+  def setup_ss_annotation(self, log=null_out()):
+    self._ss_annotation = self._model_input.extract_secondary_structure()
+
+  def get_ss_annotation(self, log=null_out()):
+    if self._ss_annotation is None:
+      self.setup_ss_annotation(log=log)
     return self._ss_annotation
 
   def set_ss_annotation(self, ann):
@@ -644,8 +648,8 @@ class manager(object):
     ss_ann = None
     if self._ss_manager is not None:
       ss_ann = self._ss_manager.actual_sec_str
-    elif self._ss_annotation is not None:
-      ss_ann = self._ss_annotation
+    elif self.get_ss_annotation() is not None:
+      ss_ann = self.get_ss_annotation()
     if ss_ann is not None:
       ss_records = ss_ann.as_pdb_str()
     if ss_records != "":
@@ -692,8 +696,8 @@ class manager(object):
     ss_ann = None
     if self._ss_manager is not None:
       ss_ann = self._ss_manager.actual_sec_str
-    elif self._ss_annotation is not None:
-      ss_ann = self._ss_annotation
+    elif self.get_ss_annotation() is not None:
+      ss_ann = self.get_ss_annotation()
     if ss_ann is not None:
       ss_cif_loops = ss_ann.as_cif_loops()
     for loop in ss_cif_loops:
@@ -2690,8 +2694,8 @@ class manager(object):
     self._pdb_hierarchy = result
 
     # Now deal with SS annotations
-    if self._ss_annotation is not None:
-      self._ss_annotation.multiply_to_asu_2(chain_ids_match_dict)
+    if self.get_ss_annotation() is not None:
+      self.set_ss_annotation(self.get_ss_annotation().multiply_to_asu_2(chain_ids_match_dict))
     self._update_pdb_atoms()
     self._xray_structure = None
     self._all_chain_proxies = None
