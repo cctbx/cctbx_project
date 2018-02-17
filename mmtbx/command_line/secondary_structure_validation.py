@@ -1,4 +1,5 @@
 from __future__ import division, print_function
+# LIBTBX_SET_DISPATCHER_NAME phenix.secondary_structure_validation
 
 import os, sys
 

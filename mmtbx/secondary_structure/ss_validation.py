@@ -140,6 +140,8 @@ class validate(object):
   def __init__(self, model, params=None, log=sys.stdout):
     self.model = model
     self.params = params
+    if self.params is None:
+      self.params = validate.get_default_params().ss_validation
     self.log = log
     self.results = None
     ss_log = cStringIO.StringIO()
@@ -288,7 +290,18 @@ class validate(object):
       n2                          = n2,
       n3                          = n3,
       n4                          = n4,
-      n5                          = n5)
+      n5                          = n5,
+      n_bad_helices               = n_bad_helices,
+      n_bad_sheets                = n_bad_sheets)
+
+  @staticmethod
+  def get_default_params():
+    """
+    Get extracted params
+    """
+    return iotbx.phil.parse(
+          input_string=master_phil_str,
+          process_includes=True).extract()
 
   def get_results(self):
     return self.results

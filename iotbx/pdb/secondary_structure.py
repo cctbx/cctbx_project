@@ -791,7 +791,7 @@ class annotation(structure_base):
     partial model. In some cases it cannot detect chain break and extends
     strand e.g. from 191 to 226 (in 1ubf) when the strand ends at 194th residue."""
     assert hierarchy is not None, "Cannot measure bonds w/o hierarchy!"
-    from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
+    from mmtbx.secondary_structure.ss_validation import gather_ss_stats
     from mmtbx.secondary_structure import manager as ss_manager
     from mmtbx.secondary_structure import sec_str_master_phil
     if asc is None:

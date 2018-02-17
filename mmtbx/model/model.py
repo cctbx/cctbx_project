@@ -2694,8 +2694,10 @@ class manager(object):
     self._pdb_hierarchy = result
 
     # Now deal with SS annotations
-    if self.get_ss_annotation() is not None:
-      self.set_ss_annotation(self.get_ss_annotation().multiply_to_asu_2(chain_ids_match_dict))
+    ssa = self.get_ss_annotation()
+    if ssa is not None:
+      ssa.multiply_to_asu_2(chain_ids_match_dict)
+      self.set_ss_annotation(ssa)
     self._update_pdb_atoms()
     self._xray_structure = None
     self._all_chain_proxies = None

@@ -12,7 +12,7 @@ from mmtbx import secondary_structure
 from mmtbx.monomer_library import idealized_aa
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
-from mmtbx.command_line.secondary_structure_validation import gather_ss_stats
+from mmtbx.secondary_structure.ss_validation import gather_ss_stats
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from time import time
 
