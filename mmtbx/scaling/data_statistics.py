@@ -931,7 +931,10 @@ class anomalous (scaling.xtriage_analysis) :
        out.show_header(
        "Analysis of probability of finding %d sites with this anomalous data" %(
           self.plan_sad_experiment_stats.sites))
-       self.plan_sad_experiment_stats.show_summary(out=out)
+       if (out.gui_output):
+         self.plan_sad_experiment_stats.show_in_wxgui(out=out)
+       else:
+         self.plan_sad_experiment_stats.show_summary(out=out)
 
 
 class wilson_scaling (scaling.xtriage_analysis) :
