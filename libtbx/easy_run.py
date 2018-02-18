@@ -1,17 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division
+
+import os
+import subprocess
 import sys
-# XXX how early a version can we get away with using the built-in module?
-if (sys.version_info[1] >= 7) :
-  import subprocess
-else :
-  try:
-    from libtbx import subprocess_with_fixes as subprocess
-  except ImportError:
-    try :
-      import subprocess_with_fixes as subprocess
-    except ImportError :
-      import subprocess
-import sys, os
 
 def _show_lines(lines, out, prefix):
   if (out is None): out = sys.stdout
@@ -213,7 +204,6 @@ def call(command):
 
 def exercise(args=None):
   from cStringIO import StringIO
-  import sys
   if (args is None): args = sys.argv[1:]
   verbose = "--verbose" in args
   #
