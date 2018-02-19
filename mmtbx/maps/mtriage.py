@@ -68,6 +68,10 @@ master_params_str = """
   show_time = False
     .type = bool
     .help = Show individual run times for each step
+  include_curves = True
+    .type = bool
+  include_mask = True
+    .type = bool
 """
 
 def get_atom_radius(xray_structure=None, resolution=None, radius=None):
@@ -285,7 +289,7 @@ class mtriage(object):
       sys.stdout.flush()
     return result
 
-  def _run(self, base, include_curves, include_mask):
+  def _run(self, base):
     if(self.params.mask_maps is None):
       # No masking
       self.params.mask_maps = False
@@ -294,8 +298,8 @@ class mtriage(object):
         caller = self.caller,
         params = self.params,
       ).run().get_results(
-        include_curves = include_curves,
-        include_mask   = include_mask)
+        include_curves = self.params.include_curves,
+        include_mask   = self.params.include_mask)
       # Masking
       if(self.params.radius_smooth is None):
         self.params.radius_smooth = self.results_unmasked.d99
@@ -305,24 +309,22 @@ class mtriage(object):
         caller = self.caller,
         params = self.params,
       ).run().get_results(
-        include_curves = include_curves,
-        include_mask   = include_mask)
+        include_curves = self.params.include_curves,
+        include_mask   = self.params.include_mask)
     else:
       result = _mtriage(
         base   = base,
         caller = self.caller,
         params = self.params,
       ).run().get_results(
-        include_curves = include_curves,
-        include_mask   = include_mask)
+        include_curves = self.params.include_curves,
+        include_mask   = self.params.include_mask)
       if(self.params.mask_maps): self.results_masked = result
       else:                      self.results_unmasked = result
 
-  def get_results(self, include_curves, include_mask):
+  def get_results(self):
     _base = self.call(func=self._create_base, prefix="Create base")
-    self._run(base           = _base,
-              include_curves = include_curves,
-              include_mask   = include_mask)
+    self._run(base = _base)
     return group_args(
       crystal_symmetry = _base.crystal_symmetry(),
       counts           = _base.counts(),
@@ -353,7 +355,7 @@ class _mtriage(object):
     self.mask_object      = None
     self.radius_smooth    = self.params.radius_smooth
     self.d_corner         = None
-    self.d9999           = None
+    self.d9999            = None
     # Info (results)
     self.map_counts        = None
     self.half_map_1_counts = None
@@ -374,8 +376,8 @@ class _mtriage(object):
     self.call(f=self._compute_f_maps, msg="Compute F_maps")
     # Compute d99
     self.call(f=self._compute_d99, msg="Compute d99")
-#    # Compute d_model at B=0
-#    self.call(f=self._compute_d_model_b0, msg="Compute d_model_b0")
+    # Strategy adjustments based on d99
+    self.call(f=self._adjust, msg="Adjustments based on d99")
     # Compute half-map FSC
     self.call(f=self._compute_half_map_fsc, msg="Compute half-map FSC")
     # Compute Fcalc
@@ -391,6 +393,15 @@ class _mtriage(object):
     # Compute d_model
     self.call(f=self._compute_d_model, msg="Compute d_model")
     return self
+
+  def _adjust(self):
+    if(self.d99>10.): # Atomic model isn't suitable?
+      self.params.compute.fsc_curve_model = False
+      self.params.compute.d_fsc_model_05  = False
+      self.params.compute.d_fsc_model_0   = False
+      self.params.compute.d_fsc_model_0143= False
+      self.params.compute.d_model         = False
+      self.params.compute.d_model_b0      = False
 
   def _shift_origin(self):
     sites_cart = None

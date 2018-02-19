@@ -220,24 +220,46 @@ Feedback:
   fs = "%8.2f"
   rm = results.masked
   ru = results.unmasked
-  print >> log, "Map resolution estimates:              masked unmasked"
-  print >> log, "  using map alone (d99)            :", fv(fs,rm.d99)          , fv(fs,ru.d99)
-  print >> log, "  using map alone (d9999)          :", fv(fs,rm.d9999)        , fv(fs,ru.d9999)
-  print >> log, "  comparing with model (d_model)   :", fv(fs,rm.d_model)      , fv(fs,ru.d_model)
-  print >> log, "    b_iso_overall                  :", fv(fs,rm.b_iso_overall), fv(fs,ru.b_iso_overall)
-  print >> log, "  comparing with model (d_model_b0):", fv(fs,rm.d_model_b0)   , fv(fs,ru.d_model_b0)
-  print >> log, "    b_iso_overall=0"
-  print >> log, "  d_fsc_model:"
-  print >> log, "    FSC(map,model map)=0           :", fv(fs,rm.d_fsc_model_0)   , fv(fs,ru.d_fsc_model_0)
-  print >> log, "    FSC(map,model map)=0.143       :", fv(fs,rm.d_fsc_model_0143), fv(fs,ru.d_fsc_model_0143)
-  print >> log, "    FSC(map,model map)=0.5         :", fv(fs,rm.d_fsc_model_05)  , fv(fs,ru.d_fsc_model_05)
-  print >> log, "  d99 (half map 1)                 :", fv(fs,rm.d99_1)           , fv(fs,ru.d99_1)
-  print >> log, "  d99 (half map 2)                 :", fv(fs,rm.d99_2)           , fv(fs,ru.d99_2)
-  print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", fv(fs,rm.d_fsc)           , fv(fs,ru.d_fsc)
-  print >> log
-  #
-  print >> log, "Radius used for mask smoothing:", format_value("%6.2f", results.masked.radius_smooth)
-  print >> log
+  if([rm,ru].count(None)==0):
+    print >> log, "Map resolution estimates:              masked unmasked"
+    print >> log, "  using map alone (d99)            :", fv(fs,rm.d99)          , fv(fs,ru.d99)
+    print >> log, "  using map alone (d9999)          :", fv(fs,rm.d9999)        , fv(fs,ru.d9999)
+    print >> log, "  comparing with model (d_model)   :", fv(fs,rm.d_model)      , fv(fs,ru.d_model)
+    print >> log, "    b_iso_overall                  :", fv(fs,rm.b_iso_overall), fv(fs,ru.b_iso_overall)
+    print >> log, "  comparing with model (d_model_b0):", fv(fs,rm.d_model_b0)   , fv(fs,ru.d_model_b0)
+    print >> log, "    b_iso_overall=0"
+    print >> log, "  d_fsc_model:"
+    print >> log, "    FSC(map,model map)=0           :", fv(fs,rm.d_fsc_model_0)   , fv(fs,ru.d_fsc_model_0)
+    print >> log, "    FSC(map,model map)=0.143       :", fv(fs,rm.d_fsc_model_0143), fv(fs,ru.d_fsc_model_0143)
+    print >> log, "    FSC(map,model map)=0.5         :", fv(fs,rm.d_fsc_model_05)  , fv(fs,ru.d_fsc_model_05)
+    print >> log, "  d99 (half map 1)                 :", fv(fs,rm.d99_1)           , fv(fs,ru.d99_1)
+    print >> log, "  d99 (half map 2)                 :", fv(fs,rm.d99_2)           , fv(fs,ru.d99_2)
+    print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", fv(fs,rm.d_fsc)           , fv(fs,ru.d_fsc)
+    print >> log
+    #
+    print >> log, "Radius used for mask smoothing:", format_value("%6.2f", results.masked.radius_smooth)
+    print >> log
+  else:
+    r = rm
+    if(r is None): r=ru
+    print >> log, "Map resolution estimates:              masked unmasked"
+    print >> log, "  using map alone (d99)            :", fv(fs,r.d99)
+    print >> log, "  using map alone (d9999)          :", fv(fs,r.d9999)
+    print >> log, "  comparing with model (d_model)   :", fv(fs,r.d_model)
+    print >> log, "    b_iso_overall                  :", fv(fs,r.b_iso_overall)
+    print >> log, "  comparing with model (d_model_b0):", fv(fs,r.d_model_b0)
+    print >> log, "    b_iso_overall=0"
+    print >> log, "  d_fsc_model:"
+    print >> log, "    FSC(map,model map)=0           :", fv(fs,r.d_fsc_model_0)
+    print >> log, "    FSC(map,model map)=0.143       :", fv(fs,r.d_fsc_model_0143)
+    print >> log, "    FSC(map,model map)=0.5         :", fv(fs,r.d_fsc_model_05)
+    print >> log, "  d99 (half map 1)                 :", fv(fs,r.d99_1)
+    print >> log, "  d99 (half map 2)                 :", fv(fs,r.d99_2)
+    print >> log, "  FSC(half map 1,2)=0.143 (d_fsc)  :", fv(fs,r.d_fsc)
+    print >> log
+    #
+    print >> log, "Radius used for mask smoothing:", format_value("%s", str(r.radius_smooth))
+    print >> log
   #
   for r in [(results.masked, "masked"),(results.unmasked, "unmasked")]:
     if(r[0] is None): continue
