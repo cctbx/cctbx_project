@@ -1518,6 +1518,7 @@ class DataList(object):
     return self.num_images
 
   def __getitem__(self, index):
+    from scitbx.array_family import flex
     d = self.lookup[index]
     i = index - self.offset[d]
     N, height, width = self.datasets[d].shape
