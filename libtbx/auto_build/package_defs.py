@@ -157,11 +157,17 @@ subversion_repositories = {
 # command line parameters
 git_repositories = {
   # lz4 and bitshuffle compressions for HDF5
-  "hdf5_lz4": ['git@github.com:dectris/HDF5Plugin.git',
-               'https://github.com/dectris/HDF5Plugin.git',
+  # The git repositories are disabled for both on purpose.
+  # Reason: Repositories are deprecated and unlikely to change ever again.
+  #         We currently patch the local copies of the repositories, which means
+  #         that if they are cloned git repositories you cannot run bootstrap on
+  #         them again without bootstrap detecting uncommitted changes and
+  #         stopping with an error message.
+  "hdf5_lz4": [#'git@github.com:dectris/HDF5Plugin.git',
+               #'https://github.com/dectris/HDF5Plugin.git',
                'https://github.com/dectris/HDF5Plugin/archive/master.zip'],
-  "bitshuffle": ['git@github.com:kiyo-masui/bitshuffle.git',
-                 'https://github.com/kiyo-masui/bitshuffle.git',
+  "bitshuffle": [#'git@github.com:kiyo-masui/bitshuffle.git',
+                 #'https://github.com/kiyo-masui/bitshuffle.git',
                  'https://github.com/kiyo-masui/bitshuffle/archive/master.zip'],
 }
 
