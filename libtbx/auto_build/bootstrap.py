@@ -1697,6 +1697,61 @@ class MOLPROBITYBuilder(Builder):
   def rebuild_docs(self):
     pass
 
+class PhaserBuilder(CCIBuilder):
+  BASE_PACKAGES = 'cctbx'
+    # Checkout these codebases
+  CODEBASES = [
+    'boost',
+    'cctbx_project',
+    'ccp4io_adaptbx',
+    'annlib_adaptbx',
+    'tntbx',
+    'clipper',
+    'phaser_regression',
+    'phaser',
+  ]
+  # Configure for these cctbx packages
+  LIBTBX = [
+    'cctbx',
+    'scitbx',
+    'libtbx',
+    'iotbx',
+    'mmtbx',
+    'smtbx',
+    'phaser_regression',
+    'phaser',
+  ]
+
+  def add_tests(self):
+    self.add_test_command('libtbx.import_all_python', workdir=['modules', 'cctbx_project'])
+    self.add_test_command('cctbx_regression.test_nightly')
+
+  def add_base(self, extra_opts=[]):
+    # skip unnecessary base packages when building phaser only
+    if self.skip_base is None or len(self.skip_base) == 0:
+      self.skip_base = "hdf5,lz4_plugin,wxpython,docutils,pyopengl,pillow,tiff," + \
+        "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib,"
+    else:
+      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin',
+         'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts', 'matplotlib',
+         'fontconfig','render','pixman','png','sphinx','freetype','gtk'])
+    super(PhaserBuilder, self).add_base(
+      extra_opts=['--cctbx',
+                 ] + extra_opts)
+
+  def add_dispatchers(self):
+    pass
+
+  def rebuild_docs(self):
+    pass
+
+  def get_libtbx_configure(self):
+    configlst = super(PhaserBuilder, self).get_libtbx_configure()
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
+    return configlst
+
+
 class CCTBXLiteBuilder(CCIBuilder):
   BASE_PACKAGES = 'cctbx'
     # Checkout these codebases
@@ -2263,6 +2318,7 @@ def run(root=None):
     'external': PhenixExternalRegression,
     'molprobity':MOLPROBITYBuilder,
     'qrefine': QRBuilder,
+    'phaser': PhaserBuilder,
   }
 
   parser = optparse.OptionParser(usage=usage)
