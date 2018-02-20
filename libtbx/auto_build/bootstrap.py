@@ -1865,7 +1865,7 @@ class XFELBuilder(CCIBuilder):
 
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
-      extra_opts=['--labelit', '--mpi-build'] + extra_opts)
+      extra_opts=['--labelit'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
