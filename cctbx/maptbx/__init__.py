@@ -119,6 +119,14 @@ class d99(object):
     for d_min, cc in zip(self.result.d_mins, self.result.ccs):
       print >> log, fmt%(d_min, cc)
 
+def assert_same_gridding(map_1, map_2,
+                         Sorry_message="Maps have different gridding."):
+  f1 = map_1.focus()==map_2.focus()
+  f2 = map_1.origin()==map_2.origin()
+  f3 = map_1.all()==map_2.all()
+  if([f1,f2,f3].count(True)!=3):
+    raise Sorry(Sorry_message)
+
 def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and

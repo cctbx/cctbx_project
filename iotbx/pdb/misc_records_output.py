@@ -19,7 +19,6 @@ def link_record_output(all_chain_proxies):
               )
         #
         if str(sym_op)!="x,y,z":
-          print 'none identity %s sym. op. not written' % key
           continue
         outl += "SSBOND %3s %s   %s" % (
           ssi+1,
@@ -42,7 +41,6 @@ def link_record_output(all_chain_proxies):
             atom.parent().parent().icode,
             )
         if str(sym_op)!="x,y,z":
-          print 'none identity %s sym. op. not written' % key
           continue
         outl += "LINK%s%s%s%s" % (
           ' '*8,

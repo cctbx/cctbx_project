@@ -5,16 +5,14 @@ from cctbx import maptbx
 import iotbx.phil
 from libtbx import adopt_init_args
 from cctbx.maptbx import resolution_from_map_and_model
-import mmtbx.utils
 from libtbx import group_args
 from cctbx import miller, adptbx
-from mmtbx.maps import correlation
 from mmtbx import masks
 from scitbx.array_family import flex
 import time
-from libtbx.utils import Sorry
 from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
+from iotbx import map_and_model
 
 def show_process_info(out):
   print >> out, "\\/"*39
@@ -72,6 +70,9 @@ master_params_str = """
     .type = bool
   include_mask = True
     .type = bool
+  use_box = True
+    .type = bool
+    .help = Extract box from map and model and use it for calculations
 """
 
 def get_atom_radius(xray_structure=None, resolution=None, radius=None):
@@ -91,139 +92,6 @@ def get_atom_radius(xray_structure=None, resolution=None, radius=None):
 def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
-def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
-  h0, h1, h2 = None, None, None
-  data_min = None
-  hmhcc = None
-  if(data_1 is None):
-    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
-  else:
-    data_min = min(flex.min(data_1), flex.min(data_2))
-    data_max = max(flex.max(data_1), flex.max(data_2))
-    h0 = flex.histogram(data = data.as_1d(), n_slots = n_slots)
-    h1 = flex.histogram(data = data_1.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
-    h2 = flex.histogram(data = data_2.as_1d(), data_min=data_min,
-      data_max=data_max, n_slots = n_slots)
-    hmhcc = flex.linear_correlation(
-      x=h1.slots().as_double(),
-      y=h2.slots().as_double()).coefficient()
-  return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
-    _data_min = data_min, half_map_histogram_cc = hmhcc)
-
-def get_map_counts(map_data, crystal_symmetry):
-  a = map_data.accessor()
-  map_counts = group_args(
-    origin       = a.origin(),
-    last         = a.last(),
-    focus        = a.focus(),
-    all          = a.all(),
-    min_max_mean = map_data.as_1d().min_max_mean().as_tuple(),
-    d_min_corner = maptbx.d_min_corner(map_data=map_data,
-      unit_cell = crystal_symmetry.unit_cell()))
-  return map_counts
-
-class base(object):
-  def __init__(self,
-               map_data,
-               crystal_symmetry,
-               half_map_data_1=None,
-               half_map_data_2=None,
-               pdb_hierarchy=None):
-    self._map_data         = map_data
-    self._crystal_symmetry = crystal_symmetry
-    self._half_map_data_1  = half_map_data_1
-    self._half_map_data_2  = half_map_data_2
-    self._pdb_hierarchy    = pdb_hierarchy
-    self._xray_structure = None
-    #
-    self._validate()
-    self._counts = get_map_counts(
-      map_data = self._map_data, crystal_symmetry = self._crystal_symmetry)
-    self._map_histograms = get_map_histograms(
-      data    = self._map_data,
-      n_slots = 20,
-      data_1  = self._half_map_data_1,
-      data_2  = self._half_map_data_2)
-    # Shift origin if needed
-    sites_cart = None
-    if(pdb_hierarchy is not None):
-      sites_cart = self._pdb_hierarchy.atoms().extract_xyz()
-    soin = maptbx.shift_origin_if_needed(
-      map_data         = self._map_data,
-      sites_cart       = sites_cart,
-      crystal_symmetry = self._crystal_symmetry)
-    self._map_data = soin.map_data
-    if(pdb_hierarchy is not None):
-      self._pdb_hierarchy.atoms().set_xyz(soin.sites_cart)
-    if(self._half_map_data_1 is not None):
-      self._half_map_data_1 = maptbx.shift_origin_if_needed(
-        map_data         = self._half_map_data_1,
-        sites_cart       = None,
-        crystal_symmetry = None).map_data
-      self._half_map_data_2 = maptbx.shift_origin_if_needed(
-        map_data         = self._half_map_data_2,
-        sites_cart       = None,
-        crystal_symmetry = None).map_data
-    # Box
-    if(self._pdb_hierarchy is not None):
-      self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
-        crystal_symmetry = self._crystal_symmetry)
-      if(self._half_map_data_1 is not None):
-        self._half_map_data_1 = mmtbx.utils.extract_box_around_model_and_map(
-          xray_structure = self._xray_structure,
-          map_data       = self._half_map_data_1,
-          box_cushion    = 5.0).map_box
-        self._half_map_data_2 = mmtbx.utils.extract_box_around_model_and_map(
-          xray_structure = self._xray_structure,
-          map_data       = self._half_map_data_2,
-          box_cushion    = 5.0).map_box
-      box = mmtbx.utils.extract_box_around_model_and_map(
-        xray_structure = self._xray_structure,
-        map_data       = self._map_data,
-        box_cushion    = 5.0)
-      self._pdb_hierarchy.adopt_xray_structure(box.xray_structure_box)
-      self._map_data       = box.map_box
-      self._xray_structure = box.xray_structure_box
-      self._crystal_symmetry = self._xray_structure.crystal_symmetry()
-
-  def counts(self): return self._counts
-
-  def histograms(self): return self._map_histograms
-
-  def map_data(self): return self._map_data
-
-  def half_map_data_1(self): return self._half_map_data_1
-
-  def half_map_data_2(self): return self._half_map_data_2
-
-  def xray_structure(self): return self._xray_structure
-
-  def crystal_symmetry(self): return self._crystal_symmetry
-
-  def pdb_hierarchy(self): return self._pdb_hierarchy
-
-  def update_maps(self,map_data=None,half_map_data_1=None,half_map_data_2=None):
-    if(map_data is not None): self._map_data = map_data
-    if(half_map_data_1 is not None): self._half_map_data_1 = half_map_data_1
-    if(half_map_data_2 is not None): self._half_map_data_2 = half_map_data_2
-
-  def _validate(self):
-    if(not [self._half_map_data_1, self._half_map_data_2].count(None) in [0,2]):
-      raise Sorry("None or two half-maps are required.")
-    if(self._half_map_data_1 is not None):
-      correlation.assert_same_gridding(
-        map_1 = self._half_map_data_1,
-        map_2 = self._half_map_data_2,
-        Sorry_message="Half-maps have different gridding.")
-      correlation.assert_same_gridding(
-        map_1 = self._map_data,
-        map_2 = self._half_map_data_2,
-        Sorry_message="Half-maps and full map have different gridding.")
-    if(self._crystal_symmetry.space_group().type().number()!=1):
-      raise Sorry("Symmetry must be P1")
-    return self
-
 class caller(object):
   def __init__(self, show=False):
     self.time_cumulative = 0
@@ -242,40 +110,24 @@ class caller(object):
 
 class mtriage(object):
   def __init__(self,
-               map_data,
-               crystal_symmetry,
-               params          = None,
-               half_map_data_1 = None,
-               half_map_data_2 = None,
-               pdb_hierarchy   = None):
-    #adopt_init_args(self, locals())
-    self.crystal_symmetry = crystal_symmetry
+               map_inp,
+               map_inp_1 = None,
+               map_inp_2 = None,
+               pdb_inp   = None,
+               params    = None):
     self.params           = params
-    self.map_data         = map_data.deep_copy()
-    self.half_map_data_1 = None
-    if(half_map_data_1 is not None):
-      self.half_map_data_1 = half_map_data_1.deep_copy()
-    self.half_map_data_2 = None
-    if(half_map_data_2 is not None):
-      self.half_map_data_2 = half_map_data_2.deep_copy()
-    self.pdb_hierarchy = None
-    if(pdb_hierarchy is not None):
-      self.pdb_hierarchy = pdb_hierarchy.deep_copy()
-    #
     self.results_masked   = None
     self.results_unmasked = None
     self.time_cumulative  = 0
     if(self.params is None):
       self.params = master_params().extract()
     self.caller = caller(show=self.params.show_time)
-
-  def _create_base(self):
-    return base(
-      map_data         = self.map_data,
-      crystal_symmetry = self.crystal_symmetry,
-      half_map_data_1  = self.half_map_data_1,
-      half_map_data_2  = self.half_map_data_2,
-      pdb_hierarchy    = self.pdb_hierarchy)
+    self.base = map_and_model.input(
+      map_inp   = map_inp,
+      map_inp_1 = map_inp_1,
+      map_inp_2 = map_inp_2,
+      pdb_inp   = pdb_inp,
+      box       = self.params.use_box)
 
   def call(self, func, prefix):
     t0 = time.time()
@@ -289,12 +141,12 @@ class mtriage(object):
       sys.stdout.flush()
     return result
 
-  def _run(self, base):
+  def _run(self):
     if(self.params.mask_maps is None):
       # No masking
       self.params.mask_maps = False
       self.results_unmasked = _mtriage(
-        base   = base,
+        base   = self.base,
         caller = self.caller,
         params = self.params,
       ).run().get_results(
@@ -305,7 +157,7 @@ class mtriage(object):
         self.params.radius_smooth = self.results_unmasked.d99
       self.params.mask_maps = True
       self.results_masked = _mtriage(
-        base   = base,
+        base   = self.base,
         caller = self.caller,
         params = self.params,
       ).run().get_results(
@@ -313,7 +165,7 @@ class mtriage(object):
         include_mask   = self.params.include_mask)
     else:
       result = _mtriage(
-        base   = base,
+        base   = self.base,
         caller = self.caller,
         params = self.params,
       ).run().get_results(
@@ -323,12 +175,11 @@ class mtriage(object):
       else:                      self.results_unmasked = result
 
   def get_results(self):
-    _base = self.call(func=self._create_base, prefix="Create base")
-    self._run(base = _base)
+    self._run()
     return group_args(
-      crystal_symmetry = _base.crystal_symmetry(),
-      counts           = _base.counts(),
-      histograms       = _base.histograms(),
+      crystal_symmetry = self.base.crystal_symmetry(),
+      counts           = self.base.counts(),
+      histograms       = self.base.histograms(),
       masked           = self.results_masked,
       unmasked         = self.results_unmasked)
 
@@ -403,33 +254,9 @@ class _mtriage(object):
       self.params.compute.d_model         = False
       self.params.compute.d_model_b0      = False
 
-  def _shift_origin(self):
-    sites_cart = None
-    if(self.xray_structure is not None):
-      sites_cart = self.xray_structure.sites_cart()
-    soin = maptbx.shift_origin_if_needed(
-      map_data         = self.map_data,
-      sites_cart       = sites_cart,
-      crystal_symmetry = self.crystal_symmetry)
-    self.map_data = soin.map_data
-    if(self.xray_structure is not None):
-      self.xray_structure.set_sites_cart(soin.sites_cart)
-      self.pdb_hierarchy.atoms().set_xyz(soin.sites_cart)
-    if(self.half_map_data_1 is not None):
-      soin = maptbx.shift_origin_if_needed(
-        map_data         = self.half_map_data_1,
-        sites_cart       = None,
-        crystal_symmetry = None)
-      self.half_map_data_1 = soin.map_data
-      soin = maptbx.shift_origin_if_needed(
-        map_data         = self.half_map_data_2,
-        sites_cart       = None,
-        crystal_symmetry = None)
-      self.half_map_data_2 = soin.map_data
-
   def _compute_radius(self):
     if(not self.params.mask_maps): return
-    if(self.base.pdb_hierarchy() is None): return
+    if(self.base.hierarchy() is None): return
     self.radius_smooth = get_atom_radius(
       xray_structure   = self.base.xray_structure(),
       radius           = self.radius_smooth,
@@ -437,7 +264,7 @@ class _mtriage(object):
 
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
-    if(self.base.pdb_hierarchy() is None): return
+    if(self.base.hierarchy() is None): return
     mask_smooth = masks.smooth_mask(
       xray_structure = self.base.xray_structure(),
       n_real         = self.base.map_data().all(),
@@ -486,7 +313,7 @@ class _mtriage(object):
 
   def _compute_d_model(self):
     if(not self.params.compute.d_model): return
-    if(self.base.pdb_hierarchy() is not None):
+    if(self.base.hierarchy() is not None):
       o = resolution_from_map_and_model.run(
         f_map            = self.f_map,
         d_fsc_model      = self.d_fsc_model_0,
@@ -503,7 +330,7 @@ class _mtriage(object):
 
   def _compute_fsc_curve_model(self):
     if(not self.params.compute.fsc_curve_model): return
-    if(self.base.pdb_hierarchy() is not None):
+    if(self.base.hierarchy() is not None):
       self.fsc_curve_model = self.f_calc.fsc(
         other=self.f_map, bin_width=100)
 

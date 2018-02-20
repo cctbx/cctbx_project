@@ -4,9 +4,7 @@ from __future__ import division
 import sys
 import iotbx.pdb
 from libtbx import group_args
-from libtbx.utils import Sorry
 import mmtbx.utils
-from cctbx import crystal
 import mmtbx.maps.mtriage
 from iotbx import ccp4_map
 from scitbx.array_family import flex
@@ -65,13 +63,6 @@ def broadcast(m, log):
   print >> log, m
   print >> log, "*"*len(m)
 
-def get_map(map_file):
-  ccp4_map = iotbx.ccp4_map.map_reader(file_name=map_file)
-  map_data = ccp4_map.data.as_double()
-  space_group_number = ccp4_map.space_group_number
-  cs = crystal.symmetry(ccp4_map.unit_cell().parameters(), space_group_number)
-  return map_data, cs
-
 def get_inputs(args, log, master_params):
   """
   Eventually, this will be centralized.
@@ -80,42 +71,27 @@ def get_inputs(args, log, master_params):
     args          = args,
     master_params = master_params)
   e = inputs.params.extract()
-  #
-  map_data=None
-  crystal_symmetry=None
-  half_map_data_1=None
-  half_map_data_2=None
-  pdb_hierarchy=None
-  css = []
   # Model
+  pdb_inp = None
   if(e.model_file_name is not None):
-    pdb_hierarchy = iotbx.pdb.input(
-      file_name = e.model_file_name).construct_hierarchy()
+    pdb_inp = iotbx.pdb.input(file_name = e.model_file_name)
   # Map
+  map_inp = None
   if(e.map_file_name is not None):
-    map_data, cs = get_map(map_file=e.map_file_name)
-    css.append(cs)
+    map_inp = iotbx.ccp4_map.map_reader(file_name=e.map_file_name)
   # Half-maps
-  assert [e.half_map_file_name_1, e.half_map_file_name_2].count(None) in [0,2]
+  map_inp_1 = None
   if(e.half_map_file_name_1 is not None):
-    half_map_data_1, cs = get_map(map_file=e.half_map_file_name_1)
-    css.append(cs)
+    map_inp_1 = iotbx.ccp4_map.map_reader(file_name=e.half_map_file_name_1)
+  map_inp_2 = None
   if(e.half_map_file_name_2 is not None):
-    half_map_data_2, cs = get_map(map_file=e.half_map_file_name_2)
-    css.append(cs)
-  # Crystal symmetry
-  if(len(css)>0):
-    crystal_symmetry = css[0]
-  if(len(css)>1):
-    for cs in css[1:]:
-      assert crystal_symmetry.is_similar_symmetry(cs)
+    map_inp_2 = iotbx.ccp4_map.map_reader(file_name=e.half_map_file_name_2)
   return group_args(
-    params           = inputs.params.extract(),
-    pdb_hierarchy    = pdb_hierarchy,
-    map_data         = map_data,
-    half_map_data_1  = half_map_data_1,
-    half_map_data_2  = half_map_data_2,
-    crystal_symmetry = crystal_symmetry)
+    map_inp   = map_inp,
+    map_inp_1 = map_inp_1,
+    map_inp_2 = map_inp_2,
+    pdb_inp   = pdb_inp,
+    params    = inputs.params.extract())
 
 def show_histogram(map_histograms, log):
   if(map_histograms.h_half_map_1 is None):
@@ -173,29 +149,13 @@ Feedback:
     args          = args,
     log           = log,
     master_params = master_params)
-  # Map
-  map_data = inputs.map_data
-  if(map_data is None):
-    raise Sorry("Map is not defined.")
-  # Model
-  broadcast(m="Input model:", log=log)
-  if(inputs.pdb_hierarchy is None):
-    print >> log, "No model specified."
-  else:
-    inputs.pdb_hierarchy.show(level_id="chain")
-  # Crystal symmetry
-  broadcast(m="Box (unit cell) info:", log=log)
-  if(inputs.crystal_symmetry is None):
-    raise Sorry("Box (unit cell) parameters are not defined.")
-  inputs.crystal_symmetry.show_summary(f=log)
   #
   task_obj = mmtbx.maps.mtriage.mtriage(
-    map_data         = inputs.map_data,
-    crystal_symmetry = inputs.crystal_symmetry,
-    params           = inputs.params,
-    half_map_data_1  = inputs.half_map_data_1,
-    half_map_data_2  = inputs.half_map_data_2,
-    pdb_hierarchy    = inputs.pdb_hierarchy)
+    map_inp   = inputs.map_inp,
+    map_inp_1 = inputs.map_inp_1,
+    map_inp_2 = inputs.map_inp_2,
+    pdb_inp   = inputs.pdb_inp,
+    params    = inputs.params)
   results = task_obj.get_results()
   #
   # Map statistics
@@ -210,7 +170,7 @@ Feedback:
   print >> log, "  d_min_corner:", "%7.3f"%results.counts.d_min_corner
   #
   print >> log, "Half-maps:"
-  if(inputs.half_map_data_1 is None):
+  if(inputs.map_inp_1 is None):
     print >> log, "  Half-maps are not provided."
   #
   print >> log, "Histogram(s) of map values (masked):"

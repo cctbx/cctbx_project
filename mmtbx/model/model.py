@@ -572,6 +572,11 @@ class manager(object):
       self.set_sites_cart_from_xrs()
     self._update_has_hd()
     self._update_pdb_atoms()
+    self.set_crystal_symmetry(cs = xray_structure.crystal_symmetry())
+    if(not self._xray_structure.crystal_symmetry().is_similar_symmetry(
+       xray_structure.crystal_symmetry())):
+      self.unset_restraints_manager()
+    # XXX what else needs to be done here?
 
   def _create_xray_structure(self):
     if self._xray_structure is not None:

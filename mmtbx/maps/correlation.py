@@ -9,7 +9,6 @@ import sys
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
 from libtbx import group_args
-from libtbx.utils import Sorry
 
 def get_selection_above_cutoff(m, n):
   return m>=m.as_1d().select(flex.sort_permutation(m.as_1d(), reverse=True))[n]
@@ -224,13 +223,9 @@ class fsc_model_vs_map(object):
       if(allcaps): l = l.upper()
       print >> log, l
 
-def assert_same_gridding(map_1, map_2,
-                         Sorry_message="Maps have different gridding."):
-  f1 = map_1.focus()==map_2.focus()
-  f2 = map_1.origin()==map_2.origin()
-  f3 = map_1.all()==map_2.all()
-  if([f1,f2,f3].count(True)!=3):
-    raise Sorry(Sorry_message)
+def assert_same_gridding(map_1, map_2):
+  # XXX remove it!
+  maptbx.assert_same_gridding(map_1, map_2)
 
 def from_map_map(map_1, map_2):
   assert_same_gridding(map_1, map_2)

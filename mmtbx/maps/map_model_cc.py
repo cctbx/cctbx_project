@@ -9,6 +9,7 @@ import iotbx.phil
 from libtbx import adopt_init_args
 from mmtbx.maps import mtriage
 
+
 master_params_str = """
 map_model_cc {
   resolution = None
@@ -58,7 +59,6 @@ class map_model_cc(object):
   def __init__(self, map_data, pdb_hierarchy, crystal_symmetry, params):
     adopt_init_args(self, locals())
     self.five_cc_result = None
-    self.fsc = None
     self.cc_per_chain = []
     self.cc_per_residue = []
 
@@ -93,28 +93,6 @@ class map_model_cc(object):
       xray_structure = xrs,
       resolution     = self.params.resolution,
       radius         = self.params.atom_radius)
-    # Model-map FSC
-    if(self.params.compute.fsc):
-      mtriage_params = mtriage.master_params().extract()
-      mtriage_params.scattering_table = self.params.scattering_table
-      mtriage_params.compute.map_counts = False
-      mtriage_params.compute.fsc_curve_model = True
-      mtriage_params.compute.d_fsc_model_05 = False
-      mtriage_params.compute.d_fsc_model_0 = False
-      mtriage_params.compute.d_fsc_model_0143 = False
-      mtriage_params.compute.d_model = False
-      mtriage_params.compute.d_model_b0 = False
-      mtriage_params.compute.d99 = False
-      mtriage_params.mask_maps = True
-      mtriage_params.radius_smooth = self.atom_radius
-      mtriage_params.resolution = self.params.resolution
-      self.fsc = mtriage.mtriage(
-        map_data         = self.map_data,
-        pdb_hierarchy    = self.pdb_hierarchy,
-        crystal_symmetry = self.crystal_symmetry,
-        params           = mtriage_params).get_results(
-          include_curves = True,
-          include_mask   = False).masked.fsc_curve_model
     #
     cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
       xray_structure = xrs,
@@ -166,8 +144,7 @@ class map_model_cc(object):
       map_calc       = self.five_cc.result.map_calc,
       cc_per_chain   = self.cc_per_chain,
       cc_per_residue = self.cc_per_residue,
-      atom_radius    = self.atom_radius,
-      fsc            = self.fsc)
+      atom_radius    = self.atom_radius)
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

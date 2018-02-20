@@ -10,6 +10,7 @@ from libtbx.utils import Sorry
 import mmtbx.utils
 import mmtbx.maps.map_model_cc
 from libtbx.str_utils import format_value
+from mmtbx.maps import mtriage
 
 master_params_str = """\
   map_file_name = None
@@ -55,8 +56,9 @@ def get_inputs(args,
     if(len(file_names) != 1):
       raise Sorry("One model (PDB or mmCIF) required.")
     pdb_file_name = file_names[0]
-    pdb_hierarchy = iotbx.pdb.input(
-      file_name = pdb_file_name).construct_hierarchy()
+    pdb_inp = iotbx.pdb.input(
+      file_name = pdb_file_name)
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
   # Map
   ccp4_map_object = None
   if(need_map):
@@ -73,9 +75,32 @@ def get_inputs(args,
   return group_args(
     params           = inputs.params.extract(),
     pdb_file_name    = pdb_file_name,
+    pdb_inp          = pdb_inp,
     pdb_hierarchy    = pdb_hierarchy,
     ccp4_map_object  = ccp4_map_object,
     crystal_symmetry = crystal_symmetry)
+
+def get_fsc(map_inp, pdb_inp, params):
+  result = None
+  if(params.compute.fsc):
+    mtriage_params = mtriage.master_params().extract()
+    mtriage_params.scattering_table = params.scattering_table
+    mtriage_params.compute.map_counts = False
+    mtriage_params.compute.fsc_curve_model = True
+    mtriage_params.compute.d_fsc_model_05 = False
+    mtriage_params.compute.d_fsc_model_0 = False
+    mtriage_params.compute.d_fsc_model_0143 = False
+    mtriage_params.compute.d_model = False
+    mtriage_params.compute.d_model_b0 = False
+    mtriage_params.compute.d99 = False
+    mtriage_params.mask_maps = True
+    #mtriage_params.radius_smooth = self.atom_radius
+    mtriage_params.resolution = params.resolution
+    result = mtriage.mtriage(
+      map_inp = map_inp,
+      pdb_inp = pdb_inp,
+      params  = mtriage_params).get_results().masked.fsc_curve_model
+  return result
 
 def run(args, log=sys.stdout):
   """phenix.map_model_cc or phenix.model_map_cc:
@@ -117,13 +142,18 @@ Feedback:
   task_obj.validate()
   task_obj.run()
   results = task_obj.get_results()
+  #results.fsc=None
+  results.fsc = get_fsc(
+    map_inp = inputs.ccp4_map_object,
+    pdb_inp = inputs.pdb_inp,
+    params  = inputs.params.map_model_cc)
   if inputs.params.pkl_file_name is not None:
     easy_pickle.dump(file_name=inputs.params.pkl_file_name, obj=group_args(
       cc_mask        = results.cc_mask,
       cc_volume      = results.cc_volume,
       cc_peaks       = results.cc_peaks,
       cc_per_chain   = results.cc_per_chain,
-      # cc_per_residue = results.cc_per_residue, # not pickleable because of residue in it and big size
+      # cc_per_residue = results.cc_per_residue,
       fsc            = results.fsc,
       ))
   #
@@ -166,7 +196,8 @@ Feedback:
     print >> log, "  saved to:", fn
     fmt = "%s %s %s %7.4f %8.3f %4.2f"
     for r in results.cc_per_residue:
-      print >> out, fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean, r.occ_mean)
+      print >> out, fmt%(r.chain_id, r.resname, r.resseq, r.cc, r.b_iso_mean,
+        r.occ_mean)
     out.close()
     #
   return None
