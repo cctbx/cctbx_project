@@ -2957,7 +2957,7 @@ if(! debug_printed_thread) {
 
                                     /* convert amplitudes into intensity (photons per steradian) */
                                     I += F_cell*F_cell*F_latt*F_latt;
-                                    
+
                                     /* only do this if we need to */
                                     if(oversample_thick) I *= capture_fraction;
                                     if(oversample_polar) I *= polar;

@@ -3262,6 +3262,8 @@ nanoBragg::extract_background(int source)
     }
 
     if(verbose) printf("done with radial median filter\n");
+
+    /* now we need to copy back into pythony array */
 }
 // end of extract_background()
 
