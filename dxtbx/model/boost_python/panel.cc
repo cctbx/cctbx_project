@@ -293,7 +293,7 @@ namespace dxtbx { namespace model { namespace boost_python {
         }
       } else if (name == "OffsetPxMmStrategy") {
         shared_ptr<PxMmStrategy> strategy(
-            new OffsetParallaxCorrectedPxMmStrategy(
+            new OffsetPxMmStrategy(
               dx,
               dy));
         result->set_px_mm_strategy(strategy);
