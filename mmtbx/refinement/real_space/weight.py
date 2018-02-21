@@ -48,8 +48,16 @@ of individual sites.
     # randomly pick chunks
     random_chunks = []
     if(len(result)>0):
-      for i in xrange(n_ranges):
-        random_chunks.append(random.choice(xrange(len(result))))
+      if len(result) <= n_ranges:
+        # just try them all, no need to randomize
+        random_chunks = range(len(result))
+      else:
+        while len(random_chunks) <= n_ranges:
+          # Put only unique choices until got enough lenght.
+          # Could be slightly slow when len(random_chunks) slightly > n_ranges
+          rc = random.choice(xrange(len(result)))
+          if rc not in random_chunks:
+            random_chunks.append(rc)
     self.msg_strings.append("random chunks:"%random_chunks)
     # setup refinery
     xrs_dc = xray_structure.deep_copy_scatterers()
