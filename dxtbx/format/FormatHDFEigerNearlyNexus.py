@@ -156,7 +156,7 @@ class EigerNXmxFixer(object):
       handle['/entry/instrument/detector/x_pixel_size'].value)
     group['fast_pixel_direction'].attrs['transformation_type'] = 'translation'
     group['fast_pixel_direction'].attrs['vector'] = fast_axis
-    group['fast_pixel_direction'].attrs['offset'] = 0
+    group['fast_pixel_direction'].attrs['offset'] = (0, 0, 0)
     group['fast_pixel_direction'].attrs['units'] = "m"
     group['fast_pixel_direction'].attrs['depends_on'] = '/entry/instrument/detector/transformations/translation'
 
@@ -168,7 +168,7 @@ class EigerNXmxFixer(object):
       handle['/entry/instrument/detector/y_pixel_size'].value)
     group['slow_pixel_direction'].attrs['transformation_type'] = 'translation'
     group['slow_pixel_direction'].attrs['vector'] = slow_axis
-    group['slow_pixel_direction'].attrs['offset'] = 0
+    group['slow_pixel_direction'].attrs['offset'] = (0, 0, 0)
     group['slow_pixel_direction'].attrs['units'] = "m"
     group['slow_pixel_direction'].attrs['depends_on'] = '/entry/instrument/detector/transformations/translation'
 
@@ -181,7 +181,7 @@ class EigerNXmxFixer(object):
       0)
     group['module_offset'].attrs['transformation_type'] = 'translation'
     group['module_offset'].attrs['vector'] = (0, 0, 0)
-    group['module_offset'].attrs['offset'] = 0
+    group['module_offset'].attrs['offset'] = (0, 0, 0)
     group['module_offset'].attrs['units'] = "m"
     group['module_offset'].attrs['depends_on'] = '/entry/instrument/detector/transformations/translation'
 
