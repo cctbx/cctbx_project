@@ -444,10 +444,6 @@ class NXdetector(object):
 
     # The items to validate
     items = {
-      "depends_on" : {
-        "minOccurs" : 1,
-        "checks" : []
-      },
       "data" : {
         "minOccurs" : 0,
         "checks" : [
@@ -965,7 +961,11 @@ def get_change_of_basis(transformation):
 
   if 'offset' in transformation.attrs:
     offset = n2i_cob * col(transformation.attrs['offset'])
-    offset = convert_units(offset, transformation.attrs['offset_units'], 'mm')
+    if 'offset_units' in transformation.attrs:
+      offset_units = transformation.attrs['offset_units']
+    else:
+      offset_units = units
+    offset = convert_units(offset, offset_units, 'mm')
   else:
     offset = col((0,0,0))
 
@@ -1124,28 +1124,32 @@ class DetectorFactoryFromGroup(object):
       n_modules = len(modules)
       # depends_on field for a detector will have NxM entries in it, where
       # N = number of images and M = number of detector modules
-      assert len(nx_detector.handle['depends_on']) % n_modules == 0, "Couldn't find NXdetector_modules matching the list of dependencies for this detector"
 
       for module_number, nx_detector_module in enumerate(modules):
         # Get the depends_on starting point for this module and for this image
-        depends_on = nx_detector.handle[nx_detector.handle['depends_on'][(idx//n_modules)+module_number]]
         panel_name = str(os.path.basename(nx_detector_module.handle.name))
         px_fast = int(nx_detector_module.handle['data_size'][0])
         px_slow = int(nx_detector_module.handle['data_size'][1])
         image_size = px_fast, px_slow
-        fast_pixel_size = nx_detector_module.handle['fast_pixel_size'][()]
-        slow_pixel_size = nx_detector_module.handle['slow_pixel_size'][()]
-        pixel_size = fast_pixel_size, slow_pixel_size
-        # XXX no units for pixel size in nx example file, plus fast_pixel_size isn't a standardized NXdetector_module field
-        #fast_pixel_direction_units = fast_pixel_direction.attrs['units']
-        #fast_pixel_size = convert_units(
-        #  fast_pixel_direction_value,
-        #  fast_pixel_direction_units,
-        #  "mm")
+
         # Get the trusted range of pixel values
         underload = float(nx_detector['undefined_value'][()])  if 'undefined_value'  in nx_detector.handle else -400
         overload  = float(nx_detector['saturation_value'][()]) if 'saturation_value' in nx_detector.handle else 90000
         trusted_range = underload, overload
+
+        fast_pixel_direction_handle = nx_detector_module.handle['fast_pixel_direction']
+        slow_pixel_direction_handle = nx_detector_module.handle['slow_pixel_direction']
+        assert fast_pixel_direction_handle.attrs['depends_on'] == slow_pixel_direction_handle.attrs['depends_on']
+        depends_on = fast_pixel_direction_handle
+        fast_pixel_direction_value = convert_units(
+          fast_pixel_direction_handle[0],
+          fast_pixel_direction_handle.attrs['units'],
+          "mm")
+        slow_pixel_direction_value = convert_units(
+          slow_pixel_direction_handle[0],
+          slow_pixel_direction_handle.attrs['units'],
+          "mm")
+        pixel_size = float(fast_pixel_direction_value), float(slow_pixel_direction_value)
 
         # Set up the hierarchical detector by iteraing through the dependencies,
         # starting at the root
@@ -1173,9 +1177,9 @@ class DetectorFactoryFromGroup(object):
 
         # pg is now this panel's parent
         p = pg.add_panel()
-        fast = depends_on.attrs['vector']
+        fast = fast_pixel_direction_handle.attrs['vector']
         fast = matrix.col([-fast[0], fast[1], -fast[2]])
-        slow = nx_detector_module.handle[depends_on.attrs['depends_on']].attrs['vector']
+        slow = slow_pixel_direction_handle.attrs['vector']
         slow = matrix.col([-slow[0], slow[1], -slow[2]])
         parent, cob = get_cummulative_change_of_basis(depends_on)
         origin = matrix.col((cob * matrix.col((0,0,0,1)))[0:3])
