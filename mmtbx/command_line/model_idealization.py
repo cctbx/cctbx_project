@@ -251,7 +251,7 @@ class model_idealization():
       self.model.set_sites_cart(sites_cart=box.sites_cart)
       self.original_boxed_hierarchy = self.model.get_hierarchy().deep_copy()
       self.cs = box.crystal_symmetry()
-      self.model.set_crystal_symmetry(self.cs)
+      self.model.set_crystal_symmetry(self.cs, force=True)
       self.shift_vector = box.shift_vector
 
     if self.shift_vector is not None and self.params.debug:
@@ -975,7 +975,7 @@ def run(args):
       else:
         raise e
   # not sure this is right cs to set here...
-  model.set_crystal_symmetry(crystal_symmetry)
+  model.set_crystal_symmetry(crystal_symmetry, force=True)
   mi_object = model_idealization(
       model = model,
       map_data = map_data,

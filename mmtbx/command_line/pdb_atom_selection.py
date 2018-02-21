@@ -3,6 +3,7 @@ from __future__ import division
 
 import argparse
 from cctbx.array_family import flex
+from cctbx import uctbx
 from libtbx.utils import plural_s
 from libtbx.str_utils import show_string
 import libtbx.load_env
@@ -55,11 +56,11 @@ def run(args, command_name=libtbx.env.dispatcher_name):
     print "Writing file:", show_string(co.write_pdb_file)
     selected_model = model.select(all_bsel)
     if (co.cryst1_replacement_buffer_layer is not None):
-      import cctbx.crystal
-      crystal_symmetry = cctbx.crystal.non_crystallographic_symmetry(
+      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
         sites_cart=selected_model.get_atoms().extract_xyz(),
         buffer_layer=co.cryst1_replacement_buffer_layer)
-      selected_model.set_crystal_symmetry(crystal_symmetry)
+      selected_model.set_crystal_symmetry(box.crystal_symmetry(), force=True)
+      selected_model.set_sites_cart(sites_cart=box.sites_cart)
     pdb_str = selected_model.model_as_pdb()
     f = open(co.write_pdb_file, 'w')
     f.write(pdb_str)

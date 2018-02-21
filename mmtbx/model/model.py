@@ -390,7 +390,20 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry(self, cs):
+  def set_crystal_symmetry(self, cs, force=False):
+    """
+    Cannot handle change of symmetry correctly, so just fail.
+    Proper change should include change of xrs, hierarchy coordinates,
+    invalidation of restraints_managet etc.
+    """
+    if self._crystal_symmetry is not None and not force:
+      assert self._crystal_symmetry.is_similar_symmetry(cs)
+    #
+    # XXX not clear how to change crystal symmetry in existing xrs...
+    # What's below compromises coordinates accuracy.
+    #
+    # self._xray_structure = self.get_hierarchy().extract_xray_structure(
+    #     crystal_symmetry=cs)
     self._crystal_symmetry = cs
 
   def set_refinement_flags(self, flags):
@@ -567,12 +580,20 @@ class manager(object):
     return self._xray_structure
 
   def set_xray_structure(self, xray_structure, update_hierarchy=True):
+    same_symmetry = True
+    if self._xray_structure is not None:
+      same_symmetry = self._xray_structure.crystal_symmetry().is_similar_symmetry(
+          xray_structure.crystal_symmetry())
+    # This is happening e.g. in iotbx/map_and_model.py where xrs and map are
+    # being boxed and model is updated with this function.
+    if not same_symmetry:
+      self.unset_restraints_manager()
     self._xray_structure = xray_structure
     if update_hierarchy:
       self.set_sites_cart_from_xrs()
     self._update_has_hd()
     self._update_pdb_atoms()
-    self.set_crystal_symmetry(cs = xray_structure.crystal_symmetry())
+    self.set_crystal_symmetry(cs = xray_structure.crystal_symmetry(), force=True)
     if(not self._xray_structure.crystal_symmetry().is_similar_symmetry(
        xray_structure.crystal_symmetry())):
       self.unset_restraints_manager()
