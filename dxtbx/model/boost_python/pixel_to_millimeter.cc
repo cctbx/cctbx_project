@@ -18,6 +18,25 @@ namespace dxtbx { namespace model { namespace boost_python {
   using namespace boost::python;
 
   static
+  OffsetPxMmStrategy* OffsetPxMmStrategy_init(
+      scitbx::af::versa< double, scitbx::af::flex_grid<> > dx,
+      scitbx::af::versa< double, scitbx::af::flex_grid<> > dy) {
+
+    DXTBX_ASSERT(dx.accessor().all().size() == 2);
+    DXTBX_ASSERT(dy.accessor().all().size() == 2);
+    DXTBX_ASSERT(dx.accessor().all().all_eq(dy.accessor().all()));
+
+    std::size_t ysize = dx.accessor().all()[0];
+    std::size_t xsize = dx.accessor().all()[1];
+
+    scitbx::af::c_grid<2> grid(ysize, xsize);
+    scitbx::af::versa< double, scitbx::af::c_grid<2> > dx2(dx.handle(), grid);
+    scitbx::af::versa< double, scitbx::af::c_grid<2> > dy2(dy.handle(), grid);
+
+    return  new OffsetPxMmStrategy(dx2, dy2);
+  }
+
+  static
   OffsetParallaxCorrectedPxMmStrategy* OffsetParallaxCorrectedPxMmStrategy_init(
       double mu,
       double t0,
@@ -39,7 +58,6 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
 
-
   struct PxMmStrategyPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const PxMmStrategy& obj) {
@@ -51,6 +69,13 @@ namespace dxtbx { namespace model { namespace boost_python {
     static
     boost::python::tuple getinitargs(const ParallaxCorrectedPxMmStrategy& obj) {
       return boost::python::make_tuple(obj.mu(), obj.t0());
+    }
+  };
+
+  struct OffsetPxMmStrategyPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const OffsetPxMmStrategy& obj) {
+      return boost::python::make_tuple(obj.dx(), obj.dy());
     }
   };
 
@@ -86,6 +111,19 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def_pickle(ParallaxCorrectedPxMmStrategyPickleSuite())
       ;
 
+    class_<OffsetPxMmStrategy, bases<PxMmStrategy> >(
+      "OffsetPxMmStrategy", no_init)
+      .def("__init__",
+          make_constructor(
+          &OffsetPxMmStrategy_init,
+          default_call_policies(), (
+            (arg("dx"),
+             arg("dy")))))
+      .def("dx", &OffsetPxMmStrategy::dx)
+      .def("dy", &OffsetPxMmStrategy::dy)
+      .def_pickle(OffsetPxMmStrategyPickleSuite())
+      ;
+
     class_<OffsetParallaxCorrectedPxMmStrategy, bases<ParallaxCorrectedPxMmStrategy> >(
       "OffsetParallaxCorrectedPxMmStrategy", no_init)
       .def("__init__",
@@ -104,6 +142,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     register_ptr_to_python<shared_ptr<PxMmStrategy> >();
     register_ptr_to_python<shared_ptr<SimplePxMmStrategy> >();
     register_ptr_to_python<shared_ptr<ParallaxCorrectedPxMmStrategy> >();
+    register_ptr_to_python<shared_ptr<OffsetPxMmStrategy> >();
     register_ptr_to_python<shared_ptr<OffsetParallaxCorrectedPxMmStrategy> >();
   }
 

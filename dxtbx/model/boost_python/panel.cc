@@ -236,6 +236,11 @@ namespace dxtbx { namespace model { namespace boost_python {
               new ParallaxCorrectedPxMmStrategy(mu, t0));
           result->set_px_mm_strategy(strategy);
         }
+      } else if (name == "OffsetPxMmStrategy") {
+        shared_ptr<PxMmStrategy> strategy(
+            new SimplePxMmStrategy());
+        result->set_px_mm_strategy(strategy);
+        //throw DXTBX_ERROR("The offset arrays need to be set for OffsetParallaxCorrectedPxMmStrategy");
       } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
         double mu = result->get_mu();
         double t0 = result->get_thickness();
@@ -286,6 +291,12 @@ namespace dxtbx { namespace model { namespace boost_python {
               new ParallaxCorrectedPxMmStrategy(mu, t0));
          result->set_px_mm_strategy(strategy);
         }
+      } else if (name == "OffsetPxMmStrategy") {
+        shared_ptr<PxMmStrategy> strategy(
+            new OffsetParallaxCorrectedPxMmStrategy(
+              dx,
+              dy));
+        result->set_px_mm_strategy(strategy);
       } else if (name == "OffsetParallaxCorrectedPxMmStrategy") {
         double mu = result->get_mu();
         double t0 = result->get_thickness();

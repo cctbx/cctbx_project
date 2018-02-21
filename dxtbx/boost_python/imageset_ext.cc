@@ -11,6 +11,7 @@
 namespace dxtbx { namespace boost_python {
 
   using model::OffsetParallaxCorrectedPxMmStrategy;
+  using model::OffsetPxMmStrategy;
 
   namespace detail {
 
@@ -555,10 +556,17 @@ namespace dxtbx { namespace boost_python {
             panel.get_px_mm_strategy()->name() == "OffsetParallaxCorrectedPxMmStrategy") {
           boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> strategy = boost::make_shared<
             OffsetParallaxCorrectedPxMmStrategy>(
-          panel.get_mu(),
-          panel.get_thickness(),
-          dx.tile(i).data(),
-          dy.tile(i).data());
+              panel.get_mu(),
+              panel.get_thickness(),
+              dx.tile(i).data(),
+              dy.tile(i).data());
+          panel.set_px_mm_strategy(strategy);
+        } else if (
+            panel.get_px_mm_strategy()->name() == "SimplePxMmStrategy" ||
+            panel.get_px_mm_strategy()->name() == "OffsetPxMmStrategy") {
+          boost::shared_ptr<OffsetPxMmStrategy> strategy = boost::make_shared<OffsetPxMmStrategy>(
+            dx.tile(i).data(),
+            dy.tile(i).data());
           panel.set_px_mm_strategy(strategy);
         }
       }
@@ -586,10 +594,17 @@ namespace dxtbx { namespace boost_python {
           panel.get_px_mm_strategy()->name() == "OffsetParallaxCorrectedPxMmStrategy") {
         boost::shared_ptr<OffsetParallaxCorrectedPxMmStrategy> strategy = boost::make_shared<
           OffsetParallaxCorrectedPxMmStrategy>(
-        panel.get_mu(),
-        panel.get_thickness(),
-        dx.tile(i).data(),
-        dy.tile(i).data());
+          panel.get_mu(),
+          panel.get_thickness(),
+          dx.tile(i).data(),
+          dy.tile(i).data());
+        panel.set_px_mm_strategy(strategy);
+      } else if (
+          panel.get_px_mm_strategy()->name() == "SimplePxMmStrategy" ||
+          panel.get_px_mm_strategy()->name() == "OffsetPxMmStrategy") {
+        boost::shared_ptr<OffsetPxMmStrategy> strategy = boost::make_shared<OffsetPxMmStrategy>(
+          dx.tile(i).data(),
+          dy.tile(i).data());
         panel.set_px_mm_strategy(strategy);
       }
     }
