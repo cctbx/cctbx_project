@@ -28,13 +28,13 @@ def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[]):
       if(not cs0.is_similar_symmetry(cs)):
         raise Sorry("Box info (aka crystal symmetry) mismatch across inputs.")
   if(len(css)==0):
-    raise Sorry("No nox info (aka crystal symmetry) available.")
+    raise Sorry("No box info (aka crystal symmetry) available.")
   crystal_symmetry = css[0]
   for model in models:
     if(model is None): continue
     cs = model.crystal_symmetry()
     if(cs is None or [cs.unit_cell(), cs.space_group()].count(None)==2):
-      model.set_crystal_symmetry(crystal_symmetry)
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
   if(len(map_inps)>1):
     m0 = map_inps[0].map_data()
     for m in map_inps[1:]:

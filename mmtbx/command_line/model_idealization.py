@@ -977,7 +977,7 @@ def run(args):
         raise e
   # not sure this is right cs to set here...
   if model.get_shift_manager() is None:
-    model.set_crystal_symmetry(crystal_symmetry)
+    model.set_crystal_symmetry_if_undefined(crystal_symmetry)
   mi_object = model_idealization(
       model = model,
       map_data = map_data,

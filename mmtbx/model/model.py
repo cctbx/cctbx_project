@@ -324,7 +324,7 @@ class manager(object):
     self._shift_manager = shift_manager
     if shift_manager is not None:
       self.set_xray_structure(self._shift_manager.xray_structure_box)
-      self.set_crystal_symmetry(self._shift_manager.get_shifted_cs())
+      self.set_crystal_symmetry_if_undefined(self._shift_manager.get_shifted_cs())
       self.unset_restraints_manager()
 
   def get_shift_manager(self):
@@ -391,20 +391,21 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry(self, cs):
+  def set_crystal_symmetry_if_undefined(self, cs):
     """
-    Cannot handle change of symmetry correctly, so just fail.
-    Proper change should include change of xrs, hierarchy coordinates,
-    invalidation of restraints_managet etc.
+    Function to set crystal symmetry if it is not defined yet.
+    Special case when incoming cs is the same to self._crystal_symmetry,
+    then just do nothing for compatibility with existing code.
+    It would be better to remove this function at all.
     """
-    if self._crystal_symmetry is not None:
-      assert self._crystal_symmetry.is_similar_symmetry(cs)
-    #
-    # XXX not clear how to change crystal symmetry in existing xrs...
-    # What's below compromises coordinates accuracy.
-    #
-    # self._xray_structure = self.get_hierarchy().extract_xray_structure(
-    #     crystal_symmetry=cs)
+    is_empty_cs = self._crystal_symmetry is None or (
+        self._crystal_symmetry.unit_cell() is None and
+        self._crystal_symmetry.space_group() is None)
+    if not is_empty_cs:
+      if self._crystal_symmetry.is_similar_symmetry(cs):
+        return
+    assert is_empty_cs, "%s,%s" % (
+          self._crystal_symmetry.show_summary(), cs.show_summary())
     self._crystal_symmetry = cs
 
   def set_refinement_flags(self, flags):
