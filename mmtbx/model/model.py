@@ -325,6 +325,7 @@ class manager(object):
     if shift_manager is not None:
       self.set_xray_structure(self._shift_manager.xray_structure_box)
       self.set_crystal_symmetry(self._shift_manager.get_shifted_cs())
+      self.unset_restraints_manager()
 
   def get_shift_manager(self):
     return self._shift_manager
@@ -390,13 +391,13 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry(self, cs, force=False):
+  def set_crystal_symmetry(self, cs):
     """
     Cannot handle change of symmetry correctly, so just fail.
     Proper change should include change of xrs, hierarchy coordinates,
     invalidation of restraints_managet etc.
     """
-    if self._crystal_symmetry is not None and not force:
+    if self._crystal_symmetry is not None:
       assert self._crystal_symmetry.is_similar_symmetry(cs)
     #
     # XXX not clear how to change crystal symmetry in existing xrs...
@@ -593,7 +594,8 @@ class manager(object):
       self.set_sites_cart_from_xrs()
     self._update_has_hd()
     self._update_pdb_atoms()
-    self.set_crystal_symmetry(cs = xray_structure.crystal_symmetry(), force=True)
+    # Not using self.set_crystal_symmetry() because it is different.
+    self._crystal_symmetry = xray_structure.crystal_symmetry()
     if(not self._xray_structure.crystal_symmetry().is_similar_symmetry(
        xray_structure.crystal_symmetry())):
       self.unset_restraints_manager()

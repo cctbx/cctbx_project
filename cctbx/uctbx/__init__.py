@@ -347,6 +347,9 @@ class non_crystallographic_unit_cell_with_the_sites_in_its_center(object):
       unit_cell=self.unit_cell,
       space_group=sgtbx.space_group())
 
+  def sites_frac(self):
+    return self.unit_cell.fractionalize(self.sites_cart)
+
 def infer_unit_cell_from_symmetry(params, space_group):
   # XXX exercised by iotbx/kriber/tst_strudat.py
   # XXX TODO: add to uctbx tests

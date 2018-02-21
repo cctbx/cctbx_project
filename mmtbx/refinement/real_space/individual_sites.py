@@ -323,7 +323,7 @@ class box_refinement_manager(object):
              box_cushion=2,
              rms_bonds_limit = 0.03,
              rms_angles_limit = 3.0):
-    if(self.ncs_groups is None): # no NCS constraints
+    if(self.ncs_groups is None or len(self.ncs_groups)==0): # no NCS constraints
       sites_cart_moving = self.sites_cart
       selection_within = self.xray_structure.selection_within(
         radius    = selection_buffer_radius,
@@ -462,7 +462,7 @@ class minimize_wrapper_with_map():
             geometry_restraints_manager = self.model.get_restraints_manager(),
             rms_bonds_limit             = 0.015,
             rms_angles_limit            = 1.0,
-            ncs_groups                  = ncs_restraints_group_list)
+            ncs_groups                  = ncs_groups)
 
         # division is to put more weight onto restraints. Checked. Works.
         self.w = self.weight.weight/3.0

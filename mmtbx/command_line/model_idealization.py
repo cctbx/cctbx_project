@@ -10,6 +10,7 @@ from scitbx.array_family import flex
 from cStringIO import StringIO
 
 from cctbx import crystal
+from cctbx import xray
 from iotbx.pdb import write_whole_pdb_file
 from iotbx import reflection_file_utils
 from iotbx.phil import process_command_line_with_files
@@ -217,7 +218,6 @@ class model_idealization():
       elif self.cs.unit_cell().volume() < 10:
         corrupted_cs = True
         self.cs = None
-
     # couple checks if pdb_h is ok
     o_c = self.original_hierarchy.overall_counts()
     o_c.raise_duplicate_atom_labels_if_necessary()
@@ -248,10 +248,13 @@ class model_idealization():
       box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
         sites_cart=self.model.get_sites_cart(),
         buffer_layer=3)
-      self.model.set_sites_cart(sites_cart=box.sites_cart)
-      self.original_boxed_hierarchy = self.model.get_hierarchy().deep_copy()
+      # Creating new xrs from box, inspired by extract_box_around_model_and_map
+      sp = crystal.special_position_settings(box.crystal_symmetry())
+      sites_frac = box.sites_frac()
+      xrs_box = self.model.get_xray_structure().replace_sites_frac(box.sites_frac())
+      xray_structure_box = xray.structure(sp, xrs_box.scatterers())
+      self.model.set_xray_structure(xray_structure_box)
       self.cs = box.crystal_symmetry()
-      self.model.set_crystal_symmetry(self.cs, force=True)
       self.shift_vector = box.shift_vector
 
     if self.shift_vector is not None and self.params.debug:
@@ -542,7 +545,6 @@ class model_idealization():
           log=self.log)
       self.log.flush()
 
-    # for_stat_h = self.get_intermediate_result_hierarchy()
     self.after_ss_idealization = self.get_statistics(self.model)
     self.shift_and_write_result(
           model=self.model,
@@ -639,7 +641,6 @@ class model_idealization():
 
   def add_hydrogens(self):
     # Not used and not working anymore.
-    self.whole_pdb_h = self.get_intermediate_result_hierarchy()
     cs = self.model.crystal_symmetry()
     pdb_str, changed = check_and_add_hydrogen(
         pdb_hierarchy=self.whole_pdb_h,
@@ -975,7 +976,8 @@ def run(args):
       else:
         raise e
   # not sure this is right cs to set here...
-  model.set_crystal_symmetry(crystal_symmetry, force=True)
+  if model.get_shift_manager() is None:
+    model.set_crystal_symmetry(crystal_symmetry)
   mi_object = model_idealization(
       model = model,
       map_data = map_data,
