@@ -519,7 +519,7 @@ class CCTBXParser(ParserBase):
 
     # show program-specific citations and general citation for CCTBX
     if (len(program_citations) > 0):
-      print('Citation(s) for this program:', file=self.logger)
+      print('Citation(s) for %s:' % self.prog, file=self.logger)
       print('-'*self.text_width, file=self.logger)
       print('', file=self.logger)
       for citation in program_citations:
