@@ -4,7 +4,11 @@ a file using the latest pickling protocol. Can optionally compress the output if
 file_name ends with .gz. Also provides functions to read that object back.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+import cPickle
+import os
+from libtbx.str_utils import show_string
+from libtbx import smart_open
 
 def _open(file_name, mode):
   """
@@ -19,10 +23,7 @@ def _open(file_name, mode):
   -------
   file
   """
-  import os
   file_name = os.path.expanduser(file_name)
-  from libtbx.str_utils import show_string
-  from libtbx import smart_open
   try: return smart_open.file(file_name=file_name, mode=mode)
   except IOError as e:
     raise IOError("Cannot open pickle file %s (%s)" % (
@@ -44,7 +45,6 @@ def dump(file_name, obj):
   >>> print load("output.pkl.gz")
   [1, 2, 3]
   """
-  import cPickle
   return cPickle.dump(obj, _open(file_name, "wb"), cPickle.HIGHEST_PROTOCOL)
 
 def dumps(obj):
@@ -59,7 +59,6 @@ def dumps(obj):
   -------
   str
   """
-  import cPickle
   return cPickle.dumps(obj, cPickle.HIGHEST_PROTOCOL)
 
 def load(file_name, faster_but_using_more_memory=True):
@@ -77,7 +76,6 @@ def load(file_name, faster_but_using_more_memory=True):
   -------
   object
   """
-  import cPickle
   if (faster_but_using_more_memory):
     return cPickle.loads(_open(file_name, "rb").read())
   return cPickle.load(_open(file_name, "rb"))
@@ -100,7 +98,6 @@ def loads(string) :
   >>> print loads(dumps([1, 2, 3])
   [1, 2, 3]
   """
-  import cPickle
   return cPickle.loads(string)
 
 def dump_args(*args, **keyword_args):
