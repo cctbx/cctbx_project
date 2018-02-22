@@ -2087,7 +2087,7 @@ class manager(object):
       processed_pdb_file         = self._processed_pdb_file,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
-      xray_structure             = self._xray_structure.select(selection),
+      xray_structure             = self.get_xray_structure().select(selection),
       pdb_hierarchy              = new_pdb_hierarchy,
       pdb_interpretation_params  = self._pdb_interpretation_params,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug

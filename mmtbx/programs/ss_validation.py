@@ -32,9 +32,7 @@ Usage examples:
   def run(self):
     # I'm guessing self.data_manager, self.params and self.logger
     # are already defined here...
-    print('Using model: %s' % self.data_manager.get_default_model_name())
-    print(dir(self.params))
-    print(self.params.ss_validation.nproc)
+    print('Using model: %s' % self.data_manager.get_default_model_name(), file=self.logger)
 
     # this must be mmtbx.model.manager?
     model = self.data_manager.get_model()

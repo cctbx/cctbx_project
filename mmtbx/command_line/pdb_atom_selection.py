@@ -1,34 +1,53 @@
-from __future__ import division
+from __future__ import division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_atom_selection
 
-import argparse
-from cctbx.array_family import flex
-from cctbx import crystal, uctbx, xray
-from libtbx.utils import plural_s
-from libtbx.str_utils import show_string
-import libtbx.load_env
-import mmtbx.model
-import iotbx.pdb
 import sys
+from libtbx.utils import multi_out, show_total_time
+from iotbx.cli_parser import CCTBXParser
 
-def run(args, command_name=libtbx.env.dispatcher_name):
-  parser = argparse.ArgumentParser(
-      prog=command_name,
-      usage='%s pdb_file "atom_selection" [...]' % command_name)
-  parser.add_argument(
-      "file_name",
-      nargs=1,
-      help="File name of the model file")
-  parser.add_argument(
-      "inselections",
-      help="Atom selection strings",
-      nargs='+',
-      )
-  parser.add_argument(
-      "--write-pdb-file",
-      action="store",
-      help="write selected atoms to new PDB file",
-      default=None)
+from mmtbx.programs import atom_selection
+
+def custom_args_proc(cli_parser):
+  """
+  This is going to put inselection positional argument into phil scope of the
+  program.
+  Useful things are:
+  cli_parser.namespace
+  cli_parser.data_manager
+  cli_parser.namespace.unknown - where these argument is going to be
+  cli_parser.working_phil
+  """
+  wf = cli_parser.working_phil.extract()
+
+  wf.atom_selection_program.cryst1_replacement_buffer_layer = \
+      cli_parser.namespace.cryst1_replacement_buffer_layer
+  wf.atom_selection_program.write_pdb_file = \
+      cli_parser.namespace.write_pdb_file
+
+  if len(cli_parser.namespace.unknown) > 0:
+    # print("What is unknown: %s" % cli_parser.namespace.unknown)
+    # print("Curr selection: '%s'" % wf.atom_selection_program.inselection)
+    wf.atom_selection_program.inselection[0] = cli_parser.namespace.unknown[0]
+    del cli_parser.namespace.unknown[0]
+
+  cli_parser.working_phil = cli_parser.master_phil.format(python_object=wf)
+
+
+def run(args):
+  # create parser
+  logger = multi_out() #logging.getLogger('main')
+  logger.register('stdout', sys.stdout)
+
+  parser = CCTBXParser(
+    program_class = atom_selection.Program,
+    custom_process_arguments = custom_args_proc,
+    logger=logger)
+  #
+  # Stick in additional keyword args
+  # They going to end up in namespace.cryst1_replacement_buffer_layer etc
+  # file_name is obsolet, parser takes care of it putting it in data manager
+  # inselections is going to be handled by custom_args_proc function
+  # because it is intended to be positional argument
   parser.add_argument(
       "--cryst1-replacement-buffer-layer",
       action="store",
@@ -36,39 +55,32 @@ def run(args, command_name=libtbx.env.dispatcher_name):
       help="replace CRYST1 with pseudo unit cell covering the selected"
         " atoms plus a surrounding buffer layer",
       default=None)
-  co = parser.parse_args(args)
-  pdb_inp = iotbx.pdb.input(file_name=co.file_name[0])
-  model = mmtbx.model.manager(
-      model_input=pdb_inp,
-      process_input=True)
-  atoms = model.get_atoms()
-  all_bsel = flex.bool(atoms.size(), False)
-  for selection_string in co.inselections:
-    print selection_string
-    isel = model.iselection(selstr=selection_string)
-    all_bsel.set_selected(isel, True)
-    if (not co.write_pdb_file):
-      print "  %d atom%s selected" % plural_s(isel.size())
-      for atom in atoms.select(isel):
-        print "    %s" % atom.format_atom_record()
-  print
-  if (co.write_pdb_file):
-    print "Writing file:", show_string(co.write_pdb_file)
-    selected_model = model.select(all_bsel)
-    if (co.cryst1_replacement_buffer_layer is not None):
-      box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
-          sites_cart=selected_model.get_atoms().extract_xyz(),
-          buffer_layer=co.cryst1_replacement_buffer_layer)
-      sp = crystal.special_position_settings(box.crystal_symmetry())
-      sites_frac = box.sites_frac()
-      xrs_box = selected_model.get_xray_structure().replace_sites_frac(box.sites_frac())
-      xray_structure_box = xray.structure(sp, xrs_box.scatterers())
-      selected_model.set_xray_structure(xray_structure_box)
-    pdb_str = selected_model.model_as_pdb()
-    f = open(co.write_pdb_file, 'w')
-    f.write(pdb_str)
-    f.close()
-    print
+  parser.add_argument(
+      "--write-pdb-file",
+      action="store",
+      help="write selected atoms to new PDB file",
+      default=None)
+
+  namespace = parser.parse_args(sys.argv[1:])
+
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+
+  task = atom_selection.Program(
+    parser.data_manager, parser.working_phil.extract(), logger=logger)
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  show_total_time(out=logger)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
