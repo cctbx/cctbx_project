@@ -791,7 +791,7 @@ def run():
   TestImageSetData().run()
   TestImageSet().run()
   TestImageSweep().run()
-#  TestNexusFile().run() 
+#  TestNexusFile().run()
   TestImageSetFactory().run()
   TestPickleImageSet().run()
 
