@@ -342,6 +342,7 @@ class CCTBXParser(ParserBase):
       phil_names = self.data_manager.get_phil_names()
       phil = list()
       print('  Adding PHIL files:', file=self.logger)
+      print('  ------------------', file=self.logger)
       for name in phil_names:
         # remove DataManager scope since input files are already loaded
         phil_scope = self.data_manager.get_phil(name)
@@ -364,6 +365,7 @@ class CCTBXParser(ParserBase):
       interpreter = self.master_phil.command_line_argument_interpreter(
         home_scope='')
       print('  Adding command-line PHIL:', file=self.logger)
+      print('  -------------------------', file=self.logger)
       for phil in phil_list:
         print('    %s' % phil, file=self.logger)
       print('', file=self.logger)
@@ -386,7 +388,7 @@ class CCTBXParser(ParserBase):
       print('  Unrecognized PHIL parameters:', file=self.logger)
       print('  -----------------------------', file=self.logger)
       for phil in unused_phil:
-        print('  %s' % phil, file=self.logger)
+        print('    %s' % phil, file=self.logger)
       print('', file=self.logger)
       error_message = 'Some PHIL parameters are not recognized by %s.\n' % \
                       self.prog
