@@ -181,9 +181,9 @@ class mouse_selection_manager (object) :
         try:
           selection_string = selection_string_from_selection(
             self.pdb_hierarchy, atom_selection)
-        except AssertionError:
+        except Sorry:
           pass
-        self.selection_string = selection_string
+      self.selection_string = selection_string
     self.atom_selection = atom_selection
     self.selection_i_seqs = atom_selection.iselection()
     if self.selection_callback is not None :

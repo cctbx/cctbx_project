@@ -872,9 +872,9 @@ def selection_string_from_selection(pdb_h,
   Returns:
     sel_str (str): atom selection string
   """
+  if isinstance(selection,flex.bool): selection = selection.iselection(True)
   if selection.size() == 0: raise Sorry('Empty atom selection')
   # pdb_hierarchy_inp is a hierarchy
-  if isinstance(selection,flex.bool): selection = selection.iselection(True)
   selection_set = set(selection)
   sel_list = []
   # pdb_h.select(selection).write_pdb_file("selected_in.pdb")
