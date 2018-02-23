@@ -96,7 +96,6 @@ def exercise(exercise_fail):
   #
   from libtbx.clear_paths import \
     remove_or_rename_files_and_directories_if_possible as clear
-  from libtbx import only_element
   import os
   op = os.path
   def fixed_func(arg):
@@ -111,8 +110,8 @@ def exercise(exercise_fail):
   results = go()
   assert results == [(None, 10), (None, 20)]
   for i in [1,2]:
-    only_element(open("mp%03d/log" % (i-1)).read().splitlines()) \
-      == "hello world %d" % i
+    with open("mp%03d/log" % (i-1), 'r') as fh:
+      assert fh.read().splitlines() == ["hello world %d" % i]
   results = go()
   assert results == [
     ('sub-directory exists already: "mp000"', None),
