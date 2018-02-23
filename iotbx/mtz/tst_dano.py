@@ -1,5 +1,4 @@
-from __future__ import division
-from libtbx import only_element
+from __future__ import absolute_import, division
 from cStringIO import StringIO
 import sys
 
@@ -39,8 +38,9 @@ def exercise_systematic(verbose):
     from libtbx.test_utils import show_diff
     if (verbose): sys.stdout.write(sio.getvalue())
     assert not show_diff(sio.getvalue(), expected_column_data)
-    ma_2 = only_element(mtz_obj.as_miller_arrays())
-    assert_equal_data_and_sigmas(ma, ma_2)
+    ma_2 = mtz_obj.as_miller_arrays()
+    assert len(ma_2) == 1
+    assert_equal_data_and_sigmas(ma, ma_2[0])
   recycle("""\
 Column data:
 -------------------------------------------------------------------------------
@@ -78,9 +78,10 @@ def recycle_dano_miller_array(miller_array):
   miller_array = miller_array.select(
     mt.random_permutation(size=miller_array.indices().size()))
   mtz_obj = miller_array.as_mtz_dataset(column_root_label="X").mtz_object()
-  miller_array_2 = only_element(mtz_obj.as_miller_arrays())
-  assert str(miller_array_2.info()) == "ccp4_mtz:X,SIGX,DANOX,SIGDANOX,ISYMX"
-  assert_equal_data_and_sigmas(miller_array, miller_array_2)
+  miller_array_2 = mtz_obj.as_miller_arrays()
+  assert len(miller_array_2) == 1
+  assert str(miller_array_2[0].info()) == "ccp4_mtz:X,SIGX,DANOX,SIGDANOX,ISYMX"
+  assert_equal_data_and_sigmas(miller_array, miller_array_2[0])
 
 def recycle_dano_mtz(mtz_file_name):
   import iotbx.mtz
@@ -195,12 +196,11 @@ def run(args):
   if (len(mtz_file_names) == 0):
     import libtbx.load_env
     import os
-    op = os.path
     have_regression = libtbx.env.has_module("phenix_regression")
     if have_regression:
       mtz_file_names.append(libtbx.env.find_in_repositories(
         relative_path="phenix_regression/reflection_files/dano.mtz",
-        test=op.isfile,
+        test=os.path.isfile,
         optional=False))
     else:
       print 'Skipping tests on dano.mtz: no phenix_regression'

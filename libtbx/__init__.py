@@ -151,23 +151,6 @@ class unpicklable(object):
   def __getstate__(O): O._raise_error()
   def __setstate__(O, state): O._raise_error()
 
-def only_element(sequence):
-  """
-  Raises an exception if sequence contains anything other than one element.
-
-  Parameters
-  ----------
-  sequence : list
-  """
-  n = len(sequence)
-  if (n == 1):
-    return sequence[0]
-  if (n == 0):
-    s = "is empty"
-  else:
-    s = "contains %d elements" % n
-  raise RuntimeError("sequence %s (exactly one element expected)" % s)
-
 class dict_with_default_0(dict):
   def __missing__(self, key):
     return 0
