@@ -126,13 +126,13 @@ class detector_helper_sensors:
             detector_helper_sensors.SENSOR_PAD,
             detector_helper_sensors.SENSOR_IMAGE_PLATE]
 
-def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
+def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
   """ detector and beam are dxtbx objects,
-      mosflm_beam_centre is a tuple of mm coordinates.
+      slow_fast_beam_centre is a tuple of mm coordinates.
       supports 2-theta offset detectors, assumes correct centre provided
       for 2-theta=0
   """
-  mosflm_y, mosflm_x = mosflm_beam_centre
+  beam_s, beam_f = beam_centre
   from scitbx import matrix
   s0 = matrix.col(beam.get_s0()).normalize()
   for panel in detector:
@@ -149,7 +149,40 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
       a = n.angle(s0)
     # if no two_theta offset use old method
     if min(abs(math.pi-a), abs(a)) < 5.0 * math.pi / 180.0:
-      return set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre)
+
+      from scitbx import matrix
+      s0 = matrix.col(beam.get_s0())
+      panel = detector[0]
+      if matrix.col(panel.get_origin()).dot(s0) < 0:
+        os0 = -s0
+      else:
+        os0 = s0
+      if panel_id is None:
+        panel_id, old_beam_centre = detector.get_ray_intersection(os0.elems)
+      else:
+        old_beam_centre = detector[0].get_ray_intersection(os0.elems)
+      # XXX maybe not the safest way to do this?
+      new_beam_centre = matrix.col((beam_s, beam_f))
+      origin_shift = matrix.col(old_beam_centre) - new_beam_centre
+      for panel in detector:
+        n = matrix.col(panel.get_normal())
+        # sometimes detector normal might be pointing the other way
+        angle_s0_n = min(s0.angle(n, deg=True), s0.angle(-n, deg=True))
+        assert angle_s0_n < 5, \
+               "Detector normal not parallel to beam: %.1f deg" %angle_s0_n
+        old_origin = matrix.col(panel.get_origin())
+        new_origin = (old_origin +
+                      matrix.col(panel.get_fast_axis()) * origin_shift[0] +
+                      matrix.col(panel.get_slow_axis()) * origin_shift[1])
+        panel.set_local_frame(fast_axis=panel.get_fast_axis(),
+                              slow_axis=panel.get_slow_axis(),
+                              origin=new_origin)
+      # sanity check to make sure we have got the new beam centre correct
+      new_beam_centre = detector[panel_id].get_ray_intersection(os0.elems)
+      assert (matrix.col(new_beam_centre) -
+              matrix.col((beam_s, beam_f))).length() < 1e-4
+      return
+
     # apply matrix
     R = r.axis_and_angle_as_r3_rotation_matrix(a)
     # compute beam centre
@@ -160,7 +193,7 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
     beam_y = b.dot(R * s)
     distance = Ro.dot(R * n)
     # recompute origin, return to original frame
-    o_new = distance * s0 - mosflm_x * R * f - mosflm_y * R * s
+    o_new = distance * s0 - beam_f * R * f - beam_s * R * s
     new_origin = R.inverse() * o_new
 
     panel.set_local_frame(fast_axis=panel.get_fast_axis(),
@@ -168,39 +201,13 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
                           origin=new_origin)
   return
 
-def set_mosflm_beam_centre_old(detector, beam, mosflm_beam_centre):
+def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
   """ detector and beam are dxtbx objects,
       mosflm_beam_centre is a tuple of mm coordinates.
+      supports 2-theta offset detectors, assumes correct centre provided
+      for 2-theta=0
   """
-  from scitbx import matrix
-  s0 = matrix.col(beam.get_s0())
-  panel = detector[0]
-  if matrix.col(panel.get_origin()).dot(s0) < 0:
-    os0 = -s0
-  else:
-    os0 = s0
-  panel_id, old_beam_centre = detector.get_ray_intersection(os0.elems)
-  # XXX maybe not the safest way to do this?
-  new_beam_centre = matrix.col(tuple(reversed(mosflm_beam_centre)))
-  origin_shift = matrix.col(old_beam_centre) - new_beam_centre
-  for panel in detector:
-    n = matrix.col(panel.get_normal())
-    # sometimes detector normal might be pointing the other way
-    angle_s0_n = min(s0.angle(n, deg=True), s0.angle(-n, deg=True))
-    assert angle_s0_n < 5, \
-           "Detector normal not parallel to beam: %.1f deg" %angle_s0_n
-    old_origin = matrix.col(panel.get_origin())
-    new_origin = (old_origin +
-                  matrix.col(panel.get_fast_axis()) * origin_shift[0] +
-                  matrix.col(panel.get_slow_axis()) * origin_shift[1])
-    panel.set_local_frame(fast_axis=panel.get_fast_axis(),
-                          slow_axis=panel.get_slow_axis(),
-                          origin=new_origin)
-  # sanity check to make sure we have got the new beam centre correct
-  panel_id, new_beam_centre = detector.get_ray_intersection(os0.elems)
-  assert (matrix.col(new_beam_centre) -
-          matrix.col(tuple(reversed(mosflm_beam_centre)))).length() < 1e-4
-
+  return set_slow_fast_beam_centre_mm(detector, beam, reversed(mosflm_beam_centre))
 
 def set_detector_distance(detector, distance):
   '''
