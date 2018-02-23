@@ -102,7 +102,7 @@ class NCS_restraint_group(object):
       return [self.deep_copy()]
 
     result = []
-    for chain in hierarchy.select(self.master_iselection).only_model.chains():
+    for chain in hierarchy.select(self.master_iselection).only_model().chains():
       c_iseqs = chain.atoms().extract_i_seq()
       to_keep = get_bool_selection_to_keep(
           big_selection=self.master_iselection,
