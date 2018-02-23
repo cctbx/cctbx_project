@@ -8,7 +8,7 @@ def run():
   "$B/../exe_dev/cctbx.sym_equiv_sites",
   "$D/examples/getting_started.py",
   ["$D/examples/space_group_matrices.py", "P31"],
-  "$D/examples/space_subgroups.py",
+  ["$D/examples/space_subgroups.py", "2", "P41212"],
   "$D/examples/trigonal_r_vs_tetragonal_i.py",
   "$D/examples/quartz_structure.py",
   "$D/examples/fft_map_electron_density_around_atom.py",
