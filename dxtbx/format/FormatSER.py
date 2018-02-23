@@ -93,6 +93,11 @@ class FormatSER(FormatMultiImage, Format):
       hd['TagOffsetArray'] = struct.unpack('<' + int_fmt * hd['TotalNumberElements'],
           f.read(size * hd['TotalNumberElements']))
 
+      # get expected image size by reading metadata for the first image
+      f.seek(hd['DataOffsetArray'][0] + 42)
+      hd['ArraySizeX'] = struct.unpack('<I', f.read(4))[0]
+      hd['ArraySizeY'] = struct.unpack('<I', f.read(4))[0]
+
     return hd
 
   def _start(self):
@@ -164,6 +169,14 @@ class FormatSER(FormatMultiImage, Format):
       d['ArraySizeY'] = struct.unpack('<I', f.read(4))[0]
       nelts = d['ArraySizeX'] * d['ArraySizeY']
       raw_data = read_pixel(streambuf(f), nelts)
+
+    # Check image size is as expected (same as the first image)
+    if d['ArraySizeX'] != self._header_dictionary['ArraySizeX']:
+      raise RuntimeError(
+          'Image {0} has an unexpected array size in X'.format(index))
+    if d['ArraySizeY'] != self._header_dictionary['ArraySizeY']:
+      raise RuntimeError(
+          'Image {0} has an unexpected array size in Y'.format(index))
 
     image_size = (d['ArraySizeX'], d['ArraySizeY'])
     raw_data.reshape(flex.grid(image_size[1], image_size[0]))

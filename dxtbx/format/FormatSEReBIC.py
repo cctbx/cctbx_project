@@ -31,9 +31,10 @@ class FormatSEReBIC(FormatSER):
     except IncorrectFormatError:
       return False
 
-    # get the first image and check it has the expected dimensions
-    im = fmt.get_raw_data(0)
-    if im.all() != (4096, 4096): return False
+    # Read metadata and check the image dimension is supported
+    d = fmt._read_metadata(image_file)
+    image_size = d['ArraySizeX'], d['ArraySizeY']
+    if image_size not in [(4096, 4096), (2048, 2048)]: return False
 
     return True
 
@@ -46,8 +47,13 @@ class FormatSEReBIC(FormatSER):
   def _detector(self):
     '''Dummy detector'''
 
-    pixel_size = 0.014, 0.014
-    image_size = 4096,4096
+    image_size = (self._header_dictionary['ArraySizeX'],
+                  self._header_dictionary['ArraySizeY'])
+    if image_size == (4096, 4096):
+      pixel_size = 0.014, 0.014
+    if image_size == (2048, 2048):
+      pixel_size = 0.028, 0.028
+
     distance = 2000
     trusted_range = (-1, 65535)
     beam_centre = [(p * i) / 2 for p, i in zip(pixel_size, image_size)]
