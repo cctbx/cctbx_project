@@ -162,7 +162,7 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
       else:
         old_beam_centre = detector[0].get_ray_intersection(os0.elems)
       # XXX maybe not the safest way to do this?
-      new_beam_centre = matrix.col((beam_s, beam_f))
+      new_beam_centre = matrix.col((beam_f, beam_s))
       origin_shift = matrix.col(old_beam_centre) - new_beam_centre
       for panel in detector:
         n = matrix.col(panel.get_normal())
@@ -180,7 +180,7 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
       # sanity check to make sure we have got the new beam centre correct
       new_beam_centre = detector[panel_id].get_ray_intersection(os0.elems)
       assert (matrix.col(new_beam_centre) -
-              matrix.col((beam_s, beam_f))).length() < 1e-4
+              matrix.col((beam_f, beam_s))).length() < 1e-4
       return
 
     # apply matrix
@@ -207,7 +207,7 @@ def set_mosflm_beam_centre(detector, beam, mosflm_beam_centre):
       supports 2-theta offset detectors, assumes correct centre provided
       for 2-theta=0
   """
-  return set_slow_fast_beam_centre_mm(detector, beam, reversed(mosflm_beam_centre))
+  return set_slow_fast_beam_centre_mm(detector, beam, mosflm_beam_centre)
 
 def set_detector_distance(detector, distance):
   '''
