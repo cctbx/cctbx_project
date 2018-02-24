@@ -73,7 +73,6 @@ tst_list = (
   "$D/regression/ncs/tst_ncs_search.py",
   "$D/regression/ncs/tst_ncs_search_flips.py",
   "$D/regression/ncs/tst_restraints.py",
-  "$D/regression/ncs/tst_asu_as_one_ncs_copy.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_geometry_minimization.py",
   ["$D/ncs/ncs.py", "exercise"],

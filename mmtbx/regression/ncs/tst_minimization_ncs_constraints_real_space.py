@@ -121,11 +121,6 @@ def run(prefix="tst", d_min=1.0):
   fft_map.apply_sigma_scaling()
   map_data = fft_map.real_map_unpadded()
   #
-  ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_answer,
-    add_identity=True)
-  ncs_obj_poor.write_pdb_file(file_name="asu.pdb",
-    crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
-  # create transformation object
   transforms_obj = ncs.input(hierarchy=ph_answer)
   x = transforms_obj.get_ncs_restraints_group_list().concatenate_rot_tran()
   x = nu.shake_transformations(
@@ -134,16 +129,6 @@ def run(prefix="tst", d_min=1.0):
     shake_translation_sigma=0.1)
   nrgl = transforms_obj.get_ncs_restraints_group_list()
   nrgl.update_rot_tran(x=x)
-  rm,tv = nrgl.get_rotation_translation_as_list()
-  # just to see how result of shaking looks like
-  rm_ = [rm[0]]+rm
-  tv_ = [tv[0]]+tv
-  ncs_obj_poor.back_rotation_matrices=rm_
-  ncs_obj_poor.back_translation_vectors=tv_
-  ncs_obj_poor.update_sites_cart(
-    sites_cart_master_ncs_copy=ncs_obj_poor.ph_first_chain.atoms().extract_xyz())
-  ncs_obj_poor.write_pdb_file(file_name="asu2.pdb",
-    crystal_symmetry=xrs_poor.crystal_symmetry(), mode="asu")
   ncs_restraints_group_list = transforms_obj.get_ncs_restraints_group_list()
   refine_selection = flex.size_t(xrange(transforms_obj.truncated_hierarchy.atoms_size()))
   for i in xrange(5):
@@ -168,11 +153,6 @@ def run(prefix="tst", d_min=1.0):
       refine_sites                 = True)
     xrs_poor = tfg_obj.xray_structure
     ph_poor.adopt_xray_structure(tfg_obj.xray_structure)
-    #
-    ncs_obj_poor = mmtbx.ncs.asu_ncs_converter(pdb_hierarchy = ph_poor,
-      add_identity=False)
-    rm,tv = ncs_restraints_group_list.get_rotation_translation_as_list()
-  #
   ph_poor.write_pdb_file(file_name="refined.pdb")
 
 

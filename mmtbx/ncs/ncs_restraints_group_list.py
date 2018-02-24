@@ -537,28 +537,6 @@ class class_ncs_restraints_group_list(list):
         i += 1
       gr.copies = copies
 
-  def get_rotation_translation_as_list(self):
-    """
-    XXX
-    XXX Consider deletion. Used only in tests tst_minimization_ncs_constraints_real_space.py,
-    XXX tst_ncs_utils.py
-    XXX
-
-    Get rotations and translations vectors from ncs_restraints_group_list or
-    transforms_obj
-
-    Returns:
-      r (list): list of rotation matrices
-      t (list): list of translation vectors
-    """
-    r = []
-    t = []
-    for nrg in self:
-      for tr in nrg.copies:
-        r.append(tr.r)
-        t.append(tr.t)
-    return r,t
-
   def get_array_of_str_selections(self):
     """
     Returns array of phil selection strings e.g. for the exapmle above in
