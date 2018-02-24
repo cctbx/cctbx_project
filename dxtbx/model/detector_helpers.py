@@ -150,17 +150,18 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
     # if no two_theta offset use old method
     if min(abs(math.pi-a), abs(a)) < 5.0 * math.pi / 180.0:
 
+      # ensure panel_id is set
       from scitbx import matrix
       s0 = matrix.col(beam.get_s0())
-      panel = detector[0]
-      if matrix.col(panel.get_origin()).dot(s0) < 0:
-        os0 = -s0
-      else:
-        os0 = s0
       if panel_id is None:
-        panel_id, old_beam_centre = detector.get_ray_intersection(os0.elems)
-      else:
-        old_beam_centre = detector[0].get_ray_intersection(os0.elems)
+        panel_id = detector.get_panel_intersection(s0)
+        if panel_id < 0:
+          panel_id = detector.get_panel_intersection(-s0)
+        if panel_id < 0:
+          panel_id = 0
+
+      old_beam_centre = detector[panel_id].get_bidirectional_ray_intersection(s0)
+
       # XXX maybe not the safest way to do this?
       new_beam_centre = matrix.col((beam_f, beam_s))
       origin_shift = matrix.col(old_beam_centre) - new_beam_centre
