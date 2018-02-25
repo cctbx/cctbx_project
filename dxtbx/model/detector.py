@@ -436,13 +436,15 @@ class DetectorFactory:
         panel_id = params.detector.slow_fast_beam_centre[2]
       if panel_id >= len(detector):
         raise Sorry('Detector does not have panel index {0}'.format(panel_id))
-      pixel_size = detector[0].get_pixel_size()
+      px_size_f, px_size_s = detector[0].get_pixel_size()
+      slow_fast_beam_centre_mm = (
+          params.detector.slow_fast_beam_centre[0] * px_size_s,
+          params.detector.slow_fast_beam_centre[1] * px_size_f)
       assert beam is not None
       set_slow_fast_beam_centre_mm(
         detector,
         beam,
-        [p * c for p, c in zip(
-          params.detector.slow_fast_beam_centre, pixel_size)],
+        slow_fast_beam_centre_mm,
         panel_id=panel_id)
 
     # Return the model
