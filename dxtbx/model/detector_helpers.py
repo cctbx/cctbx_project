@@ -128,7 +128,7 @@ class detector_helper_sensors:
 
 def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
   """ detector and beam are dxtbx objects,
-      slow_fast_beam_centre is a tuple of mm coordinates.
+      beam_centre is a tuple of (slow, fast) mm coordinates.
       supports 2-theta offset detectors, assumes correct centre provided
       for 2-theta=0
   """
@@ -152,34 +152,42 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
 
       # ensure panel_id is set
       from scitbx import matrix
-      s0 = matrix.col(beam.get_s0())
+      us0 = matrix.col(beam.get_unit_s0())
       if panel_id is None:
-        panel_id = detector.get_panel_intersection(s0)
+        panel_id = detector.get_panel_intersection(us0)
         if panel_id < 0:
-          panel_id = detector.get_panel_intersection(-s0)
+          panel_id = detector.get_panel_intersection(-us0)
         if panel_id < 0:
           panel_id = 0
 
-      old_beam_centre = detector[panel_id].get_bidirectional_ray_intersection(s0)
+      panel = detector[panel_id]
+      f = matrix.col(panel.get_fast_axis())
+      s = matrix.col(panel.get_slow_axis())
+      n = matrix.col(panel.get_normal())
 
-      # XXX maybe not the safest way to do this?
-      new_beam_centre = matrix.col((beam_f, beam_s))
-      origin_shift = matrix.col(old_beam_centre) - new_beam_centre
-      for panel in detector:
-        n = matrix.col(panel.get_normal())
-        # sometimes detector normal might be pointing the other way
-        angle_s0_n = min(s0.angle(n, deg=True), s0.angle(-n, deg=True))
-        assert angle_s0_n < 5, \
-               "Detector normal not parallel to beam: %.1f deg" %angle_s0_n
-        old_origin = matrix.col(panel.get_origin())
-        new_origin = (old_origin +
-                      matrix.col(panel.get_fast_axis()) * origin_shift[0] +
-                      matrix.col(panel.get_slow_axis()) * origin_shift[1])
-        panel.set_local_frame(fast_axis=panel.get_fast_axis(),
-                              slow_axis=panel.get_slow_axis(),
-                              origin=new_origin)
+      # lab coord of desired beam centre
+      #(beam_dist * us0).dot(n) = panel.get_directed_distance()
+      if us0.accute_angle(n, deg=True) > 89.9:
+        raise RuntimeError("Beam is in the plane of the detector panel")
+      beam_dist = panel.get_directed_distance() / us0.dot(n)
+      beam_centre_lab = beam_dist * us0
+
+      # Lab coord of the current position where we want the beam centre
+      intersection_lab = matrix.col(panel.get_lab_coord((beam_f, beam_s)))
+
+      # For each panel find the offset of the origin from the beam centre in
+      # terms of the chosen panel's fast, slow directions. Use this to
+      # reposition the panel origin wrt the desired beam centre
+      for p in detector:
+        origin = matrix.col(p.get_origin())
+        offset = origin - intersection_lab
+        new_origin = beam_centre_lab + offset
+        p.set_frame(fast_axis=p.get_fast_axis(),
+                    slow_axis=p.get_slow_axis(),
+                    origin=new_origin)
+
       # sanity check to make sure we have got the new beam centre correct
-      new_beam_centre = detector[panel_id].get_ray_intersection(os0.elems)
+      new_beam_centre = detector[panel_id].get_bidirectional_ray_intersection(s0)
       assert (matrix.col(new_beam_centre) -
               matrix.col((beam_f, beam_s))).length() < 1e-4
       return
