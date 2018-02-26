@@ -928,14 +928,34 @@ class anomalous (scaling.xtriage_analysis) :
 
     if (hasattr(self, 'plan_sad_experiment_stats') and
         (self.plan_sad_experiment_stats is not None)):
-       out.show_header(
-       "Analysis of probability of finding %d sites with this anomalous data" %(
-          self.plan_sad_experiment_stats.sites))
-       if (out.gui_output):
-         self.plan_sad_experiment_stats.show_in_wxgui(out=out)
-       else:
-         self.plan_sad_experiment_stats.show_summary(out=out)
+      out.show_header("Analysis of probability of finding %d sites with this anomalous data" %(
+        self.plan_sad_experiment_stats.sites))
+      if (out.gui_output):
+        self.plan_sad_experiment_stats.show_in_wxgui(out=out)
+      else:
+        self.plan_sad_experiment_stats.show_summary(out=out)
 
+  def summarize_issues(self):
+    '''
+    Traffic light
+    '''
+    issues = list()
+    if (hasattr(self, 'plan_sad_experiment_stats') and
+        (self.plan_sad_experiment_stats is not None)):
+      p_substr = self.plan_sad_experiment_stats.get_p_substr()
+      sites = self.plan_sad_experiment_stats.sites
+      message = 'The probability of finding %i sites with this data is %i%%.' %\
+                (sites, p_substr)
+      section_name = 'Probability of finding sites and expected FOM'
+      hi_limit = 85.0
+      lo_limit = 50.0
+      if (p_substr >= hi_limit):
+        issues.append((0, message, section_name))
+      elif ( (p_substr >= lo_limit) and (p_substr < hi_limit) ):
+        issues.append((1, message, section_name))
+      elif (p_substr < lo_limit):
+        issues.append((2, message, section_name))
+    return issues
 
 class wilson_scaling (scaling.xtriage_analysis) :
   """

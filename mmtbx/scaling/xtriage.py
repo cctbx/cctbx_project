@@ -998,7 +998,8 @@ class xtriage_analyses (mmtbx.scaling.xtriage_analysis):
     issues.extend(self.data_strength_and_completeness.summarize_issues())
     issues.extend(self.data_summary.summarize_issues())
     if (self.anomalous_info is not None) :
-      pass
+      if (hasattr(self.anomalous_info, 'summarize_issues')):
+        issues.extend(self.anomalous_info.summarize_issues())
     return summary(issues)
 
 class summary (mmtbx.scaling.xtriage_analysis) :
