@@ -697,7 +697,8 @@ Installation of Python packages may fail.
     if op.isdir(self.base_dir):
       print "base directory present"
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-    conda_call = [fpath]+["--install-packages"]+ packages
+    conda_call = [fpath]+["--install-psanaconda-lcls"]
+#    conda_call = [fpath]+["--install-packages"]+ packages
     subprocess.call(conda_call)
 
   def build_dependencies(self, packages=None):
@@ -756,14 +757,14 @@ Installation of Python packages may fail.
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:
       print 'installation with conda enabled'
-      #os.chdir(op.join(self.tmp_dir,'..'))
-      #self.install_with_conda(conda_pkg_list, extra_opts=[])
+      os.chdir(op.join(self.tmp_dir,'..'))
+      self.install_with_conda(conda_pkg_list, extra_opts=[])
     packages_order = []
     for i in packages:
       assert i in order, "Installation order unknown for %s" % i
     for i in order:
       if i in packages:
-        if i in self.options.skip_base: continue
+        if i in self.options.skip_base or self.options.with_conda: continue
         #if self.options.with_conda and i in conda_pkg_list: continue
         packages_order.append(i)
 
