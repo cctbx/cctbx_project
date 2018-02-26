@@ -9,6 +9,11 @@ function install_pkgs_conda() {
   done
 }
 
+function install_psanaconda_lcls_channel() {
+  rhel_version=($@)
+  echo 'PSANA CONDA CHANNEL BEING INSTALLED = '${rhel_version}
+  conda install -y --dry-run --channel lcls-rhel${rhel_version} psana-conda
+}
 function install_pkg_base() {
   pkg=$1
   echo 'BASE PACKAGE BEING INSTALLED =' $pkg
@@ -25,6 +30,7 @@ while test $# -gt 0; do
       echo "options are"
       echo "--install-miniconda"
       echo "--install-packages {package list}"
+      echo "--install-psanaconda-lcls {Specify Red Hat Linux Version: 5,6 or 7}"
       break
       ;;
 
@@ -45,6 +51,16 @@ while test $# -gt 0; do
       source activate base
       conda clean --index-cache
       install_pkgs_conda ${base_pkgs[@]} 
+      break
+      ;;
+    --install-psanaconda-lcls)
+      echo "install packages through psana-conda lcls channel. Note it doesn't contain all base packages and should only be used for XFEL on a Linux system"
+      shift
+      rhel_version=($@)
+      export PATH="$PWD/../base/bin:$PATH"
+      source activate
+      conda clean --index-cache
+      install_psanaconda_lcls_channel ${rhel_version[@]} 
       break
       ;;
   esac
