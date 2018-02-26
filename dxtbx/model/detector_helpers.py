@@ -175,16 +175,25 @@ def set_slow_fast_beam_centre_mm(detector, beam, beam_centre, panel_id=None):
       # Lab coord of the current position where we want the beam centre
       intersection_lab = matrix.col(panel.get_lab_coord((beam_f, beam_s)))
 
-      # For each panel find the offset of the origin from the beam centre in
-      # terms of the chosen panel's fast, slow directions. Use this to
-      # reposition the panel origin wrt the desired beam centre
-      for p in detector:
-        origin = matrix.col(p.get_origin())
-        offset = origin - intersection_lab
-        new_origin = beam_centre_lab + offset
-        p.set_frame(fast_axis=p.get_fast_axis(),
-                    slow_axis=p.get_slow_axis(),
+      # If the detector has a hierarchy, just update the root note
+      try:
+        h = detector.hierarchy()
+        translation = beam_centre_lab - intersection_lab
+        new_origin = matrix.col(h.get_origin()) + translation
+        h.set_frame(fast_axis=h.get_fast_axis(),
+                    slow_axis=h.get_slow_axis(),
                     origin=new_origin)
+      except AttributeError:
+        # No hierarchy, update each panel instead by finding the offset of
+        # its origin from the current position of the desired beam centre. Use
+        # this to reposition the panel origin wrt the final beam centre
+        for p in detector:
+          origin = matrix.col(p.get_origin())
+          offset = origin - intersection_lab
+          new_origin = beam_centre_lab + offset
+          p.set_frame(fast_axis=p.get_fast_axis(),
+                      slow_axis=p.get_slow_axis(),
+                      origin=new_origin)
 
       # sanity check to make sure we have got the new beam centre correct
       new_beam_centre = detector[panel_id].get_bidirectional_ray_intersection(s0)
