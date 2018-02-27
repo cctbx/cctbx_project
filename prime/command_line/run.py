@@ -17,5 +17,5 @@ if __name__ == "__main__":
     runh = run_handler()
     runh.check_done(iparams)
   else:
-    args = ["prime.postrefine"]+sys.argv[1:] if len(sys.argv) > 1 else []
-    call(args)
+    import prime.command_line.postrefine
+    prime.command_line.postrefine.run(sys.argv[1:])
