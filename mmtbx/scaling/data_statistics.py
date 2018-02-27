@@ -943,8 +943,13 @@ class anomalous (scaling.xtriage_analysis) :
     if (hasattr(self, 'plan_sad_experiment_stats') and
         (self.plan_sad_experiment_stats is not None)):
       p_substr = self.plan_sad_experiment_stats.get_p_substr()
+      # round to nearest 5% when below 97%, otherwise round to nearest 1%
+      if (p_substr < 97):
+        p_substr = int(5.0*round(p_substr/5.0))
+      else:
+        p_substr = int(round(p_substr))
       sites = self.plan_sad_experiment_stats.sites
-      message = 'The probability of finding %i sites with this data is %i%%.' %\
+      message = 'The probability of finding %i sites with this data is around %i%%.' %\
                 (sites, p_substr)
       section_name = 'Probability of finding sites and expected FOM'
       hi_limit = 85.0
