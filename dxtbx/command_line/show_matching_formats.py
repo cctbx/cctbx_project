@@ -1,28 +1,28 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-def recurse(fmt, arg):
-  for _fmt in fmt._children:
-    if _fmt.understand(arg):
-      print _fmt.__name__, _fmt.understand(arg)
-      recurse(_fmt, arg)
-    else:
-      print fmt.__name__, fmt.understand(arg)
+import os
+import sys
 
+def recurse(parentformat, filename):
+  for subformat in parentformat._children:
+    understood = subformat.understand(filename)
+    print("%s: %s" % (subformat.__name__, understood))
+    if understood:
+      recurse(subformat, filename)
 
-
-
-def show_matching_formats():
-  import sys
+def show_matching_formats(files):
   from dxtbx.format.Registry import Registry
 
-  for arg in sys.argv[1:]:
-    print '=== %s ===' % arg
-    for fmt in Registry.get():
-      if fmt.understand(arg):
-        print fmt.__name__, fmt.understand(arg)
-        recurse(fmt, arg)
-      else:
-        print fmt.__name__, fmt.understand(arg)
+  for filename in files:
+    print('\n=== %s ===' % filename)
+    if os.path.exists(filename):
+      for fmt in Registry.get():
+        understood = fmt.understand(filename)
+        print("%s: %s" % (fmt.__name__, understood))
+        if understood:
+          recurse(fmt, filename)
+    else:
+      print("File not found.")
 
 if __name__ == '__main__':
-  show_matching_formats()
+  show_matching_formats(sys.argv[1:])
