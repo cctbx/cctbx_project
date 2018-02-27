@@ -123,6 +123,8 @@ class installer (object) :
     self.cppflags_start = os.environ.get("CPPFLAGS", "")
     self.ldflags_start = os.environ.get("LDFLAGS", "")
     self.with_conda = options.with_conda
+    if self.with_conda: assert self.flag_is_linux, "conda installation available only on Linux Machines. \
+                                                    Use base instead"
 
     # set default macOS flags
     if (self.flag_is_mac):
@@ -698,12 +700,14 @@ Installation of Python packages may fail.
     import subprocess
     if not op.isdir(self.base_dir):
       raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
-    if op.isdir(self.base_dir):
-      print "base directory present"
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
     conda_call = [fpath]+["--install-psanaconda-lcls"]
 #    conda_call = [fpath]+["--install-packages"]+ packages
     subprocess.call(conda_call)
+    #  raise ValueError("conda installation has failed. Please see log")
+    conda_call = [fpath]+["--install-packages"]+ packages
+    subprocess.call(conda_call)
+    #  raise ValueError("conda package installation has failed. Please see log")
 
   def build_dependencies(self, packages=None):
     # Build in the correct dependency order.
@@ -756,8 +760,11 @@ Installation of Python packages may fail.
       'wxpython',
     ]
     conda_pkg_list = [
-      'python=2.7.14',
-      'mpi4py'
+      'h5py',
+      'mpich2',
+      'wxpython',
+      'pillow',
+      'libtiff'
     ]
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:

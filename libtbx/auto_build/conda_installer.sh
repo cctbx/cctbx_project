@@ -11,8 +11,13 @@ function install_pkgs_conda() {
 
 function install_psanaconda_lcls_channel() {
   rhel_version=($@)
-  echo 'PSANA CONDA CHANNEL BEING INSTALLED = '${rhel_version}
-  conda install -y --dry-run --channel lcls-rhel${rhel_version} psana-conda
+  echo 'PSANA CONDA CHANNEL BEING INSTALLED = lcls-rhel'${rhel_version}
+  conda install -y --channel lcls-rhel${rhel_version} psana-conda | grep 'PackagesNotFoundError'
+  ret_code=$?
+  echo $ret_code
+  if [ $ret_code -gt 0 ]; then
+    exit $ret_code
+  fi
 }
 function install_pkg_base() {
   pkg=$1
@@ -47,8 +52,8 @@ while test $# -gt 0; do
       shift
       base_pkgs=($@)
       echo ${base_pkgs[@]}
-      export PATH="$PWD/../newconda/bin:$PATH"
-      source activate base
+      export PATH="$PWD/../base/bin:$PATH"
+      source activate
       conda clean --index-cache
       install_pkgs_conda ${base_pkgs[@]} 
       break
@@ -56,11 +61,12 @@ while test $# -gt 0; do
     --install-psanaconda-lcls)
       echo "install packages through psana-conda lcls channel. Note it doesn't contain all base packages and should only be used for XFEL on a Linux system"
       shift
-      rhel_version=($@)
+#      rhel_version=`cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/'`
+      rhel_version=`cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/'`
       export PATH="$PWD/../base/bin:$PATH"
       source activate
       conda clean --index-cache
-      install_psanaconda_lcls_channel ${rhel_version[@]} 
+      install_psanaconda_lcls_channel ${rhel_version} 
       break
       ;;
   esac
