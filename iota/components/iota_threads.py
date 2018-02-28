@@ -201,28 +201,25 @@ class ObjectFinderThread(Thread):
   def __init__(self,
                parent,
                object_folder,
-               fix_paths = False,
+               last_object=None,
                new_fin_base = None):
     Thread.__init__(self)
     self.parent = parent
     self.object_folder = object_folder
-    self.fix_paths = fix_paths
     self.new_fin_base = new_fin_base
+    self.last_object = last_object
 
   def run(self):
-    object_files = ginp.get_file_list(self.object_folder, ext_only='int')
+    if self.last_object is not None:
+      last = self.last_object.obj_file
+    else:
+      last = None
+    object_files = ginp.get_file_list(self.object_folder,
+                                      ext_only='int',
+                                      last=last)
     new_objects = [self.read_object_file(i) for i in object_files]
     new_finished_objects = [i for i in new_objects if
                             (i is not None and i.status == 'final')]
-
-    # # If recovering and need to fix paths of images (final only):
-    # if self.fix_paths:
-    #   for obj in new_finished_objects:
-    #     print 'Changing ', obj.final['final']
-    #     if obj.final['final'] is not None:
-    #       filename = os.path.basename(obj.final['final'])
-    #       obj.final['final'] = os.path.join(self.new_fin_base, filename)
-    #       print 'Generating filename ', obj.final['final']
 
     evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_finished_objects)
     wx.PostEvent(self.parent, evt)
@@ -306,7 +303,90 @@ class SpotFinderOneThread():
     else:
       datablock = DataBlockFactory.from_filenames([img])[0]
       observed = self.processor.find_spots(datablock=datablock)
-      return [idx, int(len(observed)), img]
+      return [idx, int(len(observed)), img, None, None]
+
+class SpotFinderMosflmOneThread():
+  def __init__(self, parent, term_file):
+    self.meta_parent = parent.parent
+    self.term_file = term_file
+
+  def run(self, idx, img):
+    if os.path.isfile(self.term_file):
+      raise IOTATermination('IOTA_TRACKER: Termination signal received!')
+    else:
+      # First, parse filepath to create Mosflm template
+      directory = os.path.dirname(img)
+      filepath = os.path.basename(img).split('.')
+      fname = filepath[0]
+      extension = filepath[1]
+      suffix = fname.split('_')[-1]
+      img_number = int(''.join(n if n.isdigit() else '' for n in suffix))
+      prefix = fname.replace(suffix, '')
+      n_suffix = ''.join("#" if c.isdigit() else c for c in suffix)
+      template = '{}{}.{}'.format(prefix, n_suffix, extension)
+
+      # Create autoindex.com w/ Mosflm script
+      # Write to temporary file and change permissions to run
+      autoindex = ['#! /bin/tcsh -fe',
+                   'mosflm << eof-ipmosflm'.format(fname),
+                   'NEWMATRIX {0}.mat'.format(fname),
+                   'DIRECTORY {}'.format(directory),
+                   'TEMPLATE {}'.format(template),
+                   'AUTOINDEX DPS THRESH 0.1 IMAGE {} PHI 0 0.01'.format(
+                     img_number),
+                   'GO',
+                   'eof-ipmosflm'
+                   ]
+      autoindex_string = '\n'.join(autoindex)
+      autoindex_filename = 'autoindex_{}.com'.format(idx)
+      with open(autoindex_filename, 'w') as af:
+        af.write(autoindex_string)
+      os.chmod(autoindex_filename, 0755)
+
+      # Run Mosflm autoindexing
+      command = './{}'.format(autoindex_filename)
+      out = easy_run.fully_buffered(command, join_stdout_stderr=True)
+
+      # Scrub text output
+      final_spots = [l for l in out.stdout_lines if
+                     'spots written for image' in l]
+      final_cell_line = [l for l in out.stdout_lines if 'Final cell' in l]
+      final_sg_line = [l for l in out.stdout_lines if 'space group' in l]
+
+      if final_spots != []:
+        spots = final_spots[0].rsplit()[0]
+      else:
+        spots = 0
+      if final_cell_line != []:
+        cell = final_cell_line[0].replace('Final cell (after refinement) is',
+                                          '').rsplit()
+      else:
+        cell = None
+      if final_sg_line != []:
+        sg = final_sg_line[0].rsplit()[6]
+      else:
+        sg = None
+
+      # Temp file cleanup
+      try:
+        os.remove('{}.mat'.format(fname))
+      except Exception:
+        pass
+      try:
+        os.remove('{}.spt'.format(prefix[:-1]))
+      except Exception:
+        pass
+      try:
+        os.remove('SUMMARY')
+      except Exception:
+        pass
+      try:
+        os.remove(autoindex_filename)
+      except Exception:
+        pass
+
+      return [idx, spots, img, sg, cell]
+
 
 class SpotFinderThread(Thread):
   ''' Basic spotfinder (with defaults) that could be used to rapidly analyze
@@ -315,13 +395,18 @@ class SpotFinderThread(Thread):
                parent,
                data_list=None,
                term_file=None,
-               processor=None):
+               processor=None,
+               backend='dials'):
     Thread.__init__(self)
     self.parent = parent
     self.data_list = data_list
     self.term_file = term_file
-    self.processor = processor
     self.terminated = False
+    self.backend = backend
+
+    if self.backend == 'dials':
+      self.processor = processor
+      assert self.processor is not None
 
   def run(self):
     total_procs = multiprocessing.cpu_count()
@@ -341,7 +426,7 @@ class SpotFinderThread(Thread):
         evt = SpotFinderTerminated(tp_EVT_SPFTERM, -1)
         wx.PostEvent(self.parent, evt)
       info = self.data_list
-      evt = SpotFinderOneDone(tp_EVT_SPFALLDONE, -1, info=info)
+      evt = SpotFinderAllDone(tp_EVT_SPFALLDONE, -1, info=info)
       wx.PostEvent(self.parent, evt)
       return
     except TypeError:
@@ -352,11 +437,17 @@ class SpotFinderThread(Thread):
     # blocking of the GUI and makes navigation faster
     try:
       if os.path.isfile(img):
-        spf_worker = SpotFinderOneThread(self, self.processor, self.term_file)
-        result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
+        if self.backend == 'dials':
+          spf_worker = SpotFinderOneThread(self, self.processor, self.term_file)
+          result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
+        elif self.backend == 'mosflm':
+          spf_worker = SpotFinderMosflmOneThread(self, self.term_file)
+          result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
+        else:
+          result = [int(self.data_list.index(img)), 0, img, None, None]
         return result
       else:
-        return [int(self.data_list.index(img)), 0, img]
+        return [int(self.data_list.index(img)), 0, img, None, None]
     except IOTATermination, e:
       raise e
 

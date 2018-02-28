@@ -1,21 +1,15 @@
-IOTA v1.1.026 - interface updates
+IOTA v1.1.027 - MOSFLM indexing in image tracker
 
 Bugfixes:
 
-1. Added more descriptive error message ("No reflections left after outliers
-are removed") to outlier_detection.py
-2. Image tracker: went to update by timer; interface works smoother
-3. More sophisticated filter for file-finding; can now filter by any keyword
-4. Added an advanced 'flip_beamXY' param:
-   - flips X and Y axes when cropping / padding image (orientation unaffected)
-   - flips beamXY coordinates to match
-   - this resolves a "beamX > beamY" bug during image modification for cctbx
+
 
 Features:
 
-1. Image tracker: Added function to write out list of inspected images to file
-(user can now pick out images to process from a large dataset via inspection)
-2. Added separate spotfinder thread; tracker runs a bit faster as a result
+1. Image tracker: Hooked up MOSFLM spotfinding / indexing, with space group and
+unit cell reporting. Not *fully* ready in terms of interface, but works well
+2. IOTA: Sped up filesystem polling for processed objects by only looking for
+object files generated later than the last one plotted
 
 
 Known issues:

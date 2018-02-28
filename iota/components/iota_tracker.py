@@ -20,11 +20,14 @@ from matplotlib.widgets import SpanSelector
 
 from iotbx import phil as ip
 
+from xfel.clustering.cluster import Cluster
+
 from iota.components.iota_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
+from iota.components.iota_misc import Capturing
 
 import time
 assert time # going to keep time around for testing
@@ -339,7 +342,7 @@ class TrackChart(wx.Panel):
 
     count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
     self.main_window.tracker_panel.count_txt.SetLabel(count)
-    self.main_window.tracker_panel.status_sizer.Layout()
+    self.main_window.tracker_panel.info_sizer.Layout()
 
     # Set up scroll bar
     if len(self.xdata) > 0:
@@ -497,26 +500,36 @@ class TrackerPanel(wx.Panel):
 
 
     # Status box
-    self.status_panel = wx.Panel(self)
-    self.status_sizer = wx.FlexGridSizer(1, 2, 0, 10)
-    self.status_sizer.AddGrowableCol(0)
-    self.status_box = wx.StaticBox(self.status_panel, label='Status')
-    self.status_box_sizer = wx.StaticBoxSizer(self.status_box, wx.HORIZONTAL)
-    self.status_txt = wx.StaticText(self.status_panel, label='')
-    self.status_box_sizer.Add(self.status_txt, flag=wx.ALL | wx.ALIGN_CENTER,
-                              border=10)
-    self.status_sizer.Add(self.status_box_sizer, flag=wx.EXPAND)
-    self.status_panel.SetSizer(self.status_sizer)
-    self.count_box = wx.StaticBox(self.status_panel, label='Hit Count')
+    self.info_panel = wx.Panel(self)
+    self.info_sizer = wx.FlexGridSizer(1, 3, 0, 10)
+    self.info_sizer.AddGrowableCol(2)
+    self.info_panel.SetSizer(self.info_sizer)
+
+    self.count_box = wx.StaticBox(self.info_panel, label='Hit Count')
     self.count_box_sizer = wx.StaticBoxSizer(self.count_box, wx.HORIZONTAL)
-    self.count_txt = wx.StaticText(self.status_panel, label='')
+    self.count_txt = wx.StaticText(self.info_panel, label='')
+
+    self.pg_box = wx.StaticBox(self.info_panel, label='Lattice')
+    self.pg_box_sizer = wx.StaticBoxSizer(self.pg_box, wx.HORIZONTAL)
+    self.pg_txt = wx.StaticText(self.info_panel, label='')
+    self.pg_box_sizer.Add(self.pg_txt, flag=wx.ALL | wx.ALIGN_CENTER,
+                          border=10)
+
+    self.uc_box = wx.StaticBox(self.info_panel, label='Unit Cell')
+    self.uc_box_sizer = wx.StaticBoxSizer(self.uc_box, wx.HORIZONTAL)
+    self.uc_txt = wx.StaticText(self.info_panel, label='')
+    self.uc_box_sizer.Add(self.uc_txt, flag=wx.ALL | wx.ALIGN_CENTER,
+                          border=10)
+
     self.count_box_sizer.Add(self.count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
                              border=10)
     font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.count_txt.SetFont(font)
 
-    self.status_sizer.Add(self.count_box_sizer, flag=wx.EXPAND)
-    self.main_sizer.Add(self.status_panel, pos=(0, 0), span=(1, 2),
+    self.info_sizer.Add(self.count_box_sizer, flag=wx.EXPAND)
+    self.info_sizer.Add(self.pg_box_sizer, flag=wx.EXPAND)
+    self.info_sizer.Add(self.uc_box_sizer, flag=wx.EXPAND)
+    self.main_sizer.Add(self.info_panel, pos=(0, 0), span=(1, 2),
                         flag=wx.EXPAND | wx.ALL, border=10)
 
     # Put in chart
@@ -587,8 +600,14 @@ class TrackerWindow(wx.Frame):
     self.term_file = os.path.join(os.curdir, '.terminate_image_tracker')
     self.info_file = os.path.join(os.curdir, '.spotfinding_info')
     self.folder_file = os.path.join(os.curdir, '.data_info')
+    self.spf_backend = 'mosflm'
 
     self.reset_spotfinder()
+
+    # Status bar
+    self.sb = self.CreateStatusBar()
+    self.sb.SetFieldsCount(2)
+    self.sb.SetStatusWidths([100, -1])
 
     # Setup main sizer
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -653,8 +672,9 @@ class TrackerWindow(wx.Frame):
 
     self.toolbar.Realize()
 
-    # Setup timer
-    self.timer = wx.Timer(self)
+    # Setup timers
+    self.spf_timer = wx.Timer(self)
+    self.uc_timer = wx.Timer(self)
 
     self.tracker_panel = TrackerPanel(self)
     self.data_dict = self.tracker_panel.image_list.image_list.ctr.data.copy()
@@ -683,7 +703,8 @@ class TrackerWindow(wx.Frame):
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
     self.Bind(thr.EVT_SPFALLDONE, self.onSpfAllDone)
     self.Bind(thr.EVT_SPFTERM, self.onSpfTerminated)
-    self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
+    self.Bind(wx.EVT_TIMER, self.onSpfTimer, id=self.spf_timer.GetId())
+    self.Bind(wx.EVT_TIMER, self.onUCTimer, id=self.uc_timer.GetId())
 
     # Settings bindings
     self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
@@ -791,7 +812,7 @@ class TrackerWindow(wx.Frame):
       # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
       timer_txt = '[ ------ ]'
       self.msg = 'Ready to track images in {}'.format(self.data_folder)
-      self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
+      self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
 
       self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
       try:
@@ -860,27 +881,30 @@ class TrackerWindow(wx.Frame):
     self.processor = IOTADialsProcessor(params=self.params)
     self.tracker_panel.spf_options.Disable()
 
+    self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
 
     with open(self.folder_file, 'w') as f:
       f.write(self.data_folder)
 
-    self.timer.Start(1000)
+    self.spf_timer.Start(1000)
+    self.uc_timer.Start(15000)
     self.spin_update = 0
     self.find_new_images()
 
   def stop_run(self):
     timer_txt = '[ xxxxxx ]'
     self.msg = 'STOPPED SPOTFINDING!'
-    self.tracker_panel.status_txt.SetLabel('{} {}'
-                                           ''.format(timer_txt, self.msg))
-    self.timer.Stop()
+    self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
+    self.spf_timer.Stop()
+    self.uc_timer.Stop()
 
   def run_spotfinding(self):
     ''' Generate the spot-finder thread and run it '''
     self.spf_thread = thr.SpotFinderThread(self,
                                            data_list=self.data_list,
                                            term_file=self.term_file,
-                                           processor=self.processor)
+                                           processor=self.processor,
+                                           backend=self.spf_backend)
     self.spf_thread.start()
 
   def onSpfOneDone(self, e):
@@ -895,7 +919,8 @@ class TrackerWindow(wx.Frame):
         self.obs_counts[idx] = obs_count
         self.new_frames.append(idx)
         self.new_counts.append(obs_count)
-        self.spotfinding_info.append([idx, obs_count, img_path])
+        self.spotfinding_info.append([idx, obs_count, img_path,
+                                      info[3], info[4]])
         self.all_info.append([idx, obs_count, img_path])
       #self.plot_results()
 
@@ -944,7 +969,7 @@ class TrackerWindow(wx.Frame):
         self.frame_count = self.frame_count + range(len(self.data_list))
       self.run_spotfinding()
 
-  def onTimer(self, e):
+  def onSpfTimer(self, e):
     ''' Every second, update spotfinding chart (for some odd reason, chart is
     not updated when the wx.PostEvent happens) '''
     if self.spin_update == 5:
@@ -953,7 +978,7 @@ class TrackerWindow(wx.Frame):
       self.spin_update += 1
     tick = ['-o----', '--o---', '---o--', '----o-', '---o--', '--o---']
     timer_txt = '[ {0} ]'.format(tick[self.spin_update])
-    self.tracker_panel.status_txt.SetLabel('{} {}'.format(timer_txt, self.msg))
+    self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
 
     if not self.terminated:
       self.plot_results()
@@ -996,12 +1021,66 @@ class TrackerWindow(wx.Frame):
     #   for item in self.spotfinding_info:
     #     f.write('{},{},{}\n'.format(item[0], item[1], item[2]))
 
-    self.spotfinding_info = []
+    #self.spotfinding_info = []
     self.new_frames = []
     self.new_counts = []
 
+  def onUCTimer(self, e):
+    self.cluster_unit_cells()
+
+  def cluster_unit_cells(self):
+    input = []
+    for item in self.spotfinding_info:
+      if (item[4] is not None and item[3] is not None):
+        info_line = [float(i) for i in item[4]]
+        info_line.append(item[3])
+        input.append(info_line)
+
+    with Capturing() as junk_output:
+      try:
+        ucs = Cluster.from_iterable(iterable=input)
+        clusters, _ = ucs.ab_cluster(5000,
+                                     log=False, write_file_lists=False,
+                                     schnell=False, doplot=False)
+      except Exception, e:
+        clusters = 0
+
+    if len(clusters) > 0:
+      uc_table = []
+      uc_summary = []
+      for cluster in clusters:
+        sorted_pg_comp = sorted(cluster.pg_composition.items(),
+                                key=lambda x: -1 * x[1])
+        pg_nums = [pg[1] for pg in sorted_pg_comp]
+        cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
+
+        uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
+                   cluster.stdevs]
+        uc_summary.append(uc_info)
+
+      # select the most prevalent unit cell (most members in cluster)
+      uc_freqs = [i[0] for i in uc_summary]
+      uc_pick = uc_summary[np.argmax(uc_freqs)]
+
+      cons_pg = uc_pick[1]
+      cons_uc = uc_pick[2]
+      cons_uc_std = uc_pick[3]
+      uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+                "".format(cons_uc[0], cons_uc_std[0],
+                          cons_uc[1], cons_uc_std[1],
+                          cons_uc[2], cons_uc_std[2],
+                          cons_uc[3], cons_uc_std[3],
+                          cons_uc[4], cons_uc_std[4],
+                          cons_uc[5], cons_uc_std[5])
+
+      self.tracker_panel.pg_txt.SetLabel(cons_pg)
+      self.tracker_panel.uc_txt.SetLabel(uc_line)
+
   def onQuit(self, e):
-    self.timer.Stop()
+    self.spf_timer.Stop()
+    self.uc_timer.Stop()
     with open(self.term_file, 'w') as tf:
       tf.write('')
     self.Close()

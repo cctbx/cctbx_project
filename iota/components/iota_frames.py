@@ -1641,14 +1641,12 @@ class ProcWindow(wx.Frame):
     self.nref_xaxis = [i[0] for i in self.img_list]
     self.res_list = [0] * len(self.img_list)
 
-    self.start_object_finder = True
     self.state = status
-    self.start_object_finder = False
+    self.finished_objects = []
 
     self.display_log()
     object_finder = thr.ObjectFinderThread(self,
                                            object_folder=self.init.obj_base,
-                                           fix_paths=True,
                                            new_fin_base=init.fin_base)
     object_finder.start()
 
@@ -1944,6 +1942,7 @@ class ProcWindow(wx.Frame):
     self.chart_tab.draw_summary()
 
   def onTimer(self, e):
+    print self.finished_objects
     if self.abort_initiated:
       if self.img_process is not None:
         self.run_aborted = self.img_process.aborted
@@ -1962,7 +1961,13 @@ class ProcWindow(wx.Frame):
     # Find processed image objects
     if self.start_object_finder:
       self.start_object_finder = False
+      print 'DEBUG: SELF.FINISHED_OBJECTS = ', self.finished_objects
+      if self.finished_objects is None or self.finished_objects == []:
+        last_object = None
+      else:
+        last_object = self.finished_objects[-1]
       object_finder = thr.ObjectFinderThread(self,
+                                             last_object=last_object,
                                              object_folder=self.init.obj_base)
       object_finder.start()
 
@@ -2038,7 +2043,8 @@ class ProcWindow(wx.Frame):
     self.find_new_images = self.monitor_mode
 
   def onFinishedObjectFinder(self, e):
-    self.finished_objects = e.GetValue()
+    new_objects = e.GetValue()
+    self.finished_objects.extend(new_objects)
     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
       self.finish_process()
     else:
@@ -2047,6 +2053,14 @@ class ProcWindow(wx.Frame):
   def finish_process(self):
     import shutil
     self.timer.Stop()
+
+    if self.finished_objects is None:
+      font = self.sb.GetFont()
+      font.SetWeight(wx.BOLD)
+      self.status_txt.SetFont(font)
+      self.status_txt.SetForegroundColour('blue')
+      self.status_txt.SetLabel('OBJECT READ-IN ERROR! NONE IMPORTED')
+      return
 
     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
       self.gauge_process.Hide()
