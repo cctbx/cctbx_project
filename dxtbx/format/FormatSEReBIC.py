@@ -55,7 +55,7 @@ class FormatSEReBIC(FormatSER):
       pixel_size = 0.028, 0.028
 
     distance = 2000
-    trusted_range = (-1, 65535)
+    trusted_range = (-4, 65535)
     beam_centre = [(p * i) / 2 for p, i in zip(pixel_size, image_size)]
     d = self._detector_factory.simple('PAD', distance, beam_centre, '+x', '-y',
                               pixel_size, image_size, trusted_range)
