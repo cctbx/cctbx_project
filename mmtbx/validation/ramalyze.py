@@ -55,6 +55,7 @@ class ramachandran (residue) :
     "psi",
     #"c_alphas",
     "markup",
+    "model_id",
   ]
   __slots__ = residue.__slots__ + __rama_attr__
 
@@ -208,6 +209,7 @@ class ramalyze (validation) :
         else:
           markup = None
         result = ramachandran(
+          model_id=main_residue.parent().parent().parent().id,
           chain_id=main_residue.parent().parent().id,
           resseq=main_residue.resseq,
           icode=main_residue.icode,
@@ -224,25 +226,26 @@ class ramalyze (validation) :
           xyz=coords,
           markup=markup)
         #if result.chain_id+result.resseq+result.icode not in count_keys:
-        if result.altloc in ['','A'] and result.chain_id+result.resseq+result.icode not in count_keys:
+        result_key = result.model_id+result.chain_id+result.resseq+result.icode
+        if result.altloc in ['','A'] and result_key not in count_keys:
           self.n_total += 1
           self.n_type[res_type] += 1
           self.add_to_validation_counts(ramaType)
-          count_keys.append(result.chain_id+result.resseq+result.icode)
+          count_keys.append(result_key)
         if (not outliers_only or is_outlier) :
           if (result.altloc != '' or
-            result.chain_id+result.resseq+result.icode not in uniqueness_keys):
+            result_key not in uniqueness_keys):
             #the threes/conformers method results in some redundant result
             #  calculations in structures with alternates. Using the
             #  uniqueness_keys list prevents redundant results being added to
             #  the final list
             self.results.append(result)
-            uniqueness_keys.append(result.chain_id+result.resseq+result.icode)
+            uniqueness_keys.append(result_key)
         if is_outlier :
           i_seqs = main_residue.atoms().extract_i_seq()
           assert (not i_seqs.all_eq(0))
           self._outlier_i_seqs.extend(i_seqs)
-    self.results.sort(key=lambda r: r.id_str())
+    self.results.sort(key=lambda r: r.model_id+r.id_str())
     out_count, out_percent = self.get_outliers_count_and_fraction()
     fav_count, fav_percent = self.get_favored_count_and_fraction()
     self.out_percent = out_percent * 100.0
