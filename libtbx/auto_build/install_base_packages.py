@@ -702,7 +702,6 @@ Installation of Python packages may fail.
       raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
     conda_call = [fpath]+["--install-psanaconda-lcls"]
-#    conda_call = [fpath]+["--install-packages"]+ packages
     subprocess.call(conda_call)
     #  raise ValueError("conda installation has failed. Please see log")
     conda_call = [fpath]+["--install-packages"]+ packages
