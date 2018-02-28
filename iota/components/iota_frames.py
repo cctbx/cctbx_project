@@ -1942,7 +1942,6 @@ class ProcWindow(wx.Frame):
     self.chart_tab.draw_summary()
 
   def onTimer(self, e):
-    print self.finished_objects
     if self.abort_initiated:
       if self.img_process is not None:
         self.run_aborted = self.img_process.aborted
