@@ -286,6 +286,7 @@ def plot_run_stats(stats,
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
   else:
+    xsize = 5; ysize = 5 # work around
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
     plt.close(f)
@@ -356,13 +357,12 @@ def plot_multirun_stats(runs,
     from libtbx import easy_run, easy_pickle
     easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
     result = easy_run.fully_buffered(command="cctbx.xfel.plot_run_stats_from_stats_pickle plot_run_stats_tmp.pickle")
-    #try:
-    #  png = result.stdout_lines[0]
-    #  if png == "None":
-    #    return None
-    #except Exception:
-    #  return None
-    return None
+    try:
+      png = result.stdout_lines[-1]
+      if png == "None":
+        return None
+    except Exception:
+      return None
   else:
     png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
       interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)

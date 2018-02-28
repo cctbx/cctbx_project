@@ -9,10 +9,10 @@ def easy_run_plot_multirun_stats(pickle):
   from libtbx import easy_pickle
   contents = easy_pickle.load(pickle)
   stats_tuple, d_min, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title = contents
-  #print plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
-  #  interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
-  plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
-    interactive=True, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
+  print plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+    interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
+  #plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+  #  interactive=True, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
 
 if __name__ == "__main__":
   import sys
