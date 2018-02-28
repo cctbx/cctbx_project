@@ -1960,7 +1960,6 @@ class ProcWindow(wx.Frame):
     # Find processed image objects
     if self.start_object_finder:
       self.start_object_finder = False
-      print 'DEBUG: SELF.FINISHED_OBJECTS = ', self.finished_objects
       if self.finished_objects is None or self.finished_objects == []:
         last_object = None
       else:
