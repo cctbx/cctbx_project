@@ -43,7 +43,10 @@ while test $# -gt 0; do
       echo "install Miniconda"
       wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh --no-check-certificate
       chmod +x Miniconda2-latest-Linux-x86_64.sh
-      ./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/base 
+      ./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/newconda 
+      export PATH="$PWD/newconda/bin:$PATH"
+      conda create -y -n myEnv
+      ln -s $PWD/newconda/envs/myEnv base
       break
       ;;
 
@@ -52,8 +55,9 @@ while test $# -gt 0; do
       shift
       base_pkgs=($@)
       echo ${base_pkgs[@]}
-      export PATH="$PWD/../base/bin:$PATH"
-      source activate
+      export PATH="$PWD/newconda/bin:$PATH"
+      echo $PATH
+      source activate myEnv
       conda clean --index-cache
       install_pkgs_conda ${base_pkgs[@]} 
       break
@@ -63,8 +67,9 @@ while test $# -gt 0; do
       shift
 #      rhel_version=`cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/'`
       rhel_version=`cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/'`
-      export PATH="$PWD/../base/bin:$PATH"
-      source activate
+      export PATH="$PWD/newconda/bin:$PATH"
+      echo $PATH
+      source activate myEnv
       conda clean --index-cache
       install_psanaconda_lcls_channel ${rhel_version} 
       break
