@@ -248,6 +248,30 @@ class installer (object) :
     if len(args) > 1:
       packages = args[1:]
 
+
+    # Pop out packages pulled down by psana-conda channel
+    psana_conda_pkgs = ['boost', 'bzip2','cairo','certifi',
+                        'cycler', 'fontconfig', 'h5py',
+                        'hdf5', 'icu', 'intel-openmp',
+                        'libedit', 'libffi', 'libgcc-ng',
+                        'libfortran-ng', 'libiconv', 'libpng',
+                        'libsodium', 'libstdcxx-ng', 'libxml2', 'lzo',
+                        'matplotlib', 'mkl', 'mpi4py',
+                        'mysql', 'ncurses', 'numexpr',
+                        'numpy', 'openmpi','openssl',
+                        'pip', 'pixman', 'psana-conda',
+                        'psana-expdb', 'pycairo', 'pyparsing',
+                        'pyqt', 'pytables', 'python','python-dateutil',
+                        'pytz', 'pyzmq', 'qt',
+                        'readline', 'scipy', 'setuptools',
+                        'sip', 'six', 'sqlite',
+                        'szip', 'tk', 'wheel',
+                        'zeromq', 'zlib']
+
+    psana_conda_pkgs += ['h5py', 'mpich2', 'wxpython', 'pillow', 'libtiff']
+    if self.with_conda:
+      packages = list(set(packages).difference(psana_conda_pkgs))
+
     # Do the work!
     self.check_dependencies(packages=packages)
     self.build_dependencies(packages=packages)
