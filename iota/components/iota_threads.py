@@ -323,7 +323,7 @@ class SpotFinderMosflmOneThread():
         suffix = fname.split('_')[-1]
       elif '-' in fname:
         suffix = fname.split('-')[-1]
-      elif '.' in fname
+      elif '.' in fname:
         suffix = fname.split('.')[-1]
       img_number = int(''.join(n if n.isdigit() else '' for n in suffix))
       prefix = fname.replace(suffix, '')
