@@ -986,9 +986,7 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="libsvm")
 
   def build_numpy(self):
-    global NUMPY_VERSION
     if self.python3:
-      NUMPY_VERSION="1.13.3"
       self.build_python_module_pip(
         package_name='numpy',
         package_version=NUMPY_VERSION,
@@ -1123,8 +1121,6 @@ _replace_sysconfig_paths(build_time_vars)
         confirm_import_module="OpenGL")
 
   def build_cython(self):
-    global CYTHON_VERSION
-    if self.python3: CYTHON_VERSION="0.27.3"
     self.build_python_module_pip(
       'Cython', package_version=CYTHON_VERSION,
       confirm_import_module='cython')
