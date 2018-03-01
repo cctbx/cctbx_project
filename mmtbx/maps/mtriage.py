@@ -192,6 +192,7 @@ class _mtriage(object):
     self.d99              = None
     self.d999             = None
     self.d9999            = None
+    self.d99999           = None
     self.d99_1            = None
     self.d99_2            = None
     self.d_model          = None
@@ -293,7 +294,8 @@ class _mtriage(object):
     self.d99    = d99.result.d99
     self.d999   = d99.result.d999
     self.d9999  = d99.result.d9999
-    self.f_map = self.f_map.resolution_filter(d_min = self.d9999-0.1) # TRUNCATED!
+    self.d99999 = d99.result.d99999
+    self.f_map = self.f_map.resolution_filter(d_min = self.d99999-0.1)
     d99_obj_1, d99_obj_2 = None,None
     if(self.base.half_map_data_1() is not None):
       d99_1 = maptbx.d99(
@@ -367,6 +369,7 @@ class _mtriage(object):
       d99               = self.d99,
       d999              = self.d999,
       d9999             = self.d9999,
+      d99999            = self.d99999,
       d99_1             = self.d99_1,
       d99_2             = self.d99_2,
       d_model           = self.d_model,

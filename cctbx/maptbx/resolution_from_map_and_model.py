@@ -44,6 +44,35 @@ def run_at_b(b, f_map, f_calc=None, xray_structure=None):
     d_spacings=d_spacings, ss=ss)
   return result
 
+def tmp(f):
+  import math
+  f.setup_binner(reflections_per_bin = 100)
+  data = abs(f).data()
+  ds = f.d_spacings().data()
+  for i_bin in f.binner().range_used():
+    sel = f.binner().selection(i_bin)
+    m = flex.mean(data.select(sel))
+    dm = flex.mean(ds.select(sel))
+    print "%5d %10.6f %10.6f"%(i_bin, dm,  math.log(m))
+
+def find_b(fo, fc):
+  # TODO: Need to use linear
+  #tmp(f=fo)
+  #fo=fo.resolution_filter(d_min=5)
+  #fo, fc, = fo.common_sets(fc)
+  cc = -999
+  b=None
+  ss = 1./flex.pow2(fc.d_spacings().data()) / 4.
+  data = fc.data()
+  for b_ in range(-500,500,5):
+    sc = flex.exp(-b_*ss)
+    fc_ = fc.customized_copy(data = data*sc)
+    cc_ = fo.map_correlation(other = fc_)
+    if(cc_>cc):
+      cc = cc_
+      b = b_
+  return b
+
 def run(xray_structure, f_map=None, map_data=None, d_fsc_model=None):
   assert [f_map, map_data].count(None) == 1
   xrs = xray_structure.deep_copy_scatterers().set_b_iso(value=0)
@@ -58,17 +87,7 @@ def run(xray_structure, f_map=None, map_data=None, d_fsc_model=None):
     d_fsc_model = fc.d_min_from_fsc(other=f_map, fsc_cutoff=0).d_min
   fo = f_map.resolution_filter(d_min = d_fsc_model)
   fo, fc, = fo.common_sets(fc)
-  cc = -999
-  b=None
-  ss = 1./flex.pow2(fc.d_spacings().data()) / 4.
-  data = fc.data()
-  for b_ in range(-500,500,5):
-    sc = flex.exp(-b_*ss)
-    fc_ = fc.customized_copy(data = data*sc)
-    cc_ = fo.map_correlation(other = fc_)
-    if(cc_>cc):
-      cc = cc_
-      b = b_
+  b = find_b(fo=fo.deep_copy(), fc=fc.deep_copy())
   o = run_at_b(b = b, f_map = fo, f_calc = fc)
   return group_args(d_min = o.d_min, b_iso = b, d_model_b0 = d_model_b0,
     d_fsc_model=d_fsc_model)

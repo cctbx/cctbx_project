@@ -184,6 +184,7 @@ Feedback:
     print >> log, "Map resolution estimates:              masked unmasked"
     print >> log, "  using map alone (d99)            :", fv(fs,rm.d99)          , fv(fs,ru.d99)
     print >> log, "  using map alone (d9999)          :", fv(fs,rm.d9999)        , fv(fs,ru.d9999)
+    print >> log, "  using map alone (d99999)         :", fv(fs,rm.d99999)       , fv(fs,ru.d99999)
     print >> log, "  comparing with model (d_model)   :", fv(fs,rm.d_model)      , fv(fs,ru.d_model)
     print >> log, "    b_iso_overall                  :", fv(fs,rm.b_iso_overall), fv(fs,ru.b_iso_overall)
     print >> log, "  comparing with model (d_model_b0):", fv(fs,rm.d_model_b0)   , fv(fs,ru.d_model_b0)
@@ -205,6 +206,7 @@ Feedback:
     print >> log, "Map resolution estimates:              masked unmasked"
     print >> log, "  using map alone (d99)            :", fv(fs,r.d99)
     print >> log, "  using map alone (d9999)          :", fv(fs,r.d9999)
+    print >> log, "  using map alone (d99999)         :", fv(fs,r.d99999)
     print >> log, "  comparing with model (d_model)   :", fv(fs,r.d_model)
     print >> log, "    b_iso_overall                  :", fv(fs,r.b_iso_overall)
     print >> log, "  comparing with model (d_model_b0):", fv(fs,r.d_model_b0)
