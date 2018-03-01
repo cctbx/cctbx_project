@@ -389,17 +389,37 @@ class sdfac_refine_refltable(sdfac_refine):
     setup_isigi_stats(ISIGI, self.scaler.miller_set.indices())
     meanI = ISIGI['mean_scaled_intensity']
 
-    min_meanI = flex.min(meanI)
-    step = (flex.max(meanI)-min_meanI)/n_bins
-    print >> self.log, "Bin size:", step
-
     sels = []
     binned_intensities = []
-    for i in xrange(n_bins):
-      sel = (meanI > (min_meanI + step * i)) & (meanI < (min_meanI + step * (i+1)))
-      if sel.all_eq(False): continue
-      sels.append(sel)
-      binned_intensities.append((step/2 + step*i)+min(meanI))
+
+    if True:
+      # intensity range per bin is the same
+      min_meanI = flex.min(meanI)
+      step = (flex.max(meanI)-min_meanI)/n_bins
+      print >> self.log, "Bin size:", step
+
+      for i in xrange(n_bins):
+        if i+1 == n_bins:
+          sel = (meanI >= (min_meanI + step * i))
+        else:
+          sel = (meanI >= (min_meanI + step * i)) & (meanI < (min_meanI + step * (i+1)))
+        if sel.all_eq(False): continue
+        sels.append(sel)
+        binned_intensities.append((step/2 + step*i)+min(meanI))
+    else:
+      # n obs per bin is the same
+      sorted_meanI = meanI.select(flex.sort_permutation(meanI))
+      bin_size = len(meanI)/n_bins
+      for i in xrange(n_bins):
+        bin_min = sorted_meanI[int(i*bin_size)]
+        sel = meanI >= bin_min
+        if i+1 == n_bins:
+          bin_max = sorted_meanI[-1]
+        else:
+          bin_max = sorted_meanI[int((i+1)*bin_size)]
+          sel &= meanI < bin_max
+        sels.append(sel)
+        binned_intensities.append(bin_min + ((bin_max-bin_min)/2))
 
     for i, (sel, intensity) in enumerate(zip(sels, binned_intensities)):
       print >> self.log, "Bin %02d, number of observations: % 10d, midpoint intensity: %f"%(i, sel.count(True), intensity)

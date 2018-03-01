@@ -25,15 +25,13 @@ class error_terms(group_args):
                        sigma_thetay  = x[1],
                        sigma_lambda  = x[2],
                        sigma_deff    = x[3],
-                       sigma_eta     = x[4],
-                       sigma_gstar   = x[5:])
+                       sigma_gstar   = x[4:])
 
   def to_x(self):
     x = flex.double([self.sigma_thetax,
                      self.sigma_thetay,
                      self.sigma_lambda,
-                     self.sigma_deff,
-                     self.sigma_eta])
+                     self.sigma_deff])
     x.extend(self.sigma_gstar)
     return x
 
@@ -176,19 +174,16 @@ class sdfac_propagate(error_modeler_base):
     stats_thetax = flex.mean_and_variance(ct['thetax'])
     stats_thetay = flex.mean_and_variance(ct['thetay'])
     stats_lambda = flex.mean_and_variance(ct['wavelength'])
-    #stats_eta    = flex.mean_and_variance(ct['ETA'])
     stats_deff   = flex.mean_and_variance(ct['deff'])
     stats_rs     = flex.mean_and_variance(ct['RS'])
     sigma_thetax = stats_thetax.unweighted_sample_standard_deviation()
     sigma_thetay = stats_thetay.unweighted_sample_standard_deviation()
     sigma_lambda = stats_lambda.unweighted_sample_standard_deviation()
-    sigma_eta    = 0 #stats_eta.unweighted_sample_standard_deviation()
     sigma_deff   = stats_deff.unweighted_standard_error_of_mean()
     sigma_rs     = stats_rs.unweighted_sample_standard_deviation()
     print >> self.log, "ThetaX %.4f +/- %.4f"    %(r2d(stats_thetax.mean()), r2d(sigma_thetax))
     print >> self.log, "Thetay %.4f +/- %.4f"    %(r2d(stats_thetay.mean()), r2d(sigma_thetay))
     print >> self.log, "Wavelength %.4f +/- %.4f"%(    stats_lambda.mean(),      sigma_lambda)
-    #print "ETA %.4f +/- %.4f"       %(    stats_eta.mean(),         sigma_eta)
     print >> self.log, "DEFF %.4f +/- %.4f"      %(    stats_deff.mean(),        sigma_deff)
     print >> self.log, "RS %.6f +/- %.6f"        %(    stats_rs.mean(),          sigma_rs)
 
@@ -217,7 +212,6 @@ class sdfac_propagate(error_modeler_base):
                                    sigma_thetay  = sigma_thetay,
                                    sigma_lambda  = sigma_lambda,
                                    sigma_deff    = sigma_deff,
-                                   sigma_eta     = sigma_eta,
                                    sigma_gstar   = sigma_gstar)
 
   def dI_derrorterms(self):
@@ -307,21 +301,21 @@ class sdfac_propagate(error_modeler_base):
     dP_deff  = ((r['p_d'] * dPn_deff)-(r['p_n'] * dPd_deff))/(r['p_d']**2)
     dI_deff  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deff
 
-    # Derivatives wrt to eta
-    drs_deta = 1/(2*r['d'])
-    dPn_deta = 2 * r['rs'] * drs_deta
-    dPd_deta = 2 * r['rs'] * drs_deta
-    dP_deta  = ((r['p_d']*dPn_deta)-(r['p_n']*dPd_deta))/(r['p_d']**2)
-    dI_deta  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deta
+    # Derivatives wrt to eta (unused for RS refinement)
+    # drs_deta = 1/(2*r['d'])
+    # dPn_deta = 2 * r['rs'] * drs_deta
+    # dPd_deta = 2 * r['rs'] * drs_deta
+    # dP_deta  = ((r['p_d']*dPn_deta)-(r['p_n']*dPd_deta))/(r['p_d']**2)
+    # dI_deta  = -(refls['iobs']/(r['partiality']**2 * r['G'] * r['eepsilon'])) * dP_deta
 
     if self.verbose:
       # Show comparisons to finite differences
       n_cryst_params = sre.constraints.n_independent_params()
       print "Showing finite differences and derivatives for each parameter (first few reflections only)"
-      for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff', 'eta'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
-                                                    [refls, ct, ct, ct, ct, ct] + [ct]*n_cryst_params,
-                                                    [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar,
-                                                    [1e-7]*6 + [1e-11]*n_cryst_params):
+      for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
+                                                    [refls, ct, ct, ct, ct] + [ct]*n_cryst_params,
+                                                    [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff] + dI_dgstar,
+                                                    [1e-7]*5 + [1e-11]*n_cryst_params):
         finite_g = self.finite_difference(parameter_name, table, delta)
         print parameter_name
         for refl_id in xrange(min(10, len(refls))):
@@ -333,7 +327,7 @@ class sdfac_propagate(error_modeler_base):
             stats.mean(), stats.unweighted_sample_standard_deviation(), percent)
         print
 
-    return [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta] + dI_dgstar
+    return [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff] + dI_dgstar
 
   def adjust_errors(self, dI_derrorterms = None, compute_sums = True):
     """ Propagate errors to the scaled and merged intensity errors based on statistical error propagation.
@@ -350,8 +344,8 @@ class sdfac_propagate(error_modeler_base):
 
     if dI_derrorterms is None:
       dI_derrorterms = self.dI_derrorterms()
-    dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff, dI_deta = dI_derrorterms[0:6]
-    dI_dgstar = dI_derrorterms[6:]
+    dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff = dI_derrorterms[0:5]
+    dI_dgstar = dI_derrorterms[5:]
     sigma_Iobs = refls['scaled_intensity']/refls['isigi']
     r = self.r
 
@@ -362,9 +356,7 @@ class sdfac_propagate(error_modeler_base):
                      (self.error_terms.sigma_thetax**2 * dI_dthetax**2) +
                      (self.error_terms.sigma_thetay**2 * dI_dthetay**2) +
                      (self.error_terms.sigma_lambda**2 * dI_dlambda**2) +
-                     (self.error_terms.sigma_deff**2 * dI_deff**2) +
-                     (self.error_terms.sigma_eta**2 * dI_deta**2))
-
+                     (self.error_terms.sigma_deff**2 * dI_deff**2))
     if self.verbose:
       # Show results of propagation
       from scitbx.math import five_number_summary
@@ -377,8 +369,7 @@ class sdfac_propagate(error_modeler_base):
                   (flex.sqrt(self.error_terms.sigma_thetax**2 * dI_dthetax**2), "Thetax term"),
                   (flex.sqrt(self.error_terms.sigma_thetay**2 * dI_dthetay**2), "Thetay term"),
                   (flex.sqrt(self.error_terms.sigma_lambda**2 * dI_dlambda**2), "Wavelength term"),
-                  (flex.sqrt(self.error_terms.sigma_deff**2 * dI_deff**2), "Deff term"),
-                  (flex.sqrt(self.error_terms.sigma_eta**2 * dI_deta**2), "Eta term")] + \
+                  (flex.sqrt(self.error_terms.sigma_deff**2 * dI_deff**2), "Deff term")] + \
                  [(flex.sqrt(self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2), "Gstar term %d"%j) for j in xrange(len(self.error_terms.sigma_gstar))]
       print >> self.log, "%20s % 20s % 20s % 20s"%("Data name","Quartile 1", "Median", "Quartile 3")
       for data, title in all_data:

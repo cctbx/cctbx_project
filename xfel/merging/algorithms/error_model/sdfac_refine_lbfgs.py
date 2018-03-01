@@ -141,32 +141,51 @@ class lbfgs_minimizer(object):
     adopt_init_args(self, locals())
     self.n = current_x.size()
     self.x = current_x
-    from scitbx import lbfgsb
-    l = flex.double(self.n, 1e-8)
 
-    if len(l) > 3:
-      l[7] = 0 # eta
-      l[8] = 1e-15 # g*0
-      l[9] = 1e-15 # g*1
+    if False:
+      self.diag_mode = "always"
+      from scitbx import lbfgs
+      self.minimizer = lbfgs.run(
+        target_evaluator=self,
+        termination_params=lbfgs.termination_parameters(
+          traditional_convergence_test=False,
+          drop_convergence_test_max_drop_eps=max_drop_eps,
+          min_iterations=min_iterations,
+          max_iterations = None,
+          max_calls=max_calls),
+        exception_handling_params=lbfgs.exception_handling_parameters(
+           ignore_line_search_failed_rounding_errors=True,
+           ignore_line_search_failed_step_at_lower_bound=True,#the only change from default
+           ignore_line_search_failed_step_at_upper_bound=False,
+           ignore_line_search_failed_maxfev=False,
+           ignore_line_search_failed_xtol=False,
+           ignore_search_direction_not_descent=False)
+        )
+    else:
+      from scitbx import lbfgsb
+      l = flex.double(self.n, 1e-8)
 
-    self.minimizer = lbfgsb.minimizer(
-      n = self.n,
-      l = l,
-      u = flex.double(self.n, 0),
-      nbd = flex.int(self.n, 1),
-    )
-    while True:
-      self.compute_functional_and_gradients()
-      if self.minimizer.process(self.x, self.f, self.g):
-        pass
-      elif self.minimizer.is_terminated():
-        break
+      if len(l) > 3:
+        for p in xrange(7,len(l)):
+          l[p] = 1e-15 # g*
+
+      self.minimizer = lbfgsb.minimizer(
+        n = self.n,
+        l = l,
+        u = flex.double(self.n, 0),
+        nbd = flex.int(self.n, 1),
+      )
+      while True:
+        self.compute_functional_and_gradients()
+        if self.minimizer.process(self.x, self.f, self.g):
+          pass
+        elif self.minimizer.is_terminated():
+          break
 
   def compute_functional_and_gradients(self):
     values = self.parameterization(self.x)
     fvec = self.refinery.fvec_callable(values)
-    self.func = functional = self.refinery.functional(fvec)
-    self.f = functional
+    self.f = functional = self.refinery.functional(fvec)
     self.g = self.refinery.gradients(values)
 
     if self.show_finite_differences:
@@ -183,6 +202,34 @@ class lbfgs_minimizer(object):
     values.show(self.out)
     return self.f, self.g
 
+  def compute_functional_gradients_diag(self):
+    values = self.parameterization(self.x)
+    fvec = self.refinery.fvec_callable(values)
+    self.f = functional = self.refinery.functional(fvec)
+
+    self.g = flex.double()
+    self.c = flex.double()
+    for d in self.refinery.jacobian_callable(values):
+      self.g.append(flex.sum(self.refinery.weights * d))
+      self.c.append(flex.sum(self.refinery.weights * d * d))
+
+    diag = 1/self.c
+
+    if self.show_finite_differences:
+      finite_g = flex.double()
+      for x in xrange(self.n):
+        finite_g.append(finite_difference(
+          lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
+          values, x))
+
+      for x in xrange(self.n):
+        print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
+
+    print >> self.out, "functional value % 20.3f"%functional,
+    values.show(self.out)
+    return self.f, self.g, diag
+
+
   def get_refined_params(self):
     return self.parameterization(self.x)
 
@@ -192,5 +239,5 @@ class lbfgs_minimizer(object):
   def __del__(self):
     values = self.parameterization(self.x)
     print >> self.out, "FINALMODEL",
-    print >> self.out, "functional value % 20.3f"%self.func,
+    print >> self.out, "functional value % 20.3f"%self.f,
     values.show(self.out)

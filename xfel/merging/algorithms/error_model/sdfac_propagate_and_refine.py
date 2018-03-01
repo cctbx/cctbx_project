@@ -17,15 +17,14 @@ class sdfac_propagate_parameterization(unpack_base):
     if item=="sigma_thetay" : return YY.reference[4]
     if item=="sigma_lambda" : return YY.reference[5]
     if item=="sigma_deff"   : return YY.reference[6]
-    if item=="sigma_eta"    : return YY.reference[7]
-    if item=="sigma_gstar"  : return YY.reference[8:]
+    if item=="sigma_gstar"  : return YY.reference[7:]
     if item=="sd_terms"        : return YY.reference[0:3]
     if item=="propagate_terms" : return YY.reference[3:]
     raise AttributeError(item)
 
   def show(YY, out):
     print >> out, "sdfac: %20.10f, sdb: %20.10f, sdadd: %20.10f"%(YY.SDFAC, YY.SDB, YY.SDADD)
-    for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_deff", "sigma_eta":
+    for item in "sigma_thetax", "sigma_thetay", "sigma_lambda", "sigma_deff":
       if 'theta' in item:
         print >> out, "%s: %20.10f"%(item, r2d(getattr(YY, item))),
       else:
@@ -57,21 +56,7 @@ class sdfac_propagate_refinery(sdfac_refinery):
     self.propagator.error_terms = error_terms.from_x(values.propagate_terms)
     self.propagator.adjust_errors(dI_derrorterms=self.dI_derrorterms, compute_sums=False)
 
-    # Apply SD terms
-    all_sigmas_normalized, _ = self.get_normalized_sigmas(values)
-
-    # Compute functional
-    f = flex.double()
-    for i, bin in enumerate(self.bins):
-      binned_normalized_sigmas = all_sigmas_normalized.select(bin)
-      n = len(binned_normalized_sigmas)
-      if n == 0:
-        f.append(0)
-        continue
-      # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
-      f.append(1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))
-
-    return f
+    return super(sdfac_propagate_refinery, self).fvec_callable(values)
 
   def jacobian_callable(self, values):
     # Restore original sigmas
