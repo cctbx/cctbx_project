@@ -55,10 +55,16 @@ master_phil = iotbx.phil.parse("""
 
     ncs_file = None
       .type = path
-      .help = Select unique part of query. \
+      .short_caption = NCS file
+      .help = NCS file. \
                If unique_query_only is False (typically) \
                apply NCS to it to generate full query.  Normally used with \
-               test_unique_part_of_target_only=True.
+               test_unique_part_of_target_only=True. \
+               NOTE: if your structure has very high symmetry, including \
+               an NCS file can result in extremely long run times. It may \
+               be better in such cases to supply target and query files \
+               that have NCS applied (or matching structures without NCS) \
+               and not to supply an NCS file.
 
     query_dir = None
       .type = path
