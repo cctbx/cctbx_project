@@ -141,6 +141,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
       print >> self.log, "Validating"
       from matplotlib import pyplot as plt
+      from xfel.merging.algorithms.error_model import compute_normalized_deviations
       all_sigmas_normalized = compute_normalized_deviations(self.scaler.ISIGI, self.scaler.miller_set.indices())
       plt.hist(all_sigmas_normalized, bins=100)
       plt.figure()

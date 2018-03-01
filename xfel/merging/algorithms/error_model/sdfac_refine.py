@@ -155,21 +155,21 @@ class sdfac_refine(error_modeler_base):
     rankits = flex.double([norm.quantile((i+1-a)/(n+1-(2*a))) for i in xrange(n)])
 
     if rankits_sel is None:
-      corr, slope, offset = self.get_overall_correlation_flex(sorted_data, rankits)
+      corr, slope, offset = self.get_overall_correlation_flex(rankits, sorted_data)
     else:
       sel = (rankits >= rankits_sel[0]) & (rankits <= rankits_sel[1])
-      corr, slope, offset = self.get_overall_correlation_flex(sorted_data.select(sel), rankits.select(sel))
+      corr, slope, offset = self.get_overall_correlation_flex(rankits.select(sel), sorted_data.select(sel))
 
     if plot:
       from matplotlib import pyplot as plt
       lim = -5, 5
       x = np.linspace(lim[0],lim[1],100) # 100 linearly spaced numbers
       y = slope * x + offset
-      plt.plot(sorted_data, rankits, '-')
+      plt.plot(rankits, sorted_data, '-')
       plt.plot(x,y)
-      plt.title("Rankits vs sorted data")
-      plt.xlabel("Sorted data")
-      plt.ylabel("Rankits")
+      plt.title("Sorted data vs rankits")
+      plt.ylabel("Sorted data")
+      plt.xlabel("Rankits")
       plt.xlim(lim); plt.ylim(lim)
       plt.axes().set_aspect('equal')
 
@@ -201,7 +201,7 @@ class sdfac_refine(error_modeler_base):
 
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
     sdfac = slope
-    sdadd = offset
+    sdadd = -offset/slope
     sdb = math.sqrt(sdadd)
 
     return sdfac, sdb, sdadd
