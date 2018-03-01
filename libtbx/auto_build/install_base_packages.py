@@ -698,11 +698,11 @@ Installation of Python packages may fail.
       raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
     conda_call = [fpath]+["--install-psanaconda-lcls"]
-    subprocess.call(conda_call)
-    #  raise ValueError("conda installation has failed. Please see log")
+    if subprocess.call(conda_call) > 0:
+      raise ValueError("conda installation has failed. Please see log")
     conda_call = [fpath]+["--install-packages"]+ packages
-    subprocess.call(conda_call)
-    #  raise ValueError("conda package installation has failed. Please see log")
+    if subprocess.call(conda_call) > 0:
+      raise ValueError("conda package installation has failed. Please see log")
 
   def build_dependencies(self, packages=None):
     # Build in the correct dependency order.
@@ -764,7 +764,10 @@ Installation of Python packages may fail.
     if self.options.with_conda:
       print 'installation with conda enabled'
       os.chdir(op.join(self.tmp_dir,'..'))
-      self.install_with_conda(conda_pkg_list, extra_opts=[])
+      try:
+        self.install_with_conda(conda_pkg_list, extra_opts=[])
+      except:
+        raise RuntimeError("conda installation has failed. Please see log")
     packages_order = []
     for i in packages:
       assert i in order, "Installation order unknown for %s" % i
