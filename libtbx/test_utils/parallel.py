@@ -222,6 +222,10 @@ class run_command_list(object):
         print >> self.out, "  %s"%cmd
       print >> self.out, ""
 
+    # Either run tests in parallel or run parallel tests, but
+    # can't run parallel tests in parallel (cctbx#95)
+    os.environ['OPENBLAS_NUM_THREADS'] = 1
+
     t_start = time.time()
     if nprocs > 1:
       # Run the tests with multiprocessing pool.

@@ -986,19 +986,11 @@ _replace_sysconfig_paths(build_time_vars)
       pkg_name_label="libsvm")
 
   def build_numpy(self):
-    if self.python3:
-      self.build_python_module_pip(
-        package_name='numpy',
-        package_version=NUMPY_VERSION,
-        confirm_import_module="numpy",
-      )
-    else:
-      self.build_python_module_pip(
-        package_name='numpy',
-        package_version=NUMPY_VERSION,
-        confirm_import_module="numpy",
-        extra_options=['--no-binary=numpy'],
-      )
+    self.build_python_module_pip(
+      package_name='numpy',
+      package_version=NUMPY_VERSION,
+      confirm_import_module="numpy",
+    )
 
   def build_docutils(self):
     self.build_python_module_pip(
