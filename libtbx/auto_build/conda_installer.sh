@@ -5,6 +5,7 @@ function install_pkgs_conda() {
   for pkg in ${pkgs[@]}
   do
     echo 'PACKAGE BEING INSTALLED = ',$pkg
+    return 22
     conda install -y $pkg
   done
 }
@@ -45,6 +46,9 @@ while test $# -gt 0; do
       chmod +x Miniconda2-latest-Linux-x86_64.sh
       ./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/newconda 
       export PATH="$PWD/newconda/bin:$PATH"
+      # Make sure no old installation of conda and softlinks exist
+      rm -r base
+      conda env remove -y --name myEnv
       conda create -y -n myEnv
       ln -s $PWD/newconda/envs/myEnv base
       break

@@ -1531,6 +1531,7 @@ class Builder(object):
       extra_opts.append('--skip-base=%s' % self.skip_base)
     if self.python3:
       extra_opts.append('--python3')
+    extra_opts.append('--with-conda')
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
@@ -1882,13 +1883,6 @@ class DIALSBuilder(CCIBuilder):
       extra_opts=['--dials', '--xia2',
                  ] + extra_opts)
 
-  def add_conda(self, extra_opts=[]):
-    super(DIALSBuilder, self).add_conda(
-      extra_opts=['--dials',
-                  '--with-conda',
-                  #'--wxpython3'
-                 ] + extra_opts)
-
   def add_dispatchers(self):
     pass
 
@@ -1930,6 +1924,10 @@ class XFELBuilder(CCIBuilder):
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
       extra_opts=['--labelit', '--dials'] + extra_opts)
+
+  def add_conda(self, extra_opts=[]):
+    super(XFELBuilder, self).add_conda(
+      extra_opts=['--labelit'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')
