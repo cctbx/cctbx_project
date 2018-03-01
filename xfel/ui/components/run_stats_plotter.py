@@ -286,7 +286,6 @@ def plot_run_stats(stats,
     f.canvas.mpl_connect('button_press_event', onclick)
     plt.show()
   else:
-    xsize = 5; ysize = 5 # work around
     f.set_size_inches(xsize, ysize)
     f.savefig("runstats_tmp.png", bbox_inches='tight', dpi=100)
     plt.close(f)
