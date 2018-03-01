@@ -1051,8 +1051,11 @@ _replace_sysconfig_paths(build_time_vars)
     self.call("%s setup.py build"%self.python_exe,log=log)
     self.call("%s setup.py install --h5plugin --h5plugin-dir=../hdf5_lz4"%(self.python_exe),log=log)
     self.chdir("../hdf5_lz4",log=log)
-    print >> log, "Copying new libraries to base/lib folder"
-    self.call("cp -v *.so %s/lib"%self.base_dir,log=log)
+    print >> log, "Copying new libraries to base/lib/plugins folder"
+    hdf5_plugin_dir = os.path.join(self.base_dir, "lib", "plugins")
+    if not os.path.exists(hdf5_plugin_dir):
+      os.mkdir(hdf5_plugin_dir)
+    self.call("cp -v *.so %s"%hdf5_plugin_dir,log=log)
 
   def build_scipy(self):
     # requires Fortran compiler.
