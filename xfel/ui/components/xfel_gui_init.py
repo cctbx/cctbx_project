@@ -522,7 +522,7 @@ class RunStatsSentinel(Thread):
       run_statuses=self.run_statuses,
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
       easy_run=True,
-      xsize=(sizex-115)/82, ysize=(sizey-115)/82,
+      xsize=(sizex-25)/85, ysize=sizey/95,
       high_vis=self.parent.high_vis)
       # convert px to inches with fudge factor for scaling inside borders
     self.parent.run_window.runstats_tab.redraw_windows = True
