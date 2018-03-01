@@ -333,7 +333,7 @@ class PopUpCharts(object):
     fig.suptitle(title + " (%d xtals)" % total)
 
     if not self.interactive:
-      fig.set_size_inches(xsize, ysize)
+      fig.set_size_inches(xsize*1.05+.5, ysize*.95)
       fig.savefig("ucell_tmp.png", bbox_inches='tight', dpi=100)
       plt.close(fig)
       return "ucell_tmp.png"
