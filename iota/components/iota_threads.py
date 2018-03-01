@@ -319,7 +319,12 @@ class SpotFinderMosflmOneThread():
       filepath = os.path.basename(img).split('.')
       fname = filepath[0]
       extension = filepath[1]
-      suffix = fname.split('_')[-1]
+      if '_' in fname:
+        suffix = fname.split('_')[-1]
+      elif '-' in fname:
+        suffix = fname.split('-')[-1]
+      elif '.' in fname
+        suffix = fname.split('.')[-1]
       img_number = int(''.join(n if n.isdigit() else '' for n in suffix))
       prefix = fname.replace(suffix, '')
       n_suffix = ''.join("#" if c.isdigit() else c for c in suffix)
