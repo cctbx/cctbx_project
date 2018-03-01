@@ -151,6 +151,8 @@ class rmsd_values:
     self.n_list=[]
     self.match_percent_list=[]
     self.target_length_list=[]
+    self.total_chain=None
+    self.used_chain=None
     self.total_target=None
     self.total_query=None
     self.used_target=None
@@ -481,9 +483,13 @@ def extract_unique_part_of_sequences(sequence_list=None,
     if not copies_found in copies_list: copies_list.append(copies_found)
   copies_list.sort()
   print >>out,"Numbers of copies of sequences: %s" %(str(copies_list))
+  copies_in_unique={}
+  if not copies_list:
+    print >>out,"\nNothing to compare..."
+    copies_base=0
+    return copies_in_unique,copies_base,unique_sequence_dict
   copies_base=copies_list[0]
   all_ok=True
-  copies_in_unique={}
   if len(copies_list)==1:
     print >>out,"Number of copies of all sequences is: %s" %(copies_base)
     for seq in unique_sequences:
@@ -581,6 +587,9 @@ def extract_unique_part_of_hierarchy(ph,target_ph=None,
     allow_extensions=allow_extensions,
     min_similarity=min_similarity,out=out)
 
+  if not base_copies:
+    print >>out,"Nothing to compare...quitting"
+    return new_hierarchy
   sequences_matching_unique_dict={}
   for seq in sequences:
     unique_seq=unique_sequence_dict[seq]
@@ -893,7 +902,7 @@ def get_ncs_obj(file_name,out=sys.stdout):
 
 def apply_ncs_to_hierarchy(ncs_obj=None,
         hierarchy=None,out=sys.stdout):
-  if not ncs_obj or ncs_obj.max_operators()<2:
+  if not ncs_obj or ncs_obj.max_operators()<2 or hierarchy.overall_counts().n_residues<1:
     return hierarchy
   try:
     from phenix.command_line.apply_ncs import apply_ncs as apply_ncs_to_atoms
