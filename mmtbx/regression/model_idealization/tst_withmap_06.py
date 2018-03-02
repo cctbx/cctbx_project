@@ -186,10 +186,11 @@ def exercise_04(prefix="tst_mi_map_test_06"):
   for l in [
       "Using ncs\n",
       "Idealizing chain A1\n",
-      'Working on pdbres="VALA1  13 " OUTLIER\n',
+      # 'Working on pdbres="VALA1  13 " OUTLIER\n',
       # "Using map as reference\n",
       # "  Minimizing... (NCS)\n",
       # "Ramachandran outliers:      0.00      0.00      0.00      0.00      0.00\n",
+      "Rotamer outliers     :     12.50     12.50     12.50      0.00      0.00\n",
       "All done.\n"]:
     assert l in log_lines, "'%s' not in log file." % l
   # should not be there

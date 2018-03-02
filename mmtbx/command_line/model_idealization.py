@@ -29,6 +29,9 @@ from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_m
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.validation.clashscore import check_and_add_hydrogen
 import mmtbx.model
+import mmtbx.refinement.real_space.fit_residues
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -582,19 +585,31 @@ class model_idealization():
     # fixing remaining rotamer outliers
     if (self.params.additionally_fix_rotamer_outliers and
         self.after_loop_idealization.rotamer.outliers > 0.004):
-      print >> self.log, "Processing pdb file again for fixing rotamers..."
-      self.log.flush()
+
       print >> self.log, "Fixing rotamers..."
       self.log.flush()
       if self.params.debug:
         self.shift_and_write_result(
           model = self.model,
           fname_suffix="just_before_rota")
-      fix_rotamer_outliers(
-          model = self.model,
-          map_data=self.master_map,
-          verbose=True,
-          log=self.log)
+
+      result = mmtbx.refinement.real_space.fit_residues.run(
+          pdb_hierarchy     = self.model.get_hierarchy(),
+          crystal_symmetry  = self.model.crystal_symmetry(),
+          map_data          = self.master_map,
+          rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+          sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
+          backbone_sample   = True,
+          mon_lib_srv       = self.model.get_mon_lib_srv(),
+          log               = self.log)
+      self.model.set_sites_cart(
+          sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+          update_grm = True)
+      # fix_rotamer_outliers(
+      #     model = self.model,
+      #     map_data=self.master_map,
+      #     verbose=True,
+      #     log=self.log)
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,
