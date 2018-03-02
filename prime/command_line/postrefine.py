@@ -6,7 +6,7 @@ Created     : 7/13/2014
 Description : Main commandline for prime.
 '''
 
-from libtbx.easy_mp import pool_map
+from libtbx.easy_mp import parallel_map
 from cctbx.array_family import flex
 from prime.command_line.solve_indexing_ambiguity import indexing_ambiguity_handler
 from prime.postrefine.mod_mx import mx_handler
@@ -46,7 +46,7 @@ def scale_frames(frames, frame_files, iparams):
   else:
     #Calculate <I> for each frame
     frame_args = [(frame_file, iparams, avg_mode) for frame_file in frame_files]
-    determine_mean_I_result = pool_map(
+    determine_mean_I_result = parallel_map(
             iterable=frame_args,
             func=determine_mean_I_mproc,
             processes=iparams.n_processors)
@@ -59,7 +59,7 @@ def scale_frames(frames, frame_files, iparams):
     mean_of_mean_I = np.median(frames_mean_I)
   #use the calculate <mean_I> to scale each frame
   frame_args = [(frame_no, frame_file, iparams, mean_of_mean_I, avg_mode) for frame_no, frame_file in zip(frames, frame_files)]
-  scale_frame_by_mean_I_result = pool_map(
+  scale_frame_by_mean_I_result = parallel_map(
           iterable=frame_args,
           func=scale_frame_by_mean_I_mproc,
           processes=iparams.n_processors)
@@ -99,7 +99,7 @@ def postrefine_frames(i_iter, frames, frame_files, iparams, pres_set, miller_arr
   txt_merge_postref += ' * R and CC show percent change.\n'
   print txt_merge_postref
   frame_args = [(frame_no, frame_file, iparams, miller_array_ref, pres_in, avg_mode) for frame_no, frame_file, pres_in in zip(frames, frame_files, pres_set)]
-  postrefine_by_frame_result = pool_map(
+  postrefine_by_frame_result = parallel_map(
       iterable=frame_args,
       func=postrefine_by_frame_mproc,
       processes=iparams.n_processors)
