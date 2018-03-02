@@ -5,20 +5,14 @@ function install_pkgs_conda() {
   for pkg in ${pkgs[@]}
   do
     echo 'PACKAGE BEING INSTALLED = ',$pkg
-    return 22
-    conda install -y $pkg
+    conda install -y --verbose $pkg
   done
 }
 
 function install_psanaconda_lcls_channel() {
   rhel_version=($@)
   echo 'PSANA CONDA CHANNEL BEING INSTALLED = lcls-rhel'${rhel_version}
-  conda install -y --channel lcls-rhel${rhel_version} psana-conda | grep 'PackagesNotFoundError'
-  ret_code=$?
-  echo $ret_code
-  if [ $ret_code -gt 0 ]; then
-    exit $ret_code
-  fi
+  conda install -y --verbose --channel lcls-rhel${rhel_version} psana-conda
 }
 function install_pkg_base() {
   pkg=$1

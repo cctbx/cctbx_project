@@ -223,6 +223,8 @@ class installer (object) :
     if self.python_exe:
       print >> log, "Using Python interpreter: %s" % self.python_exe
 
+    print 'asas2 ARE YOUOWHDOH!EOY!NL'
+
     if not self.python_exe and 'SuSE' in platform.platform():
       if 'CONFIG_SITE' in os.environ:
         print >> log, 'SuSE detected; clobbering CONFIG_SITE in environ'
@@ -254,7 +256,7 @@ class installer (object) :
                         'cycler', 'fontconfig', 'h5py',
                         'hdf5', 'icu', 'intel-openmp',
                         'libedit', 'libffi', 'libgcc-ng',
-                        'libfortran-ng', 'libiconv', 'libpng',
+                        'libfortran-ng', 'libiconv', 'png',
                         'libsodium', 'libstdcxx-ng', 'libxml2', 'lzo',
                         'matplotlib', 'mkl', 'mpi4py',
                         'mysql', 'ncurses', 'numexpr',
@@ -264,17 +266,24 @@ class installer (object) :
                         'pyqt', 'pytables', 'python','python-dateutil',
                         'pytz', 'pyzmq', 'qt',
                         'readline', 'scipy', 'setuptools',
-                        'sip', 'six', 'sqlite',
+                        'sip', 'sqlite',
                         'szip', 'tk', 'wheel',
-                        'zeromq', 'zlib']
+                        'zeromq', 'zlib',
+                        # Anything below this are packages either named differently by
+                        # conda or will be installed using conda_pkg using a different name
+                        'tiff',                    # conda name is libtiff
+                        'freetype','glib','render','gtk','fonts']     # GUI related packages
 
-    psana_conda_pkgs += ['h5py', 'mpich2', 'wxpython', 'pillow', 'libtiff']
+    conda_pkgs = ['mpich2', 'wxpython', 'pillow', 'libtiff']
+    print 'BEFORE SET = ====== ',packages
     if self.with_conda:
       packages = list(set(packages).difference(psana_conda_pkgs))
+      packages = list(set(packages).difference(conda_pkgs))
 
+    print 'AFTER SET = ====== ',packages
     # Do the work!
     self.check_dependencies(packages=packages)
-    self.build_dependencies(packages=packages)
+    self.build_dependencies(packages=packages, conda_pkgs=conda_pkgs)
 
     # On Mac OS X all of the Python-related executables located in base/bin
     # are actually symlinks to absolute paths inside the Python.framework, so
@@ -722,13 +731,16 @@ Installation of Python packages may fail.
       raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
     fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
     conda_call = [fpath]+["--install-psanaconda-lcls"]
-    if subprocess.call(conda_call) > 0:
-      raise ValueError("conda installation has failed. Please see log")
-    conda_call = [fpath]+["--install-packages"]+ packages
-    if subprocess.call(conda_call) > 0:
-      raise ValueError("conda package installation has failed. Please see log")
+#    command=['bash',fpath,'--install-psanaconda-lcls']
+#    self.add_step(self.shell(name='install-psanaconda', command=command, workdir=['.']))
 
-  def build_dependencies(self, packages=None):
+#    command=['bash',fpath,'--install-packages']+packages
+#    self.add_step(self.shell(name='install-conda-packages', command=command, workdir=['.']))
+    subprocess.call(conda_call)
+    conda_call = [fpath]+["--install-packages"]+ packages
+    subprocess.call(conda_call)
+
+  def build_dependencies(self, packages=None, conda_pkgs=None):
     # Build in the correct dependency order.
     packages = packages or []
     order = [
@@ -777,27 +789,22 @@ Installation of Python packages may fail.
       'fonts',
       'wxpython',
     ]
-    conda_pkg_list = [
-      'h5py',
-      'mpich2',
-      'wxpython',
-      'pillow',
-      'libtiff'
-    ]
     self.options.skip_base = self.options.skip_base.split(",")
     if self.options.with_conda:
       print 'installation with conda enabled'
       os.chdir(op.join(self.tmp_dir,'..'))
       try:
-        self.install_with_conda(conda_pkg_list, extra_opts=[])
+        self.install_with_conda(conda_pkgs, extra_opts=[])
       except:
         raise RuntimeError("conda installation has failed. Please see log")
+    python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
+    self.set_python(op.abspath(python_exe)) 
     packages_order = []
     for i in packages:
       assert i in order, "Installation order unknown for %s" % i
     for i in order:
       if i in packages:
-        if i in self.options.skip_base or self.options.with_conda: continue
+        if i in self.options.skip_base: continue
         #if self.options.with_conda and i in conda_pkg_list: continue
         packages_order.append(i)
 
