@@ -6,8 +6,5 @@ tst_list = [
   "$D/tst_equivalence.py",
   "$D/tst_read.py",
   "$D/tst_cout.py",
-  "$D/test/tst_show_calls.py",
-  "$D/test/tst_command_line.py",
-  "$D/test/tst_separate_files.py",
   ["$D/tst_cout_compile.py", "stop"],
 ] + discover()
