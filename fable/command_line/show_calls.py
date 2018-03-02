@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division
 import optparse
+import sys
 
 def run(args):
   if not args: args = ["--help"]
-  import libtbx.load_env
-  parser = optparse.OptionParser(usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+  parser = optparse.OptionParser(usage="fable.show_calls [options] fortran_file ...")
   parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
   parser.add_option("--top_procedure", action="append", type="str")
   parser.add_option("--top-procedure", action="append", type="str", help=optparse.SUPPRESS_HELP)

@@ -1,4 +1,8 @@
-from __future__ import division
+from __future__ import absolute_import, division
+
+import optparse
+import sys
+
 def process_each(process, file_names, report_success=False):
   import traceback
   n_fail = 0
@@ -39,38 +43,26 @@ def report_equivalence_clusters_with_mixed_data_types(fproc):
         print "  %s: %s" % (identifier, dtv)
 
 def run(args):
-  if (len(args) == 0): args = ["--help"]
-  from libtbx.option_parser import option_parser
-  import libtbx.load_env
-  command_line = (option_parser(
-    usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
-    .option(None, "--each",
-      action="store_true",
-      default=False)
-    .option(None, "--report_success",
-      action="store_true",
-      default=False)
-    .option(None, "--warnings",
-      action="store_true",
-      default=False)
-  ).process(args=args)
-  co = command_line.options
-  def sorry_exclusive(opt_name):
-    from libtbx.utils import Sorry
-    raise Sorry(
-      "%s: options are mutually exclusive: --each, --%s"
-        % (libtbx.env.dispatcher_name, opt_name))
-  if (co.each):
-    if (co.warnings): sorry_exclusive("warnings")
+  if not args: args = ["--help"]
+  parser = optparse.OptionParser(usage="fable.read [options] fortran_file ...")
+  parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
+  parser.add_option("--each", action="store_true", default=False)
+  parser.add_option("--report_success", action="store_true", default=False)
+  parser.add_option("--report-success", action="store_true", help=optparse.SUPPRESS_HELP)
+  parser.add_option("--warnings", action="store_true", default=False)
+
+  co, files = parser.parse_args(args)
+  if co.each and co.warnings:
+    sys.exit("fable.read: options are mutually exclusive: --each, --warnings")
   from fable.read import process
-  if (co.each):
+  if co.each:
     process_each(
       process=process,
-      file_names=command_line.args,
+      file_names=files,
       report_success=co.report_success)
   else:
-    all_fprocs = process(file_names=command_line.args)
-    if (co.warnings):
+    all_fprocs = process(file_names=files)
+    if co.warnings:
       for fproc in all_fprocs.all_in_input_order:
         report_equivalence_clusters_with_mixed_data_types(fproc=fproc)
 

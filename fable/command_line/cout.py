@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+import fable
 import fable.cout
 
 import hashlib
@@ -23,15 +24,14 @@ def check_fingerprint(file_name):
   return (orig_hexdigest == curr_hexdigest)
 
 def write_only_if_safe(file_name, text):
-  from libtbx.str_utils import show_string
   if os.path.exists(file_name):
     if not os.path.isfile(file_name):
       raise RuntimeError(
-        "Not a regular file: %s" % show_string(file_name))
+        "Not a regular file: %s" % file_name)
     stat = check_fingerprint(file_name=file_name)
     if (stat is None or not stat):
       raise RuntimeError(
-        "File appears to be manually modified: %s" % show_string(file_name))
+        "File '%s' appears to be manually modified" % file_name)
   hexdigest = compute_hexdigest(text=text)
   with open(file_name, "w") as f:
     f.write("// fingerprint %s\n" % hexdigest)
@@ -46,14 +46,13 @@ class process(object):
       O.dynamic_parameters = None
     else:
       from fable.cout import dynamic_parameter_props
-      from libtbx.utils import Sorry
       O.dynamic_parameters = []
       for opt_dp in options.dynamic_parameter:
         flds = opt_dp.replace("=", " ").split()
         if (len(flds) != 3):
-          raise Sorry('Invalid --dynamic-parameter="%s"' % opt_dp)
+          sys.exit('Invalid --dynamic-parameter="%s"' % opt_dp)
         if (flds[1] in O.dynamic_parameters):
-          raise Sorry('Duplicate --dynamic-parameter="%s"' % opt_dp)
+          sys.exit('Duplicate --dynamic-parameter="%s"' % opt_dp)
         O.dynamic_parameters.append(dynamic_parameter_props(
           name=flds[1],
           ctype=flds[0],
@@ -99,15 +98,11 @@ class process(object):
         easy_run.call(command=cmd)
 
 def run(args):
-  import libtbx.load_env
   if not args:
     args = ["--help"]
   elif args == ["--example"]:
-    args = [
-      libtbx.env.under_dist(module_name="fable", path="test/valid/sf.f"),
-      "--namespace", "example",
-      "--run"]
-  parser = optparse.OptionParser(usage="%s [options] fortran_file ..." % libtbx.env.dispatcher_name)
+    sys.exit("fable.cout tests/valid/sf.f --namespace example --run")
+  parser = optparse.OptionParser(usage="fable.cout [options] fortran_file ...")
   parser.add_option("-?", action="help", help=optparse.SUPPRESS_HELP)
   parser.add_option("--compile", action="store_true", default=False)
   parser.add_option("--link", action="store_true", default=False)
