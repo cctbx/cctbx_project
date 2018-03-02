@@ -56,8 +56,10 @@ class run(object):
     self.special_position_settings = crystal.special_position_settings(
       crystal_symmetry = self.crystal_symmetry)
     self.special_position_indices = self.get_special_position_indices()
-    self.selection_water_as_set = set(self.pdb_hierarchy.\
-      atom_selection_cache().selection(string = "water").iselection())
+    # Even better would be to pass it here. Ideally just use model
+    self.atom_selection_cache = self.pdb_hierarchy.atom_selection_cache()
+    self.selection_water_as_set = set(self.atom_selection_cache.\
+        selection(string = "water").iselection())
     if(self.massage_map):
       self.target_map = self.prepare_target_map()
     else:
@@ -112,9 +114,29 @@ class run(object):
     return False
 
   def prepare_target_map(self): # XXX This may need to go external
+    if self.map_data is None:
+      # This just makes dummy map to allow functionality working without it.
+      # Would prefer to just create all-zero map quickly, but couldn't find
+      # how to do it.
+      from cctbx import miller
+      xrs = self.pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry)
+      xrs = xrs.select(self.atom_selection_cache.\
+          selection("name C or name CA or name N or name O"))
+      crystal_gridding = maptbx.crystal_gridding(
+          unit_cell        = xrs.unit_cell(),
+          space_group_info = xrs.space_group_info(),
+          symmetry_flags   = maptbx.use_space_group_symmetry,
+          d_min             = 10)
+      fc = xrs.structure_factors(d_min = 10, algorithm = "fft").f_calc()
+      fft_map = miller.fft_map(
+          crystal_gridding=crystal_gridding,
+          fourier_coefficients=fc)
+      fft_map.apply_sigma_scaling()
+      self.map_data = fft_map.real_map_unpadded(in_place=False)
+
     map_data = self.map_data.deep_copy()
     # truncate map
-    selection = self.pdb_hierarchy.atom_selection_cache().selection(
+    selection = self.atom_selection_cache.selection(
       string = "element C or element O or element N")
     mean_atom = flex.double()
     for i_a, a in enumerate(list(self.pdb_hierarchy.atoms())):
