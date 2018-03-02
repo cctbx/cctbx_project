@@ -155,35 +155,37 @@ class sdfac_refine(error_modeler_base):
     rankits = flex.double([norm.quantile((i+1-a)/(n+1-(2*a))) for i in xrange(n)])
 
     if rankits_sel is None:
-      corr, slope, offset = self.get_overall_correlation_flex(rankits, sorted_data)
+      corr, slope, offset = self.get_overall_correlation_flex(sorted_data, rankits)
     else:
       sel = (rankits >= rankits_sel[0]) & (rankits <= rankits_sel[1])
-      corr, slope, offset = self.get_overall_correlation_flex(rankits.select(sel), sorted_data.select(sel))
+      corr, slope, offset = self.get_overall_correlation_flex(sorted_data.select(sel), rankits.select(sel))
 
     if plot:
       from matplotlib import pyplot as plt
+      f = plt.figure(0)
       lim = -5, 5
       x = np.linspace(lim[0],lim[1],100) # 100 linearly spaced numbers
       y = slope * x + offset
-      plt.plot(rankits, sorted_data, '-')
-      plt.plot(x,y)
-      plt.title("Sorted data vs rankits")
-      plt.ylabel("Sorted data")
-      plt.xlabel("Rankits")
+      plt.plot(sorted_data, rankits, '-')
+      #plt.plot(x,y)
+      plt.title("CC: %.3f Slope: %.3f Offset: %.3f"%(corr, slope, offset))
+      plt.xlabel("Sorted data")
+      plt.ylabel("Rankits")
       plt.xlim(lim); plt.ylim(lim)
       plt.axes().set_aspect('equal')
 
-      plt.figure()
-      plt.title("Rankits")
-      plt.xlabel("")
+      f = plt.figure(1)
+      h = flex.histogram(sorted_data, n_slots=100, data_min = lim[0], data_max = lim[1])
+      stats = flex.mean_and_variance(sorted_data)
+      plt.plot(h.slot_centers().as_numpy_array(), h.slots().as_numpy_array(), '-')
+      plt.xlim(lim)
+      plt.xlabel("Sorted data")
       plt.ylabel("Count")
-      plt.hist(rankits, bins=100)
-      plt.figure()
-      plt.xlabel("")
-      plt.ylabel("Count")
-      plt.title("Data")
-      plt.hist(sorted_data, bins=100)
-      plt.show()
+      plt.title("Normalized data mean: %.3f +/- %.3f"%(stats.mean(), stats.unweighted_sample_standard_deviation()))
+
+      if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
+        plt.ion()
+        plt.pause(0.05)
 
     return corr, slope, offset
 
@@ -200,8 +202,9 @@ class sdfac_refine(error_modeler_base):
     all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
 
     corr, slope, offset = self.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5))
-    sdfac = slope
-    sdadd = -offset/slope
+    sdfac = 1/slope
+    sdadd = offset
+    #sdadd = -offset/slope
     sdb = math.sqrt(sdadd)
 
     return sdfac, sdb, sdadd
@@ -461,6 +464,19 @@ class sdfac_refine_refltable(sdfac_refine):
       variance = sigma * sigma
       self.scaler.summed_wt_I[hkl_id] += Intensity / variance
       self.scaler.summed_weight[hkl_id] += 1 / variance
+
+    if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
+      from matplotlib.pyplot import cm
+      from matplotlib import pyplot as plt
+      import numpy as np
+      for i in xrange(2):
+        f = plt.figure(i)
+        lines = plt.gca().get_lines()
+        color=cm.rainbow(np.linspace(0,1,len(lines)))
+        for line, c in zip(reversed(lines), color):
+          line.set_color(c)
+      plt.ioff()
+      plt.show()
 
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations

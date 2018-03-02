@@ -30,7 +30,7 @@ class sdfac_helper(per_frame_helper):
 
 class sdfac_refine_refltable_levmar(sdfac_refine_refltable_lbfgs):
   def run_minimzer(self, values, sels, **kwargs):
-    self.refinery = sdfac_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
+    self.refinery = sdfac_refinery(self.scaler, self, self.scaler.miller_set.indices(), sels, self.log)
     self.helper = sdfac_helper(current_x = values.reference,
                                parameterization = self.parameterization, refinery = self.refinery,
                                out = self.log )

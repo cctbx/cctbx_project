@@ -180,6 +180,9 @@ raw_data {
       show_finite_differences = False
         .type = bool
         .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
+      plot_refinement_steps = False
+        .type = bool
+        .help = If True, plot refinement steps during refinement.
     }
   }
 }

@@ -35,8 +35,8 @@ class sdfac_propagate_parameterization(unpack_base):
     print >> out
 
 class sdfac_propagate_refinery(sdfac_refinery):
-  def __init__(self, scaler, indices, bins, log):
-    super(sdfac_propagate_refinery, self).__init__(scaler, indices, bins, log)
+  def __init__(self, scaler, modeler, indices, bins, log):
+    super(sdfac_propagate_refinery, self).__init__(scaler, modeler, indices, bins, log)
     self.propagator = sdfac_propagate(self.scaler, verbose=False)
 
     # Get derivatives from error propagation
@@ -88,7 +88,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
     self.parameterization = sdfac_propagate_parameterization
 
   def run_minimzer(self, values, sels, **kwargs):
-    refinery = sdfac_propagate_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
+    refinery = sdfac_propagate_refinery(self.scaler, self, self.scaler.miller_set.indices(), sels, self.log)
     return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log,
       show_finite_differences = self.scaler.params.raw_data.error_models.sdfac_refine.show_finite_differences)
 
@@ -137,6 +137,19 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
       self.scaler.summed_wt_I[hkl_id] += Intensity / variance
       self.scaler.summed_weight[hkl_id] += 1 / variance
 
+    if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
+      from matplotlib.pyplot import cm
+      from matplotlib import pyplot as plt
+      import numpy as np
+      for i in xrange(2):
+        f = plt.figure(i)
+        lines = plt.gca().get_lines()
+        color=cm.rainbow(np.linspace(0,1,len(lines)))
+        for line, c in zip(reversed(lines), color):
+          line.set_color(c)
+      plt.ioff()
+      plt.show()
+
     if False:
       # validate using http://ccp4wiki.org/~ccp4wiki/wiki/index.php?title=Symmetry%2C_Scale%2C_Merge#Analysis_of_Standard_Deviations
       print >> self.log, "Validating"
@@ -162,7 +175,7 @@ class sdfac_propagate_and_refine_levmar(sdfac_propagate_and_refine):
     from xfel.merging.algorithms.error_model.sdfac_refine_levmar import sdfac_helper
     from scitbx.lstbx import normal_eqns_solving
 
-    self.refinery = sdfac_propagate_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
+    self.refinery = sdfac_propagate_refinery(self.scaler, self, self.scaler.miller_set.indices(), sels, self.log)
     self.helper = sdfac_helper(current_x = values.reference,
                                parameterization = self.parameterization, refinery = self.refinery,
                                out = self.log )

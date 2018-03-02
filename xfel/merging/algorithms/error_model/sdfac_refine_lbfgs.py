@@ -25,13 +25,13 @@ class sdfac_refine_refltable_lbfgs(sdfac_refine_refltable):
     return sdfac, sdb, sdadd
 
   def run_minimzer(self, values, sels, **kwargs):
-    refinery = sdfac_refinery(self.scaler, self.scaler.miller_set.indices(), sels, self.log)
+    refinery = sdfac_refinery(self.scaler, self, self.scaler.miller_set.indices(), sels, self.log)
     return lbfgs_minimizer(values.reference, self.parameterization, refinery, self.log,
       show_finite_differences = self.scaler.params.raw_data.error_models.sdfac_refine.show_finite_differences)
 
 from libtbx import adopt_init_args
 class sdfac_refinery(object):
-  def __init__(self, scaler, indices, bins, log):
+  def __init__(self, scaler, modeler, indices, bins, log):
     adopt_init_args(self, locals())
     self.ISIGI = self.scaler.ISIGI
 
@@ -57,6 +57,9 @@ class sdfac_refinery(object):
       # functional is weight * (1-rms(normalized_sigmas))^s summed over all intensitiy bins
       f.append(1-math.sqrt(flex.mean(binned_normalized_sigmas*binned_normalized_sigmas)))
 
+    if self.scaler.params.raw_data.error_models.sdfac_refine.plot_refinement_steps:
+      all_sigmas_normalized = all_sigmas_normalized.select(all_sigmas_normalized != 0)
+      print self.modeler.normal_probability_plot(all_sigmas_normalized, (-0.5, 0.5), plot = True)
     return f
 
   def functional(self, fvec):
