@@ -2138,6 +2138,9 @@ def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
   return result
 
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: should not repeat state-of-the-art
+#   mmtbx/refinement/real_space/fit_residues.py
 def _get_selections_around_residue(
     n_atoms,
     xrs,
@@ -2555,6 +2558,8 @@ def fix_rotamer_outliers(
                 verbose)
   model.set_sites_cart_from_hierarchy(multiply_ncs=True)
   return pdb_hierarchy
+# END_MARKED_FOR_DELETION_OLEG
+
 
 def switch_rotamers(
       pdb_hierarchy,
@@ -2645,114 +2650,6 @@ def switch_rotamers(
                 residue_iselection, res)
   pdb_hierarchy.atoms().set_xyz(sites_cart_result)
   return pdb_hierarchy
-
-def seg_id_to_chain_id(pdb_hierarchy):
-  import string
-  two_character_chain_ids = []
-  segid_list = []
-  seg_dict = {}
-  for atom in pdb_hierarchy.atoms():
-    if atom.segid not in segid_list:
-      segid_list.append(atom.segid)
-  lower_letters = string.lowercase
-  upper_letters = string.uppercase
-  two_character_chain_ids = generate_two_character_ids()
-  for id in segid_list:
-    chainID = two_character_chain_ids[0]
-    seg_dict[id] = chainID
-    two_character_chain_ids.remove(chainID)
-  return seg_dict
-
-def find_bare_chains_with_segids(pdb_hierarchy):
-  bare_chains = False
-  for chain in pdb_hierarchy.chains():
-    if chain.id in ['', ' ', '  ']:
-      segid = None
-      for atom in chain.atoms():
-        if segid == None:
-          segid = atom.segid
-        elif segid != None and segid != atom.segid:
-          #require that each chain have a unique segid for this logic
-          return False
-      if segid != None and segid not in ['', ' ', '  ', '   ', '    ']:
-        bare_chains = True
-  return bare_chains
-
-def assign_chain_ids(pdb_hierarchy, seg_dict):
-  rename_txt = ""
-  for chain in pdb_hierarchy.chains():
-    if chain.id in ['', ' ', '  ']:
-      segid = None
-      for atom in chain.atoms():
-        if segid == None:
-          segid = atom.segid
-        elif segid != atom.segid:
-          print segid, atom.segid
-          raise Sorry("multiple segid values defined for chain")
-      new_id = seg_dict[segid]
-      chain.id = new_id
-      rename_txt = rename_txt + \
-      "segID %s renamed chain %s for Reduce N/Q/H analysis\n" % (segid, new_id)
-  return rename_txt
-
-def check_for_duplicate_chain_ids(pdb_hierarchy):
-  used_chain_ids = []
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      found_conformer = False
-      for conformer in chain.conformers():
-        if not conformer.is_protein() and not conformer.is_na():
-          continue
-        else:
-          found_conformer = True
-      if not found_conformer:
-        continue
-      cur_id = chain.id
-      if cur_id not in used_chain_ids:
-        used_chain_ids.append(cur_id)
-      else:
-        return True
-  return False
-
-def force_unique_chain_ids(pdb_hierarchy):
-  used_chain_ids = []
-  two_char = generate_two_character_ids()
-  #filter all used chains
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      cur_id = chain.id
-      if cur_id in two_char:
-        two_char.remove(cur_id)
-  #force unique chain ids
-  for model in pdb_hierarchy.models():
-    for chain in model.chains():
-      cur_id = chain.id
-      if cur_id not in used_chain_ids:
-        used_chain_ids.append(cur_id)
-      else:
-        new_id = two_char[0]
-        chain.id = new_id
-        two_char.remove(new_id)
-
-def generate_two_character_ids():
-  import string
-  singles = []
-  two_character_chain_ids = []
-  for ch in string.uppercase:
-    singles.append(ch)
-  for num in range(10):
-    ch = "%d" % num
-  for ch in string.lowercase:
-    singles.append(ch)
-    singles.append(ch)
-  for i in range(len(singles)):
-    ch = singles[i]
-    two_character_chain_ids.append(ch)
-  for i in range(len(singles)):
-    for j in range(len(singles)):
-      ch = singles[i]+singles[j]
-      two_character_chain_ids.append(ch)
-  return two_character_chain_ids
 
 def equivalent_sigma_from_cumulative_histogram_match(
       map_1, map_2, sigma_1, tail_cutoff=3, step=1, verbose=True):
