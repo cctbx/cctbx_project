@@ -591,7 +591,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
 # REASON: This is not equivalent conversion. Hierarchy does not have a lot
 # of information pdb_input and cif_input should have. Therefore this
 # function should not be used at all to avoid confusion and having crippled
-# input objects.
+# input objects. Moreover, the use of mmtbx.model should eliminate the
+# need in this tranformation.
+# Currently used exclusively in Tom's code.
 
   def as_pdb_input (self, crystal_symmetry=None) :
     """
@@ -604,17 +606,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
       lines=flex.split_lines(pdb_str))
     return pdb_inp
 
-  def as_cif_input(self, crystal_symmetry=None):
-    """
-    Generate corresponding mmcif input object.
-    """
-    import iotbx.cif.model
-    from iotbx.pdb import mmcif
-    cif_block = self.as_cif_block(crystal_symmetry=crystal_symmetry)
-    cif_model = iotbx.cif.model.cif()
-    cif_model['pdb_hierarchy'] = cif_block
-    cif_input = mmcif.cif_input(cif_object=cif_model)
-    return cif_input
 # END_MARKED_FOR_DELETION_OLEG
 
   def extract_xray_structure(self, crystal_symmetry=None) :
