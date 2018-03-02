@@ -21,7 +21,6 @@ from cctbx import maptbx, miller
 from mmtbx.secondary_structure import build as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
-from mmtbx.utils import fix_rotamer_outliers
 from mmtbx.building.loop_idealization import loop_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
@@ -605,11 +604,6 @@ class model_idealization():
       self.model.set_sites_cart(
           sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
           update_grm = True)
-      # fix_rotamer_outliers(
-      #     model = self.model,
-      #     map_data=self.master_map,
-      #     verbose=True,
-      #     log=self.log)
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,

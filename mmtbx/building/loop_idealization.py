@@ -15,7 +15,9 @@ from cStringIO import StringIO
 from mmtbx.conformation_dependent_library import generate_protein_threes
 import math
 from libtbx import easy_pickle, Auto
-
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
+import mmtbx.refinement.real_space.fit_residues
 
 #import boost.python
 #ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -101,6 +103,9 @@ class loop_idealization():
     self.verbose = verbose
     self.ideal_res_dict = idealized_aa.residue_dict()
     self.n_run = n_run
+
+    iaar_rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+    sin_cos_table = scitbx.math.sin_cos_table(n=10000)
 
     ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
     self.p_initial_rama_outliers = ram.out_percent
@@ -212,15 +217,19 @@ class loop_idealization():
         if len(excl_sel) == 0:
           excl_sel = None
         non_outliers_for_check = self.model.selection("(%s)" % self.ref_exclusion_selection)
-        mmtbx.utils.fix_rotamer_outliers(
-          model = self.model,
-          map_data=self.reference_map,
-          radius=5,
-          backrub_range=None, # don't sample backrub at this point
-          non_outliers_to_check=non_outliers_for_check, # bool selection
-          verbose=True,
-          log=self.log)
 
+        result = mmtbx.refinement.real_space.fit_residues.run(
+            pdb_hierarchy     = self.model.get_hierarchy(),
+            crystal_symmetry  = self.model.crystal_symmetry(),
+            map_data          = self.reference_map,
+            rotamer_manager   = iaar_rotamer_manager,
+            sin_cos_table     = sin_cos_table,
+            backbone_sample   = True,
+            mon_lib_srv       = self.model.get_mon_lib_srv(),
+            log               = self.log)
+        model.set_sites_cart(
+            sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+            update_grm = True)
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               model = self.model,

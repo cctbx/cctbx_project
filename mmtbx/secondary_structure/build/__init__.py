@@ -15,6 +15,9 @@ from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachan
 from mmtbx.secondary_structure.ss_validation import gather_ss_stats
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from time import time
+import scitbx.math
+import mmtbx.idealized_aa_residues.rotamer_manager
+import mmtbx.refinement.real_space.fit_residues
 
 alpha_helix_str = """
 ATOM      1  N   GLY A   1      -5.606  -2.251 -12.878  1.00  0.00           N
@@ -476,7 +479,6 @@ def substitute_ss(
       get_geometry_restraints_manager for no obvious reason).
   ss_annotation - iotbx.pdb.annotation object.
   """
-  import mmtbx.utils
 
   ss_annotation = model.get_ss_annotation()
 
@@ -739,14 +741,18 @@ def substitute_ss(
     br_txt = model.model_as_pdb()
     with open("before_rotamers.pdb", 'w') as f:
       f.write(br_txt)
-    mmtbx.utils.fix_rotamer_outliers(
-      model = model,
-      map_data=reference_map,
-      radius=5,
-      backrub_range=None, # don't sample backrub at this point
-      non_outliers_to_check=fixed_ss_selection, # bool selection
-      verbose=True,
-      log=log)
+    result = mmtbx.refinement.real_space.fit_residues.run(
+        pdb_hierarchy     = model.get_hierarchy(),
+        crystal_symmetry  = model.crystal_symmetry(),
+        map_data          = reference_map,
+        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
+        backbone_sample   = True,
+        mon_lib_srv       = model.get_mon_lib_srv(),
+        log               = log)
+    model.set_sites_cart(
+        sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+        update_grm = True)
 
   if verbose:
     print >> log, "Adding chi torsion restraints..."
