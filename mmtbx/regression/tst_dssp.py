@@ -195,12 +195,12 @@ SHEET    2   1 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
 SHEET    3   1 5 VAL A 156  HIS A 159  1  O  VAL A 156   N  PHE A  28
 SHEET    4   1 5 ASP A  51  ASP A  54  1  O  ASP A  51   N  LEU A 157
 SHEET    5   1 5 ASP A  74  LEU A  77  1  O  ASP A  74   N  VAL A  52""")
-  examples_dir = libtbx.env.find_in_repositories(
-    relative_path="phenix_examples",
+  cctbx_p_dir = libtbx.env.find_in_repositories(
+    relative_path="cctbx_project",
     test=os.path.isdir)
-  if (examples_dir is not None) :
+  if (cctbx_p_dir is not None) :
     # mostly beta
-    pdb_file_1 = os.path.join(examples_dir, "p9-build", "p9.pdb")
+    pdb_file_1 = os.path.join(cctbx_p_dir, "mmtbx", "regression", "pdbs", "p9.pdb")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_1
       ).raise_if_errors()
     # XXX interestingly, this appears to be more accurate than the output of
@@ -229,6 +229,10 @@ SHEET    2   5 2 THR   101  PRO   105 -1  O  VAL   104   N  ILE    91
 SHEET    1   6 2 VAL   123  GLU   124  0
 SHEET    2   6 2 ARG   136  VAL   137 -1  O  ARG   136   N  GLU   124""")
     # beta barrel
+  examples_dir = libtbx.env.find_in_repositories(
+    relative_path="phenix_examples",
+    test=os.path.isdir)
+  if examples_dir is not None:
     pdb_file_2 = os.path.join(examples_dir, "porin-twin", "porin.pdb")
     result = easy_run.fully_buffered("mmtbx.dssp \"%s\"" % pdb_file_2
       ).raise_if_errors()
