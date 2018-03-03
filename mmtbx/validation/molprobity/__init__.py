@@ -26,6 +26,7 @@ from libtbx import slots_getstate_setstate, \
 from libtbx.utils import null_out, to_str, Sorry
 import libtbx.load_env
 import libtbx.phil
+import mmtbx.model
 import os.path
 import sys
 
@@ -135,7 +136,8 @@ class molprobity (slots_getstate_setstate) :
     "model_statistics_geometry",
     "model_statistics_geometry_result",
     "polygon_stats",
-    "wilson_b"
+    "wilson_b",
+    "hydrogens"
   ]
 
   # backwards compatibility with saved results
@@ -321,6 +323,21 @@ class molprobity (slots_getstate_setstate) :
     elif (fmodel_neutron is not None):
       self.wilson_b = fmodel_neutron.wilson_b()
 
+    # validate hydrogens
+    self.hydrogens = None
+    model = mmtbx.model.manager(
+      None,
+      crystal_symmetry=crystal_symmetry,
+      pdb_hierarchy=pdb_hierarchy,
+      build_grm=True)
+    if (model.has_hd):
+      # import here to avoid circular import issues
+      from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
+      hydrogens = validate_H(model, nuclear)
+      hydrogens.validate_inputs()
+      hydrogens.run()
+      self.hydrogens = validate_H_results(hydrogens.get_results())
+
     # write probe file if needed (CLI and GUI)
     if (save_probe_unformatted_file is not None):
       pcm = self.clashes.probe_clashscore_manager
@@ -354,6 +371,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.restraints is not None) :
       make_header("Geometry restraints", out=out)
       self.restraints.show(out=out, prefix="  ")
+    if (self.hydrogens is not None):
+      make_header("Hydrogen validation", out=out)
+      self.hydrogens.print_results(prefix='  ', log=out)
     make_header("Molprobity validation", out=out)
     self.model_statistics_geometry.show(log=out, prefix="  ", lowercase=True)
     if (self.nqh_flips is not None) :

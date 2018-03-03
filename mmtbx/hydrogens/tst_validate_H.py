@@ -1,10 +1,10 @@
 from __future__ import division
-import time
+import os, time
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from libtbx.test_utils import approx_equal
-from mmtbx.hydrogens.validate_H import validate_H
+from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
 #from validate_H_cl_app import master_params_str
 
 pdb_str = """
@@ -516,6 +516,12 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
   results = c.get_results()
   return results
 
+def test_output(results):
+  out = validate_H_results(results)
+  log = open(os.devnull, 'w')
+  out.print_results(prefix='  ', log=log)
+  log.close()
+
 def exercise():
   results = get_results_from_validate_H(
     neutron_distances = True,
@@ -575,6 +581,9 @@ def exercise():
     assert approx_equal(item[3], answer, 1.e-2)
 
   missing_HD_atoms   = results.missing_HD_atoms
+
+  test_output(results)
+
   # XXX TODO
 
 # ------------------------------------------------------------------------------
@@ -608,6 +617,9 @@ def exercise1():
     assert(oldname == answer[0])
     assert(newname == answer[1])
     assert (entry[3] is not None)
+
+  test_output(results1)
+  test_output(results2)
 
 # ------------------------------------------------------------------------------
 # PROPERTIES H/D SITES
@@ -650,6 +662,8 @@ def exercise2():
     assert (item[0].strip() == answer[0].strip())
     assert (item[1].strip() == answer[1].strip())
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # OCCUPANCIES
 # a) HD2 and DD2 have sum occupancy < 1
@@ -689,6 +703,8 @@ def exercise3():
     assert (item[1] == answer[1])
     assert (item[2] is not None) # make sure xyz exist
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # MISSING ATOMS
 # Model has only H atoms
@@ -708,6 +724,8 @@ def exercise4():
     for atom, aatom in zip(item[1], answer[1]):
       assert (atom.strip() == aatom.strip())
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # MISSING ATOMS
 # Model has only D atoms
@@ -726,6 +744,8 @@ def exercise5():
     assert (item[2] is not None) # make sure xyz exist
     for atom, aatom in zip(item[1], answer[1]):
       assert (atom.strip() == aatom.strip())
+
+  test_output(results)
 
 # ------------------------------------------------------------------------------
 # MISSING ATOMS
@@ -749,6 +769,8 @@ def exercise6():
     for atom, aatom in zip(item[1], answer[1]):
       assert (atom.strip() == aatom.strip())
       assert (atom.strip() != 'CG')
+
+  test_output(results)
 
 # ------------------------------------------------------------------------------
 # BOND OUTLIERS
@@ -776,6 +798,8 @@ def exercise7():
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
     assert approx_equal(item[4],answer[2], 1.e-1) # target
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # BOND OUTLIERS
 # Model has only D atoms and only following outliers
@@ -801,6 +825,8 @@ def exercise8():
     assert (item[5] is not None)                  # make sure xyz exist
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
     assert approx_equal(item[4],answer[2], 1.e-1) # target
+
+  test_output(results)
 
 # ------------------------------------------------------------------------------
 # BOND OUTLIERS
@@ -828,6 +854,8 @@ def exercise9():
     assert approx_equal(item[2],answer[1], 1.e-2) # bond length model
     assert approx_equal(item[4],answer[2], 1.e-1) # target
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # ANGLE OUTLIERS
 # Model has H and D atoms, and only the two following outliers
@@ -850,6 +878,8 @@ def exercise10():
     assert approx_equal(item[2],answer[1], 1.e-2) # angle in model
     assert approx_equal(item[4],answer[2], 1.e-1) # target
 
+  test_output(results)
+
 # ------------------------------------------------------------------------------
 # Mismatch between expected restraints and X-H(D) bond lengths
 # Input model has H at X-ray distances but use_neutron_distances flag is True
@@ -862,6 +892,8 @@ def exercise11():
   bond_results = results.bond_results
 
   assert(bond_results.xray_distances_used == True)
+
+  test_output(results)
 
 # ------------------------------------------------------------------------------
 # CHECK HD STATE (hd_state)
@@ -918,4 +950,3 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run()
   print "OK. Time: %8.3f"%(time.time()-t0)
-

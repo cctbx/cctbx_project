@@ -1,6 +1,8 @@
-from __future__ import division
+from __future__ import division, print_function
+from collections import OrderedDict
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
+from libtbx.str_utils import make_sub_header
 from mmtbx.validation import restraints
 from mmtbx.validation.molprobity import mp_geo
 #from libtbx.utils import Sorry
@@ -30,7 +32,7 @@ def get_atom_info_if_hd(atoms_info):
       atom_info_hd = atom_info
   return atom_info_hd
 
-class validate_H():
+class validate_H(object):
   """ This class is for the validation of H and D atoms, especially for models
   obtained by neutron diffraction."""
   def __init__(self, model, use_neutron_distances):
@@ -547,3 +549,191 @@ class validate_H():
 
   def get_curated_hierarchy(self):
     return self.curated_hierarchy
+
+class validate_H_results(object):
+  '''
+  Controller class for displaying results from validate_H
+  '''
+  def __init__(self, results, log=None):
+    self.results = results
+    self.log = log
+
+  def formatted_print(self, prefix, values, log):
+    maxlen = max([ len(key) for key in values.keys() ])
+    for key in values.keys():
+      base_format = '%s%%-%ds: %%i' % (prefix, maxlen)
+      print(base_format % (key, values[key]), file=log)
+
+  def print_overall_results(self, overall_counts_hd, prefix='', log=None):
+    if (log is None):
+      log = self.log
+
+    oc = overall_counts_hd
+
+    make_sub_header('H/D atoms in the input model', out=log)
+    values = OrderedDict([
+      ('Total number of hydrogen atoms' , oc.count_h),
+      ('Total number of deuterium atoms' , oc.count_d),
+      ('Number of H atoms (protein)' , oc.count_h_protein),
+      ('Number of D atoms (protein)' , oc.count_d_protein),
+      ('Number of H atoms (water)' , oc.count_h_water),
+      ('Number of D atoms (water)' , oc.count_d_water)
+    ])
+    self.formatted_print(prefix, values, log)
+
+    make_sub_header('Water molecules', out=log)
+    values = OrderedDict([
+      ('Number of water', oc.count_water),
+      ('Number of water with 0 H (or D)', oc.count_water_0h),
+      ('Number of water with 1 H (or D)', oc.count_water_1h),
+      ('Number of water with 2 H (or D)', oc.count_water_2h),
+      ('Number of water in alternative conformation', oc.count_water_altconf),
+      ('Number of water without oxygen atom', oc.count_water_no_oxygen)
+    ])
+    self.formatted_print(prefix, values, log)
+
+  def print_renamed(self, renamed, prefix='', log=None):
+    if (log is None):
+      log = self.log
+
+    make_sub_header('The following atoms were renamed:', out=log)
+    for entry in renamed:
+      id_str = entry[0]
+      oldname = entry[2]
+      newname = entry[1]
+      print('%s%s atom %s --> %s' % (prefix, id_str, oldname, newname),
+            file=log)
+
+  def print_atoms_occ_lt_1(self, hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
+                           prefix='', log=None):
+    if (log is None):
+      log = self.log
+
+    if hd_atoms_with_occ_0:
+      make_sub_header('H (or D) atoms with zero occupancy', out=log)
+      for item in hd_atoms_with_occ_0:
+        print('%s%s' % (prefix, item[0]), file=log)
+    if single_hd_atoms_occ_lt_1:
+      make_sub_header('H (or D) atoms with occupancy < 1', out=log)
+      for item in single_hd_atoms_occ_lt_1:
+        print('%s%s with occupancy %s' % (prefix, item[0], item[1]),
+              file=log)
+
+  def print_results_hd_sites(
+      self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd,
+      prefix='', log=None):
+    if (log is None):
+      log = self.log
+
+    count_exchanged_sites = len(list(hd_exchanged_sites.keys()))
+    sites_different_xyz = hd_sites_analysis.sites_different_xyz
+    sites_different_b   = hd_sites_analysis.sites_different_b
+    sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
+    sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
+
+    make_sub_header('H/D EXCHANGED SITES', out=log)
+    values = OrderedDict([
+      ('Number of H/D exchanged sites', count_exchanged_sites),
+      ('Number of atoms modelled only as H',
+       overall_counts_hd.count_h_protein - count_exchanged_sites),
+      ('Number of atoms modelled only as D',
+       overall_counts_hd.count_d_protein - count_exchanged_sites)
+    ])
+    self.formatted_print(prefix, values, log)
+
+    if sites_different_xyz:
+      print('\n%sH/D pairs not at identical positions:' % prefix, file=log)
+      for item in sites_different_xyz:
+        print('%s  %s and  %s at distance %.3f' % \
+          (prefix, item[0][5:-1], item[1][5:-1], item[2]), file=log)
+
+    if sites_different_b:
+      print('\n%sH/D pairs without identical ADPs:' % prefix, file=log)
+      for item in sites_different_b:
+        print('%s  %s and %s ' % (prefix, item[0][5:-1], item[1][5:-1]),
+              file=log)
+
+    if sites_sum_occ_not_1:
+      print('\n%sH/D pairs with occupancy sum != 1:' % prefix, file=log)
+      for item in sites_sum_occ_not_1:
+        print('%s  %s  and %s with occupancy sum %s' %
+              (prefix, item[0][5:-1], item[1][5:-1], item[2]), file=log)
+
+    if sites_occ_sum_no_scattering:
+      print('\n%sRotatable H/D pairs with zero scattering occupancy sum:' %
+            prefix, file=log)
+      for item in sites_occ_sum_no_scattering:
+        print('%s  %s with occ %s and  %s with occ %s' %
+              (prefix, item[0][5:-1], item[2], item[1][5:-1], item[3]),
+              file=log)
+
+  def print_missing_HD_atoms(self, missing_HD_atoms, prefix, log=None):
+    if (log is None):
+      log = self.log
+
+    make_sub_header('MISSING H or D atoms', out=log)
+    for item in missing_HD_atoms:
+      print('%s%s : %s ' % (prefix, item[0][8:-1], ", ".join(item[1])),
+            file=log)
+
+  def print_outliers_bonds_angles(self, outliers_bonds, outliers_angles,
+                                  prefix='', log=None):
+    if (log is None):
+      log = self.log
+
+    if outliers_bonds:
+      make_sub_header('Bond outliers', out=log)
+      for item in outliers_bonds:
+        print('%s%s, Bond %s, observed: %.3f, delta from target: %.3f' % \
+          (prefix, item[0], item[1], item[2], item[3]), file=log)
+    if outliers_angles:
+      make_sub_header('Angle outliers', out=log)
+      for item in outliers_angles:
+        print('%s%s, Angle %s, observed: %.3f, delta from target: %.3f' % \
+          (prefix, item[0], item[1], item[2], item[3]), file=self.log)
+
+  def print_xray_distance_warning(self):
+    print('*'*79, file=self.log)
+    print(
+      'WARNING: Model has a majority of X-H bonds with X-ray bond lengths.\n \
+      Input was to use neutron distances. Please check your model carefully.',
+      file=self.log)
+    print('*'*79, file=self.log)
+
+  def print_results(self, results=None, prefix= '', log=None):
+    if (results is None):
+      results = self.results
+    if (log is not None):
+      self.log = log
+    assert (results is not None)
+    assert (self.log is not None)
+
+    overall_counts_hd  = results.overall_counts_hd
+    hd_exchanged_sites = results.hd_exchanged_sites
+    renamed            = results.renamed
+    hd_sites_analysis  = results.hd_sites_analysis
+    missing_HD_atoms   = results.missing_HD_atoms
+    hd_atoms_with_occ_0 = overall_counts_hd.hd_atoms_with_occ_0
+    single_hd_atoms_occ_lt_1 = overall_counts_hd.single_hd_atoms_occ_lt_1
+    outliers_bonds     = results.outliers_bonds
+    outliers_angles    = results.outliers_angles
+    bond_results       = results.bond_results
+
+    if overall_counts_hd:
+      self.print_overall_results(overall_counts_hd, prefix=prefix, log=log)
+    if renamed:
+      self.print_renamed(renamed, prefix=prefix, log=log)
+    if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
+      self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
+                                prefix=prefix, log=log)
+    if hd_exchanged_sites:
+      self.print_results_hd_sites(
+        hd_exchanged_sites, hd_sites_analysis, overall_counts_hd,
+        prefix=prefix, log=log)
+    if missing_HD_atoms:
+      self.print_missing_HD_atoms(missing_HD_atoms, prefix=prefix, log=log)
+    if outliers_bonds or outliers_angles:
+      self.print_outliers_bonds_angles(outliers_bonds, outliers_angles,
+                                       prefix=prefix, log=log)
+    if bond_results.xray_distances_used:
+      self.print_xray_distance_warning()
