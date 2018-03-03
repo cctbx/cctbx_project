@@ -44,7 +44,7 @@ Full scope of parameters:
   print help_msg
   master_phil.show()
 
-def run(args, params=None, out=sys.stdout, log=sys.stderr, model=None):
+def run(args, params=None, out=sys.stdout, model=None):
   if model is None:
     if ( ((len(args) == 0) and (params is None)) or
          ((len(args) > 0) and ((args[0] == "-h") or (args[0] == "--help"))) ):
@@ -81,7 +81,7 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr, model=None):
       sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
       backbone_sample   = True,
       mon_lib_srv       = model.get_mon_lib_srv(),
-      log               = log)
+      log               = out)
   model.set_sites_cart(
       sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
       update_grm = False)

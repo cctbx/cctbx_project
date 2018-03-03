@@ -3,7 +3,7 @@ from __future__ import division
 
 import sys, os
 import iotbx.pdb
-import iotbx.cif
+import mmtbx.model
 
 def run(args):
   """
@@ -17,23 +17,17 @@ def run(args):
     return
   file_name = args[0]
   pdb_inp = iotbx.pdb.input(file_name=file_name)
-  input_file_is_cif = isinstance(pdb_inp, iotbx.pdb.mmcif.cif_input)
-  h = pdb_inp.construct_hierarchy_BIOMT_expanded()
-  ss_annot = pdb_inp.construct_ss_annotation_expanded(exp_type='biomt')
-  if(input_file_is_cif):
-    ext=".cif"
-    wff = iotbx.cif.write_whole_cif_file
+  m = mmtbx.model.manager(model_input = pdb_inp, expand_with_mtrix=False)
+  m.expand_with_BIOMT_records()
+  ofn = "%s_BIOMT_expanded" % (os.path.splitext(os.path.basename(file_name))[0])
+  if m.input_format_was_cif():
+    ofn += ".cif"
+    text_to_write = m.model_as_mmcif()
   else:
-    ext=".pdb"
-    wff = iotbx.pdb.write_whole_pdb_file
-  ofn = "%s_BIOMT_expanded%s"%(
-    os.path.splitext(os.path.basename(file_name))[0], ext)
+    ofn += ".pdb"
+    text_to_write = m.model_as_pdb()
   print "Writing result to %s file."%ofn
-  wff(
-    file_name        = ofn,
-    pdb_hierarchy    = h,
-    crystal_symmetry = pdb_inp.crystal_symmetry(),
-    ss_annotation    = ss_annot)
-
+  with open(ofn, 'w') as f:
+    f.write(text_to_write)
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])

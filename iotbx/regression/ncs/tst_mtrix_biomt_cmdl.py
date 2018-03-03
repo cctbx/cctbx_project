@@ -554,20 +554,19 @@ def exercise_000(file_name="tst_mtrix_biomt_cmdl_000.pdb"):
     # chain expanding which made chain ids in hierarchy.py:join_roots()
     # not compatible with those used in secondary_structure.py:multiply_to_asu
     chain_ids = [h.start_chain_id for h in a.helices]
-    assert chain_ids == ['A1', 'B1', 'C1', 'A2', 'B2', 'C2',
-        'A3', 'B3', 'C3', 'A4', 'B4', 'C4',
-        'A5', 'B5', 'C5', 'A6', 'B6', 'C6',
-        'A7', 'B7', 'C7', 'A8', 'B8', 'C8', 'A9', 'B9', 'C9'], chain_ids
+    assert chain_ids == ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
+        'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+        'W', 'X', 'Y', 'Z', '0'], chain_ids
     # checking sheets
     for i, sh in enumerate(a.sheets):
       assert sh.n_strands == 2
       assert sh.registrations[0] == None
-      assert sh.registrations[1].cur_chain_id == 'B%d' % (i+1)
-      assert sh.registrations[1].prev_chain_id == 'A%d' % (i+1)
-      assert sh.strands[0].start_chain_id == 'A%d' % (i+1), sh.strands[0].start_chain_id
-      assert sh.strands[0].end_chain_id == 'A%d' % (i+1)
-      assert sh.strands[1].start_chain_id == 'B%d' % (i+1), sh.strands[1].start_chain_id
-      assert sh.strands[1].end_chain_id == 'B%d' % (i+1)
+      assert sh.registrations[1].cur_chain_id == chain_ids[i*3+1]
+      assert sh.registrations[1].prev_chain_id == chain_ids[i*3]
+      assert sh.strands[0].start_chain_id == chain_ids[i*3], sh.strands[0].start_chain_id
+      assert sh.strands[0].end_chain_id == chain_ids[i*3]
+      assert sh.strands[1].start_chain_id == chain_ids[i*3+1], sh.strands[1].start_chain_id
+      assert sh.strands[1].end_chain_id == chain_ids[i*3+1]
 
 def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
   """
@@ -723,7 +722,7 @@ if(__name__=='__main__'):
     exercise_001()
     exercise_002()
     exercise_003()
-    # other
+    # # other
     exercise_01()
     exercise_02()
     exercise_03()

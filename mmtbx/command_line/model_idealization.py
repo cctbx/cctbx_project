@@ -11,7 +11,6 @@ from cStringIO import StringIO
 
 from cctbx import crystal
 from cctbx import xray
-from iotbx.pdb import write_whole_pdb_file
 from iotbx import reflection_file_utils
 from iotbx.phil import process_command_line_with_files
 import iotbx.ncs
@@ -260,11 +259,9 @@ class model_idealization():
       self.shift_vector = box.shift_vector
 
     if self.shift_vector is not None and self.params.debug:
-      write_whole_pdb_file(
-          file_name="%s_boxed.pdb" % self.params.output_prefix,
-          pdb_hierarchy=self.model.get_hierarchy(),
-          crystal_symmetry=self.model.crystal_symmetry(),
-          ss_annotation=self.init_ss_annotation)
+      txt = self.model.model_as_pdb()
+      with open("%s_boxed.pdb" % self.params.output_prefix, 'w') as f:
+        f.write(txt)
 
     if self.params.trim_alternative_conformations:
       self.model.remove_alternative_conformations(always_keep_one_conformer=True)
