@@ -54,6 +54,6 @@ def test_exercise(
   print(cmd)
   assert os.path.exists(cmd)
   stdout = easy_run.fully_buffered(command=cmd).raise_if_errors().stdout_lines
-  from fable.tst_cout_compile import read_file_names_and_expected_cout
+  from fable.test.test_cout_compile import read_file_names_and_expected_cout
   info = read_file_names_and_expected_cout(test_valid=test_valid).get("subroutine_3.f")[0]
   assert stdout == info.out_lines

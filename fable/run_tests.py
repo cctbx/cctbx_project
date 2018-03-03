@@ -2,9 +2,9 @@ from __future__ import absolute_import, division, print_function
 from libtbx.test_utils.pytest import discover
 
 tst_list = [
-  "$D/tst_ext.py",
-  "$D/tst_equivalence.py",
-  "$D/tst_read.py",
-  "$D/tst_cout.py",
-  ["$D/tst_cout_compile.py", "stop"],
+  "$D/test/test_ext.py",
+  "$D/test/test_equivalence.py",
+  "$D/test/test_read.py",
+  "$D/test/test_cout.py",
+  ["$D/test/test_cout_compile.py", "stop"],
 ] + discover()
