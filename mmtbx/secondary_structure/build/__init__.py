@@ -416,12 +416,6 @@ def get_matching_sites_cart_in_both_h(old_h, new_h):
   assert fixed_sites.size() == moving_sites.size()
   return fixed_sites, moving_sites
 
-def get_empty_ramachandran_proxies():
-  import boost.python
-  ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
-  proxies = ext.shared_phi_psi_proxy()
-  return proxies
-
 def process_params(params):
   min_sigma = 1e-5
   if params is None:
@@ -462,10 +456,8 @@ def ss_element_is_good(ss_stats_obj, hsh_tuple):
 def substitute_ss(
                     model, # changed in place
                     params = None,
-                    use_plane_peptide_bond_restr=True,
                     fix_rotamer_outliers=True,
                     log=null_out(),
-                    check_rotamer_clashes=True,
                     reference_map=None,
                     verbose=False):
   """
@@ -473,11 +465,6 @@ def substitute_ss(
   ones _in_place_.
   Returns reference torsion proxies - the only thing that cannot be restored
   with little effort outside the procedure.
-  real_h - hierarcy to substitute secondary structure elements.
-  xray_structure - xray_structure - needed to get crystal symmetry (to
-      construct processed_pdb_file and xray_structure is needed to call
-      get_geometry_restraints_manager for no obvious reason).
-  ss_annotation - iotbx.pdb.annotation object.
   """
 
   ss_annotation = model.get_ss_annotation()
@@ -735,7 +722,7 @@ def substitute_ss(
   # them to nearest allowed rotamer. The idealization may affect a lot
   # the orientation of side chain thus justifying changing rotamer on it
   # to avoid clashes.
-  if check_rotamer_clashes:
+  if fix_rotamer_outliers:
     print >> log, "Fixing/checking rotamers..."
     # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
     br_txt = model.model_as_pdb()
