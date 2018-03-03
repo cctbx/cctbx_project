@@ -79,11 +79,24 @@ def merge_frames(pres_set, iparams, avg_mode='average', mtz_out_prefix='mean_sca
     prep_output = intscal.prepare_output(pres_set, iparams, avg_mode)
     if prep_output:
       mdh, _, txt_out_rejection  = intscal.calc_avg_I_cpp(prep_output, iparams, avg_mode)
-      #selet only indices with non-Inf non-Nan stats
+      #select only indices with non-Inf non-Nan stats
       selections = flex.bool([False if (math.isnan(r0) or math.isinf(r0) or math.isnan(r1) or math.isinf(r1)) else True for r0, r1  in zip(mdh.r_meas_div, mdh.r_meas_divisor)])
       mdh.reduce_by_selection(selections)
-      with open(iparams.run_no+'/rejections.txt', 'a') as f:
-        f.write(txt_out_rejection)
+
+      #handle rejected reflections
+      rejections = {}
+      for reject in txt_out_rejection.split('\n'):
+        data = reject.split()
+        if data:
+          if not data[0] in rejections:
+            rejections[data[0]] = flex.miller_index()
+          rejections[data[0]].append(tuple(map(int, data[1:4])))
+
+      if len(rejections) > 0:
+        if not iparams.rejections:
+          iparams.rejections = {}
+        iparams.rejections.update(rejections)
+
       #merge all good indices
       mdh, txt_merge_mean_table = intscal.write_output(mdh,
           iparams, iparams.run_no+'/'+mtz_out_prefix, avg_mode)

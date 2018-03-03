@@ -142,46 +142,39 @@ class postref_handler(object):
     alpha_angle_obs = alpha_angle_obs.select(sys_absent_negate_flags)
     spot_pred_x_mm = spot_pred_x_mm.select(sys_absent_negate_flags)
     spot_pred_y_mm = spot_pred_y_mm.select(sys_absent_negate_flags)
+
     #remove observations from rejection list
-    if os.path.isfile(iparams.run_no+'/rejections.txt'):
-      txt_out = pickle_filename + ' \nN_before_rejection: ' + str(len(observations.data())) + '\n'
-      file_reject = open(iparams.run_no+'/rejections.txt', 'r')
-      data_reject=file_reject.read().split("\n")
-      miller_indices_ori_rejected = flex.miller_index()
-      for row_reject in data_reject:
-        col_reject = row_reject.split()
-        if len(col_reject) > 0:
-          if col_reject[0].strip() == pickle_filename:
-            miller_indices_ori_rejected.append((int(col_reject[1].strip()), int(col_reject[2].strip()), int(col_reject[3].strip())))
-      if len(miller_indices_ori_rejected) > 0:
+    if iparams.rejections:
+      if pickle_filename in iparams.rejections:
+        miller_indices_ori_rejected = iparams.rejections[pickle_filename]
         i_sel_flag = flex.bool([True]*len(observations.data()))
+        cnrej = 0
         for miller_index_ori_rejected in miller_indices_ori_rejected:
-          i_index_ori = 0
-          for miller_index_ori in observations.indices():
+          for i_index_ori, miller_index_ori in enumerate(observations.indices()):
             if miller_index_ori_rejected == miller_index_ori:
               i_sel_flag[i_index_ori] = False
-              txt_out += ' -Discard:' + str(miller_index_ori[0]) + \
-          ','+str(miller_index_ori[1])+','+str(miller_index_ori[2]) + '\n'
-            i_index_ori += 1
+              cnrej += 1
         observations = observations.customized_copy(indices=observations.indices().select(i_sel_flag),
             data=observations.data().select(i_sel_flag),
             sigmas=observations.sigmas().select(i_sel_flag))
         alpha_angle_obs = alpha_angle_obs.select(i_sel_flag)
         spot_pred_x_mm = spot_pred_x_mm.select(i_sel_flag)
         spot_pred_y_mm = spot_pred_y_mm.select(i_sel_flag)
-        txt_out += 'N_after_rejection: ' + str(len(observations.data())) + '\n'
+
     #filter resolution
     i_sel_res = observations.resolution_filter_selection(d_max=iparams.merge.d_max, d_min=iparams.merge.d_min)
     observations = observations.select(i_sel_res)
     alpha_angle_obs = alpha_angle_obs.select(i_sel_res)
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel_res)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel_res)
+
     #Filter weak
     i_sel = (observations.data()/observations.sigmas()) > iparams.merge.sigma_min
     observations = observations.select(i_sel)
     alpha_angle_obs = alpha_angle_obs.select(i_sel)
     spot_pred_x_mm = spot_pred_x_mm.select(i_sel)
     spot_pred_y_mm = spot_pred_y_mm.select(i_sel)
+
     #filter icering (if on)
     if iparams.icering.flag_on:
       miller_indices = flex.miller_index()
