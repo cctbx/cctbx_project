@@ -300,7 +300,7 @@ namespace prime {
               double I_full_as_sigma = (I_full_group[i] - median_I) / std_I;
               if (std::abs(I_full_as_sigma) > sigma_max_) {
                 char buf[512];
-                sprintf(buf, "%s%3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
+                sprintf(buf, "%s %3.0f %3.0f %3.0f %10.2f %10.2f\n", pickle_filename_set_group[i].c_str(),
                   double(current_index_ori[i][0]), double(current_index_ori[i][1]), double(current_index_ori[i][2]), I_group[i], sigI_group[i]);
                 txt_reject_out_group << buf;
               }
