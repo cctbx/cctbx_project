@@ -116,23 +116,7 @@ class run(object):
   def prepare_target_map(self): # XXX This may need to go external
     if self.map_data is None:
       # This just makes dummy map to allow functionality working without it.
-      # Would prefer to just create all-zero map quickly, but couldn't find
-      # how to do it.
-      from cctbx import miller
-      xrs = self.pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry)
-      xrs = xrs.select(self.atom_selection_cache.\
-          selection("name C or name CA or name N or name O"))
-      crystal_gridding = maptbx.crystal_gridding(
-          unit_cell        = xrs.unit_cell(),
-          space_group_info = xrs.space_group_info(),
-          symmetry_flags   = maptbx.use_space_group_symmetry,
-          d_min             = 10)
-      fc = xrs.structure_factors(d_min = 10, algorithm = "fft").f_calc()
-      fft_map = miller.fft_map(
-          crystal_gridding=crystal_gridding,
-          fourier_coefficients=fc)
-      fft_map.apply_sigma_scaling()
-      self.map_data = fft_map.real_map_unpadded(in_place=False)
+      self.map_data = flex.double(flex.grid(50,50,50), 0)
 
     map_data = self.map_data.deep_copy()
     # truncate map
