@@ -1,13 +1,15 @@
-from __future__ import division
-from fable import read
-from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-import libtbx.load_env
-import os
-op = os.path
+from __future__ import absolute_import, division, print_function
 
-def exercise_strip_spaces_separate_strings():
-  from fable.read import Error, source_line, strip_spaces_separate_strings
-  import itertools
+from cStringIO import StringIO
+import itertools
+import os
+
+import fable.read
+from libtbx.utils import Sorry
+import pytest
+
+def test_strip_spaces_separate_strings():
+  from fable.read import source_line, strip_spaces_separate_strings
   global_line_index_generator = itertools.count()
   def slc(cmbnd):
     return [
@@ -23,7 +25,7 @@ def exercise_strip_spaces_separate_strings():
           (cmbnd.replace("'", '"'), [s.replace("'", '"')
             for s in expected_strings])]:
       ssl = strip_spaces_separate_strings(source_line_cluster=slc(cmbnd_work))
-      assert not show_diff(ssl.code, expected_code)
+      assert ssl.code == expected_code
       assert len(ssl.strings) == len(ssl.string_indices)
       assert ssl.strings == expected_strings_work
       expected_string_indices = []
@@ -55,26 +57,22 @@ def exercise_strip_spaces_separate_strings():
   check("a = '''\n'''", "a='", ["''"])
   #
   for cmbnd,q,nd in [("'abc", "'", 9), ('x="', '"', 11)]:
-    try:
+    with pytest.raises(fable.read.Error) as e:
       strip_spaces_separate_strings(source_line_cluster=slc(cmbnd))
-    except Error, e:
-      assert not show_diff(str(e), """\
+    assert str(e.value) == """\
 Missing terminating %s character:
   at str(1):
   |      %s|
-%s^""" % (q, cmbnd, "-"*nd))
-    else: raise Exception_expected
+%s^""" % (q, cmbnd, "-"*nd)
 
-def exercise_valid(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_valid(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   #
   read_already = set()
   def get_fprocs(file_name):
-    if (verbose):
-      print "exercise_valid:", file_name
+    print(file_name)
     read_already.add(file_name)
-    return read.process(file_names=[op.join(t_dir, file_name)])
+    return fable.read.process(file_names=[os.path.join(t_dir, file_name)])
   #
   def get_program(file_name):
     fprocs = get_fprocs(file_name)
@@ -86,13 +84,8 @@ def exercise_valid(verbose):
   #
   prog = get_program("goto_forms.f")
   keys = [ei.key for ei in prog.executable]
-  assert not show_diff("\n".join(keys), """\
-goto_computed
-goto_computed
-goto_computed
-goto_computed
-continue
-continue""")
+  assert keys == ['goto_computed'] * 4 + ['continue'] * 2
+
   #
   get_program("string_spanning_continuation_lines.f")
   #
@@ -104,774 +97,592 @@ continue""")
     if (file_name.endswith(".f") and not file_name in read_already):
       get_fprocs(file_name)
 
-def exercise_lenient(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/lenient", test=op.isdir)
+def test_lenient(testsdir):
+  t_dir = os.path.join(testsdir, 'lenient')
   #
   def get(file_name):
-    if (verbose):
-      print "exercise_lenient:", file_name
-    return read.process(file_names=[op.join(t_dir, file_name)])
+    print(file_name)
+    return fable.read.process(file_names=[os.path.join(t_dir, file_name)])
   #
   get("str_blank_str.f")
   get("str_cont_line_str.f")
 
-def exercise_syntax_error(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/syntax_error", test=op.isdir)
+def test_syntax_error(testsdir):
+  t_dir = os.path.join(testsdir, 'syntax_error')
   def fail(file_name):
-    if (verbose):
-      print "exercise_syntax_error:", file_name
-    read.process(file_names=[op.join(t_dir, file_name)])
-  from fable.read import Error
-  try:
+    print(file_name)
+    fable.read.process(file_names=[os.path.join(t_dir, file_name)])
+  with pytest.raises(fable.read.Error) as e:
     fail("label_cont_char.f")
-  except Error, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "A continuation character is illegal on a line with a statement label:")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |    3xk=6|
 --------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("label_empty.f")
-  except Error, e:
-    assert str(e).startswith("Labelled statement is empty:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Labelled statement is empty:")
+  assert str(e.value).endswith("""\
   |    1  |
 ---------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("not_an_identifier.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      external a, x%z|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bare_integer_i.f")
-  except Error, e:
-    assert str(e).startswith("Missing END for PROGRAM:")
-    assert str(e).endswith("  |      integer i|")
-  else: raise Exception_expected
-  try:
+  assert str(e.value).startswith("Missing END for PROGRAM:")
+  assert str(e.value).endswith("  |      integer i|")
+  with pytest.raises(fable.read.Error) as e:
     fail("closing_parenthesis_without_matching.f")
-  except Error, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       'Closing ")" without a matching opening parenthesis:')
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      a = 0)|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("opening_parenthesis_without_matching.f")
-  except Error, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       'Missing a closing ")":')
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      a = (0|
 -------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("dot_e.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |        x       =       .e0|
 ----------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("x_assign_dot.f")
-  except Error, e:
-    assert str(e).startswith("Expression unexpectedly ends with a dot:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Expression unexpectedly ends with a dot:")
+  assert str(e.value).endswith("""\
   |      x = .|
 -------------^""")
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("x_assign_dot_2.f")
-  except Error, e:
-    assert str(e).startswith("Expression unexpectedly ends with a dot:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Expression unexpectedly ends with a dot:")
+  assert str(e.value).endswith("""\
   |        x = .|
 ---------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("x_assign_1ex.f")
-  except Error, e:
-    assert str(e).startswith("Invalid floating-point literal:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid floating-point literal:")
+  assert str(e.value).endswith("""\
   |      x = 1ex|
 ---------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("x_assign_1dotd.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      x = 1.d|
 ---------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_false.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = .fals.|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_true.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = .true|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_not.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = .not b|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_not_2.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = 1 .not. b|
 ----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_gt.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = 1 .gt 2|
 ----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_after_dot.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = 1 .2et. 2|
 ----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("j_assign_i_percent_5.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      j = i % 5|
 ---------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_and.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = b .ad. c|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_or.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      a = b .or c|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("exclamation_mark_syndrome.f")
-  except Error, e:
-    assert str(e).startswith("Missing terminating ' character:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Missing terminating ' character:")
+  assert str(e.value).endswith("""\
   |     !ef'|
 -----------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("common_with_data_size.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      common /com/ vals(2), nums*4(2)|
 -----------------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("dimension_with_data_size.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("  |      dimension strings*4(2)|")
-  else: raise Exception_expected
-  try:
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("  |      dimension strings*4(2)|")
+  with pytest.raises(fable.read.Error) as e:
     fail("save_with_dims.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("  |      save nums(2)|")
-  else: raise Exception_expected
-  try:
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("  |      save nums(2)|")
+  with pytest.raises(fable.read.Error) as e:
     fail("sub_no_name.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      subroutine|
 ------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("sub_percent_3.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      subroutine sub % 3|
 ------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("sub_open_parenthesis.f")
-  except Error, e:
-    assert str(e).startswith('Missing a closing ")":')
-    assert str(e).endswith("""\
+  assert str(e.value).startswith('Missing a closing ")":')
+  assert str(e.value).endswith("""\
   |      subroutine sub(|
 -----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("sub_bad_comma.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      subroutine sub(a,)|
 --------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("fun_star.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      function fun(a,*)|
 ------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("sub_bad_trailing.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      subroutine sub(a,b) x|
 -----------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("save_bad_comma.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      save num,|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("save_num_comma_colon.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      save num, :|
 -------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("save_num_val_colon.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      save num, val :|
 -----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bare_external.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      external|
 ----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("save_slash_slash.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      save //|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bare_data.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      data|""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("data_plus_repetition.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      data nums /+2*3/|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_1.f")
-  except Error, e:
-    assert str(e).startswith('Format string must start with "("')
-    assert str(e).endswith("""\
+  assert str(e.value).startswith('Format string must start with "("')
+  assert str(e.value).endswith("""\
   |      write(6, '') num|
 ------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_2.f")
-  except Error, e:
-    assert str(e).startswith('Format string must end with ")"')
-    assert str(e).endswith("""\
+  assert str(e.value).startswith('Format string must end with ")"')
+  assert str(e.value).endswith("""\
   |      write(6, '(') num|
 ------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_3.f")
-  except Error, e:
-    assert str(e).startswith("""\
+  assert str(e.value).startswith("""\
 Missing terminating ' within character format specifier "(')":""")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      write(6, '('')')|
 --------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_4.f")
-  except Error, e:
-    assert str(e).startswith("Invalid FORMAT specification:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid FORMAT specification:")
+  assert str(e.value).endswith("""\
   |      write(6, '(+2x)')|
 --------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_5.f")
-  except Error, e:
-    assert str(e).startswith("Invalid FORMAT specification:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid FORMAT specification:")
+  assert str(e.value).endswith("""\
   |      write(6, '(i2.)')|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_6.f")
-  except Error, e:
-    assert str(e).startswith("Invalid FORMAT specification:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid FORMAT specification:")
+  assert str(e.value).endswith("""\
   |      write(6, '(tx)')|
 ---------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_format_7.f")
-  except Error, e:
-    assert str(e).startswith("Invalid FORMAT specification:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid FORMAT specification:")
+  assert str(e.value).endswith("""\
   |      write(6, '(tl)')|
 ---------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("format_without_label.f")
-  except Error, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "FORMAT without a statement label in columns 1-5:")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |        format(1x)|
 -----------^""")
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("duplicate_format_label.f")
-  except Error, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "Duplicate statement label in columns 1-5:")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |   10 format(i2)|
 ---^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_1.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) (i,i=1)|
 ---------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_2.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) (i=1,2)|
 -----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_3.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) i,i=1,2|
 ------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_4.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) (i,i=1,j=2)|
 -----------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_5.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) (i,0=1,2)|
 -------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_implied_do_6.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      write(6, *) (i,i+j=1,2)|
 ---------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_data.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      data (nums(i),i) /1,2/|
 ------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("read_star_comma_empty.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      read *,|
 ---------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("read_star_name.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      read * name|
 ----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("read_plus_name.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      read + name|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("bare_print.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      print|
 -------------^""")
-  else: raise Exception_expected
 
-def exercise_semantic_error(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/semantic_error", test=op.isdir)
-  from fable import SemanticError
+def test_semantic_error(testsdir):
+  t_dir = os.path.join(testsdir, 'semantic_error')
   def fail(file_name):
-    if (verbose):
-      print "exercise_semantic_error:", file_name
-    read.process(file_names=[op.join(t_dir, file_name)])
-  try:
+    print(file_name)
+    fable.read.process(file_names=[os.path.join(t_dir, file_name)])
+  with pytest.raises(fable.SemanticError) as e:
     fail("missing_include.f")
-  except SemanticError, e:
-    assert str(e).startswith("Missing include file:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Missing include file:")
+  assert str(e.value).endswith("""\
   |      include '/bin/sh/should/never/exist'|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("real_declared_twice.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: val:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: val:")
+  assert str(e.value).endswith("""\
   |      real val|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("external_array.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: f2:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: f2:")
+  assert str(e.value).endswith("""\
   |      external f2|
 ------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("dimension_unknown_data_type.f")
-  except SemanticError, e:
-    assert str(e).startswith("Unknown data type: nums:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Unknown data type: nums:")
+  assert str(e.value).endswith("""\
   |      write(6, *) nums(1)|
 ---------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("dims_repeated_in_dimension.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated dimension: num:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated dimension: num:")
+  assert str(e.value).endswith("""\
   |      dimension num(2)|
 -------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("dims_repeated_in_common.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated dimension: num:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated dimension: num:")
+  assert str(e.value).endswith("""\
   |      common /com/ num(2)|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("parameter_array.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: nums:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: nums:")
+  assert str(e.value).endswith("""\
   |      integer nums(2)|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("parameter_in_common.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: num:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: num:")
+  assert str(e.value).endswith("""\
   |      common /com/ num|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("parameter_save.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: num:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: num:")
+  assert str(e.value).endswith("""\
   |      save num|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("parameter_in_sub_args.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: num:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: num:")
+  assert str(e.value).endswith("""\
   |      parameter(num=0)|
 -------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("twice_in_sub_args.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: val:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: val:")
+  assert str(e.value).endswith("""\
   |      subroutine sub(val, val)|
 -----------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("subroutine_name_is_also_arg.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: sub:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: sub:")
+  assert str(e.value).endswith("""\
   |      subroutine sub(sub)|
 ------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("function_name_is_also_arg.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: fun:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: fun:")
+  assert str(e.value).endswith("""\
   |      function fun(fun)|
 ----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("unknown_intrinsic.f")
-  except SemanticError, e:
-    assert str(e).startswith("Unknown intrinsic: unk:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Unknown intrinsic: unk:")
+  assert str(e.value).endswith("""\
   |      write(6, *) unk(0)|
 ---------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("intrinsic_common.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: abs:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: abs:")
+  assert str(e.value).endswith("""\
   |      intrinsic abs|
 -------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("external_common.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: nums:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: nums:")
+  assert str(e.value).endswith("""\
   |      external nums|
 ------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("calling_array.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting declaration: nums:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting declaration: nums:")
+  assert str(e.value).endswith("""\
   |      call nums(3)|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("calling_dimension.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting declaration: nums:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting declaration: nums:")
+  assert str(e.value).endswith("""\
   |      call nums(2)|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("function_data_type_decl_twice.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: fun:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: fun:")
+  assert str(e.value).endswith("""\
   |      integer fun|
 -----------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("intrinsic_dimension.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting or repeated declaration: nint:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting or repeated declaration: nint:")
+  assert str(e.value).endswith("""\
   |      intrinsic nint|
 -------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("sub_fun_2.f")
-  except SemanticError, e:
-    assert str(e).startswith("Conflicting declaration: fun:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Conflicting declaration: fun:")
+  assert str(e.value).endswith("""\
   |      y = fun(x)|
 -------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("write_without_unit.f")
-  except SemanticError, e:
-    assert str(e).startswith("Required UNIT information is not defined:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Required UNIT information is not defined:")
+  assert str(e.value).endswith("""\
   |      write(fmt='(i3)') num|
 --------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("write_end.f")
-  except SemanticError, e:
-    assert str(e).startswith("END is invalid for WRITE statements:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("END is invalid for WRITE statements:")
+  assert str(e.value).endswith("""\
   |      write(10, end=20) num|
 -----------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("equivalence_external.f")
-  except SemanticError, e:
-    assert str(e).startswith("Invalid EQUIVALENCE:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid EQUIVALENCE:")
+  assert str(e.value).endswith("""\
   |      equivalence (ne, nl)|
 ----------------------^""")
-  else: raise Exception_expected
 
-def exercise_unsupported(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/unsupported", test=op.isdir)
+def test_unsupported(testsdir):
+  t_dir = os.path.join(testsdir, 'unsupported')
   def fail(file_name):
-    if (verbose):
-      print "exercise_unsupported:", file_name
-    read.process(file_names=[op.join(t_dir, file_name)])
-  try:
+    print(file_name)
+    fable.read.process(file_names=[os.path.join(t_dir, file_name)])
+  with pytest.raises(RuntimeError) as e:
     fail("hollerith_cont_lines.f")
-  except RuntimeError, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "FATAL: Not supported:"
       " FORMAT Hollerith edit descriptor spanning continuation lines:")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      write(6, '(4h|
 --------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(RuntimeError) as e:
     fail("hollerith_with_quotes.f")
-  except RuntimeError, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "FATAL: Not supported:"
       " FORMAT Hollerith edit descriptor with quotes:")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      write(6, '(2h'''')')|
 --------------------^""")
-  else: raise Exception_expected
 
-def exercise_tokens_as_string(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_tokens_as_string(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
+  verbose = False
   from fable.tokenization import tokens_as_string
   for file_name in sorted(os.listdir(t_dir)):
     if (not file_name.endswith(".f")): continue
-    if (verbose):
-      print "exercise_tokens_as_string:", file_name
-    all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+    print(file_name)
+    all_fprocs = fable.read.process(file_names=[os.path.join(t_dir, file_name)])
     for fproc in all_fprocs.all_in_input_order:
       for ei in fproc.executable:
         if (ei.key == "write"):
           s = tokens_as_string(tokens=ei.iolist)
           if (verbose):
-            print s
+            print(s)
       for tokens in fproc.format.values():
         s = tokens_as_string(tokens=tokens)
         if (verbose):
-          print s
+          print(s)
       if (verbose):
-        print
+        print()
 
-def exercise_show():
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
-  all_fprocs = read.process(file_names=[op.join(t_dir, "subroutine_3.f")])
-  from cStringIO import StringIO
+def test_show(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
+  all_fprocs = fable.read.process(file_names=[os.path.join(t_dir, "subroutine_3.f")])
   cio = StringIO()
   all_fprocs.show_counts_by_type(out=cio, prefix="$ ")
-  assert not show_diff(cio.getvalue(), """\
+  assert cio.getvalue() == """\
 $ Counts by Fortran procedure type:
 $   program: 1
 $   subroutine: 3
 $   function: 0
 $   blockdata: 0
-""")
+"""
 
-def exercise_build_fprocs_by_name():
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_build_fprocs_by_name(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   for pair in [
         ("subroutine_3.f", "subroutine_4.f"),
         ("implied_program.f", "implied_program.f")]:
-    file_names = [op.join(t_dir, file_name) for file_name in pair]
-    all_fprocs = read.process(file_names=file_names)
-    from libtbx.utils import Sorry
-    try:
+    file_names = [os.path.join(t_dir, file_name) for file_name in pair]
+    all_fprocs = fable.read.process(file_names=file_names)
+    with pytest.raises(Sorry) as e:
       all_fprocs.fprocs_by_name()
-    except Sorry, e:
-      if (pair[0] == "subroutine_3.f"):
-        assert str(e).startswith("Fortran procedure name conflict:")
-        assert str(e).endswith("  -----------------^")
-      else:
-        assert str(e).startswith("""\
+    if (pair[0] == "subroutine_3.f"):
+      assert str(e.value).startswith("Fortran procedure name conflict:")
+      assert str(e.value).endswith("  -----------------^")
+    else:
+      assert str(e.value).startswith("""\
 Fortran procedure name conflict:
   1. definition: program_unnamed (implied)
     before """)
-        assert str(e).endswith("implied_program.f(2)")
-    else: raise Exception_expected
+      assert str(e.value).endswith("implied_program.f(2)")
 
-def exercise_eval_const_expression_simple(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_eval_const_expression_simple(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   file_name = "const_expressions.f"
-  all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+  all_fprocs = fable.read.process(file_names=[os.path.join(t_dir, file_name)])
   assert len(all_fprocs.all_in_input_order) == 2
   fproc = all_fprocs.all_in_input_order[0]
   val = fproc.eval_const_expression_simple(identifier="n5")
@@ -893,27 +704,8 @@ def exercise_eval_const_expression_simple(verbose):
   assert vals == [None, None]
   #
   file_name = "const_expressions_2.f"
-  all_fprocs = read.process(file_names=[op.join(t_dir, file_name)])
+  all_fprocs = fable.read.process(file_names=[os.path.join(t_dir, file_name)])
   assert len(all_fprocs.all_in_input_order) == 1
   fproc = all_fprocs.all_in_input_order[0]
   val = fproc.eval_const_expression_simple(identifier="n5f")
-  assert approx_equal(val, 297845.226131)
-
-def run(args):
-  assert args in [[], ["--verbose"]]
-  verbose = (len(args) != 0)
-  exercise_strip_spaces_separate_strings()
-  exercise_valid(verbose=verbose)
-  exercise_lenient(verbose=verbose)
-  exercise_syntax_error(verbose=verbose)
-  exercise_semantic_error(verbose=verbose)
-  exercise_unsupported(verbose=verbose)
-  exercise_tokens_as_string(verbose=verbose)
-  exercise_show()
-  exercise_build_fprocs_by_name()
-  exercise_eval_const_expression_simple(verbose=verbose)
-  print "OK"
-
-if (__name__ == "__main__"):
-  import sys
-  run(args=sys.argv[1:])
+  assert val == pytest.approx(297845.226131, abs=1e-6)

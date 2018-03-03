@@ -1,14 +1,23 @@
-from __future__ import division
-from fable import cout
-from libtbx.test_utils import \
-  Exception_expected, show_diff, anchored_block_show_diff as absd
-import libtbx.load_env
+from __future__ import absolute_import, division, print_function
+
+import fable.cout
+import fable.read
 from cStringIO import StringIO
 import os
-op = os.path
+import pytest
 
 def head_off(i): return i + 5
 def tail_off(i): return -(i + 12) - 1
+
+def absd(received, position, expected):
+  expected = expected.splitlines()
+  if position < 0:
+    start = position - len(expected) + 1
+    end = position + 1
+  else:
+    start = position
+    end = position + len(expected)
+  assert received[start:end] == expected
 
 common_argc_argv = """\
   common(
@@ -18,20 +27,18 @@ common_argc_argv = """\
     fem::common(argc, argv)
   {}"""
 
-def exercise_simple(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_simple(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   def get(
         file_name,
         top_procedures=None,
         data_specializations=True,
         arr_nd_size_max=None,
         inline_all=False):
-    if (verbose):
-      print "exercise_simple:", file_name
-    file_names = [op.join(t_dir, file_name)]
+    print(file_name)
+    file_names = [os.path.join(t_dir, file_name)]
     common_report_stringio = StringIO()
-    return cout.process(
+    return fable.cout.process(
       file_names=file_names,
       top_procedures=top_procedures,
       data_specializations=data_specializations,
@@ -40,7 +47,7 @@ def exercise_simple(verbose):
       inline_all=inline_all,
       common_report_stringio=common_report_stringio)
   #
-  assert not show_diff(get("add_reals.f"), """\
+  assert get("add_reals.f") == """\
 #include <fem.hpp> // Fortran EMulation library of fable module
 
 namespace placeholder_please_replace {
@@ -73,7 +80,7 @@ main(
     argc, argv,
     placeholder_please_replace::program_prog);
 }
-""")
+""".splitlines()
   #
   assert not absd(get("add_real_integer.f"), tail_off(1), """\
   float a = fem::float0;
@@ -3091,89 +3098,67 @@ sub1(
 }
 """)
 
-def exercise_syntax_error(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/syntax_error", test=op.isdir)
-  from fable.read import Error
+def test_syntax_error(testsdir):
+  t_dir = os.path.join(testsdir, 'syntax_error')
   def fail(file_name):
-    if (verbose):
-      print "exercise_syntax_error:", file_name
-    cout.process(file_names=[op.join(t_dir, file_name)])
-  try:
+    print(file_name)
+    fable.cout.process(file_names=[os.path.join(t_dir, file_name)])
+  with pytest.raises(fable.read.Error) as e:
     fail("bad_open_err_label.f")
-  except Error, e:
-    assert str(e).startswith("Invalid statement label:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Invalid statement label:")
+  assert str(e.value).endswith("""\
   |      open(1, file=name, err=1.3)|
 --------------------------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("power_no_base.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      x = **3.4|
 -------------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.read.Error) as e:
     fail("power_no_exponent.f")
-  except Error, e:
-    assert str(e).startswith("Syntax error:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Syntax error:")
+  assert str(e.value).endswith("""\
   |      x = 1.2**|
 ----------------^""")
-  else: raise Exception_expected
 
-def exercise_semantic_error(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/semantic_error", test=op.isdir)
-  from fable import SemanticError
+def test_semantic_error(testsdir):
+  t_dir = os.path.join(testsdir, 'semantic_error')
   def fail(file_name):
-    if (verbose):
-      print "exercise_semantic_error:", file_name
-    cout.process(file_names=[op.join(t_dir, file_name)])
-  try:
+    print(file_name)
+    fable.cout.process(file_names=[os.path.join(t_dir, file_name)])
+  with pytest.raises(fable.SemanticError) as e:
     fail("assignment_to_parameter.f")
-  except SemanticError, e:
-    assert str(e).startswith("Assignment to PARAMETER n:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Assignment to PARAMETER n:")
+  assert str(e.value).endswith("""\
   |      n = 1|
 ---------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("inquire_no_unit_no_file.f")
-  except SemanticError, e:
-    assert str(e).startswith("Missing UNIT or FILE in INQUIRE statement:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Missing UNIT or FILE in INQUIRE statement:")
+  assert str(e.value).endswith("""\
   |      inquire(exist=lexist)|
 ---------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("inquire_both_unit_and_file.f")
-  except SemanticError, e:
-    assert str(e).startswith(
+  assert str(e.value).startswith(
       "Conflicting UNIT vs. FILE in INQUIRE statement"
       " (exactly one is needed):")
-    assert str(e).endswith("""\
+  assert str(e.value).endswith("""\
   |      inquire(10, file='fable_tmp')|
 ---------^""")
-  else: raise Exception_expected
-  try:
+  with pytest.raises(fable.SemanticError) as e:
     fail("recursion_in_declaration.f")
-  except SemanticError, e:
-    assert str(e).startswith("Recursion in declaration:")
-    assert str(e).endswith("""\
+  assert str(e.value).startswith("Recursion in declaration:")
+  assert str(e.value).endswith("""\
   |      dimension nums(nums)|
 ------------------------^""")
-  else: raise Exception_expected
 
-def exercise_unsupported(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/unsupported", test=op.isdir)
+def test_unsupported(testsdir):
+  t_dir = os.path.join(testsdir, 'unsupported')
   def get(file_name):
-    if (verbose):
-      print "exercise_unsupported:", file_name
-    return cout.process(file_names=[op.join(t_dir, file_name)])
+    print(file_name)
+    return fable.cout.process(file_names=[os.path.join(t_dir, file_name)])
   #
   assert not absd(get("goto_into_loop.f"), tail_off(1), """\
   int i = fem::int0;
@@ -3184,20 +3169,18 @@ def exercise_unsupported(verbose):
   goto statement_10;
 """)
 
-def exercise_dynamic_parameters(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_dynamic_parameters(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   def get(file_name, dynamic_parameters):
-    if (verbose):
-      print "exercise_dynamic_parameter:", file_name
-    file_names = [op.join(t_dir, file_name)]
-    return cout.process(
+    print(file_name)
+    file_names = [os.path.join(t_dir, file_name)]
+    return fable.cout.process(
       file_names=file_names,
       top_procedures=["prog"],
       dynamic_parameters=dynamic_parameters)
   #
   lines = get("dynamic_parameters_1.f", [
-    cout.dynamic_parameter_props(
+    fable.cout.dynamic_parameter_props(
       name="root_size", ctype="int", default="3")])
   assert not absd(lines, head_off(0), """\
 
@@ -3245,7 +3228,7 @@ sub(
 """)
   #
   lines = get("dynamic_parameters_2.f", [
-    cout.dynamic_parameter_props(
+    fable.cout.dynamic_parameter_props(
       name="nums_size", ctype="int", default="2")])
   assert not absd(lines, head_off(20), """\
 struct common_com
@@ -3268,7 +3251,7 @@ struct common :
 """)
   #
   lines = get("dynamic_parameters_3.f", [
-    cout.dynamic_parameter_props(
+    fable.cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
   assert not absd(lines, head_off(20), """\
 struct common_com
@@ -3289,7 +3272,7 @@ struct common_com
 """)
   #
   lines = get("dynamic_parameters_4.f", [
-    cout.dynamic_parameter_props(
+    fable.cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
   assert not absd(lines, head_off(35), """\
 struct sub_save
@@ -3311,22 +3294,20 @@ struct sub_save
 """)
   #
   lines = get("dynamic_parameters_5.f", [
-    cout.dynamic_parameter_props(
+    fable.cout.dynamic_parameter_props(
       name="base_size", ctype="int", default="3")])
   assert not absd(lines, head_off(38), """\
   const int base_size = cmn.dynamic_params.base_size;
   nums(dimension(base_size * 2));
 """)
 
-def exercise_common_equivalence_simple(verbose):
-  t_dir = libtbx.env.under_dist(
-    module_name="fable", path="test/valid", test=op.isdir)
+def test_common_equivalence_simple(testsdir):
+  t_dir = os.path.join(testsdir, 'valid')
   def get(file_name, common_names, expected_common_report=None):
-    if (verbose):
-      print "exercise_common_equivalence_simple:", file_name
-    file_names = [op.join(t_dir, file_name)]
+    print(file_name)
+    file_names = [os.path.join(t_dir, file_name)]
     common_report_stringio = StringIO()
-    lines = cout.process(
+    lines = fable.cout.process(
       file_names=file_names,
       top_procedures=["prog"],
       common_equivalence_simple=set(common_names.split(",")),
@@ -3334,9 +3315,7 @@ def exercise_common_equivalence_simple(verbose):
     if (expected_common_report is None):
       assert common_report_stringio.getvalue() == ""
     else:
-      assert not show_diff(
-        common_report_stringio.getvalue(),
-        expected_common_report)
+      assert common_report_stringio.getvalue() == expected_common_report
     return lines
   #
   for i in [1,2]:
@@ -3429,18 +3408,3 @@ Name clash: n2 in COMMONs: first, second
   assert not absd(lines, tail_off(4), """\
   str_arr_ref<1> s1(s3(2), 1, dimension(5)); // SIMPLE EQUIVALENCE
 """)
-
-def run(args):
-  assert args in [[], ["--verbose"]]
-  verbose = (len(args) != 0)
-  exercise_simple(verbose=verbose)
-  exercise_syntax_error(verbose=verbose)
-  exercise_semantic_error(verbose=verbose)
-  exercise_unsupported(verbose=verbose)
-  exercise_dynamic_parameters(verbose=verbose)
-  exercise_common_equivalence_simple(verbose=verbose)
-  print "OK"
-
-if (__name__ == "__main__"):
-  import sys
-  run(args=sys.argv[1:])
