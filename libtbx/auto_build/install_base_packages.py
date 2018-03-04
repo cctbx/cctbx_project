@@ -1008,6 +1008,8 @@ _replace_sysconfig_paths(build_time_vars)
       'mock', package_version=MOCK_VERSION)
     self.build_python_module_pip(
       'pytest', package_version=PYTEST_VERSION)
+    self.build_python_module_pip(
+      'pytest-xdist', package_version=PYTEST_XDIST_VERSION)
 
   def build_biopython(self):
     self.build_python_module_simple(

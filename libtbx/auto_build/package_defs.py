@@ -67,6 +67,7 @@ NUMPY_VERSION="1.13.3"
 NUMPYDOC_VERSION="0.5" # related to Sphinx (not numpy) for documentation
 PILLOW_VERSION = "4.2.1"
 PYTEST_VERSION="3.4.1"
+PYTEST_XDIST_VERSION="1.22.2"
 SIX_VERSION="1.11.0"
 SPHINX_VERSION="1.4.9" # for documentation
 MPI4PY_VERSION="3.0.0"
