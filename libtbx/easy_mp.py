@@ -11,6 +11,10 @@ _have_maxtasksperchild = (sys.version_info[:2] >= (2,7))
 
 _problem_cache = Auto
 
+# Patch Python 2.7 multiprocessing module to avoid unnecessary file operations
+# on non-Windows systems.
+sys.modules['multiprocessing.random'] = None
+
 def detect_problem():
   """
   Identify situations where multiprocessing will not work as required.
