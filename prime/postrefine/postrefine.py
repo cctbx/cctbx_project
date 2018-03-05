@@ -208,7 +208,7 @@ class postref_handler(object):
     #return observations with correct polarity
     if iparams.indexing_ambiguity.index_basis_in is None:
       return observations_original.map_to_asu(), 'h,k,l'
-    ind_pickle = pickle.load(open(iparams.indexing_ambiguity.index_basis_in, "rb"))
+    ind_pickle = iparams.indexing_ambiguity.index_basis_in
     if pickle_filename not in ind_pickle:
       return observations_original.map_to_asu(), 'Not Found'
     from cctbx import sgtbx
