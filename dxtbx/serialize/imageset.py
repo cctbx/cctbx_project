@@ -160,7 +160,13 @@ def imagesweep_from_dict(d, check_format=True):
   except Exception:
     indices = range(image_range[0], image_range[1] + 1)
     sweep = ImageSetFactory.make_sweep(
-      template, indices, check_format=False)
+      template,
+      indices,
+      beam=beam,
+      detector=detector,
+      goniometer=goniometer,
+      scan=scan,
+      check_format=check_format)
 
   # Set some external lookups
   if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
