@@ -231,7 +231,7 @@ d=a b c # 1 {2} 3 \\
   .expert_level = 1
 {
   !a = b
-    .type = int
+    .type = int(allow_none=True)
   c = d
     .expert_level = 2
 }
@@ -318,7 +318,7 @@ t {
     attributes_level=2,
     expected_out="""\
 a = None
-  .type = int
+  .type = int(allow_none=True)
 s
   .optional = False
   .multiple = True
@@ -330,7 +330,7 @@ t
 {
   d = None
     .optional = True
-    .type = float
+    .type = float(allow_none=True)
   e = x
     .type = str
 }
@@ -1769,7 +1769,7 @@ c {
     x = 1
       .expert_level = 6
     y = 3
-      .type = int
+      .type = int(allow_none=True)
       .expert_level = 7
     t
       .expert_level = 8
@@ -4276,7 +4276,7 @@ s
   a = None
     .type = str
   b = 0
-    .type = float
+    .type = float(allow_none=True)
   c = *x *y
     .optional = True
     .type = choice(multi=True)
@@ -4307,7 +4307,7 @@ s
   a = None
     .type = str
   b = 0
-    .type = float
+    .type = float(allow_none=True)
   c = *x *y
     .optional = True
     .type = choice(multi=True)
@@ -4319,7 +4319,7 @@ s
   a = None
     .type = str
   b = 1
-    .type = float
+    .type = float(allow_none=True)
   c = *x *y
     .optional = True
     .type = choice(multi=True)
@@ -4389,12 +4389,12 @@ s
   a = x
     .type = str
   b = 2
-    .type = int
+    .type = int(allow_none=True)
   c = x *y
     .optional = True
     .type = choice(multi=True)
   d = None
-    .type = float
+    .type = float(allow_none=True)
 }
 """)
   #
@@ -4809,26 +4809,26 @@ h = 10
   work_phil = master_phil.format(python_object=work_params)
   assert not show_diff(work_phil.as_str(attributes_level=2),"""\
 a = None
-  .type = float
+  .type = float(allow_none=True)
 b = 1
-  .type = int
+  .type = int(allow_none=True)
 c = 1.5
-  .type = float(value_min=1)
+  .type = float(value_min=1, allow_none=True)
 d = 4.5
-  .type = float(value_max=5)
+  .type = float(value_max=5, allow_none=True)
 e = 6.2
-  .type = float(value_min=3.2, value_max=7.6)
+  .type = float(value_min=3.2, value_max=7.6, allow_none=True)
 f = 5
-  .type = int(value_min=0)
+  .type = int(value_min=0, allow_none=True)
 g = 3
-  .type = int(value_max=4)
+  .type = int(value_max=4, allow_none=True)
 h = 10
-  .type = int(value_min=4, value_max=12)
+  .type = int(value_min=4, value_max=12, allow_none=True)
 """)
   #
   master_phil = phil.parse(input_string="""\
 a=-1.5
-  .type=float(value_min=1.0)
+  .type=float(value_min=1.0, allow_none=True)
 """)
   try: master_phil.extract()
   except RuntimeError, e:
@@ -4868,6 +4868,16 @@ d=-6
     assert not show_diff(str(e),
       "d element is less than the minimum allowed value:"
       " -6 < 3 (input line 1)")
+  else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+d=None
+  .type=int(allow_none=False)
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "d cannot be None")
   else: raise Exception_expected
 
 def exercise_ints_and_floats():

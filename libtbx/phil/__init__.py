@@ -299,11 +299,13 @@ class number_converters_base(_check_value_base):
 
   def __init__(self,
       value_min=None,
-      value_max=None):
+      value_max=None,
+      allow_none=True):
     if (value_min is not None and value_max is not None):
       assert value_min <= value_max
     self.value_min = value_min
     self.value_max = value_max
+    self.allow_none = allow_none
 
   def __str__(self):
     kwds = []
@@ -311,6 +313,8 @@ class number_converters_base(_check_value_base):
       kwds.append("value_min=" + self._value_as_str(value=self.value_min))
     if (self.value_max is not None):
       kwds.append("value_max=" + self._value_as_str(value=self.value_max))
+    if (self.allow_none):
+      kwds.append("allow_none=True")
     if (len(kwds) != 0):
       return self.phil_type + "(" + ", ".join(kwds) + ")"
     return self.phil_type
@@ -318,14 +322,24 @@ class number_converters_base(_check_value_base):
   def from_words(self, words, master):
     path = master.full_path()
     value = self._value_from_words(words=words, path=master.full_path())
-    if (value is None or value is Auto): return value
+    if (value is None):
+      if (self.allow_none):
+        return value
+      else:
+        raise RuntimeError(
+          "%s cannot be None" % path)
+    elif (value is Auto): return value
     self._check_value(
       value=value, path_producer=master.full_path, words=words)
     return value
 
   def as_words(self, python_object, master):
     if (python_object is None):
-      return [tokenizer.word(value="None")]
+      if (self.allow_none):
+        return [tokenizer.word(value="None")]
+      else:
+        raise RuntimeError(
+          "%s cannot be None" % master.full_path())
     if (python_object is Auto) or (type(python_object) == type(Auto)) :
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=self._value_as_str(value=python_object))]
