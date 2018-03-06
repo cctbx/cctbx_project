@@ -39,8 +39,8 @@ class _(boost.python.injector, coext.crystal_orientation):
     from cctbx.sgtbx import space_group
     if isinstance(constraints,space_group):
 
-      from labelit.symmetry.metricsym import a_g_conversion
-      converter = a_g_conversion.AG()
+      from rstbx.symmetry.constraints import AGconvert
+      converter = AGconvert()
       converter.forward(self)
       average_cell = constraints.average_unit_cell(self.unit_cell())
       converter.validate_and_setG( average_cell.reciprocal().metrical_matrix() )
