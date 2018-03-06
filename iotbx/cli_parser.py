@@ -59,7 +59,7 @@ class ParsePositionalArgumentsAction(argparse.Action):
     parse_phil = hasattr(namespace, 'phil')
     parse_dir = hasattr(namespace, 'dir')
 
-    # get previous values for define default
+    # get previous values or define default
     if ( parse_files and (getattr(namespace, 'files') is not None) ):
       files = namespace.files
     else:
@@ -93,10 +93,16 @@ class ParsePositionalArgumentsAction(argparse.Action):
     # update options
     if (parse_files):
       setattr(namespace, 'files', files)
+    else:
+      unknown.extend(files)
     if (parse_phil):
       setattr(namespace, 'phil', phil)
+    else:
+      unknown.extend(phil)
     if (parse_dir):
       setattr(namespace, 'dir', directory)
+    else:
+      unknown.extend(directory)
 
     # store unknown values for custom processing (if available)
     setattr(namespace, 'unknown', unknown)
