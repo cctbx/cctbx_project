@@ -1044,7 +1044,7 @@ class slip_callbacks:
 
     from rstbx.bandpass.simulated_annealing import SALight
     from cctbx.uctbx import unit_cell
-    from labelit.symmetry.metricsym.a_g_conversion import AG
+    from rstbx.symmetry.constraints import AGconvert
 
     SA = SALight()
 
@@ -1066,7 +1066,7 @@ class slip_callbacks:
 
     def set_variables_from_sa_x(x):
       # ------ Go through hoops just to reset a,c without altering the angles
-      converter = AG()
+      converter = AGconvert()
       converter.forward(reserve_orientation)
       model = converter.initial_model()
       old_uc = unit_cell(metrical_matrix=model[3:9])
