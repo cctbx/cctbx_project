@@ -24,7 +24,7 @@ function install_pkg_base() {
 # Doing the base step with a conda environment which provides all dependecies
 # The conda installation directory will be called base for now
 while test $# -gt 0; do
-  case "$1" in 
+  case "$1" in
     --h|--help)
       echo "Script for installing miniconda and software using conda in cctbx"
       echo "options are"
@@ -38,7 +38,7 @@ while test $# -gt 0; do
       echo "install Miniconda"
       wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh --no-check-certificate
       chmod +x Miniconda2-latest-Linux-x86_64.sh
-      ./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/newconda 
+      ./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/newconda
       export PATH="$PWD/newconda/bin:$PATH"
       # Make sure no old installation of conda and softlinks exist
       rm -r base
@@ -57,7 +57,7 @@ while test $# -gt 0; do
       echo $PATH
       source activate myEnv
       conda clean --index-cache
-      install_pkgs_conda ${base_pkgs[@]} 
+      install_pkgs_conda ${base_pkgs[@]}
       break
       ;;
     --install-psanaconda-lcls)
@@ -69,16 +69,15 @@ while test $# -gt 0; do
       echo $PATH
       source activate myEnv
       conda clean --index-cache
-      install_psanaconda_lcls_channel ${rhel_version} 
+      install_psanaconda_lcls_channel ${rhel_version}
       break
       ;;
   esac
 done
 #wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh --no-check-certificate
 #chmod +x Miniconda2-latest-Linux-x86_64.sh
-#./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/base 
+#./Miniconda2-latest-Linux-x86_64.sh -b -p $PWD/base
 #base_pkgs=($@)
 #export PATH="$PWD/base/bin:$PATH"
 #source activate
-#install_pkgs_conda ${base_pkgs[@]} 
-
+#install_pkgs_conda ${base_pkgs[@]}
