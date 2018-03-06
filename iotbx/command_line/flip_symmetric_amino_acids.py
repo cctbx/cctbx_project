@@ -4,7 +4,7 @@ from __future__ import division
 from libtbx.utils import Usage
 import sys
 import iotbx.pdb
-from iotbx.pdb import write_whole_pdb_file
+import mmtbx.model
 
 master_phil_str = """
 file_name = None
@@ -34,32 +34,26 @@ def run(args):
       source_info=None,
       raise_sorry_if_format_error=True)
   t0=time.time()
-  pdb_h = pdb_input.construct_hierarchy()
+  model = mmtbx.model.manager(
+      model_input = pdb_input)
+  pdb_h = model.get_hierarchy()
   info = pdb_h.flip_symmetric_amino_acids()
   print info
+  model.set_sites_cart_from_hierarchy()
 
   out_fn_prefix = inp_fn
   if inp_fn.endswith(".pdb") or inp_fn.endswith(".cif"):
     out_fn_prefix = inp_fn[:-4]
   out_fn = out_fn_prefix + "_iupac.pdb"
 
-  if hasattr(pdb_input, "extract_secondary_structure"):
-    ss_annotation = pdb_input.extract_secondary_structure()
-    write_whole_pdb_file(
-        file_name=out_fn,
-        output_file=None,
-        processed_pdb_file=None,
-        pdb_hierarchy=pdb_h,
-        crystal_symmetry=pdb_input.crystal_symmetry(),
-        ss_annotation=ss_annotation,
-        atoms_reset_serial_first_value=None,
-        link_records=None)
+  if model.input_format_was_cif():
+    out_fn = out_fn_prefix + "_iupac.cif"
+    txt = model.model_as_mmcif()
   else:
-    # This was a mmcif file, so outputting mmcif
-    pdb_h.write_mmcif_file(
-        file_name = out_fn,
-        crystal_symmetry=pdb_input.crystal_symmetry(),
-    )
+    out_fn = out_fn_prefix + "_iupac.cif"
+    txt = model.model_as_pdb()
+  with open(out_fn, 'w') as f:
+    f.write(txt)
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])

@@ -1317,7 +1317,7 @@ class manager(object):
         for c in ncs_gr.copies:
           new_c_sites = c.r.elems * new_sites + c.t
           h.select(c.iselection).atoms().set_xyz(new_c_sites)
-    self._xray_structure.set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
+    self.get_xray_structure().set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
     self._update_pdb_atoms()
     self.model_statistics_info = None
 
