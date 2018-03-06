@@ -2,7 +2,7 @@ from __future__ import division
 import iotbx.pdb
 from cctbx import crystal
 from libtbx.test_utils import approx_equal
-from iotbx.pdb import write_whole_pdb_file
+import mmtbx.model
 
 cif_str="""
 data_5JUP
@@ -64,7 +64,7 @@ ATOM   2      P  P     . U   A  1  1    ? 173.022 259.610 224.994 1.00 116.34 1 
 #
 """
 
-def run(prefix="iotbx_tst_xray_scale"):
+def run(prefix="tst_iotbx_tst_xray_scale_1"):
   """
   Exercise obtaining exactly the same xray structure from pdb and cif.
   Caveate is SCALE records (fract_transf_matrix). In pdb they explicitly
@@ -82,22 +82,33 @@ def run(prefix="iotbx_tst_xray_scale"):
   # print "======== doing xrs from cif =============="
   xrs_cif = cif_inp.xray_structure_simple(crystal_symmetry = cs)
   # xrs from PDB
-  iotbx.pdb.write_whole_pdb_file(
-      file_name=prefix+".pdb",
-      output_file=None,
-      processed_pdb_file=None,
-      pdb_hierarchy=cif_inp.construct_hierarchy(),
-      crystal_symmetry=cif_inp.crystal_symmetry(),
-      ss_annotation=cif_inp.extract_secondary_structure(),
-      append_end=True,
-      atoms_reset_serial_first_value=None,
-      link_records=None)
+  cif_inp.construct_hierarchy().write_pdb_file(prefix+".pdb")
   pdb_inp = iotbx.pdb.input(file_name="%s.pdb" % prefix)
   # print "======== doing xrs from pdb =============="
   xrs_pdb = pdb_inp.xray_structure_simple(crystal_symmetry = cs)
   #
   assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
+  print xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0]
   print "OK"
+
+def run2(prefix="iotbx_tst_xray_scale_2"):
+  """ same as run(), but using mmtbx.model.
+  Not clear why it is failing... Need to ask Pavel to look together."""
+  cs = crystal.symmetry((419., 419., 419., 90.0, 90.0, 90.0), 1)
+  model_cif = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=cif_str.split("\n"), source_info=None),
+      crystal_symmetry=cs)
+  xrs_cif = model_cif.get_xray_structure()
+  txt_pdb = model_cif.model_as_pdb()
+  # print txt_pdb
+  model_pdb = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=txt_pdb.split("\n"), source_info=None),
+      crystal_symmetry=cs)
+  xrs_pdb = model_pdb.get_xray_structure()
+  assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
+  print "OK"
+
 
 if (__name__ == "__main__"):
   run()
+  run2()
