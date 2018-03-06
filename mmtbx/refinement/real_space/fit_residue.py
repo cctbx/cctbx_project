@@ -328,3 +328,139 @@ class tune_up(object):
       stop       = self.torsion_search_stop,
       step       = self.torsion_search_step)
     self.residue.atoms().set_xyz(new_xyz=score_residue.sites_cart)
+
+#
+# These functions are not used anywhere. And not tested anymore.
+# They are here as an example of correct backrub move, according to
+# original paper https://doi.org/10.1016/j.str.2005.10.007
+# Unfortunately, for proper backrub move we need previous and next residues,
+# but current code is build under assumption that one residue is enough for
+# rotamer fitting. One will have to reconsider this idea and do some changes
+# to make it possible to do proper backrub move.
+#
+def _find_theta(ap1, ap2, cur_xyz, needed_xyz):
+  from mmtbx.building.loop_closure.ccd import ccd_python
+  f, s_home, r_norm, r_home = ccd_python._get_f_r_s(
+      axis_point_1=ap1,
+      axis_point_2=ap2,
+      moving_coor=cur_xyz,
+      fixed_coor=needed_xyz)
+  b = list(2*r_norm*(f.dot(r_home)))[0]
+  c = list(2*r_norm*(f.dot(s_home)))[0]
+  znam = math.sqrt(b*b+c*c)
+  sin_alpha = c/znam
+  cos_alpha = b/znam
+  alpha = math.atan2(sin_alpha, cos_alpha)
+  return math.degrees(alpha)
+
+def backrub_move(
+    prev_res,
+    cur_res,
+    next_res,
+    angle,
+    move_oxygens=False,
+    accept_worse_rama=False,
+    rotamer_manager=None,
+    rama_manager=None):
+  import boost.python
+  ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+  from mmtbx_validation_ramachandran_ext import rama_eval
+  from scitbx.matrix import rotate_point_around_axis
+  from mmtbx.conformation_dependent_library.multi_residue_class import ThreeProteinResidues, \
+      RestraintsRegistry
+
+  if abs(angle) < 1e-4:
+    return
+  if prev_res is None or next_res is None:
+    return
+  saved_res = [{},{},{}]
+  for i, r in enumerate([prev_res, cur_res, next_res]):
+    for a in r.atoms():
+      saved_res[i][a.name.strip()] = a.xyz
+  if rotamer_manager is None:
+    rotamer_manager = RotamerEval()
+  prev_ca = prev_res.find_atom_by(name=" CA ")
+  cur_ca = cur_res.find_atom_by(name=" CA ")
+  next_ca = next_res.find_atom_by(name=" CA ")
+  if prev_ca is None or next_ca is None or cur_ca is None:
+    return
+  atoms_to_move = []
+  atoms_to_move.append(prev_res.find_atom_by(name=" C  "))
+  atoms_to_move.append(prev_res.find_atom_by(name=" O  "))
+  for atom in cur_res.atoms():
+    atoms_to_move.append(atom)
+  atoms_to_move.append(next_res.find_atom_by(name=" N  "))
+  for atom in atoms_to_move:
+    assert atom is not None
+    new_xyz = rotate_point_around_axis(
+        axis_point_1 = prev_ca.xyz,
+        axis_point_2 = next_ca.xyz,
+        point        = atom.xyz,
+        angle        = angle,
+        deg          = True)
+    atom.xyz = new_xyz
+  if move_oxygens:
+    registry = RestraintsRegistry()
+    if rama_manager is None:
+      rama_manager = rama_eval()
+    tpr = ThreeProteinResidues(geometry=None, registry=registry)
+    tpr.append(prev_res)
+    tpr.append(cur_res)
+    tpr.append(next_res)
+    phi_psi_angles = tpr.get_phi_psi_angles()
+    rama_key = tpr.get_ramalyze_key()
+    ev_before = rama_manager.evaluate_angles(rama_key, phi_psi_angles[0], phi_psi_angles[1])
+    theta1 = _find_theta(
+        ap1 = prev_ca.xyz,
+        ap2 = cur_ca.xyz,
+        cur_xyz = prev_res.find_atom_by(name=" O  ").xyz,
+        needed_xyz = saved_res[0]["O"])
+    theta2 = _find_theta(
+        ap1 = cur_ca.xyz,
+        ap2 = next_ca.xyz,
+        cur_xyz = cur_res.find_atom_by(name=" O  ").xyz,
+        needed_xyz = saved_res[1]["O"])
+    for a in [prev_res.find_atom_by(name=" C  "),
+        prev_res.find_atom_by(name=" O  "),
+        cur_res.find_atom_by(name=" C  ")]:
+      new_xyz = rotate_point_around_axis(
+              axis_point_1 = prev_ca.xyz,
+              axis_point_2 = cur_ca.xyz,
+              point        = a.xyz,
+              angle        = theta1,
+              deg          = True)
+      a.xyz = new_xyz
+    for a in [cur_res.find_atom_by(name=" C  "),
+        cur_res.find_atom_by(name=" O  "),
+        next_res.find_atom_by(name=" N  ")]:
+      new_xyz = rotate_point_around_axis(
+              axis_point_1 = cur_ca.xyz,
+              axis_point_2 = next_ca.xyz,
+              point        = a.xyz,
+              angle        = theta2,
+              deg          = True)
+      a.xyz = new_xyz
+    phi_psi_angles = tpr.get_phi_psi_angles()
+    rama_key = tpr.get_ramalyze_key()
+    ev_after = rama_manager.evaluate_angles(rama_key, phi_psi_angles[0], phi_psi_angles[1])
+    if ev_before > ev_after and not accept_worse_rama:
+      for a in [prev_res.find_atom_by(name=" C  "),
+          prev_res.find_atom_by(name=" O  "),
+          cur_res.find_atom_by(name=" C  ")]:
+        new_xyz = rotate_point_around_axis(
+                axis_point_1 = prev_ca.xyz,
+                axis_point_2 = cur_ca.xyz,
+                point        = a.xyz,
+                angle        = -theta1,
+                deg          = True)
+        a.xyz = new_xyz
+      for a in [cur_res.find_atom_by(name=" C  "),
+          cur_res.find_atom_by(name=" O  "),
+          next_res.find_atom_by(name=" N  ")]:
+        new_xyz = rotate_point_around_axis(
+                axis_point_1 = cur_ca.xyz,
+                axis_point_2 = next_ca.xyz,
+                point        = a.xyz,
+                angle        = -theta2,
+                deg          = True)
+        a.xyz = new_xyz
