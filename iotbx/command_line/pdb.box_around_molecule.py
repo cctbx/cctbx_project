@@ -7,7 +7,6 @@ from libtbx.option_parser import option_parser
 import libtbx.load_env
 from libtbx.str_utils import show_string
 from libtbx.utils import date_and_time
-from libtbx.utils import null_out
 import mmtbx.model
 
 def run(args):
