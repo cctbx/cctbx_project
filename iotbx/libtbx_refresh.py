@@ -2,10 +2,6 @@ from __future__ import division, print_function
 import os
 op = os.path
 
-self.remove_obsolete_pyc_if_possible(pyc_file_names=[
-  "mtz/extract_from_symop_lib.pyc", # XXX backward compatibility 2010-10-29
-])
-
 if (self.env.is_ready_for_build()):
   f = self.env.under_dist("iotbx", path="pdb/hybrid_36_f.f")
   from libtbx.path import tail_levels
