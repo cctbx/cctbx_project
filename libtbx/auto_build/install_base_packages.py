@@ -235,6 +235,7 @@ class installer (object) :
     # Set package config.
     pkg_config_dir = op.join(self.base_dir, "lib", "pkgconfig")
     if (not op.isdir(pkg_config_dir) and not options.download_only and not options.with_psanaconda):
+      print 'CONFIFGUE PACKAGES'
       os.makedirs(pkg_config_dir)
     pkg_config_paths = [pkg_config_dir] + os.environ.get("PKG_CONFIG_PATH", "").split(":")
     os.environ['PKG_CONFIG_PATH'] = ":".join(pkg_config_paths)
@@ -278,8 +279,10 @@ class installer (object) :
       packages = list(set(packages).difference(psana_conda_pkgs))
       packages = list(set(packages).difference(conda_pkgs))
 
+    print 'before check dependencies'
     # Do the work!
     self.check_dependencies(packages=packages)
+    print 'wqewddfds'
     self.build_dependencies(packages=packages, conda_pkgs=conda_pkgs)
 
     # On Mac OS X all of the Python-related executables located in base/bin
@@ -789,8 +792,8 @@ Installation of Python packages may fail.
       print 'installation with PSANA conda enabled'
       os.chdir(op.join(self.tmp_dir,'..'))
       self.install_with_psanaconda(conda_pkgs, extra_opts=[])
-    python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
-    self.set_python(op.abspath(python_exe))
+      python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
+      self.set_python(op.abspath(python_exe))
     packages_order = []
     for i in packages:
       assert i in order, "Installation order unknown for %s" % i
