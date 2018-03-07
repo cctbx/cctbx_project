@@ -192,6 +192,7 @@ class real_space (validation) :
       self.fsc = None
       if (use_maps):
         from mmtbx.maps import map_model_cc
+        from mmtbx.command_line.map_model_cc import get_fsc
         from iotbx.file_reader import any_file
         from cctbx import crystal, sgtbx
         params = map_model_cc.master_params().extract()
@@ -218,7 +219,8 @@ class real_space (validation) :
         rsc_object.run()
         rsc = rsc_object.get_results()
         self.overall_rsc = (rsc.cc_mask, rsc.cc_volume, rsc.cc_peaks)
-        self.fsc = rsc.fsc
+        self.fsc = get_fsc(map_object, pdb_hierarchy.as_pdb_input(),
+                           params.map_model_cc)
         self.fsc.atom_radius = rsc.atom_radius
         rsc = rsc.cc_per_residue
       # mmtbx/real_space_correlation.py for X-ray/neutron data and map
