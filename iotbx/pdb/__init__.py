@@ -1888,6 +1888,9 @@ def show_file_summary (pdb_in, hierarchy=None, out=None) :
 
 # MARKED_FOR_DELETION_OLEG
 # Reason: functionality lives in mmtbx/model.py:class model:model_as_pdb()
+# This use of this function is being actively removed from everywhere. Currently
+# the only tools using it is pdbtools and real_space_refine, which are up to
+# refactoring shortly. DO NOT USE IT ANYWHERE.
 def write_whole_pdb_file(
     file_name=None,
     output_file=None,

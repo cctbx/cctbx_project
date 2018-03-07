@@ -437,6 +437,9 @@ def category_sort_function(key):
 
 # MARKED_FOR_DELETION_OLEG
 # Reason: functionality lives in mmtbx/model.py:class model:model_as_mmcif()
+# This use of this function is being actively removed from everywhere. Currently
+# the only tools using it is pdbtools and real_space_refine, which are up to
+# refactoring shortly. DO NOT USE IT ANYWHERE.
 def write_whole_cif_file(
     file_name=None,
     output_file=None,
