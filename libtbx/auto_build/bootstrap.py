@@ -992,7 +992,7 @@ class Builder(object):
       update=True,
       revert=None,
       base=True,
-      conda=False,
+      psanaconda=False,
       build=True,
       tests=True,
       doc=True,
@@ -1081,16 +1081,16 @@ class Builder(object):
         extra_opts.append("--mpi-build")
       self.add_base(extra_opts=extra_opts)
 
-    if conda:
+    if psanaconda:
       import subprocess
       fpath = os.path.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-#      subprocess.call([fpath,"--install-miniconda"])
-      command=['bash',fpath,'--install-miniconda']
+      command=['sh',fpath,'--i']
+      command=['sh',fpath,'--install-miniconda']
       self.add_step(self.shell(name='install-miniconda', command=command, workdir=['.']))
       extra_opts = ["--nproc=%s" % str(self.nproc)]
       if enable_shared:
         extra_opts.append("--python-shared")
-      self.add_conda(extra_opts=extra_opts)
+      self.add_psanaconda(extra_opts=extra_opts)
 
     # Configure, make, get revision numbers
     if build and not self.download_only:
@@ -1513,7 +1513,7 @@ class Builder(object):
     print "Installing base packages using:\n  " + " ".join(command)
     self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
-  def add_conda(self, extra_opts=[]):
+  def add_psanaconda(self, extra_opts=[]):
     """Build the base dependencies, e.g. Python, HDF5, etc. using CONDA"""
     if self.with_python:
       extra_opts = ['--with-python', self.with_python]
@@ -1527,7 +1527,7 @@ class Builder(object):
       extra_opts.append('--skip-base=%s' % self.skip_base)
     if self.python3:
       extra_opts.append('--python3')
-    extra_opts.append('--with-conda')
+    extra_opts.append('--with-psanaconda')
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
@@ -1538,7 +1538,7 @@ class Builder(object):
       '--%s'%self.BASE_PACKAGES
     ] + extra_opts
     print "Installing base packages using:\n  " + " ".join(command)
-    self.add_step(self.shell(name='conda', command=command, workdir=['.']))
+    self.add_step(self.shell(name='psanaconda', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
@@ -1911,8 +1911,8 @@ class XFELBuilder(CCIBuilder):
     super(XFELBuilder, self).add_base(
       extra_opts=['--labelit', '--dials'] + extra_opts)
 
-  def add_conda(self, extra_opts=[]):
-    super(XFELBuilder, self).add_conda(
+  def add_psanaconda(self, extra_opts=[]):
+    super(XFELBuilder, self).add_psanaconda(
       extra_opts=['--labelit'] + extra_opts)
 
   def add_tests(self):
@@ -2448,7 +2448,7 @@ def run(root=None):
   # options.root = options.root or root
 
   # Check actions
-  allowedargs = ['cleanup', 'hot', 'update', 'base', 'conda','build', 'tests', 'doc']
+  allowedargs = ['cleanup', 'hot', 'update', 'base', 'psanaconda','build', 'tests', 'doc']
   args = args or ['hot', 'update', 'base', 'build']
   actions = []
   for arg in args:
@@ -2483,7 +2483,7 @@ def run(root=None):
     update=('update' in actions),
     revert=options.revert,
     base=('base' in actions),
-    conda=('conda' in actions),
+    psanaconda=('psanaconda' in actions),
     build=('build' in actions),
     tests=('tests' in actions),
     doc=('doc' in actions),
