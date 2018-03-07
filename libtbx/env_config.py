@@ -1890,23 +1890,6 @@ class module:
           suppress_warning=False,
           scan_for_libtbx_set_dispatcher_name=True)
 
-  def process_python_command_line_scripts(self,
-        source_dir,
-        print_prefix="  ",
-        target_file_name_infix="",
-        scan_for_libtbx_set_dispatcher_name=False):
-    source_dir = self.env.as_relocatable_path(source_dir)
-    print(print_prefix+"Processing: %s" % show_string(abs(source_dir)))
-    for file_name in source_dir.listdir():
-      if (not file_name.endswith(".py")): continue
-      self.write_dispatcher(
-        source_dir=source_dir,
-        file_name=file_name,
-        suppress_warning=False,
-        target_file_name_infix=target_file_name_infix,
-        scan_for_libtbx_set_dispatcher_name
-          =scan_for_libtbx_set_dispatcher_name)
-
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
       custom_refresh = dist_path / "libtbx_refresh.py"
