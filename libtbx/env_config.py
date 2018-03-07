@@ -1801,6 +1801,7 @@ class module:
     if (file_name_lower.endswith(".pyo")): return
     if (file_name.startswith(".")): return
     if (file_name.endswith("~")): return # ignore emacs backup files
+    if (file_name_lower.endswith(".md")): return # ignore markdown files
     if (file_name == "ipython_shell_start.py" and self.name == "libtbx"):
       try: import IPython
       except ImportError: return
