@@ -2,10 +2,10 @@ from __future__ import division
 from libtbx.utils import null_out
 from cStringIO import StringIO
 import os.path
+import iotbx.pdb
 
 def exercise_01():
   from iotbx.command_line import pdb_as_cif
-  from iotbx.file_reader import any_file
   if (os.path.isfile("tst_pdb_as_cif_1.cif")) :
     os.remove("tst_pdb_as_cif_1.cif")
   open("tst_pdb_as_cif_1.pdb", "w").write("""\
@@ -32,8 +32,8 @@ ATOM     16  CD2 LEU A  44      12.755  29.420  63.073  1.00182.68           C
 """)
   pdb_as_cif.run(["tst_pdb_as_cif_1.pdb"], out=null_out())
   assert os.path.isfile("tst_pdb_as_cif_1.cif")
-  cif_in = any_file("tst_pdb_as_cif_1.cif")
-  hierarchy = cif_in.file_object.construct_hierarchy()
+  cif_in = iotbx.pdb.input("tst_pdb_as_cif_1.cif")
+  hierarchy = cif_in.construct_hierarchy()
   open("tst_pdb_as_cif_2.pdb", "w").write("""\
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 SCALE1      1.000000  0.000000  0.000000        0.00000
@@ -60,7 +60,6 @@ Error converting tst_pdb_as_cif_2.pdb to mmCIF format:
 
 def exercise_02():
   from iotbx.command_line import pdb_as_cif
-  from iotbx.file_reader import any_file
   if (os.path.isfile("tst_pdb_as_cif_2.cif")) :
     os.remove("tst_pdb_as_cif_2.cif")
   open("tst_pdb_as_cif_2.pdb", "w").write("""\
@@ -83,11 +82,11 @@ ANISOUA0000  C4    U   367    20015  14160  16442  -1873  -2801  -1645  A16S C
     # if(l.startswith("100000  C4  .  U  .  367  ?")): cntr+=1
 
     # These are for align_columns=False in iotbx.cif.write_whole_cif_file()
-    if(l.startswith("ATOM 99999 N3 . U . 367 ? ")): cntr+=1
-    if(l.startswith("ATOM 100000 C4 . U . 367 ?")): cntr+=1
-    if(l.startswith("99999 N3 . U . 367 ? ")): cntr+=1
-    if(l.startswith("100000 C4 . U . 367 ?")): cntr+=1
-  assert cntr == 4
+    if(l.startswith("ATOM 1 N3 . U . 367 ? ")): cntr+=1
+    if(l.startswith("ATOM 2 C4 . U . 367 ?")): cntr+=1
+    if(l.startswith("1 N3 . U . 367 ? ")): cntr+=1
+    if(l.startswith("2 C4 . U . 367 ?")): cntr+=1
+  assert cntr == 4, cntr
 
 if (__name__ == "__main__"):
   exercise_01()
