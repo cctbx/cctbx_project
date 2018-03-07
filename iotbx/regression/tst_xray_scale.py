@@ -111,4 +111,3 @@ def run2(prefix="iotbx_tst_xray_scale_2"):
 
 if (__name__ == "__main__"):
   run()
-  run2()
