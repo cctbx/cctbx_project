@@ -1083,14 +1083,16 @@ class Builder(object):
 
     if psanaconda:
       import subprocess
-      fpath = os.path.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-      command=['sh',fpath,'--i']
-      command=['sh',fpath,'--install-miniconda']
+      fpath = os.path.join('modules','cctbx_project','libtbx','auto_build','conda_installer.py')
+      command=['python',fpath]
       self.add_step(self.shell(name='install-miniconda', command=command, workdir=['.']))
+
       extra_opts = ["--nproc=%s" % str(self.nproc)]
       if enable_shared:
         extra_opts.append("--python-shared")
-      self.add_psanaconda(extra_opts=extra_opts)
+      extra_opts.append("--with-psanaconda")
+      self.add_base(extra_opts=extra_opts)
+#      self.add_psanaconda(extra_opts=extra_opts)
 
     # Configure, make, get revision numbers
     if build and not self.download_only:
@@ -1510,35 +1512,12 @@ class Builder(object):
       '--python-shared',
       '--%s'%self.BASE_PACKAGES
     ] + extra_opts
-    print "Installing base packages using:\n  " + " ".join(command)
-    self.add_step(self.shell(name='base', command=command, workdir=['.']))
-
-  def add_psanaconda(self, extra_opts=[]):
-    """Build the base dependencies, e.g. Python, HDF5, etc. using CONDA"""
-    if self.with_python:
-      extra_opts = ['--with-python', self.with_python]
-    if self.verbose:
-      extra_opts.append('-v')
-    if self.download_only:
-      extra_opts.append('--download-only')
-    if self.auth.get('git_ssh',False):
-      extra_opts.append('--git-ssh')
-    if self.skip_base:
-      extra_opts.append('--skip-base=%s' % self.skip_base)
-    if self.python3:
-      extra_opts.append('--python3')
-    extra_opts.append('--with-psanaconda')
-    if not self.force_base_build:
-      if "--skip-if-exists" not in extra_opts:
-        extra_opts.append("--skip-if-exists")
-    command=[
-      'python',
-      self.opjoin('modules', 'cctbx_project', 'libtbx', 'auto_build', 'install_base_packages.py'),
-      '--python-shared',
-      '--%s'%self.BASE_PACKAGES
-    ] + extra_opts
-    print "Installing base packages using:\n  " + " ".join(command)
-    self.add_step(self.shell(name='psanaconda', command=command, workdir=['.']))
+    if '--with-psanaconda' in extra_opts:
+      print "Installing base packages using:\n  " + " ".join(command)
+      self.add_step(self.shell(name='psanaconda', command=command, workdir=['.']))
+    else:
+      print "Installing base packages using:\n  " + " ".join(command)
+      self.add_step(self.shell(name='base', command=command, workdir=['.']))
 
   def add_dispatchers(self, product_name="phenix"):
     """Write dispatcher_include file."""
@@ -1910,10 +1889,6 @@ class XFELBuilder(CCIBuilder):
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
       extra_opts=['--labelit', '--dials'] + extra_opts)
-
-  def add_psanaconda(self, extra_opts=[]):
-    super(XFELBuilder, self).add_psanaconda(
-      extra_opts=['--labelit'] + extra_opts)
 
   def add_tests(self):
     self.add_test_command('cctbx_regression.test_nightly')

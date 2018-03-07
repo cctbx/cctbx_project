@@ -723,19 +723,12 @@ Installation of Python packages may fail.
     # no-op
 
   def install_with_psanaconda(self, packages=None, extra_opts=[]):
-    import subprocess
     if not op.isdir(self.base_dir):
       raise NameError('base directory not present. Miniconda probably not installed. Exiting .....')
-    fpath = op.join('modules','cctbx_project','libtbx','auto_build','conda_installer.sh')
-    conda_call = ['sh']+[fpath]+["--install-psanaconda-lcls"]
-#    command=['bash',fpath,'--install-psanaconda-lcls']
-#    self.add_step(self.shell(name='install-psanaconda', command=command, workdir=['.']))
-
-#    command=['bash',fpath,'--install-packages']+packages
-#    self.add_step(self.shell(name='install-conda-packages', command=command, workdir=['.']))
-    subprocess.call(conda_call)
-    conda_call = ['sh']+[fpath]+["--install-packages"]+ packages
-    subprocess.call(conda_call)
+    from conda_installer import conda_installer
+    conda_helper = conda_installer()
+    conda_helper.psanaconda_lcls_installer(dry_run=False)
+    conda_helper.packages_installer(packages, dry_run=False)
 
   def build_dependencies(self, packages=None, conda_pkgs=None):
     # Build in the correct dependency order.
