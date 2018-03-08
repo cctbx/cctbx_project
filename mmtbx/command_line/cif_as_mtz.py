@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_mtz
+# LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_mtz
 
 from __future__ import division
 from iotbx.option_parser import iotbx_option_parser
