@@ -532,7 +532,7 @@ class ml_iso_absolute_scaling (scaling.xtriage_analysis):
       label_suffix = " of %s" % str(self.info)
     out.show_sub_header("Maximum likelihood isotropic Wilson scaling")
     out.show(""" ML estimate of overall B value%s:""" % label_suffix)
-    out.show_preformatted_text("   %s A**(-2)" %
+    out.show_preformatted_text("   %s A**2" %
       format_value("%5.2f", self.b_wilson))
     out.show(""" Estimated -log of scale factor%s:""" % label_suffix)
     out.show_preformatted_text("""   %s""" %
