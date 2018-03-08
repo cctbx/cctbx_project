@@ -30,7 +30,7 @@ class conda_installer():
 
     # Not sure if platform.linux_distribution is supported beyond python 3.6
     rhel_version = platform.linux_distribution()
-    rhel_version = int(float(rhel_version[1]))
+    rhel_version = int((rhel_version[1]).split('.')[0])
     print 'INSTALLING PSANA-CONDA on LINUX VERSION = ',rhel_version
     opts = [self.conda_bin, 'install','-y']
     if dry_run:
