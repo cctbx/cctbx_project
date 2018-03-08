@@ -307,6 +307,13 @@ class number_converters_base(_check_value_base):
     self.value_max = value_max
     self.allow_none = allow_none
 
+  def __setstate__(self, state):
+    # When unpickling ensure allow_none is set. Entire function is for
+    # backwards-compatibility purposes only. 20180308
+    self.allow_none = True
+    for key, value in state.iteritems():
+      setattr(self, key, value)
+
   def __str__(self):
     kwds = []
     if (self.value_min is not None):
