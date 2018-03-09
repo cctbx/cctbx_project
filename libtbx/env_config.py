@@ -1524,13 +1524,15 @@ selfx:
 
   def generate_entry_point_dispatchers(self):
     # Write indirect dispatcher scripts for all console_scripts entry points
-    # that have existing dispatcher scripts in the base/bin directory.
+    # that have existing dispatcher scripts in the base/bin directory, but
+    # add a 'libtbx.' prefix.
     base_bin_directory = libtbx.env.under_base('bin')
     if not os.path.isdir(base_bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
     base_bin_dispatchers = set(os.listdir(base_bin_directory))
-    existing_dispatchers = set(self.bin_path.listdir())
+    existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
+    existing_dispatchers = set(map(lambda f: f[7:], existing_dispatchers))
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
 
     try:
@@ -1542,7 +1544,7 @@ selfx:
     for ep in entry_points:
       self.write_dispatcher(
           source_file=libtbx.env.under_base(os.path.join('bin', ep.name)),
-          target_file=os.path.join('bin', ep.name),
+          target_file=os.path.join('bin', 'libtbx.' + ep.name),
       )
 
   def write_command_version_duplicates(self):
