@@ -87,8 +87,8 @@ def run(prefix="tst_iotbx_tst_xray_scale_1"):
   # print "======== doing xrs from pdb =============="
   xrs_pdb = pdb_inp.xray_structure_simple(crystal_symmetry = cs)
   #
-  assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
-  print xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0]
+  for i in range(len(xrs_cif.sites_cart())):
+    assert approx_equal(xrs_cif.sites_cart()[i], xrs_pdb.sites_cart()[i])
   print "OK"
 
 def run2(prefix="iotbx_tst_xray_scale_2"):
@@ -100,14 +100,14 @@ def run2(prefix="iotbx_tst_xray_scale_2"):
       crystal_symmetry=cs)
   xrs_cif = model_cif.get_xray_structure()
   txt_pdb = model_cif.model_as_pdb()
-  # print txt_pdb
   model_pdb = mmtbx.model.manager(
       model_input = iotbx.pdb.input(lines=txt_pdb.split("\n"), source_info=None),
       crystal_symmetry=cs)
   xrs_pdb = model_pdb.get_xray_structure()
-  assert approx_equal(xrs_cif.sites_cart()[0], xrs_pdb.sites_cart()[0])
+  for i in range(len(xrs_cif.sites_cart())):
+    assert approx_equal(xrs_cif.sites_cart()[i], xrs_pdb.sites_cart()[i])
   print "OK"
-
 
 if (__name__ == "__main__"):
   run()
+  run2()
