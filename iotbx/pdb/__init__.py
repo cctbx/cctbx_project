@@ -552,6 +552,8 @@ class residue_name_plus_atom_names_interpreter(object):
     self.work_residue_name = work_residue_name
     self.atom_name_interpretation = atom_name_interpretation
 
+#
+# check out merge_files_and_check_for_overlap
 class combine_unique_pdb_files(object):
 
   def __init__(self, file_names):

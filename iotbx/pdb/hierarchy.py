@@ -2622,6 +2622,9 @@ class show_summary(input):
 # MARKED_FOR_DELETION_OLEG
 # Reason: functionality is moved to mmtbx.model and uses better all_chain_ids
 # function from iotbx.pdb.utils
+# Not until used in iotbx/pdb/__init__py: join_fragment_files:
+# GUI app: Combine PDB files
+# CL app: iotbx.pdb.join_fragment_files
 def suffixes_for_chain_ids(suffixes=Auto):
   if (suffixes is Auto):
     suffixes="123456789" \
