@@ -1272,7 +1272,9 @@ namespace {
   atom_group::sort_atoms_in_place()
   {
     std::string ag_class;
-    ag_class = common_residue_names::get_class(data->resname);
+    // Using correct overloaded function so residue name would be padded.
+    // Crucial for mmCIF.
+    ag_class = common_residue_names::get_class(std::string(data->resname.elems));
     if (ag_class == "common_rna_dna" || ag_class == "modified_rna_dna") {
       if (!get_atom("N9")) {
         std::sort(
