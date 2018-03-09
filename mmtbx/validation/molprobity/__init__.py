@@ -374,6 +374,10 @@ class molprobity (slots_getstate_setstate) :
     if (self.hydrogens is not None):
       make_header("Hydrogen validation", out=out)
       self.hydrogens.print_results(prefix='  ', log=out)
+      # temporarily hide hd_exchanged_sites in GUI because atom objects cannot
+      # be pickled (causes GUI crash)
+      self.hydrogens.results.hd_exchanged_sites = None
+
     make_header("Molprobity validation", out=out)
     self.model_statistics_geometry.show(log=out, prefix="  ", lowercase=True)
     if (self.nqh_flips is not None) :

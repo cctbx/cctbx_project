@@ -1,5 +1,4 @@
 from __future__ import division, print_function
-from collections import OrderedDict
 from iotbx.pdb import common_residue_names_get_class
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
@@ -559,10 +558,10 @@ class validate_H_results(object):
     self.log = log
 
   def formatted_print(self, prefix, values, log):
-    maxlen = max([ len(key) for key in values.keys() ])
-    for key in values.keys():
+    maxlen = max([ len(value[0]) for value in values ])
+    for value in values:
       base_format = '%s%%-%ds: %%i' % (prefix, maxlen)
-      print(base_format % (key, values[key]), file=log)
+      print(base_format % value, file=log)
 
   def print_overall_results(self, overall_counts_hd, prefix='', log=None):
     if (log is None):
@@ -571,25 +570,25 @@ class validate_H_results(object):
     oc = overall_counts_hd
 
     make_sub_header('H/D atoms in the input model', out=log)
-    values = OrderedDict([
+    values = [
       ('Total number of hydrogen atoms' , oc.count_h),
       ('Total number of deuterium atoms' , oc.count_d),
       ('Number of H atoms (protein)' , oc.count_h_protein),
       ('Number of D atoms (protein)' , oc.count_d_protein),
       ('Number of H atoms (water)' , oc.count_h_water),
       ('Number of D atoms (water)' , oc.count_d_water)
-    ])
+    ]
     self.formatted_print(prefix, values, log)
 
     make_sub_header('Water molecules', out=log)
-    values = OrderedDict([
+    values = [
       ('Number of water', oc.count_water),
       ('Number of water with 0 H (or D)', oc.count_water_0h),
       ('Number of water with 1 H (or D)', oc.count_water_1h),
       ('Number of water with 2 H (or D)', oc.count_water_2h),
       ('Number of water in alternative conformation', oc.count_water_altconf),
       ('Number of water without oxygen atom', oc.count_water_no_oxygen)
-    ])
+    ]
     self.formatted_print(prefix, values, log)
 
   def print_renamed(self, renamed, prefix='', log=None):
@@ -632,13 +631,13 @@ class validate_H_results(object):
     sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
 
     make_sub_header('H/D EXCHANGED SITES', out=log)
-    values = OrderedDict([
+    values = [
       ('Number of H/D exchanged sites', count_exchanged_sites),
       ('Number of atoms modelled only as H',
        overall_counts_hd.count_h_protein - count_exchanged_sites),
       ('Number of atoms modelled only as D',
        overall_counts_hd.count_d_protein - count_exchanged_sites)
-    ])
+    ]
     self.formatted_print(prefix, values, log)
 
     if sites_different_xyz:
