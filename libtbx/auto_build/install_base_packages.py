@@ -275,7 +275,7 @@ class installer (object) :
     packages += ['python_compatibility']
     # Always build hdf5 and numpy.
     packages += ['cython', 'hdf5', 'numpy', 'pythonextra', 'docutils']
-    packages += ['libsvm', 'lz4_plugin', 'jinja2']
+    packages += ['libsvm', 'lz4_plugin']
     # Development and testing packages.
     packages += ['pytest', 'junitxml']
     # GUI packages.
@@ -694,7 +694,6 @@ Installation of Python packages may fail.
       'libsvm',
       'pytest',
       'pythonextra',
-      'jinja', 'jinja2',
       'junitxml',
       'hdf5',
       'biopython',
@@ -1121,11 +1120,6 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'Cython', package_version=CYTHON_VERSION,
       confirm_import_module='cython')
-
-  def build_jinja2(self):
-    self.build_python_module_pip(
-      'Jinja2', package_version=JINJA2_VERSION,
-      confirm_import_module='jinja2')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
