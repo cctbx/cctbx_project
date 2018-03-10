@@ -1,9 +1,10 @@
 from __future__ import division
 import iotbx.ncs
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from scitbx import matrix
 import iotbx.ncs as ncs
 from iotbx import pdb
+import mmtbx.model
 
 pdb_str_1="""\
 MTRIX1   1  1.000000  0.000000  0.000000        0.00000    1
@@ -202,45 +203,128 @@ def exercise_03():
 
 def exercise_04():
   """Test MTRIX record processing"""
-  expected  = [
-  [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [1.0, 1.0, -1.0], [-1.0, 1.0, 1.0], [1.0, 1.0, -1.0],
-  [-1.0, 1.0, -1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0], [1.0, 1.5, 1.0],
-  [-1.366025, 0.366025, 0.0], [94.618, -5.253, 91.582], [94.618, -91.582, -5.253],
-  [91.582, -5.253, -94.618], [5.253, 94.618, 91.582], [91.582, -5.253, -94.618],
-  [5.253, 91.582, -94.618], [51.858229, 79.315053, 91.582], [-42.759771, 84.568053, 91.582],
-  [94.618, -4.753, 91.582], [-42.759771, 84.568053, 90.582], [62.395, 51.344, 80.786],
-  [62.395, -80.786, 51.344], [80.786, 51.344, -62.395], [-51.344, 62.395, 80.786],
-  [80.786, 51.344, -62.395], [-51.344, 80.786, -62.395], [-13.267688, 79.70763, 80.786],
-  [-75.662688, 28.36363, 80.786], [62.395, 51.844, 80.786], [-75.662688, 28.36363, 79.786],
-  [39.954, 51.526, 72.372], [39.954, -72.372, 51.526], [72.372, 51.526, -39.954],
-  [-51.526, 39.954, 72.372], [72.372, 51.526, -39.954], [-51.526, 72.372, -39.954],
-  [-24.645804, 60.364163, 72.372], [-64.599804, 8.838163, 72.372], [39.954, 52.026, 72.372],
-  [-64.599804, 8.838163, 71.372]]
+  expected  = """\
+ATOM      1   N  ILE A  40       1.000   1.000   1.000  1.00162.33           C
+ATOM      2  CA  LEU A  40      94.618  -5.253  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG B  40      62.395  51.344  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954  51.526  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE C  40       1.000  -1.000   1.000  1.00162.33           C
+ATOM      2  CA  LEU C  40      94.618 -91.582  -5.253  1.00 87.10           C
+TER
+ATOM      3   C  ARG D  40      62.395 -80.786  51.344  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954 -72.372  51.526  0.33 60.93           C
+TER
+ATOM      1   N  ILE E  40       1.000   1.000  -1.000  1.00162.33           C
+ATOM      2  CA  LEU E  40      91.582  -5.253 -94.618  1.00 87.10           C
+TER
+ATOM      3   C  ARG F  40      80.786  51.344 -62.395  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      72.372  51.526 -39.954  0.33 60.93           C
+TER
+ATOM      1   N  ILE G  40      -1.000   1.000   1.000  1.00162.33           C
+ATOM      2  CA  LEU G  40       5.253  94.618  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG H  40     -51.344  62.395  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -51.526  39.954  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE I  40       1.000   1.000  -1.000  1.00162.33           C
+ATOM      2  CA  LEU I  40      91.582  -5.253 -94.618  1.00 87.10           C
+TER
+ATOM      3   C  ARG J  40      80.786  51.344 -62.395  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      72.372  51.526 -39.954  0.33 60.93           C
+TER
+ATOM      1   N  ILE K  40      -1.000   1.000  -1.000  1.00162.33           C
+ATOM      2  CA  LEU K  40       5.253  91.582 -94.618  1.00 87.10           C
+TER
+ATOM      3   C  ARG L  40     -51.344  80.786 -62.395  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -51.526  72.372 -39.954  0.33 60.93           C
+TER
+ATOM      1   N  ILE M  40      -0.366   1.366   1.000  1.00162.33           C
+ATOM      2  CA  LEU M  40      51.858  79.315  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG N  40     -13.268  79.708  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -24.646  60.364  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE O  40      -1.366   0.366   1.000  1.00162.33           C
+ATOM      2  CA  LEU O  40     -42.760  84.568  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG P  40     -75.663  28.364  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -64.600   8.838  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE Q  40       1.000   1.500   1.000  1.00162.33           C
+ATOM      2  CA  LEU Q  40      94.618  -4.753  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG R  40      62.395  51.844  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954  52.026  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE S  40      -1.366   0.366   0.000  1.00162.33           C
+ATOM      2  CA  LEU S  40     -42.760  84.568  90.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG T  40     -75.663  28.364  79.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -64.600   8.838  71.372  0.33 60.93           C
+TER
+END
+"""
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
-  h = pdb_inp.construct_hierarchy_BIOMT_expanded()
-  xyz = list(h.atoms().extract_xyz())
-  xyz.sort()
-  expected.sort()
-  assert approx_equal(xyz, expected, eps=0.001)
+  model = mmtbx.model.manager(pdb_inp, expand_with_mtrix=False)
+  model.expand_with_BIOMT_records()
+  assert not show_diff(expected, model.model_as_pdb())
 
 def exercise_05():
   """Test MTRIX record processing"""
-  cau_expected_results  = [
-  [1.0, 1.0, 1.0], [1.0, -1.0, 1.0], [-0.366025, 1.366025, 1.0], [-1.366025, 0.366025, 1.0],
-  [1.0, 1.5, 1.0], [94.618, -5.253, 91.582],
-  [94.618, -91.582, -5.253], [51.858229, 79.315053, 91.582], [-42.759771, 84.568053, 91.582],
-  [94.618, -4.753, 91.582], [62.395, 51.344, 80.786],
-  [62.395, -80.786, 51.344], [-13.267688, 79.70763, 80.786], [-75.662688, 28.36363, 80.786],
-  [62.395, 51.844, 80.786], [39.954, 51.526, 72.372],
-  [39.954, -72.372, 51.526], [-24.645804, 60.364163, 72.372], [-64.599804, 8.838163, 72.372],
-  [39.954, 52.026, 72.372]]
+  cau_expected_results  = """\
+ATOM      1   N  ILE A  40       1.000   1.000   1.000  1.00162.33           C
+ATOM      2  CA  LEU A  40      94.618  -5.253  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG B  40      62.395  51.344  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954  51.526  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE C  40       1.000  -1.000   1.000  1.00162.33           C
+ATOM      2  CA  LEU C  40      94.618 -91.582  -5.253  1.00 87.10           C
+TER
+ATOM      3   C  ARG D  40      62.395 -80.786  51.344  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954 -72.372  51.526  0.33 60.93           C
+TER
+ATOM      1   N  ILE E  40      -0.366   1.366   1.000  1.00162.33           C
+ATOM      2  CA  LEU E  40      51.858  79.315  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG F  40     -13.268  79.708  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -24.646  60.364  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE G  40      -1.366   0.366   1.000  1.00162.33           C
+ATOM      2  CA  LEU G  40     -42.760  84.568  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG H  40     -75.663  28.364  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40     -64.600   8.838  72.372  0.33 60.93           C
+TER
+ATOM      1   N  ILE I  40       1.000   1.500   1.000  1.00162.33           C
+ATOM      2  CA  LEU I  40      94.618  -4.753  91.582  1.00 87.10           C
+TER
+ATOM      3   C  ARG J  40      62.395  51.844  80.786  1.00107.25           C
+TER
+HETATM    4  C1  EDO A  40      39.954  52.026  72.372  0.33 60.93           C
+TER
+END
+"""
   # use MTRIX data
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
-  h = pdb_inp.construct_hierarchy_MTRIX_expanded()
-  cau_multimer_xyz = list(h.atoms().extract_xyz())
-  cau_multimer_xyz.sort()
-  cau_expected_results.sort()
-  assert approx_equal(cau_expected_results,cau_multimer_xyz,eps=0.001)
+  model = mmtbx.model.manager(pdb_inp)
+  assert not show_diff(cau_expected_results, model.model_as_pdb())
 
 def exercise_06():
   """ Test that when building bio-molecule and then finding NCS relations
@@ -248,7 +332,8 @@ def exercise_06():
   pdb_strings = [pdb_str_4, pdb_str_5]
   for method,pdb_string in enumerate(pdb_strings):
     pdb_inp = pdb.input(source_info=None, lines=pdb_string)
-    crystal_symmetry = pdb_inp.crystal_symmetry()
+    model = mmtbx.model.manager(pdb_inp, expand_with_mtrix=False)
+    crystal_symmetry = model.crystal_symmetry()
     # The exact transforms from pdb_string
     r1_expected = matrix.sqr(
       [0.309017, -0.951057, 0.0,0.951057, 0.309017,-0.0,0.0,0.0,1.0])
@@ -258,11 +343,13 @@ def exercise_06():
     t2_expected = matrix.col([0,0,0])
     # Look at biomt records retrieved from PDB file
     if method == 0:
-      rec = pdb_inp.process_BIOMT_records()
-      h = pdb_inp.construct_hierarchy_BIOMT_expanded()
+      rec = model._model_input.process_BIOMT_records()
+      model.expand_with_BIOMT_records()
+      h = model.get_hierarchy()
     else:
-      rec = pdb_inp.process_MTRIX_records()
-      h = pdb_inp.construct_hierarchy_MTRIX_expanded()
+      rec = model._model_input.process_MTRIX_records()
+      model.expand_with_MTRIX_records()
+      h = model.get_hierarchy()
     r1 = rec.r[1]
     r2 = rec.r[2]
     t1 = rec.t[1]
@@ -290,10 +377,8 @@ def exercise_08():
   Test for MTRIX record when copies already present in file
   """
   pdb_inp = pdb.input(source_info=None, lines=pdb_str_8)
-  h = pdb_inp.construct_hierarchy_MTRIX_expanded()
-  assert approx_equal(
-    pdb_inp.atoms().extract_xyz(),
-          h.atoms().extract_xyz())
+  model = mmtbx.model.manager(pdb_inp)
+  assert model.get_number_of_atoms() == 7
 
 if(__name__=='__main__'):
   exercise_03()
