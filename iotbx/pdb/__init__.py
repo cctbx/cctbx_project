@@ -803,7 +803,8 @@ class pdb_input_mixin(object):
     return None
 
   # MARKED_FOR_DELETION_OLEG
-  # REASON: moved to mmtbx.model.manager
+  # REASON: moved to mmtbx.model.manager. Only used in
+  # mmtbx/regression/ncs/tst_minimization_ncs_constraints.py
   def _expand_hierarchy_helper(self,
       mtrix_biomt_container,
       h=None,
@@ -828,21 +829,6 @@ class pdb_input_mixin(object):
     return self._expand_hierarchy_helper(
       mtrix_biomt_container = self.process_BIOMT_records(),
       sort_atoms = sort_atoms)
-
-  def construct_ss_annotation_expanded(self, exp_type='mtrix'):
-    exp_container = None
-    if exp_type == 'mtrix':
-      exp_container = self.process_MTRIX_records()
-    elif exp_type == 'biomt':
-      exp_container = self.process_BIOMT_records()
-    ss_ann = self.extract_secondary_structure()
-    present = exp_container.validate()
-    if (exp_container is not None and ss_ann is not None and
-        not exp_container.is_empty() and
-        not len(exp_container.r)==0 and
-        not present):
-      ss_ann.multiply_to_asu(n_copies=len(exp_container.r)-1)
-    return ss_ann
   # END_MARKED_FOR_DELETION_OLEG
 
 
