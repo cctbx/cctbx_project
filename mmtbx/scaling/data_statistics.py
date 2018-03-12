@@ -653,7 +653,8 @@ class analyze_measurability(scaling.xtriage_analysis):
       graph_columns=[[0,1,2]],
       data=[list(d_star_sq), list(meas_data), list(smooth_approx)],
       x_is_inverse_d_min=True,
-      reference_marks=ref_marks)
+      reference_marks=ref_marks,
+      force_exact_x_labels=True)
 
   def _show_impl (self, out) :
     out.show_sub_header("Measurability of anomalous signal")
@@ -1142,7 +1143,8 @@ class wilson_scaling (scaling.xtriage_analysis) :
       graph_columns=[[0,1,2,3]],
       data=[list(self.d_star_sq), list(self.mean_I_normalisation),
             list(self.mean_I_obs_data), list(self.mean_I_obs_theory)],
-      x_is_inverse_d_min=True)
+      x_is_inverse_d_min=True,
+      force_exact_x_labels=True)
     # collect suspicious resolution shells
     worrisome = self.z_scores > z_score_cut
     self.n_worrisome = worrisome.count(True)
