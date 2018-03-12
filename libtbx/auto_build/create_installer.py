@@ -335,7 +335,7 @@ class SetupInstaller(object):
     # command-line installation works correctly outside of this script, though.
     try:
       import certifi
-      from .install_base_packages import installer
+      from libtbx.auto_build.install_base_packages import installer
       file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
       for filename in file_list:
         installer.patch_src(
