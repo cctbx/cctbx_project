@@ -672,6 +672,11 @@ Residue classes
         if verbose:
           print "too many links:",current_number_of_links,linking_setup.maximum_inter_residue_links.get(class_key, 1), class_key
         continue
+      # exclude mutliple metal to amino acid
+      if('metal' in class_key and ('common_amino_acid' in class_key)):
+        if done[key]:
+          # already created a link between metal and amino acid
+          continue
       #
       done[key].append(names)
       done_key = key
