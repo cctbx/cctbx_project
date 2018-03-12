@@ -20,6 +20,8 @@ def get_master_phil():
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
+    model_list = None
+      .type = str
 """, process_includes=True)
 
 usage_string = """
@@ -44,17 +46,31 @@ def run (args, out=sys.stdout, quiet=False) :
     pdb_file_def="model",
     usage_string=usage_string)
   params = cmdline.work.extract()
-  if (params.model is None) :
+  if (params.model is None and params.model_list is None) :
     raise Usage(usage_string)
-  pdb_in = cmdline.get_file(params.model, force_type="pdb")
-  hierarchy = pdb_in.file_object.hierarchy
-  hierarchy.atoms().reset_i_seq()
-  result = mmtbx.validation.ramalyze.ramalyze(
-    pdb_hierarchy=hierarchy,
-    show_errors=None,
-    outliers_only=params.outliers_only,
-    out=out,
-    quiet=quiet)
+  if params.model:
+    models = [params.model]
+  elif params.model_list:
+    models = params.model_list.split(',')
+    params.verbose=False
+  results = []
+  for model in models:
+    pdb_in = cmdline.get_file(model, force_type="pdb")
+    hierarchy = pdb_in.file_object.hierarchy
+    hierarchy.atoms().reset_i_seq()
+    result = mmtbx.validation.ramalyze.ramalyze(
+      pdb_hierarchy=hierarchy,
+      show_errors=None,
+      outliers_only=params.outliers_only,
+      out=out,
+      quiet=quiet)
+    results.append(result)
+    print '\nmodel  : %s' % model
+    result.show_summary()
+  # combine
+  result = results[0]
+  for i in range(1,len(results)):
+    result += results[i]
   if params.verbose:
     result.show_old_output(out=out, verbose=True)
   if params.plot :

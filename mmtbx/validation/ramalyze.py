@@ -251,6 +251,10 @@ class ramalyze (validation) :
     self.out_percent = out_percent * 100.0
     self.fav_percent = fav_percent * 100.0
 
+  def __add__(self, other):
+    self.results += other.results
+    return self
+
   def write_plots (self, plot_file_base, out, show_labels=True) :
     """
     Write a set of six PNG images representing the plots for each residue type.
