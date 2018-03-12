@@ -17,8 +17,15 @@ import time
 import zipfile
 from optparse import OptionParser
 
-from .installer_utils import *
-from .package_defs import *
+if __name__ == '__main__' and __package__ is None:
+  # Cannot use relative imports when run from bootstrap, so add this
+  # directory to the path.
+  sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+  from installer_utils import *
+  from package_defs import *
+else:
+  from .installer_utils import *
+  from .package_defs import *
 
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))

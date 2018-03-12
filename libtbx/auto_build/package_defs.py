@@ -13,8 +13,13 @@ import platform
 import sys
 import urllib2
 
-from .bootstrap import Toolbox
-from .installer_utils import *
+try:
+  from .bootstrap import Toolbox
+  from .installer_utils import *
+except ValueError:
+  # When run from bootstrap the auto_build directory will be in the path
+  from bootstrap import Toolbox
+  from installer_utils import *
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 
