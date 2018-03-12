@@ -324,7 +324,6 @@ class manager(object):
     self._shift_manager = shift_manager
     if shift_manager is not None:
       self.set_xray_structure(self._shift_manager.xray_structure_box)
-      self.set_crystal_symmetry_if_undefined(self._shift_manager.get_shifted_cs())
       self.unset_restraints_manager()
 
   def get_shift_manager(self):
@@ -581,7 +580,7 @@ class manager(object):
       self._create_xray_structure()
     return self._xray_structure
 
-  def set_xray_structure(self, xray_structure, update_hierarchy=True):
+  def set_xray_structure(self, xray_structure):
     same_symmetry = True
     if self._xray_structure is not None:
       same_symmetry = self._xray_structure.crystal_symmetry().is_similar_symmetry(
@@ -591,15 +590,10 @@ class manager(object):
     if not same_symmetry:
       self.unset_restraints_manager()
     self._xray_structure = xray_structure
-    if update_hierarchy:
-      self.set_sites_cart_from_xrs()
+    self.set_sites_cart_from_xrs()
     self._update_has_hd()
     self._update_pdb_atoms()
-    # Not using self.set_crystal_symmetry() because it is different.
     self._crystal_symmetry = xray_structure.crystal_symmetry()
-    if(not self._xray_structure.crystal_symmetry().is_similar_symmetry(
-       xray_structure.crystal_symmetry())):
-      self.unset_restraints_manager()
     # XXX what else needs to be done here?
 
   def _create_xray_structure(self):
@@ -655,6 +649,15 @@ class manager(object):
     self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.crystal_symmetry())
 
+  def _figure_out_cs_to_output(self, do_not_shift_back):
+    if do_not_shift_back:
+      return self._shift_manager.get_shifted_cs()
+    else:
+      if self._shift_manager is not None:
+        return self._shift_manager.get_original_cs()
+      else:
+        return self.crystal_symmetry()
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
@@ -666,10 +669,8 @@ class manager(object):
       do_not_shift_back = False
     cs_to_output = None
     if output_cs:
-      if do_not_shift_back:
-        cs_to_output = self._shift_manager.get_shifted_cs()
-      else:
-        cs_to_output = self.crystal_symmetry()
+      cs_to_output = self._figure_out_cs_to_output(
+          do_not_shift_back=do_not_shift_back)
 
     result = StringIO()
     # outputting HELIX/SHEET records
@@ -709,14 +710,17 @@ class manager(object):
   def model_as_mmcif(self,
       cif_block_name = "default",
       additional_blocks = None,
-      align_columns = False):
+      align_columns = False,
+      do_not_shift_back = False):
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
-    if self.crystal_symmetry() is not None:
-      cif_block = self.crystal_symmetry().as_cif_block()
+    cs_to_output = self._figure_out_cs_to_output(
+        do_not_shift_back=do_not_shift_back)
+    if cs_to_output is not None:
+      cif_block = cs_to_output.as_cif_block()
     if self._pdb_hierarchy is not None:
-      if self.crystal_symmetry() is not None:
+      if cif_block is not None:
         cif_block.update(self._pdb_hierarchy.as_cif_block())
       else:
         cif_block = self._pdb_hierarchy.as_cif_block()
