@@ -2,7 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Temporary files
 .cache
+.pytest_cache
+.known-python3-violations.log
 
 # Text editor files
 *~
