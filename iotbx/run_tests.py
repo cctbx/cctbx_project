@@ -92,6 +92,7 @@ tst_list = (
   ["$D/dsn6/tst.py", "P31"],
   "$D/regression/ncs/tst_mtrix_biomt_cmdl.py",
   "$D/regression/ncs/tst_ncs_search_ligs.py",
+  "$D/regression/ncs/tst_ncs_search_broken_chain.py",
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",

@@ -518,6 +518,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
 def my_selection(ph, ch_id, sel_list_extended):
   min_iseq = sel_list_extended[0]
   new_h = None
+  prev_minus = 0
   for chain in ph.only_model().chains():
     if chain.id == ch_id:
       if new_h is None:
@@ -529,13 +530,14 @@ def my_selection(ph, ch_id, sel_list_extended):
       else:
         # append extra chain and tweak selection
         new_start_iseq = new_h.atoms_size()
-        old_start_iseq = chain.atoms()[0].i_seq
+        old_start_iseq = chain.atoms()[0].i_seq - prev_minus
         dif = old_start_iseq - new_start_iseq - min_iseq
         new_h.only_model().append_chain(chain.detached_copy())
         for i in range(len(sel_list_extended)):
           if sel_list_extended[i] >= old_start_iseq-min_iseq:
             # new = old - old + new
             sel_list_extended[i] -= dif
+        prev_minus += dif
   return new_h.select(flex.size_t(sel_list_extended))
 
 def get_match_rmsd(ph, match):
