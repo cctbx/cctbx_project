@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division
 
 import os
@@ -11,7 +10,6 @@ import subprocess
 import sys
 import tarfile
 import time
-import warnings
 
 # CCTBX itself requires Python 2.7, but this script is intended to bootstrap an
 # installation on older systems as well
