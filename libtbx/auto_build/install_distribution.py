@@ -55,6 +55,7 @@ able to correctly detect the base installer directory.
 """
 
 from __future__ import division
+from __future__ import absolute_import
 from optparse import OptionParser
 import os.path as op
 import os

@@ -1,9 +1,10 @@
 """Fix RPATH and ORIGIN for relocatable binaries."""
-from __future__ import division
+from __future__ import absolute_import, division
+
+import optparse
 import os
 import re
 import subprocess
-import optparse
 import sys
 
 # This code is partially derived from a similar module I wrote

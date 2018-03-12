@@ -1,11 +1,16 @@
-from __future__ import division
+from __future__ import absolute_import, division
+
+import optparse
+import os
+import platform
+import subprocess
+import sys
+
 # Script for compiling a Windows installer using the NSIS compiler which must be present on the PC.
 # The main body of the script is immutable and stored in the file named by the mainNSISscript variable
 # Just a few custom definitions are prepended to this file which is subsequently compiled as to
 # create the Windows installer.
 
-import optparse
-import os, sys, subprocess, platform
 
 
 def WriteNSISpreamble(productname="Phenix",

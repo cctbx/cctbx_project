@@ -4,14 +4,17 @@ Create a graphical Mac installer for a complete installation of CCTBX or
 Phenix (or any other derived software).
 """
 
-from __future__ import division
-from installer_utils import *
-from optparse import SUPPRESS_HELP, OptionParser
+from __future__ import absolute_import, division
+
+import os
 import os.path as op
 import shutil
-import time
 import sys
-import os
+import time
+from optparse import SUPPRESS_HELP, OptionParser
+
+from .installer_utils import *
+
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :

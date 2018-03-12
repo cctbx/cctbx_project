@@ -1,50 +1,25 @@
 
-from __future__ import division
-import warnings
-import shutil
-import time
-import stat
-import re
-import os.path as op
+from __future__ import absolute_import, division
+
 import os
+import os.path as op
+import platform
+import re
+import shutil
+import stat
+import subprocess
 import sys
 import tarfile
-import platform
+import time
+import warnings
 
 # CCTBX itself requires Python 2.7, but this script is intended to bootstrap an
 # installation on older systems as well
-def check_python_version (major=None, minor=None) :
-  if major and minor:
-    print '\nChecking python version of %s' % sys.executable
-    print '  - %s.%s.%s' % sys.version_info[:3]
-    if sys.version_info <= (major,minor) :
-      raise Exception(
-        "Python version %s.%s or greater required to run this script." % (
-          major,
-          minor,
-        ))
-  if (not sys.version_info >= (2,3)) :
-    raise Exception("Python version 2.3 or greater required to run this "+
-      "script.")
-  elif (sys.version_info < (2,4)) : # subprocess module not available
-    warnings.warn("You are running an obsolete version of Python; this script "+
-      "should still run, but not all functionality is available.",
-      DeprecationWarning)
-    time.sleep(2)
-
-def import_subprocess () :
-  if (sys.version_info[1] >= 7) :
-    import subprocess
-  else :
-    # XXX HACK
-    libtbx_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    if (not libtbx_path in sys.path) :
-      sys.path.append(libtbx_path)
-    import subprocess_with_fixes as subprocess
-  return subprocess
+def check_python_version():
+  if sys.hexversion < 0x2050000:
+    sys.exit("Python version 2.5 or greater required to run this script")
 
 def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
-  subprocess = import_subprocess()
   rc = None
   # shell=True requires string as args.
   if shell and isinstance(args, list) :
@@ -83,7 +58,6 @@ def call(args, log=sys.stdout, shell=True, cwd=None, verbose=False, env=None):
 
 def check_output (*popenargs, **kwargs) :
   # Back-port of Python 2.7 subprocess.check_output.
-  subprocess = import_subprocess()
   process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
   output, unused_err = process.communicate()
   retcode = process.poll()
@@ -194,12 +168,10 @@ def get_os_version () :
 def machine_type () :
   if sys.platform == "win32":
     mtype = "intel-windows"
-    import platform
     arch, os_type = platform.architecture()
     if (arch == "64bit") :
       mtype += "-x86_64"
     return mtype
-  import os
   uname = os.uname()
   if (uname[0] == "Linux") :
     mtype = "intel-linux-2.6"

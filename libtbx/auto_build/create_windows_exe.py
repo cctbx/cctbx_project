@@ -9,6 +9,7 @@ where create_windows_installer.py supersedes it to invoke creating a NullSoft se
 # if found
 
 from __future__ import division
+from __future__ import absolute_import
 try :
   import libtbx.load_env
   libtbx_env = libtbx.env

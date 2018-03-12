@@ -5,14 +5,16 @@ LABELIT, xia2, DIALS, and Phenix with GUI).  Not all of these can be downloaded
 via the web (yet).
 """
 
-from __future__ import division
-from bootstrap import Toolbox
-from installer_utils import *
-import os.path as op
+from __future__ import absolute_import, division
+
 import os
+import os.path as op
 import platform
 import sys
 import urllib2
+
+from .bootstrap import Toolbox
+from .installer_utils import *
 
 BASE_CCI_PKG_URL = "http://cci.lbl.gov/cctbx_dependencies"
 

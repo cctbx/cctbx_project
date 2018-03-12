@@ -12,6 +12,7 @@ before it can be tarred.
 """
 
 from __future__ import division
+from __future__ import absolute_import
 from optparse import OptionParser
 import os.path as op
 import shutil
@@ -23,8 +24,8 @@ import sys
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
 if (not libtbx_path in sys.path) :
   sys.path.append(libtbx_path)
-from installer_utils import *
-from package_defs import *
+from .installer_utils import *
+from .package_defs import *
 
 def run (args) :
   parser = OptionParser()

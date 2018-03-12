@@ -19,6 +19,7 @@ with the latest source, which should speed up installer generation.
 """
 
 from __future__ import division
+from __future__ import absolute_import
 from optparse import OptionParser
 import os.path as op
 import shutil

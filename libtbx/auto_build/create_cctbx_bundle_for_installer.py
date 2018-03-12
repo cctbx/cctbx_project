@@ -5,14 +5,16 @@ Package the CCTBX bundle used for various installers (Phenix, etc.) using
 sources in the specified repositories directory.
 """
 
-from __future__ import division
+from __future__ import absolute_import, division
+
 import optparse
-import os.path as op
-import time
 import os
+import os.path as op
 import sys
-import package_defs
-from installer_utils import *
+import time
+
+from . import package_defs
+from .installer_utils import *
 
 def run (args) :
   datestamp = time.strftime("%Y_%m_%d", time.localtime())

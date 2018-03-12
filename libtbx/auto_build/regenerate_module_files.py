@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
-from __future__ import division
-from installer_utils import *
+from __future__ import absolute_import, division
+
 import os
 import sys
+
+from .installer_utils import *
 
 def _generate_pangorc(base_dir):
   return """

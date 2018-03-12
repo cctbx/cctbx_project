@@ -11,16 +11,18 @@ probably need to perform additional modifications to the installer tree
 before it can be tarred.
 """
 
-from __future__ import division
-from optparse import OptionParser
-import shutil
-import time
-import stat
-import os
-import sys
-import subprocess
+from __future__ import absolute_import, division
+
 import imp
-import tarfile, zipfile
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+import time
+import zipfile
+from optparse import OptionParser
 
 import libtbx.auto_build.rpath
 
@@ -333,7 +335,7 @@ class SetupInstaller(object):
     # command-line installation works correctly outside of this script, though.
     try:
       import certifi
-      from install_base_packages import installer
+      from .install_base_packages import installer
       file_list = os.listdir(os.path.join(app_root_dir, 'build', 'bin'))
       for filename in file_list:
         installer.patch_src(

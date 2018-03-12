@@ -2,7 +2,14 @@
 # XXX this module is designed to be run independently of the rest of CCTBX if
 # necessary, although it will use installed resources if found
 
-from __future__ import division
+from __future__ import absolute_import, division
+
+import optparse
+import os
+import re
+import shutil
+import sys
+
 try :
   import libtbx.load_env
 # can be either ImportError or SyntaxError, depending on whether we're using
@@ -11,11 +18,6 @@ except Exception:
   libtbx_env = None
 else :
   libtbx_env = libtbx.env
-import optparse
-import shutil
-import re
-import os
-import sys
 
 def run (args, out=sys.stdout) :
   if (sys.platform != "darwin") :
@@ -71,8 +73,6 @@ def run (args, out=sys.stdout) :
   os.chdir(py2app_bin_dir)
   f = open("%s.py" % app_name, "w")
   f.write("""
-import os
-import sys
 os.environ["PYTHONPATH"] = ""
 os.spawnv(os.P_NOWAIT, "%s", ["%s"])
 """ % (os.path.join(bin_dir, program_name), app_name))

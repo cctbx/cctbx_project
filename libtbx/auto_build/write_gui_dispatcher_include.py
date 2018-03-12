@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-from __future__ import division
-from optparse import OptionParser
+from __future__ import absolute_import, division
+
 import os.path
 import sys
+from optparse import OptionParser
 
 def run (args, prologue=None, epilogue=None, out=sys.stdout) :
   parser = OptionParser(

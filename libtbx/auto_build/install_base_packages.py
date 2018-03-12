@@ -7,16 +7,18 @@ function.  In the future this will be used as the core of the CCI nightly build
 system and the Phenix installer.
 """
 
-from __future__ import division
-from installer_utils import *
-from package_defs import *
-from optparse import OptionParser
+from __future__ import absolute_import, division
+
 import os
 import os.path as op
 import platform
 import sys
 import time
 import zipfile
+from optparse import OptionParser
+
+from .installer_utils import *
+from .package_defs import *
 
 # XXX HACK
 libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))

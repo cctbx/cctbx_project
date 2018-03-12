@@ -6,9 +6,13 @@
 # or
 # curl https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py > bootstrap.py
 
-from __future__ import division
-import os, os.path, posixpath, ntpath
+from __future__ import absolute_import, division
+
+import ntpath
 import optparse
+import os
+import os.path
+import posixpath
 import re
 import shutil
 import socket as pysocket
