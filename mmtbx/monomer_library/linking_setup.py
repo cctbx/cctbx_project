@@ -131,7 +131,11 @@ skip_if_longer = update_skip_if_longer(amino_acid_bond_cutoff,
                                        )
 
 # explicit residue atom names to exclude
-ad_hoc_non_linking_atom_names = {'metal': [('HIS', 'CE1'), ('HIS', 'CD2')]}
+ad_hoc_non_linking_atom_names = {'metal': [('HIS', 'CE1'),
+                                           ('HIS', 'CD2'),
+                                           ('HIS', 'CB'),
+                                          ]
+                                }
 def skip_if_non_linking(lookup, atom1, atom2):
   if 'metal' in lookup:
     excludes = ad_hoc_non_linking_atom_names.get('metal', [])
