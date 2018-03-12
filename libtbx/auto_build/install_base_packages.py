@@ -27,11 +27,6 @@ else:
   from .installer_utils import *
   from .package_defs import *
 
-# XXX HACK
-libtbx_path = op.abspath(op.dirname(op.dirname(__file__)))
-if (not libtbx_path in sys.path) :
-  sys.path.append(libtbx_path)
-
 python_dependencies = {"_ssl" : "Secure Socket Library",
                        "zlib" : "XCode command line tools",
                      }
