@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import collections
 import os
+import shutil
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
 
@@ -35,8 +36,9 @@ def run(args):
   errors = False
   for package in args:
     if (installation_root / package).isdir():
-      print("Skipping package %s: Directory already exists in installation root" % package)
-      errors = True
+      print("Skipping download of package %s: Directory already exists in installation root" % package)
+      if package not in libtbx.env.module_dict:
+        packages_to_configure.add(package)
       continue
     if package not in warehouse:
       print("Skipping package %s: Never heard of this before" % package)
@@ -48,7 +50,9 @@ def run(args):
       if mech in warehouse[package]:
         print("Attempting to obtain %s using %s..." % (package, mech), end='')
         sys.stdout.flush()
-        if call(abs(installation_root / package), warehouse[package][mech]):
+        if call(package=package,
+                location=abs(installation_root / package),
+                source=warehouse[package][mech]):
           assert (installation_root / package).isdir(), "Installation failed"
           downloaded = True
           print("success")
@@ -65,25 +69,54 @@ def run(args):
 
   if packages_to_configure:
     packages_to_configure = sorted(packages_to_configure)
-    print("Configuring packages %s" % ", ".join(packages_to_configure))
+    print("Configuring package[s] %s" % ", ".join(packages_to_configure))
     os.chdir(abs(libtbx.env.build_path))
-    result = procrunner.run_process(['libtbx.configure'] + packages_to_configure)
-    if result['exitcode']: errors = True
-
+    result = procrunner.run_process(['libtbx.configure'] + packages_to_configure,
+                                    print_stdout=False, print_stderr=False)
+    if result['exitcode']:
+      errors = True
+      print(result['stdout'])
+      print(result['stderr'])
+      print("Configuration failed. Run 'libtbx.configure %s' "
+            "once underlying problem solved, then 'make'"
+            % " ".join(packages_to_configure))
+    else:
+      result = procrunner.run_process(['make'])
+      if result['exitcode']:
+        errors = True
   if errors:
     sys.exit(1)
 
-def install_git(location, source):
+def install_git(**kwargs):
+  reference = []
+  if os.name == 'posix':
+    reference_repository_path = os.path.join('/dls/science/groups/scisoft/DIALS/repositories/git-reference', kwargs['package'])
+    if os.path.isdir(reference_repository_path):
+      reference = ['--reference', reference_repository_path]
+      print("using reference repository...", end="")
+      sys.stdout.flush()
   try:
-    result = procrunner.run_process(['git', 'clone', '--recursive', source, location], print_stdout=False, print_stderr=False)
+    result = procrunner.run_process(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
+                                    print_stdout=False)
     if result['exitcode']:
       return False
-    Toolbox.set_git_repository_config_to_rebase(os.path.join(location, '.git', 'config'))
+    if reference:
+      oldcwd = os.getcwd()
+      os.chdir(kwargs['location'])
+      result = procrunner.run_process(['git', 'repack', '-a', '-d'], print_stderr=True)
+      os.chdir(oldcwd)
+      assert result['exitcode'] == 0, "Repack operation failed. Delete repository and try again."
+      os.remove(os.path.join(kwargs['location'], '.git', 'objects', 'info', 'alternates'))
+    Toolbox.set_git_repository_config_to_rebase(os.path.join(kwargs['location'], '.git', 'config'))
     return True
   except OSError:
+    if os.path.isdir(kwargs['location']):
+      shutil.rmtree(kwargs['location'])
     return False # git may not be installed
 
-def install_zip(location, source):
+def install_zip(**kwargs):
+  location = kwargs['location']
+  source = kwargs['source']
   os.mkdir(location)
   tempfile = os.path.join(location, '.tmp.zip')
   etagfile = os.path.join(location, '..tmp.zip.etag')
@@ -119,6 +152,11 @@ warehouse = {
     'git-auth': 'git@github.com:/xia2/i19',
     'git-anon': 'https://github.com/xia2/i19.git',
     'http-zip': { 'url': 'https://github.com/xia2/i19/archive/master.zip', 'trim': 1 },
+  },
+  'xia2_regression': {
+    'git-auth': 'git@github.com:/xia2/xia2_regression',
+    'git-anon': 'https://github.com/xia2/xia2_regression.git',
+    'http-zip': { 'url': 'https://github.com/xia2/xia2_regression/archive/master.zip', 'trim': 1 },
   },
 }
 
