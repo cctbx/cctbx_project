@@ -18,9 +18,10 @@ class container(object):
     self.serial_number.append(serial_number)
 
   def validate(self):
-    for r in self.r:
-      if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
-        raise Sorry("Rotation matrix is not proper!")
+    for i, r in enumerate(self.r):
+      if not self.coordinates_present[i]:
+        if(not r.is_r3_rotation_matrix(rms_tolerance=1.e-4)):
+          raise Sorry("Rotation matrix is not proper!")
     present = False
     for (r,t,n,cp) in zip(self.r,self.t,self.serial_number,
                             self.coordinates_present):
