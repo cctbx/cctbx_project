@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_peaks_holes
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.find_peaks_holes
 
 # simple frontend to mmtbx.find_peaks, primarily intended for use in quickly
 # analyzing structures in the PDB (and storing results)
