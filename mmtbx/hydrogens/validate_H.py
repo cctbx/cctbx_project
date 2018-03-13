@@ -118,7 +118,7 @@ class validate_H(object):
 #            atom_temp = "OP2"
           if atom_temp not in atom_name_list:
             missing.append(atom_name)
-    return xyz, missing
+    return ca_xyz, missing
 
   def missing_hydrogens(self):
     missing_HD_atoms = []
@@ -603,6 +603,14 @@ class validate_H_results(object):
       print('%s%s atom %s --> %s' % (prefix, id_str, oldname, newname),
             file=log)
 
+  def export_renamed_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.renamed):
+      for entry in self.results.renamed:
+        table.append([entry[0], entry[2], entry[1], None, entry[-1]])
+    return table
+
   def print_atoms_occ_lt_1(self, hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
                            prefix='', log=None):
     if (log is None):
@@ -674,6 +682,14 @@ class validate_H_results(object):
     for item in missing_HD_atoms:
       print('%s%s : %s ' % (prefix, item[0][8:-1], ", ".join(item[1])),
             file=log)
+
+  def export_missing_HD_atoms_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.missing_HD_atoms):
+      for item in self.results.missing_HD_atoms:
+        table.append([item[0][8:-1], ', '.join(item[1]), None, item[-1]])
+    return table
 
   def print_outliers_bonds_angles(self, outliers_bonds, outliers_angles,
                                   prefix='', log=None):
