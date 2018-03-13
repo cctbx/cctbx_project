@@ -626,6 +626,22 @@ class validate_H_results(object):
         print('%s%s with occupancy %s' % (prefix, item[0], item[1]),
               file=log)
 
+  def export_occupancies_0_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.overall_counts_hd.hd_atoms_with_occ_0):
+      for item in self.results.overall_counts_hd.hd_atoms_with_occ_0:
+        table.append([item[0], None, item[-1]])
+    return table
+
+  def export_occupancies_lt_1_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.overall_counts_hd.single_hd_atoms_occ_lt_1):
+      for item in self.results.overall_counts_hd.single_hd_atoms_occ_lt_1:
+        table.append([item[0], item[1], None, item[-1]])
+    return table
+
   def print_results_hd_sites(
       self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd,
       prefix='', log=None):
