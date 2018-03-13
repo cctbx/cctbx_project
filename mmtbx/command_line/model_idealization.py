@@ -933,20 +933,39 @@ def run(args):
   pdb_combined = iotbx.pdb.combine_unique_pdb_files(file_names=work_params.model_file_name)
   pdb_input = iotbx.pdb.input(source_info=None,
     lines=flex.std_string(pdb_combined.raw_records))
+  pdb_cs = pdb_input.crystal_symmetry()
+  crystal_symmetry = None
+  map_cs = None
+  map_content = input_objects.get_file(work_params.map_file_name)
+  if map_content is not None:
+    try:
+      map_cs = map_content.crystal_symmetry()
+    except NotImplementedError as e:
+      pass
+
+  try:
+    crystal_symmetry = crystal.select_crystal_symmetry(
+        from_command_line     = None,
+        from_parameter_file   = None,
+        from_coordinate_files = [pdb_cs],
+        from_reflection_files = [map_cs],
+        enforce_similarity    = True)
+  except AssertionError as e:
+    if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
+      pass
+    else:
+      raise e
+
 
   model = mmtbx.model.manager(
       model_input = pdb_input,
       restraint_objects = input_objects.cif_objects,
+      crystal_symmetry = crystal_symmetry,
       process_input = False,
       log=log)
 
-  pdb_cs = model.crystal_symmetry()
-  pdb_h = model.get_hierarchy()
-  map_cs = None
-  crystal_symmetry = None
   map_data = None
   shift_manager = None
-  map_content = input_objects.get_file(work_params.map_file_name)
 
   if map_content is not None:
     map_data, map_cs, shift_manager = get_map_from_map(
@@ -965,25 +984,6 @@ def run(args):
         xrs=model.get_xray_structure(), # here we don't care about atom order
         log=log)
 
-  # Crystal symmetry: validate and finalize consensus object
-  if shift_manager is not None:
-    crystal_symmetry = map_cs
-  else:
-    try:
-      crystal_symmetry = crystal.select_crystal_symmetry(
-          from_command_line     = None,
-          from_parameter_file   = None,
-          from_coordinate_files = [pdb_cs],
-          from_reflection_files = [map_cs],
-          enforce_similarity    = True)
-    except AssertionError as e:
-      if len(e.args)>0 and e.args[0].startswith("No unit cell and symmetry information supplied"):
-        pass
-      else:
-        raise e
-  # not sure this is right cs to set here...
-  if model.get_shift_manager() is None:
-    model.set_crystal_symmetry_if_undefined(crystal_symmetry)
   mi_object = model_idealization(
       model = model,
       map_data = map_data,
