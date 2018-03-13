@@ -107,6 +107,14 @@ mechanisms = collections.OrderedDict((
 ))
 
 warehouse = {
+  'dials_scratch': {
+    'git-auth': 'git@github.com:/dials/dials_scratch',
+    'git-anon': 'https://github.com/dials/dials_scratch.git',
+    'http-zip': { 'url': 'https://github.com/dials/dials_scratch/archive/master.zip', 'trim': 1 },
+  },
+  'dlstbx': {
+    'git-auth': 'dascgitolite@dasc-git.diamond.ac.uk:/dials/dlstbx.git',
+  },
   'i19': {
     'git-auth': 'git@github.com:/xia2/i19',
     'git-anon': 'https://github.com/xia2/i19.git',
