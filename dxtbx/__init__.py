@@ -1,6 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import logging
+try:
+  import h5py # h5py needs to be imported first before anything in dxtbx to work around ASan issues with conda builds
+except ImportError:
+  pass
 
 try:
   import boost.python
