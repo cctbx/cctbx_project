@@ -1364,6 +1364,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         for residue_group in chain.residue_groups() :
           atom_groups = residue_group.atom_groups()
           assert (len(atom_groups) > 0)
+          cleanup_needed = True
           if always_keep_one_conformer :
             if (len(atom_groups) == 1) and (atom_groups[0].altloc == '') :
               continue
@@ -1386,6 +1387,12 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
                 atom_group.altloc = ""
             if (len(residue_group.atom_groups()) == 0) :
               chain.remove_residue_group(residue_group=residue_group)
+              cleanup_needed = False
+          if cleanup_needed and residue_group.atom_groups_size() > 1:
+            ags = residue_group.atom_groups()
+            for i in range(len(ags)-1, 0, -1):
+              residue_group.merge_atom_groups(ags[0], ags[i])
+              residue_group.remove_atom_group(ags[i])
         if (len(chain.residue_groups()) == 0) :
           model.remove_chain(chain=chain)
     atoms = hierarchy.atoms()
