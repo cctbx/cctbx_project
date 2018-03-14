@@ -578,18 +578,20 @@ class validate_H_results(object):
     oc = overall_counts_hd
 
     make_sub_header('H/D atoms in the input model', out=log)
-    values = [
+    self.hd_overall_values = [
       ('Total number of hydrogen atoms' , oc.count_h),
       ('Total number of deuterium atoms' , oc.count_d),
       ('Number of H atoms (protein)' , oc.count_h_protein),
       ('Number of D atoms (protein)' , oc.count_d_protein),
       ('Number of H atoms (water)' , oc.count_h_water),
-      ('Number of D atoms (water)' , oc.count_d_water)
+      ('Number of D atoms (water)' , oc.count_d_water),
+      ('Number of H atoms (other)' , oc.count_h_other),
+      ('Number of D atoms (other)' , oc.count_d_other),
     ]
-    self.formatted_print(prefix, values, log)
+    self.formatted_print(prefix, self.hd_overall_values, log)
 
     make_sub_header('Water molecules', out=log)
-    values = [
+    self.hd_water_values = [
       ('Number of water', oc.count_water),
       ('Number of water with 0 H (or D)', oc.count_water_0h),
       ('Number of water with 1 H (or D)', oc.count_water_1h),
@@ -597,7 +599,7 @@ class validate_H_results(object):
       ('Number of water in alternative conformation', oc.count_water_altconf),
       ('Number of water without oxygen atom', oc.count_water_no_oxygen)
     ]
-    self.formatted_print(prefix, values, log)
+    self.formatted_print(prefix, self.hd_water_values, log)
 
   def print_renamed(self, renamed, prefix='', log=None):
     if (log is None):
@@ -662,14 +664,14 @@ class validate_H_results(object):
     sites_occ_sum_no_scattering = hd_sites_analysis.sites_occ_sum_no_scattering
 
     make_sub_header('H/D EXCHANGED SITES', out=log)
-    values = [
+    self.hd_exchange_values = [
       ('Number of H/D exchanged sites', count_exchanged_sites),
       ('Number of atoms modelled only as H',
        overall_counts_hd.count_h_protein - count_exchanged_sites),
       ('Number of atoms modelled only as D',
        overall_counts_hd.count_d_protein - count_exchanged_sites)
     ]
-    self.formatted_print(prefix, values, log)
+    self.formatted_print(prefix, self.hd_exchange_values, log)
 
     if sites_different_xyz:
       print('\n%sH/D pairs not at identical positions:' % prefix, file=log)
