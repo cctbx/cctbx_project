@@ -2091,6 +2091,7 @@ class manager(object):
       model_input                = self._model_input, # any selection here?
       crystal_symmetry           = self._crystal_symmetry,
       processed_pdb_file         = self._processed_pdb_file,
+      restraint_objects          = self._restraint_objects,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
       xray_structure             = self.get_xray_structure().select(selection),
