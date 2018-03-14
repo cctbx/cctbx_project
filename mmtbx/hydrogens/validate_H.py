@@ -421,6 +421,9 @@ class validate_H(object):
       count_water_altconf + count_water_no_oxygen == count_water)
     assert (count_water == n_water)
 
+    count_h_other = count_h - count_h_protein - count_h_water
+    count_d_other = count_d - count_d_protein - count_d_water
+
     self.overall_counts_hd = group_args(
       count_h               = count_h,
       count_d               = count_d,
@@ -428,6 +431,8 @@ class validate_H(object):
       count_d_protein       = count_d_protein,
       count_h_water         = count_h_water,
       count_d_water         = count_d_water,
+      count_h_other         = count_h_other,
+      count_d_other         = count_d_other,
       count_water           = count_water,
       count_water_0h        = count_water_0h,
       count_water_1h        = count_water_1h,
