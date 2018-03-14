@@ -10,23 +10,33 @@ from mmtbx.conformation_dependent_library import omega
 
 from test_cdl import output_filenames, filenames, get_managers
 
-filenames["cdl_test_1.pdb"][1] = [(130, -100, 110, -70),
-                                  (-70, 150, -80),
-                                  (-80, 160, -60),
+'''
+ A   2  VAL:33.01:-99.29:113.00:Favored:Isoleucine or valine
+ A   3  PHE:43.27:-73.90:147.34:Favored:General
+ A   4  GLY:50.95:-77.18:161.87:Favored:Glycine
+'''
+filenames["cdl_test_1.pdb"][1] = [(-100, 110),
+                                  (-70, 150),
+                                  (-80, 160),
                                   ]
-filenames["cdl_test_1.pdb"][2] = [['I', 3528, 178.64, 6.31],
-                                  ['I', 20342, 178.94, 6.38],
-                                  ['I', 2599, 180.43, 5.63],
+filenames["cdl_test_1.pdb"][2] = [['B',    56, 179.87, 5.62],
+                                  ['B',   293, 174.28, 7.05],
+                                  ['B',    25, 176.89, 5.69],
                                   ]
-filenames["cdl_test_2.pdb"][1] = [(80, 170, -40, -100),
-                                  (110, -110, 160, -60),
-                                  (80, 170, -40, -100),
-                                  (110, -110, 160, -60),
+'''
+ A 239 AGLU:0.00:167.75:-41.93:OUTLIER:General
+ A 239 BGLU:0.00:167.75:-41.93:OUTLIER:General
+ A 249  TYR:12.65:-106.45:163.70:Favored:General
+'''
+filenames["cdl_test_2.pdb"][1] = [( 170, -40),
+                                  (-110, 160),
+                                  ( 170, -40),
+                                  (-110, 160),
                                   ]
 filenames["cdl_test_2.pdb"][2] = [['I', 20342, 178.94, 6.38],
+                                  ['B', 165, 173.56, 7.52],
                                   ['I', 20342, 178.94, 6.38],
-                                  ['I', 20342, 178.94, 6.38],
-                                  ['I', 20342, 178.94, 6.38],
+                                  ['B', 165, 173.56, 7.52],
                                   ]
 filenames["cdl_test_3.pdb"][1] = [(0, -130, 20, -120),
                                   (-120, 90, -50),
@@ -118,6 +128,7 @@ def test_cdl_lookup(hierarchy,
       )
     key = threes.get_cdl_key(force_plus_one=True)
     key = key[-2:]
+    print 'res_type_group',res_type_group,key
     restraint_values = omega_database[res_type_group][key]
     print i, key, restraint_values[:4], filenames[filename][2]
     del threes.registry.n
@@ -210,10 +221,11 @@ def run(filename=None):
       f=file(filename, "wb")
       f.write(output_filenames[filename])
       f.close()
-    for filename in sorted(filenames):
+    for i, filename in enumerate(sorted(filenames)):
       #if filename.find("_7")==-1: continue
       print ('%s ' % filename)*5
       run_apply(filename, testing=True)
+      if i: break
 
 if __name__=="__main__":
   args = sys.argv[1:]
