@@ -540,9 +540,12 @@ class validate_H(object):
       self.analyze_hd_sites()
 
   def get_results(self):
+    count_exchanged_sites = None
+    if self.hd_exchanged_sites:
+      count_exchanged_sites = len(self.hd_exchanged_sites)
     return group_args(
         overall_counts_hd     = self.overall_counts_hd,
-        hd_exchanged_sites    = self.hd_exchanged_sites,
+        count_exchanged_sites = count_exchanged_sites,
         hd_sites_analysis     = self.hd_sites_analysis,
         renamed               = self.renamed,
         missing_HD_atoms      = self.missing_HD_atoms,
@@ -648,12 +651,11 @@ class validate_H_results(object):
     return table
 
   def print_results_hd_sites(
-      self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd,
+      self, count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
       prefix='', log=None):
     if (log is None):
       log = self.log
 
-    count_exchanged_sites = len(list(hd_exchanged_sites.keys()))
     sites_different_xyz = hd_sites_analysis.sites_different_xyz
     sites_different_b   = hd_sites_analysis.sites_different_b
     sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
@@ -745,7 +747,7 @@ class validate_H_results(object):
     assert (self.log is not None)
 
     overall_counts_hd  = results.overall_counts_hd
-    hd_exchanged_sites = results.hd_exchanged_sites
+    count_exchanged_sites = results.count_exchanged_sites
     renamed            = results.renamed
     hd_sites_analysis  = results.hd_sites_analysis
     missing_HD_atoms   = results.missing_HD_atoms
@@ -762,9 +764,9 @@ class validate_H_results(object):
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
       self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1,
                                 prefix=prefix, log=log)
-    if hd_exchanged_sites:
+    if count_exchanged_sites is not None:
       self.print_results_hd_sites(
-        hd_exchanged_sites, hd_sites_analysis, overall_counts_hd,
+        count_exchanged_sites, hd_sites_analysis, overall_counts_hd,
         prefix=prefix, log=log)
     if missing_HD_atoms:
       self.print_missing_HD_atoms(missing_HD_atoms, prefix=prefix, log=log)

@@ -604,8 +604,7 @@ def exercise():
     assert(newname == answer[1])
     assert (entry[3] is not None)
 
-  hd_exchanged_sites = results.hd_exchanged_sites
-  assert (len(results.hd_exchanged_sites.keys()) == 22)
+  assert (results.count_exchanged_sites == 22)
 
   hd_sites_analysis  = results.hd_sites_analysis
   sites_different_xyz = hd_sites_analysis.sites_different_xyz
@@ -682,7 +681,7 @@ def exercise2():
     pdb_str = pdb_str2)
   hd_sites_analysis  = results.hd_sites_analysis
 
-  assert (len(results.hd_exchanged_sites.keys()) == 8)
+  assert (results.count_exchanged_sites == 8)
 
   sites_different_xyz = hd_sites_analysis.sites_different_xyz
   xyz_answer = [
