@@ -1003,11 +1003,10 @@ namespace zernike{
   class nss_spherical_harmonics
   {
     public:
-    nss_spherical_harmonics();
     nss_spherical_harmonics(int const& max_l, int const& mangle, log_factorial_generator<FloatType> const& lgf)
     :
-    max_l_(max_l),
     lm_engine_(max_l),
+    max_l_(max_l),
     mangle_(mangle),
     eps_(1e-18)
     {
