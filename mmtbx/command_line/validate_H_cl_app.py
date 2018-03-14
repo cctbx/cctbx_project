@@ -102,8 +102,7 @@ Usage:
         print('%s with occupancy %s' %(item[0], item[1]), file=self.log)
 
   def print_results_hd_sites(
-        self, hd_exchanged_sites, hd_sites_analysis, overall_counts_hd):
-    count_exchanged_sites = len(list(hd_exchanged_sites.keys()))
+        self, count_exchanged_sites, hd_sites_analysis, overall_counts_hd):
     sites_different_xyz = hd_sites_analysis.sites_different_xyz
     sites_different_b   = hd_sites_analysis.sites_different_b
     sites_sum_occ_not_1 = hd_sites_analysis.sites_sum_occ_not_1
@@ -162,7 +161,7 @@ Usage:
 
   def print_results(self, results):
     overall_counts_hd  = results.overall_counts_hd
-    hd_exchanged_sites = results.hd_exchanged_sites
+    count_exchanged_sites = results.count_exchanged_sites
     renamed            = results.renamed
     hd_sites_analysis  = results.hd_sites_analysis
     missing_HD_atoms   = results.missing_HD_atoms
@@ -177,9 +176,9 @@ Usage:
       self.print_renamed(renamed)
     if hd_atoms_with_occ_0 or single_hd_atoms_occ_lt_1:
       self.print_atoms_occ_lt_1(hd_atoms_with_occ_0, single_hd_atoms_occ_lt_1)
-    if hd_exchanged_sites:
+    if count_exchanged_sites is not None:
       self.print_results_hd_sites(
-        hd_exchanged_sites, hd_sites_analysis, overall_counts_hd)
+        count_exchanged_sites, hd_sites_analysis, overall_counts_hd)
     if missing_HD_atoms:
       self.print_missing_HD_atoms(missing_HD_atoms)
     if outliers_bonds or outliers_angles:
