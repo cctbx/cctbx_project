@@ -127,17 +127,6 @@ def libtbx_collector():
     pytest_collect_file = libtbx.test_utils.pytest.libtbx_collector()
   to your conftest.py in the module root directory.
   '''
-  # Determine the name of the calling module, and thus the internal module name
-  # of the run_tests file. Use exception trick to pick up the current frame.
-  try:
-    raise Exception()
-  except Exception:
-    frame = sys.exc_info()[2].tb_frame.f_back
-  caller = frame.f_globals['__name__']
-  if not caller.endswith('.conftest'):
-    raise RuntimeError('Only use libtbx_collector() from within conftest.py')
-  caller = caller[:-9]
-  caller_run_tests_module = caller + '.run_tests'
 
   import pytest
 
@@ -155,6 +144,10 @@ def libtbx_collector():
         self.test_cmd = 'libtbx.python "%s"' % self.test_cmd
       self.test_parms = test_parameters
       self.full_cmd = ' '.join([self.test_cmd] + self.test_parms)
+      if not hasattr(self, 'module'):
+        self.module = None
+      if not hasattr(self, '_fixtureinfo'):
+        self._fixtureinfo = self.session._fixturemanager.getfixtureinfo(self, self.runtest, self)
 
     def runtest(self):
       rc = run_command(self.full_cmd)
@@ -185,7 +178,14 @@ def libtbx_collector():
         try:
           os.environ['LIBTBX_SKIP_PYTEST'] = '1'
           import importlib
-          run_tests = importlib.import_module(caller_run_tests_module)
+          # Guess the module import path from the location of this file
+          test_module = self.fspath.dirpath().basename
+          # We must be directly inside the root of a configured module.
+          # If this module isn't configured, then we don't want to run tests.
+          if not libtbx.env.has_module(test_module):
+            return
+          run_tests_module = test_module + "." + self.fspath.purebasename
+          run_tests = importlib.import_module(run_tests_module)
         finally:
           del os.environ['LIBTBX_SKIP_PYTEST']
 
@@ -200,7 +200,7 @@ def libtbx_collector():
             testname = "_".join(str(p) for p in testparams)
 
           full_command = testfile.replace("$D", os.path.dirname(run_tests.__file__)). \
-                                  replace("$B", libtbx.env.under_build(caller))
+                                  replace("$B", libtbx.env.under_build(test_module))
           shortpath = testfile.replace("$D/", "").replace("$B/", "build/")
           pytest_file_object = pytest.File(shortpath, self.session)
           yield LibtbxTest(testname, pytest_file_object, full_command, testparams)
