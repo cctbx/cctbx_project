@@ -2,7 +2,18 @@ from __future__ import division
 from libtbx import test_utils
 import libtbx.load_env
 
+def make_test_tests():
+  of = open("test_tests_mmtbx.py","w")
+  code="""
+from libtbx import easy_run
+if (__name__ == "__main__"):
+  assert easy_run.call("libtbx.find_untested mmtbx True")==0
+"""
+  print >> of, code
+  of.close()
+
 tst_list = (
+  "test_tests_mmtbx.py",
   # ions SVM
   "$D/ions/svm/tst_classifier.py",
   "$D/ions/svm/tst_vector.py",
@@ -14,7 +25,6 @@ tst_list = (
   "$D/ions/tst_pick_approx_zn.py",
   "$D/ions/tst_validate_ca.py",
   "$D/ions/tst_validate_mg.py",
-  #"$D/ions/tst_validate_zn.py", # FIXME
   "$D/ions/tst_symmetry_axis.py",
   "$D/ions/tst_utils.py",
   # TLS
@@ -353,9 +363,35 @@ tst_list = (
   "$D/geometry/tests/tst_shared_types.py",
   "$D/geometry/tests/tst_sphere_surface_sampling.py",
   "$D/geometry/tests/tst_topology.py",
+  #
+  "$D/wwpdb/tst_rcsb_web_services.py",
+  "$D/wwpdb/tst_utils.py",
+  "$D/monomer_library/tst_all_cif_files.py",
+  "$D/refinement/tst_misc.py",
+  "$D/refinement/tst_real_space_simple.py",
+  "$D/scaling/tst_bayesian_estimator.py",
+  "$D/scaling/tst_mean_f_rms_f.py",
+  "$D/scaling/tst_sigmaa.py",
+  "$D/scaling/tst_massage_data.py",
+  "$D/ions/tst_pickle.py",
+  "$D/ions/tst_geometries.py",
+  "$D/ions/tst_pick_k.py",
+  "$D/ions/tst_environment.py",
+  "$D/regression/tst_table_one.py",
+  "$D/regression/tst_msa.py",
+  "$D/regression/tst_build_alt_confs.py",
+  "$D/regression/tst_cc_star.py",
+  "$D/regression/tst_fmodel_2.py",
+  "$D/regression/tst_rigid_bond_test.py",
+  "$D/validation/regression/tst_cablam.py",
+  "$D/building/tst_make_library.py",
+  "$D/regression/real_space_refine_chain/tst_00.py",
+  "$D/regression/real_space_refine_chain/tst_01.py",
+  "$D/conformation_dependent_library/test_omega_cdl.py",
   )
 
 def run():
+  make_test_tests()
   build_dir = libtbx.env.under_build("mmtbx")
   dist_dir = libtbx.env.dist_path("mmtbx")
   test_utils.run_tests(build_dir, dist_dir, tst_list)

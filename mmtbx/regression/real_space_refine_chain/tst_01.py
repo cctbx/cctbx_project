@@ -1,5 +1,5 @@
 from __future__ import division
-import time
+import time, os
 import iotbx.pdb
 import mmtbx.utils
 from mmtbx import monomer_library
@@ -7,6 +7,7 @@ from scitbx.array_family import flex
 import mmtbx.refinement.real_space.explode_and_refine
 from mmtbx.geometry_restraints import reference
 from iotbx import reflection_file_reader
+import libtbx.load_env
 
 def ccp4_map(crystal_symmetry, file_name, map_data):
   from iotbx import ccp4_map
@@ -21,7 +22,13 @@ def ccp4_map(crystal_symmetry, file_name, map_data):
 
 def run(prefix="tst_00"):
   # Poor model that we want to refine so it matches the answer
-  pdb_inp = iotbx.pdb.input(file_name="poor_model.pdb")
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/real_space_refine_chain/poor_model.pdb",
+    test=os.path.isfile)
+  mtz_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/real_space_refine_chain/poor_map.mtz",
+    test=os.path.isfile)
+  pdb_inp = iotbx.pdb.input(file_name=pdb_file)
   ph_poor = pdb_inp.construct_hierarchy()
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp.xray_structure_simple()
@@ -30,7 +37,7 @@ def run(prefix="tst_00"):
   states.add(sites_cart = xrs_poor.sites_cart())
   # Compute target map
   mas = reflection_file_reader.any_reflection_file(file_name =
-    "poor_map.mtz").as_miller_arrays()
+    mtz_file).as_miller_arrays()
   assert len(mas)==1
   fc = mas[0]
 
@@ -49,7 +56,7 @@ def run(prefix="tst_00"):
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = monomer_library.server.server(),
     ener_lib                 = monomer_library.server.ener_lib(),
-    file_name              = "poor_model.pdb",
+    file_name              = pdb_file,
     params                   = params,
     #crystal_symmetry = fc.crystal_symmetry(),
     strict_conflict_handling = True,

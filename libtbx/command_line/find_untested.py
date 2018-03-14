@@ -1,9 +1,9 @@
 from __future__ import division
-import os
+import os, sys
 import libtbx.load_env
 from libtbx import easy_run
-
-include = ["cctbx", "iotbx", "mmtbx", "scitbx"]
+from libtbx.utils import Sorry
+import ast
 
 find_blame = True
 
@@ -46,7 +46,7 @@ def extract_tests_from_run_tests_dot_py(file_name, full_path):
     assert os.path.isfile(r), r
   return result
 
-def find_mismatch(from_run_tests, from_dirs, full_path):
+def find_mismatch(from_run_tests, from_dirs, full_path, force_stop=False):
   print "  Number of tests in:"
   print "    run_tests.py         :", len(from_run_tests)
   print "    actual in folder-tree:", len(from_dirs)
@@ -58,8 +58,17 @@ def find_mismatch(from_run_tests, from_dirs, full_path):
       if find_blame:
         rc = find_majority_blame(f1)
       if(1): print "    '%s' %s" % (rc, f1)
+      if(force_stop):
+        raise Sorry("Add test to run_tests.py first.")
 
-def run():
+def run(args):
+  assert len(args) in [0,2]
+  force_stop = False
+  include = ["cctbx", "iotbx", "mmtbx", "scitbx"]
+  if(len(args)==2):
+    module, force_stop = args
+    force_stop = ast.literal_eval(force_stop)
+    include = [module]
   root_dir = libtbx.env.find_in_repositories("cctbx_project")
   for subdir in os.listdir(root_dir):
     full_path = "/".join([root_dir,subdir])
@@ -72,7 +81,7 @@ def run():
       from_run_tests = extract_tests_from_run_tests_dot_py(
         file_name=run_tests_file, full_path=full_path)
       from_dirs = find_all_tst_dot_py_files(root_dir=full_path)
-      find_mismatch(from_run_tests, from_dirs, full_path)
+      find_mismatch(from_run_tests, from_dirs, full_path, force_stop)
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])

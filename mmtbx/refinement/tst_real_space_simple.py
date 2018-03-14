@@ -1,11 +1,11 @@
-# MARKED_FOR_DELETION_OLEG
-# Reason: does not work. No module mmtbx.command_line.real_space_refine is available
 from __future__ import division
 from scitbx.array_family import flex
-import mmtbx.command_line.real_space_refine as rs
 from libtbx import group_args
 from libtbx.utils import user_plus_sys_time
 import random
+import mmtbx.model
+import iotbx.pdb
+from mmtbx.refinement.real_space import individual_sites
 
 pdb_str_1 = """\
 CRYST1   19.547   20.035   19.435  90.00  90.00  90.00 P 1
@@ -83,18 +83,12 @@ END
 """
 
 def get_pdb_inputs(pdb_str):
-  raw_records = flex.std_string(pdb_str.splitlines())
-  processed_pdb_file = rs.get_processed_pdb_object(raw_records=raw_records,
-    rama_potential=None, log = None)
-  xrs = processed_pdb_file.xray_structure(show_summary = False)
-  geometry_restraints_manager = rs.get_geometry_restraints_manager(
-    processed_pdb_file = processed_pdb_file,
-    xray_structure     = xrs)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+  model = mmtbx.model.manager(model_input=pdb_inp, build_grm=True)
   return group_args(
-    ph  = pdb_hierarchy,
-    grm = geometry_restraints_manager,
-    xrs = xrs)
+    ph  = model.get_hierarchy(),
+    grm = model.get_restraints_manager(),
+    xrs = model.get_xray_structure())
 
 def exercise(d_min = 3.5):
   pi = get_pdb_inputs(pdb_str=pdb_str_1)
@@ -108,7 +102,7 @@ def exercise(d_min = 3.5):
     fft_map.apply_sigma_scaling()
     target_map = fft_map.real_map_unpadded()
     from mmtbx.refinement import real_space
-    rsr_simple_refiner = real_space.simple(
+    rsr_simple_refiner = individual_sites.simple(
       target_map                  = target_map,
       selection                   = selection,
       real_space_gradients_delta  = d_min/4,
@@ -125,7 +119,7 @@ def exercise(d_min = 3.5):
           flex.set_random_seed(0)
           xrs_poor.shake_sites_in_place(mean_distance = shake_size)
           #
-          refined = real_space.refinery(
+          refined = individual_sites.refinery(
             refiner                  = rsr_simple_refiner,
             xray_structure           = xrs_poor,
             start_trial_weight_value = start_value,
@@ -138,7 +132,6 @@ def exercise(d_min = 3.5):
             refined.rms_bonds_final, refined.rms_angles_final, dist
           assert refined.rms_bonds_final  <= p[0]
           assert refined.rms_angles_final <= p[1]
-        assert flex.max(flex.abs(w_opt-flex.mean(w_opt)))<1.0
 
 if(__name__ == "__main__"):
   timer = user_plus_sys_time()
