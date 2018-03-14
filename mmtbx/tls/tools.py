@@ -13,6 +13,7 @@ from libtbx.str_utils import line_breaker
 from libtbx import group_args
 import mmtbx.utils
 import iotbx
+import math
 import iotbx.pdb.remark_3_interpretation
 
 
@@ -1130,6 +1131,9 @@ class u_tls_vs_u_ens(object):
     u2 = self.u_cart_ens.as_double()
     self.r = flex.sum(flex.abs(u1-u2))/\
              flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+    #
+    diff = u1-u2
+    self.rLS = math.sqrt(flex.sum(diff*diff)/(9.*diff.size()))
     ###
     for i in xrange(n_atoms):
       ut=["%8.5f"%u for u in self.u_cart_tls[i]]
