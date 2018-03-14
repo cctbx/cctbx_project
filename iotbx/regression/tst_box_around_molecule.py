@@ -1,6 +1,6 @@
 from __future__ import division
 from libtbx import easy_run
-from libtbx.test_utils import show_diff, assert_lines_in_file
+from libtbx.test_utils import assert_lines_in_file
 
 pdb_str = """\
 ATOM      1  N   SER 1  71      10.595  29.158 114.534  1.00300.00           N
