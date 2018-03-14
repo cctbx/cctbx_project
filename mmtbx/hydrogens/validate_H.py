@@ -148,7 +148,7 @@ class validate_H(object):
                 missing_HD_atoms.append((id_strings[0],
                                          missing[0],
                                          xyzs[0],
-                                         ''))
+                                         ", ".join(conformers)))
             # otherwise, add for each conformer
             else:
               for missing_list, conformer, id_str, xyz in zip(
