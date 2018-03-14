@@ -222,7 +222,7 @@ class model_idealization():
     # couple checks if pdb_h is ok
     o_c = self.original_hierarchy.overall_counts()
     o_c.raise_duplicate_atom_labels_if_necessary()
-    o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
+    # o_c.raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary()
     o_c.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
     o_c.raise_improper_alt_conf_if_necessary()
     if len(self.original_hierarchy.models()) > 1:
