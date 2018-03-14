@@ -148,6 +148,7 @@ class molprobity (slots_getstate_setstate) :
 
   def __init__ (self,
       pdb_hierarchy,
+      model=None, # this will replace pdb_hierarchy, xray_structure, etc
       xray_structure=None,
       fmodel=None,
       fmodel_neutron=None,
@@ -325,11 +326,13 @@ class molprobity (slots_getstate_setstate) :
 
     # validate hydrogens
     self.hydrogens = None
-    model = mmtbx.model.manager(
-      None,
-      crystal_symmetry=crystal_symmetry,
-      pdb_hierarchy=pdb_hierarchy,
-      build_grm=True)
+    if (model is None):  # create a model object if necessary
+      model = mmtbx.model.manager(
+        None,
+        crystal_symmetry=crystal_symmetry,
+        pdb_hierarchy=pdb_hierarchy,
+        build_grm=True,
+        stop_for_unknowns=False)  # prevent crashes from unknown restraints
     if (model.has_hd):
       # import here to avoid circular import issues
       from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
