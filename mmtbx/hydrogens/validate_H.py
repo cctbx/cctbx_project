@@ -59,7 +59,7 @@ class validate_H(object):
 
   def get_missing_h_in_residue(self, residue, mon_lib_srv):
     missing = []
-    ca_xyz, xyz = None, None
+    ca_xyz, xyz, xyzh = None, None, None
     mlq = rotamer_eval.mon_lib_query(residue.resname.strip().upper(), mon_lib_srv)
     if mlq is not None:
       #hd_aliases = mlq.hydrogen_deuterium_aliases()
@@ -72,12 +72,15 @@ class validate_H(object):
           xyz = atom.xyz
         else:
           atom_name_list.append(atom_name)
+          xyzh = atom.xyz
         if is_deuterium(atom):
           atom_name_list.append(atom_name.replace('D','H',1))
         #if atom_name in hd_aliases:
         #  atom_name_list.append(hd_aliases[atom_name])
       if not ca_xyz:
         ca_xyz = xyz
+      if not ca_xyz:
+        ca_xyz = xyzh
       # Step 1: Get list of expected H and non-H atoms
       reference = []
       atom_dict = mlq.atom_dict()
@@ -127,7 +130,7 @@ class validate_H(object):
     for model in self.pdb_hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          missing = []
+          id_strings, missing, conformers, xyzs = [], [], [], []
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
             if (get_class(name=residue.resname ) == 'common_water'): continue
@@ -135,14 +138,25 @@ class validate_H(object):
               residue     = residue,
               mon_lib_srv = self.model.get_mon_lib_srv())
             if missing_list:
-              for atom_name in missing_list:
-                if atom_name not in missing:
-                  missing.append(atom_name)
+              missing.append(missing_list)
+              conformers.append(conformer.altloc)
+              xyzs.append(xyz)
+              id_strings.append(residue.id_str())
           if missing:
-            missing_HD_atoms.append(
-                                    (residue.id_str(),
-                                     missing,
-                                     xyz))
+            # if all conformers lack the same H atoms, only add once
+            if len([list(tupl) for tupl in {tuple(item) for item in missing }]) == 1:
+                missing_HD_atoms.append((id_strings[0],
+                                         missing[0],
+                                         xyzs[0],
+                                         ''))
+            # otherwise, add for each conformer
+            else:
+              for missing_list, conformer, id_str, xyz in zip(
+                                        missing, conformers, id_strings, xyzs):
+                missing_HD_atoms.append((id_str,
+                                         missing_list,
+                                         xyz,
+                                         conformer))
     self.missing_HD_atoms = missing_HD_atoms
 
   def get_atom(self, residue_group, name):
@@ -705,7 +719,7 @@ class validate_H_results(object):
 
     make_sub_header('MISSING H or D atoms', out=log)
     for item in missing_HD_atoms:
-      print('%s%s : %s ' % (prefix, item[0][8:-1], ", ".join(item[1])),
+      print('%s%s conformer %s : %s ' % (prefix, item[0][8:-1], item[3], ", ".join(item[1])),
             file=log)
 
   def export_missing_HD_atoms_for_wxGUI(self):

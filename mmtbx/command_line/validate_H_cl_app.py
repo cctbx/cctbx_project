@@ -138,7 +138,7 @@ Usage:
     print('*'*79, file=self.log)
     print('MISSING H or D atoms:\n', file=self.log)
     for item in missing_HD_atoms:
-      print('%s : %s ' % (item[0][8:-1], ", ".join(item[1])), file=self.log)
+      print('%s conformer %s : %s ' % (item[0][8:-1], item[3], ", ".join(item[1])), file=self.log)
 
   def print_outliers_bonds_angles(self, outliers_bonds, outliers_angles):
     print('*'*79, file=self.log)
