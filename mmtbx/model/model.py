@@ -248,7 +248,9 @@ class manager(object):
         self._original_model_format = "pdb"
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
-        self._crystal_symmetry = self._model_input.crystal_symmetry()
+        inp_cs = self._model_input.crystal_symmetry()
+        if inp_cs and not inp_cs.is_empty():
+          self._crystal_symmetry = inp_cs
       if expand_with_mtrix:
         self.expand_with_MTRIX_records()
 
