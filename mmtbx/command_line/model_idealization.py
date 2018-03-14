@@ -291,7 +291,7 @@ class model_idealization():
     self.master_map = self.reference_map.deep_copy()
     if self.model.ncs_constraints_present():
       mask = maptbx.mask(
-              xray_structure=self.model.get_xray_structure().select(self.model.get_master_selection),
+              xray_structure=self.model.get_xray_structure().select(self.model.get_master_selection()),
               n_real=self.master_map.focus(),
               mask_value_inside_molecule=1,
               mask_value_outside_molecule=-1,
