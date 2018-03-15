@@ -83,7 +83,7 @@ class manager(object):
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
         log=StringIO.StringIO()):
-    self.source = None
+    self._source = None
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -98,11 +98,11 @@ class manager(object):
     self.reset_internals()
 
   def set_source(self, source):
-    assert self.source is None
-    self.source = source
+    assert self._source is None
+    self._source = source
 
   def get_source(self):
-    return self.source
+    return self._source
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   # def __getstate__(self):

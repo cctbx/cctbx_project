@@ -41,7 +41,7 @@ class geometry(object):
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
     if(geometry_restraints_manager is not None):
-      self.restraints_source = geometry_restraints_manager.source
+      self.restraints_source = geometry_restraints_manager.get_source()
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       working_geometry_restraints_manager = geometry_restraints_manager
       if(not self.use_hydrogens):
