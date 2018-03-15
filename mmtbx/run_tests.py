@@ -8,6 +8,7 @@ tst_list = (
   "$D/ions/svm/tst_classifier.py",
   "$D/ions/svm/tst_vector.py",
   "$D/ions/tst_pick_ca_svm.py",
+  "$D/ions/tst_pickle.py",
   # ion picking
   "$D/ions/tst_parameters.py",
   "$D/ions/tst_pick_ca.py",
@@ -363,7 +364,6 @@ tst_list = (
   "$D/scaling/tst_mean_f_rms_f.py",
   "$D/scaling/tst_sigmaa.py",
   "$D/scaling/tst_massage_data.py",
-  "$D/ions/tst_pickle.py",
   "$D/ions/tst_geometries.py",
   "$D/ions/tst_pick_k.py",
   "$D/ions/tst_environment.py",
