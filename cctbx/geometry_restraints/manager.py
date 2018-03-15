@@ -83,6 +83,7 @@ class manager(object):
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
         log=StringIO.StringIO()):
+    self.source = None
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -95,6 +96,13 @@ class manager(object):
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
+
+  def set_source(self, source):
+    assert self.source is None
+    self.source = source
+
+  def get_source(self):
+    return self.source
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   # def __getstate__(self):
@@ -407,7 +415,7 @@ class manager(object):
       if proxies is not None:
         selected_proxies[i] = proxies.proxy_select(n_seq, iselection)
 
-    return manager(
+    result = manager(
       crystal_symmetry=self.crystal_symmetry,
       site_symmetry_table=selected_site_symmetry_table,
       model_indices=selected_stuff[0],
@@ -433,6 +441,8 @@ class manager(object):
       planarity_proxies=selected_proxies[7],
       parallelity_proxies=selected_proxies[8],
       plain_pairs_radius=self.plain_pairs_radius)
+    result.set_source(source = self.get_source())
+    return result
 
   def discard_symmetry(self, new_unit_cell):
     assert self.site_symmetry_table is not None #XXX lazy

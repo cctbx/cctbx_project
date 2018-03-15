@@ -27,6 +27,7 @@ class geometry(object):
     # Don't store GRM here because it is not used and is huge, GUI tries
     # to pickle it and crashes.
     # self.geometry_restraints_manager = geometry_restraints_manager
+    self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
     self.use_nuclear = use_nuclear
@@ -40,6 +41,7 @@ class geometry(object):
     if(pdb_hierarchy is not None):
       self.pdb_hierarchy = pdb_hierarchy
     if(geometry_restraints_manager is not None):
+      self.restraints_source = geometry_restraints_manager.source
       sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
       working_geometry_restraints_manager = geometry_restraints_manager
       if(not self.use_hydrogens):
@@ -231,6 +233,7 @@ class geometry(object):
       res.planarity, res.nonbonded
     result = "%s" % prefix
     result += """
+%sGEOMETRY RESTRAINTS LIBRARY: %s
 %sDEVIATIONS FROM IDEAL VALUES.
 %s  BOND      : %s
 %s  ANGLE     : %s
@@ -239,6 +242,8 @@ class geometry(object):
 %s  DIHEDRAL  : %s
 %s  MIN NONBONDED DISTANCE : %s
 %s"""%(prefix,
+       self.restraints_source,
+       prefix,
        prefix, fmt(b.mean, b.max, b.n),
        prefix, fmt(a.mean, a.max, a.n),
        prefix, fmt(c.mean, c.max, c.n),
@@ -281,7 +286,8 @@ class geometry(object):
   def as_cif_block(self, cif_block=None):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
-    cif_block["_refine.pdbx_stereochemistry_target_values"] = "GeoStd + Monomer Library"
+    cif_block["_refine.pdbx_stereochemistry_target_values"] = \
+      self.restraints_source
     loop = iotbx.cif.model.loop(header=(
       "_refine_ls_restr.type",
       "_refine_ls_restr.number",

@@ -1,4 +1,7 @@
 from __future__ import division
+
+version = "CDL v1.2"
+
 cdl_database = {
   "Gly_nonxpro" : {
     (-180, -180) : ['B', 14, 120.86, 1.62, -1, -1, 110.42, 1.49, -1, -1, 121.63, 0.95, 114.72, 1.32, 123.61, 1.16, 1.327, 0.0115, 1.4508, 0.0113, -1, -1, 1.5117, 0.0124, 1.2356, 0.0123],
@@ -10453,6 +10456,15 @@ Gly_xpro[(-60, -40)][2]=121.870000 # mCNA
 Gly_xpro[(-60, -40)][3]=1.570000 # sCNA
 Gly_xpro[(-50, -40)][14]=121.770000 # mOCN
 Gly_xpro[(-50, -40)][15]=1.000000 # sOCN
+
+class custom_cdl_dict(dict):
+  def __init__(self):
+    self.version=None
+
+O = custom_cdl_dict()
+for k,v in zip(cdl_database.keys(), cdl_database.values()): O[k]=v
+cdl_database=O
+cdl_database.version=version
 
 def run(args):
   assert len(args) == 0

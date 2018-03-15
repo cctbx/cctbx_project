@@ -5241,7 +5241,11 @@ class build_all_chain_proxies(linking_mixins):
         use_cdl = False
       if (use_cdl) :
         print >> log, "  Switching to conformation-dependent library"
-    if use_cdl :
+    if(not use_cdl):
+      result.set_source(source = "GeoStd + Monomer Library")
+    else:
+      result.set_source(
+        source = mmtbx.conformation_dependent_library.cdl_database.version)
       from mmtbx.conformation_dependent_library.cdl_setup import setup_restraints
       from mmtbx.conformation_dependent_library import update_restraints
       from libtbx import utils
