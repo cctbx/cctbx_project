@@ -171,6 +171,7 @@ Parameters:"""%h
         label     = params.label,
         type      = "complex",
         log       = log)
+      if not crystal_symmetry: crystal_symmetry=map_coeff.crystal_symmetry()
       fft_map = map_coeff.fft_map(resolution_factor=params.resolution_factor)
       fft_map.apply_sigma_scaling()
       map_data = fft_map.real_map_unpadded()
@@ -187,6 +188,7 @@ Parameters:"""%h
       print_statistics.make_sub_header("CCP4 map", out=log)
       ccp4_map = inputs.ccp4_map
       ccp4_map.show_summary(prefix="  ",out=log)
+      if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
       map_data = ccp4_map.data#map_data()
       if inputs.ccp4_map_file_name.endswith(".ccp4"):
         map_or_map_coeffs_prefix=os.path.basename(
@@ -196,6 +198,9 @@ Parameters:"""%h
           inputs.ccp4_map_file_name[:-4])
   else: # have map_data
     map_or_map_coeffs_prefix=None
+
+  if crystal_symmetry and not inputs.crystal_symmetry:
+    inputs.crystal_symmetry=crystal_symmetry
 
   # final check that map_data exists
   if(map_data is None):
