@@ -1,19 +1,9 @@
 from __future__ import division
 from libtbx import test_utils
 import libtbx.load_env
-
-def make_test_tests():
-  of = open("test_tests_mmtbx.py","w")
-  code="""
 from libtbx import easy_run
-if (__name__ == "__main__"):
-  assert easy_run.call("libtbx.find_untested mmtbx True")==0
-"""
-  print >> of, code
-  of.close()
 
 tst_list = (
-  "test_tests_mmtbx.py",
   # ions SVM
   "$D/ions/svm/tst_classifier.py",
   "$D/ions/svm/tst_vector.py",
@@ -391,7 +381,7 @@ tst_list = (
   )
 
 def run():
-  make_test_tests()
+  assert easy_run.call("libtbx.find_untested mmtbx True")==0
   build_dir = libtbx.env.under_build("mmtbx")
   dist_dir = libtbx.env.dist_path("mmtbx")
   test_utils.run_tests(build_dir, dist_dir, tst_list)
