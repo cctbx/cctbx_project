@@ -1,6 +1,5 @@
 
 from __future__ import division
-from libtbx.str_utils import make_header
 from libtbx.utils import Usage, Sorry
 import libtbx.phil
 import sys
@@ -16,7 +15,6 @@ restraints = None
 def run (args, out=sys.stdout) :
   if (len(args) == 0) or ("--help" in args) :
     raise Usage("mmtbx.rigid_bond_test model.pdb")
-  from mmtbx.monomer_library import pdb_interpretation
   import mmtbx.restraints
   import mmtbx.model
   import iotbx.phil

@@ -101,7 +101,6 @@ def exercise(d_min = 3.5):
     fft_map = f_calc.fft_map(resolution_factor=0.25)
     fft_map.apply_sigma_scaling()
     target_map = fft_map.real_map_unpadded()
-    from mmtbx.refinement import real_space
     rsr_simple_refiner = individual_sites.simple(
       target_map                  = target_map,
       selection                   = selection,
