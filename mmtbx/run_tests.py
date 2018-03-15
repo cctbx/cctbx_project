@@ -6,7 +6,6 @@ from libtbx import easy_run
 tst_list = (
   # ions SVM
   "$D/ions/svm/tst_classifier.py",
-  "$D/ions/svm/tst_vector.py",
   "$D/ions/tst_pick_ca_svm.py",
   "$D/ions/tst_pickle.py",
   # ion picking
