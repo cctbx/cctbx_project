@@ -1010,14 +1010,21 @@ class manager(object):
       # set up new groups for refinements
       self._ncs_groups = self.ncs_restr_group_list.filter_ncs_restraints_group_list(
           self.get_hierarchy())
-    if len(self._ncs_groups) > 0:
+    self._update_master_sel()
+
+  def _update_master_sel(self):
+    if self._ncs_groups is not None and len(self._ncs_groups) > 0:
       # determine master selections
       self._master_sel = flex.bool(self.get_number_of_atoms(), True)
       for ncs_gr in self._ncs_groups:
         for copy in ncs_gr.copies:
           self._master_sel.set_selected(copy.iselection, False)
+    else:
+      self._master_sel = flex.bool(self.get_number_of_atoms(), True)
+
 
   def get_master_hierarchy(self):
+    assert self.get_hierarchy().models_size() == 1
     if self._master_sel.size() > 0:
       return self.get_hierarchy().select(self._master_sel)
     else:
@@ -2120,16 +2127,7 @@ class manager(object):
     if self.ncs_constraints_present():
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
-    if self._master_sel is not None:
-      if self._master_sel.size() == selection.size():
-        new._master_sel = self._master_sel.select(selection)
-      else:
-        if isinstance(self._master_sel, flex.bool):
-          x = flex.bool(selection.size(), self._master_sel.iselection())
-          new._master_sel = x.select(selection)
-        else:
-          x = flex.bool(selection.size(), self._master_sel)
-          new._master_sel = x.select(selection)
+    new._update_master_sel()
     return new
 
   def number_of_ordered_solvent_molecules(self):
