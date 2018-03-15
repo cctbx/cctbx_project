@@ -424,9 +424,9 @@ class manager(object):
     return self._xray_structure.sites_cart()
 
   def get_atom_selection_cache(self):
-    if self._atom_selection_cache is not None:
-      return self._atom_selection_cache
-    return None
+    if self._atom_selection_cache is None:
+      self._update_atom_selection_cache()
+    return self._atom_selection_cache
 
   def get_number_of_models(self):
     if self._model_input is not None:
