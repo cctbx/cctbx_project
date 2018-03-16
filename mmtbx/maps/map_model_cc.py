@@ -16,7 +16,7 @@ map_model_cc {
     .type = float
     .help = Data (map) resolution
     .expert_level=0
-  scattering_table = wk1995  it1992  *n_gaussian  neutron electron
+  scattering_table = wk1995  it1992 n_gaussian  neutron *electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
     .expert_level=0

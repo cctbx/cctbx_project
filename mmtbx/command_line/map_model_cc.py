@@ -11,6 +11,9 @@ import mmtbx.utils
 import mmtbx.maps.map_model_cc
 from libtbx.str_utils import format_value
 from mmtbx.maps import mtriage
+from mmtbx.command_line import mtriage as cl_mtriage
+import mmtbx.model
+from iotbx import map_and_model
 
 master_params_str = """\
   map_file_name = None
@@ -60,11 +63,13 @@ def get_inputs(args,
       file_name = pdb_file_name)
     pdb_hierarchy = pdb_inp.construct_hierarchy()
   # Map
-  ccp4_map_object = None
+  map_inp = None
   if(need_map):
     if(inputs.ccp4_map is None):
       raise Sorry("Map file has to given.")
-    ccp4_map_object = inputs.ccp4_map
+    map_inp = inputs.ccp4_map
+    broadcast(m="Input map:", log=log)
+    map_inp.show_summary(prefix="  ")
   # Crystal symmetry
   crystal_symmetry = None
   if(need_crystal_symmetry):
@@ -72,15 +77,32 @@ def get_inputs(args,
     if(crystal_symmetry is None):
       raise Sorry("No box (unit cell) info found.")
   #
+  model = None
+  if(pdb_inp is not None):
+    model = mmtbx.model.manager(model_input = pdb_inp)
+    broadcast(m="Input PDB:", log=log)
+    print >> log, pdb_file_name # ideally this should not be available here
+    model.get_hierarchy().show(level_id="chain")
+  crystal_symmetry = cl_mtriage.check_and_set_crystal_symmetry(
+    models   = [model],
+    map_inps = [map_inp])
+  # Crystal symmetry
+  broadcast(m="Box (unit cell) info:", log=log)
+  inputs.crystal_symmetry.show_summary(f=log)
+  base = map_and_model.input(
+    map_data         = map_inp.map_data(),
+    model            = model,
+    crystal_symmetry = crystal_symmetry,
+    box              = True)
+  params = inputs.params.extract()
   return group_args(
-    params           = inputs.params.extract(),
+    params           = params,
     pdb_file_name    = pdb_file_name,
-    pdb_inp          = pdb_inp,
-    pdb_hierarchy    = pdb_hierarchy,
-    ccp4_map_object  = ccp4_map_object,
-    crystal_symmetry = crystal_symmetry)
+    map_data         = base.map_data(),
+    model            = base.model(),
+    crystal_symmetry = base.crystal_symmetry())
 
-def get_fsc(map_inp, pdb_inp, params):
+def get_fsc(map_data, model, params):
   result = None
   if(params.compute.fsc):
     mtriage_params = mtriage.master_params().extract()
@@ -97,9 +119,9 @@ def get_fsc(map_inp, pdb_inp, params):
     #mtriage_params.radius_smooth = self.atom_radius
     mtriage_params.resolution = params.resolution
     result = mtriage.mtriage(
-      map_inp = map_inp,
-      pdb_inp = pdb_inp,
-      params  = mtriage_params).get_results().masked.fsc_curve_model
+      map_data       = map_data,
+      xray_structure = model.get_xray_structure(),
+      params         = mtriage_params).get_results().masked.fsc_curve_model
   return result
 
 def run(args, log=sys.stdout):
@@ -123,30 +145,20 @@ Feedback:
     args          = args,
     log           = log,
     master_params = master_params())
-  # Model
-  broadcast(m="Input PDB:", log=log)
-  print >> log, inputs.pdb_file_name # ideally this should not be available here
-  inputs.pdb_hierarchy.show(level_id="chain")
-  # Crystal symmetry
-  broadcast(m="Box (unit cell) info:", log=log)
-  inputs.crystal_symmetry.show_summary(f=log)
-  # Map
-  broadcast(m="Input map:", log=log)
-  inputs.ccp4_map_object.show_summary(prefix="  ")
   # Run task in 4 separate steps
   task_obj = mmtbx.maps.map_model_cc.map_model_cc(
-    map_data         = inputs.ccp4_map_object.data.as_double(),
-    pdb_hierarchy    = inputs.pdb_hierarchy,
-    crystal_symmetry = inputs.crystal_symmetry,
+    map_data         = inputs.map_data.as_double(),
+    pdb_hierarchy    = inputs.model.get_hierarchy(),
+    crystal_symmetry = inputs.model.crystal_symmetry(),
     params           = inputs.params.map_model_cc)
   task_obj.validate()
   task_obj.run()
   results = task_obj.get_results()
   #results.fsc=None
   results.fsc = get_fsc(
-    map_inp = inputs.ccp4_map_object,
-    pdb_inp = inputs.pdb_inp,
-    params  = inputs.params.map_model_cc)
+    map_data = inputs.map_data,
+    model    = inputs.model,
+    params   = inputs.params.map_model_cc)
   if inputs.params.pkl_file_name is not None:
     easy_pickle.dump(file_name=inputs.params.pkl_file_name, obj=group_args(
       cc_mask        = results.cc_mask,
@@ -163,6 +175,7 @@ Feedback:
   print >> log, "  CC_mask  : %s" % format_value("%6.4f", results.cc_mask)
   print >> log, "  CC_volume: %s" % format_value("%6.4f", results.cc_volume)
   print >> log, "  CC_peaks : %s" % format_value("%6.4f", results.cc_peaks)
+  print >> log, "  CC_box   : %s" % format_value("%6.4f", results.cc_box)
   log.flush()
   if results.fsc is not None:
     broadcast(m="Model-map FSC:", log=log)

@@ -12,7 +12,6 @@ from scitbx.array_family import flex
 import time
 from libtbx import introspection
 from libtbx.str_utils import size_as_string_with_commas
-from iotbx import map_and_model
 
 def show_process_info(out):
   print >> out, "\\/"*39
@@ -110,11 +109,20 @@ class caller(object):
 
 class mtriage(object):
   def __init__(self,
-               map_inp,
-               map_inp_1 = None,
-               map_inp_2 = None,
-               pdb_inp   = None,
-               params    = None):
+               map_data,
+               map_data_1       = None,
+               map_data_2       = None,
+               xray_structure   = None,
+               crystal_symmetry = None,
+               params           = None):
+    assert [xray_structure, crystal_symmetry].count(None) == 1
+    self.map_data         = map_data.deep_copy()
+    self.map_data_1       = None
+    self.map_data_2       = None
+    if(map_data_1 is not None): self.map_data_1 = map_data_1.deep_copy()
+    if(map_data_2 is not None): self.map_data_2 = map_data_2.deep_copy()
+    self.xray_structure   = xray_structure
+    self.crystal_symmetry = crystal_symmetry
     self.params           = params
     self.results_masked   = None
     self.results_unmasked = None
@@ -122,12 +130,6 @@ class mtriage(object):
     if(self.params is None):
       self.params = master_params().extract()
     self.caller = caller(show=self.params.show_time)
-    self.base = map_and_model.input(
-      map_inp   = map_inp,
-      map_inp_1 = map_inp_1,
-      map_inp_2 = map_inp_2,
-      pdb_inp   = pdb_inp,
-      box       = self.params.use_box)
 
   def call(self, func, prefix):
     t0 = time.time()
@@ -146,9 +148,13 @@ class mtriage(object):
       # No masking
       self.params.mask_maps = False
       self.results_unmasked = _mtriage(
-        base   = self.base,
-        caller = self.caller,
-        params = self.params,
+        map_data         = self.map_data,
+        map_data_1       = self.map_data_1,
+        map_data_2       = self.map_data_2,
+        xray_structure   = self.xray_structure,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        caller           = self.caller
       ).run().get_results(
         include_curves = self.params.include_curves,
         include_mask   = self.params.include_mask)
@@ -157,17 +163,25 @@ class mtriage(object):
         self.params.radius_smooth = self.results_unmasked.d99
       self.params.mask_maps = True
       self.results_masked = _mtriage(
-        base   = self.base,
-        caller = self.caller,
-        params = self.params,
+        map_data         = self.map_data,
+        map_data_1       = self.map_data_1,
+        map_data_2       = self.map_data_2,
+        xray_structure   = self.xray_structure,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        caller           = self.caller
       ).run().get_results(
         include_curves = self.params.include_curves,
         include_mask   = self.params.include_mask)
     else:
       result = _mtriage(
-        base   = self.base,
-        caller = self.caller,
-        params = self.params,
+        map_data         = self.map_data,
+        map_data_1       = self.map_data_1,
+        map_data_2       = self.map_data_2,
+        xray_structure   = self.xray_structure,
+        crystal_symmetry = self.crystal_symmetry,
+        params           = self.params,
+        caller           = self.caller
       ).run().get_results(
         include_curves = self.params.include_curves,
         include_mask   = self.params.include_mask)
@@ -176,16 +190,28 @@ class mtriage(object):
 
   def get_results(self):
     self._run()
+    cs = self.crystal_symmetry
+    if(cs is None): cs = self.xray_structure.crystal_symmetry()
     return group_args(
-      crystal_symmetry = self.base.crystal_symmetry(),
-      counts           = self.base.counts(),
-      histograms       = self.base.histograms(),
+      crystal_symmetry = cs,
+      #counts           = self.base.counts(),
+      #histograms       = self.base.histograms(),
       masked           = self.results_masked,
       unmasked         = self.results_unmasked)
 
 class _mtriage(object):
-  def __init__(self, base, caller, params):
+  def __init__(self,
+        map_data,
+        map_data_1,
+        map_data_2,
+        xray_structure,
+        crystal_symmetry,
+        caller,
+        params):
     adopt_init_args(self, locals())
+    assert [self.xray_structure, self.crystal_symmetry].count(None) == 1
+    if(self.crystal_symmetry is None):
+      self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.call = self.caller.call
     self.resolution = self.params.resolution
     # Results
@@ -257,36 +283,35 @@ class _mtriage(object):
 
   def _compute_radius(self):
     if(not self.params.mask_maps): return
-    if(self.base.hierarchy() is None): return
+    if(self.xray_structure is None): return
     self.radius_smooth = get_atom_radius(
-      xray_structure   = self.base.xray_structure(),
+      xray_structure   = self.xray_structure,
       radius           = self.radius_smooth,
       resolution       = self.resolution)
 
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
-    if(self.base.hierarchy() is None): return
+    if(self.xray_structure is None): return
     mask_smooth = masks.smooth_mask(
-      xray_structure = self.base.xray_structure(),
-      n_real         = self.base.map_data().all(),
+      xray_structure = self.xray_structure,
+      n_real         = self.map_data.all(),
       rad_smooth     = self.radius_smooth).mask_smooth
-    self.base.update_maps(map_data = self.base.map_data()*mask_smooth)
-    if(self.base.half_map_data_1() is not None):
-      self.base.update_maps(
-        half_map_data_1 = self.base.half_map_data_1()*mask_smooth,
-        half_map_data_2 = self.base.half_map_data_2()*mask_smooth)
+    self.map_data = self.map_data*mask_smooth
+    if(self.map_data_1 is not None):
+      self.map_data_1 = self.map_data_1*mask_smooth
+      self.map_data_2 = self.map_data_2*mask_smooth
 
   def _compute_f_maps(self):
     self.f_map = miller.structure_factor_box_from_map(
-      map              = self.base.map_data(),
-      crystal_symmetry = self.base.crystal_symmetry())
-    if(self.base.half_map_data_1() is not None):
+      map              = self.map_data,
+      crystal_symmetry = self.crystal_symmetry)
+    if(self.map_data_1 is not None):
       self.f_map_1 = miller.structure_factor_box_from_map(
-        map              = self.base.half_map_data_1(),
-        crystal_symmetry = self.base.crystal_symmetry())
+        map              = self.map_data_1,
+        crystal_symmetry = self.crystal_symmetry)
       self.f_map_2 = miller.structure_factor_box_from_map(
-        map              = self.base.half_map_data_2(),
-        crystal_symmetry = self.base.crystal_symmetry())
+        map              = self.map_data_2,
+        crystal_symmetry = self.crystal_symmetry)
 
   def _compute_d99(self):
     if(not self.params.compute.d99): return
@@ -297,13 +322,13 @@ class _mtriage(object):
     self.d99999 = d99.result.d99999
     self.f_map = self.f_map.resolution_filter(d_min = self.d99999-0.1)
     d99_obj_1, d99_obj_2 = None,None
-    if(self.base.half_map_data_1() is not None):
+    if(self.map_data_1 is not None):
       d99_1 = maptbx.d99(
-        map              = self.base.half_map_data_1(),
-        crystal_symmetry = self.base.crystal_symmetry())
+        map              = self.map_data_1,
+        crystal_symmetry = self.crystal_symmetry)
       d99_2 = maptbx.d99(
-        map              = self.base.half_map_data_2(),
-        crystal_symmetry = self.base.crystal_symmetry())
+        map              = self.map_data_2,
+        crystal_symmetry = self.crystal_symmetry)
       self.d99_1 = d99_1.result.d99
       self.d99_2 = d99_2.result.d99
       self.f_map_1 = d99_1.f_map
@@ -311,28 +336,28 @@ class _mtriage(object):
 
   def _compute_f_calc(self):
     self.f_calc = self.f_map.structure_factors_from_scatterers(
-      xray_structure = self.base.xray_structure()).f_calc()
+      xray_structure = self.xray_structure).f_calc()
 
   def _compute_d_model(self):
     if(not self.params.compute.d_model): return
-    if(self.base.hierarchy() is not None):
+    if(self.xray_structure is not None):
       o = resolution_from_map_and_model.run(
         f_map            = self.f_map,
         d_fsc_model      = self.d_fsc_model_0,
-        xray_structure   = self.base.xray_structure())
+        xray_structure   = self.xray_structure)
       self.d_model       = o.d_min
       self.b_iso_overall = o.b_iso
       self.d_model_b0    = o.d_model_b0
 
   def _compute_half_map_fsc(self):
-    if(self.base.half_map_data_1() is not None):
+    if(self.map_data_1 is not None):
       self.fsc_curve = self.f_map_1.d_min_from_fsc(
         other = self.f_map_2, bin_width=100, fsc_cutoff=0.143)
       self.d_fsc = self.fsc_curve.d_min
 
   def _compute_fsc_curve_model(self):
     if(not self.params.compute.fsc_curve_model): return
-    if(self.base.hierarchy() is not None):
+    if(self.xray_structure is not None):
       self.fsc_curve_model = self.f_calc.fsc(
         other=self.f_map, bin_width=100)
 

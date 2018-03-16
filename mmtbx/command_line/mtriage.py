@@ -11,6 +11,9 @@ from scitbx.array_family import flex
 from libtbx.str_utils import format_value
 from libtbx import introspection
 from libtbx.utils import null_out
+from libtbx.utils import Sorry
+from cctbx import maptbx
+from iotbx import map_and_model
 
 master_params_GUI_str = """\
   include scope libtbx.phil.interface.tracking_params
@@ -58,6 +61,44 @@ master_params_str = """\
 
 master_params = iotbx.phil.parse(master_params_str, process_includes=True)
 
+def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[],
+      crystal_symmetry = None):
+  # XXX This should go into a central place
+  # XXX Check map gridding here!
+  for it in [models, map_inps, miller_arrays]:
+    assert isinstance(it, (list, tuple))
+  css = []
+  if(crystal_symmetry is not None):
+    css.append(crystal_symmetry)
+  all_inputs = models+map_inps+miller_arrays
+  for it in all_inputs:
+    if(it is not None):
+      it = it.crystal_symmetry()
+      if(it is None): continue
+      if(not [it.unit_cell(), it.space_group()].count(None) in [0,2]):
+        raise Sorry("Inconsistent box (aka crystal symmetry) info.")
+      if([it.unit_cell(), it.space_group()].count(None)==0):
+        css.append(it)
+  if(len(css)>1):
+    cs0 = css[0]
+    for cs in css[1:]:
+      if(not cs0.is_similar_symmetry(cs)):
+        raise Sorry("Box info (aka crystal symmetry) mismatch across inputs.")
+  if(len(css)==0):
+    raise Sorry("No box info (aka crystal symmetry) available.")
+  crystal_symmetry = css[0]
+  for model in models:
+    if(model is None): continue
+    cs = model.crystal_symmetry()
+    if(cs is None or [cs.unit_cell(), cs.space_group()].count(None)==2):
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+  if(len(map_inps)>1):
+    m0 = map_inps[0].map_data()
+    for m in map_inps[1:]:
+      if(m is None): continue
+      maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
+  return crystal_symmetry
+
 def broadcast(m, log):
   print >> log, "-"*79
   print >> log, m
@@ -72,9 +113,10 @@ def get_inputs(args, log, master_params):
     master_params = master_params)
   e = inputs.params.extract()
   # Model
-  pdb_inp = None
+  model = None
   if(e.model_file_name is not None):
     pdb_inp = iotbx.pdb.input(file_name = e.model_file_name)
+    model = mmtbx.model.manager(model_input = pdb_inp)
   # Map
   map_inp = None
   if(e.map_file_name is not None):
@@ -86,12 +128,20 @@ def get_inputs(args, log, master_params):
   map_inp_2 = None
   if(e.half_map_file_name_2 is not None):
     map_inp_2 = iotbx.ccp4_map.map_reader(file_name=e.half_map_file_name_2)
+  #
+  crystal_symmetry = check_and_set_crystal_symmetry(
+    models   = [model],
+    map_inps = [map_inp, map_inp_1, map_inp_2])
+  if(map_inp_1 is not None): map_data_1 = map_inp_1.map_data()
+  if(map_inp_2 is not None): map_data_2 = map_inp_2.map_data()
+  #
   return group_args(
-    map_inp   = map_inp,
-    map_inp_1 = map_inp_1,
-    map_inp_2 = map_inp_2,
-    pdb_inp   = pdb_inp,
-    params    = inputs.params.extract())
+    map_data         = map_inp.map_data(),
+    map_data_1       = map_data_1,
+    map_data_2       = map_data_2,
+    model            = model,
+    crystal_symmetry = crystal_symmetry,
+    params           = inputs.params.extract())
 
 def show_histogram(map_histograms, log):
   if(map_histograms.h_half_map_1 is None):
@@ -142,6 +192,7 @@ Feedback:
   print >> log, "-"*79
   print >> log, run.__doc__
   print >> log, "-"*79
+  if(len(args)==0): return
   introspection.virtual_memory_info().show_if_available(out=null_out(),
     show_max=True) # just to initialize something
   # Get inputs
@@ -149,14 +200,25 @@ Feedback:
     args          = args,
     log           = log,
     master_params = master_params)
+  inputs.model.setup_scattering_dictionaries(
+    scattering_table = inputs.params.scattering_table)
+  base = map_and_model.input(
+    map_data         = inputs.map_data,
+    map_data_1       = inputs.map_data_1,
+    map_data_2       = inputs.map_data_2,
+    model            = inputs.model,
+    crystal_symmetry = inputs.crystal_symmetry,
+    box              = True)
   #
   task_obj = mmtbx.maps.mtriage.mtriage(
-    map_inp   = inputs.map_inp,
-    map_inp_1 = inputs.map_inp_1,
-    map_inp_2 = inputs.map_inp_2,
-    pdb_inp   = inputs.pdb_inp,
-    params    = inputs.params)
+    map_data       = base.map_data(),
+    map_data_1     = base.map_data_1(),
+    map_data_2     = base.map_data_2(),
+    xray_structure = base.xray_structure(),
+    params         = inputs.params)
   results = task_obj.get_results()
+  results.counts = base.counts()
+  results.histograms = base.histograms()
   #
   # Map statistics
   #
@@ -170,7 +232,7 @@ Feedback:
   print >> log, "  d_min_corner:", "%7.3f"%results.counts.d_min_corner
   #
   print >> log, "Half-maps:"
-  if(inputs.map_inp_1 is None):
+  if(inputs.map_data_1 is None):
     print >> log, "  Half-maps are not provided."
   #
   print >> log, "Histogram(s) of map values (masked):"

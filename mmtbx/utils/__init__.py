@@ -2552,6 +2552,7 @@ class extract_box_around_model_and_map(object):
       value_list.append(new_map_data.as_1d().as_double().min_max_mean().max)
     y_min,y_max=self.get_range(value_list,threshold=threshold,
       get_half_height_width=get_half_height_width)
+
     value_list=flex.double()
     for k in xrange(0,all[2]):
       new_map_data = maptbx.copy(map_data,

@@ -1,45 +1,9 @@
 from __future__ import division
 import mmtbx.model
-from libtbx.utils import null_out
 from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
-
-def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[]):
-  # XXX This should go into a central place
-  # XXX Check map gridding here!
-  for it in [models, map_inps, miller_arrays]:
-    assert isinstance(it, (list, tuple))
-  crystal_symmetry = None
-  css = []
-  all_inputs = models+map_inps+miller_arrays
-  for it in all_inputs:
-    if(it is not None):
-      it = it.crystal_symmetry()
-      if(it is None): continue
-      if(not [it.unit_cell(), it.space_group()].count(None) in [0,2]):
-        raise Sorry("Inconsistent box (aka crystal symmetry) info.")
-      if([it.unit_cell(), it.space_group()].count(None)==0):
-        css.append(it)
-  if(len(css)>1):
-    cs0 = css[0]
-    for cs in css[1:]:
-      if(not cs0.is_similar_symmetry(cs)):
-        raise Sorry("Box info (aka crystal symmetry) mismatch across inputs.")
-  if(len(css)==0):
-    raise Sorry("No box info (aka crystal symmetry) available.")
-  crystal_symmetry = css[0]
-  for model in models:
-    if(model is None): continue
-    cs = model.crystal_symmetry()
-    if(cs is None or [cs.unit_cell(), cs.space_group()].count(None)==2):
-      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
-  if(len(map_inps)>1):
-    m0 = map_inps[0].map_data()
-    for m in map_inps[1:]:
-      if(m is None): continue
-      maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
 
 def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   h0, h1, h2 = None, None, None
@@ -61,7 +25,7 @@ def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   return group_args(h_map = h0, h_half_map_1 = h1, h_half_map_2 = h2,
     _data_min = data_min, half_map_histogram_cc = hmhcc)
 
-def get_map_counts(map_data, crystal_symmetry):
+def get_map_counts(map_data, crystal_symmetry=None):
   a = map_data.accessor()
   map_counts = group_args(
     origin       = a.origin(),
@@ -75,31 +39,30 @@ def get_map_counts(map_data, crystal_symmetry):
 
 class input(object):
   def __init__(self,
-               map_inp,
-               map_inp_1 = None,
-               map_inp_2 = None,
-               pdb_inp   = None,
-               box       = True):
+               map_data         = None,
+               map_data_1       = None,
+               map_data_2       = None,
+               model            = None,
+               crystal_symmetry = None,
+               box              = True):
     #
-    if(not [map_inp_1, map_inp_2].count(None) in [0,2]):
+    assert [model, crystal_symmetry].count(None) != 2
+    if(crystal_symmetry is None and model is not None):
+      crystal_symmetry = model.crystal_symmetry()
+    if([model, crystal_symmetry].count(None)==0):
+      assert model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)
+    if(not [map_data_1, map_data_2].count(None) in [0,2]):
       raise Sorry("None or two half-maps are required.")
     #
-    self._map_data        = None
-    self._half_map_data_1 = None
-    self._half_map_data_2 = None
-    self._model = None
+    self._map_data         = map_data
+    self._half_map_data_1  = map_data_1
+    self._half_map_data_2  = map_data_2
+    self._model            = model
+    self._crystal_symmetry = crystal_symmetry
     #
-    if(pdb_inp is not None):
-      self._model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
-    check_and_set_crystal_symmetry(
-      models   = [self._model],
-      map_inps = [map_inp, map_inp_1, map_inp_2])
-    self._map_data = map_inp.map_data()
     self._counts = get_map_counts(
       map_data         = self._map_data,
-      crystal_symmetry = map_inp.crystal_symmetry())
-    if(map_inp_1 is not None): self._half_map_data_1 = map_inp_1.map_data()
-    if(map_inp_2 is not None): self._half_map_data_2 = map_inp_2.map_data()
+      crystal_symmetry = crystal_symmetry)
     self._map_histograms = get_map_histograms(
       data    = self._map_data,
       n_slots = 20,
@@ -112,7 +75,7 @@ class input(object):
     soin = maptbx.shift_origin_if_needed(
       map_data         = self._map_data,
       sites_cart       = sites_cart,
-      crystal_symmetry = self._model.crystal_symmetry())
+      crystal_symmetry = crystal_symmetry)
     self._map_data = soin.map_data
     if(self._model is not None):
       self._model.set_sites_cart(sites_cart = soin.sites_cart)
@@ -142,7 +105,8 @@ class input(object):
         map_data       = self._map_data,
         box_cushion    = 5.0)
       self._model.set_xray_structure(xray_structure = box.xray_structure_box)
-      self._map_data       = box.map_box
+      self._crystal_symmetry = self._model.crystal_symmetry()
+      self._map_data = box.map_box
 
   def counts(self): return self._counts
 
@@ -150,21 +114,14 @@ class input(object):
 
   def map_data(self): return self._map_data
 
-  def half_map_data_1(self): return self._half_map_data_1
+  def map_data_1(self): return self._half_map_data_1
 
-  def half_map_data_2(self): return self._half_map_data_2
+  def map_data_2(self): return self._half_map_data_2
 
   def model(self): return self._model
 
   def xray_structure(self): return self.model().get_xray_structure()
 
-  def crystal_symmetry(self): return self.model().crystal_symmetry()
+  def crystal_symmetry(self): return self._crystal_symmetry
 
   def hierarchy(self): return self._model.get_hierarchy()
-
-  def update_maps(self,map_data=None,half_map_data_1=None,half_map_data_2=None):
-    # XXX check gridding
-    # XXX do we need this?
-    if(map_data is not None): self._map_data = map_data
-    if(half_map_data_1 is not None): self._half_map_data_1 = half_map_data_1
-    if(half_map_data_2 is not None): self._half_map_data_2 = half_map_data_2
