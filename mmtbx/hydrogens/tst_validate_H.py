@@ -572,6 +572,12 @@ def test_output(results):
   out.export_occupancies_0_for_wxGUI()
   out.export_occupancies_lt_1_for_wxGUI()
   out.export_missing_HD_atoms_for_wxGUI()
+  out.export_outliers_bonds_for_wxGUI()
+  out.export_outliers_angles_for_wxGUI()
+  out.export_sites_different_xyz_for_wxGUI()
+  out.export_sites_different_b_for_wxGUI()
+  out.export_sites_sum_occ_for_wxGUI()
+  out.export_sites_occ_scattering_for_wxGUI()
 
 def exercise():
   results = get_results_from_validate_H(

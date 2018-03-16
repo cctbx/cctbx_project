@@ -713,6 +713,51 @@ class validate_H_results(object):
               (prefix, item[0][5:-1], item[2], item[1][5:-1], item[3]),
               file=log)
 
+  def export_sites_different_xyz_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    result = None
+    if (self.results.hd_sites_analysis):
+      result = self.results.hd_sites_analysis.sites_different_xyz
+    if (result):
+      for item in result:
+        table.append([item[0][5:-1], item[1][5:-1], item[2], None, item[-1]])
+    return table
+
+  def export_sites_different_b_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    result = None
+    if (self.results.hd_sites_analysis):
+      result = self.results.hd_sites_analysis.sites_different_b
+    if (result):
+      for item in result:
+        table.append([item[0][5:-1], item[1][5:-1], None, item[-1]])
+    return table
+
+  def export_sites_sum_occ_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    result = None
+    if (self.results.hd_sites_analysis):
+      result = self.results.hd_sites_analysis.sites_sum_occ_not_1
+    if (result):
+      for item in result:
+        table.append([item[0][5:-1], item[1][5:-1], item[2], None, item[-1]])
+    return table
+
+  def export_sites_occ_scattering_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    result = None
+    if (self.results.hd_sites_analysis):
+      result = self.results.hd_sites_analysis.sites_occ_sum_no_scattering
+    if (result):
+      for item in result:
+        table.append([item[0][5:-1], item[2], item[1][5:-1], item[3],
+                      None, item[-1]])
+    return table
+
   def print_missing_HD_atoms(self, missing_HD_atoms, prefix, log=None):
     if (log is None):
       log = self.log
@@ -746,6 +791,22 @@ class validate_H_results(object):
       for item in outliers_angles:
         print('%s%s, Angle %s, observed: %.3f, delta from target: %.3f' % \
           (prefix, item[0], item[1], item[2], item[3]), file=self.log)
+
+  def export_outliers_bonds_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.outliers_bonds):
+      for item in self.results.outliers_bonds:
+        table.append([item[0], item[1], item[2], item[3], None, item[-1]])
+    return table
+
+  def export_outliers_angles_for_wxGUI(self):
+    # last element should be xyz for residue/atom
+    table = list()
+    if (self.results.outliers_angles):
+      for item in self.results.outliers_angles:
+        table.append([item[0], item[1], item[2], item[3], None, item[-1]])
+    return table
 
   def print_xray_distance_warning(self):
     print('*'*79, file=self.log)
