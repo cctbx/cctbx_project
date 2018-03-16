@@ -567,6 +567,12 @@ def test_output(results):
   out.print_results(prefix='  ', log=log)
   log.close()
 
+  # export data for wxGUI
+  out.export_renamed_for_wxGUI()
+  out.export_occupancies_0_for_wxGUI()
+  out.export_occupancies_lt_1_for_wxGUI()
+  out.export_missing_HD_atoms_for_wxGUI()
+
 def exercise():
   results = get_results_from_validate_H(
     neutron_distances = True,

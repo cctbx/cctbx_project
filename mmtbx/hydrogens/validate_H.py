@@ -147,16 +147,16 @@ class validate_H(object):
             if len([list(tupl) for tupl in {tuple(item) for item in missing }]) == 1:
                 missing_HD_atoms.append((id_strings[0],
                                          missing[0],
-                                         xyzs[0],
-                                         ", ".join(conformers)))
+                                         ", ".join(conformers),
+                                         xyzs[0]))
             # otherwise, add for each conformer
             else:
               for missing_list, conformer, id_str, xyz in zip(
                                         missing, conformers, id_strings, xyzs):
                 missing_HD_atoms.append((id_str,
                                          missing_list,
-                                         xyz,
-                                         conformer))
+                                         conformer,
+                                         xyz))
     self.missing_HD_atoms = missing_HD_atoms
 
   def get_atom(self, residue_group, name):
@@ -655,7 +655,7 @@ class validate_H_results(object):
     table = list()
     if (self.results.overall_counts_hd.hd_atoms_with_occ_0):
       for item in self.results.overall_counts_hd.hd_atoms_with_occ_0:
-        table.append([item[0], None, item[-1]])
+        table.append([item[0].split('"')[1], None, item[-1]])
     return table
 
   def export_occupancies_lt_1_for_wxGUI(self):
@@ -663,7 +663,7 @@ class validate_H_results(object):
     table = list()
     if (self.results.overall_counts_hd.single_hd_atoms_occ_lt_1):
       for item in self.results.overall_counts_hd.single_hd_atoms_occ_lt_1:
-        table.append([item[0], item[1], None, item[-1]])
+        table.append([item[0].split('"')[1], item[1], None, item[-1]])
     return table
 
   def print_results_hd_sites(
@@ -719,7 +719,7 @@ class validate_H_results(object):
 
     make_sub_header('MISSING H or D atoms', out=log)
     for item in missing_HD_atoms:
-      print('%s%s conformer %s : %s ' % (prefix, item[0][8:-1], item[3], ", ".join(item[1])),
+      print('%s%s conformer %s : %s ' % (prefix, item[0][8:-1], item[2], ", ".join(item[1])),
             file=log)
 
   def export_missing_HD_atoms_for_wxGUI(self):
@@ -727,7 +727,8 @@ class validate_H_results(object):
     table = list()
     if (self.results.missing_HD_atoms):
       for item in self.results.missing_HD_atoms:
-        table.append([item[0][8:-1], ', '.join(item[1]), None, item[-1]])
+        table.append([item[0][8:-1], item[2], ', '.join(item[1]),
+                      None, item[-1]])
     return table
 
   def print_outliers_bonds_angles(self, outliers_bonds, outliers_angles,
