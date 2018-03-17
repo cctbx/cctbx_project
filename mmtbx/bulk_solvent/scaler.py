@@ -34,13 +34,25 @@ def moving_average(x):
     x_ = result[:]
   return result[1:len(result)-1]
 
-def run_simple(fmodel_kbu, bin_selections, r_free_flags, bulk_solvent):
+def run_simple(fmodel_kbu, bin_selections, r_free_flags, bulk_solvent,
+               aniso_scale):
+  if(aniso_scale):
+    try_poly    = True
+    try_expanal = True
+    try_expmin  = False
+  else:
+    try_poly    = False
+    try_expanal = False
+    try_expmin  = False
   return run(
     f_obs            = fmodel_kbu.f_obs,
     f_calc           = fmodel_kbu.f_calc,
     f_mask           = fmodel_kbu.f_masks,
     r_free_flags     = r_free_flags,
     bulk_solvent     = bulk_solvent,
+    try_poly         = try_poly,
+    try_expanal      = try_expanal,
+    try_expmin       = try_expmin,
     ss               = fmodel_kbu.ss,
     number_of_cycles = 100,
     bin_selections   = bin_selections)
@@ -64,6 +76,7 @@ class run(object):
                try_expanal = True,
                try_expmin = False,
                verbose=False):
+
     assert f_obs.indices().all_eq(r_free_flags.indices())
     self.log = log
     self.scale_method = scale_method

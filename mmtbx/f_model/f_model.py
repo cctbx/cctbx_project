@@ -1449,9 +1449,13 @@ class manager(manager_mixin):
     self.apply_scale_k1_to_f_obs()
     from mmtbx.bulk_solvent import f_model_all_scales
     o = f_model_all_scales.run(
-      fmodel=self, apply_back_trace = apply_back_trace,
-      remove_outliers = remove_outliers, fast = fast,
-      params = params, log = log, refine_hd_scattering=refine_hd_scattering)
+      fmodel               = self,
+      apply_back_trace     = apply_back_trace,
+      remove_outliers      = remove_outliers,
+      fast                 = fast,
+      params               = params,
+      log                  = log,
+      refine_hd_scattering = refine_hd_scattering)
     if(optimize_mask): self.optimize_mask(out=log)
     if(remove_outliers and self.twin_law is None):
       for i in [1,2,3,4,5]:

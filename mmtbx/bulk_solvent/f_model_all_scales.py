@@ -140,6 +140,7 @@ class run(mmtbx.f_model.manager):
         fmodel_kbu     = fmodel_kbu,
         r_free_flags   = self.r_free_flags(),
         bulk_solvent   = params.bulk_solvent,
+        aniso_scale    = params.anisotropic_scaling,
         bin_selections = self.bin_selections)
       r_all_from_scaler = result.r_all() # must be here, before apply_back_trace
     else: # using minimization: exp solvent and scale model (k_sol,b_sol,b_cart)
@@ -247,6 +248,7 @@ class run(mmtbx.f_model.manager):
           fmodel_kbu     = fmodel_kbu_,
           r_free_flags   = self.r_free_flags(),
           bulk_solvent   = params.bulk_solvent,
+          aniso_scale    = params.anisotropic_scaling,
           bin_selections = self.bin_selections)
         f_part2 = f_part2.array(data = result.core.k_mask()*f_part2.data())
         k_isotropic   = result.core.k_isotropic*result.core.k_isotropic_exp
