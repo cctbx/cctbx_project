@@ -31,14 +31,17 @@ try:
 except ImportError:
   setuptools = None
 
+def _notice(*lines, **context):
+  print(os.linesep + "=" * 80 + os.linesep + os.linesep +
+        os.linesep.join(l.format(**context) for l in lines) + os.linesep +
+        os.linesep + "=" * 80 + os.linesep)
+
 def require(pkgname, version=None):
   if not pip:
-    print ("\n" + "=" * 80 + "\n\n"
-         + "  WARNING: Can not verify python package requirements - pip/setuptools out of date\n"
-         + "  Please update pip and setuptools by running:\n\n"
-         + "    libtbx.python -m pip install pip setuptools --upgrade\n\n"
-         + "  or following the instructions at https://pip.pypa.io/en/stable/installing/\n\n"
-         + "=" * 80 + "\n")
+    _notice("  WARNING: Can not verify python package requirements - pip/setuptools out of date",
+            "  Please update pip and setuptools by running:", "",
+            "    libtbx.python -m pip install pip setuptools --upgrade", "",
+            "  or following the instructions at https://pip.pypa.io/en/stable/installing/")
     return False
 
   if not version:
@@ -65,22 +68,27 @@ def require(pkgname, version=None):
     egg_link = os.path.join(path_item, project_name + '.egg-link')
     if os.path.isfile(egg_link):
       with open(egg_link, 'r') as fh:
-        print (("=" * 80 + "\n\n"
-             + "     WARNING: Can not update package {package} automatically.\n"
-             + "It is installed as editable package for development purposes. The currently\n"
-             + "installed version, {currentversion}, is too old. The required version is {requirement}.\n"
-             + "Please update the package manually in its installed location:\n\n"
-             + "     {packagelocation}\n\n"
-             + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip()))
+        location = fh.readline().strip()
+      _notice("    WARNING: Can not update package {package} automatically.", "",
+              "It is installed as editable package for development purposes. The currently",
+              "installed version, {currentversion}, is too old. The required version is {requirement}.",
+              "Please update the package manually in its installed location:", "",
+              "    {location}",
+              package=pkgname, currentversion=currentversion, requirement=version, location=location)
       return False
 
   if not os.path.isdir(libtbx.env.under_base('.')):
-    print (("=" * 80 + "\n\n"
-         + "     WARNING: Can not install/update package {package} automatically.\n"
-         + "You are running in a base-less installation, which disables automatic package installation\n"
-         + "by convention. cf. https://github.com/cctbx/cctbx_project/issues/151\n\n"
-         + "Please install/update the package manually.\n\n"
-         + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version))
+    _notice("    WARNING: Can not {action} package {package} automatically.", "",
+            "You are running in a base-less installation, which disables automatic package",
+            "management by convention, see https://github.com/cctbx/cctbx_project/issues/151", "",
+            "Please {action} the package manually.",
+            package=pkgname, currentversion=currentversion, requirement=version, action=action)
+    return False
+
+  if os.getenv('LIBTBX_DISABLE_UPDATES') and os.getenv('LIBTBX_DISABLE_UPDATES').strip() not in ('0', ''):
+    _notice("    WARNING: Can not {action} package {package} automatically.", "",
+            "Environment variable LIBTBX_DISABLE_UPDATES is set. Please {action} manually.",
+            package=pkgname, currentversion=currentversion, requirement=version, action=action)
     return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
