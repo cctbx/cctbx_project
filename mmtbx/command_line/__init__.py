@@ -499,8 +499,6 @@ class load_model_and_data (object) :
           input_string=mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str,
           process_includes=True).extract()
       pdb_interp_params = pdb_interp_params.pdb_interpretation
-    pdb_interp_params.use_neutron_distances = params.input.scattering_table=="neutron"
-
 
     stop_for_unknowns = getattr(pdb_interp_params, "stop_for_unknowns",False) or remove_unknown_scatterers
     if not process_pdb_file:
