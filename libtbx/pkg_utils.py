@@ -72,7 +72,16 @@ def require(pkgname, version=None):
              + "Please update the package manually in its installed location:\n\n"
              + "     {packagelocation}\n\n"
              + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version, packagelocation=fh.readline().strip()))
-        return False
+      return False
+
+  if not os.path.isdir(libtbx.env.under_base('.')):
+    print (("=" * 80 + "\n\n"
+         + "     WARNING: Can not install/update package {package} automatically.\n"
+         + "You are running in a base-less installation, which disables automatic package installation\n"
+         + "by convention. cf. https://github.com/cctbx/cctbx_project/issues/151\n\n"
+         + "Please install/update the package manually.\n\n"
+         + "=" * 80 + "\n\n").format(package=pkgname, currentversion=currentversion, requirement=version))
+    return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
   exit_code = pip.main(['install', requirestring])
