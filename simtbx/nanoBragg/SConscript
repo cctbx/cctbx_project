@@ -11,6 +11,7 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
   source=[
     "nanoBragg_ext.cpp",
     "nanoBragg.cpp",
+    "nanoBragg_nks.cpp",
   ])
 
 env.SharedLibrary(

@@ -154,6 +154,31 @@ namespace boost_python { namespace {
       nanoBragg.reconcile_parameters();
   }
 
+  static vec2 get_adxv_beam_center_mm(nanoBragg const& nanoBragg) {
+      vec2 value;
+      value[0]=nanoBragg.Fbeam*1000.;
+      value[1]=(nanoBragg.detsize_s - nanoBragg.Sbeam)*1000.;
+      return value;
+  }
+  static vec2 get_mosflm_beam_center_mm(nanoBragg const& nanoBragg) {
+      vec2 value;
+      value[0]=(nanoBragg.Sbeam-0.5*nanoBragg.pixel_size)*1000.0;
+      value[1]=(nanoBragg.Fbeam-0.5*nanoBragg.pixel_size)*1000;
+      return value;
+  }
+  static vec2 get_denzo_beam_center_mm(nanoBragg const& nanoBragg) {
+      vec2 value;
+      value[0]=(nanoBragg.Sbeam+0.0*nanoBragg.pixel_size)*1000.0;
+      value[1]=(nanoBragg.Fbeam+0.0*nanoBragg.pixel_size)*1000;
+      return value;
+  }
+  static vec3 get_dials_origin_mm(nanoBragg const& nanoBragg) {
+      vec3 value;
+      value[0]=nanoBragg.dials_origin[1];
+      value[1]=nanoBragg.dials_origin[2];
+      value[2]=nanoBragg.dials_origin[3];
+      return value;
+  }
 
 
   /* number of unit cells along edge in each cell axis direction */
@@ -1289,6 +1314,21 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_XDS_ORGXY,rbv()),
                      make_function(&set_XDS_ORGXY,dcp()),
                      "XDS-convention beam center is nearest pixel in detector plane to sample position (fast,slow)")
+      .add_property("adxv_beam_center_mm",
+                     make_function(&get_adxv_beam_center_mm,rbv()),
+                     "ADXV beam center (mm) (fast,slow)")
+
+      .add_property("mosflm_beam_center_mm",
+                     make_function(&get_mosflm_beam_center_mm,rbv()),
+                     "MOSFLM beam center (mm) (slow,fast)")
+
+      .add_property("denzo_beam_center_mm",
+                     make_function(&get_denzo_beam_center_mm,rbv()),
+                     "DENZO beam center (mm) (slow,fast)")
+
+      .add_property("dials_origin_mm",
+                     make_function(&get_dials_origin_mm,rbv()),
+                     "DIALS detector origin (mm)")
 
       /* specify the detector pivot point, note: this is an enum */
       .add_property("detector_pivot",
@@ -1697,6 +1737,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("add_nanoBragg_spots",&nanoBragg::add_nanoBragg_spots,
        "actually run the spot simulation, going pixel-by-pixel over the region-of-interst")
 
+      /* actual run of the spot simulation, restricted implementation plus OpenMP */
+      .def("add_nanoBragg_spots_nks",&nanoBragg::add_nanoBragg_spots_nks,
+       "actually run the spot simulation, going pixel-by-pixel over the region-of-interest, restricted options, plus OpenMP")
+
       /* actual run of the background simulation */
       .def("add_background",&nanoBragg::add_background,
         (arg_("oversample")=-1,arg_("source")=-1),
@@ -1719,6 +1763,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       .def("to_smv_format",&nanoBragg::to_smv_format,
         (arg_("fileout"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
         "interally produce an SMV-format image file on disk from the raw pixel array\nintfile_scale is applied before rounding off to integral pixel values")
+      .def("to_smv_format_streambuf",&nanoBragg::to_smv_format_streambuf,
+        (arg_("output"),arg_("intfile_scale")=0,arg_("debug_x")=-1,arg("debug_y")=-1),
+        "provide the integer buffer only to be used in Python for SMV-format output.  Intfile_scale is applied before rounding off to integral pixel values")
     ;
     // end of nanoBragg class definition
 
