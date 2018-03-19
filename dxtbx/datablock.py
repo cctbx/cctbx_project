@@ -940,8 +940,7 @@ class DataBlockFactory(object):
       if isfile(f):
         filelist.append(f)
       elif isdir(f):
-        subdir = [ join(f, sf) for sf in listdir(f) if isfile(join(f, sf)) ]
-        subdir.sort()
+        subdir = sorted(join(f, sf) for sf in listdir(f) if isfile(join(f, sf)))
         filelist.extend(subdir)
         if verbose:
           print "Added %d files from %s" % (len(subdir), f)

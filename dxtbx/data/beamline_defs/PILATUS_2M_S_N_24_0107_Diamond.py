@@ -18,7 +18,7 @@ class get_definition(dxtbx.data.beamline_defs.template):
     if not self._timestamp: # default to I19
       return self._at_I19
 
-    if self._timestamp >= self._date_to_epoch(2015, 11, 01):
+    if self._timestamp >= self._date_to_epoch(2015, 11, 1):
       return self._at_I19 # moved to I19 on 01.11.2015
 
     return self._at_I04_1 # before was on I04-1
