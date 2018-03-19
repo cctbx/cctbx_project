@@ -45,6 +45,10 @@ striping {
   chunk_size = 1000
     .type = float
     .help = "Maximum number of images per chunk or stripe."
+  respect_rungroup_barriers = True
+    .type = bool
+    .help = "Enforce separation by rungroup at time of striping (default)."
+            "Turn off to allow multiple rungroups to share a detector model."
 }
 '''
 
@@ -251,13 +255,14 @@ usage: cctbx.xfel.stripe_experiment striping.results_dir=/path/to/results stripi
 for interactive unit cell clustering, use combine_experiments.clustering.dendrogram=True
 """
 
-def allocate_chunks_per_rungroup(results_dir,
-                                 trial_no,
-                                 rgs_selected=None,
-                                 runs_selected=None,
-                                 stripe=False,
-                                 max_size=1000,
-                                 integrated=False):
+def allocate_chunks(results_dir,
+                    trial_no,
+                    rgs_selected=None,
+                    respect_rungroup_barriers=True,
+                    runs_selected=None,
+                    stripe=False,
+                    max_size=1000,
+                    integrated=False):
   refl_ending = "_integrated.pickle" if integrated else "_indexed.pickle"
   expt_ending = "_refined_experiments.json"
   trial = "%03d" % trial_no
@@ -282,37 +287,47 @@ def allocate_chunks_per_rungroup(results_dir,
         rgs[rg] = [run]
       else:
         rgs[rg].append(run)
-  rg_ch_nums_sizes = {}
-  rg_contents = {}
-  for rg, runs in rgs.iteritems():
+  batch_chunk_nums_sizes = {}
+  batch_contents = {}
+  if respect_rungroup_barriers:
+    batchable = {rg:{rg:runs} for rg, runs in rgs.iteritems()}
+  else:
+    batchable = {"all":rgs}
+  # for either grouping, iterate over the top level keys in batchable and
+  # distribute the events within those "batches" in stripes or chunks
+  for batch, rungroups in batchable.iteritems():
+    rg_by_run = {}
+    for rungroup, runs in rungroups.iteritems():
+      for run in runs:
+        rg_by_run[run] = rungroup
     n_img = 0
-    trg = trial + "_" + rg
-    rg_contents[rg] = []
-    for run in runs:
+    batch_contents[batch] = []
+    for run, rg in rg_by_run.iteritems():
       try:
+        trg = trial + "_" + rg
         contents = os.listdir(os.path.join(results_dir, run, trg, "out"))
       except OSError:
         print "skipping run %s missing out directory" % run
         continue
       abs_contents = [os.path.join(results_dir, run, trg, "out", c)
                       for c in contents]
-      rg_contents[rg].extend(abs_contents)
+      batch_contents[batch].extend(abs_contents)
       expts = [c for c in contents if c.endswith(expt_ending)]
       n_img += len(expts)
     if n_img == 0:
-      print "no images found for %s" % rg
-      del rg_contents[rg]
+      print "no images found for %s" % batch
+      del batch_contents[batch]
       continue
     n_chunks = int(math.ceil(n_img/max_size))
     chunk_size = int(math.ceil(n_img/n_chunks))
-    rg_ch_nums_sizes[rg] = (n_chunks, chunk_size)
-  if len(rg_contents) == 0:
+    batch_chunk_nums_sizes[batch] = (n_chunks, chunk_size)
+  if len(batch_contents) == 0:
     raise Sorry, "no DIALS integration results found."
-  rg_chunks = {}
-  for rg, nst in rg_ch_nums_sizes.iteritems():
-    num, size = nst
-    rg_chunks[rg] = []
-    contents = rg_contents[rg]
+  batch_chunks = {}
+  for batch, num_size_tuple in batch_chunk_nums_sizes.iteritems():
+    num, size = num_size_tuple
+    batch_chunks[batch] = []
+    contents = batch_contents[batch]
     expts = [c for c in contents if c.endswith(expt_ending)]
     refls = [c for c in contents if c.endswith(refl_ending)]
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
@@ -320,17 +335,17 @@ def allocate_chunks_per_rungroup(results_dir,
       for i in xrange(num):
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
-        rg_chunks[rg].append((expts_stripe, refls_stripe))
+        batch_chunks[batch].append((expts_stripe, refls_stripe))
       print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
-        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
     else:
       for i in xrange(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
-        rg_chunks[rg].append((expts_chunk, refls_chunk))
+        batch_chunks[batch].append((expts_chunk, refls_chunk))
       print "chunked %d experiments in %s with %d experiments per chunk and %d chunks" % \
-        (len(expts), rg, len(rg_chunks[rg][0][0]), len(rg_chunks[rg]))
-  return rg_chunks
+        (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
+  return batch_chunks
 
 def parse_retaining_scope(args, master_scope=master_scope):
   if "-c" in args:
@@ -445,13 +460,14 @@ class Script(object):
       print "processing runs " + ", ".join(["r%04d" % r for r in self.params.striping.run])
     if self.params.striping.rungroup:
       print "processing rungroups " + ", ".join(["rg%03d" % rg for rg in self.params.striping.rungroup])
-    rg_chunks = allocate_chunks_per_rungroup(self.params.striping.results_dir,
-                                             self.params.striping.trial,
-                                             rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
-                                             runs_selected=["r%04d" % r for r in self.params.striping.run],
-                                             stripe=self.params.striping.stripe,
-                                             max_size=self.params.striping.chunk_size,
-                                             integrated=self.params.combine_experiments.keep_integrated)
+    batch_chunks = allocate_chunks(self.params.striping.results_dir,
+                                   self.params.striping.trial,
+                                   rgs_selected=["rg%03d" % rg for rg in self.params.striping.rungroup],
+                                   respect_rungroup_barriers=self.params.striping.respect_rungroup_barriers,
+                                   runs_selected=["r%04d" % r for r in self.params.striping.run],
+                                   stripe=self.params.striping.stripe,
+                                   max_size=self.params.striping.chunk_size,
+                                   integrated=self.params.combine_experiments.keep_integrated)
     self.dirname = "combine_experiments_t%03d" % self.params.striping.trial
     self.intermediates = os.path.join(self.dirname, "intermediates")
     self.extracted = os.path.join(self.dirname, "final_extracted")
@@ -460,12 +476,12 @@ class Script(object):
         os.mkdir(d)
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
-    for rg, ch_list in rg_chunks.iteritems():
+    for batch, ch_list in batch_chunks.iteritems():
       for idx in xrange(len(ch_list)):
         chunk = ch_list[idx]
 
         # reset for this chunk/stripe
-        self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, rg, tag, idx)
+        self.filename = "t%03d_%s_%s%03d" % (self.params.striping.trial, batch, tag, idx)
         self.command_sequence = []
 
         # set up the file containing input expts and refls (logging)
