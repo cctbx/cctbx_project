@@ -1,6 +1,12 @@
-
 from __future__ import division, absolute_import
-import cStringIO
+
+try:
+  import six
+except ImportError:
+  # six really should be available on all systems. But this is the first
+  # time we are using it in libtbx, so allow workaround. 20180319
+  six = None
+  import cStringIO
 import sys
 
 def format_none(format, null_value=0, replace_with="None"):
@@ -301,12 +307,15 @@ class line_feeder(object):
       if (self.eof or len(result.strip()) != 0):
         return result
 
-# cStringIO with pickling support
+# StringIO with pickling support and extra read-only semantics
 class StringIO (object) :
   def __init__ (self, *args, **kwds) :
-    self._buffer = cStringIO.StringIO(*args, **kwds)
+    self._buffer = (six or cStringIO).StringIO(*args, **kwds)
+    self.read_only = bool(args)
 
   def __getattr__ (self, *args, **kwds) :
+    if self.read_only and args[0] in ('softspace', 'truncate', 'write', 'writelines'):
+      raise AttributeError("'libtbx.str_utils.StringIO' has no attribute '%s'" % args[0])
     return getattr(self._buffer, *args, **kwds)
 
   def __getstate__ (self) :
@@ -318,6 +327,7 @@ class StringIO (object) :
     if is_output_object :
       self.__init__()
       self._buffer.write(buffer_value)
+      self.read_only = True
     else :
       self.__init__(buffer_value)
 
