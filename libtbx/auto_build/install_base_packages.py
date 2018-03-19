@@ -261,7 +261,7 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['pillow']
+      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn']
     if options.labelit:
       options.build_gui = True
       options.build_all = True
@@ -706,10 +706,14 @@ Installation of Python packages may fail.
       'ipython',
       'pyopengl',
       'scipy',
+      'scikit_learn',
       'mpi4py',
       'py2app',
       'misc',
       'lz4_plugin',
+      'jinja2',
+      'orderedset',
+      'procrunner',
       # ...
       'freetype',
       'matplotlib',
@@ -1063,12 +1067,16 @@ _replace_sysconfig_paths(build_time_vars)
     self.call("cp -v *.so %s"%hdf5_plugin_dir,log=log)
 
   def build_scipy(self):
-    # requires Fortran compiler.
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=SCIPY_PKG,
-      pkg_name_label="SciPy",
+    self.build_python_module_pip(
+      package_name='scipy',
+      package_version=SCIPY_VERSION,
       confirm_import_module="scipy")
+
+  def build_scikit_learn(self):
+    self.build_python_module_pip(
+      package_name='scikit-learn',
+      package_version=SCIKIT_LEARN_VERSION,
+      confirm_import_module="sklearn")
 
   def build_mpi4py(self):
     self.build_python_module_pip(
@@ -1124,6 +1132,21 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'Cython', package_version=CYTHON_VERSION,
       confirm_import_module='cython')
+
+  def build_jinja2(self):
+    self.build_python_module_pip(
+      'Jinja2', package_version=JINJA2_VERSION,
+      confirm_import_module='jinja2')
+
+  def build_orderedset(self):
+    self.build_python_module_pip(
+      'orderedset', package_version=ORDEREDSET_VERSION,
+      confirm_import_module='orderedset')
+
+  def build_procrunner(self):
+    self.build_python_module_pip(
+      'procrunner', package_version=PROCRUNNER_VERSION,
+      confirm_import_module='procrunner')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")

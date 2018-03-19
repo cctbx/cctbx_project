@@ -57,7 +57,6 @@ PYTHON_PKG = "Python-2.7.14.tgz"
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.8.tar.gz"
-SCIPY_PKG = "scipy-0.14.0.tar.gz"        # not used by default
 PYRTF_PKG = "PyRTF-0.45.tar.gz"          # for phenix.table_one, etc.
 BIOPYTHON_PKG = "biopython-1.68.tar.gz"  # used in iotbx
 IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
@@ -77,6 +76,11 @@ PYTEST_XDIST_VERSION="1.22.2"
 SIX_VERSION="1.11.0"
 SPHINX_VERSION="1.4.9" # for documentation
 MPI4PY_VERSION="3.0.0"
+JINJA2_VERSION = "2.9.6"
+ORDEREDSET_VERSION = "2.0"
+PROCRUNNER_VERSION = "0.2.0"
+SCIPY_VERSION = "1.0.0"
+SCIKIT_LEARN_VERSION = "0.19.1"
 
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
@@ -260,7 +264,7 @@ def fetch_all_dependencies (dest_dir,
     copy_files=copy_files)
   for pkg_name in [
       PYTHON_PKG, IMAGING_PKG, REPORTLAB_PKG, ZLIB_PKG,
-      SCIPY_PKG, PYRTF_PKG, BIOPYTHON_PKG,
+      PYRTF_PKG, BIOPYTHON_PKG,
       IPYTHON_PKG,
     ] :
     fetch_package(pkg_name)
