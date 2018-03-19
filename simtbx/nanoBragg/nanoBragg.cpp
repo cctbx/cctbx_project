@@ -1539,7 +1539,6 @@ nanoBragg::update_oversample()
             printf("         recommend oversample=%d to work around this\n",recommended_oversample);
         }
     }
-    if(oversample<=0) oversample = this->oversample;
 
     /* rough estimate of sample properties */
     xtal_size_x = xtalsize_a;
@@ -2829,7 +2828,7 @@ nanoBragg::add_background( int oversample, int source )
         {
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
-                ++invalid_pixel[i];
+                invalid_pixel[i] = true;
                 ++i; continue;
             }
 
@@ -3049,7 +3048,7 @@ nanoBragg::extract_background(int source)
 
             /* allow for just one part of detector to be rendered */
             if(fpixel < roi_xmin || fpixel > roi_xmax || spixel < roi_ymin || spixel > roi_ymax) {
-                ++invalid_pixel[i];
+                invalid_pixel[i] = true;
                 ++i; continue;
             }
 
@@ -3058,7 +3057,7 @@ nanoBragg::extract_background(int source)
             for(k=1;k<=ignore_values;++k)
             {
                 if(floatimage[i]==ignore_value[k]){
-                    ++invalid_pixel[i];
+                    invalid_pixel[i] = true;
                 }
             }
 //            if(invalid_pixel[i])
