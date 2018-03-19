@@ -221,6 +221,9 @@ plots {
 save_pdf = False
   .type = bool
   .help = Whether to show the plots or save as a multi-page pdf
+save_png = False
+  .type = bool
+  .help = Whether to show the plots or save as a series of pngs
 include scope xfel.command_line.cspad_detector_congruence.phil_scope
 ''', process_includes=True)
 
@@ -703,7 +706,7 @@ class Script(DCScript):
       reflections = reflections.select(sel)
       print "After filtering by I/sigi cutoff of %f, there are %d reflections left"%(self.params.residuals.i_sigi_cutoff,len(reflections))
 
-    if 'shoebox' in reflections:
+    if 'shoebox' in reflections and (params.repredict.enable or (params.show_plots and params.plots.reflection_energies)):
       reflections = reflection_wavelength_from_pixels(experiments, reflections)
       stats = flex.mean_and_variance(12398.4/reflections['reflection_wavelength_from_pixels'])
       print "Mean energy: %.1f +/- %.1f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
@@ -1084,6 +1087,14 @@ class Script(DCScript):
         for i in plt.get_fignums():
           pp.savefig(plt.figure(i))
         pp.close()
+      elif self.params.save_png:
+        if len(tag) == 0:
+          prefix = ""
+        else:
+          prefix = "%s_"%tag.strip()
+        for i in plt.get_fignums():
+          print "Saving figure", i
+          plt.figure(i).savefig("%sfig%02d.png"%(prefix, i), format='png', DPI=1200)
       else:
         plt.show()
 
@@ -1253,15 +1264,19 @@ class Script(DCScript):
     plt.title("%sBoxplot of image RMSDs"%tag)
     ax.set_xlabel("RMSD (microns)")
 
-  def detector_plot_refls(self, detector, reflections, title, show=True, plot_callback=None, colorbar_units=None):
+  def detector_plot_refls(self, detector, reflections, title, show=True, plot_callback=None, colorbar_units=None, new_fig = True):
     """
     Use matplotlib to plot a detector, color coding panels according to callback
     @param detector detector reference detector object
     @param title title string for plot
     @param units_str string with a formatting statment for units on each panel
     """
-    fig = plt.figure()
-    ax = fig.add_subplot(111, aspect='equal')
+    if new_fig:
+      fig = plt.figure()
+      ax = fig.add_subplot(111, aspect='equal')
+    else:
+      fig = plt.gcf()
+      ax = plt.gca()
     max_dim = 0
     for panel_id, panel in enumerate(detector):
       # get panel coordinates
