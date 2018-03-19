@@ -343,6 +343,43 @@ class Script(DCScript):
       check_format=False,
       epilog=help_message)
 
+  def run(self):
+    ''' Parse the options. '''
+    from dials.util.options import flatten_experiments, flatten_reflections
+    # Parse the command line arguments
+    params, options = self.parser.parse_args(show_diff_phil=True)
+    self.params = params
+    if params.plots.all_plots:
+      for attr in dir(params.plots):
+        if attr.startswith('__'): continue
+        setattr(params.plots, attr, True)
+
+    experiments = flatten_experiments(params.input.experiments)
+
+    # Find all detector objects
+    detectors = experiments.detectors()
+
+    # Verify inputs
+    if len(params.input.reflections) == len(detectors) and len(detectors) > 1:
+      # case for passing in multiple images on the command line
+      assert len(params.input.reflections) == len(detectors)
+      reflections = flex.reflection_table()
+      for expt_id in xrange(len(detectors)):
+        subset = params.input.reflections[expt_id].data
+        subset['id'] = flex.int(len(subset), expt_id)
+        reflections.extend(subset)
+    else:
+      # case for passing in combined experiments and reflections
+      reflections = flatten_reflections(params.input.reflections)[0]
+
+    ResidualsPlotter(params, experiments, reflections).plot_all()
+
+class ResidualsPlotter(object):
+  def __init__(self, params, experiments, reflections):
+    self.params = params
+    self.experiments = experiments
+    self.reflections = reflections
+
   def get_normalized_colors(self, data, vmin=None, vmax=None):
     if vmax is None:
       vmax = self.params.residuals.plot_max
@@ -649,36 +686,12 @@ class Script(DCScript):
     return flex.vec2_double(((data.parts()[0] * xscale) - (data_min_x * xscale)),
                             ((data.parts()[1] * yscale) - (data_min_y * yscale))) + origin
 
-  def run(self):
-    ''' Parse the options. '''
-    from dials.util.options import flatten_experiments, flatten_reflections
-    # Parse the command line arguments
-    params, options = self.parser.parse_args(show_diff_phil=True)
-    self.params = params
-    if params.plots.all_plots:
-      for attr in dir(params.plots):
-        if attr.startswith('__'): continue
-        setattr(params.plots, attr, True)
+  def plot_all(self):
+    params = self.params
+    experiments = self.experiments
+    reflections = self.reflections
 
-    experiments = flatten_experiments(params.input.experiments)
-
-    # Find all detector objects
-    detectors = experiments.detectors()
-
-    # Verify inputs
-    if len(params.input.reflections) == len(detectors) and len(detectors) > 1:
-      # case for passing in multiple images on the command line
-      assert len(params.input.reflections) == len(detectors)
-      reflections = flex.reflection_table()
-      for expt_id in xrange(len(detectors)):
-        subset = params.input.reflections[expt_id].data
-        subset['id'] = flex.int(len(subset), expt_id)
-        reflections.extend(subset)
-    else:
-      # case for passing in combined experiments and reflections
-      reflections = flatten_reflections(params.input.reflections)[0]
-
-    detector = detectors[0]
+    detector = experiments.detectors()[0]
 
     from dials.algorithms.refinement.prediction import ExperimentsPredictor
     ref_predictor = ExperimentsPredictor(experiments, force_stills=experiments.all_stills())
