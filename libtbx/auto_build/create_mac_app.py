@@ -73,6 +73,8 @@ def run (args, out=sys.stdout) :
   os.chdir(py2app_bin_dir)
   f = open("%s.py" % app_name, "w")
   f.write("""
+import os
+import sys
 os.environ["PYTHONPATH"] = ""
 os.spawnv(os.P_NOWAIT, "%s", ["%s"])
 """ % (os.path.join(bin_dir, program_name), app_name))
