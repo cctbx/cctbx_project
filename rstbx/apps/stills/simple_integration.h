@@ -420,11 +420,11 @@ namespace rstbx { namespace integration {
                bool pixels_are_active = true;
                for (mask_t::const_iterator k=spot_keys.begin();
                     k != spot_keys.end(); ++k){
-                 if ( check_tiles &&
-                      (k->first)[0] < tiling_boundaries_m[4*itile] ||
+                 if (check_tiles &&
+                     ((k->first)[0] < tiling_boundaries_m[4*itile] ||
                       (k->first)[0] >= tiling_boundaries_m[4*itile+2] ||
                       (k->first)[1] < tiling_boundaries_m[4*itile+1] ||
-                      (k->first)[1] >= tiling_boundaries_m[4*itile+3]) {
+                      (k->first)[1] >= tiling_boundaries_m[4*itile+3])) {
                    pixels_are_active = false;
                    break;
                  }
@@ -508,11 +508,11 @@ namespace rstbx { namespace integration {
             //Guard against background pixels off the active area
             if (check_tiles || use_mask_pixel_val) {
                int itile = tile_locations_m[i];
-               if ( check_tiles &&
-                    candidate_bkgd[0] < tiling_boundaries_m[4*itile] ||
+               if (check_tiles &&
+                   (candidate_bkgd[0] < tiling_boundaries_m[4*itile] ||
                     candidate_bkgd[0] >= tiling_boundaries_m[4*itile+2] ||
                     candidate_bkgd[1] < tiling_boundaries_m[4*itile+1] ||
-                    candidate_bkgd[1] >= tiling_boundaries_m[4*itile+3])
+                    candidate_bkgd[1] >= tiling_boundaries_m[4*itile+3]))
                   {continue;}
                if (use_mask_pixel_val) {
                   int ivalue(rawdata(candidate_bkgd[0],candidate_bkgd[1]));
