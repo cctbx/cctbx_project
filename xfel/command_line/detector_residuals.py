@@ -131,15 +131,18 @@ plots {
     .help = Box plot of per-image RMSDs
   positional_displacements = True
     .type = bool
-    .help = Each reflection is plotted as observed on the detector. Three     \
-            plots are created: Overall: the color of the reflection is the    \
-            difference between the reflection's observed and predicted        \
-            locations.  Radial and transverse: the displacement vectors       \
-            between observed and predicted spot locations are split into      \
-            radial and transverse components, where radial is the component of\
-            the vector along the line from the refleciton to the beam center, \
-            and the transvrse component is the component of the diplacement   \
-            vector along the line orthogonal to the radial component.
+    .help = Each reflection is plotted as observed on the detector. The color \
+            of the reflection is the difference between the reflection's      \
+            observed and predicted locations.
+  include_radial_and_transverse = True
+    .type = bool
+    .help = Also plot radial and transverse displacements: the displacement   \
+            vectors between observed and predicted spot locations are split   \
+            into radial and transverse components, where radial is the        \
+            component of the vector along the line from the refleciton to the \
+            beam center, and the transvrse component is the component of the  \
+            diplacement vector along the line orthogonal to the radial        \
+            component.
   deltaXY_by_deltapsi = True
     .type = bool
     .help = For each reflection, compute the displacement vector deltaXY      \
@@ -946,12 +949,15 @@ class ResidualsPlotter(object):
       if params.plots.per_image_RMSDs_histogram: self.image_rmsd_histogram(reflections, tag, boxplot = params.plots.per_image_RMSDs_boxplot)
 
       # Plots! these are plots with callbacks to draw on individual panels
-      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sOverall positional displacements (mm)'%tag,
-                                                                                   show=False, plot_callback=self.plot_obs_colored_by_deltas)
-      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sRadial positional displacements (mm)'%tag,
-                                                                                   show=False, plot_callback=self.plot_obs_colored_by_radial_deltas)
-      if params.plots.positional_displacements:           self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag,
-                                                                                   show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
+      if params.plots.positional_displacements:
+        self.detector_plot_refls(detector, reflections, '%sOverall positional displacements (mm)'%tag,
+                                 show=False, plot_callback=self.plot_obs_colored_by_deltas)
+        if params.plots.include_radial_and_transverse:
+          self.detector_plot_refls(detector, reflections, '%sRadial positional displacements (mm)'%tag,
+                                   show=False, plot_callback=self.plot_obs_colored_by_radial_deltas)
+          self.detector_plot_refls(detector, reflections, '%sTransverse positional displacements (mm)'%tag,
+                                   show=False, plot_callback=self.plot_obs_colored_by_transverse_deltas)
+
       if params.plots.deltaXY_by_deltapsi:                self.detector_plot_refls(detector, reflections, r'%s$\Delta\Psi$'%tag,
                                                                                    show=False, plot_callback=self.plot_obs_colored_by_deltapsi, colorbar_units=r"$\circ$")
       if params.plots.deltaXY_by_reflection_energy:       self.detector_plot_refls(detector, reflections, '%sMean pixel energy'%tag,
