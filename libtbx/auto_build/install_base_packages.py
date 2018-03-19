@@ -96,7 +96,7 @@ class installer (object) :
       help="Build all recommended dependencies", default=False)
     # Specific add-on packages.
     parser.add_option("--scipy", dest="build_scipy", action="store_true",
-      help="Build SciPy (requires Fortran compiler)", default=False)
+      help="Build SciPy", default=False)
     parser.add_option("--ipython", dest="build_ipython", action="store_true",
       help="Build IPython", default=False)
     parser.add_option("--git-ssh", dest="git_ssh", action="store_true",
@@ -668,21 +668,8 @@ Installation of Python packages may fail.
 
   def check_dependencies(self, packages=None):
     packages = packages or []
-    if 'scipy' in packages:
-      compilers = ['gfortran', 'g77', 'g95', 'f77', 'f95']
-      found = []
-      for compiler in compilers:
-        try:
-          check_output(compiler)
-          found.append(compiler)
-        except RuntimeError:
-          # Found compiler, but error like "no input files"
-          found.append(compiler)
-        except OSError:
-          # Command not found
-          pass
-      if not found:
-        raise Exception("No Fortran compiler found for Scipy. Requires one of: %s"%(", ".join(compilers)))
+
+    # no-op
 
   def build_dependencies(self, packages=None):
     # Build in the correct dependency order.
