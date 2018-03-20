@@ -415,7 +415,7 @@ class class_ncs_restraints_group_list(list):
       new_list = ncs_restraints_group_list
     return new_list
 
-  def _show(self):
+  def _show(self, hierarchy=None):
     """
     For debugging
     """
@@ -423,11 +423,15 @@ class class_ncs_restraints_group_list(list):
     for group in self:
       print "Master str selection:", group.master_str_selection
       print list(group.master_iselection)
+      if hierarchy is not None:
+        print hierarchy.select(group.master_iselection).as_pdb_string()
       for c in group.copies:
         print "Copy str selection:", c.str_selection
         print list(c.iselection)
-        print "rot", list(c.r)
-        print "tran", list(c.t)
+        # print "rot", list(c.r)
+        # print "tran", list(c.t)
+        if hierarchy is not None:
+          print hierarchy.select(c.iselection).as_pdb_string()
       print "="*30
     print "end debugging output of ncs_restraints_group_list"
 
