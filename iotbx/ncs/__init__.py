@@ -146,7 +146,7 @@ class input(object):
       # for a in hierarchy.atoms():
       #   print "oo", a.i_seq, a.id_str()
       # print "====="
-      hierarchy.reset_i_seq_if_necessary()
+      hierarchy.atoms().reset_i_seq()
       self.original_hierarchy = hierarchy.deep_copy()
       self.original_hierarchy.reset_atom_i_seqs()
       if self.params.exclude_selection is not None:
