@@ -130,6 +130,10 @@ def run():
 
   # print the cif object to standard output
   print cif
+  #
+  print "="*80
+  # This is how model should be outputted instead:
+  print modelm.model_as_mmcif()
 
   cif_model = iotbx.cif.reader(input_string=quartz_as_cif).model()
   cif_model["quartz"]["_diffrn_radiation_probe"] = "xray"

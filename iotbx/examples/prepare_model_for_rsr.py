@@ -66,7 +66,7 @@ def run(args):
   # set the params. Note, that GRM would be dropped, even if it was already
   # constructed. In this example it is not yet constructed.
   model.set_pdb_interpretation_params(params=pdb_int_params)
-  model.get_restraints_manager()
+  grm = model.get_restraints_manager()
 
   # Not clear which one should be used at the moment
   gs = model.geometry_statistics()
