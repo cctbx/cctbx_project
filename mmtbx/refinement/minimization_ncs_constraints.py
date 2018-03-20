@@ -387,6 +387,7 @@ class lbfgs(object):
     NCS constrained ADP and coordinates refinement. Also refines NCS operators.
     """
     adopt_init_args(self, args=locals(),exclude=['ncs_restraints_group_list'])
+    self.x_previous = None
     self.refine_selection = nu.get_refine_selection(
       refine_selection=self.refine_selection,
       number_of_atoms=self.xray_structure.sites_cart().size())
@@ -439,6 +440,14 @@ class lbfgs(object):
         tr1.t = tr2.t
 
   def compute_functional_and_gradients(self, compute_gradients=True):
+    x_current = self.x
+    if(self.x_previous is None):
+      self.x_previous = x_current.deep_copy()
+    else:
+      xray.ext.damp_shifts(previous=self.x_previous, current=x_current,
+        max_value=10.)
+      self.x_previous = x_current.deep_copy()
+
     t,g = self.target_and_grads_object.target_and_gradients(
       compute_gradients=compute_gradients,
       xray_structure = self.update_xray_structure(),
