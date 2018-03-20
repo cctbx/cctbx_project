@@ -171,7 +171,7 @@ class FormatCBFFullStill(FormatStill, FormatCBFFull):
     cbf.select_row(0)
 
     import numpy
-    from scitbx.array_family import flex
+    from scitbx.array_family import flex # import dependency
 
     cbf.find_column("data")
     assert cbf.get_typeofvalue().find('bnry') > -1
