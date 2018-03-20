@@ -87,7 +87,6 @@ class FormatCBFFullBrukerPhotonII(FormatCBFFull):
   def read_cbf_image(self, cbf_image):
     from cbflib_adaptbx import uncompress
     import binascii
-    from scitbx.array_family import flex
 
     start_tag = binascii.unhexlify('0c1a04d5')
 
