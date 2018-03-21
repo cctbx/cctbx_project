@@ -1,23 +1,27 @@
-from __future__ import division
-from libtbx.queuing_system_utils import sge_utils, pbs_utils
+from __future__ import absolute_import, division, print_function
+
+import atexit
+import glob
+import hashlib
+import math
+import os
+import re
+import shutil
+import sys
+import time
+import traceback
+import warnings
+
+from libtbx.queuing_system_utils import pbs_utils, sge_utils
 from libtbx.str_utils import show_string
+
 try: import gzip
 except ImportError: gzip = None
 try: import bz2
 except ImportError: bz2 = None
-import hashlib
-import warnings
 
 hashlib_md5 = hashlib.md5
 
-import math
-import shutil
-import glob
-import time
-import atexit
-import traceback
-import re
-import sys, os
 op = os.path
 
 windows_device_names = """\
@@ -302,13 +306,13 @@ def warn_if_unexpected_md5_hexdigest(
   new_hexdigest = "  New md5 hexdigest: %s" % m.hexdigest()
   width = max([len(s) for s in [warning, file_name, new_hexdigest]])
   if (out is None): out = sys.stdout
-  print >> out, "*"*width
-  print >> out, warning
-  print >> out, file_name
-  print >> out, new_hexdigest
+  print("*"*width, file=out)
+  print(warning, file=out)
+  print(file_name, file=out)
+  print(new_hexdigest, file=out)
   for hint in hints:
-    print >> out, hint
-  print >> out, "*"*width
+    print(hint, file=out)
+  print("*"*width, file=out)
   return True
 
 def md5_hexdigest(filename=None, blocksize=256):
@@ -362,7 +366,7 @@ def get_memory_from_string(mem_str):
     if num_str is not None:
       try:
         num = float(num_str)
-      except ValueError, e:
+      except ValueError:
         raise RuntimeError("""
    The numerical portion of %s is not a valid float
 """ % mem_str)
@@ -371,7 +375,7 @@ def get_memory_from_string(mem_str):
   else:
     try:
       num = int(mem_str)
-    except ValueError, e:
+    except ValueError:
       raise RuntimeError("""
    There is no memory unit or valid float in %s
 """ % mem_str)
@@ -696,7 +700,7 @@ def detect_multiprocessing_problem():
       import multiprocessing
       pool = multiprocessing.Pool(processes=2)
       pool.map(func=abs, iterable=range(2), chunksize=1)
-    except ImportError, e:
+    except ImportError as e:
       if (not str(e).startswith(sem_open_msg)):
         raise
       return "multiprocessing import error: " + sem_open_msg
@@ -869,7 +873,7 @@ class timer_base(object):
     out : file, optional
     """
     if (out == None): out = sys.stdout
-    print >> out, prefix+"%.2f s" % self.elapsed()
+    print(prefix+"%.2f s" % self.elapsed(), file=out)
 
   def show_delta(self, prefix="", out=None):
     """
@@ -881,7 +885,7 @@ class timer_base(object):
     out : file, optional
     """
     if (out == None): out = sys.stdout
-    print >> out, prefix+"%.2f s" % self.delta()
+    print(prefix+"%.2f s" % self.delta(), file=out)
 
 
 class user_plus_sys_time(timer_base):
@@ -1124,9 +1128,9 @@ def show_total_time(
   try: python_ticker = sys.gettickeraccumulation()
   except AttributeError: pass
   else:
-    print >> out, "Time per interpreted Python bytecode instruction:",
-    print >> out, "%.3f micro seconds" % (total_time / python_ticker * 1.e6)
-  print >> out, "Total CPU time: %.2f %s" % human_readable_time(total_time)
+    print("Time per interpreted Python bytecode instruction:", end=' ', file=out)
+    print("%.3f micro seconds" % (total_time / python_ticker * 1.e6), file=out)
+  print("Total CPU time: %.2f %s" % human_readable_time(total_time), file=out)
 
 def show_wall_clock_time(seconds, out=None):
   """
@@ -1145,14 +1149,14 @@ def show_wall_clock_time(seconds, out=None):
   wall clock time: 20.00 seconds
   """
   if (out is None): out = sys.stdout
-  print >> out, "wall clock time:",
+  print("wall clock time:", end=' ', file=out)
   if (seconds < 120):
-    print >> out, "%.2f seconds" % seconds
+    print("%.2f seconds" % seconds, file=out)
   else:
     m = int(seconds / 60 + 1.e-6)
     s = seconds - m * 60
-    print >> out, "%d minutes %.2f seconds (%.2f seconds total)" % (
-      m, s, seconds)
+    print("%d minutes %.2f seconds (%.2f seconds total)" % (
+      m, s, seconds), file=out)
   out_flush = getattr(out, "flush", None)
   if (out_flush is not None):
     out_flush()
@@ -1190,7 +1194,7 @@ class show_times:
       s += ", ticks: %d" % ticks
       if (ticks != 0):
         s += ", micro-seconds/tick: %.3f" % (usr_plus_sys*1.e6/ticks)
-    print >> out, s
+    print(s, file=out)
     show_wall_clock_time(seconds=time.time()-self.time_start, out=out)
 
 def show_times_at_exit(time_start=None, out=None):
@@ -1255,38 +1259,38 @@ class host_and_user:
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
     if (self.host is not None):
-      print >> out, prefix + "HOST =", self.host
+      print(prefix + "HOST =", self.host, file=out)
     if (    self.hostname is not None
         and self.hostname != self.host):
-      print >> out, prefix + "HOSTNAME =", self.hostname
+      print(prefix + "HOSTNAME =", self.hostname, file=out)
     if (    self.computername is not None
         and self.computername != self.host):
-      print >> out, prefix + "COMPUTERNAME =", self.computername
+      print(prefix + "COMPUTERNAME =", self.computername, file=out)
     if (self.hosttype is not None):
-      print >> out, prefix + "HOSTTYPE =", self.hosttype
+      print(prefix + "HOSTTYPE =", self.hosttype, file=out)
     if (self.processor_architecture is not None):
-      print >> out, prefix + "PROCESSOR_ARCHITECTURE =", \
-        self.processor_architecture
+      print(prefix + "PROCESSOR_ARCHITECTURE =", \
+        self.processor_architecture, file=out)
     if (   self.hosttype is None
         or self.machtype is None
         or self.ostype is None
         or "-".join([self.machtype, self.ostype]) != self.hosttype):
       if (self.machtype is not None):
-        print >> out, prefix + "MACHTYPE =", \
-          self.machtype
+        print(prefix + "MACHTYPE =", \
+          self.machtype, file=out)
       if (self.ostype is not None):
-        print >> out, prefix + "OSTYPE =", \
-          self.ostype
+        print(prefix + "OSTYPE =", \
+          self.ostype, file=out)
     if (self.vendor is not None and self.vendor != "unknown"):
-      print >> out, prefix + "VENDOR =", \
-        self.vendor
+      print(prefix + "VENDOR =", \
+        self.vendor, file=out)
     if (self.user is not None):
-      print >> out, prefix + "USER =", self.user
+      print(prefix + "USER =", self.user, file=out)
     if (    self.username is not None
         and self.username != self.user):
-      print >> out, prefix + "USERNAME =", self.username
+      print(prefix + "USERNAME =", self.username, file=out)
     if (self.pid is not None):
-      print >> out, prefix + "PID =", self.pid
+      print(prefix + "PID =", self.pid, file=out)
     self.sge_info.show(out=out, prefix=prefix)
     self.pbs_info.show(out=out, prefix=prefix)
 
@@ -1539,7 +1543,7 @@ def write_this_is_auto_generated(f, file_name_generator):
   file_name_generator : str
       Name of source generator.
   """
-  print >> f, """\
+  print("""\
 /* *****************************************************
    THIS IS AN AUTOMATICALLY GENERATED FILE. DO NOT EDIT.
    *****************************************************
@@ -1547,7 +1551,7 @@ def write_this_is_auto_generated(f, file_name_generator):
    Generated by:
      %s
  */
-""" % file_name_generator
+""" % file_name_generator, file=f)
 
 class import_python_object:
 
@@ -1855,7 +1859,7 @@ def getcwd_safe () :
   """
   try :
     cwd = os.getcwd()
-  except OSError, e :
+  except OSError as e :
     if (e.errno == 2) :
       raise Sorry("Could not determine the current working directory because "+
         "it has been deleted or unmounted.")
@@ -1884,7 +1888,7 @@ def getcwd_or_default (default=None) :
       default = os.environ.get("HOME", "/")
   try :
     cwd = os.getcwd()
-  except OSError, e:
+  except OSError as e:
     if (e.errno == 2) :
       cwd = default
     else :
@@ -1937,19 +1941,19 @@ class tmp_dir_wrapper (object) :
     else :
       if (not os.path.isdir(dest_dir)) :
         raise Sorry("The destination directory %s does not exist." % dest_dir)
-      print >> out, "Changing working directory to %s" % tmp_dir
-      print >> out, "Ultimate destination is %s" % dest_dir
+      print("Changing working directory to %s" % tmp_dir, file=out)
+      print("Ultimate destination is %s" % dest_dir, file=out)
       os.chdir(tmp_dir)
 
   def transfer_files (self, out=sys.stdout) :
     if (self.tmp_dir is None) : return False
     assert os.path.isdir(self.dest_dir)
     files = os.listdir(self.tmp_dir)
-    print >> out, "Copying all output files to %s" % self.dest_dir
+    print("Copying all output files to %s" % self.dest_dir, file=out)
     for file_name in files :
-      print >> out, "  ... %s" % file_name
+      print("  ... %s" % file_name, file=out)
       shutil.copy(os.path.join(self.tmp_dir, file_name), self.dest_dir)
-    print >> out, ""
+    print("", file=out)
     return True
 
 def show_development_warning (out=sys.stdout) :
@@ -1960,7 +1964,7 @@ def show_development_warning (out=sys.stdout) :
   ----------
   out : file, optional
   """
-  print >> out, """
+  print("""
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !!                  WARNING - EXPERIMENTAL PROGRAM                        !!
   !!                                                                        !!
@@ -1968,7 +1972,7 @@ def show_development_warning (out=sys.stdout) :
   !! missing and/or untested.  Use at your own risk!  For bug reports, etc. !!
   !! email bugs@phenix-online.org.                                          !!
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-"""
+""", file=out)
 
 def check_if_output_directory_exists (file_name=None, dir_name=None) :
   if (file_name is not None) :
@@ -1997,15 +2001,15 @@ def concatenate_python_script (out, file_name) :
   but is required for some of our Coot-related scripts to work.)
   """
   data = open(file_name, "r").read()
-  print >> out, ""
-  print >> out, "#--- script copied from %s" % os.path.basename(file_name)
+  print("", file=out)
+  print("#--- script copied from %s" % os.path.basename(file_name), file=out)
   for line in data.splitlines() :
     if line.startswith("from __future__") :
       continue
     else :
-      print >> out, line
-  print >> out, "#--- end"
-  print >> out, ""
+      print(line, file=out)
+  print("#--- end", file=out)
+  print("", file=out)
 
 def greek_time(secs):
   """
@@ -2053,7 +2057,7 @@ def install_urllib_http_proxy (server, port=80, user=None, password=None) :
     opener = urllib2.build_opener(proxy, auth, urllib2.HTTPHandler)
   libtbx_urllib_proxy = proxy
   urllib2.install_opener(opener)
-  print "Installed urllib2 proxy at %s:%d" % (server, port)
+  print("Installed urllib2 proxy at %s:%d" % (server, port))
   return proxy
 
 def urlopen (*args, **kwds) :
@@ -2404,7 +2408,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
         rowElements = sep.split(rowText)
         try:
             rss = float(rowElements[0]) * 1024
-        except Exception,e:
+        except Exception:
             rss = 0 # ignore...
         rssTotal += rss
 
@@ -2418,7 +2422,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
           return None
         try:
           mem=int(spl[1])
-        except Exception,e:
+        except Exception:
           return None
         if spl[2].lower()=='kb':
           mem=mem*1024
