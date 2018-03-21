@@ -12,6 +12,8 @@
 # LIBTBX_SET_DISPATCHER_NAME dxtbx.detector_superpose
 #
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.phil import parse
@@ -132,19 +134,19 @@ class Script(object):
 
       # Compute super position
       rmsd = 1000*math.sqrt((reference_sites-moving_sites).sum_sq()/len(reference_sites))
-      print "RMSD before fit: %.1f microns"%rmsd
+      print("RMSD before fit: %.1f microns"%rmsd)
       if params.fit_target =="corners":
         rmsd = rmsd_from_centers(reference_sites, moving_sites)
-        print "RMSD of centers before fit: %.1f microns"%rmsd
+        print("RMSD of centers before fit: %.1f microns"%rmsd)
       lsq = least_squares_fit(reference_sites, moving_sites)
       rmsd = 1000*math.sqrt((reference_sites-lsq.other_sites_best_fit()).sum_sq()/len(reference_sites))
-      print "RMSD of fit: %.1f microns"%rmsd
+      print("RMSD of fit: %.1f microns"%rmsd)
       if params.fit_target =="corners":
         rmsd = rmsd_from_centers(reference_sites, lsq.other_sites_best_fit())
-        print "RMSD of fit of centers: %.1f microns"%rmsd
+        print("RMSD of fit of centers: %.1f microns"%rmsd)
       angle, axis = lsq.r.r3_rotation_matrix_as_unit_quaternion().unit_quaternion_as_axis_and_angle(deg=True)
-      print "Axis and angle of rotation: (%.3f, %.3f, %.3f), %.2f degrees"%(axis[0], axis[1], axis[2], angle)
-      print "Translation (x, y, z, in microns): (%.3f, %.3f, %.3f)"% (1000 * lsq.t).elems
+      print("Axis and angle of rotation: (%.3f, %.3f, %.3f), %.2f degrees"%(axis[0], axis[1], axis[2], angle))
+      print("Translation (x, y, z, in microns): (%.3f, %.3f, %.3f)"% (1000 * lsq.t).elems)
 
       # Apply the shifts
       if params.apply_at_hierarchy_level == None:
@@ -167,11 +169,11 @@ class Script(object):
         break
 
       if approx_equal(angle, 0.0, out=None) and approx_equal((1000*lsq.t).length(), 0.0, out=None):
-        print "Converged after", cycles, "cycles"
+        print("Converged after", cycles, "cycles")
         break
       else:
-        print "Movement not close to zero, repeating fit"
-        print
+        print("Movement not close to zero, repeating fit")
+        print()
 
     from dxtbx.serialize import dump
     dump.experiment_list(moving_experiments, params.output_experiments)
@@ -189,10 +191,10 @@ class Script(object):
 
     # Re-compute RMSD after moving detector components
     rmsd = 1000*math.sqrt((reference_sites-moved_sites).sum_sq()/len(reference_sites))
-    print "RMSD of fit after movement: %.1f microns"%rmsd
+    print("RMSD of fit after movement: %.1f microns"%rmsd)
     if params.fit_target =="corners":
       rmsd = rmsd_from_centers(reference_sites, moved_sites)
-      print "RMSD of fit of centers after movement: %.1f microns"%rmsd
+      print("RMSD of fit of centers after movement: %.1f microns"%rmsd)
 
     if params.panel_list is not None:
       reference_sites = flex.vec3_double()
@@ -208,10 +210,10 @@ class Script(object):
             sites.append(corners.mean())
       # Re-compute RMSD for full detector after moving detector components
       rmsd = 1000*math.sqrt((reference_sites-moved_sites).sum_sq()/len(reference_sites))
-      print "RMSD of whole detector fit after movement: %.1f microns"%rmsd
+      print("RMSD of whole detector fit after movement: %.1f microns"%rmsd)
       if params.fit_target =="corners":
         rmsd = rmsd_from_centers(reference_sites, moved_sites)
-        print "RMSD of whole detector fit of centers after movement: %.1f microns"%rmsd
+        print("RMSD of whole detector fit of centers after movement: %.1f microns"%rmsd)
 
 if __name__ == '__main__':
   from dials.util import halraiser

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division
+from __future__ import print_function
 # LIBTBX_SET_DISPATCHER_NAME dxtbx.image2pickle
 # LIBTBX_SET_DISPATCHER_NAME cxi.image2pickle
 
@@ -111,7 +112,7 @@ def run(argv=None):
 
   for imgpath in paths:
     if command_line.options.verbose:
-      print "Reading %s"%(imgpath)
+      print("Reading %s"%(imgpath))
 
     try:
       img = dxtbx.load(imgpath)
@@ -184,13 +185,13 @@ def run(argv=None):
 
     if beam is None and detector is None:
       if command_line.options.beam_center_x is None:
-        print "Can't get beam x position from image. Using image center. Override with -x"
+        print("Can't get beam x position from image. Using image center. Override with -x")
         beam_x = raw_data.focus()[0] * pixel_size
       else:
         beam_x = command_line.options.beam_center_x * pixel_size
 
       if command_line.options.beam_center_y is None:
-        print "Can't get beam y position from image. Using image center. Override with -y"
+        print("Can't get beam y position from image. Using image center. Override with -y")
         beam_y = raw_data.focus()[1] * pixel_size
       else:
         beam_y = command_line.options.beam_center_y * pixel_size
@@ -224,7 +225,7 @@ def save_image(command_line, imgpath, scan, raw_data, distance, pixel_size, wave
     destpath = os.path.join(os.path.dirname(imgpath), os.path.splitext(os.path.basename(imgpath))[0] + "%05d.pickle"%image_number)
   if command_line.options.skip_converted and os.path.isfile(destpath):
     if command_line.options.verbose:
-      print "Skipping %s, file exists"%imgpath
+      print("Skipping %s, file exists"%imgpath)
       return
 
   data = dpack(data=raw_data,
@@ -250,7 +251,7 @@ def save_image(command_line, imgpath, scan, raw_data, distance, pixel_size, wave
     data = crop_image_pickle(data)
 
   if command_line.options.verbose:
-    print "Writing", destpath
+    print("Writing", destpath)
 
   easy_pickle.dump(destpath, data)
 

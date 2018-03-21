@@ -8,8 +8,9 @@
 #
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
-from __future__ import absolute_import, division
-from dxtbx.datablock import DataBlockFactory, DataBlockDumper
+from __future__ import absolute_import, division, print_function
+
+from dxtbx.datablock import DataBlockDumper, DataBlockFactory
 
 if __name__ == '__main__':
 
@@ -62,10 +63,10 @@ if __name__ == '__main__':
 
   # Print out any unhandled files
   if len(unhandled) > 0:
-    print '-' * 80
-    print 'The following command line arguments were not handled:'
+    print('-' * 80)
+    print('The following command line arguments were not handled:')
     for filename in unhandled:
-      print '  %s' % filename
+      print('  %s' % filename)
 
   # Loop through the data blocks
   for i, datablock in enumerate(datablocks):
@@ -81,27 +82,27 @@ if __name__ == '__main__':
       num_stills = len(stills)
 
     # Print some data block info
-    print "-" * 80
-    print "DataBlock %d" % i
-    print "  format: %s" % str(datablock.format_class())
-    print "  num images: %d" % datablock.num_images()
-    print "  num sweeps: %d" % len(sweeps)
-    print "  num stills: %d" % num_stills
+    print("-" * 80)
+    print("DataBlock %d" % i)
+    print("  format: %s" % str(datablock.format_class()))
+    print("  num images: %d" % datablock.num_images())
+    print("  num sweeps: %d" % len(sweeps))
+    print("  num stills: %d" % num_stills)
 
     # Loop through all the sweeps
     if options.verbose > 1:
       for j, sweep in enumerate(sweeps):
-        print ""
-        print "Sweep %d" % j
-        print "  length %d" % len(sweep)
-        print sweep.get_beam()
-        print sweep.get_goniometer()
-        print sweep.get_detector()
-        print sweep.get_scan()
+        print("")
+        print("Sweep %d" % j)
+        print("  length %d" % len(sweep))
+        print(sweep.get_beam())
+        print(sweep.get_goniometer())
+        print(sweep.get_detector())
+        print(sweep.get_scan())
 
   # Write the datablock to a JSON or pickle file
   if options.output:
-    print "-" * 80
-    print 'Writing datablocks to %s' % options.output
+    print("-" * 80)
+    print('Writing datablocks to %s' % options.output)
     dump = DataBlockDumper(datablocks)
     dump.as_file(options.output, compact=options.compact)

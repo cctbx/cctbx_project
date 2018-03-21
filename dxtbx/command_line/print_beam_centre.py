@@ -1,4 +1,7 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+import sys
+
 #!/usr/bin/env python
 # print_beam_centre.py
 #
@@ -12,7 +15,6 @@ from __future__ import absolute_import, division
 # classes.
 # LIBTBX_SET_DISPATCHER_NAME dev.dxtbx.print_beam_centre
 
-import sys
 
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):
@@ -25,7 +27,7 @@ def run(file_names):
     sweep = ImageSetFactory.new(file_names)[0]
   detector = sweep.get_detector()
   beam = sweep.get_beam()
-  print detector.get_ray_intersection(beam.get_s0())[1]
+  print(detector.get_ray_intersection(beam.get_s0())[1])
 
 if __name__ == '__main__':
   run(sys.argv[1:])

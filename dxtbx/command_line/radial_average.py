@@ -1,15 +1,18 @@
-from __future__ import absolute_import, division
 # LIBTBX_SET_DISPATCHER_NAME dxtbx.radial_average
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 
-import libtbx.phil
-from libtbx.utils import Usage, Sorry
-from libtbx import easy_pickle
-from scitbx.matrix import col
-import sys
-import os
+from __future__ import absolute_import, division, print_function
+
 import math
+import os
+import sys
+
+import libtbx.phil
+from libtbx import easy_pickle
+from libtbx.utils import Sorry, Usage
+from scitbx.matrix import col
+
 
 master_phil = libtbx.phil.parse("""
   file_path = None

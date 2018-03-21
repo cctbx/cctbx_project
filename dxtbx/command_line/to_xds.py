@@ -1,4 +1,9 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+import sys
+
+from dxtbx.serialize import xds
+
 #!/usr/bin/env python
 # to_xds.py
 #
@@ -11,8 +16,6 @@ from __future__ import absolute_import, division
 # an example XDS.INP file. This should illustrate the usage of the dxtbx
 # classes.
 
-import sys
-from dxtbx.serialize import xds
 
 def run(file_names):
   if len(file_names) == 1 and file_names[0].endswith('json'):

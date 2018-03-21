@@ -1,4 +1,6 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+
 def to_ewald_sphere(list_of_images):
 
   from dxtbx.sweep import SweepFactory
@@ -17,7 +19,7 @@ def to_ewald_sphere(list_of_images):
     x_list = image_to_ewald_sphere(frame)
     for k, x in enumerate(x_list):
       i = intensity[k]
-      print '%f %f %f %d' % (x[0], x[1], x[2], i)
+      print('%f %f %f %d' % (x[0], x[1], x[2], i))
 
 
 if __name__ == '__main__':

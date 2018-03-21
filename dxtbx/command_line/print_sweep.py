@@ -1,18 +1,20 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+
 def print_sweep(list_of_images):
 
   from dxtbx.imageset import ImageSetFactory
   sweeps = ImageSetFactory.new(list_of_images)
 
   for sweep in sweeps:
-    print sweep.get_detector()
-    print sweep.get_beam()
-    print sweep.get_goniometer()
-    print sweep.get_scan()
+    print(sweep.get_detector())
+    print(sweep.get_beam())
+    print(sweep.get_goniometer())
+    print(sweep.get_scan())
 
     # compute the beam centre... in mm... w.r.t. fast, slow axis
 
-    print 'Derived quantities:'
+    print('Derived quantities:')
 
     from scitbx import matrix
 
@@ -27,8 +29,8 @@ def print_sweep(list_of_images):
     n = f.cross(s)
 
     beam_offset = o - o.dot(s0) * s0
-    print '    beam centre (mm, fast, slow): %.2f %.2f' % (- beam_offset.dot(f),
-                                                            - beam_offset.dot(s))
+    print('    beam centre (mm, fast, slow): %.2f %.2f' % (- beam_offset.dot(f),
+                                                            - beam_offset.dot(s)))
 
 if __name__ == '__main__':
   import sys

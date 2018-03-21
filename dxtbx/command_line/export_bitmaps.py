@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import iotbx.phil
 
@@ -118,7 +118,7 @@ dxtbx.export_bitmaps image_files [options]
       path = os.path.join(
         output_dir, basename + '.' + params.format)
 
-      print "Exporting %s" %path
+      print("Exporting %s" %path)
       tmp_stream = open(path, 'wb')
       pil_img.save(tmp_stream, format=params.format)
       tmp_stream.close()

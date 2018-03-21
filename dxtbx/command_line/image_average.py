@@ -4,10 +4,13 @@
 # LIBTBX_SET_DISPATCHER_NAME cxi.image_average
 #
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-import sys, dxtbx
+import sys
+
+import dxtbx
 from scitbx.array_family import flex
+
 
 """
 Average single-panel images of any format. Handles many individual images or single container files.
@@ -53,7 +56,7 @@ class image_worker(object):
         beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas = \
           self.read(item)
       except Exception as e:
-        print str(e)
+        print(str(e))
         nfail += 1
         continue
 
@@ -97,7 +100,7 @@ class multi_image_worker(image_worker):
   def read(self, n):
     """ Read image at postion n"""
     if self.command_line.options.verbose:
-      print "Processing %s: %d" % (self.path, n)
+      print("Processing %s: %d" % (self.path, n))
 
     beam = self.imageset.get_beam(n)
     assert len(self.imageset.get_detector(n)) == 1
@@ -126,7 +129,7 @@ class single_image_worker(image_worker):
 
   def read(self, path):
     if self.command_line.options.verbose:
-      print "Processing %s" % path
+      print("Processing %s" % path)
 
     from dxtbx.format.Registry import Registry
     from dxtbx.format.FormatMultiImage import FormatMultiImage
