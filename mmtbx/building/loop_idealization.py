@@ -945,7 +945,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
   # print "POSSIBLE ERROR:", "selectioin:", "(name N or name CA or name C or name O) and resid %s through %s" % (
   #         start_res_num, end_res_num)
   m_selection = cache.iselection(
-      "(name N or name CA or name C or name O) and resid %s through %s" % (
+      "(name N or name CA or name C or name O) and resid %s:%s" % (
           start_res_num, end_res_num))
   # Somewhere here would be the place to tweak n_following, n_previous to
   # exclude SS parts. It would be nice to increase n_prev in case
@@ -964,9 +964,13 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
       assert intersect_h.atoms_size() > 0, "Wrong atom count in SS intersection"
       # assert 0, "hitting SS element!"
 
-
+  # print "m_selection=", list(m_selection)
   moving_h = pdb_hierarchy.select(m_selection)
   moving_h.reset_atom_i_seqs()
+  # print >> log, "Moving h:"
+  # print >> log, moving_h.as_pdb_string()
+  # for rg in moving_h.only_chain().residue_groups():
+  #   print >> log, "rg:", rg.resseq
   # print dir(moving_h)
   # STOP()
   m_cache = moving_h.atom_selection_cache()
@@ -983,7 +987,11 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
       int_eff_resnum -= 1
     else:
       int_eff_resnum += 1
+    # print >> log, "resid %d" % int_eff_resnum
     sel = m_cache.selection("resid %d" % int_eff_resnum)
+    # print >> log, "sel:", list(sel)
+    if int_eff_resnum < -10:
+      assert 0
   eff_end_resnum = hy36encode(4, int_eff_resnum)
 
   anchor_present = True
