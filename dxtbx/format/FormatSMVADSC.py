@@ -31,7 +31,7 @@ class FormatSMVADSC(FormatSMV):
     if header.get('BEAMLINE') == 'fake': return False
 
     # do not understand Timepix_SU images
-    if header.get('BEAMLINE').upper() == 'TIMEPIX_SU': return False
+    if header.get('BEAMLINE', '').upper() == 'TIMEPIX_SU': return False
 
     # this used to include TIME
     wanted_header_items = ['BEAM_CENTER_X', 'BEAM_CENTER_Y',
