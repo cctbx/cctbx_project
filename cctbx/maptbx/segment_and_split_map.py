@@ -9673,9 +9673,11 @@ def run_auto_sharpen(
     min_buffer=delta_weight*si.region_weight_buffer
     min_region_weight+=min_buffer
     max_region_weight-=min_buffer
+    min_max_region_weight=True
     if min_region_weight >= max_region_weight:
-      print >>out,"Region weight not found..."
-      ok_region_weight=False
+      print >>out,"Warning: min_region_weight >= max_region_weight..."
+      min_max_region_weight=False
+      #ok_region_weight=False
 
 
     print >>out,"Region weight bounds: Min: %7.1f  Max: %7.1f " %(
@@ -9690,8 +9692,9 @@ def run_auto_sharpen(
 
     out_of_range=False
     if ok_region_weight and si.region_weight_method=='initial_ratio':
-      if init_region_weight > max_region_weight or \
-          init_region_weight<min_region_weight:
+      if min_max_region_weight and (
+          init_region_weight > max_region_weight or \
+          init_region_weight<min_region_weight):
         init_region_weight=max(
           min_region_weight,min(max_region_weight,init_region_weight))
         out_of_range=True
@@ -9700,8 +9703,9 @@ def run_auto_sharpen(
       si.region_weight=init_region_weight
 
     elif ok_region_weight and si.region_weight_method=='delta_ratio':
-      if delta_region_weight > max_region_weight or \
-          delta_region_weight<min_region_weight:
+      if min_max_region_weight and (
+          delta_region_weight > max_region_weight or \
+          delta_region_weight<min_region_weight):
         delta_region_weight=max(
           min_region_weight,min(max_region_weight,delta_region_weight))
         out_of_range=True
