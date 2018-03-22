@@ -2385,6 +2385,7 @@ def to_str(text, codec=None):
     return None
 
 def guess_total_memory(meminfo_file='/proc/meminfo'):
+  import subprocess
   if (sys.platform == 'win32'):
     ps = subprocess.Popen(['wmic','OS','get','TotalVisibleMemorySize', '/Value'],
      stdout=subprocess.PIPE).communicate()[0]
@@ -2393,7 +2394,6 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
 
   elif (sys.platform=='darwin'):
     # Copied from https://apple.stackexchange.com/questions/4286/is-there-a-mac-os-x-terminal-version-of-the-free-command-in-linux-systems
-    import subprocess
     import re
     # Get process info
     ps = subprocess.Popen(['ps', '-caxm', '-orss,comm'],
