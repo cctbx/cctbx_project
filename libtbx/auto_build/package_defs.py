@@ -28,11 +28,11 @@ def get_pypi_package_information(package, version=None, information_only=False):
   metadata = 'https://pypi.python.org/pypi/' + package + '/json'
   try:
     import json
-  except ImportError: # Python <=2.5
+    pypidata = urllib2.urlopen(metadata).read()
+  except Exception: # Python <=2.5, TLS <1.2, ...
     if information_only:
       return {'name': '', 'version': '', 'summary': ''}
     raise
-  pypidata = urllib2.urlopen(metadata).read()
   pkginfo = json.loads(pypidata)
   if information_only:
     return pkginfo['info']
