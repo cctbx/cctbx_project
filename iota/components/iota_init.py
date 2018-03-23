@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 04/13/2017
+Last Changed: 03/22/2018
 Description : Reads command line arguments. Initializes all IOTA starting
               parameters. Starts main log.
 '''
@@ -98,7 +98,8 @@ class InitAll(object):
     # Read input from provided folder(s) or file(s)
     cmd.Command.start("Reading input files")
     input_entries = [i for i in self.params.input if i != None]
-    input_list = ginp.make_input_list(input_entries)
+    input_list = ginp.make_input_list(input_entries, filter=True,
+                                      filter_type='image')
     cmd.Command.end("Reading input files -- DONE")
 
     if len(input_list) == 0:
@@ -366,6 +367,11 @@ class InitAll(object):
     with open(target_file, 'r') as phil_file:
       phil_file_contents = phil_file.read()
     misc.main_log(self.logfile, phil_file_contents)
+
+    # Write target file and record its location in params
+    local_target_file = os.path.join(self.int_base, 'target.phil')
+    with open(local_target_file, 'w') as tf:
+      tf.write(phil_file_contents)
 
 
 # ============================================================================ #

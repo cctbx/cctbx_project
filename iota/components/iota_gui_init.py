@@ -373,7 +373,8 @@ class MainWindow(wx.Frame):
         rec_init.viz_base = os.path.join(int_path, 'visualization')
         rec_init.logfile = os.path.join(int_path, 'iota.log')
         with open(rec_init.logfile, 'r') as lf:
-          log_phil = ip.parse(''.join(lf.readlines()[4:86]))
+          lines = lf.readlines()[4:86]
+          log_phil = ip.parse(''.join(lines))
         self.iota_phil = self.iota_phil.fetch(source=log_phil)
         rec_init.params = self.iota_phil.extract()
         input_entries = [i for i in rec_init.params.input if i != None]
@@ -778,14 +779,6 @@ class InitAll(object):
     self.args, self.phil_args = parse_command_args(self.iver, '').parse_known_args()
     self.params = gparams
     self.target_phil = target_phil
-
-    # Call function to read input folder structure (or input file) and
-    # generate list of image file paths
-    # if self.params.cctbx.selection.select_only.flag_on:
-    #   self.gs_img_objects = self.make_int_object_list()
-    #   self.input_list = [i.conv_img for i in self.gs_img_objects]
-    # else:
-    #   self.input_list = self.make_input_list()
 
     # If input list for some reason isn't transmitted from main window, make it
     if self.input_list is None:

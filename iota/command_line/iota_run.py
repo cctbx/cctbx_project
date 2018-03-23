@@ -4,9 +4,11 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 02/22/2017
+Last Changed: 02/22/2018
 Description : IOTA command-line module.
 '''
+import os
+from libtbx import easy_pickle as ep
 
 from iota.components.iota_analysis import Analyzer
 from iota.components.iota_init import InitAll
@@ -144,6 +146,10 @@ class XTermIOTA():
 
   def run_process(self):
     ''' Run indexing / integration of imported images '''
+
+    # write init file
+    ep.dump(os.path.join(self.init.int_base, 'init.cfg'), self.init)
+
     cmd.Command.start("Processing {} images".format(len(self.img_objects)))
     self.img_list = [[i, len(self.img_objects) + 1, j] for i, j in
                       enumerate(self.img_objects, 1)]
