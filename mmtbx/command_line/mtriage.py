@@ -132,6 +132,7 @@ def get_inputs(args, log, master_params):
   crystal_symmetry = check_and_set_crystal_symmetry(
     models   = [model],
     map_inps = [map_inp, map_inp_1, map_inp_2])
+  map_data_1, map_data_2 = None,None
   if(map_inp_1 is not None): map_data_1 = map_inp_1.map_data()
   if(map_inp_2 is not None): map_data_2 = map_inp_2.map_data()
   #
