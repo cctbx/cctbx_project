@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 02/12/2018
+Last Changed: 03/22/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -245,6 +245,7 @@ class SingleImage(object):
     self.final = {'img':self.conv_img, 'sih':0, 'sph':0, 'spa':0, 'a':0, 'b':0,
                   'c':0, 'alpha':0, 'beta':0, 'gamma':0, 'sg':'', 'strong':0,
                   'res':0, 'lres':0, 'mos':0, 'epv':0, 'info':'', 'final':None,
+                  'wavelength': 0, 'distance':0, 'beamX': 0, 'beamY': 0,
                   'program':'cctbx'}
 
   def square_pickle(self, data):
@@ -402,7 +403,7 @@ class SingleImage(object):
         except OSError:
           pass
 
-        ep.dump(self.obj_file, self)
+        # ep.dump(self.obj_file, self)
 
       return self
 
@@ -549,6 +550,7 @@ class SingleImage(object):
       self.final = {'img':self.conv_img, 'a':0, 'b':0, 'c':0, 'alpha':0,
                     'beta':0, 'gamma':0, 'sg':'','strong':0, 'res':0,
                     'lres':0, 'mos':0, 'epv':0, 'info':'','final':None,
+                    'wavelength': 0, 'distance':0, 'beamX': 0, 'beamY':0,
                     'program':'dials'}
 
     # Generate names for output folders and files:
@@ -581,13 +583,13 @@ class SingleImage(object):
       except OSError:
         pass
 
-      # Save image object to file
-      ep.dump(self.obj_file, self)
+      self.status = 'imported'
 
-    self.status = 'imported'
+      # Save image object to file
+      # ep.dump(self.obj_file, self)
 
     # If conversion only option is selected, write conversion info to log
-    if self.params.image_conversion.convert_only:
+    else:
       log_entry = "\n".join(self.log_info)
       misc.main_log(self.main_log, log_entry)
 
@@ -686,9 +688,6 @@ class SingleImage(object):
         elif self.params.analysis.viz == 'cv_vectors':
           viz.cv_png(self.final['img'], self.final['final'], self.viz_file)
 
-      # Save image object to file
-      ep.dump(self.obj_file, self)
-
     return self
 
 
@@ -714,9 +713,6 @@ class SingleImage(object):
       self.fail, self.final, log_entry = selector.select()
       self.status = 'selection'
       self.log_info.append(log_entry)
-
-    # Save results into a pickle file
-    ep.dump(self.obj_file, self)
 
     return self
 
@@ -798,6 +794,11 @@ class SingleImage(object):
                                     os.path.basename(self.int_log).split('.')[0] + '.log')
         os.rename(self.int_log, final_int_log)
 
+      # Save results into a pickle file
+      self.status = 'final'
+      ep.dump(self.obj_file, self)
+      return self
+
 
     # For DIALS integration (WORK IN PROGRESS)
     elif self.params.advanced.integrate_with == 'dials':
@@ -806,11 +807,7 @@ class SingleImage(object):
         self.fail = 'aborted'
         return self
 
-      if self.fail is not None:
-        self.status = 'final'
-        ep.dump(self.obj_file, self)
-        return self
-      else:
+      if self.fail is None:
         # Create DIALS integrator object
         from iota.components.iota_dials import Integrator
         integrator = Integrator(source_image=self.conv_img,
@@ -836,7 +833,8 @@ class SingleImage(object):
         final_int_log = self.int_log.split('.')[0] + ".log"
         os.rename(self.int_log, final_int_log)
 
-    self.status = 'final'
-    ep.dump(self.obj_file, self)
+      self.status = 'final'
+      ep.dump(self.obj_file, self)
+      return self
 
 # **************************************************************************** #

@@ -1,17 +1,32 @@
-IOTA v1.1.027 - MOSFLM indexing in image tracker
+IOTA v1.1.028 - GUI updates
 
 Bugfixes:
-
+1. Tracker: changed GridBagSizer to SplitterWindow for chart / image list, which
+ now sizes correctly at all times (and is adjustable)
 
 
 Features:
-
-1. Image tracker: Hooked up MOSFLM spotfinding / indexing, with space group and
-unit cell reporting. Not *fully* ready in terms of interface, but works well
-2. IOTA: Sped up filesystem polling for processed objects by only looking for
-object files generated later than the last one plotted
+1. Tracker: Selection / Zoom now switched by toolbar toggle buttons
+2. Tracker: Removed spotfinding options button / dialog
+3. Tracker: Added settings toolbar button / dialog
+4. Removed "select only" mode in IOTA GUI (Xterm only now)
+5. Streamlined imageset compilation in IOTA GUI
+6. Added total image number to input window
+7. Sped up logging (esp. on recovery) by importing chunks of text vs. by line
+8. Option for "settings only" recovery of past runs
+9. Removed beam XY graph from live charts (too slow!)
+10. Replaced beam XY graph with hkl slice graph (can toggle between 0kl, h0l,
+and hk0), which is much faster and more informative.
+11. Changed how unit cell histograms are drawn - slightly faster, but also
+potentially more configurable in future
 
 
 Known issues:
 
 1. Image tracker: interface could use to be faster w/ large datasets
+2. Some IOTA modules are still too slow, esp. for remote operation:
+    a. Graphing is still too clunky (requires too much redrawing)
+    b. Unit cell clustering takes forever with large datasets
+    c. If running via XDisplay, the GUI might semi-freeze at times (though it's
+    much better than it was)
+    d. There's a weird bug that affects only synthetic images

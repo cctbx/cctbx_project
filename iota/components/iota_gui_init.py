@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 11/03/2017
+Last Changed: 03/22/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -355,6 +355,7 @@ class MainWindow(wx.Frame):
     if path_dlg.ShowModal() == wx.ID_OK:
       self.reset_settings()
       selected = path_dlg.selected
+      recovery_mode = path_dlg.recovery_mode
       int_path = selected[1]
 
       init_file = os.path.join(int_path, 'init.cfg')
@@ -391,14 +392,15 @@ class MainWindow(wx.Frame):
       self.update_input_window()
 
       # Re-open processing window with results of the run
-      self.proc_window = frm.ProcWindow(self, -1, title='Image Processing',
-                                        target_phil=rec_target_phil,
-                                        phil=self.iota_phil)
-      self.proc_window.recover(int_path=rec_init.int_base,
-                               init=rec_init,
-                               status=selected[0],
-                               params=self.gparams)
-      self.proc_window.Show(True)
+      if recovery_mode == 0:
+        self.proc_window = frm.ProcWindow(self, -1, title='Image Processing',
+                                          target_phil=rec_target_phil,
+                                          phil=self.iota_phil)
+        self.proc_window.recover(int_path=rec_init.int_base,
+                                 init=rec_init,
+                                 status=selected[0],
+                                 params=self.gparams)
+        self.proc_window.Show(True)
 
   def onRun(self, e):
     # Run full processing
@@ -410,10 +412,15 @@ class MainWindow(wx.Frame):
       self.init_settings()
       title = 'Image Processing'
 
+    input_list = []
+    input_items = self.input_window.input.all_data_images
+    for key, imageset in input_items.iteritems():
+      input_list.extend(imageset)
+
     self.proc_window = frm.ProcWindow(self, -1, title=title,
                                       target_phil=self.target_phil,
                                       phil=self.iota_phil)
-    init = InitAll(iver=misc.iota_version)
+    init = InitAll(iver=misc.iota_version, input_list=input_list)
     self.proc_window.run(init)
 
     if self.proc_window.good_to_go:
@@ -634,7 +641,7 @@ class InitAll(object):
 
   """
 
-  def __init__(self, iver):
+  def __init__(self, iver, input_list=None):
     from datetime import datetime
     self.iver = iver
     self.user_id = user
@@ -643,6 +650,7 @@ class InitAll(object):
     self.conv_base = None
     self.obj_base = None
     self.int_base = None
+    self.input_list = input_list
 
 
   def make_input_list(self):
@@ -650,7 +658,9 @@ class InitAll(object):
         Optional selection of a random subset
     """
     input_entries = [i for i in self.params.input if i != None]
-    input_list = ginp.make_input_list(input_entries)
+    input_list = ginp.make_input_list(input_entries,
+                                      filter=True,
+                                      filter_type='image')
 
     # Pick a randomized subset of images
     if self.params.advanced.random_sample.flag_on and \
@@ -689,33 +699,33 @@ class InitAll(object):
     return random_inp_list
 
 
-  def make_int_object_list(self):
-    """ Generates list of image objects from previous grid search """
-    from libtbx import easy_pickle as ep
-
-    if self.params.cctbx.selection.select_only.grid_search_path == None:
-      int_dir = misc.set_base_dir('integration', True)
-    else:
-      int_dir = self.params.cctbx.selection.select_only.grid_search_path
-
-    img_objects = []
-
-    # Inspect integration folder for image objects
-    for root, dirs, files in os.walk(int_dir):
-      for filename in files:
-        found_file = os.path.join(root, filename)
-        if found_file.endswith(('int')):
-          obj = ep.load(found_file)
-          img_objects.append(obj)
-
-    # Pick a randomized subset of images
-    if self.params.advanced.random_sample.flag_on and \
-                  self.params.advanced.random_sample.number < len(img_objects):
-      gs_img_objects = self.select_random_subset(img_objects)
-    else:
-      gs_img_objects = img_objects
-
-    return gs_img_objects
+  # def make_int_object_list(self):
+  #   """ Generates list of image objects from previous grid search """
+  #   from libtbx import easy_pickle as ep
+  #
+  #   if self.params.cctbx.selection.select_only.grid_search_path == None:
+  #     int_dir = misc.set_base_dir('integration', True)
+  #   else:
+  #     int_dir = self.params.cctbx.selection.select_only.grid_search_path
+  #
+  #   img_objects = []
+  #
+  #   # Inspect integration folder for image objects
+  #   for root, dirs, files in os.walk(int_dir):
+  #     for filename in files:
+  #       found_file = os.path.join(root, filename)
+  #       if found_file.endswith(('int')):
+  #         obj = ep.load(found_file)
+  #         img_objects.append(obj)
+  #
+  #   # Pick a randomized subset of images
+  #   if self.params.advanced.random_sample.flag_on and \
+  #                 self.params.advanced.random_sample.number < len(img_objects):
+  #     gs_img_objects = self.select_random_subset(img_objects)
+  #   else:
+  #     gs_img_objects = img_objects
+  #
+  #   return gs_img_objects
 
 
   def sanity_check(self):
@@ -771,11 +781,20 @@ class InitAll(object):
 
     # Call function to read input folder structure (or input file) and
     # generate list of image file paths
-    if self.params.cctbx.selection.select_only.flag_on:
-      self.gs_img_objects = self.make_int_object_list()
-      self.input_list = [i.conv_img for i in self.gs_img_objects]
-    else:
+    # if self.params.cctbx.selection.select_only.flag_on:
+    #   self.gs_img_objects = self.make_int_object_list()
+    #   self.input_list = [i.conv_img for i in self.gs_img_objects]
+    # else:
+    #   self.input_list = self.make_input_list()
+
+    # If input list for some reason isn't transmitted from main window, make it
+    if self.input_list is None:
       self.input_list = self.make_input_list()
+
+    # Select a random subset of images if turned on
+    if self.params.advanced.random_sample.flag_on and \
+      self.params.advanced.random_sample.number < len(self.input_list):
+      self.input_list = self.select_random_subset(self.input_list)
 
     # Check for data not found
     if len(self.input_list) == 0:

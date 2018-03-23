@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 11/03/2017
+Last Changed: 03/22/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -30,7 +30,8 @@ class InputFinder():
                     as_string=False,
                     ignore_ext=None,
                     ext_only=None,
-                    last=None):
+                    last=None,
+                    min_back=None):
     ''' Runs the 'find' command to recursively get a list of filepaths. Has
     a few advangages over os.walk():
       1. Faster (by quite a lot when lots of files involved)
@@ -49,7 +50,12 @@ class InputFinder():
       newer_than = '-newer {}'.format(last)
     else:
       newer_than = ''
-    command = 'find {} -type f {}'.format(path, newer_than)
+
+    if min_back is not None:
+      mmin = '-mmin {}'.format(min_back)
+    else:
+      mmin = ''
+    command = 'find {} -type f {} {}'.format(path, newer_than, mmin)
     filepaths = easy_run.fully_buffered(command).stdout_lines
 
     if ignore_ext is not None:

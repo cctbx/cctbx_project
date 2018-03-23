@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 02/12/2018
+Last Changed: 03/22/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -157,8 +157,6 @@ class TrackChart(wx.Panel):
 
     self.reset_chart()
 
-
-
   def onSelect(self, xmin, xmax):
     ''' Called when SpanSelector is used (i.e. click-drag-release); passes on
         the boundaries of the span to tracker window for selection and
@@ -169,10 +167,13 @@ class TrackChart(wx.Panel):
       self.patch_x_last = int(xmax) + 1
       self.patch_width = self.patch_x_last - self.patch_x
       self.bracket_set = True
-
-
       self.main_window.update_image_list()
-      self.main_window.tracker_panel.image_list_panel.Show()
+      gp = self.main_window.tracker_panel.graph_panel
+      ip = self.main_window.tracker_panel.image_list_panel
+      sp = self.main_window.tracker_panel.chart_sash_position
+      if sp == 0:
+        sp = int(self.main_window.GetSize()[0] * 0.75)
+      self.main_window.tracker_panel.chart_splitter.SplitVertically(gp, ip, sp)
       self.main_window.tracker_panel.Layout()
 
     elif self.selector == 'zoom':
@@ -193,7 +194,9 @@ class TrackChart(wx.Panel):
 
         if self.bracket_set:
           self.bracket_set = False
-          self.main_window.tracker_panel.image_list_panel.Hide()
+          self.main_window.tracker_panel.chart_sash_position = \
+            self.main_window.tracker_panel.chart_splitter.GetSashPosition()
+          self.main_window.tracker_panel.chart_splitter.Unsplit()
           self.main_window.tracker_panel.Layout()
 
   def onScroll(self, e):
@@ -228,19 +231,31 @@ class TrackChart(wx.Panel):
       self.draw_plot()
 
       # Hide list of images
-      self.main_window.tracker_panel.image_list_panel.Hide()
+      self.main_window.tracker_panel.chart_sash_position = \
+        self.main_window.tracker_panel.chart_splitter.GetSashPosition()
+      self.main_window.tracker_panel.chart_splitter.Unsplit()
       self.main_window.tracker_panel.chart_window.toggle.SetValue(False)
       self.main_window.tracker_panel.chart_window.toggle_boxes(flag_on=False)
       self.main_window.tracker_panel.Layout()
     else:
-      if e.key == 'shift':
+      if self.main_window.tb_btn_view.IsToggled():
         self.selector = 'select'
         self.zoom_span.set_visible(False)
         self.select_span.set_visible(True)
-      else:
+      elif self.main_window.tb_btn_zoom.IsToggled():
         self.selector = 'zoom'
         self.zoom_span.set_visible(True)
         self.select_span.set_visible(False)
+
+      # Using Shift key to determine zoom or list; keeping code around for now
+      # if e.key == 'shift':
+      #   self.selector = 'select'
+      #   self.zoom_span.set_visible(False)
+      #   self.select_span.set_visible(True)
+      # else:
+      #   self.selector = 'zoom'
+      #   self.zoom_span.set_visible(True)
+      #   self.select_span.set_visible(False)
 
   def reset_chart(self):
     self.track_axes.clear()
@@ -432,11 +447,6 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     # Attach data object to item
     self.ctr.SetItemData(idx, item)
 
-    # Resize columns to fit content
-    #self.ctr.SetColumnWidth(0, width=50)
-    #self.ctr.SetColumnWidth(2, width=150)
-    #self.ctr.SetColumnWidth(1, width=-3)
-
     self.tracker_panel.Layout()
 
   def delete_item(self, index):
@@ -463,8 +473,7 @@ class VirtualListCtrl(ct.VirtualImageListCtrl):
   def __init__(self, parent):
     ct.VirtualImageListCtrl.__init__(self, parent=parent)
     self.parent = parent
-    self.tracker_panel = parent.GetParent()
-    self.main_window = parent.GetParent().GetParent().GetParent()
+    self.tracker_panel = parent.GetParent().GetParent().GetParent()
 
     # Generate columns
     self.ctr.InsertColumn(0, "#")
@@ -486,28 +495,35 @@ class VirtualListCtrl(ct.VirtualImageListCtrl):
   def OnSelection(self, e):
     ctr = e.GetEventObject()
     if ctr.GetSelectedItemCount() <= 0:
-      self.main_window.tracker_panel.btn_view_sel.Disable()
+      self.tracker_panel.btn_view_sel.Disable()
     else:
-      self.main_window.tracker_panel.btn_view_sel.Enable()
+      self.tracker_panel.btn_view_sel.Enable()
 
 class TrackerPanel(wx.Panel):
   def __init__(self, parent):
     wx.Panel.__init__(self, parent=parent)
     self.parent = parent
+    self.chart_sash_position = 0
 
     self.main_sizer = wx.GridBagSizer(10, 10)
-    self.SetSizer(self.main_sizer)
-
 
     # Status box
     self.info_panel = wx.Panel(self)
-    self.info_sizer = wx.FlexGridSizer(1, 3, 0, 10)
-    self.info_sizer.AddGrowableCol(2)
+    self.info_sizer = wx.FlexGridSizer(1, 4, 0, 10)
+    self.info_sizer.AddGrowableCol(3)
     self.info_panel.SetSizer(self.info_sizer)
 
-    self.count_box = wx.StaticBox(self.info_panel, label='Hit Count')
+    self.count_box = wx.StaticBox(self.info_panel, label='Hits')
     self.count_box_sizer = wx.StaticBoxSizer(self.count_box, wx.HORIZONTAL)
     self.count_txt = wx.StaticText(self.info_panel, label='')
+    self.count_box_sizer.Add(self.count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
+                             border=10)
+
+    self.idx_count_box = wx.StaticBox(self.info_panel, label='Indexed')
+    self.idx_count_box_sizer = wx.StaticBoxSizer(self.idx_count_box, wx.HORIZONTAL)
+    self.idx_count_txt = wx.StaticText(self.info_panel, label='')
+    self.idx_count_box_sizer.Add(self.idx_count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
+                          border=10)
 
     self.pg_box = wx.StaticBox(self.info_panel, label='Lattice')
     self.pg_box_sizer = wx.StaticBoxSizer(self.pg_box, wx.HORIZONTAL)
@@ -521,19 +537,25 @@ class TrackerPanel(wx.Panel):
     self.uc_box_sizer.Add(self.uc_txt, flag=wx.ALL | wx.ALIGN_CENTER,
                           border=10)
 
-    self.count_box_sizer.Add(self.count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
-                             border=10)
+
     font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.count_txt.SetFont(font)
+    self.idx_count_txt.SetFont(font)
+    self.pg_txt.SetFont(font)
+    self.uc_txt.SetFont(font)
 
     self.info_sizer.Add(self.count_box_sizer, flag=wx.EXPAND)
+    self.info_sizer.Add(self.idx_count_box_sizer, flag=wx.EXPAND)
     self.info_sizer.Add(self.pg_box_sizer, flag=wx.EXPAND)
     self.info_sizer.Add(self.uc_box_sizer, flag=wx.EXPAND)
-    self.main_sizer.Add(self.info_panel, pos=(0, 0), span=(1, 2),
-                        flag=wx.EXPAND | wx.ALL, border=10)
+
+    # Put chart and image list into splitter window
+    self.chart_splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE |
+                                                        wx.SP_3DSASH |
+                                                        wx.SP_NOBORDER)
 
     # Put in chart
-    self.graph_panel = wx.Panel(self)
+    self.graph_panel = wx.Panel(self.chart_splitter)
     self.graph_sizer = wx.GridBagSizer(5, 5)
 
     self.chart = TrackChart(self.graph_panel, main_window=parent)
@@ -552,19 +574,22 @@ class TrackerPanel(wx.Panel):
                                     ctrl_value=100,
                                     ctrl_min=10,
                                     ctrl_step=10)
-    self.spf_options = wx.Button(self.graph_panel,
-                                 label='Spotfinding Options...')
+    # self.spf_options = wx.Button(self.graph_panel,
+    #                              label='Spotfinding Options...')
+    self.chk_uc_cluster = wx.CheckBox(self.graph_panel,
+                                      label='Unit cell clustering')
     self.graph_sizer.Add(self.chart, flag=wx.EXPAND, pos=(0, 0), span=(1, 3))
     self.graph_sizer.Add(self.min_bragg, flag=wx.ALIGN_LEFT, pos=(1, 0))
     self.graph_sizer.Add(self.chart_window, flag=wx.ALIGN_CENTER, pos=(1, 1))
-    self.graph_sizer.Add(self.spf_options, flag=wx.ALIGN_RIGHT, pos=(1, 2))
+    self.graph_sizer.Add(self.chk_uc_cluster, flag=wx.ALIGN_CENTER, pos=(1, 2))
+    #self.graph_sizer.Add(self.spf_options, flag=wx.ALIGN_RIGHT, pos=(1, 2))
 
     self.graph_sizer.AddGrowableRow(0)
     self.graph_sizer.AddGrowableCol(1)
     self.graph_panel.SetSizer(self.graph_sizer)
 
     # List of images
-    self.image_list_panel = wx.Panel(self)
+    self.image_list_panel = wx.Panel(self.chart_splitter)
     self.image_list_sizer = wx.BoxSizer(wx.VERTICAL)
     self.image_list = ImageList(self.image_list_panel)
     self.btn_view_sel = wx.Button(self.image_list_panel, label='View Selected')
@@ -584,14 +609,21 @@ class TrackerPanel(wx.Panel):
     self.image_list_sizer.Add(btn_sizer, flag=wx.ALIGN_RIGHT | wx.EXPAND)
     self.image_list_panel.SetSizer(self.image_list_sizer)
 
-    self.main_sizer.Add(self.graph_panel, pos=(1, 0),
-                        flag=wx.EXPAND | wx.LEFT | wx.BOTTOM, border=10)
-    self.main_sizer.Add(self.image_list_panel, pos=(1, 1),
-                        flag=wx.EXPAND | wx.LEFT | wx.BOTTOM | wx.RIGHT,
-                        border=10)
+    # Add all to main sizer
+    self.main_sizer.Add(self.info_panel, pos=(0, 0),
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(self.chart_splitter, pos=(1, 0),
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    # self.main_sizer.Add(self.graph_panel, pos=(1, 0),
+    #                     flag=wx.EXPAND | wx.LEFT | wx.BOTTOM, border=10)
+    # self.main_sizer.Add(self.image_list_panel, pos=(1, 1),
+    #                     flag=wx.EXPAND | wx.LEFT | wx.BOTTOM | wx.RIGHT,
+    #                     border=10)
     self.main_sizer.AddGrowableCol(0)
     self.main_sizer.AddGrowableRow(1)
-    self.image_list_panel.Hide()
+    self.SetSizer(self.main_sizer)
+    self.chart_splitter.SplitVertically(self.graph_panel, self.image_list_panel)
+    self.chart_splitter.Unsplit()
 
 class TrackerWindow(wx.Frame):
   def __init__(self, parent, id, title):
@@ -620,16 +652,23 @@ class TrackerWindow(wx.Frame):
                                                  shortHelp='Quit',
                                                  longHelp='Quit image tracker')
     self.toolbar.AddSeparator()
+    pref_bmp = bitmaps.fetch_icon_bitmap('apps', 'advancedsettings')
+    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
+                                                  label='Preferences',
+                                                  bitmap=pref_bmp,
+                                                  shortHelp='Preferences',
+                                                  longHelp='IOTA image tracker preferences')
+    self.toolbar.AddSeparator()
     open_bmp = bitmaps.fetch_icon_bitmap('actions', 'open')
     self.tb_btn_open = self.toolbar.AddLabelTool(wx.ID_ANY, label='Open',
                                                 bitmap=open_bmp,
                                                 shortHelp='Open',
                                                 longHelp='Open folder')
-    rec_bmp = bitmaps.fetch_icon_bitmap('actions', 'quick_restart')
-    self.tb_btn_restore = self.toolbar.AddLabelTool(wx.ID_ANY, label='Restore',
-                                                bitmap=rec_bmp,
-                                                shortHelp='Restore',
-                                                longHelp='Restore aborted run')
+    # rec_bmp = bitmaps.fetch_icon_bitmap('actions', 'quick_restart')
+    # self.tb_btn_restore = self.toolbar.AddLabelTool(wx.ID_ANY, label='Restore',
+    #                                             bitmap=rec_bmp,
+    #                                             shortHelp='Restore',
+    #                                             longHelp='Restore aborted run')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
@@ -640,35 +679,28 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=stop_bmp,
                                                 shortHelp='Stop',
                                                 longHelp='Stop Spotfinding')
-    # self.toolbar.AddSeparator()
-    # span_view = bitmaps.fetch_custom_icon_bitmap('span_view')
-    # self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
-    #                                              bitmap=span_view,
-    #                                              kind=wx.ITEM_CHECK,
-    #                                              shortHelp='Select to View',
-    #                                              longHelp='Select images to view')
-    # span_zoom = bitmaps.fetch_custom_icon_bitmap('span_zoom')
-    # self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY, label='Zoom In',
-    #                                              bitmap=span_zoom,
-    #                                              kind=wx.ITEM_CHECK,
-    #                                              shortHelp='Zoom In',
-    #                                              longHelp='Zoom in on chart')
-    # self.toolbar.ToggleTool(self.tb_btn_view.GetId(), True)
-
-    # view_bmp = bitmaps.fetch_custom_icon_bitmap('image_viewer32')
-    # self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
-    #                                             bitmap=view_bmp,
-    #                                             shortHelp='View images',
-    #                                             longHelp='View selected images')
-    # self.toolbar.EnableTool(self.tb_btn_view.GetId(), False)
+    self.toolbar.AddSeparator()
+    span_view = bitmaps.fetch_custom_icon_bitmap('zoom_list')
+    self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
+                                                 bitmap=span_view,
+                                                 kind=wx.ITEM_CHECK,
+                                                 shortHelp='Select to View',
+                                                 longHelp='Select images to view')
+    span_zoom = bitmaps.fetch_custom_icon_bitmap('zoom_view')
+    self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY, label='Zoom In',
+                                                 bitmap=span_zoom,
+                                                 kind=wx.ITEM_CHECK,
+                                                 shortHelp='Zoom In',
+                                                 longHelp='Zoom in on chart')
+    self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), True)
 
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
 
-    if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
-      self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
-    else:
-      self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
+    # if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
+    #   self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
+    # else:
+    #   self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
 
     self.toolbar.Realize()
 
@@ -693,11 +725,13 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onGetImages, self.tb_btn_open)
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
-    self.Bind(wx.EVT_TOOL, self.onRestoreRun, self.tb_btn_restore)
+    # self.Bind(wx.EVT_TOOL, self.onRestoreRun, self.tb_btn_restore)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
     self.Bind(wx.EVT_BUTTON, self.onSelView, self.tracker_panel.btn_view_sel)
     self.Bind(wx.EVT_BUTTON, self.onWrtFile, self.tracker_panel.btn_wrt_file)
     self.Bind(wx.EVT_BUTTON, self.onAllView, self.tracker_panel.btn_view_all)
+    self.Bind(wx.EVT_TOOL, self.onZoom, self.tb_btn_zoom)
+    self.Bind(wx.EVT_TOOL, self.onList, self.tb_btn_view)
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
@@ -707,11 +741,19 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TIMER, self.onUCTimer, id=self.uc_timer.GetId())
 
     # Settings bindings
-    self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
+    #self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
     self.Bind(wx.EVT_SPINCTRL, self.onMinBragg,
               self.tracker_panel.min_bragg.ctr)
     self.Bind(wx.EVT_SPINCTRL, self.onChartRange,
               self.tracker_panel.chart_window.ctr)
+
+  def onZoom(self, e):
+    if self.tb_btn_zoom.IsToggled():
+      self.toolbar.ToggleTool(self.tb_btn_view.GetId(), False)
+
+  def onList(self, e):
+    if self.tb_btn_view.IsToggled():
+      self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), False)
 
   def reset_spotfinder(self):
     self.frame_count = []
@@ -807,14 +849,14 @@ class TrackerWindow(wx.Frame):
       self.reset_spotfinder()
 
       self.tracker_panel.chart.reset_chart()
-      self.tracker_panel.spf_options.Enable()
+      #self.tracker_panel.spf_options.Enable()
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
       # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
       timer_txt = '[ ------ ]'
       self.msg = 'Ready to track images in {}'.format(self.data_folder)
       self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
 
-      self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
+      # self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
       try:
         os.remove(self.folder_file)
         os.remove(self.info_file)
@@ -879,7 +921,7 @@ class TrackerWindow(wx.Frame):
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), False)
     self.params = self.phil.extract()
     self.processor = IOTADialsProcessor(params=self.params)
-    self.tracker_panel.spf_options.Disable()
+    #self.tracker_panel.spf_options.Disable()
 
     self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
 
@@ -946,14 +988,8 @@ class TrackerWindow(wx.Frame):
                                        filter=True,
                                        filter_type='image',
                                        last=last_file)
-
-    if found_files != []:
-      print 'DEBUG: FIRST FILE - {}'.format(found_files[0])
-
     self.data_list = list(set(found_files) - set(self.done_list))
     self.data_list = [i for i in self.data_list if not 'tmp' in i]
-
-    print 'DEBUG: FOUND {} FILES\n'.format(len(self.data_list))
 
     if len(self.data_list) == 0:
       self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
@@ -1042,8 +1078,10 @@ class TrackerWindow(wx.Frame):
         clusters, _ = ucs.ab_cluster(5000,
                                      log=False, write_file_lists=False,
                                      schnell=False, doplot=False)
+        print clusters
       except Exception, e:
-        clusters = 0
+        clusters = []
+        print e
 
     if len(clusters) > 0:
       uc_table = []
@@ -1077,6 +1115,7 @@ class TrackerWindow(wx.Frame):
 
       self.tracker_panel.pg_txt.SetLabel(cons_pg)
       self.tracker_panel.uc_txt.SetLabel(uc_line)
+      self.tracker_panel.idx_count_txt.SetLabel(str(uc_pick[0]))
 
   def onQuit(self, e):
     self.spf_timer.Stop()

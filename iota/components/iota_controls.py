@@ -337,10 +337,12 @@ class DialogButtonsCtrl(CtrlBase):
 
     if choices is not None:
       choice_sizer = wx.BoxSizer(wx.HORIZONTAL)
-      self.choice_txt = wx.StaticText(self, label=choice_label, size=wx.DefaultSize)
+      self.choice_txt = wx.StaticText(self, label=choice_label,
+                                      size=wx.DefaultSize)
       self.choice = wx.Choice(self, size=choice_size, choices=choices)
       self.choice.SetSelection(0)
-      choice_sizer.Add(self.choice_txt, flag=wx.LEFT, border=5)
+      choice_sizer.Add(self.choice_txt, flag=wx.LEFT | wx.ALIGN_CENTER_VERTICAL,
+                       border=5)
       choice_sizer.Add(self.choice)
       main_sizer.Add(choice_sizer, flag=wx.ALL, border=10)
 

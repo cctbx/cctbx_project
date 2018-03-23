@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 11/03/2017
+Last Changed: 03/22/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -892,14 +892,14 @@ class CCTBXOptions(BaseBackendDialog):
                            label='Grid Search Selection Options')
     sel_box_sizer = wx.StaticBoxSizer(sel_box, wx.VERTICAL)
 
-    self.select_only = wx.CheckBox(self.sel_options, label="Select only")
-    sel_box_sizer.Add(self.select_only, flag=f.stack, border=10)
-
-    self.img_objects_path = ct.InputCtrl(self.sel_options,
-                                         label='Image objects:',
-                                         label_size=(120, -1),
-                                         buttons=True)
-    sel_box_sizer.Add(self.img_objects_path, 1, flag=f.expand, border=10)
+    # self.select_only = wx.CheckBox(self.sel_options, label="Select only")
+    # sel_box_sizer.Add(self.select_only, flag=f.stack, border=10)
+    #
+    # self.img_objects_path = ct.InputCtrl(self.sel_options,
+    #                                      label='Image objects:',
+    #                                      label_size=(120, -1),
+    #                                      buttons=True)
+    # sel_box_sizer.Add(self.img_objects_path, 1, flag=f.expand, border=10)
 
     self.select_by = ct.ChoiceCtrl(self.sel_options,
                                    label='Select by:',
@@ -992,7 +992,7 @@ class CCTBXOptions(BaseBackendDialog):
     self.Bind(wx.EVT_CHOICE, self.onGSChoice, self.gs_type.ctr)
     self.Bind(wx.EVT_CHOICE, self.onLatChoice, self.target_lattice.ctr)
     self.Bind(wx.EVT_CHOICE, self.onCentChoice, self.target_centering.ctr)
-    self.Bind(wx.EVT_CHECKBOX, self.onSelCheck, self.select_only)
+    # self.Bind(wx.EVT_CHECKBOX, self.onSelCheck, self.select_only)
     self.Bind(wx.EVT_BUTTON, self.onHideScript, self.btn_hide_script)
     self.Bind(wx.EVT_CHOICE, self.onAdvanced, self.dlg_ctr.choice)
 
@@ -1035,8 +1035,8 @@ class CCTBXOptions(BaseBackendDialog):
     self.write_default_phil()
     self.phil.ctr.SetValue(self.target_phil)
 
-  def onSelCheck(self, e):
-    self.img_objects_path.Enable(self.select_only.GetValue())
+  # def onSelCheck(self, e):
+  #   self.img_objects_path.Enable(self.select_only.GetValue())
 
   def onGSChoice(self, e):
     self.set_grid_search(self.gs_type.ctr.GetSelection())
@@ -1144,9 +1144,9 @@ class CCTBXOptions(BaseBackendDialog):
     self.set_grid_search(idx=idx)
     self.signal_search.SetValue(self.params.cctbx.grid_search.sig_height_search)
 
-    # Selection options
-    self.select_only.SetValue(self.params.cctbx.selection.select_only.flag_on)
-    self.img_objects_path.Enable(self.select_only.GetValue())
+    # # Selection options
+    # self.select_only.SetValue(self.params.cctbx.selection.select_only.flag_on)
+    # self.img_objects_path.Enable(self.select_only.GetValue())
 
     idx = self.select_by.ctr.FindString(self.params.cctbx.selection.select_by)
     self.select_by.ctr.SetSelection(idx)
@@ -1236,8 +1236,8 @@ class CCTBXOptions(BaseBackendDialog):
       target_centering = None
 
 
-    # Grid search path (for select-only option)
-    grid_search_path = noneset(self.img_objects_path.ctr.GetValue())
+    # # Grid search path (for select-only option)
+    # grid_search_path = noneset(self.img_objects_path.ctr.GetValue())
 
     # Filter options
     filter_on = bool(self.filt_lattice.toggle.GetValue() +
@@ -1283,11 +1283,11 @@ class CCTBXOptions(BaseBackendDialog):
       '    }',
       '  selection',
       '  {',
-      '    select_only',
-      '    {',
-      '      flag_on = {}'.format(self.select_only.GetValue()),
-      '      grid_search_path = {}'.format(grid_search_path),
-      '    }',
+      # '    select_only',
+      # '    {',
+      # '      flag_on = {}'.format(self.select_only.GetValue()),
+      # '      grid_search_path = {}'.format(grid_search_path),
+      # '    }',
       '    min_sigma = {}'.format(self.min_sigma.sigma.GetValue()),
       '    select_by = {}'.format(self.select_by.ctr.GetString(
         self.select_by.ctr.GetSelection())),
@@ -1983,6 +1983,7 @@ class RecoveryDialog(BaseDialog):
 
     self.pathlist = wx.ListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
     self.selected = None
+    self.recovery_mode = 0
 
     self.pathlist.InsertColumn(0, "")
     self.pathlist.InsertColumn(1, "#")
@@ -2002,9 +2003,11 @@ class RecoveryDialog(BaseDialog):
     self.main_sizer.Add(self.pathlist, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
-    self.main_sizer.Add(self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL),
-                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL, border=10)
-
+    self.dlg_ctr = ct.DialogButtonsCtrl(self, preset='OK_CANCEL',
+                                        choices=['everything', 'settings only'],
+                                        choice_label='Recover: ')
+    self.main_sizer.Add(self.dlg_ctr, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
 
@@ -2040,6 +2043,7 @@ class RecoveryDialog(BaseDialog):
 
         self.selected = [self.pathlist.GetItemText(i, col=2),
                          self.pathlist.GetItemText(i, col=3)]
+        self.recovery_mode = self.dlg_ctr.choice.GetSelection()
     e.Skip()
 
 class DIALSSpfDialog(BaseDialog):

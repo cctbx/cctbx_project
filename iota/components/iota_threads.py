@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 02/12/2018
+Last Changed: 03/22/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -218,8 +218,7 @@ class ObjectFinderThread(Thread):
                                       ext_only='int',
                                       last=last)
     new_objects = [self.read_object_file(i) for i in object_files]
-    new_finished_objects = [i for i in new_objects if
-                            (i is not None and i.status == 'final')]
+    new_finished_objects = [i for i in new_objects if i is not None]
 
     evt = ObjectFinderAllDone(tp_EVT_OBJDONE, -1, obj_list=new_finished_objects)
     wx.PostEvent(self.parent, evt)
@@ -228,8 +227,9 @@ class ObjectFinderThread(Thread):
     try:
       object = ep.load(filepath)
       return object
-    except EOFError:
-      pass
+    except EOFError, e:
+      print 'OBJECT_IMPORT_ERROR: ', e
+      return None
 
 class ImageViewerThread(Thread):
   ''' Worker thread that will move the image viewer launch away from the GUI

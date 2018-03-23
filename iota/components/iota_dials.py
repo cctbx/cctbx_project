@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 01/31/2018
+Last Changed: 03/22/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -449,6 +449,9 @@ class Integrator(object):
 
       int_results = {'sg':Bravais_lattice, 'a':cell[0], 'b':cell[1], 'c':cell[2],
                      'alpha':cell[3], 'beta':cell[4], 'gamma':cell[5],
+                     'wavelength':self.frame['wavelength'],
+                     'distance':self.frame['distance'],
+                     'beamX':self.frame['xbeam'], 'beamY':self.frame['ybeam'],
                      'strong':strong_spots, 'res':hres, 'lres':lres,
                      'mos':mosaicity, 'epv':ewald_proximal_volume,
                      'info':int_status, 'ok':True}
