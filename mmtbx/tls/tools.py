@@ -15,7 +15,7 @@ import mmtbx.utils
 import iotbx
 import math
 import iotbx.pdb.remark_3_interpretation
-
+from scitbx.linalg import eigensystem
 
 def combine_tls_and_u_local(xray_structure, tls_selections, tls_groups):
   assert len(tls_selections) == len(tls_groups)
@@ -1049,7 +1049,8 @@ class u_tls_vs_u_ens(object):
                assert_similarity=True,
                show=False,
                log = sys.stdout,
-               write_pdb_files=False):
+               write_pdb_files=False,
+               smear_eps = 0):
     from mmtbx.tls import analysis, tls_as_xyz
     from scitbx import matrix
     from libtbx.utils import null_out
@@ -1129,11 +1130,66 @@ class u_tls_vs_u_ens(object):
       self.u_cart_ens.append(u_cart_from_xyz(sites_cart=xyz_atoms_all[i]))
     u1 = self.u_cart_tls.as_double()
     u2 = self.u_cart_ens.as_double()
-    self.r = flex.sum(flex.abs(u1-u2))/\
-             flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+    #self.r = flex.sum(flex.abs(u1-u2))/\
+    #         flex.sum(flex.abs(flex.abs(u1)+flex.abs(u2)))*2
+    # LS
+    #diff = u1-u2
+    #self.rLS = math.sqrt(flex.sum(diff*diff)/(9.*diff.size()))
     #
-    diff = u1-u2
-    self.rLS = math.sqrt(flex.sum(diff*diff)/(9.*diff.size()))
+    # Merritt / Murshudov
+    e = smear_eps
+    eps = matrix.sqr(
+      [e, 0, 0,
+       0, e, 0,
+       0, 0, e])
+    I = matrix.sqr(
+      [2, 0, 0,
+       0, 2, 0,
+       0, 0, 2])
+
+    def add_const(u):
+      es = eigensystem.real_symmetric(u)
+      vecs = es.vectors()
+      l_z = matrix.col((vecs[0], vecs[1], vecs[2]))
+      l_y = matrix.col((vecs[3], vecs[4], vecs[5]))
+      l_x = matrix.col((vecs[6], vecs[7], vecs[8]))
+      #l_x = l_y.cross(l_z)
+      u = matrix.sym(sym_mat3=u)
+      R = matrix.sqr(
+        [l_x[0], l_y[0], l_z[0],
+         l_x[1], l_y[1], l_z[1],
+         l_x[2], l_y[2], l_z[2]])
+      uD = R.transpose()*u*R
+      result = R*(uD+eps)*R.transpose()
+      tmp = R*uD*R.transpose()
+      for i in xrange(6):
+        assert approx_equal(tmp[i], u[i])
+      return R*(uD+eps)*R.transpose()
+
+    self.KL=0
+    self.CC=0
+    n1,n2,d1,d2=0,0,0,0
+    for u1, u2 in zip(self.u_cart_tls, self.u_cart_ens):
+      for i in xrange(6):
+        n1 += abs(u1[i]-u2[i])
+        d1 += (abs(u1[i])+abs(u2[i]))
+      u1 = add_const(u=u1)
+      u2 = add_const(u=u2)
+      for i in xrange(6):
+        n2 += abs(u1[i]-u2[i])
+        d2 += (abs(u1[i])+abs(u2[i]))
+      iu1 = u1.inverse()
+      iu2 = u2.inverse()
+      self.KL += (u1*iu2+u2*iu1-I).trace()
+      diu1 = iu1.determinant()
+      diu2 = iu2.determinant()
+      den = (iu1+iu2).determinant()
+      self.CC += (diu1*diu2)**0.25/(den/8)**0.5
+    self.KL = self.KL/self.u_cart_ens.size()
+    self.CC = self.CC/self.u_cart_ens.size()
+    self.R1 = n1/d1*2
+    self.R2 = n2/d2*2
+    #
     ###
     for i in xrange(n_atoms):
       ut=["%8.5f"%u for u in self.u_cart_tls[i]]
