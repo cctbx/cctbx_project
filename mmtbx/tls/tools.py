@@ -1189,6 +1189,7 @@ class u_tls_vs_u_ens(object):
     self.CC = self.CC/self.u_cart_ens.size()
     self.R1 = n1/d1*2
     self.R2 = n2/d2*2
+    self.r = self.R1
     #
     ###
     for i in xrange(n_atoms):
