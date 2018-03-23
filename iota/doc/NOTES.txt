@@ -20,6 +20,8 @@ and hk0), which is much faster and more informative.
 11. Changed how unit cell histograms are drawn - slightly faster, but also
 potentially more configurable in future
 12. Can now read runs from XTerm IOTA into GUI
+13. IOTA GUI now takes command arguments; any IOTA PHIL entry can be used as a
+command-line argument, and will be automatically interpreted.
 
 
 Known issues:

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/22/2018
+Last Changed: 03/23/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -12,9 +12,12 @@ import wx
 import wx.lib.agw.ultimatelistctrl as ulc
 from wxtbx import bitmaps
 import multiprocessing
+import argparse
 
 from iotbx import phil as ip
 from libtbx import easy_pickle as ep
+from libtbx.phil.command_line import argument_interpreter as argint
+from libtbx.utils import Sorry
 from cctbx import miller
 assert miller
 
@@ -53,6 +56,32 @@ elif (wx.Platform == '__WXMSW__'):
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
   python = "Python"    #TODO: make sure it's right!
+
+
+# --------------------------- Command-line Parser ---------------------------- #
+
+def parse_command_args(help_message):
+  """ Parses command line arguments (only options for now) """
+  parser = argparse.ArgumentParser(prog = 'iota',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(help_message),
+            epilog=('\n{:-^70}\n'.format('')))
+  parser.add_argument('path', type=str, nargs = '*', default = None,
+            help = 'Path to data or file with IOTA parameters')
+  parser.add_argument('--version', action = 'version',
+            version = 'IOTA {}'.format(misc.iota_version),
+            help = 'Prints version info of IOTA')
+  parser.add_argument('-w', type=int, nargs=1, default=0, dest='watch',
+            help = 'Run IOTA in watch mode - check for new images')
+  parser.add_argument('-r', type=int, nargs=1, default=0, dest='random',
+            help = 'Run IOTA with a random subset of images, e.g. "-r 5"')
+  parser.add_argument('-n', type=int, nargs='?', default=0, dest='nproc',
+            help = 'Specify a number of cores for a multiprocessor run"')
+  parser.add_argument('--analyze', type=str, nargs='?', const=None, default=None,
+            help = 'Use for analysis only; specify run number or folder')
+  parser.add_argument('--tmp', type=str, nargs = 1, default = None,
+            help = 'Path to temp folder')
+  return parser
 
 
 # ------------------------------- Main Window -------------------------------- #
@@ -191,6 +220,57 @@ class MainWindow(wx.Frame):
     # File list control bindings
     self.Bind(ulc.EVT_LIST_INSERT_ITEM, self.onItemInserted,
               self.input_window.input)
+
+  def read_command_line_options(self):
+
+    help_message = '''This command will run the IOTA GUI '''
+
+    self.args, self.phil_args = parse_command_args('').parse_known_args()
+
+    if self.args.path is not None and len(self.args.path) > 0:
+      for carg in self.args.path:
+        if os.path.exists(carg):
+          if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
+            self.load_script(filepath=carg)
+          else:
+            self.input_window.input.add_item(os.path.abspath(carg))
+
+    if self.args.watch > 0:
+      self.iparams.advanced.monitor_mode = True
+      self.iparams.advanced.monitor_mode_timeout = True
+      self.iparams.advanced.monitor_mode_timeout_length = self.args.watch[0]
+
+    if self.args.random > 0:
+      self.iparams.advanced.random_sample.flag_on = True
+      self.iparams.advanced.random_sample.number = self.args.random[0]
+
+    if self.args.tmp is not None:
+      self.iparams.advanced.temporary_output_folder = self.args.tmp[0]
+
+    if self.args.nproc is not None:
+      self.iparams.n_processors = self.args.nproc
+
+    self.iota_phil = self.iota_phil.format(python_object=self.iparams)
+
+    # Parse in-line params into phil
+    argument_interpreter = argint(master_phil=self.iota_phil)
+    consume = []
+    for arg in self.phil_args:
+      try:
+        command_line_params = argument_interpreter.process(arg=arg)
+        self.iota_phil = self.iota_phil.fetch(sources=[command_line_params, ])
+        consume.append(arg)
+      except Sorry, e:
+        pass
+    for item in consume:
+      self.phil_args.remove(item)
+    if len(self.phil_args) > 0:
+      raise Sorry(
+        "Not all arguments processed, remaining: {}".format(self.phil_args))
+
+    self.gparams = self.iota_phil.extract()
+    self.update_input_window()
+
 
   def onItemInserted(self, e):
     print self.input_window.input.all_data_images
@@ -775,8 +855,6 @@ class InitAll(object):
                     of list file
     '''
 
-    from iota.components.iota_init import parse_command_args
-    self.args, self.phil_args = parse_command_args(self.iver, '').parse_known_args()
     self.params = gparams
     self.target_phil = target_phil
 

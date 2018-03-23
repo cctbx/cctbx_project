@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/31/2017
+Last Changed: 03/23/2018
 Description : IOTA GUI startup module.
 '''
 
@@ -23,6 +23,9 @@ class MainApp(wx.App):
     # Find mouse position and open window there
     mx, my = wx.GetMousePosition()
     self.frame.SetPosition((mx, my))
+
+    # Read command-line options if any and populate frame accordingly
+    self.frame.read_command_line_options()
 
     self.frame.Show(True)
     self.SetTopWindow(self.frame)
