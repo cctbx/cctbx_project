@@ -11,6 +11,7 @@ from libtbx import Auto, slots_getstate_setstate
 from libtbx.str_utils import format_value
 from libtbx.utils import null_out, Sorry
 import sys
+import mmtbx.model
 
 __real_space_attr__ = [
   "b_iso",
@@ -228,7 +229,8 @@ class real_space (validation) :
         pdb_input = iotbx.pdb.input(
           source_info='pdb_hierarchy',
           lines=flex.split_lines(pdb_hierarchy.as_pdb_string()))
-        self.fsc = get_fsc(map_object, pdb_input, params.map_model_cc)
+        model = mmtbx.model.manager(model_input = pdb_input)
+        self.fsc = get_fsc(map_data, model, params.map_model_cc)
         #
 
         self.fsc.atom_radius = rsc.atom_radius
