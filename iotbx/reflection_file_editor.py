@@ -523,6 +523,11 @@ class process_arrays (object) :
         array_info=info,
         log=log,
         verbose=params.verbose)
+      if([params.mtz_file.d_min,params.mtz_file.d_max].count(None)==0):
+        if(params.mtz_file.d_min > params.mtz_file.d_max):
+          msg="High resolution cutoff %s is larger than low resolution %s."
+          raise Sorry(msg%(
+            str(params.mtz_file.d_min), str(params.mtz_file.d_max)))
       output_array = output_array.resolution_filter(
         d_min=params.mtz_file.d_min,
         d_max=params.mtz_file.d_max)
