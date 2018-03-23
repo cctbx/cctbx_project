@@ -605,7 +605,6 @@ class model_idealization():
       self.shift_and_write_result(
           model = self.model,
           fname_suffix="rota_ideal")
-    cs_to_write = self.cs if self.shift_vector is None else None
 
     self.after_rotamer_fixing = self.get_statistics(self.model)
     ref_hierarchy_for_final_gm = self.original_boxed_hierarchy
@@ -974,7 +973,7 @@ def run(args):
         xrs=model.get_xray_structure(),
         log=log)
     model.set_shift_manager(shift_manager)
-    model.get_hierarchy().write_pdb_file("junk_shift.pdb")
+    # model.get_hierarchy().write_pdb_file("junk_shift.pdb")
 
   hkl_content = input_objects.get_file(work_params.hkl_file_name)
   if hkl_content is not None:

@@ -414,9 +414,6 @@ class minimize_wrapper_with_map():
     # minimize_wrapper_for_ramachandran
     self.model.get_restraints_manager().geometry.pair_proxies(
         sites_cart=self.model.get_sites_cart())
-    if self.model.get_restraints_manager().geometry.ramachandran_manager is not None:
-      self.model.get_restraints_manager().geometry.ramachandran_manager.update_phi_psi_targets(
-          sites_cart=self.model.get_sites_cart())
 
     ncs_restraints_group_list = self.model.get_ncs_groups()
     if ncs_restraints_group_list is None:
@@ -439,6 +436,8 @@ class minimize_wrapper_with_map():
 
     while min_monitor.need_more_cycles():
       print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()
+      self.model.get_restraints_manager().geometry.update_ramachandran_restraints_phi_psi_targets(
+          sites_cart=self.model.get_sites_cart())
       print >> self.log, "  Updating rotamer restraints..."
       add_rotamer_restraints(
         pdb_hierarchy      = self.model.get_hierarchy(),
@@ -494,12 +493,13 @@ class minimize_wrapper_with_map():
       else:
         # Yes NCS
         # copy-paste from macro_cycle_real_space.py
-        import mmtbx.ncs.ncs_utils as nu
-        nu.get_list_of_best_ncs_copy_map_correlation(
-            ncs_groups     = ncs_restraints_group_list,
-            xray_structure = self.model.get_xray_structure(),
-            map_data       = target_map,
-            d_min          = 3)
+        # !!! Don't rearrange NCS groups here because master was just fixed!
+        # import mmtbx.ncs.ncs_utils as nu
+        # nu.get_list_of_best_ncs_copy_map_correlation(
+        #     ncs_groups     = ncs_restraints_group_list,
+        #     xray_structure = self.model.get_xray_structure(),
+        #     map_data       = target_map,
+        #     d_min          = 3)
         print >> self.log, "  Minimizing... (NCS)"
         tfg_obj = mmtbx.refinement.minimization_ncs_constraints.\
           target_function_and_grads_real_space(
@@ -520,6 +520,7 @@ class minimize_wrapper_with_map():
           max_iterations               = 100,
           refine_sites                 = True)
         self.model.set_sites_cart(tfg_obj.xray_structure.sites_cart())
+      ncs_restraints_group_list.recalculate_ncs_transforms(self.model.get_sites_cart())
       ms = self.model.geometry_statistics()
       min_monitor.save_cycle_results(geometry=ms)
       ms.show(log=log)
