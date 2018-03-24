@@ -158,6 +158,7 @@ if (compiler not in ("default", None)):
   sys.tracebacklimit = 0
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 supported_compilers = (
+  "unix_conda",
   "win32_cl",
   "win32_icc",
   "win32_mingw",
@@ -727,6 +728,37 @@ int main() {
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-Bstatic"])
       static_exe = None
+  elif (env_etc.compiler == 'unix_conda'):
+    # default conda compilers (gcc 7.2)
+    conda_prefix = os.environ['CONDA_PREFIX']
+    bin_path = os.path.join(conda_prefix, 'bin')
+    cc = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-gcc')
+    cxx = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-g++')
+    if ( (not os.path.isfile(cc)) or
+         (not os.path.isfile(cxx)) ):
+      raise RuntimeError('conda compilers are not installed')
+    # use environment flags
+    env_etc.ccflags_base = []
+    env_etc.cxxflags_base = []
+    libtbx.env.build_options.use_environment_flags = True
+    env_etc.shlinkflags = ["-shared"]
+    env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
+
+    env_etc.static_libraries = 0
+    env_etc.static_bpl = 0
+    env_etc.c_link = cc
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
+    env_etc.cxx11_is_available = True
+
+    env_base.Replace(
+      CC=cc,
+      SHCC=cc,
+      CXX=cxx,
+      LINK=cxx,
+      SHCXX=cxx,
+      SHLINK=cxx,
+      SHLIBSUFFIX=env_etc.shlibsuffix,
+    )
   elif env_etc.compiler.startswith("darwin"):
     cc  = env_etc.compiler.replace('darwin_','')
     if cc == "c++": cc = "cc"
@@ -1116,6 +1148,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
+      ('^unix_conda$',[['-fopenmp']]*2),
       ('darwin',      [['-fopenmp']]*2),
       ('gcc',         [['-fopenmp']]*2),
       ('mingw',       [['-fopenmp']]*2),
