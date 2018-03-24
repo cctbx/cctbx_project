@@ -2362,11 +2362,16 @@ class shift_origin(object):
     sites_cart_shifted  = soin.sites_cart
     if(self.xray_structure is not None):
       self.xray_structure.set_sites_cart(sites_cart_shifted)
+      self.xray_structure_box = self.xray_structure # NONSENSE XXX
     if([self.pdb_hierarchy,sites_cart_shifted].count(None)==0):
       self.pdb_hierarchy.atoms().set_xyz(sites_cart_shifted)
 
+  def get_original_cs(self):
+    return self.crystal_symmetry
+
   def shift_back(self, pdb_hierarchy):
     sites_cart = pdb_hierarchy.atoms().extract_xyz()
+    if(self.shift_cart is None): return
     shift_back = [-self.shift_cart[0], -self.shift_cart[1], -self.shift_cart[2]]
     sites_cart_shifted = sites_cart+\
       flex.vec3_double(sites_cart.size(), shift_back)

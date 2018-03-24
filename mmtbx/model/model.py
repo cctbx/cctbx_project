@@ -1005,11 +1005,10 @@ class manager(object):
     """
     if self.get_ncs_obj() is not None:
       self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
-    if filter_groups:
-      ncs_group_list = ncs_obj.get_ncs_restraints_group_list()
-      # set up new groups for refinements
-      self._ncs_groups = self.ncs_restr_group_list.filter_ncs_restraints_group_list(
-          self.get_hierarchy())
+      if filter_groups:
+        # set up new groups for refinements
+        self._ncs_groups = self._ncs_groups.filter_ncs_restraints_group_list(
+            self.get_hierarchy())
     self._update_master_sel()
 
   def _update_master_sel(self):
@@ -1340,6 +1339,12 @@ class manager(object):
 
   def set_sites_cart_from_xrs(self):
     self._pdb_hierarchy.adopt_xray_structure(self._xray_structure)
+    self._update_pdb_atoms()
+    self.model_statistics_info = None
+
+  def set_b_iso(self, b_iso):
+    self._xray_structure.set_b_iso(values = b_iso)
+    self._pdb_hierarchy.atoms().set_b(b_iso)# adopt_xray_structure(self._xray_structure)
     self._update_pdb_atoms()
     self.model_statistics_info = None
 
