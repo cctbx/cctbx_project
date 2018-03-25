@@ -595,7 +595,7 @@ class model_idealization():
           map_data          = self.master_map,
           rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
           sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
-          backbone_sample   = True,
+          backbone_sample   = False,
           mon_lib_srv       = self.model.get_mon_lib_srv(),
           log               = self.log)
       self.model.set_sites_cart(

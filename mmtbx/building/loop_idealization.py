@@ -224,7 +224,7 @@ class loop_idealization():
             map_data          = self.reference_map,
             rotamer_manager   = iaar_rotamer_manager,
             sin_cos_table     = sin_cos_table,
-            backbone_sample   = True,
+            backbone_sample   = False,
             mon_lib_srv       = self.model.get_mon_lib_srv(),
             log               = self.log)
         model.set_sites_cart(
