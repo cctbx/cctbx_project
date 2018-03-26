@@ -10143,7 +10143,8 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           tracking_data.params.output_files.sharpened_map_file)
     if sharpened_map_file:
       sharpened_map_data=map_data.deep_copy()
-      if tracking_data.acc:
+      if tracking_data.acc and \
+          tracking_data.acc.all()==sharpened_map_data.accessor().all():
          sharpened_map_data.reshape(tracking_data.acc)
       if tracking_data.acc is not None:  # we offset the map to match original
         print >>out,\
