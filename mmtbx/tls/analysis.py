@@ -255,7 +255,7 @@ class run(object):
     show_vector(x=w_lz, title="w_lz, eq.(16)", log=self.log)
     #
     d11 = wz_ly**2*self.Lyy + wy_lz**2*self.Lzz
-    d22 = wz_lx**2*self.Lxx + wx_lz**2*self.Lzz
+    d22 = wx_lz**2*self.Lzz + wz_lx**2*self.Lxx
     d33 = wy_lx**2*self.Lxx + wx_ly**2*self.Lyy
     d12 = -wx_lz*wy_lz*self.Lzz
     d13 = -wx_ly*wz_ly*self.Lyy
@@ -404,8 +404,8 @@ class run(object):
         #
         tSs = []
         cauchy_conditions(i=0,j=4,k=8, tSs=tSs)
-        cauchy_conditions(i=4,j=0,k=8, tSs=tSs)
         cauchy_conditions(i=8,j=0,k=4, tSs=tSs)
+        cauchy_conditions(i=4,j=8,k=0, tSs=tSs)
         if(len(tSs)==1): self.t_S = tSs[0]
         elif(len(tSs)==0): raise RuntimeError
         else:
@@ -487,7 +487,7 @@ class run(object):
 
   def check_33_34_35(self, a_s, b_s, c_s):
     if(not ((a_s<0 or self.is_zero(a_s)) and
-            (b_s>0 or self.is_zero(a_s)) and
+            (b_s>0 or self.is_zero(b_s)) and
             (c_s<0 or self.is_zero(c_s)))):
       raise Sorry("Step C (right branch): Conditions 33-35 failed.")
 
