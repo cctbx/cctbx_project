@@ -1057,7 +1057,7 @@ namespace zernike{
           plm[ indices[0] ] = a;
           if (this_m>0){
                 int neg_lm = lm_engine_.find_lm( this_l , -this_m );
-                plm[ neg_lm ] = neg_legendre(this_l, this_m, b);
+                plm[ neg_lm ] = neg_legendre(this_l, this_m, 0.0);
           }
           // make sure we can go further!
           if (indices.size() > 1){
