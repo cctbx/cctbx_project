@@ -20,6 +20,7 @@ tst_list = (
   # TLS
   "$D/regression/tls/tst_tls.py",
   "$D/regression/tls/tst_tls_analysis.py",
+  "$D/regression/tls/tst_tls_decompose.py",
   "$D/regression/tls/tst_get_t_scheme.py",
   "$D/regression/tls/tst_tls_refinement_fft.py",
   "$D/regression/tls/tst_u_tls_vs_u_ens_00.py",

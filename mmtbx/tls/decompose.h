@@ -4,74 +4,54 @@
 #include <string>
 #include <iostream>
 
+// Basic data types
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
 #include <scitbx/sym_mat3.h>
 
+// Allow arrays of the above
+#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/shared.h>
+
 namespace mmtbx { namespace tls { namespace decompose {
+
+namespace af = scitbx::af;
 
 // Actual validation functions
 class decompose_tls_matrices {
 
   public:
-    // Constructor with origin
+    // Constructor 
     decompose_tls_matrices(scitbx::sym_mat3<double> const& T,
-                           scitbx::sym_mat3<double> const& L_deg,
-                           scitbx::mat3<double> const& S_deg,
-                           scitbx::vec3<double> const& origin); 
-
+                           scitbx::sym_mat3<double> const& L,
+                           scitbx::mat3<double> const& S,
+                           bool l_and_s_in_degrees,
+                           bool verbose,
+                           double tol,
+                           double eps); 
+    
     bool is_valid() { return valid_; }
+    bool is_verbose() { return verbose_; }
     std::string error() { return error_; }
 
-  private:
-
-    // Response variables 
-    bool valid_{true};
-    std::string error_{"none"};
-
-    // Define analysis precision (for determining positive-definiteness, etc).
-    double tol {1.e-6};
-    // Define floating point boundary (for determining when something is zero)
-    double eps {1.e-8};
-
-    // printing
-    std::string spacer{"   "};
-
-    // --------------------
-    // Decomposition functions
-    // --------------------
-    void run();
-    void stepA();
-    void stepB();
-    void stepC();
-    void stepD();
-    // Apply origin shifts, etc
-    void tidy();
-
-    // --------------------
-    // Input variables
-    // --------------------
-    // Input matrices 
-    scitbx::sym_mat3<double> T_M; 
-    scitbx::sym_mat3<double> L_M;
-    scitbx::mat3<double>     S_M;
-    // Origin -- only used for manipulating the output axes, does not affect decomposition
-    // TODO NOT IMPLEMENTED TODO
-    scitbx::vec3<double> const origin;
+    // Tolerance of the physical parameters
+    double precision_tolerance() { return tol; }
+    // Tolerance of the numerical parameters
+    double floating_point_limit() { return eps; } 
 
     // --------------------
     // Output variables (set throughout and grouped here for clarity)
     // --------------------
-    // Amplitudes of libration
-    scitbx::vec3<double> l_amplitudes;
+    // RMS amplitudes of libration
+    af::shared<double> l_amplitudes;
     // Libration axes ... in the M basis
     scitbx::vec3<double> l1_M, l2_M, l3_M;
     // Points on libration axes ... in M basis
     scitbx::vec3<double> w1_M, w2_M, w3_M;
     // Amplitudes of screw motions (along librational axes)
-    scitbx::vec3<double> s_amplitudes;
-    // Amplitudes of vibration
-    scitbx::vec3<double> v_amplitudes;
+    af::shared<double> s_amplitudes;
+    // RMS amplitudes of vibration
+    af::shared<double> v_amplitudes;
     // Vibration axes ... in the L basis
     scitbx::vec3<double> v1_L, v2_L, v3_L;
     // Vibration axes ... in the M basis
@@ -88,6 +68,42 @@ class decompose_tls_matrices {
     // R_MV * a_M = a_V
     scitbx::mat3<double> R_MV;
     scitbx::mat3<double> R_MV_t;
+
+  private:
+    
+    bool verbose_{false};
+
+    // Response variables 
+    bool valid_{true};
+    std::string error_{"none"};
+
+    // Define analysis precision (for determining positive-definiteness, etc).
+    double tol;
+    // Define floating point boundary (for determining when something is zero)
+    double eps;
+
+    // printing
+    std::string spacer{"   "};
+
+    // --------------------
+    // Decomposition functions
+    // --------------------
+    void run();
+    void stepA();
+    void stepB();
+    void stepC();
+    void stepD();
+
+    // --------------------
+    // Input variables
+    // --------------------
+    // Input matrices 
+    scitbx::sym_mat3<double> T_M; 
+    scitbx::sym_mat3<double> L_M;
+    scitbx::mat3<double>     S_M;
+    // Origin -- only used for manipulating the output axes, does not affect decomposition
+    // TODO NOT IMPLEMENTED TODO
+    //scitbx::vec3<double> const origin;
 
     // Matrices at various stages during the decomposition and internal variables 
     // --------------------
@@ -190,6 +206,7 @@ class decompose_tls_matrices {
     void print(std::string const& label, scitbx::mat3<double> const& matrix);
     void print(std::string const& label, scitbx::sym_mat3<double> const& matrix);
     void print(std::string const& label, scitbx::vec3<double> const& vector);
+    void print(std::string const& label, af::shared<double> const& vector);
 };
                             
 }}} // close mmtbx/tls/decompose
