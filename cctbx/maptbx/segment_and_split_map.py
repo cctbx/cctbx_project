@@ -102,6 +102,12 @@ master_phil = iotbx.phil.parse("""
       .help = Input map file shifted to new origin and sharpened.
       .short_caption = Shifted sharpened map file
 
+    sharpened_map_file = sharpened_map.ccp4
+      .type = str
+      .short_caption = Sharpened map file
+      .help = Output sharpened map file, superimposed on the original map.
+      .input_size = 400
+
     shifted_pdb_file = shifted_pdb.pdb
       .type = path
       .help = Input pdb file shifted to new origin.
@@ -1903,6 +1909,7 @@ class map_info_object:
 
 class info_object:
   def __init__(self,
+      acc=None,
       ncs_obj=None,
       min_b=None,
       max_b=None,
@@ -2008,6 +2015,9 @@ class info_object:
 
   def set_original_crystal_symmetry(self,crystal_symmetry):
     self.original_crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_accessor(self,acc):
+    self.acc=acc
 
   def set_shifted_map_info(self,file_name=None,crystal_symmetry=None,
     origin=None,all=None,b_sharpen=None):
@@ -4489,6 +4499,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     all=map_data.all())
   tracking_data.set_crystal_symmetry(crystal_symmetry=crystal_symmetry)
   tracking_data.set_original_crystal_symmetry(crystal_symmetry=crystal_symmetry)
+  tracking_data.set_accessor(acc=map_data.accessor())
 
   # Save center of map
   map_ncs_center=get_center_of_map(map_data,crystal_symmetry)
@@ -10114,6 +10125,7 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
     shifted_sharpened_map_file=os.path.join(
           tracking_data.params.output_files.output_directory,
           tracking_data.params.output_files.shifted_sharpened_map_file)
+    from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     if shifted_sharpened_map_file:
       write_ccp4_map(tracking_data.crystal_symmetry,
           shifted_sharpened_map_file,map_data)
@@ -10125,6 +10137,24 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           origin=map_data.origin(),
           all=map_data.all(),
           b_sharpen=None)
+
+    sharpened_map_file=os.path.join(
+          tracking_data.params.output_files.output_directory,
+          tracking_data.params.output_files.sharpened_map_file)
+    if sharpened_map_file:
+      sharpened_map_data=map_data.deep_copy()
+      if tracking_data.acc:
+         sharpened_map_data.reshape(tracking_data.acc)
+      if tracking_data.acc is not None:  # we offset the map to match original
+        print >>out,\
+        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
+         str(sharpened_map_data.origin()),sharpened_map_file)
+      else:
+        print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
+          "(NOTE: may not be \nsame as original location) to %s\n" %(
+           sharpened_map_file)
+      write_ccp4_map(tracking_data.crystal_symmetry,
+          sharpened_map_file,sharpened_map_data)
 
 def get_high_points_from_map(
      map_data=None,

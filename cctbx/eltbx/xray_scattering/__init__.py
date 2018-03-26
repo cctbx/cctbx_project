@@ -61,7 +61,7 @@ class _(boost.python.injector, ext.gaussian):
 def best_approximation(scattering_type):
   if (scattering_type == "const"):
     return gaussian(1)
-  if (scattering_type == "TX" or scattering_type == "XX"):
+  if scattering_type in ["TX","XX","AX"]:
     return gaussian(1)
   return wk1995(scattering_type, True).fetch()
 
