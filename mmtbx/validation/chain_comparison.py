@@ -956,7 +956,7 @@ def run(args=None,
     print >>out,"Note: Cannot use test_unique_part_of_target_only "+\
       "with match_pdb_file...\nturning off test_unique_part_of_target_only"
     params.input_files.test_unique_part_of_target_only=False
-     
+
   if params.input_files.unique_query_only and \
      params.input_files.unique_part_of_target_only:
     print >>out,"Warning: You have specified unique_query_only and" +\
