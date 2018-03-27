@@ -305,6 +305,8 @@ class CCTBXParser(ParserBase):
 
     # show unrecognized files
     if (len(unused_files) > 0):
+      if (printed_something):
+        print('', file=self.logger)
       print('  Files not used by program:', file=self.logger)
       print('  --------------------------', file=self.logger)
       for filename in unused_files:
