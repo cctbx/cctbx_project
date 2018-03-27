@@ -43,7 +43,7 @@ master_phil = iotbx.phil.parse("""
       .type = bool
       .help = Try both unique_part_of_target_only as True and False and \
              report result for whichever gives higher value of \
-              fraction matching.
+              fraction matching.  Cannot be used with match_pdb_file
       .short_caption = Test unique target only
 
     allow_extensions = False
@@ -951,6 +951,12 @@ def run(args=None,
     pass # it is fine
   else:
     raise Sorry("Need target model (pdb_in)")
+  if params.input_files.test_unique_part_of_target_only and  \
+    params.output_files.match_pdb_file:
+    print >>out,"Note: Cannot use test_unique_part_of_target_only "+\
+      "with match_pdb_file...\nturning off test_unique_part_of_target_only"
+    params.input_files.test_unique_part_of_target_only=False
+     
   if params.input_files.unique_query_only and \
      params.input_files.unique_part_of_target_only:
     print >>out,"Warning: You have specified unique_query_only and" +\
