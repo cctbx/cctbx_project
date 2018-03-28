@@ -9,6 +9,8 @@ Description : IOTA image-tracking GUI module
 
 import os
 import wx
+import argparse
+
 from wxtbx import bitmaps
 import wx.lib.agw.ultimatelistctrl as ulc
 import wx.lib.mixins.listctrl as listmix
@@ -27,6 +29,7 @@ from iota.components.iota_utils import InputFinder
 from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
+import iota.components.iota_misc as misc
 from iota.components.iota_misc import Capturing
 
 import time
@@ -123,6 +126,25 @@ default_target = '\n'.join(['verbosity=10',
                             '  }',
                             '}'
                             ])
+
+help_message = ''' This is a tracking module for collected images '''
+
+def parse_command_args(help_message):
+  """ Parses command line arguments (only options for now) """
+  parser = argparse.ArgumentParser(prog = 'iota',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            description=(help_message),
+            epilog=('\n{:-^70}\n'.format('')))
+  parser.add_argument('path', type=str, nargs = '?', default = None,
+            help = 'Path to data or file with IOTA parameters')
+  parser.add_argument('--version', action = 'version',
+            version = 'IOTA {}'.format(misc.iota_version),
+            help = 'Prints version info of IOTA')
+  parser.add_argument('--start', action = 'store_true',
+            help='Automatically start image tracker (needs path)')
+  parser.add_argument('-n', type=int, nargs='?', default=0, dest='nproc',
+            help = 'Specify a number of cores for a multiprocessor run"')
+  return parser
 
 class TrackChart(wx.Panel):
   def __init__(self, parent, main_window):
@@ -343,8 +365,8 @@ class TrackChart(wx.Panel):
       self.x_min = -1
       self.x_max = 1
 
-    acc = [i for i in all_acc if i > self.x_min and i < self.x_max]
-    rej = [i for i in all_rej if i > self.x_min and i < self.x_max]
+    acc = [int(i) for i in all_acc if i > self.x_min and i < self.x_max]
+    rej = [int(i) for i in all_rej if i > self.x_min and i < self.x_max]
 
     self.acc_plot.set_xdata(nref_x)
     self.rej_plot.set_xdata(nref_x)
@@ -368,6 +390,7 @@ class TrackChart(wx.Panel):
     # Draw extended plots
     self.track_axes.draw_artist(self.acc_plot)
     self.track_axes.draw_artist(self.rej_plot)
+
 
 class ImageList(wx.Panel):
   def __init__(self, parent):
@@ -714,7 +737,7 @@ class TrackerWindow(wx.Frame):
 
     self.main_sizer.Add(self.tracker_panel, 1, wx.EXPAND)
 
-    # Generate default PHIL file and instantiate DIALS stills processor
+    # Generate default DIALS PHIL file
     default_phil = ip.parse(default_target)
     self.phil = phil_scope.fetch(source=default_phil)
     self.params = self.phil.extract()
@@ -746,6 +769,14 @@ class TrackerWindow(wx.Frame):
               self.tracker_panel.min_bragg.ctr)
     self.Bind(wx.EVT_SPINCTRL, self.onChartRange,
               self.tracker_panel.chart_window.ctr)
+
+    # Read arguments if any
+    self.args, self.phil_args = parse_command_args('').parse_known_args()
+    if self.args.path is not None:
+      path = os.path.abspath(self.args.path)
+      self.open_images_and_get_ready(path=path)
+      if self.args.start:
+        self.start_spotfinding()
 
   def onZoom(self, e):
     if self.tb_btn_zoom.IsToggled():
@@ -845,26 +876,31 @@ class TrackerWindow(wx.Frame):
     if open_dlg.ShowModal() == wx.ID_OK:
       self.data_folder = open_dlg.GetPath()
       open_dlg.Destroy()
-      self.remove_term_file()
-      self.reset_spotfinder()
-
-      self.tracker_panel.chart.reset_chart()
-      #self.tracker_panel.spf_options.Enable()
-      self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
-      # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
-      timer_txt = '[ ------ ]'
-      self.msg = 'Ready to track images in {}'.format(self.data_folder)
-      self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
-
-      # self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
-      try:
-        os.remove(self.folder_file)
-        os.remove(self.info_file)
-      except Exception, e:
-        pass
+      self.open_images_and_get_ready()
     else:
       open_dlg.Destroy()
       return
+
+  def open_images_and_get_ready(self, path=None):
+    if path is not None:
+      self.data_folder = path
+
+    self.remove_term_file()
+    self.reset_spotfinder()
+
+    self.tracker_panel.chart.reset_chart()
+    #self.tracker_panel.spf_options.Enable()
+    self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
+    # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
+    timer_txt = '[ ------ ]'
+    self.msg = 'Ready to track images in {}'.format(self.data_folder)
+    self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
+    # self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
+    try:
+      os.remove(self.folder_file)
+      os.remove(self.info_file)
+    except Exception, e:
+      pass
 
   def onMinBragg(self, e):
     self.tracker_panel.chart.draw_bragg_line()
@@ -884,11 +920,7 @@ class TrackerWindow(wx.Frame):
 
 
   def onRunSpotfinding(self, e):
-    self.terminated = False
     self.start_spotfinding()
-    self.tracker_panel.chart.draw_bragg_line()
-    self.tracker_panel.chart.select_span.set_active(True)
-    self.tracker_panel.chart.zoom_span.set_active(True)
 
   def onRestoreRun(self, e):
     self.remove_term_file()
@@ -916,6 +948,10 @@ class TrackerWindow(wx.Frame):
 
   def start_spotfinding(self):
     ''' Start timer and perform spotfinding on found images '''
+    self.terminated = False
+    self.tracker_panel.chart.draw_bragg_line()
+    self.tracker_panel.chart.select_span.set_active(True)
+    self.tracker_panel.chart.zoom_span.set_active(True)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), True)
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), False)
@@ -925,8 +961,8 @@ class TrackerWindow(wx.Frame):
 
     self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
 
-    with open(self.folder_file, 'w') as f:
-      f.write(self.data_folder)
+    # with open(self.folder_file, 'w') as f:
+    #   f.write(self.data_folder)
 
     self.spf_timer.Start(1000)
     self.uc_timer.Start(15000)
@@ -953,8 +989,8 @@ class TrackerWindow(wx.Frame):
     ''' Occurs on every wx.PostEvent instance; updates lists of images with
     spotfinding results '''
     if not self.terminated:
-      if e.GetValue() is not None:
-        info = e.GetValue()
+      info = e.GetValue()
+      if info is not None:
         idx = info[0] + len(self.done_list)
         obs_count = info[1]
         img_path = info[2]
