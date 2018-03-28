@@ -527,7 +527,7 @@ nanoBragg::init_detector()
     }
 
     /* initialize Pythony pixel array */
-    this->fpixels = static_cast<int>(ceil(detsize_f/pixel_size-0.5));
+    this->fpixels = (ceil(detsize_f/pixel_size-0.5));
     this->spixels = static_cast<int>(ceil(detsize_s/pixel_size-0.5));
     pixels = this->fpixels*this->spixels;
 
