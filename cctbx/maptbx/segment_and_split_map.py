@@ -10154,7 +10154,7 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           tracking_data.params.output_files.sharpened_map_file)
     if sharpened_map_file:
       sharpened_map_data=map_data.deep_copy()
-      from scitbx.array_family.flex import grid  
+      from scitbx.array_family.flex import grid
       new_grid=grid(tracking_data.box_map_bounds_first,tracking_data.box_map_bounds_last)
 
       print >>out,"Gridding of boxed, sharpened map:"
