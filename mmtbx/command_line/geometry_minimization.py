@@ -12,8 +12,6 @@ import os
 import sys
 from cStringIO import StringIO
 from mmtbx.monomer_library import pdb_interpretation
-from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    add_reference_dihedral_restraints_if_requested
 from mmtbx.hydrogens import riding
 import mmtbx.model
 
@@ -148,64 +146,6 @@ Usage examples:
 """
   print >> log, msg
   print >> log, "-"*79
-
-
-def get_geometry_restraints_manager(processed_pdb_file, xray_structure,
-    params=None, log=sys.stdout):
-  """
-  !!! WARNING !!! This function is deprecated and will be deleted soon.
-  !!! DO NOT USE IN ANY NEW CODE !!!
-  !!! The last known thing using it is phenix.real_space_refine
-
-  mmtbx.model.manager provides better functionality
-
-  This function should be transfered to be a member of processed_pdb_file
-     class. It should be used in all places where geometry_restraints_manager
-     is needed. """
-  has_hd = None
-  if(xray_structure is not None):
-    sctr_keys = xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-  reference_torsion_proxies = None
-  if params is None:
-    params = master_params().fetch().extract()
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies                = False,
-    params_edits                 = params.geometry_restraints.edits,
-    plain_pairs_radius           = 5,
-    assume_hydrogens_all_missing = not has_hd)
-
-  # For test GRM pickling
-  # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
-  # geometry = make_geo_pickle_unpickle(
-  #     geometry=geometry,
-  #     xrs=xray_structure,
-  #     prefix=None)
-
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = geometry,
-    normalization = True)
-  # Torsion restraints from reference model
-  # Speedup hint: use save processed_pdb_files_srv to extract
-  # mon_lib_srv and ener_lib
-  if hasattr(params, "reference_model") and restraints_manager is not None:
-    add_reference_dihedral_restraints_if_requested(
-        geometry=restraints_manager.geometry,
-        processed_pdb_file=processed_pdb_file,
-        mon_lib_srv=None,
-        ener_lib=None,
-        has_hd=has_hd,
-        params=params.reference_model,
-        selection=None,
-        log=log)
-  # These are from substitute SS
-  if (reference_torsion_proxies is not None
-      and id_params.restrain_torsion_angles):
-    geometry.add_dihedrals_in_place(
-        additional_dihedral_proxies=reference_torsion_proxies)
-  if(xray_structure is not None):
-    restraints_manager.crystal_symmetry = xray_structure.crystal_symmetry()
-  return restraints_manager
 
 def run_minimization(
       selection,
