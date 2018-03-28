@@ -1946,6 +1946,8 @@ class info_object:
       output_region_map_info_list=None,
       output_region_pdb_info_list=None,
       sharpening_info_obj=None,
+      box_map_bounds_first=None,
+      box_map_bounds_last=None,
     ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
@@ -2015,6 +2017,13 @@ class info_object:
 
   def set_original_crystal_symmetry(self,crystal_symmetry):
     self.original_crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_box_map_bounds_first_last(self,box_map_bounds_first,
+      box_map_bounds_last):
+    self.box_map_bounds_first=box_map_bounds_first
+    self.box_map_bounds_last=[]
+    for l in box_map_bounds_last:
+      self.box_map_bounds_last.append(l+1)  # it is one bigger...
 
   def set_accessor(self,acc):
     self.acc=acc
@@ -4642,6 +4651,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     print >>out,"Adding (%8.2f,%8.2f,%8.2f) to all coordinates\n"%(
         tuple(origin_shift))
     # NOTE: size and cell params are now different!
+    tracking_data.set_box_map_bounds_first_last(
+       box.gridding_first,box.gridding_last)
 
     new_half_map_data_list=[]
     ii=0
@@ -10143,12 +10154,17 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           tracking_data.params.output_files.sharpened_map_file)
     if sharpened_map_file:
       sharpened_map_data=map_data.deep_copy()
-      if tracking_data.acc and \
-          tracking_data.acc.all()==sharpened_map_data.accessor().all():
-         sharpened_map_data.reshape(tracking_data.acc)
-      if tracking_data.acc is not None:  # we offset the map to match original
+      from scitbx.array_family.flex import grid  
+      new_grid=grid(tracking_data.box_map_bounds_first,tracking_data.box_map_bounds_last)
+
+      print >>out,"Gridding of boxed, sharpened map:"
+      print >>out,"Origin: ",new_grid.origin()
+      print >>out,"All: ",new_grid.all()
+      if new_grid is not None:  # we offset the map to match original
+        sharpened_map_data.reshape(new_grid)
         print >>out,\
-        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
+        "\nWrote boxed, sharpened map in original location with "+\
+           "origin at %s\nto %s" %(
          str(sharpened_map_data.origin()),sharpened_map_file)
       else:
         print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
