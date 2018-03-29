@@ -3,7 +3,7 @@ from __future__ import division, print_function
 '''
 
 from iotbx.file_reader import any_file
-from libtbx.data_manager import DataManagerBase
+from iotbx.data_manager import DataManagerBase
 
 # =============================================================================
 class RestraintDataManager(DataManagerBase):

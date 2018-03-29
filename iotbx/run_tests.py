@@ -7,6 +7,7 @@ tst_list = (
   "$D/regression/tst_simple_parser.py",
   "$D/regression/tst_phil.py",
   "$D/regression/tst_pdb_cif_inputs.py",
+  "$D/regression/tst_data_manager.py",
   "$D/ranges.py",
   "$D/regression/tst_crystal_symmetry_from_any.py",
   "$D/regression/tst_poscar.py",

@@ -23,8 +23,8 @@ any_file_type = {
 data_manager_type = {value:key for key,value in any_file_type.items()}
 
 # build list of supported datatypes
-# datatypes have corresponding modules in libtbx/data_manager
-# e.g. libtbx/data_manager/model.py
+# datatypes have corresponding modules in iotbx/data_manager
+# e.g. iotbx/data_manager/model.py
 supported_datatypes = os.listdir(os.path.dirname(__file__))
 re_search = re.compile('.py$')
 supported_datatypes = filter(re_search.search, supported_datatypes)
@@ -39,7 +39,7 @@ default_datatypes = ['model', 'phil', 'real_map', 'restraint', 'sequence']
 def load_datatype_modules(datatypes=None):
   '''
   Function for dynamically loading a subset of modules for the DataManager
-  The default directory for modules is libtbx/data_manager
+  The default directory for modules is iotbx/data_manager
   '''
 
   # set default if necessary
@@ -67,10 +67,10 @@ def load_datatype_modules(datatypes=None):
 
   # load modules
   modules = list()
-  importlib.import_module('libtbx')
+  importlib.import_module('iotbx')
   for datatype in datatypes:
     modules.append(
-      importlib.import_module('.' + datatype, package='libtbx.data_manager'))
+      importlib.import_module('.' + datatype, package='iotbx.data_manager'))
 
   return modules
 
@@ -80,11 +80,11 @@ def DataManager(datatypes=None, phil=None):
   Function for dynamically creating a DataManager instance that supports a
   specific set of datatypes.
 
-  All DataManager modules in libtbx/data_manager follow this pattern:
-    filename = <datatype>.py -> module name = libtbx.data_manager.<datatype>
+  All DataManager modules in iotbx/data_manager follow this pattern:
+    filename = <datatype>.py -> module name = iotbx.data_manager.<datatype>
     DataManagerBase subclass name = <Datatype>DataManager
 
-  So for the models, the filename is libtbx/data_manager/model.py and in that
+  So for the models, the filename is iotbx/data_manager/model.py and in that
   file, there should be a subclass of DataManagerBase named ModelDataManager
   '''
 
@@ -96,7 +96,7 @@ def DataManager(datatypes=None, phil=None):
   modules = load_datatype_modules(datatypes)
   manager_classes = list()
   for datatype in datatypes:
-    module_name = 'libtbx.data_manager.' + datatype
+    module_name = 'iotbx.data_manager.' + datatype
     class_name =  datatype.capitalize() + 'DataManager'
     if ('_' in datatype): # real_map becomes RealMapDataManager
       class_name = ''.join(tmp_str.capitalize()

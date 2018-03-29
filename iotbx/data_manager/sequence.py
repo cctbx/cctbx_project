@@ -2,7 +2,7 @@ from __future__ import division, print_function
 '''
 '''
 
-from libtbx.data_manager import DataManagerBase
+from iotbx.data_manager import DataManagerBase
 
 # =============================================================================
 class SequenceDataManager(DataManagerBase):

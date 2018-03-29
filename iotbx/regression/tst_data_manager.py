@@ -6,7 +6,7 @@ import libtbx.phil
 import mmtbx.model
 
 from libtbx.utils import Sorry
-from libtbx.data_manager import DataManager, supported_datatypes
+from iotbx.data_manager import DataManager, supported_datatypes
 
 # -----------------------------------------------------------------------------
 def test_data_manager():

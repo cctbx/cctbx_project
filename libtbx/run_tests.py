@@ -31,7 +31,6 @@ tst_list = (
   "$D/tst_topological_sort.py",
   "$D/clusterTests.py",
   "$D/tst_lzw.py",
-  "$D/tst_data_manager.py",
   "$D/tst_citations.py",
   )
 

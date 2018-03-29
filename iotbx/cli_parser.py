@@ -14,9 +14,9 @@ import argparse, getpass, logging, os, sys, time
 import iotbx.phil
 import libtbx.phil
 
+from iotbx.data_manager import DataManager, data_manager_type
 from iotbx.file_reader import any_file
 from libtbx import citations
-from libtbx.data_manager import DataManager, data_manager_type
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
 from libtbx.utils import Sorry

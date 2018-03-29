@@ -6,7 +6,7 @@ import iotbx.pdb
 import mmtbx.model
 
 from iotbx.file_reader import any_file
-from libtbx.data_manager import DataManagerBase
+from iotbx.data_manager import DataManagerBase
 from libtbx.utils import Sorry
 
 # =============================================================================
