@@ -2076,11 +2076,39 @@ def exercise_only_b_altloc():
   assert not test_utils.show_diff(new_ss, old_ss)
   print "OK"
 
+def exercise_multiplication():
+  from iotbx.pdb.utils import all_chain_ids
+#   two_char_chain_records = """\
+# HELIX    1   1 THRA1   11  ASPA1   39  1                                  29
+# SHEET    1   A 5 ARG A  13  ASP A  14  0
+# SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
+# """
+  one_char_chain_records = """\
+HELIX    1   1 THR A   11  ASP A   39  1                                  29
+SHEET    1   A 5 ARG A  13  ASP A  14  0
+SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
+"""
+  all_ids = all_chain_ids()
+  secstr = ss.annotation.from_records(records=one_char_chain_records.split('\n'))
+  secstr.multiply_to_asu_2(chain_ids_dict={'A':all_ids})
+  ss_lines = secstr.as_pdb_str().split('\n')
+  assert ss_lines[1200] == \
+      "HELIX  A5L 120 THR5V   11  ASP5V   39  1                                  29"
+  assert ss_lines[6999] == "SHEET    1 AF8 2 ARGHf  13  ASPHf  14  0"
+  assert ss_lines[7000] == \
+      "SHEET    2 AF8 2 LEUHf  27  SERHf  30 -1  O  ARGHf  29   N  ARGHf  13"
+  ss_back = ss.annotation.from_records(records=[
+      ss_lines[1200], ss_lines[6999], ss_lines[7000]])
+  assert ss_back.helices[0].serial == 'A5L'
+  assert ss_back.sheets[0].sheet_id == 'AF8'
+  print "OK"
+
 def exercise(args):
   exercise_single()
   tst_pdb_file()
   tst_parsing_phil()
   exercise_only_b_altloc()
+  exercise_multiplication()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

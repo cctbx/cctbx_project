@@ -30,7 +30,7 @@ def test_helix_interface():
     got_exception = True
   assert got_exception
   h = pdb_helix.from_pdb_record(h_string)
-  assert h.serial == 1
+  assert h.serial == '  1'
   assert h.helix_id == '1'
   assert h.start_resname == 'ALA'
   assert h.start_chain_id == 'A'
@@ -92,7 +92,7 @@ SHEET    2   A 2 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
   assert reg.prev_icode  == ' '
 
   assert st.sheet_id == '  A', st.sheet_id
-  assert st.strand_id == 2, st.strand_id
+  assert st.strand_id == '  2', st.strand_id
   assert st.start_resname == 'LEU'
   assert st.start_chain_id == 'A'
   assert st.start_resseq == '  27', st.start_resseq
@@ -700,7 +700,7 @@ loop_
   out = StringIO()
   helix_loop.show(out)
   v = out.getvalue()
-  # print "\"%s\"" % v
+  print "\"%s\"" % v
   assert not show_diff(out.getvalue(), answer)
 
   # hmmm... when there's only one chain, there is one less 'space'

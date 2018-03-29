@@ -343,6 +343,14 @@ class structure_base (object) :
       return hy36encode(4, resseq)
 
   @staticmethod
+  def convert_id(id):
+    if isinstance(id, str):
+      return "%3s" % id[:3]
+    elif isinstance(id, int):
+      return hy36encode(3, id)
+
+
+  @staticmethod
   def icode_to_cif(icode):
     if icode == ' ':
       return '?'
@@ -911,13 +919,13 @@ class annotation(structure_base):
         new_helices.append(new_helix)
       for sheet in self.sheets:
         new_sheet = copy.deepcopy(sheet)
-        new_sheet.sheet_id = new_sheet_id
+        new_sheet.sheet_id = self.convert_id(new_sheet_id)
         new_sheet_id += 1
         new_sheet.erase_hbond_list()
         for strand in new_sheet.strands:
           strand.set_new_chain_ids(
               get_new_chain_id(strand.start_chain_id, n_copy))
-          strand.sheet_id = "%s" % new_sheet_id
+          strand.sheet_id = "%s" % self.convert_id(new_sheet_id)
         for reg in new_sheet.registrations:
           if reg is not None:
             reg.set_new_cur_chain_id(
@@ -952,14 +960,14 @@ class annotation(structure_base):
           continue
       for sheet in self.sheets:
         new_sheet = copy.deepcopy(sheet)
-        new_sheet.sheet_id = new_sheet_id
+        new_sheet.sheet_id = self.convert_id(new_sheet_id)
         new_sheet_id += 1
         new_sheet.erase_hbond_list()
         try:
           for strand in new_sheet.strands:
             strand.set_new_chain_ids(
                 get_new_chain_id(strand.start_chain_id, n_copy))
-            strand.sheet_id = "%s" % new_sheet_id
+            strand.sheet_id = "%s" % self.convert_id(new_sheet_id)
           for reg in new_sheet.registrations:
             if reg is not None:
               reg.set_new_cur_chain_id(
@@ -1778,7 +1786,7 @@ class pdb_helix (structure_base) :
     if len(line) < 76:
       line += " "*(80-len(line))
     return cls(
-      serial=int(line[7:10]),
+      serial=cls.convert_id(line[7:10]),
       helix_id=line[11:14].strip(),
       start_resname=line[15:18],
       start_chain_id=cls.parse_chain_id(line[18:20]),
@@ -1895,7 +1903,7 @@ class pdb_helix (structure_base) :
       prefix_scope += "."
     serial_and_id = ""
     if self.serial is not None and self.serial > 0:
-      serial_and_id += "\n  serial_number = %d" % self.serial
+      serial_and_id += "\n  serial_number = %s" % self.serial
     if self.helix_id is not None:
       serial_and_id += "\n  helix_identifier = %s" % self.helix_id
     hbond_restr = ""
@@ -1924,7 +1932,10 @@ class pdb_helix (structure_base) :
     """Returns dict. keys - cif field names, values - appropriate values."""
     result = {}
     result['conf_type_id'] = "HELX_P"
-    result['id'] = "%s" % self.serial
+    print type(self.serial)
+    print self.serial
+    # STOP()
+    result['id'] = self.serial
     result['pdbx_PDB_helix_id'] = self.helix_id
     result['beg_label_comp_id'] = self.start_resname
     result['beg_label_asym_id'] = self.start_chain_id
@@ -1945,7 +1956,7 @@ class pdb_helix (structure_base) :
       if h_class_int == 0:
         return 1
       return h_class_int
-    format = "HELIX  %3d %3s %3s%2s %4s%1s %3s%2s %4s%1s%2d%30s %5d"
+    format = "HELIX  %3s %3s %3s%2s %4s%1s %3s%2s %4s%1s%2d%30s %5d"
     if set_id_zero:
       serial=0
       helix_id=0
@@ -1955,7 +1966,7 @@ class pdb_helix (structure_base) :
         helix_id=self.serial
       else:
         helix_id=self.helix_id[:3]
-    out = format % (serial,
+    out = format % (self.convert_id(serial),
       helix_id,
       self.start_resname,
       self.start_chain_id, self.start_resseq, self.start_icode,
@@ -2053,7 +2064,7 @@ class pdb_strand(structure_base):
     if len(line) < 76:
       line += " "*(80-len(line))
     return cls(sheet_id=line[11:14],
-        strand_id=int(line[7:10]),
+        strand_id=cls.convert_id(line[7:10]),
         start_resname=line[17:20],
         start_chain_id=cls.parse_chain_id(line[20:22]),
         start_resseq=line[22:26],
@@ -2626,15 +2637,15 @@ class pdb_sheet(structure_base):
     assert len(self.strands) == len(self.registrations)
     lines = []
     for strand, reg in zip(self.strands, self.registrations) :
-      format1 = "SHEET  %3d %3s%2d %3s%2s%4s%1s %3s%2s%4s%1s%2d"
+      format1 = "SHEET  %3s %3s%2d %3s%2s%4s%1s %3s%2s%4s%1s%2d"
       format2 = "%4s%3s%2s%4s%1s %4s%3s%2s%4s%1s"
       # print "STRAND, REG", strand, reg
       if set_id_zero:
         strand_id_for_print=0
-        sheet_id_for_print=0
+        sheet_id_for_print=self.convert_id(0)
       else:
         strand_id_for_print=strand.strand_id
-        sheet_id_for_print=strand.sheet_id
+        sheet_id_for_print=self.convert_id(strand.sheet_id)
 
       line = format1 % (strand_id_for_print, sheet_id_for_print, self.n_strands,
         strand.start_resname, strand.start_chain_id, strand.start_resseq,
