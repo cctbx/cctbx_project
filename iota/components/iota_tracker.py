@@ -1115,7 +1115,6 @@ class TrackerWindow(wx.Frame):
     self.cluster_unit_cells()
 
   def cluster_unit_cells(self):
-    print 'DEBUG: CLUSTERING...'
     input = []
     for item in self.spotfinding_info:
       if (item[4] is not None and item[3] is not None):
@@ -1132,8 +1131,6 @@ class TrackerWindow(wx.Frame):
       except Exception, e:
         clusters = []
         print e
-
-    print 'DEBUG: HAVE {} CLUSTERS!'.format(len(clusters))
 
     if len(clusters) > 0:
       uc_table = []
