@@ -18,7 +18,19 @@ class SequenceDataManager(DataManagerBase):
     return self._set_default(SequenceDataManager.datatype, filename)
 
   def get_sequence(self, filename=None):
+    '''
+    Returns a list of sequence objects from a file
+    '''
     return self._get(SequenceDataManager.datatype, filename)
+
+  def get_sequence_as_string(self, filename=None, width=80):
+    '''
+    Same as get_sequence, but returns a single string with all the sequences
+    separated by blank lines
+    '''
+    sequences = self.get_sequence(filename=filename)
+    output = '\n'.join([s.format(width) for s in sequences])
+    return output
 
   def get_sequence_names(self):
     return self._get_names(SequenceDataManager.datatype)

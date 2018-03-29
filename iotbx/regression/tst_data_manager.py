@@ -204,9 +204,34 @@ END
   assert(dm.get_model().restraints_manager is None)
 
 # -----------------------------------------------------------------------------
+def test_sequence_datatype():
+
+  # 1sar.fa
+  seq_filename = 'test_seq.fa'
+  seq_str = '''>1SAR A
+DVSGTVCLSALPPEATDTLNLIASDGPFPYSQDGVVFQNRESVLPTQSYGYYHEYTVITPGARTRGTRRIICGEATQEDY
+YTGDHYATFSLIDQTC
+'''
+
+  with open(seq_filename, 'w') as f:
+    f.write(seq_str)
+
+  dm = DataManager(['sequence'])
+  dm.process_sequence_file(seq_filename)
+  assert(seq_filename in dm.get_sequence_names())
+
+  seq = dm.get_sequence()
+  new_str = dm.get_sequence_as_string(seq_filename)
+  for a,b in zip(new_str, seq_str):
+    assert(a == b)
+
+  os.remove(seq_filename)
+
+# -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
+  test_sequence_datatype()
 
   print('OK')
