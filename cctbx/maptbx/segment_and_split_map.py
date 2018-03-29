@@ -1948,6 +1948,7 @@ class info_object:
       sharpening_info_obj=None,
       box_map_bounds_first=None,
       box_map_bounds_last=None,
+      final_output_sharpened_map_file=None,
     ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
@@ -10154,8 +10155,13 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           tracking_data.params.output_files.sharpened_map_file)
     if sharpened_map_file:
       sharpened_map_data=map_data.deep_copy()
-      from scitbx.array_family.flex import grid
-      new_grid=grid(tracking_data.box_map_bounds_first,tracking_data.box_map_bounds_last)
+      if tracking_data.box_map_bounds_first and \
+          tracking_data.box_map_bounds_last:
+        from scitbx.array_family.flex import grid
+        new_grid=grid(tracking_data.box_map_bounds_first,
+        tracking_data.box_map_bounds_last)
+      else:
+        new_grid=map_data.accessor()
 
       print >>out,"Gridding of boxed, sharpened map:"
       print >>out,"Origin: ",new_grid.origin()
