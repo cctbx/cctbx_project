@@ -23,6 +23,9 @@ potentially more configurable in future
 13. IOTA GUI now takes command arguments; any IOTA PHIL entry can be used as a
 command-line argument, and will be automatically interpreted.
 14. Tracker GUI now takes command arguments; few now, but more can be added
+15. Option in Tracker to start from images collected 1 min ago, or t minutes
+ago; useful if want to keep it at least somewhat "real-time" (i.e. not starting
+tracking from the first collected image)
 
 
 Known issues:

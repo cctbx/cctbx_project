@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 03/22/2018
+Last Changed: 03/28/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -140,8 +140,14 @@ def parse_command_args(help_message):
   parser.add_argument('--version', action = 'version',
             version = 'IOTA {}'.format(misc.iota_version),
             help = 'Prints version info of IOTA')
-  parser.add_argument('--start', action = 'store_true',
-            help='Automatically start image tracker (needs path)')
+  parser.add_argument('-s', '--start', action = 'store_true',
+            help='Automatically start from first image')
+  parser.add_argument('-p', '--proceed', action = 'store_true',
+            help='Automatically start from latest image')
+  parser.add_argument('-t', '--time', type=int, nargs=1, default=0,
+            help='Automatically start from image collected n seconds ago')
+  parser.add_argument('-b', '--backend', type=str, nargs=1, default='mosflm',
+            help='Specify backend for spotfinding / indexing')
   parser.add_argument('-n', type=int, nargs='?', default=0, dest='nproc',
             help = 'Specify a number of cores for a multiprocessor run"')
   return parser
@@ -687,14 +693,10 @@ class TrackerWindow(wx.Frame):
                                                 bitmap=open_bmp,
                                                 shortHelp='Open',
                                                 longHelp='Open folder')
-    # rec_bmp = bitmaps.fetch_icon_bitmap('actions', 'quick_restart')
-    # self.tb_btn_restore = self.toolbar.AddLabelTool(wx.ID_ANY, label='Restore',
-    #                                             bitmap=rec_bmp,
-    #                                             shortHelp='Restore',
-    #                                             longHelp='Restore aborted run')
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
+                                                # kind=wx.ITEM_DROPDOWN,
                                                 shortHelp='Run',
                                                 longHelp='Run Spotfinding')
     stop_bmp = bitmaps.fetch_icon_bitmap('actions', 'stop')
@@ -706,19 +708,19 @@ class TrackerWindow(wx.Frame):
     span_view = bitmaps.fetch_custom_icon_bitmap('zoom_list')
     self.tb_btn_view = self.toolbar.AddLabelTool(wx.ID_ANY, label='View',
                                                  bitmap=span_view,
-                                                 kind=wx.ITEM_CHECK,
+                                                 kind=wx.ITEM_RADIO,
                                                  shortHelp='Select to View',
                                                  longHelp='Select images to view')
     span_zoom = bitmaps.fetch_custom_icon_bitmap('zoom_view')
     self.tb_btn_zoom = self.toolbar.AddLabelTool(wx.ID_ANY, label='Zoom In',
                                                  bitmap=span_zoom,
-                                                 kind=wx.ITEM_CHECK,
+                                                 kind=wx.ITEM_RADIO,
                                                  shortHelp='Zoom In',
                                                  longHelp='Zoom in on chart')
     self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), True)
-
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
+
 
     # if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
     #   self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
@@ -772,11 +774,23 @@ class TrackerWindow(wx.Frame):
 
     # Read arguments if any
     self.args, self.phil_args = parse_command_args('').parse_known_args()
+
+    self.spf_backend = self.args.backend[0]
+
     if self.args.path is not None:
       path = os.path.abspath(self.args.path)
       self.open_images_and_get_ready(path=path)
       if self.args.start:
+        print 'IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE'
         self.start_spotfinding()
+      elif self.args.proceed:
+        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO'
+        self.start_spotfinding(min_back=-1)
+      elif self.args.time > 0:
+        min_back = -self.args.time[0]
+        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
+              ''.format(min_back)
+        self.start_spotfinding(min_back=min_back)
 
   def onZoom(self, e):
     if self.tb_btn_zoom.IsToggled():
@@ -891,11 +905,9 @@ class TrackerWindow(wx.Frame):
     self.tracker_panel.chart.reset_chart()
     #self.tracker_panel.spf_options.Enable()
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
-    # self.toolbar.EnableTool(self.tb_btn_calc.GetId(), True)
     timer_txt = '[ ------ ]'
     self.msg = 'Ready to track images in {}'.format(self.data_folder)
     self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
-    # self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
     try:
       os.remove(self.folder_file)
       os.remove(self.info_file)
@@ -946,7 +958,7 @@ class TrackerWindow(wx.Frame):
     self.plot_results()
     self.start_spotfinding()
 
-  def start_spotfinding(self):
+  def start_spotfinding(self, min_back=None):
     ''' Start timer and perform spotfinding on found images '''
     self.terminated = False
     self.tracker_panel.chart.draw_bragg_line()
@@ -956,18 +968,18 @@ class TrackerWindow(wx.Frame):
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), False)
     self.params = self.phil.extract()
-    self.processor = IOTADialsProcessor(params=self.params)
-    #self.tracker_panel.spf_options.Disable()
+
+    if self.spf_backend == 'dials':
+      self.processor = IOTADialsProcessor(params=self.params)
+      #self.tracker_panel.spf_options.Disable()
+    elif self.spf_backend == 'mosflm':
+      self.processor = None
 
     self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
-
-    # with open(self.folder_file, 'w') as f:
-    #   f.write(self.data_folder)
-
     self.spf_timer.Start(1000)
     self.uc_timer.Start(15000)
     self.spin_update = 0
-    self.find_new_images()
+    self.find_new_images(min_back=min_back)
 
   def stop_run(self):
     timer_txt = '[ xxxxxx ]'
@@ -1015,15 +1027,17 @@ class TrackerWindow(wx.Frame):
     self.stop_run()
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), True)
 
-  def find_new_images(self):
+  def find_new_images(self, min_back=None):
     if self.done_list != []:
       last_file = self.done_list[-1]
+      min_back = None
     else:
       last_file = None
     found_files = ginp.make_input_list([self.data_folder],
                                        filter=True,
                                        filter_type='image',
-                                       last=last_file)
+                                       last=last_file,
+                                       min_back=min_back)
     self.data_list = list(set(found_files) - set(self.done_list))
     self.data_list = [i for i in self.data_list if not 'tmp' in i]
 
@@ -1101,6 +1115,7 @@ class TrackerWindow(wx.Frame):
     self.cluster_unit_cells()
 
   def cluster_unit_cells(self):
+    print 'DEBUG: CLUSTERING...'
     input = []
     for item in self.spotfinding_info:
       if (item[4] is not None and item[3] is not None):
@@ -1114,10 +1129,11 @@ class TrackerWindow(wx.Frame):
         clusters, _ = ucs.ab_cluster(5000,
                                      log=False, write_file_lists=False,
                                      schnell=False, doplot=False)
-        print clusters
       except Exception, e:
         clusters = []
         print e
+
+    print 'DEBUG: HAVE {} CLUSTERS!'.format(len(clusters))
 
     if len(clusters) > 0:
       uc_table = []

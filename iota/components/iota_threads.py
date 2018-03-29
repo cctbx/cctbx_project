@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/22/2018
+Last Changed: 03/28/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -333,7 +333,7 @@ class SpotFinderMosflmOneThread():
       # Create autoindex.com w/ Mosflm script
       # Write to temporary file and change permissions to run
       autoindex = ['#! /bin/tcsh -fe',
-                   'mosflm << eof-ipmosflm'.format(fname),
+                   'ipmosflm << eof-ipmosflm'.format(fname),
                    'NEWMATRIX {0}.mat'.format(fname),
                    'DIRECTORY {}'.format(directory),
                    'TEMPLATE {}'.format(template),
