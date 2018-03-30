@@ -188,7 +188,7 @@ def basis_from_geo(geo, use_z = True):
 
   return basis(orientation = rot, translation = trans)
 
-def read_slac_metrology(path = None, geometry = None, plot=False):
+def read_slac_metrology(path = None, geometry = None, plot=False, include_asic_offset=False):
   if path is None and geometry is None:
     raise Sorry("Need to provide a geometry object or a path to a geometry file")
 
@@ -245,8 +245,17 @@ def read_slac_metrology(path = None, geometry = None, plot=False):
     asic_trans0 = (asic0_center-sensor_center).length()
     asic_trans1 = (asic1_center-sensor_center).length()
 
-    metro[(0,quad_id,sensor_id,0)] = basis(orientation=null_ori,translation=matrix.col((-asic_trans0,0,0)))
-    metro[(0,quad_id,sensor_id,1)] = basis(orientation=null_ori,translation=matrix.col((+asic_trans1,0,0)))
+    if include_asic_offset:
+      rotated_ori = matrix.col((1,0,0)).axis_and_angle_as_unit_quaternion(180.0, deg=True)
+      offset_fast = -pixel_size*((sensor_px_fast) / 4) # 4 because sensor_px_fast is for sensor
+      offset_slow = +pixel_size*((sensor_px_slow) / 2) # Sensor is divided into 2 only in fast direction
+      metro[(0,quad_id,sensor_id,0)] = basis(orientation=rotated_ori,translation=matrix.col((-asic_trans0,0,0)))
+      metro[(0,quad_id,sensor_id,1)] = basis(orientation=rotated_ori,translation=matrix.col((+asic_trans1,0,0)))
+      metro[(0,quad_id,sensor_id,0)].translation += matrix.col((offset_fast, offset_slow, 0))
+      metro[(0,quad_id,sensor_id,1)].translation += matrix.col((offset_fast, offset_slow, 0))
+    else:
+      metro[(0,quad_id,sensor_id,0)] = basis(orientation=null_ori,translation=matrix.col((-asic_trans0,0,0)))
+      metro[(0,quad_id,sensor_id,1)] = basis(orientation=null_ori,translation=matrix.col((+asic_trans1,0,0)))
 
   if len(root.get_list_of_children()) == 4:
     for quad_id, quad in enumerate(root.get_list_of_children()):
