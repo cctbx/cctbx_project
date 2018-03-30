@@ -1,11 +1,25 @@
 from __future__ import absolute_import, division
-from dxtbx.format.FormatXTC import FormatXTC
+from dxtbx.format.FormatXTC import FormatXTC,locator_str
+from libtbx.phil import parse
 try:
   from xfel.cxi.cspad_ana import cspad_tbx
   from xfel.cftbx.detector import cspad_cbf_tbx
 except ImportError:
   # xfel not configured
   pass
+
+cspad_locator_str = """
+  cspad {
+    apply_gain_mask = True
+      .type = bool
+      .help = flag to indicate if gain should be applied to cspad data
+    dark_correction = True
+      .type = bool
+      .help = flag to decide if dark correction should be done
+    }
+"""
+
+cspad_locator_scope = parse(cspad_locator_str+locator_str, process_includes=True)
 
 class FormatXTCCspad(FormatXTC):
 
@@ -14,6 +28,8 @@ class FormatXTCCspad(FormatXTC):
     self._ds = self._get_datasource(image_file)
     self.events_list = []
     self.populate_events()
+    self.params = FormatXTC.params_from_phil(cspad_locator_scope, image_file)
+    #from IPython import embed; embed(); exit()
     FormatXTC.__init__(self, image_file, **kwargs)
 
   def _get_event(self,index):
@@ -46,9 +62,9 @@ class FormatXTCCspad(FormatXTC):
     d = self.get_detector()
     data = cspad_cbf_tbx.get_psana_corrected_data(det, self._get_event(index),
                                                   use_default=False,
-                                                  dark=True,
+                                                  dark=self.params.cspad.dark_correction,
                                                   common_mode=None,
-                                                  apply_gain_mask=False,
+                                                  apply_gain_mask=self.params.cspad.apply_gain_mask,
                                                   gain_mask_value=None,
                                                   per_pixel_gain=False)
     data = data.astype(np.float64)
