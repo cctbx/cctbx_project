@@ -3,6 +3,8 @@ IOTA v1.1.028 - GUI updates
 Bugfixes:
 1. Tracker: changed GridBagSizer to SplitterWindow for chart / image list, which
  now sizes correctly at all times (and is adjustable)
+2. Fixed bugs resulting from previous commit (IOTA hung on image import)
+
 
 
 Features:
@@ -26,6 +28,8 @@ command-line argument, and will be automatically interpreted.
 15. Option in Tracker to start from images collected 1 min ago, or t minutes
 ago; useful if want to keep it at least somewhat "real-time" (i.e. not starting
 tracking from the first collected image)
+16. Attempted to speed up tracker by making it search for new images every 1
+second, rather than when all current images were indexed; not sure it helped
 
 
 Known issues:

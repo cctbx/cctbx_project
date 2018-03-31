@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/22/2018
+Last Changed: 03/30/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -2026,10 +2026,6 @@ class ProcWindow(wx.Frame):
       ins_pt = self.log_tab.log_window.GetInsertionPoint()
       self.log_tab.log_window.AppendText(output)
       self.log_tab.log_window.SetInsertionPoint(ins_pt)
-      # for i in output:
-      #   self.log_tab.log_window.AppendText(i)
-      #   self.log_tab.log_window.SetInsertionPoint(ins_pt)
-
 
   def plot_integration(self):
     self.chart_tab.init = self.init
@@ -2039,7 +2035,6 @@ class ProcWindow(wx.Frame):
     self.chart_tab.res_list = self.res_list
     self.chart_tab.nref_list = self.nref_list
 
-    #self.chart_tab.measured_indices = list(set(self.measured_indices))
     self.chart_tab.ahk0 = list(set(self.ahk0))
     self.chart_tab.ah0l = list(set(self.ah0l))
     self.chart_tab.a0kl = list(set(self.a0kl))
@@ -2070,7 +2065,6 @@ class ProcWindow(wx.Frame):
           self.ahk0.extend([(i[0], i[1]) for i in obs if i[2] == 0])
           self.ah0l.extend([(i[0], i[2]) for i in obs if i[1] == 0])
           self.a0kl.extend([(i[1], i[2]) for i in obs if i[0] == 0])
-          #self.measured_indices.extend([i[0] for i in obs])
       except Exception, e:
         print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
         pass
@@ -2117,11 +2111,6 @@ class ProcWindow(wx.Frame):
       else:
         self.last_object = self.finished_objects[-1]
       self.find_objects()
-
-      # object_finder = thr.ObjectFinderThread(self,
-      #                                        last_object=last_object,
-      #                                        object_folder=self.init.obj_base)
-      # object_finder.start()
 
     if len(self.finished_objects) > self.obj_counter:
       self.plot_integration()

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 03/28/2018
+Last Changed: 03/30/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -15,6 +15,9 @@ from libtbx import easy_pickle as ep
 from libtbx import easy_run
 
 from collections import Counter
+
+import time
+assert time
 
 
 class InputFinder():
@@ -57,7 +60,6 @@ class InputFinder():
       mmin = ''
     command = 'find {} -type f {} {}'.format(path, newer_than, mmin)
     filepaths = easy_run.fully_buffered(command).stdout_lines
-
     if ignore_ext is not None:
       filepaths = [path for path in filepaths if not path.endswith(ignore_ext)]
     elif ext_only is not None:

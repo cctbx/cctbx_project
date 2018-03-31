@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 03/28/2018
+Last Changed: 03/30/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -30,7 +30,6 @@ from iota.components.iota_dials import phil_scope, IOTADialsProcessor
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
 import iota.components.iota_misc as misc
-from iota.components.iota_misc import Capturing
 
 import time
 assert time # going to keep time around for testing
@@ -570,6 +569,7 @@ class TrackerPanel(wx.Panel):
     font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.count_txt.SetFont(font)
     self.idx_count_txt.SetFont(font)
+    font = wx.Font(14, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.pg_txt.SetFont(font)
     self.uc_txt.SetFont(font)
 
@@ -659,8 +659,6 @@ class TrackerWindow(wx.Frame):
     wx.Frame.__init__(self, parent, id, title, size=(1500, 600))
     self.parent = parent
     self.term_file = os.path.join(os.curdir, '.terminate_image_tracker')
-    self.info_file = os.path.join(os.curdir, '.spotfinding_info')
-    self.folder_file = os.path.join(os.curdir, '.data_info')
     self.spf_backend = 'mosflm'
 
     self.reset_spotfinder()
@@ -696,7 +694,6 @@ class TrackerWindow(wx.Frame):
     run_bmp = bitmaps.fetch_icon_bitmap('actions', 'run')
     self.tb_btn_run = self.toolbar.AddLabelTool(wx.ID_ANY, label='Run',
                                                 bitmap=run_bmp,
-                                                # kind=wx.ITEM_DROPDOWN,
                                                 shortHelp='Run',
                                                 longHelp='Run Spotfinding')
     stop_bmp = bitmaps.fetch_icon_bitmap('actions', 'stop')
@@ -720,13 +717,6 @@ class TrackerWindow(wx.Frame):
     self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), True)
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-
-
-    # if os.path.isfile(self.folder_file) and os.path.isfile(self.info_file):
-    #   self.toolbar.EnableTool(self.tb_btn_restore.GetId(), True)
-    # else:
-    #   self.toolbar.EnableTool(self.tb_btn_restore.GetId(), False)
-
     self.toolbar.Realize()
 
     # Setup timers
@@ -750,7 +740,6 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onGetImages, self.tb_btn_open)
     self.Bind(wx.EVT_TOOL, self.onRunSpotfinding, self.tb_btn_run)
-    # self.Bind(wx.EVT_TOOL, self.onRestoreRun, self.tb_btn_restore)
     self.Bind(wx.EVT_TOOL, self.onStop, self.tb_btn_stop)
     self.Bind(wx.EVT_BUTTON, self.onSelView, self.tracker_panel.btn_view_sel)
     self.Bind(wx.EVT_BUTTON, self.onWrtFile, self.tracker_panel.btn_wrt_file)
@@ -801,17 +790,18 @@ class TrackerWindow(wx.Frame):
       self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), False)
 
   def reset_spotfinder(self):
-    self.frame_count = []
-    self.obs_counts = []
     self.done_list = []
     self.data_list = []
     self.new_frames = []
     self.new_counts = []
     self.spotfinding_info = []
+    self.plot_idx = 0
     self.all_info = []
     self.current_min_bragg = 0
     self.waiting = False
+    self.submit_new_images = False
     self.terminated = False
+
 
   def onWrtFile(self, e):
     idxs = []
@@ -908,11 +898,6 @@ class TrackerWindow(wx.Frame):
     timer_txt = '[ ------ ]'
     self.msg = 'Ready to track images in {}'.format(self.data_folder)
     self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
-    try:
-      os.remove(self.folder_file)
-      os.remove(self.info_file)
-    except Exception, e:
-      pass
 
   def onMinBragg(self, e):
     self.tracker_panel.chart.draw_bragg_line()
@@ -934,30 +919,6 @@ class TrackerWindow(wx.Frame):
   def onRunSpotfinding(self, e):
     self.start_spotfinding()
 
-  def onRestoreRun(self, e):
-    self.remove_term_file()
-    self.spotfinding_info = []
-    with open(self.info_file, 'r') as f:
-      contents = f.readlines()
-
-    with open(self.folder_file, 'r') as ff:
-      self.data_folder = ff.read()
-
-    for item in contents:
-      items = item.replace('\n', '').split(',')
-      self.spotfinding_info.append(items)
-
-    os.remove(self.info_file)
-    os.remove(self.folder_file)
-
-    self.new_counts = [int(i[1]) for i in self.spotfinding_info]
-    self.new_frames = [int(i[0]) for i in self.spotfinding_info]
-    self.done_list = [i[2] for i in self.spotfinding_info]
-    self.all_info = self.spotfinding_info
-
-    self.plot_results()
-    self.start_spotfinding()
-
   def start_spotfinding(self, min_back=None):
     ''' Start timer and perform spotfinding on found images '''
     self.terminated = False
@@ -969,17 +930,12 @@ class TrackerWindow(wx.Frame):
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), False)
     self.params = self.phil.extract()
 
-    if self.spf_backend == 'dials':
-      self.processor = IOTADialsProcessor(params=self.params)
-      #self.tracker_panel.spf_options.Disable()
-    elif self.spf_backend == 'mosflm':
-      self.processor = None
+    self.submit_new_images = True
+    self.spin_update = 0
 
     self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
     self.spf_timer.Start(1000)
     self.uc_timer.Start(15000)
-    self.spin_update = 0
-    self.find_new_images(min_back=min_back)
 
   def stop_run(self):
     timer_txt = '[ xxxxxx ]'
@@ -988,14 +944,16 @@ class TrackerWindow(wx.Frame):
     self.spf_timer.Stop()
     self.uc_timer.Stop()
 
-  def run_spotfinding(self):
+  def run_spotfinding(self, submit_list=None):
     ''' Generate the spot-finder thread and run it '''
-    self.spf_thread = thr.SpotFinderThread(self,
-                                           data_list=self.data_list,
-                                           term_file=self.term_file,
-                                           processor=self.processor,
-                                           backend=self.spf_backend)
-    self.spf_thread.start()
+    if submit_list is not None and len(submit_list) > 0:
+      self.spf_thread = thr.SpotFinderThread(self,
+                                             data_list=submit_list,
+                                             term_file=self.term_file,
+                                             proc_params=self.params,
+                                             backend=self.spf_backend)
+      self.spf_thread.start()
+
 
   def onSpfOneDone(self, e):
     ''' Occurs on every wx.PostEvent instance; updates lists of images with
@@ -1006,58 +964,50 @@ class TrackerWindow(wx.Frame):
         idx = info[0] + len(self.done_list)
         obs_count = info[1]
         img_path = info[2]
-        self.obs_counts[idx] = obs_count
-        self.new_frames.append(idx)
-        self.new_counts.append(obs_count)
         self.spotfinding_info.append([idx, obs_count, img_path,
                                       info[3], info[4]])
         self.all_info.append([idx, obs_count, img_path])
-      #self.plot_results()
+
+        if img_path in self.done_list:
+          print '!!! IMG {} {} IN DONE LIST !!!'.format(idx, img_path)
 
   def onSpfAllDone(self, e):
     self.done_list.extend(e.GetValue())
-    self.find_new_images()
-    # if e.GetValue() == []:
-    #   self.stop_run()
-    # else:
-    #   self.done_list.extend(e.GetValue())
-    #   self.find_new_images()
+    self.submit_new_images = True
 
   def onSpfTerminated(self, e):
     self.stop_run()
     self.toolbar.EnableTool(self.tb_btn_open.GetId(), True)
 
-  def find_new_images(self, min_back=None):
-    if self.done_list != []:
-      last_file = self.done_list[-1]
-      min_back = None
-    else:
-      last_file = None
+  def find_new_images(self, min_back=None, last_file=None):
+    find_start = time.time()
     found_files = ginp.make_input_list([self.data_folder],
                                        filter=True,
                                        filter_type='image',
                                        last=last_file,
                                        min_back=min_back)
-    self.data_list = list(set(found_files) - set(self.done_list))
-    self.data_list = [i for i in self.data_list if not 'tmp' in i]
 
-    if len(self.data_list) == 0:
-      self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
-      self.waiting = True
+    # Sometimes duplicate files are found anyway; clean that up
+    test_files = found_files
+    found_files = list(set(found_files) - set(self.data_list))
+
+    # Add new files to the data list & clean up
+    self.data_list.extend(found_files)
+    self.data_list = sorted(self.data_list, key=lambda i:i)
+
+    if self.waiting:
+      if len(found_files) > 0:
+        self.waiting = False
+        self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
+        self.start_spotfinding()
     else:
-      self.waiting = False
-      self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
-      if self.obs_counts == [] and self.frame_count == []:
-        self.obs_counts = [-1] * len(self.data_list)
-        self.frame_count = range(len(self.data_list))
-      else:
-        self.obs_counts = self.obs_counts + ([-1] * len(self.data_list))
-        self.frame_count = self.frame_count + range(len(self.data_list))
-      self.run_spotfinding()
+      if len(found_files) == 0:
+        self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
+        self.waiting = True
 
   def onSpfTimer(self, e):
-    ''' Every second, update spotfinding chart (for some odd reason, chart is
-    not updated when the wx.PostEvent happens) '''
+    ''' Every second, update spotfinding chart '''
+    start = time.time()
     if self.spin_update == 5:
       self.spin_update = 0
     else:
@@ -1067,9 +1017,23 @@ class TrackerWindow(wx.Frame):
     self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
 
     if not self.terminated:
-      self.plot_results()
-      if len(self.data_list) == 0:
-        self.find_new_images()
+      if len(self.spotfinding_info) > 0:
+        indexed = [i for i in self.spotfinding_info if i[3] is not None]
+        self.tracker_panel.idx_count_txt.SetLabel(str(len(indexed)))
+        self.plot_results()
+
+      if self.data_list != []:
+        last_file = self.data_list[-1]
+      else:
+        last_file = None
+      self.find_new_images(last_file=last_file)
+
+      if self.submit_new_images:
+        unproc_images = list(set(self.data_list) - set(self.done_list))
+        if len(unproc_images) > 0:
+          self.submit_new_images = False
+          self.run_spotfinding(submit_list=unproc_images)
+
     else:
       self.stop_run()
 
@@ -1081,7 +1045,7 @@ class TrackerWindow(wx.Frame):
         last_img = self.tracker_panel.chart.patch_x_last
 
         new_data_dict = {}
-        sel_img_list = self.all_info[first_img:last_img]
+        sel_img_list = self.spotfinding_info[first_img:last_img]
         for img in sel_img_list:
           idx = sel_img_list.index(img)
           new_data_dict[idx] = (img[0], img[2], img[1])
@@ -1100,16 +1064,17 @@ class TrackerWindow(wx.Frame):
       listctrl.InitializeDataMap(self.data_dict)
 
   def plot_results(self):
-    self.tracker_panel.chart.draw_plot(new_x=self.new_frames,
-                                       new_y=self.new_counts)
-    # # Save results in a text file
-    # with open(self.info_file, 'a') as f:
-    #   for item in self.spotfinding_info:
-    #     f.write('{},{},{}\n'.format(item[0], item[1], item[2]))
 
-    #self.spotfinding_info = []
-    self.new_frames = []
-    self.new_counts = []
+    if self.plot_idx <= len(self.spotfinding_info):
+      self.new_frames = [i[0] for i in self.spotfinding_info[self.plot_idx:]]
+      self.new_counts = [i[1] for i in self.spotfinding_info[self.plot_idx:]]
+      self.tracker_panel.chart.draw_plot(new_x=self.new_frames,
+                                         new_y=self.new_counts)
+      self.plot_idx = self.spotfinding_info.index(self.spotfinding_info[-1]) + 1
+    else:
+      self.new_frames = []
+      self.new_counts = []
+
 
   def onUCTimer(self, e):
     self.cluster_unit_cells()
@@ -1117,23 +1082,25 @@ class TrackerWindow(wx.Frame):
   def cluster_unit_cells(self):
     input = []
     for item in self.spotfinding_info:
-      if (item[4] is not None and item[3] is not None):
-        info_line = [float(i) for i in item[4]]
-        info_line.append(item[3])
-        input.append(info_line)
+      if item[4] is not None:
+        try:
+          info_line = [float(i) for i in item[4]]
+          info_line.append(item[3])
+          input.append(info_line)
+        except ValueError:
+          pass
 
-    with Capturing() as junk_output:
+    cluster_start = time.time()
+    with misc.Capturing() as junk_output:
       try:
         ucs = Cluster.from_iterable(iterable=input)
         clusters, _ = ucs.ab_cluster(5000,
                                      log=False, write_file_lists=False,
-                                     schnell=False, doplot=False)
+                                     schnell=True, doplot=False)
       except Exception, e:
         clusters = []
-        print e
 
     if len(clusters) > 0:
-      uc_table = []
       uc_summary = []
       for cluster in clusters:
         sorted_pg_comp = sorted(cluster.pg_composition.items(),
@@ -1164,7 +1131,10 @@ class TrackerWindow(wx.Frame):
 
       self.tracker_panel.pg_txt.SetLabel(cons_pg)
       self.tracker_panel.uc_txt.SetLabel(uc_line)
-      self.tracker_panel.idx_count_txt.SetLabel(str(uc_pick[0]))
+      # self.tracker_panel.idx_count_txt.SetLabel(str(uc_pick[0]))
+    else:
+      self.tracker_panel.pg_txt.SetLabel('N/A')
+      self.tracker_panel.uc_txt.SetLabel('N/A')
 
   def onQuit(self, e):
     self.spf_timer.Stop()

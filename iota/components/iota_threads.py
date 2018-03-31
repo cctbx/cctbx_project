@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/28/2018
+Last Changed: 03/30/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -104,7 +104,6 @@ class ProcThread(Thread):
     self.aborted = False
 
   def run(self):
-    # if self.init.params.mp_method == 'multiprocessing':
     try:
       img_objects = parallel_map(iterable=self.iterable,
                                  func = self.full_proc_wrapper,
@@ -291,7 +290,7 @@ class SpotFinderTerminated(wx.PyCommandEvent):
   def GetValue(self):
     return None
 
-class SpotFinderOneThread():
+class SpotFinderDIALSThread():
   def __init__(self, parent, processor, term_file):
     self.meta_parent = parent.parent
     self.processor = processor
@@ -305,7 +304,7 @@ class SpotFinderOneThread():
       observed = self.processor.find_spots(datablock=datablock)
       return [idx, int(len(observed)), img, None, None]
 
-class SpotFinderMosflmOneThread():
+class SpotFinderMosflmThread():
   def __init__(self, parent, term_file):
     self.meta_parent = parent.parent
     self.term_file = term_file
@@ -344,6 +343,7 @@ class SpotFinderMosflmOneThread():
                    ]
       autoindex_string = '\n'.join(autoindex)
       autoindex_filename = 'autoindex_{}.com'.format(idx)
+
       with open(autoindex_filename, 'w') as af:
         af.write(autoindex_string)
       os.chmod(autoindex_filename, 0755)
@@ -400,7 +400,7 @@ class SpotFinderThread(Thread):
                parent,
                data_list=None,
                term_file=None,
-               processor=None,
+               proc_params=None,
                backend='dials'):
     Thread.__init__(self)
     self.parent = parent
@@ -410,8 +410,8 @@ class SpotFinderThread(Thread):
     self.backend = backend
 
     if self.backend == 'dials':
-      self.processor = processor
-      assert self.processor is not None
+      from iota.components.iota_dials import IOTADialsProcessor
+      self.processor = IOTADialsProcessor(params=proc_params)
 
   def run(self):
     total_procs = multiprocessing.cpu_count()
@@ -443,10 +443,10 @@ class SpotFinderThread(Thread):
     try:
       if os.path.isfile(img):
         if self.backend == 'dials':
-          spf_worker = SpotFinderOneThread(self, self.processor, self.term_file)
+          spf_worker = SpotFinderDIALSThread(self, self.processor, self.term_file)
           result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
         elif self.backend == 'mosflm':
-          spf_worker = SpotFinderMosflmOneThread(self, self.term_file)
+          spf_worker = SpotFinderMosflmThread(self, self.term_file)
           result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
         else:
           result = [int(self.data_list.index(img)), 0, img, None, None]

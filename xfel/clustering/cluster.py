@@ -251,20 +251,22 @@ class Cluster:
     data = []
     from xfel.clustering.singleframe import CellOnlyFrame
     for j,item in enumerate(iterable):
-      assert len(item) == 7
-      unit_cell_params = tuple([float(t) for t in item[0:5]])
-      space_group_type = item[6]
-      from cctbx.uctbx import unit_cell
-      uc_init = unit_cell(unit_cell_params)
-      from cctbx.sgtbx import space_group_info
-      sgi = space_group_info(space_group_type)
-      from cctbx import crystal
-      crystal_symmetry = crystal.symmetry(unit_cell=uc_init, space_group_info=sgi)
-      name = "lattice%07d"%j
-      this_frame = CellOnlyFrame(crystal_symmetry, path=name, name=name)
-      if hasattr(this_frame, 'crystal_symmetry'):
-          data.append(this_frame)
-
+      try:
+        assert len(item) == 7
+        unit_cell_params = tuple([float(t) for t in item[0:5]])
+        space_group_type = item[6]
+        from cctbx.uctbx import unit_cell
+        uc_init = unit_cell(unit_cell_params)
+        from cctbx.sgtbx import space_group_info
+        sgi = space_group_info(space_group_type)
+        from cctbx import crystal
+        crystal_symmetry = crystal.symmetry(unit_cell=uc_init, space_group_info=sgi)
+        name = "lattice%07d"%j
+        this_frame = CellOnlyFrame(crystal_symmetry, path=name, name=name)
+        if hasattr(this_frame, 'crystal_symmetry'):
+            data.append(this_frame)
+      except Exception:
+        pass
     return cls(data, _prefix, _message)
 
   @classmethod
