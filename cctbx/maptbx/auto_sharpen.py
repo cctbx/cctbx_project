@@ -850,7 +850,6 @@ def run(args=None,params=None,
      map_coords_inside_cell=False,
      crystal_symmetry=crystal_symmetry,
      params=params,out=out)
-
   # NOTE: map_data is now relative to origin at (0,0,0).
   # Use map_data.reshape(acc) to put it back where it was if acc is not None
 

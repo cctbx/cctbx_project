@@ -476,13 +476,13 @@ master_phil = iotbx.phil.parse("""
        .help = Use a representative box of density for initial \
                 auto-sharpening instead of the entire map.
 
-     density_select_in_auto_sharpen = False
+     density_select_in_auto_sharpen = True
        .type = bool
        .short_caption = density_select to choose box
        .help = Choose representative box of density for initial \
                 auto-sharpening with density_select method \
                 (choose region where there is high density). \
-               Normally use instead density_select=True which \
+               Normally use this as well as density_select=True which \
                carries out density_select at start of segmentation.
 
      allow_box_if_b_iso_set = False
@@ -4333,7 +4333,9 @@ def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
       raise Sorry("This computer does not have sufficient "+
         "memory (%.0f GB needed) \nto run this job" %(needed_memory))
 
-def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
+def get_params(args,map_data=None,crystal_symmetry=None,
+    sharpening_target_pdb_inp=None,
+    out=sys.stdout):
 
   params=get_params_from_args(args)
 
@@ -4437,6 +4439,60 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     half_map_data_list.append(iotbx.ccp4_map.map_reader(
        file_name=params.input_files.half_map_file[1]).data.as_double())
 
+  # Get the NCS object
+  ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
+
+  if params.map_modification.auto_sharpen or \
+        params.map_modification.b_iso is not None or \
+        params.map_modification.b_sharpen is not None or \
+        params.map_modification.resolution_dependent_b is not None:
+
+      # Sharpen the map
+      print >>out,"Auto-sharpening map before using it"
+      local_params=deepcopy(params)
+      local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
+      from cctbx.maptbx.auto_sharpen import run as auto_sharpen
+      map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
+         args=[],params=local_params,
+        map_data=map_data,
+        crystal_symmetry=crystal_symmetry,
+        write_output_files=False,
+        pdb_inp=sharpening_target_pdb_inp,
+        ncs_obj=ncs_obj,
+        return_map_data_only=False,
+        half_map_data_list=half_map_data_list,
+        n_residues=tracking_data.n_residues,
+        ncs_copies=ncs_obj.max_operators(),
+        out=out)
+      if not tracking_data.solvent_fraction:
+        tracking_data.solvent_fraction=new_si.solvent_fraction
+
+      sharpened_map_file=os.path.join(
+            tracking_data.params.output_files.output_directory,
+            tracking_data.params.output_files.sharpened_map_file)
+      if sharpened_map_file:
+        sharpened_map_data=map_data.deep_copy()
+
+        print >>out,"Gridding of boxed, sharpened map:"
+        print >>out,"Origin: ",map_data.origin()
+        print >>out,"All: ",map_data.all()
+        print >>out,\
+          "\nWrote boxed, sharpened map in original location with "+\
+             "origin at %s\nto %s" %(
+           str(sharpened_map_data.origin()),sharpened_map_file)
+        write_ccp4_map(crystal_symmetry,
+            sharpened_map_file,sharpened_map_data)
+
+      # done with any sharpening
+      params.map_modification.auto_sharpen=False# so we don't do it again later
+      params.map_modification.b_iso=None
+      params.map_modification.b_sharpen=None
+      params.map_modification.resolution_dependent_b=None
+      if params.control.sharpen_only:
+        print >>out,"Stopping after sharpening"
+        return
+
+
 
   # check on size right away
   if params.control.memory_check:
@@ -4453,7 +4509,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
     if params.input_files.ncs_file:
       # Magnify ncs
       print >>out,"NCS before applying magnification..."
-      ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
       ncs_obj.format_all_for_group_specification(out=out)
       ncs_obj=ncs_obj.adjust_magnification(
         magnification=params.map_modification.magnification)
@@ -4520,13 +4575,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
 
   # either use map_box with density_select=True or just shift the map
   if  params.segmentation.density_select:
-
     print >>out,"\nTrimming map to density..."
-    # turn off density_select_in_auto_sharpen in case it was on...
-    if params.map_modification.density_select_in_auto_sharpen:
-      params.map_modification.density_select_in_auto_sharpen=False
-      print >>out,"Turning off density_select_in_auto_sharpen as "+\
-         "it will be done here"
     args= ["output_format=ccp4"]
     if params.segmentation.density_select_threshold is not None:
       print >>out,"Threshold for density selection will be: %6.2f \n"%(
@@ -4730,6 +4779,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,out=sys.stdout):
       shifted_ncs_object=ncs()
       shifted_ncs_object.set_unit_ncs()
 
+
+  update_tracking_data_with_sharpening(
+             map_data=map_data,
+             tracking_data=tracking_data,out=out)
 
   # Set origin shift now
   tracking_data.set_origin_shift(origin_shift)
@@ -8178,7 +8231,6 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
         solvent_fraction=get_solvent_fraction(local_params,
           crystal_symmetry=crystal_symmetry,
           ncs_copies=ncs_copies,out=out)
-
     si.update_with_params(params=local_params,
       crystal_symmetry=crystal_symmetry,
       is_crystal=is_crystal,
@@ -9498,7 +9550,6 @@ def run_auto_sharpen(
 
   smoothed_box_mask_data=None
   original_box_map_data=None
-
   if si.auto_sharpen and (
     si.box_in_auto_sharpen or si.density_select_in_auto_sharpen or pdb_inp):
 
@@ -10150,34 +10201,6 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
           all=map_data.all(),
           b_sharpen=None)
 
-    sharpened_map_file=os.path.join(
-          tracking_data.params.output_files.output_directory,
-          tracking_data.params.output_files.sharpened_map_file)
-    if sharpened_map_file:
-      sharpened_map_data=map_data.deep_copy()
-      if tracking_data.box_map_bounds_first and \
-          tracking_data.box_map_bounds_last:
-        from scitbx.array_family.flex import grid
-        new_grid=grid(tracking_data.box_map_bounds_first,
-        tracking_data.box_map_bounds_last)
-      else:
-        new_grid=map_data.accessor()
-
-      print >>out,"Gridding of boxed, sharpened map:"
-      print >>out,"Origin: ",new_grid.origin()
-      print >>out,"All: ",new_grid.all()
-      if new_grid is not None:  # we offset the map to match original
-        sharpened_map_data.reshape(new_grid)
-        print >>out,\
-        "\nWrote boxed, sharpened map in original location with "+\
-           "origin at %s\nto %s" %(
-         str(sharpened_map_data.origin()),sharpened_map_file)
-      else:
-        print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
-          "(NOTE: may not be \nsame as original location) to %s\n" %(
-           sharpened_map_file)
-      write_ccp4_map(tracking_data.crystal_symmetry,
-          sharpened_map_file,sharpened_map_data)
 
 def get_high_points_from_map(
      map_data=None,
@@ -10323,11 +10346,13 @@ def run(args,
     print >>out,"\nIteration tracking data:"
     tracking_data.show_summary(out=out)
   else:
-    # get the parameters and map_data (magnified, shifted...)
+    # get the parameters and map_data (sharpened, magnified, shifted...)
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,\
         shifted_ncs_object=get_params(
-       args,map_data=map_data,crystal_symmetry=crystal_symmetry,out=out)
-    if params.control.shift_only or params.control.check_ncs:
+       args,map_data=map_data,crystal_symmetry=crystal_symmetry,
+       sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
+    if params.control.shift_only or params.control.check_ncs or \
+        params.control.sharpen_only:
       return None,None,tracking_data
 
     if params.input_files.pdb_to_restore:
@@ -10380,42 +10405,6 @@ def run(args,
     # get the chain types and therefore (using ncs_copies) volume fraction
     tracking_data=get_solvent_fraction(params,
       ncs_object=ncs_obj,tracking_data=tracking_data,out=out)
-
-    if params.map_modification.auto_sharpen or \
-        params.map_modification.b_iso is not None or \
-        params.map_modification.b_sharpen is not None or \
-        params.map_modification.resolution_dependent_b is not None:
-
-      # Sharpen the map
-      local_params=deepcopy(params)
-      local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
-      from cctbx.maptbx.auto_sharpen import run as auto_sharpen
-      map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
-         args=[],params=local_params,
-        map_data=map_data,
-        crystal_symmetry=tracking_data.crystal_symmetry,
-        write_output_files=False,
-        pdb_inp=sharpening_target_pdb_inp,
-        ncs_obj=ncs_obj,
-        return_map_data_only=False,
-        half_map_data_list=half_map_data_list,
-        n_residues=tracking_data.n_residues,
-        ncs_copies=tracking_data.input_ncs_info.number_of_operators,
-        out=out)
-      if not tracking_data.solvent_fraction:
-        tracking_data.solvent_fraction=new_si.solvent_fraction
-      update_tracking_data_with_sharpening(
-             map_data=map_data,
-             tracking_data=tracking_data,out=out)
-
-      # done with any sharpening
-      params.map_modification.auto_sharpen=False# so we don't do it again later
-      params.map_modification.b_iso=None
-      params.map_modification.b_sharpen=None
-      params.map_modification.resolution_dependent_b=None
-      if params.control.sharpen_only:
-        print >>out,"Stopping after sharpening"
-        return
 
     # Done with getting params and maps
     # Summarize after any sharpening
