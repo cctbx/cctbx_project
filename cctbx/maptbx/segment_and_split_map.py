@@ -1913,6 +1913,7 @@ class info_object:
       ncs_obj=None,
       min_b=None,
       max_b=None,
+      b_sharpen=None,  # b_sharpen applied to map
       ncs_group_list=None,
       origin_shift=None,
       crystal_symmetry=None, # after density_select
@@ -4460,10 +4461,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         pdb_inp=sharpening_target_pdb_inp,
         ncs_obj=ncs_obj,
         return_map_data_only=False,
+        return_unshifted_map=True,
         half_map_data_list=half_map_data_list,
         n_residues=tracking_data.n_residues,
         ncs_copies=ncs_obj.max_operators(),
         out=out)
+      tracking_data.b_sharpen=new_si.b_sharpen
       if not tracking_data.solvent_fraction:
         tracking_data.solvent_fraction=new_si.solvent_fraction
 
@@ -4473,15 +4476,16 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       if sharpened_map_file:
         sharpened_map_data=map_data.deep_copy()
 
-        print >>out,"Gridding of boxed, sharpened map:"
+        print >>out,"Gridding of sharpened map:"
         print >>out,"Origin: ",map_data.origin()
         print >>out,"All: ",map_data.all()
         print >>out,\
-          "\nWrote boxed, sharpened map in original location with "+\
+          "\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
            str(sharpened_map_data.origin()),sharpened_map_file)
         write_ccp4_map(crystal_symmetry,
             sharpened_map_file,sharpened_map_data)
+        params.input_files.map_file=sharpened_map_file # overwrite map_file name here
 
       # done with any sharpening
       params.map_modification.auto_sharpen=False# so we don't do it again later
@@ -4491,8 +4495,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       if params.control.sharpen_only:
         print >>out,"Stopping after sharpening"
         return
-
-
 
   # check on size right away
   if params.control.memory_check:
