@@ -1037,8 +1037,7 @@ class manager(object):
 
   def get_ncs_groups(self):
     """
-    This returns object mmtbx.ncs.ncs.ncs_group, used primarily in
-    Tom's tools for historic reasons
+    This returns ncs_restraints_group_list object
     """
     return self._ncs_groups
 
