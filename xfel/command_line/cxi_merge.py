@@ -347,6 +347,10 @@ levmar {
     .help = Others are refineable parameters to choose from, default is only refine G and I.
     .type = choice
     .multiple = True
+  linsolver = *ldlt llt cg bicgstab
+    .type = choice
+    .help = Linear solver backend algorithm for LevMar
+    .help = ldlt and llt are Cholesky direct methods, cg and bicgstab are iterative methods
 }
 cell_rejection {
   unit_cell = Auto

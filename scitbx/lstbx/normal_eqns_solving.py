@@ -6,7 +6,7 @@ from __future__ import division
 import libtbx
 from scitbx.array_family import flex
 from timeit import default_timer as current_time
-
+from scitbx.examples.bevington import linsolver_backend as lsb
 
 class journaled_non_linear_ls(object):
   """ A decorator that keeps the history of the objective, gradient,
@@ -61,9 +61,9 @@ class journaled_non_linear_ls(object):
     if self.journal.scale_factor_history is not None:
       self.journal.scale_factor_history.append(self.actual.scale_factor())
 
-  def solve(self):
+  def solve(self, linsolver=lsb.ldlt):
     t0 = current_time()
-    self.actual.solve()
+    self.actual.solve(linsolver)
     t1 = current_time()
     self.normal_equations_solving_time += t1 - t0
     self.journal.step_norm_history.append(self.actual.step().norm())
@@ -122,6 +122,22 @@ class iterations(object):
     self.non_linear_ls = journaled_non_linear_ls(non_linear_ls, self,
                                                  self.track_gradient,
                                                  self.track_step)
+    linsolver_param = non_linear_ls.linsolver
+    if linsolver_param == 'ldlt' or linsolver_param == None:
+      print "Using Cholesky LDLT direct linear solver."
+      self.linsolver = lsb.ldlt
+    elif linsolver_param == 'llt':
+      print "Using Cholesky LLT direct linear solver."
+      self.linsolver = lsb.llt
+    elif linsolver_param == 'cg':
+      print "Using conjugate gradient iterative linear solver"
+      self.linsolver = lsb.cg
+    elif linsolver_param == 'bicgstab':
+      print "Using bi-conjugate gradient stabilised (BiCGSTAB) iterative linear solver"
+      self.linsolver = lsb.bicgstab
+    else:
+      print "Unrecognised solver. Defaulting to Cholesky LDLT."
+      self.linsolver = lsb.ldlt
     self.do()
 
   def has_gradient_converged_to_zero(self):
@@ -239,7 +255,7 @@ class levenberg_marquardt_iterations(iterations):
       a.matrix_packed_u_diagonal_add_in_place(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
-      self.non_linear_ls.solve()
+      self.non_linear_ls.solve( self.linsolver )
       if self.had_too_small_a_step(): break
       self.n_iterations += 1
       h = self.non_linear_ls.step()
@@ -306,7 +322,7 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
       self.non_linear_ls.add_constant_to_diagonal(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
-      self.non_linear_ls.solve()
+      self.non_linear_ls.solve(self.linsolver)
       if self.had_too_small_a_step(): break
       self.n_iterations += 1
       h = self.non_linear_ls.step()

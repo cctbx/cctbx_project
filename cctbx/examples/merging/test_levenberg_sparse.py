@@ -10,6 +10,7 @@ from cctbx.examples.merging.data_subset import mapper_factory
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
 from scitbx.matrix import sqr,col
+from scitbx.examples.bevington import linsolver_backend as lsb
 
 from cctbx.uctbx import unit_cell
 uc_params = (281,281,165,90,90,120)
@@ -27,40 +28,47 @@ def choice_as_bitflag(choices):
                   PartialityEtaDeff = p.PartialityEtaDeff)[choice]
   return flags
 
-def choice_as_helper_base(choices):
- if "Deff" in choices or "Rxy" in choices:
+def choice_as_helper_base(choices, linsolver):
+  if "Deff" in choices or "Rxy" in choices:
     from cctbx.examples.merging import postrefine_base as base_class
- else:
+  else:
     from cctbx.examples.merging import xscale6e as base_class
+  base_class.linsolver = linsolver
 
- class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
-  def __init__(pfh, initial_estimates):
-    super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
-    pfh.x_0 = flex.double(initial_estimates)
-    pfh.restart()
-    pfh.counter = 0
-    # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
+  class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
+    def __init__(pfh, initial_estimates):
+      super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
+      pfh.x_0 = flex.double(initial_estimates)
+      pfh.restart()
+      pfh.counter = 0
+      pfh.linsolver = base_class.linsolver
+      # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
 
-  def restart(pfh):
-    pfh.x = pfh.x_0.deep_copy()
-    pfh.old_x = None
+    #Overridden solve function to allow choice of solver algorithm. Default to Cholesky LDLT.
+    def solve(self,linsolver=lsb.ldlt):
+      #from IPython import embed; embed()
+      self.step_equations().solve(linsolver)
 
-  def step_forward(pfh):
-    pfh.old_x = pfh.x.deep_copy()
-    pfh.x += pfh.step()
+    def restart(pfh):
+      pfh.x = pfh.x_0.deep_copy()
+      pfh.old_x = None
 
-  def step_backward(pfh):
-    assert pfh.old_x is not None
-    pfh.x, pfh.old_x = pfh.old_x, None
+    def step_forward(pfh):
+      pfh.old_x = pfh.x.deep_copy()
+      pfh.x += pfh.step()
 
-  def parameter_vector_norm(pfh):
-    return pfh.x.norm()
+    def step_backward(pfh):
+      assert pfh.old_x is not None
+      pfh.x, pfh.old_x = pfh.old_x, None
 
-  def build_up(pfh, objective_only=False):
-    if not objective_only: pfh.counter+=1
-    pfh.reset()
-    pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
- return levenberg_helper
+    def parameter_vector_norm(pfh):
+      return pfh.x.norm()
+
+    def build_up(pfh, objective_only=False):
+      if not objective_only: pfh.counter+=1
+      pfh.reset()
+      pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
+  return levenberg_helper
 
 class xscale6e(object):
 
@@ -92,7 +100,7 @@ class xscale6e(object):
     if "Rxy" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(2*len(Gbase),0.0))
 
-    levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags)
+    levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags, self.params.levmar.linsolver)
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     if kwargs.has_key("experiments"):

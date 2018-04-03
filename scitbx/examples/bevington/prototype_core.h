@@ -48,6 +48,7 @@ class linear_ls_eigen_wrapper
 
   public:
     typedef Eigen::SparseMatrix<double> sparse_matrix_t;
+    enum SolverAlgo { LDLT=0, CG=1, LLT=2, BICGSTAB=3 };
 
     /// Construct a least-squares problem with the given number of unknowns.
     linear_ls_eigen_wrapper(int n_parameters)
@@ -79,22 +80,48 @@ class linear_ls_eigen_wrapper
       return right_hand_side_;
     }
 
-    void solve() {
+    void solve(SolverAlgo solverIdx) {
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       // XXX pack the right hand side in a eigen vector type
       Eigen::VectorXd b(n_parameters());
+      Eigen::VectorXd x(n_parameters());
       double* rhsptr = right_hand_side_.begin();
       for (int i = 0; i<N; ++i){
         b[i] = *rhsptr++;
       }
 
-      Eigen::VectorXd x = chol.solve(b);
+      if( solverIdx == LLT ){
+        Eigen::SimplicialLLT<sparse_matrix_t> llt_solver(eigen_normal_matrix.transpose());
+        x = llt_solver.solve(b);
+        sparse_matrix_t lower = llt_solver.matrixL();
+        last_computed_matrixL_nonZeros_ = lower.nonZeros();
+      }
+      else if( solverIdx == CG ){
+        Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
+        Eigen::ConjugateGradient<sparse_matrix_t, Eigen::Lower|Eigen::Upper > cg_solver(eigen_normal_matrix_full);
+        x = cg_solver.solve(b);
+        //Full matrix used here.
+        last_computed_matrixL_nonZeros_ = cg_solver.nonZeros();
+      }
+      else if( solverIdx == BICGSTAB ){
+        Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
+        //Eigen::BiCGSTAB<sparse_matrix_t, Eigen::RowMajor> solver(eigen_normal_matrix_full);
+        Eigen::BiCGSTAB<sparse_matrix_t> bicgstab_solver(eigen_normal_matrix_full);
+        x = bicgstab_solver.solve(b);
+        //Full matrix used here.
+        last_computed_matrixL_nonZeros_ = bicgstab_solver.nonZeros();
+      }
+      else{
+        Eigen::SimplicialLDLT<sparse_matrix_t> ldlt_solver(eigen_normal_matrix.transpose());
+        x = ldlt_solver.solve(b);
+        sparse_matrix_t lower = llt_solver.matrixL();
+        last_computed_matrixL_nonZeros_ = ldlt_solver.nonZeros();
+      }
 
       //Try to record state of lower Cholesky factor without incurring cost of computing # non-Zeros again
-      sparse_matrix_t lower = chol.matrixL();
-      last_computed_matrixL_nonZeros_ = lower.nonZeros();
+     /* sparse_matrix_t lower = chol.matrixL();
+      last_computed_matrixL_nonZeros_ = lower.nonZeros();*/
       // XXX Not sure if this adds measurable time, if so it should be refactored to a separate function
 
       //  XXX put the solution in the solution_ variable

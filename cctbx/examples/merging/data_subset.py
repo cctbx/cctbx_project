@@ -79,7 +79,6 @@ def mapper_factory(base_class):
 
     def e_unpack_stddev(self):
       return self.expanded_stddev
-
   return mapper_unmapper
 
 def mapper_factory_with_explicit_B(base_class):
