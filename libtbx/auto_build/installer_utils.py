@@ -94,6 +94,8 @@ def untar(pkg_name, log=sys.stdout, verbose=False, change_ownership=False,
                  .replace(".tar.gz", "") \
                  .replace(".tgz", "") \
                  .replace(".tar", "")
+  if dir_name == 'Python-2.7.14b':
+    dir_name = 'Python-2.7.14'
   if check_output_path:
     if not os.path.isdir(dir_name):
       time.sleep(1)

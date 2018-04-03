@@ -765,7 +765,7 @@ Installation of Python packages may fail.
       sys.exit(1)
     log = self.start_building_package("Python")
     os.chdir(self.tmp_dir)
-    python_tarball = self.fetch_package(PYTHON_PKG)
+    python_tarball = self.fetch_package(pkg_name=PYTHON_PKG, pkg_url=DEPENDENCIES_BASE)
     if self.check_download_only(PYTHON_PKG): return
     python_dir = untar(python_tarball)
     self.chdir(python_dir, log=log)

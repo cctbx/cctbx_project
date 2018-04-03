@@ -51,9 +51,10 @@ def get_pypi_package_information(package, version=None, information_only=False):
 DEPENDENCIES_BASE = "https://cdn.rawgit.com/dials/dependencies/master/"
 OPENSSL_PKG = "openssl-1.0.2n.tar.gz"    # OpenSSL
 PYTHON3_PKG = "Python-3.6.3.tgz"
+PYTHON_PKG = "Python-2.7.14b.tgz"        # Python 2.7.14 + pip9.0.3 fix because MacOS is firmly stuck in past
+                                         # see https://github.com/cctbx/cctbx_project/issues/160 for more details
 
 # from CCI
-PYTHON_PKG = "Python-2.7.14.tgz"
 IMAGING_PKG = "Imaging-1.1.7.tar.gz"     # for labelit, gltbx
 REPORTLAB_PKG = "reportlab-2.6.tar.gz"   # for labelit
 ZLIB_PKG = "zlib-1.2.8.tar.gz"
