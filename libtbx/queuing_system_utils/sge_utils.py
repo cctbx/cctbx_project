@@ -1,7 +1,8 @@
 "Sun Grid Engine utilities"
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-import sys, os
+import sys
+import os
 
 def int_or_none(v):
   if (v is None or v == "undefined"): return None
@@ -24,11 +25,11 @@ class task_info(object):
   def show(self, out=None, prefix="", even_if_none=False):
     if (out is None): out = sys.stdout
     if (self.first is not None or even_if_none):
-      print >> out, prefix+"SGE_TASK_FIRST =", self.first
+      print(prefix+"SGE_TASK_FIRST =", self.first, file=out)
     if (self.last is not None or even_if_none):
-      print >> out, prefix+"SGE_TASK_LAST =", self.last
+      print(prefix+"SGE_TASK_LAST =", self.last, file=out)
     if (self.id is not None or even_if_none):
-      print >> out, prefix+"SGE_TASK_ID =", self.id
+      print(prefix+"SGE_TASK_ID =", self.id, file=out)
     return self
 
   def have_array(self):
@@ -58,9 +59,9 @@ class info(task_info):
   def show(self, out=None, prefix="", even_if_none=False):
     if (out is None): out = sys.stdout
     if (self.job_id is not None or even_if_none):
-      print >> out, prefix+"JOB_ID =", self.job_id
+      print(prefix+"JOB_ID =", self.job_id, file=out)
     if (self.arch is not None or even_if_none):
-      print >> out, prefix+"SGE_ARCH =", self.arch
+      print(prefix+"SGE_ARCH =", self.arch, file=out)
     task_info.show(self, out=out, prefix=prefix, even_if_none=even_if_none)
 
 class qstat_items(object):
@@ -183,7 +184,7 @@ def qdel (job_id=None, job_ids=None) :
     args = " ".join(job_ids)
   qdel_out = easy_run.fully_buffered(
     command="qdel %s" % args).raise_if_errors().stdout_lines
-  print "\n".join(qdel_out)
+  print("\n".join(qdel_out))
   for line in qdel_out :
     if "denied" in line :
       raise RuntimeError("\n".join(qdel_out))
@@ -191,4 +192,4 @@ def qdel (job_id=None, job_ids=None) :
 
 if (__name__ == "__main__"):
   info().show(prefix="*** ", even_if_none=True)
-  print "OK"
+  print("OK")
