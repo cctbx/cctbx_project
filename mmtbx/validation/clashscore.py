@@ -377,6 +377,7 @@ class probe_clashscore_manager(object):
     #if (len(probe_info) == 0) :
     #  raise RuntimeError("Empty PROBE output.")
     self.n_atoms = 0
+    n_atoms = 0
     for line in probe_info.stdout_lines:
       processed=False
       try:
