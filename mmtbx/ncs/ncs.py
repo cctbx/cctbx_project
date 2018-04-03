@@ -419,7 +419,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return self.deep_copy_order(
          hierarchy_to_match_order=hierarchy_to_match_order)
 
-    if ops_to_keep:
+    if ops_to_keep is not None:
       return self.deep_copy_ops_to_keep(ops_to_keep=ops_to_keep)
 
     if extract_point_group_symmetry:
@@ -1505,6 +1505,13 @@ class ncs:
   def select_first_ncs_group(self):
     # just keep the first ncs group and remove others:
     self._ncs_groups=self._ncs_groups[:1]
+    return self
+
+  def select_first_ncs_operator(self):
+    # just keep the first ncs operator in the first group and remove others:
+    self.select_first_ncs_group()
+    if self._ncs_groups:
+      self._ncs_groups=[self._ncs_groups[0].deep_copy(ops_to_keep=[0])] #  keep first only
     return self
 
   def set_unit_ncs(self):  # just make a single ncs operator
