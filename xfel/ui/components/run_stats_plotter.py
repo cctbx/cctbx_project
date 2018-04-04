@@ -134,7 +134,7 @@ def get_run_stats(timestamps,
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
-    multiples_local = multiples[idx_min:idx_max+1]
+    multiples_local = multiples[idx_min:idx_max]
     idx_span = len(multiples_local.select(multiples_local < 2))
     idx_sel = low_sel[idx_min:idx_max]
     idx_local_rate = idx_sel.count(True)/idx_span
@@ -144,7 +144,7 @@ def get_run_stats(timestamps,
     multiples_rate.append(multiples_local_rate)
     hq_min = max(0, i - half_hq_rate_window)
     hq_max = min(i + half_hq_rate_window, len(isigi_low))
-    multiples_local_hq = multiples[hq_min:hq_max+1]
+    multiples_local_hq = multiples[hq_min:hq_max]
     hq_span = len(multiples_local_hq.select(multiples_local_hq < 2))
     hq_sel = low_sel[hq_min:hq_max]
     hq_local_sel = high_sel[hq_min:hq_max]
