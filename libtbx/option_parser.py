@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import Sorry
 from libtbx.queuing_system_utils import chunk_manager
 import copy
@@ -26,12 +26,12 @@ make_option = Option
 def run_multi(cmd):
   from libtbx import easy_run
   import traceback
-  print cmd
+  print(cmd)
   try:
     easy_run.call(command=cmd)
   except: # intentional
     sys.stdout.flush()
-    print >> sys.stderr, "CAUGHT EXCEPTION: run_multi(%s)" % cmd
+    print("CAUGHT EXCEPTION: run_multi(%s)" % cmd, file=sys.stderr)
     traceback.print_exc()
     sys.stderr.flush()
 

@@ -1,5 +1,5 @@
 """Fix RPATH and ORIGIN for relocatable binaries."""
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import optparse
 import os
@@ -47,8 +47,8 @@ def find_ext(ext='', root='.'):
   return found
 
 def cmd(*popenargs, **kwargs):
-  print "Running:",
-  print " ".join(*popenargs)
+  print("Running:", end=' ')
+  print(" ".join(*popenargs))
   if DRY_RUN:
     return
   ignorefail = kwargs.pop('ignorefail', False)
@@ -60,16 +60,16 @@ def cmd(*popenargs, **kwargs):
   if exitcode:
     if ignorefail:
       print("WARNING: Command returned non-zero exit code: %s"%" ".join(*popenargs))
-      print a
-      print b
+      print(a)
+      print(b)
     else:
-      print a
-      print b
+      print(a)
+      print(b)
       raise Exception("Command returned non-zero exit code")
 
 def echo(*popenargs, **kwargs):
-    print "Running:",
-    print " ".join(*popenargs)
+    print("Running:", end=' ')
+    print(" ".join(*popenargs))
 
 # "Dry-run"
 # cmd = echo
@@ -99,8 +99,8 @@ class FixLinuxRpath(object):
         if "not found" in found:
           ret.append(lib.strip())
       except Exception as e:
-        print "PARSER ERROR:", e
-        print fields
+        print("PARSER ERROR:", e)
+        print(fields)
     return ret
 
   def run(self, root, replace=None):
@@ -116,7 +116,7 @@ class FixLinuxRpath(object):
 
     # Second pass: find linked libraries, add rpath's
     for target in sorted(targets):
-      print "\n\n====", target
+      print("\n\n====", target)
       deps = self.find_deps(target)
       rpath = set()
       # Find a matching library...
@@ -131,8 +131,6 @@ class FixLinuxRpath(object):
       if rpath:
         cmd(['patchelf', '--set-rpath', ":".join(rpath), target])
 
-    return
-
 class FixMacRpath(object):
   """Process all binary files (executables, libraries) to rename linked libraries."""
 
@@ -141,7 +139,7 @@ class FixMacRpath(object):
     p = check_output(['otool','-L',filename])
     # otool doesn't return an exit code on failure, so check..
     if "not an object file" in p:
-      raise Exception, "Not Mach-O binary"
+      raise Exception("Not Mach-O binary")
     # Just get the dylib install names
     p = [i.strip().partition(" ")[0] for i in p.split("\n")[1:]]
     return p
@@ -162,11 +160,11 @@ class FixMacRpath(object):
     # Find all executable, binary (Mach-O) files.
     targets |= set(find_exec(root=root))
 
-    print "Targets:", len(targets)
+    print("Targets:", len(targets))
     for f in sorted(targets):
       # Get the linked libraries and
       # check if the file is a Mach-O binary
-      print "\n==== Target:", f
+      print("\n==== Target:", f)
       try:
         libs = self.find_deps(f)
       except Exception:
@@ -188,7 +186,7 @@ class FixMacRpath(object):
         if lib != rlib:
           cmd(['install_name_tool', '-change', lib, rlib, f], cwd=root, ignorefail=True)
 
-def run (args) :
+def run(args):
   parser = optparse.OptionParser()
   parser.add_option("--otherroot", help="Other build path")
   parser.add_option("--dry", help="Dry run", action="store_true")
@@ -210,5 +208,5 @@ def run (args) :
     cls = FixMacRpath
   cls().run(root=root, replace=replace)
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
   run(sys.argv[1:])
