@@ -1,11 +1,5 @@
-from __future__ import absolute_import, division
-#!/usr/bin/env python
-# detector.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
+from __future__ import absolute_import, division, print_function
+
 # A model for the detector for the "updated experimental model" project
 # documented in internal ticket #1555. This is not designed to be used outside
 # of the XSweep classes. N.B. this should probably be generalized for non
@@ -488,27 +482,23 @@ class DetectorFactory:
 
     if px_mm is None:
       px_mm = SimplePxMmStrategy()
-    try:
-      d = Detector()
-      p = d.add_panel()
-      p.set_type(str(stype))
-      p.set_name(str(name))
-      p.set_local_frame(
-          tuple(map(float, fast_axis)),
-          tuple(map(float, slow_axis)),
-          tuple(map(float, origin)))
-      p.set_pixel_size(tuple(map(float, pixel_size)))
-      p.set_image_size(tuple(map(int, image_size)))
-      p.set_trusted_range(tuple(map(float, trusted_range)))
-      p.set_thickness(thickness)
-      p.set_material(material)
-      p.set_px_mm_strategy(px_mm)
-      p.set_identifier(identifier)
-      if gain is not None:
-        p.set_gain(gain)
-    except Exception as e:
-      print e
-      raise e
+    d = Detector()
+    p = d.add_panel()
+    p.set_type(str(stype))
+    p.set_name(str(name))
+    p.set_local_frame(
+        tuple(map(float, fast_axis)),
+        tuple(map(float, slow_axis)),
+        tuple(map(float, origin)))
+    p.set_pixel_size(tuple(map(float, pixel_size)))
+    p.set_image_size(tuple(map(int, image_size)))
+    p.set_trusted_range(tuple(map(float, trusted_range)))
+    p.set_thickness(thickness)
+    p.set_material(material)
+    p.set_px_mm_strategy(px_mm)
+    p.set_identifier(identifier)
+    if gain is not None:
+      p.set_gain(gain)
     return d
 
   @staticmethod

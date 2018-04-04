@@ -1,5 +1,7 @@
-from __future__ import absolute_import, division
 #!/usr/bin/env python
+
+from __future__ import absolute_import, division, print_function
+
 # resolution_corners.py
 #
 #   Copyright (C) 2013 Diamond Light Source, Graeme Winter
@@ -31,7 +33,7 @@ def resolution_corners(frame):
     for df in 0, 1:
       corner = origin + nfast * dfast * F * df + nslow * dslow * S * ds
       theta = 0.5 * corner.angle(s0)
-      print '%.3f' % (beam.get_wavelength() / (2 * math.sin(theta)))
+      print('%.3f' % (beam.get_wavelength() / (2 * math.sin(theta))))
 
 if __name__ == '__main__':
 

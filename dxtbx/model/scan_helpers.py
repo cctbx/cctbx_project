@@ -1,11 +1,5 @@
-from __future__ import absolute_import, division
-#!/usr/bin/env python
-# scan_helpers.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
+from __future__ import absolute_import, division, print_function
+
 # Helpers for the scan class, which are things for handling e.g. filenames,
 # templates and so on.
 
@@ -205,5 +199,5 @@ class scan_helper_image_formats:
                   scan_helper_image_formats.FORMAT_RAXIS,
                   scan_helper_image_formats.FORMAT_MAR]:
       return True
-    print "Format %s may not be supported--contact Nick Sauter"%format
+    print("Format %s may not be supported--contact Nick Sauter"%format)
     return True

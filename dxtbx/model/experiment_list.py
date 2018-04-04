@@ -1,15 +1,7 @@
-#!/usr/bin/env python
-#
-#  experiment_list.py
-#
-#  Copyright (C) 2013 Diamond Light Source
-#
-#  Author: James Parkhurst
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 import pkg_resources
+
 from dxtbx.model import Experiment, ExperimentList
 
 class InvalidExperimentListError(RuntimeError):
@@ -572,7 +564,7 @@ class ExperimentListFactory(object):
     for filename in args:
       try:
         experiments.extend(ExperimentListFactory.from_serialized_format(filename))
-        if verbose: print 'Loaded experiments from %s' % filename
+        if verbose: print('Loaded experiments from %s' % filename)
       except Exception:
         unhandled.append(filename)
 

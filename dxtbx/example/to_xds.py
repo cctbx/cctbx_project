@@ -1,7 +1,7 @@
-from __future__ import absolute_import, division
 #!/usr/bin/env python
-# to_xds.py
-#
+
+from __future__ import absolute_import, division, print_function
+
 #   Copyright (C) 2011 Diamond Light Source, Graeme Winter
 #
 #   This code is distributed under the BSD license, a copy of which is
@@ -72,19 +72,19 @@ class to_xds:
         detector_helpers_types.get(sensor, fast, slow, df, ds))
     trusted = self.get_detector().get_trusted_range()
 
-    print 'DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
-          (detector, trusted[0] + 1, trusted[1])
+    print('DETECTOR=%s MINIMUM_VALID_PIXEL_VALUE=%d OVERLOAD=%d' % \
+          (detector, trusted[0] + 1, trusted[1]))
 
     if detector == 'PILATUS':
-      print 'SENSOR_THICKNESS= 0.32'
+      print('SENSOR_THICKNESS= 0.32')
 
-    print 'DIRECTION_OF_DETECTOR_X-AXIS= %.3f %.3f %.3f' % \
-          (R * self.get_detector().get_fast_axis()).elems
+    print('DIRECTION_OF_DETECTOR_X-AXIS= %.3f %.3f %.3f' % \
+          (R * self.get_detector().get_fast_axis()).elems)
 
-    print 'DIRECTION_OF_DETECTOR_Y-AXIS= %.3f %.3f %.3f' % \
-          (R * self.get_detector().get_slow_axis()).elems
+    print('DIRECTION_OF_DETECTOR_Y-AXIS= %.3f %.3f %.3f' % \
+          (R * self.get_detector().get_slow_axis()).elems)
 
-    print 'NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s)
+    print('NX=%d NY=%d QX=%.4f QY=%.4f' % (fast, slow, f, s))
 
     F = R * self.get_detector().get_fast_axis()
     S = R * self.get_detector().get_slow_axis()
@@ -97,36 +97,36 @@ class to_xds:
     x = centre.dot(F)
     y = centre.dot(S)
 
-    print 'DETECTOR_DISTANCE= %.3f' % origin.dot(N)
-    print 'ORGX= %.1f ORGY= %.1f' % (x / f, y / s)
-    print 'ROTATION_AXIS= %.3f %.3f %.3f' % \
-          (R * self.get_goniometer().get_rotation_axis()).elems
-    print 'STARTING_ANGLE= %.3f' % \
-          self.get_scan().get_oscillation()[0]
-    print 'OSCILLATION_RANGE= %.3f' % \
-          self.get_scan().get_oscillation()[1]
-    print 'X-RAY_WAVELENGTH= %.5f' % \
-          self.get_beam().get_wavelength()
-    print 'INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
-          (- beam).elems
-    print 'FRACTION_OF_POLARIZATION= %.3f' % \
-          self.get_beam().get_polarization_fraction()
-    print 'POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
-          self.get_beam().get_polarization_normal()
-    print 'NAME_TEMPLATE_OF_DATA_FRAMES= %s' % self._template.replace(
-        '#', '?')
-    print 'TRUSTED_REGION= 0.0 1.41'
+    print('DETECTOR_DISTANCE= %.3f' % origin.dot(N))
+    print('ORGX= %.1f ORGY= %.1f' % (x / f, y / s))
+    print('ROTATION_AXIS= %.3f %.3f %.3f' % \
+          (R * self.get_goniometer().get_rotation_axis()).elems)
+    print('STARTING_ANGLE= %.3f' % \
+          self.get_scan().get_oscillation()[0])
+    print('OSCILLATION_RANGE= %.3f' % \
+          self.get_scan().get_oscillation()[1])
+    print('X-RAY_WAVELENGTH= %.5f' % \
+          self.get_beam().get_wavelength())
+    print('INCIDENT_BEAM_DIRECTION= %.3f %.3f %.3f' % \
+          (- beam).elems)
+    print('FRACTION_OF_POLARIZATION= %.3f' % \
+          self.get_beam().get_polarization_fraction())
+    print('POLARIZATION_PLANE_NORMAL= %.3f %.3f %.3f' % \
+          self.get_beam().get_polarization_normal())
+    print('NAME_TEMPLATE_OF_DATA_FRAMES= %s' % self._template.replace(
+        '#', '?'))
+    print('TRUSTED_REGION= 0.0 1.41')
     for f0, f1, s0, s1 in self.get_detector().get_mask():
-      print 'UNTRUSTED_RECTANGLE= %d %d %d %d' % \
-            (f0, f1 + 1, s0, s1 + 1)
+      print('UNTRUSTED_RECTANGLE= %d %d %d %d' % \
+            (f0, f1 + 1, s0, s1 + 1))
 
     start_end = self.get_scan().get_image_range()
 
     if start_end[0] == 0:
       start_end = (1, start_end[1])
 
-    print 'DATA_RANGE= %d %d' % start_end
-    print 'JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT'
+    print('DATA_RANGE= %d %d' % start_end)
+    print('JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT')
 
 def factory(list_of_images):
   from dxtbx.imageset import ImageSetFactory

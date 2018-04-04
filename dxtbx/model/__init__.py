@@ -1,4 +1,7 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+import sys
+
 import boost.python
 from cctbx import sgtbx # import dependency
 from cctbx.crystal_orientation import crystal_orientation # import dependency
@@ -49,7 +52,6 @@ class CrystalAux(boost.python.injector, Crystal):
   def _show(self, show_scan_varying=False, out=None):
     from scitbx import matrix
     if out is None:
-      import sys
       out = sys.stdout
     uc = self.get_unit_cell().parameters()
     uc_sd = self.get_cell_parameter_sd()
@@ -105,7 +107,7 @@ class CrystalAux(boost.python.injector, Crystal):
           msg.append("    A = UB:    " + amat[0])
           msg.append("               " + amat[1])
           msg.append("               " + amat[2])
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
     from cStringIO import StringIO
@@ -228,13 +230,12 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
     CrystalAux._show(self, show_scan_varying, out)
 
     if out is None:
-      import sys
       out = sys.stdout
 
     msg = []
     msg.append("    Mosaicity:  %.6f"%self.get_mosaicity())
 
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def __str__(self):
     from cStringIO import StringIO
@@ -297,14 +298,13 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
     CrystalAux._show(self, show_scan_varying, out)
 
     if out is None:
-      import sys
       out = sys.stdout
 
     msg = []
     msg.append("    Half mosaic angle (degrees):  %.6f"%self.get_half_mosaicity_deg())
     msg.append("    Domain size (Angstroms):  %.6f"%self.get_domain_size_ang())
 
-    print >> out, "\n".join(msg)
+    print("\n".join(msg), file=out)
 
   def get_A_as_sqr(self): # required for lunus
     from scitbx.matrix import sqr

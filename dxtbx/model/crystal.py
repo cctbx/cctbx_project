@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from scitbx import matrix
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import space_group as SG
@@ -31,7 +31,7 @@ class CrystalFactory(object):
         assert d['ML_half_mosaicity_deg'] is None and d['ML_domain_size_ang'] is None
       else:
         if 'mosaicity' in d and d['mosaicity'] > 0:
-          print "Warning, two kinds of mosaicity found. Using Sauter2014 model"
+          print("Warning, two kinds of mosaicity found. Using Sauter2014 model")
         from dxtbx.model import MosaicCrystalSauter2014
         return MosaicCrystalSauter2014.from_dict(d)
     if 'mosaicity' in d:
