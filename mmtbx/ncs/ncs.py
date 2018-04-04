@@ -1381,6 +1381,18 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._centers=new_centers
     self._translations_orth=new_translations_orth
 
+  def add_identity_op(self):
+    if self.identity_op_id() is not None:
+       return # nothing to do
+
+    from scitbx import matrix
+
+    self._rota_matrices.append(matrix.sqr(
+      [1.,0.,0.]+[0.,1.,0.]+[0.,0.,1.]))
+    self._translations_orth.append(matrix.col([0.,0.,0.]))
+    self._centers.append(matrix.col([0.,0.,0.]))
+    self._n_ncs_oper+=1
+
 class ncs:
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
@@ -2000,6 +2012,10 @@ class ncs:
         return False
     return True
 
+  def add_identity_op(self):
+    for ncs_group in self._ncs_groups:
+      if ncs_group.identity_op_id() is None:
+        ncs_group.add_identity_op()
 
 test_ncs_info="""
 
