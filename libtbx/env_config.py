@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import libtbx.path
 from libtbx.auto_build import regenerate_module_files
 from libtbx.path import relocatable_path, absolute_path
@@ -12,9 +11,10 @@ try:
   import cPickle as pickle
 except ImportError:
   import pickle
-from cStringIO import StringIO
+import os
 import re
-import site, sys, os
+import site
+import sys
 op = os.path
 
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
@@ -238,7 +238,7 @@ class common_setpaths(object):
       self.u = open_info(env.under_build("unsetpaths.%s" % shell,
                                          return_relocatable_path=True))
     else:
-      self.u = StringIO() # /dev/null equivalent
+      self.u = open(os.devnull, 'w')
 
   def all_and_debug(self):
     if (self.suffix == "_debug"):
