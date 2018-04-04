@@ -101,6 +101,16 @@ def get_run_stats(timestamps,
                    n_strong_cutoff=40,
                    i_sigi_cutoff=1,
                    ):
+  multiples = flex.double()
+  ts_current = []
+  for ts in timestamps:
+    if ts in ts_current:
+      ts_current.append(ts)
+    else:
+      ts_current = [ts]
+    multiples.append(len(ts_current))
+  #print "%d multiple lattices" % (multiples > 1).count(True)
+  #print "%d total lattices" % (isigi_low > 0).count(True)
   iterator = xrange(len(isigi_low))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
@@ -112,23 +122,30 @@ def get_run_stats(timestamps,
   drop_hits = drop_ratios >= ratio_cutoff
   xtal_hits = n_strong >= n_strong_cutoff
   # indexing and droplet hit rate in a sliding window
-  half_idx_rate_window = min(50, int(len(isigi_low)//20))
+  unique_timestamps = timestamps.select(multiples < 2)
+  half_idx_rate_window = min(50, int(len(unique_timestamps)//20))
   half_hq_rate_window = 500
   low_sel = isigi_low > 0
   high_sel = isigi_high > i_sigi_cutoff
   idx_rate = flex.double()
+  multiples_rate = flex.double()
   hq_rate = flex.double()
   drop_hit_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
-    idx_span = idx_max - idx_min
+    multiples_local = multiples[idx_min:idx_max+1]
+    idx_span = len(multiples_local.select(multiples_local < 2))
     idx_sel = low_sel[idx_min:idx_max]
     idx_local_rate = idx_sel.count(True)/idx_span
     idx_rate.append(idx_local_rate)
+    multiples_sel = multiples[idx_min:idx_max] > 1
+    multiples_local_rate = multiples_sel.count(True)/idx_span
+    multiples_rate.append(multiples_local_rate)
     hq_min = max(0, i - half_hq_rate_window)
     hq_max = min(i + half_hq_rate_window, len(isigi_low))
-    hq_span = hq_max - hq_min
+    multiples_local_hq = multiples[hq_min:hq_max+1]
+    hq_span = len(multiples_local_hq.select(multiples_local_hq < 2))
     hq_sel = low_sel[hq_min:hq_max]
     hq_local_sel = high_sel[hq_min:hq_max]
     if hq_sel.count(True) > 0:
@@ -145,6 +162,7 @@ def get_run_stats(timestamps,
           n_strong,
           xtal_hits,
           idx_rate,
+          multiples_rate,
           hq_rate,
           low_sel,
           high_sel,
@@ -176,7 +194,7 @@ def plot_run_stats(stats,
     spot_ratio = plot_ratio*2
     text_ratio = plot_ratio*3
   t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
-  idx_rate, hq_rate, low_sel, high_sel, isigi_low, isigi_high, \
+  idx_rate, multiples_rate, hq_rate, low_sel, high_sel, isigi_low, isigi_high, \
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
@@ -200,11 +218,12 @@ def plot_run_stats(stats,
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index", fontsize=text_ratio)
   ax2.plot(t, idx_rate*100)
+  ax2.plot(t, multiples_rate*100, color='magenta')
   ax2_twin = ax2.twinx()
   ax2_twin.plot(t, drop_hit_rate*100, color='green')
   ax2_twin.set_ylim(ymin=0)
   ax2.axis('tight')
-  ax2.set_ylabel("blue:% indexed", fontsize=text_ratio)
+  ax2.set_ylabel("blue:% indexed\npink:% multiples", fontsize=text_ratio)
   ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
   #ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
   gtz = isigi_high > 0
@@ -214,7 +233,7 @@ def plot_run_stats(stats,
   ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3_twin.set_ylim(ymin=0)
   ax3.axis('tight')
-  ax3.set_ylabel("I/sig(I)\nred: low\nyellow: %3.1f Ang" % d_min, fontsize=text_ratio)
+  ax3.set_ylabel("I/sig(I)\n%3.1f Ang" % d_min, fontsize=text_ratio)
   ax3_twin.set_ylabel("line:% HQ", fontsize=text_ratio)
   axset_with_twins = list(axset) + [ax2_twin, ax3_twin]
   for a in axset_with_twins:
@@ -324,7 +343,7 @@ def plot_multirun_stats(runs,
     if len(r[0]) > 0:
       if compress_runs:
         tslice = r[0] - r[0][0] + offset
-        offset += (r[0][-1] - r[0][0])
+        offset += (r[0][-1] - r[0][0] + 1/120.)
       else:
         tslice = r[0]
       last_end = r[0][-1]

@@ -139,11 +139,12 @@ class HitrateStats(object):
     two_theta_high = flex.double()
     tag = self.app.params.experiment_tag
     timestamps = flex.double()
+    xtal_ids = flex.double()
     n_strong = flex.int()
     if len(low_res_bin_ids) > 0:
 
       # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
-      query = """SELECT bin.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
+      query = """SELECT bin.id, crystal.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
                  FROM `%s_event` event
                  JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                  JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -159,15 +160,16 @@ class HitrateStats(object):
       cursor = self.app.execute_query(query)
       sample = -1
       for row in cursor.fetchall():
-        b_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
+        b_id, xtal_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
         rts = reverse_timestamp(ts)
         rts = rts[0] + (rts[1]/1000)
-        if rts not in timestamps:
+        if xtal_id not in xtal_ids:
           # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
           sample += 1
           if sample % self.sampling != 0:
             continue
           timestamps.append(rts)
+          xtal_ids.append(xtal_id)
           n_strong.append(n_s)
           two_theta_low.append(tt_low or -1)
           two_theta_high.append(tt_high or -1)
@@ -181,7 +183,7 @@ class HitrateStats(object):
             assert False
         else:
           # Second time through, already have added to timestamps and n_strong, so fill in missing avg_i_sigi
-          index = flex.first_index(timestamps, rts)
+          index = flex.first_index(xtal_ids, xtal_id)
           if str(b_id) in low_res_bin_ids:
             average_i_sigi_low[index] = avg_i_sigi
           elif str(b_id) in high_res_bin_ids:
