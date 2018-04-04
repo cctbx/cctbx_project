@@ -122,21 +122,19 @@ class iterations(object):
     self.non_linear_ls = journaled_non_linear_ls(non_linear_ls, self,
                                                  self.track_gradient,
                                                  self.track_step)
-    linsolver_param = non_linear_ls.linsolver
+    try: 
+      linsolver_param = non_linear_ls.linsolver
+    except:
+      linsolver_param = None
     if linsolver_param == 'ldlt' or linsolver_param == None:
-      print "Using Cholesky LDLT direct linear solver."
       self.linsolver = lsb.ldlt
     elif linsolver_param == 'llt':
-      print "Using Cholesky LLT direct linear solver."
       self.linsolver = lsb.llt
     elif linsolver_param == 'cg':
-      print "Using conjugate gradient iterative linear solver"
       self.linsolver = lsb.cg
     elif linsolver_param == 'bicgstab':
-      print "Using bi-conjugate gradient stabilised (BiCGSTAB) iterative linear solver"
       self.linsolver = lsb.bicgstab
     else:
-      print "Unrecognised solver. Defaulting to Cholesky LDLT."
       self.linsolver = lsb.ldlt
     self.do()
 
@@ -170,7 +168,6 @@ class iterations(object):
 
   def do(self):
     raise NotImplementedError
-
 
 class naive_iterations(iterations):
 

@@ -101,22 +101,22 @@ class linear_ls_eigen_wrapper
         Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
         Eigen::ConjugateGradient<sparse_matrix_t, Eigen::Lower|Eigen::Upper > cg_solver(eigen_normal_matrix_full);
         x = cg_solver.solve(b);
-        //Full matrix used here.
-        last_computed_matrixL_nonZeros_ = cg_solver.nonZeros();
+        //CG method can used upper or lower matrix. Value taken from input matrix..
+        last_computed_matrixL_nonZeros_ = eigen_normal_matrix.nonZeros();
       }
       else if( solverIdx == BICGSTAB ){
         Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
         //Eigen::BiCGSTAB<sparse_matrix_t, Eigen::RowMajor> solver(eigen_normal_matrix_full);
         Eigen::BiCGSTAB<sparse_matrix_t> bicgstab_solver(eigen_normal_matrix_full);
         x = bicgstab_solver.solve(b);
-        //Full matrix used here.
-        last_computed_matrixL_nonZeros_ = bicgstab_solver.nonZeros();
+        //Full matrix used here. -1 used to indicate N/A
+        last_computed_matrixL_nonZeros_ = -1;//bicgstab_solver.nonZeros();
       }
       else{
         Eigen::SimplicialLDLT<sparse_matrix_t> ldlt_solver(eigen_normal_matrix.transpose());
         x = ldlt_solver.solve(b);
-        sparse_matrix_t lower = llt_solver.matrixL();
-        last_computed_matrixL_nonZeros_ = ldlt_solver.nonZeros();
+        sparse_matrix_t lower = ldlt_solver.matrixL();
+        last_computed_matrixL_nonZeros_ = lower.nonZeros();
       }
 
       //Try to record state of lower Cholesky factor without incurring cost of computing # non-Zeros again

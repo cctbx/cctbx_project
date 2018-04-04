@@ -4,6 +4,7 @@ from __future__ import division
 from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns
 import libtbx
+from scitbx.examples.bevington import linsolver_backend as lsb
 
 class polynomial_fit(normal_eqns.non_linear_ls_with_separable_scale_factor,
                      normal_eqns.non_linear_ls_mixin):
@@ -97,6 +98,9 @@ class exponential_fit(
       ))
     assert len(self.y) == len(self.t)
     self.restart()
+
+  def solve(self,*args):
+    self.step_equations().solve()
 
   def restart(self):
     self.x = self.x_0.deep_copy()

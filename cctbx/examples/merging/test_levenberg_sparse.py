@@ -28,7 +28,7 @@ def choice_as_bitflag(choices):
                   PartialityEtaDeff = p.PartialityEtaDeff)[choice]
   return flags
 
-def choice_as_helper_base(choices, linsolver):
+def choice_as_helper_base(choices, linsolver=lsb.ldlt):
   if "Deff" in choices or "Rxy" in choices:
     from cctbx.examples.merging import postrefine_base as base_class
   else:
@@ -45,9 +45,12 @@ def choice_as_helper_base(choices, linsolver):
       # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
 
     #Overridden solve function to allow choice of solver algorithm. Default to Cholesky LDLT.
-    def solve(self,linsolver=lsb.ldlt):
-      #from IPython import embed; embed()
-      self.step_equations().solve(linsolver)
+    def solve(self,*args):
+      if len(args) >0:
+        base_class.linsolver = args[0]
+      if isinstance(base_class.linsolver, basestring):
+        base_class.linsolver = getattr(lsb,base_class.linsolver)
+      self.step_equations().solve(base_class.linsolver)
 
     def restart(pfh):
       pfh.x = pfh.x_0.deep_copy()

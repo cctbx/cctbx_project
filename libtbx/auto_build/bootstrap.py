@@ -818,7 +818,7 @@ class eigen_module(SourceModule):
   module = 'eigen'
   anonymous = ['git',
                'git@github.com:eigenteam/eigen-git-mirror.git',
-               'https://github.com/eigenteam/eigen-git-mirror.git'
+               'https://github.com/eigenteam/eigen-git-mirror.git',
                'https://github.com/eigenteam/eigen-git-mirror/archive/master.zip']
 
 # Phenix repositories
