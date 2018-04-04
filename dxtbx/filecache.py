@@ -40,7 +40,7 @@
 #     cache.force_close()
 # Any further access attempts will then result in an exception.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from cStringIO import StringIO
 import os
 from threading import Lock
@@ -87,7 +87,7 @@ class lazy_file_cache():
     pass
 
   def _debug_enable(self, string):
-    print "%s: %s" % (format(id(self), '#x'), string)
+    print("%s: %s" % (format(id(self), '#x'), string))
 
   def __del__(self):
     '''Close file handles and drop cache on garbage collection.'''

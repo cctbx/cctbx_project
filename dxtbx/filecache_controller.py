@@ -7,7 +7,7 @@
 #
 # A simple cache controller. Caching only one file at a time.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 import dxtbx.filecache
 import os
 import threading
@@ -80,7 +80,7 @@ class non_caching_controller():
   @staticmethod
   def check(tag, open_method):
     '''Open the file. No caching required.'''
-    print "Caching disabled for", tag
+    print("Caching disabled for", tag)
     return open_method()
 
 # To disable all caching uncomment the following line:
