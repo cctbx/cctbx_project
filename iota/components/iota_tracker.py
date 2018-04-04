@@ -26,7 +26,7 @@ from xfel.clustering.cluster import Cluster
 
 from iota.components.iota_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
-from iota.components.iota_dials import phil_scope, IOTADialsProcessor
+from iota.components.iota_dials import phil_scope
 import iota.components.iota_threads as thr
 import iota.components.iota_controls as ct
 import iota.components.iota_misc as misc
