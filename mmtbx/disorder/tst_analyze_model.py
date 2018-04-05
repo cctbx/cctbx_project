@@ -5,15 +5,15 @@ from mmtbx.validation import molprobity
 import iotbx.pdb.hierarchy
 from libtbx.utils import null_out
 import libtbx.load_env
+import mmtbx.model
 from cStringIO import StringIO
 
 def analyze_fragment (pdb_str) :
   pdb_in = iotbx.pdb.hierarchy.input(pdb_string=pdb_str)
-  hierarchy = pdb_in.hierarchy
-  validation = molprobity.molprobity(pdb_hierarchy=hierarchy,
-    outliers_only=False)
+  model = mmtbx.model.manager(pdb_in.input)
+  validation = molprobity.molprobity(model, outliers_only=False)
   result = analyze_model.process_pdb_hierarchy(
-    pdb_hierarchy=hierarchy,
+    pdb_hierarchy=model.get_hierarchy(),
     validation=validation,
     log=null_out())
   return result

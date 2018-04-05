@@ -6,6 +6,7 @@ from libtbx.program_utils.result import program_result
 from libtbx.utils import Sorry, multi_out
 from libtbx import Auto, easy_pickle, runtime_utils
 import libtbx.load_env
+import mmtbx.model
 import os.path
 import sys
 
@@ -166,16 +167,12 @@ def run (args,
   check_map_file(None, params.input.maps)
 
   validation = mmtbx.validation.molprobity.molprobity(
-    pdb_hierarchy=cmdline.pdb_hierarchy,
-    xray_structure=cmdline.xray_structure,
+    model=cmdline.model,
     fmodel=fmodel,
     flags=params.molprobity.flags,
-    crystal_symmetry=cmdline.crystal_symmetry,
     sequences=cmdline.sequence,
-    geometry_restraints_manager=cmdline.geometry,
     raw_data=cmdline.raw_data,
     unmerged_data=cmdline.unmerged_i_obs,
-    all_chain_proxies=cmdline.processed_pdb_file.all_chain_proxies,
     header_info=header_info,
     keep_hydrogens=params.molprobity.keep_hydrogens,
     nuclear=params.pdb_interpretation.use_neutron_distances,
@@ -193,6 +190,9 @@ def run (args,
     rotamer_library=params.molprobity.rotamer_library,
     map_params=params)
   map_file = None
+
+  # model cannot be pickled
+  validation.model = None
 
   # polygon statistics
   validation.polygon_stats = validation.get_polygon_statistics(

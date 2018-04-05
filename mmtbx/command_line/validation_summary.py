@@ -26,6 +26,7 @@ def summary (pdb_file=None, pdb_hierarchy=None) :
   else :
     assert (pdb_file is None)
   return molprobity.molprobity(
+    None,
     pdb_hierarchy=pdb_hierarchy,
     keep_hydrogens=False,
     header_info=header_info).summarize()

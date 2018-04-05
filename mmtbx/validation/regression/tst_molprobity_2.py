@@ -1,8 +1,8 @@
 
 from __future__ import division
 from mmtbx.command_line import molprobity
+import mmtbx.model
 import mmtbx.validation.molprobity
-import iotbx.pdb.hierarchy
 from libtbx.easy_pickle import loads, dumps, dump
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out
@@ -64,9 +64,8 @@ def exercise_protein () :
   import mmtbx.validation.molprobity
   from iotbx import file_reader
   pdb_in = file_reader.any_file(pdb_file)
-  hierarchy = pdb_in.file_object.hierarchy
-  result = mmtbx.validation.molprobity.molprobity(
-    pdb_hierarchy=hierarchy)
+  model = mmtbx.model.manager(pdb_in.file_object.input)
+  result = mmtbx.validation.molprobity.molprobity(model)
   out3 = StringIO()
   result.show_summary(out=out3)
   assert  """\
@@ -110,10 +109,9 @@ def exercise_protein () :
   # fake fmodel_neutron
   fmodel_neutron = cmdline.fmodel.deep_copy()
   result2 = mmtbx.validation.molprobity.molprobity(
-    pdb_hierarchy=cmdline.pdb_hierarchy,
+    cmdline.model,
     fmodel=cmdline.fmodel,
     fmodel_neutron=fmodel_neutron,
-    geometry_restraints_manager=cmdline.geometry,
     nuclear=True,
     keep_hydrogens=True)
   stats = result2.get_statistics_for_phenix_gui()

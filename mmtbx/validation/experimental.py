@@ -6,12 +6,11 @@ which are performed approximately as in model_vs_data.
 """
 
 from __future__ import division
-from mmtbx.validation import residue, atom, validation
+from mmtbx.validation import residue, validation
 from libtbx import Auto, slots_getstate_setstate
 from libtbx.str_utils import format_value
 from libtbx.utils import null_out, Sorry
 import sys
-import mmtbx.model
 
 __real_space_attr__ = [
   "b_iso",
@@ -158,13 +157,15 @@ class real_space (validation) :
 
   def get_result_class (self) : return residue_real_space
 
-  def __init__ (self, fmodel, pdb_hierarchy, crystal_symmetry=None, cc_min=0.8,
-                molprobity_map_params=None) :
+  def __init__ (self, model, fmodel, cc_min=0.8, molprobity_map_params=None) :
 
     from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
     from mmtbx import real_space_correlation
 
     validation.__init__(self)
+
+    pdb_hierarchy = model.get_hierarchy()
+    crystal_symmetry = model.crystal_symmetry()
 
     # arrays for different components
     self.everything = list()
@@ -192,47 +193,28 @@ class real_space (validation) :
       # use mmtbx/command_line/map_model_cc.py for maps
       self.fsc = None
       if (use_maps):
-        from scitbx.array_family import flex
-        import iotbx.pdb
+        from iotbx import map_and_model
         from mmtbx.maps import map_model_cc
         from mmtbx.command_line.map_model_cc import get_fsc
         from iotbx.file_reader import any_file
-        from cctbx import crystal, sgtbx
         params = map_model_cc.master_params().extract()
         params.map_model_cc.resolution = molprobity_map_params.d_min
         map_object = any_file(molprobity_map_params.map_file_name).file_object
 
-        # ---------------------------------------------------------------------
         # check that model crystal symmetry matches map crystal symmetry
-        # if inconsistent, map parameters take precedence
-        # TODO: centralize data consistency checks prior to running validation
-        map_crystal_symmetry = crystal.symmetry(
-          unit_cell=map_object.unit_cell(),
-          space_group=sgtbx.space_group_info(
-            map_object.space_group_number).group())
-        if (not map_crystal_symmetry.is_similar_symmetry(crystal_symmetry)):
-          crystal_symmetry = map_crystal_symmetry
+        mmi = map_and_model.input(
+          map_data = map_object.map_data(),
+          model = model)
 
-        # ---------------------------------------------------------------------
-
-        map_data = map_object.map_data()
         rsc_object = map_model_cc.map_model_cc(
-          map_data, pdb_hierarchy, crystal_symmetry, params.map_model_cc)
+          mmi.map_data(), mmi.model().get_hierarchy(), mmi.crystal_symmetry(),
+          params.map_model_cc)
         rsc_object.validate()
         rsc_object.run()
         rsc = rsc_object.get_results()
         self.overall_rsc = (rsc.cc_mask, rsc.cc_volume, rsc.cc_peaks)
 
-        # pdb_hierarchy.as_pdb_input is being phased out since that function
-        # just re-processes the file from text and can be lossy
-        # this is a placeholder until tools get updated to use the model class
-        pdb_input = iotbx.pdb.input(
-          source_info='pdb_hierarchy',
-          lines=flex.split_lines(pdb_hierarchy.as_pdb_string()))
-        model = mmtbx.model.manager(model_input = pdb_input)
-        self.fsc = get_fsc(map_data, model, params.map_model_cc)
-        #
-
+        self.fsc = get_fsc(mmi.map_data(), mmi.model(), params.map_model_cc)
         self.fsc.atom_radius = rsc.atom_radius
         rsc = rsc.cc_per_residue
       # mmtbx/real_space_correlation.py for X-ray/neutron data and map
