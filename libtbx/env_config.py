@@ -164,7 +164,8 @@ def python_include_path():
   # I believe the above code to be unnecessary.
   # If this flags up no problems then remove in a month or so.
   if op.isdir(include_path):
-    assert include_path == sysconfig.get_paths()['include']
+    assert include_path == sysconfig.get_paths()['include'], \
+        "%s != %s" % (include_path, sysconfig.get_paths()['include'])
 
   include_path = sysconfig.get_paths()['include']
   if not op.isdir(include_path):
