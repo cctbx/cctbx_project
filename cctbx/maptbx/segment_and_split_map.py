@@ -8874,16 +8874,13 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
   if pdb_inp and pdb_inp.atoms().extract_xyz().size()>1:
     xyz_list=pdb_inp.atoms().extract_xyz()
     i_end=xyz_list.size()
-  else:
-    i_end=0
-  if i_end:
     n_centers=min(i_end,max(1,len(tracking_data.output_region_map_info_list)))
     n_steps=min(n_centers,xyz_list.size())
     i_step=int(0.5+min(i_end/2,i_end/n_steps)) # about n_centers but up to n_atoms
     i_start=max(1,int(0.5+i_step/2))
     from scitbx.matrix import col
     ma=map.all()
-    for i in xrange(i_start,i_end+1,i_step):
+    for i in xrange(i_start,i_end,i_step):
       lower_cart=col(xyz_list[i])
       lower_frac=si.crystal_symmetry.unit_cell().fractionalize(lower_cart)
       lower=[
