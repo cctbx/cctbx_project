@@ -784,7 +784,7 @@ def get_map_and_model(params=None,
   if params.crystal_info.resolution >= 10:
     print >>out,"\n** WARNING: auto_sharpen is designed for maps at a "+\
       "resolution of about 4.5 A\nor better.  Sharpening may be"+\
-      "poor at %7.0f A" %(resolution)
+      "poor at %7.0f A" %(params.crystal_info.resolution)
 
 
   if params.input_files.pdb_file and not pdb_inp: # get model
