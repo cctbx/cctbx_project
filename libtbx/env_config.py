@@ -15,6 +15,7 @@ import os
 import re
 import site
 import sys
+import sysconfig
 op = os.path
 
 if os.environ.get('LIBTBX_WINGIDE_DEBUG'):
@@ -153,15 +154,21 @@ def get_mipspro_version():
   raise RuntimeError(
     "\n  ".join(["Unknown MIPSpro compiler (CC -version):"] + run_out))
 
-def python_include_path(must_exist=True):
+def python_include_path():
   if (sys.platform == "win32"):
     include_path = sys.prefix + r"\include"
   else:
     include_path = sys.prefix + "/include/python%d.%d" % sys.version_info[:2]
   include_path = libtbx.path.norm_join(include_path)
-  if (must_exist and not op.isdir(include_path)):
-    raise RuntimeError("Cannot locate Python's include directory: %s"
-      % include_path)
+
+  # I believe the above code to be unnecessary.
+  # If this flags up no problems then remove in a month or so.
+  if op.isdir(include_path):
+    assert include_path == sysconfig.get_paths()['include']
+
+  include_path = sysconfig.get_paths()['include']
+  if not op.isdir(include_path):
+    raise RuntimeError("Cannot locate Python's include directory: %s" % include_path)
   return include_path
 
 def ld_library_path_var_name():
