@@ -1942,7 +1942,12 @@ class module:
       custom_refresh = dist_path / "libtbx_refresh.py"
       if custom_refresh.isfile():
         print("Processing: %s" % show_string(abs(custom_refresh)))
-        execfile(abs(custom_refresh), {}, {"self": self})
+        with open(abs(custom_refresh)) as fh:
+          exec(
+              fh.read(),
+              {"__name__": dist_path.basename() + ".libtbx_refresh"},
+              {"self": self},
+          )
 
   def collect_test_scripts(self,
         file_names=["run_tests.py", "run_examples.py"]):

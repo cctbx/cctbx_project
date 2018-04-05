@@ -45,9 +45,9 @@ namespace gltbx { namespace %s { namespace boost_python {
   for define in defines:
     write_one(f, define)
   if (namespace == "gl"):
-    for i in xrange(4): write_one(f, "GL_AUX%d" % i)
-    for i in xrange(8): write_one(f, "GL_LIGHT%d" % i)
-    for i in xrange(32): write_one(f, "GL_TEXTURE%d" % i)
+    for i in range(4): write_one(f, "GL_AUX%d" % i)
+    for i in range(8): write_one(f, "GL_LIGHT%d" % i)
+    for i in range(32): write_one(f, "GL_TEXTURE%d" % i)
   print("""\
   }
 
@@ -62,7 +62,7 @@ def import_opengl_defines():
   return result
 
 def run(target_dir):
-  if (not os.path.isdir(target_dir)):
+  if not os.path.isdir(target_dir):
     os.makedirs(target_dir)
   gl_defines = []
   glu_defines = []
@@ -76,16 +76,15 @@ def run(target_dir):
     block_size = len(defines) // n_fragments
     if (block_size * n_fragments < len(defines)):
       block_size += 1
-    for i_fragment in xrange(n_fragments):
+    for i_fragment in range(n_fragments):
       file_name = libtbx.path.norm_join(
         target_dir, namespace+"_defines_%02d_bpl.cpp" % i_fragment)
-      f = open(file_name, "w")
-      write_define_wrappers(
-        f=f,
-        namespace=namespace,
-        defines=defines[i_fragment*block_size:(i_fragment+1)*block_size],
-        i_fragment=i_fragment)
-      f.close()
+      with open(file_name, "w") as f:
+        write_define_wrappers(
+          f=f,
+          namespace=namespace,
+          defines=defines[i_fragment*block_size:(i_fragment+1)*block_size],
+          i_fragment=i_fragment)
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   run(".")

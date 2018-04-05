@@ -44,13 +44,13 @@ ENDCHAR
     O.dwidth = None
     O.bbx = None
     O.bitmap = None
-    line = bdf_file.next().strip()
+    line = next(bdf_file).strip()
     if (line == "ENDFONT"):
       return
     assert line.startswith("STARTCHAR ")
     O.label = line.split(None, 1)[1]
     while True:
-      line = bdf_file.next().strip()
+      line = next(bdf_file).strip()
       if (line.startswith("ENCODING ")):
         fields = line.split()
         assert len(fields) == 2
@@ -76,15 +76,15 @@ ENDCHAR
     assert O.encoding is not None
     O.bitmap = []
     while True:
-      line = bdf_file.next().strip()
+      line = next(bdf_file).strip()
       if (line == "ENDCHAR"):
         break
       O.bitmap.append(line)
     assert len(O.bitmap) == O.bbx[1]
 
-  def as_glbitmap(O):
+  def as_glbitmap(self):
     result = []
-    w,h = O.bbx[:2]
+    w,h = self.bbx[:2]
     n_bytes = w//8
     mask = (256**n_bytes)-1
     remainder = w - n_bytes*8
@@ -95,12 +95,12 @@ ENDCHAR
       mask <<= 8-remainder
     n_hex = 2*n_bytes
     padding = "0"*n_hex
-    rows = list(O.bitmap)
+    rows = list(self.bitmap)
     rows.reverse()
     for row in rows:
       v = int((row+padding)[:n_hex],16) & mask
       bytes = []
-      for i in xrange(n_bytes):
+      for i in range(n_bytes):
         bytes.append(v & 255)
         v >>= 8
       bytes.reverse()

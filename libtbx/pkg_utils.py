@@ -128,19 +128,24 @@ def define_entry_points(epdict, **kwargs):
     raise Exception()
   except Exception:
     frame = sys.exc_info()[2].tb_frame.f_back
-  # now in normal python land we could just do
-  # caller = frame.f_globals['__name__']
-  # alas we are in the libtbx shadow world and there is no __name__. x_x
-  caller = os.path.abspath(frame.f_code.co_filename)  # Get the full path of the libtbx_refresh.py file.
-  refresh_file, _ = os.path.splitext(caller)
-  if not refresh_file.endswith('libtbx_refresh'):
-    raise RuntimeError('Entry points can only be defined from within libtbx_refresh.py')
-  # the name of the parent directory of libtbx_refresh.py is the caller name
-  caller = os.path.basename(os.path.dirname(refresh_file))
+  # Extract the caller name
+  caller = frame.f_globals['__name__']
+  if caller == '__main__':
+    # well that is not very informative, is it.
+    caller = os.path.abspath(frame.f_code.co_filename)  # Get the full path of the libtbx_refresh.py file.
+    refresh_file, _ = os.path.splitext(caller)
+    if not refresh_file.endswith('libtbx_refresh'):
+      raise RuntimeError('Entry points can only be defined from within libtbx_refresh.py')
+    # the name of the parent directory of libtbx_refresh.py is the caller name
+    caller = os.path.basename(os.path.dirname(refresh_file))
+  else:
+    if not caller.endswith('.libtbx_refresh'):
+      raise RuntimeError('Entry points can only be defined from within libtbx_refresh.py')
+    caller = caller[:-15]
 
   # No setuptools mechanism without setuptools.
   if not setuptools:
-    raise ImportError("You must install setuptools to configure package {}. Run\n  libtbx.python -m pip install setuptools".format(caller))
+    raise ImportError("You must install setuptools to configure package {}. Run\n  libtbx.pip install setuptools".format(caller))
 
   # Temporarily change to build/ directory. This is where a directory named
   # libtbx.{caller}.egg-info will be created containing the entry point info.

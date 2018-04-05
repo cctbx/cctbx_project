@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
@@ -67,7 +66,7 @@ def collect_tables(file_object, edge):
   import re
   tables = []
   table = 0
-  for line in file_object.xreadlines():
+  for line in file_object:
     if (not edge):
       m = re.match(
         r"ATOMIC SYMBOL\s+=\s+(\S+)\s+ATOMIC NUMBER\s+=\s+(\d+)", line)
@@ -145,7 +144,7 @@ def combine_tables(tables_wide, tables_k, tables_l):
   return ctab_list
 
 def print_table_block(f, tables_combined, i_begin, i_end):
-  for i_table in xrange(i_begin, i_end):
+  for i_table in range(i_begin, i_end):
     ctab = tables_combined[i_table]
     for edge in (ctab.wide, ctab.k, ctab.l1, ctab.l2, ctab.l3):
       if (not edge): continue
@@ -155,7 +154,7 @@ def print_table_block(f, tables_combined, i_begin, i_end):
         lbl += "_" + edge.edge_label.lower()
         ann += "; edge at " + edge.edge_wave_length + " A"
       print("raw " + lbl + "[] = { // " + ann, file=f)
-      for i in xrange(len(edge.fp)):
+      for i in range(len(edge.fp)):
         print("{%s,%s}," % (edge.fp[i], edge.fdp[i]), file=f)
       print("};", file=f)
   print(file=f)
@@ -292,7 +291,7 @@ def run(target_dir):
   print_sasaki_cpp(f, tables_combined)
   f.close()
   block_size = 12
-  for i_begin in xrange(0, len(tables_combined), block_size):
+  for i_begin in range(0, len(tables_combined), block_size):
     i_end = min(len(tables_combined), i_begin + block_size)
     f = join_open(
       target_dir, "sasaki_tables_%02d_%02d.cpp" % (i_begin+1, i_end), "w")
@@ -300,5 +299,5 @@ def run(target_dir):
     print_table_block(f, tables_combined, i_begin, i_end)
     f.close()
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   run(".")

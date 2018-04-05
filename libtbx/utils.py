@@ -298,7 +298,7 @@ def warn_if_unexpected_md5_hexdigest(
       False if md5 hash of file does not appear in expected_md5_hexdigests.
   """
   m = hashlib.md5()
-  m.update("\n".join(open(path).read().splitlines()))
+  m.update("\n".join(open(path).read().splitlines()).encode('utf-8'))
   current_md5_hexdigest = m.hexdigest()
   if (m.hexdigest() in expected_md5_hexdigests): return False
   warning = "Warning: unexpected md5 hexdigest:"

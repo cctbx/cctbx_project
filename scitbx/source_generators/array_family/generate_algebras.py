@@ -1,5 +1,4 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators.array_family import operator_functor_info
 from scitbx.source_generators.array_family import generate_std_imports
 from scitbx.source_generators import utils
@@ -64,7 +63,7 @@ def get_numbered_template_args(array_type_name, n_params, equal_element_type):
   single = get_template_args(array_type_name)
   if (n_params == 1): return [single]
   result = []
-  for i in xrange(1, n_params+1):
+  for i in range(1, n_params+1):
     if (equal_element_type):
       single_numbered = [single[0]]
     else:
@@ -85,17 +84,14 @@ def get_template_header_args(numbered_template_args):
   return result
 
 def get_template_parameter_args(numbered_template_args):
-  from string import join
-  result = []
-  for p in numbered_template_args:
-    result.append(join([d[1] for d in p], ", "))
-  return result
+  return [
+    ", ".join(d[1] for d in p)
+    for p in numbered_template_args
+  ]
 
 def get_template_header(numbered_template_args):
-  from string import join
   ha = get_template_header_args(numbered_template_args)
-  result = "template<" + join([join(x) for x in ha], ", ") + ">"
-  return result
+  return "template<" + ", ".join(" ".join(x) for x in ha) + ">"
 
 def get_template_parameters(array_type_name, template_parameter_args):
   result = []
@@ -103,9 +99,7 @@ def get_template_parameters(array_type_name, template_parameter_args):
     result.append(array_type_name + "<" + p + ">")
   return result
 
-def get_template_header_and_parameters(
-  array_type_name, n_params, equal_element_type = 0
-):
+def get_template_header_and_parameters(array_type_name, n_params, equal_element_type=0):
   result = empty()
   result.nta = get_numbered_template_args(
     array_type_name, n_params, equal_element_type)
@@ -119,8 +113,7 @@ def derive_return_array_type_simple(param):
   return param.replace("N1", "SCITBX_ARRAY_FAMILY_SMALL_ALGEBRA_MIN_N1_N2")
 
 def wrap_element_type(array_type_name, element_type, addl):
-  from string import join
-  r = array_type_name + "<" + join([element_type] + addl, ", ") + ">"
+  r = array_type_name + "<" + ", ".join([element_type] + addl) + ">"
   if (r.endswith(">>")): return r[:-1] + " >"
   return r
 
@@ -214,7 +207,7 @@ def binary_operator_algo_params(array_type_name, type_flags):
     r.result_constructor_args = get_result_constructor_args(
       array_type_name, type_flags)
   r.begin = ["", ""]
-  for i in xrange(2):
+  for i in range(2):
     if (type_flags[i]): r.begin[i] = ".begin()"
   r.type_flags_code = "sa"[type_flags[0]] + "_" + "sa"[type_flags[1]]
   return r
@@ -551,7 +544,7 @@ def generate_element_wise_special(f,
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
       params = []
-      for i in xrange(2):
+      for i in range(2):
         if (type_flags[i]):
           params.append(p.arg_array_types[i])
         else:
@@ -654,7 +647,7 @@ namespace scitbx { namespace af {
   for special_def in generate_std_imports.complex_special:
     generate_element_wise_special(f, array_type_name, special_def)
   for args in misc_functions_x_x_s:
-    apply(generate_x_x_s_element_wise, (f, array_type_name) + args)
+    generate_x_x_s_element_wise(*(f, array_type_name) + args)
 
   print("}} // namespace scitbx::af", file=f)
   print(file=f)

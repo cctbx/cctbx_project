@@ -56,8 +56,8 @@ def collect_tables():
     Symbol = header[1:3].strip()
     Z = int(header[7:9])
     assert len(Symbol) > 0
-    assert Symbol[0] in string.lowercase
-    assert Symbol[-1] in string.lowercase
+    assert Symbol[0] in 'abcdefghijklmnopqrstuvwxyz'
+    assert Symbol[-1] in 'abcdefghijklmnopqrstuvwxyz'
     assert Z > 0 and Z < len(tables)
     assert tables[Z] == 0
     Symbol = Symbol.capitalize()
@@ -75,7 +75,7 @@ def print_table_block(f, tables, Z_begin, Z_end, define_noval=0):
   print(file=f)
   # Visual C++ 7.0 compilation is very slow with define_noval=1
   if (define_noval): print("#define NOVAL fp_fdp_undefined", file=f)
-  for Z in xrange(Z_begin, Z_end):
+  for Z in range(Z_begin, Z_end):
     tab = tables[Z]
     print("e_fp_fdp " + tab[0].lower() \
       + "[] = { /* Z = " + str(Z) + " */", file=f)
@@ -160,8 +160,8 @@ def collect_tab_points(tables):
 
 def compare_points(tables):
   tab_points = collect_tab_points(tables)
-  for i in xrange(len(tab_points)-1):
-    for j in xrange(i+1, len(tab_points)):
+  for i in range(len(tab_points)-1):
+    for j in range(i+1, len(tab_points)):
       if (tab_points[i] == tab_points[j]):
         print("points %d==%d" % (i+1,j+1))
 
@@ -174,7 +174,7 @@ def run(target_dir):
   print_henke_cpp(f, tables)
   f.close()
   Z_block = 12
-  for Z_begin in xrange(1, len(tables), Z_block):
+  for Z_begin in range(1, len(tables), Z_block):
     Z_end = min(len(tables), Z_begin + Z_block)
     f = join_open(
       target_dir, "henke_tables_%02d_%02d.cpp" % (Z_begin, Z_end-1), "w")

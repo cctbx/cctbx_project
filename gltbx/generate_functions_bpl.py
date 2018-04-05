@@ -1,10 +1,10 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.utils import write_this_is_auto_generated
 from libtbx.str_utils import line_breaker
 import libtbx.load_env
 import libtbx.path
-import sys, os
+import os
+import sys
 
 this = "gltbx.generate_functions_bpl"
 
@@ -686,16 +686,15 @@ def run(target_dir):
     block_size = len(signatures) // n_fragments
     if (block_size * n_fragments < len(signatures)):
       block_size += 1
-    for i_fragment in xrange(n_fragments):
+    for i_fragment in range(n_fragments):
       file_name = libtbx.path.norm_join(
         target_dir, namespace+"_functions_%02d_bpl.cpp" % i_fragment)
-      f = open(file_name, "w")
-      write_function_wrappers(
-        f=f,
-        namespace=namespace,
-        signatures=signatures[i_fragment*block_size:(i_fragment+1)*block_size],
-        i_fragment=i_fragment)
-      f.close()
+      with open(file_name, "w") as f:
+        write_function_wrappers(
+          f=f,
+          namespace=namespace,
+          signatures=signatures[i_fragment*block_size:(i_fragment+1)*block_size],
+          i_fragment=i_fragment)
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   run(".")
