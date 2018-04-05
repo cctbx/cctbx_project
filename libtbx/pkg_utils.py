@@ -37,6 +37,20 @@ def _notice(*lines, **context):
         os.linesep + "=" * 80 + os.linesep)
 
 def require(pkgname, version=None):
+  '''Ensure a package requirement is met. Install or update package as required
+     and print a warning message if this can't be done due to the local
+     environment, or when automatic package management is disabled by setting
+     the environment variable 'LIBTBX_DISABLE_UPDATES'.
+     :param pkgname: A string describing the package requirement. This will
+                     generally just be a package name, but package features
+                     can be specified in square brackets. Features are not
+                     enforced, but will be requested during installation and
+                     update.
+     :param version: An optional string describing version constraints. This
+                     can be a minimum version, eg. '>=1.0', a maximum version,
+                     eg. '<2', or both, eg. '>=4.5,<4.6'.
+     :return: True when the requirement is met, False otherwise.'''
+
   if not pip:
     _notice("  WARNING: Can not verify python package requirements - pip/setuptools out of date",
             "  Please update pip and setuptools by running:", "",
@@ -46,10 +60,19 @@ def require(pkgname, version=None):
 
   if not version:
     version = ''
+
+  # package name without feature specification
+  basepkgname = pkgname.split('[')[0]
+
   requirestring = pkgname + version
+  baserequirestring = basepkgname + version
   try:
-    print("requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version))
-    return True
+    try:
+      print("requires %s, has %s" % (requirestring, pkg_resources.require(requirestring)[0].version))
+      return True
+    except pkg_resources.UnknownExtra:
+      print("requires %s, has %s, but without features" % (requirestring, pkg_resources.require(baserequirestring)[0].version))
+      return True
 
   except pkg_resources.DistributionNotFound:
     currentversion = '(not determined)'
@@ -58,8 +81,8 @@ def require(pkgname, version=None):
     print("requirement %s is not currently met, package not installed" % (requirestring))
 
   except pkg_resources.VersionConflict:
-    currentversion = pkg_resources.require(pkgname)[0].version
-    project_name = pkg_resources.require(pkgname)[0].project_name
+    currentversion = pkg_resources.require(basepkgname)[0].version
+    project_name = pkg_resources.require(basepkgname)[0].project_name
     action = 'update'
     print("requirement %s is not currently met, current version %s" % (requirestring, currentversion))
 
