@@ -444,7 +444,9 @@ namespace dxtbx { namespace model {
     os << "Scan:\n";
     os << "    image range:   " << s.get_image_range().const_ref() << "\n";
     os << "    oscillation:   " << oscillation.const_ref() << "\n";
-    os << "    exposure time: " << s.exposure_times_.const_ref()[0] << "\n";
+    if (s.get_num_images() > 0) {
+      os << "    exposure time: " << s.exposure_times_.const_ref()[0] << "\n";
+    }
     return os;
   }
 
