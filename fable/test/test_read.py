@@ -5,7 +5,6 @@ import itertools
 import os
 
 import fable.read
-from libtbx.utils import Sorry
 import pytest
 
 def test_strip_spaces_separate_strings():
@@ -667,17 +666,17 @@ def test_build_fprocs_by_name(testsdir):
         ("implied_program.f", "implied_program.f")]:
     file_names = [os.path.join(t_dir, file_name) for file_name in pair]
     all_fprocs = fable.read.process(file_names=file_names)
-    with pytest.raises(Sorry) as e:
+    with pytest.raises(SystemExit) as e:
       all_fprocs.fprocs_by_name()
     if (pair[0] == "subroutine_3.f"):
-      assert str(e.value).startswith("Fortran procedure name conflict:")
-      assert str(e.value).endswith("  -----------------^")
+      assert str(e.value.code).startswith("Fortran procedure name conflict:")
+      assert str(e.value.code).endswith("  -----------------^")
     else:
-      assert str(e.value).startswith("""\
+      assert str(e.value.code).startswith("""\
 Fortran procedure name conflict:
   1. definition: program_unnamed (implied)
     before """)
-      assert str(e.value).endswith("implied_program.f(2)")
+      assert str(e.value.code).endswith("implied_program.f(2)")
 
 def test_eval_const_expression_simple(testsdir):
   t_dir = os.path.join(testsdir, 'valid')

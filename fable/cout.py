@@ -1,13 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import functools
+import math
 import os.path
+import operator
+import sys
 
 import fable
 from libtbx import group_args
 from libtbx import mutable
 from libtbx import Auto
-from libtbx.utils import product
-import os.path as op
 
 fmt_comma_placeholder = chr(255)
 
@@ -69,7 +71,12 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       ic += 1
   potential_break_points.append((0, nc))
   n = nc - i_start
-  from libtbx.math_utils import iround, iceil
+
+  def iround(x):
+    if (x < 0): return int(x-0.5)
+    return int(x+.5)
+  def iceil(x):
+    return iround(math.ceil(x))
   l = max(min_len, iround(n / iceil(n / (max_len - i_start - 2))))
   b = 0
   f = 0
@@ -269,24 +276,22 @@ def convert_token(vmap, leading, tok, had_str_concat=None):
   tok.raise_not_supported()
 
 class major_types_cache(object):
-
   __slots__ = ["identifiers"]
 
-  def __init__(O):
-    O.identifiers = None
+  def __init__(self):
+    self.identifiers = None
 
-  def __contains__(O, value):
-    if (O.identifiers is None):
-      O.identifiers = set()
-      import libtbx.load_env
-      hpp = libtbx.env.under_dist(
-        module_name="fable", path="fem/major_types.hpp", test=op.isfile)
+  def __contains__(self, value):
+    if self.identifiers is None:
+      self.identifiers = set()
+      hpp = os.path.join(fable.__path__[0], 'fem', 'major_types.hpp')
       using_fem = "  using fem::"
-      for line in open(hpp).read().splitlines():
-        if (line.startswith(using_fem)):
-          assert line.endswith(";")
-          O.identifiers.add(line[len(using_fem):-1])
-    return value in O.identifiers
+      with open(hpp, 'r') as fh:
+        for line in fh.read().splitlines():
+          if line.startswith(using_fem):
+            assert line.endswith(";")
+            self.identifiers.add(line[len(using_fem):-1])
+    return value in self.identifiers
 
 major_types = major_types_cache()
 
@@ -742,7 +747,7 @@ def convert_data_type_and_dims(conv_info, fdecl, crhs, force_arr=False):
       vals = conv_info.fproc.eval_dimensions_simple(
         dim_tokens=dt, allow_power=False)
       if (vals.count(None) == 0):
-        sz = product(vals)
+        sz = functools.reduce(operator.mul, vals, 1)
         if (sz <= abs(conv_info.arr_nd_size_max)):
           from fable.read import dimensions_are_simple
           if (dimensions_are_simple(dim_tokens=dt)):
@@ -2576,7 +2581,7 @@ def generate_common_report(
           break
         reported_already.add(tag)
         vn = tok_seq.value[0].value
-        dn, bn = op.split(sl.file_name)
+        dn, bn = os.path.split(sl.file_name)
         loc = ("%s(%s) %s" % (bn, sl.line_number, dn)).rstrip()
         if (loc == prev_loc): loc = ""
         else: prev_loc = loc
@@ -2588,11 +2593,10 @@ def generate_common_report(
           print(fmt % row, file=report)
   #
   if (len(report.getvalue()) != 0 and stringio is None):
-    import sys
     report_file_name = "fable_cout_common_report"
-    from libtbx.str_utils import show_string
-    print("Writing file:", show_string(report_file_name), file=sys.stderr)
-    open(report_file_name, "w").write(report.getvalue())
+    print("Writing file", report_file_name, file=sys.stderr)
+    with open(report_file_name, "w") as fh:
+      fh.write(report.getvalue())
   #
   return variant_common_names
 

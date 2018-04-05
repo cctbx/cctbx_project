@@ -17,7 +17,7 @@ command_expectation_list = [
     ('fable.fem_include_search_paths --with-quotes', 'fable'),
     ('fable.cout --each "%swrite_star.f"', 'return fem::main_with_catch'),
     ('fable.cout "%scommon_variants.f"',
-      'Writing file: "fable_cout_common_report"'),
+      'Writing file fable_cout_common_report'),
     ('fable.cout "%ssubroutine_3.f" --top-procedure=sub3'
      ' --fortran-file-comments',
       'nums(i) = i * 20;'),
