@@ -28,7 +28,7 @@ def choice_as_bitflag(choices):
                   PartialityEtaDeff = p.PartialityEtaDeff)[choice]
   return flags
 
-def choice_as_helper_base(choices, linsolver=lsb.ldlt):
+def choice_as_helper_base(choices, linsolver='ldlt'):
   if "Deff" in choices or "Rxy" in choices:
     from cctbx.examples.merging import postrefine_base as base_class
   else:
