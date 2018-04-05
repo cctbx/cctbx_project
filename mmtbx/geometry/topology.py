@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from boost_adaptbx import graph
 
@@ -135,7 +135,7 @@ class Compound(object):
     if atom not in self.descriptor_for:
       raise ValueError, "Unknown atom: %s" % atom
 
-    from graph import breadth_first_search as bfs
+    from boost_adaptbx.graph import breadth_first_search as bfs
 
     vertex = self.descriptor_for[ atom ]
     visitor = bfs.distance_recording_visitor( start_vertex = vertex )
@@ -157,7 +157,7 @@ class Compound(object):
     if not all( a in self.descriptor_for for a in atoms ):
       raise ValueError, "Unknown atoms: %s" % atoms
 
-    from graph import maximum_clique
+    from boost_adaptbx.graph import maximum_clique
     subgraph = maximum_clique.selected_subgraph(
       graph = self.graph,
       vertices = ( self.descriptor_for[ a ] for a in atoms ),
@@ -168,7 +168,7 @@ class Compound(object):
 
   def connected_segments(self):
 
-    from graph import connected_component_algorithm as cca
+    from boost_adaptbx.graph import connected_component_algorithm as cca
     res = cca.connected_components( graph = self.graph )
     atom_for = self.atom_for
 
@@ -180,7 +180,7 @@ class Compound(object):
     if atom not in self.descriptor_for:
       raise ValueError, "Unknown atom: %s" % atom
 
-    from graph import breadth_first_search as bfs
+    from boost_adaptbx.graph import breadth_first_search as bfs
 
     vertex = self.descriptor_for[ atom ]
     visitor = bfs.vertex_recording_visitor( start_vertex = vertex )
@@ -258,7 +258,7 @@ class RascalMatch(object):
     self.best = [ [] ]
     self.largest = 0
 
-    from graph import maximum_clique
+    from boost_adaptbx.graph import maximum_clique
 
     self.compat_graph = maximum_clique.compatibility_graph(
       first = molecule1.graph,
@@ -358,7 +358,7 @@ class McGregorMatch(object):
     self.steps = 0
     self.maxsteps = maxsteps
 
-    from graph import graph_structure_comparison as gsc
+    from boost_adaptbx.graph import graph_structure_comparison as gsc
     gsc.mcgregor_common_subgraphs_unique(
       graph1 = molecule1.graph,
       graph2 = molecule2.graph,
@@ -424,7 +424,7 @@ class GreedyMatch(object):
     self.best = [ [] ]
     self.largest = 0
 
-    from graph import maximum_clique
+    from boost_adaptbx.graph import maximum_clique
 
     self.compat_graph = maximum_clique.compatibility_graph(
       first = molecule1.graph,

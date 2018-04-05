@@ -1,7 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
 from boost_adaptbx import graph
-from graph import graph_structure_comparison
+from boost_adaptbx.graph import graph_structure_comparison
 
 import unittest
 
