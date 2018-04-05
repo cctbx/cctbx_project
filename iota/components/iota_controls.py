@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 10/31/2017
+Last Changed: 04/04/2017
 Description : IOTA GUI controls
 '''
 
@@ -605,6 +605,7 @@ class OptionCtrl(CtrlBase):
                label_style='normal',
                sub_labels=[],
                sub_label_justify=wx.ALIGN_LEFT,
+               sub_label_vertical=wx.ALIGN_CENTER_VERTICAL,
                grid=None,
                checkbox=False,
                checkbox_label='',
@@ -633,7 +634,8 @@ class OptionCtrl(CtrlBase):
 
       if len(self.items) > 1:
         opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
-        self.ctrl_box.Add(opt_label, flag=wx.ALIGN_CENTER_VERTICAL | sub_label_justify)
+        self.ctrl_box.Add(opt_label, flag=sub_label_vertical |
+                                          sub_label_justify)
 
       if key == '':
         item = wx.StaticText(self, label='')
@@ -660,9 +662,9 @@ class OptionCtrl(CtrlBase):
     opt_box = wx.FlexGridSizer(1, cols, 5, 10)
 
     if label != '':
-      opt_box.Add(self.txt, flag=wx.ALIGN_CENTER_VERTICAL)
+      opt_box.Add(self.txt, flag=sub_label_vertical)
     if checkbox:
-      opt_box.Add(self.toggle, flag=wx.ALIGN_CENTER_VERTICAL)
+      opt_box.Add(self.toggle, flag=sub_label_vertical)
       self.toggle_boxes(flag_on=False)
 
       self.Bind(wx.EVT_CHECKBOX, self.onToggle, self.toggle)
@@ -791,7 +793,6 @@ class KnobCtrl(CtrlBase):
 
   def onFS_Value_Change(self, e):
     self.knob_ctr.SetValue(self.value_ctr.ctr.GetValue())
-
 
 
 class CustomListCtrl(CtrlBase):

@@ -1,43 +1,22 @@
-IOTA v1.1.028 - GUI updates
+IOTA v1.1.029 - GUI updates
 
 Bugfixes:
-1. Tracker: changed GridBagSizer to SplitterWindow for chart / image list, which
- now sizes correctly at all times (and is adjustable)
-2. Fixed bugs resulting from previous commit (IOTA hung on image import)
-
+- Fixed a few minor bugs in command-line argument read-in for GUI
 
 
 Features:
-1. Tracker: Selection / Zoom now switched by toolbar toggle buttons
-2. Tracker: Removed spotfinding options button / dialog
-3. Tracker: Added settings toolbar button / dialog
-4. Removed "select only" mode in IOTA GUI (Xterm only now)
-5. Streamlined imageset compilation in IOTA GUI
-6. Added total image number to input window
-7. Sped up logging (esp. on recovery) by importing chunks of text vs. by line
-8. Option for "settings only" recovery of past runs
-9. Removed beam XY graph from live charts (too slow!)
-10. Replaced beam XY graph with hkl slice graph (can toggle between 0kl, h0l,
-and hk0), which is much faster and more informative.
-11. Changed how unit cell histograms are drawn - slightly faster, but also
-potentially more configurable in future
-12. Can now read runs from XTerm IOTA into GUI
-13. IOTA GUI now takes command arguments; any IOTA PHIL entry can be used as a
-command-line argument, and will be automatically interpreted.
-14. Tracker GUI now takes command arguments; few now, but more can be added
-15. Option in Tracker to start from images collected 1 min ago, or t minutes
-ago; useful if want to keep it at least somewhat "real-time" (i.e. not starting
-tracking from the first collected image)
-16. Attempted to speed up tracker by making it search for new images every 1
-second, rather than when all current images were indexed; not sure it helped
-
+- Clustering analysis: tried to speed it up; generated clusters from in-memory
+  python objects instead of directing at the pickle files. So far, a small
+  improvement for a 300-image dataset (~ 35% faster)
+- Sped up run recovery:
+    - A new file (analysis.pickle) output into run folder, with summary info
+    - This speeds up recovery of complete runs by a lot
+    - Removed redundant calculations for the beamXY plot, twice as fast now
+- User-run clustering at end of run
+    - Can re-run clustering many times with varying options
+    - New options for clustering:
+        - cluster_n_images - can set a random sample size for huge datasets
+        - cluster_limit - limit for size of cluster that's displayed / saved
+        - cluster_write_files - can choose to output (or not) clusters to files
 
 Known issues:
-
-1. Image tracker: interface could use to be faster w/ large datasets
-2. Some IOTA modules are still too slow, esp. for remote operation:
-    a. Graphing is still too clunky (requires too much redrawing)
-    b. Unit cell clustering takes forever with large datasets
-    c. If running via XDisplay, the GUI might semi-freeze at times (though it's
-    much better than it was)
-    d. There's a weird bug that affects only synthetic images

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 03/23/2018
+Last Changed: 04/04/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -98,11 +98,11 @@ class MainWindow(wx.Frame):
 
     # Create some defaults on startup
     # Figure out temp folder
-    self.iparams = self.iota_phil.extract()
+    self.gparams = self.iota_phil.extract()
     tmp_folder = '/tmp/{}_{}'.format(user, pid)
-    self.iparams.advanced.temporary_output_folder = tmp_folder
+    self.gparams.advanced.temporary_output_folder = tmp_folder
 
-    self.iota_phil = self.iota_phil.format(python_object=self.iparams)
+    self.iota_phil = self.iota_phil.format(python_object=self.gparams)
 
     # Menu bar
     menubar = wx.MenuBar()
@@ -229,26 +229,26 @@ class MainWindow(wx.Frame):
       for carg in self.args.path:
         if os.path.exists(carg):
           if os.path.isfile(carg) and os.path.basename(carg).endswith('.param'):
-            self.load_script(filepath=carg)
+            self.load_script(filepath=carg, update_input_window=False)
           else:
             self.input_window.input.add_item(os.path.abspath(carg))
 
     if self.args.watch > 0:
-      self.iparams.advanced.monitor_mode = True
-      self.iparams.advanced.monitor_mode_timeout = True
-      self.iparams.advanced.monitor_mode_timeout_length = self.args.watch[0]
+      self.gparams.advanced.monitor_mode = True
+      self.gparams.advanced.monitor_mode_timeout = True
+      self.gparams.advanced.monitor_mode_timeout_length = self.args.watch[0]
 
     if self.args.random > 0:
-      self.iparams.advanced.random_sample.flag_on = True
-      self.iparams.advanced.random_sample.number = self.args.random[0]
+      self.gparams.advanced.random_sample.flag_on = True
+      self.gparams.advanced.random_sample.number = self.args.random[0]
 
     if self.args.tmp is not None:
-      self.iparams.advanced.temporary_output_folder = self.args.tmp[0]
+      self.gparams.advanced.temporary_output_folder = self.args.tmp[0]
 
     if self.args.nproc is not None:
-      self.iparams.n_processors = self.args.nproc
+      self.gparams.n_processors = self.args.nproc
 
-    self.iota_phil = self.iota_phil.format(python_object=self.iparams)
+    self.iota_phil = self.iota_phil.format(python_object=self.gparams)
 
     # Parse in-line params into phil
     argument_interpreter = argint(master_phil=self.iota_phil)
@@ -466,8 +466,6 @@ class MainWindow(wx.Frame):
       with open(rec_target_phil_file, 'r') as pf:
         rec_target_phil = pf.read()
       self.target_phil = rec_target_phil
-
-
       self.update_input_window()
 
       # Re-open processing window with results of the run
@@ -569,7 +567,7 @@ class MainWindow(wx.Frame):
     if load_dlg.ShowModal() == wx.ID_OK:
       self.load_script(load_dlg.GetPaths()[0])
 
-  def load_script(self, filepath):
+  def load_script(self, filepath, update_input_window=True):
     '''
     Clears settings and loads new settings from IOTA param file
 
@@ -606,7 +604,8 @@ class MainWindow(wx.Frame):
       self.target_phil = None
 
     # Update input window with loaded parameters
-    self.update_input_window()
+    if update_input_window:
+      self.update_input_window()
 
 
   def reset_settings(self):

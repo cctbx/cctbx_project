@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/22/2018
+Last Changed: 04/05/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -631,7 +631,7 @@ class ImportWindow(BaseDialog):
     filepath = self.mod_mask.ctr.GetValue()
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
-                                     backend=self.params.advanced.integrate_with,
+                                     viewer=self.params.advanced.image_viewer,
                                      file_string=filepath)
       viewer.start()
 
@@ -1670,7 +1670,7 @@ class AnalysisWindow(BaseDialog):
     self.viz_phil = None
 
     # Create options panel (all objects should be called as self.options.object)
-    self.options = ScrolledPanel(self, size=(-1, 200))
+    self.options = ScrolledPanel(self, size=(-1, 250))
     options_sizer = wx.BoxSizer(wx.VERTICAL)
     self.options.SetSizer(options_sizer)
 
@@ -1679,10 +1679,15 @@ class AnalysisWindow(BaseDialog):
 
     # Unit cell clustering options
     self.clustering = ct.OptionCtrl(self.options,
-                                    items=[('threshold', '5000')],
-                                    sub_labels=['Threshold'],
+                                    items=[('threshold', '5000'),
+                                           ('limit', '5'),
+                                           ('n_images', '0')],
+                                    sub_labels=['Threshold', 'Cluster limit',
+                                                'No. images'],
                                     checkbox=True,
                                     checkbox_label='Unit Cell Clustering',
+                                    #sub_label_vertical=wx.ALIGN_TOP,
+                                    grid=(4, 2),
                                     label_size=(160, -1),
                                     ctrl_size=(100, -1))
     viz_box_sizer.Add(self.clustering, flag=f.stack, border=10)
@@ -1730,6 +1735,10 @@ class AnalysisWindow(BaseDialog):
       self.clustering.toggle_boxes(flag_on=True)
       self.clustering.threshold.SetValue(
         str(self.params.analysis.cluster_threshold))
+      self.clustering.limit.SetValue(
+        str(self.params.analysis.cluster_limit))
+      self.clustering.n_images.SetValue(str(
+        self.params.analysis.cluster_n_images))
 
     viz_idx = self.visualization.ctr.FindString(str(self.params.analysis.viz))
     if str(self.params.analysis.viz).lower() == 'none':
@@ -1750,6 +1759,10 @@ class AnalysisWindow(BaseDialog):
       ' run_clustering = {}'.format(self.clustering.toggle.GetValue()),
       ' cluster_threshold = {}'.format(noneset(
           self.clustering.threshold.GetValue())),
+      ' cluster_limit = {}'.format(noneset(
+          self.clustering.limit.GetValue())),
+      ' cluster_n_images = {}'.format(noneset(
+          self.clustering.n_images.GetValue())),
       ' viz = {}'.format(viz),
       ' charts = {}'.format(self.proc_charts.GetValue()),
       ' summary_graphs = {}'.format(self.summary_graphs.GetValue()),
@@ -2153,8 +2166,8 @@ class DIALSSpfDialog(BaseDialog):
     filepath = self.mod_mask.ctr.GetValue()
     if os.path.isfile(filepath):
       viewer = thr.ImageViewerThread(self,
-                                     backend='dials',
-                                     file_string=filepath)
+                                     file_string=filepath,
+                                     viewer='dials')
       viewer.start()
 
   def read_param_phil(self):
@@ -2205,4 +2218,69 @@ class DIALSSpfDialog(BaseDialog):
                              '}'
                              ])
     self.spf_phil = ip.parse(phil_string)
+    e.Skip()
+
+class ClusterDialog(BaseDialog):
+  def __init__(self, parent,
+               label_style='bold',
+               content_style='normal',
+               *args, **kwargs):
+
+    BaseDialog.__init__(self, parent,
+                        label_style=label_style,
+                        content_style=content_style,
+                        *args, **kwargs)
+
+    self.main_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.SetSizer(self.main_sizer)
+
+    # Clustering parameters
+    self.cluster_options = wx.Panel(self)
+    cluster_box = wx.StaticBox(self.cluster_options, label='Cluster Parameters')
+    cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+    self.cluster_options.SetSizer(cluster_box_sizer)
+
+    self.write_files = wx.CheckBox(self.cluster_options,
+                                   label='Write Cluster Files')
+    cluster_box_sizer.Add(self.write_files, flag=f.stack, border=10)
+
+    self.cluster_n_images = ct.SpinCtrl(self.cluster_options,
+                                        label_size=wx.DefaultSize,
+                                        checkbox_state=False,
+                                        checkbox_label='No. images',
+                                        checkbox=True,
+                                        ctrl_size=(100, -1),
+                                        ctrl_value=1000)
+    cluster_box_sizer.Add(self.cluster_n_images, flag=f.expand, border=10)
+
+    self.cluster_threshold = ct.SpinCtrl(self.cluster_options,
+                                         label='Threshold: ',
+                                         label_size=wx.DefaultSize,
+                                         ctrl_size=(100, -1),
+                                         ctrl_value=5000)
+    cluster_box_sizer.Add(self.cluster_threshold, flag=f.expand, border=10)
+
+    self.cluster_limit = ct.SpinCtrl(self.cluster_options,
+                                         label='Minimum cluster size: ',
+                                         label_size=wx.DefaultSize,
+                                         ctrl_size=(100, -1),
+                                         ctrl_value=10)
+    cluster_box_sizer.Add(self.cluster_limit, flag=wx.EXPAND | wx.ALL,
+                          border=10)
+
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+
+    self.main_sizer.Add(self.cluster_options, 1,
+                        flag=wx.EXPAND | wx.ALL, border=10)
+    self.main_sizer.Add(dialog_box,
+                        flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                        border=10)
+
+    # Bindings:
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+    self.Fit()
+
+  def onOK(self, e):
     e.Skip()

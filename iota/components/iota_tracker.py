@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 03/30/2018
+Last Changed: 04/05/2018
 Description : IOTA image-tracking GUI module
 '''
 

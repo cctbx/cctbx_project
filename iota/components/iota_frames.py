@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 03/30/2018
+Last Changed: 04/05/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -11,10 +11,8 @@ import os
 import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
-from wx.lib.scrolledpanel import ScrolledPanel
 from wx import richtext as rt
 
-import math
 import numpy as np
 import time
 import warnings
@@ -1258,6 +1256,7 @@ class ProcessingTab(wx.Panel):
 class SummaryTab(wx.Panel):
   def __init__(self,
                parent,
+               init=None,
                gparams=None,
                final_objects=None,
                out_dir=None,
@@ -1268,6 +1267,7 @@ class SummaryTab(wx.Panel):
     self.gparams = gparams
     self.out_dir = out_dir
     self.plot = plot
+    self.init = init
 
     summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
@@ -1415,35 +1415,23 @@ class SummaryTab(wx.Panel):
     dat_box_sizer.Add(dat_btn_sizer, flag=wx.ALL, border=10)
     summary_sizer.Add(dat_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
-    # Clustering info (if performed)
-    if self.gparams.analysis.run_clustering:
-      cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
-      cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
-      self.cluster_panel = ScrolledPanel(self, size=(-1, 100))
-      self.cluster_panel.SetFont(bfont)
-      self.cluster_box_grid = wx.GridBagSizer(5, 10)
-      self.cluster_panel.SetSizer(self.cluster_box_grid)
+    # Clustering info
+    self.cluster_panel = wx.Panel(self)
+    cluster_box = wx.StaticBox(self.cluster_panel, label='Unit Cell Clustering')
+    cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+    self.cluster_panel.SetSizer(cluster_box_sizer)
+    self.cluster_info = ct.CustomListCtrl(self.cluster_panel, size=(-1, 100))
+    self.cluster_info.ctr.InsertColumn(0, "#")
+    self.cluster_info.ctr.InsertColumn(1, "Lattice")
+    self.cluster_info.ctr.InsertColumn(2, "Unit Cell")
+    self.cluster_info.ctr.InsertColumn(3, "Filename")
+    #self.cluster_info.ctr.setResizeColumn(3)
+    cluster_box_sizer.Add(self.cluster_info, proportion=1, flag=wx.EXPAND)
+    summary_sizer.Add(self.cluster_panel, flag=wx.EXPAND | wx.ALL, border=10)
 
-      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
-                                              label='No. Images'),
-                                pos=(0, 0))
-      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
-                                              label='Bravais Lattice'),
-                                pos=(0, 1))
-      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
-                                              label='Unit Cell'),
-                                pos=(0, 2))
-      self.cluster_box_grid.Add(wx.StaticText(self.cluster_panel,
-                                              label='Filename'),
-                                pos=(0, 3))
-      self.cluster_box_grid.AddGrowableCol(2)
-      self.cluster_panel.SetFont(sfont)
-
-      # Insert into sizers
-      cluster_box_sizer.Add(self.cluster_panel, flag=wx.EXPAND |wx.ALL,
-                            border=10)
-      summary_sizer.Add(cluster_box_sizer, flag=wx.EXPAND | wx.ALL, border=10)
-
+    # Hide if not done
+    if not self.gparams.analysis.run_clustering:
+      self.cluster_panel.Hide()
 
     # Summary
     smr_box = wx.StaticBox(self, label='Run Summary')
@@ -1474,10 +1462,16 @@ class SummaryTab(wx.Panel):
     self.smr_runprime = ct.GradButton(self,
                                       bmp=prime_bmp,
                                       label='  Run PRIME', size=(250, -1))
+    cluster_bmp = bitmaps.fetch_custom_icon_bitmap('distance_difference',
+                                                   scale=(24, 24))
+    self.smr_runcluster = ct.GradButton(self,
+                                      bmp=cluster_bmp,
+                                      label='  Run CLUSTER', size=(250, -1))
 
-    smr_btn_sizer.Add(self.smr_runprime)
-    # smr_btn_sizer.Add(self.smr_runmerge, flag=wx.TOP, border=5)
+    smr_btn_sizer.Add(self.smr_runcluster)
+    smr_btn_sizer.Add(self.smr_runprime, flag=wx.TOP, border=5)
     self.Bind(wx.EVT_BUTTON, self.onPRIME, self.smr_runprime)
+    self.Bind(wx.EVT_BUTTON, self.onCLUSTER, self.smr_runcluster)
 
     if self.gparams.advanced.integrate_with == 'cctbx':
       self.noprf_txt = wx.StaticText(self, label='20')
@@ -1524,6 +1518,50 @@ class SummaryTab(wx.Panel):
     self.prime_window.SetMinSize(self.prime_window.GetEffectiveMinSize())
     self.prime_window.Show(True)
 
+  def onCLUSTER(self, e):
+    cluster_dlg = dlg.ClusterDialog(self)
+    cluster_dlg.write_files.SetValue(self.gparams.analysis.cluster_write_files)
+    cluster_dlg.cluster_threshold.ctr.SetValue(self.gparams.analysis.cluster_threshold)
+    cluster_dlg.cluster_limit.ctr.SetValue(self.gparams.analysis.cluster_limit)
+    if self.gparams.analysis.cluster_n_images > 0:
+      cluster_dlg.cluster_n_images.ctr.SetValue(self.gparams.analysis.cluster_n_images)
+
+    if (cluster_dlg.ShowModal() == wx.ID_OK):
+      self.cluster_panel.Show()
+      self.Layout()
+      self.gparams.analysis.run_clustering = True
+      self.gparams.analysis.cluster_write_files = cluster_dlg.write_files.GetValue()
+      self.gparams.analysis.cluster_threshold = cluster_dlg.cluster_threshold.ctr.GetValue()
+      self.gparams.analysis.cluster_limit = cluster_dlg.cluster_limit.ctr.GetValue()
+      if cluster_dlg.cluster_n_images.toggle.GetValue():
+        self.gparams.analysis.cluster_n_images = int(cluster_dlg.cluster_n_images.ctr.GetValue())
+      else:
+        self.gparams.analysis.cluster_n_images = 0
+      self.init.params = self.gparams
+
+      analysis = Analyzer(init=self.init,
+                          all_objects=self.final_objects,
+                          gui_mode=True)
+      pg, uc, clusters = analysis.unit_cell_analysis()
+      if clusters != []:
+        self.report_clustering_results(clusters=clusters)
+
+  def report_clustering_results(self, clusters):
+    self.cluster_info.ctr.DeleteAllItems()
+    clusters = sorted(clusters, key=lambda i:i['number'], reverse=True)
+    for c in clusters:
+      i = clusters.index(c)
+      idx = self.cluster_info.ctr.InsertStringItem(i, str(c['number']))
+      self.cluster_info.ctr.SetStringItem(idx, 1, str(c['pg']))
+      self.cluster_info.ctr.SetStringItem(idx, 2, str(c['uc']))
+      if c['filename'] != '*':
+        self.cluster_info.ctr.SetStringItem(idx, 3, str(c['filename']))
+
+    # Resize columns to fit content
+    self.cluster_info.ctr.SetColumnWidth(0, width=-1)
+    self.cluster_info.ctr.SetColumnWidth(1, width=-1)
+    self.cluster_info.ctr.SetColumnWidth(3, width=-1)
+    self.cluster_info.ctr.SetColumnWidth(2, width=-3)
 
   def onPlotHeatmap(self, e):
     if self.final_objects != None:
@@ -1642,7 +1680,6 @@ class ProcWindow(wx.Frame):
     # Event bindings
     self.Bind(thr.EVT_ALLDONE, self.onFinishedProcess)
     self.Bind(thr.EVT_IMGDONE, self.onFinishedImageFinder)
-    self.Bind(thr.EVT_OBJDONE, self.onFinishedObjectFinder)
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
 
@@ -1740,6 +1777,7 @@ class ProcWindow(wx.Frame):
       self.timer.Start(5000)
 
   def recover(self, int_path, status, init, params):
+    self.recovery = True
     self.init = init
     self.gparams = params
     self.tmp_abort_file = os.path.join(int_path, '.abort.tmp')
@@ -1899,9 +1937,14 @@ class ProcWindow(wx.Frame):
         self.status_txt.SetLabel('Analyzing results...')
 
         # Do analysis
-        analysis = Analyzer(self.init,
-                            self.finished_objects,
-                            gui_mode=True)
+        analysis_file = os.path.join(self.init.int_base, 'analysis.pickle')
+        if self.recovery and os.path.isfile(analysis_file):
+          analysis = ep.load(analysis_file)
+        else:
+          self.recovery = False
+          analysis = Analyzer(self.init,
+                              self.finished_objects,
+                              gui_mode=True)
         plot = Plotter(self.gparams,
                        self.final_objects,
                        self.init.viz_base)
@@ -1910,10 +1953,11 @@ class ProcWindow(wx.Frame):
         prime_file = os.path.join(self.init.int_base,
                                   '{}.phil'.format(self.gparams.advanced.prime_prefix))
         self.summary_tab = SummaryTab(self.proc_nb,
-                                      self.gparams,
-                                      self.final_objects,
-                                      os.path.dirname(prime_file),
-                                      plot)
+                                      init=self.init,
+                                      gparams=self.gparams,
+                                      final_objects=self.final_objects,
+                                      out_dir=os.path.dirname(prime_file),
+                                      plot=plot)
 
         # Run information
         self.summary_tab.title_txt.SetLabel(noneset(self.gparams.description))
@@ -1935,25 +1979,16 @@ class ProcWindow(wx.Frame):
           self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
 
         # Dataset information
-        analysis.print_results()
-        pg, uc, clusters = analysis.unit_cell_analysis()
+        if self.recovery:
+          pg = analysis.cons_pg
+          uc = analysis.cons_uc
+          clusters = analysis.clusters
+        else:
+          analysis.print_results()
+          pg, uc, clusters = analysis.unit_cell_analysis()
 
         if clusters != []:
-          for cluster in clusters:
-            row = clusters.index(cluster) + 1
-            n_ucs = wx.StaticText(self.summary_tab.cluster_panel,
-                                  label=str(cluster['number']))
-            pg_info = wx.StaticText(self.summary_tab.cluster_panel,
-                                    label=str(cluster['pg']))
-            uc_info = wx.StaticText(self.summary_tab.cluster_panel,
-                                    label=str(cluster['uc']))
-            fname = wx.StaticText(self.summary_tab.cluster_panel,
-                                  label=str(cluster['filename']))
-            self.summary_tab.cluster_box_grid.Add(n_ucs, pos=(row, 0))
-            self.summary_tab.cluster_box_grid.Add(pg_info, pos=(row, 1))
-            self.summary_tab.cluster_box_grid.Add(uc_info, pos=(row, 2))
-            self.summary_tab.cluster_box_grid.Add(fname, pos=(row, 3))
-          self.summary_tab.cluster_panel.SetupScrolling()
+          self.summary_tab.report_clustering_results(clusters=clusters)
 
         self.summary_tab.pg_txt.SetLabel(str(pg))
         unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
@@ -1963,38 +1998,61 @@ class ProcWindow(wx.Frame):
                                   u'\u212B'))
         self.summary_tab.rs_txt.SetLabel(res)
 
-        with warnings.catch_warnings():
-          # To catch any 'mean of empty slice' runtime warnings
-          warnings.simplefilter("ignore", category=RuntimeWarning)
-          beamX, beamY = plot.calculate_beam_xy()[:2]
-          pixel_size = plot.calculate_beam_xy()[-1]
-          beamX_mm = np.median(beamX)
-          beamY_mm = np.median(beamY)
-          beamX_px = np.median(beamX) / pixel_size
-          beamY_px = np.median(beamY) / pixel_size
-          beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
-                   "Y = {:4.1f} mm / {:4.0f} px" \
-                   "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
-
+        if self.recovery and (
+                hasattr(analysis, 'beamX_mm') and
+                hasattr(analysis, 'beamY_mm') and
+                hasattr(analysis, 'pixel_size')
+                ):
+          beamX_mm = analysis.beamX_mm
+          beamY_mm = analysis.beamY_mm
+          pixel_size = analysis.pixel_size
+        else:
+          with warnings.catch_warnings():
+            # To catch any 'mean of empty slice' runtime warnings
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            beamxy_calc = plot.calculate_beam_xy()
+            beamX, beamY = beamxy_calc[:2]
+            pixel_size = beamxy_calc[-1]
+            beamX_mm = np.median(beamX)
+            beamY_mm = np.median(beamY)
+        beamX_px = beamX_mm / pixel_size
+        beamY_px = beamY_mm / pixel_size
+        beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
+                 "Y = {:4.1f} mm / {:4.0f} px" \
+                 "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
         self.summary_tab.xy_txt.SetLabel(beamXY)
 
         # Summary
-        self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
-        self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
-        self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
-        if self.gparams.advanced.integrate_with == 'cctbx':
-          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-          self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-        elif self.gparams.advanced.integrate_with == 'dials':
-          self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
-          self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
-          self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-          self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-        self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
+        if self.recovery:
+          self.summary_tab.readin_txt.SetLabel(str(analysis.all_objects))
+          self.summary_tab.nodiff_txt.SetLabel(str(analysis.no_diff_objects))
+          self.summary_tab.w_diff_txt.SetLabel(str(analysis.diff_objects))
+          if self.gparams.advanced.integrate_with == 'cctbx':
+            self.summary_tab.noint_txt.SetLabel(str(analysis.not_int_objects))
+            self.summary_tab.noprf_txt.SetLabel(str(analysis.filter_fail_objects))
+          elif self.gparams.advanced.integrate_with == 'dials':
+            self.summary_tab.nospf_txt.SetLabel(str(analysis.not_spf_objects))
+            self.summary_tab.noidx_txt.SetLabel(str(analysis.not_idx_objects))
+            self.summary_tab.noint_txt.SetLabel(str(analysis.not_int_objects))
+            self.summary_tab.noflt_txt.SetLabel(str(analysis.filter_fail_objects))
+          self.summary_tab.final_txt.SetLabel(str(analysis.final_objects))
+        else:
+          self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
+          self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
+          self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
+          if self.gparams.advanced.integrate_with == 'cctbx':
+            self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+            self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+          elif self.gparams.advanced.integrate_with == 'dials':
+            self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
+            self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
+            self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
+            self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
+          self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
 
-        # Generate input file for PRIME
-        analysis.print_summary()
-        analysis.make_prime_input(filename=prime_file)
+          # Generate input file for PRIME
+          analysis.print_summary()
+          analysis.make_prime_input(filename=prime_file)
 
         # Display summary
         self.proc_nb.AddPage(self.summary_tab, 'Analysis')
@@ -2051,7 +2109,8 @@ class ProcWindow(wx.Frame):
                                       min_back=min_back)
     new_object_files = list(set(object_files) - set(self.read_object_files))
     new_objects = [self.read_object_file(i) for i in new_object_files]
-    new_finished_objects = [i for i in new_objects if i.status == 'final']
+    new_finished_objects = [i for i in new_objects if
+                            i is not None and i.status == 'final']
 
     self.finished_objects.extend(new_finished_objects)
     self.read_object_files = [i.obj_file for i in self.finished_objects]
@@ -2083,8 +2142,8 @@ class ProcWindow(wx.Frame):
           pickle = ep.load(pickle_path)
           object.final['observations'] = pickle['observations'][0]
       return object
-    except EOFError, e:
-      print 'OBJECT_IMPORT_ERROR: ', e
+    except Exception, e:
+      print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
       return None
 
   def onTimer(self, e):
@@ -2174,24 +2233,11 @@ class ProcWindow(wx.Frame):
 
   def onFinishedProcess(self, e):
     pass
-    # if self.gparams.mp_method != 'lsf':
-    #   self.img_objects = e.GetValue()
-    #   self.finish_process()
 
   def onFinishedImageFinder(self, e):
     new_img = e.GetValue()
     self.new_images = self.new_images + new_img
     self.find_new_images = self.monitor_mode
-
-  def onFinishedObjectFinder(self, e):
-    new_objects = e.GetValue()
-    new_objects = [i for i in new_objects if i.status == 'final']
-    self.finished_objects.extend(new_objects)
-
-    if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
-      self.finish_process()
-    else:
-      self.start_object_finder = True
 
   def finish_process(self):
     import shutil
@@ -2218,6 +2264,7 @@ class ProcWindow(wx.Frame):
       if str(self.state).lower() == 'finished':
         self.final_objects = [i for i in self.finished_objects if i.fail is None]
         self.analyze_results()
+
       else:
         if len(self.finished_objects) > 0:
           self.plot_integration()

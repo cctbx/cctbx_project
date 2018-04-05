@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 09/12/2017
+Last Changed: 04/04/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -34,9 +34,19 @@ assert Axes3D
 assert cm
 assert colors
 
+import time
+assert time
+
 import iota.components.iota_misc as misc
 from iota.components.iota_misc import Capturing
 from prime.postrefine import mod_input
+
+def isprop(v):
+  ''' Test if attribute is a property '''
+  return isinstance(v, property)
+
+class AnalysisResult(object):
+  pass
 
 class Plotter(object):
 
@@ -110,12 +120,10 @@ class Plotter(object):
       pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
 
     # Import relevant info
-    for i in [j.final['final'] for j in self.final_objects]:
+    for i in [j.final for j in self.final_objects]:
       try:
-        beam = ep.load(i)
-        info.append([i, beam['xbeam'], beam['ybeam'],
-                    beam['wavelength'], beam['distance'],
-                    beam['observations'][0].unit_cell().parameters()])
+        info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
+                    (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
       except IOError, e:
         pass
 
@@ -194,26 +202,6 @@ class Plotter(object):
       ax1.scatter(beamX, beamY, distances, alpha=1, s=20, c='grey', lw=1)
       ax1.plot([np.median(beamX)], [np.median(beamY)], [np.median(distances)],
                markersize=8, marker='o', c='yellow', lw=2)
-
-      # Plot spheres of projected mis-indexing limits for all three axes
-      # u = np.linspace(0, 2 * np.pi, 100)
-      # v = np.linspace(0, np.pi, 100)
-      # x = aD * np.outer(np.cos(u), np.sin(v))
-      # y = aD * np.outer(np.sin(u), np.sin(v))
-      # z = aD * np.outer(np.ones(np.size(u)), np.cos(v))
-      # ax1.plot_surface(x, y, z, rstride=4, cstride=4, color='r', alpha=0.05,
-      #                 linewidth=0.1, edgecolors='grey')
-      # x = bD * np.outer(np.cos(u), np.sin(v))
-      # y = bD * np.outer(np.sin(u), np.sin(v))
-      # z = bD * np.outer(np.ones(np.size(u)), np.cos(v))
-      # ax1.plot_surface(x, y, z, rstride=4, cstride=4, color='g', alpha=0.05,
-      #                 linewidth=0.1, edgecolors='grey')
-      # x = cD * np.outer(np.cos(u), np.sin(v))
-      # y = cD * np.outer(np.sin(u), np.sin(v))
-      # z = cD * np.outer(np.ones(np.size(u)), np.cos(v))
-      # ax1.plot_surface(x, y, z, rstride=4, cstride=4, color='b', alpha=0.05,
-      #                 linewidth=0.1, edgecolors='grey')
-
     else:
       ax1.scatter(cbeamX, cbeamY, alpha=1, s=20, c='grey', lw=1)
       ax1.scatter(obeamX, obeamY, alpha=1, s=20, c='red', lw=1)
@@ -258,7 +246,7 @@ class Plotter(object):
       plt.show()
 
     if return_values:
-      return np.median(beamX), np.median(beamY)
+      return np.median(beamX), np.median(beamY), pixel_size
 
 
   def plot_res_histogram(self, write_files=False):
@@ -313,8 +301,11 @@ class Analyzer(object):
     self.logfile = init.logfile
     self.prime_data_path = None
 
+    self.analysis_result = AnalysisResult()
+
     self.cons_pg = None
     self.cons_uc = None
+    self.clusters = []
 
     # Analyze image objects
     self.all_objects = all_objects
@@ -356,63 +347,88 @@ class Analyzer(object):
         self.h = [0]
         self.a = [0]
 
+      self.analysis_result.__setattr__('all_objects', len(self.all_objects))
+      self.analysis_result.__setattr__('diff_objects', len(self.diff_objects))
+      self.analysis_result.__setattr__('filter_fail_objects', len(self.filter_fail_objects))
+      self.analysis_result.__setattr__('final_objects', len(self.final_objects))
+      self.analysis_result.__setattr__('no_diff_objects', len(self.no_diff_objects))
+      self.analysis_result.__setattr__('not_idx_objects', len(self.not_idx_objects))
+      self.analysis_result.__setattr__('not_int_objects', len(self.not_int_objects))
+      self.analysis_result.__setattr__('not_spf_objects', len(self.not_spf_objects))
+      self.analysis_result.__setattr__('lres', self.lres)
+      self.analysis_result.__setattr__('hres', self.hres)
+      self.analysis_result.__setattr__('mos', self.mos)
+      self.analysis_result.__setattr__('h', self.h)
+      self.analysis_result.__setattr__('s', self.s)
+      self.analysis_result.__setattr__('a', self.a)
 
-  def print_results(self):
+  def print_results(self, final_table=None):
     """ Prints diagnostics from the final integration run. """
 
     cons_s = Counter(self.s).most_common(1)[0][0]
     cons_h = Counter(self.h).most_common(1)[0][0]
     cons_a = Counter(self.a).most_common(1)[0][0]
 
-    final_table = []
-    final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
+    if final_table is None:
+      final_table = []
+      final_table.append("\n\n{:-^80}\n".format('ANALYSIS OF RESULTS'))
 
-    self.clusters = []
+      # In case no images were integrated
+      if self.final_objects is None:
+        final_table.append('NO IMAGES INTEGRATED!')
+      else:
+        if self.params.advanced.integrate_with == 'cctbx':
+          final_table.append("Avg. signal height:    {:<8.3f}  std. dev:   "
+                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                             "".format(np.mean(self.s), np.std(self.s),
+                                       max(self.s), min(self.s), cons_s))
+          final_table.append("Avg. spot height:      {:<8.3f}  std. dev:   "
+                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                             "".format(np.mean(self.h), np.std(self.h),
+                                       max(self.h), min(self.h), cons_h))
+          final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:   "
+                             "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
+                            "".format(np.mean(self.a), np.std(self.a),
+                                      max(self.a), min(self.a), cons_a))
+        final_table.append("Avg. resolution:       {:<8.3f}  std. dev:   "
+                           "{:<6.2f}  lowest: {:<6.3f}  highest: {:<6.3f}"
+                          "".format(np.mean(self.hres), np.std(self.hres),
+                                    max(self.hres), min(self.hres)))
+        final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:   {:<6.2f}"
+                          "".format(np.mean(self.spots), np.std(self.spots)))
+        final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:   {:<6.2f}"
+                          "".format(np.mean(self.mos), np.std(self.mos)))
 
-    # In case no images were integrated
-    if self.final_objects is None:
-      final_table.append('NO IMAGES INTEGRATED!')
-    else:
-      if self.params.advanced.integrate_with == 'cctbx':
-        final_table.append("Avg. signal height:    {:<8.3f}  std. dev:   "
-                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                           "".format(np.mean(self.s), np.std(self.s),
-                                     max(self.s), min(self.s), cons_s))
-        final_table.append("Avg. spot height:      {:<8.3f}  std. dev:   "
-                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                           "".format(np.mean(self.h), np.std(self.h),
-                                     max(self.h), min(self.h), cons_h))
-        final_table.append("Avg. spot areas:       {:<8.3f}  std. dev:   "
-                           "{:<6.2f}  max: {:<3}  min: {:<3}  consensus: {:<3}"
-                          "".format(np.mean(self.a), np.std(self.a),
-                                    max(self.a), min(self.a), cons_a))
-      final_table.append("Avg. resolution:       {:<8.3f}  std. dev:   "
-                         "{:<6.2f}  lowest: {:<6.3f}  highest: {:<6.3f}"
-                        "".format(np.mean(self.hres), np.std(self.hres),
-                                  max(self.hres), min(self.hres)))
-      final_table.append("Avg. number of spots:  {:<8.3f}  std. dev:   {:<6.2f}"
-                        "".format(np.mean(self.spots), np.std(self.spots)))
-      final_table.append("Avg. mosaicity:        {:<8.3f}  std. dev:   {:<6.2f}"
-                        "".format(np.mean(self.mos), np.std(self.mos)))
+        # If more than one integrated image, plot various summary graphs
+        if len(self.final_objects) > 1:
+          plot = Plotter(self.params, self.final_objects, self.viz_dir)
+          if self.params.analysis.summary_graphs:
+            if ( self.params.advanced.integrate_with == 'cctbx' and
+                   self.params.cctbx.grid_search.type != None
+                ):
+              plot.plot_spotfinding_heatmap(write_files=True)
+            plot.plot_res_histogram(write_files=True)
+            med_beamX, med_beamY, pixel_size = plot.plot_beam_xy(write_files=True,
+                                                               return_values=True)
+          else:
+            beamXY_info = plot.calculate_beam_xy()
+            beamX, beamY = beamXY_info[:2]
+            med_beamX = np.median(beamX)
+            med_beamY = np.median(beamY)
+            pixel_size = beamXY_info[-1]
 
-      # If more than one integrated image, plot various summary graphs
-      if len(self.final_objects) > 1 and self.params.analysis.summary_graphs:
-        plot = Plotter(self.params, self.final_objects, self.viz_dir)
-        if ( self.params.advanced.integrate_with == 'cctbx' and
-               self.params.cctbx.grid_search.type != None
-            ):
-          plot.plot_spotfinding_heatmap(write_files=True)
-        plot.plot_res_histogram(write_files=True)
-        med_beamX, med_beamY = plot.plot_beam_xy(write_files=True,
-                                                 return_values=True)
-        final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"
-                           "".format(med_beamX, med_beamY))
+          final_table.append("Median Beam Center:    X = {:<4.2f}, Y = {:<4.2f}"
+                             "".format(med_beamX, med_beamY))
+          self.analysis_result.__setattr__('beamX_mm', med_beamX)
+          self.analysis_result.__setattr__('beamY_mm', med_beamY)
+          self.analysis_result.__setattr__('pixel_size', pixel_size)
+      self.analysis_result.__setattr__('final_table', final_table)
+
 
     for item in final_table:
         misc.main_log(self.logfile, item, (not self.gui_mode))
 
-  def unit_cell_analysis(self,
-                         write_files=True):
+  def unit_cell_analysis(self):
     """ Calls unit cell analysis module, which uses hierarchical clustering
         (Zeldin, et al, Acta D, 2015) to split integration results according to
         detected morphological groupings (if any). Most useful with preliminary
@@ -453,20 +469,62 @@ class Analyzer(object):
       if self.params.analysis.run_clustering:
         # run hierarchical clustering analysis
         from xfel.clustering.cluster import Cluster
-
         counter = 0
-        ucs = Cluster.from_files(pickle_list=self.pickles, use_b=True)
-        clusters, _ = ucs.ab_cluster(self.params.analysis.cluster_threshold,
+
+        threshold = self.params.analysis.cluster_threshold
+        cluster_limit = self.params.analysis.cluster_limit
+        if self.params.analysis.cluster_n_images > 0:
+          n_images = self.params.analysis.cluster_n_images
+        else:
+          n_images = len(self.final_objects)
+
+        obj_list = []
+        if n_images < len(self.final_objects):
+          import random
+          for i in range(n_images):
+            random_number = random.randrange(0, len(self.final_objects))
+            if self.final_objects[random_number] in obj_list:
+              while self.final_objects[random_number] in obj_list:
+                random_number = random.randrange(0, len(self.final_objects))
+              obj_list.append(self.final_objects[random_number])
+            else:
+              obj_list.append(self.final_objects[random_number])
+        if obj_list == []:
+          obj_list = self.final_objects
+
+        # Cluster from iterable (a teensy bit less precise, but somewhat
+        # faster; will see if it's worth the loss of precision); don't know
+        # why it's less precise!
+        with Capturing() as suppressed_output:
+          uc_iterable = []
+          for obj in obj_list:
+            unit_cell = (float(obj.final['a']),
+                         float(obj.final['b']),
+                         float(obj.final['c']),
+                         float(obj.final['alpha']),
+                         float(obj.final['beta']),
+                         float(obj.final['gamma']),
+                         obj.final['sg'])
+            uc_iterable.append(unit_cell)
+          ucs = Cluster.from_iterable(iterable=uc_iterable)
+
+        # Cluster from files (slower, but a teensy bit more precise; will
+        # keep here for now)
+        # ucs = Cluster.from_files(pickle_list=self.pickles)
+
+        # Do clustering
+        clusters, _ = ucs.ab_cluster(threshold=threshold,
                                      log=False, write_file_lists=False,
                                      schnell=False, doplot=False)
         uc_table.append("\n\n{:-^80}\n"\
                         "".format(' UNIT CELL ANALYSIS '))
 
         # extract clustering info and add to summary output list
-        if len(self.pickles) / 10 >= 10:
-          cluster_limit = 10
-        else:
-          cluster_limit = len(self.pickles) / 10
+        if cluster_limit is None:
+          if len(self.pickles) / 10 >= 10:
+            cluster_limit = 10
+          else:
+            cluster_limit = len(self.pickles) / 10
 
         for cluster in clusters:
           sorted_pg_comp = sorted(cluster.pg_composition.items(),
@@ -484,7 +542,7 @@ class Analyzer(object):
             sorted_cluster = sorted(clustered_objects,
                                     key=lambda i: i.final['mos'])
             # Write to file
-            if write_files:
+            if self.params.analysis.cluster_write_files:
               output_file = os.path.join(self.output_dir, "uc_cluster_{}.lst".format(counter))
               for obj in sorted_cluster:
                 with open(output_file, 'a') as scf:
@@ -580,6 +638,10 @@ class Analyzer(object):
       for item in uc_table:
         misc.main_log(self.logfile, item, (not self.gui_mode))
 
+      self.analysis_result.__setattr__('clusters', self.clusters)
+      self.analysis_result.__setattr__('cons_pg', self.cons_pg)
+      self.analysis_result.__setattr__('cons_uc', self.cons_uc)
+
       if self.gui_mode:
         return self.cons_pg, self.cons_uc, self.clusters
 
@@ -636,6 +698,7 @@ class Analyzer(object):
       not_integrated_file = os.path.join(self.output_dir, 'not_integrated.lst')
       integrated_file = os.path.join(self.output_dir, 'integrated.lst')
       int_images_file = os.path.join(self.output_dir, 'int_image_pickles.lst')
+      analyzer_file = os.path.join(self.output_dir, 'analysis.pickle')
 
       if self.prime_data_path == None:
         self.prime_data_path = integrated_file
@@ -677,6 +740,11 @@ class Analyzer(object):
         with open(int_images_file, 'w') as ipf:
           for obj in self.sorted_final_images:
             ipf.write('{}\n'.format(obj.final['img']))
+
+      # Dump the Analyzer object into a pickle file for later fast recovery
+      ep.dump(analyzer_file, self.analysis_result)
+
+
 
 
   def make_prime_input(self, filename='prime.phil'):
