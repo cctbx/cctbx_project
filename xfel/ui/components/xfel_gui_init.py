@@ -2665,14 +2665,13 @@ class MergeTab(BaseTab):
     run_numbers = []
     run_ids = []
     self.run_paths = []
-    if self.main.params.dispatcher == "cxi.xtc_process":
-      backend = "LABELIT"
+    if self.main.params.dispatcher == "cxi.xtc_process": #LABELIT backend
       integration_dir = "integration"
-    elif self.main.params.dispatcher == "cctbx.xfel.xtc_process":
-      backend = "DIALS"
+    elif self.main.params.dispatcher in ["cctbx.xfel.xtc_process", "cctbx.xfel.process",
+      "dials.stills_process"]:
       integration_dir = "out"
     else:
-      assert False, "unrecognized backend with dispatcher %s" % self.main.params.dispatcher
+      integration_dir = "out"
     for rb in self.trial.rungroups:
       for run in rb.runs:
         if run.run not in run_numbers:

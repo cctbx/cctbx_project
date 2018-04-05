@@ -218,6 +218,25 @@ class InputCtrl(CtrlBase):
     output_box.AddGrowableCol(1, 1)
     self.SetSizer(output_box)
 
+class TextCtrl(CtrlBase):
+  ''' Generic panel placing only a text box'''
+
+  def __init__(self, parent,
+               ctrl_size=(200, -1),
+               value=''):
+    CtrlBase.__init__(self, parent=parent)
+
+    output_box = wx.FlexGridSizer(1, 4, 0, 10)
+    self.txt = wx.StaticText(self)
+    self.txt.SetFont(self.font)
+    output_box.Add(self.txt)
+
+    self.ctr = wx.TextCtrl(self, size=ctrl_size)
+    self.ctr.SetValue(value)
+    output_box.Add(self.ctr, flag=wx.EXPAND)
+
+    self.SetSizer(output_box)
+
 class TextButtonCtrl(CtrlBase):
   ''' Generic panel that will place a text control, with a label and an
       optional large button, and an optional bitmap button'''

@@ -233,13 +233,13 @@ def submit_job(app, job):
     os.makedirs(configs_dir)
   target_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_params.phil"%
     (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
-  backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(app.params.dispatcher)]
+  dispatcher = app.params.dispatcher
 
   phil_str = job.trial.target_phil_str
   if job.rungroup.extra_phil_str is not None:
     phil_str += "\n" + job.rungroup.extra_phil_str
 
-  if backend == 'dials':
+  if dispatcher == 'cxi.xtc_process':
     from xfel.command_line.xtc_process import phil_scope as orig_phil_scope
     from iotbx.phil import parse
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
@@ -268,7 +268,7 @@ def submit_job(app, job):
   else:
     image_format = 'pickle'
 
-  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or backend == 'labelit' or image_format == 'pickle':
+  if job.rungroup.calib_dir is not None or job.rungroup.config_str is not None or dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
     config_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.cfg"%
       (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
   else:
@@ -318,7 +318,9 @@ def submit_job(app, job):
 
   phil = open(target_phil_path, "w")
 
-  if backend == 'dials':
+  if dispatcher == 'cxi.xtc_process':
+    phil.write(phil_str)
+  else:
     if trial_params.format.file_format == "cbf":
       trial_params.input.address = job.rungroup.detector_address
       trial_params.format.cbf.detz_offset = job.rungroup.detz_parameter
@@ -343,14 +345,10 @@ def submit_job(app, job):
     diff_phil = orig_phil_scope.fetch_diff(source=working_phil)
 
     phil.write(diff_phil.as_str())
-  elif backend == 'labelit':
-    phil.write(phil_str)
-  else:
-    assert False
   phil.close()
 
   if config_path is not None:
-    if backend == 'dials':
+    if dispatcher != 'cxi.xtc_process':
       d['untrusted_pixel_mask_path'] = None # Don't pass a pixel mask to mod_image_dict as it will
                                             # will be used during dials processing directly
 
@@ -362,7 +360,7 @@ def submit_job(app, job):
       for line in job.rungroup.config_str.split("\n"):
         if line.startswith('['):
           modules.append(line.lstrip('[').rstrip(']'))
-    if backend == 'labelit':
+    if dispatcher == 'cxi.xtc_process':
       modules.insert(0, 'my_ana_pkg.mod_radial_average')
       modules.extend(['my_ana_pkg.mod_hitfind:index','my_ana_pkg.mod_dump:index'])
     elif image_format == 'pickle':
@@ -377,9 +375,9 @@ def submit_job(app, job):
     if job.rungroup.config_str is not None:
       config_str += job.rungroup.config_str + "\n"
 
-    if backend == 'labelit' or image_format == 'pickle':
+    if dispatcher == 'cxi.xtc_process' or image_format == 'pickle':
       d['address'] = d['address'].replace('.','-').replace(':','|') # old style address
-      if backend == 'labelit':
+      if dispatcher == 'cxi.xtc_process':
         template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "index_all.cfg"))
       elif image_format == 'pickle':
         template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "image_dict.cfg"))
@@ -392,7 +390,7 @@ def submit_job(app, job):
     cfg.write(config_str)
     cfg.close()
 
-    if backend == 'dials':
+    if dispatcher != 'cxi.xtc_process':
       d['untrusted_pixel_mask_path'] = job.rungroup.untrusted_pixel_mask_path
 
   submit_phil_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d_submit.phil"%
@@ -401,7 +399,7 @@ def submit_job(app, job):
   template = open(os.path.join(libtbx.env.find_in_repositories("xfel/ui/db/cfgs"), "submit.phil"))
   phil = open(submit_phil_path, "w")
 
-  if backend == 'labelit':
+  if dispatcher == 'cxi.xtc_process':
     d['target'] = None # any target phil will be in mod_hitfind
 
   for line in template.readlines():

@@ -373,24 +373,38 @@ class AdvancedSettingsDialog(BaseDialog):
     self.analysis_sizer = wx.StaticBoxSizer(analysis_box, wx.VERTICAL)
 
     # Processing back-ends
-    self.back_ends = ['DIALS', 'LABELIT']
-    self.dispatchers = ['cctbx.xfel.xtc_process', 'cxi.xtc_process']
+    self.dispatchers_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.back_ends = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'LABELIT', 'custom']
+    self.dispatchers = ['cctbx.xfel.xtc_process', 'cctbx.xfel.process', 'dials.stills_process', 'cxi.xtc_process', 'custom']
     self.back_end = gctr.ChoiceCtrl(self,
                                     label='Processing back end:',
                                     label_size=(180, -1),
                                     label_style='bold',
+                                    ctrl_size=(200, -1),
                                     choices=self.back_ends)
-    self.analysis_sizer.Add(self.back_end, flag=wx.EXPAND | wx.ALL, border=10)
+    self.Bind(wx.EVT_CHOICE, self.onBackendChoice)
+    self.dispatchers_sizer.Add(self.back_end, flag=wx.ALIGN_LEFT)
+
+    self.custom_dispatcher = gctr.TextCtrl(self,
+                                           ctrl_size=(300, -1),
+                                           value="")
+    self.dispatchers_sizer.Add(self.custom_dispatcher, flag=wx.EXPAND | wx.ALL)
+
     try:
       self.back_end.ctr.SetSelection(self.dispatchers.index(params.dispatcher))
+      self.custom_dispatcher.Hide()
     except ValueError:
-      pass
+      self.back_end.ctr.SetSelection(len(self.dispatchers)-1)
+      self.custom_dispatcher.ctr.SetValue(params.dispatcher)
+
+    self.analysis_sizer.Add(self.dispatchers_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     img_types = ['corrected', 'raw']
     self.avg_img_type = gctr.ChoiceCtrl(self,
                                         label='Avg. Image Type:',
                                         label_size=(180, -1),
                                         label_style='bold',
+                                        ctrl_size=(200, -1),
                                         choices=img_types)
     if params.average_raw_data:
       i = img_types.index('raw')
@@ -435,8 +449,19 @@ class AdvancedSettingsDialog(BaseDialog):
       self.nproc.ctr.SetValue(1)
       self.nproc.ctr.SetIncrement(1)
 
+  def onBackendChoice(self, e):
+    self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
+    if self.params.dispatcher == 'custom':
+      self.custom_dispatcher.Show()
+      self.Layout()
+    else:
+      self.custom_dispatcher.Hide()
+      self.Layout()
+
   def onOK(self, e):
     self.params.dispatcher = self.dispatchers[self.back_end.ctr.GetSelection()]
+    if self.params.dispatcher == 'custom':
+      self.params.dispatcher = self.custom_dispatcher.ctr.GetValue()
     self.params.mp.method = self.mp_option.ctr.GetStringSelection()
     self.params.mp.queue = self.queue.ctr.GetStringSelection()
     self.params.mp.nproc = int(self.nproc.ctr.GetValue())
@@ -1809,11 +1834,11 @@ class TrialDialog(BaseDialog):
       target_phil_str = self.phil_box.GetValue()
 
       # Parameter validation
-      backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.db.params.dispatcher)]
-      if backend == 'labelit':
+      dispatcher = self.db.params.dispatcher
+      if dispatcher == 'cxi.xtc_process': #LABELIT
         from spotfinder.applications.xfel import cxi_phil
         phil_scope = cxi_phil.cxi_versioned_extract().persist.phil_scope
-      elif backend == 'dials':
+      else:
         from xfel.command_line.xtc_process import phil_scope
 
       from iotbx.phil import parse
@@ -1821,7 +1846,7 @@ class TrialDialog(BaseDialog):
       try:
         trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
       except Exception, e:
-        msg = '\nParameters incompatible with %s:\n%s\n' % (backend, str(e))
+        msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
       else:
         if len(unused) > 0:
           msg = [str(item) for item in unused]

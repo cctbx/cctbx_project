@@ -207,17 +207,15 @@ class xfel_db_application(object):
     trial = Trial(self, d_min = d_min, **kwargs)
     if trial.target_phil_str is not None:
       from iotbx.phil import parse
-      backend = ['labelit', 'dials'][['cxi.xtc_process', 'cctbx.xfel.xtc_process'].index(self.params.dispatcher)]
-      if backend == 'labelit':
+      dispatcher = self.params.dispatcher
+      if dispatcher == 'cxi.xtc_process':
         from spotfinder.applications.xfel import cxi_phil
         trial_params = cxi_phil.cxi_versioned_extract().persist.phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.isoforms
-      elif backend == 'dials':
+      else:
         from xfel.command_line.xtc_process import phil_scope
         trial_params = phil_scope.fetch(parse(trial.target_phil_str)).extract()
         isoforms = trial_params.indexing.stills.isoforms
-      else:
-        assert False
       if len(isoforms) > 0:
         for isoform in isoforms:
           print "Creating isoform", isoform.name
@@ -238,9 +236,9 @@ class xfel_db_application(object):
             d_max, d_min = binner.bin_d_range(i)
             Bin(self, number = i, d_min = d_min, d_max = d_max,
                 total_hkl = binner.counts_complete()[i], cell_id = cell.id)
-      elif backend == 'labelit':
+      elif dispatcher == 'cxi.xtc_process':
         pass # TODO: labelit target
-      elif backend == 'dials':
+      else:
         if trial_params.indexing.known_symmetry.unit_cell is not None and \
             trial_params.indexing.known_symmetry.space_group is not None:
           print "Creating target cell"
