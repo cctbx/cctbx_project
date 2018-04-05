@@ -6,7 +6,6 @@ from __future__ import division
 import libtbx
 from scitbx.array_family import flex
 from timeit import default_timer as current_time
-from scitbx.examples.bevington import linsolver_backend as lsb
 
 class journaled_non_linear_ls(object):
   """ A decorator that keeps the history of the objective, gradient,
