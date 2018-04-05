@@ -151,7 +151,7 @@ class fully_buffered_subprocess(fully_buffered_base):
       stdout=subprocess.PIPE,
       stderr=stderr,
       universal_newlines=True,
-      close_fds=not subprocess.mswindows)
+      close_fds=(sys.platform != 'win32'))
     o, e = p.communicate(input=stdin_lines)
     if (stdout_splitlines):
       self.stdout_buffer = None
