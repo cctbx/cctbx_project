@@ -1105,6 +1105,8 @@ Wait for the command to finish, then try again.""" % vars())
       cmd = ""
       if (source_is_py or source_is_python_exe):
         qnew_tmp = qnew
+        if self.python_version_major_minor[0] == 3:
+          qnew_tmp = '' # -Q is gone in Python3.
         if self.build_options.python3warn == 'warn':
           qnew_tmp += " -3"
         elif self.build_options.python3warn == 'fail':
