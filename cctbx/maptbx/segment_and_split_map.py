@@ -4860,8 +4860,26 @@ def get_params(args,map_data=None,crystal_symmetry=None,
        map_data=map_data,
        expand_target=params.segmentation.expand_target,
        out=out)
+
+  if params.output_files.output_info_file and params.control.shift_only:
+    write_info_file(params=params,tracking_data=tracking_data,out=out)
+
   return params,map_data,half_map_data_list,pdb_hierarchy,\
      tracking_data,shifted_ncs_object
+
+def write_info_file(params=None,tracking_data=None,out=sys.stdout):
+    # write out the info file
+    from libtbx import easy_pickle
+    tracking_data.show_summary(out=out)
+    print >>out,"\nWriting summary information to: %s" %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))
+    print >>out,\
+      "\nTo restore original position of a PDB file built into these maps, use:"
+    print >>out,"phenix.segment_and_split_map info_file=%s" %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n"
+    easy_pickle.dump(os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file),
+       tracking_data)
+
 
 def get_and_apply_soft_mask_to_maps(
     resolution=None,  #params.crystal_info.resolution
@@ -10577,16 +10595,8 @@ def run(args,
 
 
   if params.output_files.output_info_file and ncs_group_obj:
-    from libtbx import easy_pickle
-    tracking_data.show_summary(out=out)
-    print >>out,"\nWriting summary information to: %s" %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))
-    print >>out,\
-      "\nTo restore original position of a PDB file built into these maps, use:"
-    print >>out,"phenix.segment_and_split_map info_file=%s" %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file))+" pdb_to_restore=mypdb.pdb\n"
-    easy_pickle.dump(os.path.join(tracking_data.params.output_files.output_directory,params.output_files.output_info_file),
-       tracking_data)
+    write_info_file(params=params,tracking_data=tracking_data,out=out)
+
   return ncs_group_obj,remainder_ncs_group_obj,tracking_data
 
 
