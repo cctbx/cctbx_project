@@ -6,10 +6,10 @@ from libtbx.utils import \
   warn_if_unexpected_md5_hexdigest, \
   write_this_is_auto_generated
 from libtbx.env_config import darwin_shlinkcom
-import string
-import sys, os, glob
+import glob
+import os
+import sys
 from shutil import copystat
-op = os.path
 Import("env_base", "env_etc")
 env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
@@ -231,7 +231,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
                        lo="boost/libs/%s/src/libboost_%s.lo" % ((libname,)*2),
                        dylib="lib/libboost_%s.dylib" % libname)
 
-    env_boost_thread_and_co = env_boost_shlibs_base.Copy()
+    env_boost_thread_and_co = env_boost_shlibs_base.Clone()
 
     # the following is necessary to avoid a bad __declspec on Windows
     # in Boost.Thread (don't ask!)
@@ -241,7 +241,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
       paths=[env_etc.boost_include])
 
     # Boost.Thread
-    env_boost_threads = env_boost_thread_and_co.Copy()
+    env_boost_threads = env_boost_thread_and_co.Clone()
     simple_darwin_shlinkcom(env_etc, env_boost_threads, 'thread')
     boost_thread_dir = os.path.join('libs', 'thread', 'src')
     boost_thread_src = ['future.cpp']
@@ -276,7 +276,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
-      env_boost_system = env_boost_thread_and_co.Copy()
+      env_boost_system = env_boost_thread_and_co.Clone()
       simple_darwin_shlinkcom(env_etc, env_boost_system, 'system')
       boost_system_src = [
         '#' + os.path.relpath(p, os.path.dirname(env_etc.boost_dist))
@@ -296,7 +296,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
 
     #Boost.Chrono?
     if boost_thread_uses_winthreads:
-      env_boost_chrono = env_boost_thread_and_co.Copy()
+      env_boost_chrono = env_boost_thread_and_co.Clone()
       simple_darwin_shlinkcom(env_etc, env, 'chrono')
       boost_chrono_src = [
         '#' + os.path.relpath(p, os.path.dirname(env_etc.boost_dist))
@@ -636,30 +636,29 @@ main()
         or output.count("1") != 1):
       raise RuntimeError('Unexpected output: "%s"' % output)
     dir_name = libtbx.env.under_build("include/boost_adaptbx")
-    if (not op.isdir(dir_name)):
+    if (not os.path.isdir(dir_name)):
       os.makedirs(dir_name)
-    assert op.isdir(dir_name)
+    assert os.path.isdir(dir_name)
     if (1): # XXX backward compatibility 2009-10-14
-      file_name = op.join(dir_name, "boost_python_type_id_eq.h")
-      if (op.isfile(file_name)):
+      file_name = os.path.join(dir_name, "boost_python_type_id_eq.h")
+      if (os.path.isfile(file_name)):
         try: os.remove(file_name)
         except OSError: pass
-    file_name = op.join(dir_name, "type_id_eq.h")
-    f = open(file_name, "w")
-    write_this_is_auto_generated(
-      f=f,
-      file_name_generator="cctbx_project/boost_adaptbx/SConscript")
-    guard = "BOOST_ADAPTBX_TYPE_ID_EQ_H"
-    print("#ifndef", guard, file=f)
-    print("#define", guard, file=f)
-    print(file=f)
-    for u,c in zip(unsigned_types, output):
-      if (c == "1"):
-        print("#define BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_" \
-          + u.replace(" ", "_").upper(), file=f)
-    print(file=f)
-    print("#endif // GUARD", file=f)
-    del f
+    file_name = os.path.join(dir_name, "type_id_eq.h")
+    with open(file_name, "w") as f:
+      write_this_is_auto_generated(
+        f=f,
+        file_name_generator="cctbx_project/boost_adaptbx/SConscript")
+      guard = "BOOST_ADAPTBX_TYPE_ID_EQ_H"
+      print("#ifndef", guard, file=f)
+      print("#define", guard, file=f)
+      print(file=f)
+      for u,c in zip(unsigned_types, output):
+        if (c == "1"):
+          print("#define BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_" \
+            + u.replace(" ", "_").upper(), file=f)
+      print(file=f)
+      print("#endif // GUARD", file=f)
   write_type_id_eq_h()
 
   if (os.path.isfile(libtbx.env.under_build("lib/libswig_class_example.a"))):

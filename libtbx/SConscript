@@ -1,16 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import re
+import subprocess
+import sys
+
+import SCons
+
 import libtbx.load_env
 import libtbx.env_config
 from libtbx import easy_run
 from libtbx.utils import getenv_bool
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
-import os
-import re
-import subprocess
-import sys
-op = os.path
 
 class empty(object):
 
@@ -79,7 +81,7 @@ def determine_cpp0x_flag():
   #    module_name="boost",
   #    default=None,
   #    path=".svn",
-  #    test=op.isdir)
+  #    test=os.path.isdir)
   return result
 
 env_etc = empty()
@@ -409,8 +411,8 @@ libtbx.scons: Warning: compiling with /MDd:
     else:
       env_base = Environment(ENV=os.environ)
     print("MSVC_VERSION:", env_base["MSVC_VERSION"])
-    env_etc.have_manifest_tool = op.isfile(
-      op.join(op.dirname(cl_exe), "mt.exe"))
+    env_etc.have_manifest_tool = os.path.isfile(
+      os.path.join(os.path.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
       CC="icl",
       CXX="icl",
@@ -1001,7 +1003,7 @@ def _absolute_path_concat(prefix, list, suffix, env, f=lambda x: x, target=None,
   new_list = []
   relatives = []
   for p in list:
-    if op.isabs(p): new_list.append(p)
+    if os.path.isabs(p): new_list.append(p)
     else: relatives.append(p)
   from_relatives = f(SCons.PathList.PathList(relatives).subst_path(env, target, source))
   if from_relatives is not None: new_list.extend([ str(p) for p in from_relatives ])
