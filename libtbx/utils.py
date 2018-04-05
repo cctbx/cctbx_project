@@ -1636,8 +1636,10 @@ class detect_binary_file(object):
 
   def is_binary_file(self, block):
     if (self.monitor_initial > 0):
+      if block and not isinstance(block[0], int):
+        block = (ord(c) for c in block)
       for c in block:
-        if (1 < ord(c) < 128):
+        if (1 < c < 128):
           self.n_ascii_characters += 1
         else:
           self.n_non_ascii_characters += 1
@@ -1651,6 +1653,7 @@ class detect_binary_file(object):
           break
     return self.status
 
+  @staticmethod
   def from_initial_block(
         file_name,
         monitor_initial=None,
@@ -1658,11 +1661,12 @@ class detect_binary_file(object):
     detector = detect_binary_file(
       monitor_initial=monitor_initial,
       max_fraction_non_ascii=max_fraction_non_ascii)
-    block = open(file_name, "rb").read(detector.monitor_initial)
-    if (len(block) == 0): return False
+    with open(file_name, "rb") as fh:
+      block = fh.read(detector.monitor_initial)
+    if not block:
+      return False
     detector.monitor_initial = min(len(block), detector.monitor_initial)
     return detector.is_binary_file(block=block)
-  from_initial_block = staticmethod(from_initial_block)
 
 def search_for(
       pattern,

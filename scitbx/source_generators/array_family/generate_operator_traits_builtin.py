@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators import utils
 import sys
 
@@ -66,12 +66,12 @@ def run(target_dir):
   assert len(op_types) == len(result_type)
   if ("--Raw" in sys.argv):
     for i in xrange(len(op_types)):
-      print >> f, "%s + %s = %s" % (
-        op_types[i].lhs, op_types[i].rhs, result_type[i])
+      print("%s + %s = %s" % (
+        op_types[i].lhs, op_types[i].rhs, result_type[i]), file=f)
   else:
     f = utils.join_open(target_dir, "operator_traits_builtin.h", "w")
     utils.write_this_is_auto_generated(f, this)
-    print >> f, """\
+    print("""\
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H
 
@@ -89,21 +89,21 @@ namespace scitbx { namespace af {
 
   // The remainder of this file defines the traits where the
   // result type is the type of the rhs argument.
-"""
+""", file=f)
 
     for i in xrange(len(op_types)):
       if (result_type[i]):
-        print >> f, """  template<>
+        print("""  template<>
   struct binary_operator_traits<%s, %s > {
     typedef %s arithmetic;
   };
-""" % (op_types[i].lhs, op_types[i].rhs, result_type[i])
+""" % (op_types[i].lhs, op_types[i].rhs, result_type[i]), file=f)
 
-    print >> f, "}} // namespace scitbx::af"
-    print >> f
-    print >> f, "#endif // DOXYGEN_SHOULD_SKIP_THIS"
-    print >> f
-    print >> f, "#endif // SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H"
+    print("}} // namespace scitbx::af", file=f)
+    print(file=f)
+    print("#endif // DOXYGEN_SHOULD_SKIP_THIS", file=f)
+    print(file=f)
+    print("#endif // SCITBX_ARRAY_FAMILY_OPERATOR_TRAITS_BUILTIN_H", file=f)
     f.close()
 
 if (__name__ == "__main__"):

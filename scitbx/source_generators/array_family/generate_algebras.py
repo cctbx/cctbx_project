@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.source_generators.array_family import operator_functor_info
 from scitbx.source_generators.array_family import generate_std_imports
 from scitbx.source_generators import utils
@@ -223,7 +224,7 @@ def generate_unary_ops(f, array_type_name):
   for op_class, op_symbol in (("arithmetic", "-"),
                               ("logical", "!")):
     d = operator_decl_params(array_type_name, "unary", op_class, (1,0))
-    print >> f, """%s
+    print("""%s
   inline
 %s
   operator%s(%s const& a) {
@@ -233,25 +234,25 @@ def generate_unary_ops(f, array_type_name):
       format_header("  ", d.header),
       format_list("  ", d.return_array_type),
       op_symbol, d.params[0],
-      format_list("    ", d.typedef_return_array_type))
+      format_list("    ", d.typedef_return_array_type)), file=f)
     if (base_array_type_name(array_type_name) == "tiny"):
-      print >> f, """    return_array_type result;
+      print("""    return_array_type result;
     array_operation_a(fn::functor_%s<
         return_element_type,
         ElementType>(),
       a.begin(), result.begin(), a.size(), true_type());
     return result;
   }
-""" % (operator_functor_info.unary_functors[op_symbol],)
+""" % (operator_functor_info.unary_functors[op_symbol],), file=f)
     else:
-      print >> f, """    return return_array_type(%s,
+      print("""    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
         fn::functor_%s<
           return_element_type,
           ElementType>(), a.begin())));
   }
 """ % (result_constructor_args,
-       operator_functor_info.unary_functors[op_symbol])
+       operator_functor_info.unary_functors[op_symbol]), file=f)
 
 def generate_unary_apply(f, array_type_name):
   result_constructor_args = get_result_constructor_args(array_type_name)
@@ -265,7 +266,7 @@ def generate_unary_apply(f, array_type_name):
   header2 = get_template_header(nta)
   nta.append([["typename", "ReturnElementType"]])
   header1 = get_template_header(nta)
-  print >> f, """%s
+  print("""%s
   inline
   %s
   apply(UnaryOperation const& op,
@@ -275,20 +276,20 @@ def generate_unary_apply(f, array_type_name):
        format_header("  ", header1),
        return_array_type,
        d.params[0],
-       return_array_type)
+       return_array_type), file=f)
   if (base_array_type_name(array_type_name) == "tiny"):
-    print >> f, """    return_array_type result;
+    print("""    return_array_type result;
     array_operation_a(op,
       a.begin(), result.begin(), a.size(), true_type());
     return result;
-  }"""
+  }""", file=f)
   else:
-    print >> f, """    return return_array_type(%s,
+    print("""    return return_array_type(%s,
       make_init_functor(
         array_functor_a<UnaryOperation, ElementType, ReturnElementType>(
           op, a.begin())));
-  }""" % (result_constructor_args,)
-  print >> f, """
+  }""" % (result_constructor_args,), file=f)
+  print("""
 %s
   inline
   %s
@@ -299,13 +300,13 @@ def generate_unary_apply(f, array_type_name):
 """ % (format_header("  ", header2),
        return_array_type.replace(
          "ReturnElementType", "typename UnaryOperation::result_type"),
-       d.params[0])
+       d.params[0]), file=f)
 
 def elementwise_binary_op(f,
       array_type_name, op_class, op_symbol, type_flags, function_name):
   d = operator_decl_params(array_type_name, "binary", op_class, type_flags)
   a = binary_operator_algo_params(array_type_name, type_flags)
-  print >> f, """%s
+  print("""%s
   inline
 %s
   %s(
@@ -317,9 +318,9 @@ def elementwise_binary_op(f,
       format_header("  ", d.header),
       format_list("  ", d.return_array_type),
       function_name, d.params[0], d.params[1],
-      format_list("    ", d.typedef_return_array_type))
+      format_list("    ", d.typedef_return_array_type)), file=f)
   if (base_array_type_name(array_type_name) == "tiny"):
-    print >> f, """    return_array_type result;
+    print("""    return_array_type result;
     array_operation_%s(fn::functor_%s<
         return_element_type,
         %s,
@@ -330,9 +331,9 @@ def elementwise_binary_op(f,
 """ % (a.type_flags_code,
        operator_functor_info.binary_functors[op_symbol],
        d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1], a.loop_n)
+       a.begin[0], a.begin[1], a.loop_n), file=f)
   else:
-    print >> f, """    %sreturn return_array_type(%s,
+    print("""    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
         fn::functor_%s<
           return_element_type,
@@ -344,14 +345,14 @@ def elementwise_binary_op(f,
        a.type_flags_code,
        operator_functor_info.binary_functors[op_symbol],
        d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1])
+       a.begin[0], a.begin[1]), file=f)
 
 def elementwise_inplace_binary_op(f,
       array_type_name, op_class, op_symbol, type_flags):
   d = operator_decl_params(array_type_name, "binary", "n/a", type_flags)
   d.params[0] = d.params[0].replace("const_ref", "ref")
   a = binary_operator_algo_params(array_type_name, type_flags)
-  print >> f, """%s
+  print("""%s
   inline
   %s&
   operator%s(
@@ -371,7 +372,7 @@ def elementwise_inplace_binary_op(f,
        operator_functor_info.in_place_binary_functors[op_symbol],
        d.return_element_type[0],
        d.element_types[1],
-       a.begin[1], a.loop_n);
+       a.begin[1], a.loop_n), file=f);
 
 def generate_elementwise_binary_op(f, array_type_name, op_class, op_symbol):
   function_name = "operator" + op_symbol
@@ -389,7 +390,7 @@ def generate_1arg_element_wise(f, array_type_name, function_names):
   result_constructor_args = get_result_constructor_args(array_type_name)
   d = operator_decl_params(array_type_name, "unary", "arithmetic", (1,0))
   for function_name in function_names:
-    print >> f, """%s
+    print("""%s
   inline
 %s
   %s(%s const& a) {
@@ -399,20 +400,20 @@ def generate_1arg_element_wise(f, array_type_name, function_names):
       format_header("  ", d.header),
       format_list("  ", d.return_array_type),
       function_name, d.params[0],
-      format_list("    ", d.typedef_return_array_type))
+      format_list("    ", d.typedef_return_array_type)), file=f)
     if (base_array_type_name(array_type_name) == "tiny"):
-      print >> f, """    return_array_type result;
+      print("""    return_array_type result;
     array_operation_a(fn::functor_%s<return_element_type, ElementType>(),
       a.begin(), result.begin(), a.size(), true_type());
     return result;
   }
-""" % (function_name,)
+""" % (function_name,), file=f)
     else:
-      print >> f, """    return return_array_type(%s,
+      print("""    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
         fn::functor_%s<return_element_type, ElementType>(), a.begin())));
   }
-""" % (result_constructor_args, function_name)
+""" % (result_constructor_args, function_name), file=f)
 
 def generate_2arg_element_wise(f,
   array_type_name, function_names,
@@ -423,7 +424,7 @@ def generate_2arg_element_wise(f,
       d = operator_decl_params(
         array_type_name, "binary", "n/a", type_flags, equal_element_type)
       a = binary_operator_algo_params(array_type_name, type_flags)
-      print >> f, """%s
+      print("""%s
   inline
 %s
   %s(
@@ -435,9 +436,9 @@ def generate_2arg_element_wise(f,
        format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1],
-       format_list("    ", d.typedef_return_array_type))
+       format_list("    ", d.typedef_return_array_type)), file=f)
       if (base_array_type_name(array_type_name) == "tiny"):
-        print >> f, """
+        print("""
     return_array_type result;
     array_operation_%s(fn::functor_%s<
         return_element_type, %s, %s>(),
@@ -446,9 +447,9 @@ def generate_2arg_element_wise(f,
   }
 """ % (a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1], a.loop_n)
+       a.begin[0], a.begin[1], a.loop_n), file=f)
       else:
-        print >> f, """    %sreturn return_array_type(%s,
+        print("""    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
         fn::functor_%s<return_element_type,
           %s, %s>(),
@@ -458,7 +459,7 @@ def generate_2arg_element_wise(f,
        a.result_constructor_args,
        a.type_flags_code,
        function_name, d.element_types[0], d.element_types[1],
-       a.begin[0], a.begin[1])
+       a.begin[0], a.begin[1]), file=f)
 
 def generate_x_x_s_element_wise(f,
   array_type_name, function_names,
@@ -471,7 +472,7 @@ def generate_x_x_s_element_wise(f,
         array_type_name, "binary", "bool_result",
         type_flags, equal_element_type)
       a = binary_operator_algo_params(array_type_name, type_flags)
-      print >> f, """%s
+      print("""%s
   inline
 %s
   %s(
@@ -484,9 +485,9 @@ def generate_x_x_s_element_wise(f,
       (format_header("  ", d.header),
        format_list("  ", d.return_array_type),
        function_name, d.params[0], d.params[1], addl_args[0],
-       format_list("    ", d.typedef_return_array_type)))
+       format_list("    ", d.typedef_return_array_type))), file=f)
       if (base_array_type_name(array_type_name) == "tiny"):
-        print >> f, """
+        print("""
     return_array_type result;
     array_operation_%s_s(fn::functor_%s<
         return_element_type, %s, %s, %s>(),
@@ -496,9 +497,9 @@ def generate_x_x_s_element_wise(f,
   }
 """ % (a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
-       a.begin[0], a.begin[1], addl_args[1], a.loop_n)
+       a.begin[0], a.begin[1], addl_args[1], a.loop_n), file=f)
       else:
-        print >> f, """    %sreturn return_array_type(%s,
+        print("""    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s_s(
         fn::functor_%s<return_element_type,
           %s, %s, %s>(),
@@ -508,14 +509,14 @@ def generate_x_x_s_element_wise(f,
        a.result_constructor_args,
        a.type_flags_code,
        function_name, "ElementType", "ElementType", "ElementType",
-       a.begin[0], a.begin[1], addl_args[1])
+       a.begin[0], a.begin[1], addl_args[1]), file=f)
 
 def generate_element_wise_special(f,
   array_type_name, special_def
 ):
   p = special_decl_params(array_type_name, special_def)
   if (len(p.arg_array_types) == 1):
-    print >> f, """%s
+    print("""%s
   inline
   %s
   %s(%s const& a) {
@@ -523,9 +524,9 @@ def generate_element_wise_special(f,
       format_header("  ", p.header),
       p.return_array_type,
       p.function_name, p.arg_array_types[0],
-      p.return_array_type)
+      p.return_array_type), file=f)
     if (base_array_type_name(array_type_name) == "tiny"):
-      print >> f, """    return_array_type result;
+      print("""    return_array_type result;
     array_operation_a(fn::functor_%s<
       %s,
       %s >(),
@@ -533,11 +534,11 @@ def generate_element_wise_special(f,
     return result;
   }
 """ % (p.function_name,
-       special_def[0], special_def[2])
+       special_def[0], special_def[2]), file=f)
     else:
       result_constructor_args = get_result_constructor_args(
         array_type_name)
-      print >> f, """    return return_array_type(%s,
+      print("""    return return_array_type(%s,
       make_init_functor(make_array_functor_a(
         fn::functor_%s<
           %s,
@@ -545,7 +546,7 @@ def generate_element_wise_special(f,
   }
 """ % (result_constructor_args,
        p.function_name,
-       special_def[0], special_def[2])
+       special_def[0], special_def[2]), file=f)
   else:
     for type_flags in ((1,1), (1,0), (0,1)):
       a = binary_operator_algo_params(array_type_name, type_flags)
@@ -555,7 +556,7 @@ def generate_element_wise_special(f,
           params.append(p.arg_array_types[i])
         else:
           params.append(p.arg_element_types[i])
-      print >> f, """%s
+      print("""%s
   inline
   %s
   %s(
@@ -564,9 +565,9 @@ def generate_element_wise_special(f,
     typedef %s return_array_type;""" % (
       format_header("  ", p.header), p.return_array_type,
       p.function_name, params[0], params[1],
-      p.return_array_type)
+      p.return_array_type), file=f)
       if (base_array_type_name(array_type_name) == "tiny"):
-        print >> f, """    return_array_type result;
+        print("""    return_array_type result;
     array_operation_%s(fn::functor_%s<
         %s,
         %s,
@@ -577,9 +578,9 @@ def generate_element_wise_special(f,
 """ % (a.type_flags_code,
        p.function_name,
        special_def[0], special_def[2], special_def[3],
-       a.begin[0], a.begin[1], a.loop_n)
+       a.begin[0], a.begin[1], a.loop_n), file=f)
       else:
-        print >> f, """    %sreturn return_array_type(%s,
+        print("""    %sreturn return_array_type(%s,
       make_init_functor(make_array_functor_%s(
         fn::functor_%s<
           %s,
@@ -591,7 +592,7 @@ def generate_element_wise_special(f,
        a.type_flags_code,
        p.function_name,
        special_def[0], special_def[2], special_def[3],
-       a.begin[0], a.begin[1])
+       a.begin[0], a.begin[1]), file=f)
 
 def one_type(target_dir, array_type_name):
   f = utils.join_open(target_dir, "%s_algebra.h" % array_type_name, "w")
@@ -602,30 +603,30 @@ def one_type(target_dir, array_type_name):
   generic_include = "functors"
   if (base_array_type_name(array_type_name) == "tiny"):
     generic_include = "operators"
-  print >> f, """\
+  print("""\
 #ifndef SCITBX_ARRAY_FAMILY_%s_ALGEBRA_H
 #define SCITBX_ARRAY_FAMILY_%s_ALGEBRA_H
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 #include <scitbx/array_family/%s.h>
-""" % ((array_type_name.upper(),) * 2 + (include_array_type_name,))
+""" % ((array_type_name.upper(),) * 2 + (include_array_type_name,)), file=f)
   if (array_type_name == "small"):
-    print >> f, """#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
+    print("""#if (defined(BOOST_MSVC) && BOOST_MSVC <= 1300) // VC++ 7.0
 #define SCITBX_ARRAY_FAMILY_SMALL_ALGEBRA_MIN_N1_N2 N1
 #else
 #define SCITBX_ARRAY_FAMILY_SMALL_ALGEBRA_MIN_N1_N2 (N1<N2?N1:N2)
 #endif
 
-"""
-  print >> f, """#include <scitbx/array_family/operator_traits_builtin.h>
+""", file=f)
+  print("""#include <scitbx/array_family/operator_traits_builtin.h>
 #include <scitbx/array_family/detail/operator_functors.h>
 #include <scitbx/array_family/detail/generic_array_%s.h>
 #include <scitbx/array_family/detail/std_imports.h>
 #include <scitbx/array_family/misc_functions.h>
 
 namespace scitbx { namespace af {
-""" % (generic_include,)
+""" % (generic_include,), file=f)
 
   generate_unary_ops(f, array_type_name)
   for op_symbol in operator_functor_info.arithmetic_binary_ops:
@@ -655,12 +656,12 @@ namespace scitbx { namespace af {
   for args in misc_functions_x_x_s:
     apply(generate_x_x_s_element_wise, (f, array_type_name) + args)
 
-  print >> f, "}} // namespace scitbx::af"
-  print >> f
-  print >> f, "#endif // DOXYGEN_SHOULD_SKIP_THIS"
-  print >> f
-  print >> f, "#endif // SCITBX_ARRAY_FAMILY_%s_ALGEBRA_H" % (
-    array_type_name.upper(),)
+  print("}} // namespace scitbx::af", file=f)
+  print(file=f)
+  print("#endif // DOXYGEN_SHOULD_SKIP_THIS", file=f)
+  print(file=f)
+  print("#endif // SCITBX_ARRAY_FAMILY_%s_ALGEBRA_H" % (
+    array_type_name.upper(),), file=f)
 
   f.close()
 

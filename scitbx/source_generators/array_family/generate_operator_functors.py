@@ -1,11 +1,11 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators.array_family import operator_functor_info
 from scitbx.source_generators import utils
 
 this = "scitbx.source_generators.array_family.generate_operator_functors"
 
 def generate_unary(f, name, op):
-  print >> f, """
+  print("""
   template <typename ResultType,
             typename ArgumentType>
   struct functor_%s {
@@ -13,10 +13,10 @@ def generate_unary(f, name, op):
     ResultType operator()(ArgumentType const& x) const {
       return ResultType(%s);
     }
-  };""" % (name, op)
+  };""" % (name, op), file=f)
 
 def generate_binary(f, name, op):
-  print >> f, """
+  print("""
   template <typename ResultType,
             typename ArgumentType1,
             typename ArgumentType2>
@@ -26,10 +26,10 @@ def generate_binary(f, name, op):
                           ArgumentType2 const& y) const {
       return ResultType(%s);
     }
-  };""" % (name, op)
+  };""" % (name, op), file=f)
 
 def generate_in_place_binary(f, name, op):
-  print >> f, """
+  print("""
   template <typename ArgumentType1,
             typename ArgumentType2>
   struct functor_%s {
@@ -38,16 +38,16 @@ def generate_in_place_binary(f, name, op):
       %s;
       return x;
     }
-  };""" % (name, op)
+  };""" % (name, op), file=f)
 
 def run(target_dir):
   f = utils.join_open(target_dir, "detail/operator_functors.h", "w")
   utils.write_this_is_auto_generated(f, this)
-  print >> f, """\
+  print("""\
 #ifndef SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 #define SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H
 
-namespace scitbx { namespace fn {"""
+namespace scitbx { namespace fn {""", file=f)
 
   for op, ftor_name in operator_functor_info.unary_functors.items():
     generate_unary(f, ftor_name, op + "x")
@@ -56,10 +56,10 @@ namespace scitbx { namespace fn {"""
   for op, ftor_name in operator_functor_info.in_place_binary_functors.items():
     generate_in_place_binary(f, ftor_name, "x " + op + " y")
 
-  print >> f, """
+  print("""
 }} // namespace scitbx::fn
 
-#endif // SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H"""
+#endif // SCITBX_ARRAY_FAMILY_OPERATOR_FUNCTORS_H""", file=f)
   f.close()
 
 if (__name__ == "__main__"):

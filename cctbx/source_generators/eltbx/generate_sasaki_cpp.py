@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
@@ -11,7 +12,7 @@ reference_tables_directory = libtbx.env.under_dist(
 
 def print_header(f):
   write_this_is_auto_generated(f, this)
-  print >> f, """\
+  print("""\
 #include <cctbx/eltbx/sasaki.h>
 #include <scitbx/constants.h>
 
@@ -20,10 +21,10 @@ namespace cctbx { namespace eltbx { namespace sasaki {
 namespace table_data {
 
 using namespace detail;
-"""
+""", file=f)
 
 def print_ftp_info(f):
-  print >> f, """\
+  print("""\
 /*
   Sasaki Tables
 
@@ -39,7 +40,7 @@ def print_ftp_info(f):
   Questions about these data should be addressed to Dr.Satoshi Sasaki,
   Tokyo Institute of Technology.  Email: sasaki@nc.titech.ac.jp
  */
-"""
+""", file=f)
 
 class sasaki_table(object):
 
@@ -153,25 +154,25 @@ def print_table_block(f, tables_combined, i_begin, i_end):
       if (edge.edge_label):
         lbl += "_" + edge.edge_label.lower()
         ann += "; edge at " + edge.edge_wave_length + " A"
-      print >> f, "raw " + lbl + "[] = { // " + ann
+      print("raw " + lbl + "[] = { // " + ann, file=f)
       for i in xrange(len(edge.fp)):
-        print >> f, "{%s,%s}," % (edge.fp[i], edge.fdp[i])
-      print >> f, "};"
-  print >> f
-  print >> f, "} // namespace table_data"
-  print >> f
-  print >> f, "}}} // namespace cctbx::eltbx::sasaki"
+        print("{%s,%s}," % (edge.fp[i], edge.fdp[i]), file=f)
+      print("};", file=f)
+  print(file=f)
+  print("} // namespace table_data", file=f)
+  print(file=f)
+  print("}}} // namespace cctbx::eltbx::sasaki", file=f)
 
 def print_sasaki_cpp(f, tables_combined):
   for ctab in tables_combined:
-    print >> f, "extern raw " + ctab.wide.atomic_symbol.lower() + "[];"
+    print("extern raw " + ctab.wide.atomic_symbol.lower() + "[];", file=f)
     for edge in (ctab.k, ctab.l1, ctab.l2, ctab.l3):
       if (edge):
         assert edge.atomic_symbol == ctab.wide.atomic_symbol
-        print >> f, "extern raw " + edge.atomic_symbol.lower() \
-          + "_" + edge.edge_label.lower() + "[];".lower()
-  print >> f
-  print >> f, "static const detail::info all[] = {"
+        print("extern raw " + edge.atomic_symbol.lower() \
+          + "_" + edge.edge_label.lower() + "[];".lower(), file=f)
+  print(file=f)
+  print("static const detail::info all[] = {", file=f)
   i = 0
   for ctab in tables_combined:
     i += 1
@@ -186,10 +187,10 @@ def print_sasaki_cpp(f, tables_combined):
       else:
         out += ", 0., 0"
     out += "},"
-    print >> f, out
-  print >> f, "{0, 0, 0, 0., 0, 0., 0, 0., 0, 0., 0}"
-  print >> f, "};"
-  print >> f, """
+    print(out, file=f)
+  print("{0, 0, 0, 0., 0, 0., 0, 0., 0, 0., 0}", file=f)
+  print("};", file=f)
+  print("""
   } // namespace table_data
 
   table::table(
@@ -272,7 +273,7 @@ def print_sasaki_cpp(f, tables_combined):
     return result;
   }
 
-}}} // namespace cctbx::eltbx::sasaki"""
+}}} // namespace cctbx::eltbx::sasaki""", file=f)
 
 def run(target_dir):
   f = join_open(reference_tables_directory, "fpwide.tbl", "r")

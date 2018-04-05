@@ -1007,9 +1007,9 @@ Wait for the command to finish, then try again.""" % vars())
       if source_file.ext().lower() == ".py":
         source_is_py = True
       else:
-        with open(abs(source_file), 'r') as fh:
+        with open(abs(source_file), 'rb') as fh:
           first_line = fh.readline()
-        if first_line.startswith('#!') and 'python' in first_line.lower():
+        if first_line.startswith(b'#!') and b'python' in first_line.lower():
           source_is_py = True
     for line in self.dispatcher_include(where="at_start"):
       print(line, file=f)

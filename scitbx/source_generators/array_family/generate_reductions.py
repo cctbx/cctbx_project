@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators import utils
 
 this = "scitbx.source_generators.array_family.generate_reductions"
@@ -13,7 +13,7 @@ def substitute(subs, template):
   return template[1:]
 
 def generate_order(f, subs):
-  print >> f, substitute(subs, """
+  print(substitute(subs, """
   template <typename ElementType1${templ_decl_2_1},
             typename ElementType2${templ_decl_2_2}>
   int
@@ -24,12 +24,12 @@ def generate_order(f, subs):
   {
     return order(a1.const_ref(), a2.const_ref());
   }
-""")
+"""), file=f)
 
 def generate_max_index_etc(f, subs):
   for func_name in ("max_index", "min_index"):
     subs["func_name"] = func_name
-    print >> f, substitute(subs, """
+    print(substitute(subs, """
   template <typename ElementType${templ_decl_2}>
   inline
   std::size_t
@@ -37,12 +37,12 @@ def generate_max_index_etc(f, subs):
   {
     return ${func_name}(a.const_ref());
   }
-""")
+"""), file=f)
 
 def generate_first_index_etc(f, subs):
   for func_name in ("first_index", "last_index"):
     subs["func_name"] = func_name
-    print >> f, substitute(subs, """
+    print(substitute(subs, """
   template <typename ElementType${templ_decl_2}, class PredicateType>
   inline
   boost::optional<std::size_t>
@@ -51,14 +51,14 @@ def generate_first_index_etc(f, subs):
   {
     return ${func_name}(a.const_ref(), p);
   }
-""")
+"""), file=f)
 
 def generate_max_etc(f, subs):
   for func_name in ("max", "min", "max_absolute",
                     "sum", "sum_sq",
                     "product", "mean", "mean_sq"):
     subs["func_name"] = func_name
-    print >> f, substitute(subs, """
+    print(substitute(subs, """
   template <typename ElementType${templ_decl_2}>
   inline
   ElementType
@@ -66,12 +66,12 @@ def generate_max_etc(f, subs):
   {
     return ${func_name}(a.const_ref());
   }
-""")
+"""), file=f)
 
 def generate_mean_weighted_etc(f, subs):
   for func_name in ("mean_weighted", "mean_sq_weighted"):
     subs["func_name"] = func_name
-    print >> f, substitute(subs, """
+    print(substitute(subs, """
   template <typename ElementTypeValues${templ_decl_2_1eq},
             typename ElementTypeWeights${templ_decl_2_2eq}>
   inline
@@ -82,7 +82,7 @@ def generate_mean_weighted_etc(f, subs):
   {
     return ${func_name}(values.const_ref(), weights.const_ref());
   }
-""")
+"""), file=f)
 
 def one_type(target_dir, subs):
   array_type = subs["array_type"]
@@ -90,7 +90,7 @@ def one_type(target_dir, subs):
   subs["ARRAY_TYPE"] = array_type.upper()
   f = utils.join_open(target_dir, "%s_reductions.h" % array_type, "w")
   utils.write_this_is_auto_generated(f, this)
-  print >> f, substitute(subs, """
+  print(substitute(subs, """
 #ifndef SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
 #define SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
 
@@ -100,7 +100,7 @@ def one_type(target_dir, subs):
 #include <scitbx/array_family/${array_type_plain}.h>
 
 namespace scitbx { namespace af {
-""")
+"""), file=f)
 
   generate_order(f, subs)
   generate_max_index_etc(f, subs)
@@ -108,13 +108,13 @@ namespace scitbx { namespace af {
   generate_mean_weighted_etc(f, subs)
   generate_first_index_etc(f, subs)
 
-  print >> f, substitute(subs, """
+  print(substitute(subs, """
 }} // namespace scitbx::af
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
 #endif // SCITBX_ARRAY_FAMILY_${ARRAY_TYPE}_REDUCTIONS_H
-""")
+"""), file=f)
 
   f.close()
 

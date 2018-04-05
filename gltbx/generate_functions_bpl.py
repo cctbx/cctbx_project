@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.utils import write_this_is_auto_generated
 from libtbx.str_utils import line_breaker
 import libtbx.load_env
@@ -460,10 +461,10 @@ class signature:
 
   def show(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "function name:", self.function_name
-    print >> f, "  return type:", self.return_type
+    print("function name:", self.function_name, file=f)
+    print("  return type:", self.return_type, file=f)
     for arg in self.args:
-      print >> f, "  arg type:", arg.type, "name:", arg.name
+      print("  arg type:", arg.type, "name:", arg.name, file=f)
 
   def wrapper_function_name(self):
     i = 2
@@ -472,19 +473,19 @@ class signature:
 
   def write_no_opaque_pointers_guard_if(self, f):
     if (self.have_opaque_pointer):
-      print >> f, "#if !defined(GLTBX_NO_OPAQUE_POINTERS)"
+      print("#if !defined(GLTBX_NO_OPAQUE_POINTERS)", file=f)
 
   def write_no_opaque_pointers_guard_endif(self, f):
     if (self.have_opaque_pointer):
-      print >> f, "#endif"
+      print("#endif", file=f)
 
   def write_version_guard_if(self, f):
     if (self.version_guard is not None):
-      print >> f, "#if defined(%s)" % self.version_guard
+      print("#if defined(%s)" % self.version_guard, file=f)
 
   def write_version_guard_endif(self, f):
     if (self.version_guard is not None):
-      print >> f, "#endif"
+      print("#endif", file=f)
 
   def format_call(self, return_directly, prefix):
     s = ""
@@ -506,7 +507,7 @@ class signature:
   def write_wrapper(self, f):
     special = special_wrappers.get(self.function_name, None)
     if (special is not None and special[0] is not None):
-      print >> f, special[0]
+      print(special[0], file=f)
       return
     lines = [
       self.return_type,
@@ -590,15 +591,15 @@ class signature:
     self.write_no_opaque_pointers_guard_if(f=f)
     self.write_version_guard_if(f=f)
     for line in lines:
-      print >> f, " ", line
+      print(" ", line, file=f)
     self.write_version_guard_endif(f=f)
     self.write_no_opaque_pointers_guard_endif(f=f)
-    print >> f
+    print(file=f)
 
   def write_def(self, f):
     special = special_wrappers.get(self.function_name, None)
     if (special is not None and special[1] is not None):
-      print >> f, special[1]
+      print(special[1], file=f)
       return
     return_opaque = self.return_type in opaque_pointers
     def_args = (self.function_name, self.wrapper_function_name())
@@ -606,19 +607,19 @@ class signature:
     self.write_version_guard_if(f=f)
     if (len(self.args) == 0):
       if (not return_opaque):
-        print >> f, '    def("%s", %s);' % def_args
+        print('    def("%s", %s);' % def_args, file=f)
       else:
-        print >> f, '    def("%s", %s,' % def_args
-        print >> f, "      return_value_policy<return_opaque_pointer>());"
+        print('    def("%s", %s,' % def_args, file=f)
+        print("      return_value_policy<return_opaque_pointer>());", file=f)
     else:
       assert not return_opaque
-      print >> f, '    def("%s", %s, (' % def_args
+      print('    def("%s", %s, (' % def_args, file=f)
       s = ""
       for arg in self.args:
         s += ', arg("%s")' % arg.name
       s = s[2:] + "));"
       for line in line_breaker(s, 73):
-        print >> f, "      "+line
+        print("      "+line, file=f)
     self.write_version_guard_endif(f=f)
     self.write_no_opaque_pointers_guard_endif(f=f)
 
@@ -632,29 +633,29 @@ def get_signatures():
 
 def write_function_wrappers(f, namespace, signatures, i_fragment):
   write_this_is_auto_generated(f, this)
-  print >> f, """\
+  print("""\
 #include <gltbx/special_wrapper_support.h>
 #include <gltbx/pointer_args_bpl.h>
 #include <gltbx/error.h>
-"""
+""", file=f)
   if (namespace == "glu"):
-    print >> f, "#if defined(__GNUC__) && __GNUC__ == 2 \\"
-    print >> f, "     && __GNUC_MINOR__ == 96 && __GNUC_PATCHLEVEL__ == 0"
-    print >> f, "#define GLTBX_NO_OPAQUE_POINTERS"
-    print >> f, "#else"
-    print >> f, "#include <boost/python/return_value_policy.hpp>"
-    print >> f, "#include <boost/python/return_opaque_pointer.hpp>"
+    print("#if defined(__GNUC__) && __GNUC__ == 2 \\", file=f)
+    print("     && __GNUC_MINOR__ == 96 && __GNUC_PATCHLEVEL__ == 0", file=f)
+    print("#define GLTBX_NO_OPAQUE_POINTERS", file=f)
+    print("#else", file=f)
+    print("#include <boost/python/return_value_policy.hpp>", file=f)
+    print("#include <boost/python/return_opaque_pointer.hpp>", file=f)
     for opaque_pointer in opaque_pointers:
-      print >> f, "BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(%s)" % (
-        opaque_pointer[:-1])
-    print >> f, "#endif"
-    print >> f
-  print >> f, """\
+      print("BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID(%s)" % (
+        opaque_pointer[:-1]), file=f)
+    print("#endif", file=f)
+    print(file=f)
+  print("""\
 namespace gltbx { namespace %s { namespace {
-""" % namespace
+""" % namespace, file=f)
   for signature in signatures:
     signature.write_wrapper(f=f)
-  print >> f, """\
+  print("""\
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -662,13 +663,13 @@ namespace boost_python {
   void
   wrap_functions_%02d()
   {
-    using namespace boost::python;""" % i_fragment
+    using namespace boost::python;""" % i_fragment, file=f)
   for signature in signatures:
     signature.write_def(f=f)
-  print >> f, """\
+  print("""\
   }
 
-}}} // namespace gltbx::%s::boost_python""" % namespace
+}}} // namespace gltbx::%s::boost_python""" % namespace, file=f)
 
 def run(target_dir):
   if (not os.path.isdir(target_dir)):

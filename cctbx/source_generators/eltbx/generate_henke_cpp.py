@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
@@ -12,14 +12,14 @@ reference_tables_directory = libtbx.env.under_dist(
 
 def print_header(f):
   write_this_is_auto_generated(f, this)
-  print >> f, """\
+  print("""\
 #include <cctbx/eltbx/henke.h>
 
 namespace cctbx { namespace eltbx { namespace henke {
-"""
+""", file=f)
 
 def print_ftp_info(f):
-  print >> f, """\
+  print("""\
 /*
   Henke Tables
 
@@ -40,7 +40,7 @@ def print_ftp_info(f):
   Reference: B. L. Henke, E. M. Gullikson, and J. C. Davis,
   Atomic Data and Nuclear Data Tables Vol. 54 No. 2 (July 1993).
  */
-"""
+""", file=f)
 
 def collect_tables():
   nff_files = []
@@ -69,48 +69,47 @@ def collect_tables():
   return tables
 
 def print_table_block(f, tables, Z_begin, Z_end, define_noval=0):
-  print >> f, "namespace table_data {"
-  print >> f
-  print >> f, "using anomalous::e_fp_fdp;"
-  print >> f
+  print("namespace table_data {", file=f)
+  print(file=f)
+  print("using anomalous::e_fp_fdp;", file=f)
+  print(file=f)
   # Visual C++ 7.0 compilation is very slow with define_noval=1
-  if (define_noval): print >> f, "#define NOVAL fp_fdp_undefined"
+  if (define_noval): print("#define NOVAL fp_fdp_undefined", file=f)
   for Z in xrange(Z_begin, Z_end):
     tab = tables[Z]
-    print >> f, "e_fp_fdp " + tab[0].lower() \
-      + "[] = { /* Z = " + str(Z) + " */"
+    print("e_fp_fdp " + tab[0].lower() \
+      + "[] = { /* Z = " + str(Z) + " */", file=f)
     for line in tab[1]:
       flds = line.split()
       assert len(flds) == 3
       if (define_noval and flds[1] == "-9999.00"): flds[1] = "NOVAL"
-      print >> f, "{%s, %s, %s}," % tuple(flds)
-    print >> f, "{0, 0, 0}"
-    print >> f, "};"
-    print >> f
+      print("{%s, %s, %s}," % tuple(flds), file=f)
+    print("{0, 0, 0}", file=f)
+    print("};", file=f)
+    print(file=f)
   if (define_noval):
-    print >> f, "#undef NOVAL"
-    print >> f
-  print >> f, "} // namespace table_data"
-  print >> f
-  print >> f, "}}} // namespace cctbx::eltbx::henke"
+    print("#undef NOVAL", file=f)
+    print(file=f)
+  print("} // namespace table_data", file=f)
+  print(file=f)
+  print("}}} // namespace cctbx::eltbx::henke", file=f)
 
 def print_henke_cpp(f, tables):
-  print >> f, "namespace table_data {"
-  print >> f
-  print >> f, "using anomalous::e_fp_fdp;"
-  print >> f
+  print("namespace table_data {", file=f)
+  print(file=f)
+  print("using anomalous::e_fp_fdp;", file=f)
+  print(file=f)
   for tab in tables[1:]:
-    print >> f, "extern e_fp_fdp " + tab[0].lower() + "[];"
-  print >> f
-  print >> f, "static const anomalous::label_z_e_fp_fdp all[] = {"
+    print("extern e_fp_fdp " + tab[0].lower() + "[];", file=f)
+  print(file=f)
+  print("static const anomalous::label_z_e_fp_fdp all[] = {", file=f)
   i = 0
   for tab in tables[1:]:
     i += 1
-    print >> f, \
-      "{\"" + tab[0] + "\", " + str(i) + ", " + tab[0].lower() + "},"
-  print >> f, "{0, 0, 0}"
-  print >> f, "};"
-  print >> f, """
+    print("{\"" + tab[0] + "\", " + str(i) + ", " + tab[0].lower() + "},", file=f)
+  print("{0, 0, 0}", file=f)
+  print("};", file=f)
+  print("""
   } // namespace table_data
 
   table::table(
@@ -145,7 +144,7 @@ def print_henke_cpp(f, tables):
     return result;
   }
 
-}}} // namespace cctbx::eltbx::henke"""
+}}} // namespace cctbx::eltbx::henke""", file=f)
 
 def collect_points(lines):
   points = []
@@ -164,7 +163,7 @@ def compare_points(tables):
   for i in xrange(len(tab_points)-1):
     for j in xrange(i+1, len(tab_points)):
       if (tab_points[i] == tab_points[j]):
-        print "points %d==%d" % (i+1,j+1)
+        print("points %d==%d" % (i+1,j+1))
 
 def run(target_dir):
   tables = collect_tables()
