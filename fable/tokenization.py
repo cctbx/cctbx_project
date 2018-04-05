@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from fable \
   import unsigned_integer_scan, \
   identifier_scan, \
@@ -129,11 +129,14 @@ class ssl_iterator(object):
 
   def __iter__(O): return O
 
-  def next(O):
-    tok = O.get(optional=True)
+  def __next__(self):
+    tok = self.get(optional=True)
     if (tok is None):
       raise StopIteration
     return tok
+
+  def next(self):
+    return self.__next__()
 
   def get(O, optional=False):
     ssl = O.ssl
@@ -686,11 +689,14 @@ class fss_iterator(object):
 
   def __iter__(O): return O
 
-  def next(O):
-    tok = O.get()
+  def __next__(self):
+    tok = self.get()
     if (tok is None):
       raise StopIteration
     return tok
+
+  def next(self):
+    return self.__next__()
 
   def get(O):
     fss = O.fss

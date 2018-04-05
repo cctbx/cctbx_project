@@ -68,7 +68,7 @@ def py_identifier_scan(code, start=0, stop=-1):
 def py_find_closing_parenthesis(code, start=0, stop=-1):
   code_stop = py_ext_get_code_stop(code=code, stop=stop)
   n_inner = 0
-  for i in xrange(start, code_stop):
+  for i in range(start, code_stop):
     c = code[i]
     if (c == ')'):
       if (n_inner == 0): return i

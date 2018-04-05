@@ -459,14 +459,14 @@ def combine_continuation_lines_and_strip_spaces(source_lines):
       assert not sl.is_cont
       code_sls = [sl]
       k_sl = i_sl
-      for j_sl in xrange(i_sl+1, n_sl):
+      for j_sl in range(i_sl+1, n_sl):
         sl = source_lines[j_sl]
         if (sl.is_cont):
           code_sls.append(sl)
           k_sl = j_sl
         elif (sl.stmt_offs is not None):
           break
-      for j_sl in xrange(i_sl+1, k_sl):
+      for j_sl in range(i_sl+1, k_sl):
         sl = source_lines[j_sl]
         if (not sl.is_cont):
           rapp(strip_spaces_separate_strings(source_line_cluster=[sl]))
@@ -2583,7 +2583,7 @@ class fproc(fproc_p_methods):
           key_cluster=[tok_seq.value[0].value for tok_seq in equiv_tok.value])
       cu.tidy()
       result = equivalence_info()
-      for i in xrange(len(cu.unions)):
+      for i in range(len(cu.unions)):
         result.equiv_tok_clusters.append([])
       for equiv_tok in O.equivalence:
         result.equiv_tok_clusters[

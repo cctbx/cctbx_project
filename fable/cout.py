@@ -20,7 +20,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   if (nc <= max_len):
     cb_finalize(line)
     return
-  for i_start in xrange(nc):
+  for i_start in range(nc):
     if (line[i_start] != " "):
       break
   else:
@@ -87,7 +87,7 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
       if (j > 4): # ad-hoc value
         i = j+1
       else:
-        for j in xrange(i-1,-1,-1):
+        for j in range(i-1,-1,-1):
           if (s[j] != "\\"):
             if ((i - j ) % 2 == 0):
               i -= 1
@@ -101,10 +101,10 @@ def break_line_if_necessary(callback, line, max_len=80, min_len=70):
   else:                      indent_width = 2
   pprio = 0
   pp = 0
-  for ip in xrange(len(potential_break_points)):
+  for ip in range(len(potential_break_points)):
     prio,p = potential_break_points[ip]
     def following_point_is_better():
-      for jp in xrange(ip,len(potential_break_points)):
+      for jp in range(ip,len(potential_break_points)):
         prio,p = potential_break_points[jp]
         if (prio == 1 and p-b+f <= max_len):
           return True
@@ -182,7 +182,7 @@ def show_traceback():
   print(traceback.format_exc(limit=None))
 
 def strip_leading_zeros(string):
-  for i in xrange(len(string)):
+  for i in range(len(string)):
     if (string[i] != "0"):
       return string[i:]
   if (len(string) == 0):
@@ -355,16 +355,14 @@ class comment_manager(object):
 
   __slots__ = ["sl_list", "index"]
 
-  def __init__(O, fproc):
-    O.sl_list = []
+  def __init__(self, fproc):
+    self.sl_list = []
     for ssl in fproc.body_lines:
       if (ssl is not None):
         for sl in ssl.source_line_cluster:
-          O.sl_list.append(sl)
-    def cmp_sl(a, b):
-      return cmp(a.global_line_index, b.global_line_index)
-    O.sl_list.sort(cmp_sl)
-    O.index = 0
+          self.sl_list.append(sl)
+    self.sl_list.sort(key=lambda source_line: source_line.global_line_index)
+    self.index = 0
 
   def produce(O, callback):
     produce_comment_given_sl(callback=callback, sl=O.sl_list[O.index])
@@ -1064,7 +1062,7 @@ def equivalence_align_with_arg(conv_info, top_scope, identifier, tok_seq):
   if (len(tokens) == 1):
     return ""
   cindices = []
-  for i in xrange(1,len(tokens)):
+  for i in range(1,len(tokens)):
     tok = tokens[i]
     if (i == 3 or not tok.is_parentheses()):
       tok.raise_semantic_error()
@@ -1352,7 +1350,7 @@ def convert_data(conv_info, data_init_scope):
       }.get(list(tok_types)[0])
     def data_values_blocked():
       data_scope.append("fem::data_values data;")
-      for i_block in xrange(0, len(ccs), conv_info.data_values_block_size):
+      for i_block in range(0, len(ccs), conv_info.data_values_block_size):
         data_scope.append(
           "data.values, %s;"
             % ", ".join(ccs[i_block:i_block+conv_info.data_values_block_size]))
@@ -2475,7 +2473,7 @@ def convert_to_struct(
       callback("  %s(" % struct_name)
       callback("    dynamic_parameters const& dynamic_params)")
       callback("  :")
-    for i in xrange(n):
+    for i in range(n):
       ii = initializers[i]
       if (i+1 == n): comma = ""
       else:          comma = ","
@@ -2504,7 +2502,7 @@ def generate_common_report(
       member_registry,
       variant_due_to_equivalence_common_names,
       stringio):
-  from cStringIO import StringIO
+  from six import StringIO
   variant_common_names = set()
   if (stringio is None):
     report = StringIO()
@@ -2735,9 +2733,7 @@ def convert_commons(
     if (    len(id_tok_list) == 0
         and not fproc.conv_hook.needs_is_called_first_time):
       continue
-    def id_tok_cmp(a, b):
-      return cmp(a.value, b.value)
-    id_tok_list.sort(id_tok_cmp)
+    id_tok_list.sort(key=lambda token: token.value)
     struct_name = "%s_save" % fproc.name.value
     buffer = []
     info = convert_to_struct(
