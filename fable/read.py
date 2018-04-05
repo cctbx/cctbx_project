@@ -3032,7 +3032,7 @@ class build_bottom_up_fproc_list_following_calls(object):
           connections_for_topological_sort.append(
             (fproc.name.value, get_dependencies(fproc=fproc)))
     #
-    from libtbx import topological_sort
+    from fable import topological_sort
     successors_by_node = dict(connections_for_topological_sort)
     O.bottom_up_list = []
     bottom_up_set = set()
