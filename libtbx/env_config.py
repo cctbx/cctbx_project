@@ -162,10 +162,15 @@ def python_include_path():
   include_path = libtbx.path.norm_join(include_path)
 
   # I believe the above code to be unnecessary.
-  # If this flags up no problems then remove in a month or so.
+  # If this flags up no problems then remove the code above and
+  # the assertion test directly below in a month or so.
   if op.isdir(include_path):
-    assert include_path == sysconfig.get_paths()['include'], \
-        "%s != %s" % (include_path, sysconfig.get_paths()['include'])
+    sysconfig_path = sysconfig.get_paths()['include']
+    if sys.platform == "win32":
+      include_path = include_path.lower()
+      sysconfig_path = sysconfig_path.lower()
+    assert include_path == sysconfig_path, \
+        "%s != %s" % (include_path, sysconfig_path)
 
   include_path = sysconfig.get_paths()['include']
   if not op.isdir(include_path):
