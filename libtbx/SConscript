@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env
 import libtbx.env_config
@@ -6,26 +6,11 @@ from libtbx import easy_run
 from libtbx.utils import getenv_bool
 from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
-import sys, os
+import os
 import re
 import subprocess
+import sys
 op = os.path
-
-if (hasattr(Environment, "Clone")):
-  Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
-
-def SCons_Action_FunctionAction_get_contents(self, target, source, env,
-                                                   dict=None):
-  import pickle
-  try:
-    code = pickle.dumps(self.execfunction)
-  except (TypeError, pickle.PicklingError):
-    code = self.execfunction.__name__
-  return str(code) + env.subst(" ".join('${'+v+'}' for v in self.varlist))
-if (1):
-  import SCons.Action
-  SCons.Action.FunctionAction.get_contents = \
-  SCons_Action_FunctionAction_get_contents
 
 class empty(object):
 

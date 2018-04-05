@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import libtbx.load_env
 from libtbx.str_utils import show_string
@@ -37,7 +37,7 @@ if (libtbx.env.build_options.enable_boost_threads and
   # with the same condition as win32.
   # This environment is to be used latter to build Boost libraries
   # So we need a clean one without extra library linking.
-  env_boost_shlibs_base = env_base.Copy()
+  env_boost_shlibs_base = env_base.Clone()
   libs = ['boost_thread', 'boost_system']
   if boost_thread_uses_winthreads:
     libs.append('boost_chrono')
@@ -107,17 +107,16 @@ if (not env_etc.no_boost_python):
 
   conf = env_pure_boost_python_ext.Clone().Configure()
   if (not conf.TryCompile("#include <iostream>", extension=".cpp")):
-    raise RuntimeError("""\
+    sys.exit("""
 FATAL:
 
 ********************** C++ compiler does not work. **********************
 
-See config.log for details.
-""")
+See build/config.log for details""")
   conf.Finish()
   conf = env_pure_boost_python_ext.Clone().Configure()
   if (not conf.TryCompile("#include <Python.h>", extension=".cpp")):
-    raise RuntimeError("""\
+    raise RuntimeError("""
 FATAL:
 
 ******************** Python.h include not available. ********************

@@ -4,7 +4,7 @@ Import("env_etc")
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
-  env = env_scitbx_boost_python_ext.Copy()
+  env = env_scitbx_boost_python_ext.Clone()
   env.SharedLibrary(
     target="#lib/scitbx_lstbx_normal_equations_ext",
     source=Glob("boost_python/*.cpp"))

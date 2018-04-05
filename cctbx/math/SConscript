@@ -1,5 +1,5 @@
 Import("env_base", "env_etc")
-env = env_base.Copy(
+env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
 )
 env.Prepend(LIBS=["cctbx"])

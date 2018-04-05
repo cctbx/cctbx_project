@@ -9,7 +9,7 @@ env_etc.include_registry.append(
 
 if (not env_etc.no_boost_python):
   Import("env_scitbx_boost_python_ext")
-  env = env_scitbx_boost_python_ext.Copy()
+  env = env_scitbx_boost_python_ext.Clone()
   env.SharedLibrary(
     target='#/lib/scitbx_glmtbx_ext', 
     source=['boost_python/ext.cc'])
