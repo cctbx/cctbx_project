@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 from fable \
   import unsigned_integer_scan, \
   identifier_scan, \
@@ -81,7 +81,7 @@ class source_line(raise_errors_mixin):
     return O, i
 
   def __init__(O, global_line_index_generator, file_name, line_number, text):
-    O.global_line_index = global_line_index_generator.next()
+    O.global_line_index = next(global_line_index_generator)
     O.file_name = file_name
     O.line_number = line_number
     O.text = text
@@ -533,7 +533,7 @@ def tokenize_expression_impl(
       allow_commas,
       allow_equal_signs,
       tok_opening_parenthesis):
-  from tokenization import tk_seq, tk_parentheses
+  from fable.tokenization import tk_seq, tk_parentheses
   if (allow_commas):
     tlist = []
     tokens.append(tk_seq(ssl=tokenizer.ssl, i_code=tokenizer.i, value=tlist))
@@ -2152,18 +2152,18 @@ class fproc(fproc_p_methods):
   def show_fdecl(O):
     "for debugging; not exercised"
     assert O.fdecl_by_identifier is not None
-    print O.name.value
+    print(O.name.value)
     for key in sorted(O.fdecl_by_identifier.keys()):
       fdecl = O.fdecl_by_identifier[key]
-      print " ", fdecl.id_tok.value
-      print "   ", fdecl.var_type
+      print(" ", fdecl.id_tok.value)
+      print("   ", fdecl.var_type)
       if (fdecl.var_storage is not None):
-        print "   ", fdecl.var_storage
+        print("   ", fdecl.var_storage)
       if (fdecl.data_type is not None):
-        print "   ", fdecl.data_type.value
+        print("   ", fdecl.data_type.value)
       if (fdecl.parameter_assignment_tokens is not None):
-        print "    parameter"
-    print
+        print("    parameter")
+    print()
 
   def build_fdecl_by_identifier(O):
     if (not O.body_lines_processed_already):
@@ -2884,9 +2884,9 @@ class split_fprocs(object):
 
   def show_counts_by_type(O, out=None, prefix=""):
     if (out is None): out = sys.stdout
-    print >> out, prefix + "Counts by Fortran procedure type:"
+    print(prefix + "Counts by Fortran procedure type:", file=out)
     for attr in O.__slots__[:4]:
-      print >> out, prefix + "  %s: %s" % (attr, len(getattr(O, attr)))
+      print(prefix + "  %s: %s" % (attr, len(getattr(O, attr))), file=out)
 
   def process_body_lines(O):
     for fproc in O.all_in_input_order:

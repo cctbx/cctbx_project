@@ -1,8 +1,12 @@
-from __future__ import division
-from libtbx.utils import product
+from __future__ import absolute_import, division, print_function
+
+import os.path
+
+import fable
 from libtbx import group_args
 from libtbx import mutable
 from libtbx import Auto
+from libtbx.utils import product
 import os.path as op
 
 fmt_comma_placeholder = chr(255)
@@ -168,7 +172,7 @@ def create_buffer_blocks(
 
 def show_traceback():
   import traceback
-  print traceback.format_exc(limit=None)
+  print(traceback.format_exc(limit=None))
 
 def strip_leading_zeros(string):
   for i in xrange(len(string)):
@@ -557,7 +561,7 @@ def convert_tokens(conv_info, tokens, commas=False, had_str_concat=None):
   prev_tok = None
   if (had_str_concat is None):
     had_str_concat = mutable(value=False)
-  from tokenization import group_power
+  from fable.tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
       if (    len(tok.value) == 2
@@ -994,7 +998,7 @@ def convert_io_loop(
   prev_tok = None
   if (had_str_concat is None):
     had_str_concat = mutable(value=False)
-  from tokenization import group_power
+  from fable.tokenization import group_power
   for tok in group_power(tokens=tokens):
     if (tok.is_seq()):
       convert_io_loop(
@@ -2164,12 +2168,12 @@ def convert_executable(
     except (Error, SemanticError):
       raise
     except Exception:
-      print "*"*80
-      print ei.ssl.format_error(
+      print("*"*80)
+      print(ei.ssl.format_error(
         i=None,
-        msg="Sorry: fable internal error")
-      print "*"*80
-      print
+        msg="Sorry: fable internal error"))
+      print("*"*80)
+      print()
       raise
   assert curr_scope.parent is None
   if (    conv_info.fproc.fproc_type == "function"
@@ -2514,36 +2518,35 @@ def generate_common_report(
       import difflib
       diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
       def show_fprocs(label, cpp_fprocs):
-        print >> report, \
-          "procedures %s:" % label, \
-          " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]]))
+        print("procedures %s:" % label, \
+          " ".join(sorted([fproc.name.value for fproc in cpp_fprocs[1]])), file=report)
       main_cpp_fprocs = fprocs_by_cpp_items[0]
-      print >> report, "common name:", common_name
-      print >> report, "number of variants:", len(fprocs_by_cpp_items)
-      print >> report, "total number of procedures using the common block:", \
-        sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items])
+      print("common name:", common_name, file=report)
+      print("number of variants:", len(fprocs_by_cpp_items), file=report)
+      print("total number of procedures using the common block:", \
+        sum([len(fprocs) for cpp,fprocs in fprocs_by_cpp_items]), file=report)
       show_fprocs("first", main_cpp_fprocs)
       for other_cpp_fprocs in fprocs_by_cpp_items[1:]:
         show_fprocs("second", other_cpp_fprocs)
         for line in diff_function(
                       (main_cpp_fprocs[0]+"\n").splitlines(1),
                       (other_cpp_fprocs[0]+"\n").splitlines(1)):
-          print >> report, line,
-        print >> report
+          print(line, end=' ', file=report)
+        print(file=report)
   #
   need_empty_line = False
   for identifier in sorted(member_registry.keys()):
     common_names = member_registry[identifier]
     if (len(common_names) != 1):
-      print >> report, "Name clash: %s in COMMONs: %s" % (
-        identifier, ", ".join(sorted(common_names)))
+      print("Name clash: %s in COMMONs: %s" % (
+        identifier, ", ".join(sorted(common_names))), file=report)
       need_empty_line = True
   if (need_empty_line):
-    print >> report
+    print(file=report)
   #
   vv = list(variant_due_to_equivalence_common_names - variant_common_names)
   if (len(vv) != 0):
-    print >> report, "common variants due to equivalence:", len(vv)
+    print("common variants due to equivalence:", len(vv), file=report)
     size_sums = {}
     for common_name,sizes in common_fdecl_list_sizes.items():
       size_sums[common_name] = sum(sizes)
@@ -2552,17 +2555,17 @@ def generate_common_report(
       if (result == 0): result = cmp(a, b)
       return result
     vv.sort(vv_cmp)
-    print >> report, "  %-20s   procedures    sum of members" % "common name"
+    print("  %-20s   procedures    sum of members" % "common name", file=report)
     for common_name in vv:
-      print >> report, "  %-20s   %8d         %8d" % (
+      print("  %-20s   %8d         %8d" % (
         common_name,
         len(common_fdecl_list_sizes[common_name]),
-        size_sums[common_name])
-    print >> report
-    print >> report, "Locations of equivalence statements:"
+        size_sums[common_name]), file=report)
+    print(file=report)
+    print("Locations of equivalence statements:", file=report)
     reported_already = set()
     for common_name in vv:
-      print >> report, "  %s" % common_name
+      print("  %s" % common_name, file=report)
       prev_loc = ""
       tab = []
       max_len_col1 = 6
@@ -2582,13 +2585,13 @@ def generate_common_report(
       if (len(tab) != 0):
         fmt = "    %%-%ds %%s" % max_len_col1
         for row in tab:
-          print >> report, fmt % row
+          print(fmt % row, file=report)
   #
   if (len(report.getvalue()) != 0 and stringio is None):
     import sys
     report_file_name = "fable_cout_common_report"
     from libtbx.str_utils import show_string
-    print >> sys.stderr, "Writing file:", show_string(report_file_name)
+    print("Writing file:", show_string(report_file_name), file=sys.stderr)
     open(report_file_name, "w").write(report.getvalue())
   #
   return variant_common_names
@@ -2935,7 +2938,7 @@ def process(
     lines = break_lines(cpp_text=[line+"\n"], prev_line=prev_line)
     if (len(lines) != 0):
       if (debug):
-        print "\n".join(lines)
+        print("\n".join(lines))
       result.extend(lines)
   #
   need_function_hpp = False
@@ -3043,7 +3046,8 @@ def process(
     common_commons_info = None
   if (separate_cmn_hpp):
     close_namespace(callback=cmn_callback, namespace=namespace, hpp_guard=True)
-    print >> open("cmn.hpp", "w"), "\n".join(break_lines(cpp_text=cmn_buffer))
+    with open("cmn.hpp", "w") as fh:
+      fh.write("\n".join(break_lines(cpp_text=cmn_buffer)))
   #
   separate_function_buffers = []
   separate_function_buffer_by_function_name = {}
@@ -3174,8 +3178,8 @@ def process(
       callback=buffer.append, namespace=namespace, hpp_guard=False)
     if (write_separate_files_main_namespace == "All"
           or name in write_separate_files_main_namespace):
-      print >> open(name+".cpp", "w"), "\n".join(
-        break_lines(cpp_text=buffer))
+      with open(name+".cpp", "w") as fh:
+        fh.write("\n".join(break_lines(cpp_text=buffer)))
   #
   for name,identifiers in separate_files_separate_namespace.items():
     buffers = separate_namespaces_buffers[identifiers[0]]
@@ -3185,8 +3189,8 @@ def process(
         callback=buffer.append, namespace=name, hpp_guard=(ext=="hpp"))
       if (write_separate_files_separate_namespace == "All"
             or name in write_separate_files_separate_namespace):
-        print >> open(name+"."+ext, "w"), "\n".join(
-          break_lines(cpp_text=buffer))
+        with open(name+"."+ext, "w") as fh:
+          fh.write("\n".join(break_lines(cpp_text=buffer)))
   #
   if (function_declarations is not None):
     def write_functions(buffers, serial=None):
@@ -3198,7 +3202,7 @@ def process(
       else:
         fn = "functions_%03d.cpp" % serial
       f = open(fn, "w")
-      def fcb(line): print >> f, line
+      def fcb(line): print(line, file=f)
       if (buffers is function_declarations):
         include_guard(
           callback=fcb, namespace=namespace, suffix="_FUNCTIONS_HPP")
@@ -3244,7 +3248,8 @@ def process(
       if (not debug): raise
       show_traceback()
   #
-  if (top_cpp_file_name is not None):
-    print >> open(top_cpp_file_name, "w"), "\n".join(result)
+  if top_cpp_file_name:
+    with open(top_cpp_file_name, "w") as fh:
+      fh.write("\n".join(result))
   #
   return result
