@@ -43,13 +43,9 @@ class non_linear_ls_mixin(object):
 
   def normal_matrix_packed_u(self):
     return self.step_equations().normal_matrix_packed_u()
-  
-  #Solver can be used to specify LS backend, hence *args. Defaults to pre-existing no-argument solvers no argument given
-  def solve(self,*args):
-    try:
-      self.step_equations().solve(args[1])
-    except:
-      self.step_equations().solve()
+
+  def solve(self):
+    self.step_equations().solve()
 
   def solve_and_step_forward(self):
     self.solve()

@@ -33,7 +33,9 @@ def choice_as_helper_base(choices, linsolver=lsb.ldlt):
     from cctbx.examples.merging import postrefine_base as base_class
   else:
     from cctbx.examples.merging import xscale6e as base_class
-  base_class.linsolver = linsolver
+  
+  #Extract the linear solver backend data
+  base_class.linsolver = getattr(lsb, linsolver, lsb.ldlt)
 
   class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
     def __init__(pfh, initial_estimates):
@@ -44,12 +46,8 @@ def choice_as_helper_base(choices, linsolver=lsb.ldlt):
       pfh.linsolver = base_class.linsolver
       # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
 
-    #Overridden solve function to allow choice of solver algorithm. Default to Cholesky LDLT.
-    def solve(self,*args):
-      if len(args) >0:
-        base_class.linsolver = args[0]
-      if isinstance(base_class.linsolver, basestring):
-        base_class.linsolver = getattr(lsb,base_class.linsolver)
+    #Phil param levmar.linsolver chooses linear solver backend
+    def solve(self):
       self.step_equations().solve(base_class.linsolver)
 
     def restart(pfh):

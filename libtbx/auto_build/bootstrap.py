@@ -816,10 +816,10 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['git',
+  anonymous = ['git', '-b branches/3.3'
                'git@github.com:eigenteam/eigen-git-mirror.git',
                'https://github.com/eigenteam/eigen-git-mirror.git',
-               'https://github.com/eigenteam/eigen-git-mirror/archive/master.zip']
+               'https://github.com/eigenteam/eigen-git-mirror/archive/branches/3.3.zip']
 
 # Phenix repositories
 class phenix_module(SourceModule):

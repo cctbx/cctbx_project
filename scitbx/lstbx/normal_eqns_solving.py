@@ -61,9 +61,9 @@ class journaled_non_linear_ls(object):
     if self.journal.scale_factor_history is not None:
       self.journal.scale_factor_history.append(self.actual.scale_factor())
 
-  def solve(self, linsolver=lsb.ldlt):
+  def solve(self):
     t0 = current_time()
-    self.actual.solve(linsolver)
+    self.actual.solve()
     t1 = current_time()
     self.normal_equations_solving_time += t1 - t0
     self.journal.step_norm_history.append(self.actual.step().norm())
@@ -122,20 +122,6 @@ class iterations(object):
     self.non_linear_ls = journaled_non_linear_ls(non_linear_ls, self,
                                                  self.track_gradient,
                                                  self.track_step)
-    try: 
-      linsolver_param = non_linear_ls.linsolver
-    except:
-      linsolver_param = None
-    if linsolver_param == 'ldlt' or linsolver_param == None:
-      self.linsolver = lsb.ldlt
-    elif linsolver_param == 'llt':
-      self.linsolver = lsb.llt
-    elif linsolver_param == 'cg':
-      self.linsolver = lsb.cg
-    elif linsolver_param == 'bicgstab':
-      self.linsolver = lsb.bicgstab
-    else:
-      self.linsolver = lsb.ldlt
     self.do()
 
   def has_gradient_converged_to_zero(self):
@@ -252,7 +238,7 @@ class levenberg_marquardt_iterations(iterations):
       a.matrix_packed_u_diagonal_add_in_place(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
-      self.non_linear_ls.solve( self.linsolver )
+      self.non_linear_ls.solve()
       if self.had_too_small_a_step(): break
       self.n_iterations += 1
       h = self.non_linear_ls.step()
@@ -319,7 +305,7 @@ class levenberg_marquardt_iterations_encapsulated_eqns(
       self.non_linear_ls.add_constant_to_diagonal(self.mu)
       objective = self.non_linear_ls.objective()
       g = -self.non_linear_ls.opposite_of_gradient()
-      self.non_linear_ls.solve(self.linsolver)
+      self.non_linear_ls.solve()
       if self.had_too_small_a_step(): break
       self.n_iterations += 1
       h = self.non_linear_ls.step()
