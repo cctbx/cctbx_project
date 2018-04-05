@@ -2066,7 +2066,7 @@ class PhenixExternalRegression(PhenixBuilder):
     self.write_environment(env)
     # not universal but works because only slave running this is same as master
     amber_c_comp = "clang"
-    if sys.platform == "linux2":
+    if sys.platform.startswith("linux"):
       amber_c_comp = "gnu"
     for name, command, workdir in [
         ['AFITT - untar',

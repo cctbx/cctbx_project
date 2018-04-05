@@ -47,7 +47,7 @@ if (libtbx.env.build_options.enable_boost_threads and
   if not boost_thread_uses_winthreads:
     env_base.Append(CXXFLAGS='-pthread',
                     SHCXXFLAGS='-pthread',
-                    LINKFLAGS='-pthread -lrt')
+                    LINKFLAGS='-pthread')
 
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
@@ -258,7 +258,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     # For Windows (c.f. point 2 above)
     env_boost_threads.Append(CPPDEFINES={'BOOST_THREAD_BUILD_DLL':1})
     libs = ['boost_system']
-    if sys.platform=="linux2": # require realtime extensions for clock_gettime
+    if sys.platform.startswith("linux"): # require realtime extensions for clock_gettime
       libs.append('rt')
     if boost_thread_uses_winthreads:
       libs.append('boost_chrono')
@@ -548,7 +548,7 @@ class
         env.SharedLibrary(target="#lib/%s" % pyd, source=source)
     all_tst = [os.path.join(test_dir, tst+".py") for tst in all_tst]
     #
-    if (sys.platform == "linux2"):
+    if sys.platform.startswith("linux"):
       base_lib = libtbx.env.under_build(path="base/lib")
       if (os.path.isdir(base_lib)):
         env_prog = env.Clone()

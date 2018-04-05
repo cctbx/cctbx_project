@@ -32,7 +32,7 @@ main(
     except Exception: return 3
   if (os.path.exists("a.out")):
     return 4
-  if (sys.platform in ["linux2", "linux3", "darwin"]):
+  if (sys.platform in ["linux", "linux2", "linux3", "darwin"]):
     try: os.system("gcc libtbx_hello_world.c")
     except Exception: return 5
   else:

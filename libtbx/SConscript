@@ -1138,7 +1138,7 @@ int main() {
     print("libtbx.scons: OpenMP is not usable.")
     return
   msg = "libtbx.scons: OpenMP is not usable (in shared libraries)."
-  if (    sys.platform == 'linux2'
+  if (    sys.platform.startswith('linux')
       and not env_etc.no_boost_python
       and env_etc.gcc_version is not None
       and env_etc.gcc_version < 40300):
