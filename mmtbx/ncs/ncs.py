@@ -1730,27 +1730,30 @@ class ncs:
        rmsd_list=None,
        ncs_domain_pdb=None,
        cc=None,
-       source_of_ncs_info=None):
-     list_length=None
-     for lst in [trans_orth,ncs_rota_matr,center_orth]:
-       if not lst or len(lst)<1:
-         print "Length too short:",type(lst),lst,len(lst)
-         raise Sorry("The NCS operators in this file appear incomplete?")
-       if not list_length: list_length=len(lst)
-       if list_length!=len(lst):
-         print "Length of list incorrect:",type(lst),lst,len(lst),list_length
-         raise Sorry("The NCS operators in this file appear incomplete?")
-     ncs_group_object=ncs_group(
-       ncs_rota_matr=ncs_rota_matr,
-       center_orth=center_orth,
-       trans_orth=trans_orth,
-       chain_residue_id=remove_quotes_from_chain_id(chain_residue_id),
-       residues_in_common_list=residues_in_common_list,
-       rmsd_list=rmsd_list,
-       source_of_ncs_info=source_of_ncs_info,
-       ncs_domain_pdb=ncs_domain_pdb,
-       cc=cc,
-       exclude_h=self._exclude_h,exclude_d=self._exclude_d)
+       source_of_ncs_info=None,
+       ncs_group_object=None):
+
+     if not ncs_group_object:
+       list_length=None
+       for lst in [trans_orth,ncs_rota_matr,center_orth]:
+         if not lst or len(lst)<1:
+           print "Length too short:",type(lst),lst,len(lst)
+           raise Sorry("The NCS operators in this file appear incomplete?")
+         if not list_length: list_length=len(lst)
+         if list_length!=len(lst):
+           print "Length of list incorrect:",type(lst),lst,len(lst),list_length
+           raise Sorry("The NCS operators in this file appear incomplete?")
+       ncs_group_object=ncs_group(
+         ncs_rota_matr=ncs_rota_matr,
+         center_orth=center_orth,
+         trans_orth=trans_orth,
+         chain_residue_id=remove_quotes_from_chain_id(chain_residue_id),
+         residues_in_common_list=residues_in_common_list,
+         rmsd_list=rmsd_list,
+         source_of_ncs_info=source_of_ncs_info,
+         ncs_domain_pdb=ncs_domain_pdb,
+         cc=cc,
+         exclude_h=self._exclude_h,exclude_d=self._exclude_d)
      self._ncs_groups.append(ncs_group_object)
 
   def save_ncs_group(self):
