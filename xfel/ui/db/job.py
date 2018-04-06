@@ -239,7 +239,7 @@ def submit_job(app, job):
   if job.rungroup.extra_phil_str is not None:
     phil_str += "\n" + job.rungroup.extra_phil_str
 
-  if dispatcher == 'cxi.xtc_process':
+  if dispatcher != 'cxi.xtc_process':
     from xfel.command_line.xtc_process import phil_scope as orig_phil_scope
     from iotbx.phil import parse
     if job.rungroup.two_theta_low is not None or job.rungroup.two_theta_high is not None:
