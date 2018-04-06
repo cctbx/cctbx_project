@@ -44,6 +44,9 @@ max_delta = None
   .type = float
   .help = Before filtering, throw out all reflections with obs-pred greater \
           that max_delta mm.
+detector = None
+  .type = int
+  .help = If not None, only filter experiments matching this detector number
 output {
   filtered_experiments = filtered_experiments.json
     .type = str
@@ -52,6 +55,10 @@ output {
     .type = str
     .help = Name of output filtered reflections file
 }
+delta_psi_filter = None
+  .type = float(value_min=0)
+  .help = After RMSD filter, filter remaining reflections by delta psi \
+          angle (degrees).
 ''')
 
 class Script(object):
@@ -87,6 +94,31 @@ class Script(object):
     assert len(reflections) == 1
     reflections = reflections[0]
     print "Found", len(reflections), "reflections", "and", len(experiments), "experiments"
+
+    filtered_reflections = flex.reflection_table()
+    filtered_experiments = ExperimentList()
+
+    skipped_reflections = flex.reflection_table()
+    skipped_experiments = ExperimentList()
+
+    if params.detector is not None:
+      culled_reflections = flex.reflection_table()
+      culled_experiments = ExperimentList()
+      detector = experiments.detectors()[params.detector]
+      for expt_id, experiment in enumerate(experiments):
+        refls = reflections.select(reflections['id']==expt_id)
+        if experiment.detector is detector:
+          culled_experiments.append(experiment)
+          refls['id'] = flex.int(len(refls), len(culled_experiments)-1)
+          culled_reflections.extend(refls)
+        else:
+          skipped_experiments.append(experiment)
+          refls['id'] = flex.int(len(refls), len(skipped_experiments)-1)
+          skipped_reflections.extend(refls)
+
+      print "RMSD filtering %d experiments using detector %d, out of %d"%(len(culled_experiments), params.detector, len(experiments))
+      reflections = culled_reflections
+      experiments = culled_experiments
 
     difference_vector_norms = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
 
@@ -129,8 +161,6 @@ class Script(object):
     outliers.set_selected(data > q3_x + cut_x, True)
     #outliers.set_selected(col < q1_x - cut_x, True) # Don't throw away the images that are outliers in the 'good' direction!
 
-    filtered_reflections = flex.reflection_table()
-    filtered_experiments = ExperimentList()
     for i in xrange(len(experiments)):
       if outliers[i]:
         continue
@@ -146,6 +176,25 @@ class Script(object):
       n_zero,
       len(experiments),
       100*((len(experiments)-len(filtered_experiments))/len(experiments)))
+
+    if params.detector is not None:
+      crystals = filtered_experiments.crystals()
+      for expt_id, experiment in enumerate(skipped_experiments):
+        if experiment.crystal in crystals:
+          filtered_experiments.append(experiment)
+          refls = skipped_reflections.select(skipped_reflections['id'] == expt_id)
+          refls['id'] = flex.int(len(refls), len(filtered_experiments)-1)
+          filtered_reflections.extend(refls)
+
+    if params.delta_psi_filter is not None:
+      delta_psi = filtered_reflections['delpsical.rad']*180/math.pi
+      sel = (delta_psi <= params.delta_psi_filter) & (delta_psi >= -params.delta_psi_filter)
+      l = len(filtered_reflections)
+      filtered_reflections = filtered_reflections.select(sel)
+      print "Filtering by delta psi, removing %d out of %d reflections"%(l - len(filtered_reflections), l)
+
+    print "Final experiment count", len(filtered_experiments)
+
     from dxtbx.model.experiment_list import ExperimentListDumper
     dump = ExperimentListDumper(filtered_experiments)
     dump.as_json(params.output.filtered_experiments)
