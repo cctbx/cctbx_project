@@ -46,7 +46,7 @@ class character_iterator(slots_getstate_setstate):
     if (O.input_string[O.i_char] == "\n"): O.line_number += 1
     O.i_char += 1
 
-  def next(O):
+  def __next__(O):
     result = O.look_ahead_1()
     if (result is not None):
       O.i_char += 1
