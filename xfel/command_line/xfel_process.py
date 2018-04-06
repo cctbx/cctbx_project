@@ -66,12 +66,13 @@ delete_shoeboxes_override_str = '''
   }
 '''
 
-from dials.command_line.stills_process import Processor, dials_phil_str, program_defaults_phil_str, Script as DialsScript
+from dials.command_line.stills_process import dials_phil_str, program_defaults_phil_str, Script as DialsScript
+from xfel.ui.db.frame_logging import DialsProcessorWithLogging
 
 phil_scope = parse(control_phil_str + dials_phil_str, process_includes=True).fetch(parse(program_defaults_phil_str))
 phil_scope = phil_scope.fetch(parse(delete_shoeboxes_override_str))
 
-class Script(DialsScript, Processor):
+class Script(DialsScript, DialsProcessorWithLogging):
   '''A class for running the script.'''
 
   def __init__(self):

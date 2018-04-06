@@ -1071,7 +1071,8 @@ class InMemScript(DialsProcessScript):
 
     self.debug_write("spotfind_start")
     try:
-      observed = self.find_spots(datablock)
+      observed, db_event = self.find_spots(datablock, run, timestamp = timestamp,
+                                           two_theta_low = tt_low, two_theta_high = tt_high)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
@@ -1083,7 +1084,6 @@ class InMemScript(DialsProcessScript):
     if self.params.dispatch.hit_finder.enable and len(observed) < self.params.dispatch.hit_finder.minimum_number_of_reflections:
       print "Not enough spots to index"
       self.debug_write("not_enough_spots_%d"%len(observed), "stop")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     self.restore_ranges(dxtbx_img)
@@ -1110,7 +1110,6 @@ class InMemScript(DialsProcessScript):
 
     if not self.params.dispatch.index:
       self.debug_write("strong_shot_%d"%len(observed), "done")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     # index and refine
@@ -1121,7 +1120,6 @@ class InMemScript(DialsProcessScript):
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("indexing_failed_%d"%len(observed), "stop")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     if self.params.dispatch.dump_indexed:
@@ -1136,13 +1134,19 @@ class InMemScript(DialsProcessScript):
         expt.imageset = imgset
 
     self.debug_write("refine_start")
+
+    if not self.params.dispatch.integrate:
+      log_indexed = True
+    else:
+      log_indexed = False
     try:
-      experiments, indexed = self.refine(experiments, indexed)
+      experiments, indexed, db_event = self.refine(experiments, indexed, run, timestamp = timestamp,
+                                                   two_theta_low = tt_low, two_theta_high = tt_high,
+                                                   db_event = db_event, log = log_indexed)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("refine_failed_%d"%len(indexed), "fail")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     if self.params.dispatch.reindex_strong:
@@ -1153,12 +1157,10 @@ class InMemScript(DialsProcessScript):
         import traceback; traceback.print_exc()
         print str(e), "event", timestamp
         self.debug_write("reindexstrong_failed_%d"%len(indexed), "fail")
-        self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
         return
 
     if not self.params.dispatch.integrate:
       self.debug_write("index_ok_%d"%len(indexed), "done")
-      self.log_frame(experiments, indexed, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
 
     # integrate
@@ -1181,31 +1183,17 @@ class InMemScript(DialsProcessScript):
       self.params.integration.lookup.mask = tuple([a&b for a, b in zip(mask,self.integration_mask)])
 
     try:
-      integrated = self.integrate(experiments, indexed)
+      integrated, db_event = self.integrate(experiments, indexed, run, timestamp = timestamp,
+                                            two_theta_low = tt_low, two_theta_high = tt_high,
+                                            db_event = db_event)
     except Exception, e:
       import traceback; traceback.print_exc()
       print str(e), "event", timestamp
       self.debug_write("integrate_failed_%d"%len(indexed), "fail")
-      self.log_frame(None, None, run.run(), len(observed), timestamp, tt_low, tt_high)
       return
     self.restore_ranges(dxtbx_img)
 
-    self.log_frame(experiments, integrated, run.run(), len(observed), timestamp, tt_low, tt_high)
     self.debug_write("integrate_ok_%d"%len(integrated), "done")
-
-  def log_frame(self, experiments, reflections, run, n_strong, timestamp = None, two_theta_low = None, two_theta_high = None):
-    if self.params.experiment_tag is None:
-      return
-    try:
-      from xfel.ui.db.dxtbx_db import log_frame
-      log_frame(experiments, reflections, self.params, run, n_strong, timestamp, two_theta_low, two_theta_high)
-    except Exception, e:
-      import traceback; traceback.print_exc()
-      print str(e), "event", timestamp
-      if reflections is None:
-        self.debug_write("db_logging_failed", "fail")
-      else:
-        self.debug_write("db_logging_failed_%d" % len(reflections), "fail")
 
   def save_image(self, image, params, root_path):
     """ Save an image, in either cbf or pickle format.
