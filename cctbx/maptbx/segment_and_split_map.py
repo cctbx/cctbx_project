@@ -191,6 +191,11 @@ master_phil = iotbx.phil.parse("""
        .help = Chain type. Determined automatically from sequence file if \
                not given. Mixed chain types are fine (leave blank if so).
 
+     sequence = None
+       .type = str
+       .short_caption = Sequence
+       .help = Sequence as string
+
      is_crystal = False
        .type = bool
        .short_caption = Is a crystal
@@ -1047,6 +1052,11 @@ master_phil = iotbx.phil.parse("""
                   your machine into account.
         .short_caption = Memory check
 
+     write_files = True
+       .type = bool
+       .help = Controls whether files are written
+       .short_caption = Write files
+
    }
 """, process_includes=True)
 master_params = master_phil
@@ -1815,6 +1825,7 @@ class pdb_info_object:
 class seq_info_object:
   def __init__(self,
     file_name=None,
+    sequence=None,
     n_residues=None,
     ):
     from libtbx import adopt_init_args
@@ -1823,7 +1834,8 @@ class seq_info_object:
     self.init_asctime=time.asctime()
 
   def show_summary(self,out=sys.stdout):
-    print >>out,"Sequence file:%s" %(self.file_name),
+    if self.file_name:
+      print >>out,"Sequence file:%s" %(self.file_name),
     if self.n_residues:
       print >>out,"   Residues: %d" %(self.n_residues)
     else:
@@ -1970,8 +1982,9 @@ class info_object:
   def set_params(self,params):
     self.params=deepcopy(params)
 
-  def set_input_seq_info(self,file_name=None,n_residues=None):
+  def set_input_seq_info(self,file_name=None,sequence=None,n_residues=None):
     self.input_seq_info=seq_info_object(file_name=file_name,
+       sequence=sequence,
        n_residues=n_residues)
 
   def set_input_pdb_info(self,file_name=None,n_residues=None):
@@ -4336,6 +4349,8 @@ def check_memory(map_data,ratio_needed,maximum_fraction_to_use=0.90,
 
 def get_params(args,map_data=None,crystal_symmetry=None,
     sharpening_target_pdb_inp=None,
+    ncs_object=None,
+    sequence=None,
     out=sys.stdout):
 
   params=get_params_from_args(args)
@@ -4345,6 +4360,27 @@ def get_params(args,map_data=None,crystal_symmetry=None,
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
 
+  # Turn off files if desired
+  if params.control.write_files is False:
+    params.output_files.magnification_map_file=None
+
+    params.output_files.magnification_map_file = None
+    params.output_files.magnification_ncs_file = None
+    params.output_files.shifted_map_file = None
+    params.output_files.shifted_sharpened_map_file = None
+    params.output_files.sharpened_map_file = None
+    params.output_files.shifted_pdb_file = None
+    params.output_files.shifted_ncs_file = None
+    params.output_files.shifted_used_ncs_file = None
+    params.output_files.box_map_file = None
+    params.output_files.box_mask_file = None
+    params.output_files.write_output_maps = False
+    params.output_files.remainder_map_file = None
+    params.output_files.output_info_file = None
+    params.output_files.restored_pdb = None
+    params.output_files.output_weight_map_pickle_file = None
+
+
   from cctbx.maptbx.auto_sharpen import set_sharpen_params
   params=set_sharpen_params(params,out)
 
@@ -4352,9 +4388,19 @@ def get_params(args,map_data=None,crystal_symmetry=None,
        params.map_modification.b_iso is not None) and (
     not params.crystal_info.molecular_mass and
     not params.crystal_info.solvent_content and
-    not params.input_files.seq_file):
+    not params.input_files.seq_file and not params.crystal_info.sequence and
+    not sequence):
      raise Sorry("Please use auto_sharpen or supply molecular mass or "+
         "solvent_content or a sequence file")
+  if params.input_files.seq_file and not params.crystal_info.sequence and \
+      not sequence:
+    if not params.crystal_info.sequence:
+      if sequence:
+        params.crystal_info.sequence=sequence
+      else:
+        params.crystal_info.sequence=open(params.input_files.seq_file).read()
+    print >>out,"Read sequence from %s" %(params.input_files.seq_file)
+
   if not params.crystal_info.resolution and (
      params.map_modification.b_iso is not None or \
       params.map_modification.auto_sharpen
@@ -4423,11 +4469,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     from iotbx import ccp4_map
     ccp4_map=iotbx.ccp4_map.map_reader(
     file_name=params.input_files.map_file)
-    crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
-      ccp4_map.space_group_number)
+    if not crystal_symmetry:
+      crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
+        ccp4_map.space_group_number)
     map_data=ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
+  if not crystal_symmetry:
+    raise Sorry("Need crystal_symmetry")
 
   if params.input_files.half_map_file:
     if len(params.input_files.half_map_file) != 2:
@@ -4441,7 +4490,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
        file_name=params.input_files.half_map_file[1]).data.as_double())
 
   # Get the NCS object
-  ncs_obj,dummy_tracking_data=get_ncs(params=params,out=out)
+  ncs_obj,dummy_tracking_data=get_ncs(params=params,
+    ncs_object=ncs_object,out=out)
 
   if params.map_modification.auto_sharpen or \
         params.map_modification.b_iso is not None or \
@@ -4473,7 +4523,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       sharpened_map_file=os.path.join(
             tracking_data.params.output_files.output_directory,
             tracking_data.params.output_files.sharpened_map_file)
-      if sharpened_map_file:
+      if tracking_data.params.output_files.sharpened_map_file:
         sharpened_map_data=map_data.deep_copy()
 
         print >>out,"Gridding of sharpened map:"
@@ -4600,12 +4650,18 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
       bounds_supplied=True
       print >>out,"\nRunning map_box with supplied bounds"
-      box=run_map_box(args,lower_bounds=params.segmentation.lower_bounds,
+      box=run_map_box(args,
+          map_data=map_data,
+          crystal_symmetry=crystal_symmetry,
+          lower_bounds=params.segmentation.lower_bounds,
           upper_bounds=params.segmentation.upper_bounds, log=out)
     else:
       bounds_supplied=False
-      box=run_map_box(["density_select=True"]+args,log=out)
-      #box=run_map_box(["keep_map_size=True"]+args,log=out)
+      box=run_map_box(["density_select=True"]+args,
+       map_data=map_data,
+       crystal_symmetry=crystal_symmetry,
+       log=out)
+      #box=run_map_box(["keep_map_size=True"]+args, map_data=map_data, crystal_symmetry=crystal_symmetry, log=out)
 
     # Run again to select au box
     shifted_unique_closest_sites=None
@@ -4633,6 +4689,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         print >>out,"\nRunning map-box again with boxed range ..."
         del box
         box=run_map_box(args,lower_bounds=lower_bounds,
+          map_data=map_data,
+          crystal_symmetry=crystal_symmetry,
           upper_bounds=upper_bounds, log=out)
         box.map_box=box.map_box.as_double()  # Do we need double?
         shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
@@ -4644,7 +4702,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       lower_bounds,upper_bounds=get_bounds_for_helical_symmetry(params,
          crystal_symmetry=crystal_symmetry,box=box)
       print >>out,"\nRunning map-box again with restricted Z range ..."
-      box=run_map_box(args,lower_bounds=lower_bounds,upper_bounds=upper_bounds,
+      box=run_map_box(args,
+        map_data=map_data,
+        crystal_symmetry=crystal_symmetry,
+        lower_bounds=lower_bounds,upper_bounds=upper_bounds,
         log=out)
 
     #-----------------------------
@@ -5427,16 +5488,19 @@ def create_rna_dna(cns_dna_rna_residue_names):
   return dd
 
 def get_solvent_content_from_seq_file(params,
+    sequence=None,
     seq_file=None,
     ncs_copies=None,
     map_volume=None,
     out=sys.stdout):
-  if not os.path.isfile(seq_file):
+  if not sequence and not os.path.isfile(seq_file):
     raise Sorry(
      "The sequence file '%s' is missing." %(seq_file))
-  print >>out,"\nReading sequence from %s " %(seq_file)
+  if not sequence:
+    print >>out,"\nReading sequence from %s " %(seq_file)
+    sequence=open(seq_file).read()
   from iotbx.bioinformatics import get_sequences
-  sequences=get_sequences(seq_file)
+  sequences=get_sequences(text=sequence)
   # get unique part of these sequences
 
   from mmtbx.validation.chain_comparison import \
@@ -5501,10 +5565,11 @@ def get_solvent_fraction(params,
 
 
 
-  if params.input_files.seq_file:
+  if params.input_files.seq_file or params.crystal_info.sequence:
     solvent_content,n_residues,n_residues_times_ncs=\
          get_solvent_content_from_seq_file(
      params,
+     sequence=params.crystal_info.sequence,
      seq_file=params.input_files.seq_file,
      ncs_copies=ncs_copies,
      map_volume=map_volume,
@@ -5525,8 +5590,9 @@ def get_solvent_fraction(params,
       print >>out,"Getting solvent content automatically."
 
   if tracking_data:
-    if params.input_files.seq_file:
+    if params.input_files.seq_file or params.crystal_info.sequence:
       tracking_data.set_input_seq_info(file_name=params.input_files.seq_file,
+       sequence=params.crystal_info.sequence,
         n_residues=n_residues)
       tracking_data.set_n_residues(
         n_residues=n_residues_times_ncs)
@@ -8157,7 +8223,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
       sharpening_method=None
 
     for param in [
-       'verbose','resolve_size','seq_file',
+       'verbose','resolve_size','seq_file', 'sequence',
        'box_size',
        'target_n_overlap',
        'restrict_map_size',
@@ -8245,7 +8311,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
      solvent_fraction,mm)
 
 
-    if local_params.input_files.seq_file and \
+    if (local_params.input_files.seq_file or 
+       local_params.crystal_info.sequence) and \
         not local_params.crystal_info.solvent_content and \
         not solvent_fraction: # 2017-12-19
         solvent_fraction=get_solvent_fraction(local_params,
@@ -8861,6 +8928,7 @@ def get_target_boxes(si=None,ncs_obj=None,map=None,
     args=[
         'resolution=%s' %(si.resolution),
         'seq_file=%s' %(si.seq_file),
+        'sequence=%s' %(si.sequence),
         'solvent_content=%s' %(si.solvent_fraction),
         'auto_sharpen=False', # XXX could sharpen overall
         'write_output_maps=True',
@@ -9170,6 +9238,7 @@ def auto_sharpen_map_or_map_coeffs(
         pdb_inp=None,
         ncs_obj=None,
         seq_file=None,
+        sequence=None,
         rmsd=None,
         rmsd_resolution_factor=None,
         k_sol=None,
@@ -10205,16 +10274,19 @@ def update_tracking_data_with_sharpening(map_data=None,tracking_data=None,
        si=None,out=sys.stdout):
 
     # Set shifted_map_info if map_data is new
-    shifted_sharpened_map_file=os.path.join(
+    if tracking_data.params.output_files.shifted_sharpened_map_file:
+      shifted_sharpened_map_file=os.path.join(
           tracking_data.params.output_files.output_directory,
           tracking_data.params.output_files.shifted_sharpened_map_file)
+    else:
+      shifted_sharpened_map_file=None
     from cctbx.maptbx.segment_and_split_map import write_ccp4_map
     if shifted_sharpened_map_file:
       write_ccp4_map(tracking_data.crystal_symmetry,
           shifted_sharpened_map_file,map_data)
       print >>out,"Wrote shifted, sharpened map to %s" %(
           shifted_sharpened_map_file)
-      tracking_data.set_shifted_map_info(file_name=
+    tracking_data.set_shifted_map_info(file_name=
           shifted_sharpened_map_file,
           crystal_symmetry=tracking_data.crystal_symmetry,
           origin=map_data.origin(),
@@ -10351,6 +10423,7 @@ def run(args,
      params=None,
      map_data=None,
      crystal_symmetry=None,
+     sequence=None,
      half_map_data_list=None,
      ncs_obj=None,
      tracking_data=None,
@@ -10370,8 +10443,12 @@ def run(args,
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,\
         shifted_ncs_object=get_params(
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
+       ncs_object=ncs_obj,
+       sequence=ncs_obj,
        sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
-    if params.control.shift_only or params.control.check_ncs or \
+    if params.control.shift_only:
+      return map_data,ncs_obj,tracking_data
+    elif params.control.check_ncs or \
         params.control.sharpen_only:
       return None,None,tracking_data
 
