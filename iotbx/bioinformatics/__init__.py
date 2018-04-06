@@ -1840,14 +1840,14 @@ def get_sequences(file_name=None,text=None):
 
 def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None):
   if not hierarchy:
-    # read from PDB 
+    # read from PDB
     if not text:
       if not file_name:
         from libtbx.utils import Sorry
         raise Sorry("Missing file for get_sequence_from_pdb: %s" %(
           file_name))
       text=open(file_name).read()
-    import iotbx.pdb 
+    import iotbx.pdb
     pdb_inp = iotbx.pdb.input(lines=text.splitlines(),source_info="None")
     import mmtbx.model
     mm = mmtbx.model.manager(
