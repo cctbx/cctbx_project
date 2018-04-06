@@ -305,7 +305,7 @@ def allocate_chunks(results_dir,
     for run, rg in rg_by_run.iteritems():
       try:
         trg = trial + "_" + rg
-        contents = os.listdir(os.path.join(results_dir, run, trg, "out"))
+        contents = sorted(os.listdir(os.path.join(results_dir, run, trg, "out")))
       except OSError:
         print "skipping run %s missing out directory" % run
         continue
