@@ -8311,7 +8311,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
      solvent_fraction,mm)
 
 
-    if (local_params.input_files.seq_file or 
+    if (local_params.input_files.seq_file or
        local_params.crystal_info.sequence) and \
         not local_params.crystal_info.solvent_content and \
         not solvent_fraction: # 2017-12-19
