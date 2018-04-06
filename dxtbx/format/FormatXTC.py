@@ -5,10 +5,20 @@ from dxtbx.format.FormatMultiImage import FormatMultiImage
 from libtbx.phil import parse
 
 locator_str = """
+  experiment = None
+    .type = str
+    .help = Experiment identifier, e.g. mfxo1916
+  run = None
+    .type = ints
+    .help = Run number or a list of runs to process
+  mode = smd
+    .type = str
+    .help = Mode for reading the xtc data (see LCLS documentation)
   data_source = None
     .type = str
-    .help = file format as specified at LCLS,eg. exp=mfxo1916:run=20:smd\
-           More info at https://confluence.slac.stanford.edu/display/PSDM/Manual#Manual-Datasetspecification
+    .help = Complete LCLS data source.  Overrides experiment and run.  Example: \
+            exp=mfxo1916:run=20:smd \
+            More info at https://confluence.slac.stanford.edu/display/PSDM/Manual#Manual-Datasetspecification
   detector_address = None
     .type = str
     .help = detector used for collecting the data at LCLS
@@ -41,10 +51,12 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     except Exception:
       return False
     if params.data_source is None:
-      return False
+      if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
+        return False
+      FormatXTC._img = "exp=%s:run=%s:%s"%(params.experiment, ','.join(["%d"%r for r in params.run]), params.mode)
     else:
       FormatXTC._img = params.data_source
-      FormatXTC._src = params.detector_address
+    FormatXTC._src = params.detector_address
 
     ds = DataSource(FormatXTC._img)
     if FormatXTC._src is None:
@@ -84,7 +96,9 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
 
     params = FormatXTC.params_from_phil(locator_scope,image_file)
     if params.data_source is None:
-      return False
+      if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
+        return False
+      img = "exp=%s:run=%s:%s"%(params.experiment, ','.join(["%d"%r for r in params.run]), params.mode)
     else:
       img = params.data_source
     return DataSource(img)
