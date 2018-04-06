@@ -1,5 +1,6 @@
 
 from __future__ import division
+from __future__ import print_function
 import libtbx.test_utils.parallel
 from libtbx.utils import Sorry, Usage
 import libtbx.phil
@@ -55,7 +56,7 @@ def run (args, return_list_of_tests=None) :
   if params.run_in_tmp_dir:
     from libtbx.test_utils import open_tmp_directory
     run_dir = open_tmp_directory()
-    print 'Running tests in %s' % run_dir
+    print('Running tests in %s' % run_dir)
     os.chdir(run_dir)
   elif return_list_of_tests:
     pass # don't need to check anything
@@ -70,9 +71,9 @@ def run (args, return_list_of_tests=None) :
   all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script))
   for dir_name in params.directory :
     if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
-      print 'DANGER '*10
-      print 'Using the directory option in cctbx_project can be very time consuming'
-      print 'DANGER '*10
+      print('DANGER '*10)
+      print('Using the directory option in cctbx_project can be very time consuming')
+      print('DANGER '*10)
     dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests))
   for module_name in params.module :
@@ -88,22 +89,21 @@ def run (args, return_list_of_tests=None) :
     random.shuffle(all_tests)
   if (params.quiet) :
     params.verbosity = 0
-  log = open("run_tests_parallel_zlog", "wb")
-  result = libtbx.test_utils.parallel.run_command_list(
-    cmd_list=all_tests,
-    nprocs=params.nproc,
-    log=log,
-    verbosity=params.verbosity,
-    max_time=params.max_time)
-  log.close()
-  print """\nSee run_tests_parallel_zlog for full output.\n"""
+  with open("run_tests_parallel_zlog", "w") as log:
+    result = libtbx.test_utils.parallel.run_command_list(
+      cmd_list=all_tests,
+      nprocs=params.nproc,
+      log=log,
+      verbosity=params.verbosity,
+      max_time=params.max_time)
+  print("\nSee run_tests_parallel_zlog for full output.\n")
   if (result.failure > 0) :
-    print ""
-    print "*" * 80
-    print "ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
-      result.failure
-    print "*" * 80
-    print ""
+    print("")
+    print("*" * 80)
+    print("ERROR: %d TEST FAILURES.  PLEASE FIX BEFORE COMMITTING CODE." % \
+      result.failure)
+    print("*" * 80)
+    print("")
   return result.failure
 
 if (__name__ == "__main__") :

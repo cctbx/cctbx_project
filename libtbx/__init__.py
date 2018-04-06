@@ -3,6 +3,8 @@ import libtbx.forward_compatibility
 import os
 import sys
 
+from builtins import object
+
 manual_date_stamp = 20090819
 
 def _STOP(exit_status=0):
