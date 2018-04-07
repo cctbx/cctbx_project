@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/04/2018
+Last Changed: 04/06/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -493,25 +493,22 @@ class Analyzer(object):
         if obj_list == []:
           obj_list = self.final_objects
 
-        # Cluster from iterable (a teensy bit less precise, but somewhat
-        # faster; will see if it's worth the loss of precision); don't know
-        # why it's less precise!
-        with Capturing() as suppressed_output:
-          uc_iterable = []
-          for obj in obj_list:
-            unit_cell = (float(obj.final['a']),
-                         float(obj.final['b']),
-                         float(obj.final['c']),
-                         float(obj.final['alpha']),
-                         float(obj.final['beta']),
-                         float(obj.final['gamma']),
-                         obj.final['sg'])
-            uc_iterable.append(unit_cell)
-          ucs = Cluster.from_iterable(iterable=uc_iterable)
+        # Cluster from iterable (this doesn't keep filenames - bad!)
+        # with Capturing() as suppressed_output:
+        #   uc_iterable = []
+        #   for obj in obj_list:
+        #     unit_cell = (float(obj.final['a']),
+        #                  float(obj.final['b']),
+        #                  float(obj.final['c']),
+        #                  float(obj.final['alpha']),
+        #                  float(obj.final['beta']),
+        #                  float(obj.final['gamma']),
+        #                  obj.final['sg'])
+        #     uc_iterable.append(unit_cell)
+        #   ucs = Cluster.from_iterable(iterable=uc_iterable)
 
-        # Cluster from files (slower, but a teensy bit more precise; will
-        # keep here for now)
-        # ucs = Cluster.from_files(pickle_list=self.pickles)
+        # Cluster from files (slow, but will keep for now)
+        ucs = Cluster.from_files(pickle_list=self.pickles)
 
         # Do clustering
         clusters, _ = ucs.ab_cluster(threshold=threshold,

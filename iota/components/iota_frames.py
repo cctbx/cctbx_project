@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/05/2018
+Last Changed: 04/06/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -12,6 +12,7 @@ import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
 from wx import richtext as rt
+from wx.lib.scrolledpanel import ScrolledPanel
 
 import numpy as np
 import time
@@ -1253,7 +1254,7 @@ class ProcessingTab(wx.Panel):
       self.view_proc_images()
 
 
-class SummaryTab(wx.Panel):
+class SummaryTab(ScrolledPanel):
   def __init__(self,
                parent,
                init=None,
@@ -1261,8 +1262,9 @@ class SummaryTab(wx.Panel):
                final_objects=None,
                out_dir=None,
                plot=None):
-    wx.Panel.__init__(self, parent)
+    ScrolledPanel.__init__(self, parent)
 
+    self.parent = parent
     self.final_objects = final_objects
     self.gparams = gparams
     self.out_dir = out_dir
@@ -1425,7 +1427,7 @@ class SummaryTab(wx.Panel):
     self.cluster_info.ctr.InsertColumn(1, "Lattice")
     self.cluster_info.ctr.InsertColumn(2, "Unit Cell")
     self.cluster_info.ctr.InsertColumn(3, "Filename")
-    #self.cluster_info.ctr.setResizeColumn(3)
+    self.cluster_info.ctr.setResizeColumn(3)
     cluster_box_sizer.Add(self.cluster_info, proportion=1, flag=wx.EXPAND)
     summary_sizer.Add(self.cluster_panel, flag=wx.EXPAND | wx.ALL, border=10)
 
@@ -1509,6 +1511,7 @@ class SummaryTab(wx.Panel):
 
     self.SetFont(sfont)
     self.SetSizer(summary_sizer)
+    self.SetupScrolling()
 
   def onPRIME(self, e):
     from prime.postrefine.mod_gui_init import PRIMEWindow
@@ -1555,11 +1558,10 @@ class SummaryTab(wx.Panel):
       self.cluster_info.ctr.SetStringItem(idx, 1, str(c['pg']))
       self.cluster_info.ctr.SetStringItem(idx, 2, str(c['uc']))
       if c['filename'] != '*':
-        self.cluster_info.ctr.SetStringItem(idx, 3, str(c['filename']))
+        self.cluster_info.ctr.SetStringItem(idx, 3, c['filename'])
 
-    # Resize columns to fit content
-    self.cluster_info.ctr.SetColumnWidth(3, width=-1)
-    self.cluster_info.ctr.SetColumnWidth(2, width=-3)
+    self.Refresh()
+    self.SetupScrolling()
 
   def onPlotHeatmap(self, e):
     if self.final_objects != None:

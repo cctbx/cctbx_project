@@ -2,6 +2,7 @@ IOTA v1.1.029 - GUI updates
 
 Bugfixes:
 - Fixed a few minor bugs in command-line argument read-in for GUI
+- Analysis tab now produces a scrollbar when too small for content
 
 
 Features:
