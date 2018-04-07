@@ -132,9 +132,16 @@ namespace boost_python { namespace {
   static void   set_beam_center_mm(nanoBragg& nanoBragg, vec2 const& value) {
       nanoBragg.Xbeam = value[0]/1000.;
       nanoBragg.Ybeam = value[1]/1000.;
-      nanoBragg.Fbeam = nanoBragg.Sbeam = NAN;
-      nanoBragg.Xclose = nanoBragg.Yclose = NAN;
-      nanoBragg.Fclose = nanoBragg.Sclose = NAN;
+      nanoBragg.Fbeam = value[0]/1000.;
+      nanoBragg.Sbeam = value[1]/1000.;
+      nanoBragg.Xclose = value[0]/1000.;
+      nanoBragg.Yclose = value[1]/1000.;
+      nanoBragg.Fclose = value[0]/1000.;
+      nanoBragg.Sclose = value[1]/1000.;
+      nanoBragg.user_beam = true;
+      //nanoBragg.Fbeam = nanoBragg.Sbeam = NAN;
+      //nanoBragg.Xclose = nanoBragg.Yclose = NAN;
+      //nanoBragg.Fclose = nanoBragg.Sclose = NAN;
       nanoBragg.ORGX = nanoBragg.ORGY = NAN;
       nanoBragg.reconcile_parameters();
   }
@@ -147,6 +154,8 @@ namespace boost_python { namespace {
   static void   set_XDS_ORGXY(nanoBragg& nanoBragg, vec2 const& value) {
       nanoBragg.ORGX = value[0];
       nanoBragg.ORGY = value[1];
+      nanoBragg.user_beam = true;
+      nanoBragg.beam_convention = XDS;
       nanoBragg.Fbeam = nanoBragg.Sbeam = NAN;
       nanoBragg.Xclose = nanoBragg.Yclose = NAN;
       nanoBragg.Fclose = nanoBragg.Sclose = NAN;
@@ -163,7 +172,7 @@ namespace boost_python { namespace {
   static vec2 get_mosflm_beam_center_mm(nanoBragg const& nanoBragg) {
       vec2 value;
       value[0]=(nanoBragg.Sbeam-0.5*nanoBragg.pixel_size)*1000.0;
-      value[1]=(nanoBragg.Fbeam-0.5*nanoBragg.pixel_size)*1000;
+      value[1]=(nanoBragg.Fbeam-0.5*nanoBragg.pixel_size)*1000.0;
       return value;
   }
   static vec2 get_denzo_beam_center_mm(nanoBragg const& nanoBragg) {
@@ -413,14 +422,14 @@ namespace boost_python { namespace {
 
 
   /* detector misseting angles, will be applied */
-  static vec3 get_detector_rot_deg(nanoBragg const& nanoBragg) {
+  static vec3 get_detector_rotation_deg(nanoBragg const& nanoBragg) {
       vec3 value;
       value[0]=nanoBragg.detector_rotx*RTD;
       value[1]=nanoBragg.detector_roty*RTD;
       value[2]=nanoBragg.detector_rotz*RTD;
       return value;
   }
-  static void   set_detector_rot_deg(nanoBragg& nanoBragg, vec3 const& value) {
+  static void   set_detector_rotation_deg(nanoBragg& nanoBragg, vec3 const& value) {
       nanoBragg.detector_rotx = value[0]/RTD;
       nanoBragg.detector_roty = value[1]/RTD;
       nanoBragg.detector_rotz = value[2]/RTD;
@@ -443,17 +452,31 @@ namespace boost_python { namespace {
   static double get_distance_mm(nanoBragg const& nanoBragg) {return nanoBragg.distance*1000.;}
   static void   set_distance_mm(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.distance = value/1000.;
-      nanoBragg.close_distance = NAN;
+      nanoBragg.close_distance = value/1000.;
+      nanoBragg.user_distance = true;
       nanoBragg.reconcile_parameters();
   }
   /* sample-to-nearest-point-on-detector distance, exposed to Python in mm */
   static double get_close_distance_mm(nanoBragg const& nanoBragg) {return nanoBragg.close_distance*1000.;}
   static void   set_close_distance_mm(nanoBragg& nanoBragg, double const& value) {
       nanoBragg.close_distance = value/1000.;
-      nanoBragg.distance = NAN;
+      nanoBragg.distance = value/1000.;
+      nanoBragg.user_distance = true;
       nanoBragg.reconcile_parameters();
   }
 
+
+  /* re-set convention used to define diffractometer coordinates */
+  static convention get_beam_convention(nanoBragg const& nanoBragg) {
+      convention value;
+      value=nanoBragg.beam_convention;
+      return value;
+  }
+  static void   set_beam_convention(nanoBragg& nanoBragg, convention const& value) {
+      nanoBragg.beam_convention = value;
+      /* need to update everything? */
+      nanoBragg.init_beamcenter();
+  }
 
 
   /* unit vectors defining camera coordinate system */
@@ -557,6 +580,25 @@ namespace boost_python { namespace {
       nanoBragg.polar_vector[1] = value[0];
       nanoBragg.polar_vector[2] = value[1];
       nanoBragg.polar_vector[3] = value[2];
+      /* need to update everything? */
+      nanoBragg.init_detector();
+  }
+
+  /* direction of the B vector of the X-ray beam. will be made normal to beam direction, default: (0,-1,0) */
+  static vec3 get_polar_Bvector(nanoBragg const& nanoBragg) {
+      vec3 Evector = vec3(nanoBragg.polar_vector[1],nanoBragg.polar_vector[2],nanoBragg.polar_vector[3]);
+      vec3 Pvector = vec3(nanoBragg.beam_vector[1],nanoBragg.beam_vector[2],nanoBragg.beam_vector[3]);
+      vec3 Bvector = Pvector.cross(Evector).normalize();
+      return Bvector;
+  }
+  static void   set_polar_Bvector(nanoBragg& nanoBragg, vec3 const& value) {
+      vec3 Bvector = value;
+      vec3 Pvector = vec3(nanoBragg.beam_vector[1],nanoBragg.beam_vector[2],nanoBragg.beam_vector[3]);
+      vec3 Evector = Bvector.cross(Pvector).normalize();
+      nanoBragg.polar_vector[0] = 0;
+      nanoBragg.polar_vector[1] = Evector[0];
+      nanoBragg.polar_vector[2] = Evector[1];
+      nanoBragg.polar_vector[3] = Evector[2];
       /* need to update everything? */
       nanoBragg.init_detector();
   }
@@ -712,6 +754,15 @@ namespace boost_python { namespace {
       nanoBragg.init_Fhkl();
   }
 
+  /* allow direct access to F000, mostly for marking beam center */
+  static double get_F000(nanoBragg const& nanoBragg) {
+      return nanoBragg.Fhkl[-nanoBragg.h_min][-nanoBragg.k_min][-nanoBragg.l_min];
+  }
+  static void   set_F000(nanoBragg& nanoBragg, double const& value) {
+      nanoBragg.F000 = value;
+      nanoBragg.Fhkl[-nanoBragg.h_min][-nanoBragg.k_min][-nanoBragg.l_min] = nanoBragg.F000;
+  }
+
 
   /* background-scattering structure factor Fbg vs sin(theta)/lambda (stol) : populate C++ interpolation arrays */
   static af::shared<vec2> get_Fbg_vs_stol(nanoBragg nanoBragg) {
@@ -757,6 +808,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
       /* make sure it is big enough to hold all sources */
       nanoBragg.pythony_beams.resize(nanoBragg.sources);
 
+      /* polarization normal seems to be B vector */
+      vec3 Evector = vec3(nanoBragg.polar_vector[1],nanoBragg.polar_vector[2],nanoBragg.polar_vector[3]);
+      vec3 Pvector = vec3(nanoBragg.beam_vector[1],nanoBragg.beam_vector[2],nanoBragg.beam_vector[3]);
+      vec3 Bvector = Pvector.cross(Evector).normalize();
+
       /* copy internal storage into the flex array */
       for(i=0;i<nanoBragg.sources;++i){
           nanoBragg.pythony_beams[i].set_direction(vec3(nanoBragg.source_X[i],nanoBragg.source_Y[i],nanoBragg.source_Z[i]));
@@ -764,7 +820,7 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
           nanoBragg.pythony_beams[i].set_flux(nanoBragg.source_I[i]);
           // how is this a fraction when it can be negative? (Kahn et al. 1982)
           nanoBragg.pythony_beams[i].set_polarization_fraction(nanoBragg.polarization);
-          nanoBragg.pythony_beams[i].set_polarization_normal(vec3(nanoBragg.polar_vector[1],nanoBragg.polar_vector[2],nanoBragg.polar_vector[3]));
+          nanoBragg.pythony_beams[i].set_polarization_normal(Bvector);
       }
       /* pass this back to python */
       return nanoBragg.pythony_beams;
@@ -1108,8 +1164,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
   /* seed values need to be negated to re-initialize the generator */
   /* at the moment, trying to do this on-the-fly */
 
+  /* prenoise scale need not be scaled */
   /* quantum_gain need not be scaled */
-  /* adc_ofset need not be scaled */
+  /* adc_offset need not be scaled */
 
   /* detector calibration noise, usually 2-3%  Sometimse as low as 0.9%  */
   static double get_calibration_noise_pct(nanoBragg const& nanoBragg) {
@@ -1344,9 +1401,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
 
       /* specify the detector pivot point, note: this is an enum */
       .add_property("beamcenter_convention",
-                     make_getter(&nanoBragg::beam_convention,rbv()),
-                     make_setter(&nanoBragg::beam_convention,dcp()),
-                     "specify the convention used to define the beam center.  Must import convention to use this")
+                     make_function(&get_beam_convention,rbv()),
+                     make_function(&set_beam_convention,dcp()),
+                     "specify the convention used to define the beam center (DIALS, MOSFLM, XDS, DENZO, ADXV, Custom).  Must import convention to use this")
 
 
 
@@ -1373,6 +1430,10 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_polar_vector,rbv()),
                      make_function(&set_polar_vector,dcp()),
                      "unit vector representing 3-space direction of x-ray beam polarization (the E-vector)")
+      .add_property("polar_Bvector",
+                     make_function(&get_polar_Bvector,rbv()),
+                     make_function(&set_polar_Bvector,dcp()),
+                     "unit vector representing 3-space direction of x-ray beam polarization (the B-vector), equivalent to polarization_normal")
       .add_property("spindle_axis",
                      make_function(&get_spindle_vector,rbv()),
                      make_function(&set_spindle_vector,dcp()),
@@ -1415,9 +1476,9 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      "overall size of the detector fast and slow pixel directions (pixels)")
 
       /* rotation of detector about direct-beam-spot or sample, depending on pivot */
-      .add_property("detector_rot_deg",
-                     make_function(&get_detector_rot_deg,rbv()),
-                     make_function(&set_detector_rot_deg,dcp()),
+      .add_property("detector_rotation_deg",
+                     make_function(&get_detector_rotation_deg,rbv()),
+                     make_function(&set_detector_rotation_deg,dcp()),
                      "rotation of detector (deg) about direct-beam-spot (or sample position, depending on pivot)")
 
       /* True forces all pixels to be same distance from sample */
@@ -1608,6 +1669,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_function(&get_default_F,rbv()),
                      make_function(&set_default_F,dcp()),
                      "override value of missing Fs, default 0 (useful if you just want spots fast)")
+      /* direct access to F000 term, will appear at beam center, default 0 */
+      .add_property("F000",
+                     make_function(&get_F000,rbv()),
+                     make_function(&set_F000,dcp()),
+                     "override value of F000, default 0 (useful for marking beam center)")
 
 
       /* background intensity structure factor vs sin(theta)/lambda */
@@ -1649,11 +1715,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_getter(&nanoBragg::interpolate,rbv()),
                      make_setter(&nanoBragg::interpolate,dcp()),
                      "toggle interpolation between structure factors for inter-Bragg peaks")
-      /* experimental: use integral form instead of oversamling */
+      /* experimental: use integral form instead of oversampling */
       .add_property("integral_form",
                      make_getter(&nanoBragg::integral_form,rbv()),
                      make_setter(&nanoBragg::integral_form,dcp()),
-                     "experimental: use integral form instead of oversamling")
+                     "experimental: use integral form instead of oversapmling")
 
       /* random number seed for mosaic domain generation */
       .add_property("mosaic_seed",
@@ -1672,6 +1738,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      "random number seed for detector calibration error, keep the same for a given detector")
 
       /* noise generation parameters */
+      .add_property("spot_scale",
+                     make_getter(&nanoBragg::spot_scale,rbv()),
+                     make_setter(&nanoBragg::spot_scale,dcp()),
+                     "scale factor on spot photons applied BEFORE computing photon-counting or other errors (default: 1, but may be increased to model multiple mosaic domains in the same orientation)")
+       /* image file offset in converting photons to pixel values */
       .add_property("quantum_gain",
                      make_getter(&nanoBragg::quantum_gain,rbv()),
                      make_setter(&nanoBragg::quantum_gain,dcp()),

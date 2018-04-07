@@ -28,6 +28,7 @@ nanoBragg::nanoBragg(
     /* BEAM properties first */
 
     /* direction in 3-space of beam vector */
+    /* is this positive or negative? */
     xyz = beam.get_direction();
     beam_vector[1] = xyz[0];
     beam_vector[2] = xyz[1];
@@ -144,12 +145,13 @@ nanoBragg::nanoBragg(
     this->alpha=unitcell.parameters()[3]/RTD;   // input units = Degrees
     this->beta=unitcell.parameters()[4]/RTD;
     this->gamma=unitcell.parameters()[5]/RTD;
-    this->user_cell=1;
+    this->user_cell=true;
     this->misset[1]=missets_deg[0];
     this->misset[2]=missets_deg[1];
     this->misset[3]=missets_deg[2];
     if(this->misset[1] != 0.0 && this->misset[2] != 0.0 && this->misset[3] != 0.0) this->misset[0]=1;
     if(! isnan(beam_center_mm[0]) && ! isnan(beam_center_mm[1])) {
+        this->user_beam = true;
         this->Xbeam = beam_center_mm[0]/1000.0;
         this->Ybeam = beam_center_mm[1]/1000.0;
     }
@@ -366,6 +368,10 @@ nanoBragg::init_defaults()
     ORGX=NAN;ORGY=NAN;
     adc_offset = 40.0;
 
+    /* use these to remember "user" inputs */
+    user_beam = false;
+    user_distance =false;
+
     /* scattering vectors */
 //    double incident[4] = {0,0,0,0};
 //    double diffracted[4],diffracted0[4] = {0,0,0,0};
@@ -409,6 +415,7 @@ nanoBragg::init_defaults()
 
     /* structure factor representation */
     Fhkl = NULL;
+    F000 = 0.0;
     default_F = 0.0;
 
     /* background stuff */
@@ -466,6 +473,7 @@ nanoBragg::init_defaults()
     readout_noise = 3.0;
     flicker_noise = 0.0;
     calibration_noise = 0.03;
+    spot_scale = 1.0;
     quantum_gain = 1.0;
 
     /* interpolation defaults: auto-detect */
@@ -474,8 +482,8 @@ nanoBragg::init_defaults()
     sub_Fhkl=NULL;
 
     /* unit cell stuff */
-    user_cell = 0;
-    user_matrix = 0;
+    user_cell = false;
+    user_matrix = false;
 //    double a[4] = {0,0,0,0}; this->a = a;
 //    double b[4] = {0,0,0,0}; this->b = b;
 //    double c[4] = {0,0,0,0}; this->c = c;
@@ -620,13 +628,15 @@ nanoBragg::init_beam()
 void
 nanoBragg::init_beamcenter()
 {
-    /* default to center of detector */
+    /* use XDS origin, if provided */
     if(! isnan(ORGX)) Xclose = ORGX*pixel_size;
     if(! isnan(ORGY)) Yclose = ORGY*pixel_size;
+    /* default to center of detector */
     if(isnan(Xclose)) Xclose = (detsize_f - pixel_size)/2.0;
     if(isnan(Yclose)) Yclose = (detsize_s + pixel_size)/2.0;
-//    if(isnan(Xbeam)) Xbeam = Xclose;
-//    if(isnan(Ybeam)) Ybeam = Yclose;
+    /* apply defaults for anything not initialized */
+    if(isnan(Xbeam)) Xbeam = Xclose;
+    if(isnan(Ybeam)) Ybeam = Yclose;
     if(isnan(Fbeam)) Fbeam = Fclose;
     if(isnan(Sbeam)) Sbeam = Sclose;
     if(roi_xmin < 0) roi_xmin = 0;
@@ -638,8 +648,11 @@ nanoBragg::init_beamcenter()
     if(beam_convention == ADXV)
     {
         /* first pixel is at 0,0 pix and pixel_size,pixel_size*npixels mm */
-        if(isnan(Xbeam)) Xbeam = (detsize_f + pixel_size)/2.0;
-        if(isnan(Ybeam)) Ybeam = (detsize_s - pixel_size)/2.0;
+        if(! user_beam)
+        {
+            Xbeam = (detsize_f + pixel_size)/2.0;
+            Ybeam = (detsize_s - pixel_size)/2.0;
+        }
            beam_vector[1]=  0;    beam_vector[2]=  0;    beam_vector[3]=  1;
            fdet_vector[1]=  1;    fdet_vector[2]=  0;    fdet_vector[3]=  0;
            sdet_vector[1]=  0;    sdet_vector[2]= -1;    sdet_vector[3]=  0;
@@ -655,8 +668,11 @@ nanoBragg::init_beamcenter()
     if(beam_convention == MOSFLM)
     {
         /* first pixel is at 0.5,0.5 pix and pixel_size/2,pixel_size/2 mm */
-        if(isnan(Xbeam)) Xbeam = (detsize_s + pixel_size)/2.0;
-        if(isnan(Ybeam)) Ybeam = (detsize_f + pixel_size)/2.0;
+        if(! user_beam)
+        {
+            Xbeam = (detsize_s + pixel_size)/2.0;
+            Ybeam = (detsize_f + pixel_size)/2.0;
+        }
            beam_vector[1]=  1;    beam_vector[2]=  0;    beam_vector[3]=  0;
            odet_vector[1]=  1;    odet_vector[2]=  0;    odet_vector[3]=  0;
            fdet_vector[1]=  0;    fdet_vector[2]=  0;    fdet_vector[3]=  1;
@@ -671,8 +687,11 @@ nanoBragg::init_beamcenter()
     }
     if(beam_convention == DENZO)
     {
-        if(isnan(Xbeam)) Xbeam = (detsize_s + pixel_size)/2.0;
-        if(isnan(Ybeam)) Ybeam = (detsize_f + pixel_size)/2.0;
+        if(! user_beam)
+        {
+            Xbeam = (detsize_s + pixel_size)/2.0;
+            Ybeam = (detsize_f + pixel_size)/2.0;
+        }
            beam_vector[1]=  1;    beam_vector[2]=  0;    beam_vector[3]=  0;
            odet_vector[1]=  1;    odet_vector[2]=  0;    odet_vector[3]=  0;
            fdet_vector[1]=  0;    fdet_vector[2]=  0;    fdet_vector[3]=  1;
@@ -687,8 +706,11 @@ nanoBragg::init_beamcenter()
     }
     if(beam_convention == XDS)
     {
-        if(isnan(Xbeam)) Xbeam = Xclose;
-        if(isnan(Ybeam)) Ybeam = Yclose;
+        if(! user_beam)
+        {
+            Xbeam = Xclose;
+            Ybeam = Yclose;
+        }
            beam_vector[1]=  0;    beam_vector[2]=  0;    beam_vector[3]=  1;
            fdet_vector[1]=  1;    fdet_vector[2]=  0;    fdet_vector[3]=  0;
            sdet_vector[1]=  0;    sdet_vector[2]=  1;    sdet_vector[3]=  0;
@@ -703,15 +725,18 @@ nanoBragg::init_beamcenter()
     }
     if(beam_convention == DIALS)
     {
-        if(isnan(Xbeam)) Xbeam = Xclose;
-        if(isnan(Ybeam)) Ybeam = Yclose;
-           beam_vector[1]=  0;    beam_vector[2]=  0;    beam_vector[3]=  1;
+        if(! user_beam)
+        {
+            Xbeam = Xclose;
+            Ybeam = Yclose;
+        }
+           beam_vector[1]=  0;    beam_vector[2]=  0;    beam_vector[3]= -1;
            fdet_vector[1]=  1;    fdet_vector[2]=  0;    fdet_vector[3]=  0;
-           sdet_vector[1]=  0;    sdet_vector[2]=  1;    sdet_vector[3]=  0;
-           odet_vector[1]=  0;    odet_vector[2]=  0;    odet_vector[3]=  1;
-         twotheta_axis[1]=  0;  twotheta_axis[2]=  1;  twotheta_axis[3]=  0;
-          polar_vector[1]=  0;   polar_vector[2]=  1;   polar_vector[3]=  0;
-        spindle_vector[1]=  0; spindle_vector[2]=  1; spindle_vector[3]=  0;
+           sdet_vector[1]=  0;    sdet_vector[2]= -1;    sdet_vector[3]=  0;
+           odet_vector[1]=  0;    odet_vector[2]=  0;    odet_vector[3]= -1;
+         twotheta_axis[1]=  1;  twotheta_axis[2]=  0;  twotheta_axis[3]=  0;
+          polar_vector[1]=  1;   polar_vector[2]=  0;   polar_vector[3]=  0;
+        spindle_vector[1]=  1; spindle_vector[2]=  0; spindle_vector[3]=  0;
         Fbeam = Xbeam;
         Sbeam = Ybeam;
         detector_pivot = SAMPLE;
@@ -719,8 +744,11 @@ nanoBragg::init_beamcenter()
     }
     if(beam_convention == CUSTOM)
     {
-        if(isnan(Xbeam)) Xbeam = Xclose;
-        if(isnan(Ybeam)) Ybeam = Yclose;
+        if(! user_beam)
+        {
+            Xbeam = Xclose;
+            Ybeam = Yclose;
+        }
         Fbeam = Xbeam;
         Sbeam = Ybeam;
         Fclose = Xbeam;
@@ -743,7 +771,7 @@ nanoBragg::init_beamcenter()
     cross_product(beam_vector,polar_vector,vert_vector);
     unitize(vert_vector,vert_vector);
 
-    }
+}
 // init_beamcenter
 
 
@@ -1093,6 +1121,10 @@ nanoBragg::update_beamcenter()
     {
         if(verbose) printf("denzo");
     }
+    if(beam_convention == DIALS)
+    {
+        if(verbose) printf("dials");
+    }
     if(beam_convention == CUSTOM)
     {
         if(verbose) printf("custom");
@@ -1157,15 +1189,34 @@ nanoBragg::update_beamcenter()
     ORGX=Fclose/pixel_size+0.5;
     ORGY=Sclose/pixel_size+0.5;
 
-    /* find origin in DIALS convention */
-    newvector[1]=+0;newvector[2]=+0;newvector[3]=+1;
-    dials_origin[1] = 1000.0*dot_product(pix0_vector,newvector);
-    newvector[1]=+0;newvector[2]=+1;newvector[3]=+0;
-    dials_origin[2] = 1000.0*dot_product(pix0_vector,newvector);
-    newvector[1]=-1;newvector[2]=+0;newvector[3]=+0;
-    dials_origin[3] = 1000.0*dot_product(pix0_vector,newvector);
+    /* find origin in DIALS convention
+      from "CBF coordinate definition" at: https://sites.google.com/site/nexuscbf/home/cbf-dictionary
+      The standard coordinate frame in imgCIF/CBF aligns the X-axis to the
+      principal goniometer axis, chooses the Z-axis to point from the sample
+      into the beam.  If the beam is not orthogonal to the X-axis, the Z-axis
+      is the component of the vector points into the beam orthogonal to the
+      X-axis.  The Y-axis is chosen to complete a right-handed axis system.
+    */
+    double cbfX[4],cbfY[4],cbfZ[4],negbeam[4];
+    /* construct "X axis" */
+    unitize(spindle_vector,cbfX);
+    /* sample to source */
+    vector_scale(beam_vector,negbeam,-1);
+    /* construct "Z axis" */
+    double comp = dot_product(negbeam,cbfX);
+    cbfZ[1] = negbeam[1]-comp*cbfX[1];
+    cbfZ[2] = negbeam[2]-comp*cbfX[2];
+    cbfZ[3] = negbeam[3]-comp*cbfX[3];
+    unitize(cbfZ,cbfZ);
+    /* construct "Y axis" */
+    cross_product(cbfZ,cbfX,cbfY);
+    unitize(cbfY,cbfY);
+    /* now get the components */
+    dials_origin[1] = 1000.0*dot_product(pix0_vector,cbfX);
+    dials_origin[2] = 1000.0*dot_product(pix0_vector,cbfY);
+    dials_origin[3] = 1000.0*dot_product(pix0_vector,cbfZ);
 
-    /* find the beam in the detector frame */
+    /* find the beam in the detector frame, for XDS */
     newvector[1] = dot_product(beam_vector,fdet_vector);
     newvector[2] = dot_product(beam_vector,sdet_vector);
     newvector[3] = dot_product(beam_vector,odet_vector);
@@ -1672,6 +1723,8 @@ nanoBragg::init_Fhkl()
             }
         }
         if(verbose) printf("done initializing to default_F:\n");
+        if(verbose) printf("settting F000 to %g\n",F000);
+        Fhkl[-h_min][-k_min][-l_min] = F000;
     }
 
     if(hklfilename != NULL)
@@ -1698,6 +1751,8 @@ nanoBragg::init_Fhkl()
             Fhkl[h0-h_min][k0-k_min][l0-l_min]=F_cell;
             if(verbose>9) printf("F %d : %d %d %d = %g\n",i,h0,k0,l0,F_cell);
         }
+        if(verbose) printf("settting F000 to %g\n",F000);
+        Fhkl[-h_min][-k_min][-l_min] = F000;
         if(verbose) printf("done initializing Fhkl:\n");
     }
 }
@@ -2727,7 +2782,7 @@ nanoBragg::add_nanoBragg_spots()
             /* end of sub-pixel x loop */
 
 
-            floatimage[i] += r_e_sqr*fluence*polar*I/steps*omega_pixel;
+            floatimage[i] += r_e_sqr*fluence*spot_scale*polar*I/steps*omega_pixel;
 //          floatimage[i] = test;
             if(floatimage[i] > max_I) {
                 max_I = floatimage[i];
@@ -2880,8 +2935,8 @@ nanoBragg::add_background( int oversample, int source )
                         {
                             /* inverse of effective thickness increase */
                             parallax = dot_product(diffracted,odet_vector);
-                            capture_fraction = exp(-thick_tic*detector_thickstep*detector_attnlen/parallax)
-                                              -exp(-(thick_tic+1)*detector_thickstep*detector_attnlen/parallax);
+                            capture_fraction = exp(-thick_tic*detector_thickstep/detector_attnlen/parallax)
+                                              -exp(-(thick_tic+1)*detector_thickstep/detector_attnlen/parallax);
                         }
                         else
                         {
@@ -2949,8 +3004,8 @@ nanoBragg::add_background( int oversample, int source )
             floatimage[i] += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;
 
             if(verbose>7 && i==1)printf(
-              "DEBUG: Ibg= %g r_e_sqr= %g fluence= %g amorphous_molecules= %g steps= %d\n",
-                        Ibg,r_e_sqr,fluence,amorphous_molecules,steps);
+              "DEBUG: Ibg= %g r_e_sqr= %g fluence= %g amorphous_molecules= %g parallax= %g capfrac= %g omega= %g polar= %g steps= %d\n",
+                        Ibg,r_e_sqr,fluence,amorphous_molecules,parallax,capture_fraction,omega_pixel,polar,steps);
 
             /* override: just plot interpolated structure factor at every pixel, useful for making absorption masks */
             if(Fmap_pixel) floatimage[i]= Fbg;
@@ -3564,6 +3619,12 @@ nanoBragg::add_noise()
 
             /* take input image to be ideal photons/pixel */
             expected_photons = floatimage[i];
+
+            /* negative photons should be taken as invalid? */
+            if(expected_photons < 0.0)
+            {
+                ++i; continue;
+            }
 
             /* simulate 1/f noise in source */
             if(flicker_noise > 0.0){
@@ -4865,4 +4926,3 @@ double fmean_with_rejection(unsigned int starting_points, double arr[], double s
 
 
 }}// namespace simtbx::nanoBragg
-
