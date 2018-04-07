@@ -2,6 +2,7 @@ from __future__ import division
 from scitbx.array_family import flex
 from simtbx.nanoBragg import testuple
 from simtbx.nanoBragg import shapetype
+from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 import libtbx.load_env # possibly implicit
 from cctbx import crystal
@@ -60,7 +61,8 @@ def run_sim2smv(fileout):
   print "unit_cell_Adeg=",SIM.unit_cell_Adeg
   print "unit_cell_tuple=",SIM.unit_cell_tuple
   # this will become F000, marking the beam center
-  SIM.default_F=100
+  SIM.F000=200
+  SIM.default_F=0
   #SIM.missets_deg= (10,20,30)
   print "mosaic_seed=",SIM.mosaic_seed
   print "seed=",SIM.seed
@@ -91,6 +93,8 @@ def run_sim2smv(fileout):
   print "unit_cell_tuple=",SIM.unit_cell_tuple
   print "missets_deg=",SIM.missets_deg
   print "Amatrix=",SIM.Amatrix
+  #SIM.beamcenter_convention=convention.ADXV
+  #SIM.beam_center_mm=(45,47)
   print "beam_center_mm=",SIM.beam_center_mm
   print "XDS_ORGXY=",SIM.XDS_ORGXY
   print "detector_pivot=",SIM.detector_pivot

@@ -282,21 +282,30 @@ class FormatCBFMini(FormatCBF):
     items described in the category ARRAY_STRUCTURE. """
     cbf.add_category("array_data",["header_convention","header_contents","data"])
 
+    # get pixel info out of detector object
     panel = detector[0]
     pixel_xy = panel.get_pixel_size()
     pixel_x_microns = pixel_xy[0]*1000
     pixel_y_microns = pixel_xy[1]*1000
 
-    thickness = max(0.000001,panel.get_thickness())
+    # make sure we get the right units
+    thickness_meters = max(0.000001,panel.get_thickness()/1000.0)
 
+    # maybe someday more people will do this
+    flux = beam.get_flux()
+    transmission = beam.get_transmission()
+    polarization_fraction = beam.get_polarization_fraction()
+
+    # get exposure information
     exposure_period = scan.get_exposure_times()[0]
     phi_start = scan.get_oscillation()[0]
     osc = scan.get_oscillation()[1]
 
-    # exposure_time = exposure_period+0.00203
+    # automatically account for read-out time?
+    # exposure_time = exposure_period-0.00203  # this is apropriate for Pilatus3 S
     exposure_time = exposure_period  # simulation is a perfect detector
 
-    tau = 0 # simulation is a perfect detector
+    tau = 0 # assume simulation is a perfect detector with no pile-up error
     count_cutoff = 2**20  # not actually sure what this is
 
     wavelength = beam.get_wavelength()  # get the wavelength in the conventional way
@@ -308,19 +317,17 @@ class FormatCBFMini(FormatCBF):
     assert len(detector)==1,"only single-panel detectors supported"
     distance_meters = detector[0].get_distance()/1000
 
-    # why the heck is this backwards?
-    #print detector[0].get_fast_axis()
-    #print detector[0].get_slow_axis()
+    # fixed now, no longer backwards
     beam_center = detector[0].get_beam_centre_px(beam.get_s0())
-    ORGY, ORGX = beam_center
+    ORGX, ORGY = beam_center
 
     cbf.add_row([header_convention, """
 # Detector: %(det_type)s, S/N 60-0000
 # 1972-01-01T00:00:00.000
 # Pixel_size %(pixel_x_microns).0fe-6 m x %(pixel_x_microns).0fe-6 m
-# Silicon sensor, thickness %(thickness)f m
-# Exposure_time %(exposure_time)f s
-# Exposure_period %(exposure_period)f s
+# Silicon sensor, thickness %(thickness_meters)f m
+# Exposure_time %(exposure_time).7f s
+# Exposure_period %(exposure_period).7f s
 # Tau = %(tau)f s
 # Count_cutoff %(count_cutoff)d counts
 # Threshold_setting: %(threshold)d eV
@@ -328,14 +335,19 @@ class FormatCBFMini(FormatCBF):
 # N_excluded_pixels = %(bad_pixels)d
 # Excluded_pixels: badpix_mask.tif
 # Flat_field: (nil)
-# Trim_directory:
+# Trim_file: (nil)
 # Image_path: /ramdisk/
 # Wavelength %(wavelength).5f A
 # Detector_distance %(distance_meters).5f m
 # Beam_xy (%(ORGX).2f, %(ORGY).2f) pixels
+# Flux %(flux)g
+# Filter_transmission %(transmission).4f
 # Start_angle %(phi_start).4f deg.
 # Angle_increment %(osc).4f deg.
+# Polarization %(polarization_fraction).3f
 # Detector_2theta 0.0000 deg.
+# Kappa 0.0000 deg.
+# Phi %(phi_start).4f deg.
 """%locals()
 ])
 

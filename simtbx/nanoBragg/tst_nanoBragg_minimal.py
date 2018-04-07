@@ -8,6 +8,7 @@ SIM = nanoBragg()
 
 # dont bother with importing a structure, we just want spots
 SIM.default_F = 1
+SIM.F000 = 10
 
 # default is one unit cell, lets to 125
 SIM.Ncells_abc = (5,5,5)

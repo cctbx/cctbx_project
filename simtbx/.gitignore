@@ -16,6 +16,8 @@ git-notifier.log
 .gitversion
 nanoBragg/backups/
 nanoBragg/ignoreme/
+nanoBragg/index/
+nanoBragg/process/
 nanoBragg_standalone
 nonBragg_standalone
 notes.com
@@ -26,6 +28,9 @@ test_miller.cpp~
 testNAN
 testNAN.cpp
 testNAN.cpp~
-intimage_001.img
-nanoBragg/intimage.img
 nanoBragg/.adxv_beam_center
+nanoBragg/nick/
+nanoBragg/cbf_stats.txt
+nanoBragg/brunger_example/run_example_fast.log
+nanoBragg/brunger_example/run_example_slow.log
+
