@@ -1558,8 +1558,6 @@ class SummaryTab(wx.Panel):
         self.cluster_info.ctr.SetStringItem(idx, 3, str(c['filename']))
 
     # Resize columns to fit content
-    self.cluster_info.ctr.SetColumnWidth(0, width=-1)
-    self.cluster_info.ctr.SetColumnWidth(1, width=-1)
     self.cluster_info.ctr.SetColumnWidth(3, width=-1)
     self.cluster_info.ctr.SetColumnWidth(2, width=-3)
 
