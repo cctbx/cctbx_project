@@ -4865,3 +4865,4 @@ double fmean_with_rejection(unsigned int starting_points, double arr[], double s
 
 
 }}// namespace simtbx::nanoBragg
+
