@@ -9462,7 +9462,7 @@ def auto_sharpen_map_or_map_coeffs(
       print >>out,"Resetting solvent fraction to %.2f " %(
          overall_si.solvent_fraction)
       si.solvent_fraction=overall_si.solvent_fraction
- 
+
       print >>out,"\nDone sharpening map overall before carrying out final sharpening\n"
       print >>out,80*"*"
       si.b_blur_hires=0.  # from now on, don't apply extra blurring
