@@ -204,7 +204,11 @@ master_phil = iotbx.phil.parse("""
        .short_caption = high_resolution blurring
        .help = Blur high_resolution data (higher than d_cut) with \
              this b-value. Contrast with b_sharpen applied to data up to\
-             d_cut.
+             d_cut. \
+             Note on defaults: If None and b_sharpen is positive (sharpening) \
+             then high-resolution data is left as is (not sharpened). \
+             If None and b_sharpen is negative (blurring) high-resolution data\
+             is also blurred.
 
      resolution_dependent_b = None
        .type = floats
@@ -446,12 +450,21 @@ master_phil = iotbx.phil.parse("""
            strong.  Note 2: if k_sharpen is zero or None, then no \
            transition is applied and all data is sharpened or blurred. \
 
-     optimize_k_sharpen = None
+     iterate = False
        .type = bool
-       .short_caption = Optimize value of k_sharpen
-       .help = Optimize value of k_sharpen. \
+       .short_caption = Iterate auto-sharpening
+       .help = You can iterate auto-sharpening. This is useful in cases where \
+                 you do not specify the solvent content and it is not \
+                 accurately estimated until sharpening is optimized.
+
+     optimize_b_blur_hires = False
+       .type = bool
+       .short_caption = Optimize value of b_blur_hires
+       .help = Optimize value of b_blur_hires. \
                 Only applies for auto_sharpen_methods b_iso_to_d_cut and \
-                b_iso.
+                b_iso. This is normally carried out and helps prevent \
+                over-blurring at high resolution if the same map is \
+                sharpened more than once.
 
      optimize_d_cut = None
        .type = bool
@@ -681,12 +694,22 @@ def set_sharpen_params(params,out=sys.stdout):
         "\nand sharpening method is %s" %(
         params.map_modification.auto_sharpen_methods[0])
 
-  if params.map_modification.optimize_k_sharpen and \
+  if params.map_modification.optimize_b_blur_hires and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
        not 'b_iso' in params.map_modification.auto_sharpen_methods:
-     print >>out,"Set optimize_k_sharpen=False as neither b_iso_to_d_cut nor"+\
+     print >>out,\
+          "Set optimize_b_blur_hires=False as neither b_iso_to_d_cut nor"+\
          " b_iso are used"
-     params.map_modification.optimize_k_sharpen=False
+     params.map_modification.optimize_b_blur_hires=False
+
+  if params.map_modification.iterate and \
+    not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
+       not 'b_iso' in params.map_modification.auto_sharpen_methods:
+     print >>out,\
+          "Set iterate=False as neither b_iso_to_d_cut nor"+\
+         " b_iso are used"
+     params.map_modification.iterate=False
+
 
   return params
 
@@ -912,7 +935,8 @@ def run(args=None,params=None,
         mask_atoms_atom_radius=params.map_modification.mask_atoms_atom_radius,
         value_outside_atoms=params.map_modification.value_outside_atoms,
         k_sharpen=params.map_modification.k_sharpen,
-        optimize_k_sharpen=params.map_modification.optimize_k_sharpen,
+        optimize_b_blur_hires=params.map_modification.optimize_b_blur_hires,
+        iterate=params.map_modification.iterate,
         optimize_d_cut=params.map_modification.optimize_d_cut,
         soft_mask=params.map_modification.soft_mask,
         allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set,

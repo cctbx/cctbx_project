@@ -398,10 +398,10 @@ master_phil = iotbx.phil.parse("""
      b_blur_hires = 200
        .type = float
        .short_caption = high_resolution blurring
-       .help = Sharpen high_resolution data (higher than d_cut) with \
-             b_sharpen plus b_blur_hires.  Reduces sharpening (or causes \
-             blurring) at high resolution. \
-             If None and b_sharpen is positive (sharpening) \
+       .help = Blur high_resolution data (higher than d_cut) with \
+             this b-value. Contrast with b_sharpen applied to data up to\
+             d_cut. \
+             Note on defaults: If None and b_sharpen is positive (sharpening) \
              then high-resolution data is left as is (not sharpened). \
              If None and b_sharpen is negative (blurring) high-resolution data\
              is also blurred.
@@ -658,19 +658,28 @@ master_phil = iotbx.phil.parse("""
            transition is applied and all data is sharpened or blurred. \
            Note 3: only used if b_iso is set.
 
-     optimize_k_sharpen = None
+     iterate = False
        .type = bool
-       .short_caption = Optimize value of k_sharpen
-       .help = Optimize value of k_sharpen. \
+       .short_caption = Iterate auto-sharpening
+       .help = You can iterate auto-sharpening. This is useful in cases where \
+                 you do not specify the solvent content and it is not \
+                 accurately estimated until sharpening is optimized.
+
+     optimize_b_blur_hires = False
+       .type = bool
+       .short_caption = Optimize value of b_blur_hires
+       .help = Optimize value of b_blur_hires. \
                 Only applies for auto_sharpen_methods b_iso_to_d_cut and \
-                b_iso
+                b_iso. This is normally carried out and helps prevent \
+                over-blurring at high resolution if the same map is \
+                sharpened more than once.
 
      optimize_d_cut = None
        .type = bool
        .short_caption = Optimize value of d_cut
        .help = Optimize value of d_cut. \
                 Only applies for auto_sharpen_methods b_iso_to_d_cut and \
-                b_iso
+                b_iso. Not normally carried out.
 
      adjust_region_weight = True
        .type = bool
@@ -2392,7 +2401,8 @@ class sharpening_info:
       b_sharpen=None,
       b_iso=None,  # expected B_iso after applying b_sharpen
       k_sharpen=None,
-      optimize_k_sharpen=None,
+      optimize_b_blur_hires=None,
+      iterate=None,
       optimize_d_cut=None,
       kurtosis=None,
       adjusted_sa=None,
@@ -2449,6 +2459,7 @@ class sharpening_info:
       wang_radius=None,
       buffer_radius=None,
       pseudo_likelihood=None,
+      preliminary_sharpening_done=False,
         ):
 
     from libtbx import adopt_init_args
@@ -2592,7 +2603,8 @@ class sharpening_info:
       self.soft_mask=params.map_modification.soft_mask
       self.allow_box_if_b_iso_set=params.map_modification.allow_box_if_b_iso_set
       self.k_sharpen=params.map_modification.k_sharpen
-      self.optimize_k_sharpen=params.map_modification.optimize_k_sharpen
+      self.optimize_b_blur_hires=params.map_modification.optimize_b_blur_hires
+      self.iterate=params.map_modification.iterate
       self.optimize_d_cut=params.map_modification.optimize_d_cut
       self.sharpening_target=params.map_modification.sharpening_target
       self.residual_target=params.map_modification.residual_target
@@ -2676,6 +2688,7 @@ class sharpening_info:
       if self.sharpening_method=='b_iso' and self.k_sharpen is not None:
         self.k_sharpen=None
       return self
+
   def show_summary(self,verbose=False,out=sys.stdout):
     method_summary_dict={
        'b_iso':"Overall b_iso sharpening",
@@ -2800,6 +2813,15 @@ class sharpening_info:
        return True
     else:
        return False
+
+  def is_b_iso_sharpening(self):
+    if self.is_resolution_dependent_sharpening():
+       return False
+    if self.is_model_sharpening():
+       return False
+    if self.is_half_map_sharpening():
+       return False
+    return True
 
   def is_resolution_dependent_sharpening(self):
     if self.sharpening_method=='resolution_dependent':
@@ -8257,7 +8279,8 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'scale_using_last',
        'density_select_max_box_fraction',
        'k_sharpen',
-       'optimize_k_sharpen',
+       'optimize_b_blur_hires',
+       'iterate',
        'optimize_d_cut',
         'residual_target','sharpening_target',
        'search_b_min','search_b_max','search_b_n','adjust_region_weight',
@@ -9302,7 +9325,8 @@ def auto_sharpen_map_or_map_coeffs(
         max_helical_operators=None,
         k_sharpen=None,
         optimize_d_cut=None,
-        optimize_k_sharpen=None,
+        optimize_b_blur_hires=None,
+        iterate=None,
         search_b_min=None,
         search_b_max=None,
         search_b_n=None,
@@ -9407,13 +9431,51 @@ def auto_sharpen_map_or_map_coeffs(
          pdb_inp=pdb_inp,
          out=out)
 
+    # Get preliminary values of sharpening
+    working_map=map  # use another name for map XXX
+    if si.iterate and not si.preliminary_sharpening_done:
+      si.preliminary_sharpening_done=True
+      si.iterate=False
+      # first do overall sharpening of the map to get it about right
+      print >>out,80*"*"
+      print >>out,\
+         "\nSharpening map overall before carrying out final sharpening\n"
+      overall_si=deepcopy(si)
+      overall_si.local_sharpening=False  # don't local sharpen
+      overall_si=auto_sharpen_map_or_map_coeffs(si=overall_si,
+            auto_sharpen_methods=auto_sharpen_methods,
+            map=map,
+            half_map_data_list=half_map_data_list,
+            pdb_inp=pdb_inp,
+            out=out)
+      working_map=overall_si.map_data
+      from cctbx.maptbx.segment_and_split_map import write_ccp4_map
+      write_ccp4_map(crystal_symmetry,'working_map.ccp4',working_map)
+      # Get solvent content again
+      overall_si.solvent_content=None
+      overall_si.solvent_fraction=get_iterated_solvent_fraction(
+        crystal_symmetry=crystal_symmetry,
+        verbose=overall_si.verbose,
+        resolve_size=overall_si.resolve_size,
+        map=working_map,
+        out=out)
+      print >>out,"Resetting solvent fraction to %.2f " %(
+         overall_si.solvent_fraction)
+      si.solvent_fraction=overall_si.solvent_fraction
+ 
+      print >>out,"\nDone sharpening map overall before carrying out final sharpening\n"
+      print >>out,80*"*"
+      si.b_blur_hires=0.  # from now on, don't apply extra blurring
+    else:
+      working_map=map
+
     # Now identify optimal sharpening params
     print >>out,80*"="
     print >>out,"\nRunning auto_sharpen to get sharpening parameters\n"
     print >>out,80*"="
     result=run_auto_sharpen( # get sharpening parameters standard run
       si=si,
-      map_data=map,
+      map_data=working_map,
       first_half_map_data=first_half_map_data,
       second_half_map_data=second_half_map_data,
       pdb_inp=pdb_inp,
@@ -9436,7 +9498,7 @@ def auto_sharpen_map_or_map_coeffs(
        'b_iso','b_iso_to_d_cut','resolution_dependent'] and b_iso is None:
       local_si=deepcopy(si)
       local_si.sharpening_method='no_sharpening'
-      local_si.sharpen_and_score_map(map_data=map,out=null_out())
+      local_si.sharpen_and_score_map(map_data=working_map,out=null_out())
       print >>out,"\nScore for no sharpening: %7.2f " %(local_si.score)
     else:
       local_si=None
@@ -9444,13 +9506,13 @@ def auto_sharpen_map_or_map_coeffs(
     print >>out,80*"="
     print >>out,"\nApplying final sharpening to entire map"
     print >>out,80*"="
-    si.sharpen_and_score_map(map_data=map,set_b_iso=True,out=out)
+    si.sharpen_and_score_map(map_data=working_map,set_b_iso=True,out=out)
     if si.discard_if_worse and local_si and local_si.score > si.score:
        print >>out,"Sharpening did not improve map "+\
         "(%7.2f sharpened, %7.2f unsharpened). Discarding sharpened map" %(
         si.score,local_si.score)
        print >>out,"\nUse discard_if_worse=False to keep the sharpening"
-       local_si.sharpen_and_score_map(map_data=map,out=out)
+       local_si.sharpen_and_score_map(map_data=working_map,out=out)
        si=local_si
     if not si.is_model_sharpening() and not si.is_half_map_sharpening():
       si.show_score(out=out)
@@ -9485,8 +9547,8 @@ def estimate_signal_to_noise(value_list=None,minimum_value_to_include=0):
     signal_to_noise=0.
   return signal_to_noise
 
-def optimize_k_sharpen_or_d_cut_or_b_iso(
-           optimization_target='k_sharpen',
+def optimize_b_blur_or_d_cut_or_b_iso(
+           optimization_target='b_blur_hires',
            local_best_si=None,
            local_best_map_and_b=None,
            si_id_list=None,
@@ -9495,16 +9557,16 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
            original_b_iso=None,
            f_array=None,
            phases=None,
-           delta_k_sharpen=2,
+           delta_b_blur_hires=100,
            delta_d_cut=0.25,
            n_cycle_optimize=5,
            min_cycles=2,
            n_range=5,
            out=sys.stdout):
 
-  assert optimization_target in ['k_sharpen','d_cut','b_iso']
-  if optimization_target=='k_sharpen':
-    print >>out,"\nOptimizing k_sharpen. "
+  assert optimization_target in ['b_blur_hires','d_cut','b_iso']
+  if optimization_target=='b_blur_hires':
+    print >>out,"\nOptimizing b_blur_hires. "
   elif optimization_target=='d_cut':
     print >>out,"\nOptimizing d_cut. "
     local_best_si.input_d_cut=local_best_si.get_d_cut()
@@ -9513,9 +9575,10 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
 
   local_best_si.show_summary(out=out)
 
-  print >>out,"Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+  print >>out,"Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
        local_best_si.score,local_best_si.b_iso,
-       local_best_si.k_sharpen,local_best_si.get_d_cut())
+       local_best_si.b_blur_hires,
+       local_best_si.get_d_cut())
 
 
   # existing values:
@@ -9532,36 +9595,37 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
     if not improving: break
     print >>out,"Optimization cycle %s" %(cycle)
     print >>out,\
-       "Current best score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+       "Current best score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
      working_best_si.score,working_best_si.b_iso,
-        working_best_si.k_sharpen,working_best_si.get_d_cut())
+        working_best_si.b_blur_hires,
+       working_best_si.get_d_cut())
     if working_best_si.verbose:
-      print >>out," B-sharpen B-iso K-sharpen   Adj-SA    "+\
-           "Kurtosis  SA-ratio   Regions   d_cut   k_sharpen"
+      print >>out," B-sharpen B-iso B-blur   Adj-SA    "+\
+           "Kurtosis  SA-ratio   Regions   d_cut   b_blur_hires"
     local_best_working_si=deepcopy(working_best_si)
     improving=False
     for jj in xrange(-n_range,n_range+1):
-        if optimization_target=='k_sharpen':
-          test_k_sharpen=working_best_si.k_sharpen*delta_k_sharpen**jj
+        if optimization_target=='b_blur_hires': # ZZ try optimizing b_blur_hires
+          test_b_blur_hires=max(0.,working_best_si.b_blur_hires+jj*delta_b_blur_hires)
           test_d_cut=working_best_si.get_d_cut()
           test_b_iso=working_best_si.b_iso
         elif optimization_target=='d_cut':
-          test_k_sharpen=working_best_si.k_sharpen
+          test_b_blur_hires=working_best_si.b_blur_hires
           test_d_cut=working_best_si.get_d_cut()+jj*delta_d_cut
           test_b_iso=working_best_si.b_iso
         elif optimization_target=='b_iso':
-          test_k_sharpen=working_best_si.k_sharpen
+          test_b_blur_hires=working_best_si.b_blur_hires
           test_d_cut=working_best_si.get_d_cut()
           test_b_iso=working_best_si.b_iso+jj*delta_b_iso
 
-        id="%.3f_%.3f_%.3f" %(test_b_iso,test_k_sharpen,test_d_cut)
+        id="%.3f_%.3f_%.3f" %(test_b_iso,test_b_blur_hires,test_d_cut)
         if id in value_dict:
           score=value_dict[id]
         else:
           local_si=deepcopy(local_best_si)
           local_f_array=f_array
           local_phases=phases
-          local_si.k_sharpen=test_k_sharpen
+          local_si.b_blur_hires=test_b_blur_hires
           local_si.input_d_cut=test_d_cut
           local_si.b_iso=test_b_iso
           local_si.b_sharpen=original_b_iso-local_si.b_iso
@@ -9579,10 +9643,13 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
             print >>out,\
              " %6.1f     %6.1f  %5s   %7.3f  %7.3f" %(
               local_si.b_sharpen,local_si.b_iso,
-               local_si.k_sharpen,local_si.adjusted_sa,local_si.kurtosis) + \
+               local_si.b_blur_hires,
+               local_si.adjusted_sa,local_si.kurtosis) + \
               "  %7.3f         %7.3f   %7.3f %7.3f " %(
                local_si.sa_ratio,local_si.normalized_regions,
-               test_d_cut,test_k_sharpen)
+               test_d_cut,
+               test_b_blur_hires
+                )
 
           if local_si.score > local_best_score:
             local_best_score=local_si.score
@@ -9591,16 +9658,17 @@ def optimize_k_sharpen_or_d_cut_or_b_iso(
       best_score=local_best_score
       working_best_si=deepcopy(local_best_working_si)
       delta_b_iso=delta_b_iso/2
-      delta_k_sharpen=delta_k_sharpen**0.5
+      delta_b_blur_hires=delta_b_blur_hires/2
       delta_d_cut=delta_d_cut/2
       print >>out,"Current working best "+\
-          "score=%7.3f b_iso=%5.1f  k_sharpen=%5.1f d_cut=%5.1f" %(
+          "score=%7.3f b_iso=%5.1f  b_blur_hires=%5.1f d_cut=%5.1f" %(
             working_best_si.score,working_best_si.b_iso,
-        working_best_si.k_sharpen,working_best_si.get_d_cut())
+        working_best_si.b_blur_hires,
+        working_best_si.get_d_cut())
       improving=True
 
   if working_best_si and working_best_si.score > local_best_si.score:
-    print >>out,"Using new values of b_iso and k_sharpen and d_cut"
+    print >>out,"Using new values of b_iso and b_blur_hires and d_cut"
     local_best_si=working_best_si
 
   local_best_si.show_summary(out=out)
@@ -10125,7 +10193,7 @@ def run_auto_sharpen(
            local_best_si.signal_min)
           local_best_si.score=None
 
-      optimize_k_sharpen=False
+      optimize_b_blur_hires=False
       optimize_d_cut=False
       n_cycles=0
       if local_best_si.score is not None and local_best_si.optimize_d_cut and \
@@ -10133,18 +10201,19 @@ def run_auto_sharpen(
         optimize_d_cut=True
         n_cycles+=1
       if local_best_si.score is not None and \
-        local_best_si.optimize_k_sharpen and \
+        local_best_si.optimize_b_blur_hires and \
         local_best_si.k_sharpen is not None and \
         local_best_si.sharpening_method in ['b_iso_to_d_cut','b_iso']:
-        optimize_k_sharpen=True
+        optimize_b_blur_hires=True
         n_cycles+=1
 
       ##########################################
       optimize_b_iso=True
       for cycle in xrange(n_cycles):
-        if optimize_k_sharpen:
-          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
-           optimization_target='k_sharpen',
+        if optimize_b_blur_hires:
+          local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
+           #optimization_target='k_sharpen',
+           optimization_target='b_blur_hires',
            local_best_si=local_best_si,
            local_best_map_and_b=local_best_map_and_b,
            si_id_list=si_id_list,
@@ -10156,7 +10225,7 @@ def run_auto_sharpen(
            out=out)
 
         if optimize_d_cut:
-          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
+          local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
            optimization_target='d_cut',
            local_best_si=local_best_si,
            local_best_map_and_b=local_best_map_and_b,
@@ -10169,7 +10238,7 @@ def run_auto_sharpen(
            out=out)
 
         if optimize_b_iso:
-          local_best_si,local_best_map_and_b=optimize_k_sharpen_or_d_cut_or_b_iso(
+          local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
            optimization_target='b_iso',
            local_best_si=local_best_si,
            local_best_map_and_b=local_best_map_and_b,
