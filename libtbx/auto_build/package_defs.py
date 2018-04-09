@@ -67,6 +67,7 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 CYTHON_VERSION="0.27.3"
 DOCUTILS_VERSION="0.12"
 FUTURE_VERSION="0.16"
+H5PY_VERSION="2.7.1"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 NUMPY_VERSION="1.13.3"
@@ -86,8 +87,6 @@ SCIKIT_LEARN_VERSION = "0.19.1"
 # HDF5
 BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
 HDF5_PKG = "hdf5-1.10.1.tar.bz2"
-BASE_H5PY_PKG_URL = "https://pypi.python.org/packages/41/7a/6048de44c62fc5e618178ef9888850c3773a9e4be249e5e673ebce0402ff" # workaround because Python <2.7.9
-H5PY_PKG = "h5py-2.7.1.tar.gz" # dxtbx
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"

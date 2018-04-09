@@ -278,7 +278,7 @@ class installer (object) :
     # Python 2-3 compatibility packages
     packages += ['python_compatibility']
     # Always build hdf5 and numpy.
-    packages += ['cython', 'hdf5', 'numpy', 'pythonextra', 'docutils']
+    packages += ['cython', 'hdf5', 'h5py', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin']
     # Development and testing packages.
     packages += ['pytest', 'junitxml']
@@ -687,6 +687,7 @@ Installation of Python packages may fail.
       'pythonextra',
       'junitxml',
       'hdf5',
+      'h5py',
       'biopython',
       'docutils',
       'sphinx',
@@ -1138,10 +1139,7 @@ _replace_sysconfig_paths(build_time_vars)
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
     hdf5pkg = self.fetch_package(pkg_name=HDF5_PKG, pkg_url=BASE_HDF5_PKG_URL)
-    h5pypkg = self.fetch_package(pkg_name=H5PY_PKG, pkg_url=BASE_H5PY_PKG_URL)
-    if self.check_download_only(HDF5_PKG) and \
-       self.check_download_only(H5PY_PKG):
-      return
+    if self.check_download_only(HDF5_PKG): return
     self.untar_and_chdir(pkg=hdf5pkg, log=pkg_log)
     print >> pkg_log, "Building base HDF5 library..."
     make_args = []
@@ -1155,18 +1153,11 @@ _replace_sysconfig_paths(build_time_vars)
       log=pkg_log,
       make_args=make_args)
 
-    # not strictly necessary, but prints 'installing' message
-    if self.check_download_only(H5PY_PKG): return
-    os.chdir(self.tmp_dir)
-
-    self.untar_and_chdir(pkg=h5pypkg, log=pkg_log)
-    self.call("%s setup.py configure --hdf5=\"%s\"" % (self.python_exe,
-      self.base_dir), log=pkg_log)
-    self.call("%s setup.py build" % (self.python_exe), log=pkg_log)
-    self.call("%s setup.py install" % (self.python_exe), log=pkg_log)
-    # FIXME this appears to fail on CentOS 5 (gcc 4.1.2)
-    #self.call("%s setup.py test" % self.python_exe, log=pkg_log)
-    self.verify_python_module("h5py", "h5py")
+  def build_h5py(self):
+    os.environ['HDF5_DIR'] = self.base_dir
+    self.build_python_module_pip(
+      'h5py', package_version=H5PY_VERSION,
+      confirm_import_module='h5py', extra_options=["--no-binary=h5py"])
 
   def build_openssl(self) :
     # https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
