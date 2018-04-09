@@ -179,7 +179,9 @@ namespace dxtbx {
         goniometers_(boost::python::len(reader)),
         scans_(boost::python::len(reader)),
         reject_(boost::python::len(reader)) {
-      DXTBX_ASSERT(boost::python::len(reader) == boost::python::len(masker));
+      if (boost::python::len(reader) != boost::python::len(masker)) {
+        throw DXTBX_ERROR("Inconsistent # of images in reader and masker");
+      }
     }
 
     /**
@@ -605,7 +607,13 @@ namespace dxtbx {
     ImageSet(const ImageSetData &data)
       : data_(data),
         indices_(data.size()) {
-      DXTBX_ASSERT(data.size() > 0);
+
+      // Check number of images
+      if (data.size() == 0) {
+        throw DXTBX_ERROR("No images specified in ImageSetData");
+      }
+
+      // Set indices
       for (std::size_t i = 0; i < indices_.size(); ++i) {
         indices_[i] = i;
       }
@@ -621,14 +629,24 @@ namespace dxtbx {
           const scitbx::af::const_ref<std::size_t> &indices)
       : data_(data),
         indices_(indices.begin(), indices.end()) {
+
+      // Check number of images
+      if (data.size() == 0) {
+        throw DXTBX_ERROR("No images specified in ImageSetData");
+      }
+
+      // Set the indices
       if (indices.size() == 0) {
-        DXTBX_ASSERT(data.size() > 0);
         indices_.resize(data.size());
         for (std::size_t i = 0; i < indices_.size(); ++i) {
           indices_[i] = i;
         }
       } else {
-        DXTBX_ASSERT(scitbx::af::max(indices) < data.size());
+
+        // Check indices
+        if (scitbx::af::max(indices) < data.size()) {
+          throw DXTBX_ERROR("Indices are not consistent with # of images");
+        }
       }
     }
 
@@ -1228,7 +1246,9 @@ namespace dxtbx {
       // Check the scan is the same length and number of images
       DXTBX_ASSERT(scan.get() != NULL);
       if (data.size() > 1) {
-        DXTBX_ASSERT(data.size() == scan->get_num_images());
+        if (data.size() != scan->get_num_images()) {
+          throw DXTBX_ERROR("Scan size is not compatible with number of images");
+        }
       }
 
       // Set the models for each image
@@ -1266,7 +1286,9 @@ namespace dxtbx {
 
       // Check indices are sequential
       if (indices.size() > 0) {
-        DXTBX_ASSERT(indices.size() == scan->get_num_images());
+        if (indices.size() != scan->get_num_images()) {
+          throw DXTBX_ERROR("Scan size is not compatible with number of images");
+        }
         for (std::size_t i = 1; i < indices.size(); ++i) {
           DXTBX_ASSERT(indices[i] == indices[i-1]+1);
         }
