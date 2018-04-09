@@ -650,11 +650,11 @@ Installation of Python packages may fail.
       extra_options = ' '.join(extra_options)
     else:
       extra_options = ''
-    self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + \
-              ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + \
-              pkg_info['cachedir'] + '" ' + extra_options,
-              log=log)
     if callback_before_build:
+      self.call(pkg_info['python'] + ' -m pip download ' + pkg_info['debug'] + \
+                ' "' + pkg_info['package'] + pkg_info['version'] + '" -d "' + \
+                pkg_info['cachedir'] + '" ' + extra_options,
+                log=log)
       assert callback_before_build(log), package_name
     self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + \
               ' "' + pkg_info['package'] + pkg_info['version'] + \
