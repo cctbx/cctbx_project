@@ -109,8 +109,11 @@ def get_run_stats(timestamps,
     else:
       ts_current = [ts]
     multiples.append(len(ts_current))
-  #print "%d multiple lattices" % (multiples > 1).count(True)
-  #print "%d total lattices" % (isigi_low > 0).count(True)
+  print ""
+  print "%d shots" % (multiples == 1).count(True)
+  print "%d first lattices" % (multiples == 2).count(True)
+  print "%d multiple lattices" % (multiples > 2).count(True)
+  print "%d total lattices" % (isigi_low > 0).count(True)
   iterator = xrange(len(isigi_low))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
@@ -121,12 +124,14 @@ def get_run_stats(timestamps,
   drop_ratios = numerator/denominator
   drop_hits = drop_ratios >= ratio_cutoff
   xtal_hits = n_strong >= n_strong_cutoff
-  # indexing and droplet hit rate in a sliding window
-  unique_timestamps = timestamps.select(multiples < 2)
+  unique_sel = multiples == 1
+  indexed_sel = multiples == 2
+  unique_timestamps = timestamps.select(unique_sel)
   half_idx_rate_window = min(50, int(len(unique_timestamps)//20))
   half_hq_rate_window = 500
   low_sel = isigi_low > 0
   high_sel = isigi_high > i_sigi_cutoff
+  # indexing and droplet hit rate in a sliding window
   idx_rate = flex.double()
   multiples_rate = flex.double()
   hq_rate = flex.double()
@@ -135,26 +140,31 @@ def get_run_stats(timestamps,
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
     multiples_local = multiples[idx_min:idx_max]
-    idx_span = len(multiples_local.select(multiples_local < 2))
-    idx_sel = low_sel[idx_min:idx_max]
-    idx_local_rate = idx_sel.count(True)/idx_span
+    unique_local = multiples_local == 1
+    shots_this_span = unique_local.count(True)
+    first_lattices_local = multiples_local == 2
+    idx_sel = low_sel[idx_min:idx_max].select(first_lattices_local)
+    idx_local_rate = idx_sel.count(True)/shots_this_span
     idx_rate.append(idx_local_rate)
-    multiples_sel = multiples[idx_min:idx_max] > 1
-    multiples_local_rate = multiples_sel.count(True)/idx_span
+    multiples_sel = multiples[idx_min:idx_max] > 2
+    multiples_local_rate = multiples_sel.count(True)/shots_this_span
     multiples_rate.append(multiples_local_rate)
+    drop_sel = drop_hits[idx_min:idx_max].select(unique_local)
+    drop_local_rate = drop_sel.count(True)/shots_this_span
+    drop_hit_rate.append(drop_local_rate)
+    # different sliding window for "high quality" xtals
     hq_min = max(0, i - half_hq_rate_window)
     hq_max = min(i + half_hq_rate_window, len(isigi_low))
     multiples_local_hq = multiples[hq_min:hq_max]
-    hq_span = len(multiples_local_hq.select(multiples_local_hq < 2))
-    hq_sel = low_sel[hq_min:hq_max]
-    hq_local_sel = high_sel[hq_min:hq_max]
-    if hq_sel.count(True) > 0:
-      hq_rate.append(hq_local_sel.count(True)/hq_sel.count(True))
+    unique_local_hq = multiples_local_hq == 1
+    shots_this_span_hq = unique_local_hq.count(True)
+    first_lattices_local_hq = multiples_local_hq == 2
+    hq_high_sel = high_sel[hq_min:hq_max].select(first_lattices_local_hq)
+    n_first_lattices_local_hq = first_lattices_local_hq.count(True)
+    if n_first_lattices_local_hq > 0:
+      hq_rate.append(hq_high_sel.count(True)/n_first_lattices_local_hq)
     else:
       hq_rate.append(0)
-    drop_sel = drop_hits[idx_min:idx_max]
-    drop_local_rate = drop_sel.count(True)/idx_span
-    drop_hit_rate.append(drop_local_rate)
   return (timestamps,
           drop_ratios,
           drop_hits,
