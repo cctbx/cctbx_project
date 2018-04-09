@@ -25,18 +25,15 @@ class FormatXTCCspad(FormatXTC):
 
   def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
+    FormatXTC.__init__(self, image_file, locator_scope = cspad_locator_scope, **kwargs)
     self._ds = self._get_datasource(image_file)
+    self._env = self._ds.env()
     self.events_list = []
     self.populate_events()
-    self.params = FormatXTC.params_from_phil(cspad_locator_scope, image_file)
-    #from IPython import embed; embed(); exit()
-    FormatXTC.__init__(self, image_file, **kwargs)
+    self.n_images = len(self.events_list)
 
   def _get_event(self,index):
     return self.events_list[index]
-
-  def _start(self):
-    self.n_images = len(self.events_list)
 
   def populate_events(self):
     for nevent,evt in enumerate(self._ds.events()):

@@ -34,7 +34,12 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     FormatMultiImage.__init__(self, **kwargs)
     FormatStill.__init__(self, image_file, **kwargs)
     Format.__init__(self, image_file, **kwargs)
-    self._initialized=True
+
+    if 'locator_scope' in kwargs:
+      self.params = FormatXTC.params_from_phil(kwargs['locator_scope'],image_file)
+    else:
+      self.params = FormatXTC.params_from_phil(locator_scope,image_file)
+    self._initialized = True
 
   @staticmethod
   def understand(image_file):
@@ -84,7 +89,6 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
   def params_from_phil(master_phil, user_phil):
     try:
       user_input = parse(file_name = user_phil)
-#      from IPython import embed; embed(); exit()
       working_phil = master_phil.fetch(sources = [user_input])
       params = working_phil.extract()
       return params
@@ -94,7 +98,7 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
   def _get_datasource(self, image_file):
     from psana import DataSource
 
-    params = FormatXTC.params_from_phil(locator_scope,image_file)
+    params = self.params
     if params.data_source is None:
       if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
         return False
