@@ -473,7 +473,8 @@ master_phil = iotbx.phil.parse("""
           b_iso_to_d_cut applies b_iso only up to resolution specified, with \
           fall-over of k_sharpen.  Resolution dependent adjusts 3 parameters \
           to sharpen variably over resolution range. Default is \
-          b_iso_to_d_cut .
+          b_iso_to_d_cut .  target_b_iso_to_d_cut uses target_b_iso_ratio \
+          to set b_iso.
 
      box_in_auto_sharpen = False
        .type = bool
