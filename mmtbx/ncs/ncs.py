@@ -1596,7 +1596,7 @@ class ncs:
         self._center=self.get_3_values_after_key(line)
       elif key=='ncs_cc': # read  cc
         self._cc=self.get_1_value_after_key(line)
-      elif key=='note' or key=='note:': # read anything 
+      elif key=='note' or key=='note:': # read anything
         self._note=" ".join(line.split()[1:])
       elif key=='chain':
         self._chain=self.get_1_char_after_key(line)
