@@ -666,10 +666,10 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  AA1  SER  A   26  ?  LYS  A   30  ?  5  ?  5
-  HELX_P  2  AA2  LEU  A  196  ?  GLU  A  199  ?  5  ?  4
-  HELX_P  3  AA3  SER  B   26  ?  LYS  B   30  ?  5  ?  5
-  HELX_P  4  AA4  LEU  B  196  ?  GLU  B  199  ?  5  ?  4
+  HELX_P  '  1'  AA1  SER  A   26  ?  LYS  A   30  ?  5  ?  5
+  HELX_P  '  2'  AA2  LEU  A  196  ?  GLU  A  199  ?  5  ?  4
+  HELX_P  '  3'  AA3  SER  B   26  ?  LYS  B   30  ?  5  ?  5
+  HELX_P  '  4'  AA4  LEU  B  196  ?  GLU  B  199  ?  5  ?  4
 """
 
   pdb_str2 = """\
@@ -691,7 +691,7 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  AA1  SER  A  26  ?  LYS  A  30  ?  5  ?  5\n"""
+  HELX_P  '  1'  AA1  SER  A  26  ?  LYS  A  30  ?  5  ?  5\n"""
 
   ann = annotation.from_records(pdb_str.split("\n"))
   cif_loops = ann.as_cif_loops()

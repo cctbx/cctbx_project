@@ -1932,9 +1932,6 @@ class pdb_helix (structure_base) :
     """Returns dict. keys - cif field names, values - appropriate values."""
     result = {}
     result['conf_type_id'] = "HELX_P"
-    print type(self.serial)
-    print self.serial
-    # STOP()
     result['id'] = self.serial
     result['pdbx_PDB_helix_id'] = self.helix_id
     result['beg_label_comp_id'] = self.start_resname
