@@ -662,7 +662,7 @@ Installation of Python packages may fail.
                 log=log)
     else:
       self.call(pkg_info['python'] + ' -m pip install ' + pkg_info['debug'] + \
-                ' "' + pkg_info['package'] + pkg_info['version'] + extra_options,
+                ' "' + pkg_info['package'] + pkg_info['version'] + '" ' + extra_options,
                 log=log)
     if callback_after_build:
       assert callback_after_build(log), package_name
