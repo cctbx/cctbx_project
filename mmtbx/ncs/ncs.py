@@ -258,7 +258,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
       ncs_domain_pdb=None,
-      residues_in_common_list=None,cc=None,exclude_h=None,exclude_d=None):
+      residues_in_common_list=None,cc=None,note=None,
+       exclude_h=None,exclude_d=None):
     self._chain_residue_id=chain_residue_id  # just one of these
     self._rmsd_list=rmsd_list
     self._residues_in_common_list=residues_in_common_list
@@ -274,7 +275,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._source_of_ncs_info=source_of_ncs_info
     self._ncs_domain_pdb=ncs_domain_pdb
     self._cc=cc
-
+    self._note=note
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
     self._have_helical_symmetry=False
@@ -452,6 +453,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._source_of_ncs_info=self._source_of_ncs_info
     new._ncs_domain_pdb=deepcopy(self._ncs_domain_pdb)
     new._cc=deepcopy(self._cc)
+    new._note=deepcopy(self._note)
     new._exclude_h=self._exclude_h
     new._exclude_d=self._exclude_d
     return new
@@ -577,6 +579,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     new._source_of_ncs_info=self._source_of_ncs_info
     new._ncs_domain_pdb=deepcopy(self._ncs_domain_pdb)
     new._cc=deepcopy(self._cc)
+    new._note=deepcopy(self._note)
     new._exclude_h=self._exclude_h
     new._exclude_d=self._exclude_d
 
@@ -640,6 +643,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         text+="\nNCS domains represented by: "+str(self._ncs_domain_pdb)
       if self._cc:
         text+="\nCorrelation of NCS: "+str(self._cc)
+      if self._note:
+        text+="\nNOTE: "+str(self._note)
       for center,trans_orth,ncs_rota_matr in zip (
          self._centers, self._translations_orth,self._rota_matrices):
         if center is None: continue
@@ -687,6 +692,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     text="\nnew_ncs_group\n"
     if self._cc is not None: text+="NCS_CC "+str(self._cc)+"\n"
+    if self._note is not None: text+="NOTE "+str(self._note)+"\n"
     if self._ncs_domain_pdb is not None:
       text+="  NCS_DOMAIN_PDB "+str(self._ncs_domain_pdb)+"\n"
 
@@ -783,11 +789,17 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def cc(self):
     return self._cc
 
+  def note(self):
+    return self._note
+
   def add_rmsd_list(self,rmsd_list):
     self._rmsd_list=rmsd_list
 
   def add_cc(self,cc):
     self._cc=cc
+
+  def add_note(self,note):
+    self._note=note
 
   def residues_in_common_list(self):
     return self._residues_in_common_list
@@ -1584,6 +1596,8 @@ class ncs:
         self._center=self.get_3_values_after_key(line)
       elif key=='ncs_cc': # read  cc
         self._cc=self.get_1_value_after_key(line)
+      elif key=='note' or key=='note:': # read anything 
+        self._note=" ".join(line.split()[1:])
       elif key=='chain':
         self._chain=self.get_1_char_after_key(line)
       elif key=='resseq':
@@ -1600,7 +1614,6 @@ class ncs:
         read_something=True
       else:
         pass
-
     self.save_existing_group_info()
     if read_something or len(self._ncs_groups) > 0:
       self._ncs_read=True
@@ -1674,6 +1687,7 @@ class ncs:
      self._rmsd_list=[]
      self._residues_in_common_list=[]
      self._cc=None
+     self._note=None
      self._ncs_domain_pdb=None
      self._chain_residue_id=[]
 
@@ -1735,9 +1749,15 @@ class ncs:
 
      if not ncs_group_object:
        list_length=None
+       if center_orth is None and trans_orth:
+         center_orth=len(trans_orth)*[(0,0,0)]
        for lst in [trans_orth,ncs_rota_matr,center_orth]:
          if not lst or len(lst)<1:
-           print "Length too short:",type(lst),lst,len(lst)
+           print "Length too short:",type(lst),lst,
+           if lst is not None:
+             print len(lst)
+           else:
+             print "0"
            raise Sorry("The NCS operators in this file appear incomplete?")
          if not list_length: list_length=len(lst)
          if list_length!=len(lst):
@@ -1782,7 +1802,7 @@ class ncs:
        rmsd_list=self._rmsd_list,
        residues_in_common_list=self._residues_in_common_list,
        chain_residue_id=self._chain_residue_id,
-       cc=self._cc)
+       cc=self._cc,note=self._note)
      self._ncs_groups.append(ncs_group_object)
      self.init_ncs_group()
 
@@ -1915,6 +1935,13 @@ class ncs:
      raise Sorry("Number of NCS groups does not match length of cc_list...")
    for ncs_group,cc in zip(self._ncs_groups,cc_list):
     ncs_group.add_cc(cc)
+
+  def overall_note(self):
+    overall_note=""
+    for ncs_group in self._ncs_groups:
+      if ncs_group._note is not None:
+        overall_note+=" "+ncs_group._note
+    return overall_note
 
   def overall_cc(self):
     cc_all=0.

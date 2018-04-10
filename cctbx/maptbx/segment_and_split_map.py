@@ -4413,6 +4413,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     not params.crystal_info.solvent_content and
     not params.input_files.seq_file and not params.crystal_info.sequence and
     not sequence):
+     a=b
      raise Sorry("Please use auto_sharpen or supply molecular mass or "+
         "solvent_content or a sequence file")
   if params.input_files.seq_file and not params.crystal_info.sequence and \
@@ -10514,7 +10515,7 @@ def run(args,
         shifted_ncs_object=get_params(
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
        ncs_object=ncs_obj,
-       sequence=ncs_obj,
+       sequence=sequence,
        sharpening_target_pdb_inp=sharpening_target_pdb_inp,out=out)
     if params.control.shift_only:
       return map_data,ncs_obj,tracking_data
