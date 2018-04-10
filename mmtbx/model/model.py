@@ -2709,12 +2709,18 @@ class manager(object):
           duplicate_prevention[k] = False
         for c in mm.chains():
           c = c.detached_copy()
-          if not leave_chain_ids and not duplicate_prevention["%s%s" % (mm.id, c.id)]:
-            new_cid = all_cids[cid_counter]
-            chain_ids_match_dict[c.id].append(new_cid)
-            duplicate_prevention["%s%s" % (mm.id, c.id)] = True
+          if not leave_chain_ids: # and not duplicate_prevention["%s%s" % (mm.id, c.id)]:
+            if duplicate_prevention["%s%s" % (mm.id, c.id)]:
+              if len(chain_ids_match_dict[c.id]) > 0:
+                new_cid = chain_ids_match_dict[c.id][-1]
+              else:
+                new_cid = c.id
+            else:
+              new_cid = all_cids[cid_counter]
+              cid_counter += 1
+              chain_ids_match_dict[c.id].append(new_cid)
+              duplicate_prevention["%s%s" % (mm.id, c.id)] = True
             c.id = new_cid
-            cid_counter += 1
           xyz = c.atoms().extract_xyz()
           new_xyz = r.elems*xyz+t
           c.atoms().set_xyz(new_xyz)
