@@ -329,23 +329,26 @@ class ImageSetFactory(object):
     if not check_format: assert not check_headers
 
     # Check the template is valid
-    if template.count('#') < 1:
-      raise ValueError("Invalid template")
+    if template.count('#') == 0:
+      if "master" not in template:
+        raise ValueError("Invalid template")
+      filenames = [template]
+    else:
 
-    # Get the template format
-    pfx = template.split('#')[0]
-    sfx = template.split('#')[-1]
-    template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
+      # Get the template format
+      pfx = template.split('#')[0]
+      sfx = template.split('#')[-1]
+      template_format = '%s%%0%dd%s' % (pfx, template.count('#'), sfx)
 
-    # Get the template image range
-    if image_range is None:
-      image_range = template_image_range(template)
+      # Get the template image range
+      if image_range is None:
+        image_range = template_image_range(template)
 
-    # Set the image range
-    array_range = (image_range[0] - 1, image_range[1])
+      # Set the image range
+      array_range = (image_range[0] - 1, image_range[1])
 
-    # Create the sweep file list
-    filenames = [template_format % (i+1) for i in range(*array_range)]
+      # Create the sweep file list
+      filenames = [template_format % (i+1) for i in range(*array_range)]
 
     # Get the format class
     if check_format:

@@ -38,6 +38,8 @@ def to_imageset(input_filename, extra_filename=None):
 
   # Get the template
   template = handle.name_template_of_data_frames[0].replace('?', '#')
+  if template.endswith("h5"):
+    template = template.replace("######", "master")
   image_range = handle.data_range
   detector_name = handle.detector
 
