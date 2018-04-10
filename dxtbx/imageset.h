@@ -644,7 +644,7 @@ namespace dxtbx {
       } else {
 
         // Check indices
-        if (scitbx::af::max(indices) < data.size()) {
+        if (scitbx::af::max(indices) >= data.size()) {
           throw DXTBX_ERROR("Indices are not consistent with # of images");
         }
       }
