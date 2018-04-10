@@ -695,58 +695,33 @@ class AveragingDialog(BaseDialog):
     BaseDialog.__init__(self, parent, label_style=label_style,
                         content_style=content_style, *args, **kwargs)
 
-    # Calib folder
-    self.calib_dir = gctr.TextButtonCtrl(self,
-                                         label='Calibration:',
-                                         label_style='normal',
-                                         label_size=(150, -1),
-                                         ctrl_size=(350, -1),
-                                         big_button=True)
-    self.main_sizer.Add(self.calib_dir, flag=wx.EXPAND | wx.ALL, border=10)
-    self.Bind(wx.EVT_BUTTON, self.onCalibDirBrowse, self.calib_dir.btn_big)
-
-    # Detector Address
-    self.address = gctr.TextButtonCtrl(self,
-                                       label='Detector Address:',
-                                       label_style='bold',
-                                       label_size=(150, -1),
-                                       value='')
-    self.main_sizer.Add(self.address, flag=wx.EXPAND | wx.ALL, border=10)
-
-    # Raw vs. corrected
-    img_types = ['raw', 'corrected']
-    self.avg_img_type = gctr.ChoiceCtrl(self,
-                                        label='Avg. Image Type:',
-                                        label_size=(150, -1),
-                                        label_style='bold',
-                                        choices=img_types)
-    self.main_sizer.Add(self.avg_img_type, flag=wx.EXPAND | wx.ALL, border=10)
-
-    # DetZ
-    self.detz = gctr.OptionCtrl(self,
-                                label='DetZ:',
-                                label_style='bold',
-                                label_size=(150, -1),
-                                ctrl_size=(100, -1),
-                                items=[('DetZ', 580)])
-    self.main_sizer.Add(self.detz, flag=wx.EXPAND | wx.ALL, border=10)
+    # Raw image option
+    self.raw_toggle = gctr.RadioCtrl(self,
+                                     label='',
+                                     label_style='normal',
+                                     label_size=(-1, -1),
+                                     direction='horizontal',
+                                     items={'corrected':'corrected',
+                                            'raw':'raw'})
+    self.raw_toggle.corrected.SetValue(1)
+    self.main_sizer.Add(self.raw_toggle, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Dialog control
     dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
     self.main_sizer.Add(dialog_box,
                         flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                         border=10)
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
-  def onCalibDirBrowse(self, e):
-    dlg = wx.DirDialog(self, "Choose calibration directory:",
-                       style=wx.DD_DEFAULT_STYLE)
-
-    if dlg.ShowModal() == wx.ID_OK:
-      self.calib_dir.ctr.SetValue(dlg.GetPath())
-    dlg.Destroy()
+  def onOK(self, e):
+    from xfel.ui.components.averaging import AveragingCommand
+    from libtbx import easy_run
+    raw = self.raw_toggle.raw.GetValue() == 1
+    average_command = AveragingCommand(self.run, self.params, raw)()
+    print "executing", average_command
+    result = easy_run.fully_buffered(average_command)
+    result.show_stdout()
     e.Skip()
-
-    self.SetTitle('Averaging Settings')
 
 class TrialTagSelectionDialog(BaseDialog):
   def __init__(self, parent,
