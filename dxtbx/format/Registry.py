@@ -82,7 +82,7 @@ class _Registry:
     # image_file, in which case they are preferred over the parent
     # format.
     def recurse(format, image_file):
-      for child in format._children:
+      for child in sorted(format._children, key=lambda x: x.__name__):
         try:
           if child.understand(image_file):
             return recurse(child, image_file)
@@ -90,7 +90,7 @@ class _Registry:
           pass
       return format
 
-    for format in self._formats:
+    for format in sorted(self._formats, key=lambda x: x.__name__):
       try:
         if format.understand(image_file):
           return recurse(format, image_file)
