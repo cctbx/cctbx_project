@@ -777,8 +777,7 @@ Installation of Python packages may fail.
     self.chdir(python_dir, log=log)
 
     # configure macOS and linux separately
-    configure_args = ['--with-ensurepip=install'] # common flags
-    #configure_args.append("--enable-unicode=ucs4")
+    configure_args = [] # common flags should go here
     if self.flag_is_mac:
       configure_args += [
         self.prefix,
@@ -829,6 +828,10 @@ Installation of Python packages may fail.
     self.call('make', log=log, cwd=python_dir)
     self.call('make install', log=log, cwd=python_dir)
     python_exe = op.abspath(op.join(self.base_dir, "bin", "python"))
+
+    # Install pip *separately* from the python install - this ensures that
+    # we don't accidentally pick up the user-site pythonpath
+    self.call([python_exe, "-mensurepip"], log=log, cwd=python_dir)
 
     # Make python relocatable
     python_sysconfig = check_output([ python_exe, '-c',
