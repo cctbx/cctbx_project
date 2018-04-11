@@ -1,26 +1,8 @@
 
 from __future__ import absolute_import, division
 
-from dxtbx.model import ProfileModelBaseIface, ProfileModelFactory
-
-class NullProfile(ProfileModelBaseIface):
-
-  name = 'null'
-
-  def __init__(self, parameter):
-    self.parameter = parameter
-
-  def to_dict(self):
-    return {
-      '__id__' : self.name,
-      'parameter' : self.parameter
-    }
-
-  @classmethod
-  def from_dict(cls, obj):
-    return cls(obj['parameter'])
-
-ProfileModelFactory.append(NullProfile.name, NullProfile)
+from dxtbx.model import ProfileModelFactory
+from dials.algorithms.profile_model.gaussian_rs import Model
 
 
 class Test(object):
@@ -29,10 +11,11 @@ class Test(object):
     pass
 
   def run(self):
-    profile1 = NullProfile(10)
+    profile1 = Model(None, 3, 0.1, 0.2, deg=True)
     dictionary = profile1.to_dict()
     profile2 = ProfileModelFactory.from_dict(dictionary)
-    assert(profile1.parameter == profile2.parameter)
+    assert abs(profile1.sigma_b() - profile2.sigma_b()) < 1e-7
+    assert abs(profile1.sigma_m() - profile2.sigma_m()) < 1e-7
     print 'OK'
 
 if __name__ == '__main__':
