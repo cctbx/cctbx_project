@@ -31,6 +31,11 @@ python_dependencies = {"_ssl" : "Secure Socket Library",
                        "zlib" : "XCode command line tools",
                      }
 
+# Turn off user site-packages directory to avoid conflicts
+# https://www.python.org/dev/peps/pep-0370/
+os.environ['PYTHONNOUSERSITE'] = '1'
+
+
 class installer (object) :
   def __init__ (self, args=None, packages=None, log=sys.stdout) :
     #assert (sys.platform in ["linux2", "linux3", "darwin"])
@@ -460,10 +465,6 @@ Installation of Python packages may fail.
       raise e
     # Update paths.
     self.update_paths()
-
-    # Turn off user site-packages directory to avoid conflicts
-    # https://www.python.org/dev/peps/pep-0370/
-    os.environ['PYTHONNOUSERSITE'] = '1'
 
   def update_paths(self):
     os.environ["PATH"] = ("%s/bin:" % self.base_dir) + os.environ['PATH']
