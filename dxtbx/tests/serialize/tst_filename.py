@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division
 
-from dxtbx.serialize.filename import load_path, temp_chdir
+from dxtbx.serialize.filename import load_path
 
 class Test(object):
 
@@ -8,19 +8,7 @@ class Test(object):
     pass
 
   def run(self):
-    self.tst_temp_chdir()
     self.tst_load_path()
-
-  def tst_temp_chdir(self):
-    from os import getcwd
-    from os.path import join, realpath
-    import libtbx
-    cwd = realpath(getcwd())
-    new_path = realpath(join(libtbx.env.dist_path('dxtbx'), 'serialize'))
-    with temp_chdir(new_path):
-      assert(realpath(getcwd()) == new_path)
-    assert(realpath(getcwd()) == cwd)
-    print 'OK'
 
   def tst_load_path(self):
     import os

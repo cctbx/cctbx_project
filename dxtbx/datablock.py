@@ -668,11 +668,11 @@ class InvalidDataBlockError(RuntimeError):
 class DataBlockDictImporter(object):
   ''' A class to import a datablock from dictionary. '''
 
-  def __init__(self, obj, check_format=True):
+  def __init__(self, obj, check_format=True, directory=None):
     ''' Get the datablocks from the dictionary. '''
-    self.datablocks = self._load_datablocks(obj, check_format)
+    self.datablocks = self._load_datablocks(obj, check_format, directory)
 
-  def _load_datablocks(self, obj, check_format=True):
+  def _load_datablocks(self, obj, check_format=True, directory=None):
     ''' Create the datablock from a dictionary. '''
     from libtbx.containers import OrderedDict
     from dxtbx.format.Registry import Registry
@@ -685,7 +685,7 @@ class DataBlockDictImporter(object):
 
     # If we have a list, extract for each dictionary in the list
     if isinstance(obj, list):
-      return [self._load_datablocks(dd, check_format) for dd in obj]
+      return [self._load_datablocks(dd, check_format, directory) for dd in obj]
     elif not isinstance(obj, dict):
       raise InvalidDataBlockError("Unexpected datablock type {} instead of dict".format(type(obj)))
     # Make sure the id signature is correct
@@ -730,43 +730,43 @@ class DataBlockDictImporter(object):
       if ident == 'ImageSweep':
         beam, detector, gonio, scan = load_models(imageset)
         if "template" in imageset:
-          template = load_path(imageset['template'])
+          template = load_path(imageset['template'], directory=directory)
           i0, i1 = scan.get_image_range()
           iset = ImageSetFactory.make_sweep(
             template, range(i0, i1+1), None,
             beam, detector, gonio, scan, check_format,
             format_kwargs=format_kwargs)
           if 'mask' in imageset and imageset['mask'] is not None:
-            imageset['mask'] = load_path(imageset['mask'])
+            imageset['mask'] = load_path(imageset['mask'], directory=directory)
             iset.external_lookup.mask.filename = imageset['mask']
             if check_format:
               with open(imageset['mask']) as infile:
                 iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
           if 'gain' in imageset and imageset['gain'] is not None:
-            imageset['gain'] = load_path(imageset['gain'])
+            imageset['gain'] = load_path(imageset['gain'], directory=directory)
             iset.external_lookup.gain.filename = imageset['gain']
             if check_format:
               with open(imageset['gain']) as infile:
                 iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
-            imageset['pedestal'] = load_path(imageset['pedestal'])
+            imageset['pedestal'] = load_path(imageset['pedestal'], directory=directory)
             iset.external_lookup.pedestal.filename = imageset['pedestal']
             if check_format:
               with open(imageset['pedestal']) as infile:
                 iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
           if 'dx' in imageset and imageset['dx'] is not None:
-            imageset['dx'] = load_path(imageset['dx'])
+            imageset['dx'] = load_path(imageset['dx'], directory=directory)
             iset.external_lookup.dx.filename = imageset['dx']
             with open(imageset['dx']) as infile:
               iset.external_lookup.dx.data = ImageDouble(pickle.load(infile))
           if 'dy' in imageset and imageset['dy'] is not None:
-            imageset['dy'] = load_path(imageset['dy'])
+            imageset['dy'] = load_path(imageset['dy'], directory=directory)
             iset.external_lookup.dy.filename = imageset['dy']
             with open(imageset['dy']) as infile:
               iset.external_lookup.dy.data = ImageDouble(pickle.load(infile))
           iset.update_detector_px_mm_data()
         elif "master" in imageset:
-          template = load_path(imageset['master'])
+          template = load_path(imageset['master'], directory=directory)
           i0, i1 = scan.get_image_range()
           indices = imageset['images']
           assert min(indices) <= i0-1 and max(indices) >= i1-1
@@ -785,30 +785,30 @@ class DataBlockDictImporter(object):
             check_format  = check_format,
             format_kwargs = format_kwargs)
           if 'mask' in imageset and imageset['mask'] is not None:
-            imageset['mask'] = load_path(imageset['mask'])
+            imageset['mask'] = load_path(imageset['mask'], directory)
             iset.external_lookup.mask.filename = imageset['mask']
             if check_format:
               with open(imageset['mask']) as infile:
                 iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
           if 'gain' in imageset and imageset['gain'] is not None:
-            imageset['gain'] = load_path(imageset['gain'])
+            imageset['gain'] = load_path(imageset['gain'], directory)
             iset.external_lookup.gain.filename = imageset['gain']
             if check_format:
               with open(imageset['gain']) as infile:
                 iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
-            imageset['pedestal'] = load_path(imageset['pedestal'])
+            imageset['pedestal'] = load_path(imageset['pedestal'], directory)
             iset.external_lookup.pedestal.filename = imageset['pedestal']
             if check_format:
               with open(imageset['pedestal']) as infile:
                 iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
           if 'dx' in imageset and imageset['dx'] is not None:
-            imageset['dx'] = load_path(imageset['dx'])
+            imageset['dx'] = load_path(imageset['dx'], directory)
             iset.external_lookup.dx.filename = imageset['dx']
             with open(imageset['dx']) as infile:
               iset.external_lookup.dx.data = ImageDouble(pickle.load(infile))
           if 'dy' in imageset and imageset['dy'] is not None:
-            imageset['dy'] = load_path(imageset['dy'])
+            imageset['dy'] = load_path(imageset['dy'], directory)
             iset.external_lookup.dy.filename = imageset['dy']
             with open(imageset['dy']) as infile:
               iset.external_lookup.dy.data = ImageDouble(pickle.load(infile))
@@ -830,30 +830,30 @@ class DataBlockDictImporter(object):
           iset.set_goniometer(gonio, i)
           iset.set_scan(scan, i)
         if 'mask' in imageset and imageset['mask'] is not None:
-          imageset['mask'] = load_path(imageset['mask'])
+          imageset['mask'] = load_path(imageset['mask'], directory)
           iset.external_lookup.mask.filename = imageset['mask']
           if check_format:
             with open(imageset['mask']) as infile:
               iset.external_lookup.mask.data = ImageBool(pickle.load(infile))
         if 'gain' in imageset and imageset['gain'] is not None:
-          imageset['gain'] = load_path(imageset['gain'])
+          imageset['gain'] = load_path(imageset['gain'], directory)
           iset.external_lookup.gain.filename = imageset['gain']
           if check_format:
             with open(imageset['gain']) as infile:
               iset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
         if 'pedestal' in imageset and imageset['pedestal'] is not None:
-          imageset['pedestal'] = load_path(imageset['pedestal'])
+          imageset['pedestal'] = load_path(imageset['pedestal'], directory)
           iset.external_lookup.pedestal.filename = imageset['pedestal']
           if check_format:
             with open(imageset['pedestal']) as infile:
               iset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
         if 'dx' in imageset and imageset['dx'] is not None:
-          imageset['dx'] = load_path(imageset['dx'])
+          imageset['dx'] = load_path(imageset['dx'], directory)
           iset.external_lookup.dx.filename = imageset['dx']
           with open(imageset['dx']) as infile:
             iset.external_lookup.dx.data = ImageDouble(pickle.load(infile))
         if 'dy' in imageset and imageset['dy'] is not None:
-          imageset['dy'] = load_path(imageset['dy'])
+          imageset['dy'] = load_path(imageset['dy'], directory)
           iset.external_lookup.dy.filename = imageset['dy']
           with open(imageset['dy']) as infile:
             iset.external_lookup.dy.data = ImageDouble(pickle.load(infile))
@@ -963,13 +963,13 @@ class DataBlockFactory(object):
     return importer.datablocks
 
   @staticmethod
-  def from_dict(obj, check_format=True):
+  def from_dict(obj, check_format=True, directory=None):
     ''' Create a datablock from a dictionary. '''
-    importer = DataBlockDictImporter(obj, check_format)
+    importer = DataBlockDictImporter(obj, check_format, directory)
     return importer.datablocks
 
   @staticmethod
-  def from_json(string, check_format=True):
+  def from_json(string, check_format=True, directory=None):
     ''' Decode a datablock from JSON string. '''
     from dxtbx.serialize.load import _decode_dict
     import json
@@ -977,17 +977,20 @@ class DataBlockFactory(object):
       json.loads(
         string,
         object_hook=_decode_dict),
-      check_format)
+      check_format=check_format,
+      directory=directory)
 
   @staticmethod
   def from_json_file(filename, check_format=True):
     ''' Decode a datablock from a JSON file. '''
     from os.path import dirname, abspath
-    from dxtbx.serialize.filename import temp_chdir
     filename = abspath(filename)
-    with temp_chdir(dirname(filename)):
-      with open(filename, 'r') as infile:
-        return DataBlockFactory.from_json(infile.read(), check_format)
+    directory = dirname(filename)
+    with open(filename, 'r') as infile:
+      return DataBlockFactory.from_json(
+        infile.read(),
+        check_format=check_format,
+        directory=directory)
 
   @staticmethod
   def from_pickle_file(filename):

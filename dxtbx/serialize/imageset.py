@@ -90,28 +90,31 @@ def imageset_to_dict(imageset):
   else:
     raise TypeError("Unknown ImageSet Type")
 
-def basic_imageset_from_dict(d):
+def basic_imageset_from_dict(d, directory=None):
   ''' Construct an ImageSet class from the dictionary.'''
   from dxtbx.model import BeamFactory, DetectorFactory
   from dxtbx.imageset import ImageSetFactory
   from dxtbx.serialize.filename import load_path
 
   # Get the filename list and create the imageset
-  filenames = map(lambda p: load_path(p), map(str, d['filenames']))
+  filenames = map(lambda p: load_path(p, directory=directory), map(str, d['filenames']))
   imageset = ImageSetFactory.new(filenames)[0]
 
   # Set some external lookups
   if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
-    with open(d['mask']) as infile:
-      imageset.external_lookup.mask.filename = d['mask']
+    path = load_path(d['mask'], directory=directory)
+    with open(path) as infile:
+      imageset.external_lookup.mask.filename = path
       imageset.external_lookup.mask.data = ImageBool(pickle.load(infile))
   if 'gain' in d and d['gain'] is not None and d['gain'] is not "":
-    with open(d['gain']) as infile:
-      imageset.external_lookup.gain.filename = d['gain']
+    path = load_path(d['gain'], directory=directory)
+    with open(path) as infile:
+      imageset.external_lookup.gain.filename = path
       imageset.external_lookup.gain.data = ImageDouble(pickle.load(infile))
   if 'pedestal' in d and d['pedestal'] is not None and d['pedestal'] is not "":
-    with open(d['pedestal']) as infile:
-      imageset.external_lookup.pedestal.filename = d['pedestal']
+    path = load_path(d['pedestal'], directory=directory)
+    with open(path) as infile:
+      imageset.external_lookup.pedestal.filename = path
       imageset.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
 
   # Get the existing models as dictionaries
@@ -125,14 +128,14 @@ def basic_imageset_from_dict(d):
   # Return the imageset
   return imageset
 
-def imagesweep_from_dict(d, check_format=True):
+def imagesweep_from_dict(d, check_format=True, directory=None):
   '''Construct and image sweep from the dictionary.'''
   from dxtbx.imageset import ImageSetFactory
   from dxtbx.model import BeamFactory, DetectorFactory, GoniometerFactory, ScanFactory
   from dxtbx.serialize.filename import load_path
 
   # Get the template (required)
-  template = load_path(str(d['template']))
+  template = load_path(str(d['template']), directory=directory)
 
   # If the scan isn't set, find all available files
   scan_dict = d.get('scan')
@@ -170,22 +173,25 @@ def imagesweep_from_dict(d, check_format=True):
 
   # Set some external lookups
   if 'mask' in d and d['mask'] is not None and d['mask'] is not "":
-    with open(d['mask']) as infile:
-      sweep.external_lookup.mask.filename = d['mask']
+    path = load_path(d['mask'], directory=directory)
+    with open(path) as infile:
+      sweep.external_lookup.mask.filename = path
       sweep.external_lookup.mask.data = ImageBool(pickle.load(infile))
   if 'gain' in d and d['gain'] is not None and d['gain'] is not "":
-    with open(d['gain']) as infile:
-      sweep.external_lookup.gain.filename = d['gain']
+    path = load_path(d['gain'], directory=directory)
+    with open(path) as infile:
+      sweep.external_lookup.gain.filename = path
       sweep.external_lookup.gain.data = ImageDouble(pickle.load(infile))
   if 'pedestal' in d and d['pedestal'] is not None and d['pedestal'] is not "":
-    with open(d['pedestal']) as infile:
-      sweep.external_lookup.pedestal.filename = d['pedestal']
+    path = load_path(d['pedestal'], directory=directory)
+    with open(path) as infile:
+      sweep.external_lookup.pedestal.filename = path
       sweep.external_lookup.pedestal.data = ImageDouble(pickle.load(infile))
 
   # Return the sweep
   return sweep
 
-def imageset_from_dict(d, check_format=True):
+def imageset_from_dict(d, check_format=True, directory=None):
   ''' Convert the dictionary to a sweep
 
   Params:
@@ -204,8 +210,8 @@ def imageset_from_dict(d, check_format=True):
     raise ValueError("\"__id__\" does not equal \"imageset\"")
 
   if "filenames" in d:
-    return basic_imageset_from_dict(d)
+    return basic_imageset_from_dict(d, directory=directory)
   elif "template" in d:
-    return imagesweep_from_dict(d, check_format=check_format)
+    return imagesweep_from_dict(d, check_format=check_format, directory=directory)
   else:
     raise TypeError("Unable to deserialize given imageset")
