@@ -565,7 +565,8 @@ class ExperimentListFactory(object):
       try:
         experiments.extend(ExperimentListFactory.from_serialized_format(filename))
         if verbose: print('Loaded experiments from %s' % filename)
-      except Exception:
+      except Exception as e:
+        if verbose: print("Could not load experiments from %s: %s" % (filename, str(e)))
         unhandled.append(filename)
 
     # Return the experiments
