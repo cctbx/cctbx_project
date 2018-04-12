@@ -950,6 +950,23 @@ Wait for the command to finish, then try again.""" % vars())
     except ImportError:
       pass
 
+    # set OPENBLAS_NUM_THREADS
+    # This prevents the binary pip installation of numpy from spawning threads
+    # when flex is imported ("from scitbx.array_family import flex")
+    # Problem seems to only appear on linux, but should not hurt other operating
+    # systems.
+    # According to https://github.com/xianyi/OpenBLAS#usage , there are 3
+    # environment variables that control the spawning of threads
+    #   OPENBLAS_NUM_THREADS
+    #   GOTO_NUM_THREADS
+    #   OMP_NUM_THREADS
+    # where OPENBLAS_NUM_THREADS > GOTO_NUM_THREADS > OMP_NUM_THREADS in terms
+    # of precedence. Setting OPENBLAS_NUM_THREADS should allow OMP_NUM_THREADS
+    # to be used for OpenMP sections. Using multiple threads for numpy functions
+    # that depend on OpenBLAS will require changing the OPENBLAS_NUM_THREADS
+    # environment variable in the code that wants that functionality.
+    openblas_num_threads = 1
+
     # determine LC_ALL from environment (Python UTF-8 compatibility in Linux)
     LC_ALL = os.environ.get('LC_ALL')     # user setting
     if (LC_ALL is not None):
@@ -1022,6 +1039,9 @@ Wait for the command to finish, then try again.""" % vars())
     if (cert_file is not None):
       print('SSL_CERT_FILE="%s"' % cert_file.sh_value(), file=f)
       print('export SSL_CERT_FILE', file=f)
+
+    print('OPENBLAS_NUM_THREADS="%s"' % openblas_num_threads, file=f)
+    print('export OPENBLAS_NUM_THREADS', file=f)
 
     pangorc = abs(self.build_path / '..' / 'base' / 'etc' / 'pango' / 'pangorc')
     if os.path.exists(pangorc):
