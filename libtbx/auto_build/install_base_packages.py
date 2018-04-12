@@ -1110,9 +1110,6 @@ _replace_sysconfig_paths(build_time_vars)
       package_name="Sphinx",
       package_version=SPHINX_VERSION,
       confirm_import_module="sphinx")
-    self.build_python_module_pip(
-      package_name="numpydoc",
-      package_version=NUMPYDOC_VERSION)
 
   def build_ipython(self):
     self.build_python_module_simple(
