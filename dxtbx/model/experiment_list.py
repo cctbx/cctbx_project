@@ -82,7 +82,7 @@ class ExperimentListDict(object):
       elif isinstance(value, str):
         if value not in mmap:
           mmap[value] = len(mlist)
-          mlist.append(from_dict(ExperimentListDict._from_file(value)))
+          mlist.append(from_dict(ExperimentListDict._from_file(value, self._directory)))
         eobj[name] = mmap[value]
       elif not isinstance(value, int):
         raise TypeError('expected int or str, got %s' % type(value))
@@ -110,7 +110,7 @@ class ExperimentListDict(object):
       elif isinstance(value, str):
         if value not in mmap:
           mmap[value] = len(mlist)
-          mlist.append(ExperimentListDict._from_file(value))
+          mlist.append(ExperimentListDict._from_file(value, self._directory))
         eobj['imageset'] = mmap[value]
       elif not isinstance(value, int):
         raise TypeError('expected int or str, got %s' % type(value))
@@ -418,13 +418,13 @@ class ExperimentListDict(object):
         return entry_point.load().from_dict(obj)
 
   @staticmethod
-  def _from_file(filename):
+  def _from_file(filename, directory=None):
     ''' Load a model dictionary from a file. '''
     from dxtbx.serialize.load import _decode_dict
     from dxtbx.serialize.filename import load_path
     import json
     from os.path import dirname
-    filename = load_path(filename, directory=self._directory)
+    filename = load_path(filename, directory=directory)
     try:
       with open(filename, 'r') as infile:
         return json.load(infile, object_hook=_decode_dict)
