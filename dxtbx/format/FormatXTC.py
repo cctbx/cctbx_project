@@ -95,6 +95,9 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     except Exception:
       return None
 
+  def _get_event(self,index):
+    return self.events_list[index]
+
   def _get_datasource(self, image_file):
     from psana import DataSource
 
@@ -106,6 +109,22 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     else:
       img = params.data_source
     return DataSource(img)
+
+  def get_run(self, index):
+    evt = self._get_event(index)
+    return evt.run()
+
+  def get_psana_timestamp(self, index):
+    from xfel.cxi.cspad_ana import cspad_tbx
+    import psana
+    evt = self._get_event(index)
+    time = evt.get(psana.EventId).time()
+    fid = evt.get(psana.EventId).fiducials()
+
+    sec  = time[0]
+    nsec = time[1]
+
+    return cspad_tbx.evt_timestamp((sec,nsec/1e6))
 
 if __name__ == '__main__':
   import sys
