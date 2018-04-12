@@ -276,7 +276,7 @@ class CCTBXParser(ParserBase):
     return self.namespace
 
   # ---------------------------------------------------------------------------
-  def process_files(self, file_list):
+  def process_files(self, file_list, message = 'Processing files:'):
     '''
     Second pass to process files. The first pass already checked that these
     files exist. There may be conditions where the file is deleted in the time
@@ -285,7 +285,7 @@ class CCTBXParser(ParserBase):
     Use iotbx.file_reader.any_file to process files.
     Will need updating to work with mmtbx.model.manager class more efficiently
     '''
-    print('Processing files:', file=self.logger)
+    print(message, file=self.logger)
     print('-'*self.text_width, file=self.logger)
     print('', file=self.logger)
     printed_something = False
@@ -331,9 +331,8 @@ class CCTBXParser(ParserBase):
   def process_phil(self, phil_list):
     ''''
     Process PHIL arguments
-    Currently only handles command-line changes
-    Will add inclusion of PHIL files from data_manager first, then
-    command-line options
+    Also checks PHIL arguments (command line and files) for parameters that
+    specify files (.type = path)
     '''
     print('Processing PHIL parameters:', file=self.logger)
     print('-'*self.text_width, file=self.logger)
@@ -404,17 +403,53 @@ class CCTBXParser(ParserBase):
       error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
       raise Sorry(error_message)
 
+    # process input phil for file/directory defintions and add to DataManager
+    # Note: if a PHIL file is input as a PHIL parameter, the contents of the
+    # file will NOT be parsed and validated. The PHIL file should be provided
+    # as a command-line argument. This is mostly for finding data files
+    # defined by PHIL parameters that should be added to the DataManager
+    diff_phil = self.master_phil.fetch_diff(self.working_phil)
+    paths = self.check_phil_for_paths(diff_phil)
+    if (len(paths) > 0):
+      files = list()
+      dirs = list()
+      for path in paths:
+        if (os.path.isfile(path)):
+          files.append(path)
+        elif (os.path.isdir(path)):
+          dirs.append(path)
+      if (self.parse_files):
+        self.process_files(files, message='Processing files from PHIL:')
+      if (self.parse_dir):
+        self.process_dir(dirs, message='Processing directories from PHIL:')
+
     if (not printed_something):
       print('  No PHIL parameters found', file=self.logger)
       print('', file=self.logger)
 
   # ---------------------------------------------------------------------------
-  def process_dir(self, dir_list):
+  def process_dir(self, dir_list, message = 'Processing directories:'):
     '''
     '''
-    print('Processing directories:')
+    print(message, file=self.logger)
     print('-'*self.text_width, file=self.logger)
     print('', file=self.logger)
+
+  # ---------------------------------------------------------------------------
+  def check_phil_for_paths(self, phil_scope):
+    '''
+    Recursively check PHIL scope if there is a 'path' type.
+    Returns the paths (empty list means no paths were found)
+    '''
+    paths = list()
+    if (phil_scope.is_definition):
+      if (phil_scope.has_attribute_with_name('type')):
+        if (phil_scope.type.phil_type == 'path'):
+          paths.append(phil_scope.extract())
+    elif (phil_scope.is_scope):
+      for phil_object in phil_scope.objects:
+        paths.extend(self.check_phil_for_paths(phil_object))
+    return paths
 
   # ---------------------------------------------------------------------------
   def post_process(self):
