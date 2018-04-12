@@ -46,6 +46,8 @@ master_phil = libtbx.phil.parse("""
     .type = int
   x_axis = *two_theta q
     .type = choice
+  image_number = None
+    .type = int
 """)
 
 def distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
@@ -111,10 +113,14 @@ def run (args, image = None):
     img = load_func(item)
     try:
       n_images = img.get_num_images()
-      subiterable = xrange(n_images)
     except AttributeError:
       n_images = None
       subiterable = [0]
+    else:
+      if params.image_number is None:
+        subiterable = xrange(n_images)
+      else:
+        subiterable = [params.image_number]
     for image_number in subiterable:
       if n_images is None:
         beam = img.get_beam()
