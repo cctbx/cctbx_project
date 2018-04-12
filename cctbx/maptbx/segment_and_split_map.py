@@ -7546,34 +7546,44 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
 
 
   if soft_mask and soft_mask_radius is not None:
-    assert shift_origin  # need to do this
-    if shift_origin:
-      new_map_data = new_map_data.shift_origin()
-
-    # Add soft boundary to mean around outside of mask
-    # grid_units is how many grid units are about equal to soft_mask_radius
-    grid_units=get_grid_units(map_data=new_map_data,
-      crystal_symmetry=new_crystal_symmetry,radius=soft_mask_radius,out=out)
-    grid_units=int(0.5+0.5*grid_units)
-    acc=map_data.accessor()
-    from cctbx import maptbx
-    zero_boundary_map=maptbx.zero_boundary_box_map(
-       new_map_data,grid_units).result()
-    # this map is zero's around the edge and 1 in the middle
-    # multiply zero_boundary_map--smoothed & new_map_data and return
-    print >>out,"Applying soft mask to boundary of cut out map"
-    original_map_data=new_map_data.deep_copy()
-    new_map_data,smoothed_mask_data=apply_soft_mask(map_data=new_map_data,
-          mask_data=zero_boundary_map,
-          rad_smooth=resolution,
-          crystal_symmetry=new_crystal_symmetry,
-          out=out)
+    original_map_data=map_data.deep_copy()
+    new_map_data,smoothed_mask_data=set_up_and_apply_soft_mask(
+       map_data=new_map_data,
+       shift_origin=shift_origin,
+       crystal_symmetry=new_crystal_symmetry,
+       resolution=resolution,
+       radius=soft_mask_radius,out=out)
   else:
     original_map_data=None
     smoothed_mask_data=None
 
   return new_map_data, new_crystal_symmetry,\
     smoothed_mask_data,original_map_data
+
+def set_up_and_apply_soft_mask(map_data=None,shift_origin=None,
+  crystal_symmetry=None,resolution=None,
+  radius=None,out=sys.stdout):
+
+    assert shift_origin  # need to do this
+    map_data = map_data.shift_origin()
+
+    # Add soft boundary to mean around outside of mask
+    # grid_units is how many grid units are about equal to soft_mask_radius
+    grid_units=get_grid_units(map_data=map_data,
+      crystal_symmetry=crystal_symmetry,radius=radius,out=out)
+    grid_units=int(0.5+0.5*grid_units)
+    from cctbx import maptbx
+    zero_boundary_map=maptbx.zero_boundary_box_map(
+       map_data,grid_units).result()
+    # this map is zero's around the edge and 1 in the middle
+    # multiply zero_boundary_map--smoothed & new_map_data and return
+    print >>out,"Applying soft mask to boundary of cut out map"
+    new_map_data,smoothed_mask_data=apply_soft_mask(map_data=map_data,
+          mask_data=zero_boundary_map,
+          rad_smooth=resolution,
+          crystal_symmetry=crystal_symmetry,
+          out=out)
+    return new_map_data,smoothed_mask_data
 
 def apply_shift_to_pdb_hierarchy(
     origin_shift=None,
