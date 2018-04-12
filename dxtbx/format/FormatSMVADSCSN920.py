@@ -9,7 +9,7 @@
 # FormatSMVADSC, customised for old detector on Diamond Light Source I03,
 # correctly accounting for the image pedestal & similar
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -99,4 +99,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print(FormatSMVADSC.understand(arg))

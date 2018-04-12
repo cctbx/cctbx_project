@@ -2,7 +2,7 @@
 #
 # $Id$
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatPY import FormatPY
 
@@ -187,4 +187,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatPYmultitile.understand(arg)
+    print(FormatPYmultitile.understand(arg))

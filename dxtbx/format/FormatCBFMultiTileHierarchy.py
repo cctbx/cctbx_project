@@ -7,14 +7,13 @@
 # $Id:
 #
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import pycbf
-
 from dxtbx.format.FormatCBFMultiTile import FormatCBFMultiTile
 from dxtbx.model import Detector
-from scitbx.matrix import sqr, col
 from libtbx.utils import Sorry
+from scitbx.matrix import col, sqr
 
 class FormatCBFMultiTileHierarchy(FormatCBFMultiTile):
   '''An image reading class multi-tile CBF files'''
@@ -355,4 +354,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMultiTileHierarchy.understand(arg)
+    print(FormatCBFMultiTileHierarchy.understand(arg))

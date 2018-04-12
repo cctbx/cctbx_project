@@ -8,11 +8,10 @@
 # An implementation of the SMV image reader for Rigaku A200 images.
 # Inherits from FormatSMVRigaku.
 
-from __future__ import absolute_import, division
-
-from scitbx import matrix
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
+from scitbx import matrix
 
 class FormatSMVRigakuA200(FormatSMVRigaku):
   '''A class for reading SMV format Rigaku A200 images, and correctly
@@ -207,4 +206,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVRigakuA200.understand(arg)
+    print(FormatSMVRigakuA200.understand(arg))

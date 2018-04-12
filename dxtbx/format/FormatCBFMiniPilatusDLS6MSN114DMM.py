@@ -8,7 +8,7 @@
 # An implementation of the CBF image reader for Pilatus images, from the Pilatus
 # 6M SN 100 currently on Diamond I04.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.format.FormatStill import FormatStill
@@ -57,4 +57,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDLS6MSN114DMM.understand(arg)
+    print(FormatCBFMiniPilatusDLS6MSN114DMM.understand(arg))

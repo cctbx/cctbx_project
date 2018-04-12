@@ -9,7 +9,7 @@
 # FormatSMVADSC, customised for example on APS ID19 SN 458 and 914
 # which have reversed phi.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -92,4 +92,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSCSN.understand(arg)
+    print(FormatSMVADSCSN.understand(arg))

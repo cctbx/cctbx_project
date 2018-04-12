@@ -7,11 +7,12 @@
 #
 # Pilatus implementation of fullCBF format, for use with Dectris detectors.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
 
 #import pycbf
 
-from dxtbx.format.FormatCBFFullPilatus import FormatCBFFullPilatus
 #from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFFullPilatusDLS6MSN100(FormatCBFFullPilatus):
@@ -121,4 +122,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFFullPilatus.understand(arg)
+    print(FormatCBFFullPilatus.understand(arg))

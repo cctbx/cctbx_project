@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.format.FormatStill import FormatStill
 
@@ -298,5 +299,5 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
 
 if __name__ == '__main__':
   import sys
-  print FormatHDF5SaclaMPCCD.understand(sys.argv[1])
+  print(FormatHDF5SaclaMPCCD.understand(sys.argv[1]))
   FormatHDF5SaclaMPCCD(sys.argv[1])

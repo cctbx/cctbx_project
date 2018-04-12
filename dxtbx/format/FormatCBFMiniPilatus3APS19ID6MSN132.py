@@ -6,7 +6,7 @@
 #   included in the root directory of this package.
 #
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 
@@ -49,4 +49,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatus3AOS19ID6MSN132.understand(arg)
+    print(FormatCBFMiniPilatus3AOS19ID6MSN132.understand(arg))

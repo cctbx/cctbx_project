@@ -8,7 +8,7 @@
 # An implementation of the SMV image reader for JHSim images. Inherits from
 # FormatSMV.
 
-from __future__ import division
+from __future__ import division, print_function
 
 import time
 
@@ -187,4 +187,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVJHSim.understand(arg)
+    print(FormatSMVJHSim.understand(arg))

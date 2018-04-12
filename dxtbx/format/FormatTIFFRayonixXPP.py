@@ -7,9 +7,10 @@
 # least viewed.
 #
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-import struct, re
+import re
+import struct
 
 from dxtbx.format.FormatTIFFRayonix import FormatTIFFRayonix
 
@@ -115,4 +116,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixXPP.understand(arg)
+    print(FormatTIFFRayonixXPP.understand(arg))

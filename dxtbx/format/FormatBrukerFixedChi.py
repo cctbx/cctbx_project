@@ -5,11 +5,10 @@
 #   This code is distributed under the BSD license, a copy of which is
 #   included in the root directory of this package.
 
-from __future__ import absolute_import, division
-
-from scitbx import matrix
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatBruker import FormatBruker
+from scitbx import matrix
 
 class FormatBrukerFixedChi(FormatBruker):
 
@@ -134,4 +133,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatBrukerFixedChi.understand(arg)
+    print(FormatBrukerFixedChi.understand(arg))

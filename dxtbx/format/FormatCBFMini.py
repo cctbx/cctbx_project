@@ -9,7 +9,8 @@
 # this will read the header and populate a dictionary of the keyword / value
 # pairs.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 import os
 
 from dxtbx.format.FormatCBF import FormatCBF
@@ -372,4 +373,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMini.understand(arg)
+    print(FormatCBFMini.understand(arg))

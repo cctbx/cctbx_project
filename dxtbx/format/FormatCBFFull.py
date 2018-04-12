@@ -9,11 +9,11 @@
 # amongst others - this will read the header and construct the full model,
 # but will allow for extension for specific implementations of CBF.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import pycbf
-
 from dxtbx.format.FormatCBF import FormatCBF
+from dxtbx.format.FormatStill import FormatStill
 
 class FormatCBFFull(FormatCBF):
   '''An image reading class for full CBF format images i.e. those from
@@ -101,7 +101,6 @@ class FormatCBFFull(FormatCBF):
     except Exception:
       return None
 
-from dxtbx.format.FormatStill import FormatStill
 class FormatCBFFullStill(FormatStill, FormatCBFFull):
   '''An image reading class for full CBF format images i.e. those from
   a variety of cameras which support this format. Custom derived from
@@ -202,4 +201,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFFull.understand(arg)
+    print(FormatCBFFull.understand(arg))

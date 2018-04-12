@@ -7,7 +7,7 @@
 #
 # An implementation of the SMV image reader for CMOS1 images, from ALS 4.2.2
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMV import FormatSMV
 
@@ -200,4 +200,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVCMOS1.understand(arg)
+    print(FormatSMVCMOS1.understand(arg))

@@ -9,7 +9,7 @@
 #  This code is distributed under the BSD license, a copy of which is
 #  included in the root directory of this package.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
@@ -393,4 +393,4 @@ if __name__ == '__main__':
 
   f = FormatEigerNearlyNexus(sys.argv[1])
   for i in range(10):
-    print f.get_raw_data(i)
+    print(f.get_raw_data(i))

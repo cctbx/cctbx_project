@@ -11,7 +11,7 @@
 # An implementation of the FormatCBFMiniPilatus image reader for the P6M
 # detector at PETRA III beamline P14, which has a vertical goniometer.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 
@@ -45,4 +45,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDESY6MSN115.understand(arg)
+    print(FormatCBFMiniPilatusDESY6MSN115.understand(arg))

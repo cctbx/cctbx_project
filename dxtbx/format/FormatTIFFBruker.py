@@ -8,11 +8,11 @@
 # An implementation of the TIFF image reader for Bruker images. Inherits from
 # FormatTIFF.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-import time
 import datetime
 import struct
+import time
 
 from dxtbx.format.FormatTIFF import FormatTIFF
 
@@ -325,4 +325,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFBruker.understand(arg)
+    print(FormatTIFFBruker.understand(arg))

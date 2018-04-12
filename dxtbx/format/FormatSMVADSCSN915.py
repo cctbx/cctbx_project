@@ -11,7 +11,7 @@
 # ADSC SMV Format for Q315 SN 915, installed at BL38B1 at SPring-8. Resembles
 # but FormatSMVADSCSN920 but returns a reverse phi goniometer
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -107,4 +107,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print(FormatSMVADSC.understand(arg))

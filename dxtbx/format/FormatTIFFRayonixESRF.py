@@ -9,7 +9,7 @@
 # specified in pixels
 #
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import struct
 
@@ -97,4 +97,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatTIFFRayonixESRF.understand(arg)
+    print(FormatTIFFRayonixESRF.understand(arg))

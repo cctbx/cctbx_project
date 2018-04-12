@@ -8,12 +8,12 @@
 # An implementation of the CBF image reader for Pilatus images. Inherits from
 # FormatCBFMini.
 
-from __future__ import division
+from __future__ import division, print_function
+
 import os
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
-from dxtbx.format.FormatCBFMiniPilatusHelpers import \
-     get_pilatus_timestamp
+from dxtbx.format.FormatCBFMiniPilatusHelpers import get_pilatus_timestamp
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
 
 class FormatCBFMiniPilatus(FormatCBFMini):
@@ -136,4 +136,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatus.understand(arg)
+    print(FormatCBFMiniPilatus.understand(arg))

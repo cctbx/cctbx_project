@@ -9,7 +9,7 @@
 # HF-4M SN H401 currently on APS sector 24 (NE-CAT).
 # Located in dxtbx/format
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMini import FormatCBFMini
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
@@ -223,4 +223,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniADSCHF4M.understand(arg)
+    print(FormatCBFMiniADSCHF4M.understand(arg))

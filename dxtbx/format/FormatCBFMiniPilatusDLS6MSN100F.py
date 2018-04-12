@@ -8,11 +8,11 @@
 # An implementation of the CBF image reader for Pilatus images, from the Pilatus
 # 6M SN 100 currently on Diamond I04.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
-from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from dxtbx.format.FormatPilatusHelpers import determine_pilatus_mask
+from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 def read_cbf_image_as_double(cbf_image):
   from cbflib_adaptbx import uncompress
@@ -196,4 +196,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatCBFMiniPilatusDLS6MSN100F.understand(arg)
+    print(FormatCBFMiniPilatusDLS6MSN100F.understand(arg))

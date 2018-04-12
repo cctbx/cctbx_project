@@ -8,11 +8,10 @@
 # An implementation of the SMV image reader for Rigaku Saturn images, for
 # the instrument at CSHL, SN 09040159.
 
-from __future__ import absolute_import, division
-
-from scitbx import matrix
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVRigakuSaturnNoTS import FormatSMVRigakuSaturnNoTS
+from scitbx import matrix
 
 SERIALS = ['09040159', '07510101']
 
@@ -115,4 +114,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVRigakuSaturnSN07400090.understand(arg)
+    print(FormatSMVRigakuSaturnSN07400090.understand(arg))

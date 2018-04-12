@@ -8,7 +8,7 @@
 # An implementation of the SMV image reader for ADSC images. Inherits from
 # FormatSMV.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import time
 
@@ -247,4 +247,4 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print FormatSMVADSC.understand(arg)
+    print(FormatSMVADSC.understand(arg))

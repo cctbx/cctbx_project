@@ -1,6 +1,8 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 from dxtbx.format.FormatXTC import FormatXTC, locator_str
 from libtbx.phil import parse
+
 try:
   from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 except ImportError:
@@ -92,4 +94,4 @@ class FormatXTCRayonix(FormatXTC):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatXTCRayonix.understand(arg)
+    print(FormatXTCRayonix.understand(arg))
