@@ -78,6 +78,8 @@ class installer (object) :
       help="Use the system Python interpreter", action="store_true")
     parser.add_option("--python3", dest="python3", action="store_true", default=False,
       help="Install a Python3 interpreter. This is unsupported and purely for development purposes.")
+    parser.add_option("--wxpython4", dest="wxpython4", action="store_true", default=False,
+      help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.")
     parser.add_option("--mpi-build", dest="mpi_build", action="store_true", default=False,
       help="Installs software with MPI functionality")
     parser.add_option("-g", "--debug", dest="debug", action="store_true",
@@ -203,6 +205,8 @@ class installer (object) :
     python_executable = 'python'
     self.python3 = options.python3
     if self.python3: python_executable = 'python3'
+    self.wxpython4 = options.wxpython4 # or self.python3 # Python3 should imply wxpython4, but
+                                                         # wait until we can actually build it
     if os.path.exists(os.path.join(self.build_dir, 'base', 'bin', python_executable)):
       self.python_exe = os.path.join(self.build_dir, 'base', 'bin', python_executable)
     elif options.with_python:
@@ -1412,8 +1416,16 @@ _replace_sysconfig_paths(build_time_vars)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
+    if self.wxpython4:
+      print "Building wxPython4 is currently not supported and will most " \
+            "likely fail until wxPython 4.0.2 is released"
+      # 4.0.2 will contain the fix for https://github.com/wxWidgets/Phoenix/issues/780
+      self.build_python_module_pip(
+        'wxPython', package_version="4.0.1",
+        confirm_import_module='wx')
+      return
     if self.python3:
-      # Skip wxPython for the Python3 pathway for now
+      print "Skipping installation of wxPython3 - no point doing this on Python3"
       return
 
     pkg_log = self.start_building_package("wxPython")

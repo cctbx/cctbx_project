@@ -1006,6 +1006,7 @@ class Builder(object):
       enable_shared=False,
       mpi_build=False,
       python3=False,
+      wxpython4=False,
     ):
     if nproc is None:
       self.nproc=1
@@ -1029,6 +1030,7 @@ class Builder(object):
     self.python3 = python3
     if python3:
       python_executable = 'python3'
+    self.wxpython4 = wxpython4
     if self.platform and ('windows' in self.platform or self.platform == 'win32'):
       python_executable = python_executable + '.exe'
     if self.platform and 'windows' in self.platform:
@@ -1485,6 +1487,8 @@ class Builder(object):
       extra_opts.append('--skip-base=%s' % self.skip_base)
     if self.python3:
       extra_opts.append('--python3')
+    if self.wxpython4:
+      extra_opts.append('--wxpython4')
     if not self.force_base_build:
       if "--skip-if-exists" not in extra_opts:
         extra_opts.append("--skip-if-exists")
@@ -1824,7 +1828,6 @@ class DIALSBuilder(CCIBuilder):
   def add_base(self, extra_opts=[]):
     super(DIALSBuilder, self).add_base(
       extra_opts=['--dials',
-                  #'--wxpython3'
                  ] + extra_opts)
 
   def add_dispatchers(self):
@@ -2383,6 +2386,11 @@ def run(root=None):
                     help="Install a Python3 interpreter. This is unsupported and purely for development purposes.",
                     action="store_true",
                     default=False)
+  parser.add_option("--wxpython4",
+                    dest="wxpython4",
+                    help="Install wxpython4 instead of wxpython3. This is unsupported and purely for development purposes.",
+                    action="store_true",
+                    default=False)
   options, args = parser.parse_args()
   # process external
   options.specific_external_builder=None
@@ -2444,6 +2452,7 @@ def run(root=None):
     enable_shared=options.enable_shared,
     mpi_build=options.mpi_build,
     python3=options.python3,
+    wxpython4=options.wxpython4,
   ).run()
   print "\nBootstrap success: %s" % ", ".join(actions)
 
