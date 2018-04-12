@@ -16,7 +16,7 @@ helix
   .style = noauto
 {
   serial_number = None
-    .type = int
+    .type = str
     .optional = True
   helix_identifier = None
     .type = str
