@@ -12,8 +12,9 @@ def load_path(path, directory=None):
     path The path to the file.
 
   '''
-  if path is None or path == "":
+  if not path:
     return ""
-  if directory is not None and not os.path.isabs(path):
+  path = os.path.expanduser(os.path.expandvars(path))
+  if directory and not os.path.isabs(path):
     path = os.path.join(directory, path)
-  return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
+  return os.path.abspath(path)
