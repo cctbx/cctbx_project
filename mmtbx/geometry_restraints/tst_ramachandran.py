@@ -14,6 +14,8 @@ from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx import group_args
 from cStringIO import StringIO
+import mmtbx.model
+from libtbx.utils import null_out
 import sys
 import os
 
@@ -159,15 +161,8 @@ def exercise_lbfgs_simple (mon_lib_srv, ener_lib, verbose=False) :
   for i, peptide in enumerate([pdb1, pdb2, pdb3]) :
     pdb_in = iotbx.pdb.input(source_info="peptide",
       lines=flex.split_lines(peptide))
-    params = pdb_interpretation.master_params.extract()
-    processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=params,
-      pdb_inp=pdb_in,
-      log=StringIO())
     log = StringIO()
-    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_hierarchy = pdb_in.construct_hierarchy()
     atoms = pdb_hierarchy.atoms()
     sites_cart_1 = atoms.extract_xyz().deep_copy()
     gradients_fd = flex.vec3_double(sites_cart_1.size(), (0,0,0))
@@ -228,20 +223,20 @@ def show_results (o, structure_name) :
   print ""
 
 def benchmark_structure (pdb_in, mon_lib_srv, ener_lib, verbose=False, w=1.0) :
-  params = pdb_interpretation.master_params.extract()
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    pdb_inp=pdb_in,
-    log=StringIO())
   log = StringIO()
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  model = mmtbx.model.manager(
+      model_input=pdb_in,
+      pdb_interpretation_params=params,
+      log=null_out())
+  grm = model.get_restraints_manager().geometry
+  pdb_hierarchy = model.get_hierarchy()
   r0 = ramalyze(pdb_hierarchy=pdb_hierarchy, outliers_only=False)
   atoms = pdb_hierarchy.atoms()
   sites_cart_1 = atoms.extract_xyz().deep_copy()
   sites_cart_2 = sites_cart_1.deep_copy()
-  grm = processed_pdb_file.geometry_restraints_manager()
   assert (grm is not None)
   e = grm.energies_sites(sites_cart=sites_cart_1)
   b0 = e.bond_deviations()[-1]
@@ -475,32 +470,6 @@ phi-psi angles formed by             residual
 
 """)
 
-
-def exercise_other (mon_lib_srv, ener_lib) :
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/3mku.pdb",
-    test=os.path.isfile)
-  if (file_name is None) :
-    print "Skipping test."
-    return
-  params = pdb_interpretation.master_params.fetch().extract()
-  params.peptide_link.ramachandran_restraints = True
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    pdb_inp=pdb_in,
-    log=StringIO())
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  params2 = ramachandran.refine_opt_params.fetch().extract()
-  params2.exclude_secondary_structure = True
-  ramachandran.process_refinement_settings(
-    params=params2,
-    pdb_hierarchy=pdb_hierarchy,
-    secondary_structure_manager=ss_mgr,
-    d_min=2.9,
-    log=StringIO())
-
 def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   # Just check overall rama proxies
   file_name = libtbx.env.find_in_repositories(
@@ -510,43 +479,30 @@ def exercise_ramachandran_selections(mon_lib_srv, ener_lib):
   if (file_name is None) :
     print "Skipping test."
     return
-  params = pdb_interpretation.master_params.fetch().extract()
-  params.peptide_link.ramachandran_restraints = True
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    file_name=file_name,
-    log=StringIO())
-  grm = processed_pdb_file.geometry_restraints_manager()
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  model = mmtbx.model.manager(
+      model_input=pdb_inp,
+      pdb_interpretation_params=params,
+      log=null_out())
+  grm = model.get_restraints_manager().geometry
   # print grm.ramachandran_manager.get_n_proxies() # 47 is wrong here
 
   # simple selection
-  params = pdb_interpretation.master_params.fetch().extract()
-  params.peptide_link.ramachandran_restraints = True
-  params.peptide_link.rama_selection = "chain A and resid 1:7"
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    file_name=file_name,
-    log=StringIO())
-  grm = processed_pdb_file.geometry_restraints_manager()
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.rama_selection = "chain A and resid 1:7"
+  model.set_pdb_interpretation_params(params)
+  grm = model.get_restraints_manager().geometry
   nprox = grm.ramachandran_manager.get_n_proxies()
   assert nprox == 5, ""+\
       "Want to get 5 rama proxies, got %d" % nprox
 
   # 7 residues: there are insertion codes
-  params = pdb_interpretation.master_params.fetch().extract()
-  params.peptide_link.ramachandran_restraints = True
-  params.peptide_link.rama_selection = "chain A and resid 27:28"
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    file_name=file_name,
-    log=StringIO())
-  grm = processed_pdb_file.geometry_restraints_manager()
+  params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+  params.pdb_interpretation.peptide_link.rama_selection = "chain A and resid 27:28"
+  model.set_pdb_interpretation_params(params)
+  grm = model.get_restraints_manager().geometry
   # print grm.ramachandran_manager.get_n_proxies() 0 is wrong here
 
 def exercise_acs(mon_lib_srv, ener_lib):
@@ -632,15 +588,14 @@ ATOM    537  CB  GLU B   3       7.115  11.041  22.731  1.00 20.00           C
       (2, ac_pdb2),
       (1, no_ac_pdb),
       ]:
-    params = pdb_interpretation.master_params.fetch().extract()
-    params.peptide_link.ramachandran_restraints = True
-    processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=params,
-      raw_records=pdb_str.split("\n"),
-      log=StringIO())
-    grm = processed_pdb_file.geometry_restraints_manager()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+    pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+    model = mmtbx.model.manager(
+        model_input=pdb_inp,
+        pdb_interpretation_params=params,
+        log=null_out())
+    grm = model.get_restraints_manager().geometry
     nprox = grm.ramachandran_manager.get_n_proxies()
     assert nprox == correct_nprox, ""+\
         "Want to get %d rama proxies, got %d" % (correct_nprox, nprox)

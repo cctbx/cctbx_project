@@ -4,6 +4,7 @@ from __future__ import division
 from mmtbx.secondary_structure import sec_str_master_phil_str, \
   sec_str_master_phil, manager
 import iotbx.pdb
+import mmtbx.model
 import iotbx.phil
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
@@ -113,27 +114,17 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
       buffer_layer=3)
     atoms.set_xyz(new_xyz=box.sites_cart)
     cs = box.crystal_symmetry()
-  from mmtbx.monomer_library import pdb_interpretation, server
-  import mmtbx
-  import mmtbx.command_line.geometry_minimization
 
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
-  defpars = mmtbx.command_line.geometry_minimization.master_params().extract()
+  defpars = mmtbx.model.manager.get_default_pdb_interpretation_params()
   defpars.pdb_interpretation.automatic_linking.link_carbohydrates=False
   defpars.pdb_interpretation.c_beta_restraints=False
   defpars.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv    = mon_lib_srv,
-    ener_lib       = ener_lib,
-    pdb_inp        = pdb_structure,
-    crystal_symmetry = cs,
-    params         = defpars.pdb_interpretation,
-    force_symmetry = True)
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  geometry = processed_pdb_file.geometry_restraints_manager()
-  geometry.pair_proxies(processed_pdb_file.xray_structure().sites_cart())
-  pdb_hierarchy.atoms().reset_i_seq()
+  model = mmtbx.model.manager(
+      model_input=pdb_structure,
+      crystal_symmetry=cs,
+      pdb_interpretation_params=defpars)
+  pdb_hierarchy = model.get_hierarchy()
+  geometry = model.get_restraints_manager().geometry
   if len(pdb_hierarchy.models()) != 1 :
     raise Sorry("Multiple models not supported.")
   ss_from_file = None
