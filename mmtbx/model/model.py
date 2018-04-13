@@ -862,6 +862,7 @@ class manager(object):
 
   def unset_restraints_manager(self):
     self.restraints_manager = None
+    self._processed_pdb_file = None
 
   def setup_restraints_manager(
       self,
