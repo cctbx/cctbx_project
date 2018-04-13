@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/06/2018
+Last Changed: 04/12/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -301,6 +301,7 @@ class Analyzer(object):
     self.logfile = init.logfile
     self.prime_data_path = None
 
+    # Create an analysis_result object to save info into
     self.analysis_result = AnalysisResult()
 
     self.cons_pg = None
@@ -310,6 +311,8 @@ class Analyzer(object):
     # Analyze image objects
     self.all_objects = all_objects
     self.final_objects = [i for i in all_objects if i.fail == None]
+
+    self.analysis_result.__setattr__('image_objects', self.final_objects)
 
     if self.final_objects is not None:
       self.sorted_final_images = sorted(self.final_objects,
@@ -347,15 +350,21 @@ class Analyzer(object):
         self.h = [0]
         self.a = [0]
 
-      self.analysis_result.__setattr__('all_objects', len(self.all_objects))
-      self.analysis_result.__setattr__('diff_objects', len(self.diff_objects))
-      self.analysis_result.__setattr__('filter_fail_objects', len(self.filter_fail_objects))
-      self.analysis_result.__setattr__('final_objects', len(self.final_objects))
-      self.analysis_result.__setattr__('no_diff_objects', len(self.no_diff_objects))
-      self.analysis_result.__setattr__('not_int_objects', len(self.not_int_objects))
+      self.analysis_result.__setattr__('n_all_objects', len(self.all_objects))
+      self.analysis_result.__setattr__('n_diff_objects', len(self.diff_objects))
+      self.analysis_result.__setattr__('n_filter_fail_objects',
+                                       len(self.filter_fail_objects))
+      self.analysis_result.__setattr__('n_final_objects',
+                                       len(self.final_objects))
+      self.analysis_result.__setattr__('n_no_diff_objects',
+                                       len(self.no_diff_objects))
+      self.analysis_result.__setattr__('n_not_int_objects',
+                                       len(self.not_int_objects))
       if self.params.advanced.integrate_with == 'dials':
-        self.analysis_result.__setattr__('not_spf_objects', len(self.not_spf_objects))
-        self.analysis_result.__setattr__('not_idx_objects', len(self.not_idx_objects))
+        self.analysis_result.__setattr__('n_not_spf_objects',
+                                         len(self.not_spf_objects))
+        self.analysis_result.__setattr__('n_not_idx_objects',
+                                         len(self.not_idx_objects))
       self.analysis_result.__setattr__('lres', self.lres)
       self.analysis_result.__setattr__('hres', self.hres)
       self.analysis_result.__setattr__('mos', self.mos)
@@ -741,8 +750,6 @@ class Analyzer(object):
 
       # Dump the Analyzer object into a pickle file for later fast recovery
       ep.dump(analyzer_file, self.analysis_result)
-
-
 
 
   def make_prime_input(self, filename='prime.phil'):

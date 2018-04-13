@@ -1,23 +1,12 @@
-IOTA v1.1.029 - GUI updates
+IOTA v1.1.030 - GUI updates
 
 Bugfixes:
-- Fixed a few minor bugs in command-line argument read-in for GUI
-- Analysis tab now produces a scrollbar when too small for content
 
 
 Features:
-- Clustering analysis: tried to speed it up; generated clusters from in-memory
-  python objects instead of directing at the pickle files. So far, a small
-  improvement for a 300-image dataset (~ 35% faster)
-- Sped up run recovery:
-    - A new file (analysis.pickle) output into run folder, with summary info
-    - This speeds up recovery of complete runs by a lot
-    - Removed redundant calculations for the beamXY plot, twice as fast now
-- User-run clustering at end of run
-    - Can re-run clustering many times with varying options
-    - New options for clustering:
-        - cluster_n_images - can set a random sample size for huge datasets
-        - cluster_limit - limit for size of cluster that's displayed / saved
-        - cluster_write_files - can choose to output (or not) clusters to files
+- Further sped-up recovery: list of image objects with all info is saved in
+  analysis.pickle; only one file read in without searching for image objects,
+  this seems to speed up the process, especially for large datasets (backwards
+  compatibility, when analysis.pickle is lacking, is included)
 
 Known issues:

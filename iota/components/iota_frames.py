@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/06/2018
+Last Changed: 04/12/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -1606,7 +1606,6 @@ class ProcWindow(wx.Frame):
     self.finished_objects = []
     self.read_object_files = []
     self.new_images = []
-    #self.measured_indices = []
     self.ahk0 = []
     self.ah0l = []
     self.a0kl = []
@@ -1795,7 +1794,7 @@ class ProcWindow(wx.Frame):
     self.finished_objects = []
 
     self.last_object = None
-    self.find_objects(find_old=True)
+    self.finish_process()
 
   def run(self, init):
     # Initialize IOTA parameters and log
@@ -1924,10 +1923,8 @@ class ProcWindow(wx.Frame):
         return
 
 
-  def analyze_results(self):
+  def analyze_results(self, analysis=None):
     if len(self.final_objects) == 0:
-      self.display_log()
-      self.plot_integration()
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('No images successfully integrated')
 
@@ -1937,10 +1934,7 @@ class ProcWindow(wx.Frame):
         self.status_txt.SetLabel('Analyzing results...')
 
         # Do analysis
-        analysis_file = os.path.join(self.init.int_base, 'analysis.pickle')
-        if self.recovery and os.path.isfile(analysis_file):
-          analysis = ep.load(analysis_file)
-        else:
+        if analysis is None:
           self.recovery = False
           analysis = Analyzer(self.init,
                               self.finished_objects,
@@ -2024,18 +2018,18 @@ class ProcWindow(wx.Frame):
 
         # Summary
         if self.recovery:
-          self.summary_tab.readin_txt.SetLabel(str(analysis.all_objects))
-          self.summary_tab.nodiff_txt.SetLabel(str(analysis.no_diff_objects))
-          self.summary_tab.w_diff_txt.SetLabel(str(analysis.diff_objects))
+          self.summary_tab.readin_txt.SetLabel(str(analysis.n_all_objects))
+          self.summary_tab.nodiff_txt.SetLabel(str(analysis.n_no_diff_objects))
+          self.summary_tab.w_diff_txt.SetLabel(str(analysis.n_diff_objects))
           if self.gparams.advanced.integrate_with == 'cctbx':
-            self.summary_tab.noint_txt.SetLabel(str(analysis.not_int_objects))
-            self.summary_tab.noprf_txt.SetLabel(str(analysis.filter_fail_objects))
+            self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
+            self.summary_tab.noprf_txt.SetLabel(str(analysis.n_filter_fail_objects))
           elif self.gparams.advanced.integrate_with == 'dials':
-            self.summary_tab.nospf_txt.SetLabel(str(analysis.not_spf_objects))
-            self.summary_tab.noidx_txt.SetLabel(str(analysis.not_idx_objects))
-            self.summary_tab.noint_txt.SetLabel(str(analysis.not_int_objects))
-            self.summary_tab.noflt_txt.SetLabel(str(analysis.filter_fail_objects))
-          self.summary_tab.final_txt.SetLabel(str(analysis.final_objects))
+            self.summary_tab.nospf_txt.SetLabel(str(analysis.n_not_spf_objects))
+            self.summary_tab.noidx_txt.SetLabel(str(analysis.n_not_idx_objects))
+            self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
+            self.summary_tab.noflt_txt.SetLabel(str(analysis.n_filter_fail_objects))
+          self.summary_tab.final_txt.SetLabel(str(analysis.n_final_objects))
         else:
           self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
           self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
@@ -2058,16 +2052,16 @@ class ProcWindow(wx.Frame):
         self.proc_nb.AddPage(self.summary_tab, 'Analysis')
         self.proc_nb.SetSelection(2)
 
-        # Finish up
-        self.display_log()
-        self.plot_integration()
-
       # Signal end of run
       font = self.sb.GetFont()
       font.SetWeight(wx.BOLD)
       self.status_txt.SetFont(font)
       self.status_txt.SetForegroundColour('blue')
       self.status_txt.SetLabel('DONE')
+
+    # Finish up
+    self.display_log()
+    self.plot_integration()
 
     # Stop timer
     self.timer.Stop()
@@ -2115,18 +2109,7 @@ class ProcWindow(wx.Frame):
     self.finished_objects.extend(new_finished_objects)
     self.read_object_files = [i.obj_file for i in self.finished_objects]
 
-    for obj in new_finished_objects:
-      try:
-        self.nref_list[obj.img_index - 1] = obj.final['strong']
-        self.res_list[obj.img_index - 1] = obj.final['res']
-        if 'observations' in obj.final:
-          obs = [i[0] for i in obj.final['observations']]
-          self.ahk0.extend([(i[0], i[1]) for i in obs if i[2] == 0])
-          self.ah0l.extend([(i[0], i[2]) for i in obs if i[1] == 0])
-          self.a0kl.extend([(i[1], i[2]) for i in obs if i[0] == 0])
-      except Exception, e:
-        print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
-        pass
+    self.populate_data_points(objects=new_finished_objects)
 
     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
       self.finish_process()
@@ -2145,6 +2128,21 @@ class ProcWindow(wx.Frame):
     except Exception, e:
       print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
       return None
+
+  def populate_data_points(self, objects=None):
+    if objects is not None:
+      for obj in objects:
+        try:
+          self.nref_list[obj.img_index - 1] = obj.final['strong']
+          self.res_list[obj.img_index - 1] = obj.final['res']
+          if 'observations' in obj.final:
+            obs = [i[0] for i in obj.final['observations']]
+            self.ahk0.extend([(i[0], i[1]) for i in obs if i[2] == 0])
+            self.ah0l.extend([(i[0], i[2]) for i in obs if i[1] == 0])
+            self.a0kl.extend([(i[1], i[2]) for i in obs if i[0] == 0])
+        except Exception, e:
+          print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
+          pass
 
   def onTimer(self, e):
     if self.abort_initiated:
@@ -2261,16 +2259,35 @@ class ProcWindow(wx.Frame):
       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
+
+      analysis_file = os.path.join(self.init.int_base, 'analysis.pickle')
+      if os.path.isfile(analysis_file):
+        analysis = ep.load(analysis_file)
+      else:
+        analysis = None
+
+      if self.finished_objects == []:
+        if analysis is not None and hasattr(analysis, 'image_objects'):
+          self.finished_objects = [i for i in analysis.image_objects if
+                                   i is not None and i.status == 'final']
+        else:
+          self.find_objects(find_old=True)
+          return
+
+      self.populate_data_points(objects=self.finished_objects)
+
       if str(self.state).lower() == 'finished':
         self.final_objects = [i for i in self.finished_objects if i.fail is None]
-        self.analyze_results()
+        self.analyze_results(analysis=analysis)
 
       else:
         if len(self.finished_objects) > 0:
           self.plot_integration()
         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
           self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
+
       return
+
     elif self.run_aborted:
       self.gauge_process.Hide()
       font = self.sb.GetFont()
