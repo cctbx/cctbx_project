@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
+import errno
+import glob
 import os
 import shutil
 import sys
@@ -35,9 +37,9 @@ def run(args):
 
   errors = False
   for package in args:
-    if (installation_root / package).isdir():
-      print("Skipping download of package %s: Directory already exists in installation root" % package)
-      if package not in libtbx.env.module_dict:
+    if (installation_root / package).isdir() and glob.glob(abs(installation_root / package / "*")):
+      print("Skipping download of package %s: Non-empty directory already exists in installation root" % package)
+      if package not in libtbx.env.module_dict and package.get('configure', True):
         packages_to_configure.add(package)
       continue
     if package not in warehouse:
@@ -46,6 +48,13 @@ def run(args):
       continue
 
     downloaded = False
+    try:
+      os.makedirs(abs(installation_root / package))
+    except OSError as exc:
+      if exc.errno == errno.EEXIST and (installation_root / package).isdir():
+        pass
+      else:
+        raise
     for mech, call in mechanisms.items():
       if mech in warehouse[package]:
         print("Attempting to obtain %s using %s..." % (package, mech), end='')
@@ -65,11 +74,12 @@ def run(args):
       errors = True
       continue
 
-    packages_to_configure.add(package)
+    if warehouse[package].get('configure', True):
+      packages_to_configure.add(package)
 
   if packages_to_configure:
     packages_to_configure = sorted(packages_to_configure)
-    print("Configuring package[s] %s" % ", ".join(packages_to_configure))
+    print("Configuring package[s] %s..." % ", ".join(packages_to_configure))
     os.chdir(abs(libtbx.env.build_path))
     result = procrunner.run_process(['libtbx.configure'] + packages_to_configure,
                                     print_stdout=False, print_stderr=False)
@@ -114,10 +124,30 @@ def install_git(**kwargs):
       shutil.rmtree(kwargs['location'])
     return False # git may not be installed
 
+def install_tgz(**kwargs):
+  location = kwargs['location']
+  source = kwargs['source']
+  tempfile = os.path.join(location, '.tmp.tgz')
+  etagfile = os.path.join(location, '..tmp.tgz.etag')
+  def cleanup():
+    try: os.remove(tempfile)
+    except OSError: pass
+    try: os.remove(etagfile)
+    except OSError: pass
+    try: os.rmdir(location)
+    except OSError: pass
+  if Toolbox.download_to_file(source['url'], tempfile) <= 0:
+    cleanup()
+    return False
+  import tarfile
+  with tarfile.open(tempfile, 'r') as fh:
+    fh.extractall(location)
+  cleanup()
+  return True
+
 def install_zip(**kwargs):
   location = kwargs['location']
   source = kwargs['source']
-  os.mkdir(location)
   tempfile = os.path.join(location, '.tmp.zip')
   etagfile = os.path.join(location, '..tmp.zip.etag')
   def cleanup():
@@ -125,9 +155,10 @@ def install_zip(**kwargs):
     except OSError: pass
     try: os.remove(etagfile)
     except OSError: pass
+    try: os.rmdir(location)
+    except OSError: pass
   if Toolbox.download_to_file(source['url'], tempfile) <= 0:
     cleanup()
-    os.rmdir(location)
     return False
   Toolbox.unzip(tempfile, location, trim_directory=source.get('trim', 0))
   cleanup()
@@ -137,6 +168,7 @@ mechanisms = collections.OrderedDict((
   ('git-auth', install_git),
   ('git-anon', install_git),
   ('http-zip', install_zip),
+  ('http-tgz', install_tgz),
 ))
 
 warehouse = {
@@ -152,6 +184,10 @@ warehouse = {
     'git-auth': 'git@github.com:/xia2/i19',
     'git-anon': 'https://github.com/xia2/i19.git',
     'http-zip': { 'url': 'https://github.com/xia2/i19/archive/master.zip', 'trim': 1 },
+  },
+  'msgpack': {
+    'http-tgz': { 'url': 'https://github.com/msgpack/msgpack-c/releases/download/cpp-2.1.5/msgpack-2.1.5.tar.gz' },
+    'configure': False,
   },
   'xia2_regression': {
     'git-auth': 'git@github.com:/xia2/xia2_regression',
