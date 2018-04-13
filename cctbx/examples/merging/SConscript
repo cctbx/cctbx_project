@@ -4,6 +4,10 @@ Import("env_base", "env_etc")
 
 try:
   env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+  if os.path.isdir( os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") ) ):
+    env_etc.strumpack_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") )
+  else:
+    env_etc.strumpack_dist = ""
   if os.path.isdir(env_etc.eigen_dist):
     env_etc.eigen_include = env_etc.eigen_dist
     env_etc.large_scale_merging_common_includes = [
@@ -12,6 +16,7 @@ try:
       env_etc.cctbx_include,
       env_etc.scitbx_include,
       env_etc.boost_include,
+      env_etc.strumpack_dist
     ]
     env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
     env.Append(LIBS=["cctbx"] + env_etc.libm)
@@ -28,6 +33,20 @@ try:
     if (not env_etc.no_boost_python):
       Import("env_boost_python_ext")
       env_large_scale_merging_boost_python_ext = env_boost_python_ext.Clone()
+      if env_etc.strumpack_dist != "":
+        env_large_scale_merging_boost_python_ext.Replace(
+          CC="mpicc",
+          CXX="mpic++",
+          SHCC="mpicc",
+          SHCXX="mpic++",
+          SHLINK="mpic++",
+        )
+        env_large_scale_merging_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g","-fopenmp"],
+          LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch","ptscotcherr","stdc++", "z"],
+          LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
+        )
+
+
     #  env_large_scale_merging_boost_python_ext.Prepend(
     #                 LIBS=["large_scale_merging",])
       env_large_scale_merging_boost_python_ext.SharedLibrary(
@@ -36,5 +55,6 @@ try:
 	env=env_large_scale_merging_boost_python_ext,
 	paths=env_etc.large_scale_merging_common_includes)
       Export("env_large_scale_merging_boost_python_ext")
-except Exception:
+except Exception,e:
+  print ("Exception %s"%e)
   pass

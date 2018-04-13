@@ -4,6 +4,10 @@ Import("env_base", "env_etc")
 
 try:
   env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+  if os.path.isdir( os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") ) ):
+    env_etc.strumpack_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") )
+  else:
+    env_etc.strumpack_dist = ""
   if os.path.isdir(env_etc.eigen_dist):
     env_etc.eigen_include = env_etc.eigen_dist
     env_etc.scitbx_ex_bev_common_includes = [
@@ -11,6 +15,7 @@ try:
       env_etc.libtbx_include,
       env_etc.scitbx_include,
       env_etc.boost_include,
+      env_etc.strumpack_dist
     ]
     env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
     env.Append(LIBS=["cctbx"] + env_etc.libm)
@@ -28,6 +33,18 @@ try:
     if (not env_etc.no_boost_python):
       Import("env_boost_python_ext")
       env_scitbx_ex_bev_boost_python_ext = env_boost_python_ext.Clone()
+      if env_etc.strumpack_dist != "":
+        env_scitbx_ex_bev_boost_python_ext.Replace(
+          CC="mpicc",
+          CXX="mpic++",
+          SHCC="mpicc",
+          SHCXX="mpic++",
+          SHLINK="mpic++",
+        )
+        env_scitbx_ex_bev_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g","-fopenmp"],
+          LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch","ptscotcherr","stdc++", "z"],
+          LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
+        )
     #  env_scitbx_ex_bev_boost_python_ext.Prepend(
     #                 LIBS=["scitbx_ex_bev",])
       env_scitbx_ex_bev_boost_python_ext.SharedLibrary(
@@ -37,4 +54,103 @@ try:
         paths=env_etc.scitbx_ex_bev_common_includes)
       Export("env_scitbx_ex_bev_boost_python_ext")
 except Exception:
+  pass
+
+'''
+STRUMPACK solver extension using OpenMP
+'''
+try:
+  if os.path.isdir( os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") ) ):
+    env_etc.strumpack_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") )
+  else:
+    raise Exception("Strumpack installation not found")
+  env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+
+  if os.path.isdir(env_etc.eigen_dist):
+    env_etc.eigen_include = env_etc.eigen_dist
+    env_etc.strumpack_include = env_etc.strumpack_dist
+    env_etc.scitbx_ex_strumpack_common_includes = [
+      env_etc.strumpack_include,
+      env_etc.libtbx_include,
+      env_etc.scitbx_include,
+      env_etc.boost_include,
+      env_etc.eigen_include,
+    ]
+    '''
+    env = env_base.Clone(SHLINKFLAGS=env_etc.shlinkflags)
+    env.Append(LIBS=["cctbx"] + env_etc.libm)
+    env_etc.include_registry.append(
+      env=env,
+      paths=env_etc.scitbx_ex_strumpack_common_includes)
+    '''
+    if (not env_etc.no_boost_python):
+      Import("env_boost_python_ext")
+      env_scitbx_ex_strumpack_boost_python_ext = env_boost_python_ext.Clone()
+      env_scitbx_ex_strumpack_boost_python_ext.Replace(
+        CC="mpicc",
+        CXX="mpic++",
+        SHCC="mpicc",
+        SHCXX="mpic++",
+        SHLINK="mpic++",
+      )
+      env_scitbx_ex_strumpack_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g", "-fopenmp"],
+        LIBS=["strumpack", "scotch", "metis", "scotcherr", "stdc++", "scalapack", "z"], 
+        LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
+      )
+      env_scitbx_ex_strumpack_boost_python_ext.SharedLibrary(
+                     target="#lib/scitbx_examples_strumpack_solver_ext", source="strumpack_solver_ext.cpp")
+      env_etc.include_registry.append(
+        env=env_scitbx_ex_strumpack_boost_python_ext,
+        paths=env_etc.scitbx_ex_strumpack_common_includes)
+      Export("env_scitbx_ex_strumpack_boost_python_ext")
+except Exception:
+  pass
+
+'''
+STRUMPACK solver extension using MPI
+'''
+try:
+  if os.path.isdir( os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") ) ):
+    env_etc.strumpack_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/include") )
+  else:
+    raise Exception("Strumpack installation not found")
+  env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../eigen"))
+
+  import mpi4py; 
+  env_etc.mpi4py_dist = str(mpi4py.get_include())
+
+  if os.path.isdir(env_etc.eigen_dist):
+    env_etc.eigen_include = env_etc.eigen_dist
+    env_etc.strumpack_include = env_etc.strumpack_dist
+    env_etc.mpi4py_include = env_etc.mpi4py_dist
+    env_etc.scitbx_ex_strumpack_common_includes = [
+      env_etc.strumpack_include,
+      env_etc.libtbx_include,
+      env_etc.scitbx_include,
+      env_etc.boost_include,
+      env_etc.eigen_include,
+      env_etc.mpi4py_include
+    ]
+    if (not env_etc.no_boost_python):
+      Import("env_boost_python_ext")
+      env_scitbx_ex_strumpack_mpi_boost_python_ext = env_boost_python_ext.Clone()
+      env_scitbx_ex_strumpack_mpi_boost_python_ext.Replace(
+        CC="mpicc",
+        CXX="mpic++",
+        SHCC="mpicc",
+        SHCXX="mpic++",
+        SHLINK="mpic++",
+      )
+      env_scitbx_ex_strumpack_mpi_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g", "-fopenmp"],
+        LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch", "ptscotcherr", "stdc++", "scalapack", "z"], 
+        LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
+      )
+      env_scitbx_ex_strumpack_mpi_boost_python_ext.SharedLibrary(
+                     target="#lib/scitbx_examples_strumpack_mpi_dist_solver_ext", source="strumpack_solver_ext_mpi_dist.cpp")
+      env_etc.include_registry.append(
+        env=env_scitbx_ex_strumpack_mpi_boost_python_ext,
+        paths=env_etc.scitbx_ex_strumpack_common_includes)
+      Export("env_scitbx_ex_strumpack_mpi_boost_python_ext")
+except Exception as e:
+  print(e)
   pass
