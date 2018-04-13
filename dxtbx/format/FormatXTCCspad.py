@@ -32,12 +32,6 @@ class FormatXTCCspad(FormatXTC):
     self.populate_events()
     self.n_images = len(self.events_list)
 
-  def populate_events(self):
-    for nevent,evt in enumerate(self._ds.events()):
-      wavelength = cspad_tbx.evt_wavelength(evt)
-      if wavelength is None: continue
-      self.events_list.append(evt)
-
   @staticmethod
   def understand(image_file):
     import psana
@@ -87,7 +81,7 @@ class FormatXTCCspad(FormatXTC):
   def _beam(self, index=None):
     '''Returns a simple model for the beam '''
     if index is None: index=0
-    evt = self.events_list[index]
+    evt = self._get_event(index)
     wavelength = cspad_tbx.evt_wavelength(evt)
     if wavelength is None: return None
     return self._beam_factory.simple(wavelength)
@@ -108,7 +102,7 @@ class FormatXTCCspad(FormatXTC):
     if index is None: index = 0
     self._env = self._ds.env()
     self._det = psana.Detector(self._src,self._env)
-    geom=self._det.pyda.geoaccess(self.events_list[index])
+    geom=self._det.pyda.geoaccess(self._get_event(index))
     cob = read_slac_metrology(geometry=geom, include_asic_offset=True)
     d = Detector()
     pg0 = d.hierarchy()

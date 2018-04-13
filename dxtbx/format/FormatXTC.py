@@ -95,6 +95,13 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
     except Exception:
       return None
 
+  def populate_events(self):
+    from xfel.cxi.cspad_ana import cspad_tbx
+    for nevent,evt in enumerate(self._ds.events()):
+      wavelength = cspad_tbx.evt_wavelength(evt)
+      if wavelength is None: continue
+      self.events_list.append(evt)
+
   def _get_event(self,index):
     return self.events_list[index]
 
