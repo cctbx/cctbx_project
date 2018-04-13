@@ -164,6 +164,7 @@ class manager(object):
 
   def __init__(self,
       model_input,
+      pdb_hierarchy = None,  # To create model from hierarchy. Makes sence only in model-building when hierarchy created from nothing
       crystal_symmetry = None,
       restraint_objects = None, # ligand restraints in cif format
       monomer_parameters = None, # mmtbx.utils.cif_params scope # temporarily for phenix.refine
@@ -176,7 +177,6 @@ class manager(object):
       # for GRM, selections etc. Do not use when creating an object.
                      processed_pdb_file = None, # Temporary, for refactoring phenix.refine
                      xray_structure = None, # remove later
-                     pdb_hierarchy = None,  # remove later
                      restraints_manager = None, # remove later
                      tls_groups = None,         # remove later? ! used in def select()
                      ):
@@ -382,7 +382,8 @@ class manager(object):
     return self._restraint_objects
 
   def setup_ss_annotation(self, log=null_out()):
-    self._ss_annotation = self._model_input.extract_secondary_structure()
+    if self._model_input is not None:
+      self._ss_annotation = self._model_input.extract_secondary_structure()
 
   def get_ss_annotation(self, log=null_out()):
     if self._ss_annotation is None:
