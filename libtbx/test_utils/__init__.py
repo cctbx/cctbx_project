@@ -208,7 +208,9 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       if (co is not None) and (co.valgrind):
         cmd = os.environ.get(
           "LIBTBX_VALGRIND", "valgrind --tool=memcheck") + " "
-    cmd += '"' + tst_path + '"'
+    if tst_path.strip() != "libtbx.python":
+      tst_path = '"{}"'.format(tst_path)
+    cmd += tst_path
     cmd += cmd_args
 
     if test_class and test_name:
