@@ -34,14 +34,10 @@ class FormatXTCJungfrau(FormatXTC):
 
   def populate_events(self):
     for nevent,evt in enumerate(self._ds.events()):
-      print nevent
-      if nevent >2: break
       self.events_list.append(evt)
 
   @staticmethod
   def understand(image_file):
-    import psana
-#    return False
     try:
       if FormatXTC._src is None:
         FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
@@ -93,10 +89,8 @@ class FormatXTCJungfrau(FormatXTC):
 
   def _detector(self, index=None):
     import psana
-    from jungfrau_helper import read_slac_metrology,basis_from_geo
     from dxtbx.model import Detector
     from scitbx.matrix import col
-    from dxtbx.model import ParallaxCorrectedPxMmStrategy
     if index is None: index = 0
     self._env = self._ds.env()
     self._det = psana.Detector(self._src,self._env)
