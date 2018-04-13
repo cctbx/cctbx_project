@@ -4,11 +4,11 @@ from cctbx.array_family import flex
 from iotbx.pdb.amino_acid_codes import three_letter_l_given_three_letter_d
 from libtbx.utils import Sorry
 
-origin_ids = cctbx.geometry_restraints.linking_class.linking_class()
 
 def get_c_beta_torsion_proxies(pdb_hierarchy,
                                selection=None,
                                sigma=2.5):
+  origin_ids = cctbx.geometry_restraints.linking_class.linking_class()
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
       actual_bselection = selection
