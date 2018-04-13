@@ -1,7 +1,7 @@
 from __future__ import division
 from cctbx.array_family import flex
-from mmtbx.monomer_library import server, pdb_interpretation
 from mmtbx.geometry_restraints import c_beta
+import mmtbx.model
 import iotbx
 
 pdb_str_1 = """\
@@ -122,16 +122,11 @@ END
 """
 
 def exercise_1():
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv              = server.server(),
-    ener_lib                 = server.ener_lib(),
-    raw_records              = flex.std_string(pdb_str_1.splitlines()),
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-  grm = processed_pdb_file.geometry_restraints_manager()
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  sites_cart = pdb_hierarchy.atoms().extract_xyz()
+  pdb_inp = iotbx.pdb.input(lines=flex.std_string(pdb_str_1.splitlines()), source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp)
+  grm = model.get_restraints_manager().geometry
+  pdb_hierarchy = model.get_hierarchy()
+  sites_cart = model.get_sites_cart()
   # c-beta restraints are added by default!!!
   assert len(grm.get_c_beta_torsion_proxies()) == 4
 
