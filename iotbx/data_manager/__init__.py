@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 
 # mapping from DataManager datatypes to any_file file types
 any_file_type = {
+  'miller_array':'hkl',
   'model':'pdb',
   'phil':'phil',
   'real_map':'ccp4_map',
@@ -33,7 +34,8 @@ supported_datatypes.sort()
 for i in range(len(supported_datatypes)):
   supported_datatypes[i] = supported_datatypes[i].split('.')[0]
 
-default_datatypes = ['model', 'phil', 'real_map', 'restraint', 'sequence']
+default_datatypes = ['miller_array', 'model', 'phil', 'real_map', 'restraint',
+                     'sequence']
 
 # =============================================================================
 def load_datatype_modules(datatypes=None):
