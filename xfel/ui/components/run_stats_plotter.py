@@ -404,6 +404,3 @@ def plot_multirun_stats(runs,
       interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png
 
-if __name__ == "__main__":
-  import sys
-  easy_run_plot_multirun_stats(sys.argv[1])
