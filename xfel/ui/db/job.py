@@ -267,6 +267,8 @@ def submit_job(app, job):
         mode = "rayonix"
       elif "cspad" in job.rungroup.detector_address.lower():
         mode = "cspad"
+      elif "jungfrau" in job.rungroup.detector_address.lower():
+        mode = "jungfrau"
       else:
         assert False, "Couldn't figure out what kind of detector is specified by address %s"%job.rungroup.detector_address
     if dispatcher == 'cctbx.xfel.xtc_process':
