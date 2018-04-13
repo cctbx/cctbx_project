@@ -74,6 +74,12 @@ master_phil_scope = parse(master_phil_str + db_phil_str, process_includes=True)
 settings_dir = os.path.join(os.path.expanduser('~'), '.cctbx.xfel')
 settings_file = os.path.join(settings_dir, 'settings.phil')
 
+known_dials_dispatchers = {
+  'cctbx.xfel.xtc_process': 'xfel.command_line.xtc_process',
+  'cctbx.xfel.process': 'xfel.command_line.xfel_process',
+  'dials.stills_process': 'dials.command_line.stills_process'
+}
+
 def load_cached_settings():
   if os.path.exists(settings_file):
     user_phil = parse(file_name = settings_file)

@@ -173,7 +173,7 @@ class get_lsf_submit_command(get_submit_command):
   def customize_for_method(self):
     self.submit_head = "bsub"
     if self.params.use_mpi:
-      self.command = "mpirun %s" % self.command
+      self.command = "mpirun %s mp.method=mpi" % self.command
 
   def eval_params(self):
     # -n <nproc>

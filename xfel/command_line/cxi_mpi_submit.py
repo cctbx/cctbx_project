@@ -83,11 +83,17 @@ phil_str = '''
     dispatcher = cctbx.xfel.xtc_process
       .type = str
       .help = Which program to run. cxi.xtc_process is for module only based processing, \
-              such as mod_hitfind. cctbx.xfel.xtc_process uses the DIALS back end.
+              such as mod_hitfind and LABELIT. cctbx.xfel.xtc_process uses the DIALS back \
+              end but converts the raw data to CBF before processing it. Use \
+              cctbx.xfel.process to use the XTC streams natively without CBF.
     target = None
       .type = str
       .help = Optional path to phil file with additional parameters to be run by the \
               processing program.
+    locator = None
+      .type = str
+      .help = Locator file needed for cctbx.xfel.process and dials.stills_process to find \
+              the XTC streams
   }
   output {
     output_dir = "."
@@ -304,6 +310,21 @@ class Script(object):
     submit_path = os.path.join(trialdir, "submit.sh")
 
     extra_str = ""
+    if params.input.dispatcher in ['cctbx.xfel.xtc_process', 'cxi.xtc_process']:
+      extra_str += "input.experiment=%s input.run_num=%d " % (
+        params.input.experiment, params.input.run_num)
+    else:
+      locator_file = os.path.join(trialdir, "data.loc")
+      if params.input.locator is None:
+        f = open(locator_file, 'w')
+        f.write("experiment=%s\n"%params.input.experiment)
+        f.write("run=%d\n"%params.input.run_num)
+        f.write("detector_address=MfxEndstation.0:Rayonix.0\n") # guess at the address. User should be providing a full locator anyway
+        f.close()
+      else:
+        shutil.copyfile(params.input.locator, locator_file)
+      extra_str += " " + locator_file
+
     for arg in dispatcher_args:
       extra_str += " %s" % arg
 
@@ -313,8 +334,8 @@ class Script(object):
     if params.input.rungroup is not None:
       extra_str += " input.rungroup=%d" % params.input.rungroup
 
-    command = "%s input.experiment=%s input.run_num=%d input.trial=%d output.output_dir=%s %s %s" % (
-      params.input.dispatcher, params.input.experiment, params.input.run_num, params.input.trial, output_dir,
+    command = "%s input.trial=%d output.output_dir=%s %s %s" % (
+      params.input.dispatcher, params.input.trial, output_dir,
       logging_str, extra_str
     )
 

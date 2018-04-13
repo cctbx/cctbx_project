@@ -2667,9 +2667,6 @@ class MergeTab(BaseTab):
     self.run_paths = []
     if self.main.params.dispatcher == "cxi.xtc_process": #LABELIT backend
       integration_dir = "integration"
-    elif self.main.params.dispatcher in ["cctbx.xfel.xtc_process", "cctbx.xfel.process",
-      "dials.stills_process"]:
-      integration_dir = "out"
     else:
       integration_dir = "out"
     for rb in self.trial.rungroups:

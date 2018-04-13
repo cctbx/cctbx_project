@@ -1,10 +1,15 @@
 # Phil template for experiment manager
 dry_run = {dry_run}
 input {{
+  cfg = {cfg}
+  experiment = {experiment}
+  run_num = {run_num}
   trial = {trial}
   rungroup = {rungroup}
+  xtc_dir = None
   dispatcher = {dispatcher}
   target = {target}
+  use_ffb = {use_ffb}
 }}
 output {{
   output_dir = {output_dir}

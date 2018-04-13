@@ -101,33 +101,43 @@ def get_run_stats(timestamps,
                    n_strong_cutoff=40,
                    i_sigi_cutoff=1,
                    ):
+  # rely on sorted timestamps
+  n_lattices = flex.int()
+  unique_timestamps = flex.double()
+  mapping = flex.size_t()
+  shot_tt_high = flex.double()
+  shot_tt_low = flex.double()
+  for i in xrange(len(timestamps)):
+    uts_idx = flex.first_index(unique_timestamps, timestamps[i])
+    if uts_idx is None:
+      unique_timestamps.append(timestamps[i])
+      uts_idx = len(unique_timestamps) - 1
+      n_lattices.append(0)
+      shot_tt_low.append(two_theta_low[i])
+      shot_tt_high.append(two_theta_high[i])
+    if isigi_low[i] > 0:
+      n_lattices[uts_idx] += 1
+    mapping.append(uts_idx)
   multiples = flex.double()
-  ts_current = []
-  for ts in timestamps:
-    if ts in ts_current:
-      ts_current.append(ts)
-    else:
-      ts_current = [ts]
-    multiples.append(len(ts_current))
+  for i in xrange(len(timestamps)):
+    multiples.append(n_lattices[mapping[i]])
+
   print ""
-  print "%d shots" % (multiples == 1).count(True)
-  print "%d first lattices" % (multiples == 2).count(True)
-  print "%d multiple lattices" % (multiples > 2).count(True)
-  print "%d total lattices" % (isigi_low > 0).count(True)
+  print "%d shots" % len(unique_timestamps)
+  print "%d first lattices" % (n_lattices >= 1).count(True)
+  print "%d multiple lattices" % (n_lattices >= 2).count(True)
+  print "%d total lattices" % (flex.sum(n_lattices))
   iterator = xrange(len(isigi_low))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
   # set the numerator value to 0 whenever either the numerator or denominator is -1
-  invalid = (two_theta_low <= 0) or (two_theta_high < 0) # <= to prevent /0
-  numerator = two_theta_high.set_selected(invalid, 0)
-  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
+  invalid = (shot_tt_low <= 0) or (shot_tt_high < 0) # <= to prevent /0
+  numerator = shot_tt_high.set_selected(invalid, 0)
+  denominator = shot_tt_low.set_selected(shot_tt_low == 0, 1) # prevent /0
   drop_ratios = numerator/denominator
   drop_hits = drop_ratios >= ratio_cutoff
   xtal_hits = n_strong >= n_strong_cutoff
-  unique_sel = multiples == 1
-  indexed_sel = multiples == 2
-  unique_timestamps = timestamps.select(unique_sel)
-  half_idx_rate_window = min(50, int(len(unique_timestamps)//20))
+  half_idx_rate_window = min(50, max(int(len(unique_timestamps)//20), 1))
   half_hq_rate_window = 500
   low_sel = isigi_low > 0
   high_sel = isigi_high > i_sigi_cutoff
@@ -140,25 +150,23 @@ def get_run_stats(timestamps,
     idx_min = max(0, i - half_idx_rate_window)
     idx_max = min(i + half_idx_rate_window, len(isigi_low))
     multiples_local = multiples[idx_min:idx_max]
-    unique_local = multiples_local == 1
-    shots_this_span = unique_local.count(True)
-    first_lattices_local = multiples_local == 2
-    idx_sel = low_sel[idx_min:idx_max].select(first_lattices_local)
-    idx_local_rate = idx_sel.count(True)/shots_this_span
+    mapping_local = mapping[idx_min:idx_max]
+    n_lattices_local = n_lattices.select(mapping_local)
+    shots_this_span = len(n_lattices_local)
+    first_lattices_local = multiples_local >= 1
+    idx_local_rate = first_lattices_local.count(True)/shots_this_span
     idx_rate.append(idx_local_rate)
-    multiples_sel = multiples[idx_min:idx_max] > 2
+    multiples_sel = multiples_local >= 2
     multiples_local_rate = multiples_sel.count(True)/shots_this_span
     multiples_rate.append(multiples_local_rate)
-    drop_sel = drop_hits[idx_min:idx_max].select(unique_local)
+    drop_sel = drop_hits.select(mapping_local)
     drop_local_rate = drop_sel.count(True)/shots_this_span
     drop_hit_rate.append(drop_local_rate)
     # different sliding window for "high quality" xtals
     hq_min = max(0, i - half_hq_rate_window)
     hq_max = min(i + half_hq_rate_window, len(isigi_low))
     multiples_local_hq = multiples[hq_min:hq_max]
-    unique_local_hq = multiples_local_hq == 1
-    shots_this_span_hq = unique_local_hq.count(True)
-    first_lattices_local_hq = multiples_local_hq == 2
+    first_lattices_local_hq = multiples_local_hq >= 1
     hq_high_sel = high_sel[hq_min:hq_max].select(first_lattices_local_hq)
     n_first_lattices_local_hq = first_lattices_local_hq.count(True)
     if n_first_lattices_local_hq > 0:
@@ -399,4 +407,3 @@ def plot_multirun_stats(runs,
 if __name__ == "__main__":
   import sys
   easy_run_plot_multirun_stats(sys.argv[1])
-

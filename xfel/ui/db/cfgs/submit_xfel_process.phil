@@ -1,10 +1,13 @@
 # Phil template for experiment manager
 dry_run = {dry_run}
 input {{
+  experiment = {experiment}
+  run_num = {run_num}
   trial = {trial}
   rungroup = {rungroup}
   dispatcher = {dispatcher}
   target = {target}
+  locator = {locator}
 }}
 output {{
   output_dir = {output_dir}
