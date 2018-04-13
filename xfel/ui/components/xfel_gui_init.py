@@ -542,6 +542,120 @@ class RunStatsSentinel(Thread):
       minimalist=self.parent.run_window.runstats_tab.entire_expt,
       high_vis=self.parent.high_vis)
 
+# ----------------------------- Spotfinder Sentinel ---------------------------- #
+
+# Set up events for monitoring spotfinder results against a set threshold
+tp_EVT_SPOTFINDER_REFRESH = wx.NewEventType()
+EVT_SPOTFINDER_REFRESH = wx.PyEventBinder(tp_EVT_SPOTFINDER_REFRESH, 1)
+
+class RefreshSpotfinder(wx.PyCommandEvent):
+  ''' Send event when finished all cycles  '''
+  def __init__(self, etype, eid, result=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.result = result
+  def GetValue(self):
+    return self.result
+
+class SpotfinderSentinel(Thread):
+  ''' Worker thread for spotfinder stats; generated so that the GUI does not lock up when
+      processing is running '''
+
+  def __init__(self,
+               parent,
+               active=True):
+    Thread.__init__(self)
+    self.parent = parent
+    self.active = active
+    self.output = self.parent.params.output_folder
+    self.number_of_pickles = 0
+    self.info = {}
+    self.run_numbers = []
+    self.stats = []
+    self.run_tags = []
+    self.run_statuses = []
+
+    # on initialization (and restart), make sure spotfinder stats drawn from scratch
+    self.parent.run_window.spotfinder_tab.redraw_windows = True
+
+  def post_refresh(self):
+    evt = RefreshSpotfinder(tp_EVT_SPOTFINDER_REFRESH, -1, self.info)
+    wx.PostEvent(self.parent.run_window.spotfinder_tab, evt)
+
+  def run(self):
+    # one time post for an initial update
+    self.post_refresh()
+    self.db = xfel_db_application(self.parent.params)
+
+    while self.active:
+      self.parent.run_window.spotfinder_light.change_status('idle')
+      self.plot_stats_static()
+      self.post_refresh()
+      self.info = {}
+      self.parent.run_window.spotfinder_light.change_status('on')
+      time.sleep(5)
+
+  def refresh_stats(self):
+    #from xfel.ui.components.timeit import duration
+    from xfel.ui.db.stats import SpotfinderStats
+    import copy, time
+    t1 = time.time()
+    if self.parent.run_window.spotfinder_tab.trial_no is not None:
+      trial = self.db.get_trial(
+        trial_number=self.parent.run_window.spotfinder_tab.trial_no)
+      selected_runs = copy.deepcopy(self.parent.run_window.spotfinder_tab.selected_runs)
+      self.run_numbers = []
+      trial_ids = []
+      rungroup_ids = []
+      self.stats = []
+      self.trgr = {}
+      self.run_tags = []
+      self.run_statuses = []
+      for rg in trial.rungroups:
+        for run in rg.runs:
+          if run.run not in self.run_numbers and run.run in selected_runs:
+            self.run_numbers.append(run.run)
+            trial_ids.append(trial.id)
+            rungroup_ids.append(rg.id)
+            self.trgr[run.run] = (trial, rg, run)
+            self.stats.append(SpotfinderStats(self.db, run.run, trial.trial, rg.id)())
+            self.run_tags.append([tag.name for tag in run.tags])
+
+      jobs = self.db.get_all_jobs()
+      for idx in xrange(len(self.run_numbers)):
+        run_no = self.run_numbers[idx]
+        rg_id = rungroup_ids[idx]
+        t_id = trial_ids[idx]
+        for job in jobs:
+          if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
+            self.run_statuses.append(job.status)
+    self.reorder()
+    t2 = time.time()
+
+  def reorder(self):
+    run_numbers_ordered = sorted(self.run_numbers)
+    order = [self.run_numbers.index(rn) for rn in run_numbers_ordered]
+    self.run_numbers = run_numbers_ordered
+    self.stats = [self.stats[i] for i in order]
+    self.run_tags = [self.run_tags[i] for i in order]
+    self.run_statuses = [self.run_statuses[i] for i in order]
+
+  def plot_stats_static(self):
+    from xfel.ui.components.spotfinder_plotter import plot_multirun_spotfinder_stats
+    self.refresh_stats()
+    sizex, sizey = self.parent.run_window.spotfinder_tab.spotfinder_panelsize
+    self.parent.run_window.spotfinder_tab.png = plot_multirun_spotfinder_stats(
+      self.stats, self.run_numbers,
+      interactive=False,
+      run_tags=self.run_tags,
+      run_statuses=self.run_statuses,
+      n_min=self.parent.run_window.spotfinder_tab.n_min,
+      minimalist=self.parent.run_window.spotfinder_tab.entire_expt,
+      easy_run=True,
+      xsize=(sizex-25)/85, ysize=sizey/95,
+      high_vis=self.parent.high_vis)
+      # convert px to inches with fudge factor for scaling inside borders
+    self.parent.run_window.spotfinder_tab.redraw_windows = True
+
 # ---------------------------- Image Dumping Thread ---------------------------- #
 
 class ImageDumpThread(Thread):
@@ -778,7 +892,7 @@ class MainWindow(wx.Frame):
     self.run_sentinel = None
     self.job_sentinel = None
     self.job_monitor = None
-    self.prg_sentinel = None
+    self.spotfinder_sentinel = None
     self.runstats_sentinel = None
     self.unitcell_sentinel = None
 
@@ -873,7 +987,7 @@ class MainWindow(wx.Frame):
     self.stop_run_sentinel()
     self.stop_job_sentinel()
     self.stop_job_monitor()
-    self.stop_prg_sentinel()
+    self.stop_spotfinder_sentinel()
     self.stop_runstats_sentinel()
     self.stop_unitcell_sentinel()
 
@@ -928,6 +1042,18 @@ class MainWindow(wx.Frame):
       if block:
         self.prg_sentinel.join()
     self.run_window.prg_light.change_status('off')
+
+  def start_spotfinder_sentinel(self):
+    self.spotfinder_sentinel = SpotfinderSentinel(self, active=True)
+    self.spotfinder_sentinel.start()
+    self.run_window.spotfinder_light.change_status('on')
+
+  def stop_spotfinder_sentinel(self, block = True):
+    if self.spotfinder_sentinel is not None and self.spotfinder_sentinel.active:
+      self.spotfinder_sentinel.active = False
+      if block:
+        self.spotfinder_sentinel.join()
+    self.run_window.spotfinder_light.change_status('off')
 
   def start_runstats_sentinel(self):
     self.runstats_sentinel = RunStatsSentinel(self, active=True)
@@ -1007,9 +1133,12 @@ class MainWindow(wx.Frame):
         self.start_job_monitor()
         self.run_window.jmn_light.change_status('on')
     elif tab == 3:
-      if self.prg_sentinel is None or not self.prg_sentinel.active:
-        self.start_prg_sentinel()
-        self.run_window.prg_light.change_status('on')
+      if self.job_monitor is None or not self.job_monitor.active:
+        self.start_job_monitor()
+        self.run_window.jmn_light.change_status('on')
+      if self.spotfinder_sentinel is None or not self.spotfinder_sentinel.active:
+        self.start_spotfinder_sentinel()
+        self.run_window.spotfinder_light.change_status('on')
     elif tab == 4:
       if self.job_monitor is None or not self.job_monitor.active:
         self.start_job_monitor()
@@ -1031,9 +1160,12 @@ class MainWindow(wx.Frame):
         self.stop_job_monitor(block = False)
         self.run_window.jmn_light.change_status('off')
     elif tab == 3:
-      if self.prg_sentinel.active:
-        self.stop_prg_sentinel(block = False)
-        self.run_window.prg_light.change_status('off')
+      if self.job_monitor.active:
+        self.stop_job_monitor(block = False)
+        self.run_window.jmn_light.change_status('off')
+      if self.spotfinder_sentinel.active:
+        self.stop_spotfinder_sentinel(block = False)
+        self.run_window.spotfinder_light.change_status('off')
     elif tab == 4:
       if self.job_monitor.active:
         self.stop_job_monitor(block = False)
@@ -1065,14 +1197,14 @@ class RunWindow(wx.Panel):
     self.runs_tab = RunTab(self.main_nbook, main=self.parent)
     self.trials_tab = TrialsTab(self.main_nbook, main=self.parent)
     self.jobs_tab = JobsTab(self.main_nbook, main=self.parent)
-    self.status_tab = StatusTab(self.main_nbook, main=self.parent)
+    self.spotfinder_tab = SpotfinderTab(self.main_nbook, main=self.parent)
     self.runstats_tab = RunStatsTab(self.main_nbook, main=self.parent)
     self.unitcell_tab = UnitCellTab(self.main_nbook, main=self.parent)
     self.merge_tab = MergeTab(self.main_nbook, main=self.parent)
     self.main_nbook.AddPage(self.runs_tab, 'Runs')
     self.main_nbook.AddPage(self.trials_tab, 'Trials')
     self.main_nbook.AddPage(self.jobs_tab, 'Jobs')
-    self.main_nbook.AddPage(self.status_tab, 'Status')
+    self.main_nbook.AddPage(self.spotfinder_tab, 'Spotfinder')
     self.main_nbook.AddPage(self.runstats_tab, 'Run Stats')
     self.main_nbook.AddPage(self.unitcell_tab, 'Unit Cell')
     self.main_nbook.AddPage(self.merge_tab, 'Merge')
@@ -1081,13 +1213,13 @@ class RunWindow(wx.Panel):
     self.run_light = gctr.SentinelStatus(self.main_panel, label='Run Sentinel')
     self.job_light = gctr.SentinelStatus(self.main_panel, label='Job Sentinel')
     self.jmn_light = gctr.SentinelStatus(self.main_panel, label='Job Monitor')
-    self.prg_light = gctr.SentinelStatus(self.main_panel, label='Progress Sentinel')
+    self.spotfinder_light = gctr.SentinelStatus(self.main_panel, label='Spotfinder Sentinel')
     self.runstats_light = gctr.SentinelStatus(self.main_panel, label='Run Stats Sentinel')
     self.unitcell_light = gctr.SentinelStatus(self.main_panel, label='Unit Cell Sentinel')
     self.sentinel_box.Add(self.run_light)
     self.sentinel_box.Add(self.job_light)
     self.sentinel_box.Add(self.jmn_light)
-    self.sentinel_box.Add(self.prg_light)
+    self.sentinel_box.Add(self.spotfinder_light)
     self.sentinel_box.Add(self.runstats_light)
     self.sentinel_box.Add(self.unitcell_light)
 
@@ -1532,340 +1664,218 @@ class JobsTab(BaseTab):
       else:
         self.trial_choice.ctr.SetSelection(int(self.filter[-1]))
 
-class StatusTab(BaseTab):
+class SpotfinderTab(BaseTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
 
     self.main = main
-    self.trial_no = 0
-    self.tags = None
     self.all_trials = []
-    self.all_tags = []
-    self.selected_tags = []
-    self.rows = {}
-    self.tag_trial_changed = False
+    self.trial_no = None
+    self.trial = None
+    self.all_runs = []
+    self.selected_runs = []
+    self.tag_trial_changed = True
+    self.tag_runs_changed = True
+    self.tag_last_five = False
+    self.entire_expt = False
+    self.png = None
+    self.static_bitmap = None
     self.redraw_windows = True
-    self.multiplicity_goal = 10
-    self.isigi_cutoff = 2
-    self.info = {}
+    self.n_min = 4
 
-    self.status_panel = ScrolledPanel(self, size=(100, 100))
-    self.status_box = wx.StaticBox(self.status_panel, label='Data Statistics')
-    self.status_sizer = wx.StaticBoxSizer(self.status_box, wx.VERTICAL)
-    self.status_panel.SetSizer(self.status_sizer)
-
-    self.iso_panel = ScrolledPanel(self, size=(-1, 100))
-    self.iso_box = wx.StaticBox(self.iso_panel, label='Isoforms')
-    self.iso_box_sizer = wx.StaticBoxSizer(self.iso_box, wx.VERTICAL)
-    self.iso_panel.SetSizer(self.iso_box_sizer)
+    self.spotfinder_panel = wx.Panel(self, size=(100, 100))
+    self.spotfinder_panelsize = self.spotfinder_panel.GetSize()
+    self.spotfinder_box = wx.StaticBox(self.spotfinder_panel, label='Run Statistics')
+    self.spotfinder_sizer = wx.StaticBoxSizer(self.spotfinder_box, wx.HORIZONTAL)
+    self.spotfinder_panel.SetSizer(self.spotfinder_sizer)
 
     self.trial_number = gctr.ChoiceCtrl(self,
                                         label='Trial:',
-                                        label_size=(100, -1),
+                                        label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
-    self.tag_list = gctr.CheckListCtrl(self,
-                                       ctrl_size=(200, 100),
-                                       choices=[],
-                                       direction='vertical')
+    self.last_five_runs =  wx.Button(self,
+                                     label='Auto plot last five runs',
+                                     size=(200, -1))
+    self.plot_entire_expt = wx.Button(self,
+                                     label='Auto plot entire experiment',
+                                     size=(200,-1))
+    self.n_min_selector = gctr.OptionCtrl(self,
+                                          label='minimum # spots:',
+                                          label_size=(160, -1),
+                                          ctrl_size=(30, -1),
+                                          items=[('n_min', 4)])
+    self.run_numbers =  gctr.CheckListCtrl(self,
+                                           label='Selected runs:',
+                                           label_size=(200, -1),
+                                           label_style='normal',
+                                           ctrl_size=(150, 224),
+                                           direction='vertical',
+                                           choices=[])
 
-    self.opt_multi = gctr.OptionCtrl(self,
-                                     label='Goal multiplicity:',
-                                     label_size=(100, -1),
-                                     ctrl_size=(100, -1),
-                                     items=[('goal', 10)])
+    self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 4)
 
-    self.opt_isigi = gctr.OptionCtrl(self,
-                                     label='I/sigI cutoff:',
-                                     label_size=(100, -1),
-                                     ctrl_size=(100, -1),
-                                     items=[('isigi', '2')])
+    options_box = wx.StaticBox(self, label='Display Options')
+    self.options_box_sizer = wx.StaticBoxSizer(options_box, wx.VERTICAL)
+    self.options_opt_sizer = wx.GridBagSizer(1, 1)
 
-    self.bottom_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.options_opt_sizer.Add(self.trial_number, pos=(0, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.last_five_runs, pos=(1, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.plot_entire_expt, pos=(2, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.n_min_selector, pos=(3, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(8, 1),
+                               flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
+                               border=10)
+    self.options_box_sizer.Add(self.options_opt_sizer)
+    self.bottom_sizer.Add(self.options_box_sizer)
 
-    multi_box = wx.StaticBox(self, label='Statistics Options')
-    self.multi_box_sizer = wx.StaticBoxSizer(multi_box, wx.VERTICAL)
-    self.multi_opt_sizer = wx.GridBagSizer(3, 2)
-
-    self.multi_opt_sizer.Add(self.trial_number, pos=(0, 0),
-                             flag=wx.LEFT | wx.TOP | wx.RIGHT, border=10)
-    self.multi_opt_sizer.Add(self.opt_multi, pos=(1, 0),
-                             flag=wx.ALL, border=10)
-    self.multi_opt_sizer.Add(self.opt_isigi, pos=(2, 0),
-                             flag=wx.ALL, border=10)
-    self.multi_opt_sizer.Add(self.tag_list, pos=(0, 1), span=(2, 1),
-                             flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
-                             border=10)
-    self.multi_box_sizer.Add(self.multi_opt_sizer, flag=wx.EXPAND)
-    self.bottom_sizer.Add(self.multi_box_sizer)
-
-    self.opt_cluster = gctr.VerticalOptionCtrl(self,
-                                               ctrl_size=(100, -1),
-                                               sub_labels=['No. of images',
-                                                           'Threshold'],
-                                               items=[('num_images', 1000),
-                                                      ('threshold', 250)])
-
-    self.cluster_btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
-    self.cluster_btn_sizer.AddGrowableCol(0)
-    self.cluster_btn_sizer.AddGrowableCol(1)
-    self.btn_cluster = wx.Button(self, label='Clustering')
-    self.btn_histogram = wx.Button(self, label='Histogram')
-    self.cluster_btn_sizer.Add(self.btn_cluster, flag=wx.EXPAND)
-    self.cluster_btn_sizer.Add(self.btn_histogram, flag=wx.EXPAND)
-
-    self.cluster_box = wx.StaticBox(self, label='Unit Cell Clustering')
-    self.cluster_box_sizer = wx.StaticBoxSizer(self.cluster_box, wx.VERTICAL)
-    self.cluster_box_sizer.Add(self.opt_cluster, flag=wx.ALL, border=10)
-    self.cluster_box_sizer.Add(self.cluster_btn_sizer,
-                               flag=wx.ALL | wx.EXPAND, border=10)
-    self.bottom_sizer.Add(self.cluster_box_sizer)
-
-    self.main_sizer.Add(self.status_panel, 1,
+    self.main_sizer.Add(self.spotfinder_panel, 1,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.iso_panel, 1,
+    self.main_sizer.Add(self.bottom_sizer, 0,
                         flag=wx.EXPAND | wx.ALL, border=10)
-    self.main_sizer.Add(self.bottom_sizer,
-                        flag=wx.EXPAND | wx.ALL, border=10)
-
 
     # Bindings
     self.Bind(wx.EVT_CHOICE, self.onTrialChoice, self.trial_number.ctr)
-    self.Bind(wx.EVT_CHECKLISTBOX, self.onTagCheck, self.tag_list.ctr)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onMultiplicityGoal, self.opt_multi.goal)
-    self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.opt_isigi.isigi)
-    self.Bind(wx.EVT_BUTTON, self.onClustering, self.btn_cluster)
-    self.Bind(wx.EVT_BUTTON, self.onHistogram, self.btn_histogram)
-    self.Bind(EVT_PRG_REFRESH, self.onRefresh)
-    self.Bind(EVT_CLUSTERING, self.onClusteringResult)
+    self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
+    self.Bind(wx.EVT_BUTTON, self.onEntireExpt, self.plot_entire_expt)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onNMin, self.n_min_selector.n_min)
+    self.Bind(wx.EVT_CHECKLISTBOX, self.onRunChoice, self.run_numbers.ctr)
+    self.Bind(EVT_SPOTFINDER_REFRESH, self.onRefresh)
+    self.Bind(wx.EVT_SIZE, self.OnSize)
 
-
-  def onHistogram(self, e):
-    if self.info != {}:
-      info = [self.info[i] for i in self.info.keys()]
-    else:
-      info = []
-
-    if len(info) <= 1:
-       msg = wx.MessageDialog(None,
-                              'Need more data points for histogram.',
-                              'Histogram Alert',
-                              wx.OK | wx.ICON_EXCLAMATION)
-       msg.ShowModal()
-       msg.Destroy()
-
-
-    else:
-      plotter = pltr.PopUpCharts()
-      plotter.plot_uc_histogram(info_list=[info], legend_list=[], high_vis=self.main.high_vis)
-      plotter.plot_uc_3Dplot(info=info)
-      plotter.plt.show()
-
-
-  def onClustering(self, e):
-    trial = self.main.db.get_trial(trial_number=self.trial_no)
-    runblocks = trial.rungroups
-    tags = self.selected_tags
-
-    clustering = ClusteringWorker(self, trial=trial, runblocks=runblocks, tags=tags,
-                                  output=self.main.params.output_folder,
-                                  threshold=self.opt_cluster.threshold.GetValue(),
-                                  sample_size=self.opt_cluster.num_images.GetValue())
-    clustering.run()
-
-  def onClusteringResult(self, e):
-    from string import ascii_uppercase
-    self.iso_box_sizer.DeleteWindows()
-
-    if e.GetValue() is None:
-      print 'Nothing to cluster!'
-    else:
-      counter = 0
-      clusters = sorted(e.GetValue(), key=lambda x: len(x.members), reverse=True)
-      for cluster in clusters:
-        sorted_pg_comp = sorted(cluster.pg_composition.items(),
-                                key=lambda x: -1 * x[1])
-        pg_nums = [pg[1] for pg in sorted_pg_comp]
-        cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
-
-        if len(cluster.members) > 1:
-
-          # format and record output
-          uc_line = "{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}" \
-                    "".format(cluster.medians[0], cluster.medians[1],
-                              cluster.medians[2], cluster.medians[3],
-                              cluster.medians[4], cluster.medians[5])
-
-          iso = gctr.IsoformInfoCtrl(self.iso_panel)
-          iso.ctr_iso.SetValue(ascii_uppercase[counter])
-          iso.ctr_pg.SetValue(cons_pg[0])
-          iso.ctr_num.SetValue(str(len(cluster.members)))
-          iso.ctr_uc.SetValue(uc_line)
-          iso.uc_values = [{'a'    :i.uc[0],
-                            'b'    :i.uc[1],
-                            'c'    :i.uc[2],
-                            'alpha':i.uc[3],
-                            'beta' :i.uc[4],
-                            'gamma':i.uc[5],
-                            'n_img':1} for i in cluster.members]
-          self.iso_box_sizer.Add(iso,
-                                 flag=wx.EXPAND| wx.TOP | wx.LEFT | wx.RIGHT,
-                                 border=10)
-
-          counter += 1
-          if counter >= len(ascii_uppercase): counter = 0
-
-    self.iso_panel.SetSizer(self.iso_box_sizer)
-    self.iso_panel.Layout()
-    self.iso_panel.SetupScrolling(scrollToTop=False)
-
-  def onTagCheck(self, e):
-    checked_items = self.tag_list.ctr.GetCheckedStrings()
-    self.selected_tags = [i for i in self.main.db.get_all_tags() if i.name
-                          in checked_items]
-    self.main.run_window.prg_light.change_status('idle')
-    self.tag_trial_changed = True
-    self.rows = {}
+  def OnSize(self, e):
+    self.spotfinder_panelsize = self.spotfinder_panel.GetSize()
+    e.Skip()
 
   def onTrialChoice(self, e):
-    self.trial_no = self.trial_number.ctr.GetSelection()
-    self.main.run_window.prg_light.change_status('idle')
-    self.tag_trial_changed = True
-    self.rows = {}
+    trial_idx = self.trial_number.ctr.GetSelection()
+    if trial_idx == 0:
+      self.trial_no = None
+      self.trial = None
+      self.run_numbers.ctr.Clear()
+      self.all_runs = []
+      self.selected_runs = []
+    else:
+      trial_no = self.trial_number.ctr.GetClientData(trial_idx)
+      if trial_no is not None:
+        self.trial_no = int(trial_no)
+        self.trial = self.main.db.get_trial(trial_number=int(self.trial_no))
+        self.spotfinder_box.SetLabel('Spotfinder Results - Trial {}'.format(self.trial_no))
+        self.find_runs()
 
-  def find_tags(self):
-    self.tag_list.ctr.Clear()
-    self.all_tags = [str(i.name) for i in self.main.db.get_all_tags()]
-    self.tag_list.ctr.InsertItems(items=self.all_tags, pos=0)
+  def onRunChoice(self, e):
+    self.tag_last_five = False
+    self.entire_expt = False
+    run_numbers_selected = map(int, self.run_numbers.ctr.GetCheckedStrings())
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
+      self.main.run_window.spotfinder_light.change_status('idle')
 
   def find_trials(self):
-    self.all_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    self.trial_number.ctr.Clear()
-    for trial in self.all_trials:
-      self.trial_number.ctr.Append(trial)
-    self.trial_number.ctr.SetSelection(self.trial_no)
-
-  def onMultiplicityGoal(self, e):
-    goal = self.opt_multi.goal.GetValue()
-    if goal.isdigit() and goal != '':
-      self.multiplicity_goal = int(goal)
-
-  def onIsigICutoff(self, e):
-    cutoff = self.opt_isigi.isigi.GetValue()
-    try:
-      self.isigi_cutoff = float(cutoff)
-    except ValueError:
-      pass
-
-  def onRefresh(self, e):
-    # Find new tags
-    all_db_tags = [str(i.name) for i in self.main.db.get_all_tags()]
-    new_tags = [i for i in all_db_tags if i not in self.all_tags]
-    if len(new_tags) > 0:
-      self.find_tags()
-
-    # Find new trials
     all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
     new_trials = [i for i in all_db_trials if i not in self.all_trials]
     if len(new_trials) > 0:
-      self.find_trials()
+      self.trial_number.ctr.Clear()
+      self.all_trials = [None] + all_db_trials
+      for trial in self.all_trials:
+        if trial is None:
+          entry = 'None'
+          self.trial_number.ctr.Append(entry)
+          self.trial_number.ctr.SetClientData(0, None)
+        else:
+          entry = trial
+          self.trial_number.ctr.Append(entry)
+          item_idx = self.trial_number.ctr.FindString(entry)
+          self.trial_number.ctr.SetClientData(item_idx, trial)
 
-    # Show info
-    self.info = e.GetValue()
-    self.refresh_rows()
-    self.status_panel.SetSizer(self.status_sizer)
-    #self.status_panel.Layout()
-    self.status_sizer.Layout()
-    self.status_panel.SetupScrolling(scrollToTop=False)
-    self.status_box.SetLabel('Data Statistics - Trial {}'.format(self.trial_no))
-
-  def refresh_rows(self):
-    ''' Refresh status data '''
-    # Check if info keys are numeric (no isoforms) or alphabetic (isoforms)
-    #isoforms = not all(isinstance(key, int) for key in dict.keys(self.info))
-    #isoforms = all([key[:3] == "iso" for key in self.info.keys()])
-    isokeys = self.info.keys()
-    if "noiso" in isokeys:
-      isokeys.remove("noiso")
-    isoforms = len(isokeys) > 0
-
-    if self.info != {}:
-      if self.redraw_windows:
-        self.status_sizer.Clear(deleteWindows=True)
-        self.rows = {}
-        row = None
-      max_multiplicity = max([self.info[i]['multiplicity_all'] for i in
-                              self.info])
-      if max_multiplicity > self.multiplicity_goal:
-        xmax = max_multiplicity
+      if self.trial_no is not None:
+        self.trial_number.ctr.SetSelection(self.trial_no)
       else:
-        xmax = self.multiplicity_goal
+        self.trial_number.ctr.SetSelection(0)
 
-      if isoforms:
-        for iso, values in self.info.iteritems():
-          if not self.redraw_windows:
-            row = self.rows[values['isoform']]['row']
+  def find_runs(self):
+    self.run_numbers.ctr.Clear()
+    if self.trial is not None:
+      self.runs_available = [str(r.run) for r in self.trial.runs]
+      if len(self.all_runs) > 0:
+        self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
 
-          self.update_row(row=row,
-                          name=values['isoform'],
-                          valuea=values['multiplicity_highest'],
-                          valueb=values['multiplicity_all'],
-                          bins=values['bins'],
-                          xmax=xmax,
-                          n_img=values['n_img'])
-      else:
-        for cell, values in self.info.iteritems():
-          if not self.redraw_windows:
-            #row = self.rows[
-            pass
+  def onRefresh(self, e):
+    self.refresh_trials()
+    self.refresh_runs()
+    if self.tag_last_five:
+      self.select_last_n_runs(5)
+    elif self.entire_expt:
+      self.select_all()
+    if self.redraw_windows:
+      self.plot_static_spotfinder_stats()
+      self.redraw_windows = False
+    if self.trial is not None:
+      self.spotfinder_box.SetLabel('Spotfinder Results - Trial {}'.format(self.trial_no))
     else:
-      if self.redraw_windows:
-        self.status_sizer.Clear(deleteWindows=True)
-        self.rows = {}
-        row = None
-      elif hasattr(self.rows, 'None'):
-        row = self.rows['None']['row']
-      if len(self.info) > 0:
-        self.update_noniso_row(row=row,
-                               num_images=self.info[0]['n_img'])
-    self.redraw_windows = False
+      self.spotfinder_box.SetLabel('Spotfinder Results - No trial selected')
 
-  def update_noniso_row(self, row, num_images=0):
-    if row is None:
-      self.rows['None'] = {}
-      row = pltr.NoBarPlot(self.status_panel,
-                           label='No isoforms detected!')
-      self.status_sizer.AddStretchSpacer()
-      self.status_sizer.Add(row, flag=wx.CENTER)
-      self.status_sizer.AddStretchSpacer()
+  def refresh_trials(self):
+    if self.all_trials == []:
+      self.find_trials()
+    avail_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
+    for t in avail_trials:
+      if t not in self.all_trials:
+        self.trial_number.ctr.Append(t)
+        self.all_trials.append(t)
 
-    row.update_number(number=num_images)
-    self.rows['None']['row'] = row
+  def refresh_runs(self):
+    if self.all_runs == []:
+      self.find_runs()
+    if self.trial is not None:
+      avail_runs = [str(r.run) for r in self.trial.runs]
+      for r in avail_runs:
+        if r not in self.all_runs:
+          self.run_numbers.ctr.Append(r)
+          self.all_runs.append(r)
 
-  def update_row(self, row, name, valuea, valueb, bins, xmax, n_img):
-    ''' Add new row, or update existing '''
+  def plot_static_spotfinder_stats(self):
+    if self.png is not None:
+      if self.static_bitmap is not None:
+        self.static_bitmap.Destroy()
+      img = wx.Image(self.png, wx.BITMAP_TYPE_ANY)
+      self.static_bitmap = wx.StaticBitmap(
+        self.spotfinder_panel, wx.ID_ANY, wx.BitmapFromImage(img))
+      self.spotfinder_sizer.Add(self.static_bitmap, 0, wx.EXPAND | wx.ALL, 3)
+      self.spotfinder_panel.SetSizer(self.spotfinder_sizer)
+      self.spotfinder_panel.Layout()
 
-    bin_choices = [("Bin {}:  {:3.2f} - {:3.2f}" \
-                    "".format(b.number, float(b.d_max), float(b.d_min)),
-                    bins.index(b)) for b in bins]
-    if row is None:
-      self.rows[name] = {}
-      row = pltr.DoubleBarPlot(self.status_panel,
-                               label='Isoform {} (Nimg:{})'.format(name, n_img),
-                               gauge_size=(250, 15),
-                               choice_label='High res. limit:',
-                               choice_size=(160, -1),
-                               choices = bin_choices)
-      self.status_sizer.Add(row, flag=wx.EXPAND | wx.ALL, border=10)
-      row.bins.ctr.SetSelection(row.bins.ctr.GetCount() - 1)
+  def select_last_n_runs(self, n):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs][-n:]
 
-    row.redraw_axes(valuea=valuea, valueb=valueb, goal=self.multiplicity_goal, xmax=xmax)
-    self.rows[name]['row'] = row
-    self.rows[name]['high_bin'] = row.bins.ctr.GetClientData(
-      row.bins.ctr.GetSelection())
+  def select_all(self):
+    if self.trial is not None:
+      self.selected_runs = [r.run for r in self.trial.runs]
 
-class RunStatsTab(BaseTab):
+  def onLastFiveRuns(self, e):
+    self.entire_expt = False
+    self.tag_last_five = True
+    self.select_last_n_runs(5)
+    self.main.run_window.spotfinder_light.change_status('idle')
+
+  def onEntireExpt(self, e):
+    self.entire_expt = True
+    self.tag_last_five = False
+    self.select_all()
+    self.main.run_window.spotfinder_light.change_status('idle')
+
+  def onNMin(self, e):
+    n_min = self.n_min_selector.n_min.GetValue()
+    if n_min.isdigit():
+      self.n_min = int(n_min)
+
+class RunStatsTab(SpotfinderTab):
   def __init__(self, parent, main):
     BaseTab.__init__(self, parent=parent)
 
@@ -2066,35 +2076,6 @@ class RunStatsTab(BaseTab):
       self.selected_runs = [r.run for r in self.trial.runs if r.run in run_numbers_selected]
       self.main.run_window.runstats_light.change_status('idle')
 
-  def find_trials(self):
-    all_db_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    new_trials = [i for i in all_db_trials if i not in self.all_trials]
-    if len(new_trials) > 0:
-      self.trial_number.ctr.Clear()
-      self.all_trials = [None] + all_db_trials
-      for trial in self.all_trials:
-        if trial is None:
-          entry = 'None'
-          self.trial_number.ctr.Append(entry)
-          self.trial_number.ctr.SetClientData(0, None)
-        else:
-          entry = trial
-          self.trial_number.ctr.Append(entry)
-          item_idx = self.trial_number.ctr.FindString(entry)
-          self.trial_number.ctr.SetClientData(item_idx, trial)
-
-      if self.trial_no is not None:
-        self.trial_number.ctr.SetSelection(self.trial_no)
-      else:
-        self.trial_number.ctr.SetSelection(0)
-
-  def find_runs(self):
-    self.run_numbers.ctr.Clear()
-    if self.trial is not None:
-      self.runs_available = [str(r.run) for r in self.trial.runs]
-      if len(self.all_runs) > 0:
-        self.run_numbers.ctr.InsertItems(items=self.all_runs, pos=0)
-
   def onRefresh(self, e):
     self.refresh_trials()
     self.refresh_runs()
@@ -2111,25 +2092,6 @@ class RunStatsTab(BaseTab):
       self.runstats_box.SetLabel('Run Statistics - Trial {}'.format(self.trial_no))
     else:
       self.runstats_box.SetLabel('Run Statistics - No trial selected')
-
-  def refresh_trials(self):
-    if self.all_trials == []:
-      self.find_trials()
-    avail_trials = [str(i.trial) for i in self.main.db.get_all_trials()]
-    for t in avail_trials:
-      if t not in self.all_trials:
-        self.trial_number.ctr.Append(t)
-        self.all_trials.append(t)
-
-  def refresh_runs(self):
-    if self.all_runs == []:
-      self.find_runs()
-    if self.trial is not None:
-      avail_runs = [str(r.run) for r in self.trial.runs]
-      for r in avail_runs:
-        if r not in self.all_runs:
-          self.run_numbers.ctr.Append(r)
-          self.all_runs.append(r)
 
   def plot_static_runstats(self):
     import time
@@ -2169,14 +2131,6 @@ class RunStatsTab(BaseTab):
       except TypeError:
         print "Error getting list of images that should have indexed"
         pass
-
-  def select_last_n_runs(self, n):
-    if self.trial is not None:
-      self.selected_runs = [r.run for r in self.trial.runs][-n:]
-
-  def select_all(self):
-    if self.trial is not None:
-      self.selected_runs = [r.run for r in self.trial.runs]
 
   def onLastFiveRuns(self, e):
     self.entire_expt = False

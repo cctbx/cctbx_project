@@ -221,3 +221,88 @@ class HitrateStats(object):
     t2 = time.time()
     # print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high
+
+class SpotfinderStats(object):
+  def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):
+    self.app = app
+    self.run = app.get_run(run_number = run_number)
+    self.trial = app.get_trial(trial_number = trial_number)
+    self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
+    self.sampling = raw_data_sampling
+
+  def __call__(self):
+    from iotbx.detectors.cspad_detector_formats import reverse_timestamp
+    from xfel.ui.components.timeit import duration
+    import time
+    t1 = time.time()
+    run_numbers = [r.run for r in self.trial.runs]
+    assert self.run.run in run_numbers
+    rungroup_ids = [rg.id for rg in self.trial.rungroups]
+    assert self.rungroup.id in rungroup_ids
+    if len(self.trial.isoforms) > 0:
+      cells = [isoform.cell for isoform in self.trial.isoforms]
+    else:
+      cells = self.app.get_trial_cells(self.trial.id, self.rungroup.id, self.run.id)
+
+    low_res_bin_ids = []
+    for cell in cells:
+      bins = cell.bins
+      d_mins = [float(b.d_min) for b in bins]
+      if len(d_mins) == 0: continue
+      low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
+
+    tag = self.app.params.experiment_tag
+    timestamps = flex.double()
+    xtal_ids = flex.double()
+    n_strong = flex.int()
+    if len(low_res_bin_ids) > 0:
+
+      # Get the spotfinding results from the selected runs
+      query = """SELECT bin.id, crystal.id, event.timestamp, event.n_strong
+                 FROM `%s_event` event
+                 JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
+                 JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
+                 JOIN `%s_experiment` exp ON exp.imageset_id = imgset.id
+                 JOIN `%s_crystal` crystal ON crystal.id = exp.crystal_id
+                 JOIN `%s_cell` cell ON cell.id = crystal.cell_id
+                 JOIN `%s_bin` bin ON bin.cell_id = cell.id
+                 JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
+                 WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
+                       cb.bin_id IN (%s)
+              """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
+                    ", ".join(low_res_bin_ids))
+      cursor = self.app.execute_query(query)
+      sample = -1
+      for row in cursor.fetchall():
+        b_id, xtal_id, ts, n_s = row
+        rts = reverse_timestamp(ts)
+        rts = rts[0] + (rts[1]/1000)
+        if xtal_id not in xtal_ids:
+          sample += 1
+          if sample % self.sampling != 0:
+            continue
+          timestamps.append(rts)
+          xtal_ids.append(xtal_id)
+          n_strong.append(n_s)
+
+    # This left join query finds the events with no imageset, meaning they failed to index
+    query = """SELECT event.timestamp, event.n_strong
+               FROM `%s_event` event
+               LEFT JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
+               WHERE is_e.event_id IS NULL AND
+                     event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d
+            """ % (tag, tag, self.trial.id, self.run.id, self.rungroup.id)
+
+    cursor = self.app.execute_query(query)
+    for row in cursor.fetchall():
+      ts, n_s = row
+      rts = reverse_timestamp(ts)
+      timestamps.append(rts[0] + (rts[1]/1000))
+      n_strong.append(n_s)
+
+    order = flex.sort_permutation(timestamps)
+    timestamps = timestamps.select(order)
+    n_strong = n_strong.select(order)
+
+    t2 = time.time()
+    return timestamps, n_strong
