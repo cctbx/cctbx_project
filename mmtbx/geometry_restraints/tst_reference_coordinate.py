@@ -4,10 +4,10 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from cctbx.array_family import flex
 from cctbx import adp_restraints # import dependency
-from mmtbx.monomer_library import server, pdb_interpretation
-from cStringIO import StringIO
 import random
 from mmtbx.geometry_restraints import reference
+from mmtbx.model import manager
+from libtbx.utils import null_out
 
 
 if(1):
@@ -112,17 +112,9 @@ ATOM     26  C   GLY A  22       5.373   9.358   8.580  1.00 33.22           C
 ATOM     27  O   GLY A  22       5.196  10.531   8.906  1.00 30.06           O
 """
 
-def exercise_1(mon_lib_srv, ener_lib):
+def exercise_1():
   pdb_in = simple_pdb()
-  params = pdb_interpretation.master_params.extract()
-  processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    params=params,
-    pdb_inp=pdb_in,
-    log=StringIO())
-  grm = processed_pdb_file.geometry_restraints_manager()
-  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_hierarchy = pdb_in.construct_hierarchy()
   sites_cart = pdb_hierarchy.atoms().extract_xyz()
 
   proxies = reference.add_coordinate_restraints(sites_cart=sites_cart)
@@ -163,18 +155,16 @@ def exercise_1(mon_lib_srv, ener_lib):
   proxies = proxies.proxy_remove(selection=selection)
   assert proxies.size() == 0, "expected 0, got %d" % proxies.size()
 
-def exercise_2(mon_lib_srv, ener_lib):
+def exercise_2():
   for use_reference in [True, False, None]:
-    processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv              = mon_lib_srv,
-      ener_lib                 = ener_lib,
-      raw_records              = flex.std_string(pdb_str_2.splitlines()),
-      strict_conflict_handling = True,
-      force_symmetry           = True,
-      log                      = None)
-    grm = processed_pdb_file.geometry_restraints_manager()
-    xrs2 = processed_pdb_file.xray_structure(show_summary = False)
-    awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
+    pdb_inp = iotbx.pdb.input(
+        lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
+    model = manager(
+        model_input=pdb_inp,
+        log=null_out())
+    grm = model.get_restraints_manager().geometry
+    xrs2 = model.get_xray_structure()
+    awl2 = model.get_hierarchy().atoms_with_labels()
     pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
     xrs3 = pdb_inp3.xray_structure_simple()
     ph3 = pdb_inp3.construct_hierarchy()
@@ -236,20 +226,18 @@ def exercise_2(mon_lib_srv, ener_lib):
       flex.max(flex.sqrt((xrs2.sites_cart().select(~selection_bool) -
                           xrs3.sites_cart().select(~selection_bool)).dot())), 0)
 
-def exercise_3(mon_lib_srv, ener_lib):
+def exercise_3():
   #test torsion restraints
   for use_reference in ['True', 'False', 'top_out', 'None']:
-    processed_pdb_file = pdb_interpretation.process(
-      mon_lib_srv              = mon_lib_srv,
-      ener_lib                 = ener_lib,
-      raw_records              = flex.std_string(pdb_str_2.splitlines()),
-      strict_conflict_handling = True,
-      force_symmetry           = True,
-      log                      = None)
-    grm = processed_pdb_file.geometry_restraints_manager()
-    xrs2 = processed_pdb_file.xray_structure(show_summary = False)
-    awl2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy.atoms_with_labels()
-    pdb2 = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    pdb_inp = iotbx.pdb.input(
+        lines=flex.std_string(pdb_str_2.splitlines()), source_info=None)
+    model = manager(
+        model_input=pdb_inp,
+        log=null_out())
+    grm = model.get_restraints_manager().geometry
+    xrs2 = model.get_xray_structure()
+    awl2 = model.get_hierarchy().atoms_with_labels()
+    pdb2 = model.get_hierarchy()
     pdb_inp3 = iotbx.pdb.input(source_info=None, lines=pdb_str_3)
     xrs3 = pdb_inp3.xray_structure_simple()
     ph3 = pdb_inp3.construct_hierarchy()
@@ -365,9 +353,7 @@ def exercise_3(mon_lib_srv, ener_lib):
   assert grm.get_n_chi_torsion_proixes() == 12, grm.get_n_chi_torsion_proixes()
 
 if (__name__ == "__main__") :
-  mon_lib_srv = server.server()
-  ener_lib = server.ener_lib()
-  exercise_1(mon_lib_srv, ener_lib)
-  exercise_2(mon_lib_srv, ener_lib)
-  exercise_3(mon_lib_srv, ener_lib)
+  exercise_1()
+  exercise_2()
+  exercise_3()
   print "OK"
