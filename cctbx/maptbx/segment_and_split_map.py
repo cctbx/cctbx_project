@@ -4678,7 +4678,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           map_data=map_data,
           crystal_symmetry=crystal_symmetry,
           lower_bounds=params.segmentation.lower_bounds,
-          upper_bounds=params.segmentation.upper_bounds, 
+          upper_bounds=params.segmentation.upper_bounds,
           write_output_files=params.output_files.write_output_maps,
           log=out)
     else:

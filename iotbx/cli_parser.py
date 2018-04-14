@@ -294,7 +294,7 @@ class CCTBXParser(ParserBase):
 
     for filename in file_list:
       a = any_file(filename)
-      process_function = 'process_%s_file' % data_manager_type[a.file_type]
+      process_function = 'process_%s_file' % data_manager_type.get(a.file_type)
       if (hasattr(self.data_manager, process_function)):
         getattr(self.data_manager, process_function)(filename)
         print('  Found %s, %s' % (data_manager_type[a.file_type], filename),
