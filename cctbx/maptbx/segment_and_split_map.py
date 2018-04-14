@@ -4678,12 +4678,15 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           map_data=map_data,
           crystal_symmetry=crystal_symmetry,
           lower_bounds=params.segmentation.lower_bounds,
-          upper_bounds=params.segmentation.upper_bounds, log=out)
+          upper_bounds=params.segmentation.upper_bounds, 
+          write_output_files=params.output_files.write_output_maps,
+          log=out)
     else:
       bounds_supplied=False
       box=run_map_box(["density_select=True"]+args,
        map_data=map_data,
        crystal_symmetry=crystal_symmetry,
+       write_output_files=params.output_files.write_output_maps,
        log=out)
       #box=run_map_box(["keep_map_size=True"]+args, map_data=map_data, crystal_symmetry=crystal_symmetry, log=out)
 
@@ -4730,6 +4733,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         map_data=map_data,
         crystal_symmetry=crystal_symmetry,
         lower_bounds=lower_bounds,upper_bounds=upper_bounds,
+        write_output_files=params.output_files.write_output_maps,
         log=out)
 
     #-----------------------------
@@ -8591,7 +8595,8 @@ def select_box_map_data(si=None,
        write_output_files=False,
        lower_bounds=lower_bounds,
        upper_bounds=upper_bounds,
-       crystal_symmetry=crystal_symmetry,log=out)
+       crystal_symmetry=crystal_symmetry,
+       log=out)
       box_first_half_map=box_first.map_box.as_double()
     else:
       box_first_half_map=None
@@ -8605,7 +8610,8 @@ def select_box_map_data(si=None,
        write_output_files=False,
        lower_bounds=lower_bounds,
        upper_bounds=upper_bounds,
-       crystal_symmetry=crystal_symmetry,log=out)
+       crystal_symmetry=crystal_symmetry,
+       log=out)
       box_second_half_map=box_second.map_box.as_double()
     else:
       box_second_half_map=None

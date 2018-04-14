@@ -311,30 +311,30 @@ Parameters:"""%h
     box.unit_cell_parameters_from_ccp4_map=None
     box.unit_cell_parameters_deduced_from_map_grid=None
 
-  if not write_output_files:
-    return box
 
   if(params.output_file_name_prefix is None):
     file_name = "%s_box.pdb"%output_prefix
   else: file_name = "%s.pdb"%params.output_file_name_prefix
   ph_box = pdb_hierarchy.select(selection)
   ph_box.adopt_xray_structure(box.xray_structure_box)
-  ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
-    box.xray_structure_box.crystal_symmetry())
+  if write_output_files:
+    ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
+      box.xray_structure_box.crystal_symmetry())
 
-  if("ccp4" in params.output_format):
+  if write_output_files:
+   if("ccp4" in params.output_format):
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.ccp4"%output_prefix
     else: file_name = "%s.ccp4"%params.output_file_name_prefix
     print >> log, "Writing map to CCP4 formatted file:   %s"%file_name
     box.write_ccp4_map(file_name=file_name)
-  if("xplor" in params.output_format):
+   if("xplor" in params.output_format):
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.xplor"%output_prefix
     else: file_name = "%s.xplor"%params.output_file_name_prefix
     print >> log, "writing map to X-plor formatted file: %s"%file_name
     box.write_xplor_map(file_name=file_name)
-  if("mtz" in params.output_format):
+   if("mtz" in params.output_format):
     if(params.output_file_name_prefix is None):
       file_name = "%s_box.mtz"%output_prefix
     else: file_name = "%s.mtz"%params.output_file_name_prefix
@@ -348,11 +348,12 @@ Parameters:"""%h
 
   if params.ncs_file:
 
-    if(params.output_file_name_prefix is None):
-      output_ncs_file = "%s_box.ncs_spec"%output_prefix
-    else: output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
-    print >>log,"\nOffsetting NCS in %s and writing to %s" %(
-       params.ncs_file,output_ncs_file)
+    if write_output_files:
+      if(params.output_file_name_prefix is None):
+        output_ncs_file = "%s_box.ncs_spec"%output_prefix
+      else: output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
+      print >>log,"\nOffsetting NCS in %s and writing to %s" %(
+         params.ncs_file,output_ncs_file)
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.read_ncs(params.ncs_file,log=log)
@@ -369,8 +370,9 @@ Parameters:"""%h
        coordinate_offset=matrix.col(box.shift_cart))
       #ncs_object.display_all(log=log)
       print >>log,"Total of %s operators" %(ncs_object.max_operators())
-    ncs_object.format_all_for_group_specification(
-       file_name=output_ncs_file)
+    if write_output_files:
+      ncs_object.format_all_for_group_specification(
+         file_name=output_ncs_file)
     box.ncs_object=ncs_object
   else:
     box.ncs_object=None
