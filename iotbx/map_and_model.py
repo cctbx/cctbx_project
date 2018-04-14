@@ -37,15 +37,33 @@ def get_map_counts(map_data, crystal_symmetry=None):
       unit_cell = crystal_symmetry.unit_cell()))
   return map_counts
 
+# I suggest to rewrite it as a plain function returning crystal_symmetry.
+# That's all what is needed. Everything else is being changed in place.
 class input(object):
   def __init__(self,
-               map_data         = None,
-               map_data_1       = None,
-               map_data_2       = None,
+               # I suggest we use map_input with symmetries here instead of
+               # raw map_data and call something like mtriage.py:check_and_set_crystal_symmetry
+               # to set CS consistently for maps and model.
+               # Especially because DataManager is supposed to provide these
+               # map_input objects.
+               # consider reusing/replacing crystal.select_crystal_symmetry()
+
+               # Warning! Model and all map_data are being changed in place.
+               # This warning should remain here
+
+               map_data         = None, # whole_map_input would be a better name?
+               map_data_1       = None, # half_map_input_1 would be a better name?
+               map_data_2       = None, # half_map_input_2 would be a better name?
                model            = None,
+               # where this CS is supposed to come from? After agreing on picking
+               # CS here, the only thing it could be useful - to pass CS
+               # obtained from command-line args or from parameters. Consider
+               # renaming parameter accordingly.
                crystal_symmetry = None,
                box              = True):
     #
+    # We should be able to work without symmetry at all. Why not just box
+    # model?
     assert [model, crystal_symmetry].count(None) != 2
     if(crystal_symmetry is None and model is not None):
       crystal_symmetry = model.crystal_symmetry()
@@ -54,12 +72,21 @@ class input(object):
     if(not [map_data_1, map_data_2].count(None) in [0,2]):
       raise Sorry("None or two half-maps are required.")
     #
+
+    # Suggest to get rid of self._model, self._map_data etc to make crystal
+    # clear that they are changed in place. Therefore getter functions
+    # at the bottom are useless and confusing.
     self._map_data         = map_data
     self._half_map_data_1  = map_data_1
     self._half_map_data_2  = map_data_2
     self._model            = model
     self._crystal_symmetry = crystal_symmetry
     #
+    # I don't see any connection between _counts, map_histograms and main
+    # purpose of this class (actually, it is function written using class syntax)
+    # - shifting origins, cutting boxes, figuring out crystal symmetries.
+    # This can be easily done just before calling this and totally separate.
+    # I suggest to remove it from here --->
     self._counts = get_map_counts(
       map_data         = self._map_data,
       crystal_symmetry = crystal_symmetry)
@@ -68,6 +95,7 @@ class input(object):
       n_slots = 20,
       data_1  = self._half_map_data_1,
       data_2  = self._half_map_data_2)
+    # <---- End of removing suggestion.
     # Shift origin
     sites_cart = None
     if(self._model is not None):
@@ -104,6 +132,8 @@ class input(object):
         xray_structure = xrs,
         map_data       = self._map_data,
         box_cushion    = 5.0)
+      # This should be changed to call model.set_shift_manager(shift_manager=box)
+      # For now just call _model.unset_restraints_manager() afterwards.
       self._model.set_xray_structure(xray_structure = box.xray_structure_box)
       self._crystal_symmetry = self._model.crystal_symmetry()
       self._map_data = box.map_box
