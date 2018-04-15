@@ -80,7 +80,7 @@ master_phil = libtbx.phil.parse("""
     .help = If True, write out map, map_coefficients, and model \
             with origin \
             in original location.  If false, shifted origin to (0,0,0).  \
-            The original default for map_box was keep_origin=False. 
+            The original default for map_box was keep_origin=False.
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -334,7 +334,7 @@ Parameters:"""%h
   # For output files ONLY: If keep_origin==False leave origin at (0,0,0)
   #  If keep_origin==True: we shift everything back to where it was,
   #    just for output files
-  
+
   if box.shift_cart and not params.keep_origin:
     print >>log,"Final coordinate shift for output files: (%.1f,%.1f,%.1f)" %(
       tuple(box.shift_cart))
@@ -364,7 +364,7 @@ Parameters:"""%h
         not params.keep_origin:
       if(params.output_file_name_prefix is None):
         output_ncs_file = "%s_box.ncs_spec"%output_prefix
-      else: 
+      else:
         output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
       print >>log,"\nOffsetting NCS in %s and writing to %s" %(
           params.ncs_file,output_ncs_file)

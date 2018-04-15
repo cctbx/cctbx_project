@@ -2682,7 +2682,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
         first = (0,0,0),
         last  = self.map_box.focus())
 
-   
+
     iotbx.xplor.map.writer(
       file_name          = file_name,
       is_p1_cell         = True,
@@ -2702,7 +2702,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
         delta=-0.5
       else:
         delta=0.5
-      origin_shift_grid.append( int(delta+ a*s/c)) 
+      origin_shift_grid.append( int(delta+ a*s/c))
     if reverse:
       return list(-col(origin_shift_grid))
     else:
