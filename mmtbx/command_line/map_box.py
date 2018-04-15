@@ -75,6 +75,12 @@ master_phil = libtbx.phil.parse("""
     .type=bool
     .help = Keep original map gridding (do not cut anything out). \
             Use to apply soft_mask and/or mask_atoms keeping same map size.
+  keep_origin = False
+    .type=bool
+    .help = If True, write out map, map_coefficients, and model \
+            with origin \
+            in original location.  If false, shifted origin to (0,0,0).  \
+            The original default for map_box was keep_origin=False. 
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -272,15 +278,7 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     )
-  if box.shift_cart:
-    print >>log,"Final coordinate shift: (%.1f,%.1f,%.1f)" %(
-      tuple(box.shift_cart))
 
-  print >>log,"Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
-      box.box_crystal_symmetry.unit_cell().parameters()[:3])
-
-  if box.pdb_outside_box_msg:
-    print >> log, box.pdb_outside_box_msg
 
 
   ph_box = pdb_hierarchy.select(selection)
@@ -311,71 +309,100 @@ Parameters:"""%h
     box.unit_cell_parameters_from_ccp4_map=None
     box.unit_cell_parameters_deduced_from_map_grid=None
 
-
-  if(params.output_file_name_prefix is None):
-    file_name = "%s_box.pdb"%output_prefix
-  else: file_name = "%s.pdb"%params.output_file_name_prefix
-  ph_box = pdb_hierarchy.select(selection)
-  ph_box.adopt_xray_structure(box.xray_structure_box)
-  if write_output_files:
-    ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
-      box.xray_structure_box.crystal_symmetry())
-
-  if write_output_files:
-   if("ccp4" in params.output_format):
-    if(params.output_file_name_prefix is None):
-      file_name = "%s_box.ccp4"%output_prefix
-    else: file_name = "%s.ccp4"%params.output_file_name_prefix
-    print >> log, "Writing map to CCP4 formatted file:   %s"%file_name
-    box.write_ccp4_map(file_name=file_name)
-   if("xplor" in params.output_format):
-    if(params.output_file_name_prefix is None):
-      file_name = "%s_box.xplor"%output_prefix
-    else: file_name = "%s.xplor"%params.output_file_name_prefix
-    print >> log, "writing map to X-plor formatted file: %s"%file_name
-    box.write_xplor_map(file_name=file_name)
-   if("mtz" in params.output_format):
-    if(params.output_file_name_prefix is None):
-      file_name = "%s_box.mtz"%output_prefix
-    else: file_name = "%s.mtz"%params.output_file_name_prefix
-    print >> log, "writing map coefficients to MTZ file: %s"%file_name
-    if(map_coeff is not None): d_min = map_coeff.d_min()
-    else:
-      d_min = maptbx.d_min_from_map(map_data=box.map_box,
-        unit_cell=box.xray_structure_box.unit_cell())
-    box.map_coefficients(d_min=d_min,
-      resolution_factor=params.resolution_factor, file_name=file_name)
-
   if params.ncs_file:
-
-    if write_output_files:
-      if(params.output_file_name_prefix is None):
-        output_ncs_file = "%s_box.ncs_spec"%output_prefix
-      else: output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
-      print >>log,"\nOffsetting NCS in %s and writing to %s" %(
-         params.ncs_file,output_ncs_file)
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.read_ncs(params.ncs_file,log=log)
-    #ncs_object.display_all(log=log)
     print >>log,"Total of %s operators read" %(ncs_object.max_operators())
     if not ncs_object or ncs_object.max_operators()<1:
       print >>log,"Skipping...no NCS available"
     elif box.shift_cart:
       from scitbx.math import  matrix
-      print >>log,"Shifting NCS operators "+\
-        "based on coordinate shift of (%7.1f,%7.1f,%7.1f)" %(
-        tuple(box.shift_cart))
       ncs_object=ncs_object.coordinate_offset(
        coordinate_offset=matrix.col(box.shift_cart))
-      #ncs_object.display_all(log=log)
-      print >>log,"Total of %s operators" %(ncs_object.max_operators())
-    if write_output_files:
-      ncs_object.format_all_for_group_specification(
-         file_name=output_ncs_file)
     box.ncs_object=ncs_object
   else:
     box.ncs_object=None
+
+  print >>log,"Final cell dimensions: (%.1f,%.1f,%.1f)\n" %(
+      box.box_crystal_symmetry.unit_cell().parameters()[:3])
+
+  if box.pdb_outside_box_msg:
+    print >> log, box.pdb_outside_box_msg
+
+  # NOTE: box object is always shifted to place origin at (0,0,0)
+  # For output files ONLY: If keep_origin==False leave origin at (0,0,0)
+  #  If keep_origin==True: we shift everything back to where it was,
+  #    just for output files
+  
+  if box.shift_cart and not params.keep_origin:
+    print >>log,"Final coordinate shift for output files: (%.1f,%.1f,%.1f)" %(
+      tuple(box.shift_cart))
+  elif  box.shift_cart:
+    print >>log,"Output files are in same location as original: origin not "+\
+      "shifted to (0,0,0)"
+  else:
+    print >>log,"Output files are is in same location as origina: origin "+\
+      "is at (0,0,0)"
+
+  ph_box = pdb_hierarchy.select(selection)
+  ph_box.adopt_xray_structure(box.xray_structure_box)
+
+  if write_output_files:
+
+    # Write PDB file if keep_origin==False
+    if ph_box.overall_counts().n_residues>0 and not params.keep_origin:
+      if(params.output_file_name_prefix is None):
+        file_name = "%s_box.pdb"%output_prefix
+      else: file_name = "%s.pdb"%params.output_file_name_prefix
+      print >> log, "Writing shifted PDB to file:   %s"%file_name
+      ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
+         box.xray_structure_box.crystal_symmetry())
+
+    # Write NCS file if NCS and keep_origin==False
+    if params.ncs_file and ncs_object and ncs_object.max_operators()>0 and \
+        not params.keep_origin:
+      if(params.output_file_name_prefix is None):
+        output_ncs_file = "%s_box.ncs_spec"%output_prefix
+      else: 
+        output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
+      print >>log,"\nOffsetting NCS in %s and writing to %s" %(
+          params.ncs_file,output_ncs_file)
+      ncs_object.format_all_for_group_specification(
+          file_name=output_ncs_file)
+
+    # Write ccp4 map.  Shift back if keep_origin=True
+    if("ccp4" in params.output_format):
+     if(params.output_file_name_prefix is None):
+       file_name = "%s_box.ccp4"%output_prefix
+     else: file_name = "%s.ccp4"%params.output_file_name_prefix
+     print >> log, "Writing map to CCP4 formatted file:   %s"%file_name
+     box.write_ccp4_map(file_name=file_name,
+       shift_back=params.keep_origin)
+
+    # Write xplor map.  Shift back if keep_origin=True
+    if("xplor" in params.output_format):
+     if(params.output_file_name_prefix is None):
+       file_name = "%s_box.xplor"%output_prefix
+     else: file_name = "%s.xplor"%params.output_file_name_prefix
+     print >> log, "writing map to X-plor formatted file: %s"%file_name
+     box.write_xplor_map(file_name=file_name,
+       shift_back=params.keep_origin) # XXX
+
+    # Write mtz map coeffs.  Shift back if keep_origin=True
+    if("mtz" in params.output_format):
+     if(params.output_file_name_prefix is None):
+       file_name = "%s_box.mtz"%output_prefix
+     else: file_name = "%s.mtz"%params.output_file_name_prefix
+     print >> log, "writing map coefficients to MTZ file: %s"%file_name
+     if(map_coeff is not None): d_min = map_coeff.d_min()
+     else:
+       d_min = maptbx.d_min_from_map(map_data=box.map_box,
+         unit_cell=box.xray_structure_box.unit_cell())
+     box.map_coefficients(d_min=d_min,
+       resolution_factor=params.resolution_factor, file_name=file_name,
+       shift_back=params.keep_origin) # XXX
+
   print >> log
   return box
 

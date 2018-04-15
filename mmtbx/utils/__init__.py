@@ -2667,11 +2667,22 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high=n_tot-1
     return i_low/n_tot,i_high/n_tot
 
-  def write_xplor_map(self, file_name="box.xplor"):
-    gridding = iotbx.xplor.map.gridding(
-      n     = self.map_box.focus(),
-      first = (0,0,0),
-      last  = self.map_box.focus())
+  def write_xplor_map(self, file_name="box.xplor",shift_back=None):
+    if shift_back: # XXX not tested
+      from scitbx.matrix import col
+      new_origin=self.origin_shift_grid_units(reverse=True)
+      gridding = iotbx.xplor.map.gridding(
+        n     = self.map_box.focus(),
+        first = new_origin,
+        last  = tuple(col(self.map_box.focus())+col(new_origin)))
+
+    else:
+      gridding = iotbx.xplor.map.gridding(
+        n     = self.map_box.focus(),
+        first = (0,0,0),
+        last  = self.map_box.focus())
+
+   
     iotbx.xplor.map.writer(
       file_name          = file_name,
       is_p1_cell         = True,
@@ -2682,13 +2693,61 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       average            = -1,
       standard_deviation = -1)
 
-  def write_ccp4_map(self, file_name="box.ccp4"):
+  def origin_shift_grid_units(self,reverse=False):
+    from scitbx.matrix import col
+    cell=self.xray_structure_box.crystal_symmetry().unit_cell().parameters()[:3]
+    origin_shift_grid=[]
+    for s,c,a in zip(self.shift_cart,cell,self.map_box.all()):
+      if s<0:
+        delta=-0.5
+      else:
+        delta=0.5
+      origin_shift_grid.append( int(delta+ a*s/c)) 
+    if reverse:
+      return list(-col(origin_shift_grid))
+    else:
+      return origin_shift_grid
+
+  def translation_phase_shift(self,phases_rad,shift_frac=None):
+    # F'=exp(- i 2 pi h.(x+offset)) -> F' = F exp (- i 2 pi h.x)
+    # phase_shift = - 2 * pi * h . x
+    from scitbx.matrix import col
+    phase_shift=-2*3.14159*phases_rad.indices().as_vec3_double().dot(
+       col(shift_frac))
+    return phases_rad+phase_shift
+
+  def shift_map_coeffs_back(self,map_coeffs):
+    amplitudes=map_coeffs.amplitudes()
+    amplitudes.set_observation_type_xray_amplitude()
+    assert amplitudes.is_real_array()
+    phases_rad=map_coeffs.phases(deg=False)
+    new_phases_rad=self.translation_phase_shift(phases_rad,
+        shift_frac=self.box_crystal_symmetry.unit_cell().fractionalize(
+          self.shift_cart))
+    new_map_coeffs=amplitudes.phase_transfer(
+      phase_source=new_phases_rad,deg=False)
+    return new_map_coeffs
+
+  def shift_map_back(self,map_data):
+    from scitbx.matrix import col
+    new_origin=self.origin_shift_grid_units(reverse=True)
+    new_all=list(col(self.map_box.all())+col(new_origin))
+    shifted_map_data = map_data.deep_copy()
+    shifted_map_data.resize(flex.grid(new_origin,new_all))
+    return shifted_map_data
+
+  def write_ccp4_map(self, file_name="box.ccp4",shift_back=False):
     from iotbx import ccp4_map
+    assert tuple(self.map_box.origin())==(0,0,0)
+    if shift_back:
+      map_data=self.shift_map_back(self.map_box)
+    else:
+      map_data = self.map_box
     ccp4_map.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = self.xray_structure_box.unit_cell(),
       space_group    = self.xray_structure_box.space_group(),
-      map_data       = self.map_box.as_double(),
+      map_data       = map_data,
       labels=flex.std_string([" "]))
 
   def box_map_coefficients_as_fft_map(self, d_min, resolution_factor):
@@ -2697,15 +2756,17 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     fft_map.apply_sigma_scaling()
     return fft_map
 
-  def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz"):
-    box_map_coeffs = self.box_map_coefficients(d_min = d_min)
+  def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz",
+     shift_back=None):
+    box_map_coeffs = self.box_map_coefficients(d_min = d_min,
+      shift_back=shift_back)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
     return box_map_coeffs
 
-  def box_map_coefficients(self, d_min):
+  def box_map_coefficients(self, d_min, shift_back=None):
     from scitbx import fftpack
     fft = fftpack.real_to_complex_3d([i for i in self.map_box.all()])
     map_box = maptbx.copy(
@@ -2727,6 +2788,10 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       anomalous_flag=False,
       indices=box_structure_factors.miller_indices(),
       ).array(data=box_structure_factors.data()/n)
+
+    if shift_back:  # apply phase shift to map coefficients for origin shift
+       box_map_coeffs=self.shift_map_coeffs_back(box_map_coeffs)
+
     return box_map_coeffs
 
 
