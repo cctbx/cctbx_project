@@ -3,7 +3,6 @@
 from __future__ import division, print_function
 import sys
 from libtbx import  adopt_init_args
-from libtbx.utils import Sorry
 
 #  map_symmetry
 #  tool to identify and evaluate reconstruction symmetry in a map
