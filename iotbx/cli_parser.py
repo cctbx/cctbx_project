@@ -19,7 +19,50 @@ from iotbx.file_reader import any_file
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
-from libtbx.utils import Sorry
+from libtbx.utils import multi_out, show_times, Sorry
+
+# =============================================================================
+def run_program(program_class=None):
+  '''
+  Function for running programs using CCTBXParser and the program template
+  '''
+
+  assert (program_class is not None)
+
+  # create logger
+  logger = multi_out()
+  logger.register('stdout', sys.stdout)
+
+  # start timer
+  t = show_times(out=logger)
+
+  # create parser
+  parser = CCTBXParser(program_class=program_class, logger=logger)
+  namespace = parser.parse_args(sys.argv[1:])
+
+  # start program
+  print('Starting job', file=logger)
+  print('='*79, file=logger)
+  task = program_class(parser.data_manager, parser.working_phil.extract(),
+                       logger=logger)
+
+  # custom constructor (optional)
+  task.custom_init()
+
+  # validate inputs
+  task.validate()
+
+  # run program
+  task.run()
+
+  # clean up (optional)
+  task.clean_up()
+
+  # stop timer
+  print('', file=logger)
+  print('='*79, file=logger)
+  print('Job complete', file=logger)
+  t()
 
 # =============================================================================
 class ParserBase(argparse.ArgumentParser):
