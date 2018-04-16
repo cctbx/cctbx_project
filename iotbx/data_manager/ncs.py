@@ -29,7 +29,7 @@ class NcsDataManager(DataManagerBase):
   def remove_ncs(self, filename):
     return self._remove(NcsDataManager.datatype, filename)
 
-  def has_ncss(self, expected_n=1, exact_count=False, raise_sorry=False):
+  def has_ncs(self, expected_n=1, exact_count=False, raise_sorry=False):
     return self._has_data(NcsDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
