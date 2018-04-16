@@ -2,7 +2,8 @@
 
 from __future__ import division, print_function
 import sys
-from libtbx import  adopt_init_args
+from libtbx import adopt_init_args
+from libtbx.utils import null_out
 
 #  map_symmetry
 #  tool to identify and evaluate reconstruction symmetry in a map
@@ -29,3 +30,11 @@ class map_symmetry:
 
   def run(self):
     print ("Finding symmetry in map",file=self.log)
+
+    from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map 
+
+    find_symmetry=run_get_ncs_from_map(params=self.params,
+      map_data=self.map_data,
+      crystal_symmetry=self.crystal_symmetry,
+      ncs_obj=self.ncs_object,
+      out=self.log)

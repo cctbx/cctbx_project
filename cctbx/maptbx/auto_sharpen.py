@@ -50,7 +50,7 @@ master_phil = iotbx.phil.parse("""
       .help = File with NCS information (typically point-group NCS with \
                the center specified). Typically in  PDB format. \
               Can also be a .ncs_spec file from phenix. \
-              Created automatically if ncs_type is specified.
+              Created automatically if symmetry is specified.
       .short_caption = NCS info file
 
     seq_file = None
