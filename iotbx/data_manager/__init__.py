@@ -14,7 +14,7 @@ from libtbx.utils import Sorry
 any_file_type = {
   'miller_array':'hkl',
   'model':'pdb',
-  'ncs':'ncs',
+  'ncs_spec':'ncs',
   'phil':'phil',
   'real_map':'ccp4_map',
   'restraint':'cif',
