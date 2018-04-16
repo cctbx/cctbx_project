@@ -266,6 +266,17 @@ class modify(object):
     # Up to this point we are done with self.xray_structure
     self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     # Now only manipulations that use self.pdb_hierarchy are done
+### segID manipulations
+    if (params.set_seg_id_to_chain_id) :
+      if (params.clear_seg_id) :
+        raise Sorry("Parameter conflict - set_seg_id_to_chain_id=True and "+
+          "clear_seg_id=True.  Please choose only one of these options.")
+      for atom in pdb_hierarchy.atoms() :
+        labels = atom.fetch_labels()
+        atom.segid = "%-4s" % labels.chain_id
+    elif (params.clear_seg_id) :
+      for atom in pdb_hierarchy.atoms() :
+        atom.segid = "    "
     if(self.params.set_chemical_element_simple_if_necessary or
        self.params.rename_chain_id.old_id or
        self.params.renumber_residues or self.params.increment_resseq or
