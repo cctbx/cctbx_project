@@ -1149,9 +1149,7 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
   def extract_secondary_structure (self, log=None) :
     from iotbx.pdb import secondary_structure
     records = self.secondary_structure_section()
-    if records.size() != 0 :
-      return secondary_structure.annotation.from_records(records, log)
-    return None
+    return secondary_structure.annotation.from_records(records, log)
 
   def extract_LINK_records(self):
     '''

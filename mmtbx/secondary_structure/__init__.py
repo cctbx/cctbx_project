@@ -202,13 +202,12 @@ class manager (object) :
     elif (len(self.params.secondary_structure.protein.sheet) > 0 and
         self.params.secondary_structure.protein.sheet[0].first_strand is not None):
       protein_ss_definition_present = True
-
     t0 = time.time()
     if protein_ss_definition_present:
       self.apply_phil_str(phil_string=None, phil_params=self.params, log=self.log)
     else:
       if (not protein_ss_definition_present and
-          self.sec_str_from_pdb_file is None):
+          (self.sec_str_from_pdb_file is None or self.sec_str_from_pdb_file.is_empty())):
         if(self.verbose>0):
           print >> self.log, "No existing protein secondary structure definitions " + \
           "found in .pdb file or phil parameters."
