@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function
-import os, sys
+import sys
 from libtbx import  adopt_init_args
+from libtbx.utils import Sorry
 
 #  map_symmetry
 #  tool to identify and evaluate reconstruction symmetry in a map
@@ -23,9 +24,9 @@ class map_symmetry:
       self.local_log=log
     else:
       self.local_log=null_out()
-       
+
   def clean_up(self):
-    pass 
+    pass
 
   def run(self):
     print ("Finding symmetry in map",file=self.log)
