@@ -48,9 +48,9 @@ class ReflectionsRadialLengths(object):
     return flex.double([self.get_one_spot_length(id) for id in xrange(len(self.strong))])
 
 class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
-  def __init__(self, *files):
+  def __init__(self, files):
     from dials.util.options import Importer, flatten_reflections, flatten_experiments, flatten_datablocks
-    importer = Importer(list(files), read_experiments=True, read_datablocks=True,
+    importer = Importer(files, read_experiments=True, read_datablocks=True,
       read_reflections=True, check_format=False)
     if importer.unhandled:
       print "Unable to handle one or more files:", importer.unhandled
@@ -75,3 +75,4 @@ if __name__ == "__main__":
   assert len(sys.argv) == 3
   strong_spot_lengths = ReflectionsRadialLengthsFromFiles(sys.argv[1:]).get_spot_lengths_px()
   easy_pickle.dump("spot_lengths_px.pickle", strong_spot_lengths)
+  print list(strong_spot_lengths)
