@@ -53,6 +53,30 @@ namespace dxtbx { namespace model { namespace boost_python {
   }
 
   static
+  Crystal* make_crystal_with_A(
+      const mat3<double> &A,
+      const cctbx::sgtbx::space_group &space_group) {
+
+    Crystal *crystal = new Crystal(A, space_group);
+
+    return crystal;
+  }
+
+  static
+  Crystal* make_crystal_with_A_symbol(
+      const mat3<double> &A,
+      const std::string &space_group_symbol) {
+
+    Crystal *crystal = new Crystal(
+      A,
+      cctbx::sgtbx::space_group(
+        cctbx::sgtbx::space_group_symbols(
+          space_group_symbol)));
+
+    return crystal;
+  }
+
+  static
   MosaicCrystalKabsch2010* make_kabsch2010_mosaic_crystal_default(
       const vec3<double> &real_space_a,
       const vec3<double> &real_space_b,
@@ -349,6 +373,18 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("real_space_a"),
             arg("real_space_b"),
             arg("real_space_c"),
+            arg("space_group_symbol"))))
+      .def("__init__",
+          make_constructor(
+          &make_crystal_with_A,
+          default_call_policies(), (
+            arg("A"),
+            arg("space_group"))))
+      .def("__init__",
+          make_constructor(
+          &make_crystal_with_A_symbol,
+          default_call_policies(), (
+            arg("A"),
             arg("space_group_symbol"))))
       .def_pickle(CrystalPickleSuite());
 

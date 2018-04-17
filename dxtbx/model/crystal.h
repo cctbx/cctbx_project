@@ -313,6 +313,19 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Initialise the crystal
+     *
+     * @param A The A matrix
+     * @param space_group The space group object
+     */
+    Crystal(const mat3<double> &A,
+            const cctbx::sgtbx::space_group &space_group)
+      : space_group_(space_group),
+        cell_volume_sd_(0) {
+          set_A(A);
+      }
+
+    /**
      * Constructor for pickling
      */
     Crystal(
