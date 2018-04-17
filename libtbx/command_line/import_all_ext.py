@@ -21,7 +21,7 @@ def cmp_so(a, b):
 def import_modules():
   # Search for __init__.py file and import those modules. This ensures all dependencies are loaded
   # prior to import individual so files
-  import libtbx.load_env, os
+  import libtbx.load_env, os, traceback
   # Modules in the form of X/X/__init__.py
   doubled = ["elbow","phaser","phenix"]
   # These modules are not dependencies not maintained by cctbx or should be skipped for other reasons
@@ -51,6 +51,7 @@ def import_modules():
           exec("import %s" % full_module)
         except ImportError as e:
           if full_module not in ok_to_fail:
+            print traceback.format_exc()
             raise e
 
 def run(args):
