@@ -131,7 +131,7 @@ PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 SEND2TRASH_PKG = "Send2Trash-1.3.0.tar.gz"
 
 # Windows precompiled compiled base packages
-WIN64PYTHON_PKG = "python2.7.12_x86_64_plus_relocatable.zip"
+WIN64PYTHON_PKG = "python2.7.14_x86_64_plus_relocatable.zip"
 WIN32PYTHON_PKG = "python2.7.12_x86_32_plus_relocatable.zip"
 WIN64HDF5_PKG = "HDF5-1.8.16-win64.zip"
 WIN32HDF5_PKG = "HDF5-1.8.16-win32.zip"
