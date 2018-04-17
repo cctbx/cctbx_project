@@ -648,12 +648,14 @@ Installation of Python packages may fail.
                               '-d', pkg_info['cachedir'], pkg_info['debug']])
       if extra_options:
         pip_cmd.extend(extra_options)
-      print "  Running with pip:", pip_cmd
       if int(pip.__version__.split('.')[0]) > 9:
         import pip._internal
-        assert pip._internal.main(pip_cmd + ['--no-cache-dir']) == 0, 'pip download failed'
+        pip_call = pip._internal.main
+        pip_cmd.append('--no-cache-dir')
       else:
-        assert pip.main(pip_cmd) == 0, 'pip download failed'
+        pip_call = pip.main
+      print "  Running with pip:", pip_cmd
+      assert pip_call(pip_cmd) == 0, 'pip download failed'
       return
     if extra_options:
       extra_options = ' '.join(extra_options)
