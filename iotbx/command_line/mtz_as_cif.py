@@ -9,85 +9,13 @@ import iotbx.phil
 import iotbx.cif.model
 from iotbx import reflection_file_utils
 
+from iotbx.cif_mtz_data_labels import phenix_to_cif_labels_dict,\
+  ccp4_to_cif_labels_dict
 # Probably we can align with what PDB choose to use
 # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v40.dic/Categories/refln.html
 # comply with newer version:
 # http://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Categories/refln.html
-
-phenix_to_cif_labels_dict = {
-  'FOBS': '_refln.F_meas_au',
-  'SIGFOBS': '_refln.F_meas_sigma_au',
-  # 'IOBS': '_refln.F_squared_meas',
-  'IOBS': '_refln.intensity_meas',      # This is used in PDB
-  # 'SIGIOBS': '_refln.F_squared_sigma',
-  'SIGIOBS': '_refln.intensity_sigma',  # This is used in PDB
-  'FOBS(+)': '_refln.pdbx_F_plus',
-  'SIGFOBS(+)': '_refln.pdbx_F_plus_sigma',
-  'FOBS(-)': '_refln.pdbx_F_minus',
-  'SIGFOBS(-)': '_refln.pdbx_F_minus_sigma',
-  'IOBS(+)': '_refln.pdbx_I_plus',
-  'SIGIOBS(+)': '_refln.pdbx_I_plus_sigma',
-  'IOBS(-)': '_refln.pdbx_I_minus',
-  'SIGIOBS(-)': '_refln.pdbx_I_minus_sigma',
-  'F-obs': '_refln.F_meas_au',
-  'SIGF-obs': '_refln.F_meas_sigma_au',
-  'F-obs(+)': '_refln.pdbx_F_plus',
-  'SIGF-obs(+)': '_refln.pdbx_F_plus_sigma',
-  'F-obs(-)': '_refln.pdbx_F_minus',
-  'SIGF-obs(-)': '_refln.pdbx_F_minus_sigma',
-  'I-obs': '_refln.F_squared_meas',
-  'SIGI-obs': '_refln.F_squared_sigma',
-  'I-obs(+)': '_refln.pdbx_I_plus',
-  'SIGI-obs(+)': '_refln.pdbx_I_plus_sigma',
-  'I-obs(-)': '_refln.pdbx_I_minus',
-  'SIGI-obs(-)': '_refln.pdbx_I_minus_sigma',
-  'R-free-flags': '_refln.pdbx_r_free_flag',
-  'HLA': '_refln.pdbx_HL_A_iso',
-  'HLB': '_refln.pdbx_HL_B_iso',
-  'HLC': '_refln.pdbx_HL_C_iso',
-  'HLD': '_refln.pdbx_HL_D_iso',
-  '2FOFCWT': '_refln.pdbx_FWT',
-  'PH2FOFCWT': '_refln.pdbx_PHWT',
-  'FOFCWT': '_refln.pdbx_DELFWT',
-  'PHFOFCWT': '_refln.pdbx_DELPHWT',
-  }
-
-# Source: http://www.ccp4.ac.uk/html/cif2mtz.html
-ccp4_to_cif_labels_dict = {
-  'FWT': '_refln.pdbx_FWT',
-  'PHWT': '_refln.pdbx_PHWT',
-  'DELFWT': '_refln.pdbx_DELFWT',
-  'DELPHWT': '_refln.pdbx_DELPHWT',
-  'FREE': '_refln.pdbx_r_free_flag',
-  'F': '_refln.F_meas_au',
-  'SIGF': '_refln.F_meas_sigma_au',
-  'FP': '_refln.F_meas_au',
-  'SIGFP': '_refln.F_meas_sigma_au',
-  'FC': '_refln.F_calc_au',
-  'PHIC': '_refln.phase_calc',
-  'PHIB': '_refln.phase_meas',
-  'FOM': '_refln.fom',
-  # 'I': '_refln.F_squared_meas', # which I to prefer?
-  'I': '_refln.intensity_meas',     # This is used in PDB
-  'SIGI': '_refln.intensity_sigma', # This is used in PDB
-  # 'SIGI': '_refln.F_squared_sigma', # which SIGI to prefer?
-  'FPART': '_refln.F_part_au',
-  'PHIP': '_refln.phase_part',
-  'F(+)': '_refln.pdbx_F_plus',
-  'SIGF(+)': '_refln.pdbx_F_plus_sigma',
-  'F(-)': '_refln.pdbx_F_minus',
-  'SIGF(-)': '_refln.pdbx_F_minus_sigma',
-  'DP': '_refln.pdbx_anom_difference',
-  'SIGDP': '_refln.pdbx_anom_difference_sigma',
-  'I(+)': '_refln.pdbx_I_plus',
-  'SIGI(+)': '_refln.pdbx_I_plus_sigma',
-  'I(-)': '_refln.pdbx_I_minus',
-  'SIGI(-)': '_refln.pdbx_I_minus_sigma',
-  'HLA': '_refln.pdbx_HL_A_iso',
-  'HLB': '_refln.pdbx_HL_B_iso',
-  'HLC': '_refln.pdbx_HL_C_iso',
-  'HLD': '_refln.pdbx_HL_D_iso',
-}
+# http://www.ccp4.ac.uk/html/cif2mtz.html
 
 def mtz_to_cif_label(mtz_to_cif_label_dict, mtz_label):
   if mtz_label.endswith("xray"):
