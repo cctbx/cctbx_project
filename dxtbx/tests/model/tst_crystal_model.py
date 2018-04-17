@@ -57,7 +57,9 @@ def exercise_crystal_model():
   model2a = Crystal(model.get_A(), model.get_space_group())
   assert model == model2a and not (model != model2a)
 
-  model2b = Crystal(model.get_A(), model.get_space_group().type().lookup_symbol())
+  model2b = Crystal(matrix.sqr(model.get_A()).inverse().elems,
+                    model.get_space_group().type().lookup_symbol(),
+                    reciprocal=False)
   assert model == model2b and not (model != model2b)
 
   # rotate 45 degrees about x-axis

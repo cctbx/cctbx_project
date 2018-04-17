@@ -55,9 +55,10 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   Crystal* make_crystal_with_A(
       const mat3<double> &A,
-      const cctbx::sgtbx::space_group &space_group) {
+      const cctbx::sgtbx::space_group &space_group,
+      const bool &reciprocal) {
 
-    Crystal *crystal = new Crystal(A, space_group);
+    Crystal *crystal = new Crystal(A, space_group, reciprocal);
 
     return crystal;
   }
@@ -65,13 +66,15 @@ namespace dxtbx { namespace model { namespace boost_python {
   static
   Crystal* make_crystal_with_A_symbol(
       const mat3<double> &A,
-      const std::string &space_group_symbol) {
+      const std::string &space_group_symbol,
+      const bool &reciprocal) {
 
     Crystal *crystal = new Crystal(
       A,
       cctbx::sgtbx::space_group(
         cctbx::sgtbx::space_group_symbols(
-          space_group_symbol)));
+          space_group_symbol)),
+      reciprocal);
 
     return crystal;
   }
@@ -379,13 +382,15 @@ namespace dxtbx { namespace model { namespace boost_python {
           &make_crystal_with_A,
           default_call_policies(), (
             arg("A"),
-            arg("space_group"))))
+            arg("space_group"),
+            arg("reciprocal")=true)))
       .def("__init__",
           make_constructor(
           &make_crystal_with_A_symbol,
           default_call_policies(), (
             arg("A"),
-            arg("space_group_symbol"))))
+            arg("space_group_symbol"),
+            arg("reciprocal")=true)))
       .def_pickle(CrystalPickleSuite());
 
     // Create member-function pointers to specific is_simiar_to overloads
