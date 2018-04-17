@@ -239,12 +239,13 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 class modify(object):
-  def __init__(self, xray_structure, params, pdb_hierarchy, log = None):
+  def __init__(self, model, params, log = None):
     self.log = log
-    self.pdb_hierarchy = pdb_hierarchy
-    self.crystal_symmetry = xray_structure.crystal_symmetry()
+    self.model = model
+    self.pdb_hierarchy = model.get_hierarchy()
+    self.crystal_symmetry = model.crystal_symmetry()
     if(self.log is None): self.log = sys.stdout
-    self.xray_structure = xray_structure
+    self.xray_structure = model.get_xray_structure()
     self.params = params
     asc = self.pdb_hierarchy.atom_selection_cache(
         special_position_settings=crystal.special_position_settings(
@@ -253,7 +254,7 @@ class modify(object):
       random.seed(self.params.random_seed)
       flex.set_random_seed(self.params.random_seed)
     self.top_selection = flex.smart_selection(
-        flags=flex.bool(xray_structure.scatterers().size(), True))
+        flags=flex.bool(self.xray_structure.scatterers().size(), True))
     if(self.params.selection is not None):
       self.top_selection = flex.smart_selection(
         flags=asc.selection(self.params.selection))
@@ -264,18 +265,19 @@ class modify(object):
     self._put_in_box()
     self._change_of_basis()
     # Up to this point we are done with self.xray_structure
-    self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
+    self.model.set_xray_structure(self.xray_structure)
+    self.pdb_hierarchy = self.model.get_hierarchy()
     # Now only manipulations that use self.pdb_hierarchy are done
 ### segID manipulations
     if (params.set_seg_id_to_chain_id) :
       if (params.clear_seg_id) :
         raise Sorry("Parameter conflict - set_seg_id_to_chain_id=True and "+
           "clear_seg_id=True.  Please choose only one of these options.")
-      for atom in pdb_hierarchy.atoms() :
+      for atom in self.pdb_hierarchy.atoms() :
         labels = atom.fetch_labels()
         atom.segid = "%-4s" % labels.chain_id
     elif (params.clear_seg_id) :
-      for atom in pdb_hierarchy.atoms() :
+      for atom in self.pdb_hierarchy.atoms() :
         atom.segid = "    "
     if(self.params.set_chemical_element_simple_if_necessary or
        self.params.rename_chain_id.old_id or
@@ -290,7 +292,7 @@ class modify(object):
        self.params.remove_fraction or
        self.params.keep or
        self.params.remove):
-      del self.xray_structure # it is invalide below this point
+      # del self.xray_structure # it is invalide below this point
       self._set_chemical_element_simple_if_necessary()
       self._rename_chain_id()
       self._renumber_residues()
@@ -303,6 +305,20 @@ class modify(object):
       self._move_waters()
       self._remove_atoms()
       self._apply_keep_remove()
+      # Here goes really nasty hack. Never repeat it.
+      # It is here because I don't have clear idea about how to handle
+      # such dramatic changes in number of atoms etc that just was performed
+      # for hierarchy.
+      self.pdb_hierarchy.reset_atom_i_seqs()
+      self.pdb_hierarchy.atoms_reset_serial()
+      self.model._pdb_hierarchy = self.pdb_hierarchy
+      self.model._xray_structure = self.pdb_hierarchy.extract_xray_structure(
+          crystal_symmetry=self.model.crystal_symmetry())
+      self.model._update_atom_selection_cache()
+      self.model._update_has_hd()
+      self.model._update_pdb_atoms()
+
+
 
   def _apply_keep_remove(self):
     cn = [self.params.remove, self.params.keep].count(None)
@@ -652,5 +668,7 @@ class modify(object):
 
   def get_results(self):
     return group_args(
-      pdb_hierarchy    = self.pdb_hierarchy,
-      crystal_symmetry = self.crystal_symmetry)
+      model            = self.model,
+      # pdb_hierarchy    = self.pdb_hierarchy,
+      # crystal_symmetry = self.crystal_symmetry,
+      )

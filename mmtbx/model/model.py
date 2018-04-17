@@ -652,7 +652,9 @@ class manager(object):
     self._xray_structure = self._pdb_hierarchy.extract_xray_structure(
         crystal_symmetry=self.crystal_symmetry())
 
-  def _figure_out_cs_to_output(self, do_not_shift_back):
+  def _figure_out_cs_to_output(self, do_not_shift_back, output_cs):
+    if not output_cs:
+      return None
     if do_not_shift_back:
       return self._shift_manager.get_shifted_cs()
     else:
@@ -670,10 +672,8 @@ class manager(object):
     """
     if do_not_shift_back and self._shift_manager is None:
       do_not_shift_back = False
-    cs_to_output = None
-    if output_cs:
-      cs_to_output = self._figure_out_cs_to_output(
-          do_not_shift_back=do_not_shift_back)
+    cs_to_output = self._figure_out_cs_to_output(
+        do_not_shift_back=do_not_shift_back, output_cs=output_cs)
 
     result = StringIO()
     # outputting HELIX/SHEET records
@@ -712,6 +712,7 @@ class manager(object):
 
   def model_as_mmcif(self,
       cif_block_name = "default",
+      output_cs = True,
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False):
@@ -719,7 +720,7 @@ class manager(object):
     cif = iotbx.cif.model.cif()
     cif_block = None
     cs_to_output = self._figure_out_cs_to_output(
-        do_not_shift_back=do_not_shift_back)
+        do_not_shift_back=do_not_shift_back, output_cs=output_cs)
     if cs_to_output is not None:
       cif_block = cs_to_output.as_cif_block()
     if self._pdb_hierarchy is not None:

@@ -5,10 +5,10 @@ import mmtbx.pdbtools
 import sys, os
 from libtbx import runtime_utils
 import mmtbx.utils
+import mmtbx.model
 import iotbx.pdb
-from iotbx.pdb import combine_unique_pdb_files, write_whole_pdb_file
+from iotbx.pdb import combine_unique_pdb_files
 from iotbx.phil import process_command_line_with_files
-from iotbx.cif import write_whole_cif_file
 from scitbx.array_family import flex
 from libtbx import group_args
 from libtbx.utils import check_if_output_directory_exists
@@ -65,7 +65,6 @@ def get_inputs(args, log, master_params):
     source_info = None,
     lines       = flex.std_string(pdb_combined.raw_records),
     raise_sorry_if_format_error = True)
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
   # Crystal symmetry
   fake_crystal_symmetry = False
   crystal_symmetry = pdb_inp.crystal_symmetry()
@@ -79,17 +78,15 @@ def get_inputs(args, log, master_params):
         sites_cart=pdb_inp.atoms().extract_xyz(),
         buffer_layer=5).crystal_symmetry()
   #
-  xray_structure = pdb_hierarchy.extract_xray_structure(
-    crystal_symmetry = crystal_symmetry)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      crystal_symmetry = crystal_symmetry)
   #
   return group_args(
     params                = params,
     pdb_file_names        = file_names,
-    pdb_hierarchy         = pdb_hierarchy,
-    xray_structure        = xray_structure,
-    pdb_inp               = pdb_inp,
-    fake_crystal_symmetry = fake_crystal_symmetry,
-    crystal_symmetry      = crystal_symmetry)
+    model                 = model,
+    fake_crystal_symmetry = fake_crystal_symmetry)
 
 def run(args, out=sys.stdout, replace_stderr=True):
   log = mmtbx.utils.set_log(args, out=out, replace_stderr=replace_stderr)
@@ -117,32 +114,18 @@ def run(args, out=sys.stdout, replace_stderr=True):
   # Run calcs
   broadcast(m="Performing manipulations", log=log)
   task_obj = mmtbx.pdbtools.modify(
-    xray_structure = inputs.xray_structure,
+    model          = inputs.model,
     params         = inputs.params.modify,
-    pdb_hierarchy  = inputs.pdb_hierarchy,
     log            = log)
   results = task_obj.get_results()
   #
   broadcast(m="Writing output model", log=log)
   print >> log, "Output model file name: ", ofn
-  if(inputs.fake_crystal_symmetry):
-    crystal_symmetry = None
-  else:
-    crystal_symmetry = results.crystal_symmetry
-  if output_format == "pdb":
-    write_whole_pdb_file(
-      file_name        = ofn,
-      pdb_hierarchy    = results.pdb_hierarchy,
-      ss_annotation    = inputs.pdb_inp.extract_secondary_structure(),
-      crystal_symmetry = crystal_symmetry,
-      append_end       = True,
-      atoms_reset_serial_first_value = 1)
-  elif output_format =="mmcif":
-    write_whole_cif_file(
-      file_name        = ofn,
-      pdb_hierarchy    = results.pdb_hierarchy,
-      ss_annotation    = inputs.pdb_inp.extract_secondary_structure(),
-      crystal_symmetry = crystal_symmetry)
+  with open(ofn, 'w') as f:
+    if output_format == "pdb":
+      f.write(inputs.model.model_as_pdb(output_cs= not inputs.fake_crystal_symmetry))
+    elif output_format =="mmcif":
+      f.write(inputs.model.model_as_mmcif(output_cs= not inputs.fake_crystal_symmetry))
   broadcast(m="All done.", log=log)
   return None
 
