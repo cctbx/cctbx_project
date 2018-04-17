@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatStill import FormatStill
-from dxtbx.format.FormatMultiImage import FormatMultiImage
+from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 from libtbx.phil import parse
 
 locator_str = """
@@ -11,7 +11,7 @@ locator_str = """
   run = None
     .type = ints
     .help = Run number or a list of runs to process
-  mode = smd
+  mode = idx
     .type = str
     .help = Mode for reading the xtc data (see LCLS documentation)
   data_source = None
@@ -25,20 +25,23 @@ locator_str = """
 """
 locator_scope = parse(locator_str)
 
-class FormatXTC(FormatMultiImage,FormatStill,Format):
+class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
 
   def __init__(self, image_file, **kwargs):
     from dxtbx import IncorrectFormatError
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
-    FormatMultiImage.__init__(self, **kwargs)
+    FormatMultiImageLazy.__init__(self, **kwargs)
     FormatStill.__init__(self, image_file, **kwargs)
     Format.__init__(self, image_file, **kwargs)
+    self.current_index = None
+    self.current_event = None
 
     if 'locator_scope' in kwargs:
       self.params = FormatXTC.params_from_phil(kwargs['locator_scope'],image_file)
     else:
       self.params = FormatXTC.params_from_phil(locator_scope,image_file)
+    assert self.params.mode == 'idx', 'idx mode should be used for analysis'
     self._initialized = True
 
   @staticmethod
@@ -96,14 +99,16 @@ class FormatXTC(FormatMultiImage,FormatStill,Format):
       return None
 
   def populate_events(self):
-    from xfel.cxi.cspad_ana import cspad_tbx
-    for nevent,evt in enumerate(self._ds.events()):
-      wavelength = cspad_tbx.evt_wavelength(evt)
-      if wavelength is None: continue
-      self.events_list.append(evt)
+    self.run = self._ds.runs().next()
+    self.times = self.run.times()
 
   def _get_event(self,index):
-    return self.events_list[index]
+    if index == self.current_index:
+      return self.current_event
+    else:
+      self.current_index = index
+      self.current_event = self.run.event(self.times[index])
+      return self.current_event
 
   def _get_datasource(self, image_file):
     from psana import DataSource

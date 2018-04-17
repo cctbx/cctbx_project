@@ -1,100 +1,38 @@
 from __future__ import absolute_import, division
+from dxtbx.format.FormatMultiImage import FormatMultiImage
+from dxtbx.imageset import ImageSet
+
+class ImageSetLazy(ImageSet):
+
+  def get_detector(self, index=None):
+    if index is None: index=0
+    detector = super(ImageSetLazy,self).get_detector(index)
+    if detector is None:
+      format_instance = self.get_format_class()._current_instance_
+      #format_instance = self.get_format_class()(self.paths()[self.indices()[index]])
+      detector = format_instance.get_detector(self.indices()[index])
+      self.set_detector(detector,index)
+    return detector
 
 
+  def get_beam(self, index=None):
+    if index is None: index=0
+    beam = super(ImageSetLazy,self).get_beam(index)
+    if beam is None:
+      format_instance = self.get_format_class()._current_instance_
+      #format_instance = self.get_format_class()(self.paths()[self.indices()[index]])
+      beam = format_instance.get_beam(self.indices()[index])
+      self.set_beam(beam,index)
+    return beam
 
-class Reader(object):
-
-  _format_class_ = None
-
-  def __init__(self, filenames, num_images = None, **kwargs):
-    self.kwargs = kwargs
-    self.format_class = Reader._format_class_
-    assert len(filenames) == 1
-    self._filename = filenames[0]
-    if num_images is None:
-      self._num_images = self.read_num_images()
-    else:
-      self._num_images = num_images
-
-  def nullify_format_instance(self):
-    self.format_class._current_instance_ = None
-    self.format_class._current_filename_ = None
-
-  def read(self, index):
-    format_instance = self.format_class.get_instance(self._filename, **self.kwargs)
-    return format_instance.get_raw_data(index)
-
-  def paths(self):
-    return [self._filename]
-
-  def read_num_images(self):
-    format_instance = self.format_class.get_instance(self._filename, **self.kwargs)
-    return format_instance.get_num_images()
-
-  def num_images(self):
-    return self._num_images
-
-  def __len__(self):
-    return self.num_images()
-
-  def copy(self, filenames, indices=None):
-    return Reader(filenames, indices)
-
-  def identifiers(self):
-    return ["%s-%d" % (self._filename, index) for index in range(len(self))]
-
-  def is_single_file_reader(self):
-    return True
-
-  def master_path(self):
-    return self._filename
+  def __getitem__(self, item):
+    self.get_detector(item)
+    self.get_beam(item)
+    return super(ImageSetLazy,self).__getitem__(item)
 
 
-class Masker(object):
+class FormatMultiImageLazy(FormatMultiImage):
 
-  _format_class_ = None
-
-  def __init__(self, filenames, num_images = None, **kwargs):
-    self.kwargs = kwargs
-    self.format_class = Masker._format_class_
-    assert len(filenames) == 1
-    self._filename = filenames[0]
-    if num_images is None:
-      self._num_images = self.read_num_images()
-    else:
-      self._num_images = num_images
-
-  def get(self, index, goniometer=None):
-    format_instance = self.format_class.get_instance(self._filename, **self.kwargs)
-    return format_instance.get_mask(index, goniometer)
-
-  def paths(self):
-    return [self._filename]
-
-  def read_num_images(self):
-    format_instance = self.format_class.get_instance(self._filename, **self.kwargs)
-    return format_instance.get_num_images()
-
-  def num_images(self):
-    return self._num_images
-
-  def has_dynamic_mask(self):
-    return self.format_class.has_dynamic_shadowing(**self.kwargs)
-
-  def __len__(self):
-    return self.num_images()
-
-  def copy(self, filenames):
-    return Masker(filenames)
-
-
-class FormatMultiImage(object):
-
-  def __init__(self, **kwargs):
-    pass
-
-  def get_num_images(self):
-    raise NotImplementedError
 
   def get_goniometer(self, index=None):
     return self._goniometer_instance
@@ -107,38 +45,6 @@ class FormatMultiImage(object):
 
   def get_scan(self, index=None):
     return self._scan_instance
-
-  def get_raw_data(self, index=None):
-    raise NotImplementedError
-
-  def get_mask(self, index=None, goniometer=None):
-    return None
-
-  def get_detectorbase(self, index=None):
-    raise NotImplementedError
-
-  def get_image_file(self, index=None):
-    raise NotImplementedError
-
-  @classmethod
-  def get_reader(Class):
-    '''
-    Return a reader class
-
-    '''
-    obj = Reader
-    obj._format_class_ = Class
-    return obj
-
-  @classmethod
-  def get_masker(Class):
-    '''
-    Return a reader class
-
-    '''
-    obj = Masker
-    obj._format_class_ = Class
-    return obj
 
   @classmethod
   def get_imageset(Class,
@@ -158,7 +64,6 @@ class FormatMultiImage(object):
 
     '''
     from dxtbx.imageset import ImageSetData
-    from dxtbx.imageset import ImageSet
     from dxtbx.imageset import ImageSweep
     from os.path import abspath
     from dials.array_family import flex
@@ -176,7 +81,7 @@ class FormatMultiImage(object):
       format_kwargs = {}
 
     # If we have no specific format class, we need indices for number of images
-    if Class == FormatMultiImage:
+    if Class == FormatMultiImageLazy:
       assert single_file_indices is not None
       assert min(single_file_indices) >= 0
       num_images = max(single_file_indices) + 1
@@ -236,7 +141,7 @@ class FormatMultiImage(object):
     if not is_sweep:
 
       # Create the imageset
-      iset = ImageSet(
+      iset = ImageSetLazy(
         ImageSetData(
           reader = reader,
           masker = masker,
@@ -246,28 +151,28 @@ class FormatMultiImage(object):
         indices=single_file_indices)
 
       # If any are None then read from format
-      if [beam, detector, goniometer, scan].count(None) != 0:
-
-        # Get list of models
-        beam = []
-        detector = []
-        goniometer = []
-        scan = []
-        for i in range(format_instance.get_num_images()):
-          beam.append(format_instance.get_beam(i))
-          detector.append(format_instance.get_detector(i))
-          goniometer.append(format_instance.get_goniometer(i))
-          scan.append(format_instance.get_scan(i))
-
-      if single_file_indices is None:
-        single_file_indices = list(range(format_instance.get_num_images()))
-
-      # Set the list of models
-      for i in range(len(single_file_indices)):
-        iset.set_beam(beam[single_file_indices[i]], i)
-        iset.set_detector(detector[single_file_indices[i]], i)
-        iset.set_goniometer(goniometer[single_file_indices[i]], i)
-        iset.set_scan(scan[single_file_indices[i]], i)
+#      if [beam, detector, goniometer, scan].count(None) != 0:
+#
+#        # Get list of models
+#        beam = []
+#        detector = []
+#        goniometer = []
+#        scan = []
+#        for i in range(format_instance.get_num_images()):
+#          beam.append(format_instance.get_beam(i))
+#          detector.append(format_instance.get_detector(i))
+#          goniometer.append(format_instance.get_goniometer(i))
+#          scan.append(format_instance.get_scan(i))
+#
+#      if single_file_indices is None:
+#        single_file_indices = list(range(format_instance.get_num_images()))
+#
+#      # Set the list of models
+#      for i in range(len(single_file_indices)):
+#        iset.set_beam(beam[single_file_indices[i]], i)
+#        iset.set_detector(detector[single_file_indices[i]], i)
+#        iset.set_goniometer(goniometer[single_file_indices[i]], i)
+#        iset.set_scan(scan[single_file_indices[i]], i)
 
     else:
 

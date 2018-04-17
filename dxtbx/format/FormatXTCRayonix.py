@@ -26,9 +26,8 @@ class FormatXTCRayonix(FormatXTC):
     FormatXTC.__init__(self, image_file, locator_scope = rayonix_locator_scope, **kwargs)
     self._ds = self._get_datasource(image_file)
     self._env = self._ds.env()
-    self.events_list = []
     self.populate_events()
-    self.n_images = len(self.events_list)
+    self.n_images = len(self.times)
 
   @staticmethod
   def understand(image_file):
