@@ -46,11 +46,12 @@ class ImageSetLazy(ImageSet):
     return scan
 
   def __getitem__(self, item):
-    # Sets the list for detector, beam etc before being accessed by functions in imageset.h
-    self.get_detector(item)
-    self.get_beam(item)
-    self.get_goniometer(item)
-    self.get_scan(item)
+    if not isinstance(item, slice):
+      # Sets the list for detector, beam etc before being accessed by functions in imageset.h
+      self.get_detector(item)
+      self.get_beam(item)
+      self.get_goniometer(item)
+      self.get_scan(item)
     return super(ImageSetLazy,self).__getitem__(item)
 
 class FormatMultiImageLazy(FormatMultiImage):
