@@ -67,8 +67,8 @@ def run(args):
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     n_strong = flex.int()
-    average_i_sigi_low = flex.double()
-    average_i_sigi_high = flex.double()
+    average_i_sigi = flex.double()
+    n_lattices = flex.int()
 
     for i, filename in enumerate(sorted(os.listdir(root))):
       split_fn = filename.split('_')
@@ -91,38 +91,43 @@ def run(args):
       two_theta_high.append(0)
 
       # Read indexing results if possible
-      experiments_name = base + "_refined_experiments.json"
-      indexed_name = base + "_indexed.pickle"
+      experiments_name = base + "_integrated_experiments.json"
+      indexed_name = base + "_integrated.pickle"
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
         print "Frame didn't index"
-        average_i_sigi_low.append(0)
-        average_i_sigi_high.append(0)
+        average_i_sigi.append(0)
+        n_lattices.append(0)
         continue
 
       experiments = ExperimentListFactory.from_json_file(experiments_name, check_format=False)
+      n_lattices.append(len(experiments))
       reflections = easy_pickle.load(indexed_name)
       reflections = reflections.select(reflections['intensity.sum.value'] > 0) # positive reflections only
-      assert len(experiments) == 1 and len(experiments.crystals()) == 1
-      crystal = experiments.crystals()[0]
-      uc = crystal.get_unit_cell()
-      d = uc.d(reflections['miller_index'])
+      best_avg_i_sigi = 0
+      for expt_id, experiment in enumerate(experiments):
+        crystal = experiment.crystal
+        uc = crystal.get_unit_cell()
+        refls = reflections.select(reflections['id'] == expt_id)
+        d = uc.d(reflections['miller_index'])
 
-      # Bin the reflections possibly present in this space group/cell so that we can report average I/sigma
-      # in the highest requested and lowest resolution bins
-      from cctbx.crystal import symmetry
-      cs = symmetry(unit_cell = uc, space_group_info=crystal.get_space_group().info())
-      mset = cs.build_miller_set(anomalous_flag=False, d_min=params.d_min)
-      binner = mset.setup_binner(n_bins=10)
-      for j, i_sigi in zip([0,-1], [average_i_sigi_low, average_i_sigi_high]):
-        d_max, d_min = binner.bin_d_range(binner.range_used()[j])
-        refls = reflections.select((d <= d_max) & (d > d_min))
+        # Bin the reflections possibly present in this space group/cell so that we can report average I/sigma
+        # in the highest requested bin
+        from cctbx.crystal import symmetry
+        cs = symmetry(unit_cell = uc, space_group_info=crystal.get_space_group().info())
+        mset = cs.build_miller_set(anomalous_flag=False, d_min=params.d_min)
+        binner = mset.setup_binner(n_bins=10)
+        d_max, d_min = binner.bin_d_range(binner.range_used()[-1]) # highest res
+        refls = refls.select((d <= d_max) & (d > d_min))
         n_refls = len(refls)
 
         avg_i_sigi = flex.mean(refls['intensity.sum.value'] /
                                flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else 0
-        i_sigi.append(avg_i_sigi)
+        if avg_i_sigi > best_avg_i_sigi:
+          best_avg_i_sigi = avg_i_sigi
+        print best_avg_i_sigi, d_max, d_min, len(refls)
+      average_i_sigi.append(best_avg_i_sigi)
 
-    all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high))
+    all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices))
 
   plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
     i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags, \
