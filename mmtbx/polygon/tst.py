@@ -1,28 +1,9 @@
 from __future__ import division
 import iotbx.phil
 from mmtbx import polygon
-from libtbx.test_utils import approx_equal
 import libtbx, os
 
 params1 = iotbx.phil.parse("""\
-polygon {
-  keys_to_show = *r_work *r_free *bond_rmsd *angle_rmsd *adp_mean_all
-  filter
-  {
-    key = *high_resolution
-    value_min = 2
-    value_max = 2.5
-  }
-  filter
-  {
-    key = *number_of_atoms
-    value_min = 0
-    value_max = 50000
-  }
-}
-""")
-
-params2 = iotbx.phil.parse("""\
 polygon {
   keys_to_show = *r_work *r_free *bond_rmsd *angle_rmsd *adp_mean_all
 }
@@ -49,20 +30,10 @@ def example_2():
 def example_3():
   # show selected characteristics, apply default selection
   # d_min comes from the structure that we are comparing against database
-  pr, unused_definitions = polygon.master_params.fetch(sources = [params2],
+  pr, unused_definitions = polygon.master_params.fetch(sources = [params1],
     track_unused_definitions = True)
   polygon.polygon(params = pr.extract(),
                   d_min  = 2.0)
-
-def test_all () :
-  pr, unused_definitions = polygon.master_params.fetch(sources = [params3],
-    track_unused_definitions = True)
-  polygon.polygon(params = pr.extract())
-  working_phil = polygon.master_params.fetch(source=pr)
-  percentiles = polygon.get_statistics_percentiles(d_min=1.5,
-    stats={ "clashscore" : 21, "r_work" : 0.174, "r_free" : 0.19 })
-  # XXX This will change when the database is updated
-  assert approx_equal(percentiles['clashscore'], 1.10791, 1.e-4)
 
 if (__name__ == "__main__"):
   file_name = libtbx.env.find_in_repositories(
@@ -77,5 +48,3 @@ if (__name__ == "__main__"):
     example_2()
     print "\nEXAMPLE 3:"
     example_3()
-    print "\nALL STATS:"
-    test_all()

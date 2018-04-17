@@ -55,7 +55,6 @@ for key_name in keys_to_show :
 key_params_str = " ".join(_selected)
 captions_str = " ".join([ re.sub(" ", "_", txt) for txt in key_captions ])
 
-# XXX phil choices can't have '-' or '+' in the word
 polygon_params_str = """\
   database_file_name = None
     .type = str
@@ -65,96 +64,20 @@ polygon_params_str = """\
     .short_caption = Statistics to display
     .caption = %s
     .style = bold hide_label
-  number_of_histogram_slots = None
+  number_of_histogram_slots = 10
     .type = int
     .help = Number of histogram slots for the final histogram to be used to \
-            draw the POLYGON's rays.  Not used in GUI.
+            draw the POLYGON's rays.
     .input_size = 64
     .style = noauto bold
-  max_reject_fraction = 0.1
-    .type = float
-    .help = Fraction of models allowed to be rejected as outliers.
-    .style = bold
-  max_models_for_default_filter = 1000
-    .type = int
-    .style = bold
-  filter
-    .multiple = True
-    .help = Selection keys.
-    .short_caption = Filtering options
-    .style = noauto
-  {
-      key = twinned number_of_atoms atom_types_and_count_str angle_rmsd \
-            pdb_header_year high_resolution planarity_max_deviation \
-            low_resolution number_of_reflections \
-            adp_mean_sidechain pdb_header_sigma_cutoff completeness_d_min_inf \
-            dihedral_max_deviation \
-            r_work_cutoffs pdb_header_r_free \
-            bond_rmsd non_bonded_min_distance adp_min_all r_free \
-            number_of_residues_with_altlocs pdb_code resname_classes \
-            unit_cell_volume chirality_max_deviation space_group \
-            anomalous_flag wilson_b pdb_header_tls unit_cell rama_favored \
-            adp_mean_solvent rama_allowed \
-            number_of_npd pdb_header_high_resolution occupancy_mean \
-            overall_scale_b_cart adp_max_all number_of_anisotropic \
-            pdb_header_matthews_coeff pdb_header_solvent_cont \
-            pdb_header_r_work solvent_content_via_mask clashscore \
-            rama_outliers adp_min_solvent adp_max_backbone \
-            adp_mean_backbone rotamer_outliers chirality_rmsd \
-            c_beta_deviations adp_min_backbone angle_max_deviation \
-            rmsd_adp_iso_or_adp_equiv_bonded completeness_6A_inf \
-            adp_min_sidechain dihedral_rmsd pdb_header_low_resolution \
-            completeness_in_range pdb_header_program_name bond_max_deviation \
-            occupancy_min r_work planarity_rmsd adp_mean_all n_refl_cutoffs \
-            r_free_cutoffs adp_max_solvent number_of_Fobs_outliers \
-            occupancy_max test_set_size adp_max_sidechain
-      .type = choice(multi=False)
-      .optional = True
-    value_min = None
-      .type = float
-      .short_caption = Minimum value
-    value_max = None
-      .type = float
-      .short_caption = Maximum value
-    target_value= None
-      .type = str
-      .short_caption = Target value
-  }
 """ % (key_params_str, captions_str)
 
-master_params = iotbx.phil.parse("""
+all_params_str = """
 polygon {
   %s
-}""" % polygon_params_str)
+}""" % polygon_params_str
 
-def select_database_dict_by_keys(select_keys, database_dict):
-  result = {}
-  for key in select_keys:
-    result.setdefault(key, database_dict[key])
-  return result
-
-def convert_to_numeric(values):
-  is_digit_selection = flex.bool()
-  for kv in values:
-    flag = True
-    try:
-      tmp = float(kv)
-    except Exception: flag = False
-    is_digit_selection.append(flag)
-  if(is_digit_selection.count(False) > 0):
-    raise RuntimeError("Non-numerical values.")
-  points = 0
-  for kv in values:
-    points += kv.count(".")
-  if(points == 0):
-    new_values = flex.int()
-    for kv in values:
-      new_values.append(int(kv))
-  else:
-    new_values = flex.double()
-    for kv in values:
-      new_values.append(float(kv))
-  return new_values
+master_params = iotbx.phil.parse(all_params_str)
 
 def select_dict(database_dict, selection):
   result = {}
@@ -162,71 +85,17 @@ def select_dict(database_dict, selection):
     result.setdefault(key, database_dict[key].select(selection))
   return result
 
-def order_by_value(database_dict, key, reverse = False):
-  values = database_dict[key]
-  new_values = convert_to_numeric(values = values)
-  selection = flex.sort_permutation(new_values, reverse = reverse)
-  return select_dict(database_dict = database_dict, selection = selection)
-
-def leave_all_available_entries(database_dict, keys):
+def filter_and_convert(database_dict, keys):
   selection = flex.bool(database_dict[keys[0]].size(), True)
-  for key in keys:
+  for key in keys+["high_resolution"]:
     values = database_dict[key]
-    selection &= values != "none"
-  return select_dict(database_dict = database_dict, selection = selection)
-
-def filter_database(database_dict, key, value_min = None, value_max = None,
-                    target_value = None):
-  values = database_dict[key]
-  if(target_value is not None):
-    assert [value_min,value_max].count(None) == 2
-    selection = flex.bool(values.size(), False)
-    for i, v in enumerate(values):
-      if(v.count(target_value)>0): selection[i] = True
-
-  else:
-    assert [value_min,value_max].count(None) < 2
-    if([value_min,value_max].count(None) == 0): assert value_min < value_max
-    new_values = convert_to_numeric(values = values)
-    selection = flex.bool(new_values.size(), True)
-    if(value_min is not None):
-      if(isinstance(new_values, flex.int)): value_min = int(value_min)
-      selection &= new_values > value_min
-    if(value_max is not None):
-      if(isinstance(new_values, flex.int)): value_max = int(value_max)
-      selection &= new_values < value_max
-  return select_dict(database_dict = database_dict, selection = selection)
-
-def filter_histogram_of_key_value(database_dict, key, max_reject_fraction,
-                                  edge_tolerance_small = 1.e-4, n_slots = 3):
-  values = database_dict[key]
-  new_values = convert_to_numeric(values = values)
-  #print flex.min(new_values), flex.max(new_values)
-  size = new_values.size()
-  #print size
-  if(size == 0): return
-  while True:
-    values = database_dict[key]
-    new_values = convert_to_numeric(values = values)
-    selection = flex.bool(new_values.size(), True)
-    histogram = flex.histogram(data = new_values, n_slots = n_slots)
-    l = histogram.data_min()
-    for i, s in enumerate(histogram.slots()):
-      r = histogram.data_min() + histogram.slot_width() * (i+1)
-      r = r+edge_tolerance_small
-      l = max(0, l-edge_tolerance_small)
-      #print "%8.4f %8.4f %d" % (l, r, s)
-      if(s < size * max_reject_fraction):
-         selection &= ~((new_values >= l) & (new_values <= r))
-      l = r
-    #print
-    leave, remove = selection.count(True), selection.count(False)
-    #print leave, remove
-    if(remove == 0): break
-    if(size - leave > int(size * max_reject_fraction)): break
-    database_dict = select_dict(database_dict = database_dict,
-                                selection     = selection)
-  return database_dict
+    selection &= (values != "none")
+  tmp = select_dict(database_dict = database_dict, selection = selection)
+  result = {}
+  for key in keys+["high_resolution"]:
+    vals = flex.double([float(v) for v in tmp[key]])
+    result.setdefault(key, vals)
+  return result
 
 def show_histogram(data, n_slots, smooth = True):
   triplets = []
@@ -254,40 +123,34 @@ def convert_to_histogram(data, n_slots) :
   histogram = flex.histogram(data=data, n_slots=n_slots)
   return histogram
 
-def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
-                         key = "high_resolution"):
-  database_dict = order_by_value(database_dict = database_dict, key = key)
-  values = flex.double()
-  for v in database_dict[key]: values.append(float(v))
-  diff = flex.abs(values-d_min)
-  min_val = flex.min(diff)
-  i_min_sel = (diff == min_val).iselection()
-  assert i_min_sel.size() > 0
-  i_min = i_min_sel[i_min_sel.size()//2]
-  i_l = max(0, i_min-max_models_for_default_filter//2)
-  i_r = min(values.size()-1, i_min+max_models_for_default_filter//2)
+def apply_default_filter(database_dict, d_min, key = "high_resolution"):
+  d_mins = database_dict["high_resolution"]
+  offset = 0.1
+  if(d_min>=3 and d_min<4): offset = 0.2
+  if(d_min>=4 and d_min<6): offset = 0.5
+  if(d_min>=6):             offset = 1.0
+  sel  = (d_mins>(d_min-offset))
+  sel &= (d_mins<(d_min+offset))
+  result = select_dict(database_dict = database_dict, selection = sel)
+  # Totally ad-hoc manipulation for histograms to make sense and format nicely.
+  # Perhaps needs to be revised at some point.
+  sel = flex.bool(sel.count(True), True)
+  for key in result.keys():
+    if(key in ["high_resolution"]): continue
+    vals = result[key]
+    if(key == "bond_rmsd"):
+      sel &= vals < 0.05
+    elif(key == "angle_rmsd"):
+      sel &= vals < 5.
+    else:
+      mean = flex.mean(vals)
+      sel &= vals > mean/2
+      sel &= vals < mean*2
+      if(key == "r_work" or key == "r_free"):
+        sel &= vals < 0.45
+  result = select_dict(database_dict=result, selection=sel)
   #
-  print "apply_default_filter:"
-  print "  found data points dmin->higher =", abs(i_l-i_min)
-  print "  found data points dmin->lower  =", abs(i_r-i_min)
-  imm = min(abs(i_l-i_min), abs(i_r-i_min))
-  i_l, i_r = i_min-imm, i_min+imm
-  if (imm == 0) :
-    if (i_l == 0) :
-      i_r = 100
-      print "  used data points dmin->higher =", 0
-      print "  used data points dmin->lower  =", i_r
-    elif (i_l == i_r == len(values) - 1) :
-      i_l -= 100
-      print "  used data points dmin->higher =", i_l
-      print "  used data points dmin->lower  =", 0
-  else :
-    print "  used data points dmin->higher =", imm
-    print "  used data points dmin->lower  =", imm
-  #
-  selection = flex.bool(values.size(), False)
-  for i in xrange(i_l,i_r): selection[i] = True
-  return select_dict(database_dict = database_dict, selection = selection)
+  return result
 
 def load_db (file_name=None) :
   if(file_name is None):
@@ -301,43 +164,24 @@ def load_db (file_name=None) :
 def polygon(params = master_params.extract(), d_min = None,
             show_histograms = True, extract_gui_data=False):
   database_dict = load_db(file_name=params.polygon.database_file_name)
-  result = leave_all_available_entries(
+  result = filter_and_convert(
     database_dict = database_dict,
     keys          = params.polygon.keys_to_show)
-  filters = params.polygon.filter
-  if(d_min is not None and
-    ((len(filters) == 1 and filters[0].key is None) or len(filters) == 0)) :
-    result = apply_default_filter(database_dict = result, d_min = d_min,
-      max_models_for_default_filter =
-        params.polygon.max_models_for_default_filter)
-  else:
-    for filter in filters:
-      result = filter_database(
-        database_dict = result,
-        key           = filter.key,
-        value_min     = filter.value_min,
-        value_max     = filter.value_max,
-        target_value  = filter.target_value)
-  result = select_database_dict_by_keys(
-    select_keys   = params.polygon.keys_to_show,
-    database_dict = result)
-  for key_to_show in params.polygon.keys_to_show:
-    result = filter_histogram_of_key_value(
-      database_dict       = result,
-      key                 = key_to_show,
-      max_reject_fraction = params.polygon.max_reject_fraction)
+  if(d_min is not None):
+    result = apply_default_filter(database_dict = result, d_min = d_min)
   histograms = []
   if extract_gui_data :
     for selected_key in params.polygon.keys_to_show:
-      data = convert_to_numeric(values=result[selected_key])
+      data = result[selected_key]
       histograms.append([selected_key, data]) # XXX: not really histograms!
   elif(show_histograms):
     for selected_key in params.polygon.keys_to_show:
-      data = convert_to_numeric(values=result[selected_key])
+      data = result[selected_key]
       print "%s data_points=%d" % (selected_key, data.size()), \
         "min/max/mean= %12.4f %12.4f %12.4f"%data.min_max_mean().as_tuple()
       n_slots = params.polygon.number_of_histogram_slots
       if(n_slots is None):
+        assert 0
         n_slots = data.size()//50
         if(n_slots < 5):
           for scale in range(25,10,-1):
@@ -348,68 +192,3 @@ def polygon(params = master_params.extract(), d_min = None,
       h = show_histogram(data = data, n_slots = n_slots)
       histograms.append([selected_key,h])
   return histograms
-
-def get_statistics_percentiles (d_min, stats) :
-  """
-  For a given set of statistics, determine their percentile ranking compared
-  to other crystal structures at similar resolution.
-  """
-  if (d_min is None) :
-    return dict([ (s, None) for s in stats.keys()  ])
-  try :
-    db = load_db()
-  except Exception, e :
-    return {}
-  d_min_mvd = flex.double([ float(x) for x in db['high_resolution'] ])
-  sel_perm = flex.sort_permutation(d_min_mvd)
-  d_min_mvd = d_min_mvd.select(sel_perm)
-  def find_value_in_list (values, value) :
-    i = 0
-    j = len(values) - 1
-    while (i != j) :
-      k = i + (j - i) // 2
-      if (value <= values[k]) :
-        j = k
-      else :
-        i = k + 1
-    return i
-  index = find_value_in_list(d_min_mvd, d_min)
-  sel_around = flex.bool(d_min_mvd.size(), False)
-  index_tmp = index
-  while (index_tmp > 0) :
-    d_min_other = d_min_mvd[index_tmp]
-    if (d_min_other < d_min - 0.1) :
-      break
-    sel_around[index_tmp] = True
-    index_tmp -= 1
-  index_tmp = index
-  while (index_tmp < d_min_mvd.size()) :
-    d_min_other = d_min_mvd[index_tmp]
-    if (d_min_other > d_min + 0.1) :
-      break
-    sel_around[index_tmp] = True
-    index_tmp += 1
-  #print "%d structures around %g" % (sel_around.count(True), d_min)
-  percentiles = {}
-  for stat_name in stats.keys() :
-    stat = stats[stat_name]
-    if (not stat_name in db) :
-      percentiles[stat_name] = None
-      continue
-    values = db[stat_name].select(sel_perm).select(sel_around)
-    fvalues = flex.double()
-    for value in values :
-      try :
-        fvalues.append(float(value))
-      except ValueError :
-        pass
-    assert fvalues.size() != 0
-    fvalues_sorted = fvalues.select(flex.sort_permutation(fvalues))
-    stat_index = find_value_in_list(fvalues_sorted, stat)
-    # FIXME I think for some of these statistics we need to reverse this -
-    # i.e. if higher statistics are better
-    stat_perc = 100 * (1 - (stat_index / fvalues.size()))
-    percentiles[stat_name] = stat_perc
-    #print stat_name, stat_index, fvalues.size(), stat_perc
-    #flex.histogram(fvalues, n_slots=10).show(prefix="  ")
-  return percentiles
