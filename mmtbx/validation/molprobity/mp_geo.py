@@ -90,15 +90,15 @@ def run(args):
   use_cdl = work_params.mp_geo.cdl
   log = StringIO()
   basename = os.path.basename(file_name)
-  if do_bonds_and_angles:
-    out = file(out_file, 'w')
-  elif do_kinemage:
-    out = file(out_file, 'a')
-  elif do_rna_backbone:
-    if out_file == None:
-      import sys
-      out = sys.stdout
-    else:
+  if out_file == None:
+    import sys
+    out = sys.stdout
+  else:
+    if do_bonds_and_angles:
+      out = file(out_file, 'w')
+    elif do_kinemage:
+      out = file(out_file, 'a')
+    elif do_rna_backbone:
       out = file(out_file, 'w')
   restraints_loading_flags = {}
   restraints_loading_flags["use_neutron_distances"]=False
