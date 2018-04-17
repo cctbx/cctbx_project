@@ -651,7 +651,7 @@ Installation of Python packages may fail.
       print "  Running with pip:", pip_cmd
       if int(pip.__version__.split('.')[0]) > 9:
         import pip._internal
-        assert pip._internal.main(pip_cmd) == 0, 'pip download failed'
+        assert pip._internal.main(pip_cmd + ['--no-cache-dir']) == 0, 'pip download failed'
       else:
         assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
