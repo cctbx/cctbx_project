@@ -27,6 +27,7 @@ class FormatXTCJungfrau(FormatXTC):
     self._env = self._ds.env()
     self.populate_events()
     self.n_images = len(self.times)
+    self._cached_detector = {}
 
   @staticmethod
   def understand(image_file):
@@ -43,7 +44,7 @@ class FormatXTCJungfrau(FormatXTC):
     import psana
     from scitbx.array_family import flex
     det = psana.Detector(self._src, self._env)
-    d = self.get_detector()
+    d = self.get_detector(index)
     evt = self._get_event(index)
     data = det.raw(evt)
     data = data.astype(np.float64)
@@ -56,8 +57,6 @@ class FormatXTCJungfrau(FormatXTC):
         asic_data = data[quad_count][sensor_id*sdim:(sensor_id+1)*sdim,asic_in_sensor_id*fdim:(asic_in_sensor_id+1)*fdim] # 8 sensors per quad
         self._raw_data.append(flex.double(np.array(asic_data)))
     assert len(d) == len(self._raw_data)
-    #from IPython import embed; embed();
-    #import pdb; pdb.set_trace()
     return tuple(self._raw_data)
 
   def get_num_images(self):
@@ -84,6 +83,9 @@ class FormatXTCJungfrau(FormatXTC):
       return None
 
   def _detector(self, index=None):
+    run = self.get_run_from_index(index)
+    if run.run() in self._cached_detector:
+      return self._cached_detector[run.run()]
     import psana
     from dxtbx.model import Detector
     from scitbx.matrix import col
@@ -142,6 +144,7 @@ class FormatXTCJungfrau(FormatXTC):
         p.set_image_size((dim_fast//4,dim_slow//2))
         p.set_trusted_range((-1, 2e6))
         p.set_name(val)
+    self._cached_detector[run.run()] = d
     return d
 
 if __name__ == '__main__':
