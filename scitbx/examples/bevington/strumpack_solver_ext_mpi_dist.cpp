@@ -75,7 +75,6 @@ std::cout <<"CPP Here 1b" << std::endl;
         const intType* c_ptr = A_col_idx_local.begin();
         const numType* val_ptr = A_values_local.begin();
 
-std::cout << "CPP -2" << std::endl;
         StrumpackSparseSolverMPIDist <numType,intType> spss(newcomm,true);
 
         spss.set_distributed_csr_matrix(n_rows_local, r_ptr, c_ptr, val_ptr, len_rows_local.begin());

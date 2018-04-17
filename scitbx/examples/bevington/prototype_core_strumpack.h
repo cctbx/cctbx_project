@@ -63,7 +63,6 @@ class linear_ls_strumpack_wrapper
     /// Number of unknown parameters
     long n_parameters() const { return right_hand_side_.size(); }
 
-
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
       solved_ = false;
