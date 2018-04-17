@@ -23,7 +23,6 @@ from libtbx.utils import flat_list
 from libtbx.utils import detect_binary_file
 from libtbx import smart_open
 import iotbx
-from iotbx.pdb.secondary_structure import annotation
 
 import sys
 
