@@ -649,7 +649,11 @@ Installation of Python packages may fail.
       if extra_options:
         pip_cmd.extend(extra_options)
       print "  Running with pip:", pip_cmd
-      assert pip.main(pip_cmd) == 0, 'pip download failed'
+      if int(pip.__version__.split('.')[0]) > 9:
+        import pip._internal
+        assert pip._internal.main(pip_cmd) == 0, 'pip download failed'
+      else:
+        assert pip.main(pip_cmd) == 0, 'pip download failed'
       return
     if extra_options:
       extra_options = ' '.join(extra_options)
