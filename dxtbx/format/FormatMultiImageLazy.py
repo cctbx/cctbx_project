@@ -25,14 +25,35 @@ class ImageSetLazy(ImageSet):
       self.set_beam(beam,index)
     return beam
 
+  def get_goniometer(self, index=None):
+    if index is None: index=0
+    goniometer = super(ImageSetLazy,self).get_goniometer(index)
+    if goniometer is None:
+      format_instance = self.get_format_class()._current_instance_
+      #format_instance = self.get_format_class()(self.paths()[self.indices()[index]])
+      goniometer = format_instance.get_goniometer(self.indices()[index])
+      self.set_goniometer(goniometer,index)
+    return goniometer
+
+  def get_scan(self, index=None):
+    if index is None: index=0
+    scan = super(ImageSetLazy,self).get_scan(index)
+    if scan is None:
+      format_instance = self.get_format_class()._current_instance_
+      #format_instance = self.get_format_class()(self.paths()[self.indices()[index]])
+      scan = format_instance.get_scan(self.indices()[index])
+      self.set_scan(scan,index)
+    return scan
+
   def __getitem__(self, item):
+    # Sets the list for detector, beam etc before being accessed by functions in imageset.h
     self.get_detector(item)
     self.get_beam(item)
+    self.get_goniometer(item)
+    self.get_scan(item)
     return super(ImageSetLazy,self).__getitem__(item)
 
-
 class FormatMultiImageLazy(FormatMultiImage):
-
 
   def get_goniometer(self, index=None):
     return self._goniometer_instance
@@ -202,6 +223,7 @@ class FormatMultiImageLazy(FormatMultiImage):
       if scan is None:
         scan = format_instance.get_scan()
         if scan is not None:
+          # TODO change this to lazy read of models
           for f in filenames[1:]:
             format_instance = Class(f, **format_kwargs)
             scan += format_instance.get_scan()
