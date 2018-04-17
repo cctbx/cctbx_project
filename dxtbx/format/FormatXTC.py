@@ -99,15 +99,26 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
       return None
 
   def populate_events(self):
-    self.run = self._ds.runs().next()
-    self.times = self.run.times()
+    self.times = []
+    self.run_mapping = {}
+    for run in self._ds.runs():
+      times = run.times()[0:100]
+      self.run_mapping[run.run()] = len(self.times), len(self.times)+len(times),run
+      self.times.extend(times)
+
+  def get_run_from_index(self, index=None):
+    if index is None:index=0
+    for run_number in self.run_mapping:
+      start,stop,run = self.run_mapping[run_number]
+      if index >= start and index < stop: return run
+    raise IndexError('Index is not within bounds')
 
   def _get_event(self,index):
     if index == self.current_index:
       return self.current_event
     else:
       self.current_index = index
-      self.current_event = self.run.event(self.times[index])
+      self.current_event = self.get_run_from_index(index).event(self.times[index])
       return self.current_event
 
   def _get_datasource(self, image_file):
