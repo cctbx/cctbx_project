@@ -1396,8 +1396,8 @@ class Builder(object):
     if reference_repository_path is None:
       if os.name == 'posix' and 'diamond.ac.uk' in pysocket.gethostname():
         reference_repository_path = '/dls/science/groups/scisoft/DIALS/repositories/git-reference'
-    if reference_repository_path is not None:
-      reference_repository_path = os.path.join(reference_repository_path, module)
+    if reference_repository_path:
+      reference_repository_path = os.path.expanduser(os.path.join(reference_repository_path, module))
     class _indirection(object):
       def run(self):
         Toolbox().git(module, parameters, destination=destination,
@@ -2420,7 +2420,7 @@ def run(root=None):
   if options.builder not in builders:
     raise ValueError("Unknown builder: %s"%options.builder)
 
-  auth = { 'git_ssh': options.git_ssh }
+  auth = { 'git_ssh': options.git_ssh, 'git_reference': options.git_reference }
   if options.cciuser:
     auth['cciuser'] = options.cciuser
   if options.sfuser:
