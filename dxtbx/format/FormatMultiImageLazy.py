@@ -46,7 +46,9 @@ class ImageSetLazy(ImageSet):
     return scan
 
   def __getitem__(self, item):
-    if not isinstance(item, slice):
+    if isinstance(item, slice):
+      return ImageSetLazy(self.data(), indices = self.indices()[item])
+    else:
       # Sets the list for detector, beam etc before being accessed by functions in imageset.h
       self.get_detector(item)
       self.get_beam(item)
