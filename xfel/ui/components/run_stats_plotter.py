@@ -92,8 +92,8 @@ def get_run_stats(timestamps,
                    two_theta_low,
                    two_theta_high,
                    n_strong,
-                   isigi_low,
-                   isigi_high,
+                   isigi,
+                   n_lattices,
                    tuple_of_timestamp_boundaries,
                    lengths,
                    run_numbers,
@@ -101,46 +101,25 @@ def get_run_stats(timestamps,
                    n_strong_cutoff=40,
                    i_sigi_cutoff=1,
                    ):
-  # rely on sorted timestamps
-  n_lattices = flex.int()
-  unique_timestamps = flex.double()
-  mapping = flex.size_t()
-  shot_tt_high = flex.double()
-  shot_tt_low = flex.double()
-  for i in xrange(len(timestamps)):
-    uts_idx = flex.first_index(unique_timestamps, timestamps[i])
-    if uts_idx is None:
-      unique_timestamps.append(timestamps[i])
-      uts_idx = len(unique_timestamps) - 1
-      n_lattices.append(0)
-      shot_tt_low.append(two_theta_low[i])
-      shot_tt_high.append(two_theta_high[i])
-    if isigi_low[i] > 0:
-      n_lattices[uts_idx] += 1
-    mapping.append(uts_idx)
-  multiples = flex.double()
-  for i in xrange(len(timestamps)):
-    multiples.append(n_lattices[mapping[i]])
-
   print ""
-  print "%d shots" % len(unique_timestamps)
+  print "%d shots" % len(timestamps)
   print "%d first lattices" % (n_lattices >= 1).count(True)
   print "%d multiple lattices" % (n_lattices >= 2).count(True)
   print "%d total lattices" % (flex.sum(n_lattices))
-  iterator = xrange(len(isigi_low))
+  iterator = xrange(len(isigi))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
   # set the numerator value to 0 whenever either the numerator or denominator is -1
-  invalid = (shot_tt_low <= 0) or (shot_tt_high < 0) # <= to prevent /0
-  numerator = shot_tt_high.set_selected(invalid, 0)
-  denominator = shot_tt_low.set_selected(shot_tt_low == 0, 1) # prevent /0
+  invalid = (two_theta_low <= 0) or (two_theta_high < 0) # <= to prevent /0
+  numerator = two_theta_high.set_selected(invalid, 0)
+  denominator = two_theta_low.set_selected(two_theta_low == 0, 1) # prevent /0
   drop_ratios = numerator/denominator
   drop_hits = drop_ratios >= ratio_cutoff
   xtal_hits = n_strong >= n_strong_cutoff
-  half_idx_rate_window = min(50, max(int(len(unique_timestamps)//20), 1))
+  half_idx_rate_window = min(50, max(int(len(timestamps)//20), 1))
   half_hq_rate_window = 500
-  low_sel = isigi_low > 0
-  high_sel = isigi_high > i_sigi_cutoff
+  indexed_sel = n_lattices > 0
+  hq_sel = isigi > i_sigi_cutoff
   # indexing and droplet hit rate in a sliding window
   idx_rate = flex.double()
   multiples_rate = flex.double()
@@ -148,26 +127,24 @@ def get_run_stats(timestamps,
   drop_hit_rate = flex.double()
   for i in iterator:
     idx_min = max(0, i - half_idx_rate_window)
-    idx_max = min(i + half_idx_rate_window, len(isigi_low))
-    multiples_local = multiples[idx_min:idx_max]
-    mapping_local = mapping[idx_min:idx_max]
-    n_lattices_local = n_lattices.select(mapping_local)
+    idx_max = min(i + half_idx_rate_window, len(isigi))
+    n_lattices_local = n_lattices[idx_min:idx_max]
     shots_this_span = len(n_lattices_local)
-    first_lattices_local = multiples_local >= 1
+    first_lattices_local = n_lattices_local >= 1
     idx_local_rate = first_lattices_local.count(True)/shots_this_span
     idx_rate.append(idx_local_rate)
-    multiples_sel = multiples_local >= 2
+    multiples_sel = n_lattices_local >= 2
     multiples_local_rate = multiples_sel.count(True)/shots_this_span
     multiples_rate.append(multiples_local_rate)
-    drop_sel = drop_hits.select(mapping_local)
+    drop_sel = drop_hits[idx_min:idx_max]
     drop_local_rate = drop_sel.count(True)/shots_this_span
     drop_hit_rate.append(drop_local_rate)
     # different sliding window for "high quality" xtals
     hq_min = max(0, i - half_hq_rate_window)
-    hq_max = min(i + half_hq_rate_window, len(isigi_low))
-    multiples_local_hq = multiples[hq_min:hq_max]
-    first_lattices_local_hq = multiples_local_hq >= 1
-    hq_high_sel = high_sel[hq_min:hq_max].select(first_lattices_local_hq)
+    hq_max = min(i + half_hq_rate_window, len(isigi))
+    n_lattices_local_hq = n_lattices[hq_min:hq_max]
+    first_lattices_local_hq = n_lattices_local_hq >= 1
+    hq_high_sel = hq_sel[hq_min:hq_max].select(first_lattices_local_hq)
     n_first_lattices_local_hq = first_lattices_local_hq.count(True)
     if n_first_lattices_local_hq > 0:
       hq_rate.append(hq_high_sel.count(True)/n_first_lattices_local_hq)
@@ -182,10 +159,9 @@ def get_run_stats(timestamps,
           idx_rate,
           multiples_rate,
           hq_rate,
-          low_sel,
-          high_sel,
-          isigi_low,
-          isigi_high,
+          indexed_sel,
+          hq_sel,
+          isigi,
           half_idx_rate_window*2,
           lengths,
           tuple_of_timestamp_boundaries,
@@ -212,7 +188,7 @@ def plot_run_stats(stats,
     spot_ratio = plot_ratio*2
     text_ratio = plot_ratio*3
   t, drop_ratios, drop_hits, drop_hit_rate, n_strong, xtal_hits, \
-  idx_rate, multiples_rate, hq_rate, low_sel, high_sel, isigi_low, isigi_high, \
+  idx_rate, multiples_rate, hq_rate, indexed_sel, hq_sel, isigi, \
   window, lengths, boundaries, run_numbers = stats
   if len(t) == 0:
     return None
@@ -230,8 +206,8 @@ def plot_run_stats(stats,
     axset = (ax1, ax2, ax3, ax4)
   for a in axset:
     a.tick_params(axis='x', which='both', bottom='off', top='off')
-  ax1.scatter(t.select(~low_sel), n_strong.select(~low_sel), edgecolors="none", color ='#d9d9d9', s=spot_ratio)
-  ax1.scatter(t.select(low_sel), n_strong.select(low_sel), edgecolors="none", color='blue', s=spot_ratio)
+  ax1.scatter(t.select(~indexed_sel), n_strong.select(~indexed_sel), edgecolors="none", color ='#d9d9d9', s=spot_ratio)
+  ax1.scatter(t.select(indexed_sel), n_strong.select(indexed_sel), edgecolors="none", color='blue', s=spot_ratio)
   ax1.set_ylim(ymin=0)
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: indexed\ngray: did not index", fontsize=text_ratio)
@@ -243,9 +219,8 @@ def plot_run_stats(stats,
   ax2.axis('tight')
   ax2.set_ylabel("blue:% indexed\npink:% multiples", fontsize=text_ratio)
   ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
-  #ax3.scatter(t, isigi_low, edgecolors="none", color='red', s=spot_ratio)
-  gtz = isigi_high > 0
-  ax3.scatter(t.select(gtz), isigi_high.select(gtz), edgecolors="none", color='orange', s=spot_ratio)
+  gtz = isigi > 0
+  ax3.scatter(t.select(gtz), isigi.select(gtz), edgecolors="none", color='orange', s=spot_ratio)
   ax3.set_ylim(ymin=0)
   ax3_twin = ax3.twinx()
   ax3_twin.plot(t, hq_rate*100, color='orange')
@@ -280,10 +255,10 @@ def plot_run_stats(stats,
     n_hits = slice_hits.count(True)
     slice_drops = drop_hits[start:end+1]
     n_drops = slice_drops.count(True)
-    slice_low_sel = low_sel[start:end+1]
-    slice_high_sel = high_sel[start:end+1]
-    n_idx_low = slice_low_sel.count(True)
-    n_idx_high = slice_high_sel.count(True)
+    slice_indexed_sel = indexed_sel[start:end+1]
+    slice_hq_sel = hq_sel[start:end+1]
+    n_idx_low = slice_indexed_sel.count(True)
+    n_idx_high = slice_hq_sel.count(True)
     tags = run_tags[idx]
     status = run_statuses[idx]
     if status == "DONE":
@@ -350,8 +325,8 @@ def plot_multirun_stats(runs,
   two_theta_low_set = flex.double()
   two_theta_high_set = flex.double()
   nset = flex.int()
-  I_sig_I_low_set = flex.double()
-  I_sig_I_high_set = flex.double()
+  I_sig_I_set = flex.double()
+  n_lattices = flex.int()
   boundaries = []
   lengths = []
   runs_with_data = []
@@ -369,8 +344,8 @@ def plot_multirun_stats(runs,
       two_theta_low_set.extend(r[1])
       two_theta_high_set.extend(r[2])
       nset.extend(r[3])
-      I_sig_I_low_set.extend(r[4])
-      I_sig_I_high_set.extend(r[5])
+      I_sig_I_set.extend(r[4])
+      n_lattices.extend(r[5])
       boundaries.append(tslice[0])
       boundaries.append(tslice[-1])
       lengths.append(len(tslice))
@@ -381,8 +356,8 @@ def plot_multirun_stats(runs,
                               two_theta_low_set,
                               two_theta_high_set,
                               nset,
-                              I_sig_I_low_set,
-                              I_sig_I_high_set,
+                              I_sig_I_set,
+                              n_lattices,
                               tuple(boundaries),
                               tuple(lengths),
                               runs_with_data,
@@ -403,4 +378,3 @@ def plot_multirun_stats(runs,
     png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
       interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png
-

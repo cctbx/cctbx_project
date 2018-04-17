@@ -22,7 +22,7 @@ def run(args):
     except Exception, e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
-  print "Printing results for trial", params.trial, "using a hit cutoff of", params.hit_cutoff, "reflections"
+  print "Printing results for trial", params.trial, "using a hit cutoff of", params.n_strong_cutoff, "reflections"
   print
   print " Run   N Hits   (%) N Indexed   (%) N High qual   (%)  %HQR   N Frames"
 
@@ -51,14 +51,14 @@ def run(args):
 
   for run_no, rungroup_id in zip(runs, rungroups):
     try:
-      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
+      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
     except Exception, e:
       print "Couldn't get run", run_no
       continue
-    n_hit = (n_strong >= params.hit_cutoff).count(True)
-    n_indexed = ((average_i_sigi_low > 0) & (n_strong >= params.hit_cutoff)).count(True)
+    n_hit = (n_strong >= params.n_strong_cutoff).count(True)
+    n_indexed = (n_lattices > 0).count(True)
     n_total = len(timestamps)
-    n_high_quality = ((average_i_sigi_high > 0) & (n_strong >= params.hit_cutoff)).count(True)
+    n_high_quality = ((average_i_sigi > 0) & (n_strong >= params.n_strong_cutoff)).count(True)
     try:
       print "% 4d  % 7d % 5.1f   % 7d % 5.1f     % 7d % 5.1f % 5.1f    % 7d " % (run_no, n_hit, 100*n_hit/n_total, n_indexed, 100*n_indexed/n_total, n_high_quality, 100*n_high_quality/n_total, 100*n_high_quality/n_indexed, n_total)
     except ZeroDivisionError:

@@ -116,7 +116,6 @@ class HitrateStats(object):
     else:
       cells = self.app.get_trial_cells(self.trial.id, self.rungroup.id, self.run.id)
 
-    low_res_bin_ids = []
     high_res_bin_ids = []
     for cell in cells:
       bins = cell.bins
@@ -130,21 +129,18 @@ class HitrateStats(object):
         if len(qualified_bin_indices) == 0: continue
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))
-      low_res_bin_ids.append(str(bins[d_mins.index(max(d_mins))].id))
-    assert len(low_res_bin_ids) == len(high_res_bin_ids)
 
-    average_i_sigi_low = flex.double()
-    average_i_sigi_high = flex.double()
+    average_i_sigi = flex.double()
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     tag = self.app.params.experiment_tag
     timestamps = flex.double()
-    xtal_ids = flex.double()
     n_strong = flex.int()
-    if len(low_res_bin_ids) > 0:
+    n_lattices = flex.int()
+    if len(high_res_bin_ids) > 0:
 
-      # Get the high and low res avg_i_sigi in one query. Means there will be 2x timestamps retrieved, where each is found twice
-      query = """SELECT bin.id, crystal.id, event.timestamp, event.n_strong, cb.avg_i_sigi, event.two_theta_low, event.two_theta_high
+      # Get the stats in one query.
+      query = """SELECT event.timestamp, event.n_strong, MAX(cb.avg_i_sigi), event.two_theta_low, event.two_theta_high, COUNT(crystal.id)
                  FROM `%s_event` event
                  JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                  JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -155,41 +151,24 @@ class HitrateStats(object):
                  JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
                  WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
                        cb.bin_id IN (%s)
+                 GROUP BY event.id
               """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
-                    ", ".join(low_res_bin_ids + high_res_bin_ids))
+                    ", ".join(high_res_bin_ids))
       cursor = self.app.execute_query(query)
       sample = -1
       for row in cursor.fetchall():
-        b_id, xtal_id, ts, n_s, avg_i_sigi, tt_low, tt_high = row
+        ts, n_s, avg_i_sigi, tt_low, tt_high, n_xtal = row
         rts = reverse_timestamp(ts)
         rts = rts[0] + (rts[1]/1000)
-        if xtal_id not in xtal_ids:
-          # First time through, figure out which bin is reported (high or low), add avg_i_sigi to that set of results
-          sample += 1
-          if sample % self.sampling != 0:
-            continue
-          timestamps.append(rts)
-          xtal_ids.append(xtal_id)
-          n_strong.append(n_s)
-          two_theta_low.append(tt_low or -1)
-          two_theta_high.append(tt_high or -1)
-          if str(b_id) in low_res_bin_ids:
-            average_i_sigi_low.append(avg_i_sigi or 1e-6)
-            average_i_sigi_high.append(0)
-          elif str(b_id) in high_res_bin_ids:
-            average_i_sigi_low.append(0)
-            average_i_sigi_high.append(avg_i_sigi or 0)
-          else:
-            assert False
-        else:
-          # Second time through, already have added to timestamps and n_strong, so fill in missing avg_i_sigi
-          index = flex.first_index(xtal_ids, xtal_id)
-          if str(b_id) in low_res_bin_ids:
-            average_i_sigi_low[index] = avg_i_sigi
-          elif str(b_id) in high_res_bin_ids:
-              average_i_sigi_high[index] = avg_i_sigi or 0
-          else:
-            assert False
+        sample += 1
+        if sample % self.sampling != 0:
+          continue
+        timestamps.append(rts)
+        n_strong.append(n_s)
+        two_theta_low.append(tt_low or -1)
+        two_theta_high.append(tt_high or -1)
+        average_i_sigi.append(avg_i_sigi or 0)
+        n_lattices.append(n_xtal or 0)
 
     # This left join query finds the events with no imageset, meaning they failed to index
     query = """SELECT event.timestamp, event.n_strong, event.two_theta_low, event.two_theta_high
@@ -205,22 +184,22 @@ class HitrateStats(object):
       rts = reverse_timestamp(ts)
       timestamps.append(rts[0] + (rts[1]/1000))
       n_strong.append(n_s)
-      average_i_sigi_low.append(0)
-      average_i_sigi_high.append(0)
       two_theta_low.append(tt_low or -1)
       two_theta_high.append(tt_high or -1)
+      average_i_sigi.append(0)
+      n_lattices.append(0)
 
     order = flex.sort_permutation(timestamps)
     timestamps = timestamps.select(order)
     n_strong = n_strong.select(order)
-    average_i_sigi_low = average_i_sigi_low.select(order)
-    average_i_sigi_high = average_i_sigi_high.select(order)
     two_theta_low = two_theta_low.select(order)
     two_theta_high = two_theta_high.select(order)
+    average_i_sigi = average_i_sigi.select(order)
+    n_lattices = n_lattices.select(order)
 
     t2 = time.time()
-    # print "HitrateStats took %s" % duration(t1, t2)
-    return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi_low, average_i_sigi_high
+    print "HitrateStats took %s" % duration(t1, t2)
+    return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices
 
 class SpotfinderStats(object):
   def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):
