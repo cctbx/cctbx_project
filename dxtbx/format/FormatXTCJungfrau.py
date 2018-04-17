@@ -28,6 +28,7 @@ class FormatXTCJungfrau(FormatXTC):
     self.populate_events()
     self.n_images = len(self.times)
     self._cached_detector = {}
+    self._cached_corrections = {}
 
   @staticmethod
   def understand(image_file):
@@ -46,7 +47,12 @@ class FormatXTCJungfrau(FormatXTC):
     det = psana.Detector(self._src, self._env)
     d = self.get_detector(index)
     evt = self._get_event(index)
-    data = det.raw(evt)
+    run = self.get_run_from_index(index)
+    if run.run() not in self._cached_corrections:
+      self._cached_corrections[run.run()] = \
+        det.gain(evt), det.offset(evt), det.pedestals(evt)
+    gain, offs, peds = self._cached_corrections[run.run()]
+    data = det.calib(evt, gain = gain, offs = offs, peds = peds)
     data = data.astype(np.float64)
     self._raw_data = []
     for quad_count, quad in enumerate(d.hierarchy()):
