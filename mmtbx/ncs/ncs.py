@@ -174,7 +174,7 @@ def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
 
 
 def get_helical_symmetry(helical_rot_deg=None,
-     helical_trans_z_angstrom=None):
+     helical_trans_z_angstrom=None,max_ops=None):
 
   from scitbx import matrix
   rot=get_rot_z(rot_deg=helical_rot_deg)
@@ -182,6 +182,7 @@ def get_helical_symmetry(helical_rot_deg=None,
   trans_along_z=matrix.col((0,0,helical_trans_z_angstrom))
 
   n=max(2,int(360/helical_rot_deg))
+  if n> max(1,max_ops//2): n= max(1,max_ops//2)
   rots=[]
   trans=[]
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))
