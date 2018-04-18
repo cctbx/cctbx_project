@@ -4539,11 +4539,12 @@ def get_max_min_list(d_list=None,value_list=None,
   return max_min_d_list,max_min_list
 
 def get_c_star_list(f_array=None,
-   zero_index_a=0,zero_index_b=1):
+   zero_index_a=0,zero_index_b=1,zero_index_c=2):
   c_star_list=[]
   for value,(indices,d) in zip(f_array.data(),
      f_array.d_spacings()):
-    if indices[zero_index_a]==0 and indices[zero_index_b]==0:
+    if indices[zero_index_a]==0 and indices[zero_index_b]==0 and \
+      indices[zero_index_c] >=4:
       c_star_list.append([tuple(indices),value,d])
   c_star_list.sort()
   return c_star_list
