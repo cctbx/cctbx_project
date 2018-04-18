@@ -29,7 +29,8 @@ END
 Fbg_water = flex.vec2_double([(0,2.57),(0.0365,2.58),(0.07,2.8),(0.12,5),(0.162,8),(0.2,6.75),(0.18,7.32),(0.216,6.75),(0.236,6.5),(0.28,4.5),(0.3,4.3),(0.345,4.36),(0.436,3.77),(0.5,3.17)])
 # rough approximation to air
 Fbg_air = flex.vec2_double([(0,14.1),(0.045,13.5),(0.174,8.35),(0.35,4.78),(0.5,4.22)])
-
+# structure factors of nanocrystalline ice Ic
+Fbg_nanoice = flex.vec2_double([(0.0,0.677252),(0.0707968,1.43379),(0.0981619,2.3679),(0.114124,3.75888),(0.120588,5.12927),(0.127821,9.97093),(0.129198,11.9564),(0.132627,21.7772),(0.134056,27.7952),(0.13532,31.3918),(0.137142,30.3891),(0.138649,24.5024),(0.142137,13.6271),(0.144115,10.6367),(0.146059,8.67322),(0.147749,7.72956),(0.156921,5.57316),(0.166321,4.98756),(0.189445,4.45263),(0.210479,5.46593),(0.212578,5.78441),(0.220728,12.9117),(0.221969,15.9529),(0.224001,13.2016),(0.225279,10.8369),(0.226852,9.07622),(0.232851,7.00939),(0.242413,6.05003),(0.250842,5.50808),(0.257907,7.96463),(0.259429,10.0142),(0.262963,6.37791),(0.269814,3.89966),(0.271936,3.76553),(0.326095,3.71447),(0.328613,3.77097),(0.340562,4.56185),(0.343282,5.10066),(0.347891,4.34943),(0.349662,4.39573),(0.450378,2.30382),(0.5,1.31048)])
 
 def fcalc_from_pdb(resolution,algorithm=None,wavelength=0.9):
   from iotbx import pdb
@@ -115,6 +116,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   mosaic_domain_volume_mm3 = SIM.xtal_size_mm[0]*SIM.xtal_size_mm[1]*SIM.xtal_size_mm[2]
   SIM.spot_scale = aggregate_xtal_volume_mm3/mosaic_domain_volume_mm3
   #
+  print "pivoting about",SIM.detector_pivot
   # make the module roi list
   # and also make up per-module mis-alignments shifts and rotations
   import random
@@ -131,7 +133,7 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
     smin = my*(module_size[1]+gap_size[1])
     smax = smin+module_size[1]
     # assume misalignments are uniform
-    # up to ~0.5 pixel and 0.1 deg in each direction
+    # up to ~0.5 pixel and 0.0 deg in each direction
     dx = 0.07*(random.random()-0.5)*2
     dy = 0.07*(random.random()-0.5)*2
     rotx = 0.0*(random.random()-0.5)*2;
@@ -168,6 +170,12 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
     SIM.amorphous_sample_thick_mm = 35 # between beamstop and collimator
     SIM.amorphous_density_gcm3 = 1.2e-3
     SIM.amorphous_sample_molecular_weight_Da = 28 # nitrogen = N2
+    SIM.add_background()
+    # add nanocrystalline cubic ice contribution (unscaled)
+    SIM.Fbg_vs_stol = Fbg_nanoice
+    SIM.amorphous_sample_thick_mm = 0.05 # between beamstop and collimator
+    SIM.amorphous_density_gcm3 = 0.95
+    SIM.amorphous_sample_molecular_weight_Da = 18 # H2O
     SIM.add_background()
   #
   # set this to 0 or -1 to trigger automatic radius.  could be very slow with bright images
