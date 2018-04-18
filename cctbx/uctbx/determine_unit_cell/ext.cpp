@@ -8,7 +8,7 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/c_grid.h>
-
+#include <omp.h>
 namespace af = scitbx::af;
 
 using namespace boost::python;
