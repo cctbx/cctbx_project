@@ -36,7 +36,15 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     '''
     array_storage = '_%s_arrays' % MapCoefficientsDataManager.datatype
     if (hasattr(self, array_storage)):
-      return getattr(self, array_storage)
+      array_dict = getattr(self, array_storage)
+      if (filename in self.get_map_coefficients_names()):
+        return array_dict[filename]
+      else:
+        if (filename in self.get_miller_array_names()):
+          raise Sorry('%s does not have any map coefficients' % filename)
+        else:
+          self.process_map_coefficients_file(filename=filename)
+          self.get_map_coefficients_arrays(filename=filename)
     else:
       raise Sorry('No data file has been processed yet.')
 
@@ -62,17 +70,20 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     '''
     Function for checking labels in miller_arrays to determine type
     '''
+    if (not hasattr(self, '_map_coefficients_arrays')):
+      self._map_coefficients_arrays = dict()
     miller_arrays = self.get_miller_arrays(filename)
-    self._map_coefficients_arrays = list()
+    arrays = list()
     known_labels = mtz_map_coefficient_labels.union(cif_map_coefficient_labels)
     for miller_array in miller_arrays:
       labels = set(miller_array.info().labels)
       common_labels = known_labels.intersection(labels)
       if (len(common_labels) > 0):
-        self._map_coefficients_arrays.append(miller_array)
+        arrays.append(miller_array)
 
     # if map coefficients exist, start tracking
-    if (len(self._map_coefficients_arrays) > 1):
+    if (len(arrays) > 1):
+      self._map_coefficients_arrays[filename] = arrays
       self.add_map_coefficients(filename, self.get_miller_array(filename))
 
   def write_map_coefficients_file(
