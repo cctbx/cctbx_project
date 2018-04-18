@@ -274,11 +274,15 @@ master_phil = iotbx.phil.parse("""
 
      symmetry = None
        .type = str
-       .short_caption = NCS type
+       .short_caption = Symmetry type
        .help = Symmetry used in reconstruction. For example D7, C3, C2\
           I (icosahedral),T (tetrahedral), or ANY (try everything and \
           use the highest symmetry found). Not needed if ncs_file is supplied. \
-          Note: ANY does not search for helical symmetry
+
+     include_helical_symmetry = True
+       .type = bool
+       .short_caption = Include helical symmetry
+       .help = You can include or exclude searches for helical symmetry
 
      symmetry_center = None
        .type = floats
@@ -3949,7 +3953,8 @@ def get_ncs_list(params=None,symmetry=None,
       if two_fold_along_x is None or two_fold_along_x==False:
         ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False))
         symmetry_list.append('D%d (b)' %(i))
-  if sym_type=='helical' or all:
+  if sym_type=='helical' or (
+      all and params.reconstruction_symmetry.include_helical_symmetry):
     if helical_rot_deg is not None and helical_trans_z_angstrom is not None:
       ncs_list.append(get_helical_symmetry(
        helical_rot_deg=helical_rot_deg,
