@@ -4044,6 +4044,7 @@ def find_helical_symmetry(params=None,
   rotations=[]
   for k in xrange(1,n_rotations):
     helical_rot_deg=k*delta_rot
+    if helical_rot_deg > 180: helical_rot_deg=helical_rot_deg-360
     rotations.append(helical_rot_deg)
 
   done=False
@@ -4195,9 +4196,10 @@ def find_helical_symmetry(params=None,
   working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
   working_helical_rot_deg=best_helical_rot_deg*imult
 
-  print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
-  improved=False
-  for iter in [1,2,3]:
+  if imult > 1:
+    print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
+    improved=False
+    for iter in [1,2,3]:
       if iter > 1 and not improved: break
       improved=False
 
