@@ -5,7 +5,6 @@ from __future__ import division, print_function
 from iotbx.data_manager.miller_array import MillerArrayDataManager
 from iotbx.cif_mtz_data_labels import mtz_map_coefficient_labels, \
   cif_map_coefficient_labels
-from iotbx.reflection_file_reader import any_reflection_file
 from libtbx.utils import Sorry
 
 # =============================================================================
