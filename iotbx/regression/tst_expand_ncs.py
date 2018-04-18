@@ -1,3 +1,8 @@
+# MARKED_FOR_DELETION_OLEG
+# REASON: test for obsoleted duplicated functionality. Expansion is made by
+# phenix.pdb.mtrix_reconstruction, phenix.pdb.biomt_reconstruction or
+# by mmtbx.model class
+
 from __future__ import division
 
 import libtbx.load_env
@@ -23,3 +28,4 @@ def exercise () :
 
 if (__name__ == "__main__") :
   if (exercise()) : print "OK"
+# END_MARKED_FOR_DELETION_OLEG

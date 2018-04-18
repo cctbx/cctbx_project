@@ -2807,45 +2807,50 @@ def sites_diff (hierarchy_1,
     return hierarchy_new
   else :
     return deltas
+# MARKED_FOR_DELETION_OLEG
+# REASON: obsoleted duplicated functionality. Expansion is made by
+# phenix.pdb.mtrix_reconstruction, phenix.pdb.biomt_reconstruction or
+# by mmtbx.model class
 
-def expand_ncs (
-    pdb_hierarchy,
-    processed_mtrix_records,
-    write_segid=True,
-    log=None) :
-  pmr = processed_mtrix_records
-  if (log is None) : log = null_out()
-  assert len(pmr.r) == len(pmr.t)
-  if (len(pmr.r) == 0) :
-    raise Sorry("No MTRIX records found in PDB file!")
-  if (len(pdb_hierarchy.models()) > 1) :
-    raise Sorry("Multi-MODEL PDB files not supported.")
-  hierarchy_new = root()
-  model_new = model()
-  hierarchy_new.append_model(model_new)
-  for chain_ in pdb_hierarchy.models()[0].chains() :
-    chain_new = chain_.detached_copy()
-    atoms_tmp = chain_new.atoms()
-    if (write_segid) :
-      for atom in atoms_tmp :
-        atom.set_segid("0")
-    model_new.append_chain(chain_new)
-  print >> log, "Applying %d MTRIX records..." % len(pmr.r)
-  for rm, tv, sn, cpf in zip(pmr.r, pmr.t, pmr.serial_number,
-                             pmr.coordinates_present):
-    if (cpf) :
-      print >> log, "  skipping matrix %s, coordinates already present" % sn
-      continue
-    for chain_ in pdb_hierarchy.models()[0].chains() :
-      chain_new = chain_.detached_copy()
-      atoms_tmp = chain_new.atoms()
-      if (write_segid) :
-        for atom in atoms_tmp :
-          atom.set_segid("%s" % sn)
-      xyz = atoms_tmp.extract_xyz()
-      atoms_tmp.set_xyz(rm.elems * xyz + tv)
-      model_new.append_chain(chain_new)
-  return hierarchy_new
+# def expand_ncs (
+#     pdb_hierarchy,
+#     processed_mtrix_records,
+#     write_segid=True,
+#     log=None) :
+#   pmr = processed_mtrix_records
+#   if (log is None) : log = null_out()
+#   assert len(pmr.r) == len(pmr.t)
+#   if (len(pmr.r) == 0) :
+#     raise Sorry("No MTRIX records found in PDB file!")
+#   if (len(pdb_hierarchy.models()) > 1) :
+#     raise Sorry("Multi-MODEL PDB files not supported.")
+#   hierarchy_new = root()
+#   model_new = model()
+#   hierarchy_new.append_model(model_new)
+#   for chain_ in pdb_hierarchy.models()[0].chains() :
+#     chain_new = chain_.detached_copy()
+#     atoms_tmp = chain_new.atoms()
+#     if (write_segid) :
+#       for atom in atoms_tmp :
+#         atom.set_segid("0")
+#     model_new.append_chain(chain_new)
+#   print >> log, "Applying %d MTRIX records..." % len(pmr.r)
+#   for rm, tv, sn, cpf in zip(pmr.r, pmr.t, pmr.serial_number,
+#                              pmr.coordinates_present):
+#     if (cpf) :
+#       print >> log, "  skipping matrix %s, coordinates already present" % sn
+#       continue
+#     for chain_ in pdb_hierarchy.models()[0].chains() :
+#       chain_new = chain_.detached_copy()
+#       atoms_tmp = chain_new.atoms()
+#       if (write_segid) :
+#         for atom in atoms_tmp :
+#           atom.set_segid("%s" % sn)
+#       xyz = atoms_tmp.extract_xyz()
+#       atoms_tmp.set_xyz(rm.elems * xyz + tv)
+#       model_new.append_chain(chain_new)
+#   return hierarchy_new
+# END_MARKED_FOR_DELETION_OLEG
 
 def increment_label_asym_id(asym_id):
   from string import ascii_uppercase
