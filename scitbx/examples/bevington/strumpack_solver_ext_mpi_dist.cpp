@@ -5,7 +5,7 @@
 #include <getopt.h>
 #include <mpi4py/mpi4py.h>
 
-#include <boost/python/enum.hpp> 
+#include <boost/python/enum.hpp>
 #include <boost/python.hpp>
 #include <boost/python/def.hpp>
 #include <scitbx/array_family/versa.h>
@@ -35,14 +35,14 @@ namespace sparse_solver {
     */
     strumpack_mpi_dist_solver(
               const int n_rows_local, const int n_cols,
-              boost::python::object py_comm, 
+              boost::python::object py_comm,
               const scitbx::af::shared<intType> A_row_offset_local,
               const scitbx::af::shared<intType> A_col_idx_local,
               const scitbx::af::shared<numType> A_values_local,
               const scitbx::af::shared<numType> b_local,
               const scitbx::af::shared<intType> len_rows_local,
               const int reorderEnum,
-              const int solverEnum) : x_strum_local(n_rows_local, 0.){ 
+              const int solverEnum) : x_strum_local(n_rows_local, 0.){
 
       int thread_level, rank, size;
 /*      //Pass MPI communicator from mpi4py to C++
@@ -57,7 +57,7 @@ std::cout <<"CPP Here 1b" << std::endl;
       MPI_Comm_size(newcomm, &size);
       MPI_Comm_rank(newcomm, &rank);
 
-      //Check the initialisation of the MPI environment is using MPI_THREAD_FUNNELED 
+      //Check the initialisation of the MPI environment is using MPI_THREAD_FUNNELED
       int flag;
       MPI_Initialized(&flag);
       if (!flag){

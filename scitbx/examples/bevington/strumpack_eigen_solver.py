@@ -1,5 +1,4 @@
 from __future__ import division
-from scitbx.matrix import sqr,col
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.development.timers import Profiler
@@ -17,7 +16,7 @@ nnz = len(A_mat['vals'])
 
 #Convert the sparse CSR to flex doubles, then use them to solve using the implemented framework
 import scipy.sparse as sps
-A_sp = sps.csr_matrix((A_mat['vals'],(A_mat['rows'],A_mat['cols']))) 
+A_sp = sps.csr_matrix((A_mat['vals'],(A_mat['rows'],A_mat['cols'])))
 
   #Check if upper/lower triangular only, and generate full if so
 tu=sps.triu(A_sp)

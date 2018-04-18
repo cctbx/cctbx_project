@@ -17,7 +17,6 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-from scitbx.matrix import sqr,col
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.development.timers import Profiler
@@ -38,7 +37,7 @@ if rank==0:
   nnz = len(A_mat['vals'])
   print n_rows, n_rows/size
   #Convert the sparse CSR to flex doubles, then use them to solve using the implemented framework
-  A_sp = sps.csr_matrix((A_mat['vals'],(A_mat['rows'],A_mat['cols']))) 
+  A_sp = sps.csr_matrix((A_mat['vals'],(A_mat['rows'],A_mat['cols'])))
 
   #Check if upper/lower triangular only, and generate full if so
   tu=sps.triu(A_sp)
@@ -58,10 +57,10 @@ if rank==0:
   A_data = flex.double( A_spS.data )
   b = flex.double( b_vec )
   res_strum_omp = ext_omp.strumpack_solver(
-                    n_rows, n_cols, 
+                    n_rows, n_cols,
                     A_indptr, A_indices,
                     A_data, b,
-                    ext_omp.scotch, 
+                    ext_omp.scotch,
                     ext_omp.auto
                  )
   del P
@@ -119,4 +118,3 @@ if rank==0:
     if size>1:
       assert approx_equal( strum_result_omp[ii], strum_result_mpi[ii]  )
   print "Strumpack solutions agree with Eigen"
-

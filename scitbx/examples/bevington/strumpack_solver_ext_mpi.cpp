@@ -65,7 +65,7 @@ namespace sparse_solver {
       std::cout << "CPP::Rank " << rank << " at Pos3b" << std::endl;
 
       //if (rank==0){
-     { 
+     {
         std::size_t nnz = A_values.size();
         std::size_t gridSize = n_rows * n_cols;
 
@@ -84,7 +84,7 @@ namespace sparse_solver {
         /*for (int ii=0; ii < nnz; ++ii){
           std::cout << "R=" << rank << " A[" << ii+len_rows_local[rank] <<"]=" << val_ptr[ii] << std::endl;
         }*/
- 
+
         spss.set_distributed_csr_matrix(n_rows, r_ptr, c_ptr, val_ptr, len_rows_local.begin());
         std::cout <<  "CPP::Rank " << rank << " at Pos3d" << std::endl;
         //spss.options().set_mc64job(0);

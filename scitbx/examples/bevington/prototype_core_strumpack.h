@@ -86,7 +86,7 @@ class linear_ls_strumpack_wrapper
       strumpack::StrumpackSparseSolver<double,int> spss(true,true); //verbose output on
       spss.options().set_reordering_method(strumpack::ReorderingStrategy::SCOTCH);
       //Previously used to build self adjoint sparse. A + A^T - diag(A)
-/*      
+/*
       Eigen::SparseMatrix<double> eigen_normal_matrix_t (eigen_normal_matrix.transpose());
       double corner = eigen_normal_matrix_t.coeffRef(eigen_normal_matrix_t.rows()-1, 0 );
       double corner_t = eigen_normal_matrix_t.coeffRef(0, eigen_normal_matrix_t.cols()-1 );
@@ -97,7 +97,7 @@ class linear_ls_strumpack_wrapper
       else{
         std::cout << "All is not well: "<< corner << "   " << corner_t <<"\n";
       }
-      
+
       Eigen::SparseMatrix<double> eigen_normal_matrix_full(eigen_normal_matrix);
       eigen_normal_matrix_full += eigen_normal_matrix_t;
 
@@ -119,7 +119,7 @@ class linear_ls_strumpack_wrapper
 */
       //Build full self adjoint sparse matrix from upper triangle data
       Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
-/*    
+/*
       std::cout << "U_nnz=" << sam.nonZeros() << "\n";
       sam = eigen_normal_matrix.selfadjointView<Eigen::Lower>();
       std::cout << "L_nnz=" << sam.nonZeros() << "\n";
