@@ -22,6 +22,12 @@ try:
      or pkg_resources.parse_version(pip.__version__) < pkg_resources.parse_version('9.0.0'):
     pip = None
     pkg_resources = None
+  if pip:
+    if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
+      import pip._internal
+      pip_main = pip._internal.main
+    else:
+      pip_main = pip.main
 except ImportError:
   pip = None
   pkg_resources = None
@@ -115,12 +121,7 @@ def require(pkgname, version=None):
     return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
-  if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
-    import pip._internal
-    pip_call = pip._internal.main
-  else:
-    pip_call = pip.main
-  exit_code = pip_call(['install', requirestring])
+  exit_code = pip_main(['install', requirestring])
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
