@@ -115,7 +115,12 @@ def require(pkgname, version=None):
     return False
 
   print("attempting {action} of {package}...".format(action=action, package=pkgname))
-  exit_code = pip.main(['install', requirestring])
+  if pkg_resources.parse_version(pip.__version__) >= pkg_resources.parse_version('10.0.0'):
+    import pip._internal
+    pip_call = pip._internal.main
+  else:
+    pip_call = pip.main
+  exit_code = pip_call(['install', requirestring])
   if exit_code == 0:
     print("{action} successful".format(action=action))
     return True
