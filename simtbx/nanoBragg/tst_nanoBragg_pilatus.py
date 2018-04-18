@@ -1,9 +1,9 @@
 from __future__ import division
 from scitbx.array_family import flex
 from simtbx.nanoBragg import testuple
-from simtbx.nanoBragg import shapetype
-from simtbx.nanoBragg import pivot
-from simtbx.nanoBragg import convention
+#from simtbx.nanoBragg import shapetype
+#from simtbx.nanoBragg import pivot
+#from simtbx.nanoBragg import convention
 from simtbx.nanoBragg import nanoBragg
 import dxtbx
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
@@ -116,7 +116,10 @@ def run_sim(seed=1,wavelength=0.9,distance=500,random_orientation=False,phi=0,os
   mosaic_domain_volume_mm3 = SIM.xtal_size_mm[0]*SIM.xtal_size_mm[1]*SIM.xtal_size_mm[2]
   SIM.spot_scale = aggregate_xtal_volume_mm3/mosaic_domain_volume_mm3
   #
-  print "pivoting about",SIM.detector_pivot
+  # option for detector rotations to be about beam center or sample position
+  #SIM.detector_pivot=pivot.Sample
+  SIM.detector_pivot=pivot.Beam
+  print "pivoting detector about",SIM.detector_pivot
   # make the module roi list
   # and also make up per-module mis-alignments shifts and rotations
   import random
