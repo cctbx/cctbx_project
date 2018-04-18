@@ -37,7 +37,7 @@ class map_symmetry:
 
     print ("Finding symmetry in map",file=self.log)
 
-    from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map 
+    from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map
 
     new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=self.params,
       map_data=self.map_data,
@@ -75,7 +75,7 @@ class map_symmetry:
         self.params.crystal_info.resolution),file=self.log)
 
   def shift_origin(self):
-     
+
      origin_shift=(
          self.map_data.origin()[0]/self.map_data.all()[0],
          self.map_data.origin()[1]/self.map_data.all()[1],
@@ -98,4 +98,3 @@ class map_symmetry:
      if self.ncs_object:
         self.ncs_object=self.ncs_object.coordinate_offset(
         coordinate_offset=-1*col(self.origin_shift_cart))
-

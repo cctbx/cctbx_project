@@ -316,7 +316,7 @@ master_phil = iotbx.phil.parse("""
        .type = int
        .short_caption = Max helical ops to check
        .help = Number of helical operations in each direction to check \
-               when finding NCS 
+               when finding NCS
 
      max_helical_rotations_to_check = None
        .type = int
@@ -3489,7 +3489,7 @@ def get_ncs_from_map(params=None,
       ncs_in_cell_only=False,
       out=sys.stdout):
 
-  
+
 # Purpose: check through standard point groups and helical symmetry to see
   # if map has symmetry. If symmetry==ANY then take highest symmetry that fits
   # Otherwise limit to the one specified with symmetry.
@@ -3498,31 +3498,31 @@ def get_ncs_from_map(params=None,
   # Center of symmetry is as supplied, or center of map or center of density
   #  If center is not supplied and use_center_of_map_as_center, try that
   #  and return None if it fails to achieve a map cc of min_ncs_cc
-  
-  if ncs_in_cell_only is None: 
+
+  if ncs_in_cell_only is None:
     ncs_in_cell_only=(not params.crystal_info.use_sg_symmetry)
-  if symmetry is None: 
+  if symmetry is None:
     symmetry=params.reconstruction_symmetry.symmetry
-  if symmetry_center is None: 
+  if symmetry_center is None:
     symmetry_center=params.reconstruction_symmetry.symmetry_center
-  if optimize_center is None: 
+  if optimize_center is None:
     optimize_center=params.reconstruction_symmetry.optimize_center
-  if helical_rot_deg is None: 
+  if helical_rot_deg is None:
     helical_rot_deg=params.reconstruction_symmetry.helical_rot_deg
-  if helical_trans_z_angstrom is None: 
+  if helical_trans_z_angstrom is None:
     helical_trans_z_angstrom=\
       params.reconstruction_symmetry.helical_trans_z_angstrom
-  if n_rescore is None: 
+  if n_rescore is None:
     n_rescore=params.reconstruction_symmetry.n_rescore
-  if random_points is None: 
+  if random_points is None:
     random_points=params.reconstruction_symmetry.random_points
-  if op_max is None: 
+  if op_max is None:
     op_max=params.reconstruction_symmetry.op_max
-  if two_fold_along_x is None: 
+  if two_fold_along_x is None:
     two_fold_along_x=params.reconstruction_symmetry.two_fold_along_x
-  if identify_ncs_id is None: 
+  if identify_ncs_id is None:
     identify_ncs_id=params.reconstruction_symmetry.identify_ncs_id
-  if min_ncs_cc is None: 
+  if min_ncs_cc is None:
     min_ncs_cc=params.reconstruction_symmetry.min_ncs_cc
 
   # if ncs_obj_to_check is supplied...just use that ncs
@@ -3966,7 +3966,7 @@ def get_ncs_list(params=None,symmetry=None,
         crystal_symmetry=crystal_symmetry,out=out)
 
 
-      ncs_list.append(ncs_object) 
+      ncs_list.append(ncs_object)
       symmetry_list.append("Type: Helical %5.2f deg  %6.2f Z-trans " %(
         helical_rot_deg,helical_trans_z_angstrom))
 
@@ -4024,7 +4024,7 @@ def find_helical_symmetry(params=None,
     crystal_symmetry=crystal_symmetry,
     out=out)
 
-  # Now for each z...get the rotation. Try +/- z and try rotations 
+  # Now for each z...get the rotation. Try +/- z and try rotations
   abc=crystal_symmetry.unit_cell().parameters()[:3]
   max_z=max(abc[0],abc[1])
   if params.reconstruction_symmetry.max_helical_rotations_to_check:
@@ -4080,7 +4080,7 @@ def find_helical_symmetry(params=None,
       if not ncs_score: continue
       if ncs_cc> 0.95 or \
         ncs_cc > 2*params.reconstruction_symmetry.min_ncs_cc or \
-        (quick and (ncs_cc> 0.90 or 
+        (quick and (ncs_cc> 0.90 or
          ncs_cc > 1.5*params.reconstruction_symmetry.min_ncs_cc)):
         print >>out," %.2f   %.2f   %.2f   %.2f (ok to go on)" %(
            new_helical_rot_deg,new_helical_trans_z_angstrom,
@@ -4098,7 +4098,7 @@ def find_helical_symmetry(params=None,
        score_list[:max_peaks_to_score]:
       if done: continue
       # rescore and optimize:
-      
+
       new_ncs_obj,ncs_cc,ncs_score,\
           new_helical_trans_z_angstrom,new_helical_rot_deg=try_helical_params(
         params=params,
@@ -4112,7 +4112,7 @@ def find_helical_symmetry(params=None,
         symmetry_center=symmetry_center,
         crystal_symmetry=crystal_symmetry,
         out=null_out())
-      if not ncs_score or ncs_score <0: 
+      if not ncs_score or ncs_score <0:
         continue
       if best_score is None or ncs_score>best_score:
         best_ncs_cc=ncs_cc
@@ -4120,7 +4120,7 @@ def find_helical_symmetry(params=None,
         best_score=ncs_score
         best_helical_trans_z_angstrom=new_helical_trans_z_angstrom
         best_helical_rot_deg=new_helical_rot_deg
-    
+
 
       # after trying out a range quit if good enough
       if best_ncs_cc> 0.90 or \
@@ -4133,7 +4133,7 @@ def find_helical_symmetry(params=None,
 
 
         done=True
-  
+
   # Optimize one more time trying fractional values, but only if
   #  that makes the delta less than the resolution
 
@@ -4146,12 +4146,12 @@ def find_helical_symmetry(params=None,
         if test_helical_trans_z_angstrom > params.crystal_info.resolution*1.1:
           continue # skip it...would have been a peak if ok
       else: # iter >0
-        if ifract > 0: 
+        if ifract > 0:
            continue # skip these
         else: # optimize current best
           test_helical_rot_deg=best_helical_rot_deg
           test_helical_trans_z_angstrom=best_helical_trans_z_angstrom
- 
+
       new_ncs_obj,new_ncs_cc,new_ncs_score,\
             new_helical_trans_z_angstrom,new_helical_rot_deg=\
         try_helical_params(
@@ -4177,33 +4177,37 @@ def find_helical_symmetry(params=None,
           best_score=new_ncs_score
           best_helical_trans_z_angstrom=new_helical_trans_z_angstrom
           best_helical_rot_deg=new_helical_rot_deg
-          print >>out," %.2f   %.2f   %.2f   %.2f (improved)" %(
+          print >>out," %.2f   %.2f   %.2f   %.2f (improved fractions)" %(
              best_helical_rot_deg,best_helical_trans_z_angstrom,
              best_score,best_ncs_cc)
+        else:
+          print >>out," %.2f   %.2f   %.2f   %.2f (worse with fractions)" %(
+             new_helical_rot_deg,new_helical_trans_z_angstrom,
+             new_score,new_ncs_cc)
 
 
   # Optimize one more time trying multiples of values to get better param
   imult=int(0.5+
      0.33*max_z/params.reconstruction_symmetry.max_helical_ops_to_check)
- 
+
 
   working_ncs_cc=best_ncs_cc
   working_ncs_obj=best_ncs_obj
   working_score=None
   working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
   working_helical_rot_deg=best_helical_rot_deg*imult
-   
+
   print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
   for iter in [0,1,2]:
- 
+
       new_ncs_obj,new_ncs_cc,new_ncs_score,\
             new_helical_trans_z_angstrom,new_helical_rot_deg=\
         try_helical_params(
           params=params,
           helical_rot_deg=working_helical_rot_deg,
           helical_trans_z_angstrom=working_helical_trans_z_angstrom,
-          delta_z=delta_z/2.,
-          delta_rot=delta_rot/2.,
+          delta_z=delta_z/(2.*(iter+1)),
+          delta_rot=delta_rot/(2.*(iter+1)),
           map_data=map_data,
           map_symmetry_center=symmetry_center,
           symmetry_center=symmetry_center,
@@ -4220,38 +4224,37 @@ def find_helical_symmetry(params=None,
                working_helical_rot_deg,working_helical_trans_z_angstrom,
                working_score,working_ncs_cc)
 
-  #  and rescore with this:
-
-      new_ncs_obj,new_ncs_cc,new_ncs_score,\
-            new_helical_trans_z_angstrom,new_helical_rot_deg=\
+      #  and rescore with this:
+      for iter in [1,2,3]:
+        working_ncs_obj,working_ncs_cc,working_ncs_score,\
+            working_helical_trans_z_angstrom,working_helical_rot_deg=\
         try_helical_params(
           params=params,
           helical_rot_deg=working_helical_rot_deg/imult,
           helical_trans_z_angstrom=working_helical_trans_z_angstrom/imult,
-          delta_z=delta_z/2.,
-          delta_rot=delta_rot/2.,
+          delta_z=delta_z/(2.*iter),
+          delta_rot=delta_rot/(2.*iter),
           map_data=map_data,
           map_symmetry_center=symmetry_center,
           symmetry_center=symmetry_center,
           crystal_symmetry=crystal_symmetry,
           out=null_out())
-      if new_ncs_score is not None:
-
-        if best_score is None or new_ncs_score > best_score:
-          if params.control.verbose:
-            print >>out,"\nTaking parameters from multiples"
-          best_ncs_cc=new_ncs_cc
-          best_ncs_obj=new_ncs_obj
-          best_score=new_ncs_score
-          best_helical_trans_z_angstrom=new_helical_trans_z_angstrom
-          best_helical_rot_deg=new_helical_rot_deg
-          print >>out," %.2f   %.2f   %.2f   %.2f (improved by multiples)" %(
+        if working_ncs_score is not None:
+          if best_score is None or working_ncs_score > best_score:
+            if params.control.verbose:
+              print >>out,"\nTaking parameters from multiples"
+            best_ncs_cc=working_ncs_cc
+            best_ncs_obj=working_ncs_obj
+            best_score=working_ncs_score
+            best_helical_trans_z_angstrom=working_helical_trans_z_angstrom
+            best_helical_rot_deg=working_helical_rot_deg
+            print >>out," %.2f   %.2f   %.2f   %.2f (improved by multiples)" %(
                best_helical_rot_deg,best_helical_trans_z_angstrom,
                best_score,best_ncs_cc)
 
 
 
-  if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc: 
+  if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc:
     print >>out," %.2f   %.2f   %.2f   %.2f (Final)" %(
      best_helical_rot_deg,best_helical_trans_z_angstrom,\
          best_score,best_ncs_cc)
@@ -4262,7 +4265,7 @@ def find_helical_symmetry(params=None,
        helical_rot_deg=best_helical_rot_deg,
        helical_trans_z_angstrom=best_helical_trans_z_angstrom,
        max_ops=params.reconstruction_symmetry.max_helical_ops_to_check)
- 
+
   return ncs_object,best_helical_rot_deg,best_helical_trans_z_angstrom
 
 def try_helical_params(
@@ -4309,7 +4312,7 @@ def try_helical_params(
     symmetry_center=symmetry_center,
     crystal_symmetry=crystal_symmetry,
     out=null_out())
-  if params.reconstruction_symmetry.score_basis=='cc': 
+  if params.reconstruction_symmetry.score_basis=='cc':
      test_ncs_score=test_ncs_cc
 
   if best_ncs_score is None or test_ncs_score>best_ncs_score:
@@ -4324,12 +4327,12 @@ def try_helical_params(
   # save in case we need to go back
   working_helical_trans_z_angstrom,working_helical_rot_deg=\
      helical_trans_z_angstrom,helical_rot_deg
-  working_ncs_score=best_ncs_score  
-  working_ncs_cc=best_ncs_cc  
-  working_ncs_obj=best_ncs_obj  
+  working_ncs_score=best_ncs_score
+  working_ncs_cc=best_ncs_cc
+  working_ncs_obj=best_ncs_obj
 
 
-  if optimize and (best_score is None or best_ncs_score > best_score):  
+  if optimize and (best_score is None or best_ncs_score > best_score):
     # try with few to many operators..
     if params.control.verbose:
       print >>out,"\nOptimizing by varying number of operators"
@@ -4385,7 +4388,7 @@ def try_helical_params(
       symmetry_center=symmetry_center,
       crystal_symmetry=crystal_symmetry,
       out=null_out())
-    if params.reconstruction_symmetry.score_basis=='cc': 
+    if params.reconstruction_symmetry.score_basis=='cc':
       best_ncs_score=best_ncs_cc
 
     # now take it if better
@@ -4393,7 +4396,7 @@ def try_helical_params(
       if params.control.verbose:
         print >>out,"Using optimized values (%.2f > %.2f)" %(
          best_ncs_cc,working_ncs_cc)
-    else: 
+    else:
       if params.control.verbose:
         print >>out,"Rejecting optimized values (%.2f <= %.2f)" %(
          best_ncs_cc,working_ncs_cc)
@@ -4401,11 +4404,11 @@ def try_helical_params(
       # save in case we need to go back
       best_helical_trans_z_angstrom,best_helical_rot_deg=\
          working_helical_trans_z_angstrom,working_helical_rot_deg
-      best_ncs_score=working_ncs_score  
-      best_ncs_obj=working_ncs_obj  
-      best_ncs_cc=working_ncs_cc  
+      best_ncs_score=working_ncs_score
+      best_ncs_obj=working_ncs_obj
+      best_ncs_cc=working_ncs_cc
 
-  if params.reconstruction_symmetry.score_basis=='cc': 
+  if params.reconstruction_symmetry.score_basis=='cc':
      best_ncs_score=best_ncs_cc
 
   return best_ncs_obj,best_ncs_cc,best_ncs_score,\
@@ -4445,7 +4448,7 @@ def get_helical_trans_z_angstrom(params=None,
     print >>out,"Values along c*: "
   d_list,value_list=get_d_and_value_list(c_star_list)
 
-  for d,value in zip(d_list,value_list): 
+  for d,value in zip(d_list,value_list):
     if params.control.verbose:
       print >>out," %.2f A : %.2f " %(d,value)
 
@@ -4470,7 +4473,7 @@ def get_helical_trans_z_angstrom(params=None,
       if z < dis_min: continue # no way
       if is_close_to_any(z=z,others=likely_z_translations,
         dis_min=dis_min): continue
-   
+
       likely_z_translations_local.append(z)
       likely_z_translations.append(z)
 
@@ -4488,9 +4491,9 @@ def small_deltas(z_translations,dis_min=None):
         dis_min=dis_min):
        delta_list.append(abs(delta))
   return delta_list
- 
+
 def is_close_to_any(z=None,others=None,
-    dis_min=None): 
+    dis_min=None):
   for x in others:
     if abs(x-z)<dis_min:
        return True
@@ -4498,7 +4501,7 @@ def is_close_to_any(z=None,others=None,
 
 def get_max_min_list(d_list=None,value_list=None,
    minimum_ratio=None,maximum_only=False):
- 
+
   max_min_list=[]
   max_min_d_list=[]
   for value_prev,d_prev, \
