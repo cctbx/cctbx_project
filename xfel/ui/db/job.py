@@ -350,6 +350,9 @@ def submit_job(app, job):
       if trial_params.input.known_orientations_folder is not None:
         trial_params.input.known_orientations_folder = trial_params.input.known_orientations_folder.format(run=job.run.run)
     else:
+      trial_params.spotfinder.lookup.mask = job.rungroup.untrusted_pixel_mask_path
+      trial_params.integration.lookup.mask = job.rungroup.untrusted_pixel_mask_path
+
       locator_path = os.path.join(configs_dir, "%s_%s_r%04d_t%03d_rg%03d.loc"%
                                   (app.params.experiment, app.params.experiment_tag, job.run.run, job.trial.trial, job.rungroup.id))
       locator = open(locator_path, 'w')
