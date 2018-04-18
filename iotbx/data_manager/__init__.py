@@ -12,6 +12,7 @@ from libtbx.utils import Sorry
 
 # mapping from DataManager datatypes to any_file file types
 any_file_type = {
+  'map_coefficients':'hkl',
   'miller_array':'hkl',
   'model':'pdb',
   'ncs_spec':'ncs',
@@ -23,6 +24,7 @@ any_file_type = {
 
 # reverse dictionary to map any_file types to DataManager datatypes
 data_manager_type = {value:key for key,value in any_file_type.items()}
+data_manager_type['hkl'] = 'miller_array'   # map hkl to parent, miller_array
 
 # build list of supported datatypes
 # datatypes have corresponding modules in iotbx/data_manager
