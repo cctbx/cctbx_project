@@ -34,13 +34,22 @@ try:
       Import("env_boost_python_ext")
       env_large_scale_merging_boost_python_ext = env_boost_python_ext.Clone()
       if env_etc.strumpack_dist != "":
-        env_large_scale_merging_boost_python_ext.Replace(
-          CC="mpicc",
-          CXX="mpic++",
-          SHCC="mpicc",
-          SHCXX="mpic++",
-          SHLINK="mpic++",
-        )
+        if os.environ.get("CRAY_LD_LIBRARY_PATH") != None:
+          env_large_scale_merging_boost_python_ext.Replace(
+            CC="cc",
+            CXX="CC",
+            SHCC="cc",
+            SHCXX="CC",
+            SHLINK="CC",
+          )
+        else:
+          env_large_scale_merging_boost_python_ext.Replace(
+            CC="mpicc",
+            CXX="mpic++",
+            SHCC="mpicccc",
+            SHCXX="mpic++",
+            SHLINK="mpic++",
+          )
         env_large_scale_merging_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g","-fopenmp"],
           LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch","ptscotcherr","stdc++", "z"],
           LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))

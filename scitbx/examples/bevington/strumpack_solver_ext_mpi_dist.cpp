@@ -51,7 +51,7 @@ std::cout <<"CPP Here 1a"<< py_obj <<"  " << py_comm.ptr() << std::endl;
       MPI_Comm *comm_p = PyMPIComm_Get(py_comm.ptr());
 std::cout <<"CPP Here 1b" << std::endl;
       //Create a duplicate communicator for extension work; may not be necessary
-*/      MPI_Comm newcomm;
+*/    MPI_Comm newcomm;
       MPI_Comm_dup(MPI_COMM_WORLD, &newcomm);
 
       MPI_Comm_size(newcomm, &size);
@@ -87,7 +87,6 @@ std::cout <<"CPP Here 1b" << std::endl;
       }
       MPI_Barrier(newcomm);
       MPI_Comm_free( &newcomm );
-      strumpack::scalapack::Cblacs_exit(1); //
     }
     scitbx::af::shared<numType> x_strum_local; //Resulting x will be stored here
   }; //end of struct sstrumpack_mpi_dist_solver

@@ -106,9 +106,14 @@ namespace sparse_solver {
         Eigen::SimplicialLDLT<Eigen::SparseMatrix<double> > chol(spMat.transpose());
         x = chol.solve(b_internal);
       }
-      else{
+      else if(solver_Eigen == 2){
         Eigen::SparseMatrix<double> eigen_normal_matrix_full = spMat.selfadjointView<Eigen::Upper>();
         Eigen::BiCGSTAB<Eigen::SparseMatrix<double, Eigen::RowMajor> > solver(eigen_normal_matrix_full);
+        x = solver.solve(b_internal);
+      }
+      else {
+        Eigen::SparseMatrix<double> eigen_normal_matrix_full = spMat.selfadjointView<Eigen::Upper>();
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower|Eigen::Upper> solver(eigen_normal_matrix_full);
         x = solver.solve(b_internal);
       }
       double* solnptr = x_eig.begin();
