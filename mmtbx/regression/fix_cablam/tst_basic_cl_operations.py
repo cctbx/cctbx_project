@@ -22,7 +22,7 @@ def exercise_out(prefix="tst_fix_cablam_basic_cl_operations_pdb_out"):
     f.write(pdb_str)
   for prfx, fmt in [('_pdb', 'pdb'), ('_cif', 'mmcif'), ('_both', 'pdb+mmcif')]:
     cmd = " ".join([
-        "phenix.fix_cablam",
+        "phenix.cablam_idealization",
         in_fname,
         "output.suffix=%s" % prfx,
         "output.format=%s" % fmt,
