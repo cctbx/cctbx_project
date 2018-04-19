@@ -41,7 +41,6 @@ class DialsProcessorWithLogging(Processor):
       from dxtbx.command_line.radial_average import run as radial_run
       from scitbx.array_family import flex
       imageset = datablock.extract_imagesets()[0]
-      self.params.radial_average.image_number = imageset.indices()[0]
       two_thetas, radial_average_values = radial_run(self.params.radial_average, imageset = imageset)
 
       def get_closest_idx(data, val):
