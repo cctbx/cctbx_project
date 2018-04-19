@@ -40,11 +40,11 @@ master_phil = iotbx.phil.parse("""
 
     ncs_file = None
       .type = path
-      .help = File with NCS information (typically point-group NCS with \
+      .help = File with symmetry information (typically point-group NCS with \
                the center specified). Typically in  PDB format. \
               Can also be a .ncs_spec file from phenix. \
               Created automatically if symmetry is specified.
-      .short_caption = NCS info file
+      .short_caption = symmetry file
 
     pdb_file = None
       .type = path
@@ -286,8 +286,8 @@ master_phil = iotbx.phil.parse("""
 
      symmetry_center = None
        .type = floats
-       .short_caption = NCS center
-       .help = Center (in A) for NCS operators (if ncs is found \
+       .short_caption = symmetry center
+       .help = Center (in A) for symmetry operators (if symmetry is found \
           automatically). \
           If set to None, first guess is the center of the cell and then \
           if that fails, found automatically as the center of the \
@@ -295,8 +295,8 @@ master_phil = iotbx.phil.parse("""
 
      optimize_center = None
        .type = bool
-       .short_caption = Optimize NCS center
-       .help = Optimize position of NCS center. Default is False \
+       .short_caption = Optimize symmetry center
+       .help = Optimize position of symmetry center. Default is False \
            if symmetry_center is supplied or center of map is used and \
            True if it is found automatically).
 
@@ -314,19 +314,19 @@ master_phil = iotbx.phil.parse("""
        .type = int
        .short_caption = Max helical optimizations
        .help = Number of optimizations of helical parameters\
-               when finding NCS
+               when finding symmetry 
 
      max_helical_ops_to_check = 5
        .type = int
        .short_caption = Max helical ops to check
        .help = Number of helical operations in each direction to check \
-               when finding NCS
+               when finding symmetry 
 
      max_helical_rotations_to_check = None
        .type = int
        .short_caption = Max helical rotations
        .help = Number of helical rotations to check \
-               when finding NCS
+               when finding symmetry 
 
      two_fold_along_x = None
        .type = bool
@@ -338,7 +338,7 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Smallest object to consider
        .help = Dimension of smallest object to consider\
-               when finding NCS. Default is 5 * resolution
+               when finding symmetry. Default is 5 * resolution
 
      score_basis = ncs_score cc *None
        .type = choice
@@ -358,25 +358,25 @@ master_phil = iotbx.phil.parse("""
      random_points = 100
        .type = int
        .short_caption = Random points
-       .help = Number of random points in map to examine in finding NCS
+       .help = Number of random points in map to examine in finding symmetry 
 
      identify_ncs_id = True
        .type = bool
        .short_caption = Identify NCS ID
-       .help = If NCS is not point-group symmetry, try each possible \
-               operator when evaluating NCS and choose the one that  \
-               results in the most uniform density at NCS-related points.
+       .help = If symmetry is not point-group symmetry, try each possible \
+               operator when evaluating symmetry and choose the one that  \
+               results in the most uniform density at symmetry-related points.
 
      min_ncs_cc = 0.75
        .type = float
-       .short_caption = Minimum NCS CC to keep it
-       .help =  Minimum NCS CC to keep operators when identifying \
+       .short_caption = Minimum symmetry CC to keep it
+       .help =  Minimum symmetry CC to keep operators when identifying \
                  automatically
 
      n_rescore = 5
        .type = int
-       .short_caption = NCS operators to rescore
-       .help = Number of NCS operators to rescore
+       .short_caption = symmetry operators to rescore
+       .help = Number of symmetry operators to rescore
 
      op_max = 14
        .type = int
@@ -564,9 +564,9 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Local sharpening
        .help = Sharpen locally using overlapping regions. \
                NOTE: Best to turn off local_aniso_in_local_sharpening \
-               if NCS is present.\
-               If local_aniso_in_local_sharpening is True and NCS is \
-               present this can distort the map for some NCS copies \
+               if symmetry is present.\
+               If local_aniso_in_local_sharpening is True and symmetry is \
+               present this can distort the map for some symmetry copies \
                because an anisotropy correction is applied\
                based on local density in one copy and is transferred without \
                rotation to other copies.
@@ -575,7 +575,7 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Local anisotropy
        .help = Use local anisotropy in local sharpening.  \
-               Default is True unless NCS is present.
+               Default is True unless symmetry is present.
 
      overall_before_local = True
        .type = bool
@@ -860,7 +860,7 @@ master_phil = iotbx.phil.parse("""
     select_au_box = None
       .type = bool
       .help = Select box containing at least one representative region of \
-              the map. Also select just NCS operators relevant to that box. \
+              the map. Also select just symmetry operators relevant to that box. \
               Default is true if number of operators is at least \
               n_ops_to_use_au_box
       .short_caption = select au box
@@ -873,7 +873,7 @@ master_phil = iotbx.phil.parse("""
 
     n_au_box = 5
       .type = int
-      .help = Number of NCS copies to try and get inside au_box
+      .help = Number of symmetry copies to try and get inside au_box
       .short_caption = N au box
 
 
@@ -911,7 +911,7 @@ master_phil = iotbx.phil.parse("""
     mask_threshold = None
       .type = float
       .help = threshold in identification of overall mask. If None, guess \
-               volume of molecule from sequence and NCS copies.
+               volume of molecule from sequence and symmetry copies.
       .short_caption = Density select threshold
 
     grid_spacing_for_au = 3
@@ -962,13 +962,13 @@ master_phil = iotbx.phil.parse("""
 
     require_complete = True
       .type = bool
-      .short_caption = Require all NCS copies to be represented for a region
-      .help =  Require all NCS copies to be represented for a region
+      .short_caption = Require all symmetry copies to be represented for a region
+      .help =  Require all symmetry copies to be represented for a region
 
     split_if_possible = True
       .type = bool
       .short_caption = Split regions if mixed
-      .help = Split regions that are split in some NCS copies.\
+      .help = Split regions that are split in some symmetry copies.\
               If None, split if most copies are split.
 
     write_all_regions = False
@@ -1053,13 +1053,13 @@ master_phil = iotbx.phil.parse("""
 
     exclude_points_in_ncs_copies = True
       .type = bool
-      .help = Exclude points that are in NCS copies when creating NCS au. \
+      .help = Exclude points that are in symmetry copies when creating NCS au. \
                Does not apply if add_neighbors=True
-      .short_caption = Exclude points in NCS copies
+      .short_caption = Exclude points in symmetry copies
 
     add_neighbors = True
       .type = bool
-      .help = Add neighboring regions around the NCS au. Turns off \
+      .help = Add neighboring regions around the au. Turns off \
            exclude_points_in_ncs_copies also.
       .short_caption = Add neighbors
 
