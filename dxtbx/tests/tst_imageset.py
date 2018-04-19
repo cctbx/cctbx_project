@@ -588,7 +588,41 @@ class TestNexusFile(object):
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
 
+class Test_SACLA_MPCCD_Cheetah_File(object):
 
+  def __init__(self):
+    from os.path import join
+    self.filename = join(dials_regression,
+                    "./image_examples/SACLA_MPCCD_Cheetah/run266702-0-subset.h5")
+
+  def run(self, just_in_time=False):
+
+    from dxtbx.format.Registry import Registry
+    format_class = Registry.find(self.filename)
+
+    iset = format_class.get_imageset([self.filename], just_in_time=just_in_time)
+
+    assert len(iset) == 4
+    for i in range(len(iset)):
+      data = iset.get_raw_data(i)
+#      mask = iset.get_mask(i)
+      b = iset.get_beam(i)
+      d = iset.get_detector(i)
+      g = iset.get_goniometer(i)
+      s = iset.get_scan(i)
+
+    print 'OK'
+
+    iset = format_class.get_imageset([self.filename], single_file_indices=[1], just_in_time=just_in_time)
+    assert len(iset) == 1
+
+    for i in range(len(iset)):
+      data = iset.get_raw_data(i)
+#      mask = iset.get_mask(i)
+      b = iset.get_beam(i)
+      d = iset.get_detector(i)
+      g = iset.get_goniometer(i)
+      s = iset.get_scan(i)
 
 class TestImageSetFactory(object):
   def get_file_list(self):
@@ -707,6 +741,8 @@ def run():
   TestImageSet().run()
   TestImageSweep().run()
 #  TestNexusFile().run()
+  Test_SACLA_MPCCD_Cheetah_File().run()
+  Test_SACLA_MPCCD_Cheetah_File().run(just_in_time=True)
   TestImageSetFactory().run()
   TestPickleImageSet().run()
 
