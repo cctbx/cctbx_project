@@ -18,6 +18,7 @@ from scitbx_array_family_flex_ext import reindexing_array
 
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
+from cctbx.geometry_restraints.base_geometry import Base_geometry
 
 #from mmtbx.geometry_restraints.hbond import get_simple_bonds
 
@@ -50,7 +51,7 @@ origin_ids = linking_class()
 #              1 - restraint for NA basepairs
 #              3 - geometry_resraints.edits from users
 
-class manager(object):
+class manager(Base_geometry):
 # This class is documented in
 # http://www.phenix-online.org/papers/iucrcompcomm_aug2004.pdf
   def __init__(self,
@@ -83,7 +84,6 @@ class manager(object):
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
         log=StringIO.StringIO()):
-    self._source = None
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
@@ -96,13 +96,6 @@ class manager(object):
       assert (nonbonded_charges.size() == nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
-
-  def set_source(self, source):
-    assert self._source is None
-    self._source = source
-
-  def get_source(self):
-    return self._source
 
 # implement explicit pickling for the log object since StringIO doesn't support pickling
   # def __getstate__(self):
