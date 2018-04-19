@@ -477,6 +477,7 @@ class ExperimentListAux(boost.python.injector, ExperimentList):
     for e in self:
       obj = OrderedDict()
       obj['__id__'] = 'Experiment'
+      obj['identifier'] = e.identifier
       if e.beam is not None:
         obj['beam'] = find_index(blist, e.beam)
       if e.detector is not None:

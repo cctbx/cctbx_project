@@ -191,6 +191,7 @@ namespace dxtbx { namespace model {
         polarization_fraction_(polarization_fraction),
         flux_(0),
         transmission_(1.0) {
+      DXTBX_ASSERT(direction.length() > 0);
       direction_ = direction.normalize();
     }
 

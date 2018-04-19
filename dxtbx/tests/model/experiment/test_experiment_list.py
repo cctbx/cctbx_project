@@ -8,7 +8,7 @@ import pytest
 
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.model.experiment_list import ExperimentListFactory, \
-  ExperimentListDumper
+  ExperimentListDumper, ExperimentListDict
 
 def test_experiment_contains():
   from dxtbx.model import Beam, Detector, Goniometer, Scan
@@ -320,6 +320,7 @@ def experiment_list():
   d = [d1, d2, d3, d2, d1]
   g = [g1, g2, g3, g2, g1]
   s = [s1, s2, s3, s2, s1]
+  ident = ["sausage", "eggs", "bacon", "toast", "beans"]
 
   # Populate with various experiments
   for i in range(5):
@@ -327,7 +328,8 @@ def experiment_list():
       beam=b[i],
       detector=d[i],
       goniometer=g[i],
-      scan=s[i]))
+      scan=s[i],
+      identifier=ident[i]))
 
   # Return the list of experiments
   return experiments
@@ -658,6 +660,34 @@ def test_experimentlist_dumper_dump_with_bad_lookup(dials_regression, tmpdir):
   assert imageset.external_lookup.gain.filename is not None
   assert imageset.external_lookup.pedestal.filename is not None
 
+def test_experimentlist_with_identifiers():
+  from dxtbx.model import Beam, Detector, Goniometer, Scan
+
+  # Initialise a list of experiments
+  experiments = ExperimentList()
+
+  experiments.append(Experiment(
+    beam=Beam(s0=(0,0,-1)),
+    detector=Detector(),
+    identifier="bacon"))
+
+  experiments.append(Experiment(
+    beam=Beam(s0=(0,0,-1)),
+    detector=Detector(),
+    identifier="sausage"))
+
+  with pytest.raises(Exception):
+    experiments.append(Experiment(
+      beam=Beam(),
+      detector=Detector(),
+      identifier="bacon"))
+
+  d = experiments.to_dict()
+  e2 = ExperimentListDict(d).decode()
+
+  assert experiments[0].identifier == e2[0].identifier
+  assert experiments[1].identifier == e2[1].identifier
+
 def check(el1, el2):
   # All the experiment lists should be the same length
   assert len(el1) == 1
@@ -671,3 +701,4 @@ def check(el1, el2):
     assert e1.goniometer and e1.goniometer == e2.goniometer
     assert e1.scan and e1.scan == e2.scan
     assert e1.crystal and e1.crystal == e2.crystal
+    assert e1.identifier == e2.identifier
