@@ -323,7 +323,7 @@ class Base_geometry(object):
       sites_cart=None,
       site_labels=None,
       file_name=None,
-      file_descriptor=sys.stdout,
+      file_descriptor=None,
       header="# Geometry restraints\n"):
     """
     Define this if you want the .geo file
