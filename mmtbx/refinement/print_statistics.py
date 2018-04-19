@@ -184,8 +184,7 @@ class refinement_monitor(object):
         model.get_sites_cart(),
         model.get_hd_selection(),
         None)
-    geom = model.geometry_statistics(
-      general_selection=general_selection)
+    geom = model.geometry_statistics()
     if(geom is not None):
       self.geom.bonds.append(geom.bond().mean)
       self.geom.angles.append(geom.angle().mean)
