@@ -33,7 +33,7 @@ class map_symmetry:
     from libtbx import group_args
     return group_args(
      cc = self.cc,
-     ncs_object = self.ncs_object 
+     ncs_object = self.ncs_object
     )
 
   def clean_up(self):

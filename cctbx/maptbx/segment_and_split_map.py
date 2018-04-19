@@ -314,19 +314,19 @@ master_phil = iotbx.phil.parse("""
        .type = int
        .short_caption = Max helical optimizations
        .help = Number of optimizations of helical parameters\
-               when finding symmetry 
+               when finding symmetry
 
      max_helical_ops_to_check = 5
        .type = int
        .short_caption = Max helical ops to check
        .help = Number of helical operations in each direction to check \
-               when finding symmetry 
+               when finding symmetry
 
      max_helical_rotations_to_check = None
        .type = int
        .short_caption = Max helical rotations
        .help = Number of helical rotations to check \
-               when finding symmetry 
+               when finding symmetry
 
      two_fold_along_x = None
        .type = bool
@@ -358,7 +358,7 @@ master_phil = iotbx.phil.parse("""
      random_points = 100
        .type = int
        .short_caption = Random points
-       .help = Number of random points in map to examine in finding symmetry 
+       .help = Number of random points in map to examine in finding symmetry
 
      identify_ncs_id = True
        .type = bool
