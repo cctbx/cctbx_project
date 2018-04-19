@@ -24,17 +24,15 @@ class FormatMultiImageLazy(FormatMultiImage):
                    check_format=True,
                    lazy=True):
 
-    return super(FormatMultiImageLazy,self).get_imageset(Class,
-                                                         filenames,
-                                                         beam,
-                                                         detector,
-                                                         goniometer,
-                                                         scan,
-                                                         as_sweep,
-                                                         as_imageset,
-                                                         single_file_indices,
-                                                         format_kwargs,
-                                                         template,
-                                                         check_format,
-                                                         lazy)
-
+    return super(FormatMultiImageLazy, Class).get_imageset(filenames,
+                                                           beam,
+                                                           detector,
+                                                           goniometer,
+                                                           scan,
+                                                           as_sweep,
+                                                           as_imageset,
+                                                           single_file_indices,
+                                                           format_kwargs,
+                                                           template,
+                                                           check_format,
+                                                           lazy)
