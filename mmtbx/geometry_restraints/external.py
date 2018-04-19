@@ -56,3 +56,30 @@ if (afitt_installed) :
       include scope mmtbx.geometry_restraints.afitt.master_phil_str
     }
 """
+
+# Schrodinger
+schrodinger_installed = False
+if os.environ.get("SCHRODINGER", None):
+  if os.path.exists(os.environ["SCHRODINGER"]):
+    schrodinger_installed = True
+
+if schrodinger_installed:
+  external_energy_params_str += """
+    schrodinger
+      .help = Parameters for using Schrodinger's force fields.
+      .expert_level = 3
+    {
+      use_schrodinger = False
+        .help = Use Schrodinger supported force field.
+        .type = bool
+      ligand_selection = None
+        .help = Use force field parameters only for selected ligands.
+        .type = str
+      forcefield = 'OPLS3e'
+        .help = Force field to use during refinement.
+        .type = str
+      maestro_file = None
+        .help = Schrodinger Maestro file containing structure.
+        .type = str
+    }
+"""
