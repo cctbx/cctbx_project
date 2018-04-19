@@ -84,6 +84,7 @@ class manager(Base_geometry):
         max_reasonable_bond_distance=None,
         min_cubicle_edge=5,
         log=StringIO.StringIO()):
+    super(manager, self).__init__()
     if (site_symmetry_table is not None): assert crystal_symmetry is not None
     if (bond_params_table is not None and site_symmetry_table is not None):
       assert bond_params_table.size() == site_symmetry_table.indices().size()
