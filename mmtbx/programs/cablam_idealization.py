@@ -48,6 +48,11 @@ output {
     # this must be mmtbx.model.manager?
     model = self.data_manager.get_model()
 
+    self.output_fname_base = os.path.splitext(
+        self.data_manager.get_default_model_name())[0] + self.params.output.suffix
+    fo = open(self.output_fname_base+'.log', 'w')
+    self.logger.register(label='logfile', file_object=fo)
+
     self.cablam_id = cablam_idealization.cablam_idealization(
         model=model,
         params = self.params.cablam_idealization,
@@ -56,20 +61,23 @@ output {
 
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
-    self.output_fname_base = os.path.splitext(
-        self.data_manager.get_default_model_name())[0] + self.params.output.suffix
-    if 'pdb' in self.params.output.format:
-      str_to_output = model.model_as_pdb()
-      fname = self.output_fname_base+".pdb"
-      print('Writing results: %s' % fname)
-      self.data_manager.write_model_file(
-          fname, str_to_output, self.params.output.overwrite)
-    if 'mmcif' in self.params.output.format:
-      str_to_output = model.model_as_mmcif()
-      fname = self.output_fname_base+".cif"
-      print('Writing results: %s' % fname)
-      self.data_manager.write_model_file(
-          fname, str_to_output, self.params.output.overwrite)
+    results = self.cablam_id.get_results()
+    for m, fname_base in [
+        (results.model, self.output_fname_base),
+        (results.model_minimized, self.output_fname_base+"_minimized")]:
+      if m is not None:
+        if 'pdb' in self.params.output.format:
+          str_to_output = model.model_as_pdb()
+          fname = fname_base+".pdb"
+          print('Writing results: %s' % fname)
+          self.data_manager.write_model_file(
+              fname, str_to_output, self.params.output.overwrite)
+        if 'mmcif' in self.params.output.format:
+          str_to_output = model.model_as_mmcif()
+          fname = fname_base+".cif"
+          print('Writing results: %s' % fname)
+          self.data_manager.write_model_file(
+              fname, str_to_output, self.params.output.overwrite)
 
 
   # ---------------------------------------------------------------------------

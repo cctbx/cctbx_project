@@ -376,7 +376,9 @@ tst_list = (
   "$D/regression/real_space_refine_chain/tst_00.py",
   "$D/regression/real_space_refine_chain/tst_01.py",
   "$D/conformation_dependent_library/test_omega_cdl.py",
-  "$D/regression/fix_cablam/tst_basic_cl_operations.py"
+  "$D/regression/fix_cablam/tst_basic_cl_operations.py",
+  "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
+  "$D/regression/fix_cablam/tst_one_resid_rotation.py",
   )
 
 def run():
