@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatStill import FormatStill
-from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
+from dxtbx.format.FormatMultiImageJIT import FormatMultiImageJIT
 from libtbx.phil import parse
 
 locator_str = """
@@ -25,13 +25,13 @@ locator_str = """
 """
 locator_scope = parse(locator_str)
 
-class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
+class FormatXTC(FormatMultiImageJIT,FormatStill,Format):
 
   def __init__(self, image_file, **kwargs):
     from dxtbx import IncorrectFormatError
     if not self.understand(image_file):
       raise IncorrectFormatError(self, image_file)
-    FormatMultiImageLazy.__init__(self, **kwargs)
+    FormatMultiImageJIT.__init__(self, **kwargs)
     FormatStill.__init__(self, image_file, **kwargs)
     Format.__init__(self, image_file, **kwargs)
     self.current_index = None

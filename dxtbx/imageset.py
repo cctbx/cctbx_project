@@ -148,17 +148,17 @@ class ImageSetAux(boost.python.injector, ImageSet):
     return [self.get_path(i) for i in range(len(self))]
 
 
-class ImageSetLazy(ImageSet):
+class ImageSetJIT(ImageSet):
 
   '''
-  Lazy ImageSet class that doesn't necessitate setting the models ahead of time.
+  Just-in-Time ImageSet class that doesn't necessitate setting the models ahead of time.
   Only when a particular model (like detector or beam) for an image is requested,
   it sets the model using the format class and then returns the model
   '''
 
   def get_detector(self, index=None):
     if index is None: index=0
-    detector = super(ImageSetLazy,self).get_detector(index)
+    detector = super(ImageSetJIT,self).get_detector(index)
     if detector is None:
       format_instance = self.get_format_class()._current_instance_
       detector = format_instance.get_detector(self.indices()[index])
@@ -168,7 +168,7 @@ class ImageSetLazy(ImageSet):
 
   def get_beam(self, index=None):
     if index is None: index=0
-    beam = super(ImageSetLazy,self).get_beam(index)
+    beam = super(ImageSetJIT,self).get_beam(index)
     if beam is None:
       format_instance = self.get_format_class()._current_instance_
       beam = format_instance.get_beam(self.indices()[index])
@@ -177,7 +177,7 @@ class ImageSetLazy(ImageSet):
 
   def get_goniometer(self, index=None):
     if index is None: index=0
-    goniometer = super(ImageSetLazy,self).get_goniometer(index)
+    goniometer = super(ImageSetJIT,self).get_goniometer(index)
     if goniometer is None:
       format_instance = self.get_format_class()._current_instance_
       goniometer = format_instance.get_goniometer(self.indices()[index])
@@ -186,7 +186,7 @@ class ImageSetLazy(ImageSet):
 
   def get_scan(self, index=None):
     if index is None: index=0
-    scan = super(ImageSetLazy,self).get_scan(index)
+    scan = super(ImageSetJIT,self).get_scan(index)
     if scan is None:
       format_instance = self.get_format_class()._current_instance_
       scan = format_instance.get_scan(self.indices()[index])
@@ -195,14 +195,14 @@ class ImageSetLazy(ImageSet):
 
   def __getitem__(self, item):
     if isinstance(item, slice):
-      return ImageSetLazy(self.data(), indices = self.indices()[item])
+      return ImageSetJIT(self.data(), indices = self.indices()[item])
     else:
       # Sets the list for detector, beam etc before being accessed by functions in imageset.h
       self.get_detector(item)
       self.get_beam(item)
       self.get_goniometer(item)
       self.get_scan(item)
-    return super(ImageSetLazy,self).__getitem__(item)
+    return super(ImageSetJIT,self).__getitem__(item)
 
 class ImageSweepAux(boost.python.injector, ImageSweep):
 

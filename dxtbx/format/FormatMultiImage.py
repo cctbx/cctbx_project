@@ -153,7 +153,7 @@ class FormatMultiImage(object):
                    format_kwargs=None,
                    template=None,
                    check_format=True,
-                   lazy=False):
+                   just_in_time=False):
     '''
     Factory method to create an imageset
 
@@ -176,8 +176,8 @@ class FormatMultiImage(object):
       format_kwargs = {}
 
     # If we have no specific format class, we need indices for number of images
-    from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
-    if Class in [FormatMultiImage, FormatMultiImageLazy]:
+    from dxtbx.format.FormatMultiImageJIT import FormatMultiImageJIT
+    if Class in [FormatMultiImage, FormatMultiImageJIT]:
       assert single_file_indices is not None
       assert min(single_file_indices) >= 0
       num_images = max(single_file_indices) + 1
@@ -230,7 +230,7 @@ class FormatMultiImage(object):
       else:
         is_sweep = False
 
-    assert not (as_sweep and lazy), 'No lazy support for sweeps'
+    assert not (as_sweep and just_in_time), 'No Just-in-Time support for sweeps'
 
     if single_file_indices is not None:
       single_file_indices = flex.size_t(single_file_indices)
@@ -238,11 +238,11 @@ class FormatMultiImage(object):
     # Create an imageset or sweep
     if not is_sweep:
 
-      # Use imagesetlazy
-      # Setup ImageSetLazy and just return it. No models are set.
-      if lazy:
-        from dxtbx.imageset import ImageSetLazy
-        iset = ImageSetLazy(
+      # Use imagesetJIT
+      # Setup ImageSetJIT and just return it. No models are set.
+      if just_in_time:
+        from dxtbx.imageset import ImageSetJIT
+        iset = ImageSetJIT(
           ImageSetData(
             reader = reader,
             masker = masker,
