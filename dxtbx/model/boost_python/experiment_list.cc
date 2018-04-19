@@ -228,6 +228,8 @@ namespace dxtbx { namespace model { namespace boost_python {
           make_constructor(
           &make_experiment_list,
           default_call_policies()))
+      .def("identifiers", &ExperimentList::identifiers)
+      .def("find", &ExperimentList::find)
       .def("append", &ExperimentList::append)
       .def("extend", &ExperimentList::extend)
       .def("clear", &ExperimentList::clear)

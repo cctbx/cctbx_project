@@ -32,20 +32,10 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_crystal(),
         obj.get_profile(),
         obj.get_imageset(),
-        obj.get_scaling_model());
+        obj.get_scaling_model(),
+        obj.get_identifier());
     }
   };
-
-  template <>
-  boost::python::dict to_dict<Experiment>(const Experiment &obj) {
-    boost::python::dict result;
-    return result;
-  }
-
-  template <>
-  Experiment* from_dict<Experiment>(boost::python::dict obj) {
-    return new Experiment();
-  }
 
   /**
    * Return function pointers to overrides for different types
@@ -96,7 +86,8 @@ namespace dxtbx { namespace model { namespace boost_python {
           boost::shared_ptr<CrystalBase>,
           boost::python::object,
           boost::python::object,
-          boost::python::object>((
+          boost::python::object,
+          std::string>((
               arg("beam") = boost::shared_ptr<BeamBase>(),
               arg("detector") = boost::shared_ptr<Detector>(),
               arg("goniometer") = boost::shared_ptr<Goniometer>(),
@@ -104,7 +95,8 @@ namespace dxtbx { namespace model { namespace boost_python {
               arg("crystal") = boost::shared_ptr<CrystalBase>(),
               arg("profile") = boost::python::object(),
               arg("imageset") = boost::python::object(),
-              arg("scaling_model") = boost::python::object())))
+              arg("scaling_model") = boost::python::object(),
+              arg("identifier") = "")))
       .add_property(
           "beam",
           &Experiment::get_beam,
@@ -137,6 +129,10 @@ namespace dxtbx { namespace model { namespace boost_python {
           "scaling_model",
           &Experiment::get_scaling_model,
           &Experiment::set_scaling_model)
+      .add_property(
+          "identifier",
+          &Experiment::get_identifier,
+          &Experiment::set_identifier)
       .def("__contains__", experiment_contains_pointers::beam())
       .def("__contains__", experiment_contains_pointers::detector())
       .def("__contains__", experiment_contains_pointers::goniometer())
@@ -145,10 +141,6 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("__contains__", experiment_contains_pointers::object())
       .def("__eq__", &Experiment::operator==)
       .def("is_consistent", &Experiment::is_consistent)
-      .def("to_dict", &to_dict<Experiment>)
-      .def("from_dict", &from_dict<Experiment>,
-        return_value_policy<manage_new_object>())
-      .staticmethod("from_dict")
       .def_pickle(ExperimentPickleSuite());
   }
 
