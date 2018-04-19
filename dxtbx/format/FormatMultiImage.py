@@ -152,13 +152,13 @@ class FormatMultiImage(object):
                    single_file_indices=None,
                    format_kwargs=None,
                    template=None,
-                   check_format=True):
+                   check_format=True,
+                   lazy=False):
     '''
     Factory method to create an imageset
 
     '''
     from dxtbx.imageset import ImageSetData
-    from dxtbx.imageset import ImageSet
     from dxtbx.imageset import ImageSweep
     from os.path import abspath
     from dials.array_family import flex
@@ -176,7 +176,8 @@ class FormatMultiImage(object):
       format_kwargs = {}
 
     # If we have no specific format class, we need indices for number of images
-    if Class == FormatMultiImage:
+    import inspect
+    if FormatMultiImage in inspect.getmro(Class):
       assert single_file_indices is not None
       assert min(single_file_indices) >= 0
       num_images = max(single_file_indices) + 1
@@ -229,13 +230,29 @@ class FormatMultiImage(object):
       else:
         is_sweep = False
 
+    assert not (as_sweep and lazy), 'No lazy support for sweeps'
+
     if single_file_indices is not None:
       single_file_indices = flex.size_t(single_file_indices)
 
     # Create an imageset or sweep
     if not is_sweep:
 
+      # Use imagesetlazy
+      # Setup ImageSetLazy and just return it. No models are set.
+      if lazy:
+        from dxtbx.imageset import ImageSetLazy
+        iset = ImageSetLazy(
+          ImageSetData(
+            reader = reader,
+            masker = masker,
+            vendor = vendor,
+            params = params,
+            format = Class),
+          indices=single_file_indices)
+        return iset
       # Create the imageset
+      from dxtbx.imageset import ImageSet
       iset = ImageSet(
         ImageSetData(
           reader = reader,
