@@ -176,8 +176,8 @@ class FormatMultiImage(object):
       format_kwargs = {}
 
     # If we have no specific format class, we need indices for number of images
-    import inspect
-    if FormatMultiImage in inspect.getmro(Class):
+    from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
+    if Class in [FormatMultiImage, FormatMultiImageLazy]:
       assert single_file_indices is not None
       assert min(single_file_indices) >= 0
       num_images = max(single_file_indices) + 1
