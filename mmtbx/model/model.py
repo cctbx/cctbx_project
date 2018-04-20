@@ -383,7 +383,7 @@ class manager(object):
   def set_ramachandran_plot_restraints(self, rama_potential):
     self.unset_ramachandran_plot_restraints()
     grm = self.get_restraints_manager().geometry
-    pep_link_params = self.all_chain_proxies.params.peptide_link
+    pep_link_params = self.self._pdb_interpretation_params.pdb_interpretation.peptide_link
     pep_link_params.rama_potential = rama_potential
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
