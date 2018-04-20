@@ -34,7 +34,9 @@ using boost::math::isnan;
 #include <cfloat>
 /* seem to need these on windoze and MacOS */
 #ifndef NAN
-#define NAN strtod("NAN",NULL)
+//#define NAN strtod("NAN",NULL)
+/* this works on Windoze */
+#define NAN sqrt(-1)
 #endif
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99

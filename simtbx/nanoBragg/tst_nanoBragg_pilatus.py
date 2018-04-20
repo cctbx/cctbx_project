@@ -1,10 +1,10 @@
 from __future__ import division
 from scitbx.array_family import flex
-from simtbx.nanoBragg import testuple
-from simtbx.nanoBragg import shapetype
-from simtbx.nanoBragg import pivot
-from simtbx.nanoBragg import convention
-from simtbx.nanoBragg import nanoBragg
+from simtbx.nanoBragg import nanoBragg, shapetype, convention, pivot, testuple
+#from simtbx.nanoBragg import shapetype
+#from simtbx.nanoBragg import pivot
+#from simtbx.nanoBragg import convention
+#from simtbx.nanoBragg import nanoBragg
 import dxtbx
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus
 from dxtbx.format.FormatCBFMiniPilatus import FormatCBFMiniPilatus

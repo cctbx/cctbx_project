@@ -2227,7 +2227,7 @@ nanoBragg::init_mosaicity()
     mosaic_umats = (double *) calloc(mosaic_domains+10,9*sizeof(double));
 
     /* re-initialize the RNG for the mosaic sequence */
-    mseed = -abs(mosaic_seed);
+    mseed = -labs(mosaic_seed);
 
     /* now actually create the orientation of each domain */
     for(mos_tic=0;mos_tic<mosaic_domains;++mos_tic)
@@ -2386,7 +2386,7 @@ nanoBragg::randomize_orientation()
 {
     if(verbose>1) printf("MISSET seed %ld\n",seed);
     /* re-initialize the RNG */
-    seed = -abs(seed);
+    seed = -labs(seed);
     /* use spherical cap as sphere to generate random orientation in umat */
     mosaic_rotation_umat(90.0, umat, &seed);
     /* get the missetting angles, in case we want to use them again on -misset option */
@@ -3592,7 +3592,7 @@ nanoBragg::add_noise()
      here we do the latter */
 
     /* re-start the RNG */
-    seed = -abs(seed);
+    seed = -labs(seed);
 
     if(verbose) printf("applying calibration at %g%%, flicker noise at %g%%\n",calibration_noise*100.,flicker_noise*100.);
     sum = max_I = 0.0;
@@ -3655,7 +3655,7 @@ nanoBragg::add_noise()
     if(calibration_noise > 0.0)
     {
         /* calibration is same from shot to shot, so use well-known seed */
-        cseed = -abs(calib_seed);
+        cseed = -labs(calib_seed);
         sum = max_I = 0.0;
         i = sumn = 0;
         for(spixel=0;spixel<spixels;++spixel)
@@ -3892,7 +3892,7 @@ nanoBragg::to_smv_format(
       printf("writing %s as %d-byte integers; sum= %g max= %g @ ( %g %g)\n",fileout.c_str(),
             (int)sizeof(unsigned short int),sum,max_I,max_I_x,max_I_y);
     }
-    outfile = fopen(fileout.c_str(),"w");
+    outfile = fopen(fileout.c_str(),"wb");
     fprintf(outfile,"{\nHEADER_BYTES=1024;\nDIM=2;\nBYTE_ORDER=%s;\nTYPE=unsigned_short;\n",byte_order);
     fprintf(outfile,"SIZE1=%d;\nSIZE2=%d;\nPIXEL_SIZE=%g;\nDISTANCE=%g;\n",fpixels,spixels,pixel_size*1000.0,distance*1000.0);
     fprintf(outfile,"WAVELENGTH=%g;\n",lambda0*1e10);
