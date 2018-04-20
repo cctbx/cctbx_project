@@ -308,8 +308,11 @@ class manager(object):
     parse it. Does not need the instance of class (staticmethod).
     Then modify what needed to be modified and init this class normally.
     """
+    from mmtbx.geometry_restraints.external import external_energy_params_str
     return iotbx.phil.parse(
-          input_string=grand_master_phil_str+reference_model_str,
+          input_string = grand_master_phil_str +\
+                         reference_model_str +\
+                         external_energy_params_str,
           process_includes=True)
 
   @staticmethod
@@ -351,6 +354,8 @@ class manager(object):
         full_params.geometry_restraints = params.geometry_restraints
       if hasattr(params, "reference_model"):
         full_params.reference_model = params.reference_model
+      if hasattr(params, "schrodinger"):
+        full_params.schrodinger = params.schrodinger
       self._pdb_interpretation_params = full_params
     self.unset_restraints_manager()
 
@@ -884,49 +889,55 @@ class manager(object):
     # if self._pdb_interpretation_params is None:
     #   self._pdb_interpretation_params = master_params().fetch().extract()
     # disabled temporarily due to architecture changes
-    geometry = self._processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = plain_pairs_radius,
-      params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
-      params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
-      custom_nonbonded_exclusions  = custom_nb_excl,
-      external_energy_function=external_energy_function,
-      assume_hydrogens_all_missing = not self.has_hd,
-      file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
+    geometry = None
+    if (getattr(self._pdb_interpretation_params, "schrodinger", None) and
+        self._pdb_interpretation_params.schrodinger.use_schrodinger):
+      geometry = None # init correct class here.
+    else:
 
-    self._ss_manager = self._processed_pdb_file.ss_manager
+      geometry = self._processed_pdb_file.geometry_restraints_manager(
+        show_energies      = False,
+        plain_pairs_radius = plain_pairs_radius,
+        params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
+        params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
+        custom_nonbonded_exclusions  = custom_nb_excl,
+        external_energy_function=external_energy_function,
+        assume_hydrogens_all_missing = not self.has_hd,
+        file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
 
-    # For test GRM pickling
-    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
-    # geometry = make_geo_pickle_unpickle(
-    #     geometry=geometry,
-    #     xrs=xray_structure,
-    #     prefix=None)
+      self._ss_manager = self._processed_pdb_file.ss_manager
 
-    # Link treating should be rewritten. They should not be saved in
-    # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
-    # For test GRM pickling
-    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
-    # geometry = make_geo_pickle_unpickle(
-    #     geometry=geometry,
-    #     xrs=xray_structure,
-    #     prefix=None)
+      # For test GRM pickling
+      # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+      # geometry = make_geo_pickle_unpickle(
+      #     geometry=geometry,
+      #     xrs=xray_structure,
+      #     prefix=None)
+
+      # Link treating should be rewritten. They should not be saved in
+      # all_chain_proxies and they should support mmcif.
+      self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
+      # For test GRM pickling
+      # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+      # geometry = make_geo_pickle_unpickle(
+      #     geometry=geometry,
+      #     xrs=xray_structure,
+      #     prefix=None)
+      if hasattr(self._pdb_interpretation_params, "reference_model"):
+        add_reference_dihedral_restraints_if_requested(
+            geometry=geometry,
+            processed_pdb_file=self._processed_pdb_file,
+            mon_lib_srv=self.get_mon_lib_srv(),
+            ener_lib=self.get_ener_lib(),
+            has_hd=self.has_hd,
+            params=self._pdb_interpretation_params.reference_model,
+            selection=None,
+            log=self.log)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
       normalization = grm_normalization)
     # Torsion restraints from reference model
-    if hasattr(self._pdb_interpretation_params, "reference_model") and restraints_manager is not None:
-      add_reference_dihedral_restraints_if_requested(
-          geometry=restraints_manager.geometry,
-          processed_pdb_file=self._processed_pdb_file,
-          mon_lib_srv=self.get_mon_lib_srv(),
-          ener_lib=self.get_ener_lib(),
-          has_hd=self.has_hd,
-          params=self._pdb_interpretation_params.reference_model,
-          selection=None,
-          log=self.log)
     if(self._xray_structure is not None):
       restraints_manager.crystal_symmetry = self._xray_structure.crystal_symmetry()
     self.restraints_manager = restraints_manager
