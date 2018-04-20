@@ -382,8 +382,9 @@ class manager(object):
 
   def set_ramachandran_plot_restraints(self, rama_potential):
     self.unset_ramachandran_plot_restraints()
-    grm = self.get_restraints_manager()
-    self.all_chain_proxies.params.peptide_link.rama_potential = rama_potential
+    grm = self.get_restraints_manager().geometry
+    pep_link_params = self.all_chain_proxies.params.peptide_link
+    pep_link_params.rama_potential = rama_potential
     ramachandran_restraints_manager = ramachandran.ramachandran_manager(
       pdb_hierarchy  = self.get_hierarchy(),
       atom_selection = pep_link_params.rama_selection,
@@ -392,7 +393,7 @@ class manager(object):
     grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
 
   def unset_ramachandran_plot_restraints(self):
-    grm = self.get_restraints_manager()
+    grm = self.get_restraints_manager().geometry
     grm.remove_ramachandran_in_place()
 
   def get_model_input(self):
