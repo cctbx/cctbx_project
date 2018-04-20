@@ -914,10 +914,6 @@ class manager(object):
     # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
     # not clear how they work with multi-model stuff...
 
-    # Link treating should be rewritten. They should not be saved in
-    # all_chain_proxies and they should support mmcif.
-    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
-
     geometry = self._processed_pdb_file.geometry_restraints_manager(
       show_energies      = False,
       plain_pairs_radius = plain_pairs_radius,
@@ -927,6 +923,10 @@ class manager(object):
       external_energy_function=external_energy_function,
       assume_hydrogens_all_missing = not self.has_hd,
       file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
+
+    # Link treating should be rewritten. They should not be saved in
+    # all_chain_proxies and they should support mmcif.
+    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
 
     self._ss_manager = self._processed_pdb_file.ss_manager
 
