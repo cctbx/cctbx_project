@@ -23,7 +23,7 @@ if libtbx.env.has_module("amber_adaptbx") :
 if (amber_installed) :
   external_energy_params_str += """
     amber
-      .help = Parameters for using Amber in refinement.  EXPERIMENTAL
+      .help = Parameters for using Amber in refinement.
       .expert_level = 3
     {
       include scope amber_adaptbx.master_phil_str
@@ -74,12 +74,12 @@ if schrodinger_installed:
         .type = bool
       ligand_selection = None
         .help = Use force field parameters only for selected ligands.
-        .type = str
-      forcefield = 'OPLS3e'
+        .type = atom_selection
+      forcefield = OPLS3e* None
         .help = Force field to use during refinement.
-        .type = str
+        .type = choice
       maestro_file = None
         .help = Schrodinger Maestro file containing structure.
-        .type = str
+        .type = path
     }
 """
