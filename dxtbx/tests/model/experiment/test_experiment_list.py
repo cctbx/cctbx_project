@@ -688,6 +688,10 @@ def test_experimentlist_with_identifiers():
   assert experiments[0].identifier == e2[0].identifier
   assert experiments[1].identifier == e2[1].identifier
 
+  assert experiments.identifiers() == ("bacon", "sausage")
+  experiments[0].identifier = "spam"
+  assert experiments.identifiers() == ("spam", "sausage")
+
 def check(el1, el2):
   # All the experiment lists should be the same length
   assert len(el1) == 1
