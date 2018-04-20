@@ -22,6 +22,7 @@ def get_master_phil():
       .help = Display interactive plots (requires wxPython and Matplotlib)
     model_list = None
       .type = str
+      .help = Comma separated file list to accumulate onto one plot
 """, process_includes=True)
 
 usage_string = """
@@ -65,8 +66,9 @@ def run (args, out=sys.stdout, quiet=False) :
       out=out,
       quiet=quiet)
     results.append(result)
-    print '\nmodel  : %s' % model
-    result.show_summary()
+    if params.model_list:
+      print '\nmodel  : %s' % model
+      result.show_summary()
   # combine
   result = results[0]
   for i in range(1,len(results)):
