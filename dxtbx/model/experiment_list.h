@@ -129,7 +129,7 @@ namespace dxtbx { namespace model {
      * Get the list of identifiers
      */
     scitbx::af::shared<std::string> identifiers() const {
-      scitbx::af::shared<std::string> id;
+      scitbx::af::shared<std::string> id(data_.size());
       for (std::size_t i = 0; i < data_.size(); ++i) {
         id[i] = data_[i].get_identifier();
       }
