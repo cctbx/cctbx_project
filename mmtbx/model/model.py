@@ -886,53 +886,50 @@ class manager(object):
     # assert self.get_number_of_models() < 2 # one molprobity test triggered this.
     # not clear how they work with multi-model stuff...
 
-    # if self._pdb_interpretation_params is None:
-    #   self._pdb_interpretation_params = master_params().fetch().extract()
-    # disabled temporarily due to architecture changes
-    geometry = None
+    # Link treating should be rewritten. They should not be saved in
+    # all_chain_proxies and they should support mmcif.
+    self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
+
+    geometry = self._processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = plain_pairs_radius,
+      params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
+      params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
+      custom_nonbonded_exclusions  = custom_nb_excl,
+      external_energy_function=external_energy_function,
+      assume_hydrogens_all_missing = not self.has_hd,
+      file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
+
+    self._ss_manager = self._processed_pdb_file.ss_manager
+
+    # For test GRM pickling
+    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+    # geometry = make_geo_pickle_unpickle(
+    #     geometry=geometry,
+    #     xrs=xray_structure,
+    #     prefix=None)
+
+    # For test GRM pickling
+    # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
+    # geometry = make_geo_pickle_unpickle(
+    #     geometry=geometry,
+    #     xrs=xray_structure,
+    #     prefix=None)
+    if hasattr(self._pdb_interpretation_params, "reference_model"):
+      add_reference_dihedral_restraints_if_requested(
+          geometry=geometry,
+          processed_pdb_file=self._processed_pdb_file,
+          mon_lib_srv=self.get_mon_lib_srv(),
+          ener_lib=self.get_ener_lib(),
+          has_hd=self.has_hd,
+          params=self._pdb_interpretation_params.reference_model,
+          selection=None,
+          log=self.log)
+
     if (getattr(self._pdb_interpretation_params, "schrodinger", None) and
         self._pdb_interpretation_params.schrodinger.use_schrodinger):
-      geometry = None # init correct class here.
-    else:
-
-      geometry = self._processed_pdb_file.geometry_restraints_manager(
-        show_energies      = False,
-        plain_pairs_radius = plain_pairs_radius,
-        params_edits       = self._pdb_interpretation_params.geometry_restraints.edits,
-        params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
-        custom_nonbonded_exclusions  = custom_nb_excl,
-        external_energy_function=external_energy_function,
-        assume_hydrogens_all_missing = not self.has_hd,
-        file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
-
-      self._ss_manager = self._processed_pdb_file.ss_manager
-
-      # For test GRM pickling
-      # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
-      # geometry = make_geo_pickle_unpickle(
-      #     geometry=geometry,
-      #     xrs=xray_structure,
-      #     prefix=None)
-
-      # Link treating should be rewritten. They should not be saved in
-      # all_chain_proxies and they should support mmcif.
-      self.link_records_in_pdb_format = link_record_output(self._processed_pdb_file.all_chain_proxies)
-      # For test GRM pickling
-      # from cctbx.regression.tst_grm_pickling import make_geo_pickle_unpickle
-      # geometry = make_geo_pickle_unpickle(
-      #     geometry=geometry,
-      #     xrs=xray_structure,
-      #     prefix=None)
-      if hasattr(self._pdb_interpretation_params, "reference_model"):
-        add_reference_dihedral_restraints_if_requested(
-            geometry=geometry,
-            processed_pdb_file=self._processed_pdb_file,
-            mon_lib_srv=self.get_mon_lib_srv(),
-            ener_lib=self.get_ener_lib(),
-            has_hd=self.has_hd,
-            params=self._pdb_interpretation_params.reference_model,
-            selection=None,
-            log=self.log)
+      # so schrodinger would have fully constructed geometry to play with
+      geometry = None # schrodinger_geometry(geometry)
 
     restraints_manager = mmtbx.restraints.manager(
       geometry      = geometry,
