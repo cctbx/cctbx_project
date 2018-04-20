@@ -53,9 +53,6 @@ def tst_is_angle_in_range():
   for angle in range(0, 360):
     assert(is_angle_in_range(angular_range, angle, True) == True)
 
-  # Test passed
-  print "OK"
-
 def tst_get_range_of_mod2pi_angles():
   """Get the range of equivalent within a given angular range.
 
@@ -76,9 +73,6 @@ def tst_get_range_of_mod2pi_angles():
   a0, a1 = get_range_of_mod2pi_angles((-360, 720), 180, deg=True)
   assert(a0 == -180 and a1 == 540)
 
-  #Test passed
-  print "OK"
-
 def tst_get_mod2pi_angles_in_range():
   """Get the list of equivalent within a given angular range.
 
@@ -98,9 +92,6 @@ def tst_get_mod2pi_angles_in_range():
   # With 1080 deg range, have 3 angles
   a = get_mod2pi_angles_in_range((-360, 720), 180, deg=True)
   assert(len(a) == 3 and a[0] == -180 and a[1] == 180 and a[2] == 540)
-
-  #Test passed
-  print "OK"
 
 def run():
   """Run tests for the scan_helpers.h module."""

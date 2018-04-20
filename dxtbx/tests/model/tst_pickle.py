@@ -23,14 +23,12 @@ def tst_beam():
   obj1 = Beam((1, 1, 1))
   obj2 = pickle_then_unpickle(obj1)
   assert(obj1 == obj2)
-  print "OK"
 
 def tst_goniometer():
   '''Test pickling the goniometer object.'''
   obj1 = Goniometer()
   obj2 = pickle_then_unpickle(obj1)
   assert(obj1 == obj2)
-  print "OK"
 
 def tst_panel():
   '''Test pickling the panel object.'''
@@ -38,7 +36,6 @@ def tst_panel():
   obj1.set_local_frame((1, 0, 0), (0, 1, 0), (0, 0, 1))
   obj2 = pickle_then_unpickle(obj1)
   assert(obj1 == obj2)
-  print "OK"
 
 def tst_detector():
   '''Test pickling the detector object.'''
@@ -47,7 +44,6 @@ def tst_detector():
   obj1 = Detector(p)
   obj2 = pickle_then_unpickle(obj1)
   assert(obj1 == obj2)
-  print "OK"
 
 def tst_hierarchical_detector():
   '''Test pickling the detector object.'''
@@ -62,14 +58,12 @@ def tst_hierarchical_detector():
   assert(obj2.hierarchy()[0] in obj2)
   assert(obj2.hierarchy()[1].is_group())
   assert(obj1 == obj2)
-  print "OK"
 
 def tst_scan():
   '''Test pickling the scan data object.'''
   obj1 = Scan((1, 2), (1, 1))
   obj2 = pickle_then_unpickle(obj1)
   assert(obj1 == obj2)
-  print "OK"
 
 def run():
   '''Run all the tests'''

@@ -35,8 +35,6 @@ def tst_dxtbx():
     except IOError:
       pass
 
-  print 'OK'
-
 
 def tst_dxtbx_compressed():
   import libtbx.load_env
@@ -89,8 +87,6 @@ def tst_dxtbx_compressed():
         except IOError:
           pass
 
-  print 'OK'
-
 def tst_dxtbx_models():
 
   from dxtbx.tests.test_beam import test_beam
@@ -108,8 +104,6 @@ def tst_dxtbx_models():
   from dxtbx.tests.test_scan import test_scan
   test_scan()
 
-  return
-
 def tst_sweep():
 
   from dxtbx.sweep_filenames import template_regex
@@ -126,8 +120,6 @@ def tst_sweep():
   for filename in questions_answers:
     answer = template_regex(filename)
     assert answer[0] == questions_answers[filename]
-
-  print 'OK'
 
 if __name__ == '__main__':
   tst_dxtbx()

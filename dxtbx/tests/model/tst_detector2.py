@@ -56,8 +56,6 @@ class Test2:
     assert(all(n == en for n, en in zip(names, expected_names)))
     assert(all(t == et for t, et in zip(types, expected_types)))
 
-    print 'OK'
-
   def tst_iterate_and_index(self):
     ''' Test iteration and indexing through the detector in various ways. '''
 
@@ -124,8 +122,6 @@ class Test2:
     assert(all(n == en for n, en in zip(names, expected_names)))
     assert(all(t == et for t, et in zip(types, expected_types)))
 
-    print 'OK'
-
   def tst_get_uninitialized_D_matrix(self):
     ''' Try to get bad D matrix and check that an exception is thrown. '''
     panels = self.detector.panels()
@@ -135,8 +131,6 @@ class Test2:
         assert(False)
       except Exception:
         pass
-
-    print 'OK'
 
   def tst_get_valid_D_matrix(self):
     ''' Setup the hierarchy of frames and check it's all consistent. '''
@@ -220,8 +214,6 @@ class Test2:
     assert(abs(matrix.col(p3.get_slow_axis()) - p3_d2) < eps)
     assert(abs(matrix.col(p4.get_slow_axis()) - p4_d2) < eps)
 
-    print 'OK'
-
   def tst_copy_and_reference(self):
     from copy import deepcopy
 
@@ -262,8 +254,6 @@ class Test2:
     assert(p3.is_(new_detector[2]))
     assert(p4.is_(new_detector[3]))
 
-    print 'OK'
-
   def tst_pickle(self):
     import cPickle as pickle
 
@@ -303,8 +293,6 @@ class Test2:
     assert(p2.is_(new_detector[1]))
     assert(p3.is_(new_detector[2]))
     assert(p4.is_(new_detector[3]))
-
-    print 'OK'
 
   def tst_from_phil(self):
     from dxtbx.model.detector import detector_phil_scope
@@ -500,8 +488,6 @@ class Test2:
     assert d2[1].get_material() == "Si"
     assert d2[1].get_thickness() == 0.01
     assert isinstance(d2[1].get_px_mm_strategy(), ParallaxCorrectedPxMmStrategy)
-
-    print 'OK'
 
 if __name__ == '__main__':
   #test = Test()

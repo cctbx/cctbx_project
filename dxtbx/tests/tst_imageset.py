@@ -101,13 +101,8 @@ class TestFormat(object):
 
       iset = format_class.get_imageset([image])
 
-    print 'OK'
-
 
 class TestImageTile(object):
-
-  def __init__(self):
-    pass
 
   def run(self):
 
@@ -123,12 +118,7 @@ class TestImageTile(object):
     assert tile.name() == name
     assert tile.empty() == False
 
-    print "OK"
-
 class TestImage(object):
-
-  def __init__(self):
-    pass
 
   def run(self):
     from dxtbx.format.image import ImageTileInt
@@ -151,13 +141,8 @@ class TestImage(object):
       tile = image.tile(i)
       assert tile.name() == "TileName%d" % i
 
-    print "OK"
-
 
 class TestImageBuffer(object):
-
-  def __init__(self):
-    pass
 
   def run(self):
     from dxtbx.format.image import ImageTileInt
@@ -175,13 +160,8 @@ class TestImageBuffer(object):
     assert b.is_double() == False
     assert b.is_empty() == False
 
-    print 'OK'
-
 
 class TestExternalLookup(object):
-
-  def __init__(self):
-    pass
 
   def run(self):
     from dxtbx.imageset import ExternalLookup
@@ -207,8 +187,6 @@ class TestExternalLookup(object):
     assert mask2.all_eq(mask)
     assert gain2.all_eq(gain)
     assert pedestal2.all_eq(pedestal)
-
-    print 'OK'
 
 
 class TestImageSetData(object):
@@ -287,8 +265,6 @@ class TestImageSetData(object):
     assert gain2.all_eq(gain)
     assert pedestal2.all_eq(pedestal)
 
-    print 'OK'
-
 class TestImageSet(object):
   def get_file_list(self):
     import os.path
@@ -360,22 +336,17 @@ class TestImageSet(object):
     self.tst_paths(imageset2, imageset.paths()[3:5])
     self.tst_iter(imageset2)
 
-    print 'OK'
-
   def tst_len(self, imageset, length):
     assert(len(imageset) == length)
-    print 'OK'
 
   def tst_iter(self, imageset):
     for image in imageset:
       pass
-    print 'OK'
 
   def tst_paths(self, imageset, filenames1):
     filenames2 = imageset.paths()
     for f1, f2 in zip(filenames1, filenames2):
       assert(f1 == f2)
-    print 'OK'
 
   def tst_get_detectorbase(self, imageset, indices, outside_index):
     for i in indices:
@@ -386,7 +357,6 @@ class TestImageSet(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
 
   def tst_get_models(self, imageset, indices, outside_index):
     for i in indices:
@@ -397,7 +367,6 @@ class TestImageSet(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
 
   def tst_get_models_index(self, imageset, index=None):
     imageset.get_detector(index)
@@ -500,22 +469,17 @@ class TestImageSweep(object):
     except IndexError:
       pass
 
-    print 'OK'
-
   def tst_len(self, sweep, length):
     assert(len(sweep) == length)
-    print 'OK'
 
   def tst_iter(self, sweep):
     for image in sweep:
       pass
-    print 'OK'
 
   def tst_paths(self, sweep, filenames1):
     filenames2 = sweep.paths()
     for f1, f2 in zip(filenames1, filenames2):
       assert(f1 == f2)
-    print 'OK'
 
 
   def tst_get_detectorbase(self, sweep, indices, outside_index):
@@ -527,14 +491,11 @@ class TestImageSweep(object):
       assert(False)
     except Exception:
       pass
-    print 'OK'
 
   def tst_get_models(self, sweep, indices, outside_index):
     self.tst_get_models_index(sweep)
     for i in indices:
       self.tst_get_models_index(sweep, i)
-
-    print 'OK'
 
   def tst_get_models_index(self, sweep, index=None):
     if index is not None:
@@ -555,11 +516,9 @@ class TestImageSweep(object):
     sweep[len(sweep)-1]
     scan2 = sweep.get_scan()
     assert(scan1 == scan2)
-    print 'OK'
 
   def tst_get_array_range(self, sweep, array_range):
     assert(sweep.get_array_range() == array_range)
-    print 'OK'
 
   def tst_set_models(self, sweep):
     from dxtbx.model import Beam, Detector, Panel
@@ -644,8 +603,6 @@ class TestNexusFile(object):
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
 
-    print 'OK'
-
     iset = format_class.get_imageset([self.filename], single_file_indices=[1])
     assert len(iset) == 1
 
@@ -656,8 +613,6 @@ class TestNexusFile(object):
       d = iset.get_detector(i)
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
-
-    print 'OK'
 
 
 
@@ -686,8 +641,6 @@ class TestImageSetFactory(object):
 
     assert(isinstance(sweep[0], ImageSweep) == True)
 
-    print 'OK'
-
     template = join(dials_regression, "centroid_test_data", "centroid_####.cbf")
     image_range = (3, 6)
 
@@ -698,33 +651,23 @@ class TestImageSetFactory(object):
     assert sweep[0].paths()[0].endswith("3.cbf")
     assert sweep[0].paths()[-1].endswith("6.cbf")
 
-    print 'OK'
-
     imageset = ImageSetFactory.make_imageset(filenames)
     assert len(imageset) == 9
-
-    print 'OK'
 
     imageset = ImageSetFactory.make_imageset(
       filenames,
       check_format=False)
     assert len(imageset) == 9
 
-    print 'OK'
-
     sweep = ImageSetFactory.make_sweep(
       template,
       list(range(1, 9+1)))
     assert len(sweep) == 9
 
-    print 'OK'
-
     sweep = ImageSetFactory.make_sweep(
       template,
       list(range(3, 6+1)))
     assert len(sweep) == 4
-
-    print 'OK'
 
 
 class TestPickleImageSet(object):
@@ -778,8 +721,6 @@ class TestPickleImageSet(object):
     sweep4 = sweep3[0:2]
     sweep4.get_detectorbase(0)
     sweep4[0]
-
-    print 'OK'
 
 def run():
 

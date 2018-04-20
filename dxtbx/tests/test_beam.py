@@ -21,8 +21,6 @@ def test_beam():
   image = os.path.join(dxtbx_dir, 'tests', 'phi_scan_001.cbf')
   cbf = BeamFactory.imgCIF(image)
 
-  print 'OK'
-
 if __name__ == '__main__':
 
   test_beam()

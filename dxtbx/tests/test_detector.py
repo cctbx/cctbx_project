@@ -33,8 +33,6 @@ def test_detector():
   c = DetectorFactory.imgCIF(image, 'CCD')
   #x = DetectorFactory.XDS(xparm)
 
-  print 'OK'
-
 def work_detector():
 
   for j in range(10000):

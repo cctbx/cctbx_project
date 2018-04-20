@@ -353,8 +353,6 @@ def exercise_check_old_vs_new():
   assert approx_equal(cell_volume_sd_1, cell_volume_sd_2)
   assert approx_equal(cell_sd_1, cell_sd_2)
 
-  print 'OK'
-
 def run():
   exercise_crystal_model()
   exercise_crystal_model_from_mosflm_matrix()

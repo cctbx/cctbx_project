@@ -30,9 +30,6 @@ class Test(object):
       xy = random_coord()
       self.tst_single(xy)
 
-    # Test passed
-    print 'OK'
-
   def tst_single(self, xy):
     from scitbx import matrix
     xy = matrix.col(xy)
