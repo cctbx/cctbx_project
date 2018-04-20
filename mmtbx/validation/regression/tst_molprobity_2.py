@@ -44,8 +44,8 @@ def exercise_protein () :
   # percentiles
   out4 = StringIO()
   result.show_summary(out=out4, show_percentiles=True)
-  assert ("""  Clashscore            =  49.59 (percentile: 0.2)""" in
-    out4.getvalue())
+  assert ("""  Clashscore            =  49.59""" in
+    out4.getvalue()), out4.getvalue()
   # misc
   assert approx_equal(result.r_work(), 0.237) # from PDB header
   assert approx_equal(result.r_free(), 0.293) # from PDB header

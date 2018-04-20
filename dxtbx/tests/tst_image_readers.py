@@ -299,8 +299,6 @@ def tst_smv(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
-
 
 
 def tst_tiff(filename):
@@ -317,8 +315,6 @@ def tst_tiff(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-  print 'OK'
-
 
 def tst_cbf_fast(filename):
   from scitbx.array_family import flex
@@ -332,8 +328,6 @@ def tst_cbf_fast(filename):
 
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
-
-  print 'OK'
 
 
 def tst_cbf(filename):
@@ -353,8 +347,6 @@ def tst_cbf(filename):
   for d1, d2 in zip(data1, data2):
     diff = flex.abs(d1 - d2)
     assert flex.max(diff) < 1e-7
-
-  print 'OK'
 
 def tst_hdf5(filename):
   from dxtbx.format.image import HDF5Reader
@@ -386,8 +378,6 @@ def tst_hdf5(filename):
   assert data1.all()[1] == data2.all()[1]
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
-
-  print 'OK'
 
 
 

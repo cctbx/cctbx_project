@@ -723,22 +723,12 @@ class summary (slots_getstate_setstate_default_initializer) :
     if (show_percentiles) :
       perc_attr = ["clashscore", "mpscore", "r_work", "r_free"]
       stats = dict([ (name, getattr(self, name)) for name in perc_attr ])
-      from mmtbx.polygon import get_statistics_percentiles
-      percentiles = get_statistics_percentiles(self.d_min, stats)
     for k, name in enumerate(self.__slots__) :
       format = "%%s%%-%ds = %%s" % maxlen
       if (k < 3) :
         format += " %%"
       percentile_info = ""
-      if (show_percentiles) :
-        percentile = percentiles.get(name, None)
-        if (percentile is not None) :
-          format += " (percentile: %s)"
-          percentile_info = "%.1f" % percentile
-        else :
-          format += "%s"
-      else :
-        format += "%s"
+      format += "%s"
       value = getattr(self, name)
       if (value is not None) :
         print >> out, format % (prefix, self.labels[k], fs(self.formats[k],

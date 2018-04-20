@@ -20,21 +20,17 @@ import mmtbx.model
 
 class rsr_model(object):
   def __init__(self,
-               pdb_hierarchy,
-               xray_structure,
-               target_map_object=None,
-               geometry_restraints_manager=None):
+               model,
+               target_map_object=None):
     adopt_init_args(self, locals())
-    self.unit_cell = self.xray_structure.unit_cell()
-    self.xray_structure = xray_structure.deep_copy_scatterers()
-    self.xray_structure_start = xray_structure.deep_copy_scatterers()
+    self.unit_cell = self.model.crystal_symmetry().unit_cell()
+    self.sites_cart_start = self.model.get_sites_cart()
+    self.s1 = self.sites_cart_start.deep_copy()
     self.states_collector = mmtbx.utils.states(
-      pdb_hierarchy  = self.pdb_hierarchy,
-      xray_structure = self.xray_structure,
+      pdb_hierarchy  = self.model.get_hierarchy().deep_copy(),
+      xray_structure = self.model.get_xray_structure().deep_copy_scatterers(),
       counter        = 1)
-    self.states_collector.add(sites_cart = self.xray_structure.sites_cart())
-    self.rotamer_manager = RotamerEval()
-    self.assert_pdb_hierarchy_xray_structure_sync()
+    self.states_collector.add(sites_cart = self.model.get_sites_cart())
     #
     self.five_cc = None
     self.rmsd_b = None
@@ -47,17 +43,10 @@ class rsr_model(object):
     #
     self.initialize()
 
-  def assert_pdb_hierarchy_xray_structure_sync(self):
-    # XXX nonsense
-    sc1 = self.xray_structure.sites_cart()
-    sc2 = self.pdb_hierarchy.atoms().extract_xyz()
-    assert approx_equal(sc1, sc2, 1.e-3)
-
   def initialize(self):
-    self.assert_pdb_hierarchy_xray_structure_sync()
     five_cc_o = five_cc(
       map               = self.target_map_object.map_data,
-      xray_structure    = self.xray_structure,
+      xray_structure    = self.model.get_xray_structure(),
       d_min             = self.target_map_object.d_min,
       compute_cc_box    = True,
       compute_cc_image  = False,
@@ -66,35 +55,42 @@ class rsr_model(object):
       compute_cc_peaks  = False).result
     self.cc_mask = five_cc_o.cc_mask
     self.cc_box  = five_cc_o.cc_box
-    if(self.geometry_restraints_manager is not None):
-      es = self.geometry_restraints_manager.energies_sites(
-        sites_cart = self.xray_structure.sites_cart())
+    # XXX use model.statistics or better method of model!
+    if(self.model.restraints_manager_available()):
+      es = self.model.get_restraints_manager().geometry.energies_sites(
+        sites_cart = self.model.get_sites_cart())
       self.rmsd_a = es.angle_deviations()[2]
       self.rmsd_b = es.bond_deviations()[2]
-    self.dist_from_start = flex.mean(self.xray_structure_start.distances(
-      other = self.xray_structure))
-    self.assert_pdb_hierarchy_xray_structure_sync()
 
   def show(self, prefix="", log=None):
-    self.assert_pdb_hierarchy_xray_structure_sync()
     if(log is None): log = sys.stdout
     print >> log, "%smodel-to-map fit, CC_mask: %-6.4f"%(prefix, self.cc_mask)
-    mso = mmtbx.model.statistics.geometry(
-      pdb_hierarchy               = self.pdb_hierarchy,
-      geometry_restraints_manager = self.geometry_restraints_manager)
-    mso.show(prefix=prefix, log=log, lowercase=True)
+    print >> log, "%smoved from start:          %-6.4f"%(prefix, self.dist_from_start)
+    gs = self.model.geometry_statistics()
+    result = None
+    if(gs is not None):
+      gs.show(prefix=prefix, log=log, lowercase=True)
+      result = gs.result()
     self.stats_evaluations.append(group_args(
       cc       = self.cc_mask,
-      geometry = mso.result()))
+      geometry = result))
 
-  def update(self, xray_structure):
-    self.dist_from_previous = flex.mean(self.xray_structure.distances(
-      other = xray_structure))
-    self.xray_structure = xray_structure
-    self.pdb_hierarchy.adopt_xray_structure(xray_structure)
+  def update(self, xray_structure=None, sites_cart=None):
+    assert [xray_structure, sites_cart].count(None)!=0
+    s0 = self.sites_cart_start
+    if(xray_structure is not None):
+      s2 = xray_structure.sites_cart()
+      self.model.set_xray_structure(xray_structure = xray_structure)
+    elif(sites_cart is not None):
+      s2 = sites_cart
+      self.model.set_sites_cart(sites_cart=s2)
+    else:
+      s2 = self.model.get_sites_cart()
+    self.dist_from_start    = flex.mean(flex.sqrt((s0 - s2).dot()))
+    self.dist_from_previous = flex.mean(flex.sqrt((self.s1 - s2).dot()))
     self.initialize()
-    self.states_collector.add(sites_cart = xray_structure.sites_cart())
-    self.assert_pdb_hierarchy_xray_structure_sync()
+    self.states_collector.add(sites_cart = s2)
+    self.s1 = self.model.get_sites_cart() # must be last
 
 def flatten(l):
   if l is None: return None

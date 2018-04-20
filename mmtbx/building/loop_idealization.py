@@ -83,6 +83,15 @@ loop_idealization
 
 master_phil = iotbx.phil.parse(loop_idealization_master_phil_str)
 
+#
+# XXX
+# XXX  This needs to be much more general tool to be called loop idealization.
+# XXX  Right now it is just Ramachandran idealization. This should be
+# XXX  separated. Loop idealization should include Cablam and Rama idealization.
+# XXX
+#
+
+
 class loop_idealization():
   def __init__(self,
                model,

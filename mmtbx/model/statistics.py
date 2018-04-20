@@ -569,7 +569,6 @@ class info(object):
                      fmodel_x          = None,
                      fmodel_n          = None,
                      refinement_params = None,
-                     general_selection = None,
                      use_molprobity    = True):
     ref_par = refinement_params
     wilson_b = None
@@ -578,11 +577,8 @@ class info(object):
       wilson_b = fmodel_x.wilson_b()
     elif fmodel_n is not None:
       wilson_b = fmodel_n.wilson_b()
-
-    self.geometry = model.geometry_statistics(
-        general_selection=general_selection)
+    self.geometry = model.geometry_statistics()
     self.adp = adp(model, wilson_b=wilson_b)
-
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(

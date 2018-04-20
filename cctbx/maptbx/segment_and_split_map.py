@@ -40,11 +40,11 @@ master_phil = iotbx.phil.parse("""
 
     ncs_file = None
       .type = path
-      .help = File with NCS information (typically point-group NCS with \
+      .help = File with symmetry information (typically point-group NCS with \
                the center specified). Typically in  PDB format. \
               Can also be a .ncs_spec file from phenix. \
               Created automatically if symmetry is specified.
-      .short_caption = NCS info file
+      .short_caption = symmetry file
 
     pdb_file = None
       .type = path
@@ -274,16 +274,20 @@ master_phil = iotbx.phil.parse("""
 
      symmetry = None
        .type = str
-       .short_caption = NCS type
+       .short_caption = Symmetry type
        .help = Symmetry used in reconstruction. For example D7, C3, C2\
           I (icosahedral),T (tetrahedral), or ANY (try everything and \
           use the highest symmetry found). Not needed if ncs_file is supplied. \
-          Note: ANY does not search for helical symmetry
+
+     include_helical_symmetry = True
+       .type = bool
+       .short_caption = Include helical symmetry
+       .help = You can include or exclude searches for helical symmetry
 
      symmetry_center = None
        .type = floats
-       .short_caption = NCS center
-       .help = Center (in A) for NCS operators (if ncs is found \
+       .short_caption = symmetry center
+       .help = Center (in A) for symmetry operators (if symmetry is found \
           automatically). \
           If set to None, first guess is the center of the cell and then \
           if that fails, found automatically as the center of the \
@@ -291,8 +295,8 @@ master_phil = iotbx.phil.parse("""
 
      optimize_center = None
        .type = bool
-       .short_caption = Optimize NCS center
-       .help = Optimize position of NCS center. Default is False \
+       .short_caption = Optimize symmetry center
+       .help = Optimize position of symmetry center. Default is False \
            if symmetry_center is supplied or center of map is used and \
            True if it is found automatically).
 
@@ -310,19 +314,19 @@ master_phil = iotbx.phil.parse("""
        .type = int
        .short_caption = Max helical optimizations
        .help = Number of optimizations of helical parameters\
-               when finding NCS
+               when finding symmetry
 
      max_helical_ops_to_check = 5
        .type = int
        .short_caption = Max helical ops to check
        .help = Number of helical operations in each direction to check \
-               when finding NCS
+               when finding symmetry
 
      max_helical_rotations_to_check = None
        .type = int
        .short_caption = Max helical rotations
        .help = Number of helical rotations to check \
-               when finding NCS
+               when finding symmetry
 
      two_fold_along_x = None
        .type = bool
@@ -334,7 +338,7 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Smallest object to consider
        .help = Dimension of smallest object to consider\
-               when finding NCS. Default is 10* resolution
+               when finding symmetry. Default is 5 * resolution
 
      score_basis = ncs_score cc *None
        .type = choice
@@ -354,25 +358,25 @@ master_phil = iotbx.phil.parse("""
      random_points = 100
        .type = int
        .short_caption = Random points
-       .help = Number of random points in map to examine in finding NCS
+       .help = Number of random points in map to examine in finding symmetry
 
      identify_ncs_id = True
        .type = bool
        .short_caption = Identify NCS ID
-       .help = If NCS is not point-group symmetry, try each possible \
-               operator when evaluating NCS and choose the one that  \
-               results in the most uniform density at NCS-related points.
+       .help = If symmetry is not point-group symmetry, try each possible \
+               operator when evaluating symmetry and choose the one that  \
+               results in the most uniform density at symmetry-related points.
 
      min_ncs_cc = 0.75
        .type = float
-       .short_caption = Minimum NCS CC to keep it
-       .help =  Minimum NCS CC to keep operators when identifying \
+       .short_caption = Minimum symmetry CC to keep it
+       .help =  Minimum symmetry CC to keep operators when identifying \
                  automatically
 
      n_rescore = 5
        .type = int
-       .short_caption = NCS operators to rescore
-       .help = Number of NCS operators to rescore
+       .short_caption = symmetry operators to rescore
+       .help = Number of symmetry operators to rescore
 
      op_max = 14
        .type = int
@@ -560,9 +564,9 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Local sharpening
        .help = Sharpen locally using overlapping regions. \
                NOTE: Best to turn off local_aniso_in_local_sharpening \
-               if NCS is present.\
-               If local_aniso_in_local_sharpening is True and NCS is \
-               present this can distort the map for some NCS copies \
+               if symmetry is present.\
+               If local_aniso_in_local_sharpening is True and symmetry is \
+               present this can distort the map for some symmetry copies \
                because an anisotropy correction is applied\
                based on local density in one copy and is transferred without \
                rotation to other copies.
@@ -571,7 +575,7 @@ master_phil = iotbx.phil.parse("""
        .type = bool
        .short_caption = Local anisotropy
        .help = Use local anisotropy in local sharpening.  \
-               Default is True unless NCS is present.
+               Default is True unless symmetry is present.
 
      overall_before_local = True
        .type = bool
@@ -856,7 +860,7 @@ master_phil = iotbx.phil.parse("""
     select_au_box = None
       .type = bool
       .help = Select box containing at least one representative region of \
-              the map. Also select just NCS operators relevant to that box. \
+              the map. Also select just symmetry operators relevant to that box. \
               Default is true if number of operators is at least \
               n_ops_to_use_au_box
       .short_caption = select au box
@@ -869,7 +873,7 @@ master_phil = iotbx.phil.parse("""
 
     n_au_box = 5
       .type = int
-      .help = Number of NCS copies to try and get inside au_box
+      .help = Number of symmetry copies to try and get inside au_box
       .short_caption = N au box
 
 
@@ -907,7 +911,7 @@ master_phil = iotbx.phil.parse("""
     mask_threshold = None
       .type = float
       .help = threshold in identification of overall mask. If None, guess \
-               volume of molecule from sequence and NCS copies.
+               volume of molecule from sequence and symmetry copies.
       .short_caption = Density select threshold
 
     grid_spacing_for_au = 3
@@ -958,13 +962,13 @@ master_phil = iotbx.phil.parse("""
 
     require_complete = True
       .type = bool
-      .short_caption = Require all NCS copies to be represented for a region
-      .help =  Require all NCS copies to be represented for a region
+      .short_caption = Require all symmetry copies to be represented for a region
+      .help =  Require all symmetry copies to be represented for a region
 
     split_if_possible = True
       .type = bool
       .short_caption = Split regions if mixed
-      .help = Split regions that are split in some NCS copies.\
+      .help = Split regions that are split in some symmetry copies.\
               If None, split if most copies are split.
 
     write_all_regions = False
@@ -1049,13 +1053,13 @@ master_phil = iotbx.phil.parse("""
 
     exclude_points_in_ncs_copies = True
       .type = bool
-      .help = Exclude points that are in NCS copies when creating NCS au. \
+      .help = Exclude points that are in symmetry copies when creating NCS au. \
                Does not apply if add_neighbors=True
-      .short_caption = Exclude points in NCS copies
+      .short_caption = Exclude points in symmetry copies
 
     add_neighbors = True
       .type = bool
-      .help = Add neighboring regions around the NCS au. Turns off \
+      .help = Add neighboring regions around the au. Turns off \
            exclude_points_in_ncs_copies also.
       .short_caption = Add neighbors
 
@@ -3949,7 +3953,8 @@ def get_ncs_list(params=None,symmetry=None,
       if two_fold_along_x is None or two_fold_along_x==False:
         ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False))
         symmetry_list.append('D%d (b)' %(i))
-  if sym_type=='helical' or all:
+  if sym_type=='helical' or (
+      all and params.reconstruction_symmetry.include_helical_symmetry):
     if helical_rot_deg is not None and helical_trans_z_angstrom is not None:
       ncs_list.append(get_helical_symmetry(
        helical_rot_deg=helical_rot_deg,
@@ -3993,7 +3998,7 @@ def find_helical_symmetry(params=None,
     params.reconstruction_symmetry.score_basis='cc'
   if params.reconstruction_symmetry.smallest_object is None:
     params.reconstruction_symmetry.smallest_object=\
-      10*params.crystal_info.resolution
+      5*params.crystal_info.resolution
 
   print >>out,\
     "\nLooking for helical symmetry with center at (%.2f, %.2f, %.2f) A\n" %(
@@ -4044,6 +4049,7 @@ def find_helical_symmetry(params=None,
   rotations=[]
   for k in xrange(1,n_rotations):
     helical_rot_deg=k*delta_rot
+    if helical_rot_deg > 180: helical_rot_deg=helical_rot_deg-360
     rotations.append(helical_rot_deg)
 
   done=False
@@ -4151,12 +4157,10 @@ def find_helical_symmetry(params=None,
         else: # optimize current best
           test_helical_rot_deg=best_helical_rot_deg
           test_helical_trans_z_angstrom=best_helical_trans_z_angstrom
-
       new_ncs_obj,new_ncs_cc,new_ncs_score,\
             new_helical_trans_z_angstrom,new_helical_rot_deg=\
         try_helical_params(
           params=params,
-          best_score=best_score,
           helical_rot_deg=test_helical_rot_deg,
           helical_trans_z_angstrom=test_helical_trans_z_angstrom,
           delta_z=delta_z/2.,
@@ -4165,7 +4169,7 @@ def find_helical_symmetry(params=None,
           map_symmetry_center=symmetry_center,
           symmetry_center=symmetry_center,
           crystal_symmetry=crystal_symmetry,
-          out=null_out())
+          out=out)
       if new_ncs_score is not None:
         new_ncs_score=new_ncs_score*\
            params.reconstruction_symmetry.scale_weight_fractional_translation
@@ -4183,7 +4187,7 @@ def find_helical_symmetry(params=None,
         else:
           print >>out," %.2f   %.2f   %.2f   %.2f (worse with fractions)" %(
              new_helical_rot_deg,new_helical_trans_z_angstrom,
-             new_score,new_ncs_cc)
+             new_ncs_score,new_ncs_cc)
 
 
   # Optimize one more time trying multiples of values to get better param
@@ -4197,8 +4201,12 @@ def find_helical_symmetry(params=None,
   working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
   working_helical_rot_deg=best_helical_rot_deg*imult
 
-  print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
-  for iter in [0,1,2]:
+  if imult > 1:
+    print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
+    improved=False
+    for iter in [1,2,3]:
+      if iter > 1 and not improved: break
+      improved=False
 
       new_ncs_obj,new_ncs_cc,new_ncs_score,\
             new_helical_trans_z_angstrom,new_helical_rot_deg=\
@@ -4206,8 +4214,8 @@ def find_helical_symmetry(params=None,
           params=params,
           helical_rot_deg=working_helical_rot_deg,
           helical_trans_z_angstrom=working_helical_trans_z_angstrom,
-          delta_z=delta_z/(2.*(iter+1)),
-          delta_rot=delta_rot/(2.*(iter+1)),
+          delta_z=delta_z/(2.*iter),
+          delta_rot=delta_rot/(2.*iter),
           map_data=map_data,
           map_symmetry_center=symmetry_center,
           symmetry_center=symmetry_center,
@@ -4225,13 +4233,15 @@ def find_helical_symmetry(params=None,
                working_score,working_ncs_cc)
 
       #  and rescore with this:
+      working_helical_rot_deg=working_helical_rot_deg/imult
+      working_helical_trans_z_angstrom=working_helical_trans_z_angstrom/imult
       for iter in [1,2,3]:
-        working_ncs_obj,working_ncs_cc,working_ncs_score,\
-            working_helical_trans_z_angstrom,working_helical_rot_deg=\
+        new_ncs_obj,new_ncs_cc,new_ncs_score,\
+            new_helical_trans_z_angstrom,new_helical_rot_deg=\
         try_helical_params(
           params=params,
-          helical_rot_deg=working_helical_rot_deg/imult,
-          helical_trans_z_angstrom=working_helical_trans_z_angstrom/imult,
+          helical_rot_deg=working_helical_rot_deg,
+          helical_trans_z_angstrom=working_helical_trans_z_angstrom,
           delta_z=delta_z/(2.*iter),
           delta_rot=delta_rot/(2.*iter),
           map_data=map_data,
@@ -4239,7 +4249,11 @@ def find_helical_symmetry(params=None,
           symmetry_center=symmetry_center,
           crystal_symmetry=crystal_symmetry,
           out=null_out())
-        if working_ncs_score is not None:
+        if new_ncs_score is not None:
+          working_ncs_obj,working_ncs_cc,working_ncs_score,\
+            working_helical_trans_z_angstrom,working_helical_rot_deg=\
+            new_ncs_obj,new_ncs_cc,new_ncs_score,\
+            new_helical_trans_z_angstrom,new_helical_rot_deg
           if best_score is None or working_ncs_score > best_score:
             if params.control.verbose:
               print >>out,"\nTaking parameters from multiples"
@@ -4251,7 +4265,13 @@ def find_helical_symmetry(params=None,
             print >>out," %.2f   %.2f   %.2f   %.2f (improved by multiples)" %(
                best_helical_rot_deg,best_helical_trans_z_angstrom,
                best_score,best_ncs_cc)
+            improved=True
 
+            working_ncs_cc=best_ncs_cc
+            working_ncs_obj=best_ncs_obj
+            working_score=None
+            working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
+            working_helical_rot_deg=best_helical_rot_deg*imult
 
 
   if best_helical_rot_deg and best_helical_trans_z_angstrom and best_score and best_ncs_cc:
@@ -4372,7 +4392,7 @@ def try_helical_params(
      delta_z=delta_z/2
 
 
-    #rescore with what we now have
+    #rescore with what we now have (best values) and compare with working
     local_params.reconstruction_symmetry.max_helical_ops_to_check=\
        params.reconstruction_symmetry.max_helical_ops_to_check
     if params.control.verbose:
@@ -4392,16 +4412,17 @@ def try_helical_params(
       best_ncs_score=best_ncs_cc
 
     # now take it if better
-    if best_ncs_cc>working_ncs_cc:
+    if best_ncs_cc and best_ncs_cc>working_ncs_cc:
       if params.control.verbose:
         print >>out,"Using optimized values (%.2f > %.2f)" %(
          best_ncs_cc,working_ncs_cc)
+      # keep these (best)
     else:
       if params.control.verbose:
         print >>out,"Rejecting optimized values (%.2f <= %.2f)" %(
          best_ncs_cc,working_ncs_cc)
 
-      # save in case we need to go back
+      # resture working values
       best_helical_trans_z_angstrom,best_helical_rot_deg=\
          working_helical_trans_z_angstrom,working_helical_rot_deg
       best_ncs_score=working_ncs_score
@@ -4525,11 +4546,12 @@ def get_max_min_list(d_list=None,value_list=None,
   return max_min_d_list,max_min_list
 
 def get_c_star_list(f_array=None,
-   zero_index_a=0,zero_index_b=1):
+   zero_index_a=0,zero_index_b=1,zero_index_c=2):
   c_star_list=[]
   for value,(indices,d) in zip(f_array.data(),
      f_array.d_spacings()):
-    if indices[zero_index_a]==0 and indices[zero_index_b]==0:
+    if indices[zero_index_a]==0 and indices[zero_index_b]==0 and \
+      indices[zero_index_c] >=4:
       c_star_list.append([tuple(indices),value,d])
   c_star_list.sort()
   return c_star_list

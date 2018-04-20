@@ -313,6 +313,27 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Initialise the crystal
+     *
+     * @param A The A matrix
+     * @param space_group The space group object
+     * @param reciprocal Whether or not the matrix is the direct or reciprocal
+    *         matrix (default: reciprocal)
+     */
+    Crystal(const mat3<double> &A,
+            const cctbx::sgtbx::space_group &space_group,
+            const bool &reciprocal=true)
+      : space_group_(space_group),
+        cell_volume_sd_(0) {
+          if (reciprocal) {
+            set_A(A);
+          }
+          else {
+            set_A(A.inverse());
+          }
+      }
+
+    /**
      * Constructor for pickling
      */
     Crystal(

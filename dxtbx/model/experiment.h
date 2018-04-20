@@ -60,7 +60,8 @@ namespace dxtbx { namespace model {
           boost::shared_ptr<CrystalBase> crystal,
           boost::python::object profile,
           boost::python::object imageset,
-          boost::python::object scaling_model)
+          boost::python::object scaling_model,
+          std::string identifier)
       : beam_(beam),
         detector_(detector),
         goniometer_(goniometer),
@@ -68,7 +69,8 @@ namespace dxtbx { namespace model {
         crystal_(crystal),
         profile_(profile),
         imageset_(imageset),
-        scaling_model_(scaling_model){}
+        scaling_model_(scaling_model),
+        identifier_(identifier) {}
 
     /**
      * Check if the beam model is the same.
@@ -138,7 +140,8 @@ namespace dxtbx { namespace model {
           && goniometer_ == other.goniometer_
           && scan_ == other.scan_
           && profile_ == other.profile_
-          && scaling_model_ == other.scaling_model_;
+          && scaling_model_ == other.scaling_model_
+          && identifier_ == other.identifier_;
     }
 
     /**
@@ -260,6 +263,20 @@ namespace dxtbx { namespace model {
       return scaling_model_;
     }
 
+    /**
+     * Set the identifier
+     */
+    void set_identifier(std::string identifier) {
+      identifier_ = identifier;
+    }
+
+    /**
+     * Get the identifier
+     */
+    std::string get_identifier() const {
+      return identifier_;
+    }
+
   protected:
 
     boost::shared_ptr<BeamBase> beam_;
@@ -270,6 +287,7 @@ namespace dxtbx { namespace model {
     boost::python::object profile_;
     boost::python::object imageset_;
     boost::python::object scaling_model_;
+    std::string identifier_;
 
   };
 

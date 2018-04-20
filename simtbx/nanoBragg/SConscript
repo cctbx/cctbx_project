@@ -14,6 +14,7 @@ nanoBragg_obj = nanoBragg_env.SharedObject(
     "nanoBragg_nks.cpp",
   ])
 
+env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(
   target="#lib/simtbx_nanoBragg_ext",
   source=[

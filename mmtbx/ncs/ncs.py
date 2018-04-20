@@ -182,7 +182,7 @@ def get_helical_symmetry(helical_rot_deg=None,
   trans_along_z=matrix.col((0,0,helical_trans_z_angstrom))
 
   n=max(2,int(360/helical_rot_deg))
-  if n> max(1,max_ops//2): n= max(1,max_ops//2)
+  if max_ops and n> max(1,max_ops//2): n= max(1,max_ops//2)
   rots=[]
   trans=[]
   rots.append(matrix.sqr((1,0,0,0,1,0,0,0,1),))

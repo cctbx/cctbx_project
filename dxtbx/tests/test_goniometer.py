@@ -102,8 +102,6 @@ def test_goniometer():
   kappa2 = easy_pickle.loads(s)
   assert kappa == kappa2
 
-  print 'OK'
-
 def test_multi_axis_goniometer():
   from libtbx.test_utils import approx_equal
   from scitbx.array_family import flex
@@ -185,8 +183,6 @@ def test_multi_axis_goniometer():
   assert single_axis.get_setting_rotation() == (1,0,0,0,1,0,0,0,1)
   assert single_axis.get_rotation_axis() == (1,0,0)
 
-  print 'OK'
-
 def test_goniometer_from_phil():
   from dxtbx.model.goniometer import GoniometerFactory
   from dxtbx.model.goniometer import goniometer_phil_scope
@@ -234,8 +230,6 @@ def test_goniometer_from_phil():
   g4 = GoniometerFactory.from_phil(params, reference=g3)
 
   assert tuple(g4.get_axes()) == ((0, 1, 0), (1, 0, 0), (0, 0, 1))
-
-  print 'OK'
 
 if __name__ == '__main__':
 

@@ -18,7 +18,6 @@ def test_lookup_unknown_detector():
   assert n.CIF_block().__module__ == 'iotbx.cif.model'
   assert str(n.mmCIF_block()) == ''
   assert n.mmCIF_block().__module__ == 'iotbx.cif.model'
-  print 'OK'
 
 def test_lookup_known_detector():
   n = dxbd.get_beamline_definition('PILATUS 2M, S/N 24-0107 Diamond')
@@ -30,7 +29,6 @@ def test_lookup_known_detector():
   cif = n.mmCIF_block()
   assert cif.__module__ == 'iotbx.cif.model'
   assert '_diffrn_radiation.type' in str(cif), cif
-  print 'OK'
 
 if __name__ == '__main__':
   test_lookup_unknown_detector()

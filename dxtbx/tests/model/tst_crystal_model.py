@@ -54,6 +54,14 @@ def exercise_crystal_model():
                          space_group_symbol="P 1")
   assert model == model2 and not (model != model2)
 
+  model2a = Crystal(model.get_A(), model.get_space_group())
+  assert model == model2a and not (model != model2a)
+
+  model2b = Crystal(matrix.sqr(model.get_A()).inverse().elems,
+                    model.get_space_group().type().lookup_symbol(),
+                    reciprocal=False)
+  assert model == model2b and not (model != model2b)
+
   # rotate 45 degrees about x-axis
   R1 = matrix.sqr((1, 0, 0,
                    0, math.cos(math.pi/4), -math.sin(math.pi/4),
@@ -352,8 +360,6 @@ def exercise_check_old_vs_new():
   assert approx_equal(covB1, covB2)
   assert approx_equal(cell_volume_sd_1, cell_volume_sd_2)
   assert approx_equal(cell_sd_1, cell_sd_2)
-
-  print 'OK'
 
 def run():
   exercise_crystal_model()

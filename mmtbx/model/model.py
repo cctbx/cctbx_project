@@ -52,6 +52,8 @@ from mmtbx_validation_ramachandran_ext import rama_eval
 from mmtbx.rotamer.rotamer_eval import RotamerEval
 from mmtbx.rotamer.rotamer_eval import RotamerID
 
+from mmtbx.geometry_restraints import ramachandran
+
 ext2 = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
 
@@ -375,7 +377,29 @@ class manager(object):
     #   if ha.id_str() != sc.label and sc.scattering_type[:2] != "IS":
     #     print "XXXXXXX: '%s' != '%s'" % (ha.id_str(), sc.label)
     #     assert 0
+    s1 = self.get_hierarchy().atoms().extract_xyz()
+    s2 = self.get_xray_structure().sites_cart()
+    d = flex.sqrt((s1 - s2).dot())
+    assert d<1.e-4
+    s3 = self.pdb_atoms.extract_xyz()
+    d = flex.sqrt((s1 - s3).dot())
+    assert d<1.e-4
 
+  def set_ramachandran_plot_restraints(self, rama_potential):
+    self.unset_ramachandran_plot_restraints()
+    grm = self.get_restraints_manager().geometry
+    pep_link_params = self.self._pdb_interpretation_params.pdb_interpretation.peptide_link
+    pep_link_params.rama_potential = rama_potential
+    ramachandran_restraints_manager = ramachandran.ramachandran_manager(
+      pdb_hierarchy  = self.get_hierarchy(),
+      atom_selection = pep_link_params.rama_selection,
+      params         = pep_link_params,
+      log            = null_out())
+    grm.set_ramachandran_restraints(manager = ramachandran_restraints_manager)
+
+  def unset_ramachandran_plot_restraints(self):
+    grm = self.get_restraints_manager().geometry
+    grm.remove_ramachandran_in_place()
 
   def get_model_input(self):
     return self._model_input
@@ -536,6 +560,9 @@ class manager(object):
         print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
     return out.getvalue()
 
+  def restraints_manager_available(self):
+    return self.restraints_manager is not None
+
   def get_restraints_manager(self):
     if self.restraints_manager is not None:
       return self.restraints_manager
@@ -603,6 +630,7 @@ class manager(object):
     self._update_pdb_atoms()
     self._crystal_symmetry = xray_structure.crystal_symmetry()
     # XXX what else needs to be done here?
+    #     ph.adopt_xray_structure(xray_structure)
 
   def _create_xray_structure(self):
     if self._xray_structure is not None:
@@ -2565,7 +2593,6 @@ class manager(object):
       fmodel_x          = None,
       fmodel_n          = None,
       refinement_params = None,
-      general_selection = None,
       use_molprobity    = True):
     if self.model_statistics_info is None:
       self.model_statistics_info = mmtbx.model.statistics.info(
@@ -2573,12 +2600,10 @@ class manager(object):
           fmodel_x          = fmodel_x,
           fmodel_n          = fmodel_n,
           refinement_params = refinement_params,
-          general_selection = general_selection,
           use_molprobity    = use_molprobity)
     return self.model_statistics_info
 
-  def geometry_statistics(self,
-                          general_selection = None):
+  def geometry_statistics(self):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None

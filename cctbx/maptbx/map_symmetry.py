@@ -18,12 +18,23 @@ class map_symmetry:
       log=sys.stdout):
     adopt_init_args(self, locals())
 
-    self.ncs_cc=None
+    self.cc=None
+    self.original_ncs_object=None
+    if ncs_object:
+      self.original_ncs_object=ncs_object.deep_copy()
+    self.ncs_object=None
 
     if self.params and self.params.control.verbose:
       self.local_log=log
     else:
       self.local_log=null_out()
+
+  def get_results(self):
+    from libtbx import group_args
+    return group_args(
+     cc = self.cc,
+     ncs_object = self.ncs_object
+    )
 
   def clean_up(self):
     pass
@@ -50,20 +61,24 @@ class map_symmetry:
       return
 
     # Now shift back if necessary
-    shifted_ncs_object=new_ncs_obj.coordinate_offset(
+    ncs_object=new_ncs_obj.coordinate_offset(
         coordinate_offset=col(self.origin_shift_cart))
 
     print ("\nFinal symmetry obtained:",file=self.log)
     print ("\nCorrelation of symmetry-related regions: %.2f   Copies: %d " %(
-       ncs_cc,shifted_ncs_object.max_operators()), file=self.log)
+       ncs_cc,ncs_object.max_operators()), file=self.log)
 
     if self.params.control.verbose:
-      shifted_ncs_object.display_all(log=self.log)
+      ncs_object.display_all(log=self.log)
     # write to output file
-    shifted_ncs_object.format_all_for_group_specification(
+    ncs_object.format_all_for_group_specification(
          file_name=self.params.output_files.symmetry_out)
     print ("\nWrote operators in .ncs_spec format to %s" %(
       self.params.output_files.symmetry_out),file=self.log)
+
+    # Final results
+    self.ncs_object=ncs_object
+    self.cc=ncs_cc
 
   def get_resolution(self):
     if not self.params.crystal_info.resolution:

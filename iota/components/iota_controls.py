@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 04/04/2017
+Last Changed: 04/19/2018
 Description : IOTA GUI controls
 '''
 
@@ -610,7 +610,9 @@ class OptionCtrl(CtrlBase):
                checkbox=False,
                checkbox_label='',
                checkbox_state=False,
-               ctrl_size=(300, -1)):
+               ctrl_size=(300, -1),
+               expand_rows=None,
+               expand_cols=None):
 
     CtrlBase.__init__(self, parent=parent, label_style=label_style)
 
@@ -644,7 +646,8 @@ class OptionCtrl(CtrlBase):
                            style=wx.TE_PROCESS_ENTER)
         self.__setattr__(key, item)
         item.SetValue(str(value))
-      self.ctrl_box.Add(item, flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_RIGHT | wx.EXPAND)
+      self.ctrl_box.Add(item, proportion=1,
+                        flag=wx.ALIGN_CENTER_VERTICAL | wx.ALIGN_RIGHT | wx.EXPAND)
 
 
     cols = 1
@@ -669,8 +672,21 @@ class OptionCtrl(CtrlBase):
 
       self.Bind(wx.EVT_CHECKBOX, self.onToggle, self.toggle)
 
-    opt_box.Add(self.ctrl_box)
+    if expand_rows is not None:
+      assert isinstance(expand_rows, (list, tuple))
+      for row in expand_rows:
+        self.ctrl_box.AddGrowableRow(row)
+      opt_box.AddGrowableRow(0)
+
+    if expand_cols is not None:
+      assert isinstance(expand_cols, (list, tuple))
+      for col in expand_cols:
+        self.ctrl_box.AddGrowableCol(col)
+      opt_box.AddGrowableCol(cols-1)
+
+    opt_box.Add(self.ctrl_box, flag=wx.EXPAND)
     self.SetSizer(opt_box)
+    self.Layout()
 
   def onToggle(self, e):
     self.toggle_boxes(flag_on=self.toggle.GetValue())

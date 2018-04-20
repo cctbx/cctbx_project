@@ -25,9 +25,6 @@ def tst_set_direction_wavelength():
   assert(abs(matrix.col(b.get_s0()).length() - 1.0 / wavelength) <= eps)
   assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
 
-  # Test passed
-  print "OK"
-
 def tst_set_s0():
   """Test setting s0"""
   from scitbx import matrix
@@ -52,9 +49,6 @@ def tst_set_s0():
   assert(abs(matrix.col(b.get_s0()).length() - 1.0 / wavelength) <= eps)
   assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
   assert(abs(matrix.col(b.get_s0()) - s0) <= eps)
-
-  # Test passed
-  print "OK"
 
 def tst_from_phil():
 
@@ -89,8 +83,6 @@ def tst_from_phil():
   except Exception:
     passed = False
   assert passed == False
-
-  print 'OK'
 
 def tst_scan_varying():
 
@@ -136,8 +128,6 @@ def tst_scan_varying():
   assert b.get_num_scan_points() == 0
   assert b.get_s0_at_scan_points().size() == 0
 
-  print 'OK'
-
 def exercise_comparison():
 
   from scitbx import matrix
@@ -166,8 +156,6 @@ def exercise_comparison():
   b4.set_s0_at_scan_points([s0 * 1.5] * 5)
   assert b1 != b4
   assert not b1.is_similar_to(b4)
-
-  print 'OK'
 
 def run():
   """Test the beam object"""

@@ -67,7 +67,6 @@ def exercise_still():
 def run():
   exercise_still()
   exercise_multi_axis_goniometer()
-  print "OK"
 
 if __name__ == '__main__':
   run()

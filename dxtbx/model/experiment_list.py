@@ -134,6 +134,7 @@ class ExperimentListDict(object):
     for eobj in self._obj['experiment']:
 
       # Get the models
+      identifier = eobj.get("identifier", "")
       beam = ExperimentListDict.model_or_none(self._blist, eobj, 'beam')
       detector = ExperimentListDict.model_or_none(self._dlist, eobj, 'detector')
       goniometer = ExperimentListDict.model_or_none(self._glist, eobj, 'goniometer')
@@ -294,7 +295,8 @@ class ExperimentListDict(object):
         scan=scan,
         crystal=crystal,
         profile=profile,
-        scaling_model=scaling_model))
+        scaling_model=scaling_model,
+        identifier=identifier))
 
     # Return the experiment list
     return el

@@ -41,7 +41,9 @@ namespace dxtbx { namespace model {
      * Initialize from the data
      */
     ExperimentList(const const_ref_type &data)
-      : data_(data.begin(), data.end()) {}
+      : data_(data.begin(), data.end()) {
+      DXTBX_ASSERT(is_consistent());
+    }
 
     /**
      * Get a shared array of experiments
@@ -124,9 +126,44 @@ namespace dxtbx { namespace model {
     }
 
     /**
+     * Get the list of identifiers
+     */
+    scitbx::af::shared<std::string> identifiers() const {
+      scitbx::af::shared<std::string> id(data_.size());
+      for (std::size_t i = 0; i < data_.size(); ++i) {
+        id[i] = data_[i].get_identifier();
+      }
+      return id;
+    }
+
+    /**
+     * Find the experiment matching the identifier
+     */
+    int find(std::string identifier) const {
+
+      // If id is empty then skip
+      if (identifier != "") {
+        for (std::size_t i = 0; i < data_.size(); ++i) {
+          if (data_[i].get_identifier() == identifier) {
+            return i;
+          }
+        }
+      }
+
+      // No match
+      return -1;
+    }
+
+    /**
      * Append an experiment to the list
      */
     void append(const Experiment &experiment) {
+
+      // Check the identifier is unique if set
+      int index = find(experiment.get_identifier());
+      DXTBX_ASSERT(index < 0);
+
+      // Add the experiment
       data_.push_back(experiment);
     }
 
@@ -134,10 +171,9 @@ namespace dxtbx { namespace model {
      * Extend the experiment list with experiments from another
      */
     void extend(const ExperimentList &experiment_list) {
-      data_.insert(
-          data_.end(),
-          experiment_list.data_.begin(),
-          experiment_list.data_.end());
+      for (std::size_t i = 0; i < experiment_list.size(); ++i) {
+        append(experiment_list[i]);
+      }
     }
 
     /**
@@ -468,9 +504,19 @@ namespace dxtbx { namespace model {
      * Check if experiments are consistent
      */
     bool is_consistent() const {
+      typedef std::map<std::string, std::size_t> map_type;
+      typedef map_type::iterator iterator;
+      map_type identifiers;
       for (std::size_t i = 0; i < size(); ++i) {
         if (!data_[i].is_consistent()) {
           return false;
+        }
+        std::string id = data_[i].get_identifier();
+        if (id != "") {
+          iterator it = identifiers.find(id);
+          if (it != identifiers.end()) {
+            return false;
+          }
         }
       }
       return true;

@@ -1,12 +1,13 @@
-IOTA v1.1.030 - GUI updates
+IOTA v1.1.031 - HKL slice viewer
 
 Bugfixes:
 
 
 Features:
-- Further sped-up recovery: list of image objects with all info is saved in
-  analysis.pickle; only one file read in without searching for image objects,
-  this seems to speed up the process, especially for large datasets (backwards
-  compatibility, when analysis.pickle is lacking, is included)
+- The HKL slice viewer (a part of "charts" tab) can now be set to show the
+general completeness for any space / point group
+- The chart tab has been reorganized for potential insertion of other widgets
+for each of the chart panels; this has the side effect of improving the
+presentation of the HKL slice viewer.
 
 Known issues:

@@ -20,9 +20,6 @@ class TestBeam:
     b2 = Beam.from_dict(d)
     assert(b2 == b1)
 
-    print 'OK'
-
-
 class TestGonio:
   def __call__(self):
     from dxtbx.model import Goniometer
@@ -36,9 +33,6 @@ class TestGonio:
     d = g1.to_dict()
     g2 = Goniometer.from_dict(d)
     assert(g2 == g1)
-
-    print 'OK'
-
 
 class TestScan:
   def __call__(self):
@@ -54,9 +48,6 @@ class TestScan:
     d = s1.to_dict()
     s2 = Scan.from_dict(d)
     assert(s1 == s2)
-
-    print 'OK'
-
 
 class TestDetector:
   def __call__(self):
@@ -100,8 +91,6 @@ class TestDetector:
       assert(p1 == p2)
     assert(d1.hierarchy() == d2.hierarchy())
     assert(d1 == d2)
-
-    print 'OK'
 
 class Test:
 
