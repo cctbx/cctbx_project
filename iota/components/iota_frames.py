@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/12/2018
+Last Changed: 04/19/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -32,8 +32,8 @@ assert Axes3D
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
 from libtbx.utils import to_unicode
-from cctbx import miller
-assert miller
+from cctbx import miller, crystal
+from cctbx.array_family import flex
 
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_analysis import Analyzer, Plotter
@@ -573,7 +573,7 @@ class LogTab(wx.Panel):
       self.log_window.ShowPosition(found_pos)
 
 
-class ProcessingTab(wx.Panel):
+class ProcessingTab(ScrolledPanel):
   def __init__(self, parent):
     self.gparams = None
     self.init = None
@@ -583,16 +583,15 @@ class ProcessingTab(wx.Panel):
     self.img_list = None
     self.nref_list = None
     self.res_list = None
-    #self.measured_indices = []
-    self.ahk0 = []
-    self.ah0l = []
-    self.a0kl = []
+    self.indices = []
+    self.spacegroup = None
+
     self.hkl_view_axis = 'l'
     self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
     self.proc_fnames = None
 
-    wx.Panel.__init__(self, parent)
-    self.main_fig_sizer = wx.BoxSizer(wx.VERTICAL)
+    ScrolledPanel.__init__(self, parent)
+    self.main_fig_sizer = wx.GridBagSizer(0, 0)
 
     # Set regular font
     plt.rc('font', family='sans-serif', size=plot_font_size)
@@ -602,7 +601,7 @@ class ProcessingTab(wx.Panel):
     self.int_panel = wx.Panel(self)
     int_sizer = wx.BoxSizer(wx.VERTICAL)
     self.int_panel.SetSizer(int_sizer)
-    self.int_figure = Figure()
+    self.int_figure = Figure(figsize=(1, 2.5))
     self.int_figure.patch.set_visible(False)    # create transparent background
 
     # Image info sizer
@@ -634,81 +633,99 @@ class ProcessingTab(wx.Panel):
     self.Bind(wx.EVT_BUTTON, self.onArrow, self.btn_left)
 
     # Charts
-    int_gsp = gridspec.GridSpec(4, 5)
-    int_gsub = gridspec.GridSpecFromSubplotSpec(2, 1,
-                                                subplot_spec=int_gsp[:2, :],
-                                                hspace=0)
+    int_gsp = gridspec.GridSpec(2, 1, wspace=0, hspace=0)
 
     # Resolution / No. strong reflections chart
-    self.res_axes = self.int_figure.add_subplot(int_gsub[0])
+    self.res_axes = self.int_figure.add_subplot(int_gsp[0])
     self.res_axes.set_ylabel('Resolution')
     self.res_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.res_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.res_axes.get_xticklabels(), visible=False)
-    self.nsref_axes = self.int_figure.add_subplot(int_gsub[1])
+    self.nsref_axes = self.int_figure.add_subplot(int_gsp[1])
     self.nsref_axes.set_xlabel('Frame')
     self.nsref_axes.set_ylabel('Strong Spots')
     self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    # Determine size of plot labels and introduce sufficient spacer into
-    # info textbox sizer
-    # TODO: This needs to be better
-    ax_width = self.nsref_axes.get_window_extent().width
-    fig_width = self.int_figure.get_window_extent().width
-    spacer = fig_width - ax_width
-    self.info_sizer.Add((spacer * 0.45, -1), pos=(0, 0))
-    self.info_sizer.Add((spacer * 0.1, -1), pos=(0, 5))
     self.info_txt.Show()
     self.btn_right.Show()
     self.btn_left.Show()
     self.btn_viewer.Show()
 
+    self.int_figure.set_tight_layout(True)
+    self.int_canvas = FigureCanvas(self.int_panel, -1, self.int_figure)
+    int_sizer.Add(self.int_canvas, 1, flag=wx.EXPAND)
+
     # UC Histogram / cluster figure
-    uc_gsub = gridspec.GridSpecFromSubplotSpec(2, 3,
-                                               subplot_spec=int_gsp[2:4, :3],
-                                               hspace=0, wspace=0)
-    self.a_axes = self.int_figure.add_subplot(uc_gsub[0])
+    self.uc_panel = wx.Panel(self)
+    uc_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.uc_panel.SetSizer(uc_sizer)
+    self.uc_figure = Figure(figsize=(1, 2.5))
+    self.uc_figure.patch.set_visible(False)    # create transparent background
+
+    uc_gsub = gridspec.GridSpec(2, 3, wspace=0, hspace=0)
+    self.a_axes = self.uc_figure.add_subplot(uc_gsub[0])
     self.a_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.a_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.b_axes = self.int_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
+    self.b_axes = self.uc_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
     self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.b_axes.get_yticklabels(), visible=False)
-    self.c_axes = self.int_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
+    self.c_axes = self.uc_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
     self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.c_axes.get_yticklabels(), visible=False)
-    self.alpha_axes = self.int_figure.add_subplot(uc_gsub[3])
+    self.alpha_axes = self.uc_figure.add_subplot(uc_gsub[3])
     self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.beta_axes = self.int_figure.add_subplot(uc_gsub[4],
+    self.beta_axes = self.uc_figure.add_subplot(uc_gsub[4],
                                                  sharey=self.alpha_axes)
     self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.beta_axes.get_yticklabels(), visible=False)
-    self.gamma_axes = self.int_figure.add_subplot(uc_gsub[5],
+    self.gamma_axes = self.uc_figure.add_subplot(uc_gsub[5],
                                                   sharey=self.alpha_axes)
     self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
     self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
     plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
-    # HKL (or slice) plot
-    self.bxy_axes = self.int_figure.add_subplot(int_gsp[2:4, 3:5],
-                                                frameon=False)
-    self.bxy_axes.set_xticks([])
-    self.bxy_axes.set_yticks([])
+    self.uc_figure.set_tight_layout(True)
+    self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
+    uc_sizer.Add(self.uc_canvas, 1, flag=wx.EXPAND)
 
-    self.int_figure.set_tight_layout(True)
-    self.int_canvas = FigureCanvas(self.int_panel, -1, self.int_figure)
-    int_sizer.Add(self.int_canvas, 1, flag=wx.EXPAND)
+    # HKL (or slice) plot
+    self.hkl_panel = wx.Panel(self)
+    hkl_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.hkl_panel.SetSizer(hkl_sizer)
+    self.hkl_figure = Figure(figsize=(0.25, 0.25))
+    self.hkl_figure.patch.set_visible(False)    # create transparent background
+
+    self.hkl_axes = self.hkl_figure.add_subplot(111, frameon=False)
+    self.hkl_axes.set_aspect('equal')
+    self.hkl_axes.set_xticks([])
+    self.hkl_axes.set_yticks([])
+
+    self.hkl_figure.set_tight_layout(True)
+    self.hkl_canvas = FigureCanvas(self.hkl_panel, -1, self.hkl_figure)
+    hkl_sizer.Add(self.hkl_canvas, 1, flag=wx.EXPAND)
+
+    self.hkl_sg = ct.OptionCtrl(self.hkl_panel,
+                                items=[('sg', 'P1')],
+                                checkbox=True,
+                                checkbox_state=False,
+                                checkbox_label='Space Group: ',
+                                label_size=wx.DefaultSize,
+                                ctrl_size=wx.DefaultSize)
+    hkl_sizer.Add(self.hkl_sg, flag=wx.ALL | wx.ALIGN_CENTER, border=5)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onSGTextEnter, self.hkl_sg.sg)
+    self.Bind(wx.EVT_CHECKBOX, self.onSGCheckbox, self.hkl_sg.toggle)
 
     # Processing summary figure
     self.proc_panel = wx.Panel(self, size=(-1, 120))
     proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_panel.SetSizer(proc_sizer)
 
-    self.proc_figure = Figure()
+    self.proc_figure = Figure(figsize=(0.5, 2.5))
     self.proc_figure.patch.set_visible(False)
     self.sum_axes = self.proc_figure.add_subplot(111)
     self.sum_axes.axis('off')
@@ -716,8 +733,23 @@ class ProcessingTab(wx.Panel):
     self.proc_canvas = FigureCanvas(self.proc_panel, -1, self.proc_figure)
     proc_sizer.Add(self.proc_canvas, flag=wx.EXPAND | wx.BOTTOM, border=10)
 
-    self.main_fig_sizer.Add(self.int_panel, 1, flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.proc_panel, flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.int_panel, pos=(0, 0), span=(2, 6),
+                            flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.uc_panel, pos=(2, 0), span=(2, 4),
+                            flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.hkl_panel, pos=(2, 4), span=(2, 2),
+                            flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.proc_panel, pos= (4, 0), span=(1, 6),
+                            flag=wx.EXPAND)
+
+    self.main_fig_sizer.AddGrowableCol(0)
+    self.main_fig_sizer.AddGrowableCol(1)
+    self.main_fig_sizer.AddGrowableCol(2)
+    self.main_fig_sizer.AddGrowableCol(3)
+    self.main_fig_sizer.AddGrowableCol(4)
+    self.main_fig_sizer.AddGrowableCol(5)
+    self.main_fig_sizer.AddGrowableRow(1)
+    self.main_fig_sizer.AddGrowableRow(3)
 
     cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
     sid = self.proc_canvas.mpl_connect('pick_event', self.on_bar_pick)
@@ -727,6 +759,17 @@ class ProcessingTab(wx.Panel):
                                        self.on_button_release)
 
     self.SetSizer(self.main_fig_sizer)
+
+  def onSGTextEnter(self, e):
+    self.spacegroup = str(self.hkl_sg.sg.GetValue())
+    self.draw_plots()
+
+  def onSGCheckbox(self, e):
+    if self.hkl_sg.toggle.GetValue():
+      self.hkl_sg.sg.SetValue(str(self.spacegroup))
+    else:
+      self.hkl_sg.sg.SetValue('')
+    self.draw_plots()
 
   def draw_summary(self):
     try:
@@ -838,6 +881,7 @@ class ProcessingTab(wx.Panel):
       self.draw_measured_indices()
       self.int_canvas.draw()
     self.Layout()
+    self.SetupScrolling()
 
 
   def draw_integration_plots(self):
@@ -1092,45 +1136,62 @@ class ProcessingTab(wx.Panel):
       #   print 'BEAM XY ERROR: ', e
 
   def draw_measured_indices(self):
+    # Apply symmetry if any via miller object
+    if self.hkl_sg.toggle.GetValue():
+      try:
+        idx_array = flex.miller_index(self.indices)
+        crystal_symmetry = crystal.symmetry(space_group_symbol=self.spacegroup)
+        ms = miller.set(crystal_symmetry=crystal_symmetry,
+                        indices=idx_array, anomalous_flag=False)
+        sym_indices = ms.map_to_asu().indices()
+      except Exception, e:
+        sym_indices = self.indices
+        print 'HKL ERROR: ', e
+    else:
+      sym_indices = self.indices
+
+    self.ahk0 = [(i[0], i[1]) for i in sym_indices if i[2] == 0]
+    self.ah0l = [(i[0], i[2]) for i in sym_indices if i[1] == 0]
+    self.a0kl = [(i[1], i[2]) for i in sym_indices if i[0] == 0]
+
     # Draw a h0, k0, or l0 slice of merged data so far
-    self.bxy_axes.clear()
+    self.hkl_axes.clear()
     if self.hkl_view_axis == 'l':
       x = np.array([h[0] for h in self.ahk0])
       y = np.array([h[1] for h in self.ahk0])
-      self.bxy_axes.set_xlabel('h', weight='bold')
-      self.bxy_axes.set_ylabel('k', weight='bold', rotation='horizontal')
+      self.hkl_axes.set_xlabel('h', weight='bold')
+      self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'k':
       x = np.array([h[0] for h in self.ah0l])
       y = np.array([h[1] for h in self.ah0l])
-      self.bxy_axes.set_xlabel('h', weight='bold')
-      self.bxy_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+      self.hkl_axes.set_xlabel('h', weight='bold')
+      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'h':
       x = np.array([h[0] for h in self.a0kl])
       y = np.array([h[1] for h in self.a0kl])
-      self.bxy_axes.set_xlabel('k', weight='bold')
-      self.bxy_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+      self.hkl_axes.set_xlabel('k', weight='bold')
+      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     else:
       # if for some reason this goes to plotting without any indices
       x = np.zeros(500)
       y = np.zeros(500)
 
     # Format plot
-    self.bxy_axes.scatter(x, y, s=1)
-    self.bxy_axes.axhline(0, lw=0.5, c='black', ls='-')
-    self.bxy_axes.axvline(0, lw=0.5, c='black', ls='-')
-    self.bxy_axes.set_xticks([])
-    self.bxy_axes.set_yticks([])
-    self.bxy_axes.xaxis.set_label_coords(x=1, y=0.5)
-    self.bxy_axes.yaxis.set_label_coords(x=0.5, y=1)
+    self.hkl_axes.scatter(x, y, s=1)
+    self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
+    self.hkl_axes.set_xticks([])
+    self.hkl_axes.set_yticks([])
+    self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
+    self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
 
     try:
       xmax = abs(max(x, key=abs))
       ymax = abs(max(y, key=abs))
-      self.bxy_axes.set_xlim(xmin=-xmax, xmax=xmax)
-      self.bxy_axes.set_ylim(ymin=-ymax, ymax=ymax)
+      self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
+      self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
     except ValueError, e:
       pass
-
 
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
@@ -1234,14 +1295,16 @@ class ProcessingTab(wx.Panel):
         self.nsref_pick.set_visible(False)
       elif event.inaxes == self.res_axes:
         self.res_pick.set_visible(False)
-    elif event.button == 1 and event.inaxes == self.bxy_axes:
-        if self.hkl_view_axis == 'h':
-          self.hkl_view_axis = 'k'
-        elif self.hkl_view_axis == 'k':
-          self.hkl_view_axis = 'l'
-        elif self.hkl_view_axis == 'l':
-          self.hkl_view_axis = 'h'
-        self.draw_measured_indices()
+      elif event.inaxes == self.hkl_axes:
+        self.show_sg_popup_menu((event.x, event.y))
+    elif event.button == 1 and event.inaxes == self.hkl_axes:
+      if self.hkl_view_axis == 'h':
+        self.hkl_view_axis = 'k'
+      elif self.hkl_view_axis == 'k':
+        self.hkl_view_axis = 'l'
+      elif self.hkl_view_axis == 'l':
+        self.hkl_view_axis = 'h'
+      self.draw_plots()
 
     if event.dblclick:
       self.dblclick = True
@@ -1249,10 +1312,21 @@ class ProcessingTab(wx.Panel):
       self.dblclick = False
 
   def on_button_release(self, event):
+    self.ReleaseMouse()
     if event.button == 1 and self.dblclick:
       self.show_image_group(e=event)
       self.view_proc_images()
 
+
+  def show_sg_popup_menu(self, mouse_position=None):
+    if mouse_position is not None:
+      mx, my = mouse_position
+      menu = wx.Menu()
+      for item in ['test1', 'test2', 'test3']:
+        menu.Append(wx.ID_ANY, item)
+
+      self.parent.PopupMenu(menu, mouse_position)
+      menu.Destroy()
 
 class SummaryTab(ScrolledPanel):
   def __init__(self,
@@ -1606,9 +1680,7 @@ class ProcWindow(wx.Frame):
     self.finished_objects = []
     self.read_object_files = []
     self.new_images = []
-    self.ahk0 = []
-    self.ah0l = []
-    self.a0kl = []
+    self.indices = []
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1856,10 +1928,10 @@ class ProcWindow(wx.Frame):
         iterable = self.new_images
         self.img_list.extend(self.new_images)
         self.new_images = []
-        self.status_summary = [0] * len(self.img_list)
-        self.nref_list = [0] * len(self.img_list)
-        self.nref_xaxis = [i[0] for i in self.img_list]
-        self.res_list = [0] * len(self.img_list)
+        # self.status_summary = [0] * len(self.img_list)
+        # self.nref_list = [0] * len(self.img_list)
+        # self.nref_xaxis = [i[0] for i in self.img_list]
+        # self.res_list = [0] * len(self.img_list)
         self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
                                  ''.format(len(iterable), len(self.img_list)))
         self.start_object_finder = True
@@ -2087,9 +2159,16 @@ class ProcWindow(wx.Frame):
     self.chart_tab.res_list = self.res_list
     self.chart_tab.nref_list = self.nref_list
 
-    self.chart_tab.ahk0 = list(set(self.ahk0))
-    self.chart_tab.ah0l = list(set(self.ah0l))
-    self.chart_tab.a0kl = list(set(self.a0kl))
+    if self.chart_tab.spacegroup is None:
+      if self.gparams.advanced.integrate_with == 'dials':
+        sg = self.gparams.dials.target_space_group
+        if sg is not None:
+          self.chart_tab.spacegroup = str(sg)
+      else:
+        self.chart_tab.spacegroup = 'P1'
+
+    self.chart_tab.indices = list(set(self.indices))
+
     self.chart_tab.draw_plots()
     self.chart_tab.draw_summary()
 
@@ -2136,10 +2215,7 @@ class ProcWindow(wx.Frame):
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
           if 'observations' in obj.final:
-            obs = [i[0] for i in obj.final['observations']]
-            self.ahk0.extend([(i[0], i[1]) for i in obs if i[2] == 0])
-            self.ah0l.extend([(i[0], i[2]) for i in obs if i[1] == 0])
-            self.a0kl.extend([(i[1], i[2]) for i in obs if i[0] == 0])
+            self.indices.extend([i[0] for i in obj.final['observations']])
         except Exception, e:
           print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
           pass
