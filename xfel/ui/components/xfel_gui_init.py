@@ -571,6 +571,7 @@ class SpotfinderSentinel(Thread):
     self.info = {}
     self.run_numbers = []
     self.stats = []
+    self.spot_length_stats = []
     self.run_tags = []
     self.run_statuses = []
 
@@ -595,10 +596,9 @@ class SpotfinderSentinel(Thread):
       time.sleep(5)
 
   def refresh_stats(self):
-    #from xfel.ui.components.timeit import duration
     from xfel.ui.db.stats import SpotfinderStats
-    import copy, time
-    t1 = time.time()
+    from xfel.ui.components.spotfinder_scraper import get_spot_length_stats
+    import copy
     if self.parent.run_window.spotfinder_tab.trial_no is not None:
       trial = self.db.get_trial(
         trial_number=self.parent.run_window.spotfinder_tab.trial_no)
@@ -607,9 +607,11 @@ class SpotfinderSentinel(Thread):
       trial_ids = []
       rungroup_ids = []
       self.stats = []
+      self.spot_length_stats = []
       self.trgr = {}
       self.run_tags = []
       self.run_statuses = []
+      self.output = self.parent.params.output_folder
       for rg in trial.rungroups:
         for run in rg.runs:
           if run.run not in self.run_numbers and run.run in selected_runs:
@@ -617,8 +619,20 @@ class SpotfinderSentinel(Thread):
             trial_ids.append(trial.id)
             rungroup_ids.append(rg.id)
             self.trgr[run.run] = (trial, rg, run)
-            self.stats.append(SpotfinderStats(self.db, run.run, trial.trial, rg.id)())
+            # spot count
+            sf_stats = SpotfinderStats(self.db, run.run, trial.trial, rg.id)()
+            self.stats.append(sf_stats)
             self.run_tags.append([tag.name for tag in run.tags])
+            # spot lengths
+            if self.parent.params.dispatcher == "cxi.xtc_process": #LABELIT backend
+              outdir = "integration"
+            else:
+              outdir = "out"
+            run_outdir = os.path.join(get_run_path(self.output, trial, rg, run), outdir)
+            try:
+              self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
+            except OSError:
+              print "Outdir %s no longer accessible." % run_outdir
 
       jobs = self.db.get_all_jobs()
       for idx in xrange(len(self.run_numbers)):
@@ -629,7 +643,7 @@ class SpotfinderSentinel(Thread):
           if job.run.run == run_no and job.rungroup.id == rg_id and job.trial.id == t_id:
             self.run_statuses.append(job.status)
     self.reorder()
-    t2 = time.time()
+
 
   def reorder(self):
     run_numbers_ordered = sorted(self.run_numbers)
@@ -645,6 +659,7 @@ class SpotfinderSentinel(Thread):
     sizex, sizey = self.parent.run_window.spotfinder_tab.spotfinder_panelsize
     self.parent.run_window.spotfinder_tab.png = plot_multirun_spotfinder_stats(
       self.stats, self.run_numbers,
+      spot_length_stats=self.spot_length_stats,
       interactive=False,
       run_tags=self.run_tags,
       run_statuses=self.run_statuses,
