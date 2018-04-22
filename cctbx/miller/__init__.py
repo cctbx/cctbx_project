@@ -2382,6 +2382,47 @@ class array(set):
       return self.f_as_f_sq(algorithm=algorithm)
     return self
 
+  def translational_shift(self, shift_frac, deg=None):
+    """
+    Adjust a complex array (map coefficients) or phase array 
+     corresponding to a shift of all coordinates by 
+     new_xyz_frac = old_xyz_frac + shift_frac. 
+
+    If a phase array, must specify whether it is in degrees.
+    Only makes sense in P1
+
+    F'=exp( i 2 pi h.(x+shift_frac)) -> F' = F exp ( i 2 pi h.shift_frac)
+    phase_shift = 2 * pi * h . shift_frac
+    """
+    assert self.is_complex_array() or self.is_real_array()
+    assert self.space_group().type().number() in [0,1]
+
+    from scitbx.matrix import col
+
+    if self.is_complex_array(): # split into phases and amplitudes, shift phases
+
+      amplitudes = self.amplitudes()
+      phases_rad = self.phases(deg=False)
+      new_phases_rad = phases_rad.translational_shift(shift_frac,deg=False)
+
+      result = amplitudes.phase_transfer(
+        phase_source = new_phases_rad,deg=False)
+
+    else: # phase array
+
+      assert deg is not None
+ 
+      if deg: # in degrees
+        c=360.
+      else:  # in radians
+        c=2*3.14159
+
+      phase_shift = c * self.indices().as_vec3_double().dot(
+         col(shift_frac))
+      result = array(self, self.data()+phase_shift)
+
+    return result
+
   def map_to_asu(self, deg=None):
     """
     Convert all indices to lie within the canonical asymmetric unit for the

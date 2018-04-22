@@ -3005,17 +3005,24 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
 
 
 def get_map_object(file_name=None,out=sys.stdout):
+
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
-  from iotbx import ccp4_map
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
-  m = ccp4_map.map_reader(file_name=file_name)
-  print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
+  if file_name.endswith(".xplor"):
+    import iotbx.xplor.map
+    m = iotbx.xplor.map.reader(file_name=file_name)
+    m.unit_cell_grid=m.data.all() # just so we have something
+    m.space_group_number=0 # so we have something
+  else:
+    from iotbx import ccp4_map
+    m = ccp4_map.map_reader(file_name=file_name)
+    print >>out,"MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms)
-  print >>out,"grid: ",m.unit_cell_grid
-  print >>out,"cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
-     m.unit_cell_parameters)
-  print >>out,"SG: ",m.space_group_number
+    print >>out,"grid: ",m.unit_cell_grid
+    print >>out,"cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
+       m.unit_cell_parameters)
+    print >>out,"SG: ",m.space_group_number
   print >>out,"ORIGIN: ",m.data.origin()
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
@@ -3075,13 +3082,18 @@ def get_map_object(file_name=None,out=sys.stdout):
     n=1 # fix mrc formatting
   else:
     n=m.space_group_number
-  space_group_info=sgtbx.space_group_info(number=n)
-  unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
-  crystal_symmetry=crystal.symmetry(
-    unit_cell=unit_cell,space_group_info=space_group_info)
-  print >>out, "\nCrystal symmetry used: "
-  crystal_symmetry.show_summary(f=out)
-  space_group=crystal_symmetry.space_group()
+  if hasattr(m,'unit_cell_parameters'):
+    space_group_info=sgtbx.space_group_info(number=n)
+    unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=unit_cell,space_group_info=space_group_info)
+    print >>out, "\nCrystal symmetry used: "
+    crystal_symmetry.show_summary(f=out)
+    space_group=crystal_symmetry.space_group()
+  else:
+    space_group=None
+    unit_cell=None
+    crystal_symmetry=None
 
   map=scale_map(map,out=out)
 

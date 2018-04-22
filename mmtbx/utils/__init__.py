@@ -2668,32 +2668,31 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     return i_low/n_tot,i_high/n_tot
 
   def write_xplor_map(self, file_name="box.xplor",shift_back=None):
-    if shift_back: # XXX not tested
-      from scitbx.matrix import col
-      new_origin=self.origin_shift_grid_units(reverse=True)
-      gridding = iotbx.xplor.map.gridding(
-        n     = self.map_box.focus(),
-        first = new_origin,
-        last  = tuple(col(self.map_box.focus())+col(new_origin)))
-
+    # write out xplor map on same grid as ccp4 map (0 to focus-1)
+    from scitbx.matrix import col
+    if shift_back:
+      map_data=self.shift_map_back(self.map_box)
     else:
-      gridding = iotbx.xplor.map.gridding(
-        n     = self.map_box.focus(),
-        first = (0,0,0),
-        last  = self.map_box.focus())
+      map_data=self.map_box
+ 
+    gridding = iotbx.xplor.map.gridding(
+        n     = map_data.all(),
+        first = map_data.origin(),
+        last  = tuple(col(map_data.focus())-col((1,1,1))))
 
 
     iotbx.xplor.map.writer(
       file_name          = file_name,
-      is_p1_cell         = True,
+      is_p1_cell         = None, # XXX temporary flag allowing any cell
       title_lines        = ['Map in box',],
       unit_cell          = self.xray_structure_box.unit_cell(),
       gridding           = gridding,
-      data               = self.map_box.as_double(),
+      data               = map_data.as_double(), 
       average            = -1,
       standard_deviation = -1)
 
   def origin_shift_grid_units(self,reverse=False):
+    # Get origin shift in grid units from shift_cart
     from scitbx.matrix import col
     cell=self.xray_structure_box.crystal_symmetry().unit_cell().parameters()[:3]
     origin_shift_grid=[]
@@ -2708,27 +2707,31 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     else:
       return origin_shift_grid
 
-  def translation_phase_shift(self,phases_rad,shift_frac=None):
-    # F'=exp(- i 2 pi h.(x+offset)) -> F' = F exp (- i 2 pi h.x)
-    # phase_shift = - 2 * pi * h . x
+  def shift_sites_cart_back(self,sites_cart):
+    # Shift sites from map_box cell to original coordinate system
+    # Normal situation: cut out piece of cell so shift_cart negative;
+    #  box_sites_cart more negative than sites_cart; 
+    #  put back with (-shift_cart) which moves sites to more positive values.
     from scitbx.matrix import col
-    phase_shift=-2*3.14159*phases_rad.indices().as_vec3_double().dot(
-       col(shift_frac))
-    return phases_rad+phase_shift
+    return sites_cart-col(self.shift_cart)
 
   def shift_map_coeffs_back(self,map_coeffs):
-    amplitudes=map_coeffs.amplitudes()
-    amplitudes.set_observation_type_xray_amplitude()
-    assert amplitudes.is_real_array()
-    phases_rad=map_coeffs.phases(deg=False)
-    new_phases_rad=self.translation_phase_shift(phases_rad,
-        shift_frac=self.box_crystal_symmetry.unit_cell().fractionalize(
-          self.shift_cart))
-    new_map_coeffs=amplitudes.phase_transfer(
-      phase_source=new_phases_rad,deg=False)
-    return new_map_coeffs
+    # Shift map coeffs from map_box cell to original coordinate system
+    # Apply phase shift corresponding to moving coordinates by self.shift_cart
+    # Note resulting map coeffs are still for the box cell (not original cell).
+    #  They superimpose on the result of shift_sites_cart_back but only
+    #  within the volume of the map_box cell in the original coordinate system
+
+    from scitbx.matrix import col
+    return map_coeffs.translational_shift(
+          self.box_crystal_symmetry.unit_cell().fractionalize(
+          -col(self.shift_cart)), deg=False)
 
   def shift_map_back(self,map_data):
+    # Shift map from map_box cell to original coordinate system
+    #  Note this map only applies in the region of the map_box cell (the
+    #   map may be repeated in space but only one copy is valid).
+    # The dimensions of this map are the same as the box map.
     from scitbx.matrix import col
     new_origin=self.origin_shift_grid_units(reverse=True)
     new_all=list(col(self.map_box.all())+col(new_origin))

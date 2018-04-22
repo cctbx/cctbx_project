@@ -1731,3 +1731,10 @@ def cluster_erosion(sites_cart, box_size, fraction_to_be_retained):
   for i_box in (box_counts >= required_counts).iselection():
     site_selection.extend(box_members[i_box])
   return site_selection
+
+def unit_crystal_symmetry():
+  # returns crystal symmetry with unit cell=(1,1,1,90,90,90), sg=1
+  sg=sgtbx.space_group_info(symbol='P1')
+  uc=uctbx.unit_cell((1,1,1,90,90,90))
+  from cctbx import crystal
+  return crystal.symmetry(unit_cell=uc,space_group_info=sg)

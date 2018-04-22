@@ -58,7 +58,11 @@ class gridding(object):
 
   def is_compatible_flex_grid(self, flex_grid, is_p1_cell=False):
     if (flex_grid.nd() != 3): return False
-    if (not is_p1_cell):
+    if (is_p1_cell is None): # XXX temporary flag allowing any cell
+      self_as_flex_grid = self.as_flex_grid()
+      if (flex_grid.origin() != self_as_flex_grid.origin()): return False
+      if (flex_grid.last() != self_as_flex_grid.last()): return False
+    elif (not is_p1_cell):
       self_as_flex_grid = self.as_flex_grid()
       if (flex_grid.origin() != self_as_flex_grid.origin()): return False
       if (flex_grid.last() != self_as_flex_grid.last()): return False
@@ -134,7 +138,14 @@ def writer(file_name, title_lines, unit_cell, gridding,
     f.write("%-264s\n" % line)
   f.write("%s\n" % gridding.format_9i8())
   f.close()
-  if (not is_p1_cell):
+  if (is_p1_cell is None): # XXX temporary flag allowing any cell
+    ext.map_writer(
+      file_name=file_name,
+      unit_cell=unit_cell,
+      data=data,
+      average=average,
+      standard_deviation=standard_deviation)
+  elif (not is_p1_cell):
     ext.map_writer(
       file_name=file_name,
       unit_cell=unit_cell,
