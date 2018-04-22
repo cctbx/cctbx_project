@@ -8,8 +8,8 @@ from xfel.ui.components.spotfinder_plotter import plot_spotfinder_stats
 def easy_run_plot_spotfinder_stats(pickle):
   from libtbx import easy_pickle
   contents = easy_pickle.load(pickle)
-  stats_tuple, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title = contents
-  print plot_spotfinder_stats(stats_tuple, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+  stats_tuple, spot_length_stats_tuple, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title = contents
+  print plot_spotfinder_stats(stats_tuple, spot_length_stats_tuple, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
     interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
 
 if __name__ == "__main__":
