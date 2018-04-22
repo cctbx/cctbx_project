@@ -86,7 +86,7 @@ master_phil = libtbx.phil.parse("""
             If false, shifted origin to (0,0,0).  \
             NOTE: The unit_cell for all output will always be the \
               map_box unit cell.  Only the origin is kept/shifted.\
- 
+
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -340,12 +340,12 @@ Parameters:"""%h
 
   # NOTE: box object is always shifted to place origin at (0,0,0)
 
-  # For output files ONLY: 
+  # For output files ONLY:
   #   keep_origin==False leave origin at (0,0,0)
    #  keep_origin==True: we shift everything back to where it was,
 
   if (not params.keep_origin):
-    if box.shift_cart: 
+    if box.shift_cart:
       print >>log,\
         "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A" %(
         tuple(box.shift_cart))
@@ -389,7 +389,7 @@ Parameters:"""%h
           box.xray_structure_box.crystal_symmetry())
 
     # Write NCS file if NCS and keep_origin==False
-    if params.ncs_file and ncs_object and ncs_object.max_operators()>0: 
+    if params.ncs_file and ncs_object and ncs_object.max_operators()>0:
       if(params.output_file_name_prefix is None):
         output_ncs_file = "%s_box.ncs_spec"%output_prefix
       else:
@@ -449,7 +449,7 @@ Parameters:"""%h
      else:
        print >> log, "Writing box_map coefficients shifted to (0,0,0) "+\
           "to MTZ file: %s"%file_name
-     if(map_coeff is not None): 
+     if(map_coeff is not None):
        d_min = map_coeff.d_min()
      elif params.resolution is not None:
        d_min = params.resolution

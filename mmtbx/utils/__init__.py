@@ -2674,7 +2674,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       map_data=self.shift_map_back(self.map_box)
     else:
       map_data=self.map_box
- 
+
     gridding = iotbx.xplor.map.gridding(
         n     = map_data.all(),
         first = map_data.origin(),
@@ -2687,7 +2687,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       title_lines        = ['Map in box',],
       unit_cell          = self.xray_structure_box.unit_cell(),
       gridding           = gridding,
-      data               = map_data.as_double(), 
+      data               = map_data.as_double(),
       average            = -1,
       standard_deviation = -1)
 
@@ -2710,7 +2710,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
   def shift_sites_cart_back(self,sites_cart):
     # Shift sites from map_box cell to original coordinate system
     # Normal situation: cut out piece of cell so shift_cart negative;
-    #  box_sites_cart more negative than sites_cart; 
+    #  box_sites_cart more negative than sites_cart;
     #  put back with (-shift_cart) which moves sites to more positive values.
     from scitbx.matrix import col
     return sites_cart-col(self.shift_cart)

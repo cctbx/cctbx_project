@@ -2384,9 +2384,9 @@ class array(set):
 
   def translational_shift(self, shift_frac, deg=None):
     """
-    Adjust a complex array (map coefficients) or phase array 
-     corresponding to a shift of all coordinates by 
-     new_xyz_frac = old_xyz_frac + shift_frac. 
+    Adjust a complex array (map coefficients) or phase array
+     corresponding to a shift of all coordinates by
+     new_xyz_frac = old_xyz_frac + shift_frac.
 
     If a phase array, must specify whether it is in degrees.
     Only makes sense in P1
@@ -2411,7 +2411,7 @@ class array(set):
     else: # phase array
 
       assert deg is not None
- 
+
       if deg: # in degrees
         c=360.
       else:  # in radians
