@@ -105,9 +105,22 @@ class FormatTIFFRayonixSPring8(FormatTIFFRayonix):
 
     beam = beam_x * pixel_size[0], beam_y * pixel_size[1]
 
+    for record in self._tiff_header_bytes[2464:2464+512].strip().split('\n'):
+      if 'detector serial number' in record.lower():
+        serial_number = int(record.split()[-1])
+        break
+    serial_to_model = {24:"225",
+                       31:"225HE",
+                       38:"225HE",
+                       42:"300HE",
+                       40:"225HE",
+                       106:"225HS"}
+    model = serial_to_model[serial_number]
+    gain = self._get_rayonix_gain(model)
+
     return self._detector_factory.simple(
         'CCD', distance, beam, '+x', '-y', pixel_size,
-        image_size, (underload, overload), [])
+        image_size, (underload, overload), [], gain=gain)
 
   def _goniometer(self):
     '''Return a model for goniometer corresponding to the values stored

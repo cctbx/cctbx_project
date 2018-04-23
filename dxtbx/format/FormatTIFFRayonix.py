@@ -147,7 +147,8 @@ class FormatTIFFRayonix(FormatTIFF):
 
     return self._detector_factory.two_theta(
       'CCD', distance, beam, '+x', '-y', '+x', two_theta,
-      pixel_size, image_size, (underload, overload), [])
+      pixel_size, image_size, (underload, overload), [],
+      gain=self._get_rayonix_gain())
 
   def _beam(self):
     '''Return a simple model for the beam.'''
@@ -292,6 +293,57 @@ class FormatTIFFRayonix(FormatTIFF):
         self._i, self._tiff_header_bytes[1804:1808])[0]
 
     return bias * 1.0e-3
+
+  def _get_rayonix_gain(self, model=None):
+    '''Return an appropriate gain value in ADU per captured X-ray for a
+    Rayonix CCD module. If the model is None (unknown) then make a guess based
+    on header details'''
+
+    # Values are based on a combination of manufacturer datasheets,
+    # James Holton's list at http://bl831.als.lbl.gov/xtalsize.html and
+    # empirical guesswork based on spot finding results. The accuracy should
+    # not be expected to be better than 20% and indeed may be worse than that.
+    # Values may refer to gain in ADU per incident photon rather than the
+    # more appropriate ADU per captured photon.
+
+    # Is this useful?
+    detector_type = struct.unpack(self._i, self._tiff_header_bytes[1792:1796])
+
+    pixel_size = self._get_rayonix_pixel_size()
+    image_size = self._tiff_width, self._tiff_height
+
+    if model is None:
+      model = "UNKNOWN"
+      # Guesswork based on information from the header
+      if image_size == (2048, 2048) and pixel_size == (0.079348, 0.079348):
+        model = "165" # 2x2 binning
+      elif image_size == (3072, 3072):
+        model = "225" # 2x2 binning, 73 micron pixels. But might be 225HE?
+      elif image_size == (4096, 4096):
+        if pixel_size == (0.079346, 0.079346):
+          model = "325" # 2x2 binning, 79 micron pixels. But might be 325HE?
+        elif pixel_size == (0.073242, 0.073242):
+          model = "300" # 2x2 binning, 73 micron pixels. But might be 300HE?
+
+    model = model.upper()
+    if model.startswith('165'):
+      return 1.0
+    if model.startswith('225HE'):
+      return 2.8 # This is inferred based on the value for 300HE
+    if model.startswith('225'):
+      return 1.5
+    if model.startswith('325HE'):
+      return 2.4
+    if model.startswith('325'):
+      return 1.3
+    if model.startswith('300HE'):
+      return 2.8
+    if model.startswith('300'):
+      return 1.5
+
+    # Unidentified model
+    return 1.0
+
 
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
