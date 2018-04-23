@@ -530,6 +530,12 @@ class Toolbox(object):
           except OSError:
             returncode = 1
         Toolbox.set_git_repository_config_to_rebase(os.path.join(destination, '.git', 'config'))
+        if returncode:
+          return returncode # no point trying to continue on error
+        # Show the hash for the checked out commit for debugging purposes, ignore any failures.
+        ShellCommand(
+          command=[ 'git', 'rev-parse', 'HEAD' ], workdir=destination, silent=False
+        ).run()
         return returncode
       filename = "%s-%s" % (module,
                             urlparse.urlparse(source_candidate)[2].split('/')[-1])
