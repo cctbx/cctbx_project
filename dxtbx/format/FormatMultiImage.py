@@ -175,9 +175,8 @@ class FormatMultiImage(object):
     if format_kwargs is None:
       format_kwargs = {}
 
-    # If we have no specific format class, we need indices for number of images
-    from dxtbx.format.FormatMultiImageJIT import FormatMultiImageJIT
-    if Class in [FormatMultiImage, FormatMultiImageJIT]:
+    # If get_num_images hasn't been implemented, we need indices for number of images
+    if Class.get_num_images == FormatMultiImage.get_num_images:
       assert single_file_indices is not None
       assert min(single_file_indices) >= 0
       num_images = max(single_file_indices) + 1
