@@ -1,7 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/flex_wrapper_complex.h>
-#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/move.h>
 #include <boost/python/make_constructor.hpp>
@@ -119,8 +118,6 @@ namespace {
       .def("__init__", make_constructor(
         from_pair_of_flex_double, default_call_policies(), (
           arg("reals"), arg("imags"))))
-      .def("__init__", make_constructor(
-        flex_complex_double_from_numpy_array, default_call_policies()))
       .def("part_names", part_names)
       .staticmethod("part_names")
       .def("parts", parts)
@@ -175,8 +172,6 @@ namespace {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", flex_complex_double_as_numpy_array, (
-        arg("optional")=false))
     ;
     def("mean", f_w::mean_a);
     def("mean_sq", f_w::mean_sq_a);

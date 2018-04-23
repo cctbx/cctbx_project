@@ -12,6 +12,7 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/array_family/boost_python/owning_ref_conversions.h>
 #include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost_adaptbx/optional_conversions.h>
@@ -31,7 +32,6 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  void import_numpy_api_if_available();
   void wrap_flex_grid();
   void wrap_flex_bool();
   void wrap_flex_size_t();

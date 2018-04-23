@@ -2,7 +2,13 @@ from __future__ import division
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected, show_diff
 
-def exercise_basic(flex_type, verbose):
+try:
+  import numpy as np
+except ImportError:
+  numpy = None
+
+def exercise_type_conversions(flex_type, verbose):
+  """Test converting various flex array types"""
   if (flex_type is flex.bool):
     z = False
   else:
@@ -17,7 +23,8 @@ def exercise_basic(flex_type, verbose):
     fna = flex_type(na)
     assert fna.all_eq(fa)
 
-def exercise_int():
+def test_int_conversions():
+  """More exhaustive tests for converting int-type arrays"""
   fa = flex.int_range(1,7)
   na = fa.as_numpy_array()
   assert na.tolist() == list(fa)
@@ -29,7 +36,8 @@ def exercise_int():
   fa[0] = 99
   assert na[0] == 1
   fa[0] = 1
-  #
+
+  # Test that a 2D gridded versa gets properly converted
   fa.reshape(flex.grid(2,3))
   na = fa.as_numpy_array()
   assert na.tolist() == [[1, 2, 3], [4, 5, 6]]
@@ -38,7 +46,8 @@ def exercise_int():
   assert fna.origin() == (0,0)
   assert fna.focus() == (2,3)
   assert fna.all_eq(fa)
-  #
+
+  # Test that a gridded versa gets converted properly
   fa = flex.int_range(4*2*3) + 1
   fa.reshape(flex.grid(4,2,3))
   na = fa.as_numpy_array()
@@ -52,6 +61,20 @@ def exercise_int():
   assert fna.origin() == (0,0,0)
   assert fna.focus() == (4,2,3)
   assert fna.all_eq(fa)
+
+  # Test converting a numpy array of a different type
+  fa = flex.int(np.array([1,2], dtype=np.int64))
+  assert fa[0] == 1
+  assert fa[1] == 2
+
+  # Test converting a very large array (memory leaks)
+  bigarray = np.ones(1000000)
+  fa = flex.int(bigarray)
+  assert (fa == 1).count(True)
+  # And, back to numpy
+  bigarray = fa.as_numpy_array()
+  assert np.sum(bigarray == 1) == len(bigarray)
+
 
 def run(args):
   assert args in [[], ["--forever"]]
@@ -73,8 +96,8 @@ def run(args):
             flex.double,
             flex.complex_double,
             flex.size_t]:
-        exercise_basic(flex_type, verbose)
-      exercise_int()
+        exercise_type_conversions(flex_type, verbose)
+      test_int_conversions()
     if (len(args) == 0):
       break
     verbose = False

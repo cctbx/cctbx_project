@@ -2,7 +2,6 @@
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <scitbx/array_family/boost_python/byte_str.h>
 #include <scitbx/array_family/boost_python/range_wrappers.h>
-#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/array_family/counts.h>
 #include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/matrix/packed.h>
@@ -201,8 +200,6 @@ namespace scitbx { namespace af { namespace boost_python {
       .def_pickle(flex_pickle_single_buffered<int>())
       .def("__init__", make_constructor(
         from_std_string, default_call_policies()))
-      .def("__init__", make_constructor(
-        flex_int_from_numpy_array, default_call_policies()))
       .def("copy_to_byte_str", copy_to_byte_str<versa<int, flex_grid<> > >)
       .def("slice_to_byte_str",
         slice_to_byte_str<versa<int, flex_grid<> > >)
@@ -255,8 +252,6 @@ namespace scitbx { namespace af { namespace boost_python {
               arg("block"),
               arg("i_row"),
               arg("i_column")))
-      .def("as_numpy_array", flex_int_as_numpy_array, (
-        arg("optional")=false))
       .def("__invert__", &bitwise_not)
       .def("__or__", &bitwise_or_single)
       .def("__or__", &bitwise_or_array)

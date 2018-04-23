@@ -87,8 +87,10 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<std::size_t>())
       .def("__init__", make_constructor(
         from_stl_vector_unsigned, default_call_policies()))
+      // numpy deliberately respecified here because for some unknown
+      // reason relying on flex_wrapper::numeric fails TypeConversion
       .def("__init__", make_constructor(
-        flex_size_t_from_numpy_array, default_call_policies()))
+        flex_from_numpy_array<std::size_t>, default_call_policies()))
       .def("copy_to_byte_str",
         copy_to_byte_str<versa<std::size_t, flex_grid<> > >)
       .def("as_int", as_int)
@@ -106,8 +108,6 @@ namespace {
       .def("inverse_permutation", inverse_permutation)
       .def("increment_and_track_up_from_zero",
         increment_and_track_up_from_zero, (arg("iselection")))
-      .def("as_numpy_array", flex_size_t_as_numpy_array, (
-        arg("optional")=false))
     ;
     def(
       "size_t_from_byte_str",

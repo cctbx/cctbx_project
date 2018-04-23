@@ -1,197 +1,184 @@
+#include <Python.h>
 #include <boost/python.hpp>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/flex_grid.h>
-#include <boost_adaptbx/type_id_eq.h>
+#include <boost/python/numpy.hpp>
 #include <boost_adaptbx/floating_point_exceptions.h>
+#include <boost_adaptbx/type_id_eq.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
+#include <scitbx/array_family/versa.h>
 
+using namespace scitbx::af;
+
+// Only include the actual conversion functions if we have numpy
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+
+// Declare how we're using the numpy API.
+// This is the unique symbol that boost numpy uses - since we defer
+// activation of the numpy API to boost, we need to use the same symbol.
+#define PY_ARRAY_UNIQUE_SYMBOL BOOST_NUMPY_ARRAY_API
+// Numpy initialization done by boost python, so we don't want import_array
+#define NO_IMPORT_ARRAY
 #include <numpy/arrayobject.h>
-#else
-#define NPY_BOOL 0
-#define NPY_INT 0
-#define NPY_LONG 0
-#define NPY_FLOAT 0
-#define NPY_DOUBLE 0
-#define NPY_CDOUBLE 0
-#define NPY_USHORT 0
-#define NPY_UINT 0
-#define NPY_ULONG 0
-#define NPY_ULONGLONG 0
+
+/// Returns a numpy type description object describing a built-in C++ type.
+///
+/// This uses the boost::python::numpy code to properly abstract over platform
+/// differences, and lets us tie into the boost::python::numpy API, but as
+/// minimally as possible.
+///
+/// @tparam   T   The C++ type to get the numpy equivalent for
+/// @returns  A new reference to the equivalent numpy type object
+template <typename T> PyArray_Descr *get_builtin_dtype() {
+  boost::python::object dtype = boost::python::numpy::dtype::get_builtin<T>();
+  if (PyObject_IsInstance(
+          dtype.ptr(), reinterpret_cast<PyObject *>(&PyArrayDescr_Type)) != 1) {
+    throw std::runtime_error("Didn't get expected type object");
+  }
+  PyArray_Descr *dtp = reinterpret_cast<PyArray_Descr *>(dtype.ptr());
+  Py_INCREF(dtp);
+  return dtp;
+}
+
+/// Do the actual conversion from flex to numpy
+template <typename ElementType>
+boost::python::object
+ref_flex_as_numpy_array(scitbx::af::ref<ElementType, flex_grid<> > const &O) {
+  // Extract the number and size of dimensions
+  npy_intp dims[flex_grid<>::index_type::capacity_value];
+  flex_grid<> const &grid = O.accessor();
+  int nd = static_cast<int>(grid.nd());
+  for (unsigned i = 0; i < nd; i++) {
+    dims[i] = static_cast<npy_intp>(grid.all()[i]);
+  }
+
+  // Get the equivalent dtype for this C++ type
+  PyArray_Descr *dtype = get_builtin_dtype<ElementType>();
+  PyArrayObject *result = reinterpret_cast<PyArrayObject *>(
+      PyArray_SimpleNewFromDescr(nd, dims, dtype));
+
+  // Copy over the data from our flex array
+  ElementType *result_data =
+      reinterpret_cast<ElementType *>(PyArray_DATA(result));
+  std::copy(O.begin(), O.end(), result_data);
+  // Return the python object
+  boost::python::handle<> handle(reinterpret_cast<PyObject *>(result));
+  return boost::python::object(handle);
+}
+
+/// Do actual conversion from numpy to a flex versa-grid
+template <typename ElementType>
+versa<ElementType, flex_grid<> >
+versa_flex_from_numpy_array(boost::python::numpy::ndarray const &arr_obj) {
+  // Convert this to a plain API pointer to work with the API
+  PyArrayObject *arr_ptr = reinterpret_cast<PyArrayObject *>(arr_obj.ptr());
+  // Make sanity checks on the input array
+  if (!PyArray_ISCONTIGUOUS(arr_ptr)) {
+    throw std::invalid_argument("numpy.ndarray instance is not contiguous");
+  }
+
+  // Build a dimensions array in the correct type for flex_grid
+  flex_grid<>::index_type all; // e.g. a small<long, 10>
+  npy_intp ndim = PyArray_NDIM(arr_ptr);
+  SCITBX_ASSERT(ndim <= all.capacity());
+  npy_intp *dims = PyArray_DIMS(arr_ptr);
+  for (unsigned i = 0; i < ndim; i++) {
+    all.push_back(static_cast<flex_grid<>::index_type::value_type>(dims[i]));
+  }
+
+  // Create the new flex_grid to hold all the data
+  flex_grid<> grid(all);
+  // Double-check that we have the sizes correct
+  const npy_intp n_items = PyArray_SIZE(arr_ptr);
+  SCITBX_ASSERT(grid.size_1d() == n_items);
+
+  // Now, use this flex_grid to create the final array object
+  versa<ElementType, flex_grid<> > result(grid,
+                                          init_functor_null<ElementType>());
+
+  // Now, convert the original object to the same data type as the flex
+  // array so that we can do a direct copy
+  PyArray_Descr *dtype = get_builtin_dtype<ElementType>();
+  PyArrayObject *converted_arr =
+      reinterpret_cast<PyArrayObject *>(PyArray_CastToType(arr_ptr, dtype, 0));
+
+  // Now we want to copy over the data from the type-correct array
+  ElementType *data =
+      reinterpret_cast<ElementType *>(PyArray_DATA(converted_arr));
+  std::copy(data, data + (size_t)n_items, result.begin());
+  Py_DECREF(converted_arr);
+
+  return result;
+}
+
 #endif
 
-#if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
-#endif
+char const *numpy_api_not_available() { return "numpy API not available"; }
 
-namespace scitbx { namespace af { namespace boost_python {
+///////////////////////////////////////////////////////////////////////////////
+// Define all the public functions with numpy/no-numpy specific behaviour
 
-// import_array returns NULL in python3, and somehow that makes this function
-// need a return type as well.
-#ifdef IS_PY3K
-  int
-#else
-  void
-#endif
-  import_numpy_api_if_available()
-  {
+namespace scitbx {
+namespace af {
+namespace boost_python {
+
+void import_numpy_api_if_available() {
+// If no numpy, then this function does nothing
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
-    {
-      /* On Snow Leopard, numpy is shipped with the system
-       and the call import_array() triggers a floating-point exception,
-       which then crashes the program thanks to the default unforgiving
-       FP trapping policy of the cctbx.
-       Temporarily changing to a more lenient policy is the simplest
-       possible fix.
-       */
-      using namespace boost_adaptbx::floating_point;
-      exception_trapping guard(exception_trapping::dont_trap);
-      import_array();
-    }
-    boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
+  /* On Snow Leopard, numpy is shipped with the system
+   and the call import_array() triggers a floating-point exception,
+   which then crashes the program thanks to the default unforgiving
+   FP trapping policy of the cctbx.
+   Temporarily changing to a more lenient policy is the simplest
+   possible fix.
+   */
+  using namespace boost_adaptbx::floating_point;
+  exception_trapping guard(exception_trapping::dont_trap);
+  boost::python::numpy::initialize();
 #endif
-#ifdef IS_PY3K
-    return NULL;
-#endif
-  }
+}
 
-  char const*
-  numpy_api_not_available() { return "numpy API not available"; }
-
-  template <typename ElementType>
-  boost::python::object
-  ref_flex_as_numpy_array(
-    ref<ElementType, flex_grid<> > const& O,
-    bool optional,
-    int type_num)
-  {
-    namespace bp = boost::python;
-    bp::object result;
-#if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
-    if (!optional) {
-      throw std::runtime_error(numpy_api_not_available());
-    }
+template <typename ElementType>
+boost::python::object
+flex_as_numpy_array(ref<ElementType, flex_grid<> > const &from, bool optional) {
+#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+  return ref_flex_as_numpy_array(from);
 #else
-    npy_intp dims[flex_grid<>::index_type::capacity_value];
-    flex_grid<> const& grid = O.accessor();
-    int nd = static_cast<int>(grid.nd());
-    for(unsigned i=0;i<nd;i++) {
-      dims[i] = static_cast<npy_intp>(grid.all()[i]);
-    }
-    result = bp::object(bp::handle<>(PyArray_SimpleNew(nd, dims, type_num)));
-    ElementType* result_data = reinterpret_cast<ElementType*>(
-      PyArray_DATA(result.ptr()));
-    std::copy(O.begin(), O.end(), result_data);
-#endif
-    return result;
-  }
-
-  template <typename SourceType, typename TargetType>
-  void
-  copy_data_with_cast(
-    std::size_t n,
-    SourceType const* s,
-    TargetType* t)
-  {
-    for(std::size_t i=0;i<n;i++) {
-      t[i] = static_cast<TargetType>(s[i]);
-    }
-  }
-
-  template <typename ElementType>
-  versa<ElementType, flex_grid<> >
-  versa_flex_from_numpy_array(
-    boost::python::numeric::array const& arr_obj)
-  {
-    namespace bp = boost::python;
-#if !defined(SCITBX_HAVE_NUMPY_INCLUDE)
+  // If no numpy, we have the option to return None instead of throwing
+  if (!optional) {
     throw std::runtime_error(numpy_api_not_available());
-#else
-    PyObject* arr_ptr = arr_obj.ptr();
-    if (!PyArray_Check(arr_ptr)) {
-      throw std::invalid_argument(
-        "Expected a numpy.ndarray instance");
-    }
-    if (!PyArray_ISCONTIGUOUS(arr_ptr)) {
-      throw std::invalid_argument(
-        "numpy.ndarray instance is not contiguous");
-    }
-    typedef typename flex_grid<>::index_type fgit;
-    typedef typename fgit::value_type fgivt;
-    fgit all;
-    npy_intp ndim = PyArray_NDIM(arr_ptr);
-    SCITBX_ASSERT(ndim <= all.capacity());
-    npy_intp* dims = PyArray_DIMS(arr_ptr);
-    for(unsigned i=0;i<ndim;i++) {
-      all.push_back(static_cast<fgivt>(dims[i]));
-    }
-    flex_grid<> grid(all);
-    SCITBX_ASSERT(grid.size_1d() == PyArray_Size(arr_ptr));
-    versa<ElementType, flex_grid<> > result(
-      grid, init_functor_null<ElementType>());
-    void* data = PyArray_DATA(arr_ptr);
-    int type_num = PyArray_TYPE(arr_ptr);
-#define SCITBX_LOC(tn) \
-    (type_num == tn) { \
-      copy_data_with_cast( \
-        grid.size_1d(), \
-        reinterpret_cast<ElementType*>(data), \
-        result.begin()); \
-    }
-    if      SCITBX_LOC(NPY_BOOL)
-    else if SCITBX_LOC(NPY_INT)
-    else if SCITBX_LOC(NPY_LONG)
-    else if SCITBX_LOC(NPY_FLOAT)
-    else if SCITBX_LOC(NPY_DOUBLE)
-    else if SCITBX_LOC(NPY_CDOUBLE)
-    else if SCITBX_LOC(NPY_USHORT)
-    else if SCITBX_LOC(NPY_UINT)
-    else if SCITBX_LOC(NPY_ULONG)
-    else if SCITBX_LOC(NPY_ULONGLONG)
-    else {
-      throw std::runtime_error(
-        "Unsupported numpy.ndarray element type");
-    }
-#undef SCITBX_LOC
-    return result;
-#endif
   }
-
-#define SCITBX_LOC(pyname, ElementType, type_num) \
-  boost::python::object \
-  flex_##pyname##_as_numpy_array( \
-    ref<ElementType, flex_grid<> > const& O, \
-    bool optional) \
-  { \
-    return ref_flex_as_numpy_array(O, optional, type_num); \
-  } \
- \
-  versa<ElementType, flex_grid<> >* \
-  flex_##pyname##_from_numpy_array( \
-    boost::python::numeric::array const& arr_obj) \
-  { \
-    return new versa<ElementType, flex_grid<> >( \
-      versa_flex_from_numpy_array<ElementType >(arr_obj)); \
-  }
-
-  SCITBX_LOC(bool, bool, NPY_BOOL);
-  SCITBX_LOC(int, int, NPY_INT);
-  SCITBX_LOC(long, long, NPY_LONG);
-  SCITBX_LOC(float, float, NPY_FLOAT);
-  SCITBX_LOC(double, double, NPY_DOUBLE);
-  SCITBX_LOC(complex_double, std::complex<double>, NPY_CDOUBLE);
-
-#if defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_SHORT)
-  SCITBX_LOC(size_t, std::size_t, NPY_USHORT);
-#elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED)
-  SCITBX_LOC(size_t, std::size_t, NPY_UINT);
-#elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG)
-  SCITBX_LOC(size_t, std::size_t, NPY_ULONG);
-#elif defined(BOOST_ADAPTBX_TYPE_ID_SIZE_T_EQ_UNSIGNED_LONG_LONG)
-  SCITBX_LOC(size_t, std::size_t, NPY_ULONGLONG);
-#else
-# error Unknown size_t: review boost_adaptbx/type_id_eq.h
+  // Return None
+  return boost::python::object();
 #endif
+}
 
-#undef SCITBX_LOC
+template <typename ElementType>
+versa<ElementType, flex_grid<> > *
+flex_from_numpy_array(boost::python::numpy::ndarray const &array) {
+#if defined(SCITBX_HAVE_NUMPY_INCLUDE)
+  return new versa<ElementType, flex_grid<> >(
+      versa_flex_from_numpy_array<ElementType>(array));
+#else
+  throw std::runtime_error(numpy_api_not_available());
+#endif
+}
 
-}}} // namespace scitbx::af::boost_python
+// Create a convenience macro that explicitly instantiates these functions
+// for a specific type.
+#define EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(fortype)                          \
+  template boost::python::object flex_as_numpy_array<fortype>(                 \
+      ref<fortype, flex_grid<> > const &from, bool optional);                  \
+  template versa<fortype, flex_grid<> > *flex_from_numpy_array<fortype>(       \
+      boost::python::numpy::ndarray const &array);
+
+// Explicitly instantiate converters for all flex types
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(bool)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(int)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(long)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(float)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(double)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(std::complex<double>)
+EXPLICIT_INSTANTIATE_FLEX_CONVERTERS(std::size_t)
+
+} // namespace boost_python
+} // namespace af
+} // namespace scitbx

@@ -375,7 +375,7 @@ namespace {
         default_call_policies(),
         (arg("size"), arg("iselection"))))
       .def("__init__", make_constructor(
-        flex_bool_from_numpy_array, default_call_policies()))
+        flex_from_numpy_array<bool>, default_call_policies()))
       .def("__eq__", eq)
       .def("__ne__", ne)
       .def("__eq__", eq)
@@ -420,7 +420,7 @@ namespace {
            af::const_ref<bool> const&,
            af::const_ref<std::size_t> const&)) filter_indices, (
              arg("indices")))
-      .def("as_numpy_array", flex_bool_as_numpy_array, (
+      .def("as_numpy_array", flex_as_numpy_array<bool>, (
         arg("optional")=false))
     ;
     def("order", f_w::order_a_a, (arg("other")));

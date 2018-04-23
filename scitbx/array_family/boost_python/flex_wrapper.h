@@ -23,6 +23,7 @@
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 #include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
+#include <scitbx/array_family/boost_python/numpy_bridge.hpp>
 #include <scitbx/misc/positive_getitem_index.h>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -904,6 +905,10 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("product", product_a);
       }
       return plain(python_name)
+        .def("__init__", make_constructor(
+          flex_from_numpy_array<ElementType>, boost::python::default_call_policies()))
+        .def("as_numpy_array", flex_as_numpy_array<ElementType>, (
+          boost::python::arg("optional")=false))
         .def("count", count)
         .def("__neg__", neg_a)
         .def("__add__", add_a_a)
