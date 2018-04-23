@@ -40,6 +40,65 @@ def exercise_ellipsoidal_truncation(space_group_info, n_sites=100, d_min=1.5):
   f_obs.miller_indices_as_pdb_file(file_name="indices4.pdb", expand_to_p1=True)
   print "*"*25
 
+def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
+     resolution_factor = 0.3):
+  sgi= space_group_info("P1")
+  xrs = random_structure.xray_structure(
+    space_group_info=sgi,
+    elements=(("O","N","C")*(n_sites//3+1))[:n_sites],
+    volume_per_atom=50,
+    min_distance=1.5)
+  f_calc= xrs.structure_factors(d_min = d_min).f_calc()
+  print f_calc.unit_cell()
+  from scitbx.matrix import col
+  shift_frac=col((.23984120,.902341127,.51219021))
+
+  # Shift phases directly
+  phase_shifted=f_calc.translational_shift(shift_frac=shift_frac)
+
+  # Check that map from phase_shifted FC matches map calculated from
+  #   translated xrs
+
+  # Map from phase-shifted FC 
+  shifted_fft_map = phase_shifted.fft_map(resolution_factor=resolution_factor)
+  shifted_fft_map.apply_sigma_scaling()
+  shifted_map_data = shifted_fft_map.real_map_unpadded()
+  cs = xrs.crystal_symmetry()
+  from cctbx.maptbx import crystal_gridding
+  cg = crystal_gridding(
+      unit_cell             = cs.unit_cell(),
+      space_group_info      = cs.space_group_info(),
+      pre_determined_n_real = shifted_map_data.all())
+
+  # Map from translated xrs
+  sites_shifted=xrs.sites_frac()+shift_frac
+  xrs.set_sites_frac(sites_shifted)
+  f_calc_from_shifted_xrs = xrs.structure_factors(d_min = d_min).f_calc()
+  fft_map_from_shifted_xrs = f_calc_from_shifted_xrs.fft_map(
+      resolution_factor=resolution_factor,
+      crystal_gridding     = cg)
+  map_data_from_shifted_xrs=fft_map_from_shifted_xrs.real_map_unpadded()
+
+  # shifted_map_data (map from phase shifted f_calc), 
+  # map_data_from_shifted_xrs (recalculated with shifted xrs)
+
+  assert shifted_map_data.all() == map_data_from_shifted_xrs.all()
+  from cctbx import maptbx
+  sel = maptbx.grid_indices_around_sites(
+      unit_cell  = xrs.unit_cell(),
+      fft_n_real = shifted_map_data.focus(),
+      fft_m_real = shifted_map_data.all(),
+      sites_cart = xrs.sites_cart(),
+      site_radii = flex.double(xrs.scatterers().size(), 1.5))
+  shifted_map_data = shifted_map_data.select(sel)
+  map_data_from_shifted_xrs = map_data_from_shifted_xrs.select(sel)
+
+  cc_map_data_from_shifted_xrs_shifted_map_data= flex.linear_correlation(x=map_data_from_shifted_xrs.as_1d(),  y=shifted_map_data.as_1d()).coefficient()
+  print "cc_map_data_from_shifted_xrs_shifted_map_data",\
+     cc_map_data_from_shifted_xrs_shifted_map_data
+  assert  cc_map_data_from_shifted_xrs_shifted_map_data > 0.99
+  print "*"*25
+
 def run_call_back(flags, space_group_info):
   exercise_ellipsoidal_truncation(space_group_info)
 
@@ -90,4 +149,5 @@ def exercise_twinning () :
 
 if (__name__ == "__main__"):
   exercise_twinning()
+  exercise_translational_phase_shift()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
