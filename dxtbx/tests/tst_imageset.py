@@ -604,25 +604,23 @@ class Test_SACLA_MPCCD_Cheetah_File(object):
 
     assert len(iset) == 4
     for i in range(len(iset)):
-      data = iset.get_raw_data(i)
-#      mask = iset.get_mask(i)
-      b = iset.get_beam(i)
-      d = iset.get_detector(i)
-      g = iset.get_goniometer(i)
-      s = iset.get_scan(i)
-
-    print 'OK'
+      assert iset.get_raw_data(i)
+#      assert iset.get_mask(i)
+      assert iset.get_beam(i)
+      assert iset.get_detector(i)
+      assert iset.get_goniometer(i) is None
+      assert iset.get_scan(i) is None
 
     iset = format_class.get_imageset([self.filename], single_file_indices=[1], just_in_time=just_in_time)
     assert len(iset) == 1
 
     for i in range(len(iset)):
-      data = iset.get_raw_data(i)
-#      mask = iset.get_mask(i)
-      b = iset.get_beam(i)
-      d = iset.get_detector(i)
-      g = iset.get_goniometer(i)
-      s = iset.get_scan(i)
+      assert iset.get_raw_data(i)
+#      assert iset.get_mask(i)
+      assert iset.get_beam(i)
+      assert iset.get_detector(i)
+      assert iset.get_goniometer(i) is None
+      assert iset.get_scan(i) is None
 
 class TestImageSetFactory(object):
   def get_file_list(self):

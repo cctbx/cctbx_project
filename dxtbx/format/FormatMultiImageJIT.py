@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from dxtbx.format.FormatMultiImage import FormatMultiImage
 
 class FormatMultiImageJIT(FormatMultiImage):
@@ -24,15 +24,15 @@ class FormatMultiImageJIT(FormatMultiImage):
                    check_format=True,
                    just_in_time=True):
 
-    return super(FormatMultiImageJIT, Class).get_imageset(filenames,
-                                                           beam,
-                                                           detector,
-                                                           goniometer,
-                                                           scan,
-                                                           as_sweep,
-                                                           as_imageset,
-                                                           single_file_indices,
-                                                           format_kwargs,
-                                                           template,
-                                                           check_format,
-                                                           just_in_time)
+    return super(FormatMultiImageJIT, Class).get_imageset(filenames=filenames,
+                                                          beam=beam,
+                                                          detector=detector,
+                                                          goniometer=goniometer,
+                                                          scan=scan,
+                                                          as_sweep=as_sweep,
+                                                          as_imageset=as_imageset,
+                                                          single_file_indices=single_file_indices,
+                                                          format_kwargs=format_kwargs,
+                                                          template=template,
+                                                          check_format=check_format,
+                                                          just_in_time=just_in_time)
