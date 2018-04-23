@@ -59,7 +59,7 @@ def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
   # Check that map from phase_shifted FC matches map calculated from
   #   translated xrs
 
-  # Map from phase-shifted FC 
+  # Map from phase-shifted FC
   shifted_fft_map = phase_shifted.fft_map(resolution_factor=resolution_factor)
   shifted_fft_map.apply_sigma_scaling()
   shifted_map_data = shifted_fft_map.real_map_unpadded()
@@ -79,7 +79,7 @@ def exercise_translational_phase_shift(n_sites=100,d_min=1.5,
       crystal_gridding     = cg)
   map_data_from_shifted_xrs=fft_map_from_shifted_xrs.real_map_unpadded()
 
-  # shifted_map_data (map from phase shifted f_calc), 
+  # shifted_map_data (map from phase shifted f_calc),
   # map_data_from_shifted_xrs (recalculated with shifted xrs)
 
   assert shifted_map_data.all() == map_data_from_shifted_xrs.all()
