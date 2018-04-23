@@ -36,7 +36,7 @@ using boost::math::isnan;
 #ifndef NAN
 //#define NAN strtod("NAN",NULL)
 /* this works on Windoze */
-#define NAN sqrt(-1)
+#define NAN sqrt((long double)-1)
 #endif
 #ifndef DBL_MIN
 //#define DBL_MIN 1e-99
