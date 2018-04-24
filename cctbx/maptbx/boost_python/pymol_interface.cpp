@@ -4,6 +4,15 @@
 #include <cctbx/maptbx/statistics.h>
 #include <boost/python/def.hpp>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+
+void destroy_pyobject(PyObject* obj_ptr) {
+  free(obj_ptr);
+}
+
+#endif
+
 namespace cctbx { namespace maptbx { namespace boost_python {
 
 namespace {
@@ -45,7 +54,11 @@ namespace {
         *out_ptr++ = static_cast<OutFloatType>(val);
       }}}
       return boost::python::object(boost::python::handle<>(
+#ifdef IS_PY3K
+        PyCapsule_New(out_mem, NULL, destroy_pyobject)));
+#else
         PyCObject_FromVoidPtr(out_mem, free)));
+#endif
     }
 
     static std::size_t

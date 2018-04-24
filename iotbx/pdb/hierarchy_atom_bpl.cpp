@@ -8,6 +8,10 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/hierarchy_bpl.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace iotbx { namespace pdb { namespace hierarchy {
 
 namespace {
@@ -177,13 +181,23 @@ namespace {
       w_t const& self,
       const char* replace_floats_with)
     {
+#ifdef IS_PY3K
+      boost::python::handle<> str_hdl(PyBytes_FromStringAndSize(0, 81));
+      PyObject* str_obj = str_hdl.get();
+      char* str_begin = PyBytes_AS_STRING(str_obj);
+#else
       boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
       PyObject* str_obj = str_hdl.get();
       char* str_begin = PyString_AS_STRING(str_obj);
+#endif
       unsigned str_len = self.format_atom_record(
         str_begin, 0, replace_floats_with);
       str_hdl.release();
+#ifdef IS_PY3K
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+#else
       if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+#endif
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(str_obj));
