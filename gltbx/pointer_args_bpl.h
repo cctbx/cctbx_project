@@ -10,6 +10,10 @@
 #include <sstream>
 #include <vector>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace gltbx { namespace boost_python {
 
   typedef boost::python::ssize_t py_ssize_t;
@@ -169,25 +173,46 @@ namespace gltbx { namespace boost_python {
       len_py_arg_(0)
     {
       PyObject* item = 0;
+#ifdef IS_PY3K
+      bool is_unicode = false;
+#endif
       if (PyList_Check(py_arg_ptr_)) {
         len_py_arg_ = PyList_GET_SIZE(py_arg_ptr_);
         if (len_py_arg_ == 1) {
           item = PyList_GET_ITEM(py_arg_ptr_, 0);
+#ifdef IS_PY3K
+          if (!(PyBytes_Check(item) || PyUnicode_Check(item))) throw_must_be();
+          if (PyUnicode_Check(item)) is_unicode = true;
+#else
           if (!PyString_Check(item)) throw_must_be();
+#endif
         }
         else if (len_py_arg_ != 0 || is_const_) {
           throw_must_be();
         }
       }
+#ifdef IS_PY3K
+      else if (is_const_ && (PyBytes_Check(py_arg_ptr_) || PyUnicode_Check(py_arg_ptr_))) {
+        item = py_arg_ptr_;
+        if (PyUnicode_Check(item)) is_unicode = true;
+#else
       else if (is_const_ && PyString_Check(py_arg_ptr_)) {
         item = py_arg_ptr_;
+#endif
       }
       else {
         throw_must_be();
       }
       py_ssize_t item_size = 0;
       if (item != 0) {
+#ifdef IS_PY3K
+        if (is_unicode)
+          item_size = PyUnicode_GET_SIZE(item);
+        else
+          item_size = PyBytes_GET_SIZE(item);
+#else
         item_size = PyString_GET_SIZE(item);
+#endif
         data_size_ = detail::consolidate_sizes(
           arg_name_, expected_size, item_size);
       }
@@ -196,7 +221,15 @@ namespace gltbx { namespace boost_python {
       }
       data_ = boost::shared_array<T>(new T[data_size_]);
       if (item != 0) {
+#ifdef IS_PY3K
+        char* item_char_pointer;
+        if (is_unicode)
+          item_char_pointer = PyUnicode_AsUTF8(item);
+        else
+          item_char_pointer = PyBytes_AsString(item);
+#else
         char* item_char_pointer = PyString_AsString(item);
+#endif
         if (item_char_pointer == 0) {
           boost::python::throw_error_already_set();
         }
@@ -216,7 +249,11 @@ namespace gltbx { namespace boost_python {
     write_back()
     {
       namespace bp = boost::python;
+#ifdef IS_PY3K
+      bp::object new_item((bp::handle<>(PyUnicode_FromStringAndSize(
+#else
       bp::object new_item((bp::handle<>(PyString_FromStringAndSize(
+#endif
         reinterpret_cast<char*>(data_.get()),
         data_size_ * sizeof(T)))));
       if (len_py_arg_ == 0) {

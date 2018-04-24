@@ -7,6 +7,10 @@
 #include <scitbx/serialization/single_buffered.h>
 #include <scitbx/type_holder.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
   namespace detail {
@@ -16,10 +20,18 @@ namespace scitbx { namespace af { namespace boost_python {
       getstate_manager(std::size_t a_size, std::size_t size_per_element)
       {
         str_capacity = a_size * size_per_element + 50;// extra space for a_size
+#ifdef IS_PY3K
+        str_obj = PyBytes_FromStringAndSize(
+#else
         str_obj = PyString_FromStringAndSize(
+#endif
           0, static_cast<boost::python::ssize_t>(str_capacity + 100));
             // extra space for safety
+#ifdef IS_PY3K
+        str_begin = PyBytes_AS_STRING(str_obj);
+#else
         str_begin = PyString_AS_STRING(str_obj);
+#endif
         str_end = scitbx::serialization::single_buffered::to_string(
           str_begin, a_size);
       };
@@ -32,7 +44,11 @@ namespace scitbx { namespace af { namespace boost_python {
 
       PyObject* finalize()
       {
+#ifdef IS_PY3K
+        if (_PyBytes_Resize(&str_obj,
+#else
         if (_PyString_Resize(&str_obj,
+#endif
               static_cast<boost::python::ssize_t>(str_end - str_begin)) != 0) {
           boost::python::throw_error_already_set();
         }
@@ -50,7 +66,11 @@ namespace scitbx { namespace af { namespace boost_python {
       setstate_manager(std::size_t a_size, PyObject* state)
       {
         SCITBX_ASSERT(a_size == 0);
+#ifdef IS_PY3K
+        str_ptr = PyBytes_AsString(state);
+#else
         str_ptr = PyString_AsString(state);
+#endif
         SCITBX_ASSERT(str_ptr != 0);
         a_capacity = get_value(type_holder<std::size_t>());
       };

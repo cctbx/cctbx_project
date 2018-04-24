@@ -6,6 +6,10 @@
 #include <boost/python/detail/api_placeholder.hpp>
 #include <scitbx/serialization/double_buffered.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
   template <typename ElementType,
@@ -34,7 +38,11 @@ namespace scitbx { namespace af { namespace boost_python {
       flex_grid<> a_accessor = boost::python::extract<flex_grid<> >(
         state[0])();
       PyObject* py_str = boost::python::object(state[1]).ptr();
+#ifdef IS_PY3K
+      DoubleBufferedFromString inp(PyBytes_AsString(py_str));
+#else
       DoubleBufferedFromString inp(PyString_AsString(py_str));
+#endif
       std::size_t a_capacity;
       inp >> a_capacity;
       shared_plain<ElementType> b = a.as_base_array();

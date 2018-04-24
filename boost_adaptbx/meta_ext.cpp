@@ -23,6 +23,10 @@ std::size_t boost_adaptbx::python::streambuf::default_buffer_size = 1024;
 #include <sstream>
 #include <stdexcept>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 // for number_of_processors()
 #if !defined(_MSC_VER)
 #include <unistd.h>
@@ -408,6 +412,8 @@ namespace {
   }
 
 #if defined(Py_USING_UNICODE)
+// For python 2, this is str_or_unicode, for python 3 it would be
+// bytes_or_unicode
   boost::python::list
   str_or_unicode_as_char_list(
     boost::python::object const& O)
@@ -415,16 +421,26 @@ namespace {
     PyObject* obj = O.ptr();
     boost::python::ssize_t n;
     const char* c;
+#ifdef IS_PY3K
+    if (PyBytes_Check(obj)) {
+      n = PyBytes_GET_SIZE(obj);
+      c = PyBytes_AS_STRING(obj);
+#else
     if (PyString_Check(obj)) {
       n = PyString_GET_SIZE(obj);
       c = PyString_AS_STRING(obj);
+#endif
     }
     else if (PyUnicode_Check(obj)) {
       n = PyUnicode_GET_DATA_SIZE(obj);
       c = PyUnicode_AS_DATA(obj);
     }
     else {
+#ifdef IS_PY3K
+      throw std::invalid_argument("bytes or unicode object expected.");
+#else
       throw std::invalid_argument("str or unicode object expected.");
+#endif
     }
     boost::python::list result;
     for(boost::python::ssize_t i=0;i<n;i++) {
@@ -527,7 +543,11 @@ namespace {
     char preferred_quote,
     char alternative_quote)
   {
+#ifdef IS_PY3K
+    PyBytesObject* op = (PyBytesObject*) string.ptr();
+#else
     PyStringObject* op = (PyStringObject*) string.ptr();
+#endif
     size_t newsize = 2 + 4 * Py_SIZE(op);
     if (newsize > boost::python::ssize_t_max || newsize / 4 != Py_SIZE(op)) {
       PyErr_SetString(PyExc_OverflowError,
@@ -535,7 +555,11 @@ namespace {
       boost::python::throw_error_already_set();
       return boost::python::object(); // to avoid compiler warnings
     }
+#ifdef IS_PY3K
+    PyObject* v = PyBytes_FromStringAndSize((char *)NULL, newsize);
+#else
     PyObject* v = PyString_FromStringAndSize((char *)NULL, newsize);
+#endif
     if (v == NULL) {
       boost::python::throw_error_already_set();
       return boost::python::object(); // to avoid compiler warnings
@@ -547,12 +571,20 @@ namespace {
           && !memchr(op->ob_sval, alternative_quote, Py_SIZE(op))) {
         quote = alternative_quote;
       }
+#ifdef IS_PY3K
+      char* p = PyBytes_AS_STRING(v);
+#else
       char* p = PyString_AS_STRING(v);
+#endif
       *p++ = quote;
       for (boost::python::ssize_t i = 0; i < Py_SIZE(op); i++) {
         /* There's at least enough room for a hex escape
            and a closing quote. */
+#ifdef IS_PY3K
+        TBXX_ASSERT(newsize - (p - PyBytes_AS_STRING(v)) >= 5);
+#else
         TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 5);
+#endif
         char c = op->ob_sval[i];
         if (c == quote || c == '\\')
           *p++ = '\\', *p++ = c;
@@ -572,10 +604,18 @@ namespace {
         else
           *p++ = c;
       }
+#ifdef IS_PY3K
+      TBXX_ASSERT(newsize - (p - PyBytes_AS_STRING(v)) >= 1);
+#else
       TBXX_ASSERT(newsize - (p - PyString_AS_STRING(v)) >= 1);
+#endif
       *p++ = quote;
       *p = '\0';
+#ifdef IS_PY3K
+      if (_PyBytes_Resize(&v, (p - PyBytes_AS_STRING(v)))) {
+#else
       if (_PyString_Resize(&v, (p - PyString_AS_STRING(v)))) {
+#endif
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(v));

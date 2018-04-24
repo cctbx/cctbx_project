@@ -6,6 +6,10 @@
 #include <boost/python/extract.hpp>
 #include <boost/python/to_python_converter.hpp>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace boost_python { namespace container_conversions {
 
   template <typename ContainerType>
@@ -150,14 +154,27 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
             || PyTuple_Check(obj_ptr)
             || PyIter_Check(obj_ptr)
             || PyRange_Check(obj_ptr)
+#ifdef IS_PY3K
+            || (   !PyBytes_Check(obj_ptr)
+#else
             || (   !PyString_Check(obj_ptr)
+#endif
                 && !PyUnicode_Check(obj_ptr)
+#ifdef IS_PY3K
+                && (   Py_TYPE(obj_ptr) == 0
+                    || Py_TYPE(Py_TYPE(obj_ptr)) == 0
+                    || Py_TYPE(Py_TYPE(obj_ptr))->tp_name == 0
+                    || std::strcmp(
+                         Py_TYPE(Py_TYPE(obj_ptr))->tp_name,
+                         "Boost.Python.class") != 0)
+#else
                 && (   obj_ptr->ob_type == 0
                     || obj_ptr->ob_type->ob_type == 0
                     || obj_ptr->ob_type->ob_type->tp_name == 0
                     || std::strcmp(
                          obj_ptr->ob_type->ob_type->tp_name,
                          "Boost.Python.class") != 0)
+#endif
                 && PyObject_HasAttrString(obj_ptr, "__len__")
                 && PyObject_HasAttrString(obj_ptr, "__getitem__")))) return 0;
       boost::python::handle<> obj_iter(
