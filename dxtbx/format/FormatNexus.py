@@ -144,8 +144,8 @@ class FormatNexus(FormatHDF5):
     return self._mask
 
   def get_num_images(self):
-    #return self._scan().get_num_images()
-    return len(self._raw_data)
+    return self._scan().get_num_images()
+    #return len(self._raw_data)
 
   def get_image_file(self, index=None):
     return self._image_file
