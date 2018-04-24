@@ -214,6 +214,7 @@ class ThreeProteinResidues(list):
                         only_psi_phi_pairs=True,
                         force_plus_one=False,
                         omega_cdl=False,
+                        verbose=False,
                         ):
     if omega_cdl:
       if len(self) not in [self.length, self.length-1]:
@@ -229,8 +230,10 @@ class ThreeProteinResidues(list):
       backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
       assert len(backbone_i_minus_1)==3
     backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
+    if verbose: print backbone_i
     if None in backbone_i: return None
     backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
+    if verbose: print backbone_i_plus_1, junk
     if None in backbone_i_plus_1: return None
     assert len(backbone_i)==3
     assert len(backbone_i_plus_1)==3
@@ -255,6 +258,8 @@ class ThreeProteinResidues(list):
       backbone_i_plus_1[2],
       ]
     atoms = [phi_atoms, psi_atoms]
+    if verbose:
+      print atoms
     if not only_psi_phi_pairs:
       if self.start:
         psi_atoms = [
@@ -288,6 +293,7 @@ class ThreeProteinResidues(list):
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs,
                                    force_plus_one=force_plus_one,
                                    omega_cdl=omega_cdl,
+                                   verbose=verbose,
                                   )
     if atoms is None: return None
     dihedrals = []
@@ -468,6 +474,20 @@ class ThreeProteinResidues(list):
         if key not in averages:
           assert 0
         angle.angle_ideal = averages[key]/averages.n[key]
+
+  def is_pure_main_conf(self):
+    for one in self:
+      if not one.is_pure_main_conf: return False
+    return True
+
+  def altloc(self):
+    if self.is_pure_main_conf(): return ' '
+    rc=[]
+    for one in self:
+      rc.append(self[0].parent().altloc)
+    rc = filter(None,rc)
+    assert rc
+    return rc[0]
 
 if __name__=="__main__":
   import sys
