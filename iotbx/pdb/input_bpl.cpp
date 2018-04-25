@@ -7,6 +7,9 @@
 #include <boost/python/dict.hpp>
 #include <iotbx/pdb/input.h>
 #include <iotbx/pdb/write_utils_bpl.h>
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
 
 namespace iotbx { namespace pdb {
 namespace {
@@ -52,6 +55,7 @@ namespace {
       return result;
     }
 
+#ifndef IS_PY3K
     static void
     as_pdb_string_cstringio(
       w_t const& self,
@@ -72,6 +76,7 @@ namespace {
         anisou,
         siguij);
     }
+#endif
 
     static void
     wrap()
@@ -114,6 +119,7 @@ namespace {
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("atoms_with_labels", &w_t::atoms_with_labels)
+#ifndef IS_PY3K
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
           arg("self"),
           arg("cstringio"),
@@ -122,6 +128,7 @@ namespace {
           arg("sigatm"),
           arg("anisou"),
           arg("siguij")))
+#endif
         .def("_write_pdb_file", &w_t::write_pdb_file, (
           arg("file_name"),
           arg("open_append"),
@@ -141,7 +148,9 @@ namespace {
   void
   wrap_input_impl()
   {
+#ifndef IS_PY3K
     scitbx::boost_python::cstringio_import();
+#endif
     columns_73_76_evaluator_wrappers::wrap();
     input_wrappers::wrap();
   }

@@ -203,6 +203,30 @@ namespace {
       return boost::python::object(boost::python::handle<>(str_obj));
     }
 
+#ifdef IS_PY3K
+#define IOTBX_LOC(R) \
+    static \
+    boost::python::object \
+    format_##R##_record( \
+      w_t const& self) \
+    { \
+      boost::python::handle<> str_hdl(PyBytes_FromStringAndSize(0, 81)); \
+      PyObject* str_obj = str_hdl.get(); \
+      char* str_begin = PyBytes_AS_STRING(str_obj); \
+      unsigned str_len = self.format_##R##_record(str_begin, 0); \
+      str_hdl.release(); \
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) { \
+        boost::python::throw_error_already_set(); \
+      } \
+      return boost::python::object(boost::python::handle<>(str_obj)); \
+    }
+
+    IOTBX_LOC(sigatm)
+    IOTBX_LOC(anisou)
+    IOTBX_LOC(siguij)
+
+#undef IOTBX_LOC
+#else
 #define IOTBX_LOC(R) \
     static \
     boost::python::object \
@@ -225,6 +249,7 @@ namespace {
     IOTBX_LOC(siguij)
 
 #undef IOTBX_LOC
+#endif
 
     static
     boost::python::object
@@ -235,6 +260,15 @@ namespace {
       bool anisou=true,
       bool siguij=true)
     {
+#ifdef IS_PY3K
+      boost::python::handle<> str_hdl(PyBytes_FromStringAndSize(0, 324));
+      PyObject* str_obj = str_hdl.get();
+      char* str_begin = PyBytes_AS_STRING(str_obj);
+      unsigned str_len = self.format_atom_record_group(
+        str_begin, 0, atom_hetatm, sigatm, anisou, siguij);
+      str_hdl.release();
+      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+#else
       boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 324));
       PyObject* str_obj = str_hdl.get();
       char* str_begin = PyString_AS_STRING(str_obj);
@@ -242,6 +276,7 @@ namespace {
         str_begin, 0, atom_hetatm, sigatm, anisou, siguij);
       str_hdl.release();
       if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+#endif
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(str_obj));

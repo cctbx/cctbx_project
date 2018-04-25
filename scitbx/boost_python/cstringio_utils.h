@@ -1,6 +1,8 @@
 #ifndef SCITBX_BOOST_PYTHON_CSTRINGIO_UTILS_H
 #define SCITBX_BOOST_PYTHON_CSTRINGIO_UTILS_H
 
+#if PY_MAJOR_VERSION < 3
+
 #include <stdexcept>
 #include <cStringIO.h>
 
@@ -43,4 +45,5 @@ namespace scitbx { namespace boost_python {
 
 }} // namespace scitbx::boost_python
 
+#endif // python 3
 #endif // SCITBX_BOOST_PYTHON_CSTRINGIO_UTILS_H
