@@ -101,11 +101,12 @@ class map_model_cc(object):
     #
     def get_common_data(atoms, atom_radius):
       sel = atoms.extract_i_seq()
+      cc = cc_calculator.cc(selection = sel, atom_radius = atom_radius)
       return group_args(
         b_iso_mean = flex.mean(atoms.extract_b()),
         occ_mean   = flex.mean(atoms.extract_occ()),
         n_atoms    = atoms.size(),
-        cc         = cc_calculator.cc(selection = sel, atom_radius = atom_radius),
+        cc         = cc,
         xyz_mean   = atoms.extract_xyz().mean())
     # CC per chain
     if(self.params.compute.cc_per_chain):
@@ -122,7 +123,9 @@ class map_model_cc(object):
       for rg in self.pdb_hierarchy.residue_groups():
         for conformer in rg.conformers():
           for residue in conformer.residues():
-            cd = get_common_data(atoms=residue.atoms(), atom_radius=self.atom_radius)
+            cd = get_common_data(
+              atoms       = residue.atoms(),
+              atom_radius = self.atom_radius)
             self.cc_per_residue.append(group_args(
               chain_id   = rg.parent().id,
               resname    = residue.resname,

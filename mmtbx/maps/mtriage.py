@@ -116,9 +116,9 @@ class mtriage(object):
                crystal_symmetry = None,
                params           = None):
     assert [xray_structure, crystal_symmetry].count(None) == 1
-    self.map_data         = map_data.deep_copy()
-    self.map_data_1       = None
-    self.map_data_2       = None
+    self.map_data   = map_data.deep_copy()
+    self.map_data_1 = None
+    self.map_data_2 = None
     if(map_data_1 is not None): self.map_data_1 = map_data_1.deep_copy()
     if(map_data_2 is not None): self.map_data_2 = map_data_2.deep_copy()
     self.xray_structure   = xray_structure
@@ -194,10 +194,8 @@ class mtriage(object):
     if(cs is None): cs = self.xray_structure.crystal_symmetry()
     return group_args(
       crystal_symmetry = cs,
-      #counts           = self.base.counts(),
-      #histograms       = self.base.histograms(),
-      masked           = self.results_masked,
-      unmasked         = self.results_unmasked)
+      masked   = self.results_masked,
+      unmasked = self.results_unmasked)
 
 class _mtriage(object):
   def __init__(self,
