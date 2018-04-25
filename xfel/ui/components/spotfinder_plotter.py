@@ -46,7 +46,11 @@ def plot_spotfinder_stats(stats,
     spot_ratio = plot_ratio*2
     text_ratio = plot_ratio*3
   t, n_strong, enough_rate, n_min, window, lengths, boundaries, run_numbers = stats
-  t_lengths, spot_lengths = spot_length_stats
+  t_lengths, spot_lengths, spot_intensities = spot_length_stats
+  # set up coloring of spot lengths by intensities
+  from matplotlib.cm import ScalarMappable
+  mappable = ScalarMappable(cmap="plasma")
+  cmap = mappable.to_rgba(spot_intensities)
   if len(t) == 0:
     return None
   n_runs = len(boundaries)//2
@@ -72,7 +76,7 @@ def plot_spotfinder_stats(stats,
   ax1_twin.set_ylim(ymin=0)
   ax1_twin.set_ylabel("%% images with\n>=%d spots" % n_min, fontsize=text_ratio)
   if spot_length_stats:
-    ax2.scatter(t_lengths, spot_lengths, edgecolors="none", color='navy', s=spot_ratio)
+    ax2.scatter(t_lengths, spot_lengths, edgecolors="none", color=cmap, s=spot_ratio)
   ax2.set_ylim(ymin=0)
   ax2.axis('tight')
   ax2.set_ylabel("spot lengths\n(pixels)", fontsize=text_ratio)
@@ -112,7 +116,7 @@ def plot_spotfinder_stats(stats,
       ax3.text(start_t, .85, "run %d" % run_numbers[idx], fontsize=text_ratio)
       ax3.text(start_t, .65, "%d images" % lengths[idx], fontsize=text_ratio)
       ax3.text(start_t, .45, "%d n>=%d" % (slice_enough.count(True), n_min), fontsize=text_ratio)
-      if spot_length_stats:
+      if spot_length_stats and len(spot_lengths) > 0:
         ax3.text(start_t, .25, "avg %d px" % int(flex.sum(spot_lengths)/len(spot_lengths)), fontsize=text_ratio)
       ax3.set_xlabel("timestamp (s)", fontsize=text_ratio)
       ax3.set_yticks([])
@@ -145,6 +149,7 @@ def plot_multirun_spotfinder_stats(runs,
   nset = flex.int()
   l_tset = flex.double() # lengths timestamp
   lset = flex.double() # lengths
+  iset = flex.double() # intensities
   boundaries = []
   lengths = []
   runs_with_data = []
@@ -167,6 +172,7 @@ def plot_multirun_spotfinder_stats(runs,
       lengths.append(len(tslice))
       runs_with_data.append(run_numbers[idx])
       lset.extend(spot_length_stats[idx][1])
+      iset.extend(spot_length_stats[idx][2])
     else:
       boundaries.extend([None]*2)
   stats_tuple = get_spotfinder_stats(tset,
@@ -175,7 +181,7 @@ def plot_multirun_spotfinder_stats(runs,
                                      tuple(boundaries),
                                      tuple(lengths),
                                      runs_with_data)
-  spot_length_stats_tuple = (l_tset, lset)
+  spot_length_stats_tuple = (l_tset, lset, iset)
   if easy_run:
     from libtbx import easy_run, easy_pickle
     easy_pickle.dump("plot_spotfinder_stats_tmp.pickle", (stats_tuple, spot_length_stats_tuple, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
