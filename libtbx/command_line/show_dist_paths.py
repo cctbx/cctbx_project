@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
 def run(args):
   import libtbx.load_env
   remaining_args = []
@@ -11,16 +12,16 @@ def run(args):
   def show(path):
     if (path is not None):
       from os.path import dirname
-      for _ in xrange(dirname_count):
+      for _ in range(dirname_count):
         path = dirname(path)
-    print path
-  if (len(remaining_args) == 0):
-    for path in libtbx.env.dist_paths():
-      show(path)
-  else:
+    print(path)
+  if remaining_args:
     for arg in remaining_args:
       show(libtbx.env.dist_path(module_name=arg, default=None))
+  else:
+    for path in libtbx.env.dist_paths():
+      show(path)
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
   import sys
   run(args=sys.argv[1:])
