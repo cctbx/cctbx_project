@@ -633,6 +633,10 @@ class SpotfinderSentinel(Thread):
               self.spot_length_stats.append(get_spot_length_stats(run_outdir, ref_stats=sf_stats))
             except OSError:
               print "Outdir %s no longer accessible." % run_outdir
+            except Exception as e:
+              print e
+              from dials.array_family import flex
+              self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
 
       jobs = self.db.get_all_jobs()
       for idx in xrange(len(self.run_numbers)):

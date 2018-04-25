@@ -46,6 +46,8 @@ class ReflectionsRadialLengths(object):
     return length
   def get_spot_lengths_px(self):
     return flex.double([self.get_one_spot_length(id) for id in xrange(len(self.strong))])
+  def get_intensities(self):
+    return self.strong['intensity.sum.value']
 
 class ReflectionsRadialLengthsFromFiles(ReflectionsRadialLengths):
   def __init__(self, files):
