@@ -47,6 +47,26 @@ namespace dxtbx { namespace model { namespace boost_python {
     }
   };
 
+  static
+  void Goniometer_set_S_at_scan_points_from_tuple(Goniometer &goniometer, boost::python::tuple l) {
+    scitbx::af::shared< mat3<double> > S_list;
+    for (std::size_t i = 0; i < boost::python::len(l); ++i) {
+      mat3<double> S = boost::python::extract< mat3<double> >(l[i]);
+      S_list.push_back(S);
+    }
+    goniometer.set_setting_rotation_at_scan_points(S_list.const_ref());
+  }
+
+  static
+  void Goniometer_set_S_at_scan_points_from_list(Goniometer &goniometer, boost::python::list l) {
+    scitbx::af::shared< mat3<double> > S_list;
+    for (std::size_t i = 0; i < boost::python::len(l); ++i) {
+      mat3<double> S = boost::python::extract< mat3<double> >(l[i]);
+      S_list.push_back(S);
+    }
+    goniometer.set_setting_rotation_at_scan_points(S_list.const_ref());
+  }
+
   template <>
   boost::python::dict to_dict<Goniometer>(const Goniometer &obj) {
     boost::python::dict result;
@@ -100,6 +120,21 @@ namespace dxtbx { namespace model { namespace boost_python {
         &Goniometer::get_setting_rotation)
       .def("set_setting_rotation",
         &Goniometer::set_setting_rotation)
+      .add_property("num_scan_points", &Goniometer::get_num_scan_points)
+      .def("get_num_scan_points",
+        &Goniometer::get_num_scan_points)
+      .def("set_setting_rotation_at_scan_points",
+        &Goniometer::set_setting_rotation_at_scan_points)
+      .def("set_setting_rotation_at_scan_points",
+        &Goniometer_set_S_at_scan_points_from_tuple)
+      .def("set_setting_rotation_at_scan_points",
+        &Goniometer_set_S_at_scan_points_from_list)
+      .def("get_setting_rotation_at_scan_points",
+        &Goniometer::get_setting_rotation_at_scan_points)
+      .def("get_setting_rotation_at_scan_point",
+        &Goniometer::get_setting_rotation_at_scan_point)
+      .def("reset_scan_points",
+        &Goniometer::reset_scan_points)
       .def("rotate_around_origin",
           &rotate_around_origin, (
             arg("axis"),

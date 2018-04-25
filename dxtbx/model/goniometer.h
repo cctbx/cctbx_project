@@ -18,6 +18,7 @@
 #include <scitbx/constants.h>
 #include <scitbx/array_family/simple_io.h>
 #include <scitbx/array_family/simple_tiny_io.h>
+#include <scitbx/array_family/shared.h>
 #include <dxtbx/error.h>
 #include "model_helpers.h"
 
@@ -35,7 +36,7 @@ namespace dxtbx { namespace model {
    * A class to represent the rotation axis for a standard rotation
    * geometry diffraction data set.
    *
-   * The rotation axis assumed to have it's origin at the origin of the
+   * The rotation axis assumed to have its origin at the origin of the
    * laboratory coordinate system. The rotation axis vector is normalized
    * when set using either the constructor or the rotation axis 'setter'
    *
@@ -146,6 +147,22 @@ namespace dxtbx { namespace model {
       return setting_rotation_;
     }
 
+    /** Get the number of scan points */
+    std::size_t get_num_scan_points() const {
+      return setting_rotation_at_scan_points_.size();
+    }
+
+    /** Get the setting rotation at scan points */
+    scitbx::af::shared< mat3<double> > get_setting_rotation_at_scan_points() const {
+      return setting_rotation_at_scan_points_;
+    }
+
+    /** Get the setting rotation at the scan point */
+    mat3<double> get_setting_rotation_at_scan_point(std::size_t index) const {
+      DXTBX_ASSERT(index < setting_rotation_at_scan_points_.size());
+      return setting_rotation_at_scan_points_[index];
+    }
+
     /** Set the rotation axis */
     void set_rotation_axis(vec3 <double> rotation_axis) {
       DXTBX_ASSERT(rotation_axis.length() > 0);
@@ -166,6 +183,16 @@ namespace dxtbx { namespace model {
     /** Set the setting rotation matrix */
     void set_setting_rotation(mat3 <double> setting_rotation) {
       setting_rotation_ = setting_rotation;
+    }
+
+    /** Set the setting rotation matrix at scan-points */
+    void set_setting_rotation_at_scan_points(const scitbx::af::const_ref< mat3<double> > &S) {
+      setting_rotation_at_scan_points_ = scitbx::af::shared< mat3<double> >(S.begin(), S.end());
+    }
+
+    /** Reset the scan points */
+    void reset_scan_points() {
+      setting_rotation_at_scan_points_.clear();
     }
 
     /** Check rotation axes are (almost) the same */
@@ -206,6 +233,7 @@ namespace dxtbx { namespace model {
     vec3 <double> rotation_axis_;
     mat3 <double> fixed_rotation_;
     mat3 <double> setting_rotation_;
+    scitbx::af::shared< mat3<double> > setting_rotation_at_scan_points_;
   };
 
   /** Print goniometer data */

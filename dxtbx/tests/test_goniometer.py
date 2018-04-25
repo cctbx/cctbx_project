@@ -14,6 +14,7 @@ from dxtbx.model.goniometer import Goniometer, MultiAxisGoniometer
 from dxtbx.model.goniometer import GoniometerFactory
 from libtbx import easy_pickle
 from libtbx.test_utils import Exception_expected
+from scitbx import matrix
 
 def compare_tuples(a, b, tol = 1.0e-6):
 
@@ -231,8 +232,48 @@ def test_goniometer_from_phil():
 
   assert tuple(g4.get_axes()) == ((0, 1, 0), (1, 0, 0), (0, 0, 1))
 
+def test_scan_varying():
+
+  axis = (1, 0, 0)
+
+  g = Goniometer(axis)
+
+  assert g.get_num_scan_points() == 0
+  assert g.get_setting_rotation_at_scan_points().size() == 0
+  try:
+    g.get_setting_rotation_at_scan_point(0) # should raise RuntimeError
+  except RuntimeError:
+    pass
+
+  # set varying beam
+  num_scan_points = 11
+  S_static = matrix.sqr(g.get_setting_rotation())
+  S_as_scan_points = [S_static]
+  axis = matrix.col.random(3, -1., 1.).normalize()
+  R = axis.axis_and_angle_as_r3_rotation_matrix(angle=0.01, deg=True)
+  for i in range(num_scan_points-1):
+    S_as_scan_points.append(R * S_as_scan_points[-1])
+  g.set_setting_rotation_at_scan_points(S_as_scan_points)
+  assert g.get_num_scan_points() == 11
+  assert g.get_setting_rotation_at_scan_points().size() == 11
+
+  for t in range(num_scan_points):
+    S_t = matrix.sqr(g.get_setting_rotation_at_scan_point(t))
+    assert S_t == S_as_scan_points[t]
+
+  # also test setting as tuple
+  g.set_setting_rotation_at_scan_points(tuple(S_as_scan_points))
+  assert g.get_num_scan_points() == 11
+  assert g.get_setting_rotation_at_scan_points().size() == 11
+
+  # test resetting
+  g.reset_scan_points()
+  assert g.get_num_scan_points() == 0
+  assert g.get_setting_rotation_at_scan_points().size() == 0
+
 if __name__ == '__main__':
 
   test_goniometer()
   test_multi_axis_goniometer()
   test_goniometer_from_phil()
+  test_scan_varying()
