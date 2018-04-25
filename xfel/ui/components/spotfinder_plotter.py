@@ -50,7 +50,7 @@ def plot_spotfinder_stats(stats,
   # set up coloring of spot lengths by intensities
   from matplotlib.cm import ScalarMappable
   mappable = ScalarMappable(cmap="plasma")
-  cmap = mappable.to_rgba(spot_intensities)
+  cmap = mappable.to_rgba(-flex.log(spot_intensities))
   if len(t) == 0:
     return None
   n_runs = len(boundaries)//2
