@@ -45,6 +45,34 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_fixed_rotation(),
         obj.get_setting_rotation());
     }
+
+    static
+    boost::python::tuple getstate(boost::python::object obj)
+    {
+      const Goniometer &goniometer = boost::python::extract<const Goniometer &>(obj)();
+      return boost::python::make_tuple(
+          obj.attr("__dict__"),
+          goniometer.get_setting_rotation_at_scan_points());
+    }
+
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state)
+    {
+      Goniometer &goniometer = boost::python::extract<Goniometer&>(obj)();
+      DXTBX_ASSERT(boost::python::len(state) == 2);
+
+      // restore the object's __dict__
+      boost::python::dict d = boost::python::extract<boost::python::dict>(
+          obj.attr("__dict__"))();
+      d.update(state[0]);
+
+      // restore the internal state of the C++ object
+      scitbx::af::const_ref< mat3<double> > S_list = boost::python::extract<
+        scitbx::af::const_ref< mat3<double> > >(state[1]);
+      goniometer.set_setting_rotation_at_scan_points(S_list);
+    }
+
+    static bool getstate_manages_dict() { return true; }
   };
 
   static
