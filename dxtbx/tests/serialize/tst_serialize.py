@@ -12,6 +12,7 @@ class Test(object):
     self.tst_beam_with_scan_points()
     self.tst_detector()
     self.tst_goniometer()
+    self.tst_goniometer_with_scan_points()
     self.tst_scan()
     # self.tst_sweep()
     # self.tst_cspad_hierarchy()
@@ -43,7 +44,6 @@ class Test(object):
     b1 = Beam((1, 0, 0), 2, 0.1, 0.1)
     from scitbx import matrix
     s0_static = matrix.col(b1.get_s0())
-    s0_as_scan_points = [s0_static] * 5
     b1.set_s0_at_scan_points([s0_static] * 5)
     d = b1.to_dict()
     b2 = BeamFactory.from_dict(d)
@@ -67,6 +67,7 @@ class Test(object):
     assert(d['rotation_axis'] == (1, 0, 0))
     assert(d['fixed_rotation'] == (1, 0, 0, 0, 1, 0, 0, 0, 1))
     assert(g1 == g2)
+    assert 'setting_rotation_at_scan_points' not in d
 
     # Test with a template and partial dictionary
     d2 = { 'rotation_axis' : (0, 1, 0) }
@@ -74,6 +75,23 @@ class Test(object):
     assert(g3.get_rotation_axis() == (0, 1, 0))
     assert(g3.get_fixed_rotation() == (1, 0, 0, 0, 1, 0, 0, 0, 1))
     assert(g2 != g3)
+
+  def tst_goniometer_with_scan_points(self):
+    from dxtbx.model import Goniometer, GoniometerFactory
+    g1 = Goniometer((1, 0, 0), (1, 0, 0, 0, 1, 0, 0, 0, 1))
+    from scitbx import matrix
+    S_static = matrix.sqr(g1.get_setting_rotation())
+    g1.set_setting_rotation_at_scan_points([S_static] * 5)
+    d = g1.to_dict()
+    g2 = GoniometerFactory.from_dict(d)
+
+    for Scomp in d['setting_rotation_at_scan_points']:
+      assert matrix.sqr(Scomp) == S_static
+
+    for Scomp in g2.get_setting_rotation_at_scan_points():
+      assert matrix.sqr(Scomp) == S_static
+
+    assert(g1 == g2)
 
   def tst_scan(self):
     from dxtbx.model import Scan, ScanFactory

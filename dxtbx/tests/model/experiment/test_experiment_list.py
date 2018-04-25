@@ -545,8 +545,10 @@ def test_experimentlist_dumper_dump_scan_varying(dials_regression, tmpdir):
   # Make trivial scan-varying models
   crystal = elist1[0].crystal
   beam = elist1[0].beam
+  goniometer = elist1[0].goniometer
   crystal.set_A_at_scan_points([crystal.get_A()] * 5)
   beam.set_s0_at_scan_points([beam.get_s0()] * 5)
+  goniometer.set_setting_rotation_at_scan_points([goniometer.get_setting_rotation()] * 5)
 
   # Create the experiment list dumper
   dump = ExperimentListDumper(elist1)

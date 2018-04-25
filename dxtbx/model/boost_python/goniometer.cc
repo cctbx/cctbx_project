@@ -101,17 +101,33 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["rotation_axis"] = obj.get_rotation_axis_datum();
     result["fixed_rotation"] = obj.get_fixed_rotation();
     result["setting_rotation"] = obj.get_setting_rotation();
+    if(obj.get_num_scan_points() > 0){
+      boost::python::list l;
+      scitbx::af::shared< mat3<double> > setting_rotation_at_scan_points =
+          obj.get_setting_rotation_at_scan_points();
+      for (scitbx::af::shared< mat3<double> >::iterator it = setting_rotation_at_scan_points.begin();
+           it != setting_rotation_at_scan_points.end();
+           ++it) {
+        l.append(boost::python::tuple(*it));
+      }
+      result["setting_rotation_at_scan_points"] = l;
+    }
     return result;
   }
 
   template <>
   Goniometer* from_dict<Goniometer>(boost::python::dict obj) {
-    return new Goniometer(
+    Goniometer* g = new Goniometer(
       boost::python::extract< vec3<double> >(obj["rotation_axis"]),
       boost::python::extract< mat3<double> >(obj.get("fixed_rotation",
         mat3<double>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))),
       boost::python::extract< mat3<double> >(obj.get("setting_rotation",
         mat3<double>(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0))));
+    if(obj.has_key("setting_rotation_at_scan_points")){
+      boost::python::list S_at_scan_points = boost::python::extract<boost::python::list>(obj["setting_rotation_at_scan_points"]);
+      Goniometer_set_S_at_scan_points_from_list(*g, S_at_scan_points);
+    }
+    return g;
   }
 
   void export_goniometer()
