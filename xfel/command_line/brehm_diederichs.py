@@ -13,9 +13,18 @@ from xfel.command_line.cxi_merge import master_phil
 #-----------------------------------------------------------------------
 from xfel.command_line.cxi_xmerge import xscaling_manager
 
+extra_phil = """
+asymmetric = 3
+  .type = int(value_min=0, value_max=3)
+show_plot = True
+  .type = bool
+save_plot = False
+  .type = bool
+"""
+
 #-----------------------------------------------------------------------
 def run(args):
-  phil = iotbx.phil.process_command_line(args=args, master_string=master_phil).show()
+  phil = iotbx.phil.process_command_line(args=args, master_string=master_phil + "\n" + extra_phil).show()
   work_params = phil.work.extract()
   log = open("%s_%s_merging.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
   out = multi_out()
@@ -78,10 +87,12 @@ def run(args):
     ######################
   if work_params.nproc < 5:
     print "Sorting the lattices with 1 processor"
-    result = run(L,nproc=1,verbose=True)
+    result = run(L, asymmetric=work_params.asymmetric, nproc=1, verbose=True,
+                 show_plot=work_params.show_plot, save_plot=work_params.save_plot)
   else:
     print "Sorting the lattices with %d processors"%work_params.nproc
-    result = run_multiprocess(L,nproc=work_params.nproc, verbose=False)
+    result = run_multiprocess(L, asymmetric=work_params.asymmetric, nproc=work_params.nproc, verbose=False,
+                              show_plot=work_params.show_plot, save_plot=work_params.save_plot)
   for key in result.keys():
     print key,len(result[key])
 
