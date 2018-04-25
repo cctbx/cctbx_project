@@ -210,7 +210,7 @@ class indexing_ambiguity_handler(object):
     if n_frames > iparams.indexing_ambiguity.n_selected_frames:
       print "Breaking the indexing ambiguity for the remaining images."
       old_iparams_data = iparams.data[:]
-      iparams.indexing_ambiguity.index_basis_in = sol_fname
+      iparams.indexing_ambiguity.index_basis_in = sol_pickle
       #generate a reference set from solved frames
       with open(sample_fname) as f:
         frame_files_processed = f.read().split('\n')[:-1]
