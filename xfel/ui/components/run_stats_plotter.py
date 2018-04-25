@@ -97,6 +97,7 @@ def get_run_stats(timestamps,
                    tuple_of_timestamp_boundaries,
                    lengths,
                    run_numbers,
+                   n_multiples=2,
                    ratio_cutoff=1,
                    n_strong_cutoff=40,
                    i_sigi_cutoff=1,
@@ -133,7 +134,7 @@ def get_run_stats(timestamps,
     first_lattices_local = n_lattices_local >= 1
     idx_local_rate = first_lattices_local.count(True)/shots_this_span
     idx_rate.append(idx_local_rate)
-    multiples_sel = n_lattices_local >= 2
+    multiples_sel = n_lattices_local >= n_multiples
     multiples_local_rate = multiples_sel.count(True)/shots_this_span
     multiples_rate.append(multiples_local_rate)
     drop_sel = drop_hits[idx_min:idx_max]
@@ -169,6 +170,7 @@ def get_run_stats(timestamps,
 
 def plot_run_stats(stats,
                    d_min,
+                   n_multiples=2,
                    run_tags=[],
                    run_statuses=[],
                    minimalist=False,
@@ -217,7 +219,7 @@ def plot_run_stats(stats,
   ax2_twin.plot(t, drop_hit_rate*100, color='green')
   ax2_twin.set_ylim(ymin=0)
   ax2.axis('tight')
-  ax2.set_ylabel("blue:% indexed\npink:% multiples", fontsize=text_ratio)
+  ax2.set_ylabel("blue:%% indexed\npink:%% %d lattices" % n_multiples, fontsize=text_ratio)
   ax2_twin.set_ylabel("green: % solvent", fontsize=text_ratio)
   gtz = isigi > 0
   ax3.scatter(t.select(gtz), isigi.select(gtz), edgecolors="none", color='orange', s=spot_ratio)
@@ -308,6 +310,7 @@ def plot_run_stats(stats,
 def plot_multirun_stats(runs,
                         run_numbers,
                         d_min,
+                        n_multiples=2,
                         ratio_cutoff=1,
                         n_strong_cutoff=40,
                         i_sigi_cutoff=1,
@@ -361,12 +364,13 @@ def plot_multirun_stats(runs,
                               tuple(boundaries),
                               tuple(lengths),
                               runs_with_data,
+                              n_multiples=n_multiples,
                               ratio_cutoff=ratio_cutoff,
                               n_strong_cutoff=n_strong_cutoff,
                               i_sigi_cutoff=i_sigi_cutoff)
   if easy_run:
     from libtbx import easy_run, easy_pickle
-    easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
+    easy_pickle.dump("plot_run_stats_tmp.pickle", (stats_tuple, d_min, n_multiples, run_tags, run_statuses, minimalist, interactive, xsize, ysize, high_vis, title))
     result = easy_run.fully_buffered(command="cctbx.xfel.plot_run_stats_from_stats_pickle plot_run_stats_tmp.pickle")
     try:
       png = result.stdout_lines[-1]
@@ -375,6 +379,6 @@ def plot_multirun_stats(runs,
     except Exception:
       return None
   else:
-    png = plot_run_stats(stats_tuple, d_min, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
+    png = plot_run_stats(stats_tuple, d_min, n_multiples=n_multiples, run_tags=run_tags, run_statuses=run_statuses, minimalist=minimalist,
       interactive=interactive, xsize=xsize, ysize=ysize, high_vis=high_vis, title=title)
   return png

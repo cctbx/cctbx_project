@@ -514,6 +514,7 @@ class RunStatsSentinel(Thread):
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       self.stats, self.run_numbers,
       d_min=self.parent.run_window.runstats_tab.d_min,
+      n_multiples=self.parent.run_window.runstats_tab.n_multiples,
       interactive=False,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
@@ -533,6 +534,7 @@ class RunStatsSentinel(Thread):
     self.parent.run_window.runstats_tab.png = plot_multirun_stats(
       stats, run_numbers,
       d_min=self.parent.run_window.runstats_tab.d_min,
+      n_multiples=self.parent.run_window.runstats_tab.n_multiples,
       interactive=True,
       ratio_cutoff=self.parent.run_window.runstats_tab.ratio,
       n_strong_cutoff=self.parent.run_window.runstats_tab.n_strong,
@@ -1912,6 +1914,7 @@ class RunStatsTab(SpotfinderTab):
     self.static_bitmap = None
     self.redraw_windows = True
     self.d_min = 2.5
+    self.n_multiples = 2
     self.ratio = 1
     self.n_strong = 40
     self.i_sigi = 1
@@ -1940,10 +1943,15 @@ class RunStatsTab(SpotfinderTab):
                                      label='Auto plot entire experiment',
                                      size=(200,-1))
     self.d_min_select = gctr.OptionCtrl(self,
-                                 label='high resolution limit:',
-                                 label_size=(160, -1),
-                                 ctrl_size=(30, -1),
-                                 items=[('d_min', 2.5)])
+                                        label='high resolution limit:',
+                                        label_size=(160, -1),
+                                        ctrl_size=(30, -1),
+                                        items=[('d_min', 2.5)])
+    self.n_multiples_selector = gctr.OptionCtrl(self,
+                                               label='# multiples threshold:',
+                                               label_size=(160, -1),
+                                               ctrl_size=(30, -1),
+                                               items=[('multiples', 2)])
     self.ratio_cutoff = gctr.OptionCtrl(self,
                                         label='two theta ratio cutoff:',
                                         label_size=(160, -1),
@@ -1996,13 +2004,15 @@ class RunStatsTab(SpotfinderTab):
                                    flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.d_min_select, pos=(3, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.ratio_cutoff, pos=(4, 0),
+    self.options_opt_sizer.Add(self.n_multiples_selector, pos=(4, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(5, 0),
+    self.options_opt_sizer.Add(self.ratio_cutoff, pos=(5, 0),
+                               flag=wx.ALL, border=2)
+    self.options_opt_sizer.Add(self.n_strong_cutoff, pos=(7, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.i_sigi_cutoff, pos=(6, 0),
                                flag=wx.ALL, border=2)
-    self.options_opt_sizer.Add(self.n_dump_cutoff, pos=(7, 0),
+    self.options_opt_sizer.Add(self.n_dump_cutoff, pos=(8, 0),
                                flag=wx.ALL, border=2)
     self.options_opt_sizer.Add(self.run_numbers, pos=(0, 1), span=(8, 1),
                                flag=wx.BOTTOM | wx.TOP | wx.RIGHT | wx.EXPAND,
@@ -2057,6 +2067,7 @@ class RunStatsTab(SpotfinderTab):
     self.Bind(wx.EVT_BUTTON, self.onLastFiveRuns, self.last_five_runs)
     self.Bind(wx.EVT_BUTTON, self.onEntireExpt, self.plot_entire_expt)
     self.Bind(wx.EVT_TEXT_ENTER, self.onDMin, self.d_min_select.d_min)
+    self.Bind(wx.EVT_TEXT_ENTER, self.onMultiples, self.n_multiples_selector.multiples)
     self.Bind(wx.EVT_TEXT_ENTER, self.onRatioCutoff, self.ratio_cutoff.ratio)
     self.Bind(wx.EVT_TEXT_ENTER, self.onHitCutoff, self.n_strong_cutoff.n_strong)
     self.Bind(wx.EVT_TEXT_ENTER, self.onIsigICutoff, self.i_sigi_cutoff.isigi)
@@ -2167,6 +2178,13 @@ class RunStatsTab(SpotfinderTab):
     try:
       d_min = float(self.d_min_select.d_min.GetValue())
       self.d_min = d_min
+    except ValueError:
+      pass
+
+  def onMultiples(self, e):
+    try:
+      mult = int(self.n_multiples_selector.multiples.GetValue())
+      self.n_multiples = mult
     except ValueError:
       pass
 
