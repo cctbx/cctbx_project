@@ -8,6 +8,10 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/unordered_map.hpp>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
 namespace {
@@ -20,8 +24,13 @@ namespace {
   {
     PyObject* str_ptr = multi_line_string.ptr();
     return misc::split_lines(
+#ifdef IS_PY3K
+      PyBytes_AS_STRING(str_ptr),
+      PyBytes_GET_SIZE(str_ptr),
+#else
       PyString_AS_STRING(str_ptr),
       PyString_GET_SIZE(str_ptr),
+#endif
       keep_ends,
       count_lines_first);
   }

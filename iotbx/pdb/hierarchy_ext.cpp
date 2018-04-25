@@ -11,6 +11,10 @@
 #include <iotbx/pdb/hierarchy_bpl.h>
 #include <iotbx/pdb/write_utils_bpl.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace iotbx { namespace pdb { namespace hierarchy {
 
 void atom_bpl_wrap();
@@ -273,6 +277,7 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
 
+#ifndef IS_PY3K
     static void
     as_pdb_string_cstringio(
       w_t const& self,
@@ -303,6 +308,7 @@ namespace {
         siguij,
         output_break_records);
     }
+#endif
 
     static void
     get_overall_counts(
@@ -432,6 +438,7 @@ namespace {
           arg("first_value")=1))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg("other")))
+#ifndef IS_PY3K
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
           arg("self"),
           arg("cstringio"),
@@ -443,6 +450,7 @@ namespace {
           arg("anisou"),
           arg("siguij"),
           arg("output_break_records")=true))
+#endif
         .def("_write_pdb_file", &w_t::write_pdb_file, (
           arg("file_name"),
           arg("open_append"),
@@ -583,6 +591,8 @@ namespace {
 
 BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
 {
+#ifndef IS_PY3K
   scitbx::boost_python::cstringio_import();
+#endif
   iotbx::pdb::hierarchy::wrap_hierarchy();
 }

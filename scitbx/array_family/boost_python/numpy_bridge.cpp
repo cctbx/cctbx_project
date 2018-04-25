@@ -19,9 +19,19 @@
 #define NPY_ULONGLONG 0
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 namespace scitbx { namespace af { namespace boost_python {
 
+// import_array returns NULL in python3, and somehow that makes this function
+// need a return type as well.
+#ifdef IS_PY3K
+  int
+#else
   void
+#endif
   import_numpy_api_if_available()
   {
 #if defined(SCITBX_HAVE_NUMPY_INCLUDE)
@@ -38,6 +48,9 @@ namespace scitbx { namespace af { namespace boost_python {
       import_array();
     }
     boost::python::numeric::array::set_module_and_type("numpy", "ndarray");
+#endif
+#ifdef IS_PY3K
+    return NULL;
 #endif
   }
 
