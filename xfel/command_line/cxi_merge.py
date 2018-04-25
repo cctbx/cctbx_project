@@ -1605,6 +1605,13 @@ def consistent_set_and_model(work_params,i_model=None):
       i_model = i_model.select(pairs.column(0))
 
     matches = miller.match_indices(i_model.indices(), miller_set.indices())
+    if matches.have_singles(): # can happen if synchroton mtz is supplied as reference
+      # fill missing values with zeros
+      assert len(i_model.indices()) < len(miller_set.indices())
+      lone_set = miller_set.lone_set(i_model)
+      lone_array = miller.array(lone_set, data = flex.double(len(lone_set.indices()), 0), sigmas = flex.double(len(lone_set.indices()), 0))
+      i_model = i_model.concatenate(lone_array)
+      matches = miller.match_indices(i_model.indices(), miller_set.indices())
     assert not matches.have_singles()
     miller_set = miller_set.select(matches.permutation())
 
