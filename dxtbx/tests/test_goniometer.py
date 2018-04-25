@@ -235,7 +235,6 @@ def test_goniometer_from_phil():
 def test_scan_varying():
 
   axis = (1, 0, 0)
-
   g = Goniometer(axis)
 
   assert g.get_num_scan_points() == 0
@@ -271,9 +270,36 @@ def test_scan_varying():
   assert g.get_num_scan_points() == 0
   assert g.get_setting_rotation_at_scan_points().size() == 0
 
+def test_comparison():
+
+  # Setting rotation for small random offset
+  offset_ax = matrix.col.random(3, -1., 1.).normalize()
+  S = offset_ax.axis_and_angle_as_r3_rotation_matrix(angle=0.01, deg=True)
+
+  # Equal goniometers with scan-points set
+  g1 = Goniometer((1, 0, 0))
+  g1.set_setting_rotation(S)
+  g1.set_setting_rotation_at_scan_points([S] * 5)
+  g2 = Goniometer((1, 0, 0))
+  g2.set_setting_rotation(S)
+  g2.set_setting_rotation_at_scan_points([S] * 5)
+
+  assert g1 == g2
+  assert g1.is_similar_to(g2)
+
+  # Different setting matrix
+  g3 = Goniometer((1, 0, 0))
+  invS = S.inverse()
+  g3.set_setting_rotation(invS)
+  g3.set_setting_rotation_at_scan_points([invS] * 5)
+
+  assert g1 != g3
+  assert not g1.is_similar_to(g3)
+
 if __name__ == '__main__':
 
   test_goniometer()
   test_multi_axis_goniometer()
   test_goniometer_from_phil()
   test_scan_varying()
+  test_comparison()

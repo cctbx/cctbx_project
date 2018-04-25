@@ -196,12 +196,31 @@ namespace dxtbx { namespace model {
     }
 
     /** Check rotation axes are (almost) the same */
-    bool operator==(const Goniometer &b) const {
+    bool operator==(const Goniometer &rhs) const {
       double eps = 1.0e-6;
 
-      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= eps
-      && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), eps)
-      && setting_rotation_.const_ref().all_approx_equal(b.setting_rotation_.const_ref(), eps);
+      // scan-varying model checks
+      if (get_num_scan_points() > 0) {
+        if (get_num_scan_points() != rhs.get_num_scan_points()) {
+          return false;
+        }
+        for (std::size_t j = 0; j < get_num_scan_points(); ++j) {
+          mat3<double> this_S = get_setting_rotation_at_scan_point(j);
+          mat3<double> other_S = rhs.get_setting_rotation_at_scan_point(j);
+          double d_S = 0.0;
+          for (std::size_t i = 0; i < 9; ++i) {
+            d_S += std::abs(this_S[i] - other_S[i]);
+          }
+          if (d_S > eps) {
+            return false;
+          }
+        }
+      }
+
+      // static model checks
+      return std::abs(angle_safe(rotation_axis_, rhs.rotation_axis_)) <= eps
+      && fixed_rotation_.const_ref().all_approx_equal(rhs.fixed_rotation_.const_ref(), eps)
+      && setting_rotation_.const_ref().all_approx_equal(rhs.setting_rotation_.const_ref(), eps);
     }
 
     /** Check rotation axes are not (almost) the same */
@@ -209,13 +228,27 @@ namespace dxtbx { namespace model {
       return !(*this == goniometer);
     }
 
-    bool is_similar_to(const Goniometer &b,
+    bool is_similar_to(const Goniometer &rhs,
                        double rotation_axis_tolerance,
                        double fixed_rotation_tolerance,
                        double setting_rotation_tolerance) const {
-      return std::abs(angle_safe(rotation_axis_, b.rotation_axis_)) <= rotation_axis_tolerance
-      && fixed_rotation_.const_ref().all_approx_equal(b.fixed_rotation_.const_ref(), fixed_rotation_tolerance)
-      && setting_rotation_.const_ref().all_approx_equal(b.setting_rotation_.const_ref(), setting_rotation_tolerance);
+
+      // scan-varying model checks
+      if (get_num_scan_points() != rhs.get_num_scan_points()) {
+        return false;
+      }
+      for (std::size_t i = 0; i < get_num_scan_points(); ++i) {
+        mat3<double> S_a = get_setting_rotation_at_scan_point(i);
+        mat3<double> S_b = rhs.get_setting_rotation_at_scan_point(i);
+        if (!S_a.const_ref().all_approx_equal(S_b.const_ref(), setting_rotation_tolerance)) {
+          return false;
+        }
+      }
+
+      // static model checks
+      return std::abs(angle_safe(rotation_axis_, rhs.rotation_axis_)) <= rotation_axis_tolerance
+      && fixed_rotation_.const_ref().all_approx_equal(rhs.fixed_rotation_.const_ref(), fixed_rotation_tolerance)
+      && setting_rotation_.const_ref().all_approx_equal(rhs.setting_rotation_.const_ref(), setting_rotation_tolerance);
     }
 
     /** Rotate the goniometer about an axis */
