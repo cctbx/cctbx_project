@@ -42,6 +42,8 @@ def _notice(*lines, **context):
         os.linesep.join(l.format(**context) for l in lines) + os.linesep +
         os.linesep + "=" * 80 + os.linesep)
 
+_defined_entrypoints = set()
+
 def require(pkgname, version=None):
   '''Ensure a package requirement is met. Install or update package as required
      and print a warning message if this can't be done due to the local
@@ -175,6 +177,11 @@ def define_entry_points(epdict, **kwargs):
   # No setuptools mechanism without setuptools.
   if not setuptools:
     raise ImportError("You must install setuptools to configure package {}. Run\n  libtbx.pip install setuptools".format(caller))
+
+  if caller in _defined_entrypoints:
+    raise RuntimeError("Entry points have already been defined for package %s. There must only be a single call to "
+                       "define_entry_points() per calling package" % caller)
+  _defined_entrypoints.add(caller)
 
   # Temporarily change to build/ directory. This is where a directory named
   # libtbx.{caller}.egg-info will be created containing the entry point info.
