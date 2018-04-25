@@ -182,7 +182,7 @@ class manager:
                        cc = flex.double( [a[2] for a in ALL] ),
                     slope = flex.double( [a[3] for a in ALL] ),
                    offset = flex.double( [a[4] for a in ALL] ),
-             odd_numbered = flex.bool( [is_odd_numbered(a[14]) for a in ALL] ),
+             odd_numbered = flex.bool( [is_odd_numbered(a[14], use_hash = self.params.hash_filenames) for a in ALL] ),
               orientation = orientations,
                 unit_cell = [CO.unit_cell() for CO in orientations],
          unique_file_name = [a[14] for a in ALL] )

@@ -41,6 +41,10 @@ targlob = None
   .help = give a single blob giving the paths of tar files where the pickles are packaged up.
   .help = This reduces the number of files to be read in.  But as currently implemented
   .help = it does not reduce the number of file opens.
+hash_filenames = False
+  .type = bool
+  .help = For CC1/2, instead of using odd/even filenames to split images into two sets, \
+          hash the filename using md5 and split the images using odd/even hashes.
 predictions_to_edge {
   apply = False
     .type = bool

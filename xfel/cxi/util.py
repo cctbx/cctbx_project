@@ -7,7 +7,11 @@ allowable_basename_endings = ["_00000.pickle",
                               "_refined_experiments.json",
                               "_experiments.json"
                              ]
-def is_odd_numbered(file_name):
+def is_odd_numbered(file_name, use_hash = False):
+  if use_hash:
+    import hashlib
+    hash_object = hashlib.md5(file_name)
+    return int(hash_object.hexdigest(), 16) % 2 == 0
   for allowable in allowable_basename_endings:
     if (file_name.endswith(allowable)):
       try:
