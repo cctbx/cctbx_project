@@ -224,7 +224,8 @@ namespace gltbx { namespace boost_python {
 #ifdef IS_PY3K
         char* item_char_pointer;
         if (is_unicode)
-          item_char_pointer = PyUnicode_AsUTF8(item);
+          // If encoding fails, no error will be reported. Revisit? XXX
+          item_char_pointer = PyBytes_AsString(PyUnicode_EncodeLocale(item, NULL));
         else
           item_char_pointer = PyBytes_AsString(item);
 #else
