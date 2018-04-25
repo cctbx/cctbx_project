@@ -11,6 +11,7 @@ import libtbx.load_env
 from libtbx.utils import Usage
 from scitbx.array_family import flex
 from libtbx.phil import parse
+from libtbx.utils import Sorry
 
 phil_scope = parse("""
   show_plots = False
@@ -28,6 +29,9 @@ phil_scope = parse("""
     .type = path
     .help = If not None and show_plots is True, then save CC plots as multi- \
             page cbf file
+  save_cbf = True
+    .type = bool
+    .help = If True, write cbf with best corrections applied
 """)
 
 def run(args):
@@ -107,12 +111,13 @@ def run(args):
         pp.savefig(plt.figure(i), dpi=300)
       pp.close()
 
-    import pycbf
-    image.sync_detector_to_cbf()
-    dest_path = os.path.splitext(file)[0]+"_cc.cbf"
-    print "Saving result to", dest_path
-    image._cbf_handle.write_widefile(dest_path,pycbf.CBF,\
-        pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
+    if params.save_cbf:
+      import pycbf
+      image.sync_detector_to_cbf()
+      dest_path = os.path.splitext(file)[0]+"_cc.cbf"
+      print "Saving result to", dest_path
+      image._cbf_handle.write_widefile(dest_path,pycbf.CBF,\
+          pycbf.MIME_HEADERS|pycbf.MSG_DIGEST|pycbf.PAD_4K,0)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
