@@ -12,6 +12,7 @@ class Test(object):
     self.tst_beam_with_scan_points()
     self.tst_detector()
     self.tst_goniometer()
+    self.tst_multi_axis_goniometer()
     self.tst_goniometer_with_scan_points()
     self.tst_scan()
     # self.tst_sweep()
@@ -76,22 +77,49 @@ class Test(object):
     assert(g3.get_fixed_rotation() == (1, 0, 0, 0, 1, 0, 0, 0, 1))
     assert(g2 != g3)
 
-  def tst_goniometer_with_scan_points(self):
-    from dxtbx.model import Goniometer, GoniometerFactory
-    g1 = Goniometer((1, 0, 0), (1, 0, 0, 0, 1, 0, 0, 0, 1))
-    from scitbx import matrix
-    S_static = matrix.sqr(g1.get_setting_rotation())
-    g1.set_setting_rotation_at_scan_points([S_static] * 5)
+  def tst_multi_axis_goniometer(self):
+    from dxtbx.model import GoniometerFactory
+    from scitbx.array_family import flex
+    g1 = GoniometerFactory.multi_axis(flex.vec3_double(((1,0,0),)),
+        flex.double((0,)), flex.std_string(('PHI',)), 0)
     d = g1.to_dict()
     g2 = GoniometerFactory.from_dict(d)
-
-    for Scomp in d['setting_rotation_at_scan_points']:
-      assert matrix.sqr(Scomp) == S_static
-
-    for Scomp in g2.get_setting_rotation_at_scan_points():
-      assert matrix.sqr(Scomp) == S_static
-
+    assert(d['axes'] == [(1, 0, 0)])
+    assert(d['angles'] == [0.0])
+    assert(d['names'] == ['PHI'])
+    assert(d['scan_axis'] == 0)
     assert(g1 == g2)
+    assert 'setting_rotation_at_scan_points' not in d
+
+    # Test with a template and partial dictionary
+    d2 = { 'axes' : [(0, 1, 0)] }
+    g3 = GoniometerFactory.from_dict(d2, d)
+    assert(g3.get_rotation_axis() == (0, 1, 0))
+    assert(g3.get_fixed_rotation() == (1, 0, 0, 0, 1, 0, 0, 0, 1))
+    assert(g2 != g3)
+
+  def tst_goniometer_with_scan_points(self):
+    from dxtbx.model import Goniometer, GoniometerFactory
+    from scitbx.array_family import flex
+    simple_g = Goniometer((1, 0, 0), (1, 0, 0, 0, 1, 0, 0, 0, 1))
+    multi_ax_g = GoniometerFactory.multi_axis(flex.vec3_double(((1,0,0),)),
+        flex.double((0,)), flex.std_string(('PHI',)), 0)
+
+    from scitbx import matrix
+    for g1 in [simple_g, multi_ax_g]:
+
+      S_static = matrix.sqr(g1.get_setting_rotation())
+      g1.set_setting_rotation_at_scan_points([S_static] * 5)
+      d = g1.to_dict()
+      g2 = GoniometerFactory.from_dict(d)
+
+      for Scomp in d['setting_rotation_at_scan_points']:
+        assert matrix.sqr(Scomp) == S_static
+
+      for Scomp in g2.get_setting_rotation_at_scan_points():
+        assert matrix.sqr(Scomp) == S_static
+
+      assert(g1 == g2)
 
   def tst_scan(self):
     from dxtbx.model import Scan, ScanFactory
