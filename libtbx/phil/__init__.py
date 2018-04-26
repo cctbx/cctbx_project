@@ -1,18 +1,18 @@
 "Documentation: http://cctbx.sourceforge.net/libtbx_phil.html"
 
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.utils import Sorry, format_exception, import_python_object
 from itertools import count
 from libtbx import Auto, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
+import math
+import os
+import sys
 import tokenize as python_tokenize
 import warnings
-import math
 import weakref
-import sys, os
 
 default_print_width = 79
 
