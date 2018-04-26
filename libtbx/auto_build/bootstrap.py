@@ -1744,13 +1744,13 @@ class PhaserBuilder(CCIBuilder):
       self.skip_base = "hdf5,lz4_plugin,wxpython,docutils,pyopengl,pillow,tiff," + \
         "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
         "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml," + \
-         "jinja2,orderedset,procrunner,scipy,scikit_learn,biopython,expat,glib"
+         "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib"
     else:
       self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin',
          'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts',
          'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
          'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml',
-         'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'biopython', 'expat', 'glib'
+         'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython', 'expat', 'glib'
          ])
     super(PhaserBuilder, self).add_base(
       extra_opts=['--cctbx',
@@ -1838,7 +1838,7 @@ class DIALSBuilder(CCIBuilder):
 
   def add_base(self, extra_opts=[]):
     super(DIALSBuilder, self).add_base(
-      extra_opts=['--dials',
+      extra_opts=['--dials', '--xia2',
                  ] + extra_opts)
 
   def add_dispatchers(self):
@@ -1946,7 +1946,8 @@ class PhenixBuilder(CCIBuilder):
     super(PhenixBuilder, self).add_base(
       extra_opts=['--phenix',
                   '--labelit',
-                  '--dials'
+                  '--dials',
+                  '--xia2',
                  ] + extra_opts)
 
   def add_install(self):

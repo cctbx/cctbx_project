@@ -271,6 +271,10 @@ class installer (object) :
       options.build_gui = True
       options.build_all = True
       packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn']
+    if options.xia2:
+      options.build_gui = True
+      options.build_all = True
+      packages += ['pillow', 'jinja2', 'procrunner', 'tabulate']
     if options.labelit:
       options.build_gui = True
       options.build_all = True
@@ -717,6 +721,7 @@ Installation of Python packages may fail.
       'jinja2',
       'orderedset',
       'procrunner',
+      'tabulate',
       # ...
       'freetype',
       'matplotlib',
@@ -1150,6 +1155,11 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'procrunner', package_version=PROCRUNNER_VERSION,
       confirm_import_module='procrunner')
+
+  def build_tabulate(self):
+    self.build_python_module_pip(
+      'tabulate', package_version=TABULATE_VERSION,
+      confirm_import_module='tabulate')
 
   def build_hdf5(self):
     pkg_log = self.start_building_package("HDF5")
