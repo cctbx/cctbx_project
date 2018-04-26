@@ -1742,11 +1742,16 @@ class PhaserBuilder(CCIBuilder):
     # skip unnecessary base packages when building phaser only
     if self.skip_base is None or len(self.skip_base) == 0:
       self.skip_base = "hdf5,lz4_plugin,wxpython,docutils,pyopengl,pillow,tiff," + \
-        "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib,"
+        "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
+        "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml," + \
+         "jinja2,orderedset,procrunner,scipy,scikit_learn,biopython,expat,glib"
     else:
       self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin',
-         'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts', 'matplotlib',
-         'fontconfig','render','pixman','png','sphinx','freetype','gtk'])
+         'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts',
+         'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
+         'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml',
+         'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'biopython', 'expat', 'glib'
+         ])
     super(PhaserBuilder, self).add_base(
       extra_opts=['--cctbx',
                  ] + extra_opts)
