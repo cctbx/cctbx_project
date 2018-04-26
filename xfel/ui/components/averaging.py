@@ -53,6 +53,9 @@ class AveragingCommand(get_lsf_submit_command):
       self.args.append("-p")
     binning = rungroup_obj.binning
     if binning:
-      self.args.append("-b %d") % binning
+      self.args.append("-b %d" % binning)
     self.args.append("-v")
+  def customize_for_method(self):
+    self.submit_head = "bsub"
+    self.command = "mpirun %s" % self.command
 
