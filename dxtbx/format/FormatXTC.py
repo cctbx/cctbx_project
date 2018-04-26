@@ -38,9 +38,9 @@ class FormatXTC(FormatMultiImageJIT,FormatStill,Format):
     self.current_event = None
 
     if 'locator_scope' in kwargs:
-      self.params = FormatXTC.params_from_phil(kwargs['locator_scope'],image_file)
+      self.params = FormatXTC.params_from_phil(kwargs['locator_scope'],image_file,strict=True)
     else:
-      self.params = FormatXTC.params_from_phil(locator_scope,image_file)
+      self.params = FormatXTC.params_from_phil(locator_scope,image_file,strict=True)
     assert self.params.mode == 'idx', 'idx mode should be used for analysis'
     self._initialized = True
 
@@ -89,11 +89,17 @@ class FormatXTC(FormatMultiImageJIT,FormatStill,Format):
     return True
 
   @staticmethod
-  def params_from_phil(master_phil, user_phil):
+  def params_from_phil(master_phil, user_phil,strict=False):
     """ Read the locator file """
     try:
       user_input = parse(file_name = user_phil)
-      working_phil = master_phil.fetch(sources = [user_input])
+      working_phil, unused = master_phil.fetch(sources = [user_input], track_unused_definitions=True)
+      unused_args = ["%s=%s"%(u.path,u.object.words[0].value) for u in unused]
+      if len(unused_args) > 0 and strict:
+        for unused_arg in unused_args:
+          print(unused_arg)
+        print('Incorrect of unused parameter in locator file. Please check and retry')
+        return None
       params = working_phil.extract()
       return params
     except Exception:
