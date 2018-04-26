@@ -902,7 +902,7 @@ _replace_sysconfig_paths(build_time_vars)
       configure_args.append("--enable-shared")
     environment = os.environ.copy()
     environment['LDFLAGS'] = "-L{base}/lib/ -L{base}/lib64/".format(base=self.base_dir)
-    environment['LDFLAGS'] += " -Wl,-rpath={base}/lib".format(base=self.base_dir)
+    environment['LDFLAGS'] += " -Wl,-rpath,{base}/lib".format(base=self.base_dir)
     environment['LD_LIBRARY_PATH'] = "{base}/lib/:{base}/lib64/".format(base=self.base_dir)
     environment['CPPFLAGS'] = "-I{base}/include -I{base}/include/openssl".format(base=self.base_dir)
     self.call([os.path.join(python_dir, 'configure')] + configure_args,
