@@ -1,9 +1,8 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 from libtbx import Auto
 from libtbx import group_args
-import sys, os
-op = os.path
+import os
+import sys
 
 def varnames(frames_back=0):
   f_code = sys._getframe(frames_back+1).f_code
@@ -195,7 +194,7 @@ class virtual_memory_info(proc_file_reader):
 
 def get_mac_os_x_memory_total():
   cmd = "/usr/sbin/system_profiler"
-  if (not op.isfile(cmd)):
+  if not os.path.isfile(cmd):
     return None
   from libtbx import easy_run
   for line in easy_run.fully_buffered(
@@ -224,7 +223,7 @@ class machine_memory_info(proc_file_reader):
     self.proc_status = None
     self._memory_total = Auto
     self._memory_free = Auto
-    if (op.isfile("/proc/meminfo")):
+    if os.path.isfile("/proc/meminfo"):
       try:
         self.proc_status = open("/proc/meminfo").read()
       except IOError:
@@ -276,7 +275,7 @@ def number_of_processors(return_value_if_unknown=None):
           _number_of_processors = n
     if (_number_of_processors is None):
       cpuinfo = "/proc/cpuinfo" # Linux
-      if (op.isfile(cpuinfo)):
+      if os.path.isfile(cpuinfo):
         n = 0
         for line in open(cpuinfo).read().splitlines():
           if (not line.startswith("processor")): continue
@@ -287,7 +286,7 @@ def number_of_processors(return_value_if_unknown=None):
           _number_of_processors = n
     if (_number_of_processors is None):
       cmd = "/usr/sbin/system_profiler" # Mac OS X
-      if (op.isfile(cmd)):
+      if os.path.isfile(cmd):
         keys = [
           "Total Number Of Cores: ",
           "Number Of CPUs: ",
@@ -315,7 +314,7 @@ def number_of_processors(return_value_if_unknown=None):
         else: _number_of_processors = n
     if (_number_of_processors is None):
       cmd = "/sbin/hinv" # IRIX
-      if (op.isfile(cmd)):
+      if os.path.isfile(cmd):
         from libtbx import easy_run
         for line in easy_run.fully_buffered(command=cmd).stdout_lines:
           if (line.endswith(" Processors")):
