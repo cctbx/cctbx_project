@@ -368,7 +368,7 @@ def submit_job(app, job):
           extra_scope = parse("geometry { detector { panel { origin = (%f, %f, %f) } } }"%(-job.rungroup.beamx * pixel_size,
                                                                                             job.rungroup.beamy * pixel_size,
                                                                                            -job.rungroup.detz_parameter))
-          locator.write("bin_size=%s\n"%job.rungroup.binning)
+          locator.write("rayonix.bin_size=%s\n"%job.rungroup.binning)
       locator.close()
       d['locator'] = locator_path
 
