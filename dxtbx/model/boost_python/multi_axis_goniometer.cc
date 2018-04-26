@@ -36,6 +36,34 @@ namespace dxtbx { namespace model { namespace boost_python {
         obj.get_names(),
         obj.get_scan_axis());
     }
+
+    static
+    boost::python::tuple getstate(boost::python::object obj)
+    {
+      const MultiAxisGoniometer &goniometer = boost::python::extract<const MultiAxisGoniometer &>(obj)();
+      return boost::python::make_tuple(
+          obj.attr("__dict__"),
+          goniometer.get_setting_rotation_at_scan_points());
+    }
+
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state)
+    {
+      MultiAxisGoniometer &goniometer = boost::python::extract<MultiAxisGoniometer&>(obj)();
+      DXTBX_ASSERT(boost::python::len(state) == 2);
+
+      // restore the object's __dict__
+      boost::python::dict d = boost::python::extract<boost::python::dict>(
+          obj.attr("__dict__"))();
+      d.update(state[0]);
+
+      // restore the internal state of the C++ object
+      scitbx::af::const_ref< mat3<double> > S_list = boost::python::extract<
+        scitbx::af::const_ref< mat3<double> > >(state[1]);
+      goniometer.set_setting_rotation_at_scan_points(S_list);
+    }
+
+    static bool getstate_manages_dict() { return true; }
   };
 
   boost::python::dict to_dict(const MultiAxisGoniometer &obj) {
@@ -44,6 +72,18 @@ namespace dxtbx { namespace model { namespace boost_python {
     result["angles"] = boost::python::list(obj.get_angles());
     result["names"] = boost::python::list(obj.get_names());
     result["scan_axis"] = obj.get_scan_axis();
+    if(obj.get_num_scan_points() > 0){
+      boost::python::list l;
+      scitbx::af::shared< mat3<double> > setting_rotation_at_scan_points =
+          obj.get_setting_rotation_at_scan_points();
+      for (scitbx::af::shared< mat3<double> >::iterator it = setting_rotation_at_scan_points.begin();
+           it != setting_rotation_at_scan_points.end();
+           ++it) {
+        l.append(boost::python::tuple(*it));
+      }
+      result["setting_rotation_at_scan_points"] = l;
+    }
+    return result;
     return result;
   };
 
@@ -54,9 +94,19 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::extract< scitbx::af::shared<double> >(obj["angles"]);
     scitbx::af::shared<std::string> names =
       boost::python::extract< scitbx::af::shared<std::string> >(obj["names"]);
-    return new MultiAxisGoniometer(
+    MultiAxisGoniometer* g = new MultiAxisGoniometer(
       axes.const_ref(), angles.const_ref(), names.const_ref(),
       boost::python::extract< std::size_t >(obj["scan_axis"]));
+    if(obj.has_key("setting_rotation_at_scan_points")){
+      boost::python::list l = boost::python::extract<boost::python::list>(obj["setting_rotation_at_scan_points"]);
+      scitbx::af::shared< mat3<double> > S_array;
+      for (std::size_t i = 0; i < boost::python::len(l); ++i) {
+        mat3<double> S = boost::python::extract< mat3<double> >(l[i]);
+        S_array.push_back(S);
+      }
+      g->set_setting_rotation_at_scan_points(S_array.const_ref());
+    }
+    return g;
   };
 
   static boost::shared_ptr<MultiAxisGoniometer> make_multi_axis_goniometer(
