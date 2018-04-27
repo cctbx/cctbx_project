@@ -588,39 +588,37 @@ class TestNexusFile(object):
       g = iset.get_goniometer(i)
       s = iset.get_scan(i)
 
-class Test_SACLA_MPCCD_Cheetah_File(object):
+def test_SACLA_MPCCD_Cheetah_File(lazy=False):
 
-  def __init__(self):
-    from os.path import join
-    self.filename = join(dials_regression,
+  from os.path import join
+  filename = join(dials_regression,
                     "./image_examples/SACLA_MPCCD_Cheetah/run266702-0-subset.h5")
 
-  def run(self, lazy=False):
 
-    from dxtbx.format.Registry import Registry
-    format_class = Registry.find(self.filename)
+  from dxtbx.format.Registry import Registry
+  format_class = Registry.find(filename)
 
-    iset = format_class.get_imageset([self.filename], lazy=lazy)
+  iset = format_class.get_imageset([filename], lazy=lazy)
 
-    assert len(iset) == 4
-    for i in range(len(iset)):
-      assert iset.get_raw_data(i)
-#      assert iset.get_mask(i)
-      assert iset.get_beam(i)
-      assert iset.get_detector(i)
-      assert iset.get_goniometer(i) is None
-      assert iset.get_scan(i) is None
+  assert len(iset) == 4
+  for i in range(len(iset)):
+    assert iset.get_raw_data(i)
+#   assert iset.get_mask(i)
+    assert iset.get_beam(i)
+    assert iset.get_detector(i)
+    assert iset.get_goniometer(i) is None
+    assert iset.get_scan(i) is None
 
-    iset = format_class.get_imageset([self.filename], single_file_indices=[1], lazy=lazy)
-    assert len(iset) == 1
+  iset = format_class.get_imageset([filename], single_file_indices=[1], lazy=lazy)
+  assert len(iset) == 1
 
-    for i in range(len(iset)):
-      assert iset.get_raw_data(i)
-#      assert iset.get_mask(i)
-      assert iset.get_beam(i)
-      assert iset.get_detector(i)
-      assert iset.get_goniometer(i) is None
-      assert iset.get_scan(i) is None
+  for i in range(len(iset)):
+    assert iset.get_raw_data(i)
+#   assert iset.get_mask(i)
+    assert iset.get_beam(i)
+    assert iset.get_detector(i)
+    assert iset.get_goniometer(i) is None
+    assert iset.get_scan(i) is None
 
 class TestImageSetFactory(object):
   def get_file_list(self):
@@ -739,10 +737,10 @@ def run():
   TestImageSet().run()
   TestImageSweep().run()
 #  TestNexusFile().run()
-  Test_SACLA_MPCCD_Cheetah_File().run()
-  Test_SACLA_MPCCD_Cheetah_File().run(lazy=True)
   TestImageSetFactory().run()
   TestPickleImageSet().run()
+  test_SACLA_MPCCD_Cheetah_File()
+  test_SACLA_MPCCD_Cheetah_File(lazy=True)
 
 
 if __name__ == '__main__':
