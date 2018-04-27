@@ -2447,11 +2447,11 @@ class extract_box_around_model_and_map(object):
       lower_bounds=extract_unique_map_data.origin()
       upper_bounds=tuple(
         col(extract_unique_map_data.focus())-col((1,1,1)))
-      # shift the map so it is in the same position as the box map will be in 
+      # shift the map so it is in the same position as the box map will be in
       extract_unique_map_data.reshape(flex.grid(extract_unique_map_data.all()))
 
       # Now box map is going to extract the same volume, but not the same
-      #  contents because extract_unique keeps just the density for the 
+      #  contents because extract_unique keeps just the density for the
       #  molecule, not the surroundings.  We are going to replace the
       #  map_box density with extract_unique_map_data below.
 
@@ -2584,7 +2584,7 @@ class extract_box_around_model_and_map(object):
     args.append("add_neighbors=False") # XXX perhaps allow user to set this
     args.append("save_box_map_ncs_au=True")
     args.append("density_select=False") # ZZZ
-    #self.ncs_object=None #ZZ 
+    #self.ncs_object=None #ZZ
     #args.append("check_ncs=True") # ZZZ
     #args.append("symmetry=C7") # ZZZ
     args.append("solvent_content=%s" %(self.solvent_content))

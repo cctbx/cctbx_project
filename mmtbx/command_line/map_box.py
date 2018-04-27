@@ -61,7 +61,7 @@ master_phil = libtbx.phil.parse("""
     .help = Symmetry file to be offset based on origin shift.\
             Symmetry or symmetry_file required if extract_unique=True.  \
             May be a \
-            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file. 
+            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file.
   sequence_file = None
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
@@ -81,7 +81,7 @@ master_phil = libtbx.phil.parse("""
   extract_unique = False
     .type = bool
     .help = Extract unique part of map. Requires symmetry_file or symmetry and\
-            either sequence file or molecular mass to be supplied. 
+            either sequence file or molecular mass to be supplied.
   mask_atoms=False
     .type=bool
     .help = Set map values to 0 outside molecular mask
@@ -348,7 +348,7 @@ Parameters:"""%h
     resolution            = params.resolution,
     ncs_object            = ncs_object,
     symmetry              = params.symmetry,
- 
+
     )
 
   ph_box = pdb_hierarchy.select(selection)
@@ -378,7 +378,7 @@ Parameters:"""%h
     box.unit_cell_parameters_from_ccp4_map=None
     box.unit_cell_parameters_deduced_from_map_grid=None
 
-  # ncs_object is original 
+  # ncs_object is original
   #  box.ncs_object is shifted by shift_cart
 
   print >>log,"Box cell dimensions: (%.2f, %.2f, %.2f) A" %(
@@ -442,7 +442,7 @@ Parameters:"""%h
         ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
           box.xray_structure_box.crystal_symmetry())
 
-    # Write NCS file if NCS 
+    # Write NCS file if NCS
     if ncs_object and ncs_object.max_operators()>0:
       if(params.output_file_name_prefix is None):
         output_symmetry_file = "%s_box.ncs_spec"%output_prefix

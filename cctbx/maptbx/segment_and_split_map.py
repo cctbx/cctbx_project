@@ -2050,7 +2050,7 @@ class info_object:
       map_data=self.box_map_ncs_au_map_data,
       crystal_symmetry=self.box_map_ncs_au_crystal_symmetry,
       shift_cart=self.origin_shift)
- 
+
   def shift_map_back(self,map_data=None,
       crystal_symmetry=None,shift_cart=None):
     from scitbx.matrix import col
@@ -3459,7 +3459,7 @@ def select_remaining_ncs_ops( map_data=None,
   # scoring with score_ncs_in_map
   if ncs_object.max_operators()<1:
     return ncs_object
-    
+
   used_ncs_id_list=[ncs_object.ncs_groups()[0].identity_op_id()]
   ncs_copies=ncs_object.max_operators()
 
@@ -5658,7 +5658,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   found_ncs=False
   if params.reconstruction_symmetry.symmetry or ncs_obj_to_check or \
-     params.reconstruction_symmetry.optimize_center: 
+     params.reconstruction_symmetry.optimize_center:
     looking_for_ncs=True
     new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=params,
       map_data=map_data,
@@ -5684,7 +5684,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         f.close()
         print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
         if not params.control.check_ncs:
-          params.input_files.ncs_file=file_name # set it 
+          params.input_files.ncs_file=file_name # set it
 
   else:
     looking_for_ncs=False
@@ -6380,7 +6380,7 @@ def get_solvent_fraction(params,
         crystal_symmetry=crystal_symmetry,
         molecular_mass=params.crystal_info.molecular_mass,
         out=out)
-        
+
     else:
       print >>out,"Getting solvent content automatically."
 
@@ -7995,7 +7995,7 @@ def write_output_files(params,
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
-  if au_mask_output_file and params.output_files.write_output_maps: 
+  if au_mask_output_file and params.output_files.write_output_maps:
     # Write out the mask (as int)
     write_ccp4_map(tracking_data.crystal_symmetry,
       au_mask_output_file,mask_data_ncs_au)
@@ -8021,7 +8021,7 @@ def write_output_files(params,
   map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
   del one_d,mask
 
-  if au_map_output_file and params.output_files.write_output_maps: 
+  if au_map_output_file and params.output_files.write_output_maps:
     # Write out the NCS au of density
     write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,
       map_data_ncs_au)
@@ -8067,7 +8067,7 @@ def write_output_files(params,
        box_map_ncs_au_crystal_symmetry=box_crystal_symmetry,
        box_map_ncs_au_map_data=box_map_ncs_au,)
 
-  if params.output_files.box_map_file: 
+  if params.output_files.box_map_file:
     # write out NCS map as box_map (cut out region of map enclosed in box_mask)
     if params.output_files.write_output_maps:
       write_ccp4_map(box_crystal_symmetry,
