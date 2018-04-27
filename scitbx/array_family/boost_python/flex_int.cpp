@@ -193,6 +193,15 @@ namespace scitbx { namespace af { namespace boost_python {
     return result;
   }
 
+  /* Cumulative sum would benefit from implementation as a prefix sum for log scaling*/
+  af::shared<int> cum_sum(af::const_ref<int> const &a)
+  {
+    af::shared<int> result(a.size());
+    result[0] = a[0];
+    for(std::size_t i=1;i<a.size();i++) result[i] = a[i] + result[i-1];
+    return result;
+  }
+
   void wrap_flex_int()
   {
     using namespace boost::python;
@@ -264,6 +273,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("__and__", &bitwise_and_array)
       .def("__xor__", &bitwise_xor_single)
       .def("__xor__", &bitwise_xor_array)
+      .def("cum_sum", cum_sum, ( arg("array") ) )
     ;
     def(
       "int_from_byte_str",
