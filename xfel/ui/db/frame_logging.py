@@ -60,6 +60,15 @@ class DialsProcessorWithLogging(Processor):
                                    two_theta_low = self.tt_low, two_theta_high = self.tt_high)
     return observed
 
+  def index(self, datablock, reflections):
+    experiments, indexed = super(DialsProcessorWithLogging, self).index(datablock, reflections)
+
+    if not(self.params.dispatch.integrate):
+      run, timestamp = self.get_run_and_timestamp(experiments)
+      self.log_frame(experiments, indexed, run, len(indexed), timestamp = timestamp,
+                     two_theta_low = self.tt_low, two_theta_high = self.tt_high,
+                     db_event = self.db_event)
+
   def integrate(self, experiments, indexed):
     # Results should always be logged after integration even if it fails.
     run, timestamp = self.get_run_and_timestamp(experiments)
