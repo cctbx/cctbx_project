@@ -816,9 +816,10 @@ class opt_resources_module(SourceModule):
 
 class eigen_module(SourceModule):
   module = 'eigen'
-  anonymous = ['curl', 'http://cci.lbl.gov/repositories/eigen.gz']
-  authentarfile = ['%(cciuser)s@cci.lbl.gov', 'eigen.tar.gz', '/net/cci/auto_build/repositories/eigen']
-  authenticated = ['rsync', '%(cciuser)s@cci.lbl.gov:/net/cci/auto_build/repositories/eigen/']
+  anonymous = ['git', '-b branches/3.3',
+               'git@github.com:eigenteam/eigen-git-mirror.git',
+               'https://github.com/eigenteam/eigen-git-mirror.git',
+               'https://github.com/eigenteam/eigen-git-mirror/archive/branches/3.3.zip']
 
 # Phenix repositories
 class phenix_module(SourceModule):

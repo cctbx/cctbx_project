@@ -1,6 +1,9 @@
 #ifndef CCTBX_EXAMOKE_EXAMPLES_H
 #define CCTBX_EXAMOKE_EXAMPLES_H
 #include <scitbx/examples/bevington/prototype_core.h>
+#ifdef _STRUMPACK_
+#include <scitbx/examples/bevington/prototype_core_strumpack.h>
+#endif
 #include <scitbx/mat3.h>
 #include <cctbx/miller.h>
 #include <scitbx/vec3.h>
@@ -242,6 +245,74 @@ class xscale6e: public scitbx::example::non_linear_ls_eigen_wrapper, public scal
         }
     }
 };
+
+#ifdef _STRUMPACK_
+class xscale_strumpack: public scitbx::example::non_linear_ls_strumpack_wrapper, public scaling_common_functions {
+  public:
+    xscale_strumpack(int n_parameters):
+      non_linear_ls_strumpack_wrapper(n_parameters)
+      {
+      }
+
+    void reset_mem(){
+      fsim.reset_mem();
+      strumpack_wrapper.eigen_normal_matrix.resize(0,0);
+      strumpack_wrapper.eigen_normal_matrix = scitbx::example::linear_ls_strumpack_wrapper::sparse_matrix_t();
+      strumpack_wrapper.solution_ = scitbx::af::shared<double>();
+      strumpack_wrapper.right_hand_side_ = scitbx::af::shared<double>();
+    }
+
+    void access_cpp_build_up_directly_strumpack_eqn(bool objective_only, scitbx::af::shared<double> current_values) {
+        fvec_callable(current_values);
+        if (objective_only){
+          add_residuals(residuals.const_ref(), weights.const_ref());
+          return;
+        }
+        get_index_into_array(current_values);//indices into the array of parameters
+        scitbx::af::shared<double> rh_rs;
+        if ((bitflags & PartialityDeff) == PartialityDeff){
+          rh_rs = get_rh_rs_ratio();
+        }
+        // add one of the normal equations per each observation
+        for (int ix = 0; ix < fsim.raw_obs.size(); ++ix) {
+
+          double Gitem  = Gptr[ fsim.frame[ix] ];
+          double Bitem  = 1.;
+          if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
+          Bitem  = std::exp(-2.* Bptr[ fsim.frame[ix] ] * fsim.stol_sq[ix]); // :=exp(beta)
+          }
+          double Iitem  = Iptr[ fsim.miller[ix] ];
+          double Pitem  = 1.;
+          if ((bitflags & PartialityDeff) == PartialityDeff){
+            Pitem -= rh_rs[ix]*rh_rs[ix];
+          }
+
+          scitbx::af::shared<std::size_t> jacobian_one_row_indices;
+          scitbx::af::shared<double> jacobian_one_row_data;
+
+          //derivative with respect to I ... must be indexed first
+          jacobian_one_row_indices.push_back( fsim.miller[ix] );
+          jacobian_one_row_data.push_back(-Bitem * Gitem * Pitem);
+
+          //derivative with respect to G ... must be indexed second
+          std::size_t jidx = N_I + fsim.frame[ix];
+          jacobian_one_row_indices.push_back( jidx );
+          jacobian_one_row_data.push_back(-Bitem * Iitem * Pitem);
+
+          //derivative with respect to B ... must be indexed third
+          if ((bitflags & Bfactor) == Bfactor){ //note the necessary parentheses
+          jidx += N_G;
+          jacobian_one_row_indices.push_back( jidx );
+          jacobian_one_row_data.push_back(Bitem * Gitem * Iitem * Pitem * 2. * fsim.stol_sq[ix]);
+          }
+
+          //add_equation(residuals[ix], jacobian_one_row.const_ref(), weights[ix]);
+          add_residual(residuals[ix], weights[ix]);
+          add_equation_strumpack(-residuals[ix], jacobian_one_row_indices.const_ref(), jacobian_one_row_data.const_ref(), weights[ix]);
+        }
+    }
+};
+#endif
 
 }}
 

@@ -8,9 +8,6 @@
 #include <vector>
 #include <Eigen/Sparse>
 
-#include <iostream>
-#include <fstream>
-
 using std::size_t;
 
 namespace scitbx{
@@ -51,6 +48,7 @@ class linear_ls_eigen_wrapper
 
   public:
     typedef Eigen::SparseMatrix<double> sparse_matrix_t;
+    enum SolverAlgo { LDLT=0, CG=1, LLT=2, BICGSTAB=3 };
 
     /// Construct a least-squares problem with the given number of unknowns.
     linear_ls_eigen_wrapper(int n_parameters)
@@ -64,7 +62,6 @@ class linear_ls_eigen_wrapper
 
     /// Number of unknown parameters
     long n_parameters() const { return right_hand_side_.size(); }
-
 
     /// Reset the state to construction time, i.e. no equations accumulated
     void reset() {
@@ -82,48 +79,44 @@ class linear_ls_eigen_wrapper
       return right_hand_side_;
     }
 
-    void solve() {
+    void solve(SolverAlgo solverIdx) {
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-
-      //Eigen::initParallel();
-      //Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
-      //Eigen::BiCGSTAB<Eigen::SparseMatrix<double,Eigen::RowMajor> > solver;
-      //solver.compute(eigen_normal_matrix_full);
-
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
       // XXX pack the right hand side in a eigen vector type
       Eigen::VectorXd b(n_parameters());
+      Eigen::VectorXd x(n_parameters());
       double* rhsptr = right_hand_side_.begin();
       for (int i = 0; i<N; ++i){
         b[i] = *rhsptr++;
       }
 
-//If the A matrix output is required -D_STRUMPACK_MATRIX_OUT_ compiler flag can be used
-#ifdef _STRUMPACK_MATRIX_OUT_
-      std::ofstream Amat, bvec, xvec;
-      Amat.open ("A_strum.csv", std::ios::out | std::ios::app);
-      bvec.open ("b_strum.csv", std::ios::out | std::ios::app);
-      xvec.open ("x_strum.csv", std::ios::out | std::ios::app);
-      //Output matrix as  row col value   format
-      for (int k=0; k < eigen_normal_matrix.outerSize(); ++k){
-        for (Eigen::SparseMatrix<double>::InnerIterator it(eigen_normal_matrix,k); it; ++it){
-          Amat << "" << it.row() << "\t";
-          Amat << it.col() << "\t";
-          Amat << it.value() << std::endl;
-        }
+      if( solverIdx == LLT ){
+        Eigen::SimplicialLLT<sparse_matrix_t> llt_solver(eigen_normal_matrix.transpose());
+        x = llt_solver.solve(b);
+        sparse_matrix_t lower = llt_solver.matrixL();
+        last_computed_matrixL_nonZeros_ = lower.nonZeros();
       }
-      for (int kk=0; kk<eigen_normal_matrix.outerSize(); ++kk){
-        bvec << *(right_hand_side_.begin() + kk) << "\n" ;
+      else if( solverIdx == CG ){
+        Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
+        Eigen::ConjugateGradient<sparse_matrix_t, Eigen::Lower|Eigen::Upper > cg_solver(eigen_normal_matrix_full);
+        x = cg_solver.solve(b);
+        //CG method can used upper or lower matrix. Value taken from input matrix..
+        last_computed_matrixL_nonZeros_ = eigen_normal_matrix.nonZeros();
       }
-      bvec << "\n";
-      Amat.close();
-      bvec.close();
-      exit(-1); //Assuming only the first matrix is requested; exit afterwards
-#endif
-
-      Eigen::VectorXd x = chol.solve(b);
-      //Eigen::VectorXd x = solver.solve(b);
+      else if( solverIdx == BICGSTAB ){
+        Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
+        //Eigen::BiCGSTAB<sparse_matrix_t, Eigen::RowMajor> solver(eigen_normal_matrix_full);
+        Eigen::BiCGSTAB<sparse_matrix_t> bicgstab_solver(eigen_normal_matrix_full);
+        x = bicgstab_solver.solve(b);
+        //Full matrix used here. -1 used to indicate N/A
+        last_computed_matrixL_nonZeros_ = -1;//bicgstab_solver.nonZeros();
+      }
+      else{
+        Eigen::SimplicialLDLT<sparse_matrix_t> ldlt_solver(eigen_normal_matrix.transpose());
+        x = ldlt_solver.solve(b);
+        sparse_matrix_t lower = ldlt_solver.matrixL();
+        last_computed_matrixL_nonZeros_ = lower.nonZeros();
+      }
 
       //Try to record state of lower Cholesky factor without incurring cost of computing # non-Zeros again
       //sparse_matrix_t lower = chol.matrixL();

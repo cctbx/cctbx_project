@@ -43,6 +43,7 @@ try:
             SHCXX="CC",
             SHLINK="CC",
           )
+          env_scitbx_ex_bev_boost_python_ext.Append(SHCCFLAGS=["-craympich-mt"], SHLINKFLAGS=["-craympich-mt"] )
         else:
           env_scitbx_ex_bev_boost_python_ext.Replace(
             CC="mpicc",
@@ -52,7 +53,7 @@ try:
             SHLINK="mpic++",
           )
 
-        env_scitbx_ex_bev_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g","-fopenmp"],
+        env_scitbx_ex_bev_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g","-fopenmp", "-D_STRUMPACK_"],
           LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch","ptscotcherr","stdc++", "z"],
           LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
         )
@@ -106,6 +107,7 @@ try:
           SHCXX="CC",
           SHLINK="CC",
         )
+        env_scitbx_ex_strumpack_boost_python_ext.Append(SHLINKFLAGS=["-craympich-mt"], SHCCFLAGS=["-craympich-mt"] )
       else:
         env_scitbx_ex_strumpack_boost_python_ext.Replace(
           CC="mpicc",
@@ -115,7 +117,7 @@ try:
           SHLINK="mpic++",
         )
 
-      env_scitbx_ex_strumpack_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g", "-fopenmp"],
+      env_scitbx_ex_strumpack_boost_python_ext.Append( SHCCFLAGS=["-std=c++11","-g", "-fopenmp", "-D_STRUMPACK_"],
         LIBS=["strumpack", "scotch", "metis", "scotcherr", "stdc++", "z"], 
         LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
       )
@@ -164,6 +166,7 @@ try:
           SHCXX="CC",
           SHLINK="CC",
         )
+        env_scitbx_ex_strumpack_mpi_boost_python_ext.Append(SHLINKFLAGS=["-craympich-mt"], SHCCFLAGS=["-craympich-mt"] )
       else:
         env_scitbx_ex_strumpack_mpi_boost_python_ext.Replace(
           CC="mpicc",
@@ -172,7 +175,7 @@ try:
           SHCXX="mpic++",
           SHLINK="mpic++",
         )
-      env_scitbx_ex_strumpack_mpi_boost_python_ext.Append(SHCCFLAGS=["-std=c++11","-g", "-fopenmp"],
+      env_scitbx_ex_strumpack_mpi_boost_python_ext.Append( SHCCFLAGS=["-std=c++11", "-g", "-fopenmp", "-D_STRUMPACK_"],
         LIBS=["strumpack", "scotch", "metis", "parmetis", "scotcherr", "ptscotch", "ptscotcherr", "stdc++", "z"], 
         LIBPATH=os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../../strumpack_build/lib"))
       )

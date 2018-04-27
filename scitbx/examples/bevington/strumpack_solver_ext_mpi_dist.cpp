@@ -51,20 +51,21 @@ std::cout <<"CPP Here 1a"<< py_obj <<"  " << py_comm.ptr() << std::endl;
       MPI_Comm *comm_p = PyMPIComm_Get(py_comm.ptr());
 std::cout <<"CPP Here 1b" << std::endl;
       //Create a duplicate communicator for extension work; may not be necessary
-*/    MPI_Comm newcomm;
+*/    
+      //Check the initialisation of the MPI environment is using MPI_THREAD_MULTIPLE 
+      int flag;
+      MPI_Initialized(&flag);
+      if (!flag){
+        std::cout << "Library not initialised." << std::endl;
+        MPI_Init_thread(NULL,NULL, MPI_THREAD_MULTIPLE, &thread_level);
+        //atexit(library_onexit);
+      }
+      MPI_Comm newcomm;
       MPI_Comm_dup(MPI_COMM_WORLD, &newcomm);
 
       MPI_Comm_size(newcomm, &size);
       MPI_Comm_rank(newcomm, &rank);
 
-      //Check the initialisation of the MPI environment is using MPI_THREAD_FUNNELED
-      int flag;
-      MPI_Initialized(&flag);
-      if (!flag){
-        std::cout << "Library not initialised." << std::endl;
-        MPI_Init_thread(NULL,NULL, MPI_THREAD_FUNNELED, &thread_level);
-        //atexit(library_onexit);
-      }
 
       {
         std::size_t nnz_local = A_values_local.size();

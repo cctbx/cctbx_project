@@ -79,51 +79,19 @@ class linear_ls_strumpack_wrapper
       return right_hand_side_;
     }
 
-    void solve() {
+    void solve(strumpack::KrylovSolver sA, strumpack::ReorderingStrategy sR, bool verbose, bool enableHSS) {
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
 
-      strumpack::StrumpackSparseSolver<double,int> spss(true,true); //verbose output on
-      spss.options().set_reordering_method(strumpack::ReorderingStrategy::SCOTCH);
-      //Previously used to build self adjoint sparse. A + A^T - diag(A)
-/*
-      Eigen::SparseMatrix<double> eigen_normal_matrix_t (eigen_normal_matrix.transpose());
-      double corner = eigen_normal_matrix_t.coeffRef(eigen_normal_matrix_t.rows()-1, 0 );
-      double corner_t = eigen_normal_matrix_t.coeffRef(0, eigen_normal_matrix_t.cols()-1 );
-
-      if(corner == corner_t){
-        std::cout << "All is well: "<< corner << "   " << corner_t <<"\n";
-      }
-      else{
-        std::cout << "All is not well: "<< corner << "   " << corner_t <<"\n";
+      strumpack::StrumpackSparseSolver<double,int> spss(verbose,true); //verbose output on
+      spss.options().set_Krylov_solver(sA);
+      spss.options().set_reordering_method(sR);
+      if (enableHSS){
+        spss.options().enable_HSS();
       }
 
-      Eigen::SparseMatrix<double> eigen_normal_matrix_full(eigen_normal_matrix);
-      eigen_normal_matrix_full += eigen_normal_matrix_t;
-
-      Eigen::VectorXd diag_vec(eigen_normal_matrix.diagonal());
-
-      for(int d = 0; d < eigen_normal_matrix_t.rows(); ++d){
-        eigen_normal_matrix_full.coeffRef(d,d) -= diag_vec(d);
-      }
-
-      corner = eigen_normal_matrix_full.coeffRef(eigen_normal_matrix_full.rows()-1, 0 );
-      corner_t = eigen_normal_matrix_full.coeffRef(0, eigen_normal_matrix_full.cols()-1 );
-
-      if(corner == corner_t){
-        std::cout << "All is well: "<< corner << "   " << corner_t <<"\n";
-      }
-      else{
-        std::cout << "All is not well: "<< corner << "   " << corner_t <<"\n";
-      }
-*/
       //Build full self adjoint sparse matrix from upper triangle data
       Eigen::SparseMatrix<double> eigen_normal_matrix_full = eigen_normal_matrix.selfadjointView<Eigen::Upper>();
-/*
-      std::cout << "U_nnz=" << sam.nonZeros() << "\n";
-      sam = eigen_normal_matrix.selfadjointView<Eigen::Lower>();
-      std::cout << "L_nnz=" << sam.nonZeros() << "\n";
-*/
 
       //Set the sparse matrix values by reading the EIGEN arrays directly
       spss.set_csr_matrix(eigen_normal_matrix_full.outerSize(),
@@ -151,7 +119,7 @@ class linear_ls_strumpack_wrapper
       bvec << "\n";
       Amat.close();
       bvec.close();
-      exit(-1); //Assuming only the first matrix is requested; exit afterwards
+      exit(0); //Assuming only the first matrix is requested; exit afterwards
 #endif
       //Create solution vector initialised initially to 0.
       scitbx::af::shared<double> x(eigen_normal_matrix_full.rows(),0.);
@@ -174,7 +142,7 @@ class linear_ls_strumpack_wrapper
       }
       xvec << "\n\n";
       xvec.close();
-      exit(-1); //Assuming only the first matrix is requested; exit afterwards
+      exit(0); //Assuming only the first matrix is requested; exit afterwards
 #endif
     }
 

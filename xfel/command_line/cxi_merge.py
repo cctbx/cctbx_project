@@ -321,6 +321,36 @@ memory {
     .help = ValueError: Can only assign sequence of same size
 }
 levmar {
+  strumpack
+  { 
+    enable = False
+      .type = bool
+      .help = Using the STRUMPACK sparse solver backend. Will fail if unavailable.
+      .help = Follow instructions at https://github.com/ExaFEL/exafel_project/tree/master/95-strumpack_cctbx
+
+    mpi = False
+      .type = bool
+      .help = Use the distributed MPI STRUMPACK backend. Ensure mpi4py and STRUMPACK
+      .help = (dependencies included) have been built against the same MPI implementation.
+
+    algorithm = *automatic direct refine prec_gmres gmres prec_bicgstab bicgstab
+      .type = choice
+      .help = Choice of linear solver algorithm. See http://portal.nersc.gov/project/sparse/strumpack/
+      .help = for further information.
+
+    reordering = *natural metis parmetis scotch ptscotch rcm geometric 
+      .type = choice
+      .help = Matrix reordering strategy. Note: parallel algorithms (parmetis, ptscotch) only
+      .help = available when using MPI enabled solver
+    
+    hss = False
+      .type = bool
+      .help = Enable STRUMPACK HSS compression of sparse matrix.
+
+    verbose = False
+      .type = bool
+      .help = Print STRUMPACK solver information during solving.
+  }
   compute_cc_half = True
     .type = bool
     .help = Double the work, but only way to get reportable results. False for debug.
@@ -347,6 +377,10 @@ levmar {
     .help = Others are refineable parameters to choose from, default is only refine G and I.
     .type = choice
     .multiple = True
+  linsolver = *ldlt llt cg bicgstab
+    .type = choice
+    .help = Linear solver backend algorithm for LevMar
+    .help = ldlt and llt are Cholesky direct methods, cg and bicgstab are iterative methods
 }
 cell_rejection {
   unit_cell = Auto

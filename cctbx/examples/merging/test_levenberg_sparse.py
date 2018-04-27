@@ -10,10 +10,15 @@ from cctbx.examples.merging.data_subset import mapper_factory
 from scitbx.lstbx import normal_eqns
 from scitbx.lstbx import normal_eqns_solving
 from scitbx.matrix import sqr,col
+from scitbx.examples.bevington import linsolver_backend as lsb
 
 from cctbx.uctbx import unit_cell
 uc_params = (281,281,165,90,90,120)
 uc = unit_cell(uc_params)
+
+from xfel.command_line.cxi_merge import master_phil
+phil = iotbx.phil.process_command_line(args=[], master_string=master_phil).show()
+phil_params = phil.work.extract()
 
 def choice_as_bitflag(choices):
   from cctbx.examples.merging import ParameterFlags as p
@@ -28,42 +33,85 @@ def choice_as_bitflag(choices):
   return flags
 
 def choice_as_helper_base(choices):
- if "Deff" in choices or "Rxy" in choices:
-    from cctbx.examples.merging import postrefine_base as base_class
- else:
-    from cctbx.examples.merging import xscale6e as base_class
+  levmar_params = choices.parameter_flags,
+  levmar_linsolver = choices.linsolver
+  levmar_strum = choices.strumpack
+  if "Deff" in levmar_params or "Rxy" in levmar_params:
+    if levmar_strum==True:
+      from cctbx.examples.merging import postrefine_base_strumpack as base_class
+      print "Using postrefine_base_strumpack"
+    else:
+      from cctbx.examples.merging import postrefine_base as base_class
+      print "Using postrefine_base"
+  else:
+    if levmar_strum.enable==True:
+      try:
+        from cctbx.examples.merging import xscale_strumpack as base_class
+      except ImportError as ie:
+        print "%s"%ie
+        print "STRUMPACK not found. Please follow instructions at https://github.com/ExaFEL/exafel_project/tree/master/95-strumpack_cctbx"
+        exit(1)
+      print "Using xscale_strumpack"
+    else:
+      from cctbx.examples.merging import xscale6e as base_class
+      print "Using xscale6e"
+  
+  #Extract the linear solver backend data
+  if levmar_strum.enable != True:
+    base_class.linsolver = getattr(lsb, levmar_linsolver, lsb.ldlt)
+    base_class.strum = False
+  else:
+    from scitbx.examples.bevington import strumpack_algo as sa
+    from scitbx.examples.bevington import strumpack_reorder as sr
+    base_class.strum = True
+    base_class.linsolver = getattr(sa, levmar_strum.algorithm, sa.automatic)
+    base_class.reorder = getattr(sr, levmar_strum.reordering, sr.natural)
+    base_class.verbose = getattr(levmar_strum, 'verbose', False)
+    base_class.enableHSS = getattr(levmar_strum, 'hss', False)
 
- class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
-  def __init__(pfh, initial_estimates):
-    super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
-    pfh.x_0 = flex.double(initial_estimates)
-    pfh.restart()
-    pfh.counter = 0
-    # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
+  class levenberg_helper(base_class, normal_eqns.non_linear_ls_mixin):
+    def __init__(pfh, initial_estimates):
+      super(levenberg_helper, pfh).__init__(n_parameters=len(initial_estimates))
+      pfh.x_0 = flex.double(initial_estimates)
+      pfh.restart()
+      pfh.counter = 0
+      pfh.linsolver = base_class.linsolver
+      # do this outside the factory function pfh.set_cpp_data(fsim, NI, NG)
 
-  def restart(pfh):
-    pfh.x = pfh.x_0.deep_copy()
-    pfh.old_x = None
+    #Phil param levmar.linsolver chooses linear solver backend
+    def solve(self):
+      if base_class.strum == False:
+        self.step_equations().solve(base_class.linsolver)
+      else:
+        self.step_equations().solve(base_class.linsolver, base_class.reorder, base_class.verbose, base_class.enableHSS)
+        
 
-  def step_forward(pfh):
-    pfh.old_x = pfh.x.deep_copy()
-    pfh.x += pfh.step()
+    def restart(pfh):
+      pfh.x = pfh.x_0.deep_copy()
+      pfh.old_x = None
 
-  def step_backward(pfh):
-    assert pfh.old_x is not None
-    pfh.x, pfh.old_x = pfh.old_x, None
+    def step_forward(pfh):
+      pfh.old_x = pfh.x.deep_copy()
+      pfh.x += pfh.step()
 
-  def parameter_vector_norm(pfh):
-    return pfh.x.norm()
+    def step_backward(pfh):
+      assert pfh.old_x is not None
+      pfh.x, pfh.old_x = pfh.old_x, None
 
-  def build_up(pfh, objective_only=False):
-    if not objective_only: pfh.counter+=1
-    pfh.reset()
-    pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
- return levenberg_helper
+    def parameter_vector_norm(pfh):
+      return pfh.x.norm()
+
+    def build_up(pfh, objective_only=False):
+      if not objective_only: pfh.counter+=1
+      pfh.reset()
+      if (base_class.__name__ == "xscale6e"):
+        pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
+      elif(base_class.__name__ == "xscale_strumpack"):
+        pfh.access_cpp_build_up_directly_strumpack_eqn(objective_only, current_values = pfh.x)
+
+  return levenberg_helper
 
 class xscale6e(object):
-
   def __init__(self,Ibase,Gbase,FSIM,curvatures=False,**kwargs):
     # For backward compatibility handle the case where phil is undefined
     if "params" in kwargs.keys():
@@ -92,7 +140,7 @@ class xscale6e(object):
     if "Rxy" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(2*len(Gbase),0.0))
 
-    levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags)
+    levenberg_helper = choice_as_helper_base(self.params.levmar)
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
     if kwargs.has_key("experiments"):
@@ -352,6 +400,103 @@ class xscale6e(object):
     print "%d cycles"%self.counter
     self.helper.show_eigen_summary()
 
+
+class xscale_strumpack(xscale6e):
+  
+  def __init__(self,Ibase,Gbase,FSIM,curvatures=False,**kwargs):
+    super(xscale_strumpack,self).__init__(Ibase,Gbase,FSIM,curvatures=False,**kwargs)
+
+  def esd_plot(self):
+    print "OK esd"
+
+    ### working on the esd problem:
+    self.helper.build_up()
+    norm_mat_packed_upper = self.helper.get_normal_matrix()
+    norm_mat_all_elems = self.packed_to_all(norm_mat_packed_upper)
+    diagonal_curvatures = self.helper.get_normal_matrix_diagonal()
+    NM = sqr(norm_mat_all_elems)
+
+    print "The normal matrix is:"
+    self.pretty(NM)
+
+    from scitbx.linalg.svd import inverse_via_svd
+    svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
+
+    print "ia",len(svd_inverse),len(sigma)
+    IA = sqr(svd_inverse)
+    for i in xrange(self.helper.x.size()):
+      if i == self.N_I or i == self.N_I + self.N_G:  print
+      print "%2d %10.4f %10.4f %10.4f"%(
+        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i)))
+
+    from matplotlib import pyplot as plt
+    plt.plot(flex.sqrt(flex.double([IA(i,i) for i in xrange(self.N_I)])),
+             flex.sqrt(1./diagonal_curvatures[:self.N_I]), "r.")
+    plt.title("Structure factor e.s.d's from normal matrix curvatures vs. SVD variance diagonal")
+    plt.axes().set_aspect("equal")
+    plt.show()
+    return
+
+    # additional work to validate the Cholesky factorization and investigate stability:
+    identity = IA * NM
+
+    print "verify identity:"
+    self.pretty(identity,max_col=58,format="%7.1g")
+    # we can fool ourselves that the SVD gave us a perfect inverse:
+    self.pretty(identity,max_col=72,format="%4.0f")
+
+    ### figure out stuff about permutation matrices
+    self.helper.build_up()
+
+    ordering = self.helper.get_strumpack_permutation_ordering()
+    print "ordering:",list(ordering)
+    matcode = self.permutation_ordering_to_matrix(ordering)
+
+    print "matcode:"
+    self.pretty(matcode,max_col=72,format="%1d",zformat="%1d")
+
+    permuted_normal_matrix = (matcode.inverse())* NM *matcode
+    print "product"
+    self.pretty(permuted_normal_matrix)
+
+    ### Now work with the Cholesky factorization
+    cholesky_fac_packed_lower = self.helper.get_cholesky_lower()
+    Lower = self.lower_triangular_packed_to_matrix(cholesky_fac_packed_lower)
+    print "lower:"
+    self.pretty(Lower,max_col=59,format="%7.0g",zformat="%7.0g")
+
+    Transpose = Lower.transpose()
+    print "transpose"
+    self.pretty(Transpose,max_col=59,format="%7.0g",zformat="%7.0g")
+
+    diagonal_factor = self.helper.get_cholesky_diagonal()
+    Diag = self.diagonal_vector_to_matrix(diagonal_factor)
+    print "diagonal:"
+    self.pretty(Diag,max_col=59,format="%7.0g",zformat="%7.0g")
+
+    Composed = Lower * Diag * Transpose
+    print "composed"
+    self.pretty(Composed,max_col=67,format="%6.0g",zformat="%6.0g")
+
+    Diff = Composed - permuted_normal_matrix
+    print "diff"
+    self.prettynz(Diff,max_col=67,format="%6.0g",zformat="%6.0g")
+    #  OK, this proves that L * D * LT = P * A * P-1
+    #  in other words, Eigen has correctly factored the permuted normal matrix
+    ############
+
+    Variance_diagonal = self.unstable_matrix_inversion_diagonal(Lower,Diag,Transpose)
+
+    for i in xrange(self.helper.x.size()):
+      if i == self.N_I or i == self.N_I + self.N_G:  print
+      print "%2d %10.4f %10.4f %10.4f"%(
+        i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))),
+      print "svd err diag: %10.4f"%(IA(i,i)),"strumpack: %15.4f"%(Variance_diagonal[ordering[i]])
+
+  def show_summary(self):
+    print "%d cycles"%self.counter
+    #self.helper.show_strumpack_summary()
+
 class execute_case(object):
  def __init__(self,datadir,n_frame,transmittance,apply_noise,plot=False,esd_plot=False,half_data_flag=0):
   # read the ground truth values back in
@@ -374,8 +519,8 @@ class execute_case(object):
 
   T = Timer("%d frames, %f transmittance, %s noise"%(
              n_frame, transmittance, {False:"NO", True:"YES"}[apply_noise]))
-
-  mapper = mapper_factory(xscale6e)
+  #mapper = mapper_factory(xscale6e)
+  mapper = mapper_factory(xscale_strumpack)
   minimizer = mapper(I,G,I_visited,G_visited,FSIM)
 
   del T

@@ -167,7 +167,25 @@ namespace boost_python { namespace {
         (arg("objective_only"),arg("current_values")))
     ;
 
+#ifdef _STRUMPACK_
+    typedef scitbx::example::non_linear_ls_strumpack_wrapper nllssw;
+    typedef xscale_strumpack wt7e;
+    class_<wt7e, bases<nllssw, scf> >(
+      "xscale_strumpack", no_init)
+      .def(init<int>(arg("n_parameters")))
+      .def("access_cpp_build_up_directly_strumpack_eqn",&wt7e::access_cpp_build_up_directly_strumpack_eqn,
+        (arg("objective_only"),arg("current_values")))
+      .def("reset_mem", &wt7e::reset_mem)
+    ;
 
+    typedef postrefine_base_strumpack prbs;
+    class_<prbs, bases<wt7e > >(
+      "postrefine_base_strumpack", no_init)
+      .def(init<int>(arg("n_parameters")))
+      .def("access_cpp_build_up_directly_strumpack_eqn",&prbs::access_cpp_build_up_directly_strumpack_eqn,
+        (arg("objective_only"),arg("current_values")))
+    ;
+#endif 
   }
 
 }}

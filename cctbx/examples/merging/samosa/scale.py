@@ -11,7 +11,10 @@ from cctbx.examples.merging.data_subset import mapper_factory
 from cctbx import miller
 from xfel.merging.database.merging_database_flex import read_experiments
 from cctbx.examples.merging.test_levenberg_sparse import xscale6e
-
+try: 
+  from cctbx.examples.merging.test_levenberg_sparse import xscale_strumpack
+except Exception:
+  pass
 class execute_case(object):
  def __init__(self,datadir,work_params,plot=False,esd_plot=False,half_data_flag=0):
   casetag = work_params.output.prefix
