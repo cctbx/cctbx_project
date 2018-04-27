@@ -1147,8 +1147,10 @@ class RunBlockDialog(BaseDialog):
             return 12.5 # Defaults are from kapton tape experiments (this is kapton ring)
           elif item == "two_theta_high":
             return 22.8 # Defaults are from kapton tape experiments (this is water ring)
-          else:
+          elif item == "comment":
             return None
+          else:
+            raise AttributeError(item)
       block = defaults()
 
     else:
@@ -1344,6 +1346,7 @@ class RunBlockDialog(BaseDialog):
                                        label='Comment:',
                                        label_style='normal',
                                        label_size=(100, -1))
+    self.comment.ctr.SetValue(str(block.comment))
     self.runblock_sizer.Add(self.comment, flag=wx.EXPAND | wx.ALL,
                             border=10)
 
@@ -1622,6 +1625,91 @@ class RunBlockDialog(BaseDialog):
     dlg.Destroy()
     e.Skip()
 
+class SelectRunBlocksDialog(BaseDialog):
+  def __init__(self, parent, trial,
+               label_style='bold',
+               content_style='normal',
+               db=None,
+               *args, **kwargs):
+    BaseDialog.__init__(self, parent, label_style=label_style,
+                        content_style=content_style, *args, **kwargs)
+
+    self.db = db
+    self.trial = trial
+
+    self.top_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+    self.button_panel = wx.Panel(self)
+    self.button_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.button_panel.SetSizer(self.button_sizer)
+
+    self.runblocks_panel = ScrolledPanel(self, size=(500, 400))
+
+    # Populate rungroups with current values from db
+    self.trial_rungroups = [t.id for t in trial.rungroups]
+    self.all_rungroups = self.db.get_all_rungroups()
+    choices = []
+    selected = []
+    for rungroup in self.all_rungroups:
+      selected.append(rungroup.id in self.trial_rungroups)
+      if rungroup.endrun is None:
+        desc = "[%d] %d+"%(rungroup.id, rungroup.startrun)
+      else:
+        desc = "[%d] %d-%d"%(rungroup.id, rungroup.startrun, rungroup.endrun)
+      if rungroup.comment is not None:
+        desc += " " + rungroup.comment
+
+      choices.append(desc)
+
+    self.runblocks_list = gctr.CheckListCtrl(self.runblocks_panel,
+                                             label='Select runblocks',
+                                             label_size=(40, -1),
+                                             label_style='normal',
+                                             ctrl_size=(450, 350),
+                                             choices=choices)
+    for i in xrange(len(selected)):
+      self.runblocks_list.ctr.Check(i, selected[i])
+
+    self.runblocks_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.runblocks_panel.SetSizer(self.runblocks_sizer)
+
+    self.runblocks_sizer.Add(self.runblocks_list, 1, flag=wx.EXPAND)
+
+    # Add panels to main sizer
+    self.top_sizer.Add(self.button_panel,
+                       flag=wx.LEFT, border=10)
+    self.top_sizer.Add(self.runblocks_panel,
+                       flag=wx.EXPAND | wx.RIGHT | wx.LEFT, border=10)
+    self.main_sizer.Add(self.top_sizer,
+                        flag=wx.EXPAND| wx.TOP | wx.BOTTOM, border=10)
+    # Dialog control
+    dialog_box = self.CreateSeparatedButtonSizer(wx.OK | wx.CANCEL)
+    self.main_sizer.Add(dialog_box,
+                   flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
+                   border=10)
+
+    self.Layout()
+    self.SetTitle('Select run blocks')
+
+    # Button bindings
+    self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
+
+  def onOK(self, e):
+    trial_rungroups = [t.id for t in self.trial.rungroups]
+    trials = self.db.get_all_trials()
+
+    for i, rungroup in enumerate(self.all_rungroups):
+      if self.runblocks_list.ctr.IsChecked(i):
+        if not rungroup.id in trial_rungroups:
+          self.trial.add_rungroup(rungroup)
+        rungroup.active = True
+      else:
+        if rungroup.id in trial_rungroups:
+          self.trial.remove_rungroup(rungroup)
+        if not any([rungroup.id in [rg.id for rg in t.rungroups] for t in trials]):
+          rungroup.active = False
+
+    e.Skip()
 
 class TrialDialog(BaseDialog):
   def __init__(self, parent, db,

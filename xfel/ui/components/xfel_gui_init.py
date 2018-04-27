@@ -2890,6 +2890,8 @@ class TrialPanel(wx.Panel):
     # Add "New Block" button to a separate sizer (so it is always on bottom)
     self.btn_add_block = wx.Button(self.add_panel, label='New Block',
                                    size=(200, -1))
+    self.btn_select_blocks = wx.Button(self.add_panel, label='Select Blocks',
+                                       size=(200, -1))
     self.btn_view_phil = wx.BitmapButton(self.add_panel,
                         bitmap=wx.Bitmap('{}/16x16/viewmag.png'.format(icons)))
     self.chk_active = wx.CheckBox(self.add_panel, label='Active Trial')
@@ -2898,6 +2900,9 @@ class TrialPanel(wx.Panel):
     self.view_sizer.Add(self.chk_active, flag=wx.EXPAND)
 
     self.add_sizer.Add(self.btn_add_block,
+                       flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
+                       border=10)
+    self.add_sizer.Add(self.btn_select_blocks,
                        flag=wx.TOP | wx.LEFT | wx.RIGHT | wx.ALIGN_CENTER,
                        border=10)
     self.add_sizer.Add(self.view_sizer,
@@ -2909,6 +2914,7 @@ class TrialPanel(wx.Panel):
 
     # Bindings
     self.Bind(wx.EVT_BUTTON, self.onAddBlock, self.btn_add_block)
+    self.Bind(wx.EVT_BUTTON, self.onSelectBlocks, self.btn_select_blocks)
     self.Bind(wx.EVT_BUTTON, self.onViewPHIL, self.btn_view_phil)
     self.chk_active.Bind(wx.EVT_CHECKBOX, self.onToggleActivity)
 
@@ -2934,6 +2940,15 @@ class TrialPanel(wx.Panel):
     if (rblock_dlg.ShowModal() == wx.ID_OK):
       self.refresh_trial()
     rblock_dlg.Destroy()
+
+  def onSelectBlocks(self, e):
+    rblocksel_dlg = dlg.SelectRunBlocksDialog(self, trial=self.trial,
+                                           db=self.db)
+    rblocksel_dlg.Fit()
+
+    if (rblocksel_dlg.ShowModal() == wx.ID_OK):
+      self.refresh_trial()
+    rblocksel_dlg.Destroy()
 
   def refresh_trial(self):
     self.block_sizer.DeleteWindows()
