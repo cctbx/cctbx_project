@@ -228,10 +228,46 @@ YTGDHYATFSLIDQTC
   os.remove(seq_filename)
 
 # -----------------------------------------------------------------------------
+def test_miller_array_datatype():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+
+  dm = DataManager(['miller_array', 'phil'])
+  dm.process_miller_array_file(data_mtz)
+
+  # test labels
+  labels = ['M_ISYM', 'BATCH', 'I, SIGI', 'IPR, SIGIPR', 'FRACTIONCALC',
+            'XDET', 'YDET', 'ROT', 'WIDTH', 'LP', 'MPART', 'FLAG', 'BGPKRATIOS']
+  for label in dm.get_miller_array_labels():
+    assert(label in labels)
+
+  assert(len(dm.get_miller_arrays()) == len(dm.get_miller_array_labels()))
+
+  # test access by label
+  label = dm.get_miller_array_labels()[3]
+  new_label = ', '.join(dm.get_miller_arrays(labels=[label])[0].info().labels)
+  assert(label == new_label)
+
+  # test custom PHIL
+  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(),
+                     overwrite=True)
+  loaded_phil = libtbx.phil.parse(file_name='test.phil')
+  new_dm = DataManager(['miller_array', 'phil'])
+  new_dm.load_phil_scope(loaded_phil)
+  assert(data_mtz == new_dm.get_default_miller_array_name())
+  for label in new_dm.get_miller_array_labels():
+    assert(label in labels)
+
+  os.remove('test.phil')
+
+# -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
   test_sequence_datatype()
+  test_miller_array_datatype()
 
   print('OK')

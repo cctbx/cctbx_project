@@ -134,14 +134,28 @@ class DataManagerBase(object):
     if (hasattr(self,'datatype') and (self.datatype not in self.datatypes)):
       self.datatypes.append(self.datatype)
 
+    # functions for custom PHIL
+    self.add_custom_phil_str = 'add_%s_phil_str'
+    self.export_custom_phil_extract = 'export_%s_phil_extract'
+    self.load_custom_phil_extract = 'load_%s_phil_extract'
+
     # dynamically construct master PHIL string
-    self.master_phil_str = 'data_manager {'
+    self.master_phil_str = 'data_manager {\n'
     for datatype in self.datatypes:
-      # model_files = None
-      #   .type = path
-      #   .multiple = True
-      self.master_phil_str += '%s_files = None\n' % datatype
-      self.master_phil_str += '.type = path\n.multiple=True\n'
+
+      # check if a datatype has a custom PHIL str
+      if (hasattr(self, self.add_custom_phil_str % datatype)):
+        custom_phil_str = getattr(self, self.add_custom_phil_str % datatype)()
+        self.master_phil_str += custom_phil_str
+
+      # default PHIL
+      else:
+        # model_files = None
+        #   .type = path
+        #   .multiple = True
+        self.master_phil_str += '%s_files = None\n' % datatype
+        self.master_phil_str += '.type = path\n.multiple=True\n'
+
       # default_model = None
       #   .type = path
       self.master_phil_str += 'default_%s = None\n' % datatype
@@ -182,9 +196,14 @@ class DataManagerBase(object):
     '''
     phil_extract = self.master_phil.extract()
     for datatype in self.datatypes:
-      filenames = self._get_names(datatype)
+      if (hasattr(self, self.export_custom_phil_extract % datatype)):
+        setattr(phil_extract.data_manager, '%s' % datatype,
+                getattr(self, self.export_custom_phil_extract % datatype)())
+      else:
+        filenames = self._get_names(datatype)
+        setattr(phil_extract.data_manager, '%s_files' % datatype, filenames)
+
       default = self._get_default_name(datatype)
-      setattr(phil_extract.data_manager, '%s_files' % datatype, filenames)
       setattr(phil_extract.data_manager, 'default_%s' % datatype, default)
 
     working_phil = self.master_phil.format(python_object=phil_extract)
@@ -211,13 +230,16 @@ class DataManagerBase(object):
 
     # append files, default file is not overridden
     for datatype in self.datatypes:
-      filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
-                          None)
-      # filenames are reversed to preserve original order
-      for filename in reversed(filenames):
-        # call type-specific function (e.g. self.process_model_file())
-        # checks if file is already in DataManager
-        getattr(self, 'process_%s_file' % datatype)(filename)
+      if (hasattr(self, self.load_custom_phil_extract % datatype)):
+        getattr(self, self.load_custom_phil_extract % datatype)(phil_extract)
+      else:
+        filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
+                            None)
+        # filenames are reversed to preserve original order
+        for filename in reversed(filenames):
+          # call type-specific function (e.g. self.process_model_file())
+          # checks if file is already in DataManager
+          getattr(self, 'process_%s_file' % datatype)(filename)
 
   # ---------------------------------------------------------------------------
   def supports(self, datatype):
