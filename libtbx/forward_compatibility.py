@@ -84,17 +84,19 @@ class newobject(object):
 
   __slots__ = []
 
-# export newobject as object
-object = newobject
-del newobject
-
-try:
-  # If builtins exists, monkeypatch it.
-  import builtins
-  builtins.object = object
-except ImportError:
-  # builtins may be missing, eg. in case of running an installer script
-  pass
+if vers_info < (3,0):
+  # export newobject as object
+  object = newobject
+  del newobject
+  try:
+    # If builtins exists, monkeypatch it.
+    import builtins
+    builtins.object = object
+  except ImportError:
+    # builtins may be missing, eg. in case of running an installer script
+    pass
+else:
+  object = object # Statement required to export the name
 
 if (vers_info < (2,6)):
   import cmath
