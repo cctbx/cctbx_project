@@ -52,9 +52,36 @@ master_phil = libtbx.phil.parse("""
   get_half_height_width = True
     .type = bool
     .help = Use 4 times half-width at half-height as estimate of max size
-  ncs_file = None
+  symmetry = None
+    .type = str
+    .help = Optional symmetry (e.g., D7, I, C2) to be used if extract_unique\
+            is set.  Alternative to symmetry_file.
+  symmetry_file = None
     .type = path
-    .help = NCS file (to be offset based on origin shift)
+    .help = Symmetry file to be offset based on origin shift.\
+            Symmetry or symmetry_file required if extract_unique=True.  \
+            May be a \
+            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file. 
+  sequence_file = None
+    .type = path
+    .help = Sequence file (any standard format). Can be unique part or \
+            all copies.  Either sequence file or \
+            molecular mass required if extract_unique is True.
+  molecular_mass = None
+    .type = float
+    .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
+              Used in identification \
+            of unique part of map. Either a sequence file or molecular mass\
+            is required if extract_unique is True.
+  solvent_content = None
+    .type = float
+    .help = Optional fraction of volume of map that is empty.  \
+            Used in identification \
+            of unique part of map.
+  extract_unique = False
+    .type = bool
+    .help = Extract unique part of map. Requires symmetry_file or symmetry and\
+            either sequence file or molecular mass to be supplied. 
   mask_atoms=False
     .type=bool
     .help = Set map values to 0 outside molecular mask
@@ -103,6 +130,7 @@ master_phil = libtbx.phil.parse("""
 master_params = master_phil
 
 def run(args, crystal_symmetry=None,
+     ncs_object=None,
      pdb_hierarchy=None,
      map_data=None,
      lower_bounds=None,
@@ -144,8 +172,10 @@ Parameters:"""%h
   if params.pdb_file and not inputs.pdb_file_names and not pdb_hierarchy:
     inputs.pdb_file_names=[params.pdb_file]
   if(len(inputs.pdb_file_names)!=1 and not params.density_select and not
-    pdb_hierarchy and not params.keep_map_size and not params.upper_bounds):
-    raise Sorry("PDB file is needed unless density_select or keep_map_size or bounds are set .")
+    pdb_hierarchy and not params.keep_map_size and not params.upper_bounds
+     and not params.extract_unique):
+    raise Sorry("PDB file is needed unless extract_unique, "+
+      "density_select, keep_map_size \nor bounds are set .")
   if (len(inputs.pdb_file_names)!=1 and not pdb_hierarchy and \
        (params.mask_atoms or params.soft_mask )):
     raise Sorry("PDB file is needed for mask_atoms or soft_mask")
@@ -157,6 +187,8 @@ Parameters:"""%h
     raise Sorry("Cannot set both keep_map_size and bounds")
   if (params.upper_bounds and not params.lower_bounds):
     raise Sorry("Please set lower_bounds if you set upper_bounds")
+  if (params.extract_unique and not params.resolution):
+    raise Sorry("Please set resolution for extract_unique")
   print_statistics.make_sub_header("pdb model", out=log)
   if len(inputs.pdb_file_names)>0:
     pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
@@ -244,6 +276,33 @@ Parameters:"""%h
   selection = xray_structure.selection_within(
     radius    = params.selection_radius,
     selection = selection)
+
+  if not ncs_object:
+    from mmtbx.ncs.ncs import ncs
+    ncs_object=ncs()
+    if params.symmetry_file:
+      ncs_object.read_ncs(params.symmetry_file,log=log)
+      print >>log,"Total of %s operators read" %(ncs_object.max_operators())
+  if not ncs_object or ncs_object.max_operators()<1:
+      print >>log,"No symmetry available"
+
+  # Get sequence if extract_unique is set
+  if params.extract_unique:
+    if params.sequence_file and not params.molecular_mass:
+      sequence=open(params.sequence_file).read()
+      # get molecular mass from sequence
+      from iotbx.bioinformatics import text_from_chains_matching_chain_type
+      n_protein=text_from_chains_matching_chain_type(
+        text=sequence,chain_type='PROTEIN')
+      n_rna=text_from_chains_matching_chain_type(
+        text=sequence,chain_type='RNA')
+      n_dna=text_from_chains_matching_chain_type(
+        text=sequence,chain_type='DNA')
+      params.molecular_mass=n_protein*110+(n_rna+n_dna)*330
+    elif not params.molecular_mass:
+      raise Sorry("Need a sequence file or molecular mass for extract_unique")
+  else:
+    molecular_mass=None
 #
   if params.density_select:
     print_statistics.make_sub_header(
@@ -280,9 +339,16 @@ Parameters:"""%h
     mask_atoms_atom_radius = params.mask_atoms_atom_radius,
     value_outside_atoms = params.value_outside_atoms,
     keep_map_size         = params.keep_map_size,
-    restrict_map_size         = params.restrict_map_size,
+    restrict_map_size     = params.restrict_map_size,
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
+    extract_unique        = params.extract_unique,
+    solvent_content       = params.solvent_content,
+    molecular_mass        = params.molecular_mass,
+    resolution            = params.resolution,
+    ncs_object            = ncs_object,
+    symmetry              = params.symmetry,
+ 
     )
 
   ph_box = pdb_hierarchy.select(selection)
@@ -312,20 +378,8 @@ Parameters:"""%h
     box.unit_cell_parameters_from_ccp4_map=None
     box.unit_cell_parameters_deduced_from_map_grid=None
 
-  if params.ncs_file:
-    from mmtbx.ncs.ncs import ncs
-    ncs_object=ncs()
-    ncs_object.read_ncs(params.ncs_file,log=log)
-    print >>log,"Total of %s operators read" %(ncs_object.max_operators())
-    if not ncs_object or ncs_object.max_operators()<1:
-      print >>log,"Skipping...no NCS available"
-    elif box.shift_cart:
-      from scitbx.math import  matrix
-      ncs_object=ncs_object.coordinate_offset(
-       coordinate_offset=matrix.col(box.shift_cart))
-    box.ncs_object=ncs_object.deep_copy()
-  else:
-    box.ncs_object=None
+  # ncs_object is original 
+  #  box.ncs_object is shifted by shift_cart
 
   print >>log,"Box cell dimensions: (%.2f, %.2f, %.2f) A" %(
       box.box_crystal_symmetry.unit_cell().parameters()[:3])
@@ -388,23 +442,27 @@ Parameters:"""%h
         ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
           box.xray_structure_box.crystal_symmetry())
 
-    # Write NCS file if NCS and keep_origin==False
-    if params.ncs_file and ncs_object and ncs_object.max_operators()>0:
+    # Write NCS file if NCS 
+    if ncs_object and ncs_object.max_operators()>0:
       if(params.output_file_name_prefix is None):
-        output_ncs_file = "%s_box.ncs_spec"%output_prefix
+        output_symmetry_file = "%s_box.ncs_spec"%output_prefix
       else:
-        output_ncs_file = "%s.ncs_spec"%params.output_file_name_prefix
+        output_symmetry_file = "%s.ncs_spec"%params.output_file_name_prefix
 
       if params.keep_origin:
-        print >>log,"\nDuplicating NCS in %s and writing to %s" %(
-          params.ncs_file,output_ncs_file)
+        if params.symmetry_file:
+          print >>log,"\nDuplicating symmetry in %s and writing to %s" %(
+            params.symmetry_file,output_symmetry_file)
+        else:
+          print >>log,"\nWriting symmetry to %s" %(output_symmetry_file)
         ncs_object.format_all_for_group_specification(
-          file_name=output_ncs_file)
+          file_name=output_symmetry_file)
+
       else:
-        print >>log,"\nOffsetting NCS in %s and writing to %s" %(
-          params.ncs_file,output_ncs_file)
+        print >>log,"\nOffsetting symmetry in %s and writing to %s" %(
+          params.symmetry_file,output_symmetry_file)
         box.ncs_object.format_all_for_group_specification(
-          file_name=output_ncs_file)
+          file_name=output_symmetry_file)
 
     # Write ccp4 map.  Shift back to original location if keep_origin=True
     if("ccp4" in params.output_format):

@@ -127,7 +127,8 @@ def assert_same_gridding(map_1, map_2,
   if([f1,f2,f3].count(True)!=3):
     raise Sorry(Sorry_message)
 
-def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
+def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None,
+    ncs_object=None):
   shift_needed = not \
     (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
      map_data.is_0_based())
@@ -146,8 +147,11 @@ def shift_origin_if_needed(map_data, sites_cart=None, crystal_symmetry=None):
       shift_frac = [-sx,-sy,-sz]
       shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
       sites_cart = sites_cart + flex.vec3_double(sites_cart.size(), shift_cart)
+      if ncs_object:
+        ncs_object=ncs_object.deep_copy(coordinate_offset=shift_cart)
   return group_args(
     map_data   = map_data,
+    ncs_object = ncs_object,
     sites_cart = sites_cart,
     shift_frac = shift_frac,
     shift_cart = shift_cart)

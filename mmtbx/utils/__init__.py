@@ -2336,7 +2336,7 @@ class set_map_to_value(object):
 
 class shift_origin(object):
   def __init__(self, map_data, pdb_hierarchy=None, xray_structure=None,
-                     crystal_symmetry=None):
+                     crystal_symmetry=None, ncs_object=None):
     assert [pdb_hierarchy, xray_structure].count(None)==1
     if(pdb_hierarchy is not None):
       assert crystal_symmetry is not None
@@ -2350,13 +2350,17 @@ class shift_origin(object):
     self.pdb_hierarchy = pdb_hierarchy
     self.xray_structure = xray_structure
     self.crystal_symmetry = crystal_symmetry
+    self.ncs_object = ncs_object
     self.map_data = map_data
     # Shift origin if needed
     soin = maptbx.shift_origin_if_needed(
       map_data         = self.map_data,
+      ncs_object       = self.ncs_object,
       sites_cart       = sites_cart,
       crystal_symmetry = crystal_symmetry)
     self.map_data       = soin.map_data
+    self.ncs_object     = soin.ncs_object
+    self.ncs_object     = soin.ncs_object
     self.shift_cart     = soin.shift_cart
     self.shift_frac     = soin.shift_frac
     sites_cart_shifted  = soin.sites_cart
@@ -2411,18 +2415,46 @@ class extract_box_around_model_and_map(object):
                restrict_map_size=False,
                lower_bounds=None,
                upper_bounds=None,
+               extract_unique=None,
+               solvent_content=None,
+               resolution=None,
+               molecular_mass=None,
+               ncs_object=None,
+               symmetry=None,
                    ):
     adopt_init_args(self, locals())
     cs = xray_structure.crystal_symmetry()
     soo = shift_origin(map_data=self.map_data,
-      xray_structure=self.xray_structure)
+      xray_structure=self.xray_structure,
+      ncs_object=self.ncs_object)
     self.map_data = soo.map_data
+    self.ncs_object = soo.ncs_object
+    self.crystal_symmetry = soo.crystal_symmetry
     self.shift_cart = soo.shift_cart
     if(selection is None):
       xray_structure_selected = soo.xray_structure.deep_copy_scatterers()
     else:
       xray_structure_selected = soo.xray_structure.select(selection=selection)
     cushion = flex.double(cs.unit_cell().fractionalize((box_cushion,)*3))
+
+    if (extract_unique): # extracts just au density (not everything in the
+      #   box). Map is superimposed on self.map_data. We are going to use this
+      # box_map_data but everything else we will set with lower_bounds and
+      # upper_bounds
+      from scitbx.matrix import col
+      extract_unique_map_data,extract_unique_crystal_symmetry=\
+         self.get_map_from_segment_and_split()
+      lower_bounds=extract_unique_map_data.origin()
+      upper_bounds=tuple(
+        col(extract_unique_map_data.focus())-col((1,1,1)))
+      # shift the map so it is in the same position as the box map will be in 
+      extract_unique_map_data.reshape(flex.grid(extract_unique_map_data.all()))
+
+      # Now box map is going to extract the same volume, but not the same
+      #  contents because extract_unique keeps just the density for the 
+      #  molecule, not the surroundings.  We are going to replace the
+      #  map_box density with extract_unique_map_data below.
+
     if (keep_map_size):  # do not change anything...keep entire map
       self.pdb_outside_box_msg=""
       frac_min = [0.,0.,0.]
@@ -2473,6 +2505,21 @@ class extract_box_around_model_and_map(object):
       parameters=(abc[0],abc[1],abc[2],p[3],p[4],p[5]))
     self.box_crystal_symmetry = crystal.symmetry(
       unit_cell=new_unit_cell_box, space_group="P1")
+
+    if extract_unique: # use extract_unique_map_data in place of map_box
+      assert extract_unique_map_data.origin()==self.map_box.origin()
+      assert extract_unique_map_data.all()==self.map_box.all()
+      assert extract_unique_crystal_symmetry.is_similar_symmetry(
+         self.box_crystal_symmetry)
+      self.map_box=extract_unique_map_data
+
+    # Shift ncs_object to match the box
+    if self.ncs_object:
+      self.ncs_object=self.ncs_object.coordinate_offset(
+         secondary_shift_cart)
+    else:
+      self.ncs_object=None
+
     sp = crystal.special_position_settings(self.box_crystal_symmetry)
     # new xray_structure in the box
     sites_frac_new = xray_structure_selected.sites_frac()+secondary_shift_frac
@@ -2527,6 +2574,36 @@ class extract_box_around_model_and_map(object):
 
   def cut_and_copy_map(self,map_data=None):
     return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
+
+  def get_map_from_segment_and_split(self):
+    from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
+    # NOTE: calling with shifted map data and ncs_object
+    #    (origin shifted to 0,0,0)
+    args=[]
+    args.append("write_files=False")
+    args.append("add_neighbors=False") # XXX perhaps allow user to set this
+    args.append("save_box_map_ncs_au=True")
+    args.append("density_select=False") # ZZZ
+    #self.ncs_object=None #ZZ 
+    #args.append("check_ncs=True") # ZZZ
+    #args.append("symmetry=C7") # ZZZ
+    args.append("solvent_content=%s" %(self.solvent_content))
+    args.append("resolution=%s" %(self.resolution))
+    args.append("auto_sharpen=False")
+    if self.molecular_mass:
+      args.append("molecular_mass=%s" %self.molecular_mass)
+    if self.symmetry:
+      args.append("symmetry=%s" %self.symmetry)
+    # import params from s&s here and set them.  set write_files=false etc.
+
+    ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
+      segment_and_split_map(args,
+          map_data=self.map_data,
+          crystal_symmetry=self.crystal_symmetry,
+          ncs_obj=self.ncs_object)
+    ncs_au_map_data=tracking_data.box_map_ncs_au_map_data
+    ncs_au_crystal_symmetry=tracking_data.box_map_ncs_au_crystal_symmetry
+    return ncs_au_map_data,ncs_au_crystal_symmetry
 
   def select_box(self,threshold,xrs=None,get_half_height_width=None):
     # Select box where data are positive (> threshold*max)
@@ -2691,7 +2768,8 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       average            = -1,
       standard_deviation = -1)
 
-  def origin_shift_grid_units(self,reverse=False):
+  def origin_shift_grid_units(self,unit_cell=None,
+       reverse=False):
     # Get origin shift in grid units from shift_cart
     from scitbx.matrix import col
     cell=self.xray_structure_box.crystal_symmetry().unit_cell().parameters()[:3]

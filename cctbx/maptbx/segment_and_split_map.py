@@ -1110,6 +1110,11 @@ master_phil = iotbx.phil.parse("""
                   your machine into account.
         .short_caption = Memory check
 
+     save_box_map_ncs_au = False
+       .type = bool
+       .help = Controls whether the map_box ncs_au is saved. Internal use only
+       .style = hidden
+
      write_files = True
        .type = bool
        .help = Controls whether files are written
@@ -2020,6 +2025,8 @@ class info_object:
       box_map_bounds_first=None,
       box_map_bounds_last=None,
       final_output_sharpened_map_file=None,
+      box_map_ncs_au=None,
+      box_map_ncs_au_crystal_symmetry=None,
     ):
     if not selected_regions: selected_regions=[]
     if not ncs_related_regions: ncs_related_regions=[]
@@ -2033,6 +2040,44 @@ class info_object:
     self.object_type="segmentation_info"
     import time
     self.init_asctime=time.asctime()
+
+  def set_box_map_ncs_au_map_data(self,box_map_ncs_au_map_data=None,
+       box_map_ncs_au_crystal_symmetry=None):
+    self.box_map_ncs_au_map_data=box_map_ncs_au_map_data.deep_copy()
+    self.box_map_ncs_au_crystal_symmetry=box_map_ncs_au_crystal_symmetry
+    if self.origin_shift and self.origin_shift != (0,0,0):
+        self.box_map_ncs_au_map_data=self.shift_map_back(
+      map_data=self.box_map_ncs_au_map_data,
+      crystal_symmetry=self.box_map_ncs_au_crystal_symmetry,
+      shift_cart=self.origin_shift)
+ 
+  def shift_map_back(self,map_data=None,
+      crystal_symmetry=None,shift_cart=None):
+    from scitbx.matrix import col
+    new_origin=self.origin_shift_grid_units(crystal_symmetry=crystal_symmetry,
+      map_data=map_data,shift_cart=shift_cart,reverse=True)
+    new_all=list(col(map_data.all())+col(new_origin))
+    shifted_map_data = map_data.deep_copy()
+    shifted_map_data.resize(flex.grid(new_origin,new_all))
+    return shifted_map_data
+
+  def origin_shift_grid_units(self,crystal_symmetry=None,map_data=None,
+       shift_cart=None,reverse=False):
+    # Get origin shift in grid units from shift_cart
+    from scitbx.matrix import col
+    cell=crystal_symmetry.unit_cell().parameters()[:3]
+    origin_shift_grid=[]
+    for s,c,a in zip(shift_cart,cell,map_data.all()):
+      if s<0:
+        delta=-0.5
+      else:
+        delta=0.5
+      origin_shift_grid.append( int(delta+ a*s/c))
+    if reverse:
+      return list(-col(origin_shift_grid))
+    else:
+      return origin_shift_grid
+
 
   def is_segmentation_info_object(self):
     return True
@@ -3412,7 +3457,9 @@ def select_remaining_ncs_ops( map_data=None,
 
   # identify which NCS ops still apply.  Choose the ones that maximize
   # scoring with score_ncs_in_map
-
+  if ncs_object.max_operators()<1:
+    return ncs_object
+    
   used_ncs_id_list=[ncs_object.ncs_groups()[0].identity_op_id()]
   ncs_copies=ncs_object.max_operators()
 
@@ -3460,7 +3507,8 @@ def run_get_ncs_from_map(params=None,
 
   # Get or check NCS operators. Try various possibilities for center of NCS
   ncs_obj_to_check=None
-  if params.reconstruction_symmetry.symmetry and (not ncs_obj):
+  if params.reconstruction_symmetry.symmetry and (
+     not ncs_obj or ncs_obj.max_operators()<2):
     center_try_list=[True,False]
   elif ncs_obj:
     center_try_list=[True]
@@ -3542,7 +3590,7 @@ def get_ncs_from_map(params=None,
     min_ncs_cc=params.reconstruction_symmetry.min_ncs_cc
 
   # if ncs_obj_to_check is supplied...just use that ncs
-  if ncs_obj_to_check:
+  if ncs_obj_to_check and ncs_obj_to_check.max_operators()>1:
     symmetry="SUPPLIED NCS"
 
 
@@ -3901,7 +3949,7 @@ def get_ncs_list(params=None,symmetry=None,
    map_data=None,
     out=sys.stdout):
 
-  if ncs_obj_to_check:
+  if ncs_obj_to_check and ncs_obj_to_check.max_operators()>1:
     return [ncs_obj_to_check],["SUPPLIED NCS"]
 
   ncs_list=[]
@@ -4014,7 +4062,7 @@ def find_helical_symmetry(params=None,
 
   print >>out,\
     "\nLooking for helical symmetry with center at (%.2f, %.2f, %.2f) A\n" %(
-      symmetry_center)
+      tuple(symmetry_center))
   print >>out,"\nFinding likely translations along z..."
 
   map_coeffs,dummy=get_f_phases_from_map(map_data=map_data,
@@ -5158,8 +5206,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         "b_iso, \nb_sharpen, or resolution_dependent_b"
     params.map_modification.auto_sharpen=False
 
-  if params.output_files.output_directory and  \
-     not os.path.isdir(params.output_files.output_directory):
+  if params.control.write_files and \
+       params.output_files.output_directory and  \
+     (not os.path.isdir(params.output_files.output_directory)):
       os.mkdir(params.output_files.output_directory)
   if not params.output_files.output_directory:
     params.output_files.output_directory=""
@@ -5239,7 +5288,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         params.map_modification.b_iso is not None or \
         params.map_modification.b_sharpen is not None or \
         params.map_modification.resolution_dependent_b is not None:
-
       # Sharpen the map
       print >>out,"Auto-sharpening map before using it"
       local_params=deepcopy(params)
@@ -5300,7 +5348,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     print >>out,"\nAdjusting magnification by %7.3f\n" %(
        params.map_modification.magnification)
 
-    if params.input_files.ncs_file:
+    if ncs_obj:
       # Magnify ncs
       print >>out,"NCS before applying magnification..."
       ncs_obj.format_all_for_group_specification(out=out)
@@ -5380,7 +5428,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       args.append("get_half_height_width=%s" %(
         params.segmentation.get_half_height_width))
     if params.input_files.ncs_file:
-      args.append("ncs_file=%s" %(params.input_files.ncs_file))
+      args.append("symmetry_file=%s" %(params.input_files.ncs_file))
     if params.input_files.pdb_file:
       args.append("pdb_file=%s" %(params.input_files.pdb_file))
     args.append("ccp4_map_file=%s" %(params.input_files.map_file))
@@ -5394,6 +5442,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       print >>out,"\nRunning map_box with supplied bounds"
       box=run_map_box(args,
           map_data=map_data,
+          ncs_object=ncs_obj,
           crystal_symmetry=crystal_symmetry,
           lower_bounds=params.segmentation.lower_bounds,
           upper_bounds=params.segmentation.upper_bounds,
@@ -5404,9 +5453,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       box=run_map_box(["density_select=True"]+args,
        map_data=map_data,
        crystal_symmetry=crystal_symmetry,
+       ncs_object=ncs_obj,
        write_output_files=params.output_files.write_output_maps,
        log=out)
-      #box=run_map_box(["keep_map_size=True"]+args, map_data=map_data, crystal_symmetry=crystal_symmetry, log=out)
 
     # Run again to select au box
     shifted_unique_closest_sites=None
@@ -5436,6 +5485,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         box=run_map_box(args,lower_bounds=lower_bounds,
           map_data=map_data,
           crystal_symmetry=crystal_symmetry,
+          ncs_object=ncs_obj,
           upper_bounds=upper_bounds, log=out)
         box.map_box=box.map_box.as_double()  # Do we need double?
         shifted_unique_closest_sites=unique_closest_sites+box.shift_cart
@@ -5450,11 +5500,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       box=run_map_box(args,
         map_data=map_data,
         crystal_symmetry=crystal_symmetry,
+        ncs_object=ncs_obj,
         lower_bounds=lower_bounds,upper_bounds=upper_bounds,
         write_output_files=params.output_files.write_output_maps,
         log=out)
 
     #-----------------------------
+
     if bounds_supplied and box.ncs_object:
       print >>out,"Selecting remaining NCS operators"
       box.ncs_object=select_remaining_ncs_ops(
@@ -5547,7 +5599,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       from mmtbx.ncs.ncs import ncs
       shifted_ncs_object=ncs()
       shifted_ncs_object.set_unit_ncs()
-
   else:  # shift if necessary...
     shift_needed = not \
         (map_data.focus_size_1d() > 0 and map_data.nd() == 3 and
@@ -5578,9 +5629,11 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       half_map_data_list=new_half_map_data_list
     else:
       origin_shift=(0.,0.,0.)
+
     # Get NCS object if any
-    if params.input_files.ncs_file:
+    if params.input_files.ncs_file and not ncs_obj:
       ncs_obj,dummy_obj=get_ncs(file_name=params.input_files.ncs_file)
+    if ncs_obj:
       shifted_ncs_object=ncs_obj.coordinate_offset(
         coordinate_offset=matrix.col(origin_shift)) # shift to match shifted map
     else:
@@ -5598,15 +5651,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
   map_symmetry_center=matrix.col(map_symmetry_center)+matrix.col(origin_shift) # New ctr
 
-  if params.input_files.ncs_file and params.control.check_ncs:
+  if shifted_ncs_object and params.control.check_ncs:
     ncs_obj_to_check=shifted_ncs_object
   else:
     ncs_obj_to_check=None
 
   found_ncs=False
   if params.reconstruction_symmetry.symmetry or ncs_obj_to_check or \
-     params.reconstruction_symmetry.optimize_center:
-
+     params.reconstruction_symmetry.optimize_center: 
     looking_for_ncs=True
     new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=params,
       map_data=map_data,
@@ -5618,9 +5670,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,
 
     if new_ncs_obj:
       found_ncs=True
+      shifted_ncs_object=new_ncs_obj.deep_copy()
       # offset this back to where it would have been before the origin offset..
       new_ncs_obj=new_ncs_obj.coordinate_offset(
        coordinate_offset=-1*matrix.col(origin_shift))
+      # XXX save it in tracking_data
+
       if params.output_files.output_directory:
         file_name=os.path.join(params.output_files.output_directory,
           'ncs_from_map.ncs_spec')
@@ -5629,7 +5684,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         f.close()
         print >>out,"Wrote NCS operators (for original map) to %s" %(file_name)
         if not params.control.check_ncs:
-          params.input_files.ncs_file=file_name # set it unless we're
+          params.input_files.ncs_file=file_name # set it 
 
   else:
     looking_for_ncs=False
@@ -5728,14 +5783,15 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
      ncs_object=None,out=sys.stdout):
   if not file_name:
     file_name=params.input_files.ncs_file
-  if (not ncs_object) and file_name: print >>out,"Reading ncs from %s" %(file_name)
+  if (not ncs_object or ncs_object.max_operators()<2) and file_name: print >>out,"Reading ncs from %s" %(file_name)
   is_helical_symmetry=None
-  if not ncs_object and not file_name: # No ncs supplied...use just 1 ncs copy..
+  if (not ncs_object or ncs_object.max_operators()<2) and not file_name: # No ncs supplied...use just 1 ncs copy..
     from mmtbx.ncs.ncs import ncs
     ncs_object=ncs()
     ncs_object.set_unit_ncs()
     #ncs_object.display_all(log=out)
-  elif not ncs_object and not os.path.isfile(file_name):
+  elif (not ncs_object or ncs_object.max_operators()<2) and \
+      not os.path.isfile(file_name):
     raise Sorry("The ncs file %s is missing" %(file_name))
   else: # get the ncs
     if not ncs_object:
@@ -5748,7 +5804,7 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
         ncs_object.read_ncs(file_name=file_name,log=out)
       #ncs_object.display_all(log=out)
     ncs_object.select_first_ncs_group()
-    if ncs_object.max_operators()==0:
+    if ncs_object.max_operators()<1:
       from mmtbx.ncs.ncs import ncs
       ncs_object=ncs()
       ncs_object.set_unit_ncs()
@@ -5756,7 +5812,9 @@ def get_ncs(params=None,tracking_data=None,file_name=None,
       ncs_object.max_operators())
     if not tracking_data or not params:
       return ncs_object,None
-    if ncs_object.is_helical_along_z(
+    if ncs_object.max_operators()<2:
+       print >>out,"No NCS present"
+    elif ncs_object.is_helical_along_z(
        abs_tol_t=tracking_data.params.reconstruction_symmetry.abs_tol_t,
        rel_tol_t=tracking_data.params.reconstruction_symmetry.rel_tol_t,
        tol_r=tracking_data.params.reconstruction_symmetry.tol_r):
@@ -6316,6 +6374,13 @@ def get_solvent_fraction(params,
     if params.crystal_info.solvent_content:
       print >>out,"Solvent content from parameters: %7.2f" %(
         params.crystal_info.solvent_content)
+    elif params.crystal_info.molecular_mass:
+       params.crystal_info.solvent_content=\
+         get_solvent_fraction_from_molecular_mass(
+        crystal_symmetry=crystal_symmetry,
+        molecular_mass=params.crystal_info.molecular_mass,
+        out=out)
+        
     else:
       print >>out,"Getting solvent content automatically."
 
@@ -7814,6 +7879,7 @@ def write_output_files(params,
     removed_ncs=None,
     out=sys.stdout):
 
+
   if params.output_files.au_output_file_stem:
     au_mask_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_mask.ccp4")
     au_map_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_map.ccp4")
@@ -7824,7 +7890,7 @@ def write_output_files(params,
     au_atom_output_file=None
 
   # Write out pdb file with dummy atoms for the AU to au_atom_output_file
-  if au_atom_output_file:
+  if au_atom_output_file and params.output_files.write_output_maps:
     sites=flex.vec3_double()
     for id in ncs_group_obj.selected_regions:
       sites.extend(ncs_group_obj.region_scattered_points_dict[id])
@@ -7904,18 +7970,19 @@ def write_output_files(params,
      "\nMaking two types of maps for AU of NCS mask and map with "+\
       "buffer of %d grid units \nin each direction around AU" %(
       params.output_files.box_buffer)
-  print >>out,"Both types of maps have the same origin and overlay on %s" %(
+  if params.output_files.write_output_maps:
+   print >>out,"Both types of maps have the same origin and overlay on %s" %(
    os.path.join(tracking_data.params.output_files.output_directory,
      params.output_files.shifted_map_file))
 
 
-  print >>out,\
+   print >>out,\
      "\nThe standard maps (%s, %s) have the \noriginal cell dimensions." %(
    os.path.join(tracking_data.params.output_files.output_directory,au_mask_output_file),
    os.path.join(tracking_data.params.output_files.output_directory,au_map_output_file))+\
    "\nThese maps show only the unique (NCS AU) part of the map."
 
-  print >>out,\
+   print >>out,\
      "\nThe cut out box_maps (%s, %s) have \nsmaller cell dimensions." %(
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),
       os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),) +\
@@ -7928,7 +7995,8 @@ def write_output_files(params,
   mask_data_ncs_au=get_bool_mask_as_int(
      ncs_group_obj=ncs_group_obj,mask_as_bool=bool_selected_regions)
 
-  if au_mask_output_file: # Write out the mask (as int)
+  if au_mask_output_file and params.output_files.write_output_maps: 
+    # Write out the mask (as int)
     write_ccp4_map(tracking_data.crystal_symmetry,
       au_mask_output_file,mask_data_ncs_au)
     print >>out,"Output NCS AU mask:  %s" %(au_mask_output_file)
@@ -7953,7 +8021,8 @@ def write_output_files(params,
   map_data_ncs_au=map_data_ncs_au+(1-mask)*mean_in_box
   del one_d,mask
 
-  if au_map_output_file: # Write out the NCS au of density
+  if au_map_output_file and params.output_files.write_output_maps: 
+    # Write out the NCS au of density
     write_ccp4_map(tracking_data.crystal_symmetry,au_map_output_file,
       map_data_ncs_au)
     print >>out,"Output NCS AU map:  %s" %(au_map_output_file)
@@ -7972,7 +8041,7 @@ def write_output_files(params,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
 
   # Mask
-  if params.output_files.box_mask_file:
+  if params.output_files.box_mask_file and params.output_files.write_output_maps:
     # write out box_map NCS mask representing one AU of the NCS
     write_ccp4_map(
      box_crystal_symmetry,
@@ -7988,48 +8057,56 @@ def write_output_files(params,
       all=box_mask_ncs_au.all())
 
   # Map
-  if params.output_files.box_map_file:
-    # write out NCS map as box_map (cut out region of map enclosed in box_mask)
-    box_map_ncs_au,box_crystal_symmetry,\
+  box_map_ncs_au,box_crystal_symmetry,\
        dummy_smoothed_box_mask_data,dummy_original_box_map_data=cut_out_map(
        map_data=map_data_ncs_au.as_double(),
        crystal_symmetry=tracking_data.crystal_symmetry,
        min_point=lower_bounds, max_point=upper_bounds,out=out)
-    write_ccp4_map(box_crystal_symmetry,
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
-      box_map_ncs_au)
-    print >>out,"Output NCS au as box (cut out) map:  %s " %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file))
-    tracking_data.set_output_box_map_info(
-      file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
-      crystal_symmetry=box_crystal_symmetry,
-      origin=box_map_ncs_au.origin(),
-      all=box_map_ncs_au.all())
+  if params.control.save_box_map_ncs_au:
+       tracking_data.set_box_map_ncs_au_map_data(
+       box_map_ncs_au_crystal_symmetry=box_crystal_symmetry,
+       box_map_ncs_au_map_data=box_map_ncs_au,)
 
+  if params.output_files.box_map_file: 
+    # write out NCS map as box_map (cut out region of map enclosed in box_mask)
+    if params.output_files.write_output_maps:
+      write_ccp4_map(box_crystal_symmetry,
+        os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
+        box_map_ncs_au)
+      print >>out,"Output NCS au as box (cut out) map:  %s " %(
+      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file))
+      tracking_data.set_output_box_map_info(
+        file_name=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
+        crystal_symmetry=box_crystal_symmetry,
+        origin=box_map_ncs_au.origin(),
+        all=box_map_ncs_au.all())
 
 
   # Write out all the selected regions
-  print >>out,"\nWriting out region maps. "+\
-    "These superimpose on the NCS AU map \nand "+\
-    "mask %s,%s\n" %(
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
-      os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),)
+  if params.output_files.write_output_maps:
+    print >>out,"\nWriting out region maps. "+\
+      "These superimpose on the NCS AU map \nand "+\
+      "mask %s,%s\n" %(
+        os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_map_file),
+        os.path.join(tracking_data.params.output_files.output_directory,params.output_files.box_mask_file),)
 
-  map_files_written,remainder_regions_written=write_region_maps(params,
-    map_data=map_data,
-    tracking_data=tracking_data,
-    ncs_group_obj=ncs_group_obj,
-    remainder_ncs_group_obj=remainder_ncs_group_obj,
-    out=out)
+    map_files_written,remainder_regions_written=write_region_maps(params,
+      map_data=map_data,
+      tracking_data=tracking_data,
+      ncs_group_obj=ncs_group_obj,
+      remainder_ncs_group_obj=remainder_ncs_group_obj,
+      out=out)
 
-  # and pick up the remainder regions not already written
-  remainder_map_files_written,dummy_remainder=write_region_maps(params,
-    map_data=map_data,
-    tracking_data=tracking_data,
-    ncs_group_obj=remainder_ncs_group_obj,
-    regions_to_skip=remainder_regions_written,
-    out=out)
-  map_files_written+=remainder_map_files_written
+    # and pick up the remainder regions not already written
+    remainder_map_files_written,dummy_remainder=write_region_maps(params,
+      map_data=map_data,
+      tracking_data=tracking_data,
+      ncs_group_obj=remainder_ncs_group_obj,
+      regions_to_skip=remainder_regions_written,
+      out=out)
+    map_files_written+=remainder_map_files_written
+  else:
+    map_files_written=[]
   return map_files_written
 
 def write_intermediate_maps(params,
@@ -8249,7 +8326,6 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
         uc_params[3],uc_params[4],uc_params[5]))
   new_crystal_symmetry=crystal.symmetry(
     unit_cell=new_unit_cell_box,space_group='p1')
-
 
   if soft_mask and soft_mask_radius is not None:
     original_map_data=map_data.deep_copy()
@@ -8947,6 +9023,21 @@ def get_iterated_solvent_fraction(map=None,
 
     return None  # was not available
 
+def get_solvent_fraction_from_molecular_mass(
+        crystal_symmetry=None,molecular_mass=None,out=sys.stdout):
+     map_volume=crystal_symmetry.unit_cell().volume()
+     density_factor=1000*1.23 # just protein density, close enough...
+     mm=molecular_mass
+     molecule_fraction= mm*density_factor/map_volume
+     if molecule_fraction > 1 and mm > 1000: mm=mm/1000  # was in Da
+
+     solvent_fraction=max(0.01,min(1.,1 - (
+         mm*density_factor/map_volume)))
+     print >>out,"Solvent content of %7.2f from molecular mass of %7.1f kDa" %(
+     solvent_fraction,mm)
+     return solvent_fraction
+
+
 def set_up_si(var_dict=None,crystal_symmetry=None,
       is_crystal=None,
       ncs_copies=None,n_residues=None,
@@ -9040,16 +9131,11 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
     local_params=get_params_from_args(args)
 
     # Set solvent content from molecular_mass if present
-    if molecular_mass and \
-       not solvent_fraction:
-     map_volume=crystal_symmetry.unit_cell().volume()
-     density_factor=1000*1.23 # just protein density, close enough...
-     mm=molecular_mass
-     if mm > 1000: mm=mm/1000  # was in Da
-     solvent_fraction=max(0.01,min(1.,1 - (
-         mm*density_factor/map_volume)))
-     print >>out,"Solvent content of %7.2f from molecular mass of %7.1f kDa" %(
-     solvent_fraction,mm)
+    if molecular_mass and not solvent_fraction:
+       solvent_fraction=get_solvent_fraction_from_molecular_mass(
+        crystal_symmetry=crystal_symmetry,molecular_mass=molecular_mass,
+        out=out)
+
 
 
     if (local_params.input_files.seq_file or
@@ -11230,7 +11316,7 @@ def run(args,
   else:
     # get the parameters and map_data (sharpened, magnified, shifted...)
     params,map_data,half_map_data_list,pdb_hierarchy,tracking_data,\
-        shifted_ncs_object=get_params(
+        shifted_ncs_object=get_params( #
        args,map_data=map_data,crystal_symmetry=crystal_symmetry,
        ncs_object=ncs_obj,
        sequence=sequence,
@@ -11260,17 +11346,29 @@ def run(args,
     if not map_data:
        raise Sorry("Need map data for segment_and_split_map")
 
-    ncs_obj,pdb_hierarchy,target_hierarchy,\
-      tracking_data,sharpening_target_pdb_inp=apply_origin_shift(
+    if params.output_files.shifted_map_file:
         shifted_map_file=os.path.join(
           tracking_data.params.output_files.output_directory,
-          params.output_files.shifted_map_file),
+          params.output_files.shifted_map_file)
+    else:
+      shifted_map_file=None
+    if params.output_files.shifted_ncs_file:
         shifted_ncs_file=os.path.join(
           tracking_data.params.output_files.output_directory,
-          params.output_files.shifted_ncs_file),
+          params.output_files.shifted_ncs_file)
+    else:
+      shifted_ncs_file=None
+    if params.output_files.shifted_ncs_file:
         shifted_pdb_file=os.path.join(
           tracking_data.params.output_files.output_directory,
-          params.output_files.shifted_pdb_file),
+          params.output_files.shifted_pdb_file)
+    else:
+      shifted_pdb_file=None
+    ncs_obj,pdb_hierarchy,target_hierarchy,\
+      tracking_data,sharpening_target_pdb_inp=apply_origin_shift(
+        shifted_map_file=shifted_map_file,
+        shifted_pdb_file=shifted_pdb_file,
+        shifted_ncs_file=shifted_ncs_file,
         origin_shift=tracking_data.origin_shift,
         shifted_ncs_object=shifted_ncs_object,
         pdb_hierarchy=pdb_hierarchy,
@@ -11302,8 +11400,16 @@ def run(args,
 
   n_residues=tracking_data.n_residues
   ncs_copies=tracking_data.input_ncs_info.number_of_operators
-  solvent_fraction=tracking_data.solvent_fraction
-
+  if (not tracking_data.solvent_fraction) and \
+      params.crystal_info.molecular_mass:
+    tracking_data.solvent_fraction=get_solvent_fraction_from_molecular_mass(
+        crystal_symmetry=tracking_data.crystal_symmetry,
+        molecular_mass=params.crystal_info.molecular_mass,
+        out=out)
+  if tracking_data.solvent_fraction:
+    solvent_fraction=tracking_data.solvent_fraction
+  else:
+    raise Sorry("Need solvent fraction or molecular mass or sequence file")
 
   # Now usual method, using our new map...should duplicate best result above
   for itry in xrange(2):
@@ -11368,7 +11474,8 @@ def run(args,
       ncs_obj.set_unit_ncs()
       tracking_data.set_ncs_obj(ncs_obj=None)
       tracking_data.update_ncs_info(number_of_operators=1)
-      n_residues=n_residues/ncs_copies
+      if n_residues:
+        n_residues=n_residues/ncs_copies
       solvent_fraction=max(0.001,min(0.999,
        1-((1-solvent_fraction)/ncs_copies)))
       ncs_copies=1
@@ -11429,20 +11536,23 @@ def run(args,
 
   # Save the used NCS ops
   ncs_used_obj=ncs_group_obj.ncs_obj.deep_copy(ops_to_keep=ncs_ops_used)
-  shifted_used_ncs_file=os.path.join(
-    tracking_data.params.output_files.output_directory,
-    params.output_files.shifted_used_ncs_file)
-  ncs_used_obj.format_all_for_group_specification(
+  if params.output_files.shifted_used_ncs_file:
+    shifted_used_ncs_file=os.path.join(
+      tracking_data.params.output_files.output_directory,
+      params.output_files.shifted_used_ncs_file)
+    ncs_used_obj.format_all_for_group_specification(
          file_name=shifted_used_ncs_file)
-  tracking_data.set_shifted_used_ncs_info(file_name=shifted_used_ncs_file,
-    number_of_operators=ncs_used_obj.max_operators(),
-    is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
-  tracking_data.shifted_used_ncs_info.show_summary(out=out)
+    tracking_data.set_shifted_used_ncs_info(file_name=shifted_used_ncs_file,
+      number_of_operators=ncs_used_obj.max_operators(),
+      is_helical_symmetry=tracking_data.input_ncs_info.is_helical_symmetry)
+    tracking_data.shifted_used_ncs_info.show_summary(out=out)
 
   # Write out final maps and dummy atom files
   if params.output_files.write_output_maps:
     print >>out,"\nWriting output maps"
-    map_files_written=write_output_files(params,
+  else:
+    print >>out,"\nSetting up but not writing output maps"
+  map_files_written=write_output_files(params,
       tracking_data=tracking_data,
       map_data=map_data,
       ncs_group_obj=ncs_group_obj,
@@ -11450,9 +11560,7 @@ def run(args,
       pdb_hierarchy=pdb_hierarchy,
       removed_ncs=removed_ncs,
       out=out)
-    ncs_group_obj.set_map_files_written(map_files_written)
-  else:
-    map_files_written=[]
+  ncs_group_obj.set_map_files_written(map_files_written)
 
   # Restore ncs info if we removed it
   if removed_ncs:

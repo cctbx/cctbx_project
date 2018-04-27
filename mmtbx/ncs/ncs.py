@@ -327,7 +327,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         # T' =  T + t - R t
         new_list_of_matrices.append(deepcopy(ncs_r))  # these are the same
         from scitbx import matrix
-        delta = ncs_r * coordinate_offset
+        delta = ncs_r * matrix.col(coordinate_offset)
         t_prime=matrix.col(ncs_t) + \
           matrix.col(coordinate_offset) - matrix.col(delta)
         new_list_of_translations.append(t_prime)
@@ -969,6 +969,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     # operators and verifying that the result is a member of the set
 
     # Allow checking self operators vs some other symmetry object if desired:
+
+    if len(self.rota_matrices_inv()) < 2:
+      return False
+
     if symmetry_to_match is None:
       symmetry_to_match=self
 
@@ -1065,6 +1069,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
+    if len(self.rota_matrices_inv()) < 2:
+      return False
     if self.is_point_group_symmetry(tol_r=tol_r,
             abs_tol_t=abs_tol_t,rel_tol_t=rel_tol_t):
       return False
@@ -1387,7 +1393,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
       new_centers.append(matrix.col(center)+matrix.col(coordinate_offset))
       #  T'=T - R x_i + x_1
-      delta = matrix.col(ncs_rota_matr * coordinate_offset)
+      delta = matrix.col(ncs_rota_matr * matrix.col(coordinate_offset))
       t_prime=matrix.col(trans_orth) - delta + first_coordinate_offset
       new_translations_orth.append(t_prime)
 
