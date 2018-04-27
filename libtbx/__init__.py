@@ -3,7 +3,9 @@ import libtbx.forward_compatibility
 import os
 import sys
 
-from builtins import object
+# Disable replacement of object class due to
+# https://github.com/PythonCharmers/python-future/issues/336
+# from builtins import object
 
 manual_date_stamp = 20090819
 
