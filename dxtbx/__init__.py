@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 
-from scitbx.array_family import flex # import dependency
 try:
   import boost.python
 except Exception:
@@ -12,8 +11,6 @@ else:
 
 if ext is not None:
   from dxtbx_ext import *
-
-import dxtbx.imageset # implicit import
 
 logging.getLogger('dxtbx').addHandler(logging.NullHandler())
 
