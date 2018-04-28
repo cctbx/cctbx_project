@@ -4030,10 +4030,10 @@ def get_ncs_list(params=None,symmetry=None,
         map_data=map_data,
         crystal_symmetry=crystal_symmetry,out=out)
 
-
-      ncs_list.append(ncs_object)
-      symmetry_list.append("Type: Helical %5.2f deg  %6.2f Z-trans " %(
-        helical_rot_deg,helical_trans_z_angstrom))
+      if ncs_object:
+        ncs_list.append(ncs_object)
+        symmetry_list.append("Type: Helical %5.2f deg  %6.2f Z-trans " %(
+          helical_rot_deg,helical_trans_z_angstrom))
 
   if symmetry_center and tuple(symmetry_center) != (0,0,0,):
     print >>out,"Offsetting NCS center by (%.2f, %.2f, %.2f) A " %(tuple(symmetry_center))
@@ -4118,6 +4118,7 @@ def find_helical_symmetry(params=None,
   score_list=[]
   quick=params.control.quick
   best_ncs_cc=None
+  best_ncs_obj=None
   best_score=None
   best_helical_trans_z_angstrom=None
   best_helical_rot_deg=None
@@ -4205,6 +4206,7 @@ def find_helical_symmetry(params=None,
 
   print >>out,"\nTrying fraction of rot/trans"
   for iter in [0,1]:
+    if not best_helical_rot_deg: continue
     for ifract in xrange(2,11):
       if iter==0:  # try fractional
         test_helical_rot_deg=best_helical_rot_deg/ifract
@@ -4258,8 +4260,13 @@ def find_helical_symmetry(params=None,
   working_ncs_cc=best_ncs_cc
   working_ncs_obj=best_ncs_obj
   working_score=None
-  working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
-  working_helical_rot_deg=best_helical_rot_deg*imult
+  if best_helical_rot_deg:
+    working_helical_rot_deg=best_helical_rot_deg*imult
+    working_helical_trans_z_angstrom=best_helical_trans_z_angstrom*imult
+  else:
+    working_helical_rot_deg=None
+    working_helical_trans_z_angstrom=None
+    imult=0
 
   if imult > 1:
     print >>out,"\nTrying %sx multiples of rot/trans" %(imult)
@@ -4339,12 +4346,14 @@ def find_helical_symmetry(params=None,
      best_helical_rot_deg,best_helical_trans_z_angstrom,\
          best_score,best_ncs_cc)
 
-  from mmtbx.ncs.ncs import get_helical_symmetry
+    from mmtbx.ncs.ncs import get_helical_symmetry
 
-  ncs_object=get_helical_symmetry(
+    ncs_object=get_helical_symmetry(
        helical_rot_deg=best_helical_rot_deg,
        helical_trans_z_angstrom=best_helical_trans_z_angstrom,
        max_ops=params.reconstruction_symmetry.max_helical_ops_to_check)
+  else:
+    ncs_object=None
 
   return ncs_object,best_helical_rot_deg,best_helical_trans_z_angstrom
 

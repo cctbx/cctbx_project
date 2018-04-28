@@ -17,12 +17,11 @@ class map_symmetry:
       ncs_object=None,
       log=sys.stdout):
     adopt_init_args(self, locals())
-
     self.cc=None
     self.original_ncs_object=None
     if ncs_object:
       self.original_ncs_object=ncs_object.deep_copy()
-    self.ncs_object=None
+    self.ncs_object=ncs_object
 
     if self.params and self.params.control.verbose:
       self.local_log=log
