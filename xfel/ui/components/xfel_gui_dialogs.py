@@ -1147,7 +1147,9 @@ class RunBlockDialog(BaseDialog):
             return 12.5 # Defaults are from kapton tape experiments (this is kapton ring)
           elif item == "two_theta_high":
             return 22.8 # Defaults are from kapton tape experiments (this is water ring)
-          elif item == "comment":
+          elif item in ["extra_phil_str", "calib_dir", "dark_avg_path", "dark_stddev_path",
+            "gain_map_path", "beamx", "beamy", "gain_mask_level", "untrusted_pixel_mask_path",
+            "binning", "energy", "comment", "config_str"]:
             return None
           else:
             raise AttributeError(item)
