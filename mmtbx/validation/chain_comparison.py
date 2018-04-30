@@ -950,7 +950,7 @@ def get_fragment_count(forward_match_list):
       n+=1
     i_last=i
   return n
-    
+
 def run(args=None,
    ncs_obj=None,
    target_unique_hierarchy=None,
