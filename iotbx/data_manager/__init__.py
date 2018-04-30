@@ -80,7 +80,7 @@ def load_datatype_modules(datatypes=None):
   return modules
 
 # =============================================================================
-def DataManager(datatypes=None, phil=None):
+def DataManager(datatypes=None, phil=None, logger=None):
   '''
   Function for dynamically creating a DataManager instance that supports a
   specific set of datatypes.
@@ -92,6 +92,9 @@ def DataManager(datatypes=None, phil=None):
   So for the models, the filename is iotbx/data_manager/model.py and in that
   file, there should be a subclass of DataManagerBase named ModelDataManager
   '''
+
+  if (logger is None):
+    logger = multi_out()
 
   # set default if necessary
   if (datatypes is None):
@@ -121,7 +124,7 @@ def DataManager(datatypes=None, phil=None):
 
   # construct new class and return instance
   data_manager_class = type('DataManager', tuple(manager_classes), dict())
-  return data_manager_class(datatypes=datatypes, phil=phil)
+  return data_manager_class(datatypes=datatypes, phil=phil, logger=logger)
 
 # =============================================================================
 class DataManagerBase(object):

@@ -186,7 +186,8 @@ class CCTBXParser(ParserBase):
     self.logger = logger
     if (self.logger is None):
       self.logger = logging.getLogger('main')
-    self.data_manager = DataManager(datatypes=program_class.datatypes)
+    self.data_manager = DataManager(datatypes=program_class.datatypes,
+                                    logger=self.logger)
 
     self.master_phil = iotbx.phil.parse(
       program_class.master_phil_str, process_includes=True)
