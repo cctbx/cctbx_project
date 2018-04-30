@@ -43,9 +43,11 @@ namespace dxtbx { namespace model {
     /**
      * Initialise the class
      * @param image_range The range of images covered by the scan
-     * @param starting_angle The starting rotation angle
-     * @param oscillation_range A tuple containing the start angle of the first
-     *                          image and the oscillation range of each frame
+     * @param oscillation A tuple containing the start angle of the first image
+     *                    and the oscillation range (the angular width) of each
+     *                    frame
+     * @param batch_offset A offset to add to the image number (for tracking of
+     *                     unique batch numbers for multi-crystal datasets)
      */
     Scan(vec2 <int> image_range,
          vec2 <double> oscillation,
@@ -62,9 +64,13 @@ namespace dxtbx { namespace model {
     /**
      * Initialise the class
      * @param image_range The range of images covered by the scan
-     * @param batch_offset The batch offset for the scan
-     * @param starting_angle The starting rotation angle
-     * @param oscillation_range The oscillation range of each frame
+     * @param oscillation A tuple containing the start angle of the first image
+     *                    and the oscillation range (the angular width) of each
+     *                    frame
+     * @param exposure_times The exposure duration of each image
+     * @param epochs The time of capture for each image
+     * @param batch_offset A offset to add to the image number (for tracking of
+     *                     unique batch numbers for multi-crystal datasets)
      */
     Scan(vec2 <int> image_range,
          vec2 <double> oscillation,
@@ -288,9 +294,9 @@ namespace dxtbx { namespace model {
     }
 
     /**
-     * Return a new sweep which consists of the contents of this sweep and
-     * the contents of the other sweep, provided that they are consistent -
-     * if they are not consistent then an AssertionError will result.
+     * Return a new scan which consists of the contents of this scan and
+     * the contents of the other scan, provided that they are consistent.
+     * If they are not consistent then an AssertionError will result.
      */
     Scan operator+(const Scan &rhs) const {
       Scan lhs(*this);
@@ -360,7 +366,7 @@ namespace dxtbx { namespace model {
     /**
      * A function to calculate all the frames in the scan at which an
      * observation with a given angle will be observed. I.e. for a given angle,
-     * find all the equivalent angles (i.e. mod 2pi) within the scan range and#
+     * find all the equivalent angles (i.e. mod 2pi) within the scan range and
      * calculate the frame number for each angle.
      * Calculate and return an array of frame numbers at which a reflection
      * with a given rotation angle will be observed.
