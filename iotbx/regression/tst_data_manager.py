@@ -2,6 +2,7 @@ from __future__ import division, print_function
 
 import os
 
+import libtbx.load_env
 import libtbx.phil
 import mmtbx.model
 
@@ -405,8 +406,10 @@ if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
-  test_model_and_restraint()
   test_sequence_datatype()
   test_miller_array_datatype()
 
-  print('OK')
+  if (libtbx.env.find_in_repositories(relative_path='chem_data') is not None):
+    test_model_and_restraint()
+  else:
+    print('Skip test_model_and_restraint, chem_data not available')
