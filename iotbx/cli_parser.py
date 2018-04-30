@@ -503,13 +503,11 @@ class CCTBXParser(ParserBase):
 
     working_phil_extract = self.working_phil.extract()
 
-    # update default model if a pdb_interpretation scope is present
-    if (hasattr(working_phil_extract, 'pdb_interpretation')):
-      if (self.data_manager.supports('model') and
-          (self.data_manager.get_default_model_name() is not None)):
-        self.data_manager.update_pdb_interpretation_for_model(
-          self.data_manager.get_default_model_name(),
-          working_phil_extract.pdb_interpretation)
+    # update default model with program pdb interpretation scope
+    if (self.data_manager.supports('model') and
+        (self.data_manager.get_default_model_name() is not None)):
+      self.data_manager.update_pdb_interpretation_for_model(
+        self.data_manager.get_default_model_name(), working_phil_extract)
 
   # ---------------------------------------------------------------------------
   def show_phil_summary(self):
