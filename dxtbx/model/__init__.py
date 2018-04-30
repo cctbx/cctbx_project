@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 
 import boost.python
+import cctbx.crystal
 from cctbx import sgtbx # import dependency
 from cctbx.crystal_orientation import crystal_orientation # import dependency
 from dxtbx_model_ext import *
@@ -47,6 +48,10 @@ class CrystalAux(boost.python.injector, Crystal):
 
   def show(self, show_scan_varying=False, out=None):
     CrystalAux._show(self, show_scan_varying, out)
+
+  def get_crystal_symmetry(self):
+    return cctbx.crystal.symmetry(
+      unit_cell=self.get_unit_cell(), space_group=self.get_space_group())
 
   @staticmethod
   def _show(self, show_scan_varying=False, out=None):

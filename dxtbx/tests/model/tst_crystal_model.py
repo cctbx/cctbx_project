@@ -47,6 +47,9 @@ def exercise_crystal_model():
   assert approx_equal(model.get_U(), (1, 0, 0, 0, 1, 0, 0, 0, 1))
   assert approx_equal(model.get_real_space_vectors(),
                       (real_space_a, real_space_b, real_space_c))
+  assert model.get_crystal_symmetry().unit_cell().parameters() == \
+    model.get_unit_cell().parameters()
+  assert model.get_crystal_symmetry().space_group() == model.get_space_group()
 
   model2 = Crystal(real_space_a=(10,0,0),
                          real_space_b=(0,11,0),
