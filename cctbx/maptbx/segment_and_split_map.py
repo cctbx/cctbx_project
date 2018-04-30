@@ -2471,6 +2471,7 @@ class sharpening_info:
       ncs_copies=None,
       ncs_file=None,
       seq_file=None,
+      sequence=None,
       n_real=None,
       region_weight=None,
       n_bins=None,
