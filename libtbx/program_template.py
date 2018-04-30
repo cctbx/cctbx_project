@@ -27,8 +27,8 @@ task, but the above functions define a consistent interface.
 More documentation to come
 '''
 
-# Should we stick with multi_out by default here?
-import logging
+from libtbx import citations
+from libtbx.utils import multi_out
 
 # =============================================================================
 class ProgramTemplate(object):
@@ -81,6 +81,19 @@ output {
 '''
 
   # ---------------------------------------------------------------------------
+  # Function for showing default citation for template
+  @staticmethod
+  def show_template_citation(text_width=80, logger=None,
+                             citation_format='default'):
+    assert(logger is not None)
+
+    print('\nGeneral citation for CCTBX:', file=logger)
+    print('-'*text_width, file=logger)
+    print('', file=logger)
+    citations.show_citation(citations.citations_db['cctbx'], out=logger,
+                            format=citation_format)
+
+  # ---------------------------------------------------------------------------
   def __init__(self, data_manager, params, logger=None):
     '''
     Common constructor for all programs
@@ -107,7 +120,7 @@ output {
     self.logger = logger
 
     if (self.logger is None):
-      self.logger = logging.getLogger('program')
+      self.logger = multi_out()
 
     self.custom_init()
 

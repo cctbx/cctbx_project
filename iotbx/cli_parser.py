@@ -612,15 +612,9 @@ class CCTBXParser(ParserBase):
       for citation in program_citations:
         citations.show_citation(citation, out=self.logger,
                                 format=self.namespace.citations)
-    self.show_cctbx_citation()
-
-  # ---------------------------------------------------------------------------
-  def show_cctbx_citation(self):
-    print('\nGeneral citation for CCTBX:', file=self.logger)
-    print('-'*self.text_width, file=self.logger)
-    print('', file=self.logger)
-    citations.show_citation(citations.citations_db['cctbx'], out=self.logger,
-                            format=self.namespace.citations)
+    self.program_class.show_template_citation(
+      text_width=self.text_width, logger=self.logger,
+      citation_format=self.namespace.citations)
 
 # =============================================================================
 # end
