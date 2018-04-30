@@ -410,6 +410,12 @@ class manager(object):
   def get_restraint_objects(self):
     return self._restraint_objects
 
+  def set_restraint_objects(self, restraint_objects):
+    self._restraint_objects = restraint_objects
+    self.unset_restraints_manager()
+    self._processed_pdb_files_srv = None
+    self.all_chain_proxies = None
+
   def setup_ss_annotation(self, log=null_out()):
     if self._model_input is not None:
       self._ss_annotation = self._model_input.extract_secondary_structure()
@@ -897,6 +903,7 @@ class manager(object):
 
   def unset_restraints_manager(self):
     self.restraints_manager = None
+    self.model_statistics_info = None
     self._processed_pdb_file = None
 
   def setup_restraints_manager(
