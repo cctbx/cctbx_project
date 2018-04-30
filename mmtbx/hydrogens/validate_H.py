@@ -55,7 +55,8 @@ class validate_H(object):
     if not self.model.has_hd:
       #raise Sorry("There are no H or D atoms in the model.")
       return 0
-    # XXX probably check if grm exists?
+    # ensure that grm exists
+    self.model.get_restraints_manager()
 
   def get_missing_h_in_residue(self, residue, mon_lib_srv):
     missing = []
@@ -257,8 +258,7 @@ class validate_H(object):
 
   def get_exchanged_sites_and_curate_swapped(self, pdb_hierarchy):
     self.renamed = []
-    #geometry_restraints = self.model.get_restraints_manager().geometry
-    geometry_restraints = self.model.restraints_manager.geometry
+    geometry_restraints = self.model.get_restraints_manager().geometry
     fsc1 = geometry_restraints.shell_sym_tables[1].full_simple_connectivity()
     get_class = common_residue_names_get_class
     hd_exchanged_sites = {}
@@ -476,7 +476,8 @@ class validate_H(object):
     rc = restraints.combined(
            pdb_hierarchy  = self.pdb_hierarchy,
            xray_structure = self.model.get_xray_structure(),
-           geometry_restraints_manager = self.model.restraints_manager.geometry,
+           geometry_restraints_manager = self.model.get_restraints_manager().\
+                                         geometry,
            ignore_hd      = False, # important
            outliers_only  = False,
            use_segids_in_place_of_chainids = False)
