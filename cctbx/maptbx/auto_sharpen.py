@@ -702,7 +702,6 @@ def set_sharpen_params(params,out=sys.stdout):
           "Set optimize_b_blur_hires=False as neither b_iso_to_d_cut nor"+\
          " b_iso are used"
      params.map_modification.optimize_b_blur_hires=False
-
   if params.map_modification.iterate and \
     not 'b_iso_to_d_cut' in params.map_modification.auto_sharpen_methods and \
        not 'b_iso' in params.map_modification.auto_sharpen_methods:

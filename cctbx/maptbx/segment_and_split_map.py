@@ -5589,7 +5589,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       write_ccp4_map(crystal_symmetry,cutout_half_map_file,new_half_map_data_list[-1])
 
     half_map_data_list=new_half_map_data_list
-
     if params.map_modification.soft_mask:
       mask_data,map_data,half_map_data_list,\
       soft_mask_solvent_fraction,smoothed_mask_data,\
@@ -5744,7 +5743,6 @@ def get_and_apply_soft_mask_to_maps(
     map_data=None,crystal_symmetry=None,
     half_map_data_list=None,
     out=sys.stdout):
-
   smoothed_mask_data=None
   if not resolution:
     raise Sorry("Need resolution for soft_mask")
@@ -8338,7 +8336,7 @@ def cut_out_map(map_data=None, crystal_symmetry=None,
     unit_cell=new_unit_cell_box,space_group='p1')
 
   if soft_mask and soft_mask_radius is not None:
-    original_map_data=map_data.deep_copy()
+    original_map_data=new_map_data.deep_copy()
     new_map_data,smoothed_mask_data=set_up_and_apply_soft_mask(
        map_data=new_map_data,
        shift_origin=shift_origin,
@@ -9270,7 +9268,6 @@ def select_box_map_data(si=None,
       #   cover si.soft_mask=False
 
       half_map_data_list=[first_half_map_data,second_half_map_data]
-
       box_mask_data,box_map,half_map_data_list,\
        box_solvent_fraction,smoothed_box_mask_data,original_box_map_data=\
        get_and_apply_soft_mask_to_maps(
@@ -10004,7 +10001,7 @@ def run_local_sharpening(si=None,
       # merge with background using bsi.smoothed_box_mask_data
       if bsi.smoothed_box_mask_data:
         print >>out,"Merging small map into overall map in soft-mask region"
-        bsi.merge_into_overall_map(overall_map=map)
+        bsi.merge_into_overall_map(overall_map=map) # XXX overall_map not used
 
       # Now remove buffer region
       if bsi.n_buffer: # extract just the good part
