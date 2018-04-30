@@ -49,9 +49,10 @@ class CrystalAux(boost.python.injector, Crystal):
   def show(self, show_scan_varying=False, out=None):
     CrystalAux._show(self, show_scan_varying, out)
 
-  def get_crystal_symmetry(self):
+  def get_crystal_symmetry(self, assert_is_compatible_unit_cell=True):
     return cctbx.crystal.symmetry(
-      unit_cell=self.get_unit_cell(), space_group=self.get_space_group())
+      unit_cell=self.get_unit_cell(), space_group=self.get_space_group(),
+      assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
 
   @staticmethod
   def _show(self, show_scan_varying=False, out=None):
