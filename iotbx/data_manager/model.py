@@ -23,7 +23,13 @@ class ModelDataManager(DataManagerBase):
     return self._set_default(ModelDataManager.datatype, filename)
 
   def get_model(self, filename=None):
-    return self._get(ModelDataManager.datatype, filename)
+    model = self._get(ModelDataManager.datatype, filename)
+    if (self.supports('restraint')):
+      restraint_objects = list()
+      for filename in self.get_restraint_names():
+        restraint_objects.append((filename, self.get_restraint(filename)))
+      model.set_restraint_objects(restraint_objects)
+    return model
 
   def get_model_names(self):
     return self._get_names(ModelDataManager.datatype)
@@ -48,13 +54,15 @@ class ModelDataManager(DataManagerBase):
         model_in = iotbx.pdb.input(a.file_name)
         model = mmtbx.model.manager(
           model_input=model_in,
-          pdb_interpretation_params=pdb_interpretation_extract)
+          pdb_interpretation_params=pdb_interpretation_extract,
+          log=self.logger)
         self.add_model(filename, model)
 
   def process_model_str(self, label, model_str, pdb_interpretation_extract=None):
     model = mmtbx.model.manager(
       model_input=iotbx.pdb.input(source_info=None, lines=model_str),
-      pdb_interpretation_params=pdb_interpretation_extract)
+      pdb_interpretation_params=pdb_interpretation_extract,
+      log=self.logger)
     self.add_model(label, model)
 
   def write_model_file(self, filename, model_str, overwrite=False):

@@ -8,7 +8,7 @@ import importlib
 import libtbx.phil
 
 from iotbx.file_reader import any_file
-from libtbx.utils import Sorry
+from libtbx.utils import multi_out, Sorry
 
 # mapping from DataManager datatypes to any_file file types
 any_file_type = {
@@ -126,7 +126,7 @@ def DataManager(datatypes=None, phil=None):
 # =============================================================================
 class DataManagerBase(object):
 
-  def __init__(self, datatypes=list(), phil=None):
+  def __init__(self, datatypes=list(), phil=None, logger=None):
     '''
     '''
 
@@ -184,6 +184,11 @@ class DataManagerBase(object):
     # load information from phil
     if (phil is not None):
       self.load_phil_scope(phil)
+
+    # logger (currently used for models)
+    self.logger = logger
+    if (self.logger is None):
+      self.logger = multi_out()
 
   # ---------------------------------------------------------------------------
   def export_phil_scope(self):

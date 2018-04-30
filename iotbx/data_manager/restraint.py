@@ -40,7 +40,7 @@ class RestraintDataManager(DataManagerBase):
       if (a.file_type != 'cif'):
         raise Sorry('%s is not a recognized restraints file' % filename)
       else:
-        self.add_restraint(filename, a.file_object.model)
+        self.add_restraint(filename, a.file_object.model())
 
   def write_restraint_file(self, filename, restraint_str, overwrite=False):
     self._write_text(RestraintDataManager.datatype, filename,

@@ -6,11 +6,11 @@ import libtbx.phil
 import mmtbx.model
 
 from libtbx.utils import Sorry
-from iotbx.data_manager import DataManager, supported_datatypes
+from iotbx.data_manager import DataManager
 
 # -----------------------------------------------------------------------------
 def test_data_manager():
-  a = DataManager(supported_datatypes)
+  a = DataManager(['model'])
 
   a.add_model('a', 'b')
   a.add_model('c', 'd')
@@ -204,6 +204,144 @@ END
   assert(dm.get_model().restraints_manager is None)
 
 # -----------------------------------------------------------------------------
+def test_model_and_restraint():
+
+  # from 3tpj
+  model_str = '''
+CRYST1  104.428  128.690   76.662  90.00  90.00  90.00 C 2 2 21
+ATOM   5877  O   URE A 403     -37.796 -38.296   5.693  1.00 15.43           O
+ATOM   5878  C   URE A 403     -36.624 -38.509   5.800  1.00 20.53           C
+ATOM   5879  N2  URE A 403     -36.191 -39.836   6.120  1.00 27.82           N
+ATOM   5880  N1  URE A 403     -35.679 -37.450   5.644  1.00 21.36           N
+ATOM   5881 HN11 URE A 403     -34.792 -37.617   5.732  1.00 25.63           H
+ATOM   5882 HN12 URE A 403     -35.965 -36.613   5.445  1.00 25.63           H
+ATOM   5883 HN21 URE A 403     -35.307 -40.015   6.211  1.00 33.38           H
+ATOM   5884 HN22 URE A 403     -36.801 -40.499   6.221  1.00 33.38           H
+'''
+
+  restraint_str = '''
+#
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+URE URE Unknown                   ligand 8 4 .
+#
+data_comp_URE
+#
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+URE        C       C   C     .          0.4968   -0.0000   -0.0000
+URE        O       O   O     .          1.7184   -0.0000   -0.0000
+URE        N1      N   NH2   .         -0.2180   -0.0000    1.2381
+URE        N2      N   NH2   .         -0.2180    0.0000   -1.2381
+URE        HN11    H   HNH2  .          0.2355   -0.0000    2.0237
+URE        HN12    H   HNH2  .         -1.1251    0.0000    1.2382
+URE        HN21    H   HNH2  .          0.2355    0.0000   -2.0237
+URE        HN22    H   HNH2  .         -1.1251   -0.0000   -1.2382
+#
+loop_
+_chem_comp_bond.comp_id
+_chem_comp_bond.atom_id_1
+_chem_comp_bond.atom_id_2
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+URE  C       O      double        1.222 0.020
+URE  C       N1     single        1.430 0.020
+URE  C       N2     single        1.430 0.020
+URE  N1      HN11   single        0.907 0.020
+URE  N1      HN12   single        0.907 0.020
+URE  N2      HN21   single        0.907 0.020
+URE  N2      HN22   single        0.907 0.020
+#
+loop_
+_chem_comp_angle.comp_id
+_chem_comp_angle.atom_id_1
+_chem_comp_angle.atom_id_2
+_chem_comp_angle.atom_id_3
+_chem_comp_angle.value_angle
+_chem_comp_angle.value_angle_esd
+URE  N2      C       N1           120.00 3.000
+URE  N2      C       O            120.00 3.000
+URE  N1      C       O            120.00 3.000
+URE  HN12    N1      HN11         120.00 3.000
+URE  HN12    N1      C            120.00 3.000
+URE  HN11    N1      C            120.00 3.000
+URE  HN22    N2      HN21         120.00 3.000
+URE  HN22    N2      C            120.00 3.000
+URE  HN21    N2      C            120.00 3.000
+#
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+URE CONST_01      HN11    N1      C       O              0.00   0.0 0
+URE CONST_02      HN12    N1      C       O            180.00   0.0 0
+URE CONST_03      HN21    N2      C       O             -0.00   0.0 0
+URE CONST_04      HN22    N2      C       O            180.00   0.0 0
+URE CONST_05      HN21    N2      C       N1           180.00   0.0 0
+URE CONST_06      HN22    N2      C       N1            -0.00   0.0 0
+URE CONST_07      HN11    N1      C       N2          -180.00   0.0 0
+URE CONST_08      HN12    N1      C       N2            -0.00   0.0 0
+#
+loop_
+_chem_comp_plane_atom.comp_id
+_chem_comp_plane_atom.plane_id
+_chem_comp_plane_atom.atom_id
+_chem_comp_plane_atom.dist_esd
+URE plan-1  C      0.020
+URE plan-1  O      0.020
+URE plan-1  N1     0.020
+URE plan-1  N2     0.020
+URE plan-1  HN11   0.020
+URE plan-1  HN12   0.020
+URE plan-1  HN21   0.020
+URE plan-1  HN22   0.020
+'''
+
+  model_filename = 'ure.pdb'
+  restraint_filename = 'ure.cif'
+
+  dm = DataManager(['model', 'restraint'])
+  dm.write_model_file(model_filename, model_str, overwrite=True)
+  dm.write_restraint_file(restraint_filename, restraint_str, overwrite=True)
+
+  # fails because no restraints are loaded
+  dm.process_model_file(model_filename)
+  model = dm.get_model()
+  try:
+    model.get_restraints_manager()
+  except Sorry:
+    pass
+
+  # automatically add restraints
+  dm.process_restraint_file(restraint_filename)
+  model = dm.get_model()
+  model.get_restraints_manager()
+
+  os.remove(model_filename)
+  os.remove(restraint_filename)
+
+# -----------------------------------------------------------------------------
 def test_sequence_datatype():
 
   # 1sar.fa
@@ -267,6 +405,7 @@ if (__name__ == '__main__'):
 
   test_data_manager()
   test_model_datatype()
+  test_model_and_restraint()
   test_sequence_datatype()
   test_miller_array_datatype()
 
