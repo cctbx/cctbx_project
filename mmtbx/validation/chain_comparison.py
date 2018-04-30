@@ -157,6 +157,7 @@ class rmsd_values:
     self.total_query=None
     self.used_target=None
     self.used_query=None
+    self.n_fragments_list=[]
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
@@ -166,12 +167,24 @@ class rmsd_values:
     ipoint=self.id_list.index(id)
     self.target_length_list[ipoint]=target_length
 
-  def add_rmsd(self,id=None,rmsd=None,n=None):
+  def add_fragment_count(self,id=None,n=None):
+    ipoint=self.id_list.index(id)
+    self.fragment_count[ipoint]=n
+
+  def add_rmsd(self,id=None,rmsd=None,n=None,n_fragments=None):
     self.id_list.append(id)
     self.rmsd_list.append(rmsd)
     self.n_list.append(n)
     self.match_percent_list.append(0)
     self.target_length_list.append(0)
+    self.n_fragments_list.append(n_fragments)
+
+  def get_n_fragments(self,id=None):
+    for local_id,local_n_fragments in zip(
+       self.id_list,self.n_fragments_list):
+      if id==local_id:
+        return local_n_fragments
+    return 0
 
   def get_match_percent(self,id=None):
     for local_id,local_match_percent in zip(
@@ -765,6 +778,9 @@ def write_summary(params=None,file_list=None,rv_list=None,
       max_dist)
     print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
     print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
+    print >>out,\
+       "\nFRAGMENTS is number of contiguous segments in match with "+\
+       "target sequence. (Each gap/reverse of direction starts new segment).\n"
 
     print >>out,"\n"
     print >>out,"               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %"
@@ -772,7 +788,7 @@ def write_summary(params=None,file_list=None,rv_list=None,
               "     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED"+\
               " FOUND  CA                  SEQ"
     print >>out,"               RMSD   N      N       N       N      N  "+\
-              "        SCORE  SEQ MATCH(%)  SCORE"+"\n"
+              "        SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS"+"\n"
 
   results_dict={}
   score_list=[]
@@ -797,8 +813,10 @@ def write_summary(params=None,file_list=None,rv_list=None,
     reverse_rmsd,reverse_n=rv.get_values('reverse')
     unaligned_rmsd,unaligned_n=rv.get_values('unaligned')
     match_percent=rv.get_match_percent('close')
-    print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
-         reverse_n,unaligned_n,percent_close,score,match_percent,seq_score)
+    fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
+    print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %4d" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
+         reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
+         fragments)
 
 def get_target_length(target_chain_ids=None,hierarchy=None,
      target_length_from_matching_chains=None):
@@ -924,6 +942,15 @@ def apply_ncs_to_hierarchy(ncs_obj=None,
   new_hierarchy=get_pdb_hierarchy(text=an.output_text)
   return new_hierarchy
 
+def get_fragment_count(forward_match_list):
+  n=0
+  i_last=None
+  for i,j in forward_match_list:
+    if i_last is None or i != i_last+1:
+      n+=1
+    i_last=i
+  return n
+    
 def run(args=None,
    ncs_obj=None,
    target_unique_hierarchy=None,
@@ -1279,7 +1306,8 @@ def run(args=None,
   else:
     rmsd=None
   n=forward_match_rmsd_list.size()
-  rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+  fragments_forward=get_fragment_count(forward_match_list)
+  rv.add_rmsd(id=id,rmsd=rmsd,n=n,n_fragments=fragments_forward)
 
   id='reverse'
   if reverse_match_rmsd_list.size():
@@ -1287,7 +1315,8 @@ def run(args=None,
   else:
     rmsd=None
   n=reverse_match_rmsd_list.size()
-  rv.add_rmsd(id=id,rmsd=rmsd,n=n)
+  fragments_reverse=get_fragment_count(reverse_match_list)
+  rv.add_rmsd(id=id,rmsd=rmsd,n=n,n_fragments=fragments_reverse)
 
   id='unaligned'
   if unaligned_match_rmsd_list.size():
