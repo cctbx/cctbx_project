@@ -29,8 +29,8 @@ import zipfile
 
 windows_remove_list = []
 
-rosetta_version_tar_bundle="rosetta_src_3.7_bundle"
-rosetta_version_directory='rosetta_src_2016.32.58837_bundle'
+rosetta_version_tar_bundle='rosetta_src_2018.12.60119_bundle'
+rosetta_version_directory=rosetta_version_tar_bundle
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
 amber_version='ambertools-18' # same as circle download file
