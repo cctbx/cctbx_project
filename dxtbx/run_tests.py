@@ -5,7 +5,6 @@ from libtbx.test_utils.pytest import discover
 tst_list = [
     "$D/tests/tst_dxtbx.py",
     "$D/tests/tst_imageset.py",
-    "$D/tests/tst_datablock.py",
     "$D/tests/tst_filecache.py",
     "$D/tests/tst_beamline_definitions.py",
     "$D/tests/tstFormatCBFFull.py",
