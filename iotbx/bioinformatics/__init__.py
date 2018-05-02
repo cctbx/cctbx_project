@@ -1820,8 +1820,9 @@ def clear_empty_lines(text):
   return "\n".join(new_lines)+"\n"
 
 
-def get_sequences(file_name=None,text=None):
-  # return simple list of sequences in this file. duplicates included.
+def get_sequences(file_name=None,text=None,remove_duplicates=None):
+  # return simple list of sequences in this file. duplicates included
+  #  unless remove_duplicates=True
   if not text:
     if not file_name:
       from libtbx.utils import Sorry
@@ -1835,7 +1836,10 @@ def get_sequences(file_name=None,text=None):
   ( sequences, unknowns ) = parse_sequence( text )
   simple_sequence_list=[]
   for sequence in sequences:
-    simple_sequence_list.append(sequence.sequence)
+    if remove_duplicates and sequence.sequence in simple_sequence_list: 
+      continue # it is a duplicate
+    else: # take it
+      simple_sequence_list.append(sequence.sequence)
   return simple_sequence_list
 
 def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None):

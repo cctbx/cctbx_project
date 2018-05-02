@@ -501,16 +501,15 @@ def tst_01():
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
 
-FRAGMENTS is number of contiguous segments in match with target sequence. (Each gap/reverse of direction starts new segment).
+MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
 
- Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04     9
-"""
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
@@ -541,16 +540,15 @@ def tst_02():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
-FRAGMENTS is number of contiguous segments in match with target sequence. (Each gap/reverse of direction starts new segment).
+MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
 
- Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04     9
-"""
+ Unique_target 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)
@@ -593,17 +591,15 @@ def tst_03():
   args=["query_dir=files","model.pdb"]
   r=run(args,out=f)
   expected_text="""
-
-FRAGMENTS is number of contiguous segments in match with target sequence. (Each gap/reverse of direction starts new segment).
+MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
 
-     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04     9
-"""
+     query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "Expected: \n%s \nFound: \n%s" %(expected_text,found_text)
@@ -825,16 +821,15 @@ def tst_06():
   args=['model.pdb','query.pdb','ncs_file=ncs.ncs_spec']
   r=run(args,out=f)
   expected_text="""
-FRAGMENTS is number of contiguous segments in match with target sequence. (Each gap/reverse of direction starts new segment).
+MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
 
                ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %
      MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED FOUND  CA                  SEQ
-               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS
+               RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH
 
- Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    13
-"""
+ Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    4.5"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
     print "\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text)

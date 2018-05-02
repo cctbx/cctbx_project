@@ -779,7 +779,8 @@ def write_summary(params=None,file_list=None,rv_list=None,
     print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
     print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
     print >>out,\
-       "\nFRAGMENTS is number of contiguous segments in match with "+\
+        "\nMEAN LENGTH is the mean length of contiguous "+\
+        "segments in the match with "+\
        "target sequence. (Each gap/reverse of direction starts new segment).\n"
 
     print >>out,"\n"
@@ -788,7 +789,7 @@ def write_summary(params=None,file_list=None,rv_list=None,
               "     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED"+\
               " FOUND  CA                  SEQ"
     print >>out,"               RMSD   N      N       N       N      N  "+\
-              "        SCORE  SEQ MATCH(%)  SCORE  FRAGMENTS"+"\n"
+              "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH"+"\n"
 
   results_dict={}
   score_list=[]
@@ -814,9 +815,10 @@ def write_summary(params=None,file_list=None,rv_list=None,
     unaligned_rmsd,unaligned_n=rv.get_values('unaligned')
     match_percent=rv.get_match_percent('close')
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
-    print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %4d" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
+    mean_length=close_n/max(1,fragments)
+    print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
-         fragments)
+         mean_length)
 
 def get_target_length(target_chain_ids=None,hierarchy=None,
      target_length_from_matching_chains=None):
