@@ -1,18 +1,11 @@
-#
-# datablock.py
-#
-#  Copyright (C) 2013 Diamond Light Source
-#
-#  Author: James Parkhurst
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-
 from __future__ import absolute_import, division
+
+import collections
 import cPickle as pickle
+import json
 
+import dxtbx.imageset
 from libtbx.utils import Sorry
-
 
 class DataBlock(object):
   ''' High level container for blocks of sweeps and imagesets. '''
@@ -84,25 +77,21 @@ class DataBlock(object):
 
   def iter_sweeps(self):
     ''' Iterate over sweep groups. '''
-    from dxtbx.imageset import ImageSweep
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         yield iset
 
   def iter_stills(self):
     ''' Iterate over still groups. '''
-    from dxtbx.imageset import ImageSweep
     for iset in self._imagesets:
-      if not isinstance(iset, ImageSweep):
+      if not isinstance(iset, dxtbx.imageset.ImageSweep):
         yield iset
 
   def unique_beams(self):
     ''' Iterate through unique beams. '''
-    from dxtbx.imageset import ImageSweep
-    from libtbx.containers import OrderedDict
-    obj = OrderedDict()
+    obj = collections.OrderedDict()
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         obj[iset.get_beam()] = None
       else:
         for i in xrange(len(iset)):
@@ -115,11 +104,9 @@ class DataBlock(object):
 
   def _unique_detectors_dict(self):
     ''' Returns an ordered dictionary of detector objects. '''
-    from dxtbx.imageset import ImageSweep
-    from libtbx.containers import OrderedDict
-    obj = OrderedDict()
+    obj = collections.OrderedDict()
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         obj[iset.get_detector()] = None
       else:
         for i in xrange(len(iset)):
@@ -132,11 +119,9 @@ class DataBlock(object):
 
   def unique_goniometers(self):
     ''' Iterate through unique goniometers. '''
-    from dxtbx.imageset import ImageSweep
-    from libtbx.containers import OrderedDict
-    obj = OrderedDict()
+    obj = collections.OrderedDict()
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         obj[iset.get_goniometer()] = None
       else:
         for i in xrange(len(iset)):
@@ -150,11 +135,9 @@ class DataBlock(object):
 
   def unique_scans(self):
     ''' Iterate through unique scans. '''
-    from dxtbx.imageset import ImageSweep
-    from libtbx.containers import OrderedDict
-    obj = OrderedDict()
+    obj = collections.OrderedDict()
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         obj[iset.get_scan()] = None
       else:
         for i in xrange(len(iset)):
@@ -168,9 +151,7 @@ class DataBlock(object):
 
   def to_dict(self):
     ''' Convert the datablock to a dictionary '''
-    from libtbx.containers import OrderedDict
     from itertools import groupby
-    from dxtbx.imageset import ImageSweep, ImageGrid
     from dxtbx.format.FormatMultiImage import FormatMultiImage
     from os.path import abspath
 
@@ -186,15 +167,15 @@ class DataBlock(object):
     s = list(self.unique_scans())
 
     # Create the data block dictionary
-    result = OrderedDict()
+    result = collections.OrderedDict()
     result['__id__'] = 'DataBlock'
     result['imageset'] = []
 
     # Loop through all the imagesets
     for iset in self._imagesets:
-      if isinstance(iset, ImageSweep):
+      if isinstance(iset, dxtbx.imageset.ImageSweep):
         if iset.reader().is_single_file_reader():
-          result['imageset'].append(OrderedDict([
+          result['imageset'].append(collections.OrderedDict([
               ('__id__', 'ImageSweep'),
               ('master',   abspath(iset.reader().master_path())),
               ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
@@ -210,7 +191,7 @@ class DataBlock(object):
               ('params',   iset.params())
             ]))
         else:
-          result['imageset'].append(OrderedDict([
+          result['imageset'].append(collections.OrderedDict([
               ('__id__', 'ImageSweep'),
               ('template',   abspath(iset.get_template())),
               ("mask", abspath_or_none(iset.external_lookup.mask.filename)),
@@ -225,8 +206,8 @@ class DataBlock(object):
               ('params',   iset.params())
             ]))
       else:
-        imageset = OrderedDict()
-        if isinstance(iset, ImageGrid):
+        imageset = collections.OrderedDict()
+        if isinstance(iset, dxtbx.imageset.ImageGrid):
           identifier = "ImageGrid"
           imageset['__id__'] = "ImageGrid"
           imageset['grid_size'] = iset.get_grid_size()
@@ -234,7 +215,7 @@ class DataBlock(object):
           imageset['__id__'] = "ImageSet"
         image_list = []
         for i in xrange(len(iset)):
-          image_dict = OrderedDict()
+          image_dict = collections.OrderedDict()
           image_dict['filename'] = abspath(iset.get_path(i))
           image_dict["gain"] = abspath_or_none(iset.external_lookup.gain.filename)
           image_dict["pedestal"] = abspath_or_none(iset.external_lookup.pedestal.filename)
@@ -403,7 +384,6 @@ class DataBlockTemplateImporter(object):
 
   def _create_imageset(self, format_class, template, filenames, **kwargs):
     ''' Create a multi file sweep or imageset. '''
-    from dxtbx.imageset import ImageSetFactory
     from dxtbx.sweep_filenames import template_string_number_index
 
     # Get the image range
@@ -436,7 +416,7 @@ class DataBlockTemplateImporter(object):
     image_range = (image_range[0], image_range[1]+1)
 
     # Create the sweep
-    imageset = ImageSetFactory.make_sweep(
+    imageset = dxtbx.imageset.ImageSetFactory.make_sweep(
       template, range(*image_range),
       format_class,
       b, d, g, s, format_kwargs=kwargs.get('format_kwargs'))
@@ -604,7 +584,6 @@ class DataBlockFilenameImporter(object):
   def _create_multi_file_imageset(self, format_class, records,
                                   format_kwargs=None):
     ''' Create a multi file sweep or imageset. '''
-    from dxtbx.imageset import ImageSetFactory
     from os.path import abspath
 
     # Make either an imageset or sweep
@@ -615,7 +594,7 @@ class DataBlockFilenameImporter(object):
       image_range = (image_range[0], image_range[1]+1)
 
       # Create the sweep
-      imageset = ImageSetFactory.make_sweep(
+      imageset = dxtbx.imageset.ImageSetFactory.make_sweep(
         abspath(records[0].template), range(*image_range),
         format_class,
         records[0].beam, records[0].detector,
@@ -631,7 +610,7 @@ class DataBlockFilenameImporter(object):
         filenames.append(r.filename)
 
       # make an imageset
-      imageset = ImageSetFactory.make_imageset(
+      imageset = dxtbx.imageset.ImageSetFactory.make_imageset(
         map(abspath, filenames),
         format_class,
         format_kwargs=format_kwargs)
@@ -647,7 +626,6 @@ class DataBlockFilenameImporter(object):
   def _create_single_file_imageset(self, format_class, filename,
                                    format_kwargs=None):
     ''' Create an imageset from a multi image file. '''
-    from dxtbx.imageset import ImageSet, ImageSweep
     from os.path import abspath
     if format_kwargs is None:
       format_kwargs = {}
@@ -674,12 +652,10 @@ class DataBlockDictImporter(object):
 
   def _load_datablocks(self, obj, check_format=True, directory=None):
     ''' Create the datablock from a dictionary. '''
-    from libtbx.containers import OrderedDict
     from dxtbx.format.Registry import Registry
     from dxtbx.model import BeamFactory, DetectorFactory
     from dxtbx.model import GoniometerFactory, ScanFactory
     from dxtbx.serialize.filename import load_path
-    from dxtbx.imageset import ImageSetFactory, ImageGrid
     from dxtbx.format.image import ImageBool, ImageDouble
     from dxtbx.format.FormatMultiImage import FormatMultiImage
 
@@ -732,7 +708,7 @@ class DataBlockDictImporter(object):
         if "template" in imageset:
           template = load_path(imageset['template'], directory=directory)
           i0, i1 = scan.get_image_range()
-          iset = ImageSetFactory.make_sweep(
+          iset = dxtbx.imageset.ImageSetFactory.make_sweep(
             template, range(i0, i1+1), None,
             beam, detector, gonio, scan, check_format,
             format_kwargs=format_kwargs)
@@ -774,7 +750,7 @@ class DataBlockDictImporter(object):
             format_class = FormatMultiImage
           else:
             format_class = None
-          iset = ImageSetFactory.make_sweep(
+          iset = dxtbx.imageset.ImageSetFactory.make_sweep(
             template,
             list(range(i0, i1+1)),
             format_class  = format_class,
@@ -818,11 +794,11 @@ class DataBlockDictImporter(object):
         filenames = [image['filename'] for image in imageset['images']]
         indices = [image['image'] for image in imageset['images'] if 'image' in image]
         assert len(indices) == 0 or len(indices) == len(filenames)
-        iset = ImageSetFactory.make_imageset(
+        iset = dxtbx.imageset.ImageSetFactory.make_imageset(
           filenames, None, check_format, indices, format_kwargs=format_kwargs)
         if ident == "ImageGrid":
           grid_size = imageset['grid_size']
-          iset = ImageGrid.from_imageset(iset, grid_size)
+          iset = dxtbx.imageset.ImageGrid.from_imageset(iset, grid_size)
         for i, image in enumerate(imageset['images']):
           beam, detector, gonio, scan = load_models(image)
           iset.set_beam(beam, i)
@@ -1040,15 +1016,13 @@ class DataBlockFactory(object):
   @staticmethod
   def from_in_memory(images, indices=None):
     ''' Function to instantiate data block from in memory imageset. '''
-    from dxtbx.imageset import ImageSet, ImageSetData, MemReader
     return DataBlock([
-      ImageSet(
-        ImageSetData(
-          MemReader(images)
+      dxtbx.imageset.ImageSet(
+        dxtbx.imageset.ImageSetData(
+          dxtbx.imageset.MemReader(images)
         ),
         indices)])
 
-import json
 class AutoEncoder(json.JSONEncoder):
   def default(self, obj):
     import libtbx
