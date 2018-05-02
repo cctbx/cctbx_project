@@ -391,9 +391,8 @@ class manager(object):
       site_labels=site_labels,
       header=header,
       file_descriptor=outf_descriptor)
-    n_excessive = 0
     if [self.cartesian_ncs_manager, xray_structure].count(None) == 0:
-      n_excessive = self.cartesian_ncs_manager.show_sites_distances_to_average(
+      self.cartesian_ncs_manager.show_sites_distances_to_average(
           sites_cart=sites_cart,
           site_labels=site_labels,
           excessive_distance_limit=excessive_distance_limit,
@@ -414,15 +413,3 @@ class manager(object):
       print >> outf_descriptor
     if file_name is not None:
       outf_descriptor.close()
-    if (n_excessive != 0):
-      raise Sorry("Excessive distances to NCS averages:\n"
-        + "  Please inspect the resulting .geo file\n"
-        + "  for a full listing of the distances to the NCS averages.\n"
-        + '  Look for the word "EXCESSIVE".\n'
-        + "  The current limit is defined by parameter:\n"
-        + "    refinement.ncs.excessive_distance_limit\n"
-        + "  The number of distances exceeding this limit is: %d\n"
-            % n_excessive
-        + "  Please correct your model or redefine the limit.\n"
-        + "  To disable this message completely define:\n"
-        + "    refinement.ncs.excessive_distance_limit=None")

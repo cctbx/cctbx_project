@@ -21,6 +21,7 @@ class cartesian_ncs_manager(object):
   def __init__(self, model, ncs_params, ext_groups=None):
     # create bunch of group objects
     self.ncs_params = ncs_params
+    self.n_excessive_site_distances = None
     if self.ncs_params is None:
       self.ncs_params = global_ncs_params.extract().ncs
     if ext_groups is not None:
@@ -222,6 +223,9 @@ class cartesian_ncs_manager(object):
       cif_block.add_loop(ncs_ens_gen_loop)
     return cif_block
 
+  def get_n_excessive_sites_distances(self):
+    return self.n_excessive_site_distances
+
   def show_sites_distances_to_average(self,
          sites_cart,
          site_labels,
@@ -250,7 +254,7 @@ class cartesian_ncs_manager(object):
         excessive_distance_limit=excessive_distance_limit,
         out=out,
         prefix=prefix+"  ")
-      print n_excessive
+    self.n_excessive_site_distances = n_excessive
     return n_excessive
 
   def selection_restrained(self, n_seq=None):

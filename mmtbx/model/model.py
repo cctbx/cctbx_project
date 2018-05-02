@@ -1100,6 +1100,37 @@ class manager(object):
       print >> self.log, "No NCS restraint groups specified."
       print >> self.log
 
+  def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
+    result = 0
+    if (self.get_restraints_manager() is not None and
+        self.get_restraints_manager().cartesian_ncs_manager is not None):
+      result = self.get_restraints_manager().cartesian_ncs_manager.\
+          get_n_excessive_sites_distances()
+      if result is None: # nobody run show_sites yet
+        result = self.get_restraints_manager().cartesian_ncs_manager.\
+            show_sites_distances_to_average(
+                sites_cart=self.get_sites_cart(),
+                site_labels=self.get_xray_structure().scatterers().extract_labels(),
+                excessive_distance_limit=excessive_distance_limit,
+                out=null_out())
+    return result
+
+  def raise_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
+    n_excessive = self.get_n_excessive_site_distances_cartesian_ncs(
+        excessive_distance_limit=excessive_distance_limit)
+    if n_excessive > 0:
+      raise Sorry("Excessive distances to NCS averages:\n"
+        + "  Please inspect the resulting .geo file\n"
+        + "  for a full listing of the distances to the NCS averages.\n"
+        + '  Look for the word "EXCESSIVE".\n'
+        + "  The current limit is defined by parameter:\n"
+        + "    refinement.ncs.excessive_distance_limit\n"
+        + "  The number of distances exceeding this limit is: %d\n"
+            % n_excessive
+        + "  Please correct your model or redefine the limit.\n"
+        + "  To disable this message completely define:\n"
+        + "    refinement.ncs.excessive_distance_limit=None")
+
   def cartesian_NCS_as_pdb(self):
     result = StringIO()
     if (self.restraints_manager is not None and
