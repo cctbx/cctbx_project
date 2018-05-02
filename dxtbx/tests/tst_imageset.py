@@ -1,6 +1,7 @@
 from __future__ import division
 
 import libtbx.load_env
+import pytest
 
 class TestFormat(object):
 
@@ -302,19 +303,13 @@ class TestImageSet(object):
 
   def tst_get_item(self, imageset):
     image = imageset[0]
-    try:
+    with pytest.raises(Exception):
       image = imageset[9]
-      assert(False)
-    except Exception:
-      pass
 
     imageset2 = imageset[3:7]
     image = imageset2[0]
-    try:
+    with pytest.raises(Exception):
       image = imageset2[5]
-      assert(False)
-    except Exception:
-      pass
 
     self.tst_len(imageset2, 4)
     self.tst_get_detectorbase(imageset2, range(0, 4), 5)
@@ -324,11 +319,8 @@ class TestImageSet(object):
 
     imageset2 = imageset[3:5]
     image = imageset2[0]
-    try:
+    with pytest.raises(Exception):
       image = imageset2[2]
-      assert(False)
-    except Exception:
-      pass
 
     self.tst_len(imageset2, 2)
     self.tst_get_detectorbase(imageset2, range(0, 2), 2)
@@ -352,21 +344,15 @@ class TestImageSet(object):
     for i in indices:
       imageset.get_detectorbase(i)
 
-    try:
+    with pytest.raises(Exception):
       imageset.get_detectorbase(outside_index)
-      assert(False)
-    except Exception:
-      pass
 
   def tst_get_models(self, imageset, indices, outside_index):
     for i in indices:
       self.tst_get_models_index(imageset, i)
 
-    try:
+    with pytest.raises(Exception):
       self.tst_get_models_index(imageset, outside_index)
-      assert(False)
-    except Exception:
-      pass
 
   def tst_get_models_index(self, imageset, index=None):
     imageset.get_detector(index)
@@ -442,19 +428,13 @@ class TestImageSweep(object):
 
   def tst_get_item(self, sweep):
     image = sweep[0]
-    try:
+    with pytest.raises(Exception):
       image = sweep[9]
-      assert(False)
-    except Exception:
-      pass
 
     sweep2 = sweep[3:7]
     image = sweep2[0]
-    try:
+    with pytest.raises(Exception):
       image = sweep2[5]
-      assert(False)
-    except Exception:
-      pass
 
     self.tst_len(sweep2, 4)
     self.tst_get_detectorbase(sweep2, range(0, 4), 5)
@@ -463,11 +443,8 @@ class TestImageSweep(object):
     self.tst_iter(sweep2)
     self.tst_get_array_range(sweep2, (3, 7))
 
-    try:
+    with pytest.raises(IndexError):
       sweep2 = sweep[3:7:2]
-      assert(False)
-    except IndexError:
-      pass
 
   def tst_len(self, sweep, length):
     assert(len(sweep) == length)
@@ -486,11 +463,8 @@ class TestImageSweep(object):
     for i in indices:
       sweep.get_detectorbase(i)
 
-    try:
+    with pytest.raises(Exception):
       sweep.get_detectorbase(outside_index)
-      assert(False)
-    except Exception:
-      pass
 
   def tst_get_models(self, sweep, indices, outside_index):
     self.tst_get_models_index(sweep)
