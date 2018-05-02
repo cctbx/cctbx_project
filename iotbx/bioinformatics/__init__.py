@@ -1836,7 +1836,7 @@ def get_sequences(file_name=None,text=None,remove_duplicates=None):
   ( sequences, unknowns ) = parse_sequence( text )
   simple_sequence_list=[]
   for sequence in sequences:
-    if remove_duplicates and sequence.sequence in simple_sequence_list: 
+    if remove_duplicates and sequence.sequence in simple_sequence_list:
       continue # it is a duplicate
     else: # take it
       simple_sequence_list.append(sequence.sequence)
