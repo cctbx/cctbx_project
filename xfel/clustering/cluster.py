@@ -191,7 +191,7 @@ class Cluster:
           data.append(this_frame)
       else:
           logger.info('skipping item {}'.format(item))
-    print "%d lattices will be analyzed"%(len(data))
+    logger.info("%d lattices will be analyzed"%(len(data)))
 
     return cls(data, _prefix, _message)
 

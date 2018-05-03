@@ -327,16 +327,19 @@ class SingleDialsFrameFromFiles(SingleFrame):
 
 class CellOnlyFrame(SingleFrame):
   def __init__(self, crystal_symmetry, path=None, name=None, lattice_id=None):
-      self.crystal_symmetry = crystal_symmetry
-      self.crystal_symmetry.show_summary()
-      self.niggli_cell = self.crystal_symmetry.niggli_cell()
-      self.niggli_cell.show_summary(prefix="   niggli-->")
-      self.uc = self.niggli_cell.unit_cell().parameters()
-      self.mm = self.niggli_cell.unit_cell().metrical_matrix()
-      self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())
-      self.path = path
-      self.name = name
-      self.lattice_id = lattice_id
+    from cStringIO import StringIO
+    f = StringIO()
+    self.crystal_symmetry = crystal_symmetry
+    self.crystal_symmetry.show_summary(f=f)
+    self.niggli_cell = self.crystal_symmetry.niggli_cell()
+    self.niggli_cell.show_summary(f=f, prefix="   niggli-->")
+    logger.info(f.getvalue())
+    self.uc = self.niggli_cell.unit_cell().parameters()
+    self.mm = self.niggli_cell.unit_cell().metrical_matrix()
+    self.pg = "".join(self.crystal_symmetry.space_group().type().lookup_symbol().split())
+    self.path = path
+    self.name = name
+    self.lattice_id = lattice_id
 
 class SingleDialsFrameFromJson(SingleFrame):
   def __init__(self, expts_path=None, **kwargs):
