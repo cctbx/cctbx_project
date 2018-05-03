@@ -124,6 +124,11 @@ output {
 
     self.custom_init()
 
+  def header(self, text):
+    print("-"*79, file=self.logger)
+    print(text, file=self.logger)
+    print("*"*len(text), file=self.logger)
+
   # ---------------------------------------------------------------------------
   def custom_init(self):
     '''

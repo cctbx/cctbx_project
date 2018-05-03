@@ -74,6 +74,27 @@ master_params_str = """
     .help = Extract box from map and model and use it for calculations
 """
 
+def get_fsc(map_data, model, params):
+  result = None
+  if(params.compute.fsc):
+    mtriage_params = master_params().extract()
+    mtriage_params.scattering_table = params.scattering_table
+    mtriage_params.compute.map_counts = False
+    mtriage_params.compute.fsc_curve_model = True
+    mtriage_params.compute.d_fsc_model_05 = False
+    mtriage_params.compute.d_fsc_model_0 = False
+    mtriage_params.compute.d_fsc_model_0143 = False
+    mtriage_params.compute.d_model = False
+    mtriage_params.compute.d_model_b0 = False
+    mtriage_params.compute.d99 = False
+    mtriage_params.mask_maps = True
+    mtriage_params.resolution = params.resolution
+    result = mtriage(
+      map_data       = map_data,
+      xray_structure = model.get_xray_structure(),
+      params         = mtriage_params).get_results().masked.fsc_curve_model
+  return result
+
 def get_atom_radius(xray_structure=None, resolution=None, radius=None):
   if(radius is not None): return radius
   radii = []
