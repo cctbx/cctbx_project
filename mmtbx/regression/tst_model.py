@@ -956,10 +956,10 @@ def exercise():
   iso.refine_ap_and_dp = False
   iso.use_u_local_only = False
 #####
-
-  mol.show_adp_statistics()
+  import sys
+  mol.show_adp_statistics(out=sys.stdout)
   print
-  mol.show_adp_statistics()
+  mol.show_adp_statistics(out=sys.stdout)
 
   rm = mol.restraints_manager
 
