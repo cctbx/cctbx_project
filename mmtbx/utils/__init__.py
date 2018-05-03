@@ -2110,33 +2110,6 @@ class fmodel_from_xray_structure(object):
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
 
-def rms_b_iso_or_b_equiv_bonded(restraints_manager, xray_structure,
-                                ias_manager = None):
-  result = None
-  ias_selection = None
-  if ias_manager is not None:
-    ias_selection = ias_manager.get_ias_selection()
-  if(restraints_manager is not None):
-    xrs_sel = xray_structure
-    if(ias_selection is not None):
-      xrs_sel = xray_structure.select(selection = ~ias_selection)
-    bond_proxies_simple, asu = restraints_manager.geometry.\
-        get_covalent_bond_proxies(sites_cart=xrs_sel.sites_cart())
-    u_isos = xrs_sel.extract_u_iso_or_u_equiv()
-    scatterers = xrs_sel.scatterers()
-    values = flex.double()
-    for proxy in bond_proxies_simple:
-      i_seq, j_seq = proxy.i_seqs
-      if(scatterers[i_seq].element_symbol() not in ["H", "D"] and
-         scatterers[j_seq].element_symbol() not in ["H", "D"]):
-        b_iso_i = adptbx.u_as_b(u_isos[i_seq])
-        b_iso_j = adptbx.u_as_b(u_isos[j_seq])
-        abs_diff_sq = abs(b_iso_i-b_iso_j)**2
-        values.append(abs_diff_sq)
-    if(values.size() == 0): return 0
-    result = math.sqrt(flex.sum(values) / values.size())
-  return result
-
 def switch_rotamers(
       pdb_hierarchy,
       mode,

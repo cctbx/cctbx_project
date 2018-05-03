@@ -118,7 +118,7 @@ def run(args, log=sys.stdout):
   #   data_max=5., log=log)
   #
   make_sub_header("Histogram of ADPs", out=log)
-  info.adp.show()
+  info.adp.show(log=log)
   # bs = xrs.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
   # show_histogram(data=bs, n_slots=10, data_min=flex.min(bs),
   #   data_max=flex.max(bs), log=log)

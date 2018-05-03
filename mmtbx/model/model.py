@@ -1969,10 +1969,14 @@ class manager(object):
     self.set_sites_cart_from_xrs()
 
   def rms_b_iso_or_b_equiv_bonded(self):
-    return utils.rms_b_iso_or_b_equiv_bonded(
-      restraints_manager = self.restraints_manager,
-      xray_structure     = self._xray_structure,
-      ias_manager        = self.ias_manager)
+    if(self.ias_manager is not None): return 0
+    rm = self.restraints_manager
+    sc = self.get_xray_structure().sites_cart()
+    bs = self.get_xray_structure().extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+    return mmtbx.model.statistics.rms_b_iso_or_b_equiv_bonded(
+      geometry_restraints_manager = rm,
+      sites_cart                  = sc,
+      b_isos                      = bs)
 
   def deep_copy(self):
     return self.select(selection = flex.bool(
@@ -2671,21 +2675,21 @@ class manager(object):
       hierarchy = self.get_hierarchy(sync_with_xray_structure=True)).result
 
   def adp_statistics(self):
-    return mmtbx.model.statistics.adp(model = self)
+    rm = self.restraints_manager
+    if(self.ias_manager is not None):
+      rm = None
+    return mmtbx.model.statistics.adp(
+      pdb_hierarchy               = self.get_hierarchy(),
+      xray_structure              = self.get_xray_structure(),
+      use_hydrogens               = False, #XXX
+      geometry_restraints_manager = rm)
 
   def show_adp_statistics(self,
+                          out,
                           prefix         = "",
                           padded         = False,
-                          pdb_deposition = False,
-                          out            = None):
-    global time_model_show
-    if(out is None): out = self.log
-    timer = user_plus_sys_time()
-    result = self.adp_statistics()
-    result.show(out = out, prefix = prefix, padded = padded,
-      pdb_deposition = pdb_deposition)
-    time_model_show += timer.elapsed()
-    return result
+                          pdb_deposition = False):
+    self.adp_statistics().show(log = out, prefix = prefix)
 
   def energies_adp(self, iso_restraints, compute_gradients, use_hd):
     assert self.refinement_flags is not None

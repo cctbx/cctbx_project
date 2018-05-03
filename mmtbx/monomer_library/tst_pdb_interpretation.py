@@ -1235,79 +1235,6 @@ chirality pdb=" CB  DTH A  18 "
     True       2.55   -2.55   -0.00 2.00e-01 2.50e+01 4.37e-06
 """)
 
-def exercise_scale_restraints () :
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  def run_pdb_interpretation (file_name) :
-  ## links_phil = iotbx.phil.parse(
-  ##   mmtbx.monomer_library.pdb_interpretation.master_params_str,
-  ##   process_includes=True,
-  ##   )
-  ## links = libtbx.phil.parse(link_def)
-  ## params_links = links_phil.fetch(source=links)
-  ## #params_links.show()
-  ## params_links = params_links.extract()
-    processed_pdb_file = mmtbx.monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=None,
-      file_name=file_name,
-      strict_conflict_handling=True,
-      substitute_non_crystallographic_unit_cell_if_necessary=False,
-      max_atoms=None,
-      log=null_out())
-    return processed_pdb_file
-  edits_phil = iotbx.phil.parse(
-    mmtbx.monomer_library.pdb_interpretation.geometry_restraints_edits_str)
-  edits = libtbx.phil.parse("""
-scale_restraints {
-  atom_selection = chain A and resseq 1
-  scale = 2.0
-}
-scale_restraints {
-  atom_selection = chain A and resseq 4
-  scale = 0.5
-  apply_to = *bond *angle *chirality
-}
-""")
-  params_edits = edits_phil.fetch(source=edits).extract()
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/enk.pdb",
-    test=os.path.isfile)
-  if (not os.path.isfile(pdb_file)) :
-    return
-  processed_pdb_file_1 = run_pdb_interpretation(pdb_file)
-  grm_1 = processed_pdb_file_1.geometry_restraints_manager()
-  angle_proxies_1 = grm_1.angle_proxies
-  dihedral_proxies_1 = grm_1.dihedral_proxies
-  processed_pdb_file_2 = run_pdb_interpretation(pdb_file)
-  grm_2 = processed_pdb_file_2.geometry_restraints_manager(
-    params_edits=params_edits)
-  angle_proxies_2 = grm_2.angle_proxies
-  dihedral_proxies_2 = grm_2.dihedral_proxies
-  assert (len(angle_proxies_2) == len(angle_proxies_1))
-  assert (len(dihedral_proxies_2) == len(dihedral_proxies_1))
-  for j, proxy_1 in enumerate(angle_proxies_1) :
-    proxy_2 = angle_proxies_2[j]
-    if (0 <= j <= 17) : # this corresponds to resseq 1
-      assert (proxy_2.weight == 2*proxy_1.weight), "%s != 2*%s" % (
-        proxy_2.weight,
-        proxy_1.weight,
-        )
-    elif (25 <= j <= 43) : # resseq 4 (and adjoining atoms)
-      assert (proxy_2.weight == 0.5*proxy_1.weight), "%s != 0.5*%s" % (
-        proxy_2.weight,
-        proxy_1.weight,
-        )
-    else :
-      assert (proxy_2.weight == proxy_1.weight)
-  for j, proxy_1 in enumerate(dihedral_proxies_1) :
-    proxy_2 = dihedral_proxies_2[j]
-    if (0 <= j <= 3) :
-      assert (proxy_2.weight == 2*proxy_1.weight)
-    else :
-      assert (proxy_2.weight == proxy_1.weight)
-
 def exercise_asp_glu_acid():
   for resname in ["ASP", "GLU"]:
     file_name = resname.lower() + "_acid.pdb"
@@ -2342,11 +2269,178 @@ pdb_interpretation.geometry_restraints {
   assert approx_equal(udp.distance_ideal, 3, eps=1e-4)
   assert approx_equal(udp.weight, 100, eps=1e-4)
 
+def exercise_bad_custom_bonds(mon_lib_srv, ener_lib):
+  raw_records = """
+CRYST1   21.213   24.878   21.468  90.00  90.00  90.00 P 1
+SCALE1      0.047141  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.040196  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.046581        0.00000
+ATOM      1  N   SER A  92      10.967   6.937   5.256  1.00 19.08           N
+ATOM      2  CA  SER A  92      11.206   7.027   6.703  1.00 14.61           C
+ATOM      3  C   SER A  92      10.010   7.586   7.440  1.00 17.30           C
+ATOM      4  O   SER A  92       9.590   7.129   8.497  1.00 21.21           O
+ATOM      5  CB  SER A  92      12.423   7.902   6.959  1.00 16.36           C
+ATOM      6  OG  SER A  92      12.172   9.246   6.637  1.00 23.58           O
+ATOM      7  N   HIS A  93       9.395   8.633   6.883  1.00 19.20           N
+ATOM      8  CA  HIS A  93       8.283   9.235   7.604  1.00 16.97           C
+ATOM      9  C   HIS A  93       7.034   8.370   7.604  1.00 17.87           C
+ATOM     10  O   HIS A  93       6.276   8.484   8.570  1.00 24.29           O
+ATOM     11  CB  HIS A  93       7.948  10.619   7.018  1.00 17.10           C
+ATOM     12  CG  HIS A  93       8.966  11.616   7.493  1.00 18.72           C
+ATOM     13  ND1 HIS A  93      10.278  11.564   7.100  1.00 19.80           N
+ATOM     14  CD2 HIS A  93       8.875  12.654   8.337  1.00 20.88           C
+ATOM     15  CE1 HIS A  93      10.963  12.535   7.666  1.00 20.04           C
+ATOM     16  NE2 HIS A  93      10.126  13.212   8.419  1.00 23.24           N
+ATOM     17  N   ALA A  94       6.823   7.568   6.564  1.00 15.69           N
+ATOM     18  CA  ALA A  94       5.666   6.670   6.556  1.00 18.31           C
+ATOM     19  C   ALA A  94       5.873   5.431   7.418  1.00 18.40           C
+ATOM     20  O   ALA A  94       5.000   5.000   8.170  1.00 19.22           O
+ATOM     21  CB  ALA A  94       5.323   6.241   5.146  1.00 18.06           C
+HETATM   22  C1A HEM A 154      13.653  13.778   9.638  1.00 18.41           C
+HETATM   23  C1B HEM A 154      11.623  16.547   7.120  1.00 20.12           C
+HETATM   24  C1C HEM A 154       8.120  16.126   9.474  1.00 13.75           C
+HETATM   25  C1D HEM A 154      10.162  13.422  12.047  1.00 14.87           C
+HETATM   26  C2A HEM A 154      14.872  13.734   8.859  1.00 21.34           C
+HETATM   27  C2B HEM A 154      11.083  17.515   6.191  1.00 18.28           C
+HETATM   28  C2C HEM A 154       6.847  16.067  10.168  1.00 20.20           C
+HETATM   29  C2D HEM A 154      10.746  12.535  13.032  1.00 18.53           C
+HETATM   30  C3A HEM A 154      14.709  14.571   7.805  1.00 19.89           C
+HETATM   31  C3B HEM A 154       9.804  17.783   6.579  1.00 14.10           C
+HETATM   32  C3C HEM A 154       7.053  15.362  11.318  1.00 20.16           C
+HETATM   33  C3D HEM A 154      12.057  12.389  12.708  1.00 17.55           C
+HETATM   34  C4A HEM A 154      13.376  15.131   7.909  1.00 14.01           C
+HETATM   35  C4B HEM A 154       9.545  16.955   7.748  1.00 15.74           C
+HETATM   36  C4C HEM A 154       8.385  14.781  11.212  1.00 11.44           C
+HETATM   37  C4D HEM A 154      12.258  13.048  11.435  1.00 12.93           C
+HETATM   38  CAA HEM A 154      16.084  12.838   9.160  1.00 17.09           C
+HETATM   39  CAB HEM A 154       8.764  18.621   6.096  1.00 18.06           C
+HETATM   40  CAC HEM A 154       6.304  15.113  12.506  1.00 17.18           C
+HETATM   41  CAD HEM A 154      13.170  11.725  13.527  1.00 19.52           C
+HETATM   42  CBA HEM A 154      16.213  11.573   8.272  1.00 15.28           C
+HETATM   43  CBB HEM A 154       8.972  19.878   5.454  1.00 10.31           C
+HETATM   44  CBC HEM A 154       5.104  15.868  12.800  1.00 23.40           C
+HETATM   45  CBD HEM A 154      13.800  12.570  14.648  1.00 26.70           C
+HETATM   46  CGA HEM A 154      14.900  10.799   8.148  1.00 14.87           C
+HETATM   47  CGD HEM A 154      14.961  11.923  15.376  1.00 23.81           C
+HETATM   48  CHA HEM A 154      13.453  12.992  10.753  1.00 13.26           C
+HETATM   49  CHB HEM A 154      12.882  16.011   6.977  1.00 14.01           C
+HETATM   50  CHC HEM A 154       8.314  16.918   8.363  1.00 13.33           C
+HETATM   51  CHD HEM A 154       8.874  13.897  12.145  1.00 11.65           C
+HETATM   52  CMA HEM A 154      15.692  14.910   6.685  1.00 14.40           C
+HETATM   53  CMB HEM A 154      11.855  18.090   5.000  1.00 11.05           C
+HETATM   54  CMC HEM A 154       5.571  16.713   9.646  1.00 21.38           C
+HETATM   55  CMD HEM A 154      10.000  11.931  14.225  1.00 17.96           C
+HETATM   56  N A HEM A 154      12.773  14.670   9.058  1.00 10.68           N
+HETATM   57  N B HEM A 154      10.689  16.271   8.094  1.00 18.79           N
+HETATM   58  N C HEM A 154       9.011  15.278  10.091  1.00 15.30           N
+HETATM   59  N D HEM A 154      11.098  13.702  11.072  1.00 15.13           N
+HETATM   60  O1A HEM A 154      14.486  10.248   9.192  1.00 22.79           O
+HETATM   61  O1D HEM A 154      14.703  11.366  16.468  1.00 47.56           O
+HETATM   62  O2A HEM A 154      14.357  10.789   7.028  1.00 31.78           O
+HETATM   63  O2D HEM A 154      16.078  11.998  14.825  1.00 40.84           O
+HETATM   64 FE   HEM A 154      10.863  14.901   9.518  1.00 17.04          Fe
+HETATM   65  O   MTO A 155      11.461  16.396  10.964  1.00 20.08           O
+TER
+END
+""".splitlines()
+  edits = """\
+pdb_interpretation.geometry_restraints.edits {
+  bond {
+    action = *add delete change
+    atom_selection_1 = chain A and resname HEM and resid 154 and name FE
+    atom_selection_2 = chain A and resname HIS and resid 93 and name NE2
+    distance_ideal = 2.1
+    sigma = 0.01
+  }
+  bond {
+    action = *add delete change
+    atom_selection_1 = chain A and resname HEM and resid 154 and name FE
+    atom_selection_2 = chain A and resname MTO and resid 155 and name O
+    symmetry_operation = x,y,z
+    distance_ideal = 2.2
+    sigma = 0.01
+  }
+  bond {
+    atom_selection_2 = chain N and resname O and name NE
+  }
+  bond {
+    distance_ideal = -1
+  }
+  bond {
+    distance_ideal = 2
+  }
+  bond {
+    distance_ideal = 2
+    sigma = -1
+  }
+}"""
+  gm_phil = iotbx.phil.parse(
+      monomer_library.pdb_interpretation.grand_master_phil_str,
+      process_includes=True)
+  edits_phil = iotbx.phil.parse(edits)
+  working_phil = gm_phil.fetch(edits_phil)
+  params = working_phil.extract()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    params = params.pdb_interpretation,
+    log = log)
+  grm = processed_pdb_file.geometry_restraints_manager(
+      params_edits=params.geometry_restraints.edits)
+  expected = """
+  Custom bonds:
+    bond:
+      atom 1: "HETATM   64 FE   HEM A 154 .*.    Fe  "
+      atom 2: "ATOM     16  NE2 HIS A  93 .*.     N  "
+      symmetry operation: x,y,z
+      distance_model:   2.146
+      distance_ideal:   2.100
+      ideal - model:   -0.046
+      slack:            0.000
+      delta_slack:     -0.046
+      sigma:            0.0100
+    bond:
+      atom 1: "HETATM   64 FE   HEM A 154 .*.    Fe  "
+      atom 2: "HETATM   65  O   MTO A 155 .*.     O  "
+      symmetry operation: x,y,z
+      distance_model:   2.164
+      distance_ideal:   2.200
+      ideal - model:    0.036
+      slack:            0.000
+      delta_slack:      0.036
+      sigma:            0.0100
+    Warning: Ignoring bond with distance_ideal = None:
+      atom_selection_1 = None
+      atom_selection_2 = "chain N and resname O and name NE"
+    Warning: Ignoring bond with distance_ideal < 0:
+      atom_selection_1 = None
+      atom_selection_2 = None
+      distance_ideal = -1
+    Warning: Ignoring bond with sigma = None:
+      atom_selection_1 = None
+      atom_selection_2 = None
+      distance_ideal = 2
+    Warning: Ignoring bond with sigma <= 0:
+      atom_selection_1 = None
+      atom_selection_2 = None
+      distance_ideal = 2
+      sigma = -1
+      slack = 0
+    Total number of custom bonds: 2"""
+  log = log.getvalue().splitlines()
+  found = 0
+  for e in expected.splitlines():
+    if(e in log): found += 1
+  assert found > 39, found
 
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)
   exercise_unk_and_cys(mon_lib_srv, ener_lib)
   exercise_cdl_automatic()
@@ -2368,7 +2462,6 @@ def run(args):
   exercise_d_amino_acid_chain_perfect_in_box()
   exercise_d_amino_acid_chain_perfect_in_box_peptide_plane()
   exercise_rna_v3(mon_lib_srv, ener_lib)
-  # exercise_scale_restraints() # removed during CDL=True update
   exercise_asp_glu_acid()
   exercise_rna_dna_synonyms()
   exercise_ss_bond_angles(mon_lib_srv, ener_lib)
