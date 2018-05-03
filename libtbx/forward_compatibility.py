@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import os
 
-vers_info = sys.version_info[:2]
+_vers_info = sys.version_info[:2]
 
 class newobject(object):
   """
@@ -84,7 +84,7 @@ class newobject(object):
 
   __slots__ = []
 
-if vers_info < (3,0):
+if _vers_info < (3,0):
   # export newobject as object
   object = newobject
   del newobject
@@ -98,7 +98,7 @@ if vers_info < (3,0):
 else:
   object = object # Statement required to export the name
 
-if (vers_info < (2,6)):
+if (_vers_info < (2,6)):
   import cmath
   import math
   cmath.phase = lambda z: math.atan2(z.imag, z.real)
@@ -172,7 +172,7 @@ if (vers_info < (2,6)):
   # end of the copy
   warnings.catch_warnings = catch_warnings
 
-  if (vers_info in [(2,3),(2,4),(2,5)]
+  if (_vers_info in [(2,3),(2,4),(2,5)]
         and not hasattr(frozenset, "isdisjoint")):
     # Python 2.3, 2.4, 2.5 compatibility
     class forward_compatibility_set_mixin(object):
@@ -187,8 +187,6 @@ if (vers_info < (2,6)):
           forward_compatibility_set_mixin, set): pass
     __builtins__["frozenset"] = forward_compatibility_frozenset
     __builtins__["set"] = forward_compatibility_set
-
-del vers_info
 
 class _advertise_subprocess(object):
 
@@ -246,4 +244,5 @@ def _install_advertise_subprocess():
       w = _advertise_subprocess(function_id="os."+fn+"()", target=f)
       setattr(os, fn, w)
 
-_install_advertise_subprocess()
+if _vers_info < (3,0):
+  _install_advertise_subprocess()
