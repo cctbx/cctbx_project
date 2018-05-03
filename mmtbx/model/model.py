@@ -906,13 +906,18 @@ class manager(object):
     self.model_statistics_info = None
     self._processed_pdb_file = None
 
+  def raise_clash_guard(self):
+    err_msg = self._processed_pdb_file.clash_guard()
+    if err_msg is not None:
+      raise Sorry(err_msg)
+
   def setup_restraints_manager(
       self,
       grm_normalization = True,
       external_energy_function = None,
       plain_pairs_radius=5.0,
       custom_nb_excl=None,
-      file_descriptor_for_geo_in_case_of_failure=None,
+      run_clash_guard = True,
       ):
     if(self.restraints_manager is not None): return
     if self._processed_pdb_file is None:
@@ -928,8 +933,9 @@ class manager(object):
       params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
-      assume_hydrogens_all_missing = not self.has_hd,
-      file_descriptor_for_geo_in_case_of_failure=file_descriptor_for_geo_in_case_of_failure)
+      assume_hydrogens_all_missing = not self.has_hd)
+    if run_clash_guard:
+      self.raise_clash_guard()
 
     # Link treating should be rewritten. They should not be saved in
     # all_chain_proxies and they should support mmcif.
@@ -1901,7 +1907,6 @@ class manager(object):
     raw_records = self.model_as_pdb()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
     pip = self._pdb_interpretation_params
-    pip.pdb_interpretation.clash_guard.nonbonded_distance_threshold = -1.0
     pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
     pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
     pip.pdb_interpretation.proceed_with_excessive_length_bonds=True

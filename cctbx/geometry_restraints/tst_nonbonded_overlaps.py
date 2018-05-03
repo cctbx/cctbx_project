@@ -594,9 +594,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       log= StringIO())
     # get geometry restraints object
     grm = pdb_processed_file.geometry_restraints_manager(
-      assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0,
-      nonbonded_distance_threshold=0.5)
+      assume_hydrogens_all_missing=False)
     xrs = pdb_processed_file.xray_structure()
     params = get_nb_overlaps_param(
         xrs=xrs,grm=grm,
@@ -634,7 +632,8 @@ class test_nonbonded_overlaps(unittest.TestCase):
     msg = 'Overlapping atoms are not counted properly.'
     grm = process_raw_records(
       raw_record_number=5,
-      nonbonded_distance_threshold=None)
+      # nonbonded_distance_threshold=None,
+      )
     self.assertEqual(grm.nb_overlaps_all, 6,msg)
     self.assertEqual(grm.normalized_nbo_all, 1500,msg)
 
@@ -804,8 +803,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_processed_file = pdb_inter.run(
       args=[self.file_name],
       assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0,
-      nonbonded_distance_threshold=None,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       log=null_out())
     grm = pdb_processed_file.geometry_restraints_manager()
@@ -836,8 +833,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_processed_file = pdb_inter.run(
       args=[self.file_name2],
       assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0,
-      nonbonded_distance_threshold=None,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       log=null_out())
 
@@ -917,7 +912,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
       allow_multiple_models=True)
     self.assertTrue(len(r),2)
 
-  @unittest.skip("skip test_file_with_unknown_pair_type")
+  # @unittest.skip("skip test_file_with_unknown_pair_type")
   def test_file_with_unknown_pair_type(self):
     """ verify that ready_set can fix issues with unknown_pair_type """
     fn = 'test_unknown_pairs_in_pdb.pdb'
@@ -1022,8 +1017,6 @@ def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
   pdb_processed_file = pdb_inter.run(
       args=files,
       assume_hydrogens_all_missing=False,
-      hard_minimum_nonbonded_distance=0.0,
-      nonbonded_distance_threshold=None,
       substitute_non_crystallographic_unit_cell_if_necessary=True,
       log=null_out())
 
@@ -1048,9 +1041,7 @@ def process_overlaps_count(file_name,return_n_atoms=False,cif_file_name=None):
 
 def process_raw_records(
   raw_record_number,
-  use_site_labels=True,
-  hard_minimum_nonbonded_distance=0,
-  nonbonded_distance_threshold=0.5):
+  use_site_labels=True):
   '''(int,bool,int,int) -> geomerty_restraints object
   hard_minimum_nonbonded_distance: by defult this value is 0.01 which will prevent testing
                                    closer nonbonded interaction
@@ -1082,9 +1073,7 @@ def process_raw_records(
     )
   # get geometry restraints object
   grm = pdb_processed_file.geometry_restraints_manager(
-    assume_hydrogens_all_missing=False,
-    hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-    nonbonded_distance_threshold=nonbonded_distance_threshold)
+    assume_hydrogens_all_missing=False)
 
   xrs = pdb_processed_file.xray_structure()
   params = get_nb_overlaps_param(

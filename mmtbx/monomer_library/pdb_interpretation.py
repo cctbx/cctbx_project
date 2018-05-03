@@ -5503,11 +5503,9 @@ class process(object):
         assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001,
-        hard_minimum_nonbonded_distance=0.001,
-        nonbonded_distance_threshold=0.5,
         external_energy_function=None,
         den_manager=None,
-        file_descriptor_for_geo_in_case_of_failure=None):
+        ):
     if (    self.all_chain_proxies.sites_cart is not None
         and self.all_chain_proxies.special_position_settings is not None
         and self._geometry_restraints_manager is None):
@@ -5762,22 +5760,6 @@ class process(object):
                              " (mainly nonbonded setup): %.2f" % (
             timer.elapsed())
           flush_log(self.log)
-      error_msg = self.clash_guard(hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-                       nonbonded_distance_threshold=nonbonded_distance_threshold)
-      if error_msg is not None:
-        # output geo
-        if file_descriptor_for_geo_in_case_of_failure is not None:
-          self._geometry_restraints_manager.write_geo_file(
-              sites_cart=self.all_chain_proxies.sites_cart_exact(),
-              site_labels=site_labels,
-              file_name=None,
-              file_descriptor=file_descriptor_for_geo_in_case_of_failure,
-              header="# Geometry restraints\n")
-          file_descriptor_for_geo_in_case_of_failure.close()
-        raise Sorry(error_msg)
-      if error_msg is None and file_descriptor_for_geo_in_case_of_failure is not None:
-        file_descriptor_for_geo_in_case_of_failure.close()
-        os.remove(file_descriptor_for_geo_in_case_of_failure.name)
     return self._geometry_restraints_manager
 
 
@@ -5786,12 +5768,15 @@ class process(object):
                   nonbonded_distance_threshold=0.5):
     params = self.all_chain_proxies.params.clash_guard
     if nonbonded_distance_threshold != 0.5:
+      # WHY is this here???
       # only if nonbonded_distance_threshold is not the default
       # use it, otherwise use the parameters
       # passed by self.all_chain_proxies.params.clash_guard
       params.nonbonded_distance_threshold = nonbonded_distance_threshold
     if (params.nonbonded_distance_threshold is None): return
     geo = self._geometry_restraints_manager
+    if geo is None:
+      return None
     n_below_threshold = (
       geo.nonbonded_model_distances() < params.nonbonded_distance_threshold) \
         .count(True)
@@ -5904,9 +5889,12 @@ def run(
       max_atoms=max_atoms,
       log=log)
     processed_pdb_file.geometry_restraints_manager(
-      assume_hydrogens_all_missing=assume_hydrogens_all_missing,
-      hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
-      nonbonded_distance_threshold=nonbonded_distance_threshold)
+      assume_hydrogens_all_missing=assume_hydrogens_all_missing)
+    err_msg = processed_pdb_file.clash_guard(
+        hard_minimum_nonbonded_distance=hard_minimum_nonbonded_distance,
+        nonbonded_distance_threshold=nonbonded_distance_threshold)
+    if err_msg is not None:
+      raise Sorry(err_msg)
     processed_pdb_file.xray_structure()
     if (return_all_processed_pdb_files):
       all_processed_pdb_files.append(processed_pdb_file)
