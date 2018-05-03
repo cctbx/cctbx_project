@@ -353,8 +353,11 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("get_B_covariance", &CrystalBase::get_B_covariance)
       .def("set_B_covariance", &CrystalBase::set_B_covariance)
       .def("set_B_covariance", &Crystal_set_B_covariance_from_tuple)
+      .def("set_B_covariance_at_scan_points", &CrystalBase::set_B_covariance_at_scan_points)
+      .def("get_B_covariance_at_scan_point", &CrystalBase::get_B_covariance_at_scan_point)
       .def("get_cell_parameter_sd", &CrystalBase::get_cell_parameter_sd)
       .def("get_cell_volume_sd", &CrystalBase::get_cell_volume_sd)
+      .def("get_cell_parameter_sd_at_scan_point", &CrystalBase::get_cell_parameter_sd_at_scan_point)
       .def("reset_unit_cell_errors", &CrystalBase::reset_unit_cell_errors)
       .def("__eq__", &CrystalBase::operator==)
       .def("__ne__", &CrystalBase::operator!=);
