@@ -45,7 +45,6 @@ import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel
 from cctbx import french_wilson
-import math
 import libtbx.callbacks # import dependency
 from libtbx.math_utils import ifloor, iceil
 from cctbx import maptbx
