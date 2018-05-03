@@ -386,13 +386,10 @@ def test_set_scan_varying_B_covariance():
     cov_B_array[i:(i+1), :, :] = cov_B
 
   # This should fail: set_A_at_scan_points should be called first
-  try:
+  with pytest.raises(RuntimeError, message="Setting B covariance before A at "
+    "scan points is not allowed"):
     xl.set_B_covariance_at_scan_points(cov_B_array)
-    fail = True
-  except RuntimeError:
-    fail = False
-  if fail: raise RuntimeError("Setting B covariance before A at scan points"
-                              " is not allowed")
+
   A_list = [xl.get_A() for i in range(20)]
   xl.set_A_at_scan_points(A_list)
 
