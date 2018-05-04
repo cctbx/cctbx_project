@@ -19,6 +19,7 @@ from libtbx.utils import plural_s, hashlib_md5, date_and_time, Sorry
 from libtbx import Auto
 from cStringIO import StringIO
 import sys
+import calendar
 import os
 op = os.path
 
@@ -799,12 +800,25 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
-  def deposition_date(self):
+  def deposition_date(self, us_style=True):
     """
     Placeholder to match mmCIF functionality. Probably could parse
     REVDAT.
     """
-    return None
+    result = None
+    for line in self.title_section():
+      if(line.startswith("HEADER ")):
+        date = header_date(field=line[50:59])
+        if(date.is_fully_defined()):
+          dd = str(date.dd).strip()
+          if(len(dd)==1): dd = "0"+dd
+          result = "%s-%s-%s"%(dd, str(date.mmm), str(date.yyyy))
+          if(us_style):
+            months = dict((v.upper(),k) for k,v in enumerate(calendar.month_abbr))
+            m=str(months[str(date.mmm).upper()])
+            if(len(m)==1): m = "0"+m
+            result = "%s-%s-%s"%(str(date.yyyy), m, dd)
+    return result
 
   # MARKED_FOR_DELETION_OLEG
   # REASON: moved to mmtbx.model.manager. Only used in
@@ -1244,6 +1258,13 @@ class _(boost.python.injector, ext.input, pdb_input_mixin):
     remark_2_and_3_records.extend(self.extract_remark_iii_records(3))
     return extract_rfactors_resolutions_sigma.get_r_rfree_sigma(
       remark_2_and_3_records, file_name)
+
+  def resolution(self):
+    return self.get_r_rfree_sigma().resolution
+
+  def experiment_type_electron_microscopy(self):
+    et = self.get_experiment_type().strip().upper()
+    return et == "ELECTRON MICROSCOPY"
 
   def get_program_name(self):
     remark_3_lines = self.extract_remark_iii_records(3)

@@ -490,15 +490,16 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def deposition_date(self):
     # date format: yyyy-mm-dd
     cif_block = self.cif_model.values()[0]
-    rev_num = cif_block.get('_database_PDB_rev.num')
-    if rev_num is not None:
-      date_original = cif_block.get('_database_PDB_rev.date_original')
-      if isinstance(rev_num, basestring):
-        return date_original
-      else:
-        i = flex.first_index(rev_num, '1')
-        if date_original is not None:
-          return date_original[i]
+    return cif_block.get("_pdbx_database_status.recvd_initial_deposition_date")
+    #rev_num = cif_block.get('_database_PDB_rev.num')
+    #if rev_num is not None:
+    #  date_original = cif_block.get('_database_PDB_rev.date_original')
+    #  if isinstance(rev_num, basestring):
+    #    return date_original
+    #  else:
+    #    i = flex.first_index(rev_num, '1')
+    #    if date_original is not None:
+    #      return date_original[i]
 
   def get_r_rfree_sigma(self, file_name):
     return _cif_get_r_rfree_sigma_object(self.cif_block, file_name)
@@ -509,6 +510,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_matthews_coeff(self):
     return _float_or_None(self.cif_block.get('_exptl_crystal.density_Matthews'))
 
+  def experiment_type_electron_microscopy(self):
+    et = self.get_experiment_type().strip().upper()
+    return et == "ELECTRON MICROSCOPY"
+
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
@@ -518,6 +523,18 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     if software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
       if i >= 0: return software_name[i]
+
+  def resolution(self):
+    result = []
+    r1 = _float_or_None(self.cif_block.get('_reflns.d_resolution_high'))
+    r2 = _float_or_None(self.cif_block.get('_reflns.resolution'))
+    r3 = _float_or_None(self.cif_block.get('_em_3d_reconstruction.resolution'))
+    for r in [r1,r2,r3]:
+      if(r is not None): result.append(r)
+    result = list(set(result))
+    if(len(result)  ==0): result = None
+    elif(len(result)==1): result = result[0]
+    return result
 
   def extract_tls_params(self, hierarchy):
     return extract_tls_from_cif_block(self.cif_block, hierarchy)
@@ -559,6 +576,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def get_experiment_type (self) :
     exptl_method = self.cif_block.get('_exptl.method')
+    if(isinstance(exptl_method,flex.std_string)):
+      exptl_method = "; ".join(list(exptl_method))
     return exptl_method
 
   def process_BIOMT_records(self, error_handle=True,eps=1e-4):

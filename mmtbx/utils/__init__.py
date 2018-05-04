@@ -2985,6 +2985,44 @@ class f_000(object):
     self.f_000 = f_000
     self.solvent_fraction = solvent_fraction
 
+def check_and_set_crystal_symmetry(
+      models=[],
+      map_inps=[],
+      miller_arrays=[],
+      crystal_symmetry=None,
+      absolute_angle_tolerance =1.e-2,
+      absolute_length_tolerance=1.e-2):
+  # XXX This should go into a central place
+  # XXX Check map gridding here!
+  for it in [models, map_inps, miller_arrays]:
+    assert isinstance(it, (list, tuple))
+  def remove_none(x):
+    result = []
+    for it in x:
+      if(it is not None): result.append(it)
+    return result
+  models        = remove_none(models)
+  map_inps      = remove_none(map_inps)
+  miller_arrays = remove_none(miller_arrays)
+  crystal_symmetry = crystal.select_crystal_symmetry(
+    from_parameter_file       = crystal_symmetry,
+    from_coordinate_files     = [m.crystal_symmetry() for m in models],
+    from_reflection_files     = [m.crystal_symmetry() for m in
+                                 map_inps+miller_arrays],
+    enforce_similarity        = True,
+    absolute_angle_tolerance  = absolute_angle_tolerance,
+    absolute_length_tolerance = absolute_length_tolerance)
+  for model in models:
+    cs = model.crystal_symmetry()
+    if(cs is None or cs.is_empty()):
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry)
+  if(len(map_inps)>1):
+    m0 = map_inps[0].map_data()
+    for m in map_inps[1:]:
+      if(m is None): continue
+      maptbx.assert_same_gridding(map_1=m0, map_2=m.map_data())
+  return crystal_symmetry
+
 class detect_hydrogen_nomenclature_problem (object) :
   """
   This allows us to avoid the following problems:

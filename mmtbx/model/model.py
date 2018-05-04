@@ -2162,6 +2162,12 @@ class manager(object):
     result = self._xray_structure.select(~sel)
     return result
 
+  def percent_of_single_atom_residues(self):
+    sizes = flex.int()
+    for r in self.get_hierarchy().residue_groups():
+      sizes.append(r.atoms().size())
+    return sizes.count(1)*100./sizes.size()
+
   def select(self, selection):
     # what about 3 types of NCS and self._master_sel?
     # XXX ignores IAS
@@ -2737,6 +2743,20 @@ class manager(object):
         self.u_aniso_gradients = u_aniso_gradients
     return result()
 
+  def is_same_model(self, other):
+    """
+    Return True if models are the same, False otherwise.
+    XXX Can be endlessly fortified.
+    """
+    a1 = self.get_hierarchy().atoms()
+    a2 = other.get_hierarchy().atoms()
+    f0 = a1.size() == a2.size()
+    f1 = flex.max(flex.sqrt((a1.extract_xyz()-a2.extract_xyz()).dot()))<1.e-3
+    f2 = flex.max(flex.abs((a1.extract_occ()-a2.extract_occ())))<1.e-2
+    f3 = flex.max(flex.abs((a1.extract_b()-a2.extract_b())))<1.e-2
+    f = list(set([f0,f1,f2,f3]))
+    return len(f)==1 and f[0]
+
   def set_refine_individual_sites(self, selection = None):
     self._xray_structure.scatterers().flags_set_grads(state=False)
     if(selection is None):
@@ -2864,6 +2884,27 @@ class manager(object):
     were setted in BIOMT header.
     """
     biomt_records_container = self._model_input.process_BIOMT_records()
+    # Check if BIOMT and MTRIX are identical and then do not apply BIOMT
+    mtrix_records_container = self._model_input.process_MTRIX_records()
+    br = biomt_records_container.r
+    bt = biomt_records_container.t
+    mr = mtrix_records_container.r
+    mt = mtrix_records_container.t
+    if(len(br)==len(mr) and len(bt)==len(mt)):
+      cntr1=0
+      for bri in br:
+        for mri in mr:
+          if((bri-mri).is_approx_zero(eps=1.e-4)):
+            cntr1+=1
+            break
+      cntr2=0
+      for bti in bt:
+        for mti in mt:
+          if((bti-mti).is_approx_zero(eps=1.e-4)):
+            cntr2+=1
+            break
+      if(cntr1==len(br) and cntr2==len(bt)): return
+    #
     if not self._biomt_mtrix_container_is_good(biomt_records_container):
       return
     self._expand_symm_helper(biomt_records_container)
