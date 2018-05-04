@@ -251,7 +251,7 @@ class manager(object):
       # input xray_structure most likely don't have proper crystal symmetry
       if self.crystal_symmetry() is None:
         inp_cs = self._model_input.crystal_symmetry()
-        if inp_cs and not inp_cs.is_empty():
+        if inp_cs and not inp_cs.is_empty() and not inp_cs.is_nonsence():
           self._crystal_symmetry = inp_cs
       if expand_with_mtrix:
         self.expand_with_MTRIX_records()
@@ -270,6 +270,7 @@ class manager(object):
         # self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy()
         self._pdb_hierarchy = deepcopy(self._model_input).construct_hierarchy(
             self._pdb_interpretation_params.pdb_interpretation.sort_atoms)
+    # Move this away from constructor
     self._update_atom_selection_cache()
     self._update_pdb_atoms()
 
@@ -434,7 +435,11 @@ class manager(object):
     Special case when incoming cs is the same to self._crystal_symmetry,
     then just do nothing for compatibility with existing code.
     It would be better to remove this function at all.
+
+    This function can be used ONLY straight after initialization of model,
+    when no xray_structure is constructed yet.
     """
+    assert self._xray_structure is None
     is_empty_cs = self._crystal_symmetry is None or (
         self._crystal_symmetry.unit_cell() is None and
         self._crystal_symmetry.space_group() is None)
