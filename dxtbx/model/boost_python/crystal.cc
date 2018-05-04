@@ -195,7 +195,8 @@ namespace dxtbx { namespace model { namespace boost_python {
       return boost::python::make_tuple(
           obj.attr("__dict__"),
           crystal.get_A_at_scan_points(),
-          crystal.get_B_covariance());
+          crystal.get_B_covariance(),
+          crystal.get_B_covariance_at_scan_points());
     }
 
     static
@@ -210,12 +211,15 @@ namespace dxtbx { namespace model { namespace boost_python {
       d.update(state[0]);
 
       // restore the internal state of the C++ object
-      scitbx::af::const_ref< mat3<double> > A_list = boost::python::extract<
+      scitbx::af::const_ref< mat3<double> > A_scanpoints = boost::python::extract<
         scitbx::af::const_ref< mat3<double> > >(state[1]);
       scitbx::af::const_ref< double, scitbx::af::c_grid<2> > cov_B = boost::python::extract<
         scitbx::af::const_ref< double, scitbx::af::c_grid<2> > >(state[2]);
-      crystal.set_A_at_scan_points(A_list);
+      scitbx::af::const_ref< double, scitbx::af::c_grid<3> > cov_B_scanpoints = boost::python::extract<
+        scitbx::af::const_ref< double, scitbx::af::c_grid<3> > >(state[3]);
+      crystal.set_A_at_scan_points(A_scanpoints);
       crystal.set_B_covariance(cov_B);
+      crystal.set_B_covariance_at_scan_points(cov_B_scanpoints);
     }
 
     static bool getstate_manages_dict() { return true; }
@@ -240,6 +244,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           obj.attr("__dict__"),
           crystal.get_A_at_scan_points(),
           crystal.get_B_covariance(),
+          crystal.get_B_covariance_at_scan_points(),
           crystal.get_mosaicity());
     }
 
@@ -247,7 +252,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
       MosaicCrystalKabsch2010 &crystal = boost::python::extract<MosaicCrystalKabsch2010&>(obj)();
-      DXTBX_ASSERT(boost::python::len(state) == 4);
+      DXTBX_ASSERT(boost::python::len(state) == 5);
 
         // restore the object's __dict__
       boost::python::dict d = boost::python::extract<boost::python::dict>(
@@ -255,13 +260,16 @@ namespace dxtbx { namespace model { namespace boost_python {
       d.update(state[0]);
 
       // restore the internal state of the C++ object
-      scitbx::af::const_ref< mat3<double> > A_list = boost::python::extract<
+      scitbx::af::const_ref< mat3<double> > A_scanpoints = boost::python::extract<
         scitbx::af::const_ref< mat3<double> > >(state[1]);
       scitbx::af::const_ref< double, scitbx::af::c_grid<2> > cov_B = boost::python::extract<
         scitbx::af::const_ref< double, scitbx::af::c_grid<2> > >(state[2]);
-      crystal.set_A_at_scan_points(A_list);
+      scitbx::af::const_ref< double, scitbx::af::c_grid<3> > cov_B_scanpoints = boost::python::extract<
+        scitbx::af::const_ref< double, scitbx::af::c_grid<3> > >(state[3]);
+      double mosaicity = boost::python::extract<double>(state[4]);
+      crystal.set_A_at_scan_points(A_scanpoints);
       crystal.set_B_covariance(cov_B);
-      double mosaicity = boost::python::extract<double>(state[3]);
+      crystal.set_B_covariance_at_scan_points(cov_B_scanpoints);
       crystal.set_mosaicity(mosaicity);
     }
   };
@@ -285,6 +293,7 @@ namespace dxtbx { namespace model { namespace boost_python {
           obj.attr("__dict__"),
           crystal.get_A_at_scan_points(),
           crystal.get_B_covariance(),
+          crystal.get_B_covariance_at_scan_points(),
           crystal.get_half_mosaicity_deg(),
           crystal.get_domain_size_ang());
     }
@@ -293,7 +302,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
       MosaicCrystalSauter2014 &crystal = boost::python::extract<MosaicCrystalSauter2014&>(obj)();
-      DXTBX_ASSERT(boost::python::len(state) == 5);
+      DXTBX_ASSERT(boost::python::len(state) == 6);
 
         // restore the object's __dict__
       boost::python::dict d = boost::python::extract<boost::python::dict>(
@@ -301,15 +310,18 @@ namespace dxtbx { namespace model { namespace boost_python {
       d.update(state[0]);
 
       // restore the internal state of the C++ object
-      scitbx::af::const_ref< mat3<double> > A_list = boost::python::extract<
+      scitbx::af::const_ref< mat3<double> > A_scanpoints = boost::python::extract<
         scitbx::af::const_ref< mat3<double> > >(state[1]);
       scitbx::af::const_ref< double, scitbx::af::c_grid<2> > cov_B = boost::python::extract<
         scitbx::af::const_ref< double, scitbx::af::c_grid<2> > >(state[2]);
-      crystal.set_A_at_scan_points(A_list);
+      scitbx::af::const_ref< double, scitbx::af::c_grid<3> > cov_B_scanpoints = boost::python::extract<
+        scitbx::af::const_ref< double, scitbx::af::c_grid<3> > >(state[3]);
+      double half_mosaicity_deg = boost::python::extract<double>(state[4]);
+      double domain_size_ang = boost::python::extract<double>(state[5]);
+      crystal.set_A_at_scan_points(A_scanpoints);
       crystal.set_B_covariance(cov_B);
-      double half_mosaicity_deg = boost::python::extract<double>(state[3]);
+      crystal.set_B_covariance_at_scan_points(cov_B_scanpoints);
       crystal.set_half_mosaicity_deg(half_mosaicity_deg);
-      double domain_size_ang = boost::python::extract<double>(state[4]);
       crystal.set_domain_size_ang(domain_size_ang);
     }
   };
@@ -355,6 +367,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       .def("set_B_covariance", &Crystal_set_B_covariance_from_tuple)
       .def("set_B_covariance_at_scan_points", &CrystalBase::set_B_covariance_at_scan_points)
       .def("get_B_covariance_at_scan_point", &CrystalBase::get_B_covariance_at_scan_point)
+      .def("get_B_covariance_at_scan_points", &CrystalBase::get_B_covariance_at_scan_points)
       .def("get_cell_parameter_sd", &CrystalBase::get_cell_parameter_sd)
       .def("get_cell_volume_sd", &CrystalBase::get_cell_volume_sd)
       .def("get_cell_parameter_sd_at_scan_point", &CrystalBase::get_cell_parameter_sd_at_scan_point)
@@ -396,7 +409,7 @@ namespace dxtbx { namespace model { namespace boost_python {
             arg("reciprocal")=true)))
       .def_pickle(CrystalPickleSuite());
 
-    // Create member-function pointers to specific is_simiar_to overloads
+    // Create member-function pointers to specific is_similar_to overloads
     // - each of these crystals has a custom implementation along with the
     //   inherited interface, and we want to expose these explicitly
     bool (MosaicCrystalKabsch2010::*kabsch_is_similar_to)(

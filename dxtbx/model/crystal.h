@@ -224,6 +224,7 @@ namespace dxtbx { namespace model {
     virtual void set_B_covariance(const scitbx::af::const_ref< double, scitbx::af::c_grid<2> > &cov) = 0;
     virtual void set_B_covariance_at_scan_points(const scitbx::af::const_ref< double, scitbx::af::c_grid<3> > &cov) = 0;
     virtual scitbx::af::versa< double, scitbx::af::c_grid<2> > get_B_covariance_at_scan_point(std::size_t index) const  = 0;
+    virtual scitbx::af::versa< double, scitbx::af::c_grid<3> > get_B_covariance_at_scan_points() const  = 0;
     // Get the cell parameter standard deviation
     virtual scitbx::af::small<double,6> get_cell_parameter_sd() = 0;
     virtual scitbx::af::small<double,6> get_cell_parameter_sd_no_calc() const = 0;
@@ -766,6 +767,9 @@ namespace dxtbx { namespace model {
      * known.
      */
     void set_B_covariance_at_scan_points(const scitbx::af::const_ref< double, scitbx::af::c_grid<3> > &cov) {
+      if (cov.accessor()[0] == 0) {
+        return;
+      }
       DXTBX_ASSERT(cov.accessor()[0] == get_num_scan_points());
       DXTBX_ASSERT(cov.accessor()[1] == 9);
       DXTBX_ASSERT(cov.accessor()[2] == 9);
@@ -783,6 +787,10 @@ namespace dxtbx { namespace model {
       scitbx::af::versa< double, scitbx::af::c_grid<2> > result(scitbx::af::c_grid<2>(9,9));
       std::copy(slice.begin(), slice.end(), result.begin());
       return result;
+    }
+
+    scitbx::af::versa< double, scitbx::af::c_grid<3> > get_B_covariance_at_scan_points() const {
+      return cov_B_at_scan_points_;
     }
 
     /**

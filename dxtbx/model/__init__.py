@@ -173,6 +173,13 @@ class CrystalAux(boost.python.injector, Crystal):
     if len(cov_B) != 0:
       xl_dict['B_covariance'] = cov_B
 
+    # Add in covariance of B at scan points if present
+    if crystal.num_scan_points > 0:
+      cov_B_at_scan_points = tuple(
+        [tuple(crystal.get_B_covariance_at_scan_point(i))
+         for i in range(crystal.num_scan_points)])
+      xl_dict['B_covariance_at_scan_points'] = cov_B_at_scan_points
+
     return xl_dict
 
   def to_dict(crystal):
@@ -227,6 +234,14 @@ class CrystalAux(boost.python.injector, Crystal):
       xl.set_B_covariance(cov_B)
     except KeyError:
       pass
+
+    # Extract covariance of B at scan points, if present
+    cov_B_at_scan_points = d.get('B_covariance_at_scan_points')
+    if cov_B_at_scan_points is not None:
+      from scitbx.array_family import flex
+      cov_B_at_scan_points = flex.double(cov_B_at_scan_points).as_1d()
+      cov_B_at_scan_points.reshape(flex.grid(xl.num_scan_points ,9, 9))
+      xl.set_B_covariance_at_scan_points(cov_B_at_scan_points)
 
     return xl
 
