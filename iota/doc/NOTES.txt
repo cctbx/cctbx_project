@@ -1,7 +1,8 @@
 IOTA v1.1.031 - HKL slice viewer
 
 Bugfixes:
-
+- Spin Control: checkbox actually shown as checked if parameter is set to True
+in the read-in PHIL settings
 
 Features:
 - The HKL slice viewer (a part of "charts" tab) can now be set to show the
@@ -9,5 +10,8 @@ general completeness for any space / point group
 - The chart tab has been reorganized for potential insertion of other widgets
 for each of the chart panels; this has the side effect of improving the
 presentation of the HKL slice viewer.
+- IOTA Properties: user can supply a range of images, or several ranges, e.g.
+"5-100, 200-1000, 1234, 1500-1550"; random subset can also be taken from these
+ranges, if enabled
 
 Known issues:

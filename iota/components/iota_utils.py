@@ -284,6 +284,9 @@ class InputFinder():
       else:
         return [], None
 
+    # sort input by filename
+    input_list = sorted(input_list, key=lambda i: i)
+
     return input_list, input_type
 
   def get_folder_type(self, path):

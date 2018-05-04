@@ -15,12 +15,14 @@ from wx import richtext as rt
 from wx.lib.scrolledpanel import ScrolledPanel
 
 import numpy as np
+from collections import Counter
 import time
 import warnings
 import multiprocessing
 
 import matplotlib.gridspec as gridspec
 from matplotlib import pyplot as plt
+from matplotlib import colorbar, colors
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
@@ -405,9 +407,9 @@ class FileListCtrl(ct.CustomListCtrl):
           filenames = []
           for n in img_no_string:
             if '-' in n:
-              img_limits = n.split('-')
-              start = int(min(img_limits))
-              end = int(max(img_limits))
+              img_limits = [int(i) for i in n.split('-')]
+              start = min(img_limits)
+              end = max(img_limits)
               if start <= len(img_list) and end <= len(img_list):
                 filenames.extend(img_list[start:end])
             else:
@@ -754,6 +756,7 @@ class ProcessingTab(ScrolledPanel):
     cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
     sid = self.proc_canvas.mpl_connect('pick_event', self.on_bar_pick)
     xid = self.int_canvas.mpl_connect('button_press_event', self.on_button_press)
+    xid = self.hkl_canvas.mpl_connect('button_press_event', self.on_hkl_press)
     xid = self.proc_canvas.mpl_connect('button_press_event', self.on_button_press)
     xid = self.proc_canvas.mpl_connect('button_release_event',
                                        self.on_button_release)
@@ -1136,48 +1139,72 @@ class ProcessingTab(ScrolledPanel):
       #   print 'BEAM XY ERROR: ', e
 
   def draw_measured_indices(self):
-    # Apply symmetry if any via miller object
+    # Extract indices from list and apply symmetry if any via miller object
+    idx_array = flex.miller_index(self.indices)
+    obs = None
     if self.hkl_sg.toggle.GetValue():
       try:
-        idx_array = flex.miller_index(self.indices)
         crystal_symmetry = crystal.symmetry(space_group_symbol=self.spacegroup)
         ms = miller.set(crystal_symmetry=crystal_symmetry,
                         indices=idx_array, anomalous_flag=False)
         sym_indices = ms.map_to_asu().indices()
       except Exception, e:
-        sym_indices = self.indices
+        sym_indices = idx_array
         print 'HKL ERROR: ', e
     else:
-      sym_indices = self.indices
+      sym_indices = idx_array
 
-    self.ahk0 = [(i[0], i[1]) for i in sym_indices if i[2] == 0]
-    self.ah0l = [(i[0], i[2]) for i in sym_indices if i[1] == 0]
-    self.a0kl = [(i[1], i[2]) for i in sym_indices if i[0] == 0]
+    merged_indices = Counter(sym_indices).items()
 
     # Draw a h0, k0, or l0 slice of merged data so far
     self.hkl_axes.clear()
+    try:
+      self.hkl_colorbar.remove()
+    except Exception:
+      pass
+
     if self.hkl_view_axis == 'l':
-      x = np.array([h[0] for h in self.ahk0])
-      y = np.array([h[1] for h in self.ahk0])
+      slice = [(i[0][0], i[0][1]) for i in merged_indices if i[0][2] == 0]
+      freq = [i[1] for i in merged_indices if i[0][2] == 0]
       self.hkl_axes.set_xlabel('h', weight='bold')
       self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'k':
-      x = np.array([h[0] for h in self.ah0l])
-      y = np.array([h[1] for h in self.ah0l])
+      slice = [(i[0][0], i[0][2]) for i in merged_indices if i[0][1] == 0]
+      freq = [i[1] for i in merged_indices if i[0][1] == 0]
       self.hkl_axes.set_xlabel('h', weight='bold')
       self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'h':
-      x = np.array([h[0] for h in self.a0kl])
-      y = np.array([h[1] for h in self.a0kl])
+      slice = [(i[0][1], i[0][2]) for i in merged_indices if i[0][0] == 0]
+      freq = [i[1] for i in merged_indices if i[0][0] == 0]
       self.hkl_axes.set_xlabel('k', weight='bold')
       self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     else:
       # if for some reason this goes to plotting without any indices
-      x = np.zeros(500)
-      y = np.zeros(500)
+      slice = zip(np.zeros(500), np.zeros(500))
+      freq = np.zeros(500)
+
+    # if self.hkl_view_axis == 'l':
+    #   slice = [(i[0], i[1]) for i in sym_indices if i[2] == 0]
+    #   self.hkl_axes.set_xlabel('h', weight='bold')
+    #   self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
+    # elif self.hkl_view_axis == 'k':
+    #   slice = [(i[0], i[2]) for i in sym_indices if i[1] == 0]
+    #   self.hkl_axes.set_xlabel('h', weight='bold')
+    #   self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+    # elif self.hkl_view_axis == 'h':
+    #   slice = [(i[1], i[2]) for i in sym_indices if i[0] == 0]
+    #   self.hkl_axes.set_xlabel('k', weight='bold')
+    #   self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+    # else:
+    #   # if for some reason this goes to plotting without any indices
+    #   slice = zip(np.zeros(500), np.zeros(500))
+    #   freq = np.zeros(500)
+
+    x = np.array([h[0] for h in slice])
+    y = np.array([h[1] for h in slice])
 
     # Format plot
-    self.hkl_axes.scatter(x, y, s=1)
+    hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=1)
     self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
     self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
     self.hkl_axes.set_xticks([])
@@ -1192,6 +1219,13 @@ class ProcessingTab(ScrolledPanel):
       self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
     except ValueError, e:
       pass
+
+    norm = colors.Normalize(vmin=0, vmax=np.max(freq))
+    self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter, ax=self.hkl_axes,
+                                                 cmap='jet', norm=norm,
+                                                 orientation='vertical',
+                                                 aspect=40,
+                                                 use_gridspec=True)
 
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
@@ -1285,6 +1319,16 @@ class ProcessingTab(ScrolledPanel):
       self.pick['index'] = e.xdata
     self.draw_summary()
 
+  def on_hkl_press(self, event):
+    if event.inaxes == self.hkl_axes:
+      if self.hkl_view_axis == 'h':
+        self.hkl_view_axis = 'k'
+      elif self.hkl_view_axis == 'k':
+        self.hkl_view_axis = 'l'
+      elif self.hkl_view_axis == 'l':
+        self.hkl_view_axis = 'h'
+      self.draw_plots()
+
   def on_button_press(self, event):
     if event.button != 1:
       self.pick['picked'] = False
@@ -1295,15 +1339,7 @@ class ProcessingTab(ScrolledPanel):
         self.nsref_pick.set_visible(False)
       elif event.inaxes == self.res_axes:
         self.res_pick.set_visible(False)
-      elif event.inaxes == self.hkl_axes:
-        self.show_sg_popup_menu((event.x, event.y))
-    elif event.button == 1 and event.inaxes == self.hkl_axes:
-      if self.hkl_view_axis == 'h':
-        self.hkl_view_axis = 'k'
-      elif self.hkl_view_axis == 'k':
-        self.hkl_view_axis = 'l'
-      elif self.hkl_view_axis == 'l':
-        self.hkl_view_axis = 'h'
+
       self.draw_plots()
 
     if event.dblclick:
@@ -1316,17 +1352,6 @@ class ProcessingTab(ScrolledPanel):
     if event.button == 1 and self.dblclick:
       self.show_image_group(e=event)
       self.view_proc_images()
-
-
-  def show_sg_popup_menu(self, mouse_position=None):
-    if mouse_position is not None:
-      mx, my = mouse_position
-      menu = wx.Menu()
-      for item in ['test1', 'test2', 'test3']:
-        menu.Append(wx.ID_ANY, item)
-
-      self.parent.PopupMenu(menu, mouse_position)
-      menu.Destroy()
 
 class SummaryTab(ScrolledPanel):
   def __init__(self,
@@ -1681,6 +1706,8 @@ class ProcWindow(wx.Frame):
     self.read_object_files = []
     self.new_images = []
     self.indices = []
+    self.observations = []
+    self.obs_sigmas = []
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -2167,8 +2194,7 @@ class ProcWindow(wx.Frame):
       else:
         self.chart_tab.spacegroup = 'P1'
 
-    self.chart_tab.indices = list(set(self.indices))
-
+    self.chart_tab.indices = self.indices
     self.chart_tab.draw_plots()
     self.chart_tab.draw_summary()
 

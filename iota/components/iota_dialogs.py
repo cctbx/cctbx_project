@@ -212,6 +212,8 @@ class IOTAPreferences(BaseDialog):
     self.mm_timeout_len = self.params.advanced.monitor_mode_timeout_length
     self.random_subset = self.params.advanced.random_sample.flag_on
     self.random_subset_number = self.params.advanced.random_sample.number
+    self.image_range = self.params.advanced.image_range.flag_on
+    self.image_range_string = self.params.advanced.image_range.range
 
     # Queue Preferences
     queue_box = wx.StaticBox(self, label='Multiprocessing Preferences')
@@ -242,7 +244,6 @@ class IOTAPreferences(BaseDialog):
                                       label_size=(120, -1),
                                       label_style='normal',
                                       ctrl_size=(150, -1))
-    # self.custom_queue.Disable()
     queue_sizer.Add(self.custom_queue, flag=wx.LEFT | wx.RIGHT | wx.BOTTOM,
                     border=10)
 
@@ -280,18 +281,26 @@ class IOTAPreferences(BaseDialog):
     adv_sizer.Add(self.chk_mm_timeout, flag=f.stack,  border=10)
     adv_sizer.Add(self.opt_timeout, flag=f.stack, border=10)
 
-    # Random sample preferences
-    self.chk_random_sample = wx.CheckBox(self, label='Process a random subset')
-    self.random_number = ct.SpinCtrl(self,
-                                     label='No. images in subset:',
-                                     label_size=(160, -1),
-                                     label_style='normal',
-                                     ctrl_size=(80, -1),
-                                     ctrl_min=0,
-                                     ctrl_max=5000)
-    self.random_number.Disable()
+    # Sub-sample preferences
+    self.chk_image_range = ct.OptionCtrl(self,
+                                         items=[('range', '')],
+                                         label_size=wx.DefaultSize,
+                                         checkbox=True,
+                                         checkbox_state=False,
+                                         checkbox_label='Image Range: ',
+                                         ctrl_size=(200, -1))
+    adv_sizer.Add(self.chk_image_range, flag=f.stack, border=10)
+
+    self.chk_random_sample = ct.SpinCtrl(self,
+                                         label_size=wx.DefaultSize,
+                                         checkbox=True,
+                                         checkbox_state=False,
+                                         checkbox_label='Random subset: ',
+                                         ctrl_value=100,
+                                         ctrl_size=(80, -1),
+                                         ctrl_min=0,
+                                         ctrl_max=5000)
     adv_sizer.Add(self.chk_random_sample, flag=f.stack, border=10)
-    adv_sizer.Add(self.random_number, flag=f.stack, border=10)
 
     # PRIME prefix
     self.prime_prefix = ct.OptionCtrl(self,
@@ -321,7 +330,6 @@ class IOTAPreferences(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_CHECKBOX, self.onMonitor, self.chk_cont_mode)
     self.Bind(wx.EVT_CHECKBOX, self.onTimeout, self.chk_mm_timeout)
-    self.Bind(wx.EVT_CHECKBOX, self.onRandom, self.chk_random_sample)
     self.Bind(wx.EVT_BUTTON, self.onTempBrowse, self.temp_folder.btn_browse)
 
     self.Fit()
@@ -372,14 +380,15 @@ class IOTAPreferences(BaseDialog):
         self.opt_timeout.Enable()
         self.opt_timeout.timeout.SetValue(str(self.mm_timeout_len))
 
-    # Set random subset values
+    # Set subset values
+    print "DEBUG: RANDOM SAMPLE ON? ", self.random_subset
     if self.random_subset:
-      self.chk_random_sample.SetValue(True)
-      self.random_number.Enable()
-    else:
-      self.chk_random_sample.SetValue(False)
-      self.random_number.Disable()
-    self.random_number.ctr.SetValue(self.random_subset_number)
+      self.chk_random_sample.toggle_boxes(flag_on=True)
+      self.chk_random_sample.ctr.SetValue(self.random_subset_number)
+
+    if self.image_range:
+      self.chk_image_range.toggle_boxes(flag_on=self.image_range)
+      self.chk_image_range.range.SetValue(noneset(self.image_range_string))
 
     # Set PRIME prefix
     self.prime_prefix.prefix.SetValue(self.params.advanced.prime_prefix)
@@ -427,12 +436,6 @@ class IOTAPreferences(BaseDialog):
       self.opt_timeout.Disable()
       self.opt_timeout.timeout.SetValue('')
 
-  def onRandom(self, e):
-    if self.chk_random_sample.GetValue():
-      self.random_number.Enable()
-    else:
-      self.random_number.Disable()
-
   def onOK(self, e):
     # Get continous mode settings
     self.monitor_mode = self.chk_cont_mode.GetValue()
@@ -457,8 +460,18 @@ class IOTAPreferences(BaseDialog):
       self.queue = None
 
     viewer = self.viewers.ctr.GetString(self.viewers.ctr.GetSelection())
-
     temp_folder = noneset(self.temp_folder.ctr.GetValue())
+
+    if self.chk_random_sample.toggle.IsChecked():
+      random_number = self.chk_random_sample.ctr.GetValue()
+    else:
+      random_number = 0
+
+    if self.chk_image_range.toggle.IsChecked():
+      img_range = self.chk_image_range.range.GetValue()
+    else:
+      img_range = None
+
 
     # test generation of PHIL settings
     prefs_text = '\n'.join([
@@ -471,10 +484,15 @@ class IOTAPreferences(BaseDialog):
       '  monitor_mode_timeout_length = {}'.format(int(self.mm_timeout_len)),
       '  prime_prefix = {}'.format(self.prime_prefix.prefix.GetValue()),
       '  temporary_output_folder = {}'.format(temp_folder),
+      '  image_range',
+      '  {',
+      '    flag_on = {}'.format(self.chk_image_range.toggle.GetValue()),
+      '    range = {}'.format(img_range),
+      '  }',
       '  random_sample',
       '  {',
-      '    flag_on = {}'.format(self.chk_random_sample.GetValue()),
-      '    number = {}'.format(self.random_number.ctr.GetValue()),
+      '    flag_on = {}'.format(self.chk_random_sample.toggle.GetValue()),
+      '    number = {}'.format(random_number),
       '  }',
       '}'
     ])

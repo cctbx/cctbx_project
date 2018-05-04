@@ -310,12 +310,20 @@ advanced
   temporary_output_folder = None
     .type = path
     .help = If None, temp output goes to <output>/integration/###/tmp/
+  image_range
+    .help = Use a range of images, e.g. 5 - 1000
+  {
+    flag_on = False
+      .type = bool
+    range = None
+      .type = str
+      .help = Can input multiple ranges, e.g. "5, 60-100, 200-1500"
+  }
   random_sample
     .help = Use a randomized subset of images (or -r <number> option)
   {
     flag_on = False
       .type = bool
-      .help = Set to run grid search on a random set of images.
     number = 0
       .type = int
       .help = Number of random samples. Set to zero to select 10% of input.

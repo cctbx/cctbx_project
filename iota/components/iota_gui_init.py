@@ -491,6 +491,7 @@ class MainWindow(wx.Frame):
 
     input_list = []
     input_items = self.input_window.input.all_data_images
+
     for key, imageset in input_items.iteritems():
       input_list.extend(imageset)
 
@@ -498,6 +499,7 @@ class MainWindow(wx.Frame):
                                       target_phil=self.target_phil,
                                       phil=self.iota_phil)
     init = InitAll(iver=misc.iota_version, input_list=input_list)
+
     self.proc_window.run(init)
 
     if self.proc_window.good_to_go:
@@ -750,6 +752,26 @@ class InitAll(object):
     return inp_list
 
 
+  def select_image_range(self, full_list):
+    img_range_string = str(self.params.advanced.image_range.range)
+    img_range_elements = img_range_string.split(',')
+    img_list = []
+    for n in img_range_elements:
+      if '-' in n:
+        img_limits = [int(i) for i in n.split('-')]
+        start = min(img_limits)
+        end = max(img_limits)
+        if start <= len(full_list) and end <= len(full_list):
+          img_list.extend(full_list[start:end])
+      else:
+        if int(n) <= len(full_list):
+         img_list.append(full_list[int(n)])
+
+    if len(img_list) > 0:
+      return img_list
+    else:
+      return full_list
+
   def select_random_subset(self, input_list):
     """ Selects random subset of input entries """
     import random
@@ -858,6 +880,10 @@ class InitAll(object):
     # If input list for some reason isn't transmitted from main window, make it
     if self.input_list is None:
       self.input_list = self.make_input_list()
+
+    # Select range of images if turned on
+    if self.params.advanced.image_range.flag_on:
+      self.input_list = self.select_image_range(self.input_list)
 
     # Select a random subset of images if turned on
     if self.params.advanced.random_sample.flag_on and \
