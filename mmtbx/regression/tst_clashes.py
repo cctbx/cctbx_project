@@ -1,5 +1,6 @@
 from __future__ import division
 import mmtbx.clashes
+from libtbx.utils import null_out
 
 pdb_good = """
 CRYST1   23.341   28.568   19.164  90.00  90.00  90.00 P 1
@@ -52,7 +53,7 @@ TER      21      GLU A  59
 END
 """
 
-def run():
+def tst_01():
   o = mmtbx.clashes.from_pdb(pdb_str=pdb_good, clash_threshold=2.3)
   o.show()
   assert o.clashing_pairs() == [(9, 10), (18, 19), (3, 11)]
@@ -61,6 +62,44 @@ def run():
   o.show()
   assert o.clashing_pairs() == [(9, 18), (9, 19), (8, 18), (7, 18), (9, 17)]
 
+def tst_02():
+  # Test for remove_clashes
+  import mmtbx.model
+  from mmtbx.clashes import remove_clashes
+  import iotbx.pdb
+  import sys
+  pdb_inp = iotbx.pdb.input(lines=pdb_poor.splitlines(),source_info='None')
+  model=  mmtbx.model.manager( model_input= pdb_inp,)
+ 
+  model.set_log(log = null_out())
+
+  print "\n","-"*79
+  print " Summary of input model statistics "
+  print "-"*79
+  model.get_restraints_manager()
+  geometry = model.geometry_statistics()
+  geometry.show(log = sys.stdout)
+
+
+  rc=remove_clashes(model=model)
+
+  print "\n","-"*79
+  print "Starting residues: %d " % (
+     rc.model.get_hierarchy().overall_counts().n_residues)
+  print "Side-chains removed: %d    Residues removed: %d" %(
+     rc.side_chains_removed,
+     rc.residues_removed)
+  print "Final residues: %d " % (
+     rc.new_model.get_hierarchy().overall_counts().n_residues)
+
+  rc.new_model.set_log(log = null_out())
+  rc.new_model.get_restraints_manager()
+  new_geometry = rc.new_model.geometry_statistics()
+  new_geometry.show(log = sys.stdout)
+  assert rc.side_chains_removed==1
+  assert rc.residues_removed==0
+ 
 
 if (__name__ == "__main__"):
-  run()
+  tst_01()
+  tst_02()

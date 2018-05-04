@@ -443,6 +443,7 @@ def _bond_show_sorted_impl(self,
                            f=None,
                            prefix="",
                            max_items=None,
+                           return_ij_seq_in_table=None,
                            origin_id=None):
   if unit_cell is None:
     sorted_table, n_not_shown = self.get_sorted(
@@ -450,6 +451,7 @@ def _bond_show_sorted_impl(self,
       sites_cart=sites_cart,
       site_labels=site_labels,
       max_items=max_items,
+      return_ij_seq_in_table=return_ij_seq_in_table,
       origin_id=origin_id)
   else:
     sorted_table, n_not_shown = self.get_sorted(
@@ -458,16 +460,24 @@ def _bond_show_sorted_impl(self,
       unit_cell=unit_cell,
       site_labels=site_labels,
       max_items=max_items,
+      return_ij_seq_in_table=return_ij_seq_in_table,
       origin_id=origin_id)
   len_sorted_table = 0 if sorted_table is None else len(sorted_table)
   if n_not_shown is None: n_not_shown = 0
   print >> f, "%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown)
   if (f is None): f = sys.stdout
   print >> f, "%sSorted by %s:" % (prefix, by_value)
+  worst_id_pair_and_delta_list=[]
   if sorted_table is not None:
     for restraint_info in sorted_table :
-      (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
-       residual, sym_op_j, rt_mx) = restraint_info
+      if return_ij_seq_in_table:
+        ([i_seq,j_seq],  # because return_ij_seq_in_table=True
+          labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+          residual, sym_op_j, rt_mx) = restraint_info
+        worst_id_pair_and_delta_list.append([i_seq,j_seq,delta])
+      else:
+        (labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+         residual, sym_op_j, rt_mx) = restraint_info
       s = "bond"
       for label in labels :
         print >> f, "%s%4s %s" % (prefix, s, label)
@@ -488,6 +498,7 @@ def _bond_show_sorted_impl(self,
       print >> f
   if (n_not_shown != 0):
     print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+  return worst_id_pair_and_delta_list
 
 class _(boost.python.injector, shared_bond_asu_proxy):
   def get_proxies_without_origin_id(self, origin_id):
@@ -562,6 +573,7 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         site_labels=None,
         unit_cell=None,
         max_items=None,
+        return_ij_seq_in_table=None,
         origin_id=None):
     assert origin_id is None # not implemented
     assert by_value in ["residual", "delta"]
@@ -599,11 +611,13 @@ class _(boost.python.injector, shared_bond_simple_proxy):
         if (site_labels is None): l = str(i)
         else:                     l = site_labels[i]
         labels.append(l)
-      sorted_table.append(
-        (labels, restraint.distance_ideal, restraint.distance_model,
+      info = (labels, restraint.distance_ideal, restraint.distance_model,
          restraint.slack, restraint.delta,
          weight_as_sigma(weight=restraint.weight), restraint.weight,
-         restraint.residual(), sym_op_j, rt_mx))
+         restraint.residual(), sym_op_j, rt_mx)
+      if return_ij_seq_in_table:
+        info=([i_seq, j_seq],)+info
+      sorted_table.append(info)
     n_not_shown = data_to_sort.size() - i_proxies_sorted.size()
     return sorted_table, n_not_shown
 
@@ -760,6 +774,7 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         sites_cart,
         site_labels=None,
         max_items=None,
+        return_ij_seq_in_table=None, # adds [i_seq,j_seq] to table
         origin_id=None):
     assert by_value in ["residual", "delta"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
@@ -813,11 +828,13 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
           if (site_labels is None): l = str(i)
           else:                     l = site_labels[i]
           labels.append(l)
-        sorted_table.append(
-          (labels, restraint.distance_ideal, restraint.distance_model,
+        info=(labels, restraint.distance_ideal, restraint.distance_model,
            restraint.slack, restraint.delta,
            weight_as_sigma(weight=restraint.weight), restraint.weight,
-           restraint.residual(), sym_op_j, rt_mx))
+           restraint.residual(), sym_op_j, rt_mx)
+        if return_ij_seq_in_table:
+           info=([i_seq,j_seq],)+info
+        sorted_table.append(info)
         n_outputted += 1
       else:
         n_excluded += 1
@@ -871,12 +888,13 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
         origin_id=None):
     if f is None: f = sys.stdout
     # print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
-    _bond_show_sorted_impl(self, by_value,
+    return _bond_show_sorted_impl(self, by_value,
                           sites_cart=sites_cart,
                           site_labels=site_labels,
                           f=f,
                           prefix=prefix,
                           max_items=max_items,
+                          return_ij_seq_in_table=True,
                           origin_id=origin_id)
 
 class _(boost.python.injector, nonbonded_sorted_asu_proxies):
@@ -1063,6 +1081,7 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
       asu_mappings = self.asu_mappings()
     print >> f, "%sSorted by model distance:" % prefix
     n_simple = self.simple.size()
+    worst_id_pair_and_delta_list=[]
     for i_proxy in i_proxies_sorted:
       if (i_proxy < n_simple):
         proxy = self.simple[i_proxy]
@@ -1091,12 +1110,15 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
       print >> f, "%s   model   vdw%s" % (prefix, sym_op_j)
       print >> f, "%s  %6.3f %5.3f" % (
         prefix, deltas[i_proxy], proxy.vdw_distance),
+      worst_id_pair_and_delta_list.append(
+         [i_seq, j_seq,deltas[i_proxy]-proxy.vdw_distance])
       if (rt_mx is not None):
         print >> f, rt_mx,
       print >> f
     n_not_shown = deltas.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
+    return worst_id_pair_and_delta_list 
 
 class _(boost.python.injector, angle):
 
