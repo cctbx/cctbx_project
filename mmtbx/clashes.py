@@ -27,7 +27,7 @@ def from_xray_structure(
 
 class from_pdb(object):
 
-  def __init__(self, pdb_str, 
+  def __init__(self, pdb_str,
       clash_threshold, remove_clash_guard=False,
       remove_max_reasonable_bond_distance=False):
     params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
@@ -89,7 +89,7 @@ class remove_clashes(object):
     adopt_init_args(self, locals())
     self.side_chains_removed=0
     self.residues_removed=0
-    
+
     self.get_labels_and_proxies()
     if max_fraction:
       max_items=int(max_fraction*self.model.all_chain_proxies.sites_cart_exact().size())
@@ -103,7 +103,7 @@ class remove_clashes(object):
     self.get_remove_selection_string()
     # redo model after removing residues/side chains specified
     self.pare_model()
-  
+
 
   def pare_model(self):
     if not self.remove_selection_string:
@@ -118,7 +118,7 @@ class remove_clashes(object):
       self.new_model=mmtbx.model.manager(
         model_input=None,
          pdb_hierarchy=new_ph)
- 
+
 
   def get_remove_selection_string(self):
     # Now choose the worst side-chains or main chain to remove.
@@ -156,7 +156,7 @@ class remove_clashes(object):
       else:  # neither is a side chain. Take shorter fragment
         if i_is_shorter_fragment: # take i whole residue
           if not key_i in remove_residue_list:remove_residue_list.append(key_i)
-        else: 
+        else:
           if not key_j in remove_residue_list:remove_residue_list.append(key_j)
 
     # Take anything that is in remove_residue_list out of remove_side_chain_list
@@ -187,7 +187,7 @@ class remove_clashes(object):
     if remove_side_chain_selection_list:
       side_chain_string=" ( NOT ( NAME %s ) )" % (
          " OR NAME ".join(main_chain_plus_cb))
-      remove_side_chain_selection_string=" (%s AND ( %s  ) ) " %( 
+      remove_side_chain_selection_string=" (%s AND ( %s  ) ) " %(
          side_chain_string, " OR ".join(remove_side_chain_selection_list))
     else:
       remove_side_chain_selection_string=""
@@ -274,7 +274,7 @@ class remove_clashes(object):
       count_atoms+=1
       if atom.name.strip().upper() in ['CA','P']:
         count_residues+=1
-        if last_ca is None or atom.distance(last_ca)< 4.5: # 
+        if last_ca is None or atom.distance(last_ca)< 4.5: #
            last_ca=atom
         else:
            self.segment_lengths+=count_atoms*[count_residues]  # count
@@ -284,5 +284,3 @@ class remove_clashes(object):
     if count_atoms:
       self.segment_lengths+=count_atoms*[count_residues]  # count
     assert len(self.segment_lengths) == len(self.model.all_chain_proxies.pdb_atoms)
-
-

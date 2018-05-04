@@ -70,7 +70,7 @@ def tst_02():
   import sys
   pdb_inp = iotbx.pdb.input(lines=pdb_poor.splitlines(),source_info='None')
   model=  mmtbx.model.manager( model_input= pdb_inp,)
- 
+
   model.set_log(log = null_out())
 
   print "\n","-"*79
@@ -98,7 +98,7 @@ def tst_02():
   new_geometry.show(log = sys.stdout)
   assert rc.side_chains_removed==1
   assert rc.residues_removed==0
- 
+
 
 if (__name__ == "__main__"):
   tst_01()

@@ -1118,7 +1118,7 @@ class _(boost.python.injector, nonbonded_sorted_asu_proxies):
     n_not_shown = deltas.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       print >> f, prefix + "... (remaining %d not shown)" % n_not_shown
-    return worst_id_pair_and_delta_list 
+    return worst_id_pair_and_delta_list
 
 class _(boost.python.injector, angle):
 
