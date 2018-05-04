@@ -33,11 +33,11 @@ def choice_as_bitflag(choices):
   return flags
 
 def choice_as_helper_base(choices):
-  levmar_params = choices.parameter_flags,
+  levmar_params = choices.parameter_flags
   levmar_linsolver = choices.linsolver
   levmar_strum = choices.strumpack
   if "Deff" in levmar_params or "Rxy" in levmar_params:
-    if levmar_strum==True:
+    if levmar_strum.enable==True:
       from cctbx.examples.merging import postrefine_base_strumpack as base_class
       print "Using postrefine_base_strumpack"
     else:
@@ -104,9 +104,9 @@ def choice_as_helper_base(choices):
     def build_up(pfh, objective_only=False):
       if not objective_only: pfh.counter+=1
       pfh.reset()
-      if (base_class.__name__ == "xscale6e"):
+      if base_class.__name__ in {"xscale6e", "postrefine_base"}:
         pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
-      elif(base_class.__name__ == "xscale_strumpack"):
+      elif base_class.__name__ in {"xscale_strumpack", "postrefine_base_strumpack"}:
         pfh.access_cpp_build_up_directly_strumpack_eqn(objective_only, current_values = pfh.x)
 
   return levenberg_helper
@@ -135,7 +135,7 @@ class xscale6e(object):
     if "Bfactor" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(len(Gbase),0.0))
     if "Deff" in self.params.levmar.parameter_flags:
-        D_values = flex.double([2.*e.crystal.domain_size for e in kwargs["experiments"]])
+        D_values = flex.double([2.*e.crystal.get_domain_size_ang() for e in kwargs["experiments"]])
         self.x = self.x.concatenate(D_values)
     if "Rxy" in self.params.levmar.parameter_flags:
         self.x = self.x.concatenate(flex.double(2*len(Gbase),0.0))
