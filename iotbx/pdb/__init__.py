@@ -666,7 +666,7 @@ class pdb_input_from_any(object):
     content = None
     from iotbx.pdb.mmcif import cif_input
     mmcif_exts = ('.cif', '.mmcif')
-    if file_name is not None and file_name.endswith(mmcif_exts):
+    if file_name is not None and file_name.strip(".gz").endswith(mmcif_exts):
       file_inputs = (cif_input, pdb_input)
     else:
       file_inputs = (pdb_input, cif_input)
@@ -690,6 +690,10 @@ class pdb_input_from_any(object):
         #   pdb_input only raises an error if there are lines starting with
         #   "ATOM  " or "HETATM" and it subsequently fails to interpret these
         #   lines as ATOM/HETATM records
+        #
+        # XXX This hack fails to recognize /net/cci/pdb_mirror/mmcif/of/2of6.cif.gz
+        # Reason: atom coordinates luckily can be parsed (no letters there)
+        #
         n_unknown_records = content.unknown_section().size()
         n_records = sum(content.record_type_counts().values())
         n_blank_records = content.record_type_counts().get('      ', 0)
