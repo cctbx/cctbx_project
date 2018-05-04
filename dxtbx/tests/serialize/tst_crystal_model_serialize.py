@@ -63,12 +63,28 @@ class Test(object):
     A = c1.get_A()
     c1.set_A_at_scan_points([A for i in range(5)])
 
+    # Set the B covariance. The values are nonsense, just ensure they are
+    # all different
+    from scitbx.array_family import flex
+    cov_B = flex.double(range((9*9))) * 1e-5
+    c1.set_B_covariance(cov_B)
+    cov_B.reshape(flex.grid(1, 9, 9))
+    cov_B_array = flex.double(flex.grid(5, 9, 9))
+    for i in range(5):
+      cov_B_array[i:(i+1), :, :] = cov_B
+    c1.set_B_covariance_at_scan_points(cov_B_array)
+    cov_B = c1.get_B_covariance()
+
     d = c1.to_dict()
     c2 = CrystalFactory.from_dict(d)
     eps = 1e-9
     for Acomp in (d['A_at_scan_points']):
       for e1, e2 in zip(A, Acomp):
         assert(abs(e1 - e2) <= eps)
+    for covBcomp in (d['B_covariance_at_scan_points']):
+      for e1, e2 in zip(cov_B, covBcomp):
+        assert(abs(e1 - e2) <= eps)
+
     assert(c1 == c2)
     print 'OK'
 

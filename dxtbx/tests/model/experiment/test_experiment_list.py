@@ -547,6 +547,15 @@ def test_experimentlist_dumper_dump_scan_varying(dials_regression, tmpdir):
   beam = elist1[0].beam
   goniometer = elist1[0].goniometer
   crystal.set_A_at_scan_points([crystal.get_A()] * 5)
+  from scitbx.array_family import flex
+  cov_B = flex.double([1e-5]*9*9)
+  crystal.set_B_covariance(cov_B)
+  cov_B.reshape(flex.grid(1, 9, 9))
+  cov_B_array = flex.double(flex.grid(5, 9, 9))
+  for i in range(5):
+    cov_B_array[i:(i+1), :, :] = cov_B
+  crystal.set_B_covariance_at_scan_points(cov_B_array)
+
   beam.set_s0_at_scan_points([beam.get_s0()] * 5)
   goniometer.set_setting_rotation_at_scan_points([goniometer.get_setting_rotation()] * 5)
 
