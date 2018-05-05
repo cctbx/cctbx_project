@@ -276,4 +276,4 @@ class remove_clashes(object):
            count_atoms=0
     if count_atoms:
       self.segment_lengths+=count_atoms*[count_residues]  # count
-    assert len(self.segment_lengths) == len(self.model.get_hierarchy().atoms())
+    assert len(self.segment_lengths) == self.model.get_number_of_atoms()
