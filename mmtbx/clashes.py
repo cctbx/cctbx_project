@@ -10,6 +10,8 @@ import mmtbx.model
 
 # XXX Need to support model_manager object input
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: bad practices for obtaining GRM. remove_clashes should be used instead.
 def from_xray_structure(
       clash_threshold,
       xray_structure,
@@ -70,6 +72,8 @@ class from_pdb(object):
     if(log is None): log = sys.stdout
     for pair in self._pairs:
       print >> log, self.format_clash_string(pair=pair)
+
+# END_MARKED_FOR_DELETION_OLEG
 
 main_chain_plus_cb=[
        "N","CA","C","O","CB",
@@ -218,14 +222,10 @@ class remove_clashes(object):
     sites_cart=self.model.get_sites_cart()
     bad_nonbonded = []
     sorted_table, n_not_shown = self.pair_proxies.nonbonded_proxies.get_sorted(
-      by_value="delta",
-      sites_cart=sites_cart,
-      site_labels=self.site_labels,
-      # f=self.model.log,
-      # prefix="  ",
-      # suppress_model_minus_vdw_greater_than=\
-      #    -self.non_bonded_deviation_threshold,
-      max_items=max_items)
+        by_value="delta",
+        sites_cart=sites_cart,
+        site_labels=self.site_labels,
+        max_items=max_items)
     for info in sorted_table:
       labels, i_seq, j_seq, delta, vdw_distance, sym_op_j, rt_mx = info
       if delta - vdw_distance  <= -self.non_bonded_deviation_threshold:
@@ -241,10 +241,8 @@ class remove_clashes(object):
         by_value="residual",
         sites_cart=sites_cart,
         site_labels=self.site_labels,
-          # f=self.model.log,
-          # prefix="  ",
-          max_items=max_items,
-          origin_id=origin_ids.get_origin_id('covalent geometry'))
+        max_items=max_items,
+        origin_id=origin_ids.get_origin_id('covalent geometry'))
     if sorted_table is not None:
       for restraint_info in sorted_table:
         (i_seq,j_seq,
