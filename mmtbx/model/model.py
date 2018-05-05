@@ -825,13 +825,16 @@ class manager(object):
     self.restraints_manager.write_geo_file(
         hierarchy = self.get_hierarchy(),
         sites_cart=self.get_sites_cart(),
-        site_labels=self.get_xray_structure().scatterers().extract_labels(),
+        site_labels=self.get_site_labels(),
         header=header,
         # Stuff for outputting ncs_groups
         excessive_distance_limit = excessive_distance_limit,
         xray_structure=self.get_xray_structure(),
         file_descriptor=result)
     return result.getvalue()
+
+  def get_site_labels(self):
+    return self.get_xray_structure().scatterers().extract_labels()
 
   def input_format_was_cif(self):
     return self._original_model_format == "mmcif"
@@ -1121,7 +1124,7 @@ class manager(object):
         result = self.get_restraints_manager().cartesian_ncs_manager.\
             show_sites_distances_to_average(
                 sites_cart=self.get_sites_cart(),
-                site_labels=self.get_xray_structure().scatterers().extract_labels(),
+                site_labels=self.get_site_labels(),
                 excessive_distance_limit=excessive_distance_limit,
                 out=null_out())
     return result
