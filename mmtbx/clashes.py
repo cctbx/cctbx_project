@@ -111,9 +111,8 @@ class remove_clashes(object):
     if not self.remove_selection_string:
       self.new_model=self.model.deep_copy() # nothing to do
     else:
-      sel1 = self.model.selection(string = " NOT (%s) " %(
+      sel1 = self.model.selection(selstr = " NOT (%s) " %(
          self.remove_selection_string))
-      new_ph=ph.select(sel1)
       self.new_model=self.model.select(sel1)
 
   def get_remove_selection_string(self):
@@ -217,31 +216,41 @@ class remove_clashes(object):
   def get_bad_nonbonded(self,max_items=None):
 
     sites_cart=self.model.get_sites_cart()
-    bad_nonbonded=self.pair_proxies.nonbonded_proxies.show_sorted(
+    bad_nonbonded = []
+    sorted_table, n_not_shown = self.pair_proxies.nonbonded_proxies.get_sorted(
       by_value="delta",
       sites_cart=sites_cart,
       site_labels=self.site_labels,
-      f=self.model.log,
-      prefix="  ",
-      suppress_model_minus_vdw_greater_than=\
-         -self.non_bonded_deviation_threshold,
+      # f=self.model.log,
+      # prefix="  ",
+      # suppress_model_minus_vdw_greater_than=\
+      #    -self.non_bonded_deviation_threshold,
       max_items=max_items)
-    if bad_nonbonded is None: bad_nonbonded=[]
+    for info in sorted_table:
+      labels, i_seq, j_seq, delta, vdw_distance, sym_op_j, rt_mx = info
+      if delta - vdw_distance  <= -self.non_bonded_deviation_threshold:
+        bad_nonbonded.append([i_seq, j_seq, delta - vdw_distance])
     return bad_nonbonded
 
   def get_bad_bonded(self,max_items=None):
 
     # guess max items as percentage of sites_cart
     sites_cart=self.model.get_sites_cart()
-    bad_bonded = self.pair_proxies.bond_proxies.show_sorted(
+    bad_bonded = []
+    sorted_table, n_not_shown = self.pair_proxies.bond_proxies.get_sorted(
         by_value="residual",
         sites_cart=sites_cart,
         site_labels=self.site_labels,
-          f=self.model.log,
-          prefix="  ",
+          # f=self.model.log,
+          # prefix="  ",
           max_items=max_items,
           origin_id=origin_ids.get_origin_id('covalent geometry'))
-    if bad_bonded is None: bad_bonded=[]
+    if sorted_table is not None:
+      for restraint_info in sorted_table:
+        (i_seq,j_seq,
+            labels, distance_ideal, distance_model, slack, delta, sigma, weight,
+            residual, sym_op_j, rt_mx) = restraint_info
+        bad_bonded.append([i_seq,j_seq,delta])
     return bad_bonded
 
 

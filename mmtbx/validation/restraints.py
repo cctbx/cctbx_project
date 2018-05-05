@@ -267,7 +267,7 @@ class bonds (restraint_validation) :
       return []
     outliers = []
     for restraint_info in sorted_table :
-      (i_seqs, ideal, model, slack, delta, sigma, weight, residual, sym_op_j,
+      (i_seq, j_seq, i_seqs, ideal, model, slack, delta, sigma, weight, residual, sym_op_j,
        rt_mx) = restraint_info
       bond_atoms = get_atoms_info(pdb_atoms, iselection=i_seqs,
         use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
