@@ -4,6 +4,9 @@ import mmtbx.monomer_library.pdb_interpretation
 import sys
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
+from libtbx import adopt_init_args
+import mmtbx.model
+
 
 # XXX Need to support model_manager object input
 
@@ -85,14 +88,13 @@ class remove_clashes(object):
       bonded_deviation_threshold=0.2,
       max_fraction=None):
 
-    from libtbx import adopt_init_args
     adopt_init_args(self, locals())
     self.side_chains_removed=0
     self.residues_removed=0
 
     self.get_labels_and_proxies()
     if max_fraction:
-      max_items=int(max_fraction*self.model.all_chain_proxies.sites_cart_exact().size())
+      max_items=int(max_fraction*self.model.get_number_of_atoms())
     else:
       max_items=None
     self.worst_non_bonded_pairs_and_delta=self.get_bad_nonbonded(
@@ -107,18 +109,12 @@ class remove_clashes(object):
 
   def pare_model(self):
     if not self.remove_selection_string:
-      self.new_model=self.model # nothing to do
+      self.new_model=self.model.deep_copy() # nothing to do
     else:
-      ph=self.model.get_hierarchy()
-      asc1=ph.atom_selection_cache()
-      sel1 = asc1.selection(string = " NOT (%s) " %(
+      sel1 = self.model.selection(string = " NOT (%s) " %(
          self.remove_selection_string))
       new_ph=ph.select(sel1)
-      import mmtbx.model
-      self.new_model=mmtbx.model.manager(
-        model_input=None,
-         pdb_hierarchy=new_ph)
-
+      self.new_model=self.model.select(sel1)
 
   def get_remove_selection_string(self):
     # Now choose the worst side-chains or main chain to remove.
@@ -220,7 +216,7 @@ class remove_clashes(object):
 
   def get_bad_nonbonded(self,max_items=None):
 
-    sites_cart=self.model.all_chain_proxies.sites_cart_exact()
+    sites_cart=self.model.get_sites_cart()
     bad_nonbonded=self.pair_proxies.nonbonded_proxies.show_sorted(
       by_value="delta",
       sites_cart=sites_cart,
@@ -236,7 +232,7 @@ class remove_clashes(object):
   def get_bad_bonded(self,max_items=None):
 
     # guess max items as percentage of sites_cart
-    sites_cart=self.model.all_chain_proxies.sites_cart_exact()
+    sites_cart=self.model.get_sites_cart()
     bad_bonded = self.pair_proxies.bond_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart,
@@ -250,15 +246,12 @@ class remove_clashes(object):
 
 
   def get_labels_and_proxies(self):
-
-    self.params = self.model.all_chain_proxies.params
-
-    self.site_labels = [atom.id_str()
-         for atom in self.model.all_chain_proxies.pdb_atoms]
+    # These are not really necessary
+    self.site_labels = self.model.get_site_labels()
 
     self.pair_proxies = \
-      self.model.restraints_manager.geometry.pair_proxies(
-        sites_cart=self.model.all_chain_proxies.sites_cart_exact(),
+      self.model.get_restraints_manager().geometry.pair_proxies(
+        sites_cart=self.model.get_sites_cart(),
         site_labels=self.site_labels)
 
     # Identify length of segments so we can prioritize on shorter segment
@@ -270,7 +263,7 @@ class remove_clashes(object):
     count_residues=0
     count_atoms=0
     self.segment_lengths=[]
-    for atom in self.model.all_chain_proxies.pdb_atoms:
+    for atom in self.model.get_hierarchy().atoms():
       count_atoms+=1
       if atom.name.strip().upper() in ['CA','P']:
         count_residues+=1
@@ -283,4 +276,4 @@ class remove_clashes(object):
            count_atoms=0
     if count_atoms:
       self.segment_lengths+=count_atoms*[count_residues]  # count
-    assert len(self.segment_lengths) == len(self.model.all_chain_proxies.pdb_atoms)
+    assert len(self.segment_lengths) == len(self.model.get_hierarchy().atoms())
