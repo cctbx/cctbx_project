@@ -112,38 +112,6 @@ class ProcThread(Thread):
       self.aborted = True
       print e
       return
-    # else:
-    #   # write iterable
-    #   img_objects = None
-    #   queue = self.init.params.mp_queue
-    #   iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-    #   init_path = os.path.join(self.init.int_base, 'init.cfg')
-    #   nproc = self.init.params.n_processors
-    #   ep.dump(iter_path, self.iterable)
-    #   ep.dump(init_path, self.init)
-    #
-    #   if self.init.params.mp_method == 'lsf':
-    #     logfile = os.path.join(self.init.int_base, 'bsub.log')
-    #     command = 'bsub -o {} -q {} -n {} ' \
-    #               'iota.process {} --files {} --type {} --stopfile {}' \
-    #               ''.format(logfile, queue, nproc,
-    #                         init_path, iter_path, self.type, self.term_file)
-    #   elif self.init.params.mp_method == 'torq':
-    #     params = '{} --files {} --type {} --stopfile {}' \
-    #              ''.format(init_path, iter_path, self.type, self.term_file)
-    #     command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-    #               ''.format(self.init.params.output, params)
-    #   else:
-    #     command = None
-    #   if command is not None:
-    #     try:
-    #       print command
-    #       easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-    #     except IOTATermination, e:
-    #       print e
-    #   else:
-    #     print 'IOTA ERROR: COMMAND NOT ISSUED!'
-    #     return
 
     # Send "all done" event to GUI
     try:

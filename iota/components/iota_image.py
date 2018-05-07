@@ -276,10 +276,10 @@ class SingleImage(object):
     if self.params.image_conversion.square_mode == 'crop':
       new_half_size = min([right, left, top, bottom])
       new_size = new_half_size * 2
-      min_x = beam_x - new_half_size
-      min_y = beam_y - new_half_size
-      max_x = beam_x + new_half_size
-      max_y = beam_y + new_half_size
+      min_x = int(beam_x - new_half_size)
+      min_y = int(beam_y - new_half_size)
+      max_x = int(beam_x + new_half_size)
+      max_y = int(beam_y + new_half_size)
 
       if self.params.advanced.flip_beamXY:
         new_beam_x = data['BEAM_CENTER_X'] - min_y * pixel_size
@@ -289,7 +289,6 @@ class SingleImage(object):
         new_beam_x = data['BEAM_CENTER_X'] - min_x * pixel_size
         new_beam_y = data['BEAM_CENTER_Y'] - min_y * pixel_size
         new_pixels = pixels[min_y:max_y, min_x:max_x]
-
 
       assert new_pixels.focus()[0] == new_pixels.focus()[1]
 
@@ -410,11 +409,14 @@ class SingleImage(object):
     if self.params.advanced.integrate_with == 'dials':
       img_type = 'dials_input'
       if self.params.dials.auto_threshold:
-        beam_x_px = img_data['BEAM_CENTER_X'] / img_data['PIXEL_SIZE']
-        beam_y_px = img_data['BEAM_CENTER_Y'] / img_data['PIXEL_SIZE']
-        data_array = img_data['DATA'].as_numpy_array().astype(float)
-        self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
-                                               beam_x_px - 20:beam_x_px + 20])
+        try:
+          beam_x_px = int(img_data['BEAM_CENTER_X'] / img_data['PIXEL_SIZE'])
+          beam_y_px = int(img_data['BEAM_CENTER_Y'] / img_data['PIXEL_SIZE'])
+          data_array = img_data['DATA'].as_numpy_array().astype(float)
+          self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
+                                                 beam_x_px - 20:beam_x_px + 20])
+        except Exception, e:
+          print 'IMPORT ERROR: ', e
 
     # Log initial image information
     self.log_info.append('\n{:-^100}\n'.format(self.raw_img))

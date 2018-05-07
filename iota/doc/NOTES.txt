@@ -3,6 +3,8 @@ IOTA v1.1.031 - HKL slice viewer
 Bugfixes:
 - Spin Control: checkbox actually shown as checked if parameter is set to True
 in the read-in PHIL settings
+- Fixed recovery of run w/o results
+- Fixed BeamXY adjustment for DIALS (changed beamX and beamY to int)
 
 Features:
 - The HKL slice viewer (a part of "charts" tab) can now be set to show the

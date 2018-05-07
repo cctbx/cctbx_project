@@ -581,10 +581,10 @@ class ProcessingTab(ScrolledPanel):
     self.init = None
     self.parent = parent
 
-    self.finished_objects = None
-    self.img_list = None
-    self.nref_list = None
-    self.res_list = None
+    self.finished_objects = []
+    self.img_list = []
+    self.nref_list = []
+    self.res_list = []
     self.indices = []
     self.spacegroup = None
 
@@ -2179,24 +2179,26 @@ class ProcWindow(wx.Frame):
       self.log_tab.log_window.SetInsertionPoint(ins_pt)
 
   def plot_integration(self):
-    self.chart_tab.init = self.init
-    self.chart_tab.gparams = self.gparams
-    self.chart_tab.finished_objects = self.finished_objects
-    self.chart_tab.img_list = self.img_list
-    self.chart_tab.res_list = self.res_list
-    self.chart_tab.nref_list = self.nref_list
+    if (self.nref_list is not None and self.res_list is not None) :
 
-    if self.chart_tab.spacegroup is None:
-      if self.gparams.advanced.integrate_with == 'dials':
-        sg = self.gparams.dials.target_space_group
-        if sg is not None:
-          self.chart_tab.spacegroup = str(sg)
-      else:
-        self.chart_tab.spacegroup = 'P1'
+      self.chart_tab.init = self.init
+      self.chart_tab.gparams = self.gparams
+      self.chart_tab.finished_objects = self.finished_objects
+      self.chart_tab.img_list = self.img_list
+      self.chart_tab.res_list = self.res_list
+      self.chart_tab.nref_list = self.nref_list
 
-    self.chart_tab.indices = self.indices
-    self.chart_tab.draw_plots()
-    self.chart_tab.draw_summary()
+      if self.chart_tab.spacegroup is None:
+        if self.gparams.advanced.integrate_with == 'dials':
+          sg = self.gparams.dials.target_space_group
+          if sg is not None:
+            self.chart_tab.spacegroup = str(sg)
+        else:
+          self.chart_tab.spacegroup = 'P1'
+
+      self.chart_tab.indices = self.indices
+      self.chart_tab.draw_plots()
+      self.chart_tab.draw_summary()
 
   def find_objects(self, find_old=False):
     if find_old:
@@ -2217,7 +2219,10 @@ class ProcWindow(wx.Frame):
     self.populate_data_points(objects=new_finished_objects)
 
     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
-      self.finish_process()
+      if self.finished_objects != []:
+        self.finish_process()
+      else:
+        return
     else:
       self.start_object_finder = True
 
@@ -2374,7 +2379,6 @@ class ProcWindow(wx.Frame):
                                    i is not None and i.status == 'final']
         else:
           self.find_objects(find_old=True)
-          return
 
       self.populate_data_points(objects=self.finished_objects)
 
