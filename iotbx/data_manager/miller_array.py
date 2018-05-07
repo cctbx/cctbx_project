@@ -11,7 +11,7 @@ from libtbx.utils import Sorry
 class MillerArrayDataManager(DataManagerBase):
 
   datatype = 'miller_array'
-  child_datatypes = ['miller_array']    # track children
+  miller_array_child_datatypes = list()                     # track children
 
   # ---------------------------------------------------------------------------
   # Miller arrays
@@ -81,7 +81,7 @@ class MillerArrayDataManager(DataManagerBase):
 
   def filter_miller_array_arrays(self, filename):
     '''
-    Populate data structures
+    Populate data structures with all arrays
     '''
     if (filename not in self._miller_array_arrays.keys()):
       self._miller_array_arrays[filename] = dict()
@@ -118,6 +118,9 @@ class MillerArrayDataManager(DataManagerBase):
     setattr(self, '_custom_%s_phil' % datatype,
             iotbx.phil.parse(custom_phil_str))
 
+    # add to child datatypes
+    MillerArrayDataManager.miller_array_child_datatypes.append(datatype)
+
     return custom_phil_str
 
   def _export_miller_array_phil_extract(self, datatype):
@@ -147,42 +150,88 @@ class MillerArrayDataManager(DataManagerBase):
 
   def _filter_miller_array_child_datatypes(self, filename):
     # filter arrays (e.g self.filter_map_coefficients_arrays)
-    for datatype in MillerArrayDataManager.child_datatypes:
+    for datatype in MillerArrayDataManager.miller_array_child_datatypes:
       function_name = 'filter_%s_arrays' % datatype
       if (hasattr(self, function_name)):
         getattr(self, function_name)(filename)
 
-  def _get_array_labels(self, datatype, filename=None):
-
+  def _check_miller_array_default_filename(self, datatype, filename=None):
+    '''
+    Helper function for handling default filenames
+    '''
     if (filename is None):
-      # filename = self.get_default_miller_array_name()
       filename = getattr(self, 'get_default_%s_name' % datatype)()
-    labels = getattr(self, '_%s_labels' % datatype)[filename]
+      if (filename is None):
+        raise Sorry('There is no default filename for %s.' % datatype)
+    return filename
+
+  def _check_miller_array_storage_dict(self, datatype, storage_dict, filename):
+    '''
+    Helper function for checking filename and datatypes
+    '''
+    if (filename not in storage_dict.keys()):
+      self.process_miller_array_file(filename)
+      if (filename not in storage_dict.keys()):
+        raise Sorry('There are no known %s arrays in %s' % (datatype, filename))
+
+  def _get_array_labels(self, datatype, filename=None):
+    filename = self._check_miller_array_default_filename(datatype, filename)
+    storage_dict = getattr(self, '_%s_labels' % datatype)
+    self._check_miller_array_storage_dict(datatype, storage_dict, filename)
+    labels = storage_dict[filename]
 
     return labels
 
   def _get_arrays(self, datatype, labels=None, filename=None):
-
-    if (filename is None):
-      filename = getattr(self, 'get_default_%s_name' % datatype)()
+    filename = self._check_miller_array_default_filename(datatype, filename)
+    if (filename not in getattr(self, 'get_%s_names' % datatype)()):
+      self.process_miller_array_file(filename)
     if (labels is None):
       labels = self._get_array_labels(datatype, filename=filename)
     else:
       if (not isinstance(labels, list)):
         raise Sorry('The labels object should be a list of labels')
 
+    storage_dict = getattr(self, '_%s_arrays' % datatype)
+    self._check_miller_array_storage_dict(datatype, storage_dict, filename)
     arrays = list()
     for label in labels:
       arrays.append(self._get_array_by_label(datatype, label, filename))
     return arrays
 
   def _get_array_by_label(self, datatype, label, filename):
-    storage = '_%s_arrays' % datatype
-    if (label in getattr(self, storage)[filename].keys()):
-      return getattr(self, storage)[filename][label]
+    storage_dict = getattr(self, '_%s_arrays' % datatype)
+    if (label in storage_dict[filename].keys()):
+      return storage_dict[filename][label]
     else:
       raise Sorry('%s does not have any arrays labeled %s' %
                   (filename, label))
+
+  def _child_filter_arrays(self, datatype, filename, known_labels):
+    '''
+    Populate data structures by checking labels in miller arrays to determine
+    child type
+    '''
+    if (datatype not in MillerArrayDataManager.miller_array_child_datatypes):
+      raise Sorry('%s is not a valid child datatype of miller_array.')
+    data = self.get_miller_array(filename)
+    miller_arrays = data.as_miller_arrays()
+    labels = list()
+    for array in miller_arrays:
+      label = set(array.info().labels)
+      common_labels = known_labels.intersection(label)
+      if (len(common_labels) > 0):
+        label = ', '.join(array.info().labels)
+        labels.append(label)
+        datatype_dict = getattr(self, '_%s_arrays' % datatype)
+        if (filename not in datatype_dict.keys()):
+          datatype_dict[filename] = dict()
+        datatype_dict[filename][label] = array
+
+    # if arrays exist, start tracking
+    if (len(labels) > 1):
+      getattr(self, '_%s_labels' % datatype)[filename] = labels
+      self._add(datatype, filename, data)
 
 # =============================================================================
 # end

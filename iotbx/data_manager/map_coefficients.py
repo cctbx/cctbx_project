@@ -5,7 +5,6 @@ from __future__ import division, print_function
 from iotbx.data_manager.miller_array import MillerArrayDataManager
 from iotbx.cif_mtz_data_labels import mtz_map_coefficient_labels, \
   cif_map_coefficient_labels
-from libtbx.utils import Sorry
 
 # =============================================================================
 class MapCoefficientsDataManager(MillerArrayDataManager):
@@ -15,11 +14,28 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
   # ---------------------------------------------------------------------------
   # Map coefficients
 
+  def add_map_coefficients_phil_str(self):
+    '''
+    Add custom PHIL and storage for labels
+    '''
+    return self._add_miller_array_phil_str(MapCoefficientsDataManager.datatype)
+
+  def export_map_coefficients_phil_extract(self):
+    '''
+    Export custom PHIL extract
+    '''
+    return self._export_miller_array_phil_extract(
+      MapCoefficientsDataManager.datatype)
+
+  def load_map_coefficients_phil_extract(self, phil_extract):
+    '''
+    Load custom PHIL extract
+    '''
+    self._load_miller_array_phil_extract(MapCoefficientsDataManager.datatype,
+                                         phil_extract)
+
   def add_map_coefficients(self, filename, data):
-    '''
-    Stores the main any_file object so that all arrays are available
-    '''
-    return self._add(MapCoefficientsDataManager.datatype, filename, data)
+    self.add_miller_array(self, filename, data)
 
   def set_default_map_coefficients(self, filename):
     return self._set_default(MapCoefficientsDataManager.datatype, filename)
@@ -30,23 +46,18 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     '''
     return self._get(MapCoefficientsDataManager.datatype, filename)
 
-  def get_map_coefficients_arrays(self, filename=None):
+  def get_map_coefficients_labels(self, filename=None):
+    '''
+    Returns a list of array labels
+    '''
+    return self._get_array_labels(MapCoefficientsDataManager.datatype, filename)
+
+  def get_map_coefficients_arrays(self, labels=None, filename=None):
     '''
     Returns a list of map coefficients from the file
     '''
-    array_storage = '_%s_arrays' % MapCoefficientsDataManager.datatype
-    if (hasattr(self, array_storage)):
-      array_dict = getattr(self, array_storage)
-      if (filename in self.get_map_coefficients_names()):
-        return array_dict[filename]
-      else:
-        if (filename in self.get_miller_array_names()):
-          raise Sorry('%s does not have any map coefficients' % filename)
-        else:
-          self.process_map_coefficients_file(filename=filename)
-          self.get_map_coefficients_arrays(filename=filename)
-    else:
-      raise Sorry('No data file has been processed yet.')
+    return self._get_arrays(MapCoefficientsDataManager.datatype, labels=labels,
+                            filename=filename)
 
   def get_map_coefficients_names(self):
     return self._get_names(MapCoefficientsDataManager.datatype)
@@ -68,23 +79,12 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
 
   def filter_map_coefficients_arrays(self, filename):
     '''
-    Function for checking labels in miller_arrays to determine type
+    Populate data structures by checking labels in miller_arrays to determine
+    type
     '''
-    if (not hasattr(self, '_map_coefficients_arrays')):
-      self._map_coefficients_arrays = dict()
-    miller_arrays = self.get_miller_arrays(filename)
-    arrays = list()
     known_labels = mtz_map_coefficient_labels.union(cif_map_coefficient_labels)
-    for miller_array in miller_arrays:
-      labels = set(miller_array.info().labels)
-      common_labels = known_labels.intersection(labels)
-      if (len(common_labels) > 0):
-        arrays.append(miller_array)
-
-    # if map coefficients exist, start tracking
-    if (len(arrays) > 1):
-      self._map_coefficients_arrays[filename] = arrays
-      self.add_map_coefficients(filename, self.get_miller_array(filename))
+    self._child_filter_arrays(
+      MapCoefficientsDataManager.datatype, filename, known_labels)
 
   def write_map_coefficients_file(
       self, filename, miller_arrays, overwrite=False):
