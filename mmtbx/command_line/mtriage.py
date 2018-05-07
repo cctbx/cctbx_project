@@ -201,8 +201,9 @@ Feedback:
     args          = args,
     log           = log,
     master_params = master_params)
-  inputs.model.setup_scattering_dictionaries(
-    scattering_table = inputs.params.scattering_table)
+  if(inputs.model is not None):
+    inputs.model.setup_scattering_dictionaries(
+      scattering_table = inputs.params.scattering_table)
   base = map_and_model.input(
     map_data         = inputs.map_data,
     map_data_1       = inputs.map_data_1,
@@ -212,11 +213,12 @@ Feedback:
     box              = True)
   #
   task_obj = mmtbx.maps.mtriage.mtriage(
-    map_data       = base.map_data(),
-    map_data_1     = base.map_data_1(),
-    map_data_2     = base.map_data_2(),
-    xray_structure = base.xray_structure(),
-    params         = inputs.params)
+    map_data         = base.map_data(),
+    map_data_1       = base.map_data_1(),
+    map_data_2       = base.map_data_2(),
+    xray_structure   = base.xray_structure(),
+    crystal_symmetry = base.crystal_symmetry(),
+    params           = inputs.params)
   results = task_obj.get_results()
   results.counts = base.counts()
   results.histograms = base.histograms()

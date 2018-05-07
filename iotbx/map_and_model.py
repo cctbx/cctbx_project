@@ -150,7 +150,11 @@ class input(object):
 
   def model(self): return self._model
 
-  def xray_structure(self): return self.model().get_xray_structure()
+  def xray_structure(self):
+    if(self.model() is not None):
+      return self.model().get_xray_structure()
+    else:
+      return None
 
   def crystal_symmetry(self): return self._crystal_symmetry
 

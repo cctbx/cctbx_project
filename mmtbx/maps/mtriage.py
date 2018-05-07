@@ -354,6 +354,7 @@ class _mtriage(object):
       self.f_map_2 = d99_2.f_map
 
   def _compute_f_calc(self):
+    if(self.xray_structure is None): return
     self.f_calc = self.f_map.structure_factors_from_scatterers(
       xray_structure = self.xray_structure).f_calc()
 
@@ -382,18 +383,21 @@ class _mtriage(object):
 
   def _compute_f_fsc_model_0(self):
     if(not self.params.compute.d_fsc_model_0): return
+    if(self.xray_structure is None): return
     assert self.fsc_curve_model is not None
     self.d_fsc_model_0 = self.f_calc.d_min_from_fsc(
       fsc_curve=self.fsc_curve_model, fsc_cutoff=0.).d_min
 
   def _compute_f_fsc_model_0143(self):
     if(not self.params.compute.d_fsc_model_0143): return
+    if(self.xray_structure is None): return
     assert self.fsc_curve_model is not None
     self.d_fsc_model_0143 = self.f_calc.d_min_from_fsc(
       fsc_curve=self.fsc_curve_model, fsc_cutoff=0.143).d_min
 
   def _compute_f_fsc_model_05(self):
     if(not self.params.compute.d_fsc_model_05): return
+    if(self.xray_structure is None): return
     assert self.fsc_curve_model is not None
     self.d_fsc_model_05 = self.f_calc.d_min_from_fsc(
       fsc_curve=self.fsc_curve_model, fsc_cutoff=0.5).d_min
