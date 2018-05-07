@@ -175,10 +175,13 @@ class CrystalAux(boost.python.injector, Crystal):
 
     # Add in covariance of B at scan points if present
     if crystal.num_scan_points > 0:
-      cov_B_at_scan_points = tuple(
-        [tuple(crystal.get_B_covariance_at_scan_point(i))
-         for i in range(crystal.num_scan_points)])
-      xl_dict['B_covariance_at_scan_points'] = cov_B_at_scan_points
+      try:
+        cov_B_at_scan_points = tuple(
+          [tuple(crystal.get_B_covariance_at_scan_point(i))
+           for i in range(crystal.num_scan_points)])
+        xl_dict['B_covariance_at_scan_points'] = cov_B_at_scan_points
+      except RuntimeError:
+        pass
 
     return xl_dict
 

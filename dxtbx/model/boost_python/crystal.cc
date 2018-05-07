@@ -203,7 +203,7 @@ namespace dxtbx { namespace model { namespace boost_python {
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
       Crystal &crystal = boost::python::extract<Crystal&>(obj)();
-      DXTBX_ASSERT(boost::python::len(state) == 3);
+      DXTBX_ASSERT(boost::python::len(state) == 4);
 
       // restore the object's __dict__
       boost::python::dict d = boost::python::extract<boost::python::dict>(
