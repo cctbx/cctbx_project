@@ -5,8 +5,7 @@ import random
 import pytest
 
 from cctbx import crystal, sgtbx, uctbx
-from dxtbx.model import (Crystal, MosaicCrystalKabsch2010,
-    MosaicCrystalSauter2014, CrystalFactory)
+from dxtbx.model import Crystal, MosaicCrystalKabsch2010, MosaicCrystalSauter2014, CrystalFactory
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 
