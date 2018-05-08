@@ -4,6 +4,7 @@ import iotbx.pdb
 from libtbx import easy_run
 import time
 import mmtbx.maps.map_model_cc
+from libtbx import easy_pickle
 
 pdb_str = """
 CRYST1   14.755   15.940   19.523  90.00  90.00  90.00 P 1
@@ -112,6 +113,12 @@ def run(prefix="tst_map_model_cc"):
   assert result.cc_mask  >0.98
   assert result.cc_peaks >0.98
   assert result.cc_volume>0.98
+  assert result.cc_side_chain.cc>0.98
+  assert result.cc_main_chain.cc>0.98
+  easy_pickle.dump(
+    file_name = "map_model_cc_test.pkl",
+    obj       = result)
+  easy_pickle.load("map_model_cc_test.pkl")
 
 if (__name__ == "__main__"):
   t0 = time.time()

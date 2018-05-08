@@ -25,9 +25,6 @@ class geometry(object):
                use_nuclear=False,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
-    # Don't store GRM here because it is not used and is huge, GUI tries
-    # to pickle it and crashes.
-    # self.geometry_restraints_manager = geometry_restraints_manager
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
@@ -201,23 +198,27 @@ class geometry(object):
       rota_out   = self.rotamer().outliers,
       rama_fav   = self.ramachandran().favored)
 
-  def result(self):
-    if self.cached_result is None:
+  def result(self, keep_bulky_objects=True):
+    if(self.cached_result is None):
       self.cached_result = group_args(
-          angle            = self.angle(),
-          bond             = self.bond(),
-          chirality        = self.chirality(),
-          dihedral         = self.dihedral(),
-          planarity        = self.planarity(),
-          parallelity      = self.parallelity(),
-          nonbonded        = self.nonbonded(),
-          ramachandran     = self.ramachandran(),
-          rotamer          = self.rotamer(),
-          c_beta           = self.c_beta(),
-          clash            = self.clash(),
-          molprobity_score = self.mp_score(),
-          # cablam         = self.cablam(), # broken
-          omega            = self.omega())
+         angle            = self.angle(),
+         bond             = self.bond(),
+         chirality        = self.chirality(),
+         dihedral         = self.dihedral(),
+         planarity        = self.planarity(),
+         parallelity      = self.parallelity(),
+         nonbonded        = self.nonbonded(),
+         ramachandran     = self.ramachandran(),
+         rotamer          = self.rotamer(),
+         c_beta           = self.c_beta(),
+         clash            = self.clash(),
+         molprobity_score = self.mp_score(),
+         # cablam         = self.cablam(), # broken
+         omega            = self.omega())
+    if(not keep_bulky_objects):
+      self.cached_result.ramachandran.ramalyze = None
+      self.cached_result.clash.clashes         = None
+      self.cached_result.rotamer.rotalyze      = None
     return self.cached_result
 
   def show(self, log=None, prefix="", lowercase=False):

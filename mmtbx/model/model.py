@@ -2754,6 +2754,7 @@ class manager(object):
     a1 = self.get_hierarchy().atoms()
     a2 = other.get_hierarchy().atoms()
     f0 = a1.size() == a2.size()
+    if(not f0): return False
     f1 = flex.max(flex.sqrt((a1.extract_xyz()-a2.extract_xyz()).dot()))<1.e-3
     f2 = flex.max(flex.abs((a1.extract_occ()-a2.extract_occ())))<1.e-2
     f3 = flex.max(flex.abs((a1.extract_b()-a2.extract_b())))<1.e-2

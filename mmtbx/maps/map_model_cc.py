@@ -61,6 +61,8 @@ class map_model_cc(object):
     self.five_cc_result = None
     self.cc_per_chain = []
     self.cc_per_residue = []
+    self.cc_main_chain = None
+    self.cc_side_chain = None
 
   def validate(self):
     assert not None in [self.map_data, self.pdb_hierarchy,
@@ -135,8 +137,20 @@ class map_model_cc(object):
               occ_mean   = cd.occ_mean,
               n_atoms    = cd.n_atoms,
               cc         = cd.cc,
-              xyz_mean   = cd.xyz_mean,
-              residue    = residue)) # for compatibility with GUI
+              xyz_mean   = cd.xyz_mean))
+    # Side chain
+    sel_mc_str = "protein and (name C or name N or name CA or name O or name CB)"
+    asc = self.pdb_hierarchy.atom_selection_cache()
+    sel_mc = asc.selection(sel_mc_str)
+    sel_sc = ~sel_mc
+    if(sel_mc.count(True)>0):
+      self.cc_main_chain = get_common_data(
+        atoms       = self.pdb_hierarchy.select(sel_mc).atoms(),
+        atom_radius = self.atom_radius)
+    if(sel_sc.count(True)>0):
+      self.cc_side_chain = get_common_data(
+        atoms       = self.pdb_hierarchy.select(sel_sc).atoms(),
+        atom_radius = self.atom_radius)
 
   def get_results(self):
     return group_args(
@@ -147,6 +161,8 @@ class map_model_cc(object):
       map_calc       = self.five_cc.result.map_calc,
       cc_per_chain   = self.cc_per_chain,
       cc_per_residue = self.cc_per_residue,
+      cc_main_chain  = self.cc_main_chain,
+      cc_side_chain  = self.cc_side_chain,
       atom_radius    = self.atom_radius)
 
 if (__name__ == "__main__"):
