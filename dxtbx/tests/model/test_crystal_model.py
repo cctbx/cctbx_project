@@ -5,7 +5,8 @@ import random
 import pytest
 
 from cctbx import crystal, sgtbx, uctbx
-from dxtbx.model import Crystal, MosaicCrystalKabsch2010, MosaicCrystalSauter2014, CrystalFactory
+from dxtbx.model import (Crystal, MosaicCrystalKabsch2010,
+    MosaicCrystalSauter2014, CrystalFactory)
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 
@@ -374,14 +375,14 @@ def test_set_scan_varying_B_covariance(crystal_class):
   from scitbx.array_family import flex
   cov_B = flex.double(
     ([8e-14, -1e-29, 3e-30,  3e-14,  8e-14,  3e-30,  2e-15,  -7e-15, 2e-14],
-    [-1e-29, 2e-45, -4e-46, -4e-30, -1e-29, -4e-46, 1e-30,  4e-30,  -3e-30],
-    [3e-30, -4e-46, 1e-46,  9e-31,  3e-30,  1e-46,  2e-31,  -2e-31, 9e-31],
-    [3e-14, -4e-30, 9e-31,  4e-14,  3e-14,  9e-31,  -2e-15, -1e-15, 7e-15],
-    [8e-14, -1e-29, 3e-30,  3e-14,  1e-13,  3e-30,  6e-15,  -1e-15, 3e-14],
-    [3e-30, -4e-46, 1e-46,  9e-31,  3e-30,  1e-46,  2e-31,  -2e-31, 9e-31],
-    [2e-15,  1e-30, 2e-31,  -2e-15, 6e-15,  2e-31,  2e-14,  1e-14,  2e-15],
-    [-7e-15, 4e-30, -2e-31, -1e-15, -1e-15, -2e-31, 1e-14,  3e-14,  -2e-15],
-    [2e-14, -3e-30, 9e-31,  7e-15,  3e-14,  9e-31,  2e-15,  -2e-15, 8e-15]))
+     [-1e-29, 2e-45, -4e-46, -4e-30, -1e-29, -4e-46, 1e-30,  4e-30,  -3e-30],
+     [3e-30, -4e-46, 1e-46,  9e-31,  3e-30,  1e-46,  2e-31,  -2e-31, 9e-31],
+     [3e-14, -4e-30, 9e-31,  4e-14,  3e-14,  9e-31,  -2e-15, -1e-15, 7e-15],
+     [8e-14, -1e-29, 3e-30,  3e-14,  1e-13,  3e-30,  6e-15,  -1e-15, 3e-14],
+     [3e-30, -4e-46, 1e-46,  9e-31,  3e-30,  1e-46,  2e-31,  -2e-31, 9e-31],
+     [2e-15,  1e-30, 2e-31,  -2e-15, 6e-15,  2e-31,  2e-14,  1e-14,  2e-15],
+     [-7e-15, 4e-30, -2e-31, -1e-15, -1e-15, -2e-31, 1e-14,  3e-14,  -2e-15],
+     [2e-14, -3e-30, 9e-31,  7e-15,  3e-14,  9e-31,  2e-15,  -2e-15, 8e-15]))
   xl.set_B_covariance(cov_B)
 
   cov_B_array = flex.double(flex.grid(20, 9, 9))
@@ -408,5 +409,3 @@ def test_set_scan_varying_B_covariance(crystal_class):
     assert cov_B_at_scan_point == cov_B_2d
     cell_sd_at_scan_point = xl.get_cell_parameter_sd_at_scan_point(i)
     assert cell_sd_at_scan_point == pytest.approx(cell_sd)
-
-
