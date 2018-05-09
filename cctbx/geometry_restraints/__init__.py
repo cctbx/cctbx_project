@@ -829,6 +829,16 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
     n_not_shown = correct_id_proxies - n_outputted
     return sorted_table, n_not_shown
 
+  def get_outliers(self, sites_cart, sigma_threshold):
+    result = []
+    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+      i,j = it[0],it[1]
+      delta = abs(it[6])
+      sigma = it[7]
+      if(delta > sigma*sigma_threshold):
+        result.append([i,j])
+    return result
+
   def get_filtered_deltas(self,
       sites_cart,
       origin_id=None):
@@ -1204,7 +1214,15 @@ class _(boost.python.injector, shared_angle_proxy):
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False, origin_id=origin_id)
 
-
+  def get_outliers(self, sites_cart, sigma_threshold):
+    result = []
+    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+      i,j,k = [int(i) for i in it[0]]
+      delta = abs(it[3])
+      sigma = it[4]
+      if(delta > sigma*sigma_threshold):
+        result.append([i,j,k])
+    return result
 
 class _(boost.python.injector, dihedral):
   def _show_sorted_item(O, f, prefix):
@@ -1279,6 +1297,16 @@ class _(boost.python.injector, shared_dihedral_proxy):
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False)
+
+  def get_outliers(self, sites_cart, sigma_threshold):
+    result = []
+    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+      ind = [int(i) for i in it[0]]
+      delta = abs(it[3])
+      sigma = it[5]
+      if(delta > sigma*sigma_threshold):
+        result.append([i,j])
+    return result
 
 class _(boost.python.injector, chirality):
 
