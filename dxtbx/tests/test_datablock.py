@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import cPickle as pickle
-import cStringIO
+import six.moves.cPickle as pickle
 import os
 import json
 
@@ -40,7 +39,7 @@ def multiple_sweep_filenames(centroid_test_data):
 
 @pytest.fixture
 def all_image_examples(dials_regression):
-  filenames = [
+  filenames = (
       ('ALS_1231', 'q315r_lyso_1_001.img'),
       ('ALS_501', 'als501_q4_1_001.img'),
       ('ALS_821', 'q210_lyso_1_101.img'),
@@ -64,7 +63,7 @@ def all_image_examples(dials_regression):
       ('SRS_142', 'q4_1_001.img'),
       ('SSRL_bl111', 'mar325_1_001.mccd'),
       ('xia2', 'merge2cbf_averaged_0001.cbf'),
-  ]
+  )
   return [
       os.path.join(dials_regression, "image_examples", *f) for f in filenames
   ]
@@ -81,16 +80,7 @@ def encode_json_then_decode(obj, check_format=True):
 
 
 def pickle_then_unpickle(obj):
-  '''Pickle to a temp file then un-pickle.'''
-  # Create a temporary "file"
-  temp = cStringIO.StringIO()
-
-  # Pickle the object
-  pickle.dump(obj, temp)
-
-  # Read the object
-  temp.seek(0)
-  return pickle.load(temp)
+  return pickle.loads(pickle.dumps(obj))
 
 
 def test_create_single_sweep(single_sweep_filenames):
@@ -151,6 +141,8 @@ def test_json(multiple_block_filenames):
     assert b1 == b2
   assert blocks1 == blocks2
 
+
+def test_json2(multiple_block_filenames):
   blocks1 = DataBlockFactory.from_filenames(multiple_block_filenames)
   blocks2 = encode_json_then_decode(blocks1, check_format=False)
   assert len(blocks2) == len(blocks1)
@@ -192,9 +184,8 @@ def test_from_null_sweep():
   assert sweeps[0].get_scan() == sweep.get_scan()
 
 
-def test_with_bad_external_lookup(dials_regression):
-  filename = os.path.join(dials_regression, "centroid_test_data",
-                          "datablock_with_bad_lookup.json")
+def test_with_bad_external_lookup(centroid_test_data):
+  filename = os.path.join(centroid_test_data, "datablock_with_bad_lookup.json")
   blocks = DataBlockFactory.from_json_file(filename, check_format=False)
   assert len(blocks) == 1
   imageset = blocks[0].extract_imagesets()[0]
@@ -216,9 +207,8 @@ def test_with_bad_external_lookup(dials_regression):
   assert imageset.external_lookup.pedestal.data.empty()
 
 
-def test_with_external_lookup(dials_regression):
-  filename = os.path.join(dials_regression, "centroid_test_data",
-                          "datablock_with_lookup.json")
+def test_with_external_lookup(centroid_test_data):
+  filename = os.path.join(centroid_test_data, "datablock_with_lookup.json")
   blocks = DataBlockFactory.from_json_file(filename)
   assert len(blocks) == 1
   imageset = blocks[0].extract_imagesets()[0]

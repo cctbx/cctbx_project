@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-import cPickle as pickle
+import six.moves.cPickle as pickle
 from glob import glob
 import os
 

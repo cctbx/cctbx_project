@@ -2,55 +2,55 @@ from __future__ import absolute_import, division
 
 from dxtbx.model import Scan
 
-def tst_is_batch_valid(scan):
+import pytest
+
+@pytest.fixture
+def scan():
+  image_range = (0, 1000)
+  oscillation = (0, 0.1)
+  scan = Scan(image_range, oscillation)
+  scan.set_batch_offset(100)
+  return scan
+
+def test_is_batch_valid(scan):
   """Check that the is_angle_valid function behaves properly."""
   br1, br2 = scan.get_batch_range()
   for i in range(0, br1):
-    assert(scan.is_batch_valid(i) == False)
+    assert scan.is_batch_valid(i) is False
   for i in range(br1, br2+1):
-    assert(scan.is_batch_valid(i) == True)
+    assert scan.is_batch_valid(i) is True
   for i in range(br2+1, br2+100):
-    assert(scan.is_batch_valid(i) == False)
+    assert scan.is_batch_valid(i) is False
 
-def tst_is_angle_valid(scan):
+def test_is_angle_valid(scan):
   """Check that the is_angle_valid function behaves properly."""
   oscillation_range = scan.get_oscillation_range()
   os1 = int(oscillation_range[0])
   os2 = int(oscillation_range[1])
   for i in range(0, os1):
-    assert(scan.is_angle_valid(i) == False)
+    assert scan.is_angle_valid(i) is False
   for i in range(os1, os2):
-    assert(scan.is_angle_valid(i) == True)
+    assert scan.is_angle_valid(i) is True
   for i in range(os2+1, 360):
-    assert(scan.is_angle_valid(i) == False)
+    assert scan.is_angle_valid(i) is False
 
-def tst_is_frame_valid(scan):
+def test_is_frame_valid(scan):
   """Check that the is_frame_valid function behaves properly."""
   image_range = scan.get_image_range()
-  for i  in range(image_range[0] - 100, image_range[0]):
-    assert(scan.is_image_index_valid(i) == False)
+  for i in range(image_range[0] - 100, image_range[0]):
+    assert scan.is_image_index_valid(i) is False
   for i in range(image_range[0], image_range[1]+1):
-    assert(scan.is_image_index_valid(i) == True)
+    assert scan.is_image_index_valid(i) is True
   for i in range(image_range[1]+1, image_range[1] + 100):
-    assert(scan.is_image_index_valid(i) == False)
+    assert scan.is_image_index_valid(i) is False
 
-def tst_get_angle_from_frame(scan):
-  pass
-
-def tst_get_frame_from_angle(scan):
-  pass
-
-def tst_get_frames_with_angle(scan):
-  pass
-
-def tst_scan_oscillation_recycle(scan):
+def test_scan_oscillation_recycle(scan):
   for deg in (True, False):
     oscillation = scan.get_oscillation(deg=deg)
     scan.set_oscillation(oscillation, deg=deg)
     assert scan.get_oscillation(deg=deg) == oscillation
 
-def tst_scan_360_append():
-
+def test_scan_360_append():
   scan1 = Scan((1, 360), (0.0, 1.0))
   scan2 = Scan((361, 720), (0.0, 1.0))
 
@@ -79,8 +79,7 @@ def tst_scan_360_append():
   except Exception: pass
   else: raise Exception_expected
 
-def tst_swap():
-
+def test_swap():
   scan1 = Scan((1, 20), (0.0, 1.0))
   scan2 = Scan((40, 60), (10.0, 2.0))
   scan1.swap(scan2)
@@ -89,7 +88,7 @@ def tst_swap():
   assert(scan2.get_oscillation() == (0.0, 1.0))
   assert(scan1.get_oscillation() == (10.0, 2.0))
 
-def tst_from_phil():
+def test_from_phil():
   from dxtbx.model.scan import ScanFactory, scan_phil_scope
   from libtbx.phil import parse
 
@@ -130,22 +129,3 @@ def tst_from_phil():
   for i in range(ir1, ir2):
     assert s2.get_batch_for_image_index(i) == i + s2.get_batch_offset()
     assert s2.is_batch_valid(s2.get_batch_for_image_index(i))
-
-def run():
-  image_range = (0, 1000)
-  oscillation = (0, 0.1)
-  scan = Scan(image_range, oscillation)
-  scan.set_batch_offset(100)
-  tst_scan_oscillation_recycle(scan)
-  tst_is_angle_valid(scan)
-  tst_is_batch_valid(scan)
-  tst_is_frame_valid(scan)
-  tst_get_angle_from_frame(scan)
-  tst_get_frame_from_angle(scan)
-  tst_get_frames_with_angle(scan)
-  tst_scan_360_append()
-  tst_swap()
-  tst_from_phil()
-
-if __name__ == '__main__':
-  run()

@@ -1,14 +1,12 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-import libtbx.load_env
+import os
+
+import six.moves.cPickle as pickle
 
 class Test(object):
-
-  def __init__(self):
-    import os
-    dials_regression = libtbx.env.dist_path('dials_regression')
-    filename = os.path.join(dials_regression, 'image_examples', 'XDS',
-        'XPARM.XDS')
+  def test(self, dials_regression):
+    filename = os.path.join(dials_regression, 'image_examples', 'XDS', 'XPARM.XDS')
 
     import dxtbx
     models = dxtbx.load(filename)
@@ -24,7 +22,6 @@ class Test(object):
         self.detector[0].get_normal())[1]
     self.pixel_size = self.detector[0].get_pixel_size()
 
-  def run(self):
     from random import uniform
 
     # Generate some random coordinates and do the correction
@@ -51,8 +48,8 @@ class Test(object):
     xy_corr_inv  = matrix.col(self.correct_inv(xy_corr))
 
     # Check the values
-    assert(abs(xy_corr_gold - xy_corr) < 1e-7)
-    assert(abs(xy_corr_inv - xy) < 1e-3)
+    assert abs(xy_corr_gold - xy_corr) < 1e-7
+    assert abs(xy_corr_inv - xy) < 1e-3
 
   def tst_array(self, xy):
     from libtbx.test_utils import approx_equal
@@ -137,43 +134,29 @@ class Test(object):
     return convert.to_millimeter(self.detector[0], xy)
 
 
-class TestOffsetPxMmStrategy(object):
-  def run(self):
-    from dxtbx.model import Panel
-    from dxtbx.model import OffsetParallaxCorrectedPxMmStrategy
-    from scitbx.array_family import flex
-    import cPickle as pickle
+def test_offset_px_mm_strategy():
+  from dxtbx.model import Panel
+  from dxtbx.model import OffsetParallaxCorrectedPxMmStrategy
+  from scitbx.array_family import flex
 
-    # for future reference this is the array the same shape
-    # as the image in pixels with offsets in pixels
+  # for future reference this is the array the same shape
+  # as the image in pixels with offsets in pixels
 
-    dx = flex.double(flex.grid(10, 10), 1)
-    dy = flex.double(flex.grid(10, 10), 1)
+  dx = flex.double(flex.grid(10, 10), 1)
+  dy = flex.double(flex.grid(10, 10), 1)
 
-    strategy = OffsetParallaxCorrectedPxMmStrategy(1, 1, dx, dy)
+  strategy = OffsetParallaxCorrectedPxMmStrategy(1, 1, dx, dy)
 
-    p = Panel()
-    p.set_image_size((10,10))
-    p.set_mu(1)
-    p.set_thickness(1)
-    p.set_px_mm_strategy(strategy)
+  p = Panel()
+  p.set_image_size((10,10))
+  p.set_mu(1)
+  p.set_thickness(1)
+  p.set_px_mm_strategy(strategy)
 
-    d = p.to_dict()
+  d = p.to_dict()
 
-    pnew = Panel.from_dict(d)
+  pnew = Panel.from_dict(d)
+  assert pnew == p
 
-    assert pnew == p
-
-    pnew = pickle.loads(pickle.dumps(pnew))
-
-    assert pnew == p
-
-
-if __name__ == '__main__':
-  if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
-  elif not libtbx.env.has_module("dials_regression"):
-    print "Skipping test: dials_regression not present"
-  else:
-    Test().run()
-    TestOffsetPxMmStrategy().run()
+  pnew = pickle.loads(pickle.dumps(pnew))
+  assert pnew == p

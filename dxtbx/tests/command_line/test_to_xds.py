@@ -1,28 +1,17 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import glob
 import os
 
-import libtbx.load_env
 from libtbx import easy_run
-from libtbx.test_utils import open_tmp_file
-#from libtbx.test_utils import show_diff
 
 from dxtbx.serialize import dump
 from dxtbx.imageset import ImageSetFactory
 
-def exercise_to_xds():
-  if not libtbx.env.has_module("dials"):
-    print "Skipping test: dials not present"
-    return
-  if not libtbx.env.has_module("dials_regression"):
-    print "Skipping exercise_to_xds(): dials_regression not present"
-    return
+def test_to_xds(dials_regression, tmpdir):
+  tmpdir.chdir()
 
-  data_dir = libtbx.env.find_in_repositories(
-    relative_path="dials_regression/centroid_test_data",
-    test=os.path.isdir)
-  template = os.path.join(data_dir, "centroid_*.cbf")
+  template = os.path.join(dials_regression, 'centroid_test_data', "centroid_*.cbf")
   file_names = glob.glob(template)
 
   expected_output = """\
@@ -69,22 +58,12 @@ JOB=XYCORR INIT COLSPOT IDXREF DEFPIX INTEGRATE CORRECT\
 
   # now test reading from a json file
   sweep = ImageSetFactory.new(file_names)[0]
-  f = open_tmp_file(suffix="sweep.json", mode="wb")
-  dump.imageset(sweep, f)
-  f.close()
-  cmd = " ".join(["dxtbx.to_xds", f.name])
-  print cmd
+  with open("sweep.json", mode="wb") as fh:
+    dump.imageset(sweep, fh)
+  cmd = " ".join(["dxtbx.to_xds", "sweep.json"])
+  print(cmd)
   result = easy_run.fully_buffered(cmd)
 
   # allow extra lines to have been added (these may be comments)
   for record in expected_output.split('\n'):
     assert record.strip() in "\n".join(result.stdout_lines), record
-
-
-def run():
-  exercise_to_xds()
-  print "OK"
-
-
-if __name__ == '__main__':
-  run()

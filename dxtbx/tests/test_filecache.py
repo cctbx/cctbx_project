@@ -1,13 +1,4 @@
-#!/usr/bin/env python
-#
-#   Copyright (C) 2015 Diamond Light Source, Markus Gerstel
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
-# Tests for the filecache classes. This compares behaviour against StringIO.
-
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -86,7 +77,7 @@ def test_filecache():
   import random
 
   random_a, random_b = random.randint(0, 10000), random.randint(0,150000)
-  print "Running test for parameters %d %d" % (random_a, random_b)
+  print("Running test for parameters %d %d" % (random_a, random_b))
 
   actual   = (fh.readline(), \
               fh.read(random_a), \
@@ -98,15 +89,8 @@ def test_filecache():
               sh.read(random_b))
   assert(actual == expected)
 
-def test_filecache_more():
+def test_filecache_more(dials_regression):
   import dxtbx.filecache
-  import libtbx.load_env
-
-  try:
-    dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError:
-    print 'SKIP: dials_regression not configured'
-    exit(0)
 
   filename = os.path.join(dials_regression, 'image_examples', 'MacScience', 'reallysurprise_001.ipf')
   cache = dxtbx.filecache.lazy_file_cache(open(filename, 'rb'))
@@ -127,7 +111,3 @@ def test_filecache_more():
     fh.read(1024)
     data = fh.read()
     assert len(data) == 3000 * 3000 * 2
-
-if __name__ == '__main__':
-  test_filecache()
-  test_filecache_more()
