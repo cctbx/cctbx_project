@@ -13,6 +13,9 @@ jungfrau_locator_str = """
     dark = True
       .type = bool
       .help = Dictates if dark subtraction is done from raw data
+    monolithic = False
+      .type = bool
+      .help = switch to FormatXTCJungfrauMonolithic if True. Used for LS49 image averaging
   }
 """
 
@@ -150,6 +153,58 @@ class FormatXTCJungfrau(FormatXTC):
         p.set_name(val)
     self._cached_detector[run.run()] = d
     return d
+
+class FormatXTCJungfrauMonolithic(FormatXTCJungfrau):
+  ''' Monolithic version of the Jungfrau, I.E. use the psana detector image function to assemble a monolithic image '''
+  def __init__(self, image_file, **kwargs):
+    assert(self.understand(image_file))
+    FormatXTC.__init__(self, image_file, locator_scope = jungfrau_locator_scope, **kwargs)
+    self._ds = self._get_datasource(image_file)
+    self._env = self._ds.env()
+    self.populate_events()
+    self.n_images = len(self.times)
+    self._cached_detector = {}
+    self._cached_psana_detectors = {}
+
+  @staticmethod
+  def understand(image_file):
+    try:
+      params = FormatXTC.params_from_phil(jungfrau_locator_scope,image_file)
+      if params.jungfrau.monolithic:
+        return True
+      return False
+    except Exception:
+      return False
+
+  def get_raw_data(self,index):
+    import psana
+    from scitbx.array_family import flex
+    d = self.get_detector(index)
+    evt = self._get_event(index)
+    run = self.get_run_from_index(index)
+    if run.run() not in self._cached_psana_detectors:
+      self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
+    det = self._cached_psana_detectors[run.run()]
+    data = det.image(evt)
+    data = data.astype(np.float64)
+    self._raw_data = flex.double(data)
+    return self._raw_data
+
+  def _detector(self, index=None):
+    import psana
+    from dxtbx.model import Detector
+    from scitbx.matrix import col
+    if index is None: index = 0
+    return self._detector_factory.simple(
+      sensor = 'UNKNOWN',
+      distance = 100.0,
+      beam_centre = (50., 50.),
+      fast_direction = '+x',
+      slow_direction = '-y',
+      pixel_size = (0.075, 0.075),
+      image_size = (1030,1064),
+      trusted_range = (-1,2e6),
+      mask = [])
 
 if __name__ == '__main__':
   import sys
