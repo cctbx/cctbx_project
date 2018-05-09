@@ -326,11 +326,10 @@ class composition(object):
       sel = asc.selection(sel_str)
       return len(list(pdb_hierarchy.select(sel).residue_groups()))
     sel_str_other = "not (water or nucleotide or protein)"
-    result = collections.Counter()
+    other_cnts = collections.Counter()
     for rg in pdb_hierarchy.select(asc.selection(sel_str_other)).residue_groups():
       for resname in rg.unique_resnames():
-        result[resname]+=1
-    print result
+        other_cnts[resname]+=1
     self._result = group_args(
       n_atoms      = pdb_hierarchy.atoms().size(),
       n_chains     = len(list(pdb_hierarchy.chains())),
@@ -339,11 +338,23 @@ class composition(object):
       n_water      = rc("water"),
       n_hd         = rc("element H or element D"),
       n_other      = rc(sel_str_other),
-      )
+      other_cnts   = other_cnts)
 
-  #def show(self, log, prefix=""):
-  #  print >> log, dir(self._result)
-  #  STOP()
+  def result(self):
+    return self._result
+
+  def show(self, log, prefix=""):
+    r = self.result()
+    print >> log, prefix, "Number of:"
+    print >> log, prefix, "  all atoms      :", r.n_atoms
+    print >> log, prefix, "  H or D atoms   :", r.n_hd
+    print >> log, prefix, "  chains         :", r.n_chains
+    print >> log, prefix, "  a.a. residues  :", r.n_protein
+    print >> log, prefix, "  nucleotides    :", r.n_nucleotide
+    print >> log, prefix, "  water          :", r.n_water
+    print >> log, prefix, "  other (ligands):", r.n_other
+    print >> log, prefix, "Ligands:", \
+      ",".join([("%s:%s"%k).strip() for k in r.other_cnts.items()])
 
 class occupancy(object):
   def __init__(self, hierarchy):
@@ -443,7 +454,6 @@ class adp(object):
     return self._result
 
   def show(self, log, prefix=""):
-    print >> log, prefix, "ADP (B-factor) statistics."
     def format_str(v):
       rms = "   N/A"
       if(v.rms_b_iso_bonded is not None): rms = "%6.2f"%v.rms_b_iso_bonded
