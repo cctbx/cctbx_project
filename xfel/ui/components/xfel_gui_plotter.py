@@ -231,7 +231,7 @@ class PopUpCharts(object):
           stddev = stats.unweighted_sample_standard_deviation()
         except RuntimeError:
           raise Exception("Not enough data to produce a histogram")
-        varstr = "%.1f +/- %.1f"%(mean, stddev)
+        varstr = "%.2f +/- %.2f"%(mean, stddev)
         if len(legend) > 0:
           dim_legend = legend + separator + varstr
         else:

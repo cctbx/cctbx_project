@@ -105,8 +105,8 @@ class HitrateStats(object):
   def __call__(self):
     from iotbx.detectors.cspad_detector_formats import reverse_timestamp
     from xfel.ui.components.timeit import duration
-    import time
-    t1 = time.time()
+    #import time
+    #t1 = time.time()
     run_numbers = [r.run for r in self.trial.runs]
     assert self.run.run in run_numbers
     rungroup_ids = [rg.id for rg in self.trial.rungroups]
@@ -197,8 +197,8 @@ class HitrateStats(object):
     average_i_sigi = average_i_sigi.select(order)
     n_lattices = n_lattices.select(order)
 
-    t2 = time.time()
-    print "HitrateStats took %s" % duration(t1, t2)
+    #t2 = time.time()
+    #print "HitrateStats took %s" % duration(t1, t2)
     return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices
 
 class SpotfinderStats(object):

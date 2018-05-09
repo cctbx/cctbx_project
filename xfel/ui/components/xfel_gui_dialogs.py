@@ -1668,6 +1668,7 @@ class SelectRunBlocksDialog(BaseDialog):
                                              label_size=(40, -1),
                                              label_style='normal',
                                              ctrl_size=(450, 350),
+                                             direction='vertical',
                                              choices=choices)
     for i in xrange(len(selected)):
       self.runblocks_list.ctr.Check(i, selected[i])
@@ -1697,7 +1698,7 @@ class SelectRunBlocksDialog(BaseDialog):
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
 
   def onOK(self, e):
-    trial_rungroups = [t.id for t in self.trial.rungroups]
+    trial_rungroups = [t.id for t in self.db.get_trial_rungroups(self.trial.id, only_active=False)]
     trials = self.db.get_all_trials()
 
     for i, rungroup in enumerate(self.all_rungroups):
