@@ -228,9 +228,9 @@ def run (args, imageset = None):
         if params.plot_y_max is not None:
           plt.ylim(0, params.plot_y_max)
 
-    if params.show_plots:
-      #plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
-      plt.show()
+  if params.show_plots:
+    #plt.legend([os.path.basename(os.path.splitext(f)[0]) for f in params.file_path], ncol=2)
+    plt.show()
 
   return xvals, results
 

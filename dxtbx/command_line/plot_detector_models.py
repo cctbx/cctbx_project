@@ -135,6 +135,8 @@ def run(args):
                                                   show_origin_vectors = params.show_origin_vectors,
                                                   panel_numbers = params.panel_numbers)
 
+  plt.xlabel('x')
+  plt.ylabel('y')
   if params.orthographic:
     plt.axes().set_aspect('equal', 'datalim')
 
