@@ -1944,7 +1944,7 @@ def exercise_flex_vec2_double():
   for i in xrange(len(x)):
     for j in xrange(len(x2)):
       pydist = math.sqrt( (x[i]-x2[j])**2 + (y[i]-y2[j])**2 )
-      assert pydist == DIST[(i,j)]
+      assert approx_equal(pydist, DIST[i,j])
 
 def exercise_flex_vec3_int():
   flex.exercise_triple(flex.vec3_int)
