@@ -608,3 +608,14 @@ class ImageSetFactory(object):
 
     # Return the sweep
     return sweep
+
+  @staticmethod
+  def imageset_from_anyset(imageset):
+    ''' Create a new ImageSet object from an imageset object. Converts ImageSweep to ImageSet. '''
+    from dxtbx.imageset import ImageSet, ImageSweep, ImageSetLazy
+    if isinstance(imageset, ImageSetLazy):
+      return ImageSetLazy(imageset.data(), imageset.indices())
+    elif isinstance(imageset, ImageSweep) or isinstance(imageset, ImageSet):
+      return ImageSet(imageset.data(), imageset.indices())
+    else:
+      assert False, "Unrecognized imageset type: %s"%str(type(imageset))
