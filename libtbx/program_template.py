@@ -27,6 +27,8 @@ task, but the above functions define a consistent interface.
 More documentation to come
 '''
 
+import libtbx.phil
+
 from libtbx import citations
 from libtbx.utils import multi_out
 
@@ -94,7 +96,7 @@ output {
                             format=citation_format)
 
   # ---------------------------------------------------------------------------
-  def __init__(self, data_manager, params, logger=None):
+  def __init__(self, data_manager, params, master_phil=None, logger=None):
     '''
     Common constructor for all programs
 
@@ -116,11 +118,18 @@ output {
     '''
 
     self.data_manager = data_manager
+    self.master_phil = master_phil
     self.params = params
     self.logger = logger
 
     if (self.logger is None):
       self.logger = multi_out()
+
+    # master_phil should be provided by CCTBXParser or GUI because of
+    # potential PHIL extensions
+    if (self.master_phil is None):
+      self.master_phil = libtbx.phil.parse(
+        self.master_phil_str, process_includes=True)
 
     self.custom_init()
 

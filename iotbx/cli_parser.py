@@ -51,6 +51,7 @@ def run_program(program_class=None, args=None):
   print('Starting job', file=logger)
   print('='*79, file=logger)
   task = program_class(parser.data_manager, parser.working_phil.extract(),
+                       master_phil=parser.master_phil,
                        logger=logger)
 
   # custom constructor (optional)
