@@ -1,9 +1,9 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.model import Beam
+import pytest
 
-def tst_set_direction_wavelength():
-  """Test setting direction and wavelength"""
+def test_setting_direction_and_wavelength():
   from scitbx import matrix
   direction = matrix.col((0.013142, 0.002200, 1.450476))
   unit_direction = direction.normalize()
@@ -15,18 +15,17 @@ def tst_set_direction_wavelength():
   eps = 1e-7
 
   # Check direction is a unit vector
-  assert(abs(matrix.col(b.get_direction()).length() - 1) <= eps)
-  assert(abs(matrix.col(b.get_direction()) - unit_direction) <= eps)
+  assert matrix.col(b.get_direction()).length() == pytest.approx(1)
+  assert abs(matrix.col(b.get_direction()) - unit_direction) <= eps
 
   # Check wavelength is correct
-  assert(abs(b.get_wavelength() - wavelength) <= eps)
+  assert b.get_wavelength() == pytest.approx(wavelength)
 
   # Check s0 is in direction and has length 1/wavelength
-  assert(abs(matrix.col(b.get_s0()).length() - 1.0 / wavelength) <= eps)
-  assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
+  assert matrix.col(b.get_s0()).length() == pytest.approx(1.0 / wavelength)
+  assert abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps
 
-def tst_set_s0():
-  """Test setting s0"""
+def test_setting_s0():
   from scitbx import matrix
   direction = matrix.col((0.013142, 0.002200, 1.450476))
   unit_direction = direction.normalize()
@@ -39,19 +38,18 @@ def tst_set_s0():
   eps = 1e-7
 
   # Check direction is a unit vector
-  assert(abs(matrix.col(b.get_direction()).length() - 1) <= eps)
-  assert(abs(matrix.col(b.get_direction()) - unit_direction) <= eps)
+  assert matrix.col(b.get_direction()).length() == pytest.approx(1)
+  assert abs(matrix.col(b.get_direction()) - unit_direction) <= eps
 
   # Check wavelength is correct
-  assert(abs(b.get_wavelength() - wavelength) <= eps)
+  assert b.get_wavelength() == pytest.approx(wavelength)
 
   # Check s0 is in direction and has length 1/wavelength
-  assert(abs(matrix.col(b.get_s0()).length() - 1.0 / wavelength) <= eps)
-  assert(abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps)
-  assert(abs(matrix.col(b.get_s0()) - s0) <= eps)
+  assert matrix.col(b.get_s0()).length() == pytest.approx(1.0 / wavelength)
+  assert abs(-matrix.col(b.get_s0()).normalize() - unit_direction) <= eps
+  assert abs(matrix.col(b.get_s0()) - s0) <= eps
 
-def tst_from_phil():
-
+def test_from_phil():
   from libtbx.phil import parse
   from dxtbx.model.beam import beam_phil_scope, BeamFactory
   from scitbx import matrix
@@ -77,15 +75,10 @@ def tst_from_phil():
   # Create the beam
   b1 = BeamFactory.from_phil(params1)
   b2 = BeamFactory.from_phil(params2, reference)
-  try:
+  with pytest.raises(RuntimeError):
     b3 = BeamFactory.from_phil(params2)
-    passed = True
-  except Exception:
-    passed = False
-  assert passed == False
 
-def tst_scan_varying():
-
+def test_scan_varying():
   from scitbx import matrix
   direction = matrix.col((0.013142, 0.002200, 1.450476))
   unit_direction = direction.normalize()
@@ -97,10 +90,8 @@ def tst_scan_varying():
 
   assert b.get_num_scan_points() == 0
   assert b.get_s0_at_scan_points().size() == 0
-  try:
+  with pytest.raises(RuntimeError):
     b.get_s0_at_scan_point(0) # should raise RuntimeError
-  except RuntimeError:
-    pass
 
   # set varying beam
   num_scan_points = 11
@@ -128,8 +119,7 @@ def tst_scan_varying():
   assert b.get_num_scan_points() == 0
   assert b.get_s0_at_scan_points().size() == 0
 
-def exercise_comparison():
-
+def test_beam_object_comparison():
   from scitbx import matrix
   direction = matrix.col((0.013142, 0.002200, 1.450476))
   unit_direction = direction.normalize()
@@ -156,14 +146,3 @@ def exercise_comparison():
   b4.set_s0_at_scan_points([s0 * 1.5] * 5)
   assert b1 != b4
   assert not b1.is_similar_to(b4)
-
-def run():
-  """Test the beam object"""
-  tst_set_direction_wavelength()
-  tst_set_s0()
-  tst_from_phil()
-  tst_scan_varying()
-  exercise_comparison()
-
-if __name__ == '__main__':
-  run()

@@ -1,20 +1,15 @@
-from __future__ import absolute_import, division
-#!/usr/bin/env python
-# test_scan.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
-# Tests for the scan class, and it's helper classes.
+# Tests for the scan class, and its helper classes.
+
+from __future__ import absolute_import, division, print_function
 
 import os
 
 from dxtbx.model.scan import ScanFactory
 from dxtbx.model.scan_helpers import scan_helper_image_files
 from dxtbx.model.scan_helpers import scan_helper_image_formats
+import pytest
 
-def work_helper_image_files():
+def test_helper_image_files():
   '''Test the static methods in scan_helper_image_files.'''
 
   helper = scan_helper_image_files()
@@ -43,7 +38,7 @@ def work_helper_image_files():
 
   assert(scan_helper_image_files.image_to_index("image_6.8kev_1_001.cbf") == 1)
 
-def work_helper_image_formats():
+def test_helper_image_formats():
   '''Test the static methods and properties in scan_helper_image_formats.'''
 
   assert(scan_helper_image_formats.check_format(
@@ -51,7 +46,7 @@ def work_helper_image_formats():
   # suspend this test pending further discussion -- Nick Sauter
   #assert(not(scan_helper_image_formats.check_format('CBF')))
 
-def work_xScanFactory():
+def test_xScanFactory():
   '''Test out the ScanFactory.'''
 
   import dxtbx
@@ -66,11 +61,8 @@ def work_xScanFactory():
 
   xscans.reverse()
 
-  try:
-    print sum(xscans[1:], xscans[0])
-    print 'I should not see this message'
-  except RuntimeError:
-    pass
+  with pytest.raises(RuntimeError):
+    print(sum(xscans[1:], xscans[0]))
 
   xscans.sort()
 
@@ -84,20 +76,7 @@ def work_xScanFactory():
   filename = scan_helper_image_files.template_directory_index_to_image(
       template, directory, 1)
 
-  assert(len(ScanFactory.search(filename)) == 20)
+  assert len(ScanFactory.search(filename)) == 20
 
   (a + b)[1:5]
   (a + b)[:10]
-
-  cbf = os.path.join(directory, 'phi_scan_001.cbf')
-
-def test_scan():
-  work_helper_image_files()
-  work_helper_image_formats()
-  work_xScanFactory()
-
-
-if __name__ == '__main__':
-  work_helper_image_files()
-  work_helper_image_formats()
-  work_xScanFactory()

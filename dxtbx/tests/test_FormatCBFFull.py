@@ -1,20 +1,11 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
-def exercise_multi_axis_goniometer():
-  import libtbx.load_env
+import os
+
+def test_multi_axis_goniometer(dials_regression):
   from libtbx.test_utils import approx_equal
-  import os
 
-  if not libtbx.env.has_module("dials"):
-    print "Skipping tstFormatCBFFull.py: dials not present"
-    return
-  if not libtbx.env.has_module("dials_regression"):
-    print "Skipping tstFormatCBFFull.py: dials_regression not present"
-    return
-
-  data_dir = libtbx.env.find_in_repositories(
-    relative_path="dials_regression/image_examples/dials-190",
-    test=os.path.isdir)
+  data_dir = os.path.join(dials_regression, 'image_examples', 'dials-190')
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "whatev1_01_00001.cbf"))[0]
@@ -38,21 +29,10 @@ def exercise_multi_axis_goniometer():
     gonio.get_setting_rotation(),
     (1, 0, 0, 0, 0.5, 0.866, 0.0, -0.866, 0.5), eps=1e-4)
 
-def exercise_still():
-  import libtbx.load_env
+def test_still(dials_regression):
   from libtbx.test_utils import approx_equal
-  import os
 
-  if not libtbx.env.has_module("dials"):
-    print "Skipping tstFormatCBFFull.py: dials not present"
-    return
-  if not libtbx.env.has_module("dials_regression"):
-    print "Skipping tstFormatCBFFull.py: dials_regression not present"
-    return
-
-  data_dir = libtbx.env.find_in_repositories(
-    relative_path="dials_regression/image_examples/DLS_I04",
-    test=os.path.isdir)
+  data_dir = os.path.join(dials_regression, 'image_examples', 'DLS_I04')
 
   from dxtbx.imageset import ImageSetFactory
   imgset = ImageSetFactory.new(os.path.join(data_dir, "grid_full_cbf_0005.cbf"))[0]
@@ -63,10 +43,3 @@ def exercise_still():
   beam.get_s0()
   assert approx_equal(beam.get_s0(),
                       (-0.0, -0.0, -1.0209290454313424))
-
-def run():
-  exercise_still()
-  exercise_multi_axis_goniometer()
-
-if __name__ == '__main__':
-  run()

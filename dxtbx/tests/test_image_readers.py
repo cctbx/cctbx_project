@@ -1,92 +1,88 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-def get_image_examples():
-  from os.path import join
-  import libtbx.load_env
-  try:
-    dials_regression = libtbx.env.dist_path('dials_regression')
-  except KeyError:
-    print 'SKIP: dials_regression not configured'
-    exit(0)
+import os
 
+import pytest
 
-  images = {
-    "./image_examples/ALS_501/als501_q4_1_001.img"                        : "smv",
-    "./image_examples/SPring8_BL26B1_SaturnA200/A200_000001.img"          : "smv",
-    "./image_examples/SPring8_BL26B1_SaturnA200/A200_000002.img"          : "smv",
-    "./image_examples/APS_19ID/q315_unbinned_a.0001.img"                  : "smv",
-    "./image_examples/ALS_821/q210_lyso_1_101.img"                        : "smv",
-    "./image_examples/MLFSOM_simulation/fake_00001.img"                   : "smv",
-    "./image_examples/ALS_831/q315r_lyso_001.img"                         : "smv",
-    "./image_examples/DESY_ID141/q210_2_001.img"                          : "smv",
-    "./image_examples/SSRL_bl91/q315_1_001.img"                           : "smv",
-    "./image_examples/APS_24IDC/q315_1_001.img"                           : "smv",
-    "./image_examples/ALS_1231/q315r_lyso_1_001.img"                      : "smv",
-    "./image_examples/SRS_142/q4_1_001.img"                               : "smv",
-    "./image_examples/ALS_422/lyso_041013a_1_001.img"                     : "smv",
-    "./image_examples/APS_17ID/q210_1_001.img"                            : "smv",
-    "./image_examples/saturn/lyso_00001.img"                              : "smv",
+smv_images = [
+    "image_examples/ALS_501/als501_q4_1_001.img",
+    "image_examples/SPring8_BL26B1_SaturnA200/A200_000001.img",
+    "image_examples/SPring8_BL26B1_SaturnA200/A200_000002.img",
+    "image_examples/APS_19ID/q315_unbinned_a.0001.img",
+    "image_examples/ALS_821/q210_lyso_1_101.img",
+    "image_examples/MLFSOM_simulation/fake_00001.img",
+    "image_examples/ALS_831/q315r_lyso_001.img",
+    "image_examples/DESY_ID141/q210_2_001.img",
+    "image_examples/SSRL_bl91/q315_1_001.img",
+    "image_examples/APS_24IDC/q315_1_001.img",
+    "image_examples/ALS_1231/q315r_lyso_1_001.img",
+    "image_examples/SRS_142/q4_1_001.img",
+    "image_examples/ALS_422/lyso_041013a_1_001.img",
+    "image_examples/APS_17ID/q210_1_001.img",
+    "image_examples/saturn/lyso_00001.img",
+]
 
-    # "./image_examples/SPring8_BL26B1_Raxis5/raxis5_000091.img"            : "raxis",
-    # "./image_examples/SPring8_BL26B1_Raxis5/raxis5_000001.img"            : "raxis",
+tiff_images = [
+    "image_examples/SPring8_BL32XU_MX225HS/ds_000045.img",
+    "image_examples/SPring8_BL32XU_MX225HS/ds_000001.img",
+    "image_examples/SPring8_BL44XU_MX300HE/bl44xu_lys_000002.img",
+    "image_examples/SPring8_BL44XU_MX300HE/bl44xu_lys_000001.img",
+    "image_examples/SPring8_BL32XU/rayonix225hs_0001.img",
+    "image_examples/SPring8_BL32XU/rayonix225_0001.img",
+    "image_examples/SLS_X06SA/mar225_2_001.img",
+    "image_examples/CLS1_08ID1/mar225_2_E0_0001.img",
+    "image_examples/SPring8_BL38B1_MX225HE/bl38b1_001.img",
+    "image_examples/SPring8_BL38B1_MX225HE/bl38b1_090.img",
+    "image_examples/SRS_101/mar225_001.img",
+    "image_examples/SPring8_BL12B2_MX225HE/lys001_000091.img",
+    "image_examples/SPring8_BL12B2_MX225HE/lys001_000001.img",
+    "image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000001.img",
+    "image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000090.img",
+]
 
-    "./image_examples/SPring8_BL32XU_MX225HS/ds_000045.img"               : "tiff",
-    "./image_examples/SPring8_BL32XU_MX225HS/ds_000001.img"               : "tiff",
-    "./image_examples/SPring8_BL44XU_MX300HE/bl44xu_lys_000002.img"       : "tiff",
-    "./image_examples/SPring8_BL44XU_MX300HE/bl44xu_lys_000001.img"       : "tiff",
-    "./image_examples/SPring8_BL32XU/rayonix225hs_0001.img"               : "tiff",
-    "./image_examples/SPring8_BL32XU/rayonix225_0001.img"                 : "tiff",
-    "./image_examples/SLS_X06SA/mar225_2_001.img"                         : "tiff",
-    "./image_examples/CLS1_08ID1/mar225_2_E0_0001.img"                    : "tiff",
-    "./image_examples/SPring8_BL38B1_MX225HE/bl38b1_001.img"              : "tiff",
-    "./image_examples/SPring8_BL38B1_MX225HE/bl38b1_090.img"              : "tiff",
-    "./image_examples/SRS_101/mar225_001.img"                             : "tiff",
-    "./image_examples/SPring8_BL12B2_MX225HE/lys001_000091.img"           : "tiff",
-    "./image_examples/SPring8_BL12B2_MX225HE/lys001_000001.img"           : "tiff",
-    "./image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000001.img"       : "tiff",
-    "./image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000090.img"       : "tiff",
+cbf_images = [
+    "image_examples/ESRF_ID29/trypsin_1_0001.cbf",
+    "image_examples/xia2/merge2cbf_averaged_0001.cbf",
+    "image_examples/dials-190/whatev1_01_00002.cbf",
+    "image_examples/dials-190/whatev1_02_00001.cbf",
+    "image_examples/dials-190/whatev1_02_00002.cbf",
+    "image_examples/dials-190/whatev1_03_00001.cbf",
+    "image_examples/dials-190/whatev1_01_00001.cbf",
+    "image_examples/dials-190/whatev1_03_00002.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0005.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0004.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0006.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0008.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0009.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0010.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0007.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0002.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0001.cbf",
+    "image_examples/APS_24IDE_test/thaum-12_1_0003.cbf",
+    "image_examples/APS_24IDC/pilatus_1_0001.cbf",
+    "image_examples/SLS_Eiger_16M_as_CBF/insu_with_bs_labelit_0901.cbf",
+    "image_examples/SLS_Eiger_16M_as_CBF/insu_with_bs_labelit_0001.cbf",
+    "image_examples/SPring8_BL41XU_PILATUS3_6M/data1_000001.cbf",
+    "image_examples/SPring8_BL41XU_PILATUS3_6M/data1_000901.cbf",
+    "image_examples/DLS_I02/X4_wide_M1S4_1_0001.cbf",
+    "image_examples/DLS_I23/I23_P12M_alpha_0001.cbf",
+    "image_examples/DLS_I23/germ_13KeV_0001.cbf",
+    "image_examples/SLS_X06SA/pilatus6m_1_00001.cbf",
+    "image_examples/SPring8_ADSC_SN916/Xtal17-2phi_3_015.cbf",
+    "image_examples/DLS_I19/I19_P300k_00001.cbf",
+    "image_examples/ED_From_TIFF/170112330001.cbf",
+]
 
-    "./stills_test_data/hit-20111202210224984.cbf"                        : "cbf_multitile", # Multitile
-    "./stills_test_data/hit-s00-20140306002935980.cbf"                    : "cbf_multitile", # Multitile
-    "./stills_test_data/hit-s00-20140306002857363.cbf"                    : "cbf_multitile", # Multitile
+cbf_multitile_images = [
+    "stills_test_data/hit-20111202210224984.cbf",
+    "stills_test_data/hit-s00-20140306002935980.cbf",
+    "stills_test_data/hit-s00-20140306002857363.cbf",
+]
 
-     "./image_examples/ESRF_ID29/trypsin_1_0001.cbf"                       : "cbf",
-     "./image_examples/xia2/merge2cbf_averaged_0001.cbf"                   : "cbf",
-     "./image_examples/dials-190/whatev1_01_00002.cbf"                     : "cbf",
-     "./image_examples/dials-190/whatev1_02_00001.cbf"                     : "cbf",
-     "./image_examples/dials-190/whatev1_02_00002.cbf"                     : "cbf",
-     "./image_examples/dials-190/whatev1_03_00001.cbf"                     : "cbf",
-     "./image_examples/dials-190/whatev1_01_00001.cbf"                     : "cbf",
-     "./image_examples/dials-190/whatev1_03_00002.cbf"                     : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0005.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0004.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0006.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0008.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0009.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0010.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0007.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0002.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0001.cbf"                 : "cbf",
-     "./image_examples/APS_24IDE_test/thaum-12_1_0003.cbf"                 : "cbf",
-     "./image_examples/APS_24IDC/pilatus_1_0001.cbf"                       : "cbf",
-     "./image_examples/SLS_Eiger_16M_as_CBF/insu_with_bs_labelit_0901.cbf" : "cbf",
-     "./image_examples/SLS_Eiger_16M_as_CBF/insu_with_bs_labelit_0001.cbf" : "cbf",
-     "./image_examples/SPring8_BL41XU_PILATUS3_6M/data1_000001.cbf"        : "cbf",
-     "./image_examples/SPring8_BL41XU_PILATUS3_6M/data1_000901.cbf"        : "cbf",
-     "./image_examples/DLS_I02/X4_wide_M1S4_1_0001.cbf"                    : "cbf",
-     "./image_examples/DLS_I23/I23_P12M_alpha_0001.cbf"                    : "cbf",
-     "./image_examples/DLS_I23/germ_13KeV_0001.cbf"                        : "cbf",
-     "./image_examples/SLS_X06SA/pilatus6m_1_00001.cbf"                    : "cbf",
-     "./image_examples/SPring8_ADSC_SN916/Xtal17-2phi_3_015.cbf"           : "cbf",
-     "./image_examples/DLS_I19/I19_P300k_00001.cbf"                        : "cbf",
-     "./image_examples/ED_From_TIFF/170112330001.cbf"                      : "cbf",
+hdf5_images = [
+    "image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5",
+]
 
-    "./image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5"             : "hdf5",
-  }
-
-  return dict((join(dials_regression, k), v) for k, v in images.iteritems())
-
-IMAGE_EXAMPLES = get_image_examples()
 
 def get_smv_header(image_file):
   header_size = int(open(image_file, 'rb').read(45).split(
@@ -118,28 +114,27 @@ def read_smv_image(image_file):
 
   header_size, header_dictionary = get_smv_header(image_file)
 
-  f = open(image_file, 'rb')
-  f.read(header_size)
+  with open(image_file, 'rb') as f:
+    f.read(header_size)
 
-  if header_dictionary['BYTE_ORDER'] == 'big_endian':
-    big_endian = True
-  else:
-    big_endian = False
+    if header_dictionary['BYTE_ORDER'] == 'big_endian':
+      big_endian = True
+    else:
+      big_endian = False
 
-  image_size = (int(header_dictionary['SIZE1']),
-                int(header_dictionary['SIZE2']))
+    image_size = (int(header_dictionary['SIZE1']),
+                  int(header_dictionary['SIZE2']))
 
-  if big_endian == is_big_endian():
-    raw_data = read_uint16(streambuf(f), int(image_size[0] * image_size[1]))
-  else:
-    raw_data = read_uint16_bs(streambuf(f), int(image_size[0] * image_size[1]))
+    if big_endian == is_big_endian():
+      raw_data = read_uint16(streambuf(f), int(image_size[0] * image_size[1]))
+    else:
+      raw_data = read_uint16_bs(streambuf(f), int(image_size[0] * image_size[1]))
 
   raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
   return raw_data
 
 def get_tiff_header(image_file):
-
   from dxtbx.format.FormatTIFFHelpers import read_basic_tiff_header
   width, height, depth, header, order = read_basic_tiff_header(
       image_file)
@@ -172,7 +167,8 @@ def read_cbf_image(cbf_image):
 
   start_tag = binascii.unhexlify('0c1a04d5')
 
-  data = open(cbf_image, 'rb').read()
+  with open(cbf_image, 'rb') as fh:
+    data = fh.read()
   data_offset = data.find(start_tag) + 4
   cbf_header = data[:data_offset - 4]
 
@@ -190,14 +186,11 @@ def read_cbf_image(cbf_image):
     elif 'X-Binary-Size:' in record:
       size = int(record.split()[-1])
 
-  assert(length == fast * slow)
+  assert length == fast * slow
 
   pixel_values = uncompress(packed = data[data_offset:data_offset + size],
                             fast = fast, slow = slow)
-
-
   return pixel_values
-
 
 
 def read_multitile_cbf_image(cbf_image):
@@ -280,15 +273,13 @@ def read_multitile_cbf_image(cbf_image):
       data[key].reshape(flex.grid(data[key].focus()[-2],data[key].focus()[-1]))
       raw_data.append(data[key])
 
-
   return tuple(raw_data)
 
-
-
-
-def tst_smv(filename):
+@pytest.mark.parametrize('smv_image', smv_images)
+def test_smv(dials_regression, smv_image):
   from dxtbx.format.image import SMVReader
   from scitbx.array_family import flex
+  filename = os.path.join(dials_regression, smv_image)
 
   image = SMVReader(filename).image()
   if image.is_double():
@@ -303,12 +294,11 @@ def tst_smv(filename):
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
 
-
-
-def tst_tiff(filename):
+@pytest.mark.parametrize('tiff_image', tiff_images)
+def test_tiff(dials_regression, tiff_image):
   from scitbx.array_family import flex
   from dxtbx.format.image import TIFFReader
-
+  filename = os.path.join(dials_regression, tiff_image)
 
   image = TIFFReader(filename).image()
   if image.is_double():
@@ -324,23 +314,28 @@ def tst_tiff(filename):
   assert flex.max(diff) < 1e-7
 
 
-def tst_cbf_fast(filename):
-  from scitbx.array_family import flex
-  from dxtbx.format.image import CBFFastReader
+#@pytest.mark.skip(reason="test unused")
+#@pytest.mark.parametrize('cbf_image', cbf_images)
+#def test_cbf_fast(dials_regression, cbf_image):
+#  from scitbx.array_family import flex
+#  from dxtbx.format.image import CBFFastReader
+#  filename = os.path.join(dials_regression, cbf_image)
+#
+#  image = CBFFastReader(filename).image()
+#  assert image.n_tiles() == 1
+#  data1 = image.tile(0).as_int()
+#
+#  data2 = read_cbf_image(filename)
+#
+#  diff = flex.abs(data1 - data2)
+#  assert flex.max(diff) < 1e-7
 
-  image = CBFFastReader(filename).image()
-  assert image.n_tiles() == 1
-  data1 = image.tile(0).as_int()
 
-  data2 = read_cbf_image(filename)
-
-  diff = flex.abs(data1 - data2)
-  assert flex.max(diff) < 1e-7
-
-
-def tst_cbf(filename):
+@pytest.mark.parametrize('cbf_image', cbf_images + cbf_multitile_images)
+def test_cbf(dials_regression, cbf_image):
   from scitbx.array_family import flex
   from dxtbx.format.image import CBFReader
+  filename = os.path.join(dials_regression, cbf_image)
 
   image = CBFReader(filename).image()
   if image.is_double():
@@ -361,12 +356,15 @@ def tst_cbf(filename):
     diff = flex.abs(d1 - d2)
     assert flex.max(diff) < 1e-7
 
-def tst_hdf5(filename):
+
+@pytest.mark.parametrize('hdf5_image', hdf5_images)
+def test_hdf5(dials_regression, hdf5_image):
   from dxtbx.format.image import HDF5Reader
   from dxtbx.format.nexus import dataset_as_flex_int
   from scitbx.array_family import flex
   import h5py
 
+  filename = os.path.join(dials_regression, hdf5_image)
   handle = h5py.File(filename, "r")
 
   reader = HDF5Reader(
@@ -391,23 +389,3 @@ def tst_hdf5(filename):
   assert data1.all()[1] == data2.all()[1]
   diff = flex.abs(data1 - data2)
   assert flex.max(diff) < 1e-7
-
-
-
-def tst_all():
-  for k, v in IMAGE_EXAMPLES.iteritems():
-    if v == 'smv':
-      tst_smv(k)
-    elif v == 'tiff':
-      tst_tiff(k)
-    elif v == 'cbf':
-      #tst_cbf_fast(k)
-      tst_cbf(k)
-    elif v == 'cbf_multitile':
-      tst_cbf(k)
-    if v == "hdf5":
-      tst_hdf5(k)
-
-if __name__ == '__main__':
-
-  tst_all()

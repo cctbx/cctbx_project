@@ -18,6 +18,3 @@ def dials_regression():
   except ImportError:
     pytest.skip("dials_regression required for this test")
   return os.path.dirname(dr.__file__)
-
-from libtbx.test_utils.pytest import libtbx_collector
-pytest_collect_file = libtbx_collector()

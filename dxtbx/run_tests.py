@@ -2,27 +2,17 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.test_utils.pytest import discover
 
-tst_list = [
-    "$D/tests/tst_dxtbx.py",
-    "$D/tests/tst_imageset.py",
-    "$D/tests/tst_filecache.py",
-    "$D/tests/tst_beamline_definitions.py",
-    "$D/tests/tstFormatCBFFull.py",
-    "$D/tests/tst_dials_226.py",
-    "$D/tests/tst_image_readers.py",
-    "$D/tests/command_line/tst_to_xds.py",
-    "$D/tests/model/tst_beam.py",
-    "$D/tests/model/tst_detector.py",
-    "$D/tests/model/tst_detector2.py",
-    "$D/tests/model/tst_parallax_correction.py",
-    "$D/tests/model/tst_pickle.py",
-    "$D/tests/model/tst_pixel_to_millimeter.py",
-    "$D/tests/model/tst_ray_intersection.py",
-    "$D/tests/model/tst_scan_data.py",
-    "$D/tests/model/tst_scan_helpers.py",
-    "$D/tests/model/tst_to_from_dict.py",
-    "$D/tests/serialize/tst_serialize.py",
-    "$D/tests/serialize/tst_xds.py",
-    "$D/tests/serialize/tst_filename.py",
-    "$D/tests/serialize/tst_crystal_model_serialize.py",
-    ] + discover()
+tst_list = discover()
+
+# To write tests for dxtbx:
+
+# 1. Test file should be named test_*.py
+# 2. Test methods should be named test_*()
+# 3. Nothing else needed. Rest happens by magic.
+
+# To run dxtbx tests:
+
+# run 'pytest' inside dxtbx directory
+
+# For more information see:
+#   https://github.com/dials/dials/wiki/pytest
