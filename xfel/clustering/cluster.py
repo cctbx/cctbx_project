@@ -622,6 +622,8 @@ class Cluster:
 
       hcluster.dendrogram(this_linkage,
                           labels=labels,
+                          p=200,
+                          truncate_mode='lastp', # show only the last p merged clusters
                           leaf_font_size=8, leaf_rotation=90.0,
                           color_threshold=threshold, ax=ax)
 
