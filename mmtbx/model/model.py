@@ -2690,7 +2690,7 @@ class manager(object):
 
   def occupancy_statistics(self):
     return mmtbx.model.statistics.occupancy(
-      hierarchy = self.get_hierarchy(sync_with_xray_structure=True)).result
+      hierarchy = self.get_hierarchy(sync_with_xray_structure=True))
 
   def adp_statistics(self):
     rm = self.restraints_manager

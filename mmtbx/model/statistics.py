@@ -207,7 +207,7 @@ class geometry(object):
       rota_out   = self.rotamer().outliers,
       rama_fav   = self.ramachandran().favored)
 
-  def result(self, keep_bulky_objects=True):
+  def result(self, slim=True):
     if(self.cached_result is None):
       self.cached_result = group_args(
          angle            = self.angle(),
@@ -224,7 +224,7 @@ class geometry(object):
          molprobity_score = self.mp_score(),
          # cablam         = self.cablam(), # broken
          omega            = self.omega())
-    if(not keep_bulky_objects):
+    if(slim):
       self.cached_result.ramachandran.ramalyze = None
       self.cached_result.clash.clashes         = None
       self.cached_result.rotamer.rotalyze      = None
@@ -358,18 +358,33 @@ class composition(object):
 
 class occupancy(object):
   def __init__(self, hierarchy):
+    eps = 1.e-6
     occ = hierarchy.atoms().extract_occ()
     mean = flex.mean(occ)
-    zero_count = (occ<0.01).count(True)
+    negative = (occ<0).count(True)
+    zero_count = (flex.abs(occ)<eps).count(True)
     zero_fraction = zero_count*100./occ.size()
-    greater_than_1_count = (occ>1.01).count(True)
+    greater_than_1_count = (occ>(1.+eps)).count(True)
     greater_than_1_fraction = greater_than_1_count/occ.size()
-    self.result = group_args(
+    self._result = group_args(
       mean                    = mean,
+      negative                = negative,
       zero_count              = zero_count,
       zero_fraction           = zero_fraction,
       greater_than_1_count    = greater_than_1_count,
       greater_than_1_fraction = greater_than_1_fraction)
+
+  def result(self):
+    return self._result
+
+  def show(self, log, prefix=""):
+    r = self.result()
+    print >> log, prefix, "mean                     :", r.mean
+    print >> log, prefix, "negative                 :", r.negative
+    print >> log, prefix, "zero (count)             :", r.zero_count
+    print >> log, prefix, "zero (fraction)          :", r.zero_fraction
+    print >> log, prefix, "greater than 1 (count)   :", r.greater_than_1_count
+    print >> log, prefix, "greater than 1 (fraction):", r.greater_than_1_fraction
 
 def rms_b_iso_or_b_equiv_bonded(
       geometry_restraints_manager,
