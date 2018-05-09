@@ -161,7 +161,7 @@ class FormatMultiImage(object):
     from dxtbx.imageset import ImageSetData
     from dxtbx.imageset import ImageSweep
     from os.path import abspath
-    from dials.array_family import flex
+    from scitbx.array_family import flex
     if isinstance(filenames, str):
       filenames = [filenames]
     elif len(filenames) > 1:
