@@ -199,6 +199,14 @@ class CCTBXParser(ParserBase):
     self.data_manager = DataManager(datatypes=program_class.datatypes,
                                     logger=self.logger)
 
+    # add PHIL converters if available
+    if (len(program_class.phil_converters) > 0):
+      iotbx.phil.default_converter_registry = \
+        libtbx.phil.extended_converter_registry(
+          additional_converters=program_class.phil_converters,
+          base_registry=iotbx.phil.default_converter_registry)
+
+    # set up master and working PHIL scopes
     self.master_phil = iotbx.phil.parse(
       program_class.master_phil_str, process_includes=True)
     required_output_phil = iotbx.phil.parse(ProgramTemplate.output_phil_str)

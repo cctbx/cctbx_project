@@ -83,6 +83,12 @@ output {
 '''
 
   # ---------------------------------------------------------------------------
+  # Advanced features
+
+  # PHIL converters (in a list) for additional PHIL types
+  phil_converters = list()
+
+  # ---------------------------------------------------------------------------
   # Function for showing default citation for template
   @staticmethod
   def show_template_citation(text_width=80, logger=None,
