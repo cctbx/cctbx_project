@@ -16,7 +16,7 @@ from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
-
+import collections
 
 class geometry(object):
   def __init__(self,
@@ -71,14 +71,20 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.angle_deviations()
       n = self.from_restraints.get_filtered_n_angle_proxies()
-    return group_args(min = mi, max = ma, mean = me, n = n)
+      outliers = self.from_restraints.angle_proxies.get_outliers(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        sigma_threshold=4)
+    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def bond(self):
     mi,ma,me,n = 0,0,0,0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.bond_deviations()
       n = self.from_restraints.get_filtered_n_bond_proxies()
-    return group_args(min = mi, max = ma, mean = me, n = n)
+      outliers = self.from_restraints.bond_proxies.get_outliers(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        sigma_threshold=4)
+    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def chirality(self):
     mi,ma,me,n = 0,0,0,0
@@ -92,7 +98,10 @@ class geometry(object):
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.dihedral_deviations()
       n = self.from_restraints.n_dihedral_proxies
-    return group_args(min = mi, max = ma, mean = me, n = n)
+      outliers = self.from_restraints.dihedral_proxies.get_outliers(
+        sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
+        sigma_threshold=4)
+    return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def planarity(self):
     mi,ma,me,n = 0,0,0,0
@@ -309,6 +318,32 @@ class geometry(object):
     loop.add_row(("f_dihedral_angle_d", d.n, round_4_for_cif(d.mean), "?", "?"))
     cif_block.add_loop(loop)
     return cif_block
+
+class composition(object):
+  def __init__(self, pdb_hierarchy):
+    asc = pdb_hierarchy.atom_selection_cache()
+    def rc(sel_str):
+      sel = asc.selection(sel_str)
+      return len(list(pdb_hierarchy.select(sel).residue_groups()))
+    sel_str_other = "not (water or nucleotide or protein)"
+    result = collections.Counter()
+    for rg in pdb_hierarchy.select(asc.selection(sel_str_other)).residue_groups():
+      for resname in rg.unique_resnames():
+        result[resname]+=1
+    print result
+    self._result = group_args(
+      n_atoms      = pdb_hierarchy.atoms().size(),
+      n_chains     = len(list(pdb_hierarchy.chains())),
+      n_protein    = rc("protein"),
+      n_nucleotide = rc("nucleotide"),
+      n_water      = rc("water"),
+      n_hd         = rc("element H or element D"),
+      n_other      = rc(sel_str_other),
+      )
+
+  #def show(self, log, prefix=""):
+  #  print >> log, dir(self._result)
+  #  STOP()
 
 class occupancy(object):
   def __init__(self, hierarchy):

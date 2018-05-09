@@ -2664,6 +2664,10 @@ class manager(object):
           use_molprobity    = use_molprobity)
     return self.model_statistics_info
 
+  def composition(self):
+    return mmtbx.model.statistics.composition(
+      pdb_hierarchy = self.get_hierarchy())
+
   def geometry_statistics(self):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
