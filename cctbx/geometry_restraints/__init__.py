@@ -1300,12 +1300,13 @@ class _(boost.python.injector, shared_dihedral_proxy):
 
   def get_outliers(self, sites_cart, sigma_threshold):
     result = []
+    assert 0
     for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
       ind = [int(i) for i in it[0]]
       delta = abs(it[3])
       sigma = it[5]
       if(delta > sigma*sigma_threshold):
-        result.append([i,j])
+        result.append(ind)
     return result
 
 class _(boost.python.injector, chirality):
