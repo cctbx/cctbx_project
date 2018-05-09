@@ -25,6 +25,12 @@ locator_str = """
 """
 locator_scope = parse(locator_str)
 
+from dxtbx.format.FormatMultiImage import Reader
+class XtcReader(Reader):
+  def nullify_format_instance(self):
+    ''' No-op for XTC streams. No issue with multiprocessing. '''
+    pass
+
 class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
 
   def __init__(self, image_file, **kwargs):
@@ -104,6 +110,17 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
       return params
     except Exception:
       return None
+
+  @classmethod
+  def get_reader(Class):
+    '''
+    Return a reader class
+
+    '''
+    obj = XtcReader
+    # Note, need to set this on the parent class since it's a scoped global variable
+    Reader._format_class_ = Class
+    return obj
 
   def populate_events(self):
     """ Read the timestamps from the XTC stream.  Assumes the psana idx mode of reading data.
