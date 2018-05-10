@@ -4,7 +4,6 @@ import six.moves.cPickle as pickle
 import glob
 import os
 
-import libtbx.load_env
 import pytest
 
 @pytest.mark.parametrize("image", [
