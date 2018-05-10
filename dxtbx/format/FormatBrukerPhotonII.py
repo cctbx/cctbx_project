@@ -102,7 +102,7 @@ class FormatBrukerPhotonII(FormatBruker):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
     two_theta = float(self.header_dict['ANGLES'].split()[0])
 
-    overload = int(self.header_dict['CCDPARM'].split()[-1])
+    overload = float(self.header_dict['CCDPARM'].split()[-1])
     underload = -1
 
     fast = matrix.col((1, 0, 0))
