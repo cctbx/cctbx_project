@@ -68,6 +68,7 @@ class geometry(object):
 
   def angle(self):
     mi,ma,me,n = 0,0,0,0
+    outliers = 0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.angle_deviations()
       n = self.from_restraints.get_filtered_n_angle_proxies()
@@ -78,6 +79,7 @@ class geometry(object):
 
   def bond(self):
     mi,ma,me,n = 0,0,0,0
+    outliers = 0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.bond_deviations()
       n = self.from_restraints.get_filtered_n_bond_proxies()
@@ -95,6 +97,7 @@ class geometry(object):
 
   def dihedral(self):
     mi,ma,me,n = 0,0,0,0
+    outliers = 0
     if(self.from_restraints is not None):
       mi,ma,me = self.from_restraints.dihedral_deviations()
       n = self.from_restraints.n_dihedral_proxies
@@ -207,7 +210,7 @@ class geometry(object):
       rota_out   = self.rotamer().outliers,
       rama_fav   = self.ramachandran().favored)
 
-  def result(self, slim=True):
+  def result(self, slim=False):
     if(self.cached_result is None):
       self.cached_result = group_args(
          angle            = self.angle(),
@@ -321,30 +324,15 @@ class geometry(object):
 
 class composition(object):
   def __init__(self, pdb_hierarchy):
-    asc = pdb_hierarchy.atom_selection_cache()
-    def rc(sel_str):
-      sel = asc.selection(sel_str)
-      return len(list(pdb_hierarchy.select(sel).residue_groups()))
-    sel_str_other = "not (water or nucleotide or protein)"
-    other_cnts = collections.Counter()
-    for rg in pdb_hierarchy.select(asc.selection(sel_str_other)).residue_groups():
-      for resname in rg.unique_resnames():
-        other_cnts[resname]+=1
-    self._result = group_args(
-      n_atoms      = pdb_hierarchy.atoms().size(),
-      n_chains     = len(list(pdb_hierarchy.chains())),
-      n_protein    = rc("protein"),
-      n_nucleotide = rc("nucleotide"),
-      n_water      = rc("water"),
-      n_hd         = rc("element H or element D"),
-      n_other      = rc(sel_str_other),
-      other_cnts   = other_cnts)
+    self._result = pdb_hierarchy.composition()
 
   def result(self):
     return self._result
 
   def show(self, log, prefix=""):
     r = self.result()
+    ligs=(",".join([("%s:%s"%k).strip() for k in r.other_cnts.items()])).strip()
+    if(len(ligs)==0): ligs=None
     print >> log, prefix, "Number of:"
     print >> log, prefix, "  all atoms      :", r.n_atoms
     print >> log, prefix, "  H or D atoms   :", r.n_hd
@@ -353,38 +341,23 @@ class composition(object):
     print >> log, prefix, "  nucleotides    :", r.n_nucleotide
     print >> log, prefix, "  water          :", r.n_water
     print >> log, prefix, "  other (ligands):", r.n_other
-    print >> log, prefix, "Ligands:", \
-      ",".join([("%s:%s"%k).strip() for k in r.other_cnts.items()])
+    print >> log, prefix, "Ligands:", ligs
 
 class occupancy(object):
   def __init__(self, hierarchy):
-    eps = 1.e-6
-    occ = hierarchy.atoms().extract_occ()
-    mean = flex.mean(occ)
-    negative = (occ<0).count(True)
-    zero_count = (flex.abs(occ)<eps).count(True)
-    zero_fraction = zero_count*100./occ.size()
-    greater_than_1_count = (occ>(1.+eps)).count(True)
-    greater_than_1_fraction = greater_than_1_count/occ.size()
-    self._result = group_args(
-      mean                    = mean,
-      negative                = negative,
-      zero_count              = zero_count,
-      zero_fraction           = zero_fraction,
-      greater_than_1_count    = greater_than_1_count,
-      greater_than_1_fraction = greater_than_1_fraction)
+    self._result = hierarchy.occupancy_counts()
 
   def result(self):
     return self._result
 
   def show(self, log, prefix=""):
     r = self.result()
-    print >> log, prefix, "mean                     :", r.mean
-    print >> log, prefix, "negative                 :", r.negative
-    print >> log, prefix, "zero (count)             :", r.zero_count
-    print >> log, prefix, "zero (fraction)          :", r.zero_fraction
-    print >> log, prefix, "greater than 1 (count)   :", r.greater_than_1_count
-    print >> log, prefix, "greater than 1 (fraction):", r.greater_than_1_fraction
+    def p(m): print >> log, prefix, m
+    p("mean     : %4.2f"%r.mean)
+    p("negative : %d"%r.negative)
+    p("zero     : %d (%-6.2f%s)"%(r.zero_count,r.zero_fraction,"%"))
+    p("occ>1    : %d (%-6.2f%s)"%(r.greater_than_1_count,r.greater_than_1_fraction,"%"))
+    p("altlocs  : %-6.2f(%s)"%(r.alt_conf_frac,"%"))
 
 def rms_b_iso_or_b_equiv_bonded(
       geometry_restraints_manager,

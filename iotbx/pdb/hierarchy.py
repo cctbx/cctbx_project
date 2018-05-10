@@ -13,6 +13,8 @@ import iotbx.cif.model
 from libtbx.containers import OrderedDict, OrderedSet
 from libtbx.table_utils import wrap_always
 from cctbx import crystal
+from libtbx import group_args
+import collections
 import warnings
 import math
 import sys
@@ -444,6 +446,53 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     result = overall_counts()
     self.get_overall_counts(result)
     return result
+
+  def occupancy_counts(self):
+    eps = 1.e-6
+    occ = self.atoms().extract_occ()
+    mean = flex.mean(occ)
+    negative = (occ<0).count(True)
+    zero_count = (flex.abs(occ)<eps).count(True)
+    zero_fraction = zero_count*100./occ.size()
+    greater_than_1_count = (occ>(1.+eps)).count(True)
+    greater_than_1_fraction = greater_than_1_count*100./occ.size()
+    number_of_residues = len(list(self.residue_groups()))
+    number_of_alt_confs = 0
+    alt_loc_dist = collections.Counter()
+    for rg in self.residue_groups():
+      n_confs = len(rg.conformers())
+      if(n_confs > 1):
+        number_of_alt_confs += 1
+        alt_loc_dist[n_confs] += 1
+    return group_args(
+      mean                    = mean,
+      negative                = negative,
+      zero_count              = zero_count,
+      zero_fraction           = zero_fraction,
+      greater_than_1_count    = greater_than_1_count,
+      greater_than_1_fraction = greater_than_1_fraction,
+      alt_conf_frac           = number_of_alt_confs*100/number_of_residues,
+      alt_loc_dist            = alt_loc_dist)
+
+  def composition(self):
+    asc = self.atom_selection_cache()
+    def rc(sel_str):
+      sel = asc.selection(sel_str)
+      return len(list(self.select(sel).residue_groups()))
+    sel_str_other = "not (water or nucleotide or protein)"
+    other_cnts = collections.Counter()
+    for rg in self.select(asc.selection(sel_str_other)).residue_groups():
+      for resname in rg.unique_resnames():
+        other_cnts[resname]+=1
+    return group_args(
+      n_atoms      = self.atoms().size(),
+      n_chains     = len(list(self.chains())),
+      n_protein    = rc("protein"),
+      n_nucleotide = rc("nucleotide"),
+      n_water      = rc("water"),
+      n_hd         = rc("element H or element D"),
+      n_other      = rc(sel_str_other),
+      other_cnts   = other_cnts)
 
   def show(self,
         out=None,

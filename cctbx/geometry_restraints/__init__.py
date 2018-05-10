@@ -831,7 +831,9 @@ class _(boost.python.injector, bond_sorted_asu_proxies):
 
   def get_outliers(self, sites_cart, sigma_threshold):
     result = []
-    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    if(vals is None): return result
+    for it in vals:
       i,j = it[0],it[1]
       delta = abs(it[6])
       sigma = it[7]
@@ -1216,7 +1218,9 @@ class _(boost.python.injector, shared_angle_proxy):
 
   def get_outliers(self, sites_cart, sigma_threshold):
     result = []
-    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    if(vals is None): return result
+    for it in vals:
       i,j,k = [int(i) for i in it[0]]
       delta = abs(it[3])
       sigma = it[4]
@@ -1300,7 +1304,9 @@ class _(boost.python.injector, shared_dihedral_proxy):
 
   def get_outliers(self, sites_cart, sigma_threshold):
     result = []
-    for it in self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]:
+    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    if(vals is None): return result
+    for it in vals:
       ind = [int(i) for i in it[0]]
       delta = abs(it[3])
       sigma = it[5]
