@@ -102,14 +102,8 @@ class FormatBrukerPhotonII(FormatBruker):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
     two_theta = float(self.header_dict['ANGLES'].split()[0])
 
-    overload = float(self.header_dict['MAXIMUM'].split()[0])
-    underload = float(self.header_dict['MINIMUM'].split()[0])
-
-    # This is mysterious. The images are 16 bit, but the header claims
-    # maximum count per pixel of >160'000. The product sheet talks of
-    # 'adaptive oversampling' without explaining this. For now, just reset
-    # the overload value
-    overload = 65535 - 1
+    overload = int(self.header_dict['CCDPARM'].split()[-1])
+    underload = -1
 
     fast = matrix.col((1, 0, 0))
     slow = matrix.col((0, 1, 0))
