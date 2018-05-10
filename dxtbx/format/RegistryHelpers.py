@@ -1,18 +1,10 @@
-#!/usr/bin/env python
-# RegistryHelpers.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
 # Things to help the ImageFormat registry to work.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 import sys
 import imp
-import exceptions
 import traceback
 
 def LoadFormatClasses():
@@ -73,7 +65,7 @@ def _LoadFormatModule(name, fqname, path):
 
   try:
     module = imp.load_module(fqname, stream, pathname, description)
-  except exceptions.Exception:
+  except Exception:
     traceback.print_exc(sys.stderr)
   finally:
     if stream:

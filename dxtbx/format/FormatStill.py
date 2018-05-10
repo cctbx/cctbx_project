@@ -1,14 +1,12 @@
-#!/usr/bin/env python
 # FormatStill.py
 #
 # Root class for still shots.  A still shot has no goniomter and no
 # scan in their model, as these constructs are not meaningful.
 #
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from dxtbx.format.Format import Format
 from dxtbx.model.detector import Detector
 from dxtbx.model.beam import Beam
-import exceptions
 
 class FormatStill(Format):
   def setup(self):
@@ -30,7 +28,7 @@ class FormatStill(Format):
       assert(isinstance(beam_instance, Beam))
       self._beam_instance = beam_instance
 
-    except exceptions.Exception:
+    except Exception:
       # FIXME ideally should not squash the errors here...
       pass
     finally:

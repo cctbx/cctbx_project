@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# Format.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
 # A top-level class to represent image formats which does little else but
 # (i) establish an abstract class for what needs to be implemented and
 # (ii) include the format registration code for any image formats which
@@ -12,7 +5,7 @@
 # from the X(component)Factories which will allow construction of e.g.
 # goniometers etc. from the headers and hence a format specific factory.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import sys
 
@@ -27,7 +20,6 @@ except ImportError:
   gzip = None
 
 import dxtbx.filecache_controller
-import exceptions
 
 # import access to all of the factories that we will be needing
 
@@ -220,7 +212,7 @@ class Format(object):
       #assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
 
-    except exceptions.Exception:
+    except Exception:
       # FIXME ideally should not squash the errors here...
       import traceback
       traceback.print_exc()
