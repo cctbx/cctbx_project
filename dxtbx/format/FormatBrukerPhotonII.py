@@ -157,25 +157,91 @@ class FormatBrukerPhotonII(FormatBruker):
     flex array of integers.)'''
 
     from boost.python import streambuf
-    from dxtbx import read_uint16, read_uint16_bs, is_big_endian
+    from dxtbx import read_uint8, read_uint16, read_uint16_bs, read_uint32, read_uint32_bs
+    from dxtbx import is_big_endian
     from scitbx.array_family import flex
     f = self.open_file(self._image_file, 'rb')
     header_size = int(self.header_dict['HDRBLKS']) * 512
     f.read(header_size)
 
-    # 16 bits per pixel
-    assert int(self.header_dict['NPIXELB'].split()[0]) == 2
+    if is_big_endian():
+      read_2b = read_uint16_bs
+      read_4b = read_uint32_bs
+    else:
+      read_2b = read_uint16
+      read_4b = read_uint32
+
+    # NPIXELB stores the number of bytes/pixel for the data and the underflow
+    # table. We expect 1 byte for underflows and either 2 or 1 byte per pixel
+    # for the data
+    npixelb = [int(e) for e in self.header_dict['NPIXELB'].split()]
+    assert npixelb[1] == 1
+
+    if npixelb[0] == 1:
+      read_data = read_uint8
+    elif npixelb[0] == 2:
+      read_data = read_2b
+    else:
+      from dxtbx import IncorrectFormatError
+      raise IncorrectFormatError("{0} bytes per pixel is not supported".format(
+        npixelb[0]))
 
     nrows = int(self.header_dict['NROWS'].split()[0])
     ncols = int(self.header_dict['NCOLS'].split()[0])
 
-    if is_big_endian():
-      raw_data = read_uint16_bs(streambuf(f), nrows*ncols)
-    else:
-      raw_data = read_uint16(streambuf(f), nrows*ncols)
+    raw_data = read_data(streambuf(f), nrows*ncols)
 
     image_size = (nrows, ncols)
-    raw_data.reshape(flex.grid(image_size[0], image_size[1]))
+    raw_data.reshape(flex.grid(*image_size))
+
+    (num_underflows,
+     num_2b_overflows,
+     num_4b_overflows) = [int(e) for e in self.header_dict['NOVERFL'].split()]
+
+    # read underflows
+    if num_underflows > 0:
+      # stored values are padded to a multiple of 16 bytes
+      nbytes = num_underflows + 15 & ~(15)
+      underflow_vals = read_uint8(streambuf(f), nbytes)[:num_underflows]
+    else:
+      underflow_vals = None
+
+    # handle 2 byte overflows
+    if num_2b_overflows > 0:
+      # stored values are padded to a multiple of 16 bytes
+      nbytes = num_2b_overflows * 2 + 15 & ~(15)
+      overflow_vals = read_2b(streambuf(f), nbytes // 2)[:num_2b_overflows]
+      overflow = flex.int(nrows * ncols, 0)
+      sel = (raw_data == 255).as_1d()
+      overflow.set_selected(sel, overflow_vals - 255)
+      overflow.reshape(flex.grid(*image_size))
+      raw_data += overflow
+
+    # handle 4 byte overflows
+    if num_4b_overflows > 0:
+      # stored values are padded to a multiple of 16 bytes
+      nbytes = num_4b_overflows * 4 + 15 & ~(15)
+      overflow_vals = read_4b(streambuf(f), nbytes // 4)[:num_4b_overflows]
+      overflow = flex.int(nrows * ncols, 0)
+      sel = (raw_data == 65535).as_1d()
+      overflow.set_selected(sel, overflow_vals - 65535)
+      overflow.reshape(flex.grid(*image_size))
+      raw_data += overflow
+
+    # handle underflows
+    if underflow_vals is not None:
+      sel = (raw_data == 0).as_1d()
+      underflow = flex.int(nrows * ncols, 0)
+      underflow.set_selected(sel, underflow_vals)
+      underflow.reshape(flex.grid(*image_size))
+      raw_data += underflow
+
+    # handle baseline. num_underflows == -1 means no baseline subtraction. See
+    # https://github.com/cctbx/cctbx_project/files/1262952/BISFrameFileFormats.zip
+    if num_underflows != -1:
+      num_exposures = [int(e) for e in self.header_dict['NEXP'].split()]
+      baseline = num_exposures[2]
+      raw_data += baseline
 
     return raw_data
 
