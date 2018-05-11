@@ -2684,8 +2684,17 @@ class manager(object):
       not_hd_sel = ~hd_selection
       ph = ph.select(not_hd_sel)
       rm = rm.select(not_hd_sel)
+    #
+    ph_dc = ph.deep_copy()
+    ph_dc.atoms().reset_i_seq()
+    size = ph_dc.atoms().size()
+    bs = flex.double(size, 10.0)
+    ph_dc.atoms().set_b(bs)
+    occs = flex.double(size, 1.0)
+    ph_dc.atoms().set_occ(occs)
+    #
     return mmtbx.model.statistics.geometry(
-      pdb_hierarchy               = ph,
+      pdb_hierarchy               = ph_dc,
       geometry_restraints_manager = rm.geometry)
 
   def occupancy_statistics(self):

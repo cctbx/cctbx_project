@@ -16,7 +16,6 @@ from mmtbx.validation.utils import molprobity_score
 from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
-import collections
 
 class geometry(object):
   def __init__(self,
@@ -231,6 +230,7 @@ class geometry(object):
       self.cached_result.ramachandran.ramalyze = None
       self.cached_result.clash.clashes         = None
       self.cached_result.rotamer.rotalyze      = None
+      self.cached_result.rotamer.omegalyze     = None
     return self.cached_result
 
   def show(self, log=None, prefix="", lowercase=False):
