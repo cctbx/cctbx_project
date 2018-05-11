@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/05/2018
+Last Changed: 05/10/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -381,7 +381,6 @@ class IOTAPreferences(BaseDialog):
         self.opt_timeout.timeout.SetValue(str(self.mm_timeout_len))
 
     # Set subset values
-    print "DEBUG: RANDOM SAMPLE ON? ", self.random_subset
     if self.random_subset:
       self.chk_random_sample.toggle_boxes(flag_on=True)
       self.chk_random_sample.ctr.SetValue(self.random_subset_number)

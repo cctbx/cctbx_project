@@ -15,5 +15,6 @@ presentation of the HKL slice viewer.
 - IOTA Properties: user can supply a range of images, or several ranges, e.g.
 "5-100, 200-1000, 1234, 1500-1550"; random subset can also be taken from these
 ranges, if enabled
+- Sped up HKL slice viewer by a factor of ~5
 
 Known issues:

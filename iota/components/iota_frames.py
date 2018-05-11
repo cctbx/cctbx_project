@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 04/19/2018
+Last Changed: 05/11/2018
 Description : IOTA GUI Windows / frames
 '''
 
@@ -15,7 +15,6 @@ from wx import richtext as rt
 from wx.lib.scrolledpanel import ScrolledPanel
 
 import numpy as np
-from collections import Counter
 import time
 import warnings
 import multiprocessing
@@ -39,7 +38,7 @@ from cctbx.array_family import flex
 
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_analysis import Analyzer, Plotter
-from iota.components.iota_misc import WxFlags, noneset
+from iota.components.iota_misc import WxFlags, noneset, Capturing
 import iota.components.iota_controls as ct
 import iota.components.iota_threads as thr
 import iota.components.iota_dialogs as dlg
@@ -587,6 +586,7 @@ class ProcessingTab(ScrolledPanel):
     self.res_list = []
     self.indices = []
     self.spacegroup = None
+    self.idx_array = None
 
     self.hkl_view_axis = 'l'
     self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
@@ -703,7 +703,7 @@ class ProcessingTab(ScrolledPanel):
     self.hkl_figure.patch.set_visible(False)    # create transparent background
 
     self.hkl_axes = self.hkl_figure.add_subplot(111, frameon=False)
-    self.hkl_axes.set_aspect('equal')
+    # self.hkl_axes.set_aspect('equal')
     self.hkl_axes.set_xticks([])
     self.hkl_axes.set_yticks([])
 
@@ -769,7 +769,11 @@ class ProcessingTab(ScrolledPanel):
 
   def onSGCheckbox(self, e):
     if self.hkl_sg.toggle.GetValue():
-      self.hkl_sg.sg.SetValue(str(self.spacegroup))
+      if self.spacegroup is not None:
+        self.hkl_sg.sg.SetValue(str(self.spacegroup))
+      else:
+        self.spacegroup = 'P1'
+        self.hkl_sg.sg.SetValue('P1')
     else:
       self.hkl_sg.sg.SetValue('')
     self.draw_plots()
@@ -1140,21 +1144,30 @@ class ProcessingTab(ScrolledPanel):
 
   def draw_measured_indices(self):
     # Extract indices from list and apply symmetry if any via miller object
-    idx_array = flex.miller_index(self.indices)
-    obs = None
+    if self.idx_array is None:
+      self.idx_array = flex.miller_index(self.indices)
+    else:
+      if self.indices != []:
+        self.idx_array.extend(flex.miller_index(self.indices))
+    self.indices = []
+
     if self.hkl_sg.toggle.GetValue():
       try:
         crystal_symmetry = crystal.symmetry(space_group_symbol=self.spacegroup)
-        ms = miller.set(crystal_symmetry=crystal_symmetry,
-                        indices=idx_array, anomalous_flag=False)
-        sym_indices = ms.map_to_asu().indices()
-      except Exception, e:
-        sym_indices = idx_array
-        print 'HKL ERROR: ', e
+      except RuntimeError:
+        crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
     else:
-      sym_indices = idx_array
+      crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
 
-    merged_indices = Counter(sym_indices).items()
+    try:
+      ms = miller.set(crystal_symmetry=crystal_symmetry,
+                      indices=self.idx_array, anomalous_flag=False)
+      equiv = ms.multiplicities().merge_equivalents()
+      merged_indices = equiv.redundancies()
+
+    except Exception, e:
+      print 'HKL ERROR: ', e
+      return
 
     # Draw a h0, k0, or l0 slice of merged data so far
     self.hkl_axes.clear()
@@ -1163,45 +1176,32 @@ class ProcessingTab(ScrolledPanel):
     except Exception:
       pass
 
+    slice = merged_indices.slice(axis=self.hkl_view_axis,
+                                 slice_start=0, slice_end=0)
+
+    hkl = [i[0] for i in slice]
+    freq = [i[1] for i in slice]
+
     if self.hkl_view_axis == 'l':
-      slice = [(i[0][0], i[0][1]) for i in merged_indices if i[0][2] == 0]
-      freq = [i[1] for i in merged_indices if i[0][2] == 0]
+      x = [i[0] for i in hkl]
+      y = [i[1] for i in hkl]
       self.hkl_axes.set_xlabel('h', weight='bold')
       self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'k':
-      slice = [(i[0][0], i[0][2]) for i in merged_indices if i[0][1] == 0]
-      freq = [i[1] for i in merged_indices if i[0][1] == 0]
+      x = [i[0] for i in hkl]
+      y = [i[2] for i in hkl]
       self.hkl_axes.set_xlabel('h', weight='bold')
       self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     elif self.hkl_view_axis == 'h':
-      slice = [(i[0][1], i[0][2]) for i in merged_indices if i[0][0] == 0]
-      freq = [i[1] for i in merged_indices if i[0][0] == 0]
+      x = [i[1] for i in hkl]
+      y = [i[2] for i in hkl]
       self.hkl_axes.set_xlabel('k', weight='bold')
       self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
     else:
       # if for some reason this goes to plotting without any indices
-      slice = zip(np.zeros(500), np.zeros(500))
+      x = np.zeros(500)
+      y = np.zeros(500)
       freq = np.zeros(500)
-
-    # if self.hkl_view_axis == 'l':
-    #   slice = [(i[0], i[1]) for i in sym_indices if i[2] == 0]
-    #   self.hkl_axes.set_xlabel('h', weight='bold')
-    #   self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
-    # elif self.hkl_view_axis == 'k':
-    #   slice = [(i[0], i[2]) for i in sym_indices if i[1] == 0]
-    #   self.hkl_axes.set_xlabel('h', weight='bold')
-    #   self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-    # elif self.hkl_view_axis == 'h':
-    #   slice = [(i[1], i[2]) for i in sym_indices if i[0] == 0]
-    #   self.hkl_axes.set_xlabel('k', weight='bold')
-    #   self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-    # else:
-    #   # if for some reason this goes to plotting without any indices
-    #   slice = zip(np.zeros(500), np.zeros(500))
-    #   freq = np.zeros(500)
-
-    x = np.array([h[0] for h in slice])
-    y = np.array([h[1] for h in slice])
 
     # Format plot
     hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=1)
@@ -1706,8 +1706,6 @@ class ProcWindow(wx.Frame):
     self.read_object_files = []
     self.new_images = []
     self.indices = []
-    self.observations = []
-    self.obs_sigmas = []
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -2197,6 +2195,7 @@ class ProcWindow(wx.Frame):
           self.chart_tab.spacegroup = 'P1'
 
       self.chart_tab.indices = self.indices
+      self.indices = []
       self.chart_tab.draw_plots()
       self.chart_tab.draw_summary()
 
@@ -2240,6 +2239,7 @@ class ProcWindow(wx.Frame):
       return None
 
   def populate_data_points(self, objects=None):
+    self.indices = []
     if objects is not None:
       for obj in objects:
         try:
@@ -2250,6 +2250,7 @@ class ProcWindow(wx.Frame):
         except Exception, e:
           print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
           pass
+
 
   def onTimer(self, e):
     if self.abort_initiated:
