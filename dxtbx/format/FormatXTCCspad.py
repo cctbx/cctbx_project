@@ -49,7 +49,7 @@ class FormatXTCCspad(FormatXTC):
     import numpy as np
     assert len(self._src) == 1
     det = psana.Detector(self._src[0], self._env)
-    d = self.get_detector(index)
+    d = FormatXTCCspad.get_detector(self, index)
     data = cspad_cbf_tbx.get_psana_corrected_data(det, self._get_event(index),
                                                   use_default=False,
                                                   dark=self.params.cspad.dark_correction,
@@ -73,7 +73,7 @@ class FormatXTCCspad(FormatXTC):
 
 
   def get_detector(self, index=None):
-    return self._detector(index)
+    return FormatXTCCspad._detector(self, index)
 
   def get_beam(self, index=None):
     return self._beam(index)

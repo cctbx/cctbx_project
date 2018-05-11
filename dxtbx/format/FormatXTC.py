@@ -127,6 +127,8 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
     """ Read the timestamps from the XTC stream.  Assumes the psana idx mode of reading data.
         Handles multiple LCLS runs by concatenating the timestamps from multiple runs together
         in a single list and creating a mapping. """
+    if hasattr(self, 'times') and len(self.times) > 0: return
+
     self.times = []
     self.run_mapping = {}
     for run in self._ds.runs():
