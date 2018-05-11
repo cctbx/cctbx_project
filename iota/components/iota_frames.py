@@ -38,7 +38,7 @@ from cctbx.array_family import flex
 
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_analysis import Analyzer, Plotter
-from iota.components.iota_misc import WxFlags, noneset, Capturing
+from iota.components.iota_misc import WxFlags, noneset
 import iota.components.iota_controls as ct
 import iota.components.iota_threads as thr
 import iota.components.iota_dialogs as dlg
