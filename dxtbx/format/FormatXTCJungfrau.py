@@ -37,8 +37,8 @@ class FormatXTCJungfrau(FormatXTC):
   def understand(image_file):
     try:
       if FormatXTC._src is None:
-        FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
-      if 'jungfrau' in FormatXTC._src.lower():
+        FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
+      if any(['jungfrau' in src.lower() for src in FormatXTC._src]):
         return True
       return False
     except Exception:
@@ -51,7 +51,8 @@ class FormatXTCJungfrau(FormatXTC):
     evt = self._get_event(index)
     run = self.get_run_from_index(index)
     if run.run() not in self._cached_psana_detectors:
-      self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
+      assert len(self._src) == 1
+      self._cached_psana_detectors[run.run()] = psana.Detector(self._src[0], self._env)
     det = self._cached_psana_detectors[run.run()]
     data = det.calib(evt)
     data = data.astype(np.float64)
@@ -98,7 +99,8 @@ class FormatXTCJungfrau(FormatXTC):
     from scitbx.matrix import col
     if index is None: index = 0
     self._env = self._ds.env()
-    self._det = psana.Detector(self._src,self._env)
+    assert len(self._src) == 1
+    self._det = psana.Detector(self._src[0],self._env)
     geom=self._det.pyda.geoaccess(self._get_event(index))
     pixel_size = self._det.pixel_size(self._get_event(index))/1000.0 # convert to mm
     d = Detector()
@@ -191,7 +193,8 @@ class FormatXTCJungfrauMonolithic(FormatXTCJungfrau):
     evt = self._get_event(index)
     run = self.get_run_from_index(index)
     if run.run() not in self._cached_psana_detectors:
-      self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
+      assert len(self._src) == 1
+      self._cached_psana_detectors[run.run()] = psana.Detector(self._src[0], self._env)
     det = self._cached_psana_detectors[run.run()]
     data = det.image(evt)
     data = data.astype(np.float64)

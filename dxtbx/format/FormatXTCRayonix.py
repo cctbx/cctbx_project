@@ -34,8 +34,8 @@ class FormatXTCRayonix(FormatXTC):
     import psana
     try:
       if FormatXTC._src is None:
-        FormatXTC._src = names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]
-      if 'rayonix' in FormatXTC._src.lower():
+        FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
+      if any(['rayonix' in src.lower() for src in FormatXTC._src]):
         return True
       return False
     except Exception:
@@ -44,8 +44,9 @@ class FormatXTCRayonix(FormatXTC):
   def get_raw_data(self,index):
     import psana
     from scitbx.array_family import flex
-    det = psana.Detector(self._src, self._env)
-    data = rayonix_tbx.get_data_from_psana_event(self._get_event(index), self._src)
+    assert len(self._src) == 1
+    det = psana.Detector(self._src[0], self._env)
+    data = rayonix_tbx.get_data_from_psana_event(self._get_event(index), self._src[0])
     return flex.double(data)
 
   def get_num_images(self):
