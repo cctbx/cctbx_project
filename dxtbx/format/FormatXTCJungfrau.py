@@ -195,16 +195,12 @@ class FormatXTCJungfrauMonolithic(FormatXTCJungfrau):
     if run.run() not in self._cached_psana_detectors:
       self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
     det = self._cached_psana_detectors[run.run()]
-    import pdb; pdb.set_trace()
     data = det.image(evt)
     data = data.astype(np.float64)
     self._raw_data = flex.double(data)
     return self._raw_data
 
   def _detector(self, index=None):
-    import psana
-    from dxtbx.model import Detector
-    from scitbx.matrix import col
     if index is None: index = 0
     return self._detector_factory.simple(
       sensor = 'UNKNOWN',
