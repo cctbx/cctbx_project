@@ -54,7 +54,9 @@ class FormatXTCJungfrau(FormatXTC):
       self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
     det = self._cached_psana_detectors[run.run()]
     data = det.calib(evt)
+    #from IPython import embed; embed(); exit()
     data = data.astype(np.float64)
+    #data = data[::-1, ::-1,:] # PSANA readout is opposite in both quadrants for the slow axis.
     self._raw_data = []
     for quad_count, quad in enumerate(d.hierarchy()):
       for asic_count,asic in enumerate(quad):
@@ -106,30 +108,38 @@ class FormatXTCJungfrau(FormatXTC):
     # first deal with D0
     det_num = 0
     D0= geom.get_top_geo().get_list_of_children()[0]
-    yy,xx,zz = D0.get_pixel_coords() # weird convention by psana for this level
+    xx,yy,zz = D0.get_pixel_coords()
     xx = xx/1000.0 # to mm
     yy = yy/1000.0 # to mm
     zz = zz/1000.0 # to mm
     oriD0 = col((np.mean(xx),np.mean(yy), -np.mean(zz)))
+    fp = col((xx[0][0][1],yy[0][0][1], zz[0][0][1]))
+    sp = col((xx[0][1][0], yy[0][1][0], zz[0][1][0]))
+    op = col((xx[0][0][0], yy[0][0][0], zz[0][0][0]))
     origin = oriD0
-    fast   = col((1,0,0))
-    slow   = col((0,-1,0))
+    fast   = (fp-op).normalize()
+    slow   = (sp-op).normalize()
     pg0.set_local_frame(fast.elems,slow.elems,origin.elems)
     pg0.set_name('D%d'%(det_num))
+
+    # Now deal with Qx
     for quad_num in xrange(2):
-      # Now deal with Qx
       pg1 = pg0.add_group()
       Qx = D0.get_list_of_children()[quad_num]
       xx,yy,zz = Qx.get_pixel_coords()
       xx = xx/1000.0 # to mm
       yy = yy/1000.0 # to mm
       zz = zz/1000.0 # to mm
-      oriQx = col((np.mean(xx), np.mean(yy), np.mean(zz) + oriD0[2])) # psana returns 0 for zz
-      origin = oriQx - oriD0
-      fast   = col((1,0,0))
-      slow   = col((0,-1,0))
+      oriQx = col((np.mean(xx), np.mean(yy), np.mean(zz)))
+      fp = col((xx[0][1],yy[0][1], zz[0][1]))
+      sp = col((xx[1][0], yy[1][0], zz[1][0]))
+      op = col((xx[0][0], yy[0][0], zz[0][0]))
+      origin = oriQx
+      fast   = (fp-op).normalize()
+      slow   = (sp-op).normalize()
       pg1.set_local_frame(fast.elems,slow.elems,origin.elems)
       pg1.set_name('D%dQ%d'%(det_num, quad_num))
+
       # Now deal with Az
       for asic_num in xrange(8):
         val = 'ARRAY_D0Q%dA%d'%(quad_num,asic_num)
@@ -138,11 +148,11 @@ class FormatXTCJungfrau(FormatXTC):
         dim_fast = xx.shape[1]
         sensor_id = asic_num //4 # There are 2X4 asics per quadrant
         asic_in_sensor_id = asic_num%4 # this number will be 0,1,2 or 3
-        id_slow = int(dim_slow/(sensor_id+1))-1
+        id_slow = sensor_id*(dim_slow//2)
         id_fast = asic_in_sensor_id*(dim_fast//4)
-        oriAy = col((xx[id_slow][id_fast],yy[id_slow][id_fast], zz[id_slow][id_fast] + oriD0[2]))  # psana returns 0 for zz
-        fp = col((xx[id_slow][id_fast+1],yy[id_slow][id_fast+1], zz[id_slow][id_fast+1]+oriD0[2])) # psana returns 0 for zz
-        sp = col((xx[id_slow-1][id_fast],yy[id_slow-1][id_fast], zz[id_slow-1][id_fast]+oriD0[2])) # psana returns 0 for zz
+        oriAy = col((xx[id_slow][id_fast],yy[id_slow][id_fast], zz[id_slow][id_fast]))
+        fp = col((xx[id_slow][id_fast+1],yy[id_slow][id_fast+1], zz[id_slow][id_fast+1]))
+        sp = col((xx[id_slow+1][id_fast],yy[id_slow+1][id_fast], zz[id_slow+1][id_fast]))
         origin = oriAy - oriQx
         fast   = (fp - oriAy).normalize()
         slow   = (sp - oriAy).normalize()
@@ -185,6 +195,7 @@ class FormatXTCJungfrauMonolithic(FormatXTCJungfrau):
     if run.run() not in self._cached_psana_detectors:
       self._cached_psana_detectors[run.run()] = psana.Detector(self._src, self._env)
     det = self._cached_psana_detectors[run.run()]
+    import pdb; pdb.set_trace()
     data = det.image(evt)
     data = data.astype(np.float64)
     self._raw_data = flex.double(data)
