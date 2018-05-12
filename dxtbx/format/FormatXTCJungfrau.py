@@ -201,6 +201,9 @@ class FormatXTCJungfrauMonolithic(FormatXTCJungfrau):
     self._raw_data = flex.double(data)
     return self._raw_data
 
+  def get_detector(self, index=None):
+    return self._detector(index)
+
   def _detector(self, index=None):
     if index is None: index = 0
     return self._detector_factory.simple(
