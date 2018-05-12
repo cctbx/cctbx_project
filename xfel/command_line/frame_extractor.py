@@ -35,7 +35,10 @@ phil_scope = iotbx.phil.parse("""
 
 class ConstructFrame(object):
   def get_template_pickle(self):
-    return {'current_cb_op_to_primitive': 0,
+    return {
+                       'beam_s0': 0,
+                       'beam_polarization_normal': 0,
+                       'current_cb_op_to_primitive': 0,
                        'current_orientation':0,
                        'distance':0,
                        'effective_tiling':0,
@@ -50,6 +53,7 @@ class ConstructFrame(object):
                        'pointgroup':0,
                        'residual':0,
                        'sa_parameters':['None'],
+                       's1_vec':[0],
                        'wavelength':0,
                        'xbeam':0,
                        'ybeam':0}
@@ -78,6 +82,8 @@ class ConstructFrame(object):
   def populate_wavelength(self):
     assert self.beam_obj.get_wavelength() is not None, "no wavelength"
     self.frame['wavelength'] = self.beam_obj.get_wavelength()
+    self.frame['beam_s0'] = self.beam_obj.get_s0()
+    self.frame['beam_polarization_normal'] = self.beam_obj.get_polarization_normal()
 
   # get detector distance in mm
   def populate_distance(self):
@@ -151,6 +157,7 @@ class ConstructFrame(object):
     space_group = crystal.symmetry(self.xtal.get_unit_cell(), str(self.xtal.get_space_group().info()))
     miller_set = miller.set(space_group, self.reflections['miller_index'])
     self.frame['observations'][0] = cctbx.miller.array(miller_set, intensities, flex.sqrt(variances)).set_observation_type_xray_intensity()
+    self.frame['s1_vec'][0] = self.reflections['s1']
 
   # collect predicted spot positions
   def populate_pixel_positions(self):

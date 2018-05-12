@@ -523,26 +523,48 @@ def load_result (file_name,
   print >> out, sg_info
   print >> out, unit_cell
 
-  #Check for pixel size (at this point we are assuming we have square pixels, all experiments described in one
-  #refined_experiments.json file use the same detector, and all panels on the detector have the same pixel size)
+  if obj.get('beam_s0',None) is not None:
+    # Remove the need for pixel size within cxi.merge.  Allows multipanel detector with dissimilar panels.
+    # Relies on new frame extractor code called by dials.stills_process that writes s0, s1 and polarization normal
+    # vectors all to the integration pickle.  Future path: use dials json and reflection file.
+    s0_vec = matrix.col(obj["beam_s0"]).normalize()
+    s0_polar_norm = obj["beam_polarization_normal"]
+    s1_vec = obj["s1_vec"][0]
+    Ns1 = len(s1_vec)
+    # project the s1_vector onto the plane normal to s0.  Get result by subtracting the
+    # projection of s1 onto s0, which is (s1.dot.s0_norm)s0_norm
+    s0_norm = flex.vec3_double(Ns1,s0_vec)
+    s1_proj = (s1_vec.dot(s0_norm))*s0_norm
+    s1_in_normal_plane = s1_vec - s1_proj
+    # Now want the polar angle between the projected s1 and the polarization normal
+    s0_polar_norms = flex.vec3_double(Ns1,s0_polar_norm)
+    dotprod = (s1_in_normal_plane.dot(s0_polar_norms))
+    costheta = dotprod/(s1_in_normal_plane.norms())
+    theta = flex.acos(costheta)
+    prospective = flex.cos(2.0*theta)
+    obj["cos_two_polar_angle"] = prospective
+    # gives same as old answer to ~1% but not exact.  Not sure why, should not matter.
 
-  if params.pixel_size is not None:
-    pixel_size = params.pixel_size
-  elif "pixel_size" in obj:
-    pixel_size = obj["pixel_size"]
   else:
-    raise Sorry("Cannot find pixel size. Specify appropriate pixel size in mm for your detector in phil file.")
+    #Check for pixel size (at this point we are assuming we have square pixels, all experiments described in one
+    #refined_experiments.json file use the same detector, and all panels on the detector have the same pixel size)
+    if params.pixel_size is not None:
+      pixel_size = params.pixel_size
+    elif "pixel_size" in obj:
+      pixel_size = obj["pixel_size"]
+    else:
+      raise Sorry("Cannot find pixel size. Specify appropriate pixel size in mm for your detector in phil file.")
 
-  #Calculate displacements based on pixel size
-  assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
-  mm_predictions = pixel_size*(obj['mapped_predictions'][0])
-  mm_displacements = flex.vec3_double()
-  cos_two_polar_angle = flex.double()
-  for pred in mm_predictions:
-    mm_displacements.append((pred[0]-obj["xbeam"],pred[1]-obj["ybeam"],0.0))
-    cos_two_polar_angle.append( math.cos( 2. * math.atan2(pred[1]-obj["ybeam"],pred[0]-obj["xbeam"]) ) )
-  obj["cos_two_polar_angle"] = cos_two_polar_angle
-  #then convert to polar angle and compute polarization correction
+    #Calculate displacements based on pixel size
+    assert obj['mapped_predictions'][0].size() == obj["observations"][0].size()
+    mm_predictions = pixel_size*(obj['mapped_predictions'][0])
+    mm_displacements = flex.vec3_double()
+    cos_two_polar_angle = flex.double()
+    for pred in mm_predictions:
+      mm_displacements.append((pred[0]-obj["xbeam"],pred[1]-obj["ybeam"],0.0))
+      cos_two_polar_angle.append( math.cos( 2. * math.atan2(pred[1]-obj["ybeam"],pred[0]-obj["xbeam"]) ) )
+    obj["cos_two_polar_angle"] = cos_two_polar_angle
+    #then convert to polar angle and compute polarization correction
 
   if (not bravais_lattice(sg_info.type().number()) == ref_bravais_type) :
     raise WrongBravaisError("Skipping cell in different Bravais type (%s)" %
