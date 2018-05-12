@@ -77,12 +77,13 @@ class Script(object):
           infos.append(get_info(experiment))
         info_list.append(infos)
     else:
-      experiments_tags = [""]
-      infos = []
+      experiments_tags = [str(i) for i in xrange(len(experiments_list))]
+      info_list = []
       for experiments in experiments_list:
+        infos = []
         for experiment in experiments:
           infos.append(get_info(experiment))
-      info_list = [infos]
+        info_list.append(infos)
     import xfel.ui.components.xfel_gui_plotter as pltr
     plotter = pltr.PopUpCharts()
     plotter.plot_uc_histogram(
