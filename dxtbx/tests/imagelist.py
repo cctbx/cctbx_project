@@ -20,7 +20,7 @@ smv_images = [
     "image_examples/APS_17ID/q210_1_001.img",
     "image_examples/saturn/lyso_00001.img",
 ]
-smv_image_ids = map(id_conversion, smv_images)
+smv_image_ids = list(map(id_conversion, smv_images))
 
 tiff_images = [
     "image_examples/SPring8_BL32XU_MX225HS/ds_000045.img",
@@ -39,7 +39,7 @@ tiff_images = [
     "image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000001.img",
     "image_examples/SPring8_BL26B2_MX225/2sec_Al200um_000090.img",
 ]
-tiff_image_ids = map(id_conversion, tiff_images)
+tiff_image_ids = list(map(id_conversion, tiff_images))
 
 cbf_images = [
     "image_examples/ESRF_ID29/trypsin_1_0001.cbf",
@@ -73,16 +73,16 @@ cbf_images = [
     "image_examples/DLS_I19/I19_P300k_00001.cbf",
     "image_examples/ED_From_TIFF/170112330001.cbf",
 ]
-cbf_image_ids = map(id_conversion, cbf_images)
+cbf_image_ids = list(map(id_conversion, cbf_images))
 
 cbf_multitile_images = [
     "stills_test_data/hit-20111202210224984.cbf",
     "stills_test_data/hit-s00-20140306002935980.cbf",
     "stills_test_data/hit-s00-20140306002857363.cbf",
 ]
-cbf_multitile_image_ids = map(id_conversion, cbf_multitile_images)
+cbf_multitile_image_ids = list(map(id_conversion, cbf_multitile_images))
 
 hdf5_images = [
     "image_examples/putative_imgCIF_HDF5_mapping/minicbf.h5",
 ]
-hdf5_image_ids = map(id_conversion, hdf5_images)
+hdf5_image_ids = list(map(id_conversion, hdf5_images))
