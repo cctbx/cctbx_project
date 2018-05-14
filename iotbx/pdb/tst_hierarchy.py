@@ -6947,6 +6947,55 @@ END
     crystal_symmetry=cs)
   assert removed == []
 
+def exercise_occupancy_counts():
+  pdb_inp = pdb.input(source_info=None, lines="""\
+ATOM      0  N   THR A   2      -3.791  -8.769  29.092  1.20 24.15           N
+ATOM      1  CA  THR A   2      -3.627  -7.675  28.090  1.00 25.97           C
+ATOM      2  C   THR A   2      -2.202  -7.127  28.152  0.00 24.18           C
+ATOM      3  O   THR A   2      -1.633  -6.984  29.233  1.00 24.71           O
+ATOM      4  CB  THR A   2      -4.627  -6.527  28.357  1.00 26.50           C
+ATOM      5  OG1 THR A   2      -5.961  -7.056  28.404 -1.00 28.79           O
+ATOM      6  CG2 THR A   2      -4.548  -5.486  27.255 -0.50 27.05           C
+ATOM      7  N   LYS A   3      -1.629  -6.832  26.988  1.00 24.44           N
+ATOM      8  C   LYS A   3      -0.196  -4.896  27.485  0.00 23.66           C
+ATOM      9  O   LYS A   3      -1.094  -4.084  27.265  1.00 23.75           O
+ATOM     10  CB  LYS A   3       0.199  -6.262  25.438  1.00 26.61           C
+ATOM     11  CA ALYS A   3      -0.266  -6.307  26.901  1.00 25.16           C
+ATOM     12  CG ALYS A   3       0.312  -7.619  24.754  0.50 27.88           C
+ATOM     13  CD ALYS A   3       1.436  -8.454  25.347  0.50 27.58           C
+ATOM     14  CE ALYS A   3       1.585  -9.783  24.621  0.50 28.69           C
+ATOM     15  NZ ALYS A   3       0.362 -10.624  24.732  0.50 28.63           N
+ATOM     16  CA BLYS A   3      -0.266  -6.307  26.901  1.00 25.16           C
+ATOM     17  CG BLYS A   3       0.201  -7.603  24.718  0.50 27.66           C
+ATOM     18  CD BLYS A   3       1.205  -8.570  25.325  0.50 27.30           C
+ATOM     19  CE BLYS A   3       1.213  -9.893  24.575  0.50 28.17           C
+ATOM     20  NZ BLYS A   3       2.149 -10.873  25.188  0.50 27.40           N
+ATOM     21  N   LYS A   4       0.873  -4.612  28.225  1.00 22.24           N
+ATOM     22  CA  LYS A   4       1.068  -3.295  28.826  1.00 21.81           C
+ATOM     23  C   LYS A   4       2.337  -2.642  28.295  1.00 19.26           C
+ATOM     24  O   LYS A   4       3.417  -3.243  28.310  0.00 18.66           O
+ATOM     25  CB  LYS A   4       1.156  -3.398  30.354  1.00 23.29           C
+ATOM     26  CG  LYS A   4      -0.170  -3.685  31.031  1.00 27.60           C
+ATOM     27  CD  LYS A   4      -0.049  -3.681  32.551  1.00 32.16           C
+ATOM     28  CE  LYS A   4       0.797  -4.842  33.052  0.40 33.04           C
+ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.10 36.05           N
+""")
+  ph = pdb_inp.construct_hierarchy()
+  oc = ph.occupancy_counts()
+
+  eps = 1.e-6
+  assert (approx_equal(oc.mean, 0.64, eps=eps))
+  assert (approx_equal(oc.negative, 2, eps=eps))
+  assert (approx_equal(oc.zero_count, 3, eps=eps))
+  assert (approx_equal(oc.zero_fraction, 10, eps=eps))
+  assert (approx_equal(oc.equal_to_1_count, 14, eps=eps))
+  assert (approx_equal(oc.equal_to_1_fraction, 14*100/30, eps=eps))
+  assert (approx_equal(oc.between_0_and_1_count, 9, eps=eps))
+  assert (approx_equal(oc.between_0_and_1_fraction, 30, eps=eps))
+  assert (approx_equal(oc.greater_than_1_count, 2, eps=eps))
+  assert (approx_equal(oc.greater_than_1_fraction, 2*100/30, eps=eps))
+  assert (approx_equal(oc.alt_conf_frac, 100/3, eps=eps))
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -7015,6 +7064,7 @@ def exercise(args):
     # exercise_is_pure_main_conf()
     exercise_selection_and_deep_copy()
     exercise_is_ca_only()
+    exercise_occupancy_counts()
     if (not forever): break
   print format_cpu_times()
 

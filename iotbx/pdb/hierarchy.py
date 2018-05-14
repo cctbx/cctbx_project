@@ -454,6 +454,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     negative = (occ<0).count(True)
     zero_count = (flex.abs(occ)<eps).count(True)
     zero_fraction = zero_count*100./occ.size()
+    equal_to_1_count = ((occ>(1.-eps)) & (occ<(1.+eps))).count(True)
+    equal_to_1_fraction = equal_to_1_count*100/occ.size()
+    between_0_and_1_count = ((occ>(0.+eps)) & (occ<(1.-eps))).count(True)
+    between_0_and_1_fraction = between_0_and_1_count*100/occ.size()
     greater_than_1_count = (occ>(1.+eps)).count(True)
     greater_than_1_fraction = greater_than_1_count*100./occ.size()
     number_of_residues = len(list(self.residue_groups()))
@@ -465,14 +469,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
         number_of_alt_confs += 1
         alt_loc_dist[n_confs] += 1
     return group_args(
-      mean                    = mean,
-      negative                = negative,
-      zero_count              = zero_count,
-      zero_fraction           = zero_fraction,
-      greater_than_1_count    = greater_than_1_count,
-      greater_than_1_fraction = greater_than_1_fraction,
-      alt_conf_frac           = number_of_alt_confs*100/number_of_residues,
-      alt_loc_dist            = alt_loc_dist)
+      mean                     = mean,
+      negative                 = negative,
+      zero_count               = zero_count,
+      zero_fraction            = zero_fraction,
+      equal_to_1_count         = equal_to_1_count,
+      equal_to_1_fraction      = equal_to_1_fraction,
+      between_0_and_1_count    = between_0_and_1_count,
+      between_0_and_1_fraction = between_0_and_1_fraction,
+      greater_than_1_count     = greater_than_1_count,
+      greater_than_1_fraction  = greater_than_1_fraction,
+      alt_conf_frac            = number_of_alt_confs*100/number_of_residues,
+      alt_loc_dist             = alt_loc_dist)
 
   def composition(self):
     asc = self.atom_selection_cache()
