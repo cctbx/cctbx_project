@@ -46,8 +46,14 @@ class FormatSMVADSCSN905(FormatSMVADSCSN):
     provided in the Mosflm coordinate frame.'''
 
     distance = float(self._header_dictionary['DISTANCE'])
-    beam_x = float(self._header_dictionary['DENZO_XBEAM'])
-    beam_y = float(self._header_dictionary['DENZO_YBEAM'])
+    if "DENZO_XBEAM" in self._header_dictionary: # Beamline group changed key=value tags several times
+      beam_x = float(self._header_dictionary['DENZO_XBEAM'])
+      beam_y = float(self._header_dictionary['DENZO_YBEAM'])
+    elif "DENZO_BEAM_CENTER_X" in self._header_dictionary:
+      beam_x = float(self._header_dictionary['DENZO_BEAM_CENTER_X'])
+      beam_y = float(self._header_dictionary['DENZO_BEAM_CENTER_Y'])
+    else:
+      raise Exception("cannot find beam center for detector S/N 905")
     pixel_size = float(self._header_dictionary['PIXEL_SIZE'])
     image_size = (float(self._header_dictionary['SIZE1']),
                   float(self._header_dictionary['SIZE2']))
