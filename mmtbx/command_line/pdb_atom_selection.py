@@ -68,7 +68,9 @@ def run(args):
   print('='*79, file=logger)
 
   task = atom_selection.Program(
-    parser.data_manager, parser.working_phil.extract(), logger=logger)
+      parser.data_manager, parser.working_phil.extract(),
+      master_phil=parser.master_phil,
+      logger=logger)
 
   # validate inputs
   task.validate()
