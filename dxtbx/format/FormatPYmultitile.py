@@ -11,7 +11,7 @@ class FormatPYmultitile(FormatPY):
   @staticmethod
   def understand(image_file):
     try:
-      import cPickle as pickle
+      import six.moves.cPickle as pickle
       stream = FormatPYmultitile.open_file(image_file, 'rb')
       data = pickle.load(stream)
     except IOError:

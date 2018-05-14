@@ -36,7 +36,7 @@ def read_smv_image(image_file):
   header_size, header_dictionary = get_smv_header(image_file)
 
   with open(image_file, 'rb') as f:
-    f.read(header_size)
+    f.seek(header_size)
 
     if header_dictionary['BYTE_ORDER'] == 'big_endian':
       big_endian = True
@@ -75,9 +75,9 @@ def read_tiff_image(image_file):
   image_size = (width, height)
   header_size = 4096
 
-  f = open(image_file)
-  f.read(header_size)
-  raw_data = read_uint16(streambuf(f), int(image_size[0] * image_size[1]))
+  with open(image_file, 'rb') as fh:
+    fh.seek(header_size)
+    raw_data = read_uint16(streambuf(fh), int(image_size[0] * image_size[1]))
   raw_data.reshape(flex.grid(image_size[1], image_size[0]))
 
   return raw_data

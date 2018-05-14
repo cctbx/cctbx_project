@@ -122,7 +122,7 @@ class ExperimentListDict(object):
     ''' Helper function. Extract the experiments. '''
     from dxtbx.imageset import ImageSweep, ImageSet, ImageGrid
     from dxtbx.serialize.filename import load_path
-    import cPickle as pickle
+    import six.moves.cPickle as pickle
     from dxtbx.format.image import ImageBool, ImageDouble
 
     # Map of imageset/scan pairs
@@ -157,7 +157,8 @@ class ExperimentListDict(object):
           if 'mask' in imageset and imageset['mask'] is not None:
             mask_filename = load_path(imageset['mask'], directory=self._directory)
             if self._check_format and mask_filename is not "":
-              mask = pickle.load(open(mask_filename))
+              with open(mask_filename, 'rb') as fh:
+                mask = pickle.load(fh)
             else:
               mask = None
           else:
@@ -166,7 +167,8 @@ class ExperimentListDict(object):
           if 'gain' in imageset and imageset['gain'] is not None:
             gain_filename = load_path(imageset['gain'], directory=self._directory)
             if self._check_format and gain_filename is not "":
-              gain = pickle.load(open(gain_filename))
+              with open(gain_filename, 'rb') as fh:
+                gain = pickle.load(fh)
             else:
               gain = None
           else:
@@ -175,7 +177,8 @@ class ExperimentListDict(object):
           if 'pedestal' in imageset and imageset['pedestal'] is not None:
             pedestal_filename = load_path(imageset['pedestal'], directory=self._directory)
             if self._check_format and pedestal_filename is not "":
-              pedestal = pickle.load(open(pedestal_filename))
+              with open(pedestal_filename, 'rb') as fh:
+                pedestal = pickle.load(fh)
             else:
               pedestal = None
           else:
@@ -184,7 +187,8 @@ class ExperimentListDict(object):
           if 'dx' in imageset and imageset['dx'] is not None:
             dx_filename = load_path(imageset['dx'], directory=self._directory)
             if dx_filename is not "":
-              dx = pickle.load(open(dx_filename))
+              with open(dx_filename, 'rb') as fh:
+                dx = pickle.load(fh)
             else:
               dx = None
           else:
@@ -193,7 +197,8 @@ class ExperimentListDict(object):
           if 'dy' in imageset and imageset['dy'] is not None:
             dy_filename = load_path(imageset['dy'], directory=self._directory)
             if dy_filename is not "":
-              dy = pickle.load(open(dy_filename))
+              with open(dy_filename, 'rb') as fh:
+                dy = pickle.load(fh)
             else:
               dy = None
           else:
@@ -517,14 +522,14 @@ class ExperimentListDumper(object):
 
   def as_pickle(self, filename=None, **kwargs):
     ''' Dump experiment list as pickle. '''
-    import cPickle as pickle
+    import six.moves.cPickle as pickle
 
     # Get the pickle string
     text = pickle.dumps(self._experiment_list,
       protocol=pickle.HIGHEST_PROTOCOL)
 
     # Write the file
-    if filename is not None:
+    if filename:
       with open(filename, 'wb') as outfile:
         outfile.write(text)
     else:
@@ -697,11 +702,11 @@ class ExperimentListFactory(object):
   @staticmethod
   def from_pickle_file(filename):
     ''' Decode an experiment list from a pickle file. '''
-    import cPickle as pickle
+    import six.moves.cPickle as pickle
     with open(filename, 'rb') as infile:
       obj = pickle.load(infile)
-      assert(isinstance(obj, ExperimentList))
-      return obj
+    assert isinstance(obj, ExperimentList)
+    return obj
 
   @staticmethod
   def from_xds(xds_inp, xds_other):

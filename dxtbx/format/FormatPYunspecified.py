@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division
 
+import os
+
 from dxtbx.format.FormatPY import FormatPY
 
 class FormatPYunspecified(FormatPY):
@@ -12,7 +14,7 @@ class FormatPYunspecified(FormatPY):
     _start() method and again in the detectorbase constructor."""
     try:
       stream = FormatPYunspecified.open_file(image_file, 'rb')
-      import cPickle as pickle
+      import six.moves.cPickle as pickle
       data = pickle.load(stream)
     except IOError:
       return False
@@ -36,11 +38,10 @@ class FormatPYunspecified(FormatPY):
 
   def detectorbase_start(self): pass
   def _start(self):
-    import os
     if isinstance(self._image_file, basestring) and os.path.isfile(self._image_file):
       stream = FormatPYunspecified.open_file(self._image_file, 'rb')
 
-      import cPickle as pickle
+      import six.moves.cPickle as pickle
       data = pickle.load(stream)
     else:
       data = self._image_file
@@ -63,7 +64,7 @@ class FormatPYunspecified(FormatPY):
 
     from spotfinder.applications.xfel import cxi_phil
     from iotbx.detectors.npy import NpyImage
-    import os,copy
+    import copy
 
     is_file = isinstance(self._image_file, basestring) and os.path.isfile(self._image_file)
 
