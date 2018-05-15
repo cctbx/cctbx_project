@@ -41,7 +41,7 @@
 # Any further access attempts will then result in an exception.
 
 from __future__ import absolute_import, division, print_function
-from cStringIO import StringIO
+import io
 import os
 from threading import Lock
 
@@ -55,7 +55,7 @@ class lazy_file_cache():
 
     # Size of a block to read. This should not be smaller than 4k, which is the
     # default block size on many systems.
-    self._page_size = 4096
+    self._page_size = max(4096, io.DEFAULT_BUFFER_SIZE)
 
     # Reference to the underlying file object. When no further information can
     # be gained from the file (ie. it has been read once completely), it may
@@ -64,8 +64,8 @@ class lazy_file_cache():
     self._file = file_object
     self._file_lock = Lock()
 
-    # StringIO object containing cached information
-    self._cache_object = StringIO()
+    # BytesIO object containing cached information
+    self._cache_object = io.BytesIO()
     self._cache_size = 0
     self._cache_limit = 4 * 1024 * 1024
     self._cache_limit_reached = False
