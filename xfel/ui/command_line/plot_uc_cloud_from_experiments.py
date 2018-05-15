@@ -27,6 +27,10 @@ phil_str = """
   title = None
     .type = str
     .help = Title for the plot
+  write_gnuplot_cloud = False
+    .type = bool
+    .help = If True, write a list of cells such that gnuplot can read them. Start gnuplot then use \
+            splot "uccloud.dat".
 """
 phil_scope = parse(phil_str)
 
@@ -57,6 +61,10 @@ class Script(object):
     '''Execute the script.'''
     # Parse the command line
     params, options = self.parser.parse_args(show_diff_phil=True)
+
+    if params.write_gnuplot_cloud:
+      gnuplot = open("uccloud.dat", 'w')
+
     def get_info(experiment):
       a, b, c, alpha, beta, gamma = experiment.crystal.get_unit_cell().parameters()
       return {'a':a,
@@ -74,7 +82,10 @@ class Script(object):
       for experiments in experiments_list:
         infos = []
         for experiment in experiments:
-          infos.append(get_info(experiment))
+          info = get_info(experiment)
+          infos.append(info)
+          if params.write_gnuplot_cloud:
+            gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
         info_list.append(infos)
     else:
       experiments_tags = [str(i) for i in xrange(len(experiments_list))]
@@ -82,8 +93,15 @@ class Script(object):
       for experiments in experiments_list:
         infos = []
         for experiment in experiments:
-          infos.append(get_info(experiment))
+          info = get_info(experiment)
+          infos.append(info)
+          if params.write_gnuplot_cloud:
+            gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
         info_list.append(infos)
+
+    if params.write_gnuplot_cloud:
+      gnuplot.close()
+
     import xfel.ui.components.xfel_gui_plotter as pltr
     plotter = pltr.PopUpCharts()
     plotter.plot_uc_histogram(
