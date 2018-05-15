@@ -2909,6 +2909,10 @@ def sites_diff (hierarchy_1,
 #   return hierarchy_new
 # END_MARKED_FOR_DELETION_OLEG
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: Another obsolete function to generate chain ids. Should be swithced
+# to iotbx/pdb/utils.py: all_chain_ids()
+# Only used in as_cif_block()
 def increment_label_asym_id(asym_id):
   from string import ascii_uppercase
   if len(asym_id) == 0:
@@ -2924,6 +2928,7 @@ def increment_label_asym_id(asym_id):
         j = ascii_uppercase.find(asym_id[i])
         asym_id[i] = ascii_uppercase[j+1]
         return "".join(asym_id)
+# END_MARKED_FOR_DELETION_OLEG
 
 def substitute_atom_group(
     current_group,
