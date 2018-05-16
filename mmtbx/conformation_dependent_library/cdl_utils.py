@@ -30,9 +30,10 @@ def get_c_ca_n(atom_group, return_subset=False):
         break
   return tmp, outl
 
-def round_to_int(d, n=10):
+def round_to_int(d, n=10, wrap=True):
   t = int(round((float(d))/int(n)))*int(n)
-  if t==180: return -180
+  if wrap:
+    if t==180: return -180
   return t
 
 def round_to_ten(d):
