@@ -159,6 +159,12 @@ class DataManagerBase(object):
         self.master_phil_str += '%s_files = None\n' % datatype
         self.master_phil_str += '.type = path\n.multiple=True\n'
 
+        # property for wx GUI (will be removed)
+        file_type = any_file_type.get(datatype, None)
+        if (file_type is not None):
+          self.master_phil_str += '.style = file_type:%s input_file\n' % \
+                                            file_type
+
       # default_model = None
       #   .type = path
       self.master_phil_str += 'default_%s = None\n' % datatype

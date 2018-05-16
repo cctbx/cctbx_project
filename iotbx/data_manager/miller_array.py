@@ -110,6 +110,10 @@ class MillerArrayDataManager(DataManagerBase):
     custom_phil_str = '%s\n.multiple = True\n{\n' % datatype
     custom_phil_str += 'file = None\n'
     custom_phil_str += '.type = path\n'
+
+    # property for wx GUI (will be removed)
+    custom_phil_str += '.style = file_type:hkl input_file\n'
+
     custom_phil_str += 'labels = None\n'
     custom_phil_str += '.type = str\n.multiple = True\n'
     custom_phil_str += '}\n'
