@@ -1,7 +1,8 @@
 from __future__ import division, print_function
 from phenix.program_template import ProgramTemplate
-import time, os
+import os
 import libtbx.phil
+from libtbx.utils import Sorry
 from libtbx import easy_pickle
 import mmtbx.ringer.emringer
 
@@ -41,9 +42,6 @@ citation {
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
 include scope mmtbx.ringer.emringer.master_params
-map_coeffs = None
-  .type = path
-  .short_caption = Map coefficients
 map_label = 2FOFCWT,PH2FOFCWT
   .type = str
   .input_size = 200
@@ -71,13 +69,13 @@ Program for calculating the EMRinger score.\n
 
 Minimum required inputs:
   Model file
-  Map file
+  Map file (or file with map coefficients)
 
 How to run:
   phenix.emringer model.pdb map.ccp4
 '''
 
-  datatypes = ['model', 'real_map', 'phil']
+  datatypes = ['model', 'real_map', 'phil', 'map_coefficients']
 
   citations = program_citations
   master_phil_str = master_phil_str
@@ -87,17 +85,31 @@ How to run:
   def validate(self):
     print('Validating inputs', file=self.logger)
     self.data_manager.has_models(raise_sorry=True)
-    #TODO here should be test if map or mtz, one of them, available
-    self.data_manager.has_real_maps(raise_sorry=True)
+    if not (self.data_manager.has_real_maps() or
+        self.data_manager.has_map_coefficients()):
+      raise Sorry("Supply a map file or a file with map coefficients.")
+    elif (self.data_manager.has_real_maps() and
+        self.data_manager.has_map_coefficients()):
+      raise Sorry("Supply either a map file or a file with map coefficients.")
 
   # ---------------------------------------------------------------------------
   def run(self):
-    t0 = time.time()
-    print('Using model: %s' % self.data_manager.get_default_model_name())
-    print('Using map: %s' % self.data_manager.get_default_real_map_name())
+    map_inp = None
+    miller_array = None
 
+    print('Using model: %s' % self.data_manager.get_default_model_name(),
+      file=self.logger)
     model = self.data_manager.get_model()
-    map_inp = self.data_manager.get_real_map()
+
+    if self.data_manager.has_map_coefficients():
+      miller_arrays = self.data_manager.get_miller_arrays()
+      miller_array = self.find_label(miller_arrays = miller_arrays)
+      print('Using miller array: %s' % miller_array.info().label_string(),
+        file=self.logger)
+    elif self.data_manager.has_real_maps():
+      print('Using map: %s' % self.data_manager.get_default_real_map_name(),
+        file=self.logger)
+      map_inp = self.data_manager.get_real_map()
 
     if (self.params.output_base is None) :
       pdb_base = os.path.basename(self.data_manager.get_default_model_name())
@@ -109,12 +121,11 @@ How to run:
         os.makedirs(plots_dir)
 
     task_obj = mmtbx.ringer.emringer.emringer(
-      model      = model,
-      map_coeffs = None,
-      ccp4_map   = map_inp,
-      params     = self.params,
-      out        = self.logger,
-      quiet      = self.params.quiet)
+      model        = model,
+      miller_array = miller_array,
+      ccp4_map     = map_inp,
+      params       = self.params,
+      out          = self.logger)
     task_obj.validate()
     task_obj.run()
     self.results = task_obj.get_results()
@@ -134,6 +145,40 @@ How to run:
     scoring_result.show_summary(out = self.logger)
 
     #rolling_result = self.results.rolling_result
+
+  # Probably it would be good to have central code for this
+  # ---------------------------------------------------------------------------
+  def find_label(self, miller_arrays):
+    best_guess = None
+    best_labels = []
+    all_labels = []
+    miller_array = None
+    for array in miller_arrays:
+      label = array.info().label_string().replace(" ", "")
+      if (self.params.map_label is not None):
+        if (label == self.params.map_label.replace(" ", "")):
+          miller_array = array
+          return miller_array
+      elif (self.params.map_label is None):
+        if (array.is_complex_array()):
+          all_labels.append(label)
+          if (label.startswith("2FOFCWT") or label.startswith("2mFoDFc") or
+              label.startswith("FWT")) :
+            best_guess = array
+            best_labels.append(label)
+    if (miller_array is None):
+      if (len(all_labels) == 0) :
+        raise Sorry("No valid (pre-weighted) map coefficients found in file.")
+      elif (len(best_labels) == 0) :
+        raise Sorry("Couldn't automatically determine appropriate map labels. "+
+          "Choices:\n  %s" % "  \n".join(all_labels))
+      elif (len(best_labels) > 1) :
+        raise Sorry("Multiple appropriate map coefficients found in file. "+
+          "Choices:\n  %s" % "\n  ".join(best_labels))
+      elif (len(best_labels) == 1):
+        miller_array = best_guess
+        print("  Guessing %s for input map coefficients"% best_labels[0], file=self.logger)
+        return miller_array
 
   # ---------------------------------------------------------------------------
   def get_results(self):

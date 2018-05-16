@@ -33,19 +33,18 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 class emringer(object):
-  def __init__(self, model, map_coeffs, ccp4_map, params, out, quiet):
+  def __init__(self, model, miller_array, ccp4_map, params, out):
     self.model      = model
-    self.map_coeffs = map_coeffs
+    self.miller_array = miller_array
     self.ccp4_map   = ccp4_map
     self.params     = params
     self.out        = out
-    self.quiet      = quiet
 
   def validate(self):
     assert not None in [self.model, self.params, self.out]
     if (self.model is None):
       raise Sorry("Model is required.")
-    if (self.map_coeffs is None and self.ccp4_map is None):
+    if (self.miller_array is None and self.ccp4_map is None):
       raise Sorry("Map or map coefficients are required.")
 
   def run(self):
@@ -56,7 +55,7 @@ class emringer(object):
 
     self.ringer_result = iterate_over_residues(
       pdb_hierarchy          = hierarchy,
-      map_coeffs             = self.map_coeffs,
+      map_coeffs             = self.miller_array,
       ccp4_map               = self.ccp4_map,
       crystal_symmetry_model = crystal_symmetry_model,
       params                 = self.params,
@@ -72,7 +71,7 @@ class emringer(object):
       ringer_result  = self.ringer_result,
       out_dir        = plots_dir,
       sampling_angle = self.params.sampling_angle,
-      quiet          = self.quiet,
+      quiet          = self.params.quiet,
       out            = self.out)
 
     rolling_window_threshold = self.params.rolling_window_threshold
@@ -81,7 +80,7 @@ class emringer(object):
       dir_name       = plots_dir,
       threshold      = rolling_window_threshold, #scoring.optimal_threshold,
       graph          = False,
-      save           = not self.quiet,
+      save           = not self.params.quiet,
       out            = self.out)
 
   def get_results(self):
