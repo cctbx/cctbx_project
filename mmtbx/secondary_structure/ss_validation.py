@@ -157,9 +157,9 @@ class validate(object):
       print >> self.log, "No SS annotation, nothing to analyze"
       return
     if n_bad_helices > 0:
-      print >> self.log, "Number of bad helices: %d" % n_bad_helices
+      print >> self.log, "Number of helices with syntax error: %d" % n_bad_helices
     if n_bad_helices > 0:
-      print >> self.log, "Number of bad sheets: %d" % n_bad_sheets
+      print >> self.log, "Number of sheets with syntax error: %d" % n_bad_sheets
     if model.get_number_of_models() != 1 :
       raise Sorry("Multiple models not supported.")
     if not pdb_h.contains_protein():
@@ -272,6 +272,19 @@ class validate(object):
     print >> self.log, "  Total Ramachandran outliers    :", cumm_n_rama_out
     print >> self.log, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
     print >> self.log, "All done."
+    help_string = """\
+  Total bad HELIX+SHEET recods does not include records with syntax errors
+    (they are outputted separately in the beginning of the log),
+    but includes empty records (without corresponding atoms in the model)
+    and records with any deviations in geometry (bad/mediocre bonds,
+    Ramachandran angles are outliers or wrong).
+  Ramachandran outliers - residues in disallowed region of Ramachandran plot.
+  Wrong Ramachandrans - residues in favored and allowed regions of Ramachandran
+    plot, but don't belong to region of annotated secondary structure element.
+    For example, residue annotated as HELIX has phi-psi angles in beta-strand
+    region and vice versa.
+"""
+    print >> self.log, help_string
 
     if self.params.filter_annotation:
       filtered_ann = ss_annot.filter_annotation(hierarchy=pdb_h)
@@ -290,6 +303,8 @@ class validate(object):
       n3                          = n3,
       n4                          = n4,
       n5                          = n5,
+      # Number of helices with syntax error. Specifically, those producing
+      # ValueError on converting the field to a number.
       n_bad_helices               = n_bad_helices,
       n_bad_sheets                = n_bad_sheets)
 
