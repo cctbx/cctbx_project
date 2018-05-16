@@ -1,5 +1,4 @@
 from __future__ import division, print_function
-import sys, time
 import iotbx.phil
 from libtbx import group_args
 from libtbx.utils import Sorry
