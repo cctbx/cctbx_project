@@ -66,7 +66,6 @@ std::cout <<"CPP Here 1b" << std::endl;
       MPI_Comm_size(newcomm, &size);
       MPI_Comm_rank(newcomm, &rank);
 
-
       {
         std::size_t nnz_local = A_values_local.size();
         std::size_t gridSize_local = n_rows_local * n_cols;

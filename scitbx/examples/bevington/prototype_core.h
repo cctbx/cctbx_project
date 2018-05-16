@@ -164,11 +164,11 @@ class linear_ls_eigen_wrapper
       printf("Normal matrix non-zeros   %12ld, %6.2f%%\n",
               long(eigen_normal_matrix.nonZeros()),
               100. * long(eigen_normal_matrix.nonZeros())/double(matsize));
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
-      sparse_matrix_t lower = chol.matrixL();
-      printf("Cholesky factor non-zeros %12ld, %6.2f%%\n",
-              long(lower.nonZeros()),
-              100. * long(lower.nonZeros())/double(matsize));
+      //Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      //sparse_matrix_t lower = chol.matrixL();
+      //printf("Cholesky factor non-zeros %12ld, %6.2f%%\n",
+      //        long(lower.nonZeros()),
+      //        100. * long(lower.nonZeros())/double(matsize));
     }
 
     scitbx::af::shared<double> get_cholesky_diagonal() const {

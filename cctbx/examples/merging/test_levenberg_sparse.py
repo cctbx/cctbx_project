@@ -80,10 +80,18 @@ def choice_as_helper_base(choices):
 
     #Phil param levmar.linsolver chooses linear solver backend
     def solve(self):
+      #from IPython import embed; embed()
       if base_class.strum == False:
         self.step_equations().solve(base_class.linsolver)
       else:
-        self.step_equations().solve(base_class.linsolver, base_class.reorder, base_class.verbose, base_class.enableHSS)
+        mpi = getattr(base_class,mpi,False)
+        if base_class.mpi==True:
+          import boost.python
+          import scipy.sparse as sps
+          
+          ext_mpi = boost.python.import_ext("scitbx_examples_strumpack_mpi_dist_solver_ext")
+        else:
+          self.step_equations().solve(base_class.linsolver, base_class.reorder, base_class.verbose, base_class.enableHSS)
         
 
     def restart(pfh):
@@ -104,9 +112,9 @@ def choice_as_helper_base(choices):
     def build_up(pfh, objective_only=False):
       if not objective_only: pfh.counter+=1
       pfh.reset()
-      if base_class.__name__ in {"xscale6e", "postrefine_base"}:
+      if base_class.__name__ in ["xscale6e", "postrefine_base"]:
         pfh.access_cpp_build_up_directly_eigen_eqn(objective_only, current_values = pfh.x)
-      elif base_class.__name__ in {"xscale_strumpack", "postrefine_base_strumpack"}:
+      elif base_class.__name__ in ["xscale_strumpack", "postrefine_base_strumpack"]:
         pfh.access_cpp_build_up_directly_strumpack_eqn(objective_only, current_values = pfh.x)
 
   return levenberg_helper

@@ -93,7 +93,15 @@ if size>1:
   b = flex.double(b_vec[row_idx_split[rank]])
 
   P = Profiler("STRUMPACK_MPI_DIST_RANK=%d"%rank)
-  res_strum_mpi_local = ext_mpi.strumpack_mpi_dist_solver(len(row_idx_split[rank]), n_cols, comm, A_row_offset, A_col_offset, A_values, b, len_row_idx_split, ext_mpi.scotch, ext_mpi.auto)
+  res_strum_mpi_local = ext_mpi.strumpack_mpi_dist_solver( len( row_idx_split[rank] ), 
+                                                           n_cols, comm, 
+                                                           A_row_offset, 
+                                                           A_col_offset, 
+                                                           A_values, b, 
+                                                           len_row_idx_split, 
+                                                           ext_mpi.scotch, 
+                                                           ext_mpi.auto )
+
   strum_result_mpi_list = comm.gather(res_strum_mpi_local.x, root=0)
   del P
   if rank==0:

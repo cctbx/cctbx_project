@@ -79,6 +79,11 @@ class linear_ls_strumpack_wrapper
       return right_hand_side_;
     }
 
+ /*
+ * Solver method using STRUMPACK linear solver. Method exposed to Boost.Python setting default values for
+ * the KrylovSolver, ReorderingStrategy, verbosity and HSS compression options. Uses EIGEN SparseMatrix
+ * data structure as exists with EIGEN-based solver to parse and read the data into the correct CSR format.
+ */
     void solve(strumpack::KrylovSolver sA, strumpack::ReorderingStrategy sR, bool verbose, bool enableHSS) {
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
@@ -99,28 +104,6 @@ class linear_ls_strumpack_wrapper
                           eigen_normal_matrix_full.innerIndexPtr(),
                           eigen_normal_matrix_full.valuePtr(),true); //If matrix is symmetric false->true
 
-//If the A matrix output is required -D_STRUMPACK_MATRIX_OUT_ compiler flag can be used
-#ifdef _STRUMPACK_MATRIX_OUT_
-      std::ofstream Amat, bvec, xvec;
-      Amat.open ("A_strum.csv", std::ios::out | std::ios::app);
-      bvec.open ("b_strum.csv", std::ios::out | std::ios::app);
-      xvec.open ("x_strum.csv", std::ios::out | std::ios::app);
-      //Output matrix as  row col value   format
-      for (int k=0; k < eigen_normal_matrix_full.outerSize(); ++k){
-        for (Eigen::SparseMatrix<double>::InnerIterator it(eigen_normal_matrix_full,k); it; ++it){
-          Amat << "" << it.row() << "\t";
-          Amat << it.col() << "\t";
-          Amat << it.value() << std::endl;
-        }
-      }
-      for (int kk=0; kk<eigen_normal_matrix_full.outerSize(); ++kk){
-        bvec << *(right_hand_side_.begin() + kk) << "\n" ;
-      }
-      bvec << "\n";
-      Amat.close();
-      bvec.close();
-      exit(0); //Assuming only the first matrix is requested; exit afterwards
-#endif
       //Create solution vector initialised initially to 0.
       scitbx::af::shared<double> x(eigen_normal_matrix_full.rows(),0.);
 
@@ -136,14 +119,6 @@ class linear_ls_strumpack_wrapper
         *solnptr++ = x[i];
       }
       solved_ = true;
-#ifdef _STRUMPACK_MATRIX_OUT_X_
-      for (int kk=0; kk<eigen_normal_matrix_full.outerSize(); ++kk){
-        xvec << x[kk] << "\n";
-      }
-      xvec << "\n\n";
-      xvec.close();
-      exit(0); //Assuming only the first matrix is requested; exit afterwards
-#endif
     }
 
     // Only available if the equations have not been solved yet
@@ -172,6 +147,9 @@ class linear_ls_strumpack_wrapper
       return result;
     }
 
+ /*
+ * This method will disable the Cholesky decomposition component of EIGEN, but report the other statistics.
+ */
     void show_eigen_summary() const {
       SCITBX_ASSERT(formed_normal_matrix());
       long matsize = long(eigen_normal_matrix.cols()) * (eigen_normal_matrix.cols()+1)/2;
@@ -181,57 +159,66 @@ class linear_ls_strumpack_wrapper
       printf("Normal matrix non-zeros   %12ld, %6.2f%%\n",
               long(eigen_normal_matrix.nonZeros()),
               100. * long(eigen_normal_matrix.nonZeros())/double(matsize));
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
-      sparse_matrix_t lower = chol.matrixL();
-      printf("Cholesky factor non-zeros %12ld, %6.2f%%\n",
-              long(lower.nonZeros()),
-              100. * long(lower.nonZeros())/double(matsize));
+      //Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      //sparse_matrix_t lower = chol.matrixL();
+      //printf("Cholesky factor non-zeros %12ld, %6.2f%%\n",
+      //        long(lower.nonZeros()),
+      //        100. * long(lower.nonZeros())/double(matsize));
     }
 
+ /* 
+ * This method will disable the Cholesky decomposition component of EIGEN, and return a 0 filled diagonal
+ */
     scitbx::af::shared<double> get_cholesky_diagonal() const {
       SCITBX_ASSERT (!solved_);
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-      scitbx::af::shared<double> diagonal = scitbx::af::shared<double>(N);
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
-      Eigen::VectorXd diagonal_eigen = chol.vectorD();
+      scitbx::af::shared<double> diagonal = scitbx::af::shared<double>(N,0.);
+      //Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      //Eigen::VectorXd diagonal_eigen = chol.vectorD();
 
-      for (int k=0; k<N; ++k) { // column major, so outer (slow) means loop over column
-        diagonal[k] = diagonal_eigen[k]; // copy over the diagonal into persistent array_family type
-      }
+      //for (int k=0; k<N; ++k) { // column major, so outer (slow) means loop over column
+      //  diagonal[k] = diagonal_eigen[k]; // copy over the diagonal into persistent array_family type
+      //}
       return diagonal;
     }
 
+ /* 
+ * This method will disable the Cholesky decomposition component of EIGEN, and return a 0 filled lower triangle
+ */
     scitbx::af::shared<double> get_cholesky_lower() const {
       SCITBX_ASSERT (!solved_);
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-      scitbx::af::versa<double, scitbx::af::packed_l_accessor> triangular_result(n_parameters());
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
-      sparse_matrix_t lower = chol.matrixL();
+      scitbx::af::versa<double, scitbx::af::packed_l_accessor> triangular_result(n_parameters(),0.);
+      //Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      //sparse_matrix_t lower = chol.matrixL();
 
-      double* ptr = triangular_result.begin();
-      for (int k=0; k<lower.outerSize(); ++k) { // column major, so outer (slow) means loop over column
-        for (sparse_matrix_t::InnerIterator it(lower,k); it; ++it) {
-          int irow = it.row();   // row index
-          int icol = it.col();   // col index (here it is equal to k)
-          std::size_t offset_slow = ( irow * irow +  irow )  / 2;
-          std::size_t offset_fast = icol;
-          ptr[ offset_slow + offset_fast ] = it.value();
-        }
-      }
+      //double* ptr = triangular_result.begin();
+      //for (int k=0; k<lower.outerSize(); ++k) { // column major, so outer (slow) means loop over column
+      //  for (sparse_matrix_t::InnerIterator it(lower,k); it; ++it) {
+      //    int irow = it.row();   // row index
+      //    int icol = it.col();   // col index (here it is equal to k)
+      //    std::size_t offset_slow = ( irow * irow +  irow )  / 2;
+      //    std::size_t offset_fast = icol;
+      //    ptr[ offset_slow + offset_fast ] = it.value();
+      //  }
+      //}
       return triangular_result;
     }
 
+ /* 
+ * This method will disable the Cholesky decomposition component of EIGEN, and return a 0 filled array
+ */
     scitbx::af::shared<int> get_eigen_permutation_ordering() const {
       SCITBX_ASSERT (!solved_);
       SCITBX_ASSERT(formed_normal_matrix());
       int N = n_parameters();
-      scitbx::af::shared<int> one_D_result(n_parameters());
-      Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
-      for (int k=0; k<N; ++k){
-         one_D_result[k] = chol.permutationP().indices()[k];
-      }
+      scitbx::af::shared<int> one_D_result(n_parameters(),0);
+      //Eigen::SimplicialLDLT<sparse_matrix_t> chol(eigen_normal_matrix.transpose());
+      //for (int k=0; k<N; ++k){
+      //   one_D_result[k] = chol.permutationP().indices()[k];
+      //}
       return one_D_result;
     }
 
@@ -386,9 +373,9 @@ class non_linear_ls_strumpack_wrapper:  public scitbx::lstbx::normal_equations::
         for (int j=0; j<ndata; ++j) {
           //push this term into the stack, later to be added to normal matrix
           tripletList.push_back( triplet_t(idx_i, row_idx[j], w * row_data[i] * row_data[j]) );
-            /*if (idx_i != row_idx[j]){ //Build full sparse, not triangle. Symmtrically add i,j,v and j,i,v, using diagonal once
-              tripletList.push_back( triplet_t(row_idx[j], idx_i, w * row_data[i] * row_data[j]) );
-            }*/
+          /*if (idx_i != row_idx[j]){ //Build full sparse, not triangle. Symmtrically add i,j,v and j,i,v, using diagonal once
+             tripletList.push_back( triplet_t(row_idx[j], idx_i, w * row_data[i] * row_data[j]) );
+          }*/
         }
       }
     }
@@ -416,6 +403,10 @@ class non_linear_ls_strumpack_wrapper:  public scitbx::lstbx::normal_equations::
       form_normal_matrix();
       //strumpack_wrapper.show_eigen_summary();
     }
+
+    /* All methods calling Cholesky decompositions will return 0-filled data structures
+    *  as these are incompatible with STRUMPACK's solver.
+    */
     scitbx::af::shared<double> get_cholesky_lower(){
       form_normal_matrix();
       return strumpack_wrapper.get_cholesky_lower();

@@ -73,10 +73,12 @@ class execute_case(object):
 
   T = Timer("%d frames"%(len(G), ))
 
-  mapper = mapper_factory(xscale6e)
+  if work_params.levmar.strumpack.enable==True:
+    mapper = mapper_factory(xscale_strumpack)
+  else:
+    mapper = mapper_factory(xscale6e)
   minimizer = mapper(I,G,I_visited,G_visited,FOBS,params=work_params,
                      experiments=experiment_manager.get_experiments())
-
   del T
   minimizer.show_summary()
 

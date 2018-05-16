@@ -18,10 +18,10 @@ class _(boost.python.injector, ext.non_linear_ls_eigen_wrapper):
     print >>S,"Upper triangle size       %12ld"%matsize
     nonZeros = self.get_normal_matrix_nnonZeros()
     percentNZ = 100. * nonZeros/float(matsize)
-    LnonZeros = self.get_lower_cholesky_nnonZeros()
-    LpercentNZ = 100. * LnonZeros/float(matsize)
+    #LnonZeros = self.get_lower_cholesky_nnonZeros()
+    #LpercentNZ = 100. * LnonZeros/float(matsize)
     print >>S,"Normal matrix non-zeros   %12ld, %6.2f%%"%(nonZeros,percentNZ)
-    print >>S,"Cholesky factor non-zeros %12ld, %6.2f%%"%(LnonZeros,LpercentNZ)
+    #print >>S,"Cholesky factor non-zeros %12ld, %6.2f%%"%(LnonZeros,LpercentNZ)
     return S.getvalue()
 
 try:
