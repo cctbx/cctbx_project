@@ -22,12 +22,13 @@ from libtbx.str_utils import wordwrap
 from libtbx.utils import multi_out, show_times, Sorry
 
 # =============================================================================
-def run_program(program_class=None, args=None):
+def run_program(program_class=None, args=None, logger=None):
   '''
   Function for running programs using CCTBXParser and the program template
 
   :param program_class:     ProgramTemplate type (required)
   :param args:              list of command-line arguments (optional)
+  :param logger:            logger (e.g. multi_out) for output (optional)
   :rtype:                   whatever is returned from program_class.get_results()
   '''
 
@@ -37,8 +38,9 @@ def run_program(program_class=None, args=None):
     args = sys.argv[1:]
 
   # create logger
-  logger = multi_out()
-  logger.register('stdout', sys.stdout)
+  if (logger is None):
+    logger = multi_out()
+    logger.register('stdout', sys.stdout)
 
   # start timer
   t = show_times(out=logger)
