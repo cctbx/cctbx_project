@@ -1,3 +1,14 @@
+from __future__ import division, print_function
+
+from iotbx.cli_parser import run_program
+from mmtbx.programs import emringer
+
+if __name__ == '__main__':
+  run_program(program_class=emringer.Program)
+
+# =============================================================================
+# old code - maybe necessary until GUI is updated
+
 # LIBTBX_SET_DISPATCHER_NAME phenix.emringer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
@@ -19,7 +30,7 @@ References:
 
 # Any software that wants to use the pkl output of this tool
 # should import ringer_residue and ringer_chi from it.
-from __future__ import division
+#from __future__ import division
 import libtbx.phil
 from libtbx import easy_pickle
 from libtbx.str_utils import make_header
@@ -129,7 +140,8 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
         raise Sorry("Multiple appropriate map coefficients found in file. "+
           "Choices:\n  %s" % "\n  ".join(best_labels))
       map_coeffs = best_guess
-      print >> out, "  Guessing %s for input map coefficients" % best_labels[0]
+      print("  Guessing %s for input map coefficients"% best_labels[0], file=out)
+      #print >> out, "  Guessing %s for input map coefficients" % best_labels[0]
   else :
     ccp4_map_in = cmdline.get_file(params.map_file)
     ccp4_map_in.check_file_type("ccp4_map")
@@ -148,16 +160,20 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     log=out).results
   t2 = time.time()
   if (verbose) :
-    print >> out, "Time excluding I/O: %8.1fs" % (t2 - t1)
-    print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
+    print("Time excluding I/O: %8.1fs" % (t2 - t1), file=out)
+    print("Overall runtime:    %8.1fs" % (t2 - t0), file=out)
+    #print >> out, "Time excluding I/O: %8.1fs" % (t2 - t1)
+    #print >> out, "Overall runtime:    %8.1fs" % (t2 - t0)
   if (params.output_base is None) :
     pdb_base = os.path.basename(params.model)
     params.output_base = os.path.splitext(pdb_base)[0] + "_emringer"
   easy_pickle.dump("%s.pkl" % params.output_base, results)
-  print >> out, "Wrote %s.pkl" % params.output_base
+  print("Wrote %s.pkl" % params.output_base, file=out)
+  #print >> out, "Wrote %s.pkl" % params.output_base
   csv = "\n".join([ r.format_csv() for r in results ])
   open("%s.csv" % params.output_base, "w").write(csv)
-  print >> out, "Wrote %s.csv" % params.output_base
+  print("Wrote %s.csv" % params.output_base, file=out)
+  #print >> out, "Wrote %s.csv" % params.output_base
   if (plots_dir is None) :
     plots_dir = params.output_base + "_plots"
   if (not os.path.isdir(plots_dir)) :
@@ -184,8 +200,10 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     save=True,
     out=out)
   scoring.show_summary(out=out)
-  print >> out, "\nReferences:"
-  print >> out, """\
+  print("\nReferences:", file=out)
+
+  #print >> out, "\nReferences:"
+  references = """\
   Barad BA, Echols N, Wang RYR, Cheng YC, DiMaio F, Adams PD, Fraser JS. (2015)
   Side-chain-directed model and map validation for 3D Electron Cryomicroscopy.
   Nature Methods, in press.
@@ -194,6 +212,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
   Automated electron-density sampling reveals widespread conformational
   polymorphism in proteins. Protein Sci. 2010 Jul;19(7):1420-31. PubMed PMID:
   20499387"""
+  print(references, file=out)
   if (params.show_gui) :
     run_app(results)
   else :
@@ -315,5 +334,5 @@ else :
       self.Layout()
       self.parent.Refresh()
 
-if (__name__ == "__main__") :
-  run(sys.argv[1:])
+#if (__name__ == "__main__") :
+#  run(sys.argv[1:])

@@ -150,11 +150,12 @@ class main (object) :
     else :
       assert (file_name is not None)
       waves, self.thresholds = parse_pickle(file_name, out=out)
-    assert (out_dir is None) or os.path.isdir(out_dir)
-    if (out_dir is None) and (not quiet) :
-      out_dir = file_name + ".output"
-      if (not os.path.isdir(out_dir)) :
-        os.makedirs(file_name+'.output')
+    if not quiet:
+      assert (out_dir is None) or os.path.isdir(out_dir)
+      if (out_dir is None) and (not quiet) :
+        out_dir = file_name + ".output"
+        if (not os.path.isdir(out_dir)) :
+          os.makedirs(file_name+'.output')
     Weird_residues=OrderedDict()
     self.peak_count={}
     residue_peak_count={}
