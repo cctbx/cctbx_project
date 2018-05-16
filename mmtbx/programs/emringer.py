@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 from phenix.program_template import ProgramTemplate
 import time, os
-#import iotbx.phil
 import libtbx.phil
 from libtbx import easy_pickle
 import mmtbx.ringer.emringer
@@ -134,12 +133,7 @@ How to run:
     scoring_result = self.results.scoring_result
     scoring_result.show_summary(out = self.logger)
 
-    rolling_result = self.results.rolling_result
-
-#    if (self.params.show_gui) :
-#      run_app(results)
-#    else :
-#      return (ringer_result, scoring_result, rolling_result)
+    #rolling_result = self.results.rolling_result
 
   # ---------------------------------------------------------------------------
   def get_results(self):
