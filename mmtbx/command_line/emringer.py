@@ -156,6 +156,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
     map_coeffs=map_coeffs,
     ccp4_map=ccp4_map,
     crystal_symmetry_model=crystal_symmetry_model,
+    crystal_symmetry_map = ccp4_map.crystal_symmetry(),
     params=params,
     log=out).results
   t2 = time.time()

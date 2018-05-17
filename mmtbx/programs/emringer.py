@@ -110,6 +110,8 @@ How to run:
       print('Using map: %s' % self.data_manager.get_default_real_map_name(),
         file=self.logger)
       map_inp = self.data_manager.get_real_map()
+      print("CCP4 map statistics:", file=self.logger)
+      map_inp.show_summary(out=self.logger, prefix="  ")
 
     if (self.params.output_base is None) :
       pdb_base = os.path.basename(self.data_manager.get_default_model_name())
@@ -121,11 +123,12 @@ How to run:
         os.makedirs(plots_dir)
 
     task_obj = mmtbx.ringer.emringer.emringer(
-      model        = model,
-      miller_array = miller_array,
-      ccp4_map     = map_inp,
-      params       = self.params,
-      out          = self.logger)
+      model                = model,
+      miller_array         = miller_array,
+      ccp4_map             = map_inp,
+      crystal_symmetry_map = map_inp.crystal_symmetry(),
+      params               = self.params,
+      out                  = self.logger)
     task_obj.validate()
     task_obj.run()
     self.results = task_obj.get_results()

@@ -197,6 +197,7 @@ class iterate_over_residues (object) :
                 params,
                 map_coeffs=None,
                 crystal_symmetry_model=None,
+                crystal_symmetry_map=None,
                 difference_map_coeffs=None,
                 ccp4_map=None,
                 unit_cell=None,
@@ -226,8 +227,6 @@ class iterate_over_residues (object) :
         self.real_map = fft_map.real_map_unpadded()
     else :
       assert (ccp4_map is not None)
-      print >> self.log, "CCP4 map statistics:"
-      ccp4_map.show_summary(out=self.log, prefix="  ")
       space_group_number = ccp4_map.space_group_number
       from cctbx import crystal
       crystal_symmetry_map = crystal.symmetry(ccp4_map.unit_cell().parameters(), space_group_number)

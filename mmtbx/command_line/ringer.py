@@ -18,6 +18,7 @@ from libtbx import easy_pickle
 from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx import runtime_utils
+import mmtbx.model
 import time
 import os
 import sys
@@ -86,9 +87,19 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
   validate_params(params)
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.check_file_type("pdb")
-  crystal_symmetry_model = pdb_in.file_object.crystal_symmetry()
-  crystal_symmetry_model.show_summary()
-  hierarchy = pdb_in.file_object.hierarchy
+
+  #crystal_symmetry_model = pdb_in.file_object.crystal_symmetry()
+  #crystal_symmetry_model.show_summary()
+
+  pdb_inp = iotbx.pdb.input(file_name=params.model)
+  model = mmtbx.model.manager(
+    model_input      = pdb_inp)
+  crystal_symmetry_model = model.crystal_symmetry()
+  if crystal_symmetry_model is not None:
+    crystal_symmetry_model.show_summary()
+
+  hierarchy = model.get_hierarchy()
+  #hierarchy = pdb_in.file_object.hierarchy
   hierarchy.atoms().reset_i_seq()
   map_coeffs = ccp4_map = difference_map_coeffs = None
   if (params.map_coeffs is not None) :
@@ -137,6 +148,7 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     difference_map_coeffs=difference_map_coeffs,
     ccp4_map=ccp4_map,
     crystal_symmetry_model=crystal_symmetry_model,
+    crystal_symmetry_map = ccp4_map.crystal_symmetry(),
     params=params,
     log=out).results
   t2 = time.time()

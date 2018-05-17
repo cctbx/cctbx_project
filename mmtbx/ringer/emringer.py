@@ -33,12 +33,13 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 class emringer(object):
-  def __init__(self, model, miller_array, ccp4_map, params, out):
-    self.model      = model
-    self.miller_array = miller_array
-    self.ccp4_map   = ccp4_map
-    self.params     = params
-    self.out        = out
+  def __init__(self, model, miller_array, ccp4_map, crystal_symmetry_map, params, out):
+    self.model            = model
+    self.miller_array     = miller_array
+    self.ccp4_map         = ccp4_map
+    self.crystal_symmetry_map = crystal_symmetry_map
+    self.params           = params
+    self.out              = out
 
   def validate(self):
     assert not None in [self.model, self.params, self.out]
@@ -58,6 +59,7 @@ class emringer(object):
       map_coeffs             = self.miller_array,
       ccp4_map               = self.ccp4_map,
       crystal_symmetry_model = crystal_symmetry_model,
+      crystal_symmetry_map   = self.crystal_symmetry_map,
       params                 = self.params,
       log                    = self.out
       ).results
