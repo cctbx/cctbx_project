@@ -18,6 +18,7 @@ import collections
 import warnings
 import math
 import sys
+from iotbx.pdb.utils import all_chain_ids
 
 class pickle_import_trigger(object): pass
 
@@ -984,14 +985,18 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     auth_asym_ids = flex.std_string()
     label_asym_ids = flex.std_string()
     label_seq_id = 0
-    label_asym_id = ""
+    number_label_asym_id = 0
+    chain_ids = all_chain_ids()
     for model in self.models():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
         auth_asym_id = chain.id
+        if chain.atoms()[0].segid.strip() != '':
+          auth_asym_id = chain.atoms()[0].segid.strip()
         if auth_asym_id.strip() == '': auth_asym_id = '.'
-        label_asym_id = increment_label_asym_id(label_asym_id)
+        label_asym_id = chain_ids[number_label_asym_id]
+        number_label_asym_id += 1
         for residue_group in chain.residue_groups():
           seq_id = residue_group.resseq.strip()
           label_seq_id += 1
@@ -2864,71 +2869,6 @@ def sites_diff (hierarchy_1,
     return hierarchy_new
   else :
     return deltas
-# MARKED_FOR_DELETION_OLEG
-# REASON: obsoleted duplicated functionality. Expansion is made by
-# phenix.pdb.mtrix_reconstruction, phenix.pdb.biomt_reconstruction or
-# by mmtbx.model class
-
-# def expand_ncs (
-#     pdb_hierarchy,
-#     processed_mtrix_records,
-#     write_segid=True,
-#     log=None) :
-#   pmr = processed_mtrix_records
-#   if (log is None) : log = null_out()
-#   assert len(pmr.r) == len(pmr.t)
-#   if (len(pmr.r) == 0) :
-#     raise Sorry("No MTRIX records found in PDB file!")
-#   if (len(pdb_hierarchy.models()) > 1) :
-#     raise Sorry("Multi-MODEL PDB files not supported.")
-#   hierarchy_new = root()
-#   model_new = model()
-#   hierarchy_new.append_model(model_new)
-#   for chain_ in pdb_hierarchy.models()[0].chains() :
-#     chain_new = chain_.detached_copy()
-#     atoms_tmp = chain_new.atoms()
-#     if (write_segid) :
-#       for atom in atoms_tmp :
-#         atom.set_segid("0")
-#     model_new.append_chain(chain_new)
-#   print >> log, "Applying %d MTRIX records..." % len(pmr.r)
-#   for rm, tv, sn, cpf in zip(pmr.r, pmr.t, pmr.serial_number,
-#                              pmr.coordinates_present):
-#     if (cpf) :
-#       print >> log, "  skipping matrix %s, coordinates already present" % sn
-#       continue
-#     for chain_ in pdb_hierarchy.models()[0].chains() :
-#       chain_new = chain_.detached_copy()
-#       atoms_tmp = chain_new.atoms()
-#       if (write_segid) :
-#         for atom in atoms_tmp :
-#           atom.set_segid("%s" % sn)
-#       xyz = atoms_tmp.extract_xyz()
-#       atoms_tmp.set_xyz(rm.elems * xyz + tv)
-#       model_new.append_chain(chain_new)
-#   return hierarchy_new
-# END_MARKED_FOR_DELETION_OLEG
-
-# MARKED_FOR_DELETION_OLEG
-# REASON: Another obsolete function to generate chain ids. Should be swithced
-# to iotbx/pdb/utils.py: all_chain_ids()
-# Only used in as_cif_block()
-def increment_label_asym_id(asym_id):
-  from string import ascii_uppercase
-  if len(asym_id) == 0:
-    return "A"
-  asym_id = list(asym_id)
-  for i in range(len(asym_id)):
-    if asym_id[i] == "Z":
-      asym_id[i] = "A"
-      if (i+1) == len(asym_id):
-        return "A" * (len(asym_id) + 1)
-    else:
-      while True:
-        j = ascii_uppercase.find(asym_id[i])
-        asym_id[i] = ascii_uppercase[j+1]
-        return "".join(asym_id)
-# END_MARKED_FOR_DELETION_OLEG
 
 def substitute_atom_group(
     current_group,
