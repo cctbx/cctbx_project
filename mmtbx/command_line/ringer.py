@@ -19,6 +19,7 @@ from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx import runtime_utils
 import mmtbx.model
+from iotbx import map_and_model
 import time
 import os
 import sys
@@ -88,9 +89,6 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
   pdb_in.check_file_type("pdb")
 
-  #crystal_symmetry_model = pdb_in.file_object.crystal_symmetry()
-  #crystal_symmetry_model.show_summary()
-
   pdb_inp = iotbx.pdb.input(file_name=params.model)
   model = mmtbx.model.manager(
     model_input      = pdb_inp)
@@ -99,9 +97,9 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
     crystal_symmetry_model.show_summary()
 
   hierarchy = model.get_hierarchy()
-  #hierarchy = pdb_in.file_object.hierarchy
-  hierarchy.atoms().reset_i_seq()
-  map_coeffs = ccp4_map = difference_map_coeffs = None
+  map_coeffs = map_inp = difference_map_coeffs = None
+  map_data, unit_cell = None, None
+  # get miller array if map coefficients are provided
   if (params.map_coeffs is not None) :
     mtz_in = file_reader.any_file(params.map_coeffs, force_type="hkl")
     mtz_in.check_file_type("hkl")
@@ -136,19 +134,31 @@ mmtbx.ringer model.pdb map_coeffs.mtz [cif_file ...] [options]
           "Choices:\n  %s" % "\n  ".join(best_labels))
       map_coeffs = best_guess
       print >> out, "  Guessing %s for input map coefficients" % best_labels[0]
+  # get map_inp object and do sanity checks if map is provided
   else :
     ccp4_map_in = file_reader.any_file(params.map_file, force_type="ccp4_map")
     ccp4_map_in.check_file_type("ccp4_map")
-    ccp4_map = ccp4_map_in.file_object
+    map_inp = ccp4_map_in.file_object
+    cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
+      models = [model], map_inps=[map_inp])
+    base = map_and_model.input(
+      map_data         = map_inp.map_data(),
+      model            = model,
+      box              = False)
+    hierarchy = base.model().get_hierarchy()
+    map_data = base.map_data()
+    unit_cell = map_inp.grid_unit_cell()
+
+  hierarchy.atoms().reset_i_seq()
+
   make_header("Iterating over residues", out=out)
   t1 = time.time()
   results = iterate_over_residues(
     pdb_hierarchy=hierarchy,
     map_coeffs=map_coeffs,
     difference_map_coeffs=difference_map_coeffs,
-    ccp4_map=ccp4_map,
-    crystal_symmetry_model=crystal_symmetry_model,
-    crystal_symmetry_map = ccp4_map.crystal_symmetry(),
+    map_data  = map_data,
+    unit_cell = unit_cell,
     params=params,
     log=out).results
   t2 = time.time()

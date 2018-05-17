@@ -2,6 +2,8 @@ from __future__ import division, print_function
 import iotbx.phil
 from libtbx import group_args
 from libtbx.utils import Sorry
+from iotbx import map_and_model
+import mmtbx.utils
 from mmtbx.ringer import iterate_over_residues
 from mmtbx.ringer import em_rolling
 from mmtbx.ringer import em_scoring
@@ -33,33 +35,46 @@ def master_params():
   return iotbx.phil.parse(master_params_str, process_includes=False)
 
 class emringer(object):
-  def __init__(self, model, miller_array, ccp4_map, crystal_symmetry_map, params, out):
-    self.model            = model
-    self.miller_array     = miller_array
-    self.ccp4_map         = ccp4_map
-    self.crystal_symmetry_map = crystal_symmetry_map
-    self.params           = params
-    self.out              = out
+  def __init__(self, model, miller_array, map_inp, params, out):
+    self.model        = model
+    self.miller_array = miller_array
+    self.map_inp      = map_inp
+    self.params       = params
+    self.out          = out
 
   def validate(self):
     assert not None in [self.model, self.params, self.out]
     if (self.model is None):
       raise Sorry("Model is required.")
-    if (self.miller_array is None and self.ccp4_map is None):
+    if (self.miller_array is None and self.map_inp is None):
       raise Sorry("Map or map coefficients are required.")
+    # Sanity check for crystal symmetry
+    if (self.map_inp is not None):
+      self.cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(
+        models = [self.model], map_inps=[self.map_inp])
 
   def run(self):
     hierarchy = self.model.get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
+    map_data, grid_unit_cell = None, None
+    # sanity check for map and model
+    if self.map_inp is not None:
+      base = map_and_model.input(
+        map_data         = self.map_inp.map_data(),
+        model            = self.model,
+        crystal_symmetry = self.cs_consensus,
+        box              = False)
 
-    crystal_symmetry_model = self.model.crystal_symmetry()
+      hierarchy = base.model().get_hierarchy()
+      map_data = base.map_data()
+      grid_unit_cell = self.map_inp.grid_unit_cell()
+
+    hierarchy.atoms().reset_i_seq()
 
     self.ringer_result = iterate_over_residues(
       pdb_hierarchy          = hierarchy,
       map_coeffs             = self.miller_array,
-      ccp4_map               = self.ccp4_map,
-      crystal_symmetry_model = crystal_symmetry_model,
-      crystal_symmetry_map   = self.crystal_symmetry_map,
+      map_data               = map_data,
+      unit_cell              = grid_unit_cell,
       params                 = self.params,
       log                    = self.out
       ).results
