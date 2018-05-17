@@ -1,6 +1,5 @@
 from __future__ import division
 import iotbx.pdb
-from iotbx.pdb.mmcif import cif_input
 from StringIO import StringIO
 
 pdb_str = """\
