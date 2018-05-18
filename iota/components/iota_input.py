@@ -203,7 +203,7 @@ dials
   target_unit_cell = None
     .type = unit_cell
     .help = Target unit cell parameters (if known)
-  use_fft3d = False
+  use_fft3d = True
     .type = bool
     .help = Set to True to use FFT3D in indexing
   significance_filter
@@ -219,7 +219,7 @@ dials
   determine_sg_and_reindex = True
     .type = bool
     .help = Will determine sg and reindex if no target space group supplied
-  auto_threshold = True
+  auto_threshold = False
     .type = bool
     .help = Set to True to estimate global threshold for each image
   filter
@@ -277,10 +277,10 @@ analysis
 advanced
   .help = "Advanced, debugging and experimental options."
 {
-  integrate_with = *cctbx dials
+  integrate_with = cctbx *dials
     .type = choice
     .help = Choose image processing software package
-  estimate_gain = True
+  estimate_gain = False
     .type = bool
     .help = Estimates detector gain (helps improve spotfinding in DIALS)
   flip_beamXY = True
