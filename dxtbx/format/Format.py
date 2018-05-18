@@ -9,10 +9,21 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 
-try:
-  import bz2
-except ImportError:
-  bz2 = None
+if sys.hexversion < 0x3040000:
+  # try Python3.3 backport bz2 pypi module first.
+  # this supports multiple compression streams.
+  # to install run  libtbx.pip install bz2file
+  try:
+    import bz2file
+    bz2 = bz2file
+  except ImportError:
+    bz2 = None
+
+if not bz2:
+  try:
+    import bz2
+  except ImportError:
+    bz2 = None
 
 try:
   import gzip
