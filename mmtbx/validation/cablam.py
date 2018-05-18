@@ -1074,6 +1074,7 @@ class cablamalyze(validation):
     #calculates whole-model stats used by show_summary, gui_summary, and
     #  as_oneline
     residue_count = 0
+    ca_residue_count = 0
     cablam_outliers = 0
     cablam_disfavored = 0
     ca_geom_outliers = 0
@@ -1082,35 +1083,64 @@ class cablamalyze(validation):
     is_cablam_outlier = 0
     is_cablam_disfavored = 0
     is_ca_geom_outlier = 0
+    alpha_count, beta_count, threeten_count = 0,0,0
+    is_alpha, is_beta, is_threeten = 0,0,0
+    correctable_helix_count, correctable_beta_count = 0,0
+    is_correctable_helix, is_correctable_beta = 0,0
     for result in self.results:
       if not result.has_ca:
         continue
+      is_residue = 1
       if result.scores.cablam is None:
         is_residue = 0
-        continue
-      is_residue = 1
       if result.sorting_id() != prev_result_id:
         #new residue; update counts
         residue_count    += is_residue
+        if result.scores.c_alpha_geom is not None:
+          ca_residue_count += 1
         cablam_outliers  += is_cablam_outlier
         cablam_disfavored+= is_cablam_disfavored
         ca_geom_outliers += is_ca_geom_outlier
         is_cablam_outlier    = 0
         is_cablam_disfavored = 0
         is_ca_geom_outlier   = 0
-      if result.scores.cablam < CABLAM_OUTLIER_CUTOFF:
+        alpha_count    += is_alpha
+        beta_count     += is_beta
+        threeten_count += is_threeten
+        is_alpha, is_beta, is_threeten = 0,0,0
+        correctable_helix_count += is_correctable_helix
+        correctable_beta_count += is_correctable_beta
+        is_correctable_helix, is_correctable_beta = 0,0
+      if result.scores.cablam < CABLAM_OUTLIER_CUTOFF and is_residue:
         is_cablam_outlier    = 1
-      if result.scores.cablam < CABLAM_DISFAVORED_CUTOFF:
+        if result.feedback.alpha or result.feedback.threeten:
+          is_correctable_helix = 1
+        elif result.feedback.beta:
+          is_correctable_beta = 1
+      if result.scores.cablam < CABLAM_DISFAVORED_CUTOFF and is_residue:
         is_cablam_disfavored = 1
       if result.scores.c_alpha_geom is not None and result.scores.c_alpha_geom < CA_GEOM_CUTOFF:
         is_ca_geom_outlier = 1
+      #---parse secondary structure---
+      if result.feedback.alpha and not is_beta and not is_threeten:
+        is_alpha = 1
+      elif result.feedback.beta and not is_alpha and not is_threeten:
+        is_beta = 1
+      elif result.feedback.threeten and not is_alpha and not is_beta:
+        is_threeten = 1
+      #---endparse secondary structure---
       prev_result_id = result.sorting_id()
     residue_count    += is_residue
     cablam_outliers  += is_cablam_outlier
     cablam_disfavored+= is_cablam_disfavored
     ca_geom_outliers += is_ca_geom_outlier
-    return {'residue_count':residue_count,'cablam_outliers':cablam_outliers,
-      'cablam_disfavored':cablam_disfavored,'ca_geom_outliers':ca_geom_outliers}
+    alpha_count    += is_alpha
+    beta_count     += is_beta
+    threeten_count += is_threeten
+    return {'residue_count':residue_count,'ca_residue_count':ca_residue_count,
+      'cablam_outliers':cablam_outliers,'cablam_disfavored':cablam_disfavored,'ca_geom_outliers':ca_geom_outliers,
+      'alpha_count':alpha_count, 'beta_count':beta_count,'threeten_count':threeten_count,
+      'correctable_helix_count':correctable_helix_count,'correctable_beta_count':correctable_beta_count}
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1132,6 +1162,8 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   def count_residues(self):
     return self.summary_stats['residue_count']
+  def count_ca_residues(self):
+    return self.summary_stats['ca_residue_count']
   def count_outliers(self):
     return self.summary_stats['cablam_outliers']
   def percent_outliers(self):
@@ -1147,9 +1179,33 @@ class cablamalyze(validation):
   def count_ca_outliers(self):
     return self.summary_stats['ca_geom_outliers']
   def percent_ca_outliers(self):
+    if self.count_ca_residues() == 0:
+      return 0
+    return self.count_ca_outliers()/self.count_ca_residues()*100
+  def count_helix(self):
+    return self.summary_stats['alpha_count']+self.summary_stats['threeten_count']
+  def count_beta(self):
+    return self.summary_stats['beta_count']
+  def percent_helix(self):
+    if self.count_ca_residues() == 0:
+      return 0
+    return self.count_helix()/self.count_ca_residues()*100
+  def percent_beta(self):
+    if self.count_ca_residues() == 0:
+      return 0
+    return self.count_beta()/self.count_ca_residues()*100
+  def count_correctable_helix(self):
+    return self.summary_stats['correctable_helix_count']
+  def count_correctable_beta(self):
+    return self.summary_stats['correctable_beta_count']
+  def percent_correctable_helix(self):
     if self.count_residues() == 0:
       return 0
-    return self.count_ca_outliers()/self.count_residues()*100
+    return self.count_correctable_helix()/self.count_residues()*100
+  def percent_correctable_beta(self):
+    if self.count_residues() == 0:
+      return 0
+    return self.count_correctable_beta()/self.count_residues()*100
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -1343,14 +1399,31 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   def show_summary(self, out=sys.stdout, prefix="  "):
     #print whole-model cablam summary
-    if self.count_residues() == 0:
-      print >> out, "SUMMARY: CaBLAM found no evaluable protein residues."
+    # double percent sign %% is how to get an escape-char'd % in string formatting
+    if self.count_residues() == 0 and self.count_ca_residues == 0:
+      out.write("SUMMARY: CaBLAM found no evaluable protein residues.\n")
     else:
-      print >> out,prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier."
-      print >> out,prefix+"SUMMARY: CaBLAM found %s evaluable residues." % (self.count_residues())
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_disfavored())+"% of these residues have disfavored conformations. (<=5% expected)"
-      print >> out,prefix+"SUMMARY: %.1f" % (self.percent_outliers())+"% of these residues have outlier conformations. (<=1% expected)"
-      print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+      out.write(prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier.\n")
+      out.write(prefix+"SUMMARY: CaBLAM found %s full protein residues and %s CA-only residues\n" % (self.count_residues(),self.count_ca_residues()-self.count_residues()))
+      out.write(prefix+"SUMMARY: %s residues (%.1f%%) have disfavored conformations. (<=5%% expected).\n" % (self.count_disfavored(),self.percent_disfavored()))
+      out.write(prefix+"SUMMARY: %s residues (%.1f%%) have outlier conformations. (<=1%% expected)\n" % (self.count_outliers(),self.percent_outliers()))
+      out.write(prefix+"SUMMARY: %s residues (%.2f%%) have severe CA geometry outliers. (<=0.5%% expected)\n" % (self.count_ca_outliers(),self.percent_ca_outliers()))
+      out.write(prefix+"SUMMARY: %s residues (%.2f%%) are helix-like, %s residues (%.2f%%) are beta-like\n" % (self.count_helix(),self.percent_helix(),self.count_beta(),self.percent_beta()))
+      out.write(prefix+"SUMMARY: %s residues (%.2f%%) are correctable to helix, %s residues (%.2f%%) are correctable to beta\n" % (self.count_correctable_helix(),self.percent_correctable_helix(),self.count_correctable_beta(),self.percent_correctable_beta()))
+
+    #if self.count_residues() == 0:
+    #  print >> out, "SUMMARY: CaBLAM found no fully evaluable protein residues."
+    #  if self.count_ca_residues() > 0:
+    #    print >> out,prefix+"SUMMARY: CaBLAM found %s CA geometry evaluable residues." % (self.count_ca_residues())
+    #    print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+    #    print >> out,prefix+"SUMMARY: %.2f%% helix, %.2f%% beta" % (self.percent_helix(),self.percent_beta())
+    #else:
+    #  print >> out,prefix+"SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier."
+    #  print >> out,prefix+"SUMMARY: CaBLAM found %s fully evaluable residues and %s CA geometry evaluable residues." % (self.count_residues(),self.count_ca_residues()-self.count_residues())
+    #  print >> out,prefix+"SUMMARY: %.1f" % (self.percent_disfavored())+"% of these residues have disfavored conformations. (<=5% expected)"
+    #  print >> out,prefix+"SUMMARY: %.1f" % (self.percent_outliers())+"% of these residues have outlier conformations. (<=1% expected)"
+    #  print >> out,prefix+"SUMMARY: %.2f" % (self.percent_ca_outliers())+"% of these residues have severe CA geometry outliers. (<=0.5% expected)"
+    #  print >> out,prefix+"SUMMARY: %.2fpct helix, %.2fpct beta" % (self.percent_helix(),self.percent_beta())
   #-----------------------------------------------------------------------------
   #}}}
 

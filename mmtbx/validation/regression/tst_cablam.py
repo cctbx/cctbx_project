@@ -158,10 +158,12 @@ ref_cablam_text = """residue : outlier_type : contour_level : ca_contour_level :
    159  ASP:                    :0.40617:0.36789:                 :0.01844:0.00000:0.00000
    160  ALA:                    :0.66012:0.75135:                 :0.20693:0.00000:0.06554
 SUMMARY: Note: Regardless of number of alternates, each residue is counted as having at most one outlier.
-SUMMARY: CaBLAM found 151 evaluable residues.
-SUMMARY: 3.3% of these residues have disfavored conformations. (<=5% expected)
-SUMMARY: 1.3% of these residues have outlier conformations. (<=1% expected)
-SUMMARY: 0.00% of these residues have severe CA geometry outliers. (<=0.5% expected)
+SUMMARY: CaBLAM found 151 full protein residues and 0 CA-only residues
+SUMMARY: 5 residues (3.3%) have disfavored conformations. (<=5% expected).
+SUMMARY: 2 residues (1.3%) have outlier conformations. (<=1% expected)
+SUMMARY: 0 residues (0.00%) have severe CA geometry outliers. (<=0.5% expected)
+SUMMARY: 87 residues (57.62%) are helix-like, 8 residues (5.30%) are beta-like
+SUMMARY: 0 residues (0.00%) are correctable to helix, 1 residues (0.66%) are correctable to beta
 """
 
 ref_cablam_oneline = """pdbid:151:1.3:3.3:0.00
