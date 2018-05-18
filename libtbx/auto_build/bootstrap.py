@@ -1718,7 +1718,6 @@ class PhaserBuilder(CCIBuilder):
     'ccp4io_adaptbx',
     'annlib_adaptbx',
     'tntbx',
-    'clipper',
     'phaser_regression',
     'phaser',
   ]
@@ -1742,21 +1741,20 @@ class PhaserBuilder(CCIBuilder):
                                 '-n',
                                 '%s' %self.nproc,
                                 ],
-
     )
 
   def add_base(self, extra_opts=[]):
     # skip unnecessary base packages when building phaser only
     if self.skip_base is None or len(self.skip_base) == 0:
-      self.skip_base = "hdf5,lz4_plugin,wxpython,docutils,pyopengl,pillow,tiff," + \
+      self.skip_base = "hdf5,lz4_plugin,py2app,wxpython,docutils,pyopengl,pillow,tiff," + \
         "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
-        "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml," + \
+        "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml,libsvm,pyrtf,six,send2trash," + \
          "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib"
     else:
-      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin',
-         'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts',
+      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin','py2app',
+         'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts','pyrtf','six','send2trash',
          'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
-         'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml',
+         'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml','libsvm',
          'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython', 'expat', 'glib'
          ])
     super(PhaserBuilder, self).add_base(
