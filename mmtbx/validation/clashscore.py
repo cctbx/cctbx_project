@@ -539,7 +539,12 @@ class nqh_flip (residue) :
     return self.id_str()
 
   def as_table_row_phenix (self) :
-    return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid) ]
+    if self.chain_id:
+      return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid) ]
+    elif self.segid:
+      return [ self.segid, "%1s%s %s" % (self.altloc,self.resname,self.resid) ]
+    else:
+      raise Sorry("no chain_id or segid found for nqh flip table row")
 
   #alternate residue class methods for segid compatibility
   #more method overrides may be necessary
