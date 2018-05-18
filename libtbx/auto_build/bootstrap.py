@@ -29,7 +29,7 @@ import zipfile
 
 windows_remove_list = []
 
-rosetta_version_tar_bundle='rosetta_src_2018.12.60119_bundle'
+rosetta_version_tar_bundle='rosetta_src_2018.19.60220_bundle'
 rosetta_version_directory=rosetta_version_tar_bundle
 # LICENSE REQUIRED
 afitt_version="AFITT-2.4.0.4-redhat-RHEL7-x64" #binary specific to cci-vm-1
