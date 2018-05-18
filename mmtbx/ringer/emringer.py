@@ -79,7 +79,10 @@ class emringer(object):
       log                    = self.out
       ).results
 
-    plots_dir = self.params.output_base + "_plots"
+    if (self.params.output_base is not None):
+      plots_dir = self.params.output_base + "_plots"
+    else:
+      plots_dir = 'emringer_plots'
 
     import matplotlib
     matplotlib.use("Agg")

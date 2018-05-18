@@ -1,6 +1,5 @@
 
 from __future__ import division, print_function
-#from mmtbx.regression import tst_build_alt_confs
 from scitbx.array_family import flex
 from libtbx import easy_run
 import libtbx.load_env # import dependency
@@ -198,9 +197,7 @@ def exercise () :
   f = open(pdb_file, "w")
   f.write(pdb_str)
   f.close()
-  #pdb_file = "tmp_ringer.pdb"
   mtz_file = "tmp_ringer.mtz"
-  #open(pdb_file, "w").write(tst_build_alt_confs.pdb_raw)
   cmd = " ".join([
     "phenix.fmodel",
     pdb_file,
@@ -227,8 +224,6 @@ def exercise () :
   os.remove("tmp_ringer_ringer.csv")
   assert (result.return_code == 0)
   # Now with ccp4 map as input
-  #result2 = easy_run.fully_buffered(
-  #  "phenix.mtz2map \"%s\" tmp_ringer_map_coeffs.mtz" % pdb_file)
   result2 = easy_run.fully_buffered(
     "phenix.mtz2map tmp_ringer_map_coeffs.mtz")
   assert (result2.return_code == 0)
