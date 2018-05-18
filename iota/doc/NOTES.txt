@@ -5,6 +5,8 @@ Bugfixes:
 in the read-in PHIL settings
 - Fixed recovery of run w/o results
 - Fixed BeamXY adjustment for DIALS (changed beamX and beamY to int)
+- Double-clicking on summary chart works again
+- Correct summary displayed in recovered run
 
 Features:
 - The HKL slice viewer (a part of "charts" tab) can now be set to show the
@@ -16,5 +18,12 @@ presentation of the HKL slice viewer.
 "5-100, 200-1000, 1234, 1500-1550"; random subset can also be taken from these
 ranges, if enabled
 - Sped up HKL slice viewer by a factor of ~5
+- Changed defaults:
+  - DIALS is the default backend
+  - Gain estimate turned off by default
+  - Auto-threshold turned off by default
+  - Use FFT3D turned on by default
+
+
 
 Known issues:

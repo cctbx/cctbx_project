@@ -312,7 +312,7 @@ class Analyzer(object):
     self.all_objects = all_objects
     self.final_objects = [i for i in all_objects if i.fail == None]
 
-    self.analysis_result.__setattr__('image_objects', self.final_objects)
+    self.analysis_result.__setattr__('image_objects', self.all_objects)
 
     if self.final_objects is not None:
       self.sorted_final_images = sorted(self.final_objects,
