@@ -37,6 +37,7 @@ from libtbx.str_utils import make_header
 from libtbx import runtime_utils
 from libtbx.utils import Sorry
 import mmtbx.utils
+from iotbx import map_and_model
 import time
 import os
 import sys
@@ -150,7 +151,7 @@ phenix.emringer model.pdb map.mrc [cif_file ...] [options]
       map_coeffs = best_guess
       print("  Guessing %s for input map coefficients"% best_labels[0], file=out)
   else :
-    ccp4_map_in = file_reader.any_file(params.map_file, force_type="ccp4_map")
+    ccp4_map_in = cmdline.get_file(params.map_file)
     ccp4_map_in.check_file_type("ccp4_map")
     map_inp = ccp4_map_in.file_object
     cs_consensus = mmtbx.utils.check_and_set_crystal_symmetry(

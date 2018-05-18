@@ -19,6 +19,7 @@ from libtbx.str_utils import make_header
 from libtbx.utils import Sorry
 from libtbx import runtime_utils
 import mmtbx.model
+import mmtbx.utils
 from iotbx import map_and_model
 import time
 import os
