@@ -541,6 +541,36 @@ class nqh_flip (residue) :
   def as_table_row_phenix (self) :
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid) ]
 
+  #alternate residue class methods for segid compatibility
+  #more method overrides may be necessary
+  #a more robust propagation of segid would preferable, eventually
+  def atom_selection_string (self) :
+    if self.chain_id:
+      return "(chain '%s' and resid '%s' and resname %s and altloc '%s')" % \
+        (self.chain_id, self.resid, self.resname, self.altloc)
+    elif self.segid:
+      return "(segid %s and resid '%s' and resname %s and altloc '%s')" % \
+          (self.segid, self.resid, self.resname, self.altloc)
+    else:
+      raise Sorry("no chain_id or segid found for nqh flip atom selection")
+
+  def id_str (self, ignore_altloc=False) :
+    if self.chain_id:
+      base = "%2s%4s%1s" % (self.chain_id, self.resseq, self.icode)
+    elif self.segid:
+      base = "%4s%4s%1s" % (self.segid, self.resseq, self.icode)
+    else:
+      raise Sorry("no chain_id or segid found for nqh flip id_str")
+    if (not ignore_altloc) :
+      base += "%1s" % self.altloc
+    else :
+      base += " "
+    base += "%3s" % self.resname
+    if (self.segid is not None) :
+      base += " segid='%4s'" % self.segid
+    return base
+  #end segid compatibility
+
 class nqh_flips (validation) :
   """
   N/Q/H sidechain flips identified by Reduce.
@@ -553,20 +583,41 @@ class nqh_flips (validation) :
     validation.__init__(self)
     reduce_out = easy_run.fully_buffered("phenix.reduce -BUILD -",
       stdin_lines=pdb_hierarchy.as_pdb_string())
+    from mmtbx.validation import utils
+    use_segids = utils.use_segids_in_place_of_chainids(
+      hierarchy=pdb_hierarchy)
     for line in reduce_out.stdout_lines:
+    #chain format (2-char chain)
     #USER  MOD Set 1.1: B  49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
+    #segid format (4-char segid)
+    #USER  MOD Set 1.1:B     49 GLN     :FLIP  amide:sc=    -2.7! C(o=-5.8!,f=-1.3!)
       if re_flip.search(line) :
         resid = line.split(":")[1]
-        chain_id = resid[0:2].strip()
-        if (len(chain_id) == 0):
-          chain_id = ' '
-        resname = resid[7:10]
+        #reduce has slightly different outputs using chains versus segid
+        if len(resid) == 15: #chain
+          chain_id = resid[0:2].strip()
+          segid = None
+          if (len(chain_id) == 0):
+            chain_id = ' '
+          resid_less_chain = resid[2:]
+        elif len(resid) == 17: #segid
+          #self.results = []
+          #return
+          chain_id = None
+          segid = resid[0:4].strip()
+          #chain_id = resid[0:4].strip()
+          resid_less_chain = resid[4:]
+        else:
+          raise Sorry("unexpected length of residue identifier in reduce USER MODs.")
+        resname = resid_less_chain[5:8]
+
         assert (resname in ["ASN", "GLN", "HIS"])
         flip = nqh_flip(
           chain_id=chain_id,
-          resseq=resid[2:6].strip(),
-          icode=resid[6:7],
-          altloc=resid[14:15],
+          segid=segid,
+          resseq=resid_less_chain[0:4].strip(),
+          icode= resid_less_chain[4:5],
+          altloc=resid_less_chain[12:13],
           resname=resname,
           outlier=True)
         flip.set_coordinates_from_hierarchy(pdb_hierarchy)
