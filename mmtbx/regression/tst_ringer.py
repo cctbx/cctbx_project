@@ -41,7 +41,7 @@ def exercise () :
   assert (result2.return_code == 0)
   result3 = easy_run.fully_buffered(
     "mmtbx.ringer \"%s\" tmp_ringer_map_coeffs_2mFo-DFc.ccp4" % pdb_file)
-  assert (result3.return_code == 0)
+  assert (result3.return_code == 0) , "DL: crash is expected due to new sanity check. Will replace input map."
   lines2 = open("tmp_ringer_ringer.csv").read().splitlines()
   assert len(lines1) == len(lines2)
   for line1, line2 in zip(lines1, lines2) :
