@@ -5303,6 +5303,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       local_params=deepcopy(params)
       local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
       from cctbx.maptbx.auto_sharpen import run as auto_sharpen
+      acc=map_data.accessor()
       map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
          args=[],params=local_params,
         map_data=map_data,
@@ -5325,10 +5326,12 @@ def get_params(args,map_data=None,crystal_symmetry=None,
             tracking_data.params.output_files.sharpened_map_file)
       if tracking_data.params.output_files.sharpened_map_file:
         sharpened_map_data=map_data.deep_copy()
+        if acc is not None:  # offset the map to match original if possible
+          sharpened_map_data.reshape(acc)
 
         print >>out,"Gridding of sharpened map:"
-        print >>out,"Origin: ",map_data.origin()
-        print >>out,"All: ",map_data.all()
+        print >>out,"Origin: ",sharpened_map_data.origin()
+        print >>out,"All: ",sharpened_map_data.all()
         print >>out,\
           "\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
@@ -9299,7 +9302,7 @@ def select_box_map_data(si=None,
       max_box_fraction=si.max_box_fraction
       si.density_select_in_auto_sharpen=False
     else:
-      print >>out,"Using density_select in map_box"
+      #print >>out,"Using density_select in map_box"
       hierarchy=None
       assert si.density_select_in_auto_sharpen
       max_box_fraction=si.density_select_max_box_fraction
@@ -9346,7 +9349,7 @@ def select_box_map_data(si=None,
     args=[]
     if si.density_select_in_auto_sharpen:
       args.append('density_select=True')
-      print >>out,"Using density_select in map_box"
+      #print >>out,"Using density_select in map_box"
     elif si.box_in_auto_sharpen and not si.mask_atoms:
       print >>out,"Using map_box with model"
     elif si.mask_atoms:
