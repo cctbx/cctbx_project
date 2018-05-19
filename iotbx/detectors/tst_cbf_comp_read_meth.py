@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 # test comparative read methods for cbf library
 # default method provided by CBFlib-0.8.1; second method is optimized read
 import os
@@ -26,17 +26,16 @@ cases = ["ana/myo2_3_00001.cbf",
 "pilatus_2M_graeme/insulin_1_fixed_0043.img",
 "pilatus_2M_graeme/insulin_1_fixed_0289.img",
 ]
-dirpath = "/net/cci/dials/from_sunbird/sauter/rawdata/pilatus"
 
-def generate_paths():
+def generate_paths(dirpath):
   for item in cases:
     file = os.path.join(dirpath,item)
     yield file
 
-def test_all(timer=False):
-  for file in generate_paths():
+def test_all(dirpath,timer=False):
+  for file in generate_paths(dirpath):
     from iotbx.detectors.pilatus_minicbf import PilatusImage
-    if timer: print os.path.basename(file)
+    if timer: print (os.path.basename(file))
     P = PilatusImage(file)
     if timer: G = Profiler("cbflib no-opt    read")
     P.read(algorithm="cbflib")
@@ -60,5 +59,5 @@ def test_all(timer=False):
     assert assert_equal(read1,read3)
 
 if __name__=="__main__":
-  test_all(False)
-  print "OK"
+  test_all(dirpath=".",timer=False)
+  print ("OK")
