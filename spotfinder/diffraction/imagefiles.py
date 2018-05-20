@@ -145,21 +145,22 @@ class file_names:
     # In Unix, wildcards are permitted because they are expanded by the shell.
 
     for file in self.arg_module.argv[1:]:
-      if os.path.isfile(file):
-        self.interface3_FN_factory(os.path.abspath(file),error_message="File name not accepted")
+      expanded_path = os.path.expandvars(file)
+      if os.path.isfile(expanded_path):
+        self.interface3_FN_factory(os.path.abspath(expanded_path),error_message="File name not accepted")
       else:
-        A = url_support.potential_url_request(file)
-        if file=="data_in_object":
+        A = url_support.potential_url_request(expanded_path)
+        if expanded_path=="data_in_object":
           VF = FileName("cxi_data","present_image_0000001")
           VF.number = 1
           VF.template = "present_image_#######"
           VF.fileroot = "present_image"
           self.FN.append(VF)
         elif A.is_url_request():
-          VF = self.interface3_FN_factory(A.file,error_message="URL %s not accepted"%file)
+          VF = self.interface3_FN_factory(A.file,error_message="URL %s not accepted"%expanded_path)
           VF.full_url = A.text
         else:
-          raise Exception("File not found: %s"%file)
+          raise Exception("File not found: %s"%expanded_path)
 
   def __call__(self):
     return [item.fullpath() for item in self.FN]
