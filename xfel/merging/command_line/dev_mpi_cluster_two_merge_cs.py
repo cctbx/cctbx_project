@@ -223,7 +223,6 @@ class Script(base_Script):
             scaler_master.master_db_mgr.insert_observation(**call_instance["data"])
             if timing: print "~SCALER_MASTER_INSERT_OBS END RANK=%d TIME=%f;"%(rank, tt())
 
-      from IPython import embed; embed()
       if timing: print "~SCALER_MASTER_FINALISE START RANK=%d TIME=%f;"%(rank, tt())
       scaler_master.master_db_mgr.join() # database written, finalize the manager
       scaler_master.mpi_finalize()
