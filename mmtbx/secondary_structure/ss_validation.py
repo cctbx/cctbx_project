@@ -273,7 +273,7 @@ class validate(object):
     print >> self.log, "  Total wrong Ramachandrans      :", cumm_n_wrong_reg
     print >> self.log, "All done."
     help_string = """\
-  Total bad HELIX+SHEET recods does not include records with syntax errors
+  Total bad HELIX+SHEET recods does not include records with syntax mistakes
     (they are outputted separately in the beginning of the log),
     but includes empty records (without corresponding atoms in the model)
     and records with any deviations in geometry (bad/mediocre bonds,
