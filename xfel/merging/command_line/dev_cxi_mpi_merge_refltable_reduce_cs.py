@@ -1,5 +1,5 @@
 from __future__ import division
-import sys,time
+import sys
 
 from time import time as tt
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
@@ -14,9 +14,6 @@ from xfel.merging.command_line.dev_cxi_merge_refltable import refltable_scaling_
 #from xfel.merging.command_line.dev_cxi_merge_refltable import merging_reflection_table as mrt
 #from xfel.merging.command_line.dev_cxi_merge_refltable import merging_crystal_table as mct
 #from xfel.cxi.merging_utils import null_data
-
-
-from collections import deque
 
 class refltable_scaling_manager_mpi(scaling_manager_mpi, refltable_scaling_manager):
   pass
@@ -81,7 +78,7 @@ class Script(base_Script):
       print "OBS_EXTEND START RANK=%d:%d TIME=%f;"%(data0.myRank,data1.myRank,tt())
       data0.observations.extend(data1.observations)
       print "OBS_EXTEND END RANK=%d:%d TIME=%f;"%(data0.myRank,data1.myRank,tt())
-    
+
     return data0
 
   @staticmethod
@@ -269,5 +266,3 @@ if (__name__ == "__main__"):
   result = script.run(comm=comm,timing=False)
   if rank == 0:
     script.show_plot(result)
-
-

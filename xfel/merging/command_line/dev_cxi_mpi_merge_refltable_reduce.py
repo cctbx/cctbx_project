@@ -1,5 +1,5 @@
 from __future__ import division
-import sys,time
+import sys
 
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -13,9 +13,6 @@ from xfel.merging.command_line.dev_cxi_merge_refltable import refltable_scaling_
 #from xfel.merging.command_line.dev_cxi_merge_refltable import merging_reflection_table as mrt
 #from xfel.merging.command_line.dev_cxi_merge_refltable import merging_crystal_table as mct
 #from xfel.cxi.merging_utils import null_data
-
-
-from collections import deque
 
 class refltable_scaling_manager_mpi(scaling_manager_mpi, refltable_scaling_manager):
   pass
@@ -48,7 +45,7 @@ class Script(base_Script):
     data0.uc_values.add_cells(data1.uc_values)
 
     data0.failure_modes = {k : data0.failure_modes.get(k, 0) + data1.failure_modes.get(k,0) for k in set(data0.failure_modes.keys()) | set(data1.failure_modes.keys())}
-    
+
     next_crystal_id = len(data0.crystal_table)
     data1.ISIGI['crystal_id'] += next_crystal_id
     data0.ISIGI.extend(data1.ISIGI)
@@ -58,7 +55,7 @@ class Script(base_Script):
 
     if not data0.params.short_circuit:
       data0.observations.extend(data1.observations)
-    
+
     #Free some space?
     data1.failure_modes = None
     data1.observations = None
@@ -219,5 +216,3 @@ if (__name__ == "__main__"):
   result = script.run(comm=comm,timing=True)
   if rank == 0:
     script.show_plot(result)
-
-

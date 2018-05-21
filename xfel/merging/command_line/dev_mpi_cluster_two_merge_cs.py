@@ -72,14 +72,14 @@ class Script(base_Script):
       (Would require a second round of scaling, inefficient).""")
     if(self.params.mpi.cs==True and comm.Get_size()<=1):
       raise Usage("Client-server algorithm requires a minimum size of 2 MPI ranks to process data. Currently size=%d"%comm.Get_size())
-  
+
   def initialize(self):
     '''Initialise the script.'''
     from dials.util.options import OptionParser
     from iotbx.phil import parse
     from xfel.command_line.cxi_merge import master_phil
     help_message = '''
-    MPI enabled script for merging xfel data 
+    MPI enabled script for merging xfel data
     '''
     phil_mpi = """
     mpi {
@@ -157,7 +157,7 @@ class Script(base_Script):
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
 
-    # Use client-server distribution of work to the available MPI ranks. 
+    # Use client-server distribution of work to the available MPI ranks.
     # Each free rank requests a TAR ID and proceeds to process it.
     if self.params.mpi.cs==True:
       tar_file_names = transmitted_info["file_names"]
@@ -182,7 +182,7 @@ class Script(base_Script):
           if timing: print "~SCALER_WORKER END=%d RANK=%d TIME=%f;"%(idx, rank, tt())
       if timing: print "~SCALER_WORKERS END RANK=%d TIME=%f;"%(rank, tt())
 
-    # Distribute chunks of TAR files to each MPI rank. 
+    # Distribute chunks of TAR files to each MPI rank.
     # The files are equidistributed across all the available ranks.
     else:
       file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
