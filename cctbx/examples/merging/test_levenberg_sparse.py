@@ -64,6 +64,7 @@ def choice_as_helper_base(choices):
     from scitbx.examples.bevington import strumpack_algo as sa
     from scitbx.examples.bevington import strumpack_reorder as sr
     base_class.strum = True
+    base_class.mpi = getattr(levmar_strum, 'mpi', False)
     base_class.linsolver = getattr(sa, levmar_strum.algorithm, sa.automatic)
     base_class.reorder = getattr(sr, levmar_strum.reordering, sr.natural)
     base_class.verbose = getattr(levmar_strum, 'verbose', False)
@@ -80,11 +81,9 @@ def choice_as_helper_base(choices):
 
     #Phil param levmar.linsolver chooses linear solver backend
     def solve(self):
-      #from IPython import embed; embed()
       if base_class.strum == False:
         self.step_equations().solve(base_class.linsolver)
       else:
-        mpi = getattr(base_class,mpi,False)
         if base_class.mpi==True:
           import boost.python
           import scipy.sparse as sps
