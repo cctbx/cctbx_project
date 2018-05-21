@@ -141,9 +141,18 @@ def exercise_2():
   model.setup_scattering_dictionaries(scattering_table="wk1995")
   g_stat = model.geometry_statistics()
 
+def exercise_3():
+  """
+  Make sure model can do deep_copy() straight away.
+  """
+  inp = iotbx.pdb.input(lines=pdb_str_1, source_info=None)
+  model = mmtbx.model.manager(
+      model_input = inp)
+  new_model = model.deep_copy()
 
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
   exercise_2()
+  exercise_3()
   print "Time: %6.3f"%(time.time()-t0)

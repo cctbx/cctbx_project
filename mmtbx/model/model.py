@@ -460,9 +460,7 @@ class manager(object):
     return self.pdb_atoms
 
   def get_sites_cart(self):
-    if self.get_xray_structure() is None:
-      self._create_xray_structure()
-    return self._xray_structure.sites_cart()
+    return self.get_xray_structure().sites_cart()
 
   def get_atom_selection_cache(self):
     if self._atom_selection_cache is None:
@@ -1988,7 +1986,7 @@ class manager(object):
 
   def deep_copy(self):
     return self.select(selection = flex.bool(
-      self._xray_structure.scatterers().size(), True))
+      self.get_xray_structure().scatterers().size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -2193,7 +2191,7 @@ class manager(object):
       # YYY yes, this keeps pair_proxies initialized and available, e.g. for
       # extracting info used in .geo files.
       new_restraints_manager.geometry.pair_proxies(
-          sites_cart = self._xray_structure.sites_cart().select(selection))
+          sites_cart = self.get_sites_cart().select(selection))
     new_shift_manager = self._shift_manager
     new_riding_h_manager = None
     if self.riding_h_manager is not None:
