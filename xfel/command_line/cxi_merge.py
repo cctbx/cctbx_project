@@ -352,13 +352,16 @@ levmar {
     .type = choice
     .multiple = True
 }
-cell_rejection {
+lattice_rejection {
   unit_cell = Auto
     .type = unit_cell
     .help = unit_cell for filtering crystals with the given unit cell params. If Auto will automatically choose PDB model unit cell.
   space_group = Auto
     .type = space_group
     .help = space_group for filtering crystals with the given space group params. If Auto will automatically choose PDB space group.
+  d_min = None
+    .type = float
+    .help = minimum resolution for lattices to be merged
 }
 """ + mysql_master_phil
 
@@ -1131,13 +1134,13 @@ class scaling_manager (intensity_data) :
     else:
       image_info = None
 
-    if self.params.cell_rejection.unit_cell == Auto:
-      self.params.cell_rejection.unit_cell = self.params.target_unit_cell
+    if self.params.lattice_rejection.unit_cell == Auto:
+      self.params.lattice_rejection.unit_cell = self.params.target_unit_cell
 
     try :
       result = load_result(
         file_name=file_name,
-        reference_cell=self.params.cell_rejection.unit_cell,
+        reference_cell=self.params.lattice_rejection.unit_cell,
         ref_bravais_type=self.ref_bravais_type,
         params=self.params,
         reindex_op = reindex_op,
@@ -1545,6 +1548,13 @@ class scaling_manager (intensity_data) :
     if self.params.scaling.algorithm == 'mark0' and \
        corr <= self.params.min_corr:
       print >> out, "Skipping these data - correlation too low."
+    # Apply a resolution filter, if appropriate.
+    if self.params.lattice_rejection.d_min and \
+      observations.d_min() >= self.params.lattice_rejection.d_min:
+      print >> out, "Skipping these data - diffraction worse than %.2f Angstrom" % self.params.lattice_rejection.d_min
+      data.set_log_out(out.getvalue())
+      data.show_log_out(sys.stdout)
+      return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
     else:
       data.accept = True
       if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ["rs_hybrid"]:
