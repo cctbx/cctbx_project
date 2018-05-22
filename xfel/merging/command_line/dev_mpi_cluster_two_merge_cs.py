@@ -159,7 +159,7 @@ class Script(base_Script):
 
     # Use client-server distribution of work to the available MPI ranks.
     # Each free rank requests a TAR ID and proceeds to process it.
-    if self.params.mpi.cs==True:
+    if scaler_worker.params.mpi.cs==True:
       tar_file_names = transmitted_info["file_names"]
       if timing: print "~SCALER_WORKERS START RANK=%d TIME=%f;"%(rank,tt())
       if rank == 0:
