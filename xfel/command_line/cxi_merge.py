@@ -37,6 +37,7 @@ data = None
     specify additional directories.
 targlob = None
   .type = str
+  .multiple = True
   .help = new feature, instead of data records giving directories containing integration pickles
   .help = give a single blob giving the paths of tar files where the pickles are packaged up.
   .help = This reduces the number of files to be read in.  But as currently implemented
@@ -381,8 +382,8 @@ def get_observations (work_params):
     permissible_file_hash = dict( zip(permissible_file_names, [None]*len(permissible_file_names)) )
     n_sorry = 0
   file_names = []
-  if work_params.targlob is not None:
-    tar_list = glob.glob(work_params.targlob)
+  if work_params.targlob:
+    tar_list = [tar for tg in work_params.targlob for tar in glob.glob(tg)]
     for tarname in tar_list:
       import tarfile
       T = tarfile.open(name=tarname, mode='r')
@@ -475,7 +476,7 @@ def load_result (file_name,
   rejected, raises an exception (for tracking statistics).
   """
   # Ignore corrupted pickle files.
-  if params.targlob is not None:
+  if params.targlob:
     file_name,imember = file_name.split(";member")
     imember,timestamp = imember.split(";timestamp")
     import sys,tarfile
