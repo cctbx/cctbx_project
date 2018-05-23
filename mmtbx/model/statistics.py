@@ -224,7 +224,7 @@ class geometry(object):
          c_beta           = self.c_beta(),
          clash            = self.clash(),
          molprobity_score = self.mp_score(),
-         # cablam         = self.cablam(), # broken
+         cablam           = self.cablam(), # hopefully stable
          omega            = self.omega())
     if(slim):
       self.cached_result.ramachandran.ramalyze = None
