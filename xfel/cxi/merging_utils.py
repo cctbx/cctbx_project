@@ -53,6 +53,8 @@ class null_data (object) :
                 low_signal=False,
                 wrong_bravais=False,
                 wrong_cell=False,
+                low_resolution=False,
+                low_correlation=False,
                 reason=None) :
     adopt_init_args(self, locals())
 

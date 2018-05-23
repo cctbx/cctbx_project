@@ -713,6 +713,7 @@ class scaling_manager (intensity_data) :
     self.n_low_signal = 0
     self.n_wrong_bravais = 0
     self.n_wrong_cell = 0
+    self.n_low_resolution = 0
     self.n_low_corr = 0
     self.failure_modes = {}
     self.observations = flex.int()
@@ -790,6 +791,8 @@ class scaling_manager (intensity_data) :
       self.n_wrong_bravais
     print >> self.log, "  %d rejected for unit cell outliers" % \
       self.n_wrong_cell
+    print >> self.log, "  %d rejected for low resolution" % \
+      self.n_low_resolution
     print >> self.log, "  %d rejected for low signal" % \
       self.n_low_signal
     print >> self.log, "  %d rejected due to up-front poor correlation under min_corr parameter" % \
@@ -802,6 +805,7 @@ class scaling_manager (intensity_data) :
     checksum = self.n_accepted  + self.n_file_error \
                + self.n_low_corr + self.n_low_signal \
                + self.n_wrong_bravais + self.n_wrong_cell \
+               + self.n_low_resolution \
                + sum([val for val in self.failure_modes.itervalues()])
     assert checksum == len(file_names)
 
@@ -900,6 +904,10 @@ class scaling_manager (intensity_data) :
         self.n_wrong_bravais += 1
       elif (data.wrong_cell) :
         self.n_wrong_cell += 1
+      elif (data.low_resolution) :
+        self.n_low_resolution += 1
+      elif (data.low_correlation) :
+        self.n_low_corr += 1
       elif (getattr(data,"reason",None) is not None):
         if str(data.reason)!="":
           self.failure_modes[str(data.reason)] = self.failure_modes.get(str(data.reason),0) + 1
@@ -923,7 +931,7 @@ class scaling_manager (intensity_data) :
         else:
           self.ISIGI[index] = isigi
     else :
-      self.n_low_corr += 1
+      self.n_low_corr += 1 # FIXME this is no longer the right default
     self.uc_values.add_cell(data.indexed_cell,
       rejected=(not data.accept))
     if not self.params.short_circuit:
@@ -948,6 +956,7 @@ class scaling_manager (intensity_data) :
     self.n_processed += data.n_processed
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
+    self.n_low_resolution += data.n_low_resolution
     for key in data.failure_modes.keys():
       self.failure_modes[key] = self.failure_modes.get(key,0) + data.failure_modes[key]
 
@@ -1475,6 +1484,21 @@ class scaling_manager (intensity_data) :
     data.corr = corr
     data.wavelength = wavelength
 
+    # Apply the correlation coefficient threshold, if appropriate.
+    if self.params.scaling.algorithm == 'mark0' and \
+       corr <= self.params.min_corr:
+      print >> out, "Skipping these data - correlation too low."
+      data.set_log_out(out.getvalue())
+      data.show_log_out(sys.stdout)
+      return null_data(file_name=file_name, log_out=out.getvalue(), low_correlation=True)
+    # Apply a resolution filter, if appropriate.
+    if self.params.lattice_rejection.d_min and \
+      observations.d_min() >= self.params.lattice_rejection.d_min:
+      print >> out, "Skipping these data - diffraction worse than %.2f Angstrom" % self.params.lattice_rejection.d_min
+      data.set_log_out(out.getvalue())
+      data.show_log_out(sys.stdout)
+      return null_data(file_name=file_name, log_out=out.getvalue(), low_resolution=True)
+
     from xfel.cxi.postrefinement_factory import factory
     PF = factory(self.params)
     postrefinement_algorithm = PF.postrefinement_algorithm()
@@ -1544,50 +1568,39 @@ class scaling_manager (intensity_data) :
 
     data.extra_stuff = {}
 
-    # Apply the correlation coefficient threshold, if appropriate.
-    if self.params.scaling.algorithm == 'mark0' and \
-       corr <= self.params.min_corr:
-      print >> out, "Skipping these data - correlation too low."
-    # Apply a resolution filter, if appropriate.
-    if self.params.lattice_rejection.d_min and \
-      observations.d_min() >= self.params.lattice_rejection.d_min:
-      print >> out, "Skipping these data - diffraction worse than %.2f Angstrom" % self.params.lattice_rejection.d_min
-      data.set_log_out(out.getvalue())
-      data.show_log_out(sys.stdout)
-      return null_data(file_name=file_name, log_out=out.getvalue(), low_signal=True)
-    else:
-      data.accept = True
-      if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ["rs_hybrid"]:
-        assert slope == 1.0
-        assert self.params.include_negatives
-      for pair in matches.pairs():
-        if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
-          continue
-        Intensity = observations.data()[pair[1]] / slope
-        # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
-        if Intensity == 0:
-          continue
 
-        # Add the reflection as a two-tuple of intensity and I/sig(I)
-        # to the dictionary of observations.
-        index = self.miller_set.indices()[pair[0]]
-        isigi = (Intensity,
-                 observations.data()[pair[1]] / observations.sigmas()[pair[1]],
-                 slope)
-        if index in data.ISIGI:
-          data.ISIGI[index].append(isigi)
-        else:
-          data.ISIGI[index] = [isigi]
-          data.extra_stuff[index] = flex.double(), flex.miller_index()
+    data.accept = True
+    if self.params.postrefinement.enable and self.params.postrefinement.algorithm in ["rs_hybrid"]:
+      assert slope == 1.0
+      assert self.params.include_negatives
+    for pair in matches.pairs():
+      if not self.params.include_negatives and (observations.data()[pair[1]] <= 0) :
+        continue
+      Intensity = observations.data()[pair[1]] / slope
+      # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
+      if Intensity == 0:
+        continue
 
-        data.extra_stuff[index][0].append(observations_original_index.data()[pair[1]])
-        data.extra_stuff[index][1].append(observations_original_index.indices()[pair[1]])
+      # Add the reflection as a two-tuple of intensity and I/sig(I)
+      # to the dictionary of observations.
+      index = self.miller_set.indices()[pair[0]]
+      isigi = (Intensity,
+               observations.data()[pair[1]] / observations.sigmas()[pair[1]],
+               slope)
+      if index in data.ISIGI:
+        data.ISIGI[index].append(isigi)
+      else:
+        data.ISIGI[index] = [isigi]
+        data.extra_stuff[index] = flex.double(), flex.miller_index()
 
-        sigma = observations.sigmas()[pair[1]] / slope
-        variance = sigma * sigma
-        data.summed_N[pair[0]] += 1
-        data.summed_wt_I[pair[0]] += Intensity / variance
-        data.summed_weight[pair[0]] += 1 / variance
+      data.extra_stuff[index][0].append(observations_original_index.data()[pair[1]])
+      data.extra_stuff[index][1].append(observations_original_index.indices()[pair[1]])
+
+      sigma = observations.sigmas()[pair[1]] / slope
+      variance = sigma * sigma
+      data.summed_N[pair[0]] += 1
+      data.summed_wt_I[pair[0]] += Intensity / variance
+      data.summed_weight[pair[0]] += 1 / variance
     print >> out, "Selected file %s to %5.2f Angstrom resolution limit" % (file_name, observations.d_min())
     data.set_log_out(out.getvalue())
     data.show_log_out(sys.stdout)
