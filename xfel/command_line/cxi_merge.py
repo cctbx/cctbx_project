@@ -485,7 +485,10 @@ def load_result (file_name,
     this_member = K[int(imember)]
     fileIO = T.extractfile(member=this_member)
     import cPickle as pickle
-    obj = pickle.load(fileIO)
+    try:
+      obj = pickle.load(fileIO)
+    except Exception:
+      return None
   else:
     try:
       obj = easy_pickle.load(file_name=file_name)
