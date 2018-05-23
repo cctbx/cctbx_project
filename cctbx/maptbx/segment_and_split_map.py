@@ -5689,6 +5689,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       # XXX save it in tracking_data
 
       if params.output_files.output_directory:
+        if not os.path.isdir(params.output_files.output_directory):
+          os.mkdir(params.output_files.output_directory)
         file_name=os.path.join(params.output_files.output_directory,
           'ncs_from_map.ncs_spec')
         f=open(file_name,'w')
