@@ -66,8 +66,10 @@ class FormatBrukerPhotonII(FormatBruker):
       else:
         self.header_dict[k] = v
 
-    from iotbx.detectors.bruker import BrukerImage
-    self.detectorbase = BrukerImage(self._image_file)
+    # The Photon II format can't currently use BrukerImage, see
+    # https://github.com/cctbx/cctbx_project/issues/65
+    #from iotbx.detectors.bruker import BrukerImage
+    #self.detectorbase = BrukerImage(self._image_file)
 
     return
 
