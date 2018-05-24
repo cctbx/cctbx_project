@@ -222,6 +222,35 @@ class injector(object):
           setattr_from_dict(b.__dict__)
       return type.__init__(self, name, (), {})
 
+def inject(target_class, *mixin_classes):
+  '''Add entries from python class dictionaries to a boost extension class.
+
+     It is used as follows:
+
+           class _():
+             def method(...):
+               ...
+           boost.python.inject(extension_class, _)
+
+     instead of the previous mechanism of
+
+           class _(boost.python.injector, extension_class):
+             def method(...):
+               ...
+
+     which does not work in python 3.
+  '''
+  def setattr_from_dict(d):
+    for key, value in d.items():
+      if key not in ("__init__",
+                     "__del__",
+                     "__module__",
+                     "__file__",
+                     "__dict__") and (key != '__doc__' or value):
+        setattr(target_class, key, value)
+  for m in mixin_classes:
+    setattr_from_dict(m.__dict__)
+
 def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
   from_env = os.environ.get(env_var)
   if from_env is None: return None
