@@ -1,7 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
+import hashlib
+import sys
+
 import boost.optional # import dependency
 import boost.std_pair # import dependency
-
 import boost.python
 boost.python.import_ext("scitbx_array_family_flex_ext")
 from scitbx_array_family_flex_ext import *
@@ -11,23 +14,19 @@ import scitbx.stl.map # import dependency
 import scitbx.random
 from scitbx.random import get_random_seed, set_random_seed
 from libtbx.str_utils import format_value
-from libtbx.utils import hashlib_md5
-import sys
 
 def bool_md5(self):
-  result = hashlib_md5()
-  result.update(self.__getstate__()[1])
-  return result
+  return hashlib.md5(self.__getstate__()[1])
 bool.md5 = bool_md5
 
 class _(boost.python.injector, grid):
 
   def show_summary(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "origin:", self.origin()
-    print >> f, "last:", self.last()
-    print >> f, "focus:", self.focus()
-    print >> f, "all:", self.all()
+    print("origin:", self.origin(), file=f)
+    print("last:", self.last(), file=f)
+    print("focus:", self.focus(), file=f)
+    print("all:", self.all(), file=f)
     return self
 
 def sorted(data, reverse=False, stable=False):
@@ -42,7 +41,7 @@ def as_scitbx_matrix(a):
   return scitbx.matrix.rec(tuple(a), a.focus())
 
 def show(a):
-  print as_scitbx_matrix(a).mathematica_form(one_row_per_line=True)
+  print(as_scitbx_matrix(a).mathematica_form(one_row_per_line=True))
 
 def rows(a):
   assert a.nd() == 2
@@ -144,14 +143,14 @@ def _format_mean(values, format):
 class _(boost.python.injector, ext.min_max_mean_double):
 
   def show(self, out=None, prefix="", format="%.6g", show_n=True):
-    if (out is None): out = sys.stdout
-    if (show_n):
-      print >> out, prefix + "n:", self.n
+    if out is None: out = sys.stdout
+    if show_n:
+      print(prefix + "n:", self.n, file=out)
     def f(v):
       return format_value(format=format, value=v)
-    print >> out, prefix + "min: ", f(self.min)
-    print >> out, prefix + "max: ", f(self.max)
-    print >> out, prefix + "mean:", f(self.mean)
+    print(prefix + "min: ", f(self.min), file=out)
+    print(prefix + "max: ", f(self.max), file=out)
+    print(prefix + "mean:", f(self.mean), file=out)
 
   def as_tuple(self):
     return (self.min, self.max, self.mean)
@@ -161,7 +160,7 @@ def _min_max_mean_double_init(self):
 
 def _standard_deviation_helper(data, m):
   den = data.size() - m
-  if (den <= 0): return None
+  if den <= 0: return None
   return (sum(pow2(data - mean(data))) / den)**0.5
 
 def _standard_deviation_of_the_sample(self):
@@ -271,9 +270,9 @@ class _(boost.python.injector, ext.linear_regression_core):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"is_well_defined:", self.is_well_defined()
-    print >> f, prefix+"y_intercept:", self.y_intercept()
-    print >> f, prefix+"slope:", self.slope()
+    print(prefix+"is_well_defined:", self.is_well_defined(), file=f)
+    print(prefix+"y_intercept:", self.y_intercept(), file=f)
+    print(prefix+"slope:", self.slope(), file=f)
 
 class _(boost.python.injector, ext.double):
 
@@ -289,10 +288,10 @@ class _(boost.python.injector, ext.linear_correlation):
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
-    print >> f, prefix+"is_well_defined:", self.is_well_defined()
-    print >> f, prefix+"mean_x:", self.mean_x()
-    print >> f, prefix+"mean_y:", self.mean_y()
-    print >> f, prefix+"coefficient:", self.coefficient()
+    print(prefix+"is_well_defined:", self.is_well_defined(), file=f)
+    print(prefix+"mean_x:", self.mean_x(), file=f)
+    print(prefix+"mean_y:", self.mean_y(), file=f)
+    print(prefix+"coefficient:", self.coefficient(), file=f)
 
 class histogram_slot_info(object):
 
@@ -325,7 +324,7 @@ class _(boost.python.injector, ext.histogram):
     if (f is None): f = sys.stdout
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+      print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def show_count_stats(
       counts,
@@ -347,13 +346,13 @@ def show_count_stats(
     if (count >= threshold): continue
     assert count >= 0
     if (i > 0):
-      print >> out, fmt_val % (threshold, i, i/n)
+      print(fmt_val % (threshold, i, i/n), file=out)
     if (count == 0):
-      print >> out, fmt_zero % (n-i, 1-i/n)
+      print(fmt_zero % (n-i, 1-i/n), file=out)
       break
     threshold = max(1, threshold-group_size)
   else:
-    print >> out, fmt_val % (threshold, n, 1)
+    print(fmt_val % (threshold, n, 1), file=out)
 
 class weighted_histogram_slot_info(object):
 
@@ -386,7 +385,7 @@ class _(boost.python.injector, ext.weighted_histogram):
     if (f is None): f = sys.stdout
     fmt = "%s" + format_cutoffs + " - " + format_cutoffs + ": %d"
     for info in self.slot_infos():
-      print >> f, fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n)
+      print(fmt % (prefix, info.low_cutoff, info.high_cutoff, info.n), file=f)
 
 def permutation_generator(size):
   result = size_t(xrange(size))
@@ -473,7 +472,7 @@ class smart_selection(object):
 
   def show_summary(self, out=None, prefix="", label="selected elements: "):
     if (out is None): out = sys.stdout
-    print >> out, prefix + label + self.format_summary()
+    print(prefix + label + self.format_summary(), file=out)
 
 
 def __show_sizes(f):
@@ -482,17 +481,14 @@ def __show_sizes(f):
   l = max([ len(typename) for typename, size in typename_n_size ])
   fmt = "%%%is : %%i" % l
   for typename, size in typename_n_size:
-    print fmt % (typename, size)
+    print(fmt % (typename, size))
 
 show_sizes_int = lambda: __show_sizes(empty_container_sizes_int)
 show_sizes_double = lambda: __show_sizes(empty_container_sizes_double)
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
-  try:
-    import cPickle as pickle
-  except ImportError:
-    import pickle
+  from six.moves import cPickle as pickle
   a = flex_triple()
   assert a.size() == 0
   a = flex_triple(132)
