@@ -22,6 +22,16 @@ class FormatBrukerPhotonII(FormatBruker):
     except IOError:
       return False
 
+    header_dic = FormatBrukerPhotonII.parse_header(header_lines)
+
+    dettype = header_dic.get('DETTYPE')
+    if dettype is None: return False
+    if not dettype.startswith('CMOS-PHOTONII'): return False
+
+    return True
+
+  @staticmethod
+  def parse_header(header_lines):
     header_dic = {}
 
     for l in header_lines:
@@ -33,11 +43,7 @@ class FormatBrukerPhotonII(FormatBruker):
       else:
         header_dic[k] = v
 
-    dettype = header_dic.get('DETTYPE')
-    if dettype is None: return False
-    if not dettype.startswith('CMOS-PHOTONII'): return False
-
-    return True
+    return header_dic
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
@@ -58,16 +64,12 @@ class FormatBrukerPhotonII(FormatBruker):
     except IOError:
       return False
 
-    self.header_dict = {}
-    for l in header_lines:
-      k, v = [v.strip() for v in l.split(':', 1)]
-      if k in self.header_dict:
-        self.header_dict[k] = self.header_dict[k] + "\n" + v
-      else:
-        self.header_dict[k] = v
+    self.header_dict = FormatBrukerPhotonII.parse_header(header_lines)
 
-    from iotbx.detectors.bruker import BrukerImage
-    self.detectorbase = BrukerImage(self._image_file)
+    # The Photon II format can't currently use BrukerImage, see
+    # https://github.com/cctbx/cctbx_project/issues/65
+    #from iotbx.detectors.bruker import BrukerImage
+    #self.detectorbase = BrukerImage(self._image_file)
 
     return
 
@@ -75,28 +77,20 @@ class FormatBrukerPhotonII(FormatBruker):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
     # AXIS indexes into this list to define the scan axis (in FORTRAN counting)
     # START and RANGE define the start and step size for each image
-    # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
 
     from scitbx import matrix
-    angles = map(float, self.header_dict['ANGLES'].split())
+    from scitbx.array_family import flex
+    _, omega, phi, chi = map(float, self.header_dict['ANGLES'].split())
+    scan_axis = ['NONE', '2THETA', 'OMEGA', 'PHI', 'CHI' ,'X', 'Y', 'Z']
+    scan_axis = scan_axis[int(self.header_dict['AXIS'])]
+    names = flex.std_string(("PHI", "CHI", "OMEGA"))
+    scan_axis = flex.first_index(names, scan_axis)
+    if scan_axis is None: scan_axis = "OMEGA" # default
+    axes = flex.vec3_double(((0,-1,0), (0,0,1), (0,-1,0)))
+    angles = flex.double((phi, chi, omega))
 
-    beam = matrix.col((0, 0, 1))
-    phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
-
-    if self.header_dict['AXIS'][0] == '2':
-      # OMEGA scan
-      axis = (-1, 0, 0)
-      incr = float(self.header_dict['INCREME'])
-      if incr < 0:
-        axis = (1, 0, 0)
-      fixed = phi.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-      return self._goniometer_factory.make_goniometer(axis, fixed.elems)
-    else:
-      # PHI scan
-      assert(self.header_dict['AXIS'][0] == '3')
-      omega = matrix.col((1, 0, 0))
-      axis = phi.rotate(omega, angles[1], deg=True)
-      return self._goniometer_factory.known_axis(axis.elems)
+    return self._goniometer_factory.make_multi_axis_goniometer(
+      axes, angles, names, scan_axis)
 
   def _detector(self):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
@@ -150,6 +144,15 @@ class FormatBrukerPhotonII(FormatBruker):
   def get_raw_data(self):
     '''Get the pixel intensities (i.e. read the image and return as a
     flex array of integers.)'''
+
+    # It is better to catch FORMAT 86 here and fail with a sensible error msg
+    # as soon as something is attempted with the image data rather than in
+    # the understand method. Otherwise the user gets FormatBruker reading the
+    # image improperly but without failing
+    if self.header_dict['FORMAT'] != "100":
+      from libtbx.utils import Sorry
+      raise Sorry("Only FORMAT 100 images from the Photon II are currently "
+                  "supported")
 
     from boost.python import streambuf
     from dxtbx import read_uint8, read_uint16, read_uint16_bs, read_uint32, read_uint32_bs
