@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 11/03/2017
+Last Changed: 05/24/2017
 Description : PRIME GUI Initialization module
 '''
 
@@ -52,10 +52,11 @@ def str_split(string, delimiters=(' ', ','), maxsplit=0):
 
 class PRIMEWindow(wx.Frame):
 
-  def __init__(self, parent, id, title, phil=None, prefix='prime'):
+  def __init__(self, parent, id, title, prefix='prime'):
     wx.Frame.__init__(self, parent, id, title, size=(800, 500))
 
     self.prime_filename = '{}.phil'.format(prefix)
+    self.prime_phil = master_phil
 
     # Toolbar
     self.toolbar = self.CreateToolBar(wx.TB_TEXT)
@@ -124,7 +125,7 @@ class PRIMEWindow(wx.Frame):
     main_box = wx.BoxSizer(wx.VERTICAL)
 
     # Instantiate windows
-    self.input_window = frm.PRIMEInputWindow(self, phil=phil)
+    self.input_window = frm.PRIMEInputWindow(self, phil=self.prime_phil)
 
     # Single input window
     main_box.Add(self.input_window, 1, flag=wx.ALL | wx.EXPAND, border=10)
@@ -144,6 +145,10 @@ class PRIMEWindow(wx.Frame):
     self.Bind(wx.EVT_TOOL, self.onSaveScript, self.tb_btn_save)
     self.Bind(wx.EVT_TOOL, self.onReset, self.tb_btn_reset)
 
+    # Input window bindings
+    self.Bind(wx.EVT_BUTTON, self.onAdvancedOptions, self.input_window.opt_btn)
+
+
     # Draw the main window sizer
     self.SetSizer(main_box)
 
@@ -159,8 +164,8 @@ class PRIMEWindow(wx.Frame):
     wx.AboutBox(info)
 
   def onPreferences(self, e):
-    self.pparams = self.input_window.pparams
     prefs = dlg.PRIMEPreferences(self,
+                                 phil=self.prime_phil,
                                  title='Advanced PRIME Options',
                                  style=wx.DEFAULT_DIALOG_STYLE |
                                        wx.STAY_ON_TOP |
@@ -168,16 +173,29 @@ class PRIMEWindow(wx.Frame):
     prefs.SetMinSize((600, -1))
     prefs.Fit()
 
-    prefs.set_choices(method=self.pparams.queue.mode,
-                      queue=self.pparams.queue.qname)
-
-
     if prefs.ShowModal() == wx.ID_OK:
-      if prefs.method == 'multiprocessing':
-        self.pparams.queue.mode = None
-      else:
-        self.pparams.queue.mode = prefs.method
-      self.pparams.queue.qname = prefs.queue
+      self.prime_phil = self.prime_phil.fetch(prefs.pref_phil)
+      self.input_window.regenerate_params(self.prime_phil)
+
+  def onAdvancedOptions(self, e):
+    self.input_window.update_settings()
+    self.prime_phil = self.prime_phil.fetch(self.input_window.prime_phil)
+    advanced = dlg.PRIMEAdvancedOptions(self,
+                                        phil=self.prime_phil,
+                                        title='Advanced PRIME Options',
+                                        style=wx.DEFAULT_DIALOG_STYLE |
+                                              wx.STAY_ON_TOP |
+                                              wx.RESIZE_BORDER)
+    advanced.SetMinSize((600, -1))
+    advanced.Fit()
+
+    if advanced.ShowModal() == wx.ID_OK:
+      self.prime_phil = self.prime_phil.fetch(advanced.phil_script)
+      self.prime_phil = self.prime_phil.fetch(advanced.new_prime_phil)
+      self.input_window.regenerate_params(self.prime_phil)
+
+    advanced.Destroy()
+
 
   def onInput(self, e):
     if self.input_window.inp_box.ctr.GetValue() != '':
@@ -186,35 +204,9 @@ class PRIMEWindow(wx.Frame):
       self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
 
   def init_settings(self):
-    # Get list of inputs from input window
-    idxs = self.input_window.inp_box.ctr.GetItemCount()
-    items = [self.input_window.inp_box.ctr.GetItemData(i) for i in range(idxs)]
-    inputs = []
-    reference = None
-    sequence = None
-
-    for i in items:
-      inp_type = i.type.type.GetString(i.type_selection)
-      if inp_type in ('processed pickle list',
-                      'processed pickle folder',
-                      'processed pickle'):
-        inputs.append(i.path)
-      elif inp_type == 'reference MTZ':
-        reference = i.path
-      elif inp_type == 'sequence':
-        sequence = i.path
-
+    self.input_window.update_settings()
     self.pparams = self.input_window.pparams
-    self.pparams.data = inputs
-    self.out_dir = self.input_window.out_box.ctr.GetValue()
-    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)               # Need to change
-    self.pparams.title = self.input_window.project_title.ctr.GetValue()
-    if reference is not None:
-      self.pparams.hklisoin = reference
-      if self.input_window.opt_chk_useref.GetValue():
-        self.pparams.hklrefin = reference
-    self.pparams.n_residues = self.input_window.opt_spc_nres.ctr.GetValue()
-    self.pparams.n_processors = self.input_window.opt_spc_nproc.ctr.GetValue()
+    self.out_dir = self.input_window.out_dir
 
   def sanity_check(self):
     '''
@@ -258,6 +250,7 @@ class PRIMEWindow(wx.Frame):
 
     if path_dlg.ShowModal() == wx.ID_OK:
       selected = path_dlg.selected
+      recovery = path_dlg.recovery_mode
       prime_path = selected[1]
       prime_status = selected[0]
       settings_file = os.path.join(prime_path, 'settings.phil')
@@ -273,16 +266,16 @@ class PRIMEWindow(wx.Frame):
         with open(settings_file, 'r') as sf:
           phil_string = sf.read()
         read_phil = ip.parse(phil_string)
-        rec_phil = master_phil.fetch(source=read_phil)
-        self.pparams = rec_phil.extract()
-        self.input_window.pparams = self.pparams
-        self.input_window.phil_string = phil_string
+        self.prime_phil = master_phil.fetch(source=read_phil)
+        self.pparams = self.prime_phil.extract()
+        self.input_window.regenerate_params(self.prime_phil)
         self.update_input_window()
 
       # If any cycles (or full run) were completed, show results
       if prime_status == 'Unknown':
         return
-      else:
+
+      if recovery == 0:
         self.prime_run_window = frm.PRIMERunWindow(self, -1,
                                                    title='PRIME Output',
                                                    params=self.pparams,
@@ -375,7 +368,8 @@ class PRIMEWindow(wx.Frame):
     self.reset_settings()
 
     user_phil = ip.parse(phil_string)
-    self.pparams = master_phil.fetch(source=user_phil).extract()
+    self.prime_phil = master_phil.fetch(source=user_phil)
+    self.pparams = self.prime_phil.extract()
     self.input_window.pparams = self.pparams
     self.input_window.phil_string = phil_string
     self.update_input_window()
@@ -409,7 +403,8 @@ class PRIMEWindow(wx.Frame):
     self.input_window.opt_spc_nproc.ctr.SetValue(int(self.pparams.n_processors))
 
   def reset_settings(self):
-    self.pparams = master_phil.extract()
+    self.prime_phil = master_phil
+    self.pparams = self.prime_phil.extract()
     self.input_window.inp_box.delete_all()
     self.input_window.out_box.reset_default()
     self.input_window.project_title.reset_default()

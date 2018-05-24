@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 05/10/2018
+Last Changed: 05/24/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -2065,7 +2065,6 @@ class RecoveryDialog(BaseDialog):
       self.pathlist.SetColumnWidth(3, width=-1)
 
       self.Fit()
-
 
   def onOK(self, e):
     for i in range(self.pathlist.GetItemCount()):

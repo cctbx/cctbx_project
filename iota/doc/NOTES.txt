@@ -1,4 +1,4 @@
-IOTA v1.1.031 - HKL slice viewer
+IOTA v1.1.031 - PRIME UI update
 
 Bugfixes:
 - Spin Control: checkbox actually shown as checked if parameter is set to True
@@ -23,7 +23,12 @@ ranges, if enabled
   - Gain estimate turned off by default
   - Auto-threshold turned off by default
   - Use FFT3D turned on by default
-
-
+- Added IOTA UI improvements to PRIME UI:
+  - "Settings-only" run recovery
+  - New Advanced Options dialog (like IOTA Backend Dialog)
+  - Better resolution limits management (not as crazy)
+  - Smoother interplay between script and options (though needs work)
 
 Known issues:
+
+- PRIME UI interplay between script and options needs work

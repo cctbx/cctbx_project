@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 11/03/2017
+Last Changed: 05/24/2018
 Description : PRIME GUI frames module
 '''
 
@@ -138,7 +138,42 @@ class PRIMEInputWindow(BasePanel):
     if inp_dlg.ShowModal() == wx.ID_OK:
       self.inp_box.ctr.SetValue(inp_dlg.GetPath())
     inp_dlg.Destroy()
+    self.update_settings()
     e.Skip()
+
+  def update_settings(self):
+    idxs = self.inp_box.ctr.GetItemCount()
+    items = [self.inp_box.ctr.GetItemData(i) for i in range(idxs)]
+    inputs = []
+    reference = None
+    sequence = None
+
+    for i in items:
+      inp_type = i.type.type.GetString(i.type_selection)
+      if inp_type in ('processed pickle list',
+                      'processed pickle folder',
+                      'processed pickle'):
+        inputs.append(i.path)
+      elif inp_type == 'reference MTZ':
+        reference = i.path
+      elif inp_type == 'sequence':
+        sequence = i.path
+
+    self.pparams.data = inputs
+
+    if reference is not None:
+      self.pparams.hklisoin = reference
+      if self.opt_chk_useref.GetValue():
+        self.pparams.hklrefin = reference
+
+    self.out_dir = self.out_box.ctr.GetValue()
+    self.pparams.run_no = misc.set_base_dir(out_dir=self.out_dir)               # Need to change
+    self.pparams.title = self.project_title.ctr.GetValue()
+    self.pparams.n_residues = self.opt_spc_nres.ctr.GetValue()
+    self.pparams.n_processors = self.opt_spc_nproc.ctr.GetValue()
+
+    update_phil = master_phil.format(python_object=self.pparams)
+    self.regenerate_params(update_phil)
 
   def onOutputBrowse(self, e):
     """ On clicking the Browse button: show the DirDialog and populate 'Output'
@@ -148,102 +183,21 @@ class PRIMEInputWindow(BasePanel):
     if save_dlg.ShowModal() == wx.ID_OK:
       self.out_box.ctr.SetValue(save_dlg.GetPath())
     save_dlg.Destroy()
-    e.Skip()
-
-  def onIsoRefBrowse(self, e):
-    iso_dlg = wx.FileDialog(self,
-                            message="Select isomorphous reference file",
-                            defaultDir=os.curdir,
-                            defaultFile="*.mtz",
-                            wildcard="*.mtz",
-                            style=wx.OPEN | wx.FD_FILE_MUST_EXIST)
-    if iso_dlg.ShowModal() == wx.ID_OK:
-      self.ref_box.ctr.SetValue(iso_dlg.GetPaths()[0])
-    iso_dlg.Destroy()
+    self.update_settings()
     e.Skip()
 
   def onAdvancedOptions(self, e):
-    advanced = dlg.PRIMEAdvancedOptions(self,
-                                        title='Advanced PRIME Options',
-                                        style=wx.DEFAULT_DIALOG_STYLE |
-                                              wx.STAY_ON_TOP |
-                                              wx.RESIZE_BORDER)
-    advanced.SetMinSize((600, -1))
-    advanced.Fit()
-
-    # Populate the PHIL textbox
-    current_phil = master_phil.format(python_object=self.pparams)
-    self.generate_phil_string(current_phil=current_phil)
-    advanced.phil.ctr.SetValue(self.phil_string)
-
-    # Set values to default parameters
-    advanced.res.high.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_max))
-    advanced.res.low.SetValue('{:4.2f}'.format(self.pparams.postref.allparams.d_min))
-    advanced.sg.spacegroup.SetValue(str(self.pparams.target_space_group))
-    if str(self.pparams.target_unit_cell).lower() != 'none':
-      uc = ' '.join(list(map(str, self.pparams.target_unit_cell.parameters())))
-      advanced.uc.unit_cell.SetValue(uc)
-    else:
-      advanced.uc.unit_cell.SetValue(str(self.pparams.target_unit_cell))
-    advanced.anom.SetValue(self.pparams.target_anomalous_flag)
-    advanced.cc.cc_cutoff.SetValue(str(self.pparams.frame_accept_min_cc))
-    advanced.pix.pixel_size.SetValue(str(self.pparams.pixel_size_mm))
-    advanced.cycles.ctr.SetValue(int(self.pparams.n_postref_cycle))
-
-    if advanced.ShowModal() == wx.ID_OK:
-      # Read PHIL string from window, convert to params
-      self.phil_string = advanced.phil.ctr.GetValue()
-      new_phil = ip.parse(self.phil_string)
-      self.pparams = master_phil.fetch(sources=[new_phil]).extract()
-
-      # Param controls will override the PHIL string (clunky, but for now)
-      if advanced.res_override.GetValue():
-          self.pparams.scale.d_max = float(advanced.res.high.GetValue())
-          self.pparams.scale.d_min = float(advanced.res.low.GetValue())
-          self.pparams.merge.d_max = float(advanced.res.high.GetValue())
-          self.pparams.merge.d_min = float(advanced.res.low.GetValue())
-          self.pparams.postref.scale.d_max = float(advanced.res.high.GetValue())
-          self.pparams.postref.scale.d_min = float(advanced.res.low.GetValue())
-          self.pparams.postref.crystal_orientation.d_max = float(advanced.res.high.GetValue())
-          self.pparams.postref.crystal_orientation.d_min = float(advanced.res.low.GetValue())
-          self.pparams.postref.reflecting_range.d_max = float(advanced.res.high.GetValue())
-          self.pparams.postref.reflecting_range.d_min = float(advanced.res.low.GetValue())
-          self.pparams.postref.unit_cell.d_max = float(advanced.res.high.GetValue())
-          self.pparams.postref.unit_cell.d_min = float(advanced.res.low.GetValue())
-          self.pparams.postref.allparams.d_max = float(advanced.res.high.GetValue())
-          self.pparams.postref.allparams.d_min = float(advanced.res.low.GetValue())
-      self.pparams.target_space_group = advanced.sg.spacegroup.GetValue()
-      if advanced.uc.unit_cell.GetValue().lower() != 'none':
-        uc = str_split(advanced.uc.unit_cell.GetValue())
-        self.pparams.target_unit_cell = unit_cell(list(map(float, uc)))
-      else:
-        self.pparams.target_unit_cell = None
-      self.pparams.target_anomalous_flag = advanced.anom.GetValue()
-      if advanced.cc.cc_cutoff.GetValue().lower() != 'none':
-        self.pparams.frame_accept_min_cc = float(advanced.cc.cc_cutoff.GetValue())
-      else:
-        self.pparams.frame_accept_min_cc = None
-      if advanced.pix.pixel_size.GetValue().lower() != 'none':
-        self.pparams.pixel_size_mm = float(advanced.pix.pixel_size.GetValue())
-      else:
-        self.pparams.pixel_size_mm = None
-      self.pparams.n_postref_cycle = int(advanced.cycles.ctr.GetValue())
-
-      self.regenerate_params(self.pparams)
-
-    advanced.Destroy()
     e.Skip()
 
   def regenerate_params(self, phil=None):
-
     if phil is not None:
-      current_phil = master_phil.format(python_object=phil)
+      self.prime_phil = master_phil.fetch(source=phil)
     else:
-      current_phil = master_phil
+      self.prime_phil = master_phil
 
     # Generate Python object and text of parameters
-    self.generate_phil_string(current_phil)
-    self.pparams = current_phil.extract()
+    self.generate_phil_string(self.prime_phil)
+    self.pparams = self.prime_phil.extract()
 
   def generate_phil_string(self, current_phil):
     with misc.Capturing() as txt_output:

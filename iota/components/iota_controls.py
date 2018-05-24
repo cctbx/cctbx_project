@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 04/19/2018
+Last Changed: 05/24/2018
 Description : IOTA GUI controls
 '''
 
@@ -19,6 +19,8 @@ from wxtbx import bitmaps
 import wx.lib.buttons as btn
 
 import numpy as np
+
+from iota.components.iota_misc import noneset
 
 # Platform-specific stuff
 # TODO: Will need to test this on Windows at some point
@@ -604,7 +606,7 @@ class OptionCtrl(CtrlBase):
                label='',
                label_size=(100, -1),
                label_style='normal',
-               sub_labels=[],
+               sub_labels=None,
                sub_label_justify=wx.ALIGN_LEFT,
                sub_label_vertical=wx.ALIGN_CENTER_VERTICAL,
                grid=None,
@@ -630,10 +632,11 @@ class OptionCtrl(CtrlBase):
     self.ctrl_box = wx.FlexGridSizer(rows, cols, 5, 10)
 
     for key, value in self.items:
-      if sub_labels != []:
-        sub_label = sub_labels[self.items.index((key, value))].decode('utf-8')
-      else:
+      if sub_labels is None:
         sub_label = key
+      else:
+        sub_label = sub_labels[self.items.index((key, value))].decode('utf-8')
+
 
       if len(self.items) > 1:
         opt_label = wx.StaticText(self, id=wx.ID_ANY, label=sub_label)
@@ -701,12 +704,16 @@ class OptionCtrl(CtrlBase):
         for item in self.items:
           widget = self.__getattribute__(item[0])
           widget.Enable()
-          widget.SetValue(item[1])
+          value = widget.GetValue()
+          if noneset(value) is None:
+            widget.SetValue(str(item[1]))
+          else:
+            widget.SetValue(str(value))
       else:
         for item in self.items:
           widget = self.__getattribute__(item[0])
           widget.Disable()
-          widget.Clear()
+          # widget.Clear()
 
   def reset_default(self):
     if self.toggle is not None:
