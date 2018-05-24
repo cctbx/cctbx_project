@@ -1,22 +1,21 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
 import os
 import time
+
 import boost.optional # import dependency
 import boost.python
 boost.python.import_ext("scitbx_random_ext")
 import scitbx_random_ext
 
-builtin_int = __builtins__["int"]
-builtin_long = __builtins__["long"]
-
 def get_random_seed():
   try:
-    result = builtin_long(os.getpid() * (2**16)) \
-           + builtin_long(time.time() * (2**8))
+    result = (os.getpid() * (2**16)) \
+           + (time.time() * (2**8))
   except KeyboardInterrupt: raise
   except Exception:
     result = time.time()
-  return builtin_int(result % (2**31-1))
+  return int(result % (2**31-1))
 
 def set_random_seed(value):
   mt19937.seed(value)
@@ -57,14 +56,14 @@ class variate_factory(object):
     for variate in self.variate_functions():
       try:
         return variate(engine, distribution)
-      except Exception, e:
+      except Exception as e:
         if str(e.__class__).find('Boost.Python.ArgumentError') >= 0:
           exceptions.append(e)
           continue
         else:
           raise
     else:
-      raise RuntimeError('\n'.join([ str(e) for e in exceptions ]))
+      raise RuntimeError('\n'.join(str(e) for e in exceptions))
 
 # Instantiate the one single variate factory doing it all
 variate = variate_factory()
