@@ -113,8 +113,9 @@ class FormatBrukerPhotonII(FormatBruker):
     distance_mm = 10.0 * float(self.header_dict['DISTANC'].split()[1])
     origin = - distance_mm * beam - fast * pixel_mm * beam_pixel[1] - \
       slow * pixel_mm * beam_pixel[0]
-    origin = origin.rotate(-fast, two_theta, deg = True)
-    slow = slow.rotate(-fast, two_theta, deg = True)
+    # 2theta rotation appears to be around the slow axis
+    origin = origin.rotate(slow, two_theta, deg = True)
+    fast = fast.rotate(slow, two_theta, deg = True)
     pixel_size = pixel_mm, pixel_mm
     # ncols is nfast, nrows is nslow
     image_size = int(self.header_dict['NCOLS'].split()[0]), \
