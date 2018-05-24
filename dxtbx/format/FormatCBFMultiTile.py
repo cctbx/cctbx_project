@@ -12,6 +12,7 @@ from __future__ import absolute_import, division
 import pycbf
 
 from dxtbx.format.FormatCBFFull import FormatCBFFull
+from dxtbx.format.FormatStill import FormatStill
 from dxtbx.model.detector import Detector
 
 class cbf_wrapper(pycbf.cbf_handle_struct):
@@ -200,6 +201,25 @@ class FormatCBFMultiTile(FormatCBFFull):
       assert len(d) == len(self._raw_data)
 
     return tuple(self._raw_data)
+
+class FormatCBFMultiTileStill(FormatStill, FormatCBFMultiTile):
+  '''An image reading class for full CBF format images i.e. those from
+  a variety of cameras which support this format. Custom derived from
+  the FormatStill to handle images without a gonimeter or scan'''
+
+  @staticmethod
+  def understand(image_file):
+    '''Check to see if this looks like an CBF format image, i.e. we can
+    make sense of it.'''
+
+    header = FormatCBFMultiTile.get_cbf_header(image_file)
+
+    # According to ImageCIF, "Data items in the DIFFRN_MEASUREMENT_AXIS
+    # category associate axes with goniometers."
+    # http://www.iucr.org/__data/iucr/cifdic_html/2/cif_img.dic/Cdiffrn_measurement_axis.html
+    if 'diffrn_measurement_axis' in header:
+      return False
+    return True
 
 if __name__ == '__main__':
 
