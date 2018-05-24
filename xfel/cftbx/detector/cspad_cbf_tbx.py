@@ -680,7 +680,7 @@ def metro_phil_to_basis_dict(metro):
 
   return bd
 
-def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
+def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, diffrn_id = "DS1", is_xfel = True):
   """ Adds tables to cbf handle that won't already exsist if the cbf file is just a header
   @ param wavelength Wavelength in angstroms
   @ param timestamp String formatted timestamp for the image
@@ -693,7 +693,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
    Post-sample treatment of the beam is described by data
    items in the DIFFRN_DETECTOR category."""
   cbf.add_category("diffrn_radiation", ["diffrn_id","wavelength_id","probe"])
-  cbf.add_row(["DS1","WAVELENGTH1","x-ray"])
+  cbf.add_row([diffrn_id,"WAVELENGTH1","x-ray"])
 
   """ Data items in the DIFFRN_RADIATION_WAVELENGTH category describe
    the wavelength of the radiation used in measuring the diffraction
@@ -707,7 +707,10 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges):
    during data measurement and the manner in which the
    diffraction data were measured."""
   cbf.add_category("diffrn_measurement",["diffrn_id","id","number_of_axes","method","details"])
-  cbf.add_row(["DS1","INJECTION","0","electrospray","crystals injected by electrospray"])
+  cbf.add_row([diffrn_id,
+    "INJECTION" if is_xfel else "unknown","0",
+    "electrospray" if is_xfel else "unknown"
+    "crystals injected by electrospray" if is_xfel else "unknown"])
 
   """ Data items in the DIFFRN_SCAN category describe the parameters of one
      or more scans, relating axis positions to frames."""
