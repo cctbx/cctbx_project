@@ -77,28 +77,20 @@ class FormatBrukerPhotonII(FormatBruker):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
     # AXIS indexes into this list to define the scan axis (in FORTRAN counting)
     # START and RANGE define the start and step size for each image
-    # assume omega is 1,0,0 axis; chi about 0,0,1 at datum
 
     from scitbx import matrix
-    angles = map(float, self.header_dict['ANGLES'].split())
+    from scitbx.array_family import flex
+    _, omega, phi, chi = map(float, self.header_dict['ANGLES'].split())
+    scan_axis = ['NONE', '2THETA', 'OMEGA', 'PHI', 'CHI' ,'X', 'Y', 'Z']
+    scan_axis = scan_axis[int(self.header_dict['AXIS'])]
+    names = flex.std_string(("PHI", "CHI", "OMEGA"))
+    scan_axis = flex.first_index(names, scan_axis)
+    if scan_axis is None: scan_axis = "OMEGA" # default
+    axes = flex.vec3_double(((0,-1,0), (0,0,1), (0,-1,0)))
+    angles = flex.double((phi, chi, omega))
 
-    beam = matrix.col((0, 0, 1))
-    phi = matrix.col((1, 0, 0)).rotate(-beam, angles[3], deg=True)
-
-    if self.header_dict['AXIS'][0] == '2':
-      # OMEGA scan
-      axis = (-1, 0, 0)
-      incr = float(self.header_dict['INCREME'])
-      if incr < 0:
-        axis = (1, 0, 0)
-      fixed = phi.axis_and_angle_as_r3_rotation_matrix(angles[2], deg=True)
-      return self._goniometer_factory.make_goniometer(axis, fixed.elems)
-    else:
-      # PHI scan
-      assert(self.header_dict['AXIS'][0] == '3')
-      omega = matrix.col((1, 0, 0))
-      axis = phi.rotate(omega, angles[1], deg=True)
-      return self._goniometer_factory.known_axis(axis.elems)
+    return self._goniometer_factory.make_multi_axis_goniometer(
+      axes, angles, names, scan_axis)
 
   def _detector(self):
     # goniometer angles in ANGLES are 2-theta, omega, phi, chi (FIXED)
