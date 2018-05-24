@@ -1,12 +1,16 @@
-from __future__ import division, with_statement
-import sys, os
+from __future__ import absolute_import, division, print_function
+
+import os
 import re
+import sys
+
 from libtbx import cpp_function_name
+
 symbol_not_found_pat = re.compile(
   r"[Ss]ymbol[ ]not[ ]found: \s* (\w+) $", re.X | re.M | re.S)
 
 python_libstdcxx_so = None
-if (sys.platform.startswith("linux")):
+if sys.platform.startswith("linux"):
   from libtbx import easy_run
   for line in easy_run.fully_buffered(
                 command='/usr/bin/ldd "%s"' % sys.executable).stdout_lines:
@@ -16,15 +20,16 @@ if (sys.platform.startswith("linux")):
 
 def import_ext(name, optional=False):
   components = name.split(".")
-  if (len(components) > 1):
+  if len(components) > 1:
     __import__(".".join(components[:-1]))
   previous_dlopenflags = None
-  if (sys.platform.startswith("linux")) :
+  if sys.platform.startswith("linux"):
     previous_dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(0x100|0x2)
-  try: mod = __import__(name)
-  except ImportError, e:
-    if (optional): return None
+  try:
+    mod = __import__(name)
+  except ImportError as e:
+    if optional: return None
     error_msg = str(e)
     m = symbol_not_found_pat.search(error_msg)
     if m:
@@ -36,16 +41,16 @@ def import_ext(name, optional=False):
       + ["  "+p for p in sys.path]))
   for comp in components[1:]:
     mod = getattr(mod, comp)
-  if (previous_dlopenflags is not None):
+  if previous_dlopenflags is not None:
     sys.setdlopenflags(previous_dlopenflags)
-  if (python_libstdcxx_so is not None):
+  if python_libstdcxx_so is not None:
     mod_file = getattr(mod, "__file__", None)
-    if (mod_file is not None):
+    if mod_file:
       for line in easy_run.fully_buffered(
                     command='/usr/bin/ldd "%s"' % mod_file).stdout_lines:
-        if (line.strip().startswith("libstdc++.so")):
+        if line.strip().startswith("libstdc++.so"):
           mod_libstdcxx_so = line.split()[0]
-          if (mod_libstdcxx_so != python_libstdcxx_so):
+          if mod_libstdcxx_so != python_libstdcxx_so:
             raise SystemError("""\
 FATAL: libstdc++.so mismatch:
   %s: %s
@@ -61,7 +66,7 @@ except AttributeError: pass # XXX backward compatibility 2009-11-24
 try: ostream = ext.ostream
 except AttributeError: pass
 
-if ("BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ):
+if "BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ:
   ext.enable_signals_backtrace_if_possible()
 
 
@@ -120,7 +125,7 @@ class floating_point_exceptions_type(object):
 
 def floating_point_exceptions():
   import libtbx.load_env
-  if (libtbx.env.is_development_environment()):
+  if libtbx.env.is_development_environment():
     flag = True
   else:
     flag = False
@@ -148,7 +153,6 @@ class trapping(object):
     self.overflow = ext.is_overflow_trapped()
     ext.trap_exceptions(division_by_zero, invalid, overflow)
 
-
   def __enter__(self):
     return self
 
@@ -163,7 +167,7 @@ assert len(platform_info) > 0 # please disable this assertion and send email to 
 def c_sizeof(typename):
   pattern = "sizeof(%s) = " % typename
   for line in platform_info.splitlines():
-    if (line.startswith(pattern)):
+    if line.startswith(pattern):
       break
   else:
     raise RuntimeError('boost.python.platform_info: "%s" not found.' % pattern)
@@ -175,16 +179,15 @@ sizeof_void_ptr = c_sizeof("void*")
 class gcc_version(object):
 
   def __init__(self):
-    import re
     pat = r" \s* = \s* (\d+) \s+"
     m = re.search("__GNUC__ %s __GNUC_MINOR__ %s __GNUC_PATCHLEVEL__ %s"
                   % ((pat,)*3),
                   platform_info, re.X|re.M|re.S)
-    if not m:
-      self.major, self.minor, self.patchlevel = None, None, None
-    else:
+    if m:
       self.major, self.minor, self.patchlevel = tuple(
-        [ int(x) for x in m.groups() ])
+          int(x) for x in m.groups() )
+    else:
+      self.major, self.minor, self.patchlevel = None, None, None
 
   def __nonzero__(self):
     return self.major is not None
@@ -221,14 +224,14 @@ class injector(object):
 
 def process_docstring_options(env_var="BOOST_ADAPTBX_DOCSTRING_OPTIONS"):
   from_env = os.environ.get(env_var)
-  if (from_env is None): return None
+  if from_env is None: return None
   try:
     return eval(
       "docstring_options(%s)" % from_env,
       {},
       {"docstring_options": ext.docstring_options})
   except KeyboardInterrupt: raise
-  except Exception, e:
+  except Exception as e:
     from libtbx.str_utils import show_string
     raise RuntimeError(
       "Error processing %s=%s\n" % (env_var, show_string(from_env))
