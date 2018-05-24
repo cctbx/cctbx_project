@@ -29,7 +29,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename FloatType, bool build_design_matrix>
   struct build_design_matrix_and_normal_equations
   {
-    typedef af::versa<FloatType, af::c_grid<2> > matrix_t;
     //! Default constructor. Some data members are not initialized!
     build_design_matrix_and_normal_equations() {}
 
@@ -119,7 +118,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<FloatType> weights() { return weights_; }
 
   protected:
-    matrix_t design_matrix() { return design_matrix_; }
+    af::versa<FloatType, af::c_grid<2> > design_matrix() { return design_matrix_; }
 
     template<class OneMillerIndexFcalc>
     FloatType process_twinning(
@@ -181,7 +180,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
-    matrix_t design_matrix_;
+    af::versa<FloatType, af::c_grid<2> > design_matrix_;
   };
 
   /** \brief Build normal equations for the given data, model, weighting
@@ -260,11 +259,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         jacobian_transpose_matching_grad_fc, exti,
         objective_only)
     {}
-    build_design_matrix_and_normal_equations<FloatType, true>::matrix_t
-      design_matrix()
-    {
-      return design_matrix_;
-    }
+
+    af::versa<FloatType, af::c_grid<2> > design_matrix() { return design_matrix_; }
   };
 
   template <typename FloatType>
