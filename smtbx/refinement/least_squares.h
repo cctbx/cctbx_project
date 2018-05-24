@@ -260,7 +260,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
         objective_only)
     {}
 
-    af::versa<FloatType, af::c_grid<2> > design_matrix() { return design_matrix_; }
+    af::versa<FloatType, af::c_grid<2> > design_matrix() {
+      return build_design_matrix_and_normal_equations<FloatType, true>::design_matrix_;
+    }
   };
 
   template <typename FloatType>
