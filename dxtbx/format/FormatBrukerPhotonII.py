@@ -22,6 +22,16 @@ class FormatBrukerPhotonII(FormatBruker):
     except IOError:
       return False
 
+    header_dic = FormatBrukerPhotonII.parse_header(header_lines)
+
+    dettype = header_dic.get('DETTYPE')
+    if dettype is None: return False
+    if not dettype.startswith('CMOS-PHOTONII'): return False
+
+    return True
+
+  @staticmethod
+  def parse_header(header_lines):
     header_dic = {}
 
     for l in header_lines:
@@ -33,11 +43,7 @@ class FormatBrukerPhotonII(FormatBruker):
       else:
         header_dic[k] = v
 
-    dettype = header_dic.get('DETTYPE')
-    if dettype is None: return False
-    if not dettype.startswith('CMOS-PHOTONII'): return False
-
-    return True
+    return header_dic
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
@@ -58,13 +64,7 @@ class FormatBrukerPhotonII(FormatBruker):
     except IOError:
       return False
 
-    self.header_dict = {}
-    for l in header_lines:
-      k, v = [v.strip() for v in l.split(':', 1)]
-      if k in self.header_dict:
-        self.header_dict[k] = self.header_dict[k] + "\n" + v
-      else:
-        self.header_dict[k] = v
+    self.header_dict = FormatBrukerPhotonII.parse_header(header_lines)
 
     # The Photon II format can't currently use BrukerImage, see
     # https://github.com/cctbx/cctbx_project/issues/65
