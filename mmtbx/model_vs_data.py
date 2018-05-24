@@ -41,7 +41,8 @@ Usage examples:
   1. phenix.model_vs_data model.pdb data.hkl
   2. phenix.model_vs_data model.pdb data.hkl f_obs_label="F" r_free_flags_label="FREE"
   3. phenix.model_vs_data model.pdb data.hkl scattering_table=neutron
-  3. phenix.model_vs_data model.pdb data.hkl twin_law='h,-k,l+h'
+  4. phenix.model_vs_data model.pdb data.hkl twin_law='h,-k,l+h'
+
 """
 
 master_params_str="""\
@@ -60,7 +61,7 @@ n_bins = 20
 """
 
 def defaults(log, silent):
-  if(not silent): print >> log, "Default params::\n"
+  if(not silent): print >> log, "Default params:\n"
   parsed = iotbx.phil.parse(master_params_str)
   if(not silent): parsed.show(prefix="  ", out=log)
   if(not silent): print >> log
