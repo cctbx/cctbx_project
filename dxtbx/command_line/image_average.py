@@ -6,14 +6,14 @@
 
 from __future__ import absolute_import, division, print_function
 
-import sys
+import sys, copy
 
 import dxtbx
 from scitbx.array_family import flex
-
+from dxtbx.format.cbf_writer import FullCBFWriter
 
 """
-Average single-panel images of any format. Handles many individual images or single container files.
+Average images of any dxtbx-supported format. Handles many individual images or single container files.
 """
 
 def splitit(l, n):
@@ -52,35 +52,36 @@ class image_worker(object):
 
     for item in subset:
       try:
-        #XXX This code assumes a monolithic detector!
-        beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas = \
-          self.read(item)
+        img, distance, wavelength = self.read(item)
       except Exception as e:
         print(str(e))
         nfail += 1
         continue
 
+      assert isinstance(img, tuple)
+
       # The sum-of-squares image is accumulated using long integers, as
       # this delays the point where overflow occurs.  But really, this
       # is just a band-aid...
       if nmemb == 0:
-        max_img = img.deep_copy()
+        max_img = list(copy.deepcopy(img))
         sum_distance = distance
-        sum_img = img.deep_copy()
-        ssq_img = flex.pow2(img)
+        sum_img = list(copy.deepcopy(img))
+        ssq_img = [flex.pow2(p) for p in img]
         sum_wavelength = wavelength
 
       else:
-        sel = (img > max_img).as_1d()
-        max_img.set_selected(sel, img.select(sel))
+        for p in xrange(len(img)):
+          sel = (img[p] > max_img[p]).as_1d()
+          max_img[p].set_selected(sel, img[p].select(sel))
 
+          sum_img[p] += img[p]
+          ssq_img[p] += flex.pow2(img[p])
         sum_distance += distance
-        sum_img += img
-        ssq_img += flex.pow2(img)
         sum_wavelength += wavelength
 
       nmemb += 1
-    return nfail, nmemb, max_img, sum_distance, sum_img, ssq_img, sum_wavelength, size, active_areas, detector_address, beam_center, pixel_size, saturated_value
+    return nfail, nmemb, max_img, sum_distance, sum_img, ssq_img, sum_wavelength
 
 class multi_image_worker(image_worker):
   """ Class for reading container files """
@@ -103,21 +104,15 @@ class multi_image_worker(image_worker):
       print("Processing %s: %d" % (self.path, n))
 
     beam = self.imageset.get_beam(n)
-    assert len(self.imageset.get_detector(n)) == 1
-    detector = self.imageset.get_detector(n)[0]
+    detector = self.imageset.get_detector(n)
 
-    beam_center = detector.get_beam_centre(beam.get_s0())
-    detector_address = type(self.imageset.reader()).__name__
-    distance = detector.get_distance()
-    img = self.imageset[n][0].as_1d().as_double()
-    pixel_size = 0.5 * sum(detector.get_pixel_size())
-    saturated_value = int(round(detector.get_trusted_range()[1]))
-    size = detector.get_image_size()
+    image_data = self.imageset[n]
+    if not isinstance(image_data, tuple):
+      image_data = (image_data,)
+    img = tuple([image_data[i].as_1d().as_double() for i in xrange(len(detector))])
     wavelength = beam.get_wavelength()
 
-    active_areas = flex.int((0, 0, size[0], size[1]))
-
-    return beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas
+    return img, detector.hierarchy().get_distance(), wavelength
 
 class single_image_worker(image_worker):
   """ Class for averaging single images from individual files """
@@ -138,20 +133,14 @@ class single_image_worker(image_worker):
     img_instance = format_class(path)
 
     beam = img_instance.get_beam()
-    assert len(img_instance.get_detector()) == 1
-    detector = img_instance.get_detector()[0]
-
-    beam_center = detector.get_beam_centre(beam.get_s0())
-    detector_address = format_class.__name__
-    distance = detector.get_distance()
-    img = img_instance.get_raw_data().as_1d().as_double()
-    pixel_size = 0.5 * sum(detector.get_pixel_size())
-    saturated_value = int(round(detector.get_trusted_range()[1]))
-    size = detector.get_image_size()
+    detector = img_instance.get_detector()
+    image_data = img_instance.get_raw_data()
+    if not isinstance(image_data, tuple):
+      image_data = (image_data,)
+    img = tuple([image_data[i].as_1d().as_double() for i in xrange(len(detector))])
     wavelength = beam.get_wavelength()
 
-    active_areas = flex.int((0, 0, size[0], size[1]))
-    return beam_center, detector_address, distance, img, pixel_size, saturated_value, size, wavelength, active_areas
+    return img, detector.hierarchy().get_distance(), wavelength
 
 def run(argv=None):
   """Compute mean, standard deviation, and maximum projection images
@@ -163,8 +152,7 @@ def run(argv=None):
   """
   import libtbx.load_env
 
-  from libtbx import easy_pickle, option_parser
-  from xfel.cxi.cspad_ana import cspad_tbx
+  from libtbx import option_parser
 
   if argv is None:
     argv = sys.argv
@@ -173,19 +161,19 @@ def run(argv=None):
     "image1 image2 [image3 ...]" % libtbx.env.dispatcher_name)
                   .option(None, "--average-path", "-a",
                           type="string",
-                          default=None,
+                          default="avg.cbf",
                           dest="avg_path",
                           metavar="PATH",
                           help="Write average image to PATH")
                   .option(None, "--maximum-path", "-m",
                           type="string",
-                          default=None,
+                          default="max.cbf",
                           dest="max_path",
                           metavar="PATH",
                           help="Write maximum projection image to PATH")
                   .option(None, "--stddev-path", "-s",
                           type="string",
-                          default=None,
+                          default="stddev.cbf",
                           dest="stddev_path",
                           metavar="PATH",
                           help="Write standard deviation image to PATH")
@@ -204,6 +192,11 @@ def run(argv=None):
                           default=None,
                           dest="num_images_max",
                           help="Maximum number of frames to average")
+                  .option(None, "--skip-images", "-S",
+                          type="int",
+                          default=None,
+                          dest="skip_images",
+                          help="Number of images to skip at the start of the dataset")
                   ).process(args=argv[1:])
 
   # Note that it is not an error to omit the output paths, because
@@ -228,17 +221,30 @@ def run(argv=None):
       raise Usage("Supply more than one image")
 
     worker = multi_image_worker(command_line, paths[0], imageset)
-    if command_line.options.num_images_max is not None and command_line.options.num_images_max < len(imageset):
-      iterable = range(command_line.options.num_images_max)
-    else:
-      iterable = range(len(imageset))
+    iterable = range(len(imageset))
   else:
     # Multiple images provided
     worker = single_image_worker(command_line)
-    if command_line.options.num_images_max is not None and command_line.options.num_images_max < len(paths):
-      iterable = paths[:command_line.options.num_images_max]
-    else:
-      iterable = paths
+    iterable = paths
+
+  if command_line.options.skip_images is not None:
+    if command_line.options.skip_images >= len(iterable):
+      from libtbx.utils import Usage
+      raise Usage("Skipping all the images")
+    iterable = iterable[command_line.options.skip_images:]
+  if command_line.options.num_images_max is not None and command_line.options.num_images_max < iterable:
+    iterable = iterable[:command_line.options.num_images_max]
+  assert len(iterable) >= 2, "Need more than one image to average"
+
+  if len(paths) > 1:
+    from dxtbx.datablock import DataBlockFactory
+    datablocks = DataBlockFactory.from_filenames([iterable[0]])
+    assert len(datablocks) == 1
+    datablock = datablocks[0]
+    imagesets = datablock.extract_imagesets()
+    assert len(imagesets) == 1
+    imageset = imagesets[0]
+
   if command_line.options.nproc > 1:
     iterable = splitit(iterable, command_line.options.nproc)
 
@@ -252,7 +258,7 @@ def run(argv=None):
 
   nfail = 0
   nmemb = 0
-  for i, (r_nfail, r_nmemb, r_max_img, r_sum_distance, r_sum_img, r_ssq_img, r_sum_wavelength, size, active_areas, detector_address, beam_center, pixel_size, saturated_value) in enumerate(results):
+  for i, (r_nfail, r_nmemb, r_max_img, r_sum_distance, r_sum_img, r_ssq_img, r_sum_wavelength) in enumerate(results):
     nfail += r_nfail
     nmemb += r_nmemb
     if i == 0:
@@ -262,12 +268,14 @@ def run(argv=None):
       ssq_img = r_ssq_img
       sum_wavelength = r_sum_wavelength
     else:
-      sel = (r_max_img > max_img).as_1d()
-      max_img.set_selected(sel, r_max_img.select(sel))
+      for p in xrange(len(sum_img)):
+        sel = (r_max_img[p] > max_img[p]).as_1d()
+        max_img[p].set_selected(sel, r_max_img[p].select(sel))
+
+        sum_img[p] += r_sum_img[p]
+        ssq_img[p] += r_ssq_img[p]
 
       sum_distance += r_sum_distance
-      sum_img += r_sum_img
-      ssq_img += r_ssq_img
       sum_wavelength += r_sum_wavelength
 
   # Early exit if no statistics were accumulated.
@@ -278,67 +286,63 @@ def run(argv=None):
 
   # Calculate averages for measures where other statistics do not make
   # sense.  Note that avg_img is required for stddev_img.
-  avg_img = sum_img.as_double() / nmemb
+  avg_img = tuple([sum_img[p].as_double() / nmemb for p in xrange(len(sum_img))])
   avg_distance = sum_distance / nmemb
   avg_wavelength = sum_wavelength / nmemb
+
+  detector = imageset.get_detector()
+  h = detector.hierarchy()
+  origin = h.get_local_origin()
+  h.set_local_frame(h.get_local_fast_axis(), h.get_local_slow_axis(), (origin[0], origin[1], -avg_distance))
+  imageset.get_beam().set_wavelength(avg_wavelength)
 
   # Output the average image, maximum projection image, and standard
   # deviation image, if requested.
   if command_line.options.avg_path is not None:
-    avg_img.resize(flex.grid(size[1], size[0]))
-    d = cspad_tbx.dpack(
-      active_areas=active_areas,
-      address=detector_address,
-      beam_center_x=beam_center[0],
-      beam_center_y=beam_center[1],
-      data=avg_img,
-      distance=avg_distance,
-      pixel_size=pixel_size,
-      saturated_value=saturated_value,
-      wavelength=avg_wavelength)
-    easy_pickle.dump(command_line.options.avg_path, d)
+    for p in xrange(len(detector)):
+      fast, slow = detector[p].get_image_size()
+      avg_img[p].resize(flex.grid(slow, fast))
+
+    writer = FullCBFWriter(imageset = imageset)
+    cbf = writer.get_cbf_handle(header_only = True)
+    writer.add_data_to_cbf(cbf, data = avg_img)
+    writer.write_cbf(command_line.options.avg_path, cbf = cbf)
 
   if command_line.options.max_path is not None:
-    max_img.resize(flex.grid(size[1], size[0]))
-    d = cspad_tbx.dpack(
-      active_areas=active_areas,
-      address=detector_address,
-      beam_center_x=beam_center[0],
-      beam_center_y=beam_center[1],
-      data=max_img,
-      distance=avg_distance,
-      pixel_size=pixel_size,
-      saturated_value=saturated_value,
-      wavelength=avg_wavelength)
-    easy_pickle.dump(command_line.options.max_path, d)
+    for p in xrange(len(detector)):
+      fast, slow = detector[p].get_image_size()
+      max_img[p].resize(flex.grid(slow, fast))
+    max_img = tuple(max_img)
+
+    writer = FullCBFWriter(imageset = imageset)
+    cbf = writer.get_cbf_handle(header_only = True)
+    writer.add_data_to_cbf(cbf, data = max_img)
+    writer.write_cbf(command_line.options.max_path, cbf = cbf)
 
   if command_line.options.stddev_path is not None:
-    stddev_img = ssq_img.as_double() - sum_img.as_double() * avg_img
+    stddev_img = []
+    for p in xrange(len(detector)):
+      stddev_img.append(ssq_img[p].as_double() - sum_img[p].as_double() * avg_img[p])
 
-    # Accumulating floating-point numbers introduces errors, which may
-    # cause negative variances.  Since a two-pass approach is
-    # unacceptable, the standard deviation is clamped at zero.
-    stddev_img.set_selected(stddev_img < 0, 0)
-    if nmemb == 1:
-      stddev_img = flex.sqrt(stddev_img)
-    else:
-      stddev_img = flex.sqrt(stddev_img / (nmemb - 1))
+      # Accumulating floating-point numbers introduces errors, which may
+      # cause negative variances.  Since a two-pass approach is
+      # unacceptable, the standard deviation is clamped at zero.
+      stddev_img[p].set_selected(stddev_img[p] < 0, 0)
+      if nmemb == 1:
+        stddev_img[p] = flex.sqrt(stddev_img[p])
+      else:
+        stddev_img[p] = flex.sqrt(stddev_img[p] / (nmemb - 1))
 
-    stddev_img.resize(flex.grid(size[1], size[0]))
-    d = cspad_tbx.dpack(
-      active_areas=active_areas,
-      address=detector_address,
-      beam_center_x=beam_center[0],
-      beam_center_y=beam_center[1],
-      data=stddev_img,
-      distance=avg_distance,
-      pixel_size=pixel_size,
-      saturated_value=saturated_value,
-      wavelength=avg_wavelength)
-    easy_pickle.dump(command_line.options.stddev_path, d)
+      fast, slow = detector[p].get_image_size()
+      stddev_img[p].resize(flex.grid(slow, fast))
+    stddev_img = tuple(stddev_img)
+
+    writer = FullCBFWriter(imageset = imageset)
+    cbf = writer.get_cbf_handle(header_only = True)
+    writer.add_data_to_cbf(cbf, data = stddev_img)
+    writer.write_cbf(command_line.options.stddev_path, cbf = cbf)
 
   return 0
-
 
 if __name__ == '__main__':
   sys.exit(run())
