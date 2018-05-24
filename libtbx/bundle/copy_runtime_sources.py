@@ -50,7 +50,7 @@ def run(target_root):
   abs_target_root = os.path.normpath(os.path.abspath(target_root))
   for module in libtbx.env.module_list:
     for name,dist_path in module.name_and_dist_path_pairs():
-      if (name == "boost"): continue
+      #if (name == "boost"): continue
       dist_path = abs(dist_path)
       dist_copy = libtbx.path.norm_join(
         abs_target_root, os.path.basename(dist_path))
