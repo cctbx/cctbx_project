@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import functools
 import math
+import operator
 
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
@@ -94,10 +96,11 @@ def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
 
   import scitbx.matrix
 
-  average = sum(
-      scitbx.matrix.col( r3_rotation_matrix_as_unit_quaternion( e ) )
-      for e in matrices
-  )
+  average = functools.reduce(
+    operator.add,
+    [ scitbx.matrix.col( r3_rotation_matrix_as_unit_quaternion( e ) )
+      for e in matrices ]
+    )
 
   return r3_rotation_unit_quaternion_as_matrix( average.normalize() )
 
@@ -124,9 +127,10 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
 
   for i in range( maxiter ):
     inverse = current.inverse()
-    log_diff = norm * sum(
-        so3_lie_algebra.element.from_rotation_matrix( matrix = inverse * m )
-        for m in matrices
+    log_diff = norm * functools.reduce(
+      operator.add,
+      [ so3_lie_algebra.element.from_rotation_matrix( matrix = inverse * m )
+        for m in matrices ]
       )
 
     if log_diff.norm_sq() < conv_sq:
