@@ -9,6 +9,7 @@ from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
 import iotbx.pdb
+import os
 import re
 import sys
 
@@ -251,34 +252,36 @@ class probe_clashscore_manager(object):
       ogt = largest_occupancy
 
     self.probe_atom_b_factor = None
+    probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                                 'probe', 'exe', 'probe')
     if not nuclear:
       self.probe_txt = \
-        'phenix.probe -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
-          (ogt, ogt)
+        '%s -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
+          (probe_command, ogt, ogt)
       #The -NOVDWOUT probe run above is faster for clashscore to parse,
       # the full_probe_txt version below is for printing to file for coot usage
       self.full_probe_txt = \
-        'phenix.probe -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
-          (ogt, ogt)
+        '%s -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
+          (probe_command, ogt, ogt)
       self.probe_atom_txt = \
-        'phenix.probe -q -mc -het -dumpatominfo "ogt%d not water" -' % ogt
+        '%s -q -mc -het -dumpatominfo "ogt%d not water" -' % (probe_command, ogt)
       if blt is not None:
         self.probe_atom_b_factor = \
-          'phenix.probe -q -mc -het -dumpatominfo "blt%d ogt%d not water" -' % \
-            (blt, ogt)
+          '%s -q -mc -het -dumpatominfo "blt%d ogt%d not water" -' % \
+            (probe_command, blt, ogt)
     else: #use nuclear distances
       self.probe_txt = \
-        'phenix.probe -u -q -mc -het -once -NOVDWOUT -nuclear' +\
+        '%s -u -q -mc -het -once -NOVDWOUT -nuclear' % probe_command +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.full_probe_txt = \
-        'phenix.probe -u -q -mc -het -once -nuclear' +\
+        '%s -u -q -mc -het -once -nuclear' % probe_command +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.probe_atom_txt = \
-        'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
+        '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
           ' "ogt%d not water" -' % ogt
       if blt is not None:
         self.probe_atom_b_factor = \
-          'phenix.probe -q -mc -het -dumpatominfo -nuclear' +\
+          '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
             ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     if verbose:
