@@ -116,11 +116,10 @@ class CrystalAux(boost.python.injector, Crystal):
     print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from six.moves import StringIO
     s = StringIO()
     msg = self.show(out=s)
-    s.seek(0)
-    return s.read()
+    return s.getvalue()
 
   @staticmethod
   def _to_dict(crystal):
@@ -262,11 +261,10 @@ class MosaicCrystalKabsch2010Aux(CrystalAux, MosaicCrystalKabsch2010):
     print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from six.moves import StringIO
     s = StringIO()
     msg = self.show(out=s)
-    s.seek(0)
-    return s.read()
+    return s.getvalue()
 
   def to_dict(crystal):
     ''' Convert the crystal model to a dictionary
@@ -338,11 +336,10 @@ class MosaicCrystalSauter2014Aux(CrystalAux, MosaicCrystalSauter2014):
     return self.get_A_as_sqr().inverse()
 
   def __str__(self):
-    from cStringIO import StringIO
+    from six.moves import StringIO
     s = StringIO()
     msg = self.show(out=s)
-    s.seek(0)
-    return s.read()
+    return s.getvalue()
 
   def to_dict(crystal):
     ''' Convert the crystal model to a dictionary

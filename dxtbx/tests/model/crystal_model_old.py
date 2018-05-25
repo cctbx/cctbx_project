@@ -124,11 +124,10 @@ class crystal_model_old(object):
     print("\n".join(msg), file=out)
 
   def __str__(self):
-    from cStringIO import StringIO
+    from six.moves import StringIO
     s = StringIO()
     msg = self.show(out=s)
-    s.seek(0)
-    return s.read()
+    return s.getvalue()
 
   def set_unit_cell(self, real_space_a, real_space_b, real_space_c):
     cell = (real_space_a.length(),

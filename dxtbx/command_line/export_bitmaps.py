@@ -31,7 +31,7 @@ def run(args):
   from libtbx.utils import Sorry, Usage
 
   if len(args) == 0:
-    from cStringIO import StringIO
+    from six.moves import StringIO
     s = StringIO()
     master_phil_scope.show(out=s)
     raise Usage("""\
