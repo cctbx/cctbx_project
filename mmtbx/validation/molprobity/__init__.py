@@ -373,6 +373,9 @@ class molprobity (slots_getstate_setstate) :
     if (self.model_stats is not None) :
       make_header("Model properties", out=out)
       self.model_stats.show(prefix="  ", out=out)
+    if (self.sequence is not None):
+      make_header("Sequence validation", out=out)
+      self.sequence.show(out=out)
     if (self.restraints is not None) :
       make_header("Geometry restraints", out=out)
       self.restraints.show(out=out, prefix="  ")
