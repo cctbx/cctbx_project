@@ -12,11 +12,9 @@ import wx
 import multiprocessing
 from wxtbx import bitmaps
 
-from cctbx.uctbx import unit_cell
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
 from libtbx.utils import to_str
-import iotbx.phil as ip
 import numpy as np
 
 import matplotlib.gridspec as gridspec
