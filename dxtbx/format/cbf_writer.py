@@ -305,7 +305,7 @@ class FullCBFWriter(object):
         cbf.find_column("array_id")
         array_names.append(cbf.get_value())
         cbf.next_row()
-      except Exception, e:
+      except Exception as e:
         assert "CBF_NOTFOUND" in e.message
         break
 
