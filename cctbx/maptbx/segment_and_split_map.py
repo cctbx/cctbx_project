@@ -6564,7 +6564,7 @@ def get_duplicates_and_ncs(
      minimum_points_per_region=minimum_points_per_region,
      maximum_points_per_region=maximum_points_per_region)
 
- 
+
   # Now just use the scattered points to get everything else:
   region_n_dict={}  # count of points used by region (differs from volume due
      # to the sampling)
