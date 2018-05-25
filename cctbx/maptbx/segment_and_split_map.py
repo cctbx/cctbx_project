@@ -6555,47 +6555,16 @@ def get_duplicates_and_ncs(
    out=sys.stdout,
    ):
 
-  origin=list(edited_mask.accessor().origin())
-  all=list(edited_mask.accessor().all())
   unit_cell=tracking_data.crystal_symmetry.unit_cell()
-  # Get sampled points in each region
-  sample_dict={}
-  region_scattered_points_dict={} # some points in each region
-  sampling_rate=edited_volume_list[0]//target_points_per_region
-  volumes=flex.int()
-  sampling_rates=flex.int()
-  id_list=[]
-  # have to set up dummy first set:
-  volumes.append(0)
-  sampling_rates.append(0)
-  id_list.append(0)
+  region_scattered_points_dict=get_region_scattered_points_dict(
+     edited_volume_list=edited_volume_list,
+     edited_mask=edited_mask,
+     unit_cell=unit_cell,
+     target_points_per_region=target_points_per_region,
+     minimum_points_per_region=minimum_points_per_region,
+     maximum_points_per_region=maximum_points_per_region)
 
-  for i in xrange(len(edited_volume_list)):
-    id=i+1
-    v=edited_volume_list[i]
-
-    sample_dict[id]=max(1,
-      max(v//maximum_points_per_region,
-          min(v//minimum_points_per_region,
-              sampling_rate)  ))
-    region_scattered_points_dict[id]=flex.vec3_double()
-
-    volumes.append(v)
-    sampling_rates.append(max(1,
-      max(v//maximum_points_per_region,
-          min(v//minimum_points_per_region,
-              sampling_rate)  )))
-    id_list.append(id)
-
-  sample_regs_obj = maptbx.sample_all_mask_regions(
-      mask=edited_mask,
-      volumes=volumes,
-      sampling_rates=sampling_rates,
-      unit_cell=unit_cell)
-
-  for id in id_list[1:]:  # skip the dummy first set
-    region_scattered_points_dict[id]=sample_regs_obj.get_array(id)
-
+ 
   # Now just use the scattered points to get everything else:
   region_n_dict={}  # count of points used by region (differs from volume due
      # to the sampling)
@@ -6663,6 +6632,63 @@ def get_duplicates_and_ncs(
             equiv_dict_ncs_copy_dict[id][value][n]+=1  # how many are ncs copy n
   return duplicate_dict,equiv_dict,equiv_dict_ncs_copy_dict,\
       region_range_dict,region_centroid_dict,region_scattered_points_dict
+
+def get_region_scattered_points_dict(
+  edited_volume_list=None,
+  edited_mask=None,
+  unit_cell=None,
+  sampling_rate=None,
+  target_points_per_region=None,
+  minimum_points_per_region=None,
+  maximum_points_per_region=None):
+
+  # Get sampled points in each region
+  sample_dict={}
+  region_scattered_points_dict={} # some points in each region
+  if not sampling_rate:
+    sampling_rate=edited_volume_list[0]//target_points_per_region
+    sampling_rate_set=False
+  else:
+    sampling_rate_set=True
+  volumes=flex.int()
+  sampling_rates=flex.int()
+  id_list=[]
+  # have to set up dummy first set:
+  volumes.append(0)
+  sampling_rates.append(0)
+  id_list.append(0)
+
+  for i in xrange(len(edited_volume_list)):
+    id=i+1
+    v=edited_volume_list[i]
+
+    region_scattered_points_dict[id]=flex.vec3_double()
+
+    volumes.append(v)
+    if sampling_rate_set:
+      sample_dict[id]=sampling_rate
+      sampling_rates.append(sampling_rate)
+    else:
+      sample_dict[id]=max(1,
+        max(v//maximum_points_per_region,
+          min(v//minimum_points_per_region,
+              sampling_rate)  ))
+      sampling_rates.append(max(1,
+      max(v//maximum_points_per_region,
+          min(v//minimum_points_per_region,
+              sampling_rate)  )))
+    id_list.append(id)
+
+  sample_regs_obj = maptbx.sample_all_mask_regions(
+      mask=edited_mask,
+      volumes=volumes,
+      sampling_rates=sampling_rates,
+      unit_cell=unit_cell)
+
+  for id in id_list[1:]:  # skip the dummy first set
+    region_scattered_points_dict[id]=sample_regs_obj.get_array(id)
+
+  return region_scattered_points_dict
 
 def remove_bad_regions(params=None,
   duplicate_dict=None,
