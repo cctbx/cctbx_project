@@ -8,13 +8,13 @@
 
 from __future__ import absolute_import, division
 
-from dxtbx.format.FormatCBFMultiTileHierarchy import FormatCBFMultiTileHierarchy
+from dxtbx.format.FormatCBFMultiTileHierarchy import FormatCBFMultiTileHierarchyStill
 from dxtbx.format.FormatCBFFull import FormatCBFFullStill
 from dxtbx.model import ParallaxCorrectedPxMmStrategy
 from scitbx.matrix import col, sqr
 import pycbf
 
-class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
+class FormatCBFCspad(FormatCBFMultiTileHierarchyStill):
   '''An image reading class CSPAD CBF files'''
 
   @staticmethod
@@ -34,7 +34,7 @@ class FormatCBFCspad(FormatCBFMultiTileHierarchy, FormatCBFFullStill):
     return cbf_handle.get_value() == "CS PAD"
 
   def _detector(self):
-    d = FormatCBFMultiTileHierarchy._detector(self)
+    d = FormatCBFMultiTileHierarchyStill._detector(self)
 
     try:
       # a header only CBF file will not have a beam object
