@@ -86,7 +86,10 @@ class FormatBrukerPhotonII(FormatBruker):
     names = flex.std_string(("PHI", "CHI", "OMEGA"))
     scan_axis = flex.first_index(names, scan_axis)
     if scan_axis is None: scan_axis = "OMEGA" # default
-    axes = flex.vec3_double(((0,-1,0), (0,0,1), (0,-1,0)))
+
+    # https://journals.iucr.org/d/issues/2014/10/00/dz5309/dz5309sup1.pdf
+    axes = flex.vec3_double(((0,-1,0), (0,0,1), (0,1,0)))
+    omega-=180
     angles = flex.double((phi, chi, omega))
 
     return self._goniometer_factory.make_multi_axis_goniometer(
