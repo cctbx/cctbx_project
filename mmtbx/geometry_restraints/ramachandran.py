@@ -170,7 +170,7 @@ class ramachandran_manager(object):
         residuals_array=residuals_array)
       return res
     else: # emsley
-      assert (self.params.rama_weight >= 0.0)
+      #assert (self.params.rama_weight >= 0.0)
       # bad hack to keep emsley potential in working(?) condition after
       # changing from rama500 to rama8000
       new_to_old_conversion = {"general":"ala", "glycine":"gly",

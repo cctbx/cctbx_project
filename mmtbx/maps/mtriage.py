@@ -138,7 +138,6 @@ class mtriage(object):
                xray_structure   = None,
                crystal_symmetry = None,
                params           = None):
-    assert [xray_structure, crystal_symmetry].count(None) == 1
     self.map_data   = map_data.deep_copy()
     self.map_data_1 = None
     self.map_data_2 = None
@@ -230,7 +229,6 @@ class _mtriage(object):
         caller,
         params):
     adopt_init_args(self, locals())
-    assert [self.xray_structure, self.crystal_symmetry].count(None) == 1
     if(self.crystal_symmetry is None):
       self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.call = self.caller.call
