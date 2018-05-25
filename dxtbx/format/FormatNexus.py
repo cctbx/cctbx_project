@@ -1,15 +1,4 @@
-#!/usr/bin/env python
-#
-# FormatNexus.py
-#
-#  Copyright (C) 2013 Diamond Light Source
-#
-#  Author: James Parkhurst
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.model import Beam # import dependency
@@ -193,9 +182,9 @@ if __name__ == '__main__':
       scan = format_instance.get_scan()
 
       iset = FormatNexus.get_imageset(arg)
-      print beam
-      print detector
-      print goniometer
-      print scan
+      print(beam)
+      print(detector)
+      print(goniometer)
+      print(scan)
 
-      print len(iset)
+      print(len(iset))

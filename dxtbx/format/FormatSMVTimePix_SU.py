@@ -1,17 +1,10 @@
-#!/usr/bin/env python
-# FormatSMVTimePix_SU.py
-#  Copyright (C) (2016) STFC Rutherford Appleton Laboratory, UK.
-#
-#  Author: David Waterman.
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-
 """Format classes to specifically recognise images from an electron detector
 with a 2x2 array of Timepix modules, converted to SMV in various ways."""
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 import time
+
 from dxtbx.format.FormatSMV import FormatSMV
 from dxtbx.model.detector import Detector
 
@@ -411,8 +404,8 @@ if __name__ == '__main__':
   import sys
 
   for arg in sys.argv[1:]:
-    print "FormatSMVTimePix_SU:", FormatSMVTimePix_SU.understand(arg)
-    print ("FormatSMVTimePix_SU_512x512:",
+    print("FormatSMVTimePix_SU:", FormatSMVTimePix_SU.understand(arg))
+    print("FormatSMVTimePix_SU_512x512:",
            FormatSMVTimePix_SU_512x512.understand(arg))
-    print ("FormatSMVTimePix_SU_516x516:",
+    print("FormatSMVTimePix_SU_516x516:",
            FormatSMVTimePix_SU_516x516.understand(arg))

@@ -1,6 +1,8 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatStill import FormatStill
+from dxtbx.format.FormatMultiImage import Reader
 from dxtbx.format.FormatMultiImageLazy import FormatMultiImageLazy
 from libtbx.phil import parse
 
@@ -26,7 +28,6 @@ locator_str = """
 """
 locator_scope = parse(locator_str)
 
-from dxtbx.format.FormatMultiImage import Reader
 class XtcReader(Reader):
   def nullify_format_instance(self):
     ''' No-op for XTC streams. No issue with multiprocessing. '''
@@ -75,8 +76,8 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
 
     ds = DataSource(FormatXTC._img)
     if FormatXTC._src is None:
-      print 'This is an XTC file and can be read by PSANA'
-      print 'Listed Below are the detector names associated with the experiment'
+      print('This is an XTC file and can be read by PSANA')
+      print('Listed Below are the detector names associated with the experiment')
       names = DetNames('detectors')
       headers = ['Full Name','DAQ Alias','User Alias']
       maxlen = [len(h) for h in headers]
@@ -85,12 +86,12 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
         maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
       template = "{0:%d} | {1:%d} | {2:%d}" % tuple(maxlen)
       header = template.format("Full Name", "     DAQ Alias", "User Alias")
-      print '-'*len(header)
-      print header
-      print '-'*len(header)
+      print('-'*len(header))
+      print(header)
+      print('-'*len(header))
       for i, n in enumerate(names):
-        print '%3d'%(i+1) + ') '+template.format(*n)
-      print '-'*len(header)
+        print('%3d'%(i+1) + ') '+template.format(*n))
+      print('-'*len(header))
 
       FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
     return True
@@ -183,4 +184,4 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatXTC.understand(arg)
+    print(FormatXTC.understand(arg))

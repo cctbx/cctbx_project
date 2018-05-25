@@ -1,21 +1,13 @@
-#!/usr/bin/env python
-# FormatGatanDM4.py
-#
-#  Copyright (C) (2017) STFC Rutherford Appleton Laboratory, UK.
-#
-#  Author: David Waterman.
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
 # Experimental format for Gatan Digital Micrograph DM4 files. See
 # http://www.er-c.org/cbb/info/dmformat/
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
+import os
+import struct
+
 from dxtbx.format.Format import Format
 from dxtbx.format.FormatMultiImage import FormatMultiImage
-import struct
-import os
 
 class FormatGatanDM4(FormatMultiImage, Format):
   '''An image reading class for images in Gatan Digital Micrograph DM4
@@ -248,7 +240,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
       name = tag['tname']
       if name == '': name = 'NONAME'
       if 'tags' in tag: # tag directory
-        print prefix + "DIR: {0}".format(name)
+        print(prefix + "DIR: {0}".format(name))
         prefix += '  '
         self._print_tag_hierarchy(tag['tags'], prefix)
         prefix = prefix[:-2]
@@ -258,7 +250,7 @@ class FormatGatanDM4(FormatMultiImage, Format):
           val = ': ' + str(val)
         else:
           val = ': ' + str(tag['info'])
-        print prefix + name + val
+        print(prefix + name + val)
 
   def _search_tag_hierarchy(self, name, tag_list):
     '''Search a list of tags for any with the given name.'''
@@ -387,4 +379,4 @@ class FormatGatanDM4(FormatMultiImage, Format):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatGatanDM4.understand(arg)
+    print(FormatGatanDM4.understand(arg))

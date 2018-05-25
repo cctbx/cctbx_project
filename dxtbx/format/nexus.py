@@ -1,9 +1,4 @@
-#  Copyright (C) 2013 Diamond Light Source
-#
-#  This code is distributed under the BSD license, a copy of which is
-#  included in the root directory of this package.
-
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -17,7 +12,6 @@ except ImportError:
 class check_dtype(object):
   '''
   A class to check whether the dataset data type matches the expected
-
   '''
 
   def __init__(self, dtype):
@@ -33,7 +27,6 @@ class check_dtype(object):
 class check_dims(object):
   '''
   A class to check whether the dataset dimensions matches the expected
-
   '''
 
   def __init__(self, dims):
@@ -49,7 +42,6 @@ class check_dims(object):
 class check_shape(object):
   '''
   A class to check whether the dataset shape matches the expected
-
   '''
 
   def __init__(self, shape):
@@ -65,7 +57,6 @@ class check_shape(object):
 class check_is_scalar(object):
   '''
   A class to check whether the dataset is scalar or not
-
   '''
 
   def __init__(self, is_scalar):
@@ -85,7 +76,6 @@ class check_is_scalar(object):
 class check_dset(object):
   '''
   Check properties of a dataset
-
   '''
 
   def __init__(self,
@@ -122,7 +112,6 @@ class check_dset(object):
 class check_attr(object):
   '''
   Check some properties of an attribute
-
   '''
 
   def __init__(self, name, value=None, dtype=None):
@@ -131,7 +120,6 @@ class check_attr(object):
     :param name:  The name of the attribute
     :param value: The value of the attribute
     :param tests: A list of tests to run
-
     '''
     self.name = name
     self.value = value
@@ -154,7 +142,6 @@ class check_attr(object):
 def find_entries(nx_file, entry):
   '''
   Find NXmx entries
-
   '''
   hits = []
   def visitor(name, obj):
@@ -171,7 +158,6 @@ def find_entries(nx_file, entry):
 def find_class(nx_file, nx_class):
   '''
   Find a given NXclass
-
   '''
   hits = []
   def visitor(name, obj):
@@ -185,7 +171,6 @@ def find_class(nx_file, nx_class):
 def convert_units(value, input_units, output_units):
   '''
   Hacky utility function to convert units
-
   '''
   converters = {
     'm' : {
@@ -250,7 +235,6 @@ def visit_dependencies(nx_file, item, visitor = None):
 def construct_vector(nx_file, item, vector=None):
   '''
   Walk the dependency chain and create the absolute vector
-
   '''
   from scitbx import matrix
 
@@ -315,7 +299,6 @@ def construct_vector(nx_file, item, vector=None):
 def run_checks(handle, items):
   '''
   Run checks for datasets
-
   '''
   for item, detail in items.iteritems():
     min_occurs = detail["minOccurs"]
@@ -337,7 +320,6 @@ def run_checks(handle, items):
 class NXdetector_module(object):
   '''
   A class to hold a handle to NXdetector_module
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -397,7 +379,6 @@ class NXdetector_module(object):
 class NXdetector_group(object):
   '''
   A class to hold a handle to NXdetector_group
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -435,7 +416,6 @@ class NXdetector_group(object):
 class NXdetector(object):
   '''
   A class to handle a handle to NXdetector
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -606,7 +586,6 @@ class NXdetector(object):
 class NXinstrument(object):
   '''
   A class to hold a handle to NXinstrument
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -638,7 +617,6 @@ class NXinstrument(object):
 class NXbeam(object):
   '''
   A class to hold a handle to NXbeam
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -676,7 +654,6 @@ class NXbeam(object):
 class NXsample(object):
   '''
   A class to hold a handle to NXsample
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -747,7 +724,6 @@ class NXsample(object):
 class NXdata(object):
   '''
   A class to hold a handle to NXdata
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -758,7 +734,6 @@ class NXdata(object):
 class NXmxEntry(object):
   '''
   A class to hold a handle to NXmx entries
-
   '''
 
   def __init__(self, handle, errors=None):
@@ -858,42 +833,42 @@ class NXmxReader(object):
 
     '''
     if len(self.errors) > 0:
-      print ""
-      print "*" * 80
-      print "The following errors occurred:\n"
-      print "\n".join(self.errors)
-      print "*" * 80
-      print ""
+      print("")
+      print("*" * 80)
+      print("The following errors occurred:\n")
+      print("\n".join(self.errors))
+      print("*" * 80)
+      print("")
 
   def print_description(self):
     '''
     Print a description of the NXmx file
 
     '''
-    print " > Found %d NXmx entries" % len(self.entries)
+    print(" > Found %d NXmx entries" % len(self.entries))
     for entry in self.entries:
       handle = entry.handle
       instruments = entry.instruments
       samples = entry.samples
-      print "  > %s" % handle.name
+      print("  > %s" % handle.name)
       for instrument in instruments:
         handle = instrument.handle
         detectors = instrument.detectors
-        print "   > %s" % handle.name
+        print("   > %s" % handle.name)
         for detector in detectors:
           handle = detector.handle
           modules = detector.modules
-          print "    > %s" % handle.name
+          print("    > %s" % handle.name)
           for module in modules:
             handle = module.handle
-            print "     > %s" % handle.name
+            print("     > %s" % handle.name)
       for sample in samples:
         handle = sample.handle
         beams = sample.beams
-        print "   > %s" % handle.name
+        print("   > %s" % handle.name)
         for beam in beams:
           handle = beam.handle
-          print "    > %s" % handle.name
+          print("    > %s" % handle.name)
 
 
 def is_nexus_file(filename):

@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 import os
 
@@ -85,7 +85,7 @@ class FormatPYunspecified(FormatPY):
     if is_file:
       I = NpyImage(file_name)
     else:
-      print "This is not a file; assume the data are in the defined dictionary format"
+      print("This is not a file; assume the data are in the defined dictionary format")
       I = NpyImage(file_name, source_data=self._image_file)
     I.readHeader(horizons_phil)
     I.translate_tiles(horizons_phil)
@@ -206,8 +206,6 @@ class FormatPYunspecifiedInMemory(FormatPYunspecified):
 
 
 if __name__ == '__main__':
-
   import sys
-
   for arg in sys.argv[1:]:
-    print FormatPYunspecified.understand(arg)
+    print(FormatPYunspecified.understand(arg))

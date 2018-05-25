@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
+
 from dxtbx.format.FormatXTC import FormatXTC,locator_str
 from libtbx.phil import parse
 try:
@@ -147,7 +148,7 @@ class FormatXTCCspad(FormatXTC):
     try:
       beam = self._beam(index)
     except Exception:
-      print 'No beam object initialized. Returning CSPAD detector without parallax corrections'
+      print('No beam object initialized. Returning CSPAD detector without parallax corrections')
       return d
 
     # take into consideration here the thickness of the sensor also the
@@ -168,4 +169,4 @@ class FormatXTCCspad(FormatXTC):
 if __name__ == '__main__':
   import sys
   for arg in sys.argv[1:]:
-    print FormatXTCCspad.understand(arg)
+    print(FormatXTCCspad.understand(arg))

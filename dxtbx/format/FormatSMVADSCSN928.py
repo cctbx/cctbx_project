@@ -1,15 +1,8 @@
-#!/usr/bin/env python
-# FormatSMVADSCSN928.py
-#   Copyright (C) 2015 Diamond Light Source, Richard Gildea
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
 # An implementation of the SMV image reader for ADSC images. Inherits from
 # FormatSMVADSCSN, customised for example on Australian Synchrotron SN 928
 # which has reversed phi.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVADSCSN import FormatSMVADSCSN
 
@@ -60,13 +53,11 @@ class FormatSMVADSCSN928(FormatSMVADSCSN):
         osc_start, osc_range, epoch)
 
 if __name__ == '__main__':
-
   import sys
-
   for arg in sys.argv[1:]:
-    print FormatSMVADSCSN928.understand(arg)
-    print FormatSMVADSCSN928(arg).get_scan()
-    print FormatSMVADSCSN928(arg).get_goniometer()
-    print FormatSMVADSCSN928(arg).get_detector()
-    print FormatSMVADSCSN928(arg).get_beam()
+    print(FormatSMVADSCSN928.understand(arg))
+    print(FormatSMVADSCSN928(arg).get_scan())
+    print(FormatSMVADSCSN928(arg).get_goniometer())
+    print(FormatSMVADSCSN928(arg).get_detector())
+    print(FormatSMVADSCSN928(arg).get_beam())
 
