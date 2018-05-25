@@ -18,6 +18,8 @@ if sys.hexversion < 0x3040000:
     bz2 = bz2file
   except ImportError:
     bz2 = None
+else:
+  bz2 = None
 
 if not bz2:
   try:
@@ -316,7 +318,6 @@ class Format(object):
   def get_reader(Class):
     '''
     Return a reader class
-
     '''
     obj = Reader
     obj._format_class_ = Class
@@ -326,7 +327,6 @@ class Format(object):
   def get_masker(Class):
     '''
     Return a masker class
-
     '''
     obj = Masker
     obj._format_class_ = Class

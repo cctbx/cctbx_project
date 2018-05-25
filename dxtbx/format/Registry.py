@@ -1,15 +1,8 @@
-#!/usr/bin/env python
-# Registry.py
-#   Copyright (C) 2011 Diamond Light Source, Graeme Winter
-#
-#   This code is distributed under the BSD license, a copy of which is
-#   included in the root directory of this package.
-#
 # A registry class to handle Format classes and provide lists of them when
 # this is useful for i.e. identifying the best tool to read a given range
 # of image formats.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.RegistryHelpers import LoadFormatClasses
 from libtbx.utils import Sorry
