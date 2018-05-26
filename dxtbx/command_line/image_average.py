@@ -197,6 +197,11 @@ def run(argv=None):
                           default=None,
                           dest="skip_images",
                           help="Number of images to skip at the start of the dataset")
+                  .option(None, "--mpi", None,
+                          type=bool,
+                          default=False,
+                          dest="mpi",
+                          help="Set to enable MPI processing")
                   ).process(args=argv[1:])
 
   # Note that it is not an error to omit the output paths, because
@@ -245,16 +250,33 @@ def run(argv=None):
     assert len(imagesets) == 1
     imageset = imagesets[0]
 
-  if command_line.options.nproc > 1:
-    iterable = splitit(iterable, command_line.options.nproc)
-
   from libtbx import easy_mp
-  if command_line.options.nproc == 1:
+  if command_line.options.mpi:
+    try:
+      from mpi4py import MPI
+    except ImportError:
+      raise Sorry("MPI not found")
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    # chop the list into pieces, depending on rank.  This assigns each process
+    # events such that the get every Nth event where N is the number of processes
+    iterable = [iterable[i] for i in xrange(len(iterable)) if (i+rank)%size == 0]
     results = [worker(iterable)]
+    results = comm.gather(results,root=0)
+    if rank != 0: return
+    results_set = []
+    for r in results:
+      results_set.extend(r)
+    results = results_set
   else:
-    results = easy_mp.parallel_map(func=worker,
-                                   iterable=iterable,
-                                   processes=command_line.options.nproc)
+    if command_line.options.nproc == 1:
+      results = [worker(iterable)]
+    else:
+      iterable = splitit(iterable, command_line.options.nproc)
+      results = easy_mp.parallel_map(func=worker,
+                                     iterable=iterable,
+                                     processes=command_line.options.nproc)
 
   nfail = 0
   nmemb = 0
