@@ -5,7 +5,6 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import imp
-import traceback
 
 def LoadFormatClasses():
   '''Look for files named Format(something).py in the sensible
@@ -64,15 +63,10 @@ def _LoadFormatModule(name, fqname, path):
     return None
 
   try:
-    module = imp.load_module(fqname, stream, pathname, description)
-  except Exception:
-    traceback.print_exc()
+    return imp.load_module(fqname, stream, pathname, description)
   finally:
     if stream:
       stream.close()
 
-  return module
-
 if __name__ == '__main__':
-
   LoadFormatClasses()
