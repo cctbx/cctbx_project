@@ -149,6 +149,8 @@ def run(args):
       "set_average_unit_cell=True.")
   if work_params.raw_data.sdfac_auto and work_params.raw_data.sdfac_refine:
     raise Usage("Cannot specify both sdfac_auto and sdfac_refine")
+  if not work_params.include_negatives_fix_27May2018:
+    work_params.include_negatives = False # use old behavior
 
   log = open("%s_%s.log" % (work_params.output.prefix,work_params.scaling.algorithm), "w")
   out = multi_out()
@@ -300,7 +302,8 @@ def run(args):
 
     from xfel import scaling_results, get_scaling_results, get_isigi_dict
     results = scaling_results(scaler._observations, scaler._frames,
-              scaler.millers["merged_asu_hkl"],scaler.frames["data_subset"])
+              scaler.millers["merged_asu_hkl"],scaler.frames["data_subset"],
+              work_params.include_negatives)
     results.__getattribute__(
       work_params.scaling.algorithm)(
       scaler.params.min_corr, scaler.params.target_unit_cell)

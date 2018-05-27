@@ -363,10 +363,11 @@ public:
   shared_int completeness, summed_N, hkl_ids;
   shared_vec3 i_isig_list;
   int Nhkl;
+  bool include_negatives_;
 
   scaling_results (column_parser &observations, column_parser &frames,
-                   shared_miller& hkls, shared_bool& data_subset):
-    observations(observations),frames(frames),merged_asu_hkl(hkls),
+                   shared_miller& hkls, shared_bool& data_subset, bool include_negatives):
+    observations(observations),frames(frames),merged_asu_hkl(hkls),include_negatives_(include_negatives),
     selected_frames(data_subset){}
   void mark0 (double const& params_min_corr,
               cctbx::uctbx::unit_cell const& params_unit_cell) {
@@ -397,7 +398,7 @@ public:
       double this_i = intensity[iobs];
       double this_sig = sigi[iobs];
       n_obs[this_frame_id] += 1;
-      if (this_i <=0.){
+      if (!include_negatives_ && this_i <=0.){
         n_rejected[this_frame_id] += 1;
         continue;
       }
@@ -474,7 +475,7 @@ public:
       double this_i = intensity[iobs];
       double this_sig = sigi[iobs];
       n_obs[this_frame_id] += 1;
-      if (this_i <=0.){
+      if (!include_negatives_ && this_i <=0.){
         n_rejected[this_frame_id] += 1;
         continue;
       }
@@ -795,7 +796,7 @@ namespace boost_python { namespace {
 
     class_<scaling_results>("scaling_results",no_init)
       .def(init<column_parser&, column_parser&, scaling_results::shared_miller&,
-                scaling_results::shared_bool&>())
+                scaling_results::shared_bool&, bool>())
       .def("count_frames",&scaling_results::count_frames)
       .def("mark0",&scaling_results::mark0)
       .def("mark1",&scaling_results::mark1)

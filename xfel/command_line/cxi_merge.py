@@ -305,6 +305,9 @@ postrefinement {
 include_negatives = False
   .type = bool
   .help = Whether to include negative intensities during scaling and merging
+include_negatives_fix_27May2018 = True
+  .type = bool
+  .help = Bugfix for include negatives. Affects cxi.xmerge.
 plot_single_index_histograms = False
   .type = bool
 data_subsubsets {
@@ -1547,6 +1550,11 @@ class scaling_manager (intensity_data) :
     sel_observations = flex.intersection(
       size=observations.data().size(),
       iselections=[indices])
+
+    if self.params.include_negatives_fix_27May2018:
+      # Super-rare exception. If saved sigmas instead of I/sigmas in the ISIGI dict, this wouldn't be needed.
+      sel_observations &= observations.data() != 0
+
     set_original_hkl = observations_original_index_indices.select(
       flex.intersection(
         size=observations_original_index_indices.size(),
