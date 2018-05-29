@@ -149,11 +149,13 @@ class clashscore(validation):
     if self.clashscore is None:
       raise Sorry("PROBE output is empty. Model is not compatible with PROBE.")
     elif (len(self.clash_dict) == 1) :
-      print >> out, prefix + "clashscore = %.2f" % self.clash_dict['']
-      if self.clash_dict_b_cutoff[''] is not None:
+      k = self.clash_dict.keys()[0]
+      #catches case where file has 1 model, but also has model/endmdl cards
+      print >> out, prefix + "clashscore = %.2f" % self.clash_dict[k]
+      if self.clash_dict_b_cutoff[k] is not None:
         print >> out, "clashscore (B factor cutoff = %d) = %f" % \
           (self.b_factor_cutoff,
-           self.clash_dict_b_cutoff[''])
+           self.clash_dict_b_cutoff[k])
     else:
       for k in sorted(self.clash_dict.keys()) :
         print >> out, prefix + "MODEL %s clashscore = %.2f" % (k,
