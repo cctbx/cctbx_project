@@ -21,6 +21,10 @@ b_blur  = 100
   .type = float
 box = False
   .type = bool
+keep_origin = True
+  .type = bool
+output_origin_grid_units = None
+  .type = ints
 """
 
 def master_params():
@@ -46,6 +50,22 @@ def get_hl(f_obs_cmpl, k_blur, b_blur):
 def get_cc(f, hl):
   map_coeffs = abs(f).phase_transfer(phase_source = hl)
   return map_coeffs.map_correlation(other=f)
+
+def get_shift_cart(map_data=None,crystal_symmetry=None,
+     origin=None):
+  # this is the shift applied to the map when origin moves to (0,0,0)
+  N = map_data.all()
+  if origin is None:
+    O = map_data.origin()
+  else:
+    O = tuple(origin)
+  if(not crystal_symmetry.space_group().type().number() in [0,1]):
+      raise Sorry("Space groups other than P1 are not supported.")
+  a,b,c = crystal_symmetry.unit_cell().parameters()[:3]
+  sx,sy,sz = O[0]/N[0],O[1]/N[1], O[2]/N[2]
+  shift_frac = [-sx,-sy,-sz]
+  shift_cart = crystal_symmetry.unit_cell().orthogonalize(shift_frac)
+  return shift_cart
 
 def run(args, log=None, ccp4_map=None,
     return_as_miller_arrays=False, nohl=False,
@@ -82,10 +102,6 @@ def run(args, log=None, ccp4_map=None,
   print >>out,"map: min/max/mean:", flex.min(m.data), flex.max(m.data), flex.mean(m.data)
   print >>out,"unit cell:", m.unit_cell_parameters
   #
-  map_data=m.data
-  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
-  # generate complete set of Miller indices up to given high resolution d_min
-  n_real = map_data.focus()
   if not space_group_number:
     space_group_number=1
   if space_group_number <=1:
@@ -94,6 +110,42 @@ def run(args, log=None, ccp4_map=None,
     symmetry_flags = maptbx.use_space_group_symmetry,
 
   cs = crystal.symmetry(m.unit_cell_parameters, space_group_number)
+  map_data=m.data
+
+  # Get origin in grid units and new position of origin in grid units
+  original_origin=map_data.origin()
+  print >>out,"Input map has origin at grid point (%s,%s,%s)" %(
+        tuple(original_origin))
+
+  if params.output_origin_grid_units is not None:
+    params.keep_origin=False
+    new_origin=tuple(params.output_origin_grid_units)
+    print >>out,"User-specified origin at grid point (%s,%s,%s)" %(
+        tuple(params.output_origin_grid_units))
+    if tuple(params.output_origin_grid_units)==tuple(original_origin):
+      print >>out,"This is the same as the input origin. No origin shift."
+  elif params.keep_origin:
+    new_origin=original_origin
+    print >>out,"Keeping origin at grid point  (%s,%s,%s)" %(
+        tuple(original_origin))
+  else:
+    new_origin=(0,0,0,)
+    print >>out,"New origin at grid point (%s,%s,%s)" %(
+        tuple((0,0,0,)))
+
+  # shift_cart is shift away from (0,0,0)
+  if new_origin != (0,0,0,):
+    shift_cart=get_shift_cart(map_data=map_data,crystal_symmetry=cs,
+      origin=new_origin)
+  else:
+    shift_cart=(0,0,0,)
+
+
+
+
+  map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
+  # generate complete set of Miller indices up to given high resolution d_min
+  n_real = map_data.focus()
   crystal_gridding = maptbx.crystal_gridding(
     unit_cell         = cs.unit_cell(),
     space_group_info  = cs.space_group_info(),
@@ -129,6 +181,17 @@ def run(args, log=None, ccp4_map=None,
       else:
         raise Sorry(str(e))
 
+
+
+  from scitbx.matrix import col
+  if col(shift_cart) != col((0,0,0,)):
+    print >>out,"Output origin is at: (%.3f, %.3f, %.3f) A "%(
+      tuple(-col(shift_cart)))
+    f_obs_cmpl=f_obs_cmpl.translational_shift(
+        cs.unit_cell().fractionalize(-col(shift_cart)), deg=False)
+  else:
+    print >>out,"Output origin is at (0.000, 0.000, 0.000) A"
+  
   if nohl and return_as_miller_arrays:
     return f_obs_cmpl
 
