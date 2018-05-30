@@ -1933,6 +1933,21 @@ class module:
           result.append(path)
     return result
 
+  def program_directory_paths(self):
+    '''
+    Returns the directory for the program templates in a module
+    Generally, this "programs" directory is at the same level as the
+    "command_line" directory
+    '''
+    result = []
+    for dist_path in self.dist_paths_active():
+      for sub_dir in ['programs', os.path.join(self.name, 'programs')] + \
+        [os.path.join(a,'programs') for a in getattr(self,"extra_command_line_locations",[])]:
+        path = dist_path / sub_dir
+        if path.isdir():
+          result.append(path)
+    return result
+
   def process_command_line_directories(self):
     for source_dir in self.command_line_directory_paths():
       print("Processing: %s" % show_string(abs(source_dir)))
