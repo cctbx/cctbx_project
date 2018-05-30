@@ -3256,9 +3256,9 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_use=None
     from mmtbx.command_line.map_to_structure_factors import run as map_to_sf
     if crystal_symmetry.space_group().type().number() in [0,1]:
-      args=['d_min=None','box=True']
+      args=['d_min=None','box=True','keep_origin=False']
     else: # cannot use box for other space groups
-      args=['d_min=%s'%(d_min_use),'box=False']
+      args=['d_min=%s'%(d_min_use),'box=False','keep_origin=False']
     map_coeffs=map_to_sf(args=args,
          space_group_number=crystal_symmetry.space_group().type().number(),
          ccp4_map=make_ccp4_map(map_data,crystal_symmetry.unit_cell()),
