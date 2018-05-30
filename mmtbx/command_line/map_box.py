@@ -17,95 +17,159 @@ master_phil = libtbx.phil.parse("""
   include scope libtbx.phil.interface.tracking_params
   pdb_file = None
     .type = path
+    .help = Model file
     .short_caption = Model file
     .style = file_type:pdb bold input_file
   map_coefficients_file = None
     .type = path
+    .help = Input map coefficients file (alternative to ccp4 map file)
+    .short_caption = Map coefficients
     .style = file_type:hkl bold input_file process_hkl child:map_labels:label
   label = None
     .type = str
     .short_caption = Map labels
+    .help = Labels for map coefficients file
     .style = renderer:draw_map_arrays_widget parent:file_name:map_coefficients_file
   ccp4_map_file = None
+    .help = Input map file (CCP4/mrc format).
+    .short_caption = Input map file
     .type = str
   selection = all
     .type = str
+    .help = Atom selection to be applied to input PDB file
+    .short_caption = Atom selection
     .input_size = 400
   selection_radius = 3.0
     .type = float
+    .help = Atoms within selection_radius of a selected atom model will be\
+             kept as part of the selection.
+    .short_caption = Selection radius
   box_cushion = 3.0
     .type = float
+    .help = If mask_atoms is False, a box of density will be cut out around\
+            the input model (after selections are applied to the model). \
+            The size of the box of density will be box_cushion bigger than \
+            the model.
+    .short_caption = Box cushion
+
+  mask_atoms=False
+    .type=bool
+    .help = Set map values to 0 outside molecular mask
+    .short_caption = Mask atoms
+
+  mask_atoms_atom_radius = 3.
+    .type=float
+     .help = Radius for masking around atoms
+     .short_caption = Mask atoms atom radius
+
+  value_outside_atoms = None
+    .type = str
+    .help = Set to 'mean' to make average value same inside and outside mask.
+    .short_caption = Value outside atoms
   resolution_factor = 1./4
     .type = float
+    .help = Resolution factor for calculation of map coefficients
+    .short_caption = Resolution factor
   resolution = None
     .type = float
+    .help = Resolution for calculation of output map coefficients. Default is \
+            based on the gridding of the map (and may be higher-resolution than\
+            you want).
+    .short_caption = Resolution
   output_format = *xplor *mtz *ccp4
     .type=choice(multi=True)
+    .help = Output format(s) for boxed map.
+    .short_caption = Output format
+    
   output_file_name_prefix=None
     .type = str
+    .help = Prefix for output file names. Default is name of the pdb file \
+            without the ".pdb" suffix.
+    .short_caption = Output file name prefix
+
   density_select = False
     .type = bool
     .help = Select boundaries based on where density is located.
+    .short_caption = Density select
+
   density_select_threshold = 0.05
     .type = float
     .help = Choose region where density is this fraction of maximum or greater
+    .short_caption = density_select threshold
+
   get_half_height_width = True
     .type = bool
     .help = Use 4 times half-width at half-height as estimate of max size
+    .short_caption = Use half-height width
+
   symmetry = None
     .type = str
     .help = Optional symmetry (e.g., D7, I, C2) to be used if extract_unique\
             is set.  Alternative to symmetry_file.
+    .short_caption = Symmetry
   symmetry_file = None
     .type = path
     .help = Symmetry file to be offset based on origin shift.\
             Symmetry or symmetry_file required if extract_unique=True.  \
             May be a \
             Phenix .ncs_spec file or BIOMTR records or a resolve ncs file.
+    .short_caption = Symmetry file
+
   sequence_file = None
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
             all copies.  Either sequence file or \
             molecular mass required if extract_unique is True.
+    .short_caption = Sequence file
+
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
             of unique part of map. Either a sequence file or molecular mass\
             is required if extract_unique is True.
+    .short_caption = Molecular mass
+
   solvent_content = None
     .type = float
     .help = Optional fraction of volume of map that is empty.  \
             Used in identification \
             of unique part of map.
+    .short_caption = Solvent content
+
   extract_unique = False
     .type = bool
     .help = Extract unique part of map. Requires symmetry_file or symmetry and\
             either sequence file or molecular mass to be supplied.
-  mask_atoms=False
-    .type=bool
-    .help = Set map values to 0 outside molecular mask
-  mask_atoms_atom_radius = 3.
-    .type=float
-  value_outside_atoms = None
-    .type = str
-    .help = Set to 'mean' to make average value same inside and outside mask.
+    .short_caption = Extract unique
+
+
   soft_mask=False
     .type=bool
     .help = Use Gaussian mask in mask_atoms
+    .short_caption = Soft mask
+
   soft_mask_radius=3
     .type=float
     .help = Gaussian mask smoothing radius
+    .short_caption = Soft mask radius
+
   lower_bounds = None
     .type = ints
-    .help = Lower bounds for cut out box
+    .help = Lower bounds for cut out box. You can specify them directly.
+    .short_caption = Lower bounds
+
   upper_bounds = None
     .type = ints
-    .help = Upper bounds for cut out box
+    .help = Upper bounds for cut out box.  You can specify them directly.
+    .short_caption = Upper bounds
+
   keep_map_size = False
     .type=bool
     .help = Keep original map gridding (do not cut anything out). \
             Use to apply soft_mask and/or mask_atoms keeping same map size.
+    .short_caption = Keep map size
+
   keep_origin = True
     .type=bool
     .help = If True, write out map, map_coefficients, and model \
@@ -113,10 +177,12 @@ master_phil = libtbx.phil.parse("""
             If false, shifted origin to (0,0,0).  \
             NOTE: The unit_cell for all output will always be the \
               map_box unit cell.  Only the origin is kept/shifted.\
+    .short_caption = Keep origin
 
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
+    .short_caption = Restrict map size
 
   gui
     .help = "GUI-specific parameter required for output directory"

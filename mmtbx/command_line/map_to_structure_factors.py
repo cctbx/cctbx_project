@@ -15,16 +15,42 @@ output_file_name = map_to_structure_factors.mtz
   .type=str
 d_min = None
   .type=float
+  .help = Resolution of output structure factors. Default is based on the\
+           gridding of the map and can lead to map coefficients that are \
+           at much higher resolution than the map.
+  .short_caption = Resolution
 k_blur = 1
   .type = float
+  .help = Scale applied to HL coefficients.  The HL coefficients are arbitrary\
+          as no error information is available. The HL coefficients will have\
+          values of k_blur at low resolution, falling off with an effective\
+          B-value of b_blur at higher resolution.
+  .short_caption = Scale on HL coefficients
 b_blur  = 100
   .type = float
+  .help = Blurring applied to HL coefficients.  The HL coefficients are \
+          arbitrary\
+          as no error information is available. The HL coefficients will have\
+          values of k_blur at low resolution, falling off with an effective\
+          B-value of b_blur at higher resolution.
+  .short_caption = Blurring of HL coefficients
 box = False
   .type = bool
+  .help = You can choose to generate a full box of map coefficients based on\
+          the gridding of the map.  Default is to generate map coefficients to\
+          a specific resolution
+  .short_caption = Box of Fourier coefficients
 keep_origin = True
   .type = bool
+  .help = Default (keep_origin=True) is to set the origin for the output map\
+           coefficients to be the same as the input map. A map calculated from\
+           the output map coefficients will superimpose on the input map. If \
+           keep_origin=False then the new origin will be at (0,0,0).
+  .short_caption = Keep origin
 output_origin_grid_units = None
   .type = ints
+  .help = You can set the origin of the output map (in grid units)
+  .short_caption = Output origin (grid units)
 """
 
 def master_params():
