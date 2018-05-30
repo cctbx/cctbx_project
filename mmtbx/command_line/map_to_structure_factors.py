@@ -217,7 +217,7 @@ def run(args, log=None, ccp4_map=None,
         cs.unit_cell().fractionalize(-col(shift_cart)), deg=False)
   else:
     print >>out,"Output origin is at (0.000, 0.000, 0.000) A"
-  
+
   if nohl and return_as_miller_arrays:
     return f_obs_cmpl
 

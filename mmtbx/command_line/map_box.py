@@ -80,7 +80,7 @@ master_phil = libtbx.phil.parse("""
     .type=choice(multi=True)
     .help = Output format(s) for boxed map.
     .short_caption = Output format
-    
+
   output_file_name_prefix=None
     .type = str
     .help = Prefix for output file names. Default is name of the pdb file \
