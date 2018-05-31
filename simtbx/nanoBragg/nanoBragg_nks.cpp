@@ -138,8 +138,9 @@ struct mostic_const{
 
 /* add spots from nanocrystal simulation */
 void
-nanoBragg::add_nanoBragg_spots_nks()
+nanoBragg::add_nanoBragg_spots_nks(boost_adaptbx::python::streambuf & output)
 {
+  boost_adaptbx::python::streambuf::ostream os(output);
   floatimage = raw_pixels.begin();
 
   if(verbose) {printf("TESTING sincg(1,1)= %f\n",sincg(1,1));}
@@ -264,6 +265,10 @@ diffracted[3]=diffracted_v[2];
                                 }
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I_reduction += MC.I_increment; //breaks const correctness
+h0 = MC.h0;
+k0 = MC.k0;
+l0 = MC.l0;
+F_cell = MC.F_cell;
                             }
                             /* end of mosaic loop */
                             I+=I_reduction;
@@ -283,6 +288,10 @@ diffracted[3]=diffracted_v[2];
             SCITBX_ASSERT(!progress_meter);
             if( printout ){
                 if((fpixel==printout_fpixel && spixel==printout_spixel) || printout_fpixel < 0){
+                    os << "NanoBragg Structure factor of " << h0 <<" "<< k0<<" "<<l0<<" ";
+                    os.precision(17);
+                    os << "intensity is " << std::fixed << (F_cell*F_cell) <<"\n";
+                    /*
                     twotheta = atan2(sqrt(pixel_pos[1]*pixel_pos[1]+pixel_pos[2]*pixel_pos[2]),pixel_pos[0]);
                     test = sin(twotheta/2.0)/(lambda0*1e10);
                     printf("%4d %4d : stol = %g or %g\n", fpixel,spixel,stol,test);
@@ -298,6 +307,7 @@ diffracted[3]=diffracted_v[2];
                     printf("X: %11.8f %11.8f %11.8f\n",a[1]*1e10,b[1]*1e10,c[1]*1e10);
                     printf("Y: %11.8f %11.8f %11.8f\n",a[2]*1e10,b[2]*1e10,c[2]*1e10);
                     printf("Z: %11.8f %11.8f %11.8f\n",a[3]*1e10,b[3]*1e10,c[3]*1e10);
+                    */
                 }
             }
             /*++imgidx*/;
