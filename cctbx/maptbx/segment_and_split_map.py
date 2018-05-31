@@ -3246,6 +3246,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
       d_min_ratio=None,return_as_map_coeffs=False,remove_aniso=None,
       get_remove_aniso_object=True,
       scale_max=None,
+      origin_frac=None,
         out=sys.stdout):
 
     if d_min is not None:
@@ -3265,6 +3266,9 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
          return_as_miller_arrays=True,nohl=True,out=null_out())
     if d_min_use:
       map_coeffs=map_coeffs.resolution_filter(d_min=d_min_use,d_max=d_max)
+
+    if origin_frac:  # shift origin
+      map_coeffs=map_coeffs.translational_shift(origin_frac,deg=False)
 
     map_coeffs=scale_map_coeffs(map_coeffs,scale_max=scale_max,out=out)
 
