@@ -1562,23 +1562,77 @@ selfx:
           source_file=source_file,
           target_file=module_name+"."+command)
 
+  def get_setuptools_script_dir():
+    '''
+    Find the location of python entry point console_scripts, ie. things like
+    'pip', 'pytest', ...
+    This is different from simple /base/bin, eg. on MacOS.
+
+    https://stackoverflow.com/questions/25066084/get-entry-point-script-file-location-in-setuputils-package
+    '''
+    from setuptools import Distribution
+    from setuptools.command.install import install
+    class OnlyGetScriptPath(install):
+      def run(self):
+        # does not call install.run() by design
+        self.distribution.install_scripts = self.install_scripts
+    dist = Distribution({'cmdclass': {'install': OnlyGetScriptPath}})
+    dist.dry_run = True  # not sure if necessary, but to be safe
+    dist.parse_config_files()
+    command = dist.get_command_obj('install')
+    command.ensure_finalized()
+    command.run()
+    return dist.install_scripts
+
+  def regenerate_entry_point_console_scripts(self, verbose=True):
+    '''
+    Creates all console_scripts entry point scripts from scratch and overwrites existing ones.
+    This is intended to be used by installers to relocate the entry point script paths.
+    '''
+    try:
+      import distutils.dist
+      import libtbx.fastentrypoints # monkeypatches setuptools
+      import pkg_resources
+      import setuptools.command.easy_install
+    except ImportError:
+      return
+
+    # Prepare generic script generator
+    distribution = distutils.dist.Distribution({'name': 'setuptools'})
+    command = setuptools.command.easy_install.easy_install(distribution)
+    command.args = ['wheel']  # dummy argument
+    command.finalize_options()
+
+    # Force regeneration of all known console_scripts
+    for pkg_resources_dist in pkg_resources.working_set:
+      console_scripts = pkg_resources_dist.get_entry_map().get('console_scripts')
+      if console_scripts:
+        if verbose:
+          print("Regenerating commands for %s: %s" % (
+              pkg_resources_dist,
+              list(console_scripts),
+          ))
+        command.install_wrapper_scripts(pkg_resources_dist)
+
   def generate_entry_point_dispatchers(self):
-    # Write indirect dispatcher scripts for all console_scripts entry points
-    # that have existing dispatcher scripts in the base/bin directory, but
-    # add a 'libtbx.' prefix.
-    base_bin_directory = libtbx.env.under_base('bin')
-    if not os.path.isdir(base_bin_directory):
+    '''
+    Write indirect dispatcher scripts for all console_scripts entry points
+    that have existing dispatcher scripts in the base/bin directory, but
+    add a 'libtbx.' prefix.
+    '''
+    try:
+      import pkg_resources
+      bin_directory = get_setuptools_script_dir()
+    except ImportError:
+      return
+    if not os.path.isdir(bin_directory):
       return # do not create console_scripts dispatchers, only point to them
 
-    base_bin_dispatchers = set(os.listdir(base_bin_directory))
+    base_bin_dispatchers = set(os.listdir(bin_directory))
     existing_dispatchers = filter(lambda f: f.startswith('libtbx.'), self.bin_path.listdir())
     existing_dispatchers = set(map(lambda f: f[7:], existing_dispatchers))
     entry_point_candidates = base_bin_dispatchers - existing_dispatchers
 
-    try:
-      import pkg_resources
-    except ImportError:
-      return
     entry_points = pkg_resources.iter_entry_points('console_scripts')
     entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
     for ep in entry_points:
