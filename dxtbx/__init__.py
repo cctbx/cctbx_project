@@ -27,13 +27,13 @@ def load(filename):
   """Use DXTBX to load the input filename.
 
   :param filename:  The input filename
-  :type filename:   str or py.path
+  :type  filename:  os.PathLike or str or bytes
   :returns:         A dxtbx Format-subclass instance for the file type
   :raises IOError:  if the file format could not be determined
   """
   from dxtbx.format.Registry import Registry
-  # Unwrap py.path objects into strings
-  if hasattr(filename, "strpath"):
-    filename = filename.strpath
+  # Unwrap PEP-519-style objects. This covers py.path, pathlib, ...
+  if hasattr(filename, "__fspath__"):
+    filename = filename.__fspath__()
   format_instance = Registry.find(filename)
   return format_instance(filename)
