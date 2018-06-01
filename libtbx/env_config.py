@@ -1562,6 +1562,7 @@ selfx:
           source_file=source_file,
           target_file=module_name+"."+command)
 
+  @staticmethod
   def get_setuptools_script_dir():
     '''
     Find the location of python entry point console_scripts, ie. things like
@@ -1622,7 +1623,7 @@ selfx:
     '''
     try:
       import pkg_resources
-      bin_directory = get_setuptools_script_dir()
+      bin_directory = self.get_setuptools_script_dir()
     except ImportError:
       return
     if not os.path.isdir(bin_directory):
