@@ -4,6 +4,7 @@ op = os.path
 
 def inspect(py_lines):
   imports_to_ignore = set([
+    "from {0} import {1}",
     "import libtbx.forward_compatibility",
     "  import libtbx.start_print_trace",
     "    import libtbx.callbacks"])
