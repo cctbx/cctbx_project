@@ -28,6 +28,8 @@ ranges, if enabled
   - New Advanced Options dialog (like IOTA Backend Dialog)
   - Better resolution limits management (not as crazy)
   - Smoother interplay between script and options (though needs work)
+- Added iota_single_image.py in command_line/ - runs DIALS processing on single
+image (could do only spotfinding, indexing, or integration per command args)
 
 Known issues:
 
