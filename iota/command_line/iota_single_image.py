@@ -14,10 +14,8 @@ space group determination, refinement, integration)
 
 import os
 import time
-import argparse
 
 from iotbx import phil as ip
-from libtbx.easy_mp import parallel_map
 from dxtbx.datablock import DataBlockFactory
 
 from threading import Thread
