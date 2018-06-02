@@ -1209,3 +1209,15 @@ citation {
   year = 2017
   doi_id = "10.1107/S2059798316018210"
 }
+
+citation {
+  article_id = autosharpen
+  authors = Terwilliger TC, Afonine PV, Sobolev, OV, Adams PD
+  title = Automated map sharpening by maximization of detail and connectivity
+  year = 2018
+  journal = bioRxiv
+  volume = None
+  pages = None
+  pmid = None
+  doi_id = 10.1101/247049
+}
