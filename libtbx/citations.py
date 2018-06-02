@@ -4,8 +4,11 @@ from __future__ import division, print_function
 Functionality for handling citations
 '''
 
+import importlib
+import os
 import string
 
+import libtbx.load_env
 import libtbx.phil
 from libtbx import str_utils
 from libtbx.utils import to_unicode
@@ -194,6 +197,54 @@ def format_citation_iucr (article) :
     if article.volume is not None : output += ", %s" % article.pages
     else :                          output += ", pp. %s" % article.pages
   if output[-1] != '.' :            output += "."
+  return output
+
+# -----------------------------------------------------------------------------
+def format_citation_doc(article_id):
+  # check database
+  article = citations_db.get(article_id)
+
+  output = '<ul>'
+
+  # check program templates
+  if (article is None):
+
+    # construct dictionary of program templates
+    modules_dict = dict()
+    for module in libtbx.env.module_list:
+      for p in module.program_directory_paths():
+        modules = list()
+        for f in p.listdir():
+          if ( f.endswith('.py') and (f != '__init__.py') and
+               (not f.startswith('.')) ):
+            basename = os.path.splitext(os.path.basename(f))[0]
+            modules.append(basename)
+        if (len(modules) > 0):
+          modules_dict[module.name] = modules
+
+    # find specific program template by article_id
+    for module in modules_dict.keys():
+      for package in modules_dict[module]:
+        if (package == article_id):
+          importlib.import_module(module)
+          program_template = importlib.import_module(
+            '.' + package, package='.'.join([module, 'programs']))
+          if (hasattr(program_template, 'Program')):
+            working_phil = master_citation_phil.fetch(
+              source=program_template.Program.citations)
+            for article in working_phil.extract().citation:
+              output += '<li>'
+              output += format_citation_html(article)
+              output += '</li>\n'
+          else:
+            raise ValueError('Citations for %s could not be found.' % article_id)
+          break
+  else:
+    output += '<li>'
+    output += format_citation_html(article)
+    output += '</li>\n'
+
+  output += '</ul>'
   return output
 
 # -----------------------------------------------------------------------------
