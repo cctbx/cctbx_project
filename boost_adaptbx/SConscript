@@ -328,18 +328,21 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
   env = env_base.Clone(LIBS=env_etc.libs_python)
   env.Append(LIBPATH=env_etc.libpath_python)
   env.Append(SHCXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_SOURCE"])
   if (libtbx.env.build_options.boost_python_bool_int_strict):
     env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_BOOL_INT_STRICT"])
   env.Replace(SHLINKFLAGS=env_etc.shlinkflags)
   env.Append(CXXFLAGS=env_etc.cxxflags_bpl_defines_base)
-  env.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
   env.Replace(LINKFLAGS=env_etc.shlinkflags)
   env_etc.include_registry.append(
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
 
-  darwin_shlinkcom(env_etc, env,
+  # BOOST_PYTHON specific configuration
+  env_bpy = env.Clone()
+  env_bpy.Append(SHCXXFLAGS="-DBOOST_PYTHON_SOURCE")
+  env_bpy.Append(CXXFLAGS="-DBOOST_PYTHON_SOURCE")
+
+  darwin_shlinkcom(env_etc, env_bpy,
                    lo="boost/libs/python/src/libboost_python.lo",
                    dylib="lib/libboost_python.dylib")
 
@@ -384,15 +387,15 @@ object/function_doc_signature.cpp
     os.path.basename(env_etc.boost_dist), "libs", "python", "src")
   bpl_dll_sources = [os.path.join(prefix, path) for path in bpl_dll_sources]
   #
-  env.Repository(os.path.dirname(env_etc.boost_dist))
+  env_bpy.Repository(os.path.dirname(env_etc.boost_dist))
   if (env_etc.static_bpl):
-    env.Append(SHCXXFLAGS=["-DBOOST_PYTHON_STATIC_LIB"])
-    env.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
+    env_bpy.Append(SHCXXFLAGS=["-DBOOST_PYTHON_STATIC_LIB"])
+    env_bpy.StaticLibrary(target="#lib/boost_python", source=bpl_dll_sources)
   else:
-    env.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
+    env_bpy.SharedLibrary(target="#lib/boost_python", source=bpl_dll_sources)
 
   # Boost 1.63 added the numpy submodule. Let's build this now.
-  if ( (env_etc.boost_version >= 106300) and (sys.platform != 'win32') ):
+  if env_etc.boost_version >= 106300:
     try:
       import numpy
       env_npy = env.Clone()
