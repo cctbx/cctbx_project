@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.emma
+# LIBTBX_SET_DISPATCHER_NAME iotbx.emma
 
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
