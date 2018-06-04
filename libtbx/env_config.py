@@ -1638,7 +1638,7 @@ selfx:
     entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
     for ep in entry_points:
       self.write_dispatcher(
-          source_file=libtbx.env.under_base(os.path.join('bin', ep.name)),
+          source_file=os.path.join(bin_directory, ep.name),
           target_file=os.path.join('bin', 'libtbx.' + ep.name),
       )
 
