@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 05/31/2018
+Last Changed: 06/03/2018
 Description : IOTA Single Image: can process single image using DIALS, 
 with an array of options (i.e. anything from only spotfinding, to indexing, 
 space group determination, refinement, integration)
@@ -39,25 +39,29 @@ def parse_command_args():
                       help='Output filename')
   parser.add_argument('--termfile', type=str, default='.stop',
                       help='Termination signal filename')
-  parser.add_argument('--interval', type=int, default=1,
-                      help='File-check interval')
+  parser.add_argument('--index', type=int, default=1,
+                      help='Numerical index of the image')
   parser.add_argument('--nproc', type=int, default=None,
                       help='Number of processors')
   parser.add_argument('--action', type=str, default='spotfind',
                       help='Code for how far to go; available codes: '
                            'spotfind, index, integrate')
+  parser.add_argument('--verbose', action = 'store_true',
+                      help='Print information to stdout')
 
   return parser
 
 class DIALSSpfIdx(Thread):
   def __init__(self,
                img,
+               index=None,
                termfile=None,
                paramfile=None,
                output=None,
                backend='dials',
                action_code='spotfind',
-               n_processors=1
+               n_processors=1,
+               verbose=False
                ):
 
     self.img = img
@@ -65,7 +69,15 @@ class DIALSSpfIdx(Thread):
     self.paramfile = paramfile
     self.termfile = termfile
     self.n_processors = n_processors
-    self.output = output
+    self.index = index
+    self.verbose = verbose
+
+    print 'DEBUG: VERBOSE = ', self.verbose
+
+    if output is not None:
+      self.output = os.path.abspath(output)
+    else:
+      self.output = None
 
     Thread.__init__(self)
 
@@ -157,18 +169,22 @@ class DIALSSpfIdx(Thread):
               pass
 
         elapsed = time.time() - start
-        return [self.img, len(observed), sg, uc, elapsed]
+        return [self.index, len(observed), self.img, sg, uc], elapsed
 
 
   def run(self):
-    info = self.process_image()
+    info, elapsed = self.process_image()
     if info is not None:
-      img_path = info[0]
-      no_spots = info[1]
-      sg_info = info[2]
-      uc_info = info[3]
-      elapsed = info[4]
-      print 'RESULT: ', img_path, no_spots, sg_info, uc_info, '---> ', elapsed
+      idx, no_spots, img_path, sg, uc = info
+
+      if self.verbose:
+        print 'RESULT: ', idx, img_path, no_spots, sg, uc, '---> ', elapsed
+
+      if self.output is not None:
+        with open(self.output, 'a') as outf:
+          info_line = ' '.join([str(i) for i in info])
+          outf.write('{}\n'.format(info_line))
+
     else:
       print 'RESULT: NONE'
 
@@ -181,10 +197,13 @@ if __name__ == "__main__":
   args, unk_args = parse_command_args().parse_known_args()
 
   interceptor = DIALSSpfIdx(img=os.path.abspath(args.path),
+                            index=args.index,
                             backend=args.backend,
                             paramfile=args.paramfile,
                             output=args.output,
                             termfile=args.termfile,
-                            action_code=args.action)
-  interceptor.run()
+                            action_code=args.action,
+                            verbose=args.verbose)
+  interceptor.start()
+
 

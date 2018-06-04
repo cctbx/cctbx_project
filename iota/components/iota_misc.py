@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 10/10/2017
+Last Changed: 06/03/2017
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -42,6 +42,10 @@ def noneset(value):
     return "None"
   else:
     return value
+
+def makenone(value):
+  if 'none' in str(value).lower():
+    return None
 
 class UnicodeCharacters():
   def __init__(self):
