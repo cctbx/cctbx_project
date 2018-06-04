@@ -1122,7 +1122,7 @@ class ResidualsPlotter(object):
           prefix = "%s_"%tag.strip()
         for i in plt.get_fignums():
           print "Saving figure", i
-          plt.figure(i).savefig("%sfig%02d.png"%(prefix, i), format='png', DPI=1200)
+          plt.figure(i).savefig("%sfig%02d.png"%(prefix, i))
       else:
         plt.show()
 
