@@ -3700,6 +3700,37 @@ class array(set):
     assert mean_f_sq_over_epsilon_interp.all_gt(0)
     return array(self, flex.sqrt(mean_f_sq_over_epsilon_interp))
 
+  def intensity_quasi_normalisations(self, d_star_power=1):
+    """ A miller.array whose data N(h) are the normalisations to convert
+      between locally normalised E^2's and I's:
+      E^2(h) = I(h) / N(h)
+
+      Intensities are binned with the current binner
+      and N(h) is the average of I's in the bin h belongs to.
+      """
+
+    # see also cctbx.miller.array.amplitude_quasi_normalisations()
+
+    assert self.binner() is not None
+    assert self.binner().n_bin_d_too_large_or_small() == 0
+    assert self.data().all_ge(0)
+    assert self.observation_type() is None or self.is_xray_intensity_array()
+
+    epsilons = self.epsilons().data().as_double()
+    mean_f_sq_over_epsilon = flex.double()
+    for i_bin in self.binner().range_used():
+      sel = self.binner().selection(i_bin)
+      sel_f_sq = self.data().select(sel)
+      if (sel_f_sq.size() > 0):
+        sel_epsilons = epsilons.select(sel)
+        sel_f_sq_over_epsilon = sel_f_sq / sel_epsilons
+        mean_f_sq_over_epsilon.append(flex.mean(sel_f_sq_over_epsilon))
+      else:
+        mean_f_sq_over_epsilon.append(0)
+    mean_f_sq_over_epsilon_interp = self.binner().interpolate(
+      mean_f_sq_over_epsilon, d_star_power)
+    return array(self, mean_f_sq_over_epsilon_interp)
+
   def quasi_normalize_structure_factors(self, d_star_power=1):
     normalisations = self.amplitude_quasi_normalisations(d_star_power)
     q = self.data() / normalisations.data()
