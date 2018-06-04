@@ -205,5 +205,3 @@ if __name__ == "__main__":
                             action_code=args.action,
                             verbose=args.verbose)
   interceptor.start()
-
-
