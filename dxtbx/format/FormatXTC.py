@@ -34,7 +34,6 @@ class XtcReader(Reader):
     pass
 
 class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
-
   def __init__(self, image_file, **kwargs):
     from dxtbx import IncorrectFormatError
     if not self.understand(image_file):
@@ -59,41 +58,15 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
         If detector_address is not provided, a command line promp will try to get the address
         from the user '''
     try:
-      from psana import DataSource, DetNames
+      from psana import DataSource
     except ImportError:
       return False
     try:
       params = FormatXTC.params_from_phil(locator_scope,image_file)
     except Exception:
       return False
-    if params.data_source is None:
-      if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
-        return False
-      FormatXTC._img = "exp=%s:run=%s:%s"%(params.experiment, ','.join(["%d"%r for r in params.run]), params.mode)
-    else:
-      FormatXTC._img = params.data_source
-    FormatXTC._src = params.detector_address
 
-    ds = DataSource(FormatXTC._img)
-    if FormatXTC._src is None:
-      print('This is an XTC file and can be read by PSANA')
-      print('Listed Below are the detector names associated with the experiment')
-      names = DetNames('detectors')
-      headers = ['Full Name','DAQ Alias','User Alias']
-      maxlen = [len(h) for h in headers]
-      for ntuple in names:
-        lengths = [len(n) for n in ntuple]
-        maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
-      template = "{0:%d} | {1:%d} | {2:%d}" % tuple(maxlen)
-      header = template.format("Full Name", "     DAQ Alias", "User Alias")
-      print('-'*len(header))
-      print(header)
-      print('-'*len(header))
-      for i, n in enumerate(names):
-        print('%3d'%(i+1) + ') '+template.format(*n))
-      print('-'*len(header))
-
-      FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
+    ds = FormatXTC._get_datasource(image_file, params)
     return True
 
   @staticmethod
@@ -155,11 +128,11 @@ class FormatXTC(FormatMultiImageLazy,FormatStill,Format):
       self.current_event = self.get_run_from_index(index).event(self.times[index])
       return self.current_event
 
-  def _get_datasource(self, image_file):
+  @staticmethod
+  def _get_datasource(image_file, params):
     """ Construct a psana data source object given the locator parameters """
     from psana import DataSource
 
-    params = self.params
     if params.data_source is None:
       if params.experiment is None or params.run is None or params.mode is None or len(params.run) == 0:
         return False

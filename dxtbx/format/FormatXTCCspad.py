@@ -27,29 +27,26 @@ class FormatXTCCspad(FormatXTC):
   def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
     FormatXTC.__init__(self, image_file, locator_scope = cspad_locator_scope, **kwargs)
-    self._ds = self._get_datasource(image_file)
+    self._ds = FormatXTCCspad._get_datasource(image_file, self.params)
     self._env = self._ds.env()
     self.populate_events()
     self.n_images = len(self.times)
 
   @staticmethod
   def understand(image_file):
-    import psana
     try:
-      if FormatXTC._src is None:
-        FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
-      if any(['cspad' in src.lower() for src in FormatXTC._src]):
-        return True
-      return False
+      params = FormatXTC.params_from_phil(cspad_locator_scope,image_file)
     except Exception:
       return False
+    ds = FormatXTC._get_datasource(image_file, params)
+    return any(['cspad' in src.lower() for src in params.detector_address])
 
   def get_raw_data(self,index):
     import psana
     from scitbx.array_family import flex
     import numpy as np
-    assert len(self._src) == 1
-    det = psana.Detector(self._src[0], self._env)
+    assert len(self.params.detector_address) == 1
+    det = psana.Detector(self.params.detector_address[0], self._env)
     d = FormatXTCCspad.get_detector(self, index)
     data = cspad_cbf_tbx.get_psana_corrected_data(det, self._get_event(index),
                                                   use_default=False,
@@ -102,8 +99,8 @@ class FormatXTCCspad(FormatXTC):
     from dxtbx.model import ParallaxCorrectedPxMmStrategy
     if index is None: index = 0
     self._env = self._ds.env()
-    assert len(self._src) == 1
-    self._det = psana.Detector(self._src[0],self._env)
+    assert len(self.params.detector_address) == 1
+    self._det = psana.Detector(self.params.detector_address[0],self._env)
     geom=self._det.pyda.geoaccess(self._get_event(index))
     cob = read_slac_metrology(geometry=geom, include_asic_offset=True)
     d = Detector()

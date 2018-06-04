@@ -24,29 +24,26 @@ class FormatXTCRayonix(FormatXTC):
   def __init__(self, image_file, **kwargs):
     assert(self.understand(image_file))
     FormatXTC.__init__(self, image_file, locator_scope = rayonix_locator_scope, **kwargs)
-    self._ds = self._get_datasource(image_file)
+    self._ds = FormatXTCRayonix._get_datasource(image_file, self.params)
     self._env = self._ds.env()
     self.populate_events()
     self.n_images = len(self.times)
 
   @staticmethod
   def understand(image_file):
-    import psana
     try:
-      if FormatXTC._src is None:
-        FormatXTC._src = [names[int(raw_input("Please Enter name of detector numbered 1 through %d : "%(len(names))))-1][0]]
-      if any(['rayonix' in src.lower() for src in FormatXTC._src]):
-        return True
-      return False
+      params = FormatXTC.params_from_phil(rayonix_locator_scope,image_file)
     except Exception:
       return False
+    ds = FormatXTC._get_datasource(image_file, params)
+    return any(['rayonix' in src.lower() for src in params.detector_address])
 
   def get_raw_data(self,index):
     import psana
     from scitbx.array_family import flex
-    assert len(self._src) == 1
-    det = psana.Detector(self._src[0], self._env)
-    data = rayonix_tbx.get_data_from_psana_event(self._get_event(index), self._src[0])
+    assert len(self.params.detector_address) == 1
+    det = psana.Detector(self.params.detector_address[0], self._env)
+    data = rayonix_tbx.get_data_from_psana_event(self._get_event(index), self.params.detector_address[0])
     return flex.double(data)
 
   def get_num_images(self):
