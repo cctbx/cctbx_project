@@ -3267,7 +3267,7 @@ def get_f_phases_from_map(map_data=None,crystal_symmetry=None,d_min=None,
     if d_min_use:
       map_coeffs=map_coeffs.resolution_filter(d_min=d_min_use,d_max=d_max)
 
-    if origin_frac:  # shift origin
+    if origin_frac and tuple(origin_frac) != (0.,0.,0.):  # shift origin
       map_coeffs=map_coeffs.translational_shift(origin_frac,deg=False)
 
     map_coeffs=scale_map_coeffs(map_coeffs,scale_max=scale_max,out=out)
