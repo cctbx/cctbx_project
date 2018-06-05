@@ -7,8 +7,8 @@ from __future__ import division
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
 Last Changed: 06/03/2018
-Description : IOTA Single Image: can process single image using DIALS, 
-with an array of options (i.e. anything from only spotfinding, to indexing, 
+Description : IOTA Single Image: can process single image using DIALS,
+with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
 '''
 
