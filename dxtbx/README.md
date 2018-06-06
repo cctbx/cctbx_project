@@ -11,6 +11,6 @@ This toolbox will include code for:
  * python models of experiment
  * reading a sweep into memory using existing cctbx image reading tools in [iotbx](https://cctbx.github.io/iotbx/index.html)
 
-Initially implemented to support xia2 development, dxtbx is designed to be extensible, to support other applications and to make it easy to work with other detectors, with a generic approach to reading the data files.
+Initially implemented to support [xia2](https://github.com/xia2/xia2) development, dxtbx is designed to be extensible, to support other applications and to make it easy to work with other detectors, with a generic approach to reading the data files.
 
 A paper describing how to use dxtbx, as well as documenting its development and some of its applications, was published as [J. Appl. Cryst. (2014) **47**, 1459-1465](https://doi.org/10.1107/S1600576714011996).
