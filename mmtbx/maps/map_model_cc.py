@@ -129,6 +129,7 @@ class map_model_cc(object):
               atoms       = residue.atoms(),
               atom_radius = self.atom_radius)
             self.cc_per_residue.append(group_args(
+              model_id   = rg.parent().parent().id,
               chain_id   = rg.parent().id,
               resname    = residue.resname,
               resseq     = residue.resseq,
