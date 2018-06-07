@@ -19,6 +19,7 @@ from iotbx.pdb.rna_dna_detection import residue_analysis
 import iotbx.phil
 from libtbx.utils import Sorry, Usage
 from libtbx.str_utils import show_string
+import libtbx.load_env
 
 def get_master_phil():
   return iotbx.phil.parse(
@@ -298,10 +299,17 @@ def get_residue_bonds(residue):
   return bonds
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
+  probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                               'probe', 'exe', 'probe')
+  reduce_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                                'reduce', 'exe', 'reduce') \
+                   + ' -DB %s -ALLALT' % \
+                     libtbx.env.under_dist('reduce', 'reduce_wwPDB_het_dict.txt')
   probe = \
-    'phenix.probe -4H -quiet -sepworse -noticks -nogroup -dotmaster -mc -self "ALL" -'
-  trim = "phenix.reduce -quiet -trim -"
-  build = "phenix.reduce -oh -his -flip -pen9999 -keep -allalt -"
+    '%s -4H -quiet -sepworse -noticks -nogroup -dotmaster -mc -self "ALL" -' %\
+    probe_command
+  trim = "%s -quiet -trim -" % reduce_command
+  build = "%s -oh -his -flip -pen9999 -keep -allalt -" % reduce_command
   probe_return = ""
   for i,m in enumerate(hierarchy.models()):
     r = pdb.hierarchy.root()
