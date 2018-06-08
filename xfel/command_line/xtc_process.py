@@ -748,14 +748,18 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
 
-        would_process = -1
         nevent = mem = first = last = 0
+        if process_fractions:
+          def process_this_event(nevent):
+            # nevent modulo the denominator gives us which fraction we're in
+            n_mod_denom = nevent % process_fractions.denominator
+            # compare the 0-indexed modulo against the 1-indexed numerator (intentionally not <=)
+            n_accept = n_mod_denom < process_fractions.numerator
+            return n_accept
         for nevent, evt in enumerate(run.events()):
           if nevent%size != rank: continue
           if nevent >= max_events: break
-          would_process += 1
-          if process_fractions:
-            if would_process % process_fractions.denominator >= process_fractions.numerator: continue
+          if process_fractions and not process_this_event(nevent): continue
 
           self.process_event(run, evt)
 
