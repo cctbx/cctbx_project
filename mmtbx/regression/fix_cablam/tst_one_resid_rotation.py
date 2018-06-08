@@ -3,7 +3,8 @@ from __future__ import division
 import iotbx.pdb
 import mmtbx.model
 from mmtbx.building.cablam_idealization import cablam_idealization, master_phil
-import os, sys
+import sys
+import libtbx.load_env
 
 pdb_str = """\
 ATOM   2327  N   GLY A 318     169.195 115.930  63.690  1.00216.32           N
@@ -74,5 +75,8 @@ def exercise_yes_sidechains(prefix="tst_one_resid_rotation_yes_sidechains"):
   pdb_txt = model.model_as_pdb()
 
 if __name__ == '__main__':
-  exercise_no_sidechains()
-  exercise_yes_sidechains()
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping: probe not configured"
+  else:
+    exercise_no_sidechains()
+    exercise_yes_sidechains()

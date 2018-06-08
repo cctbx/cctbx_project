@@ -3,6 +3,7 @@ from __future__ import division
 import os
 
 from libtbx import easy_run
+import libtbx.load_env
 
 pdb_str = """\
 CRYST1   32.501   39.502   44.640  90.00  90.00  90.00 P 21 21 21    4
@@ -37,4 +38,7 @@ def exercise_out(prefix="tst_fix_cablam_basic_cl_operations_pdb_out"):
 
 
 if __name__ == '__main__':
-  exercise_out()
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping: probe not configured"
+  else:
+    exercise_out()

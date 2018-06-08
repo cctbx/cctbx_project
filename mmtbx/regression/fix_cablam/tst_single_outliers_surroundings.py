@@ -3,7 +3,8 @@ from __future__ import division
 import iotbx.pdb
 import mmtbx.model
 from mmtbx.building.cablam_idealization import cablam_idealization, master_phil
-import os, sys
+import sys
+import libtbx.load_env
 
 ss_1aon = """\
 SHEET    1   D 3 MET A 193  PHE A 195  0
@@ -249,5 +250,8 @@ def exercise_yes_sidechains(prefix="tst_single_outliers_sur_yes_sidechains"):
   pdb_txt = model.model_as_pdb()
 
 if __name__ == '__main__':
-  exercise_no_sidechains()
+  if (not libtbx.env.has_module(name="probe")):
+    print "Skipping: probe not configured"
+  else:
+    exercise_no_sidechains()
   exercise_yes_sidechains()
