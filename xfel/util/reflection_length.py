@@ -22,9 +22,9 @@ class ReflectionsRadialLengths(object):
     else:
       self.det = experiment.detector
       self.beam = experiment.beam
-    s0 = self.beam.get_unit_s0()
+    self.s0 = self.beam.get_unit_s0()
     self.panel_s0_intersections = flex.vec2_double(
-      [self.det[i].get_ray_intersection_px(s0) for i in xrange(len(self.det))])
+      [self.det[i].get_ray_intersection_px(self.s0) for i in xrange(len(self.det))])
   def get_one_spot_length_width_angle(self, id):
     # the radial direction is along the vector from the beam center to
     # the spot centroid for each spot
@@ -34,7 +34,7 @@ class ReflectionsRadialLengths(object):
     dx, dy = [centroid[i] - s0_position[i] for i in (0, 1)]
     radial_abs = matrix.col((dx, dy))
     radial = radial_abs.normalize()
-    transverse = s0.normalize().cross(radial)
+    transverse = self.s0.normalize().cross(radial)
     mask = flex.bool([(m & self.valid_code) != 0 for m in shoebox.mask])
     bbox = self.strong['bbox'][id]
     x_start, y_start = bbox[0], bbox[2]
