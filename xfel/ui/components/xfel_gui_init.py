@@ -434,6 +434,7 @@ class RunStatsSentinel(Thread):
             rungroup_ids.append(rg.id)
             self.trgr[run.run] = (trial, rg, run)
             self.stats.append(HitrateStats(self.db, run.run, trial.trial, rg.id,
+                                           i_sigi_cutoff=self.parent.run_window.runstats_tab.i_sigi,
                                            d_min=self.parent.run_window.runstats_tab.d_min)())
             self.run_tags.append([tag.name for tag in run.tags])
 

@@ -94,12 +94,13 @@ class Stats(object):
     return cells
 
 class HitrateStats(object):
-  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, raw_data_sampling = 1):
+  def __init__(self, app, run_number, trial_number, rungroup_id, d_min = None, i_sigi_cutoff = 1, raw_data_sampling = 1):
     self.app = app
     self.run = app.get_run(run_number = run_number)
     self.trial = app.get_trial(trial_number = trial_number)
     self.rungroup = app.get_rungroup(rungroup_id = rungroup_id)
     self.d_min = d_min
+    self.i_sigi_cutoff = i_sigi_cutoff
     self.sampling = raw_data_sampling
 
   def __call__(self):
@@ -130,7 +131,7 @@ class HitrateStats(object):
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))
 
-    average_i_sigi = flex.double()
+    resolutions = flex.double()
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     tag = self.app.params.experiment_tag
@@ -140,7 +141,7 @@ class HitrateStats(object):
     if len(high_res_bin_ids) > 0:
 
       # Get the stats in one query.
-      query = """SELECT event.timestamp, event.n_strong, MAX(cb.avg_i_sigi), event.two_theta_low, event.two_theta_high, COUNT(crystal.id)
+      query = """SELECT event.timestamp, event.n_strong, MIN(bin.d_min), event.two_theta_low, event.two_theta_high, COUNT(crystal.id)
                  FROM `%s_event` event
                  JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                  JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
@@ -150,14 +151,17 @@ class HitrateStats(object):
                  JOIN `%s_bin` bin ON bin.cell_id = cell.id
                  JOIN `%s_cell_bin` cb ON cb.bin_id = bin.id AND cb.crystal_id = crystal.id
                  WHERE event.trial_id = %d AND event.run_id = %d AND event.rungroup_id = %d AND
-                       cb.bin_id IN (%s)
+                       cb.avg_i_sigi >= %f
                  GROUP BY event.id
-              """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id,
-                    ", ".join(high_res_bin_ids))
+              """ % (tag, tag, tag, tag, tag, tag, tag, tag, self.trial.id, self.run.id, self.rungroup.id, self.i_sigi_cutoff)
       cursor = self.app.execute_query(query)
       sample = -1
       for row in cursor.fetchall():
-        ts, n_s, avg_i_sigi, tt_low, tt_high, n_xtal = row
+        ts, n_s, d_min, tt_low, tt_high, n_xtal = row
+        try:
+          d_min = float(d_min)
+        except ValueError:
+          d_min = None
         rts = reverse_timestamp(ts)
         rts = rts[0] + (rts[1]/1000)
         sample += 1
@@ -167,7 +171,7 @@ class HitrateStats(object):
         n_strong.append(n_s)
         two_theta_low.append(tt_low or -1)
         two_theta_high.append(tt_high or -1)
-        average_i_sigi.append(avg_i_sigi or 0)
+        resolutions.append(d_min or 0)
         n_lattices.append(n_xtal or 0)
 
     # This left join query finds the events with no imageset, meaning they failed to index
@@ -186,7 +190,7 @@ class HitrateStats(object):
       n_strong.append(n_s)
       two_theta_low.append(tt_low or -1)
       two_theta_high.append(tt_high or -1)
-      average_i_sigi.append(0)
+      resolutions.append(0)
       n_lattices.append(0)
 
     order = flex.sort_permutation(timestamps)
@@ -194,12 +198,12 @@ class HitrateStats(object):
     n_strong = n_strong.select(order)
     two_theta_low = two_theta_low.select(order)
     two_theta_high = two_theta_high.select(order)
-    average_i_sigi = average_i_sigi.select(order)
+    resolutions = resolutions.select(order)
     n_lattices = n_lattices.select(order)
 
     #t2 = time.time()
     #print "HitrateStats took %s" % duration(t1, t2)
-    return timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices
+    return timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices
 
 class SpotfinderStats(object):
   def __init__(self, app, run_number, trial_number, rungroup_id, raw_data_sampling = 1):
