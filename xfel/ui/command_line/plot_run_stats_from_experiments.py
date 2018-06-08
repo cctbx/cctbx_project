@@ -32,13 +32,12 @@ phil_str = """
     .type = str
     .multiple = True
     .help = Tags to be applied as labels to the runs.
+  run_tags_from_filenames = True
+    .type = bool
+    .help = Attempt to find the run number in the filenames supplied.
   minimalist = False
     .type = bool
     .help = Generate final plot without run tags, per-run text summaries or vertical lines between runs.
-  compress_runs = True
-    .type = bool
-    .help = When plotting multiple runs, adjust timestamps so there is no blank space between them.
-    .help = This mode is not compatible with fetching events from timestamps.
   title = None
     .type = str
     .help = Plot title.
@@ -48,9 +47,13 @@ phil_scope = parse(phil_str)
 def run(args):
   user_phil = []
   input_dirs = []
+  input_paths = []
   for arg in args:
     if os.path.isdir(arg):
       input_dirs.append(arg)
+      continue
+    elif os.path.exists(arg):
+      input_paths.append(arg)
       continue
     try:
       user_phil.append(parse(arg))
@@ -58,11 +61,34 @@ def run(args):
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 
+  def get_paths(dirname):
+    absolute = lambda name: os.path.join(dirname, name)
+    names = os.listdir(dirname)
+    return map(absolute, names)
+
+  files_dict = {dirname:get_paths(dirname) for dirname in input_dirs}
+  if params.run_tags_from_filenames:
+    for path in input_paths:
+      filename = os.path.basename(path)
+      try:
+        run = int(filename.split("idx-")[1].split("-")[0].split("run")[1])
+      except Exception:
+        run = int(filename.split("idx-")[1].split("-")[0].split("r")[1])
+      except Exception:
+        run = None
+      try:
+        files_dict[run].append(path)
+      except KeyError:
+        files_dict[run] = [path]
+  else:
+    files_dict[None] = input_paths
   all_results = []
   runs = []
-  # iterate through supplied directories and look for processing results
-  for dir_number, root in enumerate(input_dirs):
-    runs.append(dir_number)
+
+  # iterate through grouped file paths and look for processing results
+  for run, files in files_dict.iteritems():
+    if len(files) == 0: continue
+    runs.append(run)
     timestamps = flex.double()
     two_theta_low = flex.double()
     two_theta_high = flex.double()
@@ -70,7 +96,9 @@ def run(args):
     average_i_sigi = flex.double()
     n_lattices = flex.int()
 
-    for i, filename in enumerate(sorted(os.listdir(root))):
+    for i, path in enumerate(sorted(files)):
+      root = os.path.dirname(path)
+      filename = os.path.basename(path)
       split_fn = filename.split('_')
       if len(split_fn) <= 0 or split_fn[-1] != "datablock.json":
         continue
@@ -131,8 +159,9 @@ def run(args):
 
   plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
     i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags, \
-    minimalist=params.minimalist, interactive=True, compress_runs=params.compress_runs, \
+    minimalist=params.minimalist, interactive=True, compress_runs=True, \
     title=params.title)
+
 
 if __name__ == "__main__":
   run(sys.argv[1:])
