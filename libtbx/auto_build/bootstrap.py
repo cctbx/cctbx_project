@@ -1804,9 +1804,9 @@ class CCTBXLiteBuilder(CCIBuilder):
 
   def add_base(self, extra_opts=[]):
     if self.skip_base is None or len(self.skip_base) == 0:
-      self.skip_base = "hdf5,lz4_plugin"
+      self.skip_base = "hdf5,lz4_plugin,h5py"
     else:
-      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin'])
+      self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin','h5py'])
     super(CCTBXLiteBuilder, self).add_base(
       extra_opts=['--cctbx',
                  ] + extra_opts)
