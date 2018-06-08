@@ -44,9 +44,11 @@ master_phil = libtbx.phil.parse("""
     .type = str
   median_filter_size = None
     .type = int
-  x_axis = *two_theta q
+  x_axis = *two_theta q resolution
     .type = choice
   image_number = None
+    .type = int
+  panel = None
     .type = int
 """)
 
@@ -159,6 +161,8 @@ def run (args, imageset = None):
         all_data = (all_data,)
 
       for tile, (panel, data) in enumerate(zip(detector, all_data)):
+        if params.panel is not None and tile != params.panel: continue
+
         if params.mask is None:
           mask = flex.bool(flex.grid(data.focus()), True)
         else:
@@ -200,6 +204,10 @@ def run (args, imageset = None):
 
       twotheta = flex.double(xrange(len(results)))*extent_two_theta/params.n_bins
       q_vals = 4*math.pi*flex.sin(math.pi*twotheta/360)/beam.get_wavelength()
+      #nlmbda = 2dsin(theta)
+      resolution = flex.double(len(twotheta), 0)
+      nonzero = twotheta > 0
+      resolution.set_selected(nonzero, beam.get_wavelength()/(2*flex.asin((math.pi/180)*twotheta.select(nonzero)/2)))
 
       if params.low_max_two_theta_limit is None:
         subset = results
@@ -214,6 +222,9 @@ def run (args, imageset = None):
       elif params.x_axis == 'q':
         xvals = q_vals
         max_x = q_vals[flex.first_index(results, max_result)]
+      elif params.x_axis == 'resolution':
+        xvals = resolution
+        max_x = resolution[flex.first_index(results, max_result)]
 
       for i in xrange(len(results)):
         val = xvals[i]
@@ -235,6 +246,11 @@ def run (args, imageset = None):
           plt.xlabel("2 theta")
         elif params.x_axis == 'q':
           plt.xlabel("q")
+        elif params.x_axis == 'resolution':
+          plt.xlabel("Resolution ($\AA$)")
+          plt.gca().set_xscale("log")
+          plt.gca().invert_xaxis()
+          plt.xlim(0,50)
         plt.ylabel("Avg ADUs")
         if params.plot_y_max is not None:
           plt.ylim(0, params.plot_y_max)
