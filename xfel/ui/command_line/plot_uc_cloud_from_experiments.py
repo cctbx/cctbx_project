@@ -14,7 +14,7 @@ extract_tags to True in the phil scope.
 """
 
 phil_str = """
-  iqr_ratio = 1.5
+  iqr_ratio = None
     .type = float
     .help = Interquartile range multiplier for outlier rejection. Use None to disable outlier rejection.
   ranges = None
@@ -24,6 +24,10 @@ phil_str = """
     .type = bool
     .help = Extract tags from the names of multiple combined_experiments.json filenames and use
     .help = these tags to label multiple groups of experiments.
+  combine_all_input = False
+    .type = bool
+    .help = Combine all experiment lists to generate a single unit cell histogram. Useful for plotting
+    .help = data from multiple runs outside the cctbx.xfel GUI.
   title = None
     .type = str
     .help = Title for the plot
@@ -98,6 +102,9 @@ class Script(object):
           if params.write_gnuplot_cloud:
             gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
         info_list.append(infos)
+    if params.combine_all_input:
+      info_list = [[info for infos in info_list for info in infos]]
+      experiments_tags = ["combined"]
 
     if params.write_gnuplot_cloud:
       gnuplot.close()
