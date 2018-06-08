@@ -5,10 +5,7 @@ import sys
 
 # NB:  this can be run from the command line as "mmtbx.rebuild_rotarama_cache"
 def run():
-  from libtbx import easy_pickle
   from libtbx.utils import format_cpu_times
-  from libtbx.str_utils import show_string
-  from mmtbx.rotamer.n_dim_table import NDimTable
   from mmtbx.rotamer import rotamer_eval
   from mmtbx.rotamer import ramachandran_eval
 
@@ -43,6 +40,9 @@ def run():
   print(format_cpu_times())
 
 def rebuild_pickle_files(data_dir, file_prefix, target_db, amino_acids):
+  from libtbx import easy_pickle
+  from libtbx.str_utils import show_string
+  from mmtbx.rotamer.n_dim_table import NDimTable
   os.chdir(data_dir)
   print("Processing data files in %s:" % show_string(data_dir))
   for aa, aafile in amino_acids.items():
