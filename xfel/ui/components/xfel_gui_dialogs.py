@@ -719,7 +719,7 @@ class AveragingDialog(BaseDialog):
     raw = self.raw_toggle.raw.GetValue() == 1
     average_command = AveragingCommand(self.run, self.params, raw)()
     print "executing", average_command
-    result = easy_run.fully_buffered(average_command)
+    result = easy_run.fully_buffered(command=average_command)
     result.show_stdout()
     e.Skip()
 
