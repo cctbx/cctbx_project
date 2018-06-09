@@ -3,7 +3,8 @@ from __future__ import division
 from libtbx import group_args
 import libtbx.phil
 
-from mmtbx.validation.cablam import cablamalyze
+from mmtbx.validation.cablam import cablamalyze, fetch_peptide_expectations, \
+    fetch_ca_expectations, fetch_motif_contours
 from libtbx.utils import Sorry, null_out
 
 from cctbx.array_family import flex
@@ -50,6 +51,10 @@ class cablam_idealization(object):
     self.params = params
     self.log = log
     self.outliers = None
+    self.cablam_contours = fetch_peptide_expectations()
+    self.ca_contours = fetch_ca_expectations()
+    self.motif_contours = fetch_motif_contours()
+
 
     with open("in.pdb",'w') as f:
       f.write(self.model.model_as_pdb())
@@ -201,7 +206,11 @@ class cablam_idealization(object):
         pdb_hierarchy=chain_around.get_hierarchy(),
         outliers_only=True,
         out=null_out(),
-        quiet=True)
+        quiet=True,
+        cablam_contours = self.cablam_contours,
+        ca_contours = self.ca_contours,
+        motif_contours = self.motif_contours,
+        )
     outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier]
     return (angle, len(ro.split("\n"))-1, len(outliers_only), hbonds)
 
@@ -243,7 +252,10 @@ class cablam_idealization(object):
         pdb_hierarchy=self.model.get_hierarchy(),
         outliers_only=True,
         out=null_out(),
-        quiet=True)
+        quiet=True,
+        cablam_contours = self.cablam_contours,
+        ca_contours = self.ca_contours,
+        motif_contours = self.motif_contours)
     outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier]# and x.feedback.c_alpha_geom_outlier]
     outliers_by_chain = {}
     for k, g in itertools.groupby(outliers_only, key=lambda x: x.residue_id()[:2]):

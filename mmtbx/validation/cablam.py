@@ -778,15 +778,21 @@ class cablamalyze(validation):
     pdb_hierarchy,
       outliers_only,
       out,
-      quiet):
+      quiet,
+      cablam_contours=None,
+      ca_contours=None,
+      motif_contours=None):
     validation.__init__(self)
     from mmtbx.validation import utils
     from scitbx.array_family import flex
     #self._outlier_i_seqs = flex.size_t()
     self.out = out
-    cablam_contours = fetch_peptide_expectations()
-    ca_contours = fetch_ca_expectations()
-    motif_contours = fetch_motif_contours()
+    if cablam_contours is None:
+      cablam_contours = fetch_peptide_expectations()
+    if ca_contours is None:
+      ca_contours = fetch_ca_expectations()
+    if motif_contours is None:
+      motif_contours = fetch_motif_contours()
     self.pdb_hierarchy = pdb_hierarchy.deep_copy()
     pdb_atoms = pdb_hierarchy.atoms()
     all_i_seqs = pdb_atoms.extract_i_seq()
