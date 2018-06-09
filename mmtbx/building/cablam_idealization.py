@@ -89,6 +89,17 @@ class cablam_idealization(object):
     if params.do_gm:
       self.cablam_fixed_minimized = self._minimize()
 
+  def _get_ca_atom(self, chainid, resid):
+    for chain in self.model.get_hierarchy().only_model().chains():
+      if chain.id.strip() == chainid.strip():
+        for rg in chain.residue_groups():
+          if int(rg.resseq) == int(resid):
+            for a in rg.atoms():
+              if a.name.strip() == "CA":
+                return a
+    return None
+
+
   def fix_cablam_outlier(self, chain, outlier):
     scores = []
     if len(outlier) == 1:
@@ -100,15 +111,21 @@ class cablam_idealization(object):
     else:
       print >> self.log, "Don't know how to deal with more than 2 outliers in a row yet. Skipping."
       return
-    h =  self.model.get_hierarchy()
-    s =  self.model.selection("chain %s and name CA and resid %s" % (chain, prevresid))
-    a1 = self.model.select(s).get_hierarchy().atoms()[0]
-    s =  self.model.selection("chain %s and name CA and resid %s" % (chain, curresid))
-    a2 = self.model.select(s).get_hierarchy().atoms()[0]
+    # h =  self.model.get_hierarchy()
+    # s =  self.model.selection("chain %s and name CA and resid %s" % (chain, prevresid))
+    # a1 = self.model.select(s).get_hierarchy().atoms()[0]
+    # s =  self.model.selection("chain %s and name CA and resid %s" % (chain, curresid))
+    # a2 = self.model.select(s).get_hierarchy().atoms()[0]
+    # This is slightly faster, but poorer code. We'll see if it is needed.
+    a1 = self._get_ca_atom(chain, prevresid)
+    a2 = self._get_ca_atom(chain, curresid)
+
     print >> self.log, "*"*80
     print >> self.log, "Atoms for rotation:", chain, prevresid, curresid
     print >> self.log, "*"*80
 
+    chain_around = self.model.select(self.model.selection(
+      "chain %s and resid %d through %d" % (chain, int(prevresid)-2, int(curresid)+2)))
     for i in range(12):
       # rotation
       angle = 30
@@ -119,8 +136,6 @@ class cablam_idealization(object):
       if self.params.save_intermediates:
         with open("out_%s_%d.pdb" % (curresid.strip(), i),'w') as f:
           f.write(self.model.model_as_pdb())
-      chain_around = self.model.select(self.model.selection(
-        "chain %s and resid %d through %d" % (chain, int(prevresid)-2, int(curresid)+2)))
       scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, 30*(i+1)))
     print >> self.log, "angle, rama, cablam, hbonds"
     for s in scores:
