@@ -94,7 +94,7 @@ def get_shift_cart(map_data=None,crystal_symmetry=None,
   return shift_cart
 
 def run(args, log=None, ccp4_map=None,
-    return_as_miller_arrays=False, nohl=False,
+    return_as_miller_arrays=False, nohl=False, return_f_obs=False,
     space_group_number=None,
     out=sys.stdout):
   if log is None: log=out
@@ -218,12 +218,14 @@ def run(args, log=None, ccp4_map=None,
   else:
     print >>out,"Output origin is at (0.000, 0.000, 0.000) A"
 
-  if nohl and return_as_miller_arrays:
+  if nohl and return_as_miller_arrays and not return_f_obs:
     return f_obs_cmpl
 
   mtz_dataset = f_obs_cmpl.as_mtz_dataset(column_root_label="F")
   f_obs = abs(f_obs_cmpl)
   f_obs.set_sigmas(sigmas=flex.double(f_obs_cmpl.data().size(),1))
+  if nohl and return_as_miller_arrays and return_f_obs:
+     return f_obs
   mtz_dataset.add_miller_array(
     miller_array      = f_obs,
     column_root_label = "F-obs")
@@ -258,7 +260,10 @@ def run(args, log=None, ccp4_map=None,
   else:
     hl=None
   if return_as_miller_arrays:
-    return f_obs_cmpl,hl
+    if return_f_obs:
+      return f_obs,hl
+    else:
+      return f_obs_cmpl,hl
   else:
     # write output MTZ file with all the data
     broadcast(m="Writing output MTZ file:", log=log)

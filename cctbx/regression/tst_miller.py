@@ -1603,6 +1603,56 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
+def exercise_local_overlap_map():
+  symmetry = crystal.symmetry(
+    unit_cell=(10, 10, 10, 90, 90, 90),
+    space_group_symbol="P1")
+  d_min = 2
+  structure = xray.structure(crystal_symmetry=symmetry)
+  # now let's add some atoms
+  atmrad = flex.double()
+  xyzf = flex.vec3_double()
+  from cctbx.eltbx import van_der_waals_radii
+  a,b,c,_,_,_ = symmetry.unit_cell().parameters()
+  for k in xrange(10):
+    scatterer = xray.scatterer(
+      site=(0, 0.1*math.sin(math.pi*4*k/b), k/b),
+      scattering_type="S",
+      u=0.02)
+    structure.add_scatterer(scatterer)
+    atmrad.append(van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+    xyzf.append(scatterer.site)
+  f_calc = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+  sites_cart=structure.sites_cart()
+  from scitbx.matrix import col
+  sites_cart+=col((0.2,0.2,0.2))
+  structure.set_sites_cart(sites_cart)
+  f_calc_1 = structure.structure_factors(
+    d_min=d_min, anomalous_flag=False).f_calc()
+  lom = f_calc.local_overlap_map(other=f_calc_1,radius=3.5)
+  lom_map=lom.real_map_unpadded()
+  mmm=lom_map.as_1d().min_max_mean() 
+  hist = flex.histogram(data=lom_map.as_1d(), n_slots=lom_map.size())
+  cutoff = hist.get_cutoff(int(lom_map.size()*(1-0.85)))
+  mask = flex.size_t()
+  mask.resize(lom_map.accessor(), 1)
+  mask.set_selected(lom_map > cutoff, 0)
+  # compare to vdw radii-based mask
+  from cctbx.masks import around_atoms
+  m1 = around_atoms(
+    structure.unit_cell(),
+    structure.space_group().order_z(),
+    structure.sites_frac(),
+    atmrad,
+    lom.n_real(),
+    solvent_radius=1,
+    shrink_truncation_radius=1)
+  corr = flex.linear_correlation(
+    mask.as_double().as_1d(), m1.data.as_double().as_1d())
+  assert corr.coefficient() > 0.70
+
+
 def exercise_lsd_map():
   symmetry = crystal.symmetry(
     unit_cell=(10, 10, 10, 90, 90, 90),
@@ -2432,6 +2482,7 @@ def exercise_structure_factors_from_map_and_asu_map(d_min=2.):
     assert approx_equal(rfactor(x=fc,y=fc_from_asu_map), 0.0)
 
 def run(args):
+  exercise_local_overlap_map()
   exercise_structure_factors_from_map_and_asu_map()
   exercise_karle_normalization()
   exercise_systematic_absences_info()

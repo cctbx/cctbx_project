@@ -3164,26 +3164,37 @@ def set_up_xrs(crystal_symmetry=None):  # dummy xrs to write out atoms
   return xrs,scatterers
 
 def write_atoms(tracking_data=None,sites=None,file_name=None,
-      crystal_symmetry=None,out=sys.stdout):
+      crystal_symmetry=None,
+      atom_name=None,resname=None,atom_type=None,occ=None,
+      out=sys.stdout):
     if crystal_symmetry is None:
        crystal_symmetry=tracking_data.crystal_symmetry
     xrs,scatterers=set_up_xrs(crystal_symmetry=crystal_symmetry)
     from cctbx import xray
     unit_cell=crystal_symmetry.unit_cell()
     for xyz_cart in sites:
-      scatterers.append( xray.scatterer(scattering_type="O", label="O",
+      scatterers.append( xray.scatterer(scattering_type="O",
+         label="O",
         site=unit_cell.fractionalize(xyz_cart), u=0.38, occupancy=1.0))
-    write_xrs(xrs=xrs,scatterers=scatterers,file_name=file_name,out=out)
+    text=write_xrs(xrs=xrs,scatterers=scatterers,file_name=file_name,out=out)
+    if atom_name and resname and atom_type:
+      text=text.replace("O      O  "," %2s  %3s A" %(atom_name,resname) )
+      text=text.replace("           O","           %1s" %(atom_type))
+    if occ:
+      text=text.replace(" 1.00 "," %.2f " %(occ))
+    return text
 
 
 def write_xrs(xrs=None,scatterers=None,file_name="atoms.pdb",out=sys.stdout):
   from cctbx import xray
   xrs = xray.structure(xrs, scatterers=scatterers)
   text=xrs.as_pdb_file()
-  f=open(file_name,'w')
-  print >>f,text
-  f.close()
-  print >>out,"Atoms written to %s" %file_name
+  if file_name:
+    f=open(file_name,'w')
+    print >>f,text
+    f.close()
+    print >>out,"Atoms written to %s" %file_name
+  return text
 
 def get_b_iso(miller_array,d_min=None,return_aniso_scale_and_b=False,
     d_max=100000.):

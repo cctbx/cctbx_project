@@ -4327,9 +4327,8 @@ class array(set):
                                          f_000=None):
     # J. P. Abrahams and A. G. W. Leslie, Acta Cryst. (1996). D52, 30-42
     complete_set = self.complete_set()
-    stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
-    w = 4 * stol * math.pi * radius
-    sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+    sphere_reciprocal=get_sphere_reciprocal(
+       complete_set=complete_set,radius=radius)
     fft = self.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -4342,6 +4341,75 @@ class array(set):
     fft.apply_volume_scaling()
     temp = complete_set.structure_factors_from_map(
       flex.pow2(fft.real_map_unpadded()-mean_solvent_density))
+    fourier_coeff = complete_set.array(data=temp.data()*sphere_reciprocal)
+    fft = fft_map(
+      crystal_gridding=self.crystal_gridding(
+        d_min=d_min,
+        resolution_factor=resolution_factor,
+        grid_step=grid_step,
+        symmetry_flags=symmetry_flags,
+        mandatory_factors=mandatory_factors,
+        max_prime=max_prime,
+        assert_shannon_sampling=assert_shannon_sampling),
+      fourier_coefficients=fourier_coeff).apply_volume_scaling()
+    return fft
+
+  def local_overlap_map(self, other, radius,
+                                         resolution_factor=1/3,
+                                         d_min=None,
+                                         grid_step=None,
+                                         symmetry_flags=None,
+                                         mandatory_factors=None,
+                                         max_prime=5,
+                                         assert_shannon_sampling=True,
+                                         f_000=None):
+    # Based on local_standard_deviation_map above
+    assert self.crystal_symmetry().unit_cell().is_similar_to(
+        other.crystal_symmetry().unit_cell())
+
+    complete_set = self.complete_set()
+    sphere_reciprocal=get_sphere_reciprocal(
+       complete_set=complete_set,radius=radius)
+    if d_min is None:
+      d_min=self.d_min()
+
+    fft = self.fft_map(
+      resolution_factor=resolution_factor,
+      d_min=d_min,
+      grid_step=grid_step,
+      symmetry_flags=symmetry_flags,
+      mandatory_factors=mandatory_factors,
+      max_prime=max_prime,
+      assert_shannon_sampling=assert_shannon_sampling,
+      f_000=f_000)
+    fft.apply_sigma_scaling()
+
+    other_fft = other.fft_map(
+      resolution_factor=resolution_factor,
+      d_min=d_min,
+      grid_step=grid_step,
+      symmetry_flags=symmetry_flags,
+      mandatory_factors=mandatory_factors,
+      max_prime=max_prime,
+      assert_shannon_sampling=assert_shannon_sampling,
+      f_000=f_000)
+    other_fft.apply_sigma_scaling()
+
+    map_data=fft.real_map_unpadded()
+    map_data_mean=map_data.as_1d().min_max_mean().mean
+    map_data=map_data-map_data_mean
+    other_map_data=other_fft.real_map_unpadded()
+    other_map_data_mean=other_map_data.as_1d().min_max_mean().mean
+    other_map_data=other_map_data-other_map_data_mean
+     
+    # get local overlap. They are normalized and have means of zero, so 
+    # overlap is similar to correlation coefficient:
+    # CC is similar to:  <x1 * x2>   (not exactly as <x1**2> is not constant)
+
+    overlap_map_data = map_data * other_map_data
+
+    temp = complete_set.structure_factors_from_map(overlap_map_data)
+
     fourier_coeff = complete_set.array(data=temp.data()*sphere_reciprocal)
     fft = fft_map(
       crystal_gridding=self.crystal_gridding(
@@ -5718,6 +5786,13 @@ class fft_map(maptbx.crystal_gridding):
       gridding_first=gridding_first,
       gridding_last=gridding_last,
       map_data=map_data)
+
+def get_sphere_reciprocal(complete_set=None,radius=None):
+  stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
+  w = 4 * stol * math.pi * radius
+  sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
+  return sphere_reciprocal
+
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,
