@@ -1632,7 +1632,7 @@ def exercise_local_overlap_map():
     d_min=d_min, anomalous_flag=False).f_calc()
   lom = f_calc.local_overlap_map(other=f_calc_1,radius=3.5)
   lom_map=lom.real_map_unpadded()
-  mmm=lom_map.as_1d().min_max_mean() 
+  mmm=lom_map.as_1d().min_max_mean()
   hist = flex.histogram(data=lom_map.as_1d(), n_slots=lom_map.size())
   cutoff = hist.get_cutoff(int(lom_map.size()*(1-0.85)))
   mask = flex.size_t()

@@ -4401,8 +4401,8 @@ class array(set):
     other_map_data=other_fft.real_map_unpadded()
     other_map_data_mean=other_map_data.as_1d().min_max_mean().mean
     other_map_data=other_map_data-other_map_data_mean
-     
-    # get local overlap. They are normalized and have means of zero, so 
+
+    # get local overlap. They are normalized and have means of zero, so
     # overlap is similar to correlation coefficient:
     # CC is similar to:  <x1 * x2>   (not exactly as <x1**2> is not constant)
 
