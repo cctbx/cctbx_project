@@ -380,7 +380,7 @@ ATOM        CA   GLY A  10       9.000   9.000   9.000  1.00 30.00           C
 TER
 END
 """
-  
+
 
 def run():
   verbose = "--verbose" in sys.argv[1:]

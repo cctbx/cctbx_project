@@ -3077,14 +3077,14 @@ def model_from_sites_cart(sites_cart = None,
     resname='GLY',
     chain_id='A',
     b_iso=30.,
+    occ=1.,
     scatterer='C',
     crystal_symmetry=None):
-  u_iso=b_iso/(8*3.14159**2)
   import iotbx.pdb.hierarchy
   hierarchy = iotbx.pdb.hierarchy.root()
   m = iotbx.pdb.hierarchy.model()
   c = iotbx.pdb.hierarchy.chain()
-  c.id=chain_id 
+  c.id=chain_id
   hierarchy.append_model(m)
   m.append_chain(c)
   count=0
@@ -3100,11 +3100,10 @@ def model_from_sites_cart(sites_cart = None,
     ag.resname=resname
     a.set_b(b_iso)
     a.set_element(scatterer)
-    a.set_occ(1.0)
+    a.set_occ(occ)
     a.set_name(atom_name)
     a.set_xyz(sc)
 
   from mmtbx.model import manager
   return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,
      crystal_symmetry=crystal_symmetry)
-
