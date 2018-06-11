@@ -3071,3 +3071,40 @@ class detect_hydrogen_nomenclature_problem (object) :
           self.bad_hydrogens.append(atom.id_str())
         else :
           self.n_other += 1
+
+def model_from_sites_cart(sites_cart = None,
+    atom_name='CA',
+    resname='GLY',
+    chain_id='A',
+    b_iso=30.,
+    scatterer='C',
+    crystal_symmetry=None):
+  u_iso=b_iso/(8*3.14159**2)
+  import iotbx.pdb.hierarchy
+  hierarchy = iotbx.pdb.hierarchy.root()
+  m = iotbx.pdb.hierarchy.model()
+  c = iotbx.pdb.hierarchy.chain()
+  c.id=chain_id 
+  hierarchy.append_model(m)
+  m.append_chain(c)
+  count=0
+  for sc in sites_cart:
+    count+=1
+    rg=iotbx.pdb.hierarchy.residue_group()
+    c.append_residue_group(rg)
+    ag=iotbx.pdb.hierarchy.atom_group()
+    rg.append_atom_group(ag)
+    a=iotbx.pdb.hierarchy.atom()
+    ag.append_atom(a)
+    rg.resseq=str(count)
+    ag.resname=resname
+    a.set_b(b_iso)
+    a.set_element(scatterer)
+    a.set_occ(1.0)
+    a.set_name(atom_name)
+    a.set_xyz(sc)
+
+  from mmtbx.model import manager
+  return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,
+     crystal_symmetry=crystal_symmetry)
+
