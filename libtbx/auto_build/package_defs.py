@@ -66,7 +66,7 @@ LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 CYTHON_VERSION="0.27.3"
 DOCUTILS_VERSION="0.12"
 FUTURE_VERSION="0.16"
-H5PY_VERSION="2.7.1"
+H5PY_VERSION="2.8.0"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 NUMPY_VERSION="1.13.3"
@@ -84,8 +84,8 @@ SCIPY_VERSION = "1.0.0"
 SCIKIT_LEARN_VERSION = "0.19.1"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/"
-HDF5_PKG = "hdf5-1.10.1.tar.bz2"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/"
+HDF5_PKG = "hdf5-1.10.2.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"
