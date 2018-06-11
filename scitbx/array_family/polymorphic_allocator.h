@@ -32,6 +32,8 @@
 #include <new>      // For std::bad_alloc
 
 #include <boost/config.hpp>  // compatibility macros
+#include <boost/type_traits.hpp>    // Safety around StaticStore
+#include <boost/static_assert.hpp>  //
 
 namespace scitbx {
 namespace pmr {
@@ -288,17 +290,31 @@ class null_memory_resource_impl : public memory_resource {
   }
 };
 
-// Since we don't believe in shared libraries in this project we need
-// somewhere to store the (mandated) global instance variables. Static
-// template class definitions seem to bypass ODR rules so let's use that! This
-// will probably still cause major headaches outside of a single linking
-// unit since but that probably applies to memory anyway, let's cross our
-// fingers and hope. HACK HACK HACK.
+// Since we don't use SHARED libraries in this project, instead redeclaring
+// all code (mostly inline) in every single MODULE library, there is no
+// shared location to store the (mandated) global instance variables -
+// the variables that would normally be declared in libc++ (or platform
+// variation thereof).
+//
+// Static template class definitions seem to bypass the ODR rules,
+// linking weakly so that the first physically loaded symbol location
+// gets priority.
+//
+// The effect of this is that we can 'fake' a global variable by abusing
+// the rules for static template definitions. This is a HACK HACK HACK
+// and is only done as a last resort.
 template <typename T>
 struct StaticStore {
+  // This must only ever be used for memory_resource
+  BOOST_STATIC_ASSERT(( boost::is_same<T, memory_resource>::value ));
+
   static memory_resource* default_resource;
   static new_delete_memory_resource_impl* new_delete_resource;
   static null_memory_resource_impl* null_resource;
+private:
+  // This should never be instantiated
+  StaticStore();
+  StaticStore(const StaticStore&);
 };
 
 template <typename T>
