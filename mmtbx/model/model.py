@@ -303,6 +303,44 @@ class manager(object):
       self.exchangable_hd_groups = utils.combine_hd_exchangable(
         hierarchy = self._pdb_hierarchy)
 
+  @classmethod
+  def from_sites_cart(cls,
+      sites_cart,
+      atom_name='CA',
+      resname='GLY',
+      chain_id='A',
+      b_iso=30.,
+      occ=1.,
+      scatterer='C',
+      crystal_symmetry=None):
+    assert sites_cart is not None
+    hierarchy = iotbx.pdb.hierarchy.root()
+    m = iotbx.pdb.hierarchy.model()
+    c = iotbx.pdb.hierarchy.chain()
+    c.id=chain_id
+    hierarchy.append_model(m)
+    m.append_chain(c)
+    count=0
+    for sc in sites_cart:
+      count+=1
+      rg=iotbx.pdb.hierarchy.residue_group()
+      c.append_residue_group(rg)
+      ag=iotbx.pdb.hierarchy.atom_group()
+      rg.append_atom_group(ag)
+      a=iotbx.pdb.hierarchy.atom()
+      ag.append_atom(a)
+      rg.resseq=str(count)
+      ag.resname=resname
+      a.set_b(b_iso)
+      a.set_element(scatterer)
+      a.set_occ(occ)
+      a.set_name(atom_name)
+      a.set_xyz(sc)
+      a.set_serial(count)
+    return cls(model_input = None, pdb_hierarchy=hierarchy,
+       crystal_symmetry=crystal_symmetry)
+
+
   @staticmethod
   def get_default_pdb_interpretation_scope():
     """

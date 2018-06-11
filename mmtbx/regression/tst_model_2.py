@@ -150,9 +150,44 @@ def exercise_3():
       model_input = inp)
   new_model = model.deep_copy()
 
+def exercise_from_sites_cart():
+  from cctbx import crystal
+  from scitbx.matrix import col
+  from scitbx.array_family import flex
+  sites_cart=flex.vec3_double()
+  crystal_symmetry=crystal.symmetry(
+      unit_cell=(20,20,20,90,90,90),
+      space_group_symbol="P 1")
+  for i in xrange(10):
+    sites_cart.append(col((i,i,i)))
+  model=mmtbx.model.manager.from_sites_cart(sites_cart=sites_cart,
+      crystal_symmetry=crystal_symmetry)
+  # print model.model_as_pdb()
+  for i, a in enumerate(model.get_hierarchy().atoms()):
+    assert a.i_seq == i, "iseqs were not set properly"
+  assert model.model_as_pdb()==\
+"""CRYST1   20.000   20.000   20.000  90.00  90.00  90.00 P 1
+SCALE1      0.050000  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.050000  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.050000        0.00000
+ATOM      1 CA   GLY A   1       0.000   0.000   0.000  1.00 30.00           C
+ATOM      2 CA   GLY A   2       1.000   1.000   1.000  1.00 30.00           C
+ATOM      3 CA   GLY A   3       2.000   2.000   2.000  1.00 30.00           C
+ATOM      4 CA   GLY A   4       3.000   3.000   3.000  1.00 30.00           C
+ATOM      5 CA   GLY A   5       4.000   4.000   4.000  1.00 30.00           C
+ATOM      6 CA   GLY A   6       5.000   5.000   5.000  1.00 30.00           C
+ATOM      7 CA   GLY A   7       6.000   6.000   6.000  1.00 30.00           C
+ATOM      8 CA   GLY A   8       7.000   7.000   7.000  1.00 30.00           C
+ATOM      9 CA   GLY A   9       8.000   8.000   8.000  1.00 30.00           C
+ATOM     10 CA   GLY A  10       9.000   9.000   9.000  1.00 30.00           C
+TER
+END
+"""
+
 if (__name__ == "__main__"):
   t0 = time.time()
   run()
   exercise_2()
   exercise_3()
+  exercise_from_sites_cart()
   print "Time: %6.3f"%(time.time()-t0)

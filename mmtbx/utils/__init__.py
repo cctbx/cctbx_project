@@ -3072,7 +3072,9 @@ class detect_hydrogen_nomenclature_problem (object) :
         else :
           self.n_other += 1
 
-def model_from_sites_cart(sites_cart = None,
+# MARKED_FOR_DELETION_OLEG
+# REASON: moved to be classmethod of mmtbx.model.manager.from_sites_cart()
+def model_from_sites_cart(sites_cart,
     atom_name='CA',
     resname='GLY',
     chain_id='A',
@@ -3080,7 +3082,7 @@ def model_from_sites_cart(sites_cart = None,
     occ=1.,
     scatterer='C',
     crystal_symmetry=None):
-  import iotbx.pdb.hierarchy
+  assert sites_cart is not None
   hierarchy = iotbx.pdb.hierarchy.root()
   m = iotbx.pdb.hierarchy.model()
   c = iotbx.pdb.hierarchy.chain()
@@ -3108,3 +3110,4 @@ def model_from_sites_cart(sites_cart = None,
   from mmtbx.model import manager
   return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,
      crystal_symmetry=crystal_symmetry)
+# END_MARKED_FOR_DELETION_OLEG
