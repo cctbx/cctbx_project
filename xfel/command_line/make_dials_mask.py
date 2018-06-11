@@ -23,7 +23,7 @@ def run(argv=None):
     argv = sys.argv
 
   command_line = (libtbx.option_parser.option_parser(
-    usage="%s [-v] [-a avg_max] [-s stddev_max] [-m maxproj_min] [-o output] avg_path stddev_path max_path" % libtbx.env.dispatcher_name)
+    usage="%s [-v] [-a avg_max] [-s stddev_max] [-m maxproj_min] [-o output] [-b border] avg_path stddev_path max_path" % libtbx.env.dispatcher_name)
                   .option(None, "--verbose", "-v",
                           action="store_true",
                           default=False,
@@ -49,6 +49,11 @@ def run(argv=None):
                           default="mask.pickle",
                           dest="destpath",
                           help="output file path, should be *.pickle")
+                  .option(None, "--border", "-b",
+                          type="int",
+                          default=0,
+                          dest="border",
+                          help="border width in pixels to mask out of each tile")
                   ).process(args=argv[1:])
 
   # Must have exactly three remaining arguments.
@@ -92,6 +97,17 @@ def run(argv=None):
 
     # these are the non-bonded pixels
     mask_p &= max_p >= command_line.options.maxproj_min
+
+    # Add a border around the image
+    if command_line.options.border > 0:
+      border = command_line.options.border
+      height, width = mask_p.all()
+      borderx = flex.bool(flex.grid(border, width), False)
+      bordery = flex.bool(flex.grid(height, border), False)
+      mask_p[0:border,:] = borderx
+      mask_p[-border:,:] = borderx
+      mask_p[:,0:border] = bordery
+      mask_p[:,-border:] = bordery
 
   easy_pickle.dump(command_line.options.destpath, tuple(mask))
 
