@@ -3103,6 +3103,7 @@ def model_from_sites_cart(sites_cart = None,
     a.set_occ(occ)
     a.set_name(atom_name)
     a.set_xyz(sc)
+    a.set_serial(count)
 
   from mmtbx.model import manager
   return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,

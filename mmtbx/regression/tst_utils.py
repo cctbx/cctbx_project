@@ -367,16 +367,16 @@ def exercise_model_from_sites_cart():
 SCALE1      0.050000  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.050000  0.000000        0.00000
 SCALE3      0.000000  0.000000  0.050000        0.00000
-ATOM        CA   GLY A   1       0.000   0.000   0.000  1.00 30.00           C
-ATOM        CA   GLY A   2       1.000   1.000   1.000  1.00 30.00           C
-ATOM        CA   GLY A   3       2.000   2.000   2.000  1.00 30.00           C
-ATOM        CA   GLY A   4       3.000   3.000   3.000  1.00 30.00           C
-ATOM        CA   GLY A   5       4.000   4.000   4.000  1.00 30.00           C
-ATOM        CA   GLY A   6       5.000   5.000   5.000  1.00 30.00           C
-ATOM        CA   GLY A   7       6.000   6.000   6.000  1.00 30.00           C
-ATOM        CA   GLY A   8       7.000   7.000   7.000  1.00 30.00           C
-ATOM        CA   GLY A   9       8.000   8.000   8.000  1.00 30.00           C
-ATOM        CA   GLY A  10       9.000   9.000   9.000  1.00 30.00           C
+ATOM      1 CA   GLY A   1       0.000   0.000   0.000  1.00 30.00           C
+ATOM      2 CA   GLY A   2       1.000   1.000   1.000  1.00 30.00           C
+ATOM      3 CA   GLY A   3       2.000   2.000   2.000  1.00 30.00           C
+ATOM      4 CA   GLY A   4       3.000   3.000   3.000  1.00 30.00           C
+ATOM      5 CA   GLY A   5       4.000   4.000   4.000  1.00 30.00           C
+ATOM      6 CA   GLY A   6       5.000   5.000   5.000  1.00 30.00           C
+ATOM      7 CA   GLY A   7       6.000   6.000   6.000  1.00 30.00           C
+ATOM      8 CA   GLY A   8       7.000   7.000   7.000  1.00 30.00           C
+ATOM      9 CA   GLY A   9       8.000   8.000   8.000  1.00 30.00           C
+ATOM     10 CA   GLY A  10       9.000   9.000   9.000  1.00 30.00           C
 TER
 END
 """
@@ -384,6 +384,7 @@ END
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_model_from_sites_cart()
   exercise_corrupt_cryst1()
   exercise_d_data_target_d_atomic_params()
   exercise_d_data_target_d_atomic_params2()
