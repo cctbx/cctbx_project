@@ -131,6 +131,8 @@ def generate_data_from_streams(args, verbose=False):
 
       except UnpicklingError,e:
         if verbose: print "\ndoesn't unpickle",path
+      except EOFError,e:
+        if verbose: print "\nEOF error",path
 
 if __name__=="__main__":
   args = sys.argv[1:]
