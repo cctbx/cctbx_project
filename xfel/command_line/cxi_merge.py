@@ -1189,6 +1189,12 @@ class scaling_manager (intensity_data) :
     assert (wavelength > 0)
 
     observations = result["observations"][0]
+
+    if len(observations.data()) == 0:
+      print >> out, "skipping image: no observations"
+      return null_data(
+        file_name=file_name, log_out=out.getvalue(), low_signal=True)
+
     cos_two_polar_angle = result["cos_two_polar_angle"]
     indices_to_edge = result["indices_to_edge"]
 
