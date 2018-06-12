@@ -54,10 +54,12 @@ class cablam_idealization(object):
     self.cablam_contours = fetch_peptide_expectations()
     self.ca_contours = fetch_ca_expectations()
     self.motif_contours = fetch_motif_contours()
+    self.n_tried_residues = 0
+    self.n_rotated_residues = 0
 
 
-    with open("in.pdb",'w') as f:
-      f.write(self.model.model_as_pdb())
+    # with open("in.pdb",'w') as f:
+    #   f.write(self.model.model_as_pdb())
 
 
     if self.model.get_hierarchy().models_size() > 1:
@@ -101,6 +103,7 @@ class cablam_idealization(object):
 
 
   def fix_cablam_outlier(self, chain, outlier):
+    self.n_tried_residues += 1
     scores = []
     if len(outlier) == 1:
       curresid = outlier[0].residue.resid()
@@ -143,6 +146,7 @@ class cablam_idealization(object):
     rot_angle = self._pick_rotation_angle(scores)
     # rotate
     if rot_angle != 360:
+      self.n_rotated_residues += 1
       print >> self.log, "ROTATING by", rot_angle
       self._rotate_cablam(
           prevresid, curresid, a1, a2, angle=rot_angle)
@@ -294,4 +298,6 @@ class cablam_idealization(object):
   def get_results(self):
     return group_args(
       model = self.model,
-      model_minimized = self.cablam_fixed_minimized)
+      model_minimized = self.cablam_fixed_minimized,
+      n_tried_residues = self.n_tried_residues,
+      n_rotated_residues = self.n_rotated_residues)

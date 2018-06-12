@@ -58,10 +58,11 @@ output {
         params = self.params.cablam_idealization,
         log = self.logger)
 
-
+    results = self.cablam_id.get_results()
+    print >> "Total number of tried outliers:", self.logger, results.n_tried_residues
+    print >> "Number of rotated outliers:", self.logger, results.n_rotated_residues
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
-    results = self.cablam_id.get_results()
     for m, fname_base in [
         (results.model, self.output_fname_base),
         (results.model_minimized, self.output_fname_base+"_minimized")]:
