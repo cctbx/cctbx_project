@@ -1960,8 +1960,10 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
   # Assumptions:
   #  1. few or no letters that are not part of the correct dict (there
   #    may be a few like X or other unknowns)
-  #  2. if it can be DNA or protein it is DNA (because chance is very high
-  #     that if it were protein there would be a non-DNA letter)
+  #  2. if all letters are are A is is because poly-ala and poly-gly
+  #     are common for unknowns.
+  #  3. otherwise if it can be DNA or protein it is DNA (because chance is 
+  #     very high that if it were protein there would be a non-DNA letter)
   # Method:  Choose the chain-type that matches the most letters in text.
   #  If a tie, take the chain type that has the fewest letters.
   #  If likely_chain_types are specified, use one from there first
@@ -2002,7 +2004,8 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
       text=text,only_count_non_allowed=True)
 
   # Take max count_dict. If tie, take minimum non-allowed. If tie take the one
-  #  with fewer letters (i.e., DNA instead of protein if matches both)
+  #  with fewer letters (i.e., DNA instead of protein if matches both except 
+  #  poly-ala not poly-A)
   score_list=[]
   for chain_type in letter_dict.keys():
     score_list.append([count_dict[chain_type],chain_type])
@@ -2039,6 +2042,10 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
       ok_list.append(chain_type)
   if len(ok_list)<1: return None,None
   if len(ok_list)==1: return ok_list[0],residues
+
+  if text==residues*"a" and "PROTEIN" in letter_dict.keys(): 
+    # special case, all Adenine or Ala
+    return "PROTEIN",residues
 
   score_list=[]
   for chain_type in ok_list:

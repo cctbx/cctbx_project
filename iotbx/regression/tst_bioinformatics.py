@@ -1791,6 +1791,10 @@ GAACCGCGAGUCAUCAGAUCUUUGAACGCAAGUGGUGGAGGUGUAAAAACCUUCAUGUUUGUUUCAGUGUGGAA
 >4a17.pdb|Chain=A
 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
   """
+  text_ambiguous_a="""
+>4a17.pdb|Chain=A
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  """
   text_protein="""
 >4a17.pdb|Chain=A
 GRVIRAQRKGRANGVYKSHKSGRIAPAQYRVYDFAERQGYIRGCIRDIVHEPGRGAPLAEVAFRDPYRYKTNKEHFIAAE
@@ -1845,6 +1849,11 @@ UGGAGAGUUUGAUCCU
     text_from_chains_matching_chain_type(text=text_protein))==["PROTEIN"]
   assert guess_chain_types_from_sequences(text=
     text_from_chains_matching_chain_type(text=text_ambiguous))==['DNA']
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_ambiguous_a))==['PROTEIN']
+  assert guess_chain_types_from_sequences(text=
+    text_from_chains_matching_chain_type(text=text_ambiguous_a),
+       likely_chain_types=['RNA'])==['RNA']
   assert guess_chain_types_from_sequences(text=text_ambiguous,
        likely_chain_types=['PROTEIN','RNA']) == ['PROTEIN']
   assert text_from_chains_matching_chain_type(
