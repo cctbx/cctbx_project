@@ -249,7 +249,7 @@ class _mtriage(object):
     self.d_fsc_model_0143 = None
     self.fsc_curve        = None
     self.fsc_curve_model  = None
-    self.mask_object      = None
+    self.mask_smooth      = None
     self.radius_smooth    = self.params.radius_smooth
     self.d_corner         = None
     self.d9999            = None
@@ -311,14 +311,14 @@ class _mtriage(object):
   def _compute_and_apply_mask(self):
     if(not self.params.mask_maps): return
     if(self.xray_structure is None): return
-    mask_smooth = masks.smooth_mask(
+    self.mask_smooth = masks.smooth_mask(
       xray_structure = self.xray_structure,
       n_real         = self.map_data.all(),
       rad_smooth     = self.radius_smooth).mask_smooth
-    self.map_data = self.map_data*mask_smooth
+    self.map_data = self.map_data*self.mask_smooth
     if(self.map_data_1 is not None):
-      self.map_data_1 = self.map_data_1*mask_smooth
-      self.map_data_2 = self.map_data_2*mask_smooth
+      self.map_data_1 = self.map_data_1*self.mask_smooth
+      self.map_data_2 = self.map_data_2*self.mask_smooth
 
   def _compute_f_maps(self):
     self.f_map = miller.structure_factor_box_from_map(
@@ -404,8 +404,8 @@ class _mtriage(object):
 
   def get_results(self, include_curves, include_mask):
     mask = None
-    if(self.mask_object is not None and include_mask):
-      mask = self.mask_object.mask_smooth
+    if(self.mask_smooth is not None and include_mask):
+      mask = self.mask_smooth
     map_histograms  = None
     fsc_curve       = None
     fsc_curve_model = None
