@@ -33,7 +33,7 @@ print("BOOST_VERSION: %i" %env_etc.boost_version)
 if (libtbx.env.build_options.enable_boost_threads and
   env_etc.boost_thread_support):
   boost_thread_uses_winthreads = (sys.platform == 'win32')
-  # MinGW compiler 5.3.0 appears to compile boost_threads 
+  # MinGW compiler 5.3.0 appears to compile boost_threads
   # with the same condition as win32.
   # This environment is to be used latter to build Boost libraries
   # So we need a clean one without extra library linking.
@@ -206,6 +206,29 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     target="tests/tst_optional_copy",
     source="tests/tst_optional_copy.cpp")
 
+  # Build Boost.filesystem
+  env_fs = env_base.Clone()
+  env_etc.include_registry.prepend(env=env_fs, paths=[env_etc.boost_include])
+  fs_root = '#' + os.path.join(
+    os.path.basename(env_etc.boost_dist), 'libs', 'filesystem', 'src')
+  fs_src = [os.path.join(fs_root, path) for path in
+            ['operations.cpp', 'path.cpp', 'path_traits.cpp', 'portability.cpp',
+             'unique_path.cpp', 'utf8_codecvt_facet.cpp',
+             'codecvt_error_category.cpp']]
+  if (sys.platform == 'win32'):     # Windows
+    fs_src.append(os.path.join(fs_root, 'windows_file_codecvt.cpp'))
+    env_fs.Append(CPPDEFINES={'BOOST_FILESYSTEM_DYN_LINK':1})
+    env_fs.StaticLibrary(
+      target='#lib/boost_filesystem',
+      source=fs_src)
+  else:                             # Linux, macOS
+    env_fs.SharedLibrary(
+      target='#lib/libboost_filesystem',
+      source=fs_src)
+  darwin_shlinkcom(env_etc, env_fs,
+                   lo="boost/libs/filesystem/src/libboost_filesystem.lo",
+                   dylib="lib/libboost_filesystem.dylib")
+
   # Build Boost.Thread if asked
   #
   # We may also need to build Boost.System if we use the so-called modular
@@ -271,7 +294,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
         target='#lib/boost_thread',
         source=boost_thread_src,
         LIBS=libs)
-    
+
     # Boost.System?
     if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'system')):
       env_boost_system = env_boost_thread_and_co.Clone()
