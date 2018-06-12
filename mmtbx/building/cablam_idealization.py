@@ -95,10 +95,11 @@ class cablam_idealization(object):
     for chain in self.model.get_hierarchy().only_model().chains():
       if chain.id.strip() == chainid.strip():
         for rg in chain.residue_groups():
-          if int(rg.resseq) == int(resid):
+          if rg.resid() == resid:
             for a in rg.atoms():
               if a.name.strip() == "CA":
                 return a
+    raise Sorry("Something went wrong. Cannot find CA atom.")
     return None
 
 
@@ -108,9 +109,13 @@ class cablam_idealization(object):
     if len(outlier) == 1:
       curresid = outlier[0].residue.resid()
       prevresid = outlier[0].prevres.residue.resid()
+      curresseq_int = outlier[0].residue.resseq_as_int()
+      prevresseq_int = outlier[0].prevres.residue.resseq_as_int()
     elif len(outlier) == 2:
       curresid = outlier[1].residue.resid()
       prevresid = outlier[1].prevres.residue.resid()
+      curresseq_int = outlier[1].residue.resseq_as_int()
+      prevresseq_int = outlier[1].prevres.residue.resseq_as_int()
     else:
       print >> self.log, "Don't know how to deal with more than 2 outliers in a row yet. Skipping."
       return
@@ -128,7 +133,7 @@ class cablam_idealization(object):
     print >> self.log, "*"*80
 
     chain_around = self.model.select(self.model.selection(
-      "chain %s and resid %d through %d" % (chain, int(prevresid)-2, int(curresid)+2)))
+      "chain %s and resid %d through %d" % (chain, prevresseq_int-2, curresseq_int+2)))
     for i in range(12):
       # rotation
       angle = 30
@@ -281,10 +286,12 @@ class cablam_idealization(object):
       outliers_by_chain[k] = []
       comb = []
       for i in g:
+        # print i.resseq, i.resseq_as_int(), i.icode, i, dir(i)
         if len(comb) == 0:
           comb = [i]
         else:
-          if int(i.resid) - int(comb[-1].resid) == 1:
+          if (i.resseq_as_int() - comb[-1].resseq_as_int() == 1 or
+              (i.resseq_as_int() == comb[-1].resseq_as_int() and i.icode != comb[-1].icode)):
             comb.append(i)
           else:
             outliers_by_chain[k].append(comb)

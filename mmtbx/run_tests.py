@@ -379,6 +379,7 @@ tst_list = (
   "$D/regression/fix_cablam/tst_basic_cl_operations.py",
   "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
+  "$D/regression/fix_cablam/tst_insertion_codes.py",
   )
 
 def run():

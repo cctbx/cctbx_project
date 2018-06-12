@@ -254,4 +254,4 @@ if __name__ == '__main__':
     print "Skipping: probe not configured"
   else:
     exercise_no_sidechains()
-  exercise_yes_sidechains()
+    exercise_yes_sidechains()

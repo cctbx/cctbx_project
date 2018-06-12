@@ -59,8 +59,8 @@ output {
         log = self.logger)
 
     results = self.cablam_id.get_results()
-    print >> "Total number of tried outliers:", self.logger, results.n_tried_residues
-    print >> "Number of rotated outliers:", self.logger, results.n_rotated_residues
+    print("Total number of tried outliers: %d" % results.n_tried_residues, file=self.logger)
+    print("Number of rotated outliers: %d" % results.n_rotated_residues, file=self.logger)
     # I believe this should go to data_manager. Also not clear how output of
     # two files would affect data_manager.
     for m, fname_base in [
