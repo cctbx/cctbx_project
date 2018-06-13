@@ -141,7 +141,9 @@ class cablam_idealization(object):
       angle = 30
       O_atom = None
       N_atom = None
-      O_atom, N_atom, C_atom = self._rotate_cablam(chain,
+      O_atom, N_atom, C_atom = self._rotate_cablam(self.model, chain,
+          prevresid, curresid, a1, a2, angle=angle)
+      self._rotate_cablam(chain_around, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if self.params.save_intermediates:
         with open("out_%s_%d.pdb" % (curresid.strip(), i),'w') as f:
@@ -155,12 +157,12 @@ class cablam_idealization(object):
     if rot_angle != 360:
       self.n_rotated_residues += 1
       print >> self.log, "ROTATING by", rot_angle
-      self._rotate_cablam(chain,
+      self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=rot_angle)
 
-  def _rotate_cablam(self, chain, prevresid, curresid, a1, a2, angle):
+  def _rotate_cablam(self, model, chain, prevresid, curresid, a1, a2, angle):
     inside = False
-    for c in self.model.get_hierarchy().only_model().chains():
+    for c in model.get_hierarchy().only_model().chains():
       if c.id.strip() == chain.strip():
         for atom in c.atoms():
           if atom.name.strip() == "CA" and atom.parent().parent().resid() == prevresid:
@@ -282,7 +284,7 @@ class cablam_idealization(object):
         cablam_contours = self.cablam_contours,
         ca_contours = self.ca_contours,
         motif_contours = self.motif_contours)
-    outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier][:10]# and x.feedback.c_alpha_geom_outlier]
+    outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier]# and x.feedback.c_alpha_geom_outlier]
     outliers_by_chain = {}
     for k, g in itertools.groupby(outliers_only, key=lambda x: x.residue_id()[:2]):
       outliers_by_chain[k] = []
