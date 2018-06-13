@@ -79,7 +79,7 @@ class lbfgs(object):
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None,
         states_collector=None):
-    assert [unit_cell, geometry_restraints_manager].count(None) == 1
+    #assert [unit_cell, geometry_restraints_manager].count(None) == 1
     assert real_space_gradients_delta is not None
     if (unit_cell is None):
       unit_cell = geometry_restraints_manager.crystal_symmetry.unit_cell()
