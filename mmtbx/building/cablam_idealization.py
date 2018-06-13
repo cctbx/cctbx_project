@@ -69,6 +69,9 @@ class cablam_idealization(object):
 
     # idealization
     for chain, outliers in self.outliers_by_chain.iteritems():
+      b_selection = self.model.selection("chain %s" % chain)
+      self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
+
       for outlier in outliers:
         self.fix_cablam_outlier(chain, outlier)
 
@@ -135,8 +138,7 @@ class cablam_idealization(object):
     around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
     chain_around = self.model.select(self.model.selection(around_str_sel))
     assert chain_around.get_number_of_atoms() > 0
-    b_selection = flex.bool(self.model.get_number_of_atoms(), flex.size_t(sorted([a1.i_seq, a2.i_seq])))
-    self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
+    self.atoms_around_cutted = self.atoms_around.deep_copy()
     for i in range(12):
       # rotation
       angle = 30
@@ -254,8 +256,12 @@ class cablam_idealization(object):
       return angle > 140 and distance < 3.8
     results = []
     atoms = self.model.get_atoms()
-    for atom in [atoms[i_seq] for i_seq in self.atoms_around]:
+    filtered_atoms_around_cutted = []
+    for atom in [atoms[i_seq] for i_seq in self.atoms_around_cutted]:
+      if atom.distance(O_atom) > 10:
+        continue
       # no need to check the same residue, looking for N atom for bonding
+      filtered_atoms_around_cutted.append(atom.i_seq)
       if atom.parent() == O_atom.parent() or atom.parent() == N_atom.parent():
         # print "skipping same residue ", atom.id_str()
         continue
@@ -278,6 +284,7 @@ class cablam_idealization(object):
           if good_hbond(angle, atom.distance(N_atom)):
             # print "Potential backwards bond:", atom.id_str(), atom.distance(N_atom), angle
             results.append(('backward', atom.distance(N_atom), angle))
+    self.atoms_around_cutted = filtered_atoms_around_cutted
     return results
 
   def identify_outliers(self):
