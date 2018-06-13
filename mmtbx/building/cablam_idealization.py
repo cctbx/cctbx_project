@@ -7,8 +7,6 @@ from mmtbx.validation.cablam import cablamalyze, fetch_peptide_expectations, \
     fetch_ca_expectations, fetch_motif_contours
 from libtbx.utils import Sorry, null_out
 
-from cctbx.array_family import flex
-
 from cctbx import geometry_restraints
 
 import itertools
