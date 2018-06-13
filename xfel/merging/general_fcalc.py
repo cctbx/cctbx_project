@@ -14,15 +14,14 @@ def run (params) :
     data_SR = mtz.object(params.model)
     for array in data_SR.as_miller_arrays():
        this_label = array.info().label_string().lower()
-       if this_label.find("iobs")>=0:
-         i_array = array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
-         c_array = i_array.complete_array(
-                   d_min = params.d_min / math.pow(1 + params.unit_cell_length_tolerance, 1 / 3))
-         return c_array
-       if this_label.find("imean")>=0:
-         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
-       if this_label.find(params.scaling.mtz_column_F)>=0:
-         return array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+       if True not in [this_label.find(tag)>=0 for tag in ["iobs","imean",params.scaling.mtz_column_F]]: continue
+       i_array = array.as_intensity_array().change_basis(params.model_reindex_op).map_to_asu()
+       c_array = i_array.complete_array(
+                 d_min = params.d_min / math.pow(1 + params.unit_cell_length_tolerance, 1 / 3))
+       # complete_array adds new Miller indices to complete the a.s.u., setting sigma=-1 to
+       # indicate that the new entries have no data.  (sigma == -1) is tested to remove
+       # undefined Miller indices from the scaling calculation.
+       return c_array
     raise Exception("mtz did not contain expected label Iobs or IMEAN")
 
   pdb_in = file_reader.any_file(params.model, force_type="pdb")
