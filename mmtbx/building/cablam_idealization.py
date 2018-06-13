@@ -132,8 +132,9 @@ class cablam_idealization(object):
     print >> self.log, "Atoms for rotation:", chain, prevresid, curresid
     print >> self.log, "*"*80
 
-    chain_around = self.model.select(self.model.selection(
-      "chain %s and resid %d through %d" % (chain, prevresseq_int-2, curresseq_int+2)))
+    around_str_sel = "chain %s and resid %d:%d" % (chain, prevresseq_int-2, curresseq_int+2)
+    chain_around = self.model.select(self.model.selection(around_str_sel))
+    assert chain_around.get_number_of_atoms() > 0
     b_selection = flex.bool(self.model.get_number_of_atoms(), flex.size_t(sorted([a1.i_seq, a2.i_seq])))
     self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
     for i in range(12):
@@ -184,7 +185,7 @@ class cablam_idealization(object):
             elif atom.name.strip() == "C":
               C_atom = atom
 
-        self.model.set_sites_cart_from_hierarchy()
+        model.set_sites_cart_from_hierarchy()
 
         return O_atom, N_atom, C_atom
 
