@@ -291,7 +291,10 @@ class cablam_idealization(object):
       outliers_by_chain[k] = []
       comb = []
       for i in g:
-        # print i.resseq, i.resseq_as_int(), i.icode, i, dir(i)
+        # print i.resseq, i.resseq_as_int(), i.icode, i, i.altloc, dir(i)
+        if i.altloc.strip() != '':
+          print >> self.log, "  ", i, "<--- SKIPPING, alternative conformations."
+          continue
         if len(comb) == 0:
           comb = [i]
         else:
