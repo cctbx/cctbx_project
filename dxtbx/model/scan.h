@@ -96,7 +96,7 @@ namespace dxtbx { namespace model {
       }
       DXTBX_ASSERT(exposure_times_.size() == num_images_);
       DXTBX_ASSERT(epochs_.size() == num_images_);
-      DXTBX_ASSERT(oscillation_[1] > 0.0);
+      DXTBX_ASSERT(oscillation_[1] >= 0.0);
     }
 
     /** Copy */
@@ -183,7 +183,7 @@ namespace dxtbx { namespace model {
 
     /** Set the oscillation */
     void set_oscillation(vec2 <double> oscillation) {
-      DXTBX_ASSERT(oscillation[1] > 0.0);
+      DXTBX_ASSERT(oscillation[1] >= 0.0);
       oscillation_ = oscillation;
     }
 
