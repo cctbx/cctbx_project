@@ -429,6 +429,7 @@ class DetectorFactory:
       if len(params.detector.slow_fast_beam_centre) > 2:
         panel_id = params.detector.slow_fast_beam_centre[2]
       if panel_id >= len(detector):
+        from libtbx.utils import Sorry
         raise Sorry('Detector does not have panel index {0}'.format(panel_id))
       px_size_f, px_size_s = detector[0].get_pixel_size()
       slow_fast_beam_centre_mm = (
