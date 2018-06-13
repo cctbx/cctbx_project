@@ -467,7 +467,7 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs):
+  def set_crystal_symmetry_if_undefined(self, cs, force=None):
     """
     Function to set crystal symmetry if it is not defined yet.
     Special case when incoming cs is the same to self._crystal_symmetry,
@@ -476,6 +476,8 @@ class manager(object):
 
     This function can be used ONLY straight after initialization of model,
     when no xray_structure is constructed yet.
+    
+    The keyword force=True sets cs even if it is defined.
     """
     assert self._xray_structure is None
     is_empty_cs = self._crystal_symmetry is None or (
@@ -484,7 +486,8 @@ class manager(object):
     if not is_empty_cs:
       if self._crystal_symmetry.is_similar_symmetry(cs):
         return
-    assert is_empty_cs, "%s,%s" % (
+    if not force:
+      assert is_empty_cs, "%s,%s" % (
           self._crystal_symmetry.show_summary(), cs.show_summary())
     self._crystal_symmetry = cs
 

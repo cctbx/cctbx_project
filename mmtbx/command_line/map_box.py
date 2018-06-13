@@ -187,6 +187,14 @@ master_phil = libtbx.phil.parse("""
               map_box unit cell.  Only the origin is kept/shifted.\
     .short_caption = Keep origin
 
+  output_origin_grid_units = None
+    .type = ints
+    .help = You can specify the origin of your output map.  Normally you \
+           should use keep_origin=True or False to specify your origin \
+           but if you want to move it to a specific grid point you can do that.\
+    .short_caption = Output origin
+    .expert_level = 3
+
   restrict_map_size = False
     .type=bool
     .help = Do not go outside original map boundaries
@@ -263,6 +271,10 @@ Parameters:"""%h
     raise Sorry("Please set lower_bounds if you set upper_bounds")
   if (params.extract_unique and not params.resolution):
     raise Sorry("Please set resolution for extract_unique")
+
+  if params.output_origin_grid_units is not None and params.keep_origin:
+    params.keep_origin=False
+    print "Setting keep_origin=False as output_origin_grid_units is set"
   print_statistics.make_sub_header("pdb model", out=log)
   if len(inputs.pdb_file_names)>0:
     pdb_inp = iotbx.pdb.input(file_name=inputs.pdb_file_names[0])
@@ -316,6 +328,24 @@ Parameters:"""%h
           inputs.ccp4_map_file_name[:-4])
   else: # have map_data
     map_or_map_coeffs_prefix=None
+
+  if params.output_origin_grid_units is not None:
+    origin_to_match=tuple(params.output_origin_grid_units)
+  else:
+    origin_to_match=None
+
+  if origin_to_match:
+    sc=[]
+    for x,o,a in zip(crystal_symmetry.unit_cell().parameters()[:3],
+        origin_to_match,
+        map_data.all()):
+      sc.append(-x*o/a)
+    shift_cart_for_origin_to_match=tuple(sc)
+  else:
+    origin_to_match=None
+    shift_cart_for_origin_to_match=None
+
+
 
   if crystal_symmetry and not inputs.crystal_symmetry:
     inputs.crystal_symmetry=crystal_symmetry
@@ -453,7 +483,8 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if (inputs and inputs.crystal_symmetry and inputs.ccp4_map and
+  if (inputs and 
+    inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
        inputs.crystal_symmetry.unit_cell().parameters() !=
@@ -476,49 +507,94 @@ Parameters:"""%h
     box.unit_cell_parameters_from_ccp4_map=None
     box.unit_cell_parameters_deduced_from_map_grid=None
 
-  # ncs_object is original
-  #  box.ncs_object is shifted by shift_cart
 
-  print >>log,"Box cell dimensions: (%.2f, %.2f, %.2f) A" %(
-      box.box_crystal_symmetry.unit_cell().parameters()[:3])
-  if params.keep_origin:
-     print>>log,"Box origin is at grid position of : (%d, %d, %d) " %(
-        tuple(box.origin_shift_grid_units(reverse=True)))
-     print>>log,"Box origin is at coordinates: (%.2f, %.2f, %.2f) A" %(
-       tuple(-col(box.shift_cart)))
 
   if box.pdb_outside_box_msg:
     print >> log, box.pdb_outside_box_msg
 
   # NOTE: box object is always shifted to place origin at (0,0,0)
 
-  # For output files ONLY:
-  #   keep_origin==False leave origin at (0,0,0)
-   #  keep_origin==True: we shift everything back to where it was,
+  # NOTE ON ORIGIN SHIFTS:  The shifts are applied locally here. The box
+  #  object is not affected and always has the origin at (0,0,0)
+  #  output_box is copy of box with shift_cart corresponding to the output
+  #   files. Normally this is the same as the original shift_cart. However
+  #   if user has specified a new output origin it will differ.
 
-  if (not params.keep_origin):
-    if box.shift_cart:
-      print >>log,\
-        "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A" %(
-        tuple(box.shift_cart))
+  # For output files ONLY:
+  #  keep_origin==False leave origin at (0,0,0)
+  #  keep_origin==True: we shift everything back to where it was,
+  #  output_origin_grid_units=10,10,10: output origin is at (10,10,10)
+
+  # ncs_object is original
+  #  box.ncs_object is shifted by shift_cart
+  #  output_box.ncs_object is shifted back by -new shift_cart
+
+  from copy import deepcopy
+  output_box=deepcopy(box)  # won't use box below here except to return it
+
+
+  print >>log,"\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
+      box.box_crystal_symmetry.unit_cell().parameters()[:3])
+  if box.shift_cart:
+     print>>log,"Working origin moved from grid position of"+\
+        ": (%d, %d, %d) to (0,0,0) " %(
+        tuple(box.origin_shift_grid_units(reverse=True)))
+     print>>log,"Working origin moved from  coordinates of:"+\
+        " (%.2f, %.2f, %.2f) A to (0,0,0)\n" %(
+         tuple(-col(box.shift_cart)))
+
+  if (params.keep_origin):
+    print >>log,"\nRestoring original position for output files"
+    print >>log,"Origin will be at grid position of"+\
+        ": (%d, %d, %d) " %(
+        tuple(box.origin_shift_grid_units(reverse=True)))
+    print >>log,\
+       "\nOutput files will be in same location as original",
+    if not params.keep_map_size:
+      print >>log,"just cut out."
     else:
-      print >>log,"\nOutput files are in same location as original: origin "+\
-        "is at (0,0,0)"
-  else: # keep_origin
-    print >>log,"\nOutput files are in same location as original, just cut out."
+      print >>log,"keeping entire map"
     print >>log,"Note that output maps are only valid in the cut out region.\n"
 
-  if params.keep_origin:
-    ph_box_original_location = ph_box.deep_copy()
-    sites_cart = box.shift_sites_cart_back(
-      box.xray_structure_box.sites_cart())
-    xrs_offset = ph_box_original_location.extract_xray_structure(
-        crystal_symmetry=box.xray_structure_box.crystal_symmetry()
+  else: 
+    if origin_to_match:
+      output_box.shift_cart=shift_cart_for_origin_to_match
+      if params.output_origin_grid_units:
+        print >>log,"Output map origin to be shifted to match target"
+      print >>log, "Placing origin at grid point (%s, %s, %s)" %(
+        origin_to_match)+"\n"+ \
+        "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A\n" %(
+        tuple(col(output_box.shift_cart)-col(box.shift_cart)))
+    elif box.shift_cart:
+      output_box.shift_cart=(0,0,0) # not shifting back
+      print >>log,"Final origin will be at (0,0,0)"
+      print >>log,\
+        "Final coordinate shift for output files: (%.2f,%.2f,%.2f) A\n" %(
+        tuple(col(output_box.shift_cart)-col(box.shift_cart)))
+    else:
+      print >>log,\
+       "\nOutput files are in same location as original and origin "+\
+        "is at (0,0,0)\n"
+
+  ph_output_box_output_location = ph_box.deep_copy()
+  if output_box.shift_cart:  # shift coordinates and NCS back by shift_cart
+    # NOTE output_box.shift_cart could be different than box.shift_cart if
+    #  there is a target position for the origin and it is not the same as the
+    #  original origin.
+    sites_cart = output_box.shift_sites_cart_back(
+      output_box.xray_structure_box.sites_cart())
+    xrs_offset = ph_output_box_output_location.extract_xray_structure(
+        crystal_symmetry=output_box.xray_structure_box.crystal_symmetry()
           ).replace_sites_cart(new_sites = sites_cart)
-    ph_box_original_location.adopt_xray_structure(xrs_offset)
-    box.hierarchy_original_location=ph_box_original_location
+    ph_output_box_output_location.adopt_xray_structure(xrs_offset)
+
+    if output_box.ncs_object:
+      output_box.ncs_object=output_box.ncs_object.coordinate_offset(
+         tuple(-col(output_box.shift_cart)))
+    shift_back=True
   else:
-    box.hierarchy_original_location=None
+    shift_back=False
+
 
   if write_output_files:
     # Write PDB file
@@ -527,70 +603,42 @@ Parameters:"""%h
       if(params.output_file_name_prefix is None):
         file_name = "%s_box.pdb"%output_prefix
       else: file_name = "%s.pdb"%params.output_file_name_prefix
-
-      if params.keep_origin:  # Keeping origin
-        print >> log, "Writing boxed PDB with box unit cell and in "+\
-          "original\n    position to:   %s"%(
+      ph_output_box_output_location.write_pdb_file(file_name=file_name,
+          crystal_symmetry = output_box.xray_structure_box.crystal_symmetry())
+      print >> log, "Writing boxed PDB with box unit cell to %s" %(
           file_name)
-        ph_box_original_location.write_pdb_file(file_name=file_name,
-          crystal_symmetry = box.xray_structure_box.crystal_symmetry())
-
-      else: # write box PDB in box cell
-        print >> log, "Writing shifted boxed PDB to file:   %s"%file_name
-        ph_box.write_pdb_file(file_name=file_name, crystal_symmetry =
-          box.xray_structure_box.crystal_symmetry())
 
     # Write NCS file if NCS
-    if ncs_object and ncs_object.max_operators()>0:
+    if output_box.ncs_object and output_box.ncs_object.max_operators()>0:
       if(params.output_file_name_prefix is None):
         output_symmetry_file = "%s_box.ncs_spec"%output_prefix
       else:
         output_symmetry_file = "%s.ncs_spec"%params.output_file_name_prefix
-
-      if params.keep_origin:
-        if params.symmetry_file:
-          print >>log,"\nDuplicating symmetry in %s and writing to %s" %(
-            params.symmetry_file,output_symmetry_file)
-        else:
-          print >>log,"\nWriting symmetry to %s" %(output_symmetry_file)
-        ncs_object.format_all_for_group_specification(
+      output_box.ncs_object.format_all_for_group_specification(
           file_name=output_symmetry_file)
 
-      else:
-        print >>log,"\nOffsetting symmetry in %s and writing to %s" %(
-          params.symmetry_file,output_symmetry_file)
-        box.ncs_object.format_all_for_group_specification(
-          file_name=output_symmetry_file)
+      print >>log,"\nWriting symmetry to %s" %( output_symmetry_file)
 
-    # Write ccp4 map.  Shift back to original location if keep_origin=True
+    # Write ccp4 map.  
     if("ccp4" in params.output_format):
      if(params.output_file_name_prefix is None):
        file_name = "%s_box.ccp4"%output_prefix
      else: file_name = "%s.ccp4"%params.output_file_name_prefix
+     output_box.write_ccp4_map(file_name=file_name,
+       shift_back=shift_back)
 
-     if params.keep_origin:
-       print >> log, "Writing boxed map with box unit_cell and "+\
-          "original\n    position to CCP4 formatted file:   %s"%file_name
-     else:
-       print >> log, "Writing box map shifted to (0,0,0) to CCP4 "+\
-          "formatted file:   %s"%file_name
-
-     box.write_ccp4_map(file_name=file_name,
-       shift_back=params.keep_origin)
+     print >> log, "Writing boxed map "+\
+          "to CCP4 formatted file:   %s"%file_name
 
     # Write xplor map.  Shift back if keep_origin=True
     if("xplor" in params.output_format):
      if(params.output_file_name_prefix is None):
        file_name = "%s_box.xplor"%output_prefix
      else: file_name = "%s.xplor"%params.output_file_name_prefix
-     if params.keep_origin:
-       print >> log, "Writing boxed map with box unit_cell and original "+\
-         "position\n    to X-plor formatted file: %s"%file_name
-     else:
-       print >> log, "Writing box_map shifted to (0,0,0) to X-plor "+\
-         "formatted file: %s"%file_name
-     box.write_xplor_map(file_name=file_name,
-         shift_back=params.keep_origin)
+     output_box.write_xplor_map(file_name=file_name,
+         shift_back=shift_back)
+     print >> log, "Writing boxed map "+\
+         "to X-plor formatted file: %s"%file_name
 
     # Write mtz map coeffs.  Shift back if keep_origin=True
     if("mtz" in params.output_format):
@@ -598,23 +646,18 @@ Parameters:"""%h
        file_name = "%s_box.mtz"%output_prefix
      else: file_name = "%s.mtz"%params.output_file_name_prefix
 
-     if params.keep_origin:
-       print >> log, "Writing map coefficients with box_map unit_cell"+\
-         " but position matching\n   "+\
-         " original position to MTZ file: %s"%file_name
-     else:
-       print >> log, "Writing box_map coefficients shifted to (0,0,0) "+\
-          "to MTZ file: %s"%file_name
+     print >> log, "Writing map coefficients "+\
+         "to MTZ file: %s"%file_name
      if(map_coeff is not None):
        d_min = map_coeff.d_min()
      elif params.resolution is not None:
        d_min = params.resolution
      else:
-       d_min = maptbx.d_min_from_map(map_data=box.map_box,
-         unit_cell=box.xray_structure_box.unit_cell())
-     box.map_coefficients(d_min=d_min,
+       d_min = maptbx.d_min_from_map(map_data=output_box.map_box,
+         unit_cell=output_box.xray_structure_box.unit_cell())
+     output_box.map_coefficients(d_min=d_min,
        resolution_factor=params.resolution_factor, file_name=file_name,
-       shift_back=params.keep_origin)
+       shift_back=shift_back)
 
   print >> log
   return box

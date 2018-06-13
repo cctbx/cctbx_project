@@ -2332,7 +2332,6 @@ class shift_origin(object):
       crystal_symmetry = crystal_symmetry)
     self.map_data       = soin.map_data
     self.ncs_object     = soin.ncs_object
-    self.ncs_object     = soin.ncs_object
     self.shift_cart     = soin.shift_cart
     self.shift_frac     = soin.shift_frac
     sites_cart_shifted  = soin.sites_cart

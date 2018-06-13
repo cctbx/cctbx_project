@@ -62,7 +62,7 @@ master_params_str = """\
 master_params = iotbx.phil.parse(master_params_str, process_includes=True)
 
 def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[],
-      crystal_symmetry = None):
+      crystal_symmetry = None, ignore_symmetry_from_coordinate_files=None):
   # XXX This should go into a central place
   # XXX Check map gridding here!
   for it in [models, map_inps, miller_arrays]:
@@ -70,7 +70,10 @@ def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[],
   css = []
   if(crystal_symmetry is not None):
     css.append(crystal_symmetry)
-  all_inputs = models+map_inps+miller_arrays
+  if ignore_symmetry_from_coordinate_files:
+    all_inputs = map_inps+miller_arrays
+  else:
+    all_inputs = models+map_inps+miller_arrays
   for it in all_inputs:
     if(it is not None):
       it = it.crystal_symmetry()
@@ -89,6 +92,9 @@ def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[],
   crystal_symmetry = css[0]
   for model in models:
     if(model is None): continue
+    if ignore_symmetry_from_coordinate_files: # set crystal symmetry
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry,
+       force=True)
     cs = model.crystal_symmetry()
     if(cs is None or [cs.unit_cell(), cs.space_group()].count(None)==2):
       model.set_crystal_symmetry_if_undefined(crystal_symmetry)

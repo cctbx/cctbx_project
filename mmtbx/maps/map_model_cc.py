@@ -28,6 +28,13 @@ map_model_cc {
     .type = bool
     .help = Keep model-calculated map
     .expert_level=3
+  ignore_symmetry_from_coordinate_files = False
+    .type = bool
+    .help = You can ignore the symmetry information (CRYST1) from \
+            coordinate files. This may be necessary if your model has been\
+            placed in a box with box_map for example.
+    .expert_level=2
+
   compute {
     cc_per_chain = True
       .type = bool
