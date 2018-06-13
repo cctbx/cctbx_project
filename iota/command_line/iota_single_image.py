@@ -15,6 +15,9 @@ space group determination, refinement, integration)
 import os
 import time
 
+from scitbx.array_family import flex
+import numpy as np
+
 from iotbx import phil as ip
 from dxtbx.datablock import DataBlockFactory
 
@@ -35,12 +38,16 @@ def parse_command_args():
                       help='Backend for processing')
   parser.add_argument('--paramfile', type=str, default=None,
                       help='Parameter file for processing')
-  parser.add_argument('--output', type=str, default=None,
+  parser.add_argument('--output_file', type=str, default=None,
                       help='Output filename')
+  parser.add_argument('--output_dir', type=str, default=None,
+                      help='Output directory (for BluIce)')
   parser.add_argument('--termfile', type=str, default='.stop',
                       help='Termination signal filename')
   parser.add_argument('--index', type=int, default=1,
                       help='Numerical index of the image')
+  parser.add_argument('--min_bragg', type=int, default=10,
+                      help='Minimum spots for successful spotfinding result')
   parser.add_argument('--nproc', type=int, default=None,
                       help='Number of processors')
   parser.add_argument('--action', type=str, default='spotfind',
@@ -57,9 +64,11 @@ class DIALSSpfIdx(Thread):
                index=None,
                termfile=None,
                paramfile=None,
-               output=None,
+               output_file=None,
+               output_dir=None,
                backend='dials',
                action_code='spotfind',
+               min_bragg=10,
                n_processors=1,
                verbose=False
                ):
@@ -71,11 +80,14 @@ class DIALSSpfIdx(Thread):
     self.n_processors = n_processors
     self.index = index
     self.verbose = verbose
+    self.min_bragg = min_bragg
 
-    print 'DEBUG: VERBOSE = ', self.verbose
+    if output_file is not None:
+      if output_dir is not None:
+        self.output = os.path.join(os.path.abspath(output_dir), output_file)
 
-    if output is not None:
-      self.output = os.path.abspath(output)
+      else:
+        self.output = os.path.abspath(output_file)
     else:
       self.output = None
 
@@ -112,15 +124,22 @@ class DIALSSpfIdx(Thread):
       raise IOTATermination('IOTA_TRACKER: Termination signal received!')
     else:
       with Capturing() as junk_output:
+        err = []
         start = time.time()
         fail = False
         sg = None
         uc = None
+        obs = None
+        status = None
+        res = 99
         try:
           datablock = DataBlockFactory.from_filenames([self.img])[0]
           observed = self.processor.find_spots(datablock=datablock)
-        except Exception:
+          status = 'spots found'
+        except Exception, e:
           fail = True
+          observed = []
+          err.append(e)
           pass
 
         # TODO: Indexing / lattice determination very slow (how to speed up?)
@@ -129,8 +148,9 @@ class DIALSSpfIdx(Thread):
             try:
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
-            except Exception:
+            except Exception, e:
               fail = True
+              err.append(e)
               pass
 
           if not fail:
@@ -144,49 +164,110 @@ class DIALSSpfIdx(Thread):
                   reflections=indexed,
                   experiments=experiments,
                   solution=solution)
+              obs = experiments
               lat = experiments[0].crystal.get_space_group().info()
               sg = str(lat).replace(' ', '')
+              status = 'indexed'
+
             except Exception:
               fail = True
+              err.append(e)
               pass
 
-        if self.run_integration:
           if not fail:
-            try:
-              # Run refinement
-              experiments, indexed = self.processor.refine(
-                experiments=experiments,
-                centroids=indexed)
+            unit_cell = experiments[0].crystal.get_unit_cell().parameters()
+            uc = ' '.join(['{:.1f}'.format(i) for i in unit_cell])
 
-              integrated = self.processor.integrate(experiments=experiments,
-                                                         indexed=indexed)
-              frame = self.processor.frame
-              unit_cell = frame['observations'][0].unit_cell().parameters()
-              uc = ' '.join(['{:.1f}'.format(i) for i in unit_cell])
+          if self.run_integration:
+            if not fail:
+              try:
+                # Run refinement
+                experiments, indexed = self.processor.refine(
+                  experiments=experiments,
+                  centroids=indexed)
 
-            except Exception:
-              fail = True
-              pass
+                integrated = self.processor.integrate(experiments=experiments,
+                                                           indexed=indexed)
+                status = 'integrated'
+              except Exception:
+                fail = True
+                err.append(e)
+                pass
 
-        elapsed = time.time() - start
-        return [self.index, len(observed), self.img, sg, uc], elapsed
+      if status == 'integrated':
+        res = self.processor.frame['observations'][0].d_max_min()
+      else:
+        detector = datablock.unique_detectors()[0]
+        beam = datablock.unique_beams()[0]
+
+        s1 = flex.vec3_double()
+        for i in xrange(len(observed)):
+          s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
+            observed['xyzobs.px.value'][i][0:2]))
+        two_theta = s1.angle(beam.get_s0())
+        d = beam.get_wavelength() / (2 * flex.asin(two_theta / 2))
+        res = (np.max(d), np.min(d))
+
+      if len(observed) < self.min_bragg:
+        res = (99, 99)
+
+      elapsed = time.time() - start
+      info = [self.index, len(observed), self.img, sg, uc]
+      return status, info, res, elapsed, err
 
 
   def run(self):
-    info, elapsed = self.process_image()
-    if info is not None:
-      idx, no_spots, img_path, sg, uc = info
+    errors = []
+    n_spots = 0
+    n_overloads = 0
+    res = (99, 99)
+    n_rings = 0
+    avg_I = 0
 
-      if self.verbose:
-        print 'RESULT: ', idx, img_path, no_spots, sg, uc, '---> ', elapsed
+    file_wait_start = time.time()
+    while True:
+      if time.time() - file_wait_start > 10:
+        info = None
+        elapsed = None
+        errors.append('{} does not exist'.format(self.img))
+        break
+      if os.path.isfile(self.img):
+        status, info, res, elapsed, err = self.process_image()
+        errors.extend(err)
+        break
+
+    if info is not None:
+      idx, n_spots, img_path, sg, uc = info
+      print 'IMAGE #{}: {}'.format(idx, img_path)
+      print 'SPOTS FOUND: {}'.format(n_spots)
+      if res[0] != 99:
+        print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
+      if sg is not None and uc is not None:
+        print 'BRAVAIS LATTICE: {}'.format(sg)
+        print 'UNIT CELL: {}'.format(uc)
+      print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
 
       if self.output is not None:
         with open(self.output, 'a') as outf:
           info_line = ' '.join([str(i) for i in info])
           outf.write('{}\n'.format(info_line))
 
-    else:
-      print 'RESULT: NONE'
+    if self.verbose:
+      if errors == []:
+        err = ''
+        print_errors = False
+      else:
+        err = errors[0]
+        print_errors = True
+
+      print '\n__RESULTS__'
+      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' \
+            ''.format(n_spots, n_overloads, 0, res[1], n_rings, 0, avg_I, 0, err)
+
+      if print_errors:
+        print "__ERRORS__"
+        for e in errors:
+          print e
 
 
 
@@ -200,8 +281,10 @@ if __name__ == "__main__":
                             index=args.index,
                             backend=args.backend,
                             paramfile=args.paramfile,
-                            output=args.output,
+                            output_file=args.output_file,
+                            output_dir=args.output_dir,
                             termfile=args.termfile,
                             action_code=args.action,
+                            min_bragg=args.min_bragg,
                             verbose=args.verbose)
   interceptor.start()
