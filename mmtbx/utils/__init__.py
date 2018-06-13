@@ -2388,6 +2388,8 @@ class extract_box_around_model_and_map(object):
                lower_bounds=None,
                upper_bounds=None,
                extract_unique=None,
+               sequence=None,
+               chain_type=None,
                solvent_content=None,
                resolution=None,
                molecular_mass=None,
@@ -2555,13 +2557,14 @@ class extract_box_around_model_and_map(object):
     args.append("write_files=False")
     args.append("add_neighbors=False") # XXX perhaps allow user to set this
     args.append("save_box_map_ncs_au=True")
-    args.append("density_select=False") # ZZZ
-    #self.ncs_object=None #ZZ
-    #args.append("check_ncs=True") # ZZZ
-    #args.append("symmetry=C7") # ZZZ
+    args.append("density_select=False")
     args.append("solvent_content=%s" %(self.solvent_content))
     args.append("resolution=%s" %(self.resolution))
     args.append("auto_sharpen=False")
+    if self.chain_type:
+      args.append("chain_type=%s" %self.chain_type)
+    if self.sequence:
+      args.append("sequence=%s" %self.sequence)
     if self.molecular_mass:
       args.append("molecular_mass=%s" %self.molecular_mass)
     if self.symmetry:

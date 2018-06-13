@@ -112,7 +112,8 @@ master_phil = libtbx.phil.parse("""
     .help = Symmetry file to be offset based on origin shift.\
             Symmetry or symmetry_file required if extract_unique=True.  \
             May be a \
-            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file.
+            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file. \
+            Must be specified by keyword as in: symmetry_file=xxx.ncs_spec.
     .short_caption = Symmetry file
 
   sequence_file = None
@@ -140,9 +141,16 @@ master_phil = libtbx.phil.parse("""
   extract_unique = False
     .type = bool
     .help = Extract unique part of map. Requires symmetry_file or symmetry and\
-            either sequence file or molecular mass to be supplied.
+            either sequence file or molecular mass to be supplied. If chain \
+            type is not protein it should be set as well.
     .short_caption = Extract unique
 
+  chain_type = *None PROTEIN DNA RNA
+    .type = choice
+    .help = Chain type. Only used if extract_unique is set. Has minor effect \
+            in setting thresholds for identification of molecular region.\
+            Use None if there is a mixture.
+    .short_caption = Chain type
 
   soft_mask=False
     .type=bool
@@ -357,8 +365,9 @@ Parameters:"""%h
     n_ops=1
 
   # Get sequence if extract_unique is set
+  sequence=None
   if params.extract_unique:
-    if params.sequence_file and not params.molecular_mass:
+    if params.sequence_file:
       if n_ops > 1: # get unique part of sequence and multiply
         remove_duplicates=True
       else:
@@ -366,14 +375,25 @@ Parameters:"""%h
       from iotbx.bioinformatics import get_sequences
       sequence=n_ops * (" ".join(get_sequences(file_name=params.sequence_file,
         remove_duplicates=remove_duplicates)))
+
+    if sequence and not params.molecular_mass:
       # get molecular mass from sequence
       from iotbx.bioinformatics import text_from_chains_matching_chain_type
-      n_protein=len(text_from_chains_matching_chain_type(
-        text=sequence,chain_type='PROTEIN'))
-      n_rna=len(text_from_chains_matching_chain_type(
-        text=sequence,chain_type='RNA'))
-      n_dna=len(text_from_chains_matching_chain_type(
-        text=sequence,chain_type='DNA'))
+      if params.chain_type in [None,'PROTEIN']:
+        n_protein=len(text_from_chains_matching_chain_type(
+          text=sequence,chain_type='PROTEIN'))
+      else:
+        n_protein=0
+      if params.chain_type in [None,'RNA']:
+        n_rna=len(text_from_chains_matching_chain_type(
+          text=sequence,chain_type='RNA'))
+      else:
+        n_rna=0
+      if params.chain_type in [None,'DNA']:
+        n_dna=len(text_from_chains_matching_chain_type(
+         text=sequence,chain_type='DNA'))
+      else:
+        n_dna=0
       params.molecular_mass=n_protein*110+(n_rna+n_dna)*330
     elif not params.molecular_mass:
       raise Sorry("Need a sequence file or molecular mass for extract_unique")
@@ -419,6 +439,8 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
+    chain_type            = params.chain_type,
+    sequence              = sequence,
     solvent_content       = params.solvent_content,
     molecular_mass        = params.molecular_mass,
     resolution            = params.resolution,

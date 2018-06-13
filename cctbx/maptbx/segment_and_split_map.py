@@ -5931,7 +5931,7 @@ def score_threshold(b_vs_region=None,threshold=None,
      expected_regions=max(ncs_copies,
       max(1,int(0.5+n_residues/residues_per_region)))
    else:
-      if chain_type is None: chain_type="PROTEIN"
+      if chain_type in [None,'None']: chain_type="PROTEIN"
       assert crystal_symmetry is not None
       assert solvent_fraction is not None
       volume_per_residue,nres,chain_type=get_volume_of_seq(
