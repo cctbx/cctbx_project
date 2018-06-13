@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.cablam
+# LIBTBX_SET_DISPATCHER_NAME molprobity.cablam
 
 import sys
 from mmtbx.validation import cablam

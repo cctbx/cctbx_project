@@ -1,5 +1,6 @@
 from __future__ import division
 # LIBTBX_SET_DISPATCHER_NAME phenix.kinemage
+# LIBTBX_SET_DISPATCHER_NAME molprobity.kinemage
 
 import sys
 from mmtbx.kinemage import validation

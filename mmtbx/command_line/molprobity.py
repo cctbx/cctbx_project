@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.molprobity
+# LIBTBX_SET_DISPATCHER_NAME molprobity.molprobity
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 
 from __future__ import division

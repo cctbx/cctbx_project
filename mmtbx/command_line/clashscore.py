@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.clashscore
+# LIBTBX_SET_DISPATCHER_NAME molprobity.clashscore
 
 from __future__ import division
 from mmtbx.validation.clashscore import clashscore

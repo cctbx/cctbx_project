@@ -1,4 +1,5 @@
 # LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate
+# LIBTBX_SET_DISPATCHER_NAME molprobity.rna_validate
 
 from __future__ import division
 from mmtbx.validation.rna_validate import rna_validation
