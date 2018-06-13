@@ -140,10 +140,11 @@ class cablam_idealization(object):
     for i in range(12):
       # rotation
       angle = 30
-      O_atom = None
-      N_atom = None
       O_atom, N_atom, C_atom = self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=angle)
+      if [O_atom, N_atom, C_atom].count(None) > 0:
+        print >> self.log, "Residues are missing essential atom: O, N or C. Skipping."
+        return
       self._rotate_cablam(chain_around, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if self.params.save_intermediates:
@@ -163,6 +164,9 @@ class cablam_idealization(object):
 
   def _rotate_cablam(self, model, chain, prevresid, curresid, a1, a2, angle):
     inside = False
+    O_atom = None
+    N_atom = None
+    C_atom = None
     for c in model.get_hierarchy().only_model().chains():
       if c.id.strip() == chain.strip():
         for atom in c.atoms():
