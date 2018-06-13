@@ -476,7 +476,7 @@ class manager(object):
 
     This function can be used ONLY straight after initialization of model,
     when no xray_structure is constructed yet.
-    
+
     The keyword force=True sets cs even if it is defined.
     """
     assert self._xray_structure is None

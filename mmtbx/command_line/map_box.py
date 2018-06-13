@@ -483,7 +483,7 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if (inputs and 
+  if (inputs and
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
@@ -556,7 +556,7 @@ Parameters:"""%h
       print >>log,"keeping entire map"
     print >>log,"Note that output maps are only valid in the cut out region.\n"
 
-  else: 
+  else:
     if origin_to_match:
       output_box.shift_cart=shift_cart_for_origin_to_match
       if params.output_origin_grid_units:
@@ -619,7 +619,7 @@ Parameters:"""%h
 
       print >>log,"\nWriting symmetry to %s" %( output_symmetry_file)
 
-    # Write ccp4 map.  
+    # Write ccp4 map.
     if("ccp4" in params.output_format):
      if(params.output_file_name_prefix is None):
        file_name = "%s_box.ccp4"%output_prefix
