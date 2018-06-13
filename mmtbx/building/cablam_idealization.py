@@ -134,12 +134,14 @@ class cablam_idealization(object):
 
     chain_around = self.model.select(self.model.selection(
       "chain %s and resid %d through %d" % (chain, prevresseq_int-2, curresseq_int+2)))
+    b_selection = flex.bool(self.model.get_number_of_atoms(), flex.size_t(sorted([a1.i_seq, a2.i_seq])))
+    self.atoms_around = self.model.get_xray_structure().selection_within(7, b_selection).iselection()
     for i in range(12):
       # rotation
       angle = 30
       O_atom = None
       N_atom = None
-      O_atom, N_atom, C_atom = self._rotate_cablam(
+      O_atom, N_atom, C_atom = self._rotate_cablam(chain,
           prevresid, curresid, a1, a2, angle=angle)
       if self.params.save_intermediates:
         with open("out_%s_%d.pdb" % (curresid.strip(), i),'w') as f:
@@ -153,34 +155,36 @@ class cablam_idealization(object):
     if rot_angle != 360:
       self.n_rotated_residues += 1
       print >> self.log, "ROTATING by", rot_angle
-      self._rotate_cablam(
+      self._rotate_cablam(chain,
           prevresid, curresid, a1, a2, angle=rot_angle)
 
-  def _rotate_cablam(self, prevresid, curresid, a1, a2, angle):
+  def _rotate_cablam(self, chain, prevresid, curresid, a1, a2, angle):
     inside = False
-    for atom in self.model.get_hierarchy().atoms():
-      if atom.name.strip() == "CA" and atom.parent().parent().resid() == prevresid:
-        inside = True
-      if atom.name.strip() == "CA" and atom.parent().parent().resid() == curresid:
-        inside = False
-      if inside and atom.name.strip() in ["N", "CA", "C", "O"]:
-        new_xyz = rotate_point_around_axis(
-            axis_point_1=a1.xyz,
-            axis_point_2=a2.xyz,
-            point=atom.xyz,
-            angle=angle,
-            deg=True)
-        atom.set_xyz(new_xyz)
-        if atom.name.strip() == "O":
-          O_atom = atom
-        elif atom.name.strip() == "N":
-          N_atom = atom
-        elif atom.name.strip() == "C":
-          C_atom = atom
+    for c in self.model.get_hierarchy().only_model().chains():
+      if c.id.strip() == chain.strip():
+        for atom in c.atoms():
+          if atom.name.strip() == "CA" and atom.parent().parent().resid() == prevresid:
+            inside = True
+          if atom.name.strip() == "CA" and atom.parent().parent().resid() == curresid:
+            inside = False
+          if inside and atom.name.strip() in ["N", "CA", "C", "O"]:
+            new_xyz = rotate_point_around_axis(
+                axis_point_1=a1.xyz,
+                axis_point_2=a2.xyz,
+                point=atom.xyz,
+                angle=angle,
+                deg=True)
+            atom.set_xyz(new_xyz)
+            if atom.name.strip() == "O":
+              O_atom = atom
+            elif atom.name.strip() == "N":
+              N_atom = atom
+            elif atom.name.strip() == "C":
+              C_atom = atom
 
-    self.model.set_sites_cart_from_hierarchy()
+        self.model.set_sites_cart_from_hierarchy()
 
-    return O_atom, N_atom, C_atom
+        return O_atom, N_atom, C_atom
 
 
   def _pick_rotation_angle(self, scores):
@@ -242,10 +246,8 @@ class cablam_idealization(object):
     def good_hbond(angle, distance):
       return angle > 140 and distance < 3.8
     results = []
-    b_selection = flex.bool(self.model.get_number_of_atoms(), flex.size_t(sorted([O_atom.i_seq, N_atom.i_seq])))
-    atoms_around = self.model.get_xray_structure().selection_within(5, b_selection).iselection()
     atoms = self.model.get_atoms()
-    for atom in [atoms[i_seq] for i_seq in atoms_around]:
+    for atom in [atoms[i_seq] for i_seq in self.atoms_around]:
       # no need to check the same residue, looking for N atom for bonding
       if atom.parent() == O_atom.parent() or atom.parent() == N_atom.parent():
         # print "skipping same residue ", atom.id_str()
@@ -280,7 +282,7 @@ class cablam_idealization(object):
         cablam_contours = self.cablam_contours,
         ca_contours = self.ca_contours,
         motif_contours = self.motif_contours)
-    outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier]# and x.feedback.c_alpha_geom_outlier]
+    outliers_only = [x for x in cab_results.results if x.feedback.cablam_outlier][:10]# and x.feedback.c_alpha_geom_outlier]
     outliers_by_chain = {}
     for k, g in itertools.groupby(outliers_only, key=lambda x: x.residue_id()[:2]):
       outliers_by_chain[k] = []
