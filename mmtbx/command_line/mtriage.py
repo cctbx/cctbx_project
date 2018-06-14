@@ -93,8 +93,7 @@ def check_and_set_crystal_symmetry(models=[], map_inps=[], miller_arrays=[],
   for model in models:
     if(model is None): continue
     if ignore_symmetry_from_coordinate_files: # set crystal symmetry
-      model.set_crystal_symmetry_if_undefined(crystal_symmetry,
-       force=True)
+      model.set_crystal_symmetry_if_undefined(crystal_symmetry, force=True)
     cs = model.crystal_symmetry()
     if(cs is None or [cs.unit_cell(), cs.space_group()].count(None)==2):
       model.set_crystal_symmetry_if_undefined(crystal_symmetry)

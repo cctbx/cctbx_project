@@ -467,7 +467,7 @@ class manager(object):
   def set_ss_annotation(self, ann):
     self._ss_annotation = ann
 
-  def set_crystal_symmetry_if_undefined(self, cs, force=None):
+  def set_crystal_symmetry_if_undefined(self, cs, force=False):
     """
     Function to set crystal symmetry if it is not defined yet.
     Special case when incoming cs is the same to self._crystal_symmetry,
