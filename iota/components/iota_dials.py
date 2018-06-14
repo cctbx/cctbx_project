@@ -24,14 +24,14 @@ from dials.command_line.refine_bravais_settings import \
   bravais_lattice_to_space_group_table
 
 import iota.components.iota_misc as misc
-from iota.components.iota_utils import RadAverageCalculator
 
 class IOTADialsProcessor(Processor):
   ''' Subclassing the Processor module from dials.stills_process to introduce
   streamlined integration pickles output '''
 
-  def __init__(self, params):
+  def __init__(self, params, write_pickle=True):
     self.phil = params
+    self.write_pickle = write_pickle
     Processor.__init__(self, params=params)
 
   def refine_bravais_settings(self, reflections, experiments):
@@ -124,12 +124,13 @@ class IOTADialsProcessor(Processor):
     ''' This is streamlined vs. the code in stills_indexer, since the filename
         convention is set up upstream.
     '''
-    from libtbx import easy_pickle
-    from xfel.command_line.frame_extractor import ConstructFrame
+    if self.write_pickle:
+      from libtbx import easy_pickle
+      from xfel.command_line.frame_extractor import ConstructFrame
 
-    self.frame = ConstructFrame(integrated, experiments[0]).make_frame()
-    self.frame["pixel_size"] = experiments[0].detector[0].get_pixel_size()[0]
-    easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
+      self.frame = ConstructFrame(integrated, experiments[0]).make_frame()
+      self.frame["pixel_size"] = experiments[0].detector[0].get_pixel_size()[0]
+      easy_pickle.dump(self.phil.output.integration_pickle, self.frame)
 
 class Triage(object):
   """ Performs quick spotfinding (with mostly defaults) and determines if the number of
@@ -235,6 +236,7 @@ class Integrator(object):
     self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
     self.phil.output.strong_filename = "{}/{}_strong.pickle".format(object_folder, file_basename)
     self.phil.output.refined_experiments_filename = "{}/{}_refined_experiments.json".format(object_folder, file_basename)
+    self.phil.output.integrated_experiments_filename = "{}/{}_integrated_experiments.json".format(object_folder, file_basename)
     self.phil.output.integrated_filename = "{}/{}_integrated.pickle".format(object_folder, file_basename)
     self.phil.output.profile_filename = "{}/{}_profile.phil".format(object_folder, file_basename)
     self.phil.output.integration_pickle = final_filename

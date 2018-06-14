@@ -1067,8 +1067,7 @@ class TrackerWindow(wx.Frame):
           self.msg = 'Tracking new images in {} ...'.format(self.results_file)
           self.spotfinding_info.extend(new_info)
           if len(self.spotfinding_info) > 0:
-            indexed = [i for i in self.spotfinding_info if
-                       misc.makenone(i[3]) is not None]
+            indexed = [i for i in self.spotfinding_info if i[4] is not None]
             self.tracker_panel.idx_count_txt.SetLabel(str(len(indexed)))
           self.plot_results()
         else:

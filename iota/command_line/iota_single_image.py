@@ -27,6 +27,7 @@ from iota.components.iota_dials import IOTADialsProcessor
 from iota.components.iota_dials import phil_scope
 from iota.components.iota_threads import IOTATermination
 from iota.components.iota_misc import Capturing
+from iota.components.iota_input import write_defaults
 
 
 def parse_command_args():
@@ -85,7 +86,6 @@ class DIALSSpfIdx(Thread):
     if output_file is not None:
       if output_dir is not None:
         self.output = os.path.join(os.path.abspath(output_dir), output_file)
-
       else:
         self.output = os.path.abspath(output_file)
     else:
@@ -112,12 +112,33 @@ class DIALSSpfIdx(Thread):
         user_phil = ip.parse(phil_string)
         self.dials_phil = phil_scope.fetch(source=user_phil)
       else:
-        self.dials_phil = phil_scope
+        default_params, _ = write_defaults(method='dials',
+                                           write_target_file=False,
+                                           write_param_file=False)
+        default_phil_string = '\n'.join(default_params)
+        default_phil = ip.parse(default_phil_string)
+        self.dials_phil = phil_scope.fetch(source=default_phil)
+
       self.params = self.dials_phil.extract()
 
-    if self.backend == 'dials':
-      self.processor = IOTADialsProcessor(params=self.params)
+    # Modify default DIALS parameters
+    # These parameters will be set no matter what
+    self.params.output.datablock_filename = None
+    self.params.output.indexed_filename = None
+    self.params.output.strong_filename = None
+    self.params.output.refined_experiments_filename = None
+    self.params.output.integrated_filename = None
+    self.params.output.integrated_experiments_filename = None
+    self.params.output.profile_filename = None
+    self.params.output.integration_pickle = None
 
+    # These parameters will be set only if there's no script
+    if self.paramfile is None:
+      self.params.indexing.stills.method_list = ['fft3d']
+
+    if self.backend == 'dials':
+      self.processor = IOTADialsProcessor(params=self.params,
+                                          write_pickle=False)
 
   def process_image(self):
     if os.path.isfile(self.termfile):
@@ -139,7 +160,7 @@ class DIALSSpfIdx(Thread):
         except Exception, e:
           fail = True
           observed = []
-          err.append(e)
+          err.append('SPOTFINDING ERROR: {}'.format(e))
           pass
 
         # TODO: Indexing / lattice determination very slow (how to speed up?)
@@ -150,7 +171,7 @@ class DIALSSpfIdx(Thread):
                 datablock=datablock, reflections=observed)
             except Exception, e:
               fail = True
-              err.append(e)
+              err.append('INDEXING ERROR: {}'.format(e))
               pass
 
           if not fail:
@@ -171,7 +192,7 @@ class DIALSSpfIdx(Thread):
 
             except Exception:
               fail = True
-              err.append(e)
+              err.append('LATTICE ERROR: {}'.format(e))
               pass
 
           if not fail:
@@ -185,28 +206,35 @@ class DIALSSpfIdx(Thread):
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-
-                integrated = self.processor.integrate(experiments=experiments,
-                                                           indexed=indexed)
-                status = 'integrated'
-              except Exception:
+              except Exception, e:
                 fail = True
-                err.append(e)
+                err.append('REFINEMENT ERROR: {}'.format(e))
                 pass
 
-      if status == 'integrated':
-        res = self.processor.frame['observations'][0].d_max_min()
-      else:
-        detector = datablock.unique_detectors()[0]
-        beam = datablock.unique_beams()[0]
+            if not fail:
+              try:
+                print experiments
+                print indexed
+                integrated = self.processor.integrate(experiments=experiments,
+                                                      indexed=indexed)
+                status = 'integrated'
+              except Exception, e:
+                err.append('INTEGRATION ERROR: {}'.format(e))
+                pass
 
-        s1 = flex.vec3_double()
-        for i in xrange(len(observed)):
-          s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
-            observed['xyzobs.px.value'][i][0:2]))
-        two_theta = s1.angle(beam.get_s0())
-        d = beam.get_wavelength() / (2 * flex.asin(two_theta / 2))
-        res = (np.max(d), np.min(d))
+      # if status == 'integrated':
+      #   res = self.processor.frame['observations'][0].d_max_min()
+      # else:
+      detector = datablock.unique_detectors()[0]
+      beam = datablock.unique_beams()[0]
+
+      s1 = flex.vec3_double()
+      for i in xrange(len(observed)):
+        s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
+          observed['xyzobs.px.value'][i][0:2]))
+      two_theta = s1.angle(beam.get_s0())
+      d = beam.get_wavelength() / (2 * flex.asin(two_theta / 2))
+      res = (np.max(d), np.min(d))
 
       if len(observed) < self.min_bragg:
         res = (99, 99)
@@ -261,8 +289,8 @@ class DIALSSpfIdx(Thread):
         print_errors = True
 
       print '\n__RESULTS__'
-      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' \
-            ''.format(n_spots, n_overloads, 0, res[1], n_rings, 0, avg_I, 0, err)
+      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots,n_overloads,
+                                        0, res[1], n_rings, 0, avg_I, 0, err)
 
       if print_errors:
         print "__ERRORS__"
@@ -287,4 +315,8 @@ if __name__ == "__main__":
                             action_code=args.action,
                             min_bragg=args.min_bragg,
                             verbose=args.verbose)
+  if args.output_dir is not None:
+    if not os.path.isdir(args.output_dir):
+      os.makedirs(args.output_dir)
+
   interceptor.start()

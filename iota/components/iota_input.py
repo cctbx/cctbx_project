@@ -464,9 +464,10 @@ def process_input(args,
 def write_defaults(current_path=None, txt_out=None, method='cctbx',
                    write_target_file=True, write_param_file=True):
   """ Generates list of default parameters for a reasonable target file:
-        - if cctbx.xfel, target.phil will be created in the folder from which IOTA is
-          being run.
-        - if DIALS, dials.phil will be created in the folder from which IOTA is being run.
+        - if cctbx.xfel, target.phil will be created in the folder from which
+          IOTA is being run.
+        - if DIALS, dials.phil will be created in the folder from which IOTA
+          is being run.
         - also writes out the IOTA parameter file.
 
       input: current_path - absolute path to current folder
