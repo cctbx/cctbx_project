@@ -88,7 +88,10 @@ class FormatBruker(Format):
 
   def _goniometer(self):
 
-    return self._goniometer_factory.single_axis()
+    if self.detectorbase.parameters["OSC_RANGE"] > 0:
+      return self._goniometer_factory.single_axis()
+    else:
+      return self._goniometer_factory.single_axis_reverse()
 
   def _detector(self):
     '''Return a model for a simple detector'''
@@ -127,7 +130,7 @@ class FormatBruker(Format):
       # XXX Here it will simply be set to a default number.
       exposure_times = 1,
       osc_start = self.detectorbase.parameters["OSC_START"],
-      osc_width = self.detectorbase.parameters["OSC_RANGE"],
+      osc_width = abs(self.detectorbase.parameters["OSC_RANGE"]),
       epoch = None)
 
 if __name__ == '__main__':
