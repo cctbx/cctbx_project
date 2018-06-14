@@ -22,18 +22,22 @@ class ReflectionsRadialLengths(object):
     else:
       self.det = experiment.detector
       self.beam = experiment.beam
-    self.s0 = self.beam.get_unit_s0()
+    self.s0 = matrix.col(self.beam.get_unit_s0())
     self.panel_s0_intersections = flex.vec2_double(
       [self.det[i].get_ray_intersection_px(self.s0) for i in xrange(len(self.det))])
   def get_one_spot_length_width_angle(self, id):
     # the radial direction is along the vector from the beam center to
     # the spot centroid for each spot
     shoebox = self.strong['shoebox'][id]
+    pixel_size = self.det[shoebox.panel].get_pixel_size()
+    assert pixel_size[0] == pixel_size[1]
+    pixel_size = pixel_size[0]
     s0_position = self.panel_s0_intersections[shoebox.panel]
     centroid = shoebox.centroid_strong().px_xy
-    dx, dy = [centroid[i] - s0_position[i] for i in (0, 1)]
-    radial_abs = matrix.col((dx, dy))
-    radial = radial_abs.normalize()
+    s0_position_lab = matrix.col(self.det[shoebox.panel].get_pixel_lab_coord(s0_position))
+    centroid_lab = matrix.col(self.det[shoebox.panel].get_pixel_lab_coord(centroid))
+    s0_to_spot = centroid_lab - s0_position_lab
+    radial = s0_to_spot.normalize()
     transverse = self.s0.normalize().cross(radial)
     mask = flex.bool([(m & self.valid_code) != 0 for m in shoebox.mask])
     bbox = self.strong['bbox'][id]
@@ -43,7 +47,8 @@ class ReflectionsRadialLengths(object):
     transverse_distances = flex.double()
     for i, valid_foreground in enumerate(mask):
       if valid_foreground:
-        position = matrix.col((x_start + i%x_range, y_start + i//y_range))
+        position = x_start + i%x_range, y_start + i//y_range
+        position = matrix.col(self.det[shoebox.panel].get_pixel_lab_coord(position))
         projection_radial = position.dot(radial)
         projection_transverse = position.dot(transverse)
         radial_distances.append(projection_radial)
@@ -53,20 +58,22 @@ class ReflectionsRadialLengths(object):
     # The angle subtended is centered at the spot centroid, spanning the
     # spot width. Half this angle makes a right triangle with legs of lengths
     # [distance to beam center] and [half the spot width]. Use the tangent.
-    angle = 2*math.atan(width/(2*radial_abs.length()))
+    angle = 2*math.atan(width/(2*radial.length()))
+    length /= pixel_size
+    width /= pixel_size
     return (length, width, angle)
   def get_spot_lengths_px(self):
     self.lengths, self.widths, self.angles = \
-      [self.get_one_spot_length_width_angle(id) for id in xrange(len(self.strong))]
-    return flex.double(self.lengths)
+      flex.vec3_double([self.get_one_spot_length_width_angle(id) for id in xrange(len(self.strong))]).parts()
+    return self.lengths
   def get_spot_width(self):
     if not hasattr(self, "widths"):
       self.get_spot_lengths_px()
-    return flex.double(self.widths)
+    return self.widths
   def get_spot_subtended_angles_deg(self):
     if not hasattr(self, "angles"):
       self.get_spot_lengths_px()
-    return flex.double(self.angles)*180/math.pi
+    return self.angles*180/math.pi
   def get_intensities(self):
     return self.strong['intensity.sum.value']
 
