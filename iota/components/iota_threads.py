@@ -402,7 +402,8 @@ class SpotFinderThread(Thread):
       evt = SpotFinderAllDone(tp_EVT_SPFALLDONE, -1, info=info)
       wx.PostEvent(self.parent, evt)
       return
-    except TypeError:
+    except TypeError, e:
+      print e
       return
 
   def spf_wrapper(self, img):
@@ -423,19 +424,6 @@ class SpotFinderThread(Thread):
         return [int(self.data_list.index(img)), 0, img, None, None]
     except IOTATermination, e:
       raise e
-
-
-  # def spf_wrapper(self, img):
-  #   if os.path.isfile(self.term_file):
-  #     os.remove(self.term_file)
-  #     raise IOTATermination('IOTA_TRACKER: Termination signal received!')
-  #   else:
-  #     if os.path.isfile(img):
-  #       datablock = DataBlockFactory.from_filenames([img])[0]
-  #       observed = self.processor.find_spots(datablock=datablock)
-  #       return [int(self.data_list.index(img)), int(len(observed)), img]
-  #     else:
-  #       return [int(self.data_list.index(img)), 0, img]
 
   def callback(self, info):
     try:

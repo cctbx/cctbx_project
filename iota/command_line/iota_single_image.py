@@ -197,7 +197,7 @@ class DIALSSpfIdx(Thread):
 
           if not fail:
             unit_cell = experiments[0].crystal.get_unit_cell().parameters()
-            uc = ' '.join(['{:.1f}'.format(i) for i in unit_cell])
+            uc = ' '.join(['{:.4f}'.format(i) for i in unit_cell])
 
           if self.run_integration:
             if not fail:
@@ -222,19 +222,19 @@ class DIALSSpfIdx(Thread):
                 err.append('INTEGRATION ERROR: {}'.format(e))
                 pass
 
-      # if status == 'integrated':
-      #   res = self.processor.frame['observations'][0].d_max_min()
-      # else:
-      detector = datablock.unique_detectors()[0]
-      beam = datablock.unique_beams()[0]
+      if status == 'integrated':
+        res = self.processor.frame['observations'][0].d_max_min()
+      else:
+        detector = datablock.unique_detectors()[0]
+        beam = datablock.unique_beams()[0]
 
-      s1 = flex.vec3_double()
-      for i in xrange(len(observed)):
-        s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
-          observed['xyzobs.px.value'][i][0:2]))
-      two_theta = s1.angle(beam.get_s0())
-      d = beam.get_wavelength() / (2 * flex.asin(two_theta / 2))
-      res = (np.max(d), np.min(d))
+        s1 = flex.vec3_double()
+        for i in xrange(len(observed)):
+          s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
+            observed['xyzobs.px.value'][i][0:2]))
+        two_theta = s1.angle(beam.get_s0())
+        d = beam.get_wavelength() / (2 * flex.asin(two_theta / 2))
+        res = (np.max(d), np.min(d))
 
       if len(observed) < self.min_bragg:
         res = (99, 99)

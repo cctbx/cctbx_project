@@ -1,11 +1,14 @@
 IOTA v1.1.032 - IOTA DIALS stills processor update
 
 Bugfixes:
-
+- Fixed tracker bug that wasn't correctly propagating the backend option
+- Fixed cluster (from_iterable) bug that only read 5 unit cell parameters
 
 Features:
 - Added a parameter to Processor object to toggle writing out of int pickles
 - iota_single_image.py now modifies default DIALS params with params from IOTA
+- iota_single_image.py calculates resolution differently if image is integrated
+
 
 Known issues:
 

@@ -257,7 +257,7 @@ class Cluster:
     for j,item in enumerate(iterable):
       try:
         assert len(item) == 7
-        unit_cell_params = tuple([float(t) for t in item[0:5]])
+        unit_cell_params = tuple([float(t) for t in item[0:6]])
         space_group_type = item[6]
         uc_init = unit_cell(unit_cell_params)
         sgi = space_group_info(space_group_type)
@@ -266,8 +266,9 @@ class Cluster:
         this_frame = CellOnlyFrame(crystal_symmetry, path=name, name=name)
         if hasattr(this_frame, 'crystal_symmetry'):
             data.append(this_frame)
-      except Exception:
+      except Exception, e:
         pass
+
     return cls(data, _prefix, _message)
 
   @classmethod
