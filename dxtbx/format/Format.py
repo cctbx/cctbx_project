@@ -224,11 +224,6 @@ class Format(object):
       scan_instance = self._scan()
       #assert(isinstance(scan_instance, Scan) or isinstance(scan_instance, list))
       self._scan_instance = scan_instance
-
-    except Exception:
-      # FIXME ideally should not squash the errors here...
-      import traceback
-      traceback.print_exc()
     finally:
       self._end()
 
