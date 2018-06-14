@@ -370,6 +370,12 @@ For newer versions, please adjust this SConscript.
       "/Z7", # produce program database file containing debugging symbols.
              # Harmless for release builds
       "/Zm800"]
+    # include header files from cctbx_project/msvc9.0_include for VS 2008
+    if (env_base['MSVC_VERSION'] == '9.0'):
+      env_etc.ccflags_base.append(
+        "/I%s" % os.path.join(libtbx.env.under_dist('libtbx', '..'),
+                              'msvc9.0_include'))
+
     if (libtbx.env.build_options.debug_symbols):
       if (not env_etc.no_boost_python):
         print("""\
