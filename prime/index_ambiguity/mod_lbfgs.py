@@ -32,7 +32,7 @@ class lbfgs_handler(object):
             )
 
   def compute_functional_and_gradients(self):
-    x_set = np.array(self.x).reshape((len(self.x)/2,2))
+    x_set = np.array(self.x).reshape((len(self.x)//2,2))
     r_grid = flex.double(self.args)
     x_vec_set = flex.vec2_double(x_set)
     self.f = index_ambiguity.calc_BD_alg_2_sum_sqr(r_grid, x_vec_set)

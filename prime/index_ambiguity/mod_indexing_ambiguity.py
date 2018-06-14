@@ -108,7 +108,7 @@ class indamb_handler(object):
     xinp_copy = xinp[:]
     args = r_matrix
     lh = lbfgs_handler(current_x=xinp, args=args)
-    x_set = np.array(lh.x).reshape((len(lh.x)/2,2))
+    x_set = np.array(lh.x).reshape((len(lh.x)//2,2))
     if flag_plot:
       import matplotlib.pyplot as plt
       xinp_set = np.array(xinp_copy).reshape((len(xinp_copy)/2,2))
