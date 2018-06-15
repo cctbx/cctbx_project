@@ -514,13 +514,17 @@ class ImageSetFactory(object):
     '''Create an image set'''
     from dxtbx.format.Registry import Registry
     from dxtbx.format.Format import Format
+    from dxtbx.format.FormatMultiImage import FormatMultiImage
 
     # Get the format object
     if format_class == None:
       if check_format:
         format_class = Registry.find(filenames[0])
       else:
-        format_class = Format
+        if single_file_indices is None or len(single_file_indices) == 0:
+          format_class = Format
+        else:
+          format_class = FormatMultiImage
     else:
       format_class = format_class
 
