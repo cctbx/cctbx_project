@@ -1,8 +1,10 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
 from libtbx import test_utils
+from libtbx.test_utils.pytest import discover
 import libtbx.load_env
 
-tst_list = (
+tst_list = [
     ["$D/absolute_structure/tests/tst_absolute_structure.py",
      "--fix_random_seeds"],
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
@@ -18,20 +20,13 @@ tst_list = (
     "$B/refinement/constraints/tests/tst_geometrical_hydrogens",
     "$B/refinement/constraints/tests/tst_special_position",
     "$D/refinement/constraints/tests/tst_reparametrisation.py",
-    "$D/refinement/constraints/tests/tst_occupancies.py",
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=naive'],
-    "$D/refinement/constraints/tests/tst_disorder.py",
     ["$D/refinement/constraints/tests/tst_constrained_structure.py",
      '--normal_eqns_solving_method=levenberg-marquardt'],
-    "$D/refinement/constraints/tests/tst_rigid.py",
-    "$D/refinement/constraints/tests/tst_direction.py",
-    "$D/refinement/restraints/tests/tst_adp_restraints.py",
-    "$D/refinement/restraints/tests/tst_manager.py",
     ["$D/refinement/restraints/tests/tst_restraints.py",
      '--verbose', '--scatterers=5', '--resolution=0.2'],
-    "$D/tests/tst_utils.py",
-    )
+] + discover()
 
 def run():
   build_dir = libtbx.env.under_build("smtbx")
