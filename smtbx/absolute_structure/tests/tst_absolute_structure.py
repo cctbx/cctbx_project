@@ -22,7 +22,7 @@ from smtbx import absolute_structure
 
 try:
   distributions.students_t_distribution(1)
-except RuntimeError, e:
+except RuntimeError as e:
   # XXX Student's t distribution is not supported with GCC 3.2 builds
   if str(e).startswith("Implementation not available in this build."):
     students_t_available = False

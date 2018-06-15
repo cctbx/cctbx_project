@@ -27,7 +27,7 @@ def crawl(directory, ext='cif', log=None, atomic_form_factors=None,
                  inelastic_form_factors=inelastic_form_factors,
                  chiral_space_groups_only=chiral_space_groups_only,
                  outlier_cutoff_factor=outlier_cutoff_factor)
-      except Exception, e:
+      except Exception as e:
         continue
 
 def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
