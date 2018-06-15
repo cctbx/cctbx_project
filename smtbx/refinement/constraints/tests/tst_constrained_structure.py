@@ -769,10 +769,9 @@ class symmetry_equivalent_test_case(test_case):
         h2a = params.site
         (pivot, pivot_neighbour_0, pivot_neighbour_1,
          bond_length, h_c_h_angle) = h2a.arguments()
-        expected = [ (core.independent_site_parameter, 'S1'),
-                     (core.symmetry_equivalent_site_parameter, 'C2',
-                      '-x+1,y,-z+3/2') ]
-        expected.sort()
+        expected = sorted([ (core.independent_site_parameter, 'S1'),
+                            (core.symmetry_equivalent_site_parameter, 'C2',
+                                '-x+1,y,-z+3/2') ])
         actual = []
         for n in (pivot_neighbour_0, pivot_neighbour_1):
           if type(n) == core.independent_site_parameter:

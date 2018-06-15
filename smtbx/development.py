@@ -70,8 +70,7 @@ class test_case(object):
       for name, attr in classdict.items():
         if callable(attr) and name.startswith('exercise'):
           exercises.append(attr)
-      dsu = [ (ex.__name__, ex) for ex in exercises ]
-      dsu.sort()
+      dsu = sorted((ex.__name__, ex) for ex in exercises)
       cls.exercises = [ ex for foo, ex in dsu ]
 
   def run(cls, verbose=False, *args, **kwds):

@@ -153,7 +153,7 @@ if __name__ == '__main__':
   except number_of_arguments_error:
     parser.print_usage()
     sys.exit(1)
-  except command_line_error, err:
+  except command_line_error as err:
     print >>sys.stderr, "\nERROR: %s\n" % err
     parser.print_help()
     sys.exit(1)

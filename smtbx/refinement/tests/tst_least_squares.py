@@ -174,7 +174,7 @@ class site_refinement_test(refinement_test):
       origin_fixing_restraints.atomic_number_weighting
     )
     barycentre_0 = xs.sites_frac().mean()
-    while 1:
+    while True:
       xs.shake_sites_in_place(rms_difference=0.15)
       xs.apply_symmetry_sites()
       barycentre_1 = xs.sites_frac().mean()
@@ -293,7 +293,7 @@ class adp_refinement_test(refinement_test):
 
       for sc0, sc1 in zip(self.xray_structure.scatterers(), xs.scatterers()):
         assert approx_equal(sc0.u_star, sc1.u_star)
-    except RuntimeError, err:
+    except RuntimeError as err:
       import re
       m = re.search(
         r'^cctbx::adptbx::debye_waller_factor_exp: \s* arg_limit \s+ exceeded'

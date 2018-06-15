@@ -1,6 +1,7 @@
 """ All X-H bond lengths are in Angstrom and their values are taken from
 ShelXL documentation (p. 4-3) """
 from __future__ import division
+from __future__ import absolute_import, print_function
 
 import smtbx.refinement.constraints as _
 from smtbx.refinement.constraints import InvalidConstraint, geometrical
@@ -226,9 +227,10 @@ class secondary_planar_xh_site(hydrogens):
         self.__class__.__name__, pivot_site_param.scatterers[0].label))
     uc = reparametrisation.structure.unit_cell()
     x_s = col(pivot_site)
-    d_s = [ (uc.distance(s, x_s), i)
-            for i, s in enumerate(pivot_neighbour_sites) ]
-    d_s.sort()
+    d_s = sorted(
+        (uc.distance(s, x_s), i)
+        for i, s in enumerate(pivot_neighbour_sites)
+    )
     return reparametrisation.add(
       _.secondary_planar_xh_site,
       pivot=pivot_site_param,
@@ -330,9 +332,8 @@ class staggered_terminal_tetrahedral_xhn_sites(hydrogens):
         #
         uc = reparametrisation.structure.unit_cell()
         x_s = col(pivot_neighbour_sites[0])
-        d_s = [ (uc.distance(s.value, x_s), i)
-                for i, s in enumerate(pivot_neighbour_substituent_site_params) ]
-        d_s.sort()
+        d_s = sorted((uc.distance(s.value, x_s), i)
+            for i, s in enumerate(pivot_neighbour_substituent_site_params))
         stagger_on = pivot_neighbour_substituent_site_params[d_s[0][1]]
     else:
       for p in pivot_neighbour_substituent_site_params:
