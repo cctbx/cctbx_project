@@ -14,6 +14,7 @@ from libtbx import group_args, str_utils
 
 import iotbx.pdb
 import iotbx.cif.model
+import iotbx.ncs
 from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
 from iotbx.pdb.atom_selection import AtomSelectionError
 from iotbx.pdb.misc_records_output import link_record_output
@@ -37,6 +38,7 @@ import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
 from mmtbx import utils
 from mmtbx import ncs
+from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
@@ -1095,6 +1097,16 @@ class manager(object):
     g = self.get_ncs_groups()
     return g is not None and len(g)>0
 
+  def search_for_ncs(self, params=None, log=null_out()):
+    self._ncs_obj = iotbx.ncs.input(
+        hierarchy=self.get_hierarchy(),
+        params=params,
+        log=log)
+    if self._ncs_obj is not None:
+      self._ncs_groups = self.get_ncs_obj().get_ncs_restraints_group_list()
+    self._update_master_sel()
+
+
   def setup_ncs_constraints_groups(self, filter_groups=False):
     """
     This will be used directly (via get_ncs_groups) in
@@ -1451,13 +1463,14 @@ class manager(object):
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
     if (multiply_ncs and self.ncs_constraints_present()):
-      ncs_groups = self.get_ncs_groups()
-      for ncs_gr in ncs_groups:
-        h = self.get_hierarchy()
-        new_sites = h.select(ncs_gr.master_iselection).atoms().extract_xyz()
-        for c in ncs_gr.copies:
-          new_c_sites = c.r.elems * new_sites + c.t
-          h.select(c.iselection).atoms().set_xyz(new_c_sites)
+      new_coords = apply_transforms(
+          ncs_coordinates=self.get_master_hierarchy().atoms().extract_xyz(),
+          ncs_restraints_group_list=self.get_ncs_groups(),
+          total_asu_length=self.get_number_of_atoms(),
+          extended_ncs_selection=self._master_sel,
+          round_coordinates = False,
+          center_of_coordinates = None)
+      self.get_hierarchy().atoms().set_xyz(new_coords)
     self.get_xray_structure().set_sites_cart(self._pdb_hierarchy.atoms().extract_xyz())
     self._update_pdb_atoms()
     self.model_statistics_info = None
