@@ -1,5 +1,5 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
 from libtbx.test_utils import approx_equal
 from smtbx.refinement.restraints import adp_restraints
 from smtbx import development
@@ -14,7 +14,7 @@ def get_pair_sym_table(xray_structure):
     scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
   return pair_asu_table.extract_pair_sym_table()
 
-def exercise_adp_similarity():
+def test_adp_similarity():
   xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -55,7 +55,7 @@ def exercise_adp_similarity():
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
-def exercise_rigid_bond():
+def test_rigid_bond():
   xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -98,7 +98,7 @@ def exercise_rigid_bond():
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
-def exercise_isotropic_adp():
+def test_isotropic_adp():
   xray_structure = development.sucrose()
   xray_structure.scatterers()[10].set_use_u_iso_only()
   pair_sym_table = get_pair_sym_table(xray_structure)
@@ -135,12 +135,3 @@ def exercise_isotropic_adp():
     for i in range(proxies.size()):
       assert approx_equal(proxies[i].i_seqs[0], expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
-
-def run():
-  exercise_isotropic_adp()
-  exercise_rigid_bond()
-  exercise_adp_similarity()
-  print "OK"
-
-if __name__ == "__main__":
-  run()

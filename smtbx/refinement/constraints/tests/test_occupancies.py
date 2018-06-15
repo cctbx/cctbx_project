@@ -1,10 +1,10 @@
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
 import os
 import smtbx.refinement
 from libtbx.test_utils import approx_equal
 
-def exercise_simple_disorder():
+def test_simple_disorder():
   working_dir = os.path.dirname(__file__)
   ins = os.path.join(working_dir, 'thpp.res')
   model = smtbx.refinement.model.from_shelx(ins)
@@ -75,10 +75,3 @@ digraph dependencies {
                       covann.variance_of('C7A.occ'))
   assert approx_equal(covann.variance_of('C3.occ'),
                       covann.variance_of('N3.occ'))
-
-def run():
-  exercise_simple_disorder()
-  print "OK"
-
-if __name__ == '__main__':
-  run()
