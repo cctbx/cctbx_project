@@ -192,9 +192,9 @@ namespace ccp4_map {
     CMap_io::ccp4_cmap_set_spacegroup(mfile.get(), space_group_number);
     int grid[3];
     //std::copy(n_real.begin(), n_real.end(), grid);
-    grid[0]=unit_cell_grid[0]; 
-    grid[1]=unit_cell_grid[1]; 
-    grid[2]=unit_cell_grid[2]; 
+    grid[0]=unit_cell_grid[0];
+    grid[1]=unit_cell_grid[1];
+    grid[2]=unit_cell_grid[2];
     CMap_io::ccp4_cmap_set_grid(mfile.get(), grid);
     int order[3] = {3, 2, 1};
     CMap_io::ccp4_cmap_set_order(mfile.get(), order);
