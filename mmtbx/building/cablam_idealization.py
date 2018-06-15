@@ -63,6 +63,9 @@ class cablam_idealization(object):
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi-model files are not supported")
 
+    self.model.search_for_ncs()
+    print >> self.log, self.model.get_ncs_obj().show_phil_format()
+
     self.outliers_by_chain = self.identify_outliers()
 
     # idealization
@@ -93,7 +96,7 @@ class cablam_idealization(object):
       self.cablam_fixed_minimized = self._minimize()
 
   def _get_ca_atom(self, chainid, resid):
-    for chain in self.model.get_hierarchy().only_model().chains():
+    for chain in self.model.get_master_hierarchy().only_model().chains():
       if chain.id.strip() == chainid.strip():
         for rg in chain.residue_groups():
           if rg.resid() == resid:
@@ -167,7 +170,7 @@ class cablam_idealization(object):
     O_atom = None
     N_atom = None
     C_atom = None
-    for c in model.get_hierarchy().only_model().chains():
+    for c in model.get_master_hierarchy().only_model().chains():
       if c.id.strip() == chain.strip():
         for atom in c.atoms():
           if atom.name.strip() == "CA" and atom.parent().parent().resid() == prevresid:
@@ -189,7 +192,7 @@ class cablam_idealization(object):
             elif atom.name.strip() == "C":
               C_atom = atom
 
-        model.set_sites_cart_from_hierarchy()
+        model.set_sites_cart_from_hierarchy(multiply_ncs=True)
 
         return O_atom, N_atom, C_atom
 
@@ -226,7 +229,7 @@ class cablam_idealization(object):
         planarity                      = True,
         parallelity                    = True,
         log = null_out())
-    m1.set_sites_cart_from_hierarchy()
+    m1.set_sites_cart_from_hierarchy(multiply_ncs=True)
     return m1
 
   def _score_conformation(self, O_atom, C_atom, N_atom, chain_around, angle):
@@ -287,7 +290,7 @@ class cablam_idealization(object):
 
   def identify_outliers(self):
     cab_results = cablamalyze(
-        pdb_hierarchy=self.model.get_hierarchy(),
+        pdb_hierarchy=self.model.get_master_hierarchy(),
         outliers_only=True,
         out=null_out(),
         quiet=True,
