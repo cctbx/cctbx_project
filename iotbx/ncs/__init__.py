@@ -12,6 +12,7 @@ from scitbx import matrix
 import sys
 from iotbx.pdb.utils import all_chain_ids
 from time import time
+from StringIO import StringIO
 
 ncs_search_options = """\
 ncs_search
@@ -667,7 +668,6 @@ class input(object):
       header (bool): When True, include header
       group_prefix (str): prefix for the group only
     """
-
     str_out = []
     if header:
       msg = '\n{}NCS phil parameters:'
@@ -691,18 +691,9 @@ class input(object):
       prefix (str): a string to be added, padding the output, at the left of
         each line
     """
-    list_of_values = [
-      'chain_max_rmsd',
-      'residue_match_radius',
-      'chain_similarity_threshold']
-    str_out = ['\n{}NCS search parameters:'.format(prefix),'-'*51]
-    str_line = prefix + '{:<35s}:   {}'
-    for val in list_of_values:
-      s = str_line.format(val, self.__getattribute__(val))
-      str_out.append(s)
-    str_out.append('. '*26)
-    str_out = '\n'.join(str_out)
-    return str_out
+    strio = StringIO()
+    ncs_group_master_phil.format(self.params).show(out=strio)
+    return strio.getvalue()
 
   def show_chains_info(self,prefix=''):
     """
