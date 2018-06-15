@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from cctbx.development import random_structure
 from cctbx import crystal, xray
 from cctbx.array_family import flex
@@ -74,12 +76,12 @@ class test_case(object):
       cls.exercises = [ ex for foo, ex in dsu ]
 
   def run(cls, verbose=False, *args, **kwds):
-    if verbose: print cls.__name__
+    if verbose: print(cls.__name__)
     for exercise in cls.exercises:
-      if verbose: print "\t%s ... " % exercise.__name__,
+      if verbose: print("\t%s ... " % exercise.__name__, end=' ')
       o = cls(*args, **kwds)
       exercise(o)
-      if verbose: print "OK"
+      if verbose: print("OK")
   run = classmethod(run)
 
 def generate_hydrogen_constraints(structure, connectivity_table):

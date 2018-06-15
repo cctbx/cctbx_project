@@ -1,6 +1,8 @@
 # LIBTBX_SET_DISPATCHER_NAME smtbx.masks
 
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from cctbx import miller, sgtbx, uctbx, xray
 from iotbx import reflection_file_utils, reflection_file_reader
@@ -32,12 +34,12 @@ def exercise_masks(xs, fo_sq,
   if resolution_cutoff is not None:
     fo_sq_merged = fo_sq_merged.resolution_filter(d_min=resolution_cutoff)
   if verbose:
-    print "Merging summary:"
-    print "R-int, R-sigma: %.4f, %.4f" %(merging.r_int(), merging.r_sigma())
+    print("Merging summary:")
+    print("R-int, R-sigma: %.4f, %.4f" %(merging.r_int(), merging.r_sigma()))
     merging.show_summary()
-    print
+    print()
     fo_sq_merged.show_comprehensive_summary()
-    print
+    print()
   mask = masks.mask(xs, fo_sq_merged)
   time_compute_mask = time_log("compute mask").start()
   mask.compute(solvent_radius=solvent_radius,
@@ -61,11 +63,11 @@ def exercise_masks(xs, fo_sq,
   out_file.close()
 
   if verbose:
-    print
-    print time_log.legend
-    print time_compute_mask.report()
-    print time_structure_factors.report()
-    print time_total.log()
+    print()
+    print(time_log.legend)
+    print(time_compute_mask.report())
+    print(time_structure_factors.report())
+    print(time_total.log())
 
   if debug:
     f_obs = fo_sq_merged.as_amplitude_array()
@@ -176,7 +178,7 @@ def run(args):
   elif ext == '.cif':
     xs = xray.structure.from_cif(filename=structure_file)
   else:
-    print "%s: unsupported structure file format {shelx|cif}" %ext
+    print("%s: unsupported structure file format {shelx|cif}" %ext)
     return
   reflections_server = reflection_file_utils.reflection_file_server(
     crystal_symmetry = xs.crystal_symmetry(),
@@ -191,14 +193,14 @@ def run(args):
     fo_sq = fo_sq.change_basis(cb_op).customized_copy(
       crystal_symmetry=xs)
 
-  print "structure file: %s" %command_line.args[0]
-  print "reflection file: %s" %command_line.args[1]
+  print("structure file: %s" %command_line.args[0])
+  print("reflection file: %s" %command_line.args[1])
   if command_line.options.debug:
-    print "debug: %s" %command_line.options.debug
-  print
+    print("debug: %s" %command_line.options.debug)
+  print()
 
   xs.show_summary()
-  print
+  print()
 
   d_min = command_line.options.d_min
   two_theta_max = command_line.options.two_theta_max
@@ -216,7 +218,7 @@ def run(args):
     use_space_group_symmetry=command_line.options.use_space_group_symmetry,
     debug=command_line.options.debug,
     verbose=command_line.options.verbose)
-  print "OK"
+  print("OK")
 
 if __name__ == '__main__':
   import sys
