@@ -153,6 +153,74 @@ namespace ccp4_map {
   };
 
     void
+  write_ccp4_map_set_grid(
+    std::string const& file_name,
+    cctbx::uctbx::unit_cell const& unit_cell,
+    cctbx::sgtbx::space_group const& space_group,
+    af::int3 const& unit_cell_grid,
+    af::const_ref<double, af::flex_grid<> > const& map_data,
+    af::const_ref<std::string> const& labels)
+  {
+    IOTBX_ASSERT(map_data.accessor().nd() == 3);
+    IOTBX_ASSERT(map_data.accessor().all().all_gt(0));
+    IOTBX_ASSERT(!map_data.accessor().is_padded());
+    IOTBX_ASSERT(labels.size() <= 10);
+    boost::shared_ptr<CMap_io::CMMFile> mfile(
+      static_cast<CMap_io::CMMFile*>(
+        CMap_io::ccp4_cmap_open(file_name.c_str(), O_WRONLY)),
+      cmap_close_ptr_deleter);
+    if (mfile.get() == 0) {
+      throw std::runtime_error(
+        "iotbx.ccp4_map: error opening file for writing: \""
+        + file_name + "\"");
+    }
+    CMap_io::ccp4_cmap_set_datamode(mfile.get(), CCP4_FLOAT32);
+    for (int i = 0; i < labels.size(); i++) {
+      CMap_io::ccp4_cmap_set_label(mfile.get(), labels[i].c_str(), i);
+    }
+    // symmetry
+    af::double6 const& unit_cell_parameters = unit_cell.parameters();
+    float cell_float[6];
+    for(unsigned i=0;i<6;i++) {
+      cell_float[i] = static_cast<float>(unit_cell_parameters[i]);
+    }
+    af::const_ref<double, af::c_grid<3> > data_ref(
+      map_data.begin(),
+      af::c_grid<3>(af::adapt(map_data.accessor().all())));
+    CMap_io::ccp4_cmap_set_cell(mfile.get(), cell_float);
+    int space_group_number = space_group.type().number();
+    CMap_io::ccp4_cmap_set_spacegroup(mfile.get(), space_group_number);
+    int grid[3];
+    //std::copy(n_real.begin(), n_real.end(), grid);
+    grid[0]=unit_cell_grid[0]; 
+    grid[1]=unit_cell_grid[1]; 
+    grid[2]=unit_cell_grid[2]; 
+    CMap_io::ccp4_cmap_set_grid(mfile.get(), grid);
+    int order[3] = {3, 2, 1};
+    CMap_io::ccp4_cmap_set_order(mfile.get(), order);
+    int dim[3];
+    dim[0] = map_data.accessor().focus()[2] - map_data.accessor().origin()[2];
+    dim[1] = map_data.accessor().focus()[1] - map_data.accessor().origin()[1];
+    dim[2] = map_data.accessor().focus()[0] - map_data.accessor().origin()[0];
+    CMap_io::ccp4_cmap_set_dim(mfile.get(), dim);
+    int origin[3];
+    origin[0] = map_data.accessor().origin()[2];
+    origin[1] = map_data.accessor().origin()[1];
+    origin[2] = map_data.accessor().origin()[0];
+    CMap_io::ccp4_cmap_set_origin(mfile.get(), origin);
+    unsigned section_size = (dim[0]) * (dim[1]);
+    boost::scoped_array<float> section(new float [section_size]);
+    for (int i = 0; i < data_ref.accessor()[0]; i++) {
+      unsigned index = 0;
+      for (int j = 0; j < data_ref.accessor()[1]; j++) {
+        for (int k = 0; k < data_ref.accessor()[2]; k++) {
+          section[index++] = static_cast<float>(data_ref(i,j,k));
+        }
+      }
+      CMap_io::ccp4_cmap_write_section(mfile.get(), section.get());
+    }
+  }
+    void
   write_ccp4_map_box(
     std::string const& file_name,
     cctbx::uctbx::unit_cell const& unit_cell,
@@ -291,6 +359,13 @@ namespace ccp4_map {
         arg("space_group"),
         arg("gridding_first"),
         arg("gridding_last"),
+        arg("map_data"),
+        arg("labels")));
+    def("write_ccp4_map", write_ccp4_map_set_grid, (
+        arg("file_name"),
+        arg("unit_cell"),
+        arg("space_group"),
+        arg("unit_cell_grid"),
         arg("map_data"),
         arg("labels")));
     def("write_ccp4_map", write_ccp4_map_box, (
