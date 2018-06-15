@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import warnings
 
@@ -221,13 +223,13 @@ class c_oh_test_case(object):
       jac_o = differentiate(self.o)
       jac_1 = differentiate(self.c1)
       jac_2 = differentiate(self.c2)
-      print "staggered: %s" % self.staggered
-      print "J_o:"
-      print jac_o.mathematica_form()
-      print "J_1:"
-      print jac_1.mathematica_form()
-      print "J_2:"
-      print jac_2.mathematica_form()
+      print("staggered: %s" % self.staggered)
+      print("J_o:")
+      print(jac_o.mathematica_form())
+      print("J_1:")
+      print(jac_1.mathematica_form())
+      print("J_2:")
+      print(jac_2.mathematica_form())
 
 def exercise_symmetry_equivalent():
   xs = xray.structure(

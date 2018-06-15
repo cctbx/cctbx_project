@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 import scitbx.sparse # import dependency
 
 import boost.python
@@ -47,73 +49,73 @@ class manager(object):
         by_value="residual", unit_cell=unit_cell,
         sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.angle_proxies is not None):
       self.angle_proxies.show_sorted(
         by_value="residual",
         unit_cell=unit_cell, sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.dihedral_proxies is not None):
       self.dihedral_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
         unit_cell=unit_cell, f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.chirality_proxies is not None):
       self.chirality_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.planarity_proxies is not None):
       self.planarity_proxies.show_sorted(
         by_value="residual",
         unit_cell=unit_cell, sites_cart=sites_cart, site_labels=site_labels,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.bond_similarity_proxies is not None):
       self.bond_similarity_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
         unit_cell=unit_cell, f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.adp_similarity_proxies is not None):
       self.adp_similarity_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.adp_u_eq_similarity_proxies is not None):
       self.adp_u_eq_similarity_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.adp_volume_similarity_proxies is not None):
       self.adp_volume_similarity_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.rigid_bond_proxies is not None):
       self.rigid_bond_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels, u_cart=u_cart,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.isotropic_adp_proxies is not None):
       self.isotropic_adp_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
     if (self.fixed_u_eq_adp_proxies is not None):
       self.fixed_u_eq_adp_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
         u_cart=u_cart, u_iso=u_iso, use_u_aniso=use_u_aniso,
         f=f, prefix=prefix, max_items=max_items)
-      print >> f
+      print(file=f)
 
   def add_to_cif_block(self, cif_block, xray_structure):
     import iotbx.cif.restraints

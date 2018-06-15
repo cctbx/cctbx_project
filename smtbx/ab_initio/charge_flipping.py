@@ -34,6 +34,8 @@ Cryst. A64:123-134, 2008
 """
 
 from __future__ import division, generators
+from __future__ import print_function
+from __future__ import absolute_import
 
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
@@ -559,50 +561,49 @@ def loop(solving, verbose=True, out=sys.stdout):
       # Guessing a value of delta leading to subsequent good convergence
       if verbose:
         if previous_state is solving.solving:
-          print >> out, "** Restarting (no phase transition) **"
+          print("** Restarting (no phase transition) **", file=out)
         elif previous_state is solving.evaluating:
-          print >> out, "** Restarting (no sharp correlation map) **"
+          print("** Restarting (no sharp correlation map) **", file=out)
       if verbose == "highly":
         if previous_state is not solving.guessing_delta:
-          print >> out, "Guessing delta..."
-          print >> out, ("%10s | %10s | %10s | %10s | %10s | %10s | %10s"
+          print("Guessing delta...", file=out)
+          print(("%10s | %10s | %10s | %10s | %10s | %10s | %10s"
                             % ('delta', 'delta/sig', 'R', 'F000',
-                               'c_tot', 'c_flip', 'c_tot/c_flip'))
-          print >> out, "-"*90
+                               'c_tot', 'c_flip', 'c_tot/c_flip')), file=out)
+          print("-"*90, file=out)
         rho = flipping.rho_map
         c_tot = rho.c_tot()
         c_flip = rho.c_flip(flipping.delta)
         # to compare with superflip output
         c_tot *= flipping.fft_scale; c_flip *= flipping.fft_scale
-        print >> out, \
-              "%10.4f | %10.4f | %10.3f | %10.3f | %10.1f | %10.1f | %10.2f"\
+        print("%10.4f | %10.4f | %10.3f | %10.3f | %10.1f | %10.1f | %10.2f"\
               % (flipping.delta, flipping.delta/rho.sigma(),
                  flipping.r1_factor(), flipping.f_000,
-                 c_tot, c_flip, c_tot/c_flip)
+                 c_tot, c_flip, c_tot/c_flip), file=out)
 
     elif solving.state is solving.solving:
       # main charge flipping loop to solve the structure
       if verbose=="highly":
         if previous_state is not solving.solving:
-          print >> out
-          print >> out, "Solving..."
-          print >> out, "with delta=%.4f" % flipping.delta
-          print >> out
-          print >> out, "%5s | %10s | %10s" % ('#', 'F000', 'skewness')
-          print >> out, '-'*33
-        print >> out, "%5i | %10.1f | %10.3f" % (
+          print(file=out)
+          print("Solving...", file=out)
+          print("with delta=%.4f" % flipping.delta, file=out)
+          print(file=out)
+          print("%5s | %10s | %10s" % ('#', 'F000', 'skewness'), file=out)
+          print('-'*33, file=out)
+        print("%5i | %10.1f | %10.3f" % (
           solving.iteration_index,
           flipping.f_000,
-          flipping.rho_map.skewness())
+          flipping.rho_map.skewness()), file=out)
 
     elif solving.state is solving.polishing:
       if verbose == 'highly':
-        print >> out
-        print >> out, "Polishing"
+        print(file=out)
+        print("Polishing", file=out)
     elif solving.state is solving.finished:
       if solving.max_attempts_exceeded:
-        print >> out
-        print >> out, "** Maximum number of attempts exceeded: it won't solve!"
+        print(file=out)
+        print("** Maximum number of attempts exceeded: it won't solve!", file=out)
       break
     previous_state = solving.state
 

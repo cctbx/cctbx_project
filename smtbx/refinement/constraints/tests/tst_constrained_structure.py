@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
@@ -51,7 +53,7 @@ class test_case(object):
                   == [expected_pivot]), sc.label
         except KeyError:
           if not warned_once:
-            print "Warning: incomplete test coverage for H constraint types"
+            print("Warning: incomplete test coverage for H constraint types")
             warned_once = True
             continue
     self.check_reparametrisation_construction_more()
@@ -64,7 +66,7 @@ class test_case(object):
       assert (tuple(self.reparametrisation.mapping_to_grad_fc)
               == self.expected_mapping_to_grad_fc)
     else:
-      print "No mapping to grad Fc test"
+      print("No mapping to grad Fc test")
 
 
   def check_refinement_stability(self):
@@ -124,7 +126,7 @@ class test_case(object):
     display(xray_structure=self.xray_structure)
 
   def run(self):
-    print "[ %s ]" % self.__class__.__name__
+    print("[ %s ]" % self.__class__.__name__)
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
     for sc in self.xray_structure.scatterers():

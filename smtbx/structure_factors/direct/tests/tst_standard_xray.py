@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 from cctbx.array_family import flex
 from cctbx import sgtbx, xray, crystal, miller, eltbx
@@ -182,12 +184,12 @@ class custom_vs_std_test_case(test_case):
     stats = median_statistics(deltas)
     if verbose:
       if not self.has_printed_header:
-        print "f_calc and sin/cos: |tabulated - std|/|std|"
-        print "median & median absolute deviation"
+        print("f_calc and sin/cos: |tabulated - std|/|std|")
+        print("median & median absolute deviation")
         self.has_printed_header = True
-      print "%s: %.12g +/- %.12g" % (xs.space_group_info().type().hall_symbol(),
+      print("%s: %.12g +/- %.12g" % (xs.space_group_info().type().hall_symbol(),
                                      stats.median,
-                                     stats.median_absolute_deviation)
+                                     stats.median_absolute_deviation))
     assert stats.median < 0.01, (str(xs.space_group_info()), stats.median)
     assert stats.median_absolute_deviation < 0.005, (
       str(xs.space_group_info()), stats.median_absolute_deviation)

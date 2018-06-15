@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 from libtbx import object_oriented_patterns as oop
 from scitbx.linalg import eigensystem, svd
 from scitbx import matrix
@@ -27,12 +28,12 @@ class refinement_test(object):
     if self.ls_cycle_repeats == 1:
       self.do_run()
     else:
-      print "%s in %s" % (self.purpose, self.hall)
+      print("%s in %s" % (self.purpose, self.hall))
       for n in xrange(self.ls_cycle_repeats):
         self.do_run()
-        print '.',
+        print('.', end=' ')
         sys.stdout.flush()
-      print
+      print()
 
 
 class site_refinement_test(refinement_test):
@@ -299,9 +300,9 @@ class adp_refinement_test(refinement_test):
         r'^cctbx::adptbx::debye_waller_factor_exp: \s* arg_limit \s+ exceeded'
         '.* arg \s* = \s* ([\d.eE+-]+)', str(err), re.X)
       assert m is not None, eval
-      print "Warning: refinement of ADP's diverged"
-      print '         argument to debye_waller_factor_exp reached %s' % m.group(1)
-      print 'Here is the failing structure'
+      print("Warning: refinement of ADP's diverged")
+      print('         argument to debye_waller_factor_exp reached %s' % m.group(1))
+      print('Here is the failing structure')
       xs.show_summary()
       xs.show_scatterers()
       raise self.refinement_diverged()
@@ -557,7 +558,7 @@ def exercise_normal_equations():
         klass().run()
         break
       except adp_refinement_test.refinement_diverged:
-        print "Warning: ADP refinement diverged, retrying..."
+        print("Warning: ADP refinement diverged, retrying...")
     else:
       print ("Error: ADP refinement diverged four times in a row (%s)"
              % klass.__name__)
@@ -624,11 +625,11 @@ class special_positions_test(object):
 
   def run(self):
     if self.n_runs > 1:
-      print 'small inorganic refinement with many special positions'
+      print('small inorganic refinement with many special positions')
       for i in xrange(self.n_runs):
-        print '.',
+        print('.', end=' ')
         self.exercise()
-      print
+      print()
     else:
       self.exercise()
 
@@ -717,7 +718,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   msg = "light elements in %s ..." % (
     xs0.space_group_info().type().hall_symbol())
   if verbose:
-    print msg,
+    print(msg, end=' ')
   fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
   fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
   xs = xs0.deep_copy_scatterers()
@@ -740,7 +741,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   # assert the restrained L.S. problem is not too ill-conditionned
   cond = math.log10(lambdas[0]/lambdas[-1])
   if verbose:
-    print "normal matrix condition: %.1f" % cond
+    print("normal matrix condition: %.1f" % cond)
   assert cond < worst_condition_number_acceptable, msg
 
   # one heavy element
@@ -751,7 +752,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   msg = "one heavy element + light elements (synthetic data) in %s ..." % (
     xs0.space_group_info().type().hall_symbol())
   if verbose:
-    print msg,
+    print(msg, end=' ')
   fo_sq = xs0.structure_factors(d_min=0.8).f_calc().norm()
   fo_sq = fo_sq.customized_copy(sigmas=flex.double(fo_sq.size(), 1.))
   xs = xs0.deep_copy_scatterers()
@@ -774,7 +775,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
   # assert the restrained L.S. problem is not too ill-conditionned
   cond = math.log10(lambdas[0]/lambdas[-1])
   if verbose:
-    print "normal matrix condition: %.1f" % cond
+    print("normal matrix condition: %.1f" % cond)
   assert cond < worst_condition_number_acceptable, msg
 
   # are esd's for x,y,z coordinates of the same order of magnitude?
@@ -1115,7 +1116,7 @@ def exercise_floating_origin_dynamic_weighting(verbose=False):
     cond = math.log10(lambdas[0]/lambdas[-1])
     msg = ("one heavy element + light elements (real data) %s Hydrogens: %.1f"
            % (['without', 'with'][hydrogen_flag], cond))
-    if verbose: print msg
+    if verbose: print(msg)
     assert cond < worst_condition_number_acceptable, msg
 
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
 from smtbx import development, utils

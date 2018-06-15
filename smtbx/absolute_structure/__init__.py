@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 
 import math
 import sys
@@ -179,20 +181,20 @@ class hooft_analysis(object):
       else: return "%.3e" %p_value
 
     if out is None: out=sys.stdout
-    print >> out, "Bijvoet pair analysis using %s distribution" %self.distribution
-    print >> out, "Bijvoet pairs (all): %i" %self.n_bijvoet_pairs
-    print >> out, "Bijvoet pairs (used): %i" %self.delta_fo2.size()
-    print >> out, "Bijvoet pairs coverage: %.2f" %(
+    print("Bijvoet pair analysis using %s distribution" %self.distribution, file=out)
+    print("Bijvoet pairs (all): %i" %self.n_bijvoet_pairs, file=out)
+    print("Bijvoet pairs (used): %i" %self.delta_fo2.size(), file=out)
+    print("Bijvoet pairs coverage: %.2f" %(
       self.n_bijvoet_pairs/self.delta_fo2.customized_copy(
-        anomalous_flag=True).complete_set().n_bijvoet_pairs())
-    print >> out, "G: %s" %format_float_with_su(self.G, self.sigma_G)
-    print >> out,  "P2(true): %s" %format_p(self.p2_true)
-    print >> out,  "P2(false): %s" %format_p(self.p2_false)
-    print >> out,  "P3(true): %s" %format_p(self.p3_true)
-    print >> out,  "P3(false): %s" %format_p(self.p3_false)
-    print >> out,  "P3(racemic twin): %s" %format_p(self.p3_racemic_twin)
-    print >> out, "Hooft y: %s" %format_float_with_su(
-      self.hooft_y, self.sigma_y)
+        anomalous_flag=True).complete_set().n_bijvoet_pairs()), file=out)
+    print("G: %s" %format_float_with_su(self.G, self.sigma_G), file=out)
+    print("P2(true): %s" %format_p(self.p2_true), file=out)
+    print("P2(false): %s" %format_p(self.p2_false), file=out)
+    print("P3(true): %s" %format_p(self.p3_true), file=out)
+    print("P3(false): %s" %format_p(self.p3_false), file=out)
+    print("P3(racemic twin): %s" %format_p(self.p3_racemic_twin), file=out)
+    print("Hooft y: %s" %format_float_with_su(
+      self.hooft_y, self.sigma_y), file=out)
 
 
 class bijvoet_differences_probability_plot(object):
@@ -238,9 +240,9 @@ class bijvoet_differences_probability_plot(object):
 
   def show(self, out=None):
     if out is None: out=sys.stdout
-    print >> out, "y_intercept: %.3f" %self.fit.y_intercept()
-    print >> out, "slope: %.3f" %self.fit.slope()
-    print >> out, "correlation coefficient: %.4f" %self.correlation.coefficient()
+    print("y_intercept: %.3f" %self.fit.y_intercept(), file=out)
+    print("slope: %.3f" %self.fit.slope(), file=out)
+    print("correlation coefficient: %.4f" %self.correlation.coefficient(), file=out)
 
 
 def maximise_students_t_correlation_coefficient(observed_deviations,
@@ -342,4 +344,4 @@ class flack_analysis(object):
 
   def show(self, out=None):
     if out is None: out = sys.stdout
-    print >> out, "Flack x: %s" %format_float_with_su(self.flack_x, self.sigma_x)
+    print("Flack x: %s" %format_float_with_su(self.flack_x, self.sigma_x), file=out)

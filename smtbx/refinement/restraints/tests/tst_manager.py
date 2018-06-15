@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 from libtbx.test_utils import show_diff
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints
@@ -130,7 +131,7 @@ scatterer O3
 ... (remaining 21 not shown)
 
 """)
-  if (0 or verbose): print sio.getvalue()
+  if (0 or verbose): print(sio.getvalue())
 
 def run(verbose=0):
   exercise_manager(verbose=verbose)
