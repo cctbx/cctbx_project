@@ -189,7 +189,7 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Keep origin
 
   output_unit_cell = None
-     .type = ints 
+     .type = ints
      .help = You can specify the unit cell for your map. This should normally\
              not be necessary. It can be used to fix a map that has the \
              wrong unit cell.
@@ -197,11 +197,11 @@ master_phil = libtbx.phil.parse("""
      .expert_level = 3
 
   output_unit_cell_grid = None
-    .type = ints 
+    .type = ints
     .help = You can specify the grid corresponding to the output unit cell. \
               This can be used to specify the full grid for the unit cell. \
               if output_unit_cell is not specified, new unit cell parameters\
-              will be generated to maintain the grid spacing. 
+              will be generated to maintain the grid spacing.
     .short_caption = Output unit cell grid
     .expert_level = 3
 
@@ -292,7 +292,7 @@ Parameters:"""%h
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.keep_origin) and (not params.keep_map_size)):
     raise Sorry("To write mtz coefficients please set "+\
-      "keep_origin=False or keep_map_size=True") 
+      "keep_origin=False or keep_map_size=True")
 
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
@@ -505,7 +505,7 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if (inputs and  # XXXZZZ fix or remove this
+  if (inputs and  # XXX fix or remove this
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
@@ -552,12 +552,12 @@ Parameters:"""%h
   #  output_box.ncs_object is shifted back by -new shift_cart
 
   # Additional note on output unit_cell and grid_units.
-  # The ccp4-style output map can specify the unit cell and grid units 
+  # The ccp4-style output map can specify the unit cell and grid units
   #  corresponding to that cell.  This can be separate from the origin and
   #  number of grid points in the map as written.  If specified, write these
   #  out to the output ccp4 map and also use this unit cell for writing
   #  any output PDB files
- 
+
   from copy import deepcopy
   output_box=deepcopy(box)  # won't use box below here except to return it
 
@@ -637,7 +637,7 @@ Parameters:"""%h
     output_crystal_symmetry=None
 
   # =============  Check/set output unit cell grid and cell parameters =======
-  if params.output_unit_cell_grid or output_crystal_symmetry: 
+  if params.output_unit_cell_grid or output_crystal_symmetry:
     if params.output_unit_cell_grid:
       output_unit_cell_grid=params.output_unit_cell_grid
     else:
@@ -754,7 +754,7 @@ Parameters:"""%h
      else:
        d_min = maptbx.d_min_from_map(map_data=output_box.map_box,
          unit_cell=output_box.xray_structure_box.unit_cell())
-     output_box.map_coefficients(d_min=d_min, # ZZZXXX TODO 
+     output_box.map_coefficients(d_min=d_min,
        resolution_factor=params.resolution_factor, file_name=file_name,
        shift_back=shift_back)
 
