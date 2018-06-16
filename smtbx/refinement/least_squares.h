@@ -21,22 +21,21 @@ namespace smtbx { namespace refinement { namespace least_squares {
   namespace lstbx = scitbx::lstbx;
 
   /** \brief Build normal equations for the given data, model, weighting
-       and constraints. Optionally builds the design matrix.
+       and constraints.
 
       The constraints is performed with a reparametrisation whose Jacobian
       transpose is passed as an argument.
    */
-  template <typename FloatType, bool build_design_matrix>
-  struct build_design_matrix_and_normal_equations
+  template <typename FloatType>
+  struct build_normal_equations
   {
-    typedef af::versa<FloatType, af::c_grid<2> > matrix_t;
     //! Default constructor. Some data members are not initialized!
-    build_design_matrix_and_normal_equations() {}
+    build_normal_equations() {}
 
     template <class NormalEquations,
               template<typename> class WeightingScheme,
               class OneMillerIndexFcalc>
-    build_design_matrix_and_normal_equations(
+    build_normal_equations(
       NormalEquations &normal_equations,
       cctbx::xray::observations<FloatType> const &reflections,
       af::const_ref<std::complex<FloatType> > const &f_mask,
@@ -46,14 +45,11 @@ namespace smtbx { namespace refinement { namespace least_squares {
       scitbx::sparse::matrix<FloatType> const
         &jacobian_transpose_matching_grad_fc,
       cctbx::xray::extinction_correction<FloatType> const &exti,
-      bool objective_only)
+      bool objective_only=false)
     :
       f_calc_(reflections.size()),
       observables_(reflections.size()),
-      weights_(reflections.size()),
-      design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
-        build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
-
+      weights_(reflections.size())
     {
       // Accumulate equations Fo(h) ~ Fc(h)
       SMTBX_ASSERT(!(reflections.has_twin_components() && f_mask.size()));
@@ -62,9 +58,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       bool compute_grad = !objective_only;
       reflections.update_prime_fraction();
       af::shared<FloatType> gradients;
-      if (compute_grad) {
+      if(compute_grad)
         gradients.resize(jacobian_transpose_matching_grad_fc.n_rows());
-      }
       for (int i_h=0; i_h<reflections.size(); ++i_h) {
         miller::index<> const &h = reflections.index(i_h);
         if (f_mask.size()) {
@@ -103,11 +98,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
           normal_equations.add_equation(observable,
             gradients.ref(), reflections.fo_sq(i_h), weight);
         }
-        if (build_design_matrix) {
-          for (int i_g = 0; i_g < gradients.size(); i_g++) {
-            design_matrix_(i_h, i_g) = gradients[i_g];
-          }
-        }
       }
       normal_equations.finalise(objective_only);
     }
@@ -119,8 +109,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
     af::shared<FloatType> weights() { return weights_; }
 
   protected:
-    matrix_t design_matrix() { return design_matrix_; }
-
     template<class OneMillerIndexFcalc>
     FloatType process_twinning(
       cctbx::xray::observations<FloatType> const &reflections,
@@ -177,88 +165,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
       return obs;
     }
 
-  protected:
+  private:
     af::shared<std::complex<FloatType> > f_calc_;
     af::shared<FloatType> observables_;
     af::shared<FloatType> weights_;
-    matrix_t design_matrix_;
-  };
-
-  /** \brief Build normal equations for the given data, model, weighting
-  and constraints.
-
-  The constraints is performed with a reparametrisation whose Jacobian
-  transpose is passed as an argument.
-  */
-  template <typename FloatType>
-  struct build_normal_equations
-    : public build_design_matrix_and_normal_equations<FloatType, false>
-  {
-    //! Default constructor. Some data members are not initialized!
-    build_normal_equations()
-      :
-      build_design_matrix_and_normal_equations()
-    {}
-
-    template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
-    build_normal_equations(
-      NormalEquations &normal_equations,
-      cctbx::xray::observations<FloatType> const &reflections,
-      af::const_ref<std::complex<FloatType> > const &f_mask,
-      WeightingScheme<FloatType> const &weighting_scheme,
-      boost::optional<FloatType> scale_factor,
-      OneMillerIndexFcalc &f_calc_function,
-      scitbx::sparse::matrix<FloatType> const
-        &jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const &exti,
-      bool objective_only = false)
-      :
-      build_design_matrix_and_normal_equations(normal_equations,
-        reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
-        objective_only)
-    {}
-  };
-
-  /** \brief Build normal equations for the given data, model, weighting
-  and constraints and the buld the design matrix
-
-  The constraints is performed with a reparametrisation whose Jacobian
-  transpose is passed as an argument.
-  */
-  template <typename FloatType>
-  struct build_design_matrix
-    : public build_design_matrix_and_normal_equations<FloatType, true>
-  {
-    //! Default constructor. Some data members are not initialized!
-    build_design_matrix()
-      :
-      build_design_matrix_and_normal_equations()
-    {}
-
-    template <class NormalEquations,
-      template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc>
-    build_design_matrix(
-      NormalEquations &normal_equations,
-      cctbx::xray::observations<FloatType> const &reflections,
-      af::const_ref<std::complex<FloatType> > const &f_mask,
-      WeightingScheme<FloatType> const &weighting_scheme,
-      boost::optional<FloatType> scale_factor,
-      OneMillerIndexFcalc &f_calc_function,
-      scitbx::sparse::matrix<FloatType> const
-      &jacobian_transpose_matching_grad_fc,
-      cctbx::xray::extinction_correction<FloatType> const &exti,
-      bool objective_only = false)
-      :
-      build_design_matrix_and_normal_equations(normal_equations,
-        reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
-        jacobian_transpose_matching_grad_fc, exti,
-        objective_only)
-    {}
-    matrix_t design_matrix() { return design_matrix_; }
   };
 
   template <typename FloatType>
