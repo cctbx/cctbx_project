@@ -197,7 +197,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     //! Default constructor. Some data members are not initialized!
     build_normal_equations()
       :
-      build_design_matrix_and_normal_equations<FloatType, false>()
+      build_design_matrix_and_normal_equations()
     {}
 
     template <class NormalEquations,
@@ -215,8 +215,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       cctbx::xray::extinction_correction<FloatType> const &exti,
       bool objective_only = false)
       :
-      build_design_matrix_and_normal_equations<FloatType, false>(
-        normal_equations,
+      build_design_matrix_and_normal_equations(normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only)
@@ -236,7 +235,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     //! Default constructor. Some data members are not initialized!
     build_design_matrix()
       :
-      build_design_matrix_and_normal_equations<FloatType, true>()
+      build_design_matrix_and_normal_equations()
     {}
 
     template <class NormalEquations,
@@ -254,8 +253,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       cctbx::xray::extinction_correction<FloatType> const &exti,
       bool objective_only = false)
       :
-      build_design_matrix_and_normal_equations<FloatType, true>(
-        normal_equations,
+      build_design_matrix_and_normal_equations(normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
         objective_only)
