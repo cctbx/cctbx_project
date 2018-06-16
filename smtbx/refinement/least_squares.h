@@ -260,11 +260,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         jacobian_transpose_matching_grad_fc, exti,
         objective_only)
     {}
-    build_design_matrix_and_normal_equations<FloatType, true>::matrix_t
-      design_matrix()
-    {
-      return design_matrix_;
-    }
+    matrix_t design_matrix() { return design_matrix_; }
   };
 
   template <typename FloatType>
