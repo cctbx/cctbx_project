@@ -189,8 +189,9 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Keep origin
 
   output_unit_cell = None
-     .type = ints
-     .help = You can specify the unit cell for your map. This should normally\
+     .type = floats
+     .help = You can specify the unit cell for your map with 3 numbers. \
+              This should normally\
              not be necessary. It can be used to fix a map that has the \
              wrong unit cell.
      .short_caption = Output unit cell
@@ -198,7 +199,8 @@ master_phil = libtbx.phil.parse("""
 
   output_unit_cell_grid = None
     .type = ints
-    .help = You can specify the grid corresponding to the output unit cell. \
+    .help = You can specify the grid (3 integers) corresponding to the \
+              output unit cell. \
               This can be used to specify the full grid for the unit cell. \
               if output_unit_cell is not specified, new unit cell parameters\
               will be generated to maintain the grid spacing.
