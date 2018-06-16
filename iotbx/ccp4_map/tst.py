@@ -132,7 +132,7 @@ def exercise_writer () :
     mmm = flex.double(list(real_map)).min_max_mean()
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
     # XXX reader reports min as 0 if it is > 0
-    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min)) 
+    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min))
     assert approx_equal(mmm.max, m.header_max)
     #
 
