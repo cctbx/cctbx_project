@@ -183,9 +183,27 @@ master_phil = libtbx.phil.parse("""
     .help = If True, write out map, map_coefficients, and model \
             with origin in original location.  \
             If false, shifted origin to (0,0,0).  \
-            NOTE: The unit_cell for all output will always be the \
-              map_box unit cell.  Only the origin is kept/shifted.\
+            NOTE: The unit_cell for all output will be the \
+              map_box unit cell unless output_unit_cell is specified. \
+             Only the origin is kept/shifted.\
     .short_caption = Keep origin
+
+  output_unit_cell = None
+     .type = ints 
+     .help = You can specify the unit cell for your map. This should normally\
+             not be necessary. It can be used to fix a map that has the \
+             wrong unit cell.
+     .short_caption = Output unit cell
+     .expert_level = 3
+
+  output_unit_cell_grid = None
+    .type = ints 
+    .help = You can specify the grid corresponding to the output unit cell. \
+              This can be used to specify the full grid for the unit cell. \
+              if output_unit_cell is not specified, new unit cell parameters\
+              will be generated to maintain the grid spacing. 
+    .short_caption = Output unit cell grid
+    .expert_level = 3
 
   output_origin_grid_units = None
     .type = ints
@@ -271,6 +289,10 @@ Parameters:"""%h
     raise Sorry("Please set lower_bounds if you set upper_bounds")
   if (params.extract_unique and not params.resolution):
     raise Sorry("Please set resolution for extract_unique")
+  if (write_output_files) and ("mtz" in params.output_format) and (
+       (params.keep_origin) and (not params.keep_map_size)):
+    raise Sorry("To write mtz coefficients please set "+\
+      "keep_origin=False or keep_map_size=True") 
 
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
@@ -483,7 +505,7 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if (inputs and
+  if (inputs and  # XXXZZZ fix or remove this
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (
@@ -529,6 +551,13 @@ Parameters:"""%h
   #  box.ncs_object is shifted by shift_cart
   #  output_box.ncs_object is shifted back by -new shift_cart
 
+  # Additional note on output unit_cell and grid_units.
+  # The ccp4-style output map can specify the unit cell and grid units 
+  #  corresponding to that cell.  This can be separate from the origin and
+  #  number of grid points in the map as written.  If specified, write these
+  #  out to the output ccp4 map and also use this unit cell for writing
+  #  any output PDB files
+ 
   from copy import deepcopy
   output_box=deepcopy(box)  # won't use box below here except to return it
 
@@ -596,6 +625,73 @@ Parameters:"""%h
     shift_back=False
 
 
+  if params.output_unit_cell: # Set output unit cell parameters
+    from cctbx import crystal
+    output_crystal_symmetry=crystal.symmetry(
+      unit_cell=params.output_unit_cell, space_group="P1")
+    output_unit_cell=output_crystal_symmetry.unit_cell()
+    print >>log,\
+       "Output unit cell set to: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %tuple(
+        output_crystal_symmetry.unit_cell().parameters())
+  else:
+    output_crystal_symmetry=None
+
+  # =============  Check/set output unit cell grid and cell parameters =======
+  if params.output_unit_cell_grid or output_crystal_symmetry: 
+    if params.output_unit_cell_grid:
+      output_unit_cell_grid=params.output_unit_cell_grid
+    else:
+      output_unit_cell_grid=output_box.map_box.all()
+    print >>log,\
+       "Output unit cell grid set to: (%s, %s, %s)" %tuple(
+        output_unit_cell_grid)
+
+    expected_output_abc=[]
+    box_spacing=[]
+    output_spacing=[]
+    box_abc=output_box.xray_structure_box.\
+         crystal_symmetry().unit_cell().parameters()[:3]
+    if output_crystal_symmetry:
+      output_abc=output_crystal_symmetry.unit_cell().parameters()[:3]
+    else:
+      output_abc=[None,None,None]
+    for a_box,a_output,n_box,n_output in zip(
+        box_abc,
+        output_abc,
+        output_box.map_box.all(),
+        output_unit_cell_grid):
+      expected_output_abc.append(a_box*n_output/n_box)
+      box_spacing.append(a_box/n_box)
+      if output_crystal_symmetry:
+        output_spacing.append(a_output/n_output)
+      else:
+        output_spacing.append(a_box/n_box)
+
+    if output_crystal_symmetry: # make sure it is compatible...
+      r0=expected_output_abc[0]/output_abc[0]
+      r1=expected_output_abc[1]/output_abc[1]
+      r2=expected_output_abc[2]/output_abc[2]
+      from libtbx.test_utils import approx_equal
+      if not approx_equal(r0,r1,eps=0.001) or not approx_equal(r0,r2,eps=0.001):
+        print >>log,"WARNING: output_unit_cell and cell_grid will "+\
+          "change ratio of grid spacing.\nOld spacings: "+\
+         "(%.2f, %.2f, %.2f) A " %(tuple(box_spacing))+\
+        "\nNew spacings:  (%.2f, %.2f, %.2f) A \n" %(tuple(output_spacing))
+    else:
+      output_abc=expected_output_abc
+
+    from cctbx import crystal
+    output_crystal_symmetry=crystal.symmetry(
+          unit_cell=list(output_abc)+[90,90,90], space_group="P1")
+    print >>log, \
+      "Output unit cell will be:  (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)\n"%(
+       tuple(output_crystal_symmetry.unit_cell().parameters()))
+
+  else:
+    output_unit_cell_grid = map_data=output_box.map_box.all()
+    output_crystal_symmetry=output_box.xray_structure_box.crystal_symmetry()
+  # ==========  Done check/set output unit cell grid and cell parameters =====
+
   if write_output_files:
     # Write PDB file
     if ph_box.overall_counts().n_residues>0:
@@ -604,7 +700,7 @@ Parameters:"""%h
         file_name = "%s_box.pdb"%output_prefix
       else: file_name = "%s.pdb"%params.output_file_name_prefix
       ph_output_box_output_location.write_pdb_file(file_name=file_name,
-          crystal_symmetry = output_box.xray_structure_box.crystal_symmetry())
+          crystal_symmetry = output_crystal_symmetry)
       print >> log, "Writing boxed PDB with box unit cell to %s" %(
           file_name)
 
@@ -625,8 +721,9 @@ Parameters:"""%h
        file_name = "%s_box.ccp4"%output_prefix
      else: file_name = "%s.ccp4"%params.output_file_name_prefix
      output_box.write_ccp4_map(file_name=file_name,
+       output_crystal_symmetry=output_crystal_symmetry,
+       output_unit_cell_grid=output_unit_cell_grid,
        shift_back=shift_back)
-
      print >> log, "Writing boxed map "+\
           "to CCP4 formatted file:   %s"%file_name
 
@@ -636,7 +733,9 @@ Parameters:"""%h
        file_name = "%s_box.xplor"%output_prefix
      else: file_name = "%s.xplor"%params.output_file_name_prefix
      output_box.write_xplor_map(file_name=file_name,
-         shift_back=shift_back)
+         output_crystal_symmetry=output_crystal_symmetry,
+         output_unit_cell_grid=output_unit_cell_grid,
+         shift_back=shift_back,)
      print >> log, "Writing boxed map "+\
          "to X-plor formatted file: %s"%file_name
 
@@ -655,7 +754,7 @@ Parameters:"""%h
      else:
        d_min = maptbx.d_min_from_map(map_data=output_box.map_box,
          unit_cell=output_box.xray_structure_box.unit_cell())
-     output_box.map_coefficients(d_min=d_min,
+     output_box.map_coefficients(d_min=d_min, # ZZZXXX TODO 
        resolution_factor=params.resolution_factor, file_name=file_name,
        shift_back=shift_back)
 

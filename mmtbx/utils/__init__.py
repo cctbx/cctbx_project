@@ -2718,7 +2718,10 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     if (n_tot-1-i_high)/n_tot<keep_near_ends_frac: i_high=n_tot-1
     return i_low/n_tot,i_high/n_tot
 
-  def write_xplor_map(self, file_name="box.xplor",shift_back=None):
+  def write_xplor_map(self, file_name="box.xplor",shift_back=None,
+      output_unit_cell_grid=None,
+      output_crystal_symmetry=None):
+
     # write out xplor map on same grid as ccp4 map (0 to focus-1)
     from scitbx.matrix import col
     if shift_back:
@@ -2726,8 +2729,14 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     else:
       map_data=self.map_box
 
+    if output_unit_cell_grid is None:
+     output_unit_cell_grid=map_data.all()
+
+    if output_crystal_symmetry is None:
+      output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
+
     gridding = iotbx.xplor.map.gridding(
-        n     = map_data.all(),
+        n     = output_unit_cell_grid,
         first = map_data.origin(),
         last  = tuple(col(map_data.focus())-col((1,1,1))))
 
@@ -2736,7 +2745,7 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       file_name          = file_name,
       is_p1_cell         = None, # XXX temporary flag allowing any cell
       title_lines        = ['Map in box',],
-      unit_cell          = self.xray_structure_box.unit_cell(),
+      unit_cell          = output_crystal_symmetry.unit_cell(),
       gridding           = gridding,
       data               = map_data.as_double(),
       average            = -1,
@@ -2791,7 +2800,20 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     shifted_map_data.resize(flex.grid(new_origin,new_all))
     return shifted_map_data
 
-  def write_ccp4_map(self, file_name="box.ccp4",shift_back=False):
+  def write_ccp4_map(self, file_name="box.ccp4",shift_back=False,
+      output_unit_cell_grid=None,
+      output_crystal_symmetry=None):
+
+    # If output_unit_cell_grid is specified, then write this out
+    #  instead of the size of the actual available map (self.map_box.all())
+
+    # Adjust the crystal_symmetry to match the output grid as well
+
+    if output_crystal_symmetry is None:
+      output_crystal_symmetry=self.xray_structure_box.unit_cell()
+    if output_unit_cell_grid is None:
+      output_unit_cell_grid=map_data.all()
+
     from iotbx import ccp4_map
     assert tuple(self.map_box.origin())==(0,0,0)
     if shift_back:
@@ -2800,8 +2822,9 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
       map_data = self.map_box
     ccp4_map.write_ccp4_map(
       file_name      = file_name,
-      unit_cell      = self.xray_structure_box.unit_cell(),
-      space_group    = self.xray_structure_box.space_group(),
+      unit_cell      = output_crystal_symmetry.unit_cell(),
+      space_group    = output_crystal_symmetry.space_group(),
+      unit_cell_grid = output_unit_cell_grid,
       map_data       = map_data,
       labels=flex.std_string([" "]))
 
