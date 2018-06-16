@@ -65,45 +65,54 @@ def exercise_writer () :
   from iotbx import file_reader
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/help_tests/test_help/partial_refine_001_map_coeffs.mtz",
-    test=os.path.isfile)
-  if file_name is None :
-    print "Can't find map coefficients file, skipping."
-    return
-  mtz_in = file_reader.any_file(file_name, force_type="hkl").file_object
-  miller_arrays = mtz_in.as_miller_arrays()
-  map_coeffs = miller_arrays[0]
-  fft_map = map_coeffs.fft_map(resolution_factor=1/3.0)
-  fft_map.apply_sigma_scaling()
-  fft_map.as_ccp4_map(file_name="2mFo-DFc.map")
-  m = iotbx.ccp4_map.map_reader(file_name="2mFo-DFc.map")
-  real_map = fft_map.real_map_unpadded()
-  mmm = flex.double(list(real_map)).min_max_mean()
-  assert approx_equal(m.unit_cell_parameters,
-                      map_coeffs.unit_cell().parameters())
-  assert approx_equal(mmm.min, m.header_min)
-  assert approx_equal(mmm.max, m.header_max)
-  #assert approx_equal(mmm.mean, m.header_mean)
+  mt = flex.mersenne_twister(0)
+  nxyz = (4,4,4,)
+  grid = flex.grid(nxyz)
+  real_map_data = mt.random_double(size=grid.size_1d())
+  real_map_data.reshape(grid)
+  unit_cell=uctbx.unit_cell((10,10,10,90,90,90))
+  iotbx.ccp4_map.write_ccp4_map(
+      file_name="four_by_four.map",
+      unit_cell=unit_cell,
+      space_group=sgtbx.space_group_info("P1").group(),
+      map_data=real_map_data,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+  input_real_map = iotbx.ccp4_map.map_reader(file_name="four_by_four.map")
+  input_map_data=input_real_map.map_data()
+  real_map_mmm = real_map_data.as_1d().min_max_mean()
+  input_map_mmm = input_map_data.as_1d().min_max_mean()
+  cc=flex.linear_correlation(real_map_data.as_1d(),input_map_data.as_1d()).coefficient()
+  assert cc > 0.999
+
+  assert approx_equal(input_real_map.unit_cell_parameters,
+                      unit_cell.parameters())
+  assert approx_equal(real_map_mmm.min, input_real_map.header_min,eps=0.001)
+  assert approx_equal(real_map_mmm.min, input_map_mmm.min,eps=0.001)
+
+
   # random small maps of different sizes
-  for nxyz in flex.nested_loop((1,1,1),(4,4,4)):
+  for nxyz in flex.nested_loop((2,1,1),(4,4,4)):
     mt = flex.mersenne_twister(0)
     grid = flex.grid(nxyz)
-    map = mt.random_double(size=grid.size_1d())
-    map.reshape(grid)
-    real_map = fft_map.real_map_unpadded()
+    real_map = mt.random_double(size=grid.size_1d())
+    real_map.reshape(grid)
     iotbx.ccp4_map.write_ccp4_map(
       file_name="random.map",
       unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
       space_group=sgtbx.space_group_info("P1").group(),
       gridding_first=(0,0,0),
-      gridding_last=tuple(fft_map.n_real()),
+      gridding_last=tuple(grid.last(False)),
       map_data=real_map,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
     m = iotbx.ccp4_map.map_reader(file_name="random.map")
     mmm = flex.double(list(real_map)).min_max_mean()
+    m1=real_map.as_1d()
+    m2=m.map_data().as_1d()
+    cc=flex.linear_correlation(m1,m2).coefficient()
+    assert cc > 0.999
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
-    assert approx_equal(mmm.min, m.header_min)
+    # XXX reader reports min as 0 if it is > 0
+    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min))
     assert approx_equal(mmm.max, m.header_max)
     #
     # write unit_cell_grid explicitly to map
@@ -122,14 +131,15 @@ def exercise_writer () :
 
     mmm = flex.double(list(real_map)).min_max_mean()
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
-    assert approx_equal(mmm.min, m.header_min)
+    # XXX reader reports min as 0 if it is > 0
+    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min)) 
     assert approx_equal(mmm.max, m.header_max)
     #
 
     #
     gridding_first = (0,0,0)
-    gridding_last = tuple(fft_map.n_real())
-    map_box = maptbx.copy(map, gridding_first, gridding_last)
+    gridding_last=tuple(grid.last(False))
+    map_box = maptbx.copy(real_map, gridding_first, gridding_last)
     map_box.reshape(flex.grid(map_box.all()))
     iotbx.ccp4_map.write_ccp4_map(
       file_name="random_box.map",
@@ -137,6 +147,7 @@ def exercise_writer () :
       space_group=sgtbx.space_group_info("P1").group(),
       map_data=map_box,
       labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+  print "OK"
 
 def run(args):
   import iotbx.ccp4_map

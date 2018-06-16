@@ -293,7 +293,7 @@ Parameters:"""%h
     raise Sorry("Please set resolution for extract_unique")
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.keep_origin) and (not params.keep_map_size)):
-    raise Sorry("To write mtz coefficients please set "+\
+    raise Sorry("Please set output_format=ccp4 to skip mtz or set "+\
       "keep_origin=False or keep_map_size=True")
 
   if params.output_origin_grid_units is not None and params.keep_origin:
