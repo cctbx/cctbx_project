@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
-import sys, os
+import sys
 
 def exercise_with_tst_input_map():
   file_name = libtbx.env.under_dist(
@@ -62,7 +62,6 @@ def exercise(args):
     print
 
 def exercise_writer () :
-  from iotbx import file_reader
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
   mt = flex.mersenne_twister(0)
