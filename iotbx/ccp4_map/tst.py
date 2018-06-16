@@ -66,7 +66,7 @@ def exercise_writer () :
   from cctbx import uctbx, sgtbx
   from scitbx.array_family import flex
   file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/wizards/partial_refine_001_map_coeffs.mtz",
+    relative_path="phenix_regression/wizards/help_tests/test_help/partial_refine_001_map_coeffs.mtz",
     test=os.path.isfile)
   if file_name is None :
     print "Can't find map coefficients file, skipping."
@@ -105,6 +105,27 @@ def exercise_writer () :
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
     assert approx_equal(mmm.min, m.header_min)
     assert approx_equal(mmm.max, m.header_max)
+    #
+    # write unit_cell_grid explicitly to map
+    iotbx.ccp4_map.write_ccp4_map(
+      file_name="random_b.map",
+      unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
+      space_group=sgtbx.space_group_info("P1").group(),
+      unit_cell_grid=real_map.all(),
+      map_data=real_map,
+      labels=flex.std_string(["iotbx.ccp4_map.tst"]))
+    m = iotbx.ccp4_map.map_reader(file_name="random_b.map")
+    m1=real_map.as_1d()
+    m2=m.map_data().as_1d()
+    cc=flex.linear_correlation(m1,m2).coefficient()
+    assert cc > 0.999
+
+    mmm = flex.double(list(real_map)).min_max_mean()
+    assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
+    assert approx_equal(mmm.min, m.header_min)
+    assert approx_equal(mmm.max, m.header_max)
+    #
+
     #
     gridding_first = (0,0,0)
     gridding_last = tuple(fft_map.n_real())
