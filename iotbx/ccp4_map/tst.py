@@ -95,6 +95,7 @@ def exercise_writer () :
     mt = flex.mersenne_twister(0)
     grid = flex.grid(nxyz)
     real_map = mt.random_double(size=grid.size_1d())
+    real_map=real_map-0.5
     real_map.reshape(grid)
     iotbx.ccp4_map.write_ccp4_map(
       file_name="random.map",
@@ -111,8 +112,7 @@ def exercise_writer () :
     cc=flex.linear_correlation(m1,m2).coefficient()
     assert cc > 0.999
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
-    # XXX reader reports min as 0 if it is > 0
-    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min))
+    assert approx_equal(mmm.min, m.header_min)
     assert approx_equal(mmm.max, m.header_max)
     #
     # write unit_cell_grid explicitly to map
@@ -131,8 +131,7 @@ def exercise_writer () :
 
     mmm = flex.double(list(real_map)).min_max_mean()
     assert approx_equal(m.unit_cell_parameters, (1,1,1,90,90,90))
-    # XXX reader reports min as 0 if it is > 0
-    assert (mmm.min > 0 or approx_equal(mmm.min, m.header_min))
+    assert approx_equal(mmm.min, m.header_min)
     assert approx_equal(mmm.max, m.header_max)
     #
 
