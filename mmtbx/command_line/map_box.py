@@ -304,7 +304,7 @@ Parameters:"""%h
       "keep_origin=False or keep_map_size=True")
 
   if params.keep_input_unit_cell_and_grid and (
-      (params.output_unit_cell_grid is not None ) or 
+      (params.output_unit_cell_grid is not None ) or
       (params.output_unit_cell is not None ) ):
     raise Sorry("If you set keep_input_unit_cell_and_grid then you cannot "+\
        "set \noutput_unit_cell_grid or output_unit_cell")
@@ -647,7 +647,7 @@ Parameters:"""%h
 
   if params.keep_input_unit_cell_and_grid and \
        (input_unit_cell_grid is not None) and \
-       (input_unit_cell is not None): 
+       (input_unit_cell is not None):
     params.output_unit_cell=input_unit_cell
     params.output_unit_cell_grid=input_unit_cell_grid
     print >>log,"Setting output unit cell parameters and unit cell grid to"+\
