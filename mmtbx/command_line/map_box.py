@@ -188,6 +188,13 @@ master_phil = libtbx.phil.parse("""
              Only the origin is kept/shifted.\
     .short_caption = Keep origin
 
+  keep_input_unit_cell_and_grid = None
+     .type = bool
+     .help = You can keep the input unit_cell dimensions and unit_cell_grid. \
+             Same as specifying output_unit_cell with the input unit cell \
+              dimensions and output_unit_cell_grid with the input grid for the \
+              unit cell.
+
   output_unit_cell = None
      .type = floats
      .help = You can specify the unit cell for your map with 3 numbers. \
@@ -296,6 +303,12 @@ Parameters:"""%h
     raise Sorry("Please set output_format=ccp4 to skip mtz or set "+\
       "keep_origin=False or keep_map_size=True")
 
+  if params.keep_input_unit_cell_and_grid and (
+      (params.output_unit_cell_grid is not None ) or 
+      (params.output_unit_cell is not None ) ):
+    raise Sorry("If you set keep_input_unit_cell_and_grid then you cannot "+\
+       "set \noutput_unit_cell_grid or output_unit_cell")
+
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
     print "Setting keep_origin=False as output_origin_grid_units is set"
@@ -310,6 +323,8 @@ Parameters:"""%h
     pdb_hierarchy=None
   # Map or map coefficients
   map_coeff = None
+  input_unit_cell_grid=None
+  input_unit_cell=None
   if (not map_data):
     # read first mtz file
     if ( (len(inputs.reflection_file_names) > 0) or
@@ -343,7 +358,10 @@ Parameters:"""%h
       ccp4_map = inputs.ccp4_map
       ccp4_map.show_summary(prefix="  ",out=log)
       if not crystal_symmetry: crystal_symmetry=ccp4_map.crystal_symmetry()
-      map_data = ccp4_map.data#map_data()
+      map_data = ccp4_map.data #map_data()
+      input_unit_cell_grid=ccp4_map.unit_cell_grid
+      input_unit_cell=ccp4_map.unit_cell_parameters
+
       if inputs.ccp4_map_file_name.endswith(".ccp4"):
         map_or_map_coeffs_prefix=os.path.basename(
           inputs.ccp4_map_file_name[:-5])
@@ -352,6 +370,7 @@ Parameters:"""%h
           inputs.ccp4_map_file_name[:-4])
   else: # have map_data
     map_or_map_coeffs_prefix=None
+
 
   if params.output_origin_grid_units is not None:
     origin_to_match=tuple(params.output_origin_grid_units)
@@ -626,6 +645,13 @@ Parameters:"""%h
   else:
     shift_back=False
 
+  if params.keep_input_unit_cell_and_grid and \
+       (input_unit_cell_grid is not None) and \
+       (input_unit_cell is not None): 
+    params.output_unit_cell=input_unit_cell
+    params.output_unit_cell_grid=input_unit_cell_grid
+    print >>log,"Setting output unit cell parameters and unit cell grid to"+\
+      " match\ninput map file"
 
   if params.output_unit_cell: # Set output unit cell parameters
     from cctbx import crystal
