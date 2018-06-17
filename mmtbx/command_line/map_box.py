@@ -164,12 +164,16 @@ master_phil = libtbx.phil.parse("""
 
   lower_bounds = None
     .type = ints
-    .help = Lower bounds for cut out box. You can specify them directly.
+    .help = Lower bounds for cut out box. You can specify them directly.\
+            NOTE: lower and upper bounds refer to grid points after shifting \
+            the map to place the origin at (0,0,0).
     .short_caption = Lower bounds
 
   upper_bounds = None
     .type = ints
     .help = Upper bounds for cut out box.  You can specify them directly.
+            NOTE: lower and upper bounds refer to grid points after shifting \
+            the map to place the origin at (0,0,0).
     .short_caption = Upper bounds
 
   keep_map_size = False
