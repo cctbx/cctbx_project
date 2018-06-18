@@ -171,7 +171,7 @@ master_phil = libtbx.phil.parse("""
 
   upper_bounds = None
     .type = ints
-    .help = Upper bounds for cut out box.  You can specify them directly.
+    .help = Upper bounds for cut out box.  You can specify them directly.\
             NOTE: lower and upper bounds refer to grid points after shifting \
             the map to place the origin at (0,0,0).
     .short_caption = Upper bounds
@@ -198,6 +198,7 @@ master_phil = libtbx.phil.parse("""
              Same as specifying output_unit_cell with the input unit cell \
               dimensions and output_unit_cell_grid with the input grid for the \
               unit cell.
+     .short_caption = Keep input unit cell and grid
 
   output_unit_cell = None
      .type = floats
@@ -536,16 +537,18 @@ Parameters:"""%h
      inputs.ccp4_map.unit_cell_parameters  ) and (
        inputs.crystal_symmetry.unit_cell().parameters() !=
        inputs.ccp4_map.unit_cell_parameters):
-    print >>log,"\nNOTE: Mismatch of unit cell parameters from CCP4 map:"
-    print >>log,"Unit cell from CCP4 map 'unit cell parameters': "+\
-      "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)" %tuple(
+    print >>log,"\nNOTE: Input CCP4 map is only part of unit cell:"
+    print >>log,"Full unit cell ('unit cell parameters'): "+\
+      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
         inputs.ccp4_map.unit_cell_parameters)
-    print >>log,"Unit cell from CCP4 map 'map grid':             "+\
-      "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)" %tuple(
+    print >>log,"Size of CCP4 map 'map unit cell':        "+\
+      "(%.1f, %.1f, %.1f, %.1f, %.1f, %.1f) A" %tuple(
        inputs.crystal_symmetry.unit_cell().parameters())
-    print >>log,"\nInterpreting this as the 'unit cell parameters' was "+\
-      "original map \ndimension and 'map grid' is the "+\
-      "portion actually in the map that was supplied here.\n"
+    print >>log,"Full unit cell as grid units: (%s, %s, %s)" %(
+      inputs.ccp4_map.unit_cell_grid)
+    print >>log,"Map unit cell as grid units:  (%s, %s, %s)" %(
+      map_data.all())
+
     box.unit_cell_parameters_from_ccp4_map=inputs.ccp4_map.unit_cell_parameters
     box.unit_cell_parameters_deduced_from_map_grid=\
        inputs.crystal_symmetry.unit_cell().parameters()
