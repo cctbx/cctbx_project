@@ -76,9 +76,12 @@ master_phil = libtbx.phil.parse("""
             based on the gridding of the map (and may be higher-resolution than\
             you want).
     .short_caption = Resolution
-  output_format = xplor mtz *ccp4
+  output_format = xplor *mtz *ccp4
     .type=choice(multi=True)
-    .help = Output format(s) for boxed map.
+    .help = Output format(s) for boxed map. Note that mtz format is only\
+            available if keep_origin=False or keep_map_size=True. (These \
+            are the cases where the map is cut down to size and placed \
+            at the origin or there is a full unit cell of data.)
     .short_caption = Output format
 
   output_file_name_prefix=None
@@ -303,16 +306,22 @@ Parameters:"""%h
     raise Sorry("Please set lower_bounds if you set upper_bounds")
   if (params.extract_unique and not params.resolution):
     raise Sorry("Please set resolution for extract_unique")
-  if (write_output_files) and ("mtz" in params.output_format) and (
-       (params.keep_origin) and (not params.keep_map_size)):
-    raise Sorry("Please set output_format=ccp4 to skip mtz or set "+\
-      "keep_origin=False or keep_map_size=True")
 
   if params.keep_input_unit_cell_and_grid and (
       (params.output_unit_cell_grid is not None ) or
       (params.output_unit_cell is not None ) ):
     raise Sorry("If you set keep_input_unit_cell_and_grid then you cannot "+\
        "set \noutput_unit_cell_grid or output_unit_cell")
+
+  if (write_output_files) and ("mtz" in params.output_format) and (
+       (params.keep_origin) and (not params.keep_map_size)):
+    print "\nNOTE: Skipping write of mtz file as keep_origin=True and \n"+\
+       "keep_map_size is False\n"
+    new_output_format=[]
+    for x in params.output_format:
+      if x != 'mtz':
+        new_output_format.append(x)
+    params.output_format=new_output_format
 
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin=False
