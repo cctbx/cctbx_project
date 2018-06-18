@@ -20,6 +20,8 @@ from mmtbx.secondary_structure import manager as ss_manager_class
 
 master_phil_str = '''
 cablam_idealization {
+  enabled = True
+    .type = bool
   nproc = 1
     .type = int
     .help = Parallelization is not implemented
@@ -54,7 +56,10 @@ class cablam_idealization(object):
     self.motif_contours = fetch_motif_contours()
     self.n_tried_residues = 0
     self.n_rotated_residues = 0
+    self.cablam_fixed_minimized = None
 
+    if not self.params.enabled:
+      return
 
     # with open("in.pdb",'w') as f:
     #   f.write(self.model.model_as_pdb())
@@ -91,7 +96,6 @@ class cablam_idealization(object):
           log=self.log)
       self.model.set_ss_annotation(ann=ss_manager.actual_sec_str)
 
-    self.cablam_fixed_minimized = None
     if params.do_gm:
       self.cablam_fixed_minimized = self._minimize()
 

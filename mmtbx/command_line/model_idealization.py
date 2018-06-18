@@ -21,6 +21,7 @@ from mmtbx.secondary_structure import build as ssb
 from mmtbx.secondary_structure import manager, sec_str_master_phil
 import mmtbx.utils
 from mmtbx.building.loop_idealization import loop_idealization
+from mmtbx.building.cablam_idealization import cablam_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
@@ -126,6 +127,7 @@ verbose = False
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
+include scope mmtbx.building.cablam_idealization.master_phil_str
 """ % turned_on_ss
 
 def master_params():
@@ -135,7 +137,6 @@ def format_usage_message(log):
   print >> log, "-"*79
   msg = """\
 phenix.model_idealization: Idealize model geometry.
-(Only protein secondary structure elements are supported currently).
 
 Usage examples:
  phenix.model_idealization model.pdb
@@ -444,6 +445,21 @@ class model_idealization():
     self.model.setup_ncs_constraints_groups()
 
     self.init_model_statistics = self.get_statistics(self.model)
+
+    #
+    # Cablam idealization
+    #
+    self.params.cablam_idealization.find_ss_after_fixes = False
+    ci_results = cablam_idealization(
+        model=self.model,
+        params=self.params.cablam_idealization,
+        log=self.log).get_results()
+    self.model = ci_results.model
+    if self.params.debug:
+      self.shift_and_write_result(
+          model = self.model,
+          fname_suffix="cablam_id")
+
 
     # Here we are preparing maps if needed.
     if self.user_supplied_map is not None:
