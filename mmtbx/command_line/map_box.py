@@ -192,7 +192,7 @@ master_phil = libtbx.phil.parse("""
              Only the origin is kept/shifted.\
     .short_caption = Keep origin
 
-  keep_input_unit_cell_and_grid = None
+  keep_input_unit_cell_and_grid = True
      .type = bool
      .help = You can keep the input unit_cell dimensions and unit_cell_grid. \
              Same as specifying output_unit_cell with the input unit cell \

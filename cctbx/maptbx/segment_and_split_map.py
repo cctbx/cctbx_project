@@ -5464,6 +5464,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
        "density_select")
     args.append("output_file_name_prefix=%s" %(file_name_prefix))
     from mmtbx.command_line.map_box import run as run_map_box
+    args.append("keep_input_unit_cell_and_grid=False") # for new defaults
 
     if params.segmentation.lower_bounds and params.segmentation.upper_bounds:
       bounds_supplied=True
@@ -9390,7 +9391,7 @@ def select_box_map_data(si=None,
 
 
     from mmtbx.command_line.map_box import run as run_map_box
-    args=[]
+    args=["keep_input_unit_cell_and_grid=False"]
     if si.density_select_in_auto_sharpen:
       args.append('density_select=True')
       #print >>out,"Using density_select in map_box"
