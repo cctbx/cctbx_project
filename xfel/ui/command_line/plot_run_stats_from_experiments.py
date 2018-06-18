@@ -10,6 +10,7 @@ import sys, os
 from scitbx.array_family import flex
 from dxtbx.model.experiment_list import ExperimentListFactory
 from libtbx import easy_pickle
+from dials.algorithms.integration.stills_significance_filter import SignificanceFilter, phil_scope as sf_scope
 
 """
 Script to analyze the results of dials.stills_process and plot statisitics over time using the xfel gui.
@@ -60,6 +61,9 @@ def run(args):
     except Exception, e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
+  sf_params = sf_scope.extract()
+  sf_params.significance_filter.isigi_cutoff = params.i_sigi_cutoff
+  sf_params.significance_filter.d_min = params.d_min
 
   def get_paths(dirname):
     absolute = lambda name: os.path.join(dirname, name)
@@ -93,7 +97,7 @@ def run(args):
     two_theta_low = flex.double()
     two_theta_high = flex.double()
     n_strong = flex.int()
-    average_i_sigi = flex.double()
+    resolutions = flex.double()
     n_lattices = flex.int()
 
     for i, path in enumerate(sorted(files)):
@@ -123,7 +127,7 @@ def run(args):
       indexed_name = base + "_integrated.pickle"
       if not os.path.exists(experiments_name) or not os.path.exists(indexed_name):
         print "Frame didn't index"
-        average_i_sigi.append(0)
+        resolutions.append(0)
         n_lattices.append(0)
         continue
 
@@ -131,31 +135,17 @@ def run(args):
       n_lattices.append(len(experiments))
       reflections = easy_pickle.load(indexed_name)
       reflections = reflections.select(reflections['intensity.sum.value'] > 0) # positive reflections only
-      best_avg_i_sigi = 0
+      best_d_min = None
       for expt_id, experiment in enumerate(experiments):
-        crystal = experiment.crystal
-        uc = crystal.get_unit_cell()
         refls = reflections.select(reflections['id'] == expt_id)
-        d = uc.d(reflections['miller_index'])
+        refls['id'] = flex.int(len(refls), 0)
+        sig_filter = SignificanceFilter(sf_params)
+        sig_filter(experiments[expt_id:expt_id+1], refls)
+        if best_d_min is None or sig_filter.best_d_min < best_d_min:
+          best_d_min = sig_filter.best_d_min
+      resolutions.append(best_d_min or 0)
 
-        # Bin the reflections possibly present in this space group/cell so that we can report average I/sigma
-        # in the highest requested bin
-        from cctbx.crystal import symmetry
-        cs = symmetry(unit_cell = uc, space_group_info=crystal.get_space_group().info())
-        mset = cs.build_miller_set(anomalous_flag=False, d_min=params.d_min)
-        binner = mset.setup_binner(n_bins=10)
-        d_max, d_min = binner.bin_d_range(binner.range_used()[-1]) # highest res
-        refls = refls.select((d <= d_max) & (d > d_min))
-        n_refls = len(refls)
-
-        avg_i_sigi = flex.mean(refls['intensity.sum.value'] /
-                               flex.sqrt(refls['intensity.sum.variance'])) if n_refls > 0 else 0
-        if avg_i_sigi > best_avg_i_sigi:
-          best_avg_i_sigi = avg_i_sigi
-        print best_avg_i_sigi, d_max, d_min, len(refls)
-      average_i_sigi.append(best_avg_i_sigi)
-
-    all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices))
+    all_results.append((timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices))
 
   plot_multirun_stats(all_results, runs, params.d_min, n_strong_cutoff=params.n_strong_cutoff, \
     i_sigi_cutoff=params.i_sigi_cutoff, run_tags=params.run_tags, \
