@@ -76,7 +76,7 @@ master_phil = libtbx.phil.parse("""
             based on the gridding of the map (and may be higher-resolution than\
             you want).
     .short_caption = Resolution
-  output_format = *xplor *mtz *ccp4
+  output_format = xplor mtz *ccp4
     .type=choice(multi=True)
     .help = Output format(s) for boxed map.
     .short_caption = Output format
