@@ -19,6 +19,12 @@ d_min = None
            gridding of the map and can lead to map coefficients that are \
            at much higher resolution than the map.
   .short_caption = Resolution
+resolution_factor = 0.333
+  .type = float
+  .help = Scale factor to guess resolution of output structure factors.\
+          A scale factor of 0.5 gives the highest-resolution data allowed by \
+          the map.  Usual is 0.33 or 0.25.
+  .short_caption = Resolution factor
 k_blur = 1
   .type = float
   .help = Scale applied to HL coefficients.  The HL coefficients are arbitrary\
@@ -135,7 +141,26 @@ def run(args, log=None, ccp4_map=None,
   else:
     symmetry_flags = maptbx.use_space_group_symmetry,
 
-  cs = crystal.symmetry(m.unit_cell_parameters, space_group_number)
+  #cs = crystal.symmetry(m.unit_cell_parameters, space_group_number)
+  # this will not work if m.unit_cell_grid != m.data.all()
+
+  # Instead use ccp4 map crystal_symmetry and classify according to the case
+  cs = m.crystal_symmetry()
+
+  if m.unit_cell_grid == m.data.all():
+    print "One unit cell of data is present in map"
+  else:
+    if params.keep_origin:
+      print "\nThis map does not have exactly one unit cell of data, so \n"+\
+        "keep_origin is not allowed\n"
+      print "Setting keep_origin=False and creating a new cell and gridding\n"
+      params.keep_origin=False
+    print "Moving origin of input map to (0,0,0)"
+    print "New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
+       cs.unit_cell().parameters())
+    print "New unit cell grid will be: (%s, %s, %s) "%(
+      m.data.all())
+
   map_data=m.data
 
   # Get origin in grid units and new position of origin in grid units
@@ -166,9 +191,6 @@ def run(args, log=None, ccp4_map=None,
   else:
     shift_cart=(0,0,0,)
 
-
-
-
   map_data = maptbx.shift_origin_if_needed(map_data = map_data).map_data
   # generate complete set of Miller indices up to given high resolution d_min
   n_real = map_data.focus()
@@ -182,7 +204,10 @@ def run(args, log=None, ccp4_map=None,
   if(d_min is None and not params.box):
     d_min = maptbx.d_min_from_map(
       map_data  = map_data,
-      unit_cell = cs.unit_cell())
+      unit_cell = cs.unit_cell(),
+      resolution_factor = params.resolution_factor)
+    print "\nResolution of map coefficients using "+\
+       "resolution_factor of %.2f: %.1f A\n" %(params.resolution_factor,d_min)
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
     f_obs_cmpl = miller.structure_factor_box_from_map(
