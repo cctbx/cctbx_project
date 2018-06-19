@@ -5,6 +5,7 @@ from __future__ import division
 import wxtbx.plots
 import wxtbx.icons
 import wx
+import wx.lib
 import re
 import cStringIO
 import os
@@ -17,11 +18,13 @@ ALN_FLAGS = wx.ALL|wx.ALIGN_CENTER_VERTICAL
 class InfoPanelBase (wx.MiniFrame) :
   def __init__ (self, *args, **kwds) :
     kwds = dict(kwds)
-    kwds['style'] = wx.CAPTION|wx.CLOSE_BOX
+    kwds['style'] = wx.CAPTION|wx.CLOSE_BOX|wx.RESIZE_BORDER
     if (wx.Platform == '__WXMSW__') :
       kwds['style'] |= wx.SYSTEM_MENU
     wx.MiniFrame.__init__(self, *args, **kwds)
-    self.panel = wx.Panel(self, -1, style=wx.RAISED_BORDER)
+    self.panel = wx.lib.scrolledpanel.ScrolledPanel(
+      self, -1, style=wx.RAISED_BORDER)
+    self.panel.SetupScrolling()
     self.panel_sizer = wx.BoxSizer(wx.VERTICAL)
     self.panel.SetSizer(self.panel_sizer)
     self.info_panel = None
