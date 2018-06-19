@@ -2552,8 +2552,9 @@ class extract_box_around_model_and_map(object):
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
     # NOTE: calling with shifted map data and ncs_object
     #    (origin shifted to 0,0,0)
+    assert self.map_data.origin()==(0,0,0)
     args=[]
-    args.append("write_files=False")
+    #ZZZargs.append("write_files=False")
     args.append("add_neighbors=False") # XXX perhaps allow user to set this
     args.append("save_box_map_ncs_au=True")
     args.append("density_select=False")

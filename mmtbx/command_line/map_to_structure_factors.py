@@ -151,11 +151,9 @@ def run(args, log=None, ccp4_map=None,
     print >>out,"One unit cell of data is present in map"
   else:
     if params.keep_origin:
-      print >>out,\
-       "\nThis map does not have exactly one unit cell of data, so \n"+\
+      print >>out,"\nThis map does not have exactly one unit cell of data, so \n"+\
         "keep_origin is not allowed\n"
-      print >>out,\
-       "Setting keep_origin=False and creating a new cell and gridding\n"
+      print >>out,"Setting keep_origin=False and creating a new cell and gridding\n"
       params.keep_origin=False
     print >>out,"Moving origin of input map to (0,0,0)"
     print >>out,"New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(

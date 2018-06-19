@@ -455,14 +455,15 @@ Parameters:"""%h
   sequence=None
   if params.extract_unique:
     if params.sequence_file:
-      if n_ops > 1: # get unique part of sequence and multiply
+      if n_ops > 1: # get unique part of sequence
         remove_duplicates=True
       else:
         remove_duplicates=False
       from iotbx.bioinformatics import get_sequences
-      sequence=n_ops * (" ".join(get_sequences(file_name=params.sequence_file,
+      sequence=(" ".join(get_sequences(file_name=params.sequence_file,
         remove_duplicates=remove_duplicates)))
 
+    if params.chain_type in ['None',None]: params.chain_type=None
     if sequence and not params.molecular_mass:
       # get molecular mass from sequence
       from iotbx.bioinformatics import text_from_chains_matching_chain_type
@@ -481,7 +482,8 @@ Parameters:"""%h
          text=sequence,chain_type='DNA'))
       else:
         n_dna=0
-      params.molecular_mass=n_protein*110+(n_rna+n_dna)*330
+      params.molecular_mass=n_ops*(n_protein*110+(n_rna+n_dna)*330)
+      print >>log,"\nEstimate of molecular mass is %.0f " %(params.molecular_mass)
     elif not params.molecular_mass:
       raise Sorry("Need a sequence file or molecular mass for extract_unique")
   else:

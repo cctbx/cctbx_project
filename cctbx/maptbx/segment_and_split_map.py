@@ -5322,7 +5322,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       # Sharpen the map
       print >>out,"Auto-sharpening map before using it"
       local_params=deepcopy(params)
-      local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
+      if tracking_data.solvent_fraction: # XXX was previously always done but may not have been set
+        local_params.crystal_info.solvent_content=tracking_data.solvent_fraction
       from cctbx.maptbx.auto_sharpen import run as auto_sharpen
       acc=map_data.accessor()
       map_data,new_map_coeffs,new_crystal_symmetry,new_si=auto_sharpen(
@@ -5943,8 +5944,12 @@ def score_threshold(b_vs_region=None,threshold=None,
       assert solvent_fraction is not None
       volume_per_residue,nres,chain_type=get_volume_of_seq(
           "A",chain_type=chain_type,out=out)
+
       expected_regions=max(1,int(0.5+(1-solvent_fraction)*\
         crystal_symmetry.unit_cell().volume()/volume_per_residue ))
+      # NOTE: This is expected residues. expected_regions should be this
+      #  divided by residues_per_region
+      expected_regions=max(1,int(0.5+expected_regions/residues_per_region))
       ncs_copies=1
 
    target_in_top_regions=target_in_all_regions/expected_regions
