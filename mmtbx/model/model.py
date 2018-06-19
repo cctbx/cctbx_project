@@ -1194,7 +1194,7 @@ class manager(object):
             % n_excessive
         + "  Please correct your model or redefine the limit.\n"
         + "  To disable this message completely define:\n"
-        + "    refinement.ncs.excessive_distance_limit=None")
+        + "    refinement.ncs.excessive_distance_limit=99999")
 
   def cartesian_NCS_as_pdb(self):
     result = StringIO()
