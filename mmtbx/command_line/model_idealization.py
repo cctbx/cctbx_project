@@ -25,7 +25,6 @@ from mmtbx.building.cablam_idealization import cablam_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
-from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.validation.clashscore import check_and_add_hydrogen
 import mmtbx.model
 import mmtbx.refinement.real_space.fit_residues
@@ -177,9 +176,7 @@ class model_idealization():
     self.master_grm = None
     self.working_grm = None
 
-    params_line = grand_master_phil_str
-    params = iotbx.phil.parse(
-        input_string=params_line, process_includes=True).extract()
+    params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     params.pdb_interpretation.peptide_link.ramachandran_restraints = True
     params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
