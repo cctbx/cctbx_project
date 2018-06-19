@@ -2326,6 +2326,12 @@ class make_ccp4_map: # just a holder so map_to_structure_factors will run
     self.data=map
     self.unit_cell_parameters=unit_cell.parameters()
     self.space_group_number=1
+    self.unit_cell_grid=map.all()
+
+  def crystal_symmetry(self):
+    return crystal.symmetry(self.unit_cell_parameters,
+        self.space_group_number)
+
 
 class b_vs_region_info:
   def __init__(self):
