@@ -29,6 +29,18 @@ class InfoPanelBase (wx.MiniFrame) :
     self.Bind(wx.EVT_CLOSE, self.OnClose)
     self.Bind(wx.EVT_WINDOW_DESTROY, self.OnDestroy)
 
+  def set_text(self, filename, text):
+    '''
+    Basic function for setting the title to a filename and displaying text
+    '''
+    self.SetTitle('Information for %s' %
+                  os.path.basename(to_unicode(filename)))
+    panel_text = wx.StaticText(self.panel, -1, text)
+    self.panel_sizer.Add(panel_text, 0)
+    self.panel.Layout()
+    self.panel_sizer.Fit(self.panel)
+    self.Fit()
+
   def OnClose (self, event) :
     self.Destroy()
 
