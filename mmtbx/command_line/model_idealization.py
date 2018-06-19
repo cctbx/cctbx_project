@@ -446,12 +446,14 @@ class model_idealization():
     #
     # Cablam idealization
     #
+    print >> self.log, "CaBLAM idealization"
     self.params.cablam_idealization.find_ss_after_fixes = False
     ci_results = cablam_idealization(
         model=self.model,
         params=self.params.cablam_idealization,
         log=self.log).get_results()
     self.model = ci_results.model
+    self.after_cablam_statistics = self.get_statistics(self.model)
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,
@@ -750,6 +752,8 @@ class model_idealization():
           self.after_loop_idealization,
           self.after_rotamer_fixing,
           self.final_model_statistics,]
+    if self.after_cablam_statistics is not None:
+      stat_obj_list.insert(1, self.after_cablam_statistics)
     return group_args(
         geoms=stat_obj_list,
         rmsds=(self.get_rmsd_from_start(), self.get_rmsd_from_start2()),
@@ -757,10 +761,16 @@ class model_idealization():
 
   def print_stat_comparison(self):
     stat_obj_list = self.get_stats_obj()
-    if self.params.run_minimization_first:
-      print >> self.log, "                        Starting    Init GM   SS ideal    Rama      Rota     Final"
+    if self.after_cablam_statistics is None:
+      if self.params.run_minimization_first:
+        print >> self.log, "                        Starting    Init GM   SS ideal    Rama      Rota     Final"
+      else:
+        print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
     else:
-      print >> self.log, "                        Starting    SS ideal    Rama      Rota     Final"
+      if self.params.run_minimization_first:
+        print >> self.log, "                        Starting     Cablam   Init GM   SS ideal    Rama      Rota     Final"
+      else:
+        print >> self.log, "                        Starting     Cablam   SS ideal    Rama      Rota     Final"
     #                         Starting    SS ideal    Rama      Rota     Final
     # Molprobity Score     :      4.50      3.27      2.66      2.32      2.54
     for val_caption, val_name, val_subname, val_format in [
@@ -774,10 +784,9 @@ class model_idealization():
         ("Cis-general", "omega", "cis_general", "{:10.2f}"),
         ("Twisted prolines", "omega", "twisted_proline", "{:10.2f}"),
         ("Twisted general", "omega", "twisted_general", "{:10.2f}"),
-        # Until enabled in model.statistics
-        # ("CaBLAM outliers", "cablam_outliers", "{:10.2f}"),
-        # ("CaBLAM disfavored", "cablam_disfavored", "{:10.2f}"),
-        # ("CaBLAM CA outliers", "cablam_ca_outliers", "{:10.2f}"),
+        ("CaBLAM outliers", "cablam", "outliers", "{:10.2f}"),
+        ("CaBLAM disfavored", "cablam", "disfavored", "{:10.2f}"),
+        ("CaBLAM CA outliers", "cablam", "ca_outliers", "{:10.2f}"),
         ]:
       l = "%-21s:" % val_caption
       for stat_obj in stat_obj_list.geoms:
