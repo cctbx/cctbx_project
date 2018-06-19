@@ -32,6 +32,10 @@ class file_clutter(object):
     self.n_from_future_import_print_function = None
     self.bad_indentation = None
     self.file_should_be_empty = False
+
+    if self.ignore_file():
+      return
+
     bytes = open(path, "rb").read()
     if (len(bytes) > 0):
       if (bytes[-1] != "\n"):
@@ -72,6 +76,19 @@ class file_clutter(object):
             py_lines=py_lines)
         if (find_bad_indentation) :
           self.bad_indentation = detect_indentation_problems(path)
+
+  def ignore_file(self):
+    root = os.path.dirname(self.path)
+    ignore_path = os.path.join(root, ".clutterignore")
+    if not os.path.exists(ignore_path):
+      return False
+    with open(ignore_path) as f:
+      for line in f:
+        if len(line) == 0: continue
+        if line.startswith('#'): continue
+        if os.path.basename(self.path) == line.strip():
+          return True
+    return False
 
   def is_cluttered(self, flag_x):
     return ((self.is_executable and flag_x)
