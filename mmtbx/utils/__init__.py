@@ -2817,10 +2817,9 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
 
     # Adjust the crystal_symmetry to match the output grid as well
     if output_crystal_symmetry is None:
-      output_crystal_symmetry=self.xray_structure_box.unit_cell()
+      output_crystal_symmetry=self.xray_structure_box.crystal_symmetry()
     if output_unit_cell_grid is None:
       output_unit_cell_grid=self.map_data.all()
-
     ccp4_map.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = output_crystal_symmetry.unit_cell(),
