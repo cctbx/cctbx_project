@@ -2807,19 +2807,19 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     # If output_unit_cell_grid is specified, then write this out
     #  instead of the size of the actual available map (self.map_box.all())
 
-    # Adjust the crystal_symmetry to match the output grid as well
-
-    if output_crystal_symmetry is None:
-      output_crystal_symmetry=self.xray_structure_box.unit_cell()
-    if output_unit_cell_grid is None:
-      output_unit_cell_grid=map_data.all()
-
     from iotbx import ccp4_map
     assert tuple(self.map_box.origin())==(0,0,0)
     if shift_back:
       map_data=self.shift_map_back(self.map_box)
     else:
       map_data = self.map_box
+
+    # Adjust the crystal_symmetry to match the output grid as well
+    if output_crystal_symmetry is None:
+      output_crystal_symmetry=self.xray_structure_box.unit_cell()
+    if output_unit_cell_grid is None:
+      output_unit_cell_grid=self.map_data.all()
+
     ccp4_map.write_ccp4_map(
       file_name      = file_name,
       unit_cell      = output_crystal_symmetry.unit_cell(),
