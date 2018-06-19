@@ -148,17 +148,19 @@ def run(args, log=None, ccp4_map=None,
   cs = m.crystal_symmetry()
 
   if m.unit_cell_grid == m.data.all():
-    print "One unit cell of data is present in map"
+    print >>out,"One unit cell of data is present in map"
   else:
     if params.keep_origin:
-      print "\nThis map does not have exactly one unit cell of data, so \n"+\
+      print >>out,\
+       "\nThis map does not have exactly one unit cell of data, so \n"+\
         "keep_origin is not allowed\n"
-      print "Setting keep_origin=False and creating a new cell and gridding\n"
+      print >>out,\
+       "Setting keep_origin=False and creating a new cell and gridding\n"
       params.keep_origin=False
-    print "Moving origin of input map to (0,0,0)"
-    print "New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
+    print >>out,"Moving origin of input map to (0,0,0)"
+    print >>out,"New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
        cs.unit_cell().parameters())
-    print "New unit cell grid will be: (%s, %s, %s) "%(
+    print >>out,"New unit cell grid will be: (%s, %s, %s) "%(
       m.data.all())
 
   map_data=m.data
@@ -206,7 +208,7 @@ def run(args, log=None, ccp4_map=None,
       map_data  = map_data,
       unit_cell = cs.unit_cell(),
       resolution_factor = params.resolution_factor)
-    print "\nResolution of map coefficients using "+\
+    print >>out,"\nResolution of map coefficients using "+\
        "resolution_factor of %.2f: %.1f A\n" %(params.resolution_factor,d_min)
   if(d_min is None):
     # box of reflections in |h|<N1/2, |k|<N2/2, 0<=|l|<N3/2
