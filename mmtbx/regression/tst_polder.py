@@ -195,7 +195,7 @@ def exercise_00(prefix="tst_polder"):
     "> %s.log" % prefix
   ])
   print cmd
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   #
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "tst_polder_polder_map_coeffs.mtz").as_miller_arrays()
