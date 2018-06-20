@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 06/03/2018
+Last Changed: 06/20/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -135,6 +135,8 @@ class DIALSSpfIdx(Thread):
     # These parameters will be set only if there's no script
     if self.paramfile is None:
       self.params.indexing.stills.method_list = ['fft3d']
+      self.params.spotfinder.threshold.dispersion.global_threshold = 75
+
 
     if self.backend == 'dials':
       self.processor = IOTADialsProcessor(params=self.params,
@@ -150,9 +152,8 @@ class DIALSSpfIdx(Thread):
         fail = False
         sg = None
         uc = None
-        obs = None
         status = None
-        res = 99
+        score = 0
         try:
           datablock = DataBlockFactory.from_filenames([self.img])[0]
           observed = self.processor.find_spots(datablock=datablock)
@@ -169,6 +170,7 @@ class DIALSSpfIdx(Thread):
             try:
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
+              score = len(indexed)
             except Exception, e:
               fail = True
               err.append('INDEXING ERROR: {}'.format(e))
@@ -241,7 +243,7 @@ class DIALSSpfIdx(Thread):
 
       elapsed = time.time() - start
       info = [self.index, len(observed), self.img, sg, uc]
-      return status, info, res, elapsed, err
+      return status, info, res, score, elapsed, err
 
 
   def run(self):
@@ -251,6 +253,7 @@ class DIALSSpfIdx(Thread):
     res = (99, 99)
     n_rings = 0
     avg_I = 0
+    score = 0
 
     file_wait_start = time.time()
     while True:
@@ -260,14 +263,15 @@ class DIALSSpfIdx(Thread):
         errors.append('{} does not exist'.format(self.img))
         break
       if os.path.isfile(self.img):
-        status, info, res, elapsed, err = self.process_image()
-        errors.extend(err)
+        status, info, res, score, elapsed, err = self.process_image()
+        # errors.extend(err)
         break
 
     if info is not None:
       idx, n_spots, img_path, sg, uc = info
       print 'IMAGE #{}: {}'.format(idx, img_path)
       print 'SPOTS FOUND: {}'.format(n_spots)
+      print 'INDEXING: {} INDEXED SPOTS'.format(score)
       if res[0] != 99:
         print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
       if sg is not None and uc is not None:
@@ -289,8 +293,8 @@ class DIALSSpfIdx(Thread):
         print_errors = True
 
       print '\n__RESULTS__'
-      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots,n_overloads,
-                                        0, res[1], n_rings, 0, avg_I, 0, err)
+      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots, n_overloads,
+                                      score, res[1], n_rings, 0, avg_I, 0, err)
 
       if print_errors:
         print "__ERRORS__"

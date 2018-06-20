@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 06/03/2018
+Last Changed: 06/20/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -23,6 +23,9 @@ from matplotlib.widgets import SpanSelector
 from iotbx import phil as ip
 
 from xfel.clustering.cluster import Cluster
+from cctbx.uctbx import unit_cell
+from cctbx.sgtbx import lattice_symmetry
+from cctbx import crystal
 
 from iota.components.iota_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
@@ -146,6 +149,8 @@ def parse_command_args(help_message):
   parser.add_argument('-t', '--time', type=int, nargs=1, default=0,
             help='Automatically start from image collected n seconds ago')
   parser.add_argument('-b', '--backend', type=str, default='mosflm',
+            help='Specify backend for spotfinding / indexing')
+  parser.add_argument('-a', '--action', type=str, default='spotfind',
             help='Specify backend for spotfinding / indexing')
   parser.add_argument('-n', type=int, nargs='?', default=0, dest='nproc',
             help = 'Specify a number of cores for a multiprocessor run"')
@@ -281,16 +286,6 @@ class TrackChart(wx.Panel):
         self.zoom_span.set_visible(True)
         self.select_span.set_visible(False)
 
-      # Using Shift key to determine zoom or list; keeping code around for now
-      # if e.key == 'shift':
-      #   self.selector = 'select'
-      #   self.zoom_span.set_visible(False)
-      #   self.select_span.set_visible(True)
-      # else:
-      #   self.selector = 'zoom'
-      #   self.zoom_span.set_visible(True)
-      #   self.select_span.set_visible(False)
-
   def reset_chart(self):
     self.track_axes.clear()
     self.track_figure.patch.set_visible(False)
@@ -298,6 +293,7 @@ class TrackChart(wx.Panel):
 
     self.xdata = []
     self.ydata = []
+    self.idata = []
     self.x_min = 0
     self.x_max = 1
     self.y_max = 1
@@ -315,6 +311,7 @@ class TrackChart(wx.Panel):
 
     self.acc_plot = self.track_axes.plot([], [], 'o', color='#4575b4')[0]
     self.rej_plot = self.track_axes.plot([], [], 'o', color='#d73027')[0]
+    self.idx_plot = self.track_axes.plot([], [], 'wo', ms=2)[0]
     self.bragg_line = self.track_axes.axhline(0, c='#4575b4', ls=':', alpha=0)
     self.highlight = self.track_axes.axvspan(0.5, 0.5, ls='--', alpha=0,
                                              fc='#deebf7', ec='#2171b5')
@@ -344,18 +341,22 @@ class TrackChart(wx.Panel):
     except AttributeError, e:
       pass
 
-  def draw_plot(self, new_x=None, new_y=None):
+  def draw_plot(self, new_x=None, new_y=None, new_i=None):
     min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
 
     if new_x is None:
       new_x = []
     if new_y is None:
       new_y = []
+    if new_i is None:
+      new_i = []
 
     nref_x = np.append(self.xdata, np.array(new_x).astype(np.double))
     nref_y = np.append(self.ydata, np.array(new_y).astype(np.double))
+    nref_i = np.append(self.idata, np.array(new_i).astype(np.double))
     self.xdata = nref_x
     self.ydata = nref_y
+    self.idata = nref_i
 
     nref_xy = zip(nref_x, nref_y)
     all_acc = [i[0] for i in nref_xy if i[1] >= min_bragg]
@@ -384,11 +385,14 @@ class TrackChart(wx.Panel):
 
     acc = [int(i) for i in all_acc if i > self.x_min and i < self.x_max]
     rej = [int(i) for i in all_rej if i > self.x_min and i < self.x_max]
+    idx = [int(i) for i in nref_i if i > self.x_min and i < self.x_max]
 
     self.acc_plot.set_xdata(nref_x)
     self.rej_plot.set_xdata(nref_x)
+    self.idx_plot.set_xdata(nref_x)
     self.acc_plot.set_ydata(nref_y)
     self.rej_plot.set_ydata(nref_y)
+    self.idx_plot.set_ydata(nref_i)
     self.acc_plot.set_markevery(acc)
     self.rej_plot.set_markevery(rej)
 
@@ -565,13 +569,13 @@ class TrackerPanel(wx.Panel):
     self.idx_count_box_sizer.Add(self.idx_count_txt, flag=wx.ALL | wx.ALIGN_CENTER,
                           border=10)
 
-    self.pg_box = wx.StaticBox(self.info_panel, label='Lattice')
+    self.pg_box = wx.StaticBox(self.info_panel, label='Best Lattice')
     self.pg_box_sizer = wx.StaticBoxSizer(self.pg_box, wx.HORIZONTAL)
     self.pg_txt = wx.StaticText(self.info_panel, label='')
     self.pg_box_sizer.Add(self.pg_txt, flag=wx.ALL | wx.ALIGN_CENTER,
                           border=10)
 
-    self.uc_box = wx.StaticBox(self.info_panel, label='Unit Cell')
+    self.uc_box = wx.StaticBox(self.info_panel, label='Best Unit Cell')
     self.uc_box_sizer = wx.StaticBoxSizer(self.uc_box, wx.HORIZONTAL)
     self.uc_txt = wx.StaticText(self.info_panel, label='')
     self.uc_box_sizer.Add(self.uc_txt, flag=wx.ALL | wx.ALIGN_CENTER,
@@ -581,7 +585,7 @@ class TrackerPanel(wx.Panel):
     font = wx.Font(20, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.count_txt.SetFont(font)
     self.idx_count_txt.SetFont(font)
-    font = wx.Font(14, wx.DEFAULT, wx.NORMAL, wx.BOLD)
+    font = wx.Font(18, wx.DEFAULT, wx.NORMAL, wx.BOLD)
     self.pg_txt.SetFont(font)
     self.uc_txt.SetFont(font)
 
@@ -615,15 +619,10 @@ class TrackerPanel(wx.Panel):
                                     ctrl_value=100,
                                     ctrl_min=10,
                                     ctrl_step=10)
-    # self.spf_options = wx.Button(self.graph_panel,
-    #                              label='Spotfinding Options...')
-    self.chk_uc_cluster = wx.CheckBox(self.graph_panel,
-                                      label='Unit cell clustering')
+
     self.graph_sizer.Add(self.chart, flag=wx.EXPAND, pos=(0, 0), span=(1, 3))
     self.graph_sizer.Add(self.min_bragg, flag=wx.ALIGN_LEFT, pos=(1, 0))
     self.graph_sizer.Add(self.chart_window, flag=wx.ALIGN_CENTER, pos=(1, 1))
-    self.graph_sizer.Add(self.chk_uc_cluster, flag=wx.ALIGN_CENTER, pos=(1, 2))
-    #self.graph_sizer.Add(self.spf_options, flag=wx.ALIGN_RIGHT, pos=(1, 2))
 
     self.graph_sizer.AddGrowableRow(0)
     self.graph_sizer.AddGrowableCol(1)
@@ -655,11 +654,6 @@ class TrackerPanel(wx.Panel):
                         flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.chart_splitter, pos=(1, 0),
                         flag=wx.EXPAND | wx.ALL, border=10)
-    # self.main_sizer.Add(self.graph_panel, pos=(1, 0),
-    #                     flag=wx.EXPAND | wx.LEFT | wx.BOTTOM, border=10)
-    # self.main_sizer.Add(self.image_list_panel, pos=(1, 1),
-    #                     flag=wx.EXPAND | wx.LEFT | wx.BOTTOM | wx.RIGHT,
-    #                     border=10)
     self.main_sizer.AddGrowableCol(0)
     self.main_sizer.AddGrowableRow(1)
     self.SetSizer(self.main_sizer)
@@ -672,6 +666,8 @@ class TrackerWindow(wx.Frame):
     self.parent = parent
     self.term_file = os.path.join(os.curdir, '.terminate_image_tracker')
     self.spf_backend = 'mosflm'
+    self.run_indexing = False
+    self.run_integration = False
 
     self.reset_spotfinder()
 
@@ -691,13 +687,13 @@ class TrackerWindow(wx.Frame):
                                                  shortHelp='Quit',
                                                  longHelp='Quit image tracker')
     self.toolbar.AddSeparator()
-    pref_bmp = bitmaps.fetch_icon_bitmap('apps', 'advancedsettings')
-    self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
-                                                  label='Preferences',
-                                                  bitmap=pref_bmp,
-                                                  shortHelp='Preferences',
-                                                  longHelp='IOTA image tracker preferences')
-    self.toolbar.AddSeparator()
+    # pref_bmp = bitmaps.fetch_icon_bitmap('apps', 'advancedsettings')
+    # self.tb_btn_prefs = self.toolbar.AddLabelTool(wx.ID_ANY,
+    #                                               label='Preferences',
+    #                                               bitmap=pref_bmp,
+    #                                               shortHelp='Preferences',
+    #                                               longHelp='IOTA image tracker preferences')
+    # self.toolbar.AddSeparator()
     open_bmp = bitmaps.fetch_icon_bitmap('actions', 'open')
     self.tb_btn_open = self.toolbar.AddLabelTool(wx.ID_ANY, label='Open',
                                                 bitmap=open_bmp,
@@ -769,16 +765,22 @@ class TrackerWindow(wx.Frame):
     self.Bind(wx.EVT_TIMER, self.onPlotOnlyTimer, id=self.ff_timer.GetId())
 
     # Settings bindings
-    #self.Bind(wx.EVT_BUTTON, self.onSpfOptions, self.tracker_panel.spf_options)
     self.Bind(wx.EVT_SPINCTRL, self.onMinBragg,
               self.tracker_panel.min_bragg.ctr)
     self.Bind(wx.EVT_SPINCTRL, self.onChartRange,
               self.tracker_panel.chart_window.ctr)
+    self.Bind(wx.EVT_CHECKBOX, self.onChartRange,
+              self.tracker_panel.chart_window.toggle)
 
     # Read arguments if any
     self.args, self.phil_args = parse_command_args('').parse_known_args()
 
     self.spf_backend = self.args.backend
+    if 'index' in self.args.action:
+      self.run_indexing = True
+    elif 'int' in self.args.action:
+      self.run_indexing = True
+      self.run_integration = True
     self.tracker_panel.min_bragg.ctr.SetValue(self.args.bragg)
 
     if self.args.file is not None:
@@ -810,8 +812,6 @@ class TrackerWindow(wx.Frame):
   def reset_spotfinder(self):
     self.done_list = []
     self.data_list = []
-    self.new_frames = []
-    self.new_counts = []
     self.spotfinding_info = []
     self.plot_idx = 0
     self.bookmark = 0
@@ -922,9 +922,14 @@ class TrackerWindow(wx.Frame):
     self.tracker_panel.chart.draw_bragg_line()
 
   def onChartRange(self, e):
-    chart_range = self.tracker_panel.chart_window.ctr.GetValue()
-    self.tracker_panel.chart.chart_range = chart_range
-    self.tracker_panel.chart.max_lock = True
+    if self.tracker_panel.chart_window.toggle.GetValue():
+      chart_range = self.tracker_panel.chart_window.ctr.GetValue()
+      self.tracker_panel.chart.plot_zoom = True
+      self.tracker_panel.chart.chart_range = chart_range
+      self.tracker_panel.chart.max_lock = True
+    else:
+      self.tracker_panel.chart.plot_zoom = False
+    self.tracker_panel.chart.draw_plot()
 
   def onSpfOptions(self, e):
     spf_dlg = DIALSSpfDialog(self,
@@ -950,7 +955,10 @@ class TrackerWindow(wx.Frame):
     self.params = self.phil.extract()
 
     self.spin_update = 0
-    self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
+    if self.args.file is not None:
+      self.sb.SetStatusText('{}'.format('FILE'), 0)
+    else:
+      self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
 
     if from_file:
       self.ff_timer.Start(1000)
@@ -978,7 +986,10 @@ class TrackerWindow(wx.Frame):
                                              data_list=submit_list,
                                              term_file=self.term_file,
                                              proc_params=self.params,
-                                             backend=self.spf_backend)
+                                             backend=self.spf_backend,
+                                             n_proc=self.args.nproc,
+                                             run_indexing=self.run_indexing,
+                                             run_integration=self.run_integration)
       self.spf_thread.start()
 
 
@@ -1132,14 +1143,15 @@ class TrackerWindow(wx.Frame):
   def plot_results(self):
 
     if self.plot_idx <= len(self.spotfinding_info):
-      self.new_frames = [i[0] for i in self.spotfinding_info[self.plot_idx:]]
-      self.new_counts = [i[1] for i in self.spotfinding_info[self.plot_idx:]]
-      self.tracker_panel.chart.draw_plot(new_x=self.new_frames,
-                                         new_y=self.new_counts)
+      new_frames = [i[0] for i in self.spotfinding_info[self.plot_idx:]]
+      new_counts = [i[1] for i in self.spotfinding_info[self.plot_idx:]]
+      idx_counts = [i[1] if i[3] is not None else np.nan
+                         for i in self.spotfinding_info[self.plot_idx:]]
+
+      self.tracker_panel.chart.draw_plot(new_x=new_frames,
+                                         new_y=new_counts,
+                                         new_i=idx_counts)
       self.plot_idx = self.spotfinding_info.index(self.spotfinding_info[-1]) + 1
-    else:
-      self.new_frames = []
-      self.new_counts = []
 
 
   def onUCTimer(self, e):
@@ -1150,7 +1162,11 @@ class TrackerWindow(wx.Frame):
     for item in self.spotfinding_info:
       if item[4] is not None:
         try:
-          info_line = [float(i) for i in item[4]]
+          if type(item[4]) is tuple:
+            uc = item[4]
+          else:
+            uc = item[4].rsplit()
+          info_line = [float(i) for i in uc]
           info_line.append(item[3])
           input.append(info_line)
         except ValueError:
@@ -1181,25 +1197,42 @@ class TrackerWindow(wx.Frame):
       # select the most prevalent unit cell (most members in cluster)
       uc_freqs = [i[0] for i in uc_summary]
       uc_pick = uc_summary[np.argmax(uc_freqs)]
-
-      cons_pg = uc_pick[1]
       cons_uc = uc_pick[2]
-      cons_uc_std = uc_pick[3]
-      uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                "".format(cons_uc[0], cons_uc_std[0],
-                          cons_uc[1], cons_uc_std[1],
-                          cons_uc[2], cons_uc_std[2],
-                          cons_uc[3], cons_uc_std[3],
-                          cons_uc[4], cons_uc_std[4],
-                          cons_uc[5], cons_uc_std[5])
+      # cons_uc_std = uc_pick[3]
+      #
+      # uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+      #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+      #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+      #           "".format(cons_uc[0], cons_uc_std[0],
+      #                     cons_uc[1], cons_uc_std[1],
+      #                     cons_uc[2], cons_uc_std[2],
+      #                     cons_uc[3], cons_uc_std[3],
+      #                     cons_uc[4], cons_uc_std[4],
+      #                     cons_uc[5], cons_uc_std[5])
 
-      self.tracker_panel.pg_txt.SetLabel(cons_pg)
+      # Here will determine the best symmetry for the given unit cell (better
+      # than previous method of picking the "consensus" point group from list)
+      uc_init = unit_cell(cons_uc)
+      symmetry = crystal.symmetry(unit_cell=uc_init, space_group_symbol='P1')
+      groups = lattice_symmetry.metric_subgroups(input_symmetry=symmetry,
+                                                 max_delta=3)
+      top_group = groups.result_groups[0]
+      best_uc = top_group['best_subsym'].unit_cell().parameters()
+      best_sg = top_group['best_subsym'].space_group_info()
+
+      uchr = misc.UnicodeCharacters()
+
+      uc_line = "a = {:<6.2f}, b = {:<6.2f}, c ={:<6.2f}, " \
+                "{} = {:<6.2f}, {} = {:<6.2f}, {} = {:<6.2f}" \
+                "".format(best_uc[0], best_uc[1], best_uc[2],
+                          uchr.alpha,  best_uc[3], uchr.beta,
+                          best_uc[4], uchr.gamma,  best_uc[5])
+      sg_line = str(best_sg)
+
+      self.tracker_panel.pg_txt.SetLabel(sg_line)
       self.tracker_panel.uc_txt.SetLabel(uc_line)
-    else:
-      self.tracker_panel.pg_txt.SetLabel('N/A')
-      self.tracker_panel.uc_txt.SetLabel('N/A')
+      self.tracker_panel.chart.draw_plot()
+
 
   def onQuit(self, e):
     self.spf_timer.Stop()

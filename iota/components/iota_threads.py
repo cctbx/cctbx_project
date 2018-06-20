@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/04/2018
+Last Changed: 06/19/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -19,6 +19,7 @@ from dxtbx.datablock import DataBlockFactory
 import multiprocessing
 
 from iota.components.iota_utils import InputFinder
+from iota.components.iota_misc import Capturing
 import iota.components.iota_image as img
 
 ginp = InputFinder()
@@ -259,18 +260,83 @@ class SpotFinderTerminated(wx.PyCommandEvent):
     return None
 
 class SpotFinderDIALSThread():
-  def __init__(self, parent, processor, term_file):
+  def __init__(self, parent, processor, term_file, run_indexing=False,
+               run_integration=False):
     self.meta_parent = parent.parent
     self.processor = processor
     self.term_file = term_file
+    self.run_indexing = run_indexing
+    self.run_integration = run_integration
 
   def run(self, idx, img):
     if os.path.isfile(self.term_file):
       raise IOTATermination('IOTA_TRACKER: Termination signal received!')
     else:
-      datablock = DataBlockFactory.from_filenames([img])[0]
-      observed = self.processor.find_spots(datablock=datablock)
-      return [idx, int(len(observed)), img, None, None]
+      with Capturing() as junk_output:
+        fail = False
+        sg = None
+        uc = None
+        try:
+          datablock = DataBlockFactory.from_filenames([img])[0]
+          observed = self.processor.find_spots(datablock=datablock)
+        except Exception, e:
+          fail = True
+          observed = []
+          pass
+
+        # TODO: Indexing / lattice determination very slow (how to speed up?)
+        if self.run_indexing:
+          if not fail:
+            try:
+              experiments, indexed = self.processor.index(
+                datablock=datablock, reflections=observed)
+            except Exception, e:
+              fail = True
+              pass
+
+          if not fail:
+            try:
+              solution = self.processor.refine_bravais_settings(
+                reflections=indexed, experiments=experiments)
+
+              # Only reindex if higher-symmetry solution found
+              if solution is not None:
+                experiments, indexed = self.processor.reindex(
+                  reflections=indexed,
+                  experiments=experiments,
+                  solution=solution)
+              lat = experiments[0].crystal.get_space_group().info()
+              sg = str(lat).replace(' ', '')
+            except Exception:
+              fail = True
+              pass
+
+          if not fail:
+            unit_cell = experiments[0].crystal.get_unit_cell().parameters()
+            uc = ' '.join(['{:.4f}'.format(i) for i in unit_cell])
+
+          if self.run_integration:
+            if not fail:
+              try:
+                # Run refinement
+                experiments, indexed = self.processor.refine(
+                  experiments=experiments,
+                  centroids=indexed)
+              except Exception, e:
+                fail = True
+                pass
+
+            if not fail:
+              try:
+                print experiments
+                print indexed
+                integrated = self.processor.integrate(experiments=experiments,
+                                                      indexed=indexed)
+              except Exception, e:
+                pass
+
+      return [idx, int(len(observed)), img, sg, uc]
+
 
 class SpotFinderMosflmThread():
   def __init__(self, parent, term_file):
@@ -369,25 +435,47 @@ class SpotFinderThread(Thread):
                data_list=None,
                term_file=None,
                proc_params=None,
-               backend='dials'):
+               backend='dials',
+               n_proc=0,
+               run_indexing=False,
+               run_integration=False):
     Thread.__init__(self)
     self.parent = parent
     self.data_list = data_list
     self.term_file = term_file
     self.terminated = False
     self.backend = backend
+    self.run_indexing = run_indexing
+    self.run_integration = run_integration
+    if n_proc > 0:
+      self.n_proc = n_proc
+    else:
+      self.n_proc = multiprocessing.cpu_count() - 2
 
     if self.backend == 'dials':
+      # Modify default DIALS parameters
+      # These parameters will be set no matter what
+      proc_params.output.datablock_filename = None
+      proc_params.output.indexed_filename = None
+      proc_params.output.strong_filename = None
+      proc_params.output.refined_experiments_filename = None
+      proc_params.output.integrated_filename = None
+      proc_params.output.integrated_experiments_filename = None
+      proc_params.output.profile_filename = None
+      proc_params.output.integration_pickle = None
+
+      #TODO: These *should* be overridden by a script...
+      proc_params.indexing.stills.method_list = ['fft3d']
+
       from iota.components.iota_dials import IOTADialsProcessor
       self.processor = IOTADialsProcessor(params=proc_params)
 
   def run(self):
-    total_procs = multiprocessing.cpu_count()
     try:
       parallel_map(iterable=self.data_list,
                    func=self.spf_wrapper,
                    callback=self.callback,
-                   processes=total_procs-5)
+                   processes=self.n_proc)
     except IOTATermination, e:
       self.terminated = True
       print e
@@ -412,7 +500,12 @@ class SpotFinderThread(Thread):
     try:
       if os.path.isfile(img):
         if self.backend == 'dials':
-          spf_worker = SpotFinderDIALSThread(self, self.processor, self.term_file)
+          spf_worker = SpotFinderDIALSThread(self,
+                                             processor=self.processor,
+                                             term_file=self.term_file,
+                                             run_indexing=self.run_indexing,
+                                             run_integration=self.run_integration
+                                             )
           result = spf_worker.run(idx=int(self.data_list.index(img)), img=img)
         elif self.backend == 'mosflm':
           spf_worker = SpotFinderMosflmThread(self, self.term_file)

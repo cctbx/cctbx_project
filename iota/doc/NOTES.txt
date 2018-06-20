@@ -1,14 +1,14 @@
-IOTA v1.1.032 - IOTA DIALS stills processor update
+IOTA v1.1.033 - Image tracker update
 
 Bugfixes:
-- Fixed tracker bug that wasn't correctly propagating the backend option
-- Fixed cluster (from_iterable) bug that only read 5 unit cell parameters
+- Fixed "Finite Chart" checkbox - it now works
 
 Features:
-- Added a parameter to Processor object to toggle writing out of int pickles
-- iota_single_image.py now modifies default DIALS params with params from IOTA
-- iota_single_image.py calculates resolution differently if image is integrated
-
+- Tracker now tracks indexed images as well
+- Added indexing / integration options for tracker DIALS backend
+- Removed Properties button (will be a simplified UI for now)
+- Determine best symmetry for Cluster unit cell result
+- Made iota.single_image stdout compatible with BluIce Raster display
 
 Known issues:
 
