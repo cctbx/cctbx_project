@@ -25,7 +25,6 @@ from mmtbx.building.cablam_idealization import cablam_idealization
 import mmtbx.building.loop_closure.utils
 from mmtbx.refinement.geometry_minimization import minimize_wrapper_for_ramachandran
 from mmtbx.refinement.real_space.individual_sites import minimize_wrapper_with_map
-from mmtbx.validation.clashscore import check_and_add_hydrogen
 import mmtbx.model
 import mmtbx.refinement.real_space.fit_residues
 import scitbx.math
