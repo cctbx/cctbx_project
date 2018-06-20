@@ -24,7 +24,8 @@ from dxtbx.datablock import DataBlockFactory
 from threading import Thread
 
 from iota.components.iota_dials import IOTADialsProcessor
-from iota.components.iota_dials import phil_scope
+# from iota.components.iota_dials import phil_scope
+from dials.command_line.stills_process import phil_scope
 from iota.components.iota_threads import IOTATermination
 from iota.components.iota_misc import Capturing
 from iota.components.iota_input import write_defaults
@@ -137,7 +138,6 @@ class DIALSSpfIdx(Thread):
       self.params.indexing.stills.method_list = ['fft3d']
       self.params.spotfinder.threshold.dispersion.global_threshold = 75
 
-
     if self.backend == 'dials':
       self.processor = IOTADialsProcessor(params=self.params,
                                           write_pickle=False)
@@ -219,13 +219,14 @@ class DIALSSpfIdx(Thread):
                 print indexed
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
+                frame = self.processor.frame
                 status = 'integrated'
               except Exception, e:
                 err.append('INTEGRATION ERROR: {}'.format(e))
                 pass
 
       if status == 'integrated':
-        res = self.processor.frame['observations'][0].d_max_min()
+        res = frame['observations'][0].d_max_min()
       else:
         detector = datablock.unique_detectors()[0]
         beam = datablock.unique_beams()[0]
