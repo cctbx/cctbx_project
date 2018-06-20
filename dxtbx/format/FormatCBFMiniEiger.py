@@ -152,7 +152,7 @@ class FormatCBFMiniEiger(FormatCBFMini):
                                    beam_y * pixel_y * 1000.0), '+x', '-y',
         (1000 * pixel_x, 1000 * pixel_y),
         (nx, ny), (underload, overload), [],
-        ParallaxCorrectedPxMmStrategy(mu, t0))
+        px_mm=ParallaxCorrectedPxMmStrategy(mu, t0), mu=mu)
 
     for f0, f1, s0, s1 in determine_eiger_mask(detector):
       detector[0].add_mask(f0-1, s0-1, f1, s1)

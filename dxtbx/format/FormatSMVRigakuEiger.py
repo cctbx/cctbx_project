@@ -131,9 +131,18 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
     overload = int(float(self._header_dictionary['SATURATED_VALUE']))
     underload = -1
 
+    # Unfortunately thickness and material are not stored in the header. Set
+    # to sensible defaults.
+    thickness = 0.450
+    material = 'Si'
+    from cctbx.eltbx import attenuation_coefficient
+    table = attenuation_coefficient.get_table(material)
+    mu = table.mu_at_angstrom(wavelength) / 10.0
+
     return self._detector_factory.complex(
         'PAD', detector_origin.elems, detector_fast.elems,
-        detector_slow.elems, pixel_size, image_size, (underload, overload))
+        detector_slow.elems, pixel_size, image_size, (underload, overload),
+        px_mm=ParallaxCorrectedPxMmStrategy(mu, t0), mu=mu)
 
   def _beam(self):
     '''Return a simple model for the beam.'''
