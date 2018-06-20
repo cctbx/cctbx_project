@@ -596,8 +596,8 @@ class DetectorFactory:
 
   @staticmethod
   def complex(sensor, origin, fast, slow, pixel, size,
-              trusted_range = (0.0, 0.0), px_mm = None, gain = None,
-              identifier=""):
+              trusted_range = (0.0, 0.0), mask=[], px_mm = None, mu=0.0,
+              gain = None, identifier=""):
     '''A complex detector model, where you know exactly where everything
     is. This is useful for implementation of the Rigaku Saturn header
     format, as that is exactly what is in there. Origin, fast and slow are
@@ -610,10 +610,20 @@ class DetectorFactory:
     assert(len(pixel) == 2)
     assert(len(size) == 2)
 
-    return DetectorFactory.make_detector(
-            DetectorFactory.sensor(sensor),
-            fast, slow, origin, pixel, size, trusted_range, px_mm, gain=gain,
-            identifier=identifier)
+    detector = DetectorFactory.make_detector(
+        DetectorFactory.sensor(sensor),
+        fast,
+        slow,
+        origin,
+        pixel,
+        size,
+        trusted_range,
+        px_mm,
+        mu=mu,
+        gain=gain,
+        identifier=identifier)
+    detector[0].mask = mask
+    return detector
 
   @staticmethod
   def imgCIF(cif_file, sensor):
