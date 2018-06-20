@@ -257,7 +257,7 @@ class DIALSSpfIdx(Thread):
 
     file_wait_start = time.time()
     while True:
-      if time.time() - file_wait_start > 10:
+      if time.time() - file_wait_start > 30:
         info = None
         elapsed = None
         errors.append('{} does not exist'.format(self.img))

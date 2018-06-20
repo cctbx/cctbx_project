@@ -9,6 +9,7 @@ Features:
 - Removed Properties button (will be a simplified UI for now)
 - Determine best symmetry for Cluster unit cell result
 - Made iota.single_image stdout compatible with BluIce Raster display
+- Increased "file not found" timeout to 30 sec
 
 Known issues:
 
