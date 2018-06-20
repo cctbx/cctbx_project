@@ -78,10 +78,6 @@ use_ss_restraints = True
   .type = bool
   .help = Use Secondary Structure restraints
   .expert_level = 2
-add_hydrogens = False
-  .type = bool
-  .help = Add hydrogens to the model before rotamer fixing
-  .expert_level = 2
 use_starting_model_for_final_gm = False
   .type = bool
   .help = Use supplied model for final geometry minimization. Otherwise just \
@@ -588,11 +584,6 @@ class model_idealization():
           fname_suffix="rama_ideal")
     self.after_loop_idealization = self.get_statistics(self.model)
 
-    if self.params.add_hydrogens:
-      print >> self.log, "Adding hydrogens"
-      assert 0, "not implemented anymore"
-      self.add_hydrogens()
-
     # fixing remaining rotamer outliers
     if (self.params.additionally_fix_rotamer_outliers and
         self.after_loop_idealization.rotamer.outliers > 0.004):
@@ -658,34 +649,6 @@ class model_idealization():
       easy_pickle.dump(
           file_name="%s.pkl" % self.params.output_prefix,
           obj = self.get_stats_obj())
-
-  def add_hydrogens(self):
-    # Not used and not working anymore.
-    cs = self.model.crystal_symmetry()
-    pdb_str, changed = check_and_add_hydrogen(
-        pdb_hierarchy=self.whole_pdb_h,
-        file_name=None,
-        nuclear=False,
-        keep_hydrogens=False,
-        verbose=False,
-        model_number=0,
-        n_hydrogen_cut_off=0,
-        time_limit=120,
-        allow_multiple_models=True,
-        crystal_symmetry=self.cs,
-        do_flips=True,
-        log=self.log)
-    self.whole_pdb_h = iotbx.pdb.input(lines=pdb_str, source_info=None).construct_hierarchy()
-    # we need to renew everythig here: grm, whole model, xrs!
-    self.whole_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=cs)
-    self.get_grm()
-    # self.get_filtered_ncs_group_list()
-    # temp workaround, do something here to handle NCS cases
-    self.working_pdb_h = self.whole_pdb_h
-    self.working_xrs = self.working_pdb_h.extract_xray_structure(crystal_symmetry=cs)
-    self.working_grm = self.whole_grm
-
-
 
   def minimize(self,
       model,
