@@ -23,24 +23,6 @@ else:
   env_wd = env
   envlm_wd = envlm
 
-# Handle a RHEL-specific GCC 4.4.7 bug.
-# RHEL6's default version of GCC contains some RedHat-specific patches.
-# One of these breaks code generation in specific situations involving
-# virtual table lookups. The way that the pmr_2 test creates and uses a
-# subclass immediately exposes this code to the bug.
-#
-# Adding this flag is one of the official red-hat suggested ways to
-# work around the problem (the other being to install official updated
-# tools). There also appear to be translation unit tricks that can be
-# employed if this fails.
-#
-# For details and workarounds see:
-#   https://bugzilla.redhat.com/show_bug.cgi?id=985895
-#   https://stackoverflow.com/a/41814432/1118662
-env_pmr = env_wd.Clone()
-if env_etc.compiler == "unix_gcc" and env_etc.gcc_version == 40407:
-  env_pmr.Append(CXXFLAGS="-fno-tree-sink")
-
 env_wd.Program(target="tst_af_1", source="tst_af_1.cpp")
 env_wd.Program(target="tst_af_2", source="tst_af_2.cpp")
 env_wd.Program(target="tst_af_3", source="tst_af_3.cpp")
@@ -54,5 +36,3 @@ env_wd.Program(target="tst_accessors", source="tst_accessors.cpp")
 env_wd.Program(target="tst_unsigned_float_arithmetic",
             source="tst_unsigned_float_arithmetic.cpp")
 env_wd.Program(target="tst_optional_copy", source="tst_optional_copy.cpp")
-env_wd.Program(target="tst_pmr", source="tst_pmr.cpp")
-env_pmr.Program(target="tst_pmr_2", source="tst_pmr_02.cpp")

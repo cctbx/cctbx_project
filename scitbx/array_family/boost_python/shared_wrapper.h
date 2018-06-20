@@ -119,8 +119,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__delitem__", delitem_1d)
         .def("__getitem__", getitem_1d_slice)
         .def("__delitem__", delitem_1d_slice)
-        // In cases with more than one overload, choose the one with no arguments
-        .def("deep_copy", static_cast<w_t (w_t::*)(void) const>(&w_t::deep_copy))
+        .def("deep_copy", &w_t::deep_copy)
         .def("clear", &w_t::clear)
         .def("insert", insert)
         .def("append", &w_t::push_back)

@@ -16,56 +16,50 @@ namespace scitbx { namespace af {
       typedef shared_plain<ElementType> base_class;
       typedef base_class base_array_type;
 
-      typedef typename base_class::allocator_type  allocator_type;
-
       typedef AccessorType accessor_type;
       typedef typename accessor_type::index_type index_type;
       typedef typename accessor_type::index_value_type index_value_type;
       typedef versa_plain<ElementType> one_dim_type;
       typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
-      explicit
-      versa_plain(allocator_type a = allocator_type())
-        : base_class(a)
+      versa_plain()
       {}
 
       explicit
-      versa_plain(AccessorType const& ac, allocator_type a = allocator_type())
-        : base_class(ac.size_1d(), a),
+      versa_plain(AccessorType const& ac)
+        : base_class(ac.size_1d()),
           m_accessor(ac)
       {}
 
       explicit
-      versa_plain(index_value_type const& n0, allocator_type a = allocator_type())
-        : base_class(AccessorType(n0).size_1d(), a),
+      versa_plain(index_value_type const& n0)
+        : base_class(AccessorType(n0).size_1d()),
           m_accessor(n0)
       {}
 
-      versa_plain(AccessorType const& ac, ElementType const& x, allocator_type a = allocator_type())
-        : base_class(ac.size_1d(), x, a),
+      versa_plain(AccessorType const& ac, ElementType const& x)
+        : base_class(ac.size_1d(), x),
           m_accessor(ac)
       {}
 
-      versa_plain(index_value_type const& n0, ElementType const& x, allocator_type a = allocator_type())
-        : base_class(AccessorType(n0).size_1d(), x, a),
+      versa_plain(index_value_type const& n0, ElementType const& x)
+        : base_class(AccessorType(n0).size_1d(), x),
           m_accessor(n0)
       {}
 
       // non-std
       template <typename FunctorType>
       versa_plain(AccessorType const& ac,
-                  init_functor<FunctorType> const& ftor,
-                  allocator_type a = allocator_type())
-        : base_class(ac.size_1d(), ftor, a),
+                  init_functor<FunctorType> const& ftor)
+        : base_class(ac.size_1d(), ftor),
           m_accessor(ac)
       {}
 
       // non-std
       template <typename FunctorType>
       versa_plain(index_value_type const& n0,
-                  init_functor<FunctorType> const& ftor,
-                  allocator_type a = allocator_type())
-        : base_class(AccessorType(n0).size_1d(), ftor, a),
+                  init_functor<FunctorType> const& ftor)
+        : base_class(AccessorType(n0).size_1d(), ftor),
           m_accessor(n0)
       {}
 
@@ -144,9 +138,8 @@ namespace scitbx { namespace af {
       }
 
       template <typename OtherArrayType>
-      versa_plain(array_adaptor<OtherArrayType> const& a_a,
-                  allocator_type a = allocator_type())
-        : base_class(a_a, a),
+      versa_plain(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a),
           m_accessor((a_a.pointee)->size())
       {}
 
@@ -185,16 +178,10 @@ namespace scitbx { namespace af {
       }
 
       versa_plain<ElementType, AccessorType>
-      deep_copy(allocator_type a) const {
-        base_array_type c(begin(), end(), a);
+      deep_copy() const {
+        base_array_type c(begin(), end());
         return versa_plain<ElementType, AccessorType>(c, m_accessor);
       }
-
-      versa_plain<ElementType, AccessorType>
-      deep_copy() const {
-        return deep_copy(allocator_type());
-      }
-
 
       base_array_type
       as_base_array() const {

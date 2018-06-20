@@ -28,12 +28,9 @@
 #ifndef SCITBX_ARRAY_FAMILY_SHARED_PLAIN_H
 #define SCITBX_ARRAY_FAMILY_SHARED_PLAIN_H
 
-#include <scitbx/error.h>
-
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/type_traits.h>
-
-#include "polymorphic_allocator.h"
+#include <scitbx/array_family/memory.h>
 
 namespace scitbx { namespace af {
 
@@ -43,53 +40,56 @@ namespace scitbx { namespace af {
     const std::size_t global_max_size(static_cast<std::size_t>(-1));
   }
 
-  /** Data store that is shared between shared_plain objects.
-   *
-   * Size is allocated in bytes, and it contains it's own reference counts.
-   * Although size and capacity is determined on creation, the inner
-   * configuration of this class is managed by the shared_plain owners.
-   */
+
   class sharing_handle {
     public:
-      // General allocator - should be std::byte once C++11 is supported
-      typedef pmr::polymorphic_allocator<unsigned char> allocator_type;
 
-      sharing_handle(allocator_type a = allocator_type())
+      static bool const ensures_aligned_memory =
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        true;
+#else
+        false;
+#endif
+
+      sharing_handle()
         : use_count(1), weak_count(0), size(0), capacity(0),
-          data(NULL), m_allocator(a)
+          data(0)
       {}
 
-      sharing_handle(weak_ref_flag, allocator_type a = allocator_type())
+      sharing_handle(weak_ref_flag)
         : use_count(0), weak_count(1), size(0), capacity(0),
-          data(NULL), m_allocator(a)
+          data(0)
       {}
 
       explicit
-      sharing_handle(std::size_t const& sz, allocator_type a = allocator_type())
+      sharing_handle(std::size_t const& sz)
         : use_count(1), weak_count(0), size(0), capacity(sz),
-          data(NULL), m_allocator(a)
-      {
-        // Allow calling with size zero to match other constructors
-        if (sz != 0) data = m_allocator.allocate(sz);
-      }
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+          data(reinterpret_cast<char *>(aligned_malloc(sz)))
+#else
+          data(new char[sz])
+#endif
+      {}
 
       ~sharing_handle() {
-        if (data) m_allocator.deallocate(data, capacity);
-        data = NULL;
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        aligned_free(data);
+#else
+        delete[] data;
+#endif
       }
 
       void deallocate() {
-        if (data) m_allocator.deallocate(data, capacity);
+#ifdef SCITBX_AF_HAS_ALIGNED_MALLOC
+        aligned_free(data);
+#else
+        delete[] data;
+#endif
         capacity = 0;
-        data = NULL;
+        data = 0;
       }
 
       void swap(sharing_handle& other) {
-        // Swapping doesn't make sense if the allocators don't match -
-        // it would be a copy instead, in which case we almost definitely
-        // won't want a symmetric copy.
-        SCITBX_ASSERT(m_allocator == other.m_allocator);
-
         std::swap(size, other.size);
         std::swap(capacity, other.capacity);
         std::swap(data, other.data);
@@ -99,67 +99,45 @@ namespace scitbx { namespace af {
       std::size_t weak_count;
       std::size_t size;
       std::size_t capacity;
-      allocator_type::value_type* data;
-
-      allocator_type get_allocator() const { return m_allocator; }
+      char* data;
 
     private:
-      // No copy or assignment operators
       sharing_handle(sharing_handle const&);
       sharing_handle& operator=(sharing_handle const&);
-
-      allocator_type m_allocator;
   };
 
-  /**
-   * Container that shares data between it's instances.
-   *
-   * Conceptually, acts like a shared_ptr<vector<ElementType>>, but
-   * without the need to use the dereferencing operator to operate
-   * on the vector.
-   *
-   * Has additional functionality to create weak references to the
-   * main data set.
-   */
   template <typename ElementType>
   class shared_plain
   {
     public:
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
-      typedef pmr::polymorphic_allocator<unsigned char> allocator_type;
-
       static size_type element_size() { return sizeof(ElementType); }
 
     public:
-      explicit
-      shared_plain(allocator_type a = allocator_type())
+      shared_plain()
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(0, m_allocator))
+          m_handle(new sharing_handle)
       {}
 
       explicit
-      shared_plain(size_type const& sz, allocator_type a = allocator_type())
+      shared_plain(size_type const& sz)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(sz, m_allocator))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, ElementType());
         m_handle->size = m_handle->capacity;
       }
 
       // non-std
-      shared_plain(af::reserve const& sz, allocator_type a = allocator_type())
+      shared_plain(af::reserve const& sz)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(sz(), m_allocator))
-      { }
+          m_handle(new sharing_handle(sz() * element_size()))
+      {}
 
-      shared_plain(size_type const& sz, ElementType const& x, allocator_type a = allocator_type())
+      shared_plain(size_type const& sz, ElementType const& x)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(sz, m_allocator))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         std::uninitialized_fill_n(begin(), sz, x);
         m_handle->size = m_handle->capacity;
@@ -167,20 +145,17 @@ namespace scitbx { namespace af {
 
       // non-std
       template <typename FunctorType>
-      shared_plain(size_type const& sz, init_functor<FunctorType> const& ftor, allocator_type a = allocator_type())
+      shared_plain(size_type const& sz, init_functor<FunctorType> const& ftor)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(sz, m_allocator))
+          m_handle(new sharing_handle(sz * element_size()))
       {
         (*ftor.held)(begin(), sz);
         m_handle->size = m_handle->capacity;
       }
 
-      /// Create a shared_plain by copying out of an existing memory buffer
-      shared_plain(const ElementType* first, const ElementType* last, allocator_type a = allocator_type())
+      shared_plain(const ElementType* first, const ElementType* last)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(last-first, m_allocator))
+          m_handle(new sharing_handle((last - first) * element_size()))
       {
         std::uninitialized_copy(first, last, begin());
         m_handle->size = m_handle->capacity;
@@ -188,10 +163,9 @@ namespace scitbx { namespace af {
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       template <typename OtherElementType>
-      shared_plain(const OtherElementType* first, const OtherElementType* last, allocator_type a = allocator_type())
+      shared_plain(const OtherElementType* first, const OtherElementType* last)
         : m_is_weak_ref(false),
-          m_allocator(a),
-          m_handle(m_allocate_handle(last-first, m_allocator))
+          m_handle(new sharing_handle((last - first) * element_size()))
       {
         uninitialized_copy_typeconv(first, last, begin());
         m_handle->size = m_handle->capacity;
@@ -199,14 +173,8 @@ namespace scitbx { namespace af {
 #endif
 
       // non-std: shallow copy semantics
-      // Allocator: Normally copy would give a chance to change allocator -
-      //            but we're way out of standard behaviour territory here,
-      //            so propogate the other allocator to this instance so that
-      //            if we ever need to do a reallocate (which at time of
-      //            writing isn't done), then it's on the correct resource
       shared_plain(shared_plain<ElementType> const& other)
         : m_is_weak_ref(other.m_is_weak_ref),
-          m_allocator(other.m_allocator),
           m_handle(other.m_handle)
       {
         if (m_is_weak_ref) m_handle->weak_count++;
@@ -216,44 +184,35 @@ namespace scitbx { namespace af {
       // non-std: shallow copy semantics, weak reference
       shared_plain(shared_plain<ElementType> const& other, weak_ref_flag)
         : m_is_weak_ref(true),
-          m_allocator(other.m_allocator),
           m_handle(other.m_handle)
       {
         m_handle->weak_count++;
       }
 
       // non-std
-      // Allocator: Tricky here, as technically we don't know what allocator
-      //            the other handle was allocated on, we can't deallocate
-      //            it reliably. However, in all current functionality
-      //            it's a safe bet that it was allocated on the same
-      //            allocator that the handle is using, so use that and
-      //            hope we don't cause any segmentation faults/leaks.
       explicit
       shared_plain(sharing_handle* other_handle)
-          : m_is_weak_ref(false),
-            m_allocator(other_handle->get_allocator()),
-            m_handle(other_handle) {
+        : m_is_weak_ref(false),
+          m_handle(other_handle)
+      {
         SCITBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         m_handle->use_count++;
       }
 
       // non-std
-      // Allocator issue same as non-weak version. Not advised.
       shared_plain(sharing_handle* other_handle, weak_ref_flag)
-          : m_is_weak_ref(true),
-            m_allocator(other_handle->get_allocator()),
-            m_handle(other_handle) {
+        : m_is_weak_ref(true),
+          m_handle(other_handle)
+      {
         SCITBX_ARRAY_FAMILY_STATIC_ASSERT_HAS_TRIVIAL_DESTRUCTOR
         m_handle->weak_count++;
       }
 
       // non-std
       template <typename OtherArrayType>
-      shared_plain(array_adaptor<OtherArrayType> const& a_a, allocator_type allocator = allocator_type())
+      shared_plain(array_adaptor<OtherArrayType> const& a_a)
         : m_is_weak_ref(false),
-          m_allocator(allocator),
-          m_handle(m_allocate_handle(0, m_allocator))
+          m_handle(new sharing_handle)
       {
         OtherArrayType const& a = *(a_a.pointee);
         reserve(a.size());
@@ -269,9 +228,6 @@ namespace scitbx { namespace af {
       operator=(shared_plain<ElementType> const& other)
       {
         if (m_handle != other.m_handle) {
-          // Non-copy assign only works without copy for identical allocators
-          SCITBX_ASSERT(m_allocator == other.m_allocator);
-
           m_dispose();
           m_is_weak_ref = other.m_is_weak_ref;
           m_handle = other.m_handle;
@@ -325,7 +281,7 @@ namespace scitbx { namespace af {
 
       void reserve(size_type const& sz) {
         if (capacity() < sz) {
-          shared_plain<ElementType> new_this(((af::reserve(sz))), m_allocator);
+          shared_plain<ElementType> new_this(((af::reserve(sz))));
           std::uninitialized_copy(begin(), end(), new_this.begin());
           new_this.m_set_size(size());
           new_this.swap(*this);
@@ -334,13 +290,8 @@ namespace scitbx { namespace af {
 
       // non-std
       shared_plain<ElementType>
-      deep_copy(allocator_type a) const {
-        return shared_plain<ElementType>(begin(), end(), a);
-      }
-
-      shared_plain<ElementType>
       deep_copy() const {
-        return deep_copy(allocator_type());
+        return shared_plain<ElementType>(begin(), end());
       }
 
       // non-std
@@ -350,8 +301,6 @@ namespace scitbx { namespace af {
       }
 
 #     include <scitbx/array_family/detail/push_back_etc.h>
-
-      allocator_type get_allocator() const { return m_allocator; }
 
     protected:
 
@@ -364,7 +313,7 @@ namespace scitbx { namespace af {
                              size_type const& n, ElementType const& x,
                              bool at_end) {
         shared_plain<ElementType>
-          new_this((af::reserve(m_compute_new_capacity(size(), n))), m_allocator);
+          new_this((af::reserve(m_compute_new_capacity(size(), n))));
         std::uninitialized_copy(begin(), pos, new_this.begin());
         new_this.m_set_size(pos - begin());
         if (n == 1) {
@@ -391,7 +340,7 @@ namespace scitbx { namespace af {
                              const ElementType* last) {
         size_type n = last - first;
         shared_plain<ElementType>
-          new_this((af::reserve(m_compute_new_capacity(size(), n))), m_allocator);
+          new_this((af::reserve(m_compute_new_capacity(size(), n))));
         std::uninitialized_copy(begin(), pos, new_this.begin());
         new_this.m_set_size(pos - begin());
         std::uninitialized_copy(first, last, new_this.end());
@@ -418,37 +367,13 @@ namespace scitbx { namespace af {
         else               m_handle->use_count--;
         if (m_handle->use_count == 0) {
           clear();
-          if (m_handle->weak_count == 0) {
-            // Completely delete the shared handle now
-            m_allocator.destroy(m_handle);
-            m_allocator.deallocate((allocator_type::pointer)m_handle, sizeof(sharing_handle));
-            m_handle = 0;
-          }
-          else {
-            // Keep the handle around, but delete it's internal memory
-            m_handle->deallocate();
-          }
+          if (m_handle->weak_count == 0) delete m_handle;
+          else m_handle->deallocate();
         }
       }
 
       bool m_is_weak_ref;
-      allocator_type m_allocator;
       sharing_handle* m_handle;
-
-    private:
-      /** Convenience function to allocate and create a sharing handle
-       *
-       *  Because we have many, many constructors this would become overly
-       *  repetitious. With C++11 this would probably be better fulfilled
-       *  by delegating constructors.
-       */
-      static sharing_handle* m_allocate_handle(size_t size,
-                                               allocator_type& allocator) {
-        sharing_handle* handle =
-            (sharing_handle*)allocator.allocate(sizeof(sharing_handle));
-        allocator.construct(handle, size * element_size(), allocator);
-        return handle;
-     }
   };
 
 }} // namespace scitbx::af

@@ -14,43 +14,40 @@ namespace scitbx { namespace af {
       SCITBX_ARRAY_FAMILY_TYPEDEFS
 
       typedef shared_plain<ElementType> base_class;
-      typedef typename base_class::allocator_type allocator_type;
 
-      explicit
-      shared(allocator_type a = allocator_type())
-        : base_class(a)
+      shared()
       {}
 
       explicit
-      shared(size_type const& sz, allocator_type a = allocator_type())
-        : base_class(sz, a)
+      shared(size_type const& sz)
+        : base_class(sz)
       {}
 
       // non-std
-      shared(af::reserve const& sz, allocator_type a = allocator_type())
-        : base_class(sz, a)
+      shared(af::reserve const& sz)
+        : base_class(sz)
       {}
 
-      shared(size_type const& sz, ElementType const& x, allocator_type a = allocator_type())
-        : base_class(sz, x, a)
+      shared(size_type const& sz, ElementType const& x)
+        : base_class(sz, x)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       // non-std
       template <typename FunctorType>
-      shared(size_type const& sz, init_functor<FunctorType> const& ftor, allocator_type a = allocator_type())
-        : base_class(sz, ftor, a)
+      shared(size_type const& sz, init_functor<FunctorType> const& ftor)
+        : base_class(sz, ftor)
       {}
 #endif
 
-      shared(const ElementType* first, const ElementType* last, allocator_type a = allocator_type())
-        : base_class(first, last, a)
+      shared(const ElementType* first, const ElementType* last)
+        : base_class(first, last)
       {}
 
 #if !(defined(BOOST_MSVC) && BOOST_MSVC <= 1200) // VC++ 6.0
       template <typename OtherElementType>
-      shared(const OtherElementType* first, const OtherElementType* last, allocator_type a = allocator_type())
-        : base_class(first, last, a)
+      shared(const OtherElementType* first, const OtherElementType* last)
+        : base_class(first, last)
       {}
 #endif
 
@@ -77,27 +74,22 @@ namespace scitbx { namespace af {
 
       // non-std
       template <typename OtherArrayType>
-      shared(array_adaptor<OtherArrayType> const& a_a, allocator_type a = allocator_type())
-        : base_class(a_a, a)
+      shared(array_adaptor<OtherArrayType> const& a_a)
+        : base_class(a_a)
       {}
 
       // non-std
       template <class E>
-      shared(expression<E> const &e, allocator_type a = allocator_type())
-        : base_class(e.size(), init_functor_null<ElementType>(), a)
+      shared(expression<E> const &e)
+        : base_class(e.size(), init_functor_null<ElementType>())
       {
         e.assign_to(this->ref());
       }
 
       // non-std
       shared<ElementType>
-      deep_copy(allocator_type a) const {
-        return shared<ElementType>(this->begin(), this->end(), a);
-      }
-
-      shared<ElementType>
       deep_copy() const {
-        return deep_copy(allocator_type());
+        return shared<ElementType>(this->begin(), this->end());
       }
 
       // non-std
