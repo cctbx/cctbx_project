@@ -152,10 +152,10 @@ def run(base_dir, out=sys.stdout, only_if_needed=False):
     print("This script is only applicable to Linux - exiting.", file=out)
     return
 
-  print >> out, "Regenerating module files in %s" % base_dir
+  print("Regenerating module files in %s" % base_dir, file=out)
 
   if os.path.exists(os.path.join(base_dir, 'conda-meta')):
-    print >>out, "Base directory created using conda. Skipping module file regeneration"
+    print("Base directory created using conda. Skipping module file regeneration", file=out)
     return
 
   if not os.path.exists(base_dir):

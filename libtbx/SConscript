@@ -730,17 +730,17 @@ int main() {
       static_exe = None
   elif (env_etc.compiler == 'unix_conda'):
     # default conda compilers (gcc 7.2)
-    conda_prefix = os.environ['CONDA_PREFIX']
-    bin_path = os.path.join(conda_prefix, 'bin')
+    source_path = os.path.abspath('../../../')
+    bin_path = os.path.join(source_path, 'base', 'bin')
     cc = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-gcc')
     cxx = os.path.join(bin_path, 'x86_64-conda_cos6-linux-gnu-g++')
     if ( (not os.path.isfile(cc)) or
          (not os.path.isfile(cxx)) ):
       raise RuntimeError('conda compilers are not installed')
-    # use environment flags
-    env_etc.ccflags_base = []
-    env_etc.cxxflags_base = []
-    libtbx.env.build_options.use_environment_flags = True
+    # set compiler flags
+    env_etc.ccflags_base = ["-march=nocona", "-mtune=haswell", "-ftree-vectorize", "-fPIC", "-fstack-protector-strong", "-fno-plt", "-O2", "-pipe"]
+    env_etc.cxxflags_base = ["-fvisibility-inlines-hidden","-std=c++11", "-fmessage-length=0", "-march=nocona", "-mtune=haswell", "-ftree-vectorize", "-fPIC", "-fstack-protector-strong", "-fno-plt", "-O2", "-pipe", "-D_GLIBCXX_USE_CXX11_ABI=0"]
+    libtbx.env.build_options.use_environment_flags = False
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
 
