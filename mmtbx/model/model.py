@@ -842,8 +842,6 @@ class manager(object):
       restraints = self.all_chain_proxies.cif
       keys = restraints.keys()
       for key in keys:
-        # need more control
-        assert key.find('UNK')==-1
         if key.replace('comp_', '') in skip_residues:
           del restraints[key]
       cif.update(self.all_chain_proxies.cif)
