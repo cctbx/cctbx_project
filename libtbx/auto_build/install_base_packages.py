@@ -274,7 +274,7 @@ class installer (object) :
                         'tiff',                    # conda name is libtiff
                         'freetype','glib','render','gtk','fonts']     # GUI related packages
 
-    conda_pkgs = ['h5py', 'mpich2', 'wxpython', 'pillow', 'libtiff']
+    conda_pkgs = ['h5py', 'mpich2', 'wxpython', 'pillow', 'libtiff', 'gxx_linux-64']
     if self.with_psanaconda:
       packages = list(set(packages).difference(psana_conda_pkgs))
       packages = list(set(packages).difference(conda_pkgs))
