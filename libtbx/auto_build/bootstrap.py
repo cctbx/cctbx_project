@@ -1596,10 +1596,6 @@ class Builder(object):
     if not self.isPlatformWindows():
       fname = self.opjoin("config_modules.sh")
       confstr = '#!/bin/sh\n\n' + confstr
-      if os.path.isdir("base/conda-meta"):
-        print 'base exists'
-        confstr = confstr + ' --compiler=conda'
-        print str(confstr)
     # klonky way of writing file later on, but it works
     self.add_step(self.shell(command=[
          'python','-c','open(r\"%s\",\"w\").write(r\"\"\"%s\"\"\" + \"\\n\")' %(fname, confstr)
@@ -1905,6 +1901,8 @@ class XFELBuilder(CCIBuilder):
     'prime',
     'iota'
   ]
+  if os.path.isdir('base/conda-meta'):
+    LIBTBX_EXTRA.extend(['--compiler=conda'])
 
   def add_base(self, extra_opts=[]):
     super(XFELBuilder, self).add_base(
