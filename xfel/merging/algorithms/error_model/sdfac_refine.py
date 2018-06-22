@@ -377,6 +377,27 @@ class simplex_minimizer_refltable(simplex_minimizer):
     apply_sd_error_params(data, values.SDFAC, values.SDB, values.SDADD, False)
 
 class sdfac_refine_refltable(sdfac_refine):
+  def __init__(self, scaler):
+    super(sdfac_refine_refltable, self).__init__(scaler)
+
+    if isinstance(scaler.ISIGI, dict):
+      # work around for cxi.xmerge which doesn't make a reflection table
+      from xfel.merging.command_line.dev_cxi_merge_refltable import merging_reflection_table
+      self._isigi_dict = scaler.ISIGI
+      reflections = merging_reflection_table()
+      for i, hkl in enumerate(scaler.miller_set.indices()):
+        if hkl not in scaler.ISIGI: continue
+        for j, refl in enumerate(scaler.ISIGI[hkl]):
+          reflections.append({'miller_index':hkl,
+                              'scaled_intensity': refl[0],
+                              'isigi': refl[1],
+                              'slope': refl[2],
+                              'miller_id':i,
+                              'crystal_id':0,
+                              'iobs':0,
+                              'miller_index_original':(0,0,0)})
+      scaler.ISIGI = reflections
+
   def get_binned_intensities(self, n_bins=100):
     """
     Using self.ISIGI, bin the intensities using the following procedure:
