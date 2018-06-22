@@ -183,6 +183,10 @@ class refltable_scaling_manager(scaling_manager):
         self.n_wrong_bravais += 1
       elif (data.wrong_cell) :
         self.n_wrong_cell += 1
+      elif (data.low_resolution) :
+        self.n_low_resolution += 1
+      elif (data.low_correlation) :
+        self.n_low_corr += 1
       elif (getattr(data,"reason",None) is not None):
         if str(data.reason)!="":
           self.failure_modes[str(data.reason)] = self.failure_modes.get(str(data.reason),0) + 1
@@ -225,6 +229,7 @@ class refltable_scaling_manager(scaling_manager):
     self.n_processed += data.n_processed
     self.n_wrong_bravais += data.n_wrong_bravais
     self.n_wrong_cell += data.n_wrong_cell
+    self.n_low_resolution += data.n_low_resolution
     for key in data.failure_modes.keys():
       self.failure_modes[key] = self.failure_modes.get(key,0) + data.failure_modes[key]
 
