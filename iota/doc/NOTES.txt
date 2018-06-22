@@ -10,6 +10,8 @@ Features:
 - Determine best symmetry for Cluster unit cell result
 - Made iota.single_image stdout compatible with BluIce Raster display
 - Increased "file not found" timeout to 30 sec
+- Added paramfile option to tracker (can now input any settings this way)
+- Selected points in tracker now indicate indexing status (if any)
 
 Known issues:
 

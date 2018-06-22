@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 06/20/2018
+Last Changed: 06/22/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -147,6 +147,7 @@ class DIALSSpfIdx(Thread):
       raise IOTATermination('IOTA_TRACKER: Termination signal received!')
     else:
       with Capturing() as junk_output:
+      # if True:
         err = []
         start = time.time()
         fail = False
@@ -191,8 +192,7 @@ class DIALSSpfIdx(Thread):
               lat = experiments[0].crystal.get_space_group().info()
               sg = str(lat).replace(' ', '')
               status = 'indexed'
-
-            except Exception:
+            except Exception, e:
               fail = True
               err.append('LATTICE ERROR: {}'.format(e))
               pass
@@ -255,6 +255,7 @@ class DIALSSpfIdx(Thread):
     n_rings = 0
     avg_I = 0
     score = 0
+    err = []
 
     file_wait_start = time.time()
     while True:
@@ -279,6 +280,10 @@ class DIALSSpfIdx(Thread):
         print 'BRAVAIS LATTICE: {}'.format(sg)
         print 'UNIT CELL: {}'.format(uc)
       print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
+
+      if err != []:
+        for e in err:
+          print e
 
       if self.output is not None:
         with open(self.output, 'a') as outf:

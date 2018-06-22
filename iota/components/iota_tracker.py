@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 06/20/2018
+Last Changed: 06/22/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -160,6 +160,8 @@ def parse_command_args(help_message):
             help='Assign order number as images are read in (from file only)')
   parser.add_argument('--bragg', type=int, default=10,
             help = 'Specify the minimum number of Bragg spots for a "hit"')
+  parser.add_argument('--paramfile', type=str, default=None,
+                      help='Parameter file for processing')
 
   return parser
 
@@ -211,7 +213,7 @@ class TrackChart(wx.Panel):
       ip = self.main_window.tracker_panel.image_list_panel
       sp = self.main_window.tracker_panel.chart_sash_position
       if sp == 0:
-        sp = int(self.main_window.GetSize()[0] * 0.75)
+        sp = int(self.main_window.GetSize()[0] * 0.70)
       self.main_window.tracker_panel.chart_splitter.SplitVertically(gp, ip, sp)
       self.main_window.tracker_panel.Layout()
 
@@ -472,11 +474,13 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     listmix.ColumnSorterMixin.__init__(self, 3)
     self.Bind(wx.EVT_LIST_COL_CLICK, self.OnColClick, self.ctr)
 
-  def add_item(self, img_idx, img, n_obs):
+  def add_item(self, img_idx, img, n_obs, idxd=False, intd=False):
     item = ct.FileListItem(path=img,
                            items={
                              'n_obs':n_obs,
-                             'img_idx':img_idx
+                             'img_idx':img_idx,
+                             'idxd':idxd,
+                             'intd':intd
                            })
 
     # Insert list item
@@ -484,6 +488,10 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
                                     str(item.img_idx))
     self.ctr.SetStringItem(idx, 1, os.path.basename(item.path))
     self.ctr.SetStringItem(idx, 2, str(item.n_obs))
+    if idxd:
+      self.ctr.SetStringItem(idx, 3, 'X')
+    if intd:
+      self.ctr.SetStringItem(idx, 4, 'X')
 
     # Record index in item data
     item.id = idx
@@ -523,6 +531,7 @@ class VirtualListCtrl(ct.VirtualImageListCtrl):
     self.ctr.InsertColumn(0, "#")
     self.ctr.InsertColumn(1, "File")
     self.ctr.InsertColumn(2, "No. Spots")
+    self.ctr.InsertColumn(3, "IDX")
     self.ctr.setResizeColumn(1)
     self.ctr.setResizeColumn(2)
 
@@ -532,8 +541,9 @@ class VirtualListCtrl(ct.VirtualImageListCtrl):
 
   def initialize_data_map(self, data):
     self.ctr.InitializeDataMap(data)
-    self.ctr.SetColumnWidth(0, width=50)
-    self.ctr.SetColumnWidth(2, width=150)
+    self.ctr.SetColumnWidth(0, width=30)
+    self.ctr.SetColumnWidth(2, width=100)
+    self.ctr.SetColumnWidth(3, width=15)
     self.ctr.SetColumnWidth(1, width=-3)
 
   def OnSelection(self, e):
@@ -738,13 +748,6 @@ class TrackerWindow(wx.Frame):
 
     self.main_sizer.Add(self.tracker_panel, 1, wx.EXPAND)
 
-    # Generate default DIALS PHIL file
-    default_phil = ip.parse(default_target)
-    self.phil = phil_scope.fetch(source=default_phil)
-    self.params = self.phil.extract()
-    self.params.output.strong_filename = None
-    self.phil = self.phil.format(python_object=self.params)
-
     # Bindings
     self.Bind(wx.EVT_TOOL, self.onQuit, self.tb_btn_quit)
     self.Bind(wx.EVT_TOOL, self.onGetImages, self.tb_btn_open)
@@ -775,7 +778,21 @@ class TrackerWindow(wx.Frame):
     # Read arguments if any
     self.args, self.phil_args = parse_command_args('').parse_known_args()
 
+    # Generate DIALS PHIL file
+    if self.args.paramfile is None:
+      default_phil = ip.parse(default_target)
+      self.phil = phil_scope.fetch(source=default_phil)
+    else:
+      with open(self.args.paramfile, 'r') as phil_file:
+        phil_string = phil_file.read()
+      user_phil = ip.parse(phil_string)
+      self.phil = phil_scope.fetch(source=user_phil)
+    self.params = self.phil.extract()
+
+    # Set backend
     self.spf_backend = self.args.backend
+
+    # Determine how far the DIALS processing will go
     if 'index' in self.args.action:
       self.run_indexing = True
     elif 'int' in self.args.action:
@@ -783,6 +800,9 @@ class TrackerWindow(wx.Frame):
       self.run_integration = True
     self.tracker_panel.min_bragg.ctr.SetValue(self.args.bragg)
 
+    # Determine how the tracker will track images: from file output by
+    # iota.single_image, or by turning over actual files. If the latter,
+    # determine at what point the tracker will start the tracking
     if self.args.file is not None:
       self.results_file = self.args.file
       self.start_spotfinding(from_file=True)
@@ -1125,7 +1145,11 @@ class TrackerWindow(wx.Frame):
         sel_img_list = self.spotfinding_info[first_img:last_img]
         for img in sel_img_list:
           idx = sel_img_list.index(img)
-          new_data_dict[idx] = (img[0], img[2], img[1])
+          if img[3] is not None:
+            idxd = 'X'
+          else:
+            idxd = ''
+          new_data_dict[idx] = (img[0], img[2], img[1], idxd)
         self.data_dict = new_data_dict
         listctrl.InitializeDataMap(self.data_dict)
         self.tracker_panel.btn_view_all.Enable()
@@ -1198,17 +1222,6 @@ class TrackerWindow(wx.Frame):
       uc_freqs = [i[0] for i in uc_summary]
       uc_pick = uc_summary[np.argmax(uc_freqs)]
       cons_uc = uc_pick[2]
-      # cons_uc_std = uc_pick[3]
-      #
-      # uc_line = "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-      #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-      #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-      #           "".format(cons_uc[0], cons_uc_std[0],
-      #                     cons_uc[1], cons_uc_std[1],
-      #                     cons_uc[2], cons_uc_std[2],
-      #                     cons_uc[3], cons_uc_std[3],
-      #                     cons_uc[4], cons_uc_std[4],
-      #                     cons_uc[5], cons_uc_std[5])
 
       # Here will determine the best symmetry for the given unit cell (better
       # than previous method of picking the "consensus" point group from list)

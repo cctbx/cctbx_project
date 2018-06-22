@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 05/24/2018
+Last Changed: 06/22/2018
 Description : IOTA GUI controls
 '''
 
@@ -166,7 +166,7 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
                            ColumnSorterMixin):
   ''' Customized Virtual UltimateListCtrl with auto-width mixin'''
 
-  def __init__(self, parent, ID, n_cols=3, pos=wx.DefaultPosition,
+  def __init__(self, parent, ID, n_cols=4, pos=wx.DefaultPosition,
                size=wx.DefaultSize, style=0):
     ulc.UltimateListCtrl.__init__(self, parent, ID, pos, size, agwStyle=style)
     ListCtrlAutoWidthMixin.__init__(self)
@@ -866,7 +866,7 @@ class VirtualImageListCtrl(CtrlBase):
     self.SetSizer(self.sizer)
 
     self.control_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.ctr = VirtualInputListCtrl(self, -1, size=size, n_cols=3,
+    self.ctr = VirtualInputListCtrl(self, -1, size=size, n_cols=4,
                                     style=ulc.ULC_REPORT |
                                           ulc.ULC_VIRTUAL|
                                           ulc.ULC_HRULES |

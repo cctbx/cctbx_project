@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 06/19/2018
+Last Changed: 06/22/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -463,9 +463,6 @@ class SpotFinderThread(Thread):
       proc_params.output.integrated_experiments_filename = None
       proc_params.output.profile_filename = None
       proc_params.output.integration_pickle = None
-
-      #TODO: These *should* be overridden by a script...
-      proc_params.indexing.stills.method_list = ['fft3d']
 
       from iota.components.iota_dials import IOTADialsProcessor
       self.processor = IOTADialsProcessor(params=proc_params)
