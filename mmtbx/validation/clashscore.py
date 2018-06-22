@@ -256,6 +256,7 @@ class probe_clashscore_manager(object):
     self.probe_atom_b_factor = None
     probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
                                  'probe', 'exe', 'probe')
+    probe_command = '"%s"' % probe_command   # in case of spaces in path
     if not nuclear:
       self.probe_txt = \
         '%s -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
