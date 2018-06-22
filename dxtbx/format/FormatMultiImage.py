@@ -190,7 +190,8 @@ class FormatMultiImage(object):
       format_instance = Class(filenames[0], **format_kwargs)
     else:
       format_instance = None
-      lazy = True
+      if not as_sweep:
+        lazy = True
 
     # Read the vendor type
     if check_format is True:
