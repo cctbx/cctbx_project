@@ -5,6 +5,7 @@ class minimization_monitor(object):
   def __init__(self,
       number_of_cycles,
       max_number_of_cycles,
+      cycles_to_converge=5,
       mode="simple_cycles"):
     adopt_init_args(self, locals())
     assert self.mode in ["simple_cycles", "min_outliers", "no_outliers"]
@@ -22,7 +23,7 @@ class minimization_monitor(object):
     elif self.mode == "min_outliers":
       return self.geometry_improved() or not self.geometry_is_ok()
     elif self.mode == "no_outliers":
-      return not (self.geometry_is_perfect() or self.no_5_cycles_improvement())
+      return not (self.geometry_is_perfect() or self.converged())
 
   def save_cycle_results(self, geometry=None):
     self.current_cycle += 1
@@ -56,10 +57,10 @@ class minimization_monitor(object):
         return False
     return True
 
-  def no_5_cycles_improvement(self):
-    if len(self.cycles_geometry) < 5:
+  def converged(self):
+    if len(self.cycles_geometry) < self.cycles_to_converge:
       return False
-    for i in range(1,5):
+    for i in range(1,cycles_to_converge):
       if not self.same_geometry(self.cycles_geometry[-i], self.cycles_geometry[-i-1]):
         return False
     return True
