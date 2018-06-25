@@ -12,6 +12,7 @@
 from __future__ import absolute_import, division, print_function
 
 from dxtbx.format.FormatSMVRigaku import FormatSMVRigaku
+from dxtbx.model import ParallaxCorrectedPxMmStrategy
 
 class FormatSMVRigakuEiger(FormatSMVRigaku):
   '''A class for reading SMV format Rigaku Pilatus 200L images.'''
@@ -133,10 +134,11 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
 
     # Unfortunately thickness and material are not stored in the header. Set
     # to sensible defaults.
-    thickness = 0.450
+    t0 = 0.450
     material = 'Si'
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table(material)
+    wavelength = float(self._header_dictionary['SCAN_WAVELENGTH'])
     mu = table.mu_at_angstrom(wavelength) / 10.0
 
     return self._detector_factory.complex(
