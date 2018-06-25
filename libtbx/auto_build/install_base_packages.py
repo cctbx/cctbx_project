@@ -1489,8 +1489,10 @@ _replace_sysconfig_paths(build_time_vars)
       "--with-opengl",
       "--enable-unicode",
       "--without-libjbig",
-      "--without-liblzma"
+      "--without-liblzma",
+      "--with-libjpeg=builtin", # Prevents system version, https://github.com/dials/dials/issues/523
     ]
+
     if (self.options.debug) :
       config_opts.extend(["--disable-optimize",
                           "--enable-debug"])
