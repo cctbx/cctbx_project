@@ -348,10 +348,12 @@ class determine_connectivity(object):
     number_h_neighbors = self.h_connectivity[ih].number_h_neighbors
     if (number_h_neighbors > 0):
       i_h1 = self.h_connectivity[ih].h1['iseq']
-      self.h_connectivity[i_h1].b1 = {'iseq': i_third}
+      if (self.h_connectivity[i_h1] is not None):
+        self.h_connectivity[i_h1].b1 = {'iseq': i_third}
       if (number_h_neighbors == 2):
         i_h2 = self.h_connectivity[ih].h2['iseq']
-        self.h_connectivity[i_h2].b1 = {'iseq': i_third}
+        if (self.h_connectivity[i_h2] is not None):
+          self.h_connectivity[i_h2].b1 = {'iseq': i_third}
 
   def determine_second_neighbors_H(self, second_neighbors_reduced):
     """Determine if there are H atoms among second neighbors and store them
