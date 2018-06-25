@@ -31,7 +31,7 @@ class FormatCBFFullBrukerPhotonII(FormatCBFFull):
           size2 = float(records[i+2].split()[-1])
         except ValueError:
           return False
-        if size1 == 0.000135 and size2 == 0.000135:
+        if round(size1, 6) == 0.000135 and round(size2, 6) == 0.000135:
           recognise += 1
 
     if recognise == 2: return True
@@ -50,24 +50,19 @@ class FormatCBFFullBrukerPhotonII(FormatCBFFull):
 
     return
 
-  def _start(self):
-    '''Open the image file as a cbf file handle, and keep this somewhere
-    safe.'''
-
-    FormatCBFFull._start(self)
-
-    return
-
   def _goniometer(self):
     '''Return a default goniometer instance.'''
 
     return self._goniometer_factory.single_axis()
 
   def _beam(self):
-    '''Return a default beam instance.'''
+    '''Return a working beam instance. Override polarization to be 0.5.
+    Appropriate for lab source'''
 
     wavelength = self._cbf_handle.get_wavelength()
     beam = self._beam_factory.simple(wavelength)
+    beam.set_polarization_fraction(0.5)
+
     return beam
 
   def _detector(self):
