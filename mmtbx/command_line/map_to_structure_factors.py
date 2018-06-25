@@ -51,7 +51,10 @@ keep_origin = True
   .help = Default (keep_origin=True) is to set the origin for the output map\
            coefficients to be the same as the input map. A map calculated from\
            the output map coefficients will superimpose on the input map. If \
-           keep_origin=False then the new origin will be at (0,0,0).
+           keep_origin=False then the new origin will be at (0,0,0). \
+           Note: keep_origin=True is only available if the map covers an \
+           entire unit cell. It will be automatically set to False if \
+           less than a full unit cell is available.
   .short_caption = Keep origin
 output_origin_grid_units = None
   .type = ints
@@ -148,12 +151,14 @@ def run(args, log=None, ccp4_map=None,
   cs = m.crystal_symmetry()
 
   if m.unit_cell_grid == m.data.all():
-    print >>out,"One unit cell of data is present in map"
+    print >>out,"\nOne unit cell of data is present in map"
   else:
     if params.keep_origin:
-      print >>out,"\nThis map does not have exactly one unit cell of data, so \n"+\
-        "keep_origin is not allowed\n"
-      print >>out,"Setting keep_origin=False and creating a new cell and gridding\n"
+      print >>out,\
+       "\nNOTE: This map does not have exactly one unit cell of data, so \n"+\
+        "keep_origin is not available\n"
+      print >>out,\
+        "--> Setting keep_origin=False and creating a new cell and gridding.\n"
       params.keep_origin=False
     print >>out,"Moving origin of input map to (0,0,0)"
     print >>out,"New cell will be: (%.3f, %.3f, %.3f, %.1f, %.1f, %.1f) A " %(
@@ -165,7 +170,7 @@ def run(args, log=None, ccp4_map=None,
 
   # Get origin in grid units and new position of origin in grid units
   original_origin=map_data.origin()
-  print >>out,"Input map has origin at grid point (%s,%s,%s)" %(
+  print >>out,"\nInput map has origin at grid point (%s,%s,%s)" %(
         tuple(original_origin))
 
   if params.output_origin_grid_units is not None:
