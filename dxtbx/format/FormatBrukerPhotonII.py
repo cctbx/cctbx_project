@@ -118,7 +118,8 @@ class FormatBrukerPhotonII(FormatBruker):
     image_size = int(self.header_dict['NCOLS'].split()[0]), \
       int(self.header_dict['NROWS'].split()[0])
 
-    # Not a CCD, but is an integrating detector
+    # Not a CCD, but is an integrating detector. Photon II has a 90 um Gadox
+    # scintillator.
     return self._detector_factory.complex(
         'CCD', origin.elems, fast.elems, slow.elems, pixel_size, image_size,
       (underload, overload))
