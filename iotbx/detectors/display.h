@@ -704,6 +704,64 @@ class generic_flex_image: public FlexImage<double>{
     correction = 1.0; //requires followup brightness scaling; use separate function
   }
 
+  inline
+  void setWindow(
+    const double& wxafrac, const double& wyafrac,const double& fraction){
+    int apply_zoom = (binning == 1)? zoom : 1;
+    //Compute integer anchor index based on input fractional dimension:
+    export_anchor_x = export_size_uncut1*wxafrac*apply_zoom;
+    export_anchor_y = export_size_uncut2*wyafrac*apply_zoom;
+
+    export_size_cut1 = export_size_uncut1;
+    export_size_cut2 = export_size_uncut2;
+
+    // Calculate the limits of the output window by iterating over all tiles
+    for (size_t k = 0; k < transformations.size(); k++) {
+      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
+      for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+        scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
+        export_size_cut1 = std::max(
+          export_size_cut1, int(std::ceil(point_p[0])));
+        export_size_cut2 = std::max(
+          export_size_cut2, int(std::ceil(point_p[1])));
+      }
+      }
+    }
+
+    export_size_cut1 *= fraction*apply_zoom;
+    export_size_cut2 *= fraction*apply_zoom;
+    export_m = af::versa<int, af::c_grid<2> >(
+       af::c_grid<2>(export_size_cut1,export_size_cut2));
+
+    //Find out which readouts have any intersection with this Window
+    windowed_readouts.clear();
+    //Define the 4 corners of the Window rectangle A B C D, counterclockwise from top left,
+    af::shared<scitbx::vec2<double> > window_polygon;
+    /*A*/window_polygon.push_back(
+      scitbx::vec2<double>(export_anchor_x - 1.  ,export_anchor_y - 1.));
+    /*B*/window_polygon.push_back(
+      scitbx::vec2<double>(export_size_cut1 + 1. ,export_anchor_y - 1.));
+    /*C*/window_polygon.push_back(
+      scitbx::vec2<double>(export_size_cut1 + 1. ,export_size_cut2 + 1. ));
+    /*D*/window_polygon.push_back(
+      scitbx::vec2<double>(export_anchor_x - 1.  ,export_size_cut2 + 1. ));
+
+    for (size_t k = 0; k < transformations.size(); k++) { //loop through all readout tiles
+      af::shared<scitbx::vec2<double> > readout_polygon;
+      for (size_t islow=0; islow <= size1_readout; islow+=size1_readout) {
+        for (size_t ifast=0; ifast <= size2_readout; ifast+=size2_readout) {
+          scitbx::vec2<double> point_p = tile_readout_to_picture(k,islow,ifast);
+          readout_polygon.push_back(point_p);
+        }
+      }
+      std::swap<scitbx::vec2<double> >(readout_polygon[2],readout_polygon[3]);
+      if (scitbx::math::convex_polygons_intersect_2D(window_polygon, readout_polygon)) {
+        windowed_readouts.push_back(k);
+      }
+    }
+
+  }
+
   // Identical to base class, except for computation of export_anchor &
   //   just-in-time calculation of window/readout intersections
   inline
