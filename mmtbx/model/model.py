@@ -748,6 +748,15 @@ class manager(object):
       else:
         return self.crystal_symmetry()
 
+  def _figure_out_hierarchy_to_output(self, do_not_shift_back):
+    hierarchy_to_output = self.get_hierarchy()
+    if hierarchy_to_output is not None:
+      hierarchy_to_output = hierarchy_to_output.deep_copy()
+    if self._shift_manager is not None and not do_not_shift_back:
+      self._shift_manager.shift_back(hierarchy_to_output)
+    return hierarchy_to_output
+
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
@@ -782,11 +791,8 @@ class manager(object):
         and len(self.link_records_in_pdb_format)>0):
       result.write("%s\n" % self.link_records_in_pdb_format)
 
-    hierarchy_to_output = self.get_hierarchy()
-    if hierarchy_to_output is not None:
-      hierarchy_to_output = hierarchy_to_output.deep_copy()
-    if self._shift_manager is not None and not do_not_shift_back:
-      self._shift_manager.shift_back(hierarchy_to_output)
+    hierarchy_to_output = self._figure_out_hierarchy_to_output(
+        do_not_shift_back=do_not_shift_back)
 
     if hierarchy_to_output is not None:
       result.write(hierarchy_to_output.as_pdb_string(
@@ -808,11 +814,15 @@ class manager(object):
         do_not_shift_back=do_not_shift_back, output_cs=output_cs)
     if cs_to_output is not None:
       cif_block = cs_to_output.as_cif_block()
-    if self._pdb_hierarchy is not None:
+
+    hierarchy_to_output = self._figure_out_hierarchy_to_output(
+        do_not_shift_back=do_not_shift_back)
+    if hierarchy_to_output is not None:
       if cif_block is not None:
-        cif_block.update(self._pdb_hierarchy.as_cif_block())
+        cif_block.update(hierarchy_to_output.as_cif_block())
       else:
-        cif_block = self._pdb_hierarchy.as_cif_block()
+        cif_block = hierarchy_to_output.as_cif_block()
+
     # outputting HELIX/SHEET records
     ss_cif_loops = []
     ss_ann = None
