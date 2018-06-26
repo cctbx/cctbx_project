@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 06/22/2018
+Last Changed: 06/25/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -343,7 +343,7 @@ class TrackChart(wx.Panel):
     except AttributeError, e:
       pass
 
-  def draw_plot(self, new_x=None, new_y=None, new_i=None):
+  def draw_plot(self, new_x=None, new_y=None, new_i=None, new_p=None):
     min_bragg = self.main_window.tracker_panel.min_bragg.ctr.GetValue()
 
     if new_x is None:
@@ -413,6 +413,14 @@ class TrackChart(wx.Panel):
     # Draw extended plots
     self.track_axes.draw_artist(self.acc_plot)
     self.track_axes.draw_artist(self.rej_plot)
+
+    # If any new folders are found, place marker at switch
+    if new_p is not None:
+      for p in new_p:
+        self.track_axes.axvline(p[0], ymin=-15, c='red', ls='--')
+        label = os.path.basename(p[1])
+        self.track_axes.annotate(label, xy=(p[0], 1), ha='left', va='top',
+                                 xycoords=('data', 'figure fraction'))
 
 
 class ImageList(wx.Panel):
@@ -932,7 +940,6 @@ class TrackerWindow(wx.Frame):
     self.reset_spotfinder()
 
     self.tracker_panel.chart.reset_chart()
-    #self.tracker_panel.spf_options.Enable()
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
     timer_txt = '[ ------ ]'
     self.msg = 'Ready to track images in {}'.format(self.data_folder)
@@ -1127,6 +1134,7 @@ class TrackerWindow(wx.Frame):
 
       if self.submit_new_images:
         unproc_images = list(set(self.data_list) - set(self.done_list))
+        unproc_images = sorted(unproc_images, key=lambda i:i)
         if len(unproc_images) > 0:
           self.submit_new_images = False
           self.run_spotfinding(submit_list=unproc_images)
@@ -1172,9 +1180,23 @@ class TrackerWindow(wx.Frame):
       idx_counts = [i[1] if i[3] is not None else np.nan
                          for i in self.spotfinding_info[self.plot_idx:]]
 
+      # Try finding where data comes from a new folder
+      new_paths = []
+      for info in self.spotfinding_info[self.plot_idx:]:
+        cur_dir = os.path.dirname(info[2])
+        cur_idx = self.spotfinding_info.index(info)
+        if cur_idx > 0:
+          prev_idx = cur_idx - 1
+          prev_dir = os.path.dirname(self.spotfinding_info[prev_idx][2])
+          if cur_dir != prev_dir:
+            new_paths.append((info[0], cur_dir))
+        else:
+          new_paths.append((info[0], cur_dir))
+
       self.tracker_panel.chart.draw_plot(new_x=new_frames,
                                          new_y=new_counts,
-                                         new_i=idx_counts)
+                                         new_i=idx_counts,
+                                         new_p=new_paths)
       self.plot_idx = self.spotfinding_info.index(self.spotfinding_info[-1]) + 1
 
 
