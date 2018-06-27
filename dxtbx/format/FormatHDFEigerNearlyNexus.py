@@ -235,13 +235,20 @@ class EigerNXmxFixer(object):
       # print " - making up starting angle to be 0"
       # print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
       # Get the number of images
+
+      try:
+        key = handle['/entry/instrument/detector/detector_number'].value
+        default_axis = {'E-32-0105':(0,1,0)}[key]
+      except KeyError as e:
+        default_axis = (1,0,0)
+
       num_images = 0
       for name in sorted(handle['/entry/data'].iterkeys()):
         num_images += len(handle_orig['/entry/data/%s' % name])
       dataset = group.create_dataset('omega', (num_images,), dtype="float32")
       dataset.attrs['units'] = 'degree'
       dataset.attrs['transformation_type'] = 'rotation'
-      dataset.attrs['vector'] = (1, 0, 0)
+      dataset.attrs['vector'] = default_axis
       dataset.attrs['offset'] = 0
       dataset.attrs['depends_on'] = '.'
       omega_range_average = handle['/entry/sample/goniometer/omega_range_average'][()]
