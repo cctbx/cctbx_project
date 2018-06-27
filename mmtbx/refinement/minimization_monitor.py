@@ -51,9 +51,9 @@ class minimization_monitor(object):
   def get_current_cycle_n(self):
     return self.current_cycle
 
-  def same_geometry(self, g1, g2):
+  def same_geometry(self, g1, g2): # g2 is previous
     for geometry_param in ["ramachandran_outliers", "n_twisted_general"]:
-      if abs(getattr(g1, geometry_param) - getattr(g2, geometry_param)) > 0.01:
+      if getattr(g2, geometry_param) - getattr(g1, geometry_param) > 0.1:
         return False
     return True
 

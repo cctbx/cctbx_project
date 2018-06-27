@@ -40,6 +40,10 @@ loop_idealization
   minimize_whole = True
     .type = bool
     .expert_level = 1
+  fix_rotamers = True
+    .type = bool
+    .help = Fix rotamers before minimization
+    .expert_level = 1
   force_rama_fixes = False
     .type = bool
     .help = If true, the procedure will pick and apply the best variant even \
@@ -221,24 +225,24 @@ class loop_idealization():
         print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
         # print >> sel
         # XXX but first let's check and fix rotamers...
-        print >> self.log, "Fixing/checking rotamers in loop idealization..."
-        excl_sel = self.ref_exclusion_selection
-        if len(excl_sel) == 0:
-          excl_sel = None
-        non_outliers_for_check = self.model.selection("(%s)" % self.ref_exclusion_selection)
-
-        result = mmtbx.refinement.real_space.fit_residues.run(
-            pdb_hierarchy     = self.model.get_hierarchy(),
-            crystal_symmetry  = self.model.crystal_symmetry(),
-            map_data          = self.reference_map,
-            rotamer_manager   = iaar_rotamer_manager,
-            sin_cos_table     = sin_cos_table,
-            backbone_sample   = False,
-            mon_lib_srv       = self.model.get_mon_lib_srv(),
-            log               = self.log)
-        model.set_sites_cart(
-            sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
-            update_grm = True)
+        if self.params.fix_rotamers:
+          print >> self.log, "Fixing/checking rotamers in loop idealization..."
+          excl_sel = self.ref_exclusion_selection
+          if len(excl_sel) == 0:
+            excl_sel = None
+          non_outliers_for_check = self.model.selection("(%s)" % self.ref_exclusion_selection)
+          result = mmtbx.refinement.real_space.fit_residues.run(
+              pdb_hierarchy     = self.model.get_hierarchy(),
+              crystal_symmetry  = self.model.crystal_symmetry(),
+              map_data          = self.reference_map,
+              rotamer_manager   = iaar_rotamer_manager,
+              sin_cos_table     = sin_cos_table,
+              backbone_sample   = False,
+              mon_lib_srv       = self.model.get_mon_lib_srv(),
+              log               = self.log)
+          model.set_sites_cart(
+              sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+              update_grm = True)
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               model = self.model,
@@ -401,13 +405,16 @@ class loop_idealization():
     if contains_ss_element:
       ss_multiplier = 0.4
     # print "checking is_ok, n_out, target rmsd:", n_outliers, adaptive_mc_rmsd[ccd_radius+n_outliers-1]
-    if (mc_rmsd < adaptive_mc_rmsd.get(ccd_radius+n_outliers-1, 14.0)*ss_multiplier and anchor_rmsd < 0.3):
-      return True
+    target_rmsd = adaptive_mc_rmsd.get(ccd_radius+n_outliers-1, 14.0)*ss_multiplier
+    if (mc_rmsd < target_rmsd  and anchor_rmsd < 0.3):
+      return True, target_rmsd
     elif ccd_radius == 3 and change_all_angles and change_radius == 2:
       # we are desperate and trying the most extensive search,
       # this deserves relaxed criteria...
       # print "desperate checking", adaptive_mc_rmsd[ccd_radius+n_outliers+1]*ss_multiplier
-      return mc_rmsd < adaptive_mc_rmsd.get(ccd_radius+n_outliers+1, 14.0)*ss_multiplier and anchor_rmsd < 0.4
+      target_rmsd = adaptive_mc_rmsd.get(ccd_radius+n_outliers+1, 14.0)*ss_multiplier
+      return mc_rmsd < target_rmsd and anchor_rmsd < 0.4, target_rmsd
+    return False, target_rmsd
 
   def fix_rama_outlier(self,
       pdb_hierarchy, out_res_num_list, prefix="", minimize=True,
@@ -634,8 +641,8 @@ class loop_idealization():
 
         mc_rmsd = get_main_chain_rmsd_range(moving_h, h, all_atoms=True)
         if self.verbose:
-          print >> self.log, "Resulting anchor and backbone RMSDs, mapcc, n_iter for model %d:" % i,
-          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", map_target, ",", n_iter
+          print >> self.log, "Resulting anchor and backbone RMSDs, mapcc, n_iter for model %d, OK_rmsd:" % i,
+          print >> self.log, resulting_rmsd, ",", mc_rmsd, ",", map_target, ",", n_iter,
           self.log.flush()
         #
         # setting new coordinates
@@ -696,8 +703,9 @@ class loop_idealization():
             tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)):
           all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, map_target, n_iter))
         else:
+          print >> self.log, "Duplicate."
           continue
-        if self.ccd_solution_is_ok(
+        (ccd_ok, target_rmsd) = self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
             mc_rmsd=mc_rmsd,
             n_outliers=len(out_res_num_list),
@@ -705,7 +713,9 @@ class loop_idealization():
             change_all_angles=change_all,
             change_radius=change_radius,
             contains_ss_element=contains_ss_element,
-            fixing_omega=fixing_omega):
+            fixing_omega=fixing_omega)
+        print >> self.log, ", %.2f" % target_rmsd
+        if ccd_ok:
           print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           # Save to tried_ccds
           for rn, angles in start_angles:
