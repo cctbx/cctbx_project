@@ -236,6 +236,9 @@ class EigerNXmxFixer(object):
       # print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
       # Get the number of images
 
+      # special cases:
+      # E-32-0105 - Max IV, vertical axis
+
       try:
         key = handle['/entry/instrument/detector/detector_number'].value
         default_axis = {'E-32-0105':(0,1,0)}[key]
