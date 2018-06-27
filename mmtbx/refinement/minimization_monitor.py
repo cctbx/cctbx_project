@@ -60,7 +60,7 @@ class minimization_monitor(object):
   def converged(self):
     if len(self.cycles_geometry) < self.cycles_to_converge:
       return False
-    for i in range(1,cycles_to_converge):
+    for i in range(1, self.cycles_to_converge):
       if not self.same_geometry(self.cycles_geometry[-i], self.cycles_geometry[-i-1]):
         return False
     return True
