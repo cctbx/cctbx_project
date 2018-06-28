@@ -56,6 +56,13 @@ master_params_str = """\
     .type = bool
   mask_file_name = mask.ccp4
     .type = str
+  ignore_symmetry_conflicts = False
+    .type = bool
+    .help = You can ignore the symmetry information (CRYST1) from \
+            coordinate files. This may be necessary if your model has been\
+            placed in a box with box_map for example.
+    .expert_level=2
+
   %(master_params_GUI_str)s
 """ % vars()
 
@@ -134,9 +141,20 @@ def get_inputs(args, log, master_params):
   if(e.half_map_file_name_2 is not None):
     map_inp_2 = iotbx.ccp4_map.map_reader(file_name=e.half_map_file_name_2)
   #
-  crystal_symmetry = check_and_set_crystal_symmetry(
-    models   = [model],
-    map_inps = [map_inp, map_inp_1, map_inp_2])
+  try:
+    crystal_symmetry = check_and_set_crystal_symmetry(
+      ignore_symmetry_conflicts = e.ignore_symmetry_conflicts,
+      models   = [model],
+      map_inps = [map_inp, map_inp_1, map_inp_2])
+  except Exception, e:
+    print str(e)
+    if str(e).find("Box info (aka crystal symmetry) mismatch")>-1:
+      text="\nIf your inputs are from phenix.map_box, "+\
+        "try setting\n  ignore_symmetry_conflicts=True\n"
+    else:
+      text=""
+    raise Sorry(str(e)+text)
+
   map_data_1, map_data_2 = None,None
   if(map_inp_1 is not None): map_data_1 = map_inp_1.map_data()
   if(map_inp_2 is not None): map_data_2 = map_inp_2.map_data()
