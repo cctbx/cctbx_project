@@ -65,7 +65,7 @@ class SingleFrame(InputFrame):
       except (cPickle.UnpicklingError, ValueError, EOFError, IOError):
         d = {}
         logger.warning("Could not read %s. It may not be a pickle file." % path)
-    if 'observations' not in d:
+    if 'observations' not in d or len(d['observations'][crystal_num].data()) == 0:
       return
     try:
       if pixel_size:
