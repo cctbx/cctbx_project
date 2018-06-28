@@ -230,12 +230,15 @@ class EigerNXmxFixer(object):
         del(group['omega'])
 
     if 'omega' not in group:
-      # print "Creating omega transformation:"
-      # print " - making up rotation axis to be (1, 0, 0)"
-      # print " - making up starting angle to be 0"
-      # print " - using /entry/sample/goniometer/omega_range_average as oscillation range"
-      # Get the number of images
-
+      # In here assume goniometer axis is 1,0,0 unless (i) specified somewhere
+      # we can know or (ii) a known special case. For (i) for this instrument
+      # listed here this /should/ be at
+      # 
+      # /entry/sample/transformations/omega/vector
+      #
+      # which will join the special case list once this is properly resolved
+      # as this corrently does not read right... 
+      # 
       # special cases:
       # E-32-0105 - Max IV, vertical axis
 
