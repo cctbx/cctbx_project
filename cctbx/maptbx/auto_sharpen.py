@@ -116,21 +116,11 @@ master_phil = iotbx.phil.parse("""
     .style = menu_item auto_align
   {
 
-     use_sg_symmetry = False
+     is_crystal = None
        .type = bool
-       .short_caption = Use space-group symmetry
-       .help = If you set use_sg_symmetry=True then the symmetry of the space\
-               group will be used. For example in P1 a point at one end of \
-               the \
-               unit cell is next to a point on the other end.  Normally for \
-               cryo-EM data this should be set to False and for crystal data \
-               it should be set to True.
-
-     is_crystal = False
-       .type = bool
-       .short_caption = Is crystal
-       .help = If is_crystal is set then NCS can be space-group symmetry. \
-                Normally set at the same time as use_sg_symmetry.
+       .short_caption = Is a crystal
+       .help = Defines whether this is a crystal (or cryo-EM).\
+                Default is True if use_sg_symmetry=True and False otherwise.
 
      resolution = None
        .type = float
@@ -380,10 +370,12 @@ master_phil = iotbx.phil.parse("""
        .help = You can specify the targeted overlap of boxes in local \
            sharpening
 
-     restrict_map_size = True
+     restrict_map_size = None
        .type = bool
        .short_caption = Restrict box map size
-       .help = Restrict box map to be inside full map (required for cryo-EM data)
+       .help = Restrict box map to be inside full map (required for cryo-EM data).\
+               Default is True if use_sg_symmetry=False and False \
+                if use_sg_symmetry=True
 
      remove_aniso = True
        .type = bool

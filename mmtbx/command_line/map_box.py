@@ -542,7 +542,7 @@ Parameters:"""%h
   ph_box.adopt_xray_structure(box.xray_structure_box)
   box.hierarchy=ph_box
 
-  if (inputs and  # XXX fix or remove this
+  if (inputs and
     inputs.crystal_symmetry and inputs.ccp4_map and
     inputs.crystal_symmetry.unit_cell().parameters() and
      inputs.ccp4_map.unit_cell_parameters  ) and (

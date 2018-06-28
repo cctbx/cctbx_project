@@ -196,11 +196,11 @@ master_phil = iotbx.phil.parse("""
        .short_caption = Sequence
        .help = Sequence as string
 
-     is_crystal = False
+     is_crystal = None
        .type = bool
        .short_caption = Is a crystal
-       .help = Defines whether this is a crystal (or cryo-EM). Normally set \
-                is_crystal along with use_sg_symmetry.
+       .help = Defines whether this is a crystal (or cryo-EM).\
+                Default is True if use_sg_symmetry=True and False otherwise.
 
      use_sg_symmetry = False
        .type = bool
@@ -210,7 +210,9 @@ master_phil = iotbx.phil.parse("""
                the \
                unit cell is next to a point on the other end.  Normally for \
                cryo-EM data this should be set to False and for crystal data \
-               it should be set to True.
+               it should be set to True. This will normally also set the \
+               value of is_crystal (same value as use_sg_symmetry) and \
+               restrict_map_size (False if use_sg_symmetry=True).
 
      resolution = None
        .type = float
@@ -619,10 +621,12 @@ master_phil = iotbx.phil.parse("""
        .help = You can specify the targeted overlap of boxes in local \
            sharpening
 
-     restrict_map_size = True
+     restrict_map_size = None
        .type = bool
        .short_caption = Restrict box map size
-       .help = Restrict box map to be inside full map (required for cryo-EM data)
+       .help = Restrict box map to be inside full map (required for cryo-EM data).\
+               Default is True if use_sg_symmetry=False.
+
      restrict_z_turns_for_helical_symmetry = 1
        .type = float
        .short_caption = Restrict Z turns for helical symmetry
@@ -5180,6 +5184,18 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   print >>out,"Command used: %s\n" %(
    " ".join(['segment_and_split_map']+args))
   master_params.format(python_object=params).show(out=out)
+
+  # Set space-group defaults
+  if params.crystal_info.use_sg_symmetry:
+    if params.map_modification.restrict_map_size is None:
+      params.map_modification.restrict_map_size=False
+    if params.crystal_info.is_crystal is None:
+      params.crystal_info.is_crystal=True
+  else:
+    if params.map_modification.restrict_map_size is None:
+      params.map_modification.restrict_map_size=True
+    if params.crystal_info.is_crystal is None:
+      params.crystal_info.is_crystal=False
 
   # Turn off files if desired
   if params.control.write_files is False:
