@@ -103,6 +103,11 @@ reference_map_resolution = 5
 number_of_refinement_cycles = Auto
   .type = int
   .expert_level = 1
+cycles_to_converge = 2
+  .type = int
+  .help = Nuber of cycles of geometry optimization without considerable stat \
+    change before stopping
+  .expert_level=1
 ignore_ncs = False
   .type = bool
   .help = Don't use NCS even if it is present in model.
@@ -548,7 +553,6 @@ class model_idealization():
       ssb.substitute_ss(
           model = self.model,
           params=self.params.ss_idealization,
-          fix_rotamer_outliers=True,
           verbose=self.params.verbose,
           reference_map=self.master_map,
           log=self.log)
@@ -671,6 +675,7 @@ class model_idealization():
           model=model,
           target_map=reference_map,
           number_of_cycles=self.params.number_of_refinement_cycles,
+          cycles_to_converge=self.params.cycles_to_converge,
           log=self.log)
 
   def shift_and_write_result(self, model, fname_suffix=""):

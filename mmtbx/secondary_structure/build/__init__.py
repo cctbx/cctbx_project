@@ -85,6 +85,9 @@ ss_idealization
   restrain_torsion_angles = False
     .type = bool
     .help = Restrain torsion angles
+  fix_rotamer_outliers = True
+    .type = bool
+    .help = Fix rotamer outliers after replacing SS elements
   sigma_on_reference_non_ss = 1
     .type = float
     .help = Weight on original model coordinates restraints where no ss \
@@ -456,7 +459,6 @@ def ss_element_is_good(ss_stats_obj, hsh_tuple):
 def substitute_ss(
                     model, # changed in place
                     params = None,
-                    fix_rotamer_outliers=True,
                     log=null_out(),
                     reference_map=None,
                     verbose=False):
@@ -722,7 +724,7 @@ def substitute_ss(
   # them to nearest allowed rotamer. The idealization may affect a lot
   # the orientation of side chain thus justifying changing rotamer on it
   # to avoid clashes.
-  if fix_rotamer_outliers:
+  if processed_params.fix_rotamer_outliers:
     print >> log, "Fixing/checking rotamers..."
     # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
     br_txt = model.model_as_pdb()

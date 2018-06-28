@@ -402,6 +402,7 @@ class minimize_wrapper_with_map():
       target_map,
       refine_ncs_operators=False,
       number_of_cycles=1,
+      cycles_to_converge=2,
       log=None):
     from mmtbx.refinement.geometry_minimization import add_rotamer_restraints
     from mmtbx.refinement.minimization_monitor import minimization_monitor
@@ -425,7 +426,7 @@ class minimize_wrapper_with_map():
     min_monitor = minimization_monitor(
         number_of_cycles=number_of_cycles,
         max_number_of_cycles=20,
-        cycles_to_converge=1,
+        cycles_to_converge=cycles_to_converge,
         mode="no_outliers")
     selection_real_space = None
     import mmtbx.refinement.real_space.weight
