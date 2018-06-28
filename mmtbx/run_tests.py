@@ -351,6 +351,7 @@ probe_tests = [
   "$D/validation/regression/tst_molprobity_1.py",
   "$D/validation/regression/tst_molprobity_4.py",
   "$D/validation/regression/tst_experimental.py",
+  "$D/validation/regression/tst_cablam_2.py",
   # automatic linking
   ["$D/monomer_library/tst_metal_coordination.py", "1"],
   ["$D/monomer_library/tst_metal_coordination.py", "2"],

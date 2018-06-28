@@ -1047,6 +1047,9 @@ def get_distances(h, n_neighbours=None):
       d.append(a.distance(h.atoms()[j]))
   return d
 
+ssb_params_norot = ssb.master_phil.extract()
+ssb_params_norot.ss_idealization.fix_rotamer_outliers=False
+ssb_params_norot.ss_idealization.enabled=True
 
 def exercise_pure_polyala_alpha(prefix="tst_2_ex_ppa_"):
   """
@@ -1070,7 +1073,7 @@ HELIX    1   1 ALA A    1  ALA A   20  1                                  20
   for i in range(3):
     rm = ssb.substitute_ss(
       model = model,
-      fix_rotamer_outliers=False)
+      params = ssb_params_norot.ss_idealization)
     model.get_hierarchy().write_pdb_file(file_name=prefix+'%d.pdb' % i)
   model.get_hierarchy().write_pdb_file(file_name=prefix+'h1.pdb')
   d2 = get_distances(model.get_hierarchy())
@@ -1133,7 +1136,7 @@ HELIX    2   2 ARG A   23  GLN A   44  1                                  22
   for i in range(1):
     rm = ssb.substitute_ss(
       model,
-      fix_rotamer_outliers=False)
+      params = ssb_params_norot.ss_idealization)
   d2 = get_distances(model.get_hierarchy(), n_neighbours=20)
   # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
@@ -1164,7 +1167,7 @@ SHEET    2  AA 2 CYS A  52  GLY A  57 -1  O  LYS A  53   N  TYR A  46
   for i in range(3):
     rm = ssb.substitute_ss(
       model,
-      fix_rotamer_outliers=False)
+      params = ssb_params_norot.ss_idealization)
   d2 = get_distances(model.get_hierarchy(), n_neighbours=20)
   # h.write_pdb_file(file_name=prefix+'_result.pdb')
   dist = abs(d2-d1)
@@ -1187,11 +1190,11 @@ HELIX   13  13 SER A  466  TYR A  472  1                                   7
     model_input = pdb_inp,
     build_grm = True)
   model.set_ss_annotation(ann)
-  # h.write_pdb_file(file_name="start.pdb")
+  # model.get_hierarchy().write_pdb_file(file_name="start.pdb")
   rm = ssb.substitute_ss(
       model,
-      fix_rotamer_outliers=False)
-  # h.write_pdb_file(file_name="result.pdb")
+      params = ssb_params_norot.ss_idealization)
+  # model.get_hierarchy().write_pdb_file(file_name="result.pdb")
   d1 = get_distances(model.get_hierarchy(), 5)
   answer_h = iotbx.pdb.input(
       source_info=None,
@@ -1219,7 +1222,7 @@ HELIX    1  21 ALA A   21  ALA A   24  1                                  5
   # h.write_pdb_file(file_name="%s_start.pdb" % prefix)
   rm = ssb.substitute_ss(
       model,
-      fix_rotamer_outliers=False)
+      params = ssb_params_norot.ss_idealization)
   # h.write_pdb_file(file_name="%s_result.pdb" % prefix)
   d1 = get_distances(model.get_hierarchy(), 5)
   answer_h = iotbx.pdb.input(
