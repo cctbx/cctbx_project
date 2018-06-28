@@ -228,7 +228,7 @@ class manager(object):
     # These are new
     self.xray_scattering_dict = None
     self.neutron_scattering_dict = None
-    self.has_hd = None
+    self._has_hd = None
     self.model_statistics_info = None
     self._master_sel = flex.size_t([]) # selection of master part if NCS constraints are in use
     self._atom_selection_cache = None
@@ -293,17 +293,6 @@ class manager(object):
 
     if self._xray_structure is not None:
       assert self._xray_structure.scatterers().size() == self._pdb_hierarchy.atoms_size()
-
-    # if self.crystal_symmetry() is None:
-    #   self._crystal_symmetry = self._xray_structure.crystal_symmetry()
-    # print "self._crystal_symmetry3", self._crystal_symmetry
-
-    if self.has_hd is None:
-      self._update_has_hd()
-
-    if self.has_hd:
-      self.exchangable_hd_groups = utils.combine_hd_exchangable(
-        hierarchy = self._pdb_hierarchy)
 
   @classmethod
   def from_sites_cart(cls,
@@ -941,12 +930,19 @@ class manager(object):
     # should live only here and be removed there.
     self._update_has_hd()
 
+  def has_hd(self):
+    if self._has_hd is None:
+      self._update_has_hd()
+    return self._has_hd
+
   def _update_has_hd(self):
-    if(self._xray_structure is not None):
-      sctr_keys = self._xray_structure.scattering_type_registry().type_count_dict().keys()
-      self.has_hd = "H" in sctr_keys or "D" in sctr_keys
-    if not self.has_hd:
+    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict().keys()
+    self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if not self._has_hd:
       self.unset_riding_h_manager()
+    if self._has_hd:
+      self.exchangable_hd_groups = utils.combine_hd_exchangable(
+        hierarchy = self._pdb_hierarchy)
 
   def _update_atom_selection_cache(self):
     if self.all_chain_proxies is not None:
@@ -990,7 +986,7 @@ class manager(object):
       params_remove      = self._pdb_interpretation_params.geometry_restraints.remove,
       custom_nonbonded_exclusions  = custom_nb_excl,
       external_energy_function=external_energy_function,
-      assume_hydrogens_all_missing = not self.has_hd)
+      assume_hydrogens_all_missing = not self.has_hd())
     if run_clash_guard:
       self.raise_clash_guard()
 
@@ -1019,7 +1015,7 @@ class manager(object):
           processed_pdb_file=self._processed_pdb_file,
           mon_lib_srv=self.get_mon_lib_srv(),
           ener_lib=self.get_ener_lib(),
-          has_hd=self.has_hd,
+          has_hd=self.has_hd(),
           params=self._pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)
@@ -1445,7 +1441,7 @@ class manager(object):
 
   def setup_riding_h_manager(self, idealize=True):
     assert self.riding_h_manager is None
-    if not self.has_hd: return
+    if not self.has_hd(): return
     if(self.restraints_manager is None): return
     sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
@@ -1533,7 +1529,7 @@ class manager(object):
   def xh_connectivity_table(self):
     result = None
     if(self.restraints_manager is not None):
-      if self.has_hd:
+      if self.has_hd():
         xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
@@ -1546,7 +1542,7 @@ class manager(object):
   def xh_connectivity_table2(self):
     result = None
     if(self.restraints_manager is not None):
-      if self.has_hd:
+      if self.has_hd():
         xray_structure = self._xray_structure
         ias_selection = self.get_ias_selection()
         if ias_selection and ias_selection.count(True) > 0:
@@ -1558,7 +1554,7 @@ class manager(object):
 
   def extend_xh_bonds(self, value=1.1):
     if(self.restraints_manager is None): return
-    if not self.has_hd: return
+    if not self.has_hd(): return
     assert self.original_xh_lengths is None
     h_i_seqs = []
     xhct = self.xh_connectivity_table()
@@ -1574,7 +1570,7 @@ class manager(object):
 
   def restore_xh_bonds(self):
     if(self.restraints_manager is None): return
-    if not self.has_hd: return
+    if not self.has_hd(): return
     assert self.original_xh_lengths is not None
     xhct = self.xh_connectivity_table()
     if(xhct is None): return
@@ -1733,7 +1729,7 @@ class manager(object):
     Perform geometry regularization on hydrogen atoms only.
     """
     if(self.restraints_manager is None): return
-    if self.has_hd:
+    if self.has_hd():
       hd_selection = self.get_hd_selection()
       if(selection is not None): hd_selection = selection
       if(hd_selection.count(True)==0): return
@@ -2364,7 +2360,7 @@ class manager(object):
     return result
 
   def remove_hydrogens(self):
-    if self.has_hd:
+    if self.has_hd():
       noh_selection = self.selection("not (element H or element D)")
       return self.select(noh_selection)
     else:

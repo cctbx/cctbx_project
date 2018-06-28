@@ -849,7 +849,7 @@ def get_atom_selections(
     hd_selection = None
     if (hydrogens_only):
       scat_types = model.get_xray_structure().scatterers().extract_scattering_types()
-      if not model.has_hd:
+      if not model.has_hd():
         raise Sorry('No hydrogens to select.')
     for m in model.get_hierarchy().models():
       for chain in m.chains():

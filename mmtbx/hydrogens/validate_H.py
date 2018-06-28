@@ -52,7 +52,7 @@ class validate_H(object):
     self.curated_hierarchy = None
 
   def validate_inputs(self):
-    if not self.model.has_hd:
+    if not self.model.has_hd():
       #raise Sorry("There are no H or D atoms in the model.")
       return 0
     # ensure that grm exists

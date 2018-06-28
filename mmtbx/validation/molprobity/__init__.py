@@ -335,7 +335,7 @@ class molprobity (slots_getstate_setstate) :
 
     # validate hydrogens
     self.hydrogens = None
-    if ( (self.model is not None) and (self.model.has_hd) ):
+    if self.model is not None and self.model.has_hd():
       # import here to avoid circular import issues
       from mmtbx.hydrogens.validate_H import validate_H, validate_H_results
       hydrogens = validate_H(model, nuclear)
