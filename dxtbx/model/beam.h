@@ -444,6 +444,97 @@ namespace dxtbx { namespace model {
     scitbx::af::shared< vec3<double> > s0_at_scan_points_;
   };
 
+  /** A class to represent a beam with a known bandpass. */
+  class BandpassBeam : public Beam {
+  public:
+
+    /** Default constructor: initialise all to zero */
+    BandpassBeam()
+      : Beam(),
+        bandpass_(0.0) {}
+
+    /** Copy constructor */
+    BandpassBeam(Beam b)
+      : Beam(b),
+        bandpass_(0.0) {}
+
+    /**
+     * Initialise all the beam parameters.
+     * @param direction The beam direction vector.
+     */
+    BandpassBeam(vec3 <double> s0)
+      : Beam(s0),
+        bandpass_(0.0) {}
+
+    /**
+     * Initialise all the beam parameters. Normalize the direction vector
+     * and give it the length of 1.0 / wavelength
+     * @param wavelength The wavelength of the beam
+     * @param direction The beam direction vector.
+     */
+    BandpassBeam(vec3 <double> direction, double wavelength)
+      : Beam(direction, wavelength),
+        bandpass_(0.0) {}
+
+    /**
+     * Initialise all the beam parameters.
+     * @param direction The beam direction vector.
+     */
+    BandpassBeam(vec3 <double> s0, double divergence, double sigma_divergence)
+      : Beam(s0, divergence, sigma_divergence),
+        bandpass_(0.0) {}
+
+    /**
+     * Initialise all the beam parameters. Normalize the direction vector
+     * and give it the length of 1.0 / wavelength
+     * @param wavelength The wavelength of the beam
+     * @param direction The beam direction vector.
+     */
+    BandpassBeam(vec3 <double> direction, double wavelength,
+         double divergence, double sigma_divergence)
+      : Beam(direction, wavelength, divergence, sigma_divergence),
+        bandpass_(0.0) {}
+
+    BandpassBeam(vec3 <double> direction, double wavelength,
+         double divergence, double sigma_divergence,
+         vec3<double> polarization_normal,
+         double polarization_fraction,
+         double flux,
+         double transmission)
+      : Beam(direction, wavelength, divergence, sigma_divergence,
+             polarization_normal, polarization_fraction, flux, transmission),
+        bandpass_(0.0) {}
+
+    BandpassBeam(vec3 <double> direction, double wavelength,
+         double divergence, double sigma_divergence,
+         vec3<double> polarization_normal,
+         double polarization_fraction,
+         double flux,
+         double transmission, double bandpass)
+      : Beam(direction, wavelength, divergence, sigma_divergence,
+             polarization_normal, polarization_fraction, flux, transmission),
+        bandpass_(bandpass) {}
+
+    /**
+     * Set the bandpass (eV)
+     */
+    void set_bandpass(double bandpass) {
+      bandpass_ = bandpass;
+    }
+
+    /**
+     * Get the bandpass (eV)
+     */
+    double get_bandpass() const {
+      return bandpass_;
+    }
+
+  friend std::ostream& operator<<(std::ostream &os, const BandpassBeam &b);
+
+  private:
+    double bandpass_;
+  };
+
   /** Print beam information */
   inline
   std::ostream& operator<<(std::ostream &os, const Beam &b) {
@@ -458,6 +549,23 @@ namespace dxtbx { namespace model {
         b.get_polarization_fraction() << "\n";
     return os;
   }
+
+  /** Print beam information */
+  inline
+  std::ostream& operator<<(std::ostream &os, const BandpassBeam &b) {
+    os << "BandpassBeam:\n";
+    os << "    wavelength: " << b.get_wavelength() << "\n";
+    os << "    sample to source direction : " << b.get_direction().const_ref() << "\n";
+    os << "    divergence: " << b.get_divergence() << "\n";
+    os << "    sigma divergence: " << b.get_sigma_divergence() << "\n";
+    os << "    polarization normal: " <<
+        b.get_polarization_normal().const_ref() << "\n";
+    os << "    polarization fraction: " <<
+        b.get_polarization_fraction() << "\n";
+    os << "    bandpass: " << b.get_bandpass() << "\n";
+    return os;
+  }
+
 
 }} // namespace dxtbx::model
 

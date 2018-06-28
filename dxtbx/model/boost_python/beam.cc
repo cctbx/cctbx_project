@@ -29,6 +29,12 @@ namespace dxtbx { namespace model { namespace boost_python {
     return ss.str();
   }
 
+  std::string bandpassbeam_to_string(const BandpassBeam &beam) {
+    std::stringstream ss;
+    ss << beam;
+    return ss.str();
+  }
+
   struct BeamPickleSuite : boost::python::pickle_suite {
     static
     boost::python::tuple getinitargs(const Beam &obj) {
@@ -56,6 +62,50 @@ namespace dxtbx { namespace model { namespace boost_python {
     void setstate(boost::python::object obj, boost::python::tuple state)
     {
       Beam &beam = boost::python::extract<Beam&>(obj)();
+      DXTBX_ASSERT(boost::python::len(state) == 2);
+
+      // restore the object's __dict__
+      boost::python::dict d = boost::python::extract<boost::python::dict>(
+          obj.attr("__dict__"))();
+      d.update(state[0]);
+
+      // restore the internal state of the C++ object
+      scitbx::af::const_ref< vec3<double> > s0_list = boost::python::extract<
+        scitbx::af::const_ref< vec3<double> > >(state[1]);
+      beam.set_s0_at_scan_points(s0_list);
+    }
+
+    static bool getstate_manages_dict() { return true; }
+  };
+
+  struct BandpassBeamPickleSuite : boost::python::pickle_suite {
+    static
+    boost::python::tuple getinitargs(const BandpassBeam &obj) {
+      return boost::python::make_tuple(
+        obj.get_direction(),
+        obj.get_wavelength(),
+        obj.get_divergence(),
+        obj.get_sigma_divergence(),
+        obj.get_polarization_normal(),
+        obj.get_polarization_fraction(),
+        obj.get_flux(),
+        obj.get_transmission(),
+        obj.get_bandpass());
+    }
+
+    static
+    boost::python::tuple getstate(boost::python::object obj)
+    {
+      const BandpassBeam &beam = boost::python::extract<const BandpassBeam &>(obj)();
+      return boost::python::make_tuple(
+          obj.attr("__dict__"),
+          beam.get_s0_at_scan_points());
+    }
+
+    static
+    void setstate(boost::python::object obj, boost::python::tuple state)
+    {
+      BandpassBeam &beam = boost::python::extract<BandpassBeam&>(obj)();
       DXTBX_ASSERT(boost::python::len(state) == 2);
 
       // restore the object's __dict__
@@ -122,6 +172,35 @@ namespace dxtbx { namespace model { namespace boost_python {
                       polarization_fraction,
                       flux,
                       transmission);
+    }
+    return beam;
+  }
+
+  static Beam* make_bandpassbeam_w_all(vec3<double> sample_to_source,
+                               double wavelength,
+                               double divergence, double sigma_divergence,
+                               vec3<double> polarization_normal,
+                               double polarization_fraction,
+                               double flux,
+                               double transmission,
+                               double bandpass,
+                               bool deg) {
+    BandpassBeam *beam = NULL;
+    if (deg) {
+      beam = new BandpassBeam(sample_to_source, wavelength,
+                      deg_as_rad(divergence),
+                      deg_as_rad(sigma_divergence),
+                      polarization_normal,
+                      polarization_fraction,
+                      flux,
+                      transmission, bandpass);
+    } else {
+      beam = new BandpassBeam(sample_to_source, wavelength,
+                      divergence, sigma_divergence,
+                      polarization_normal,
+                      polarization_fraction,
+                      flux,
+                      transmission, bandpass);
     }
     return beam;
   }
@@ -218,6 +297,20 @@ namespace dxtbx { namespace model { namespace boost_python {
       boost::python::list s0_at_scan_points = boost::python::extract<boost::python::list>(obj["s0_at_scan_points"]);
       Beam_set_s0_at_scan_points_from_list(*b, s0_at_scan_points);
     }
+    return b;
+  }
+
+  template <>
+  boost::python::dict to_dict<BandpassBeam>(const BandpassBeam &obj) {
+    boost::python::dict result = to_dict<Beam>(obj);
+    result["bandpass"] = obj.get_bandpass();
+    return result;
+  }
+
+  template <>
+  BandpassBeam* from_dict<BandpassBeam>(boost::python::dict obj) {
+    BandpassBeam* b = new BandpassBeam(*from_dict<Beam>(obj));
+    b->set_bandpass(boost::python::extract< double >(obj.get("bandpass", 0)));
     return b;
   }
 
@@ -345,6 +438,71 @@ namespace dxtbx { namespace model { namespace boost_python {
         return_value_policy<manage_new_object>())
       .staticmethod("from_dict")
       .def_pickle(BeamPickleSuite());
+
+    // Export Beam : BeamBase
+    class_ <BandpassBeam, boost::shared_ptr<BandpassBeam>, bases <Beam> > ("BandpassBeam")
+      .def(init<const Beam&>())
+      .def(init<const BandpassBeam&>())
+      .def(init <vec3 <double>,
+                 double> ((
+          arg("direction"),
+          arg("wavelength"))))
+      .def(init <vec3 <double> > ((
+          arg("s0"))))
+      .def("__init__",
+          make_constructor(
+          &make_beam,
+          default_call_policies(), (
+            arg("direction"),
+            arg("wavelength"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+          &make_beam_w_s0,
+          default_call_policies(), (
+            arg("s0"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+          &make_beam_w_all,
+          default_call_policies(), (
+            arg("direction"),
+            arg("wavelength"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("polarization_normal"),
+            arg("polarization_fraction"),
+            arg("flux"),
+            arg("transmission"),
+            arg("deg") = true)))
+      .def("__init__",
+          make_constructor(
+          &make_bandpassbeam_w_all,
+          default_call_policies(), (
+            arg("direction"),
+            arg("wavelength"),
+            arg("divergence"),
+            arg("sigma_divergence"),
+            arg("polarization_normal"),
+            arg("polarization_fraction"),
+            arg("flux"),
+            arg("transmission"),
+            arg("bandpass"),
+            arg("deg") = true)))
+      .def("get_bandpass",
+        &BandpassBeam::get_bandpass)
+      .def("set_bandpass",
+        &BandpassBeam::set_bandpass)
+      .def("__str__", &bandpassbeam_to_string)
+      .def("to_dict", &to_dict<BandpassBeam>)
+      .def("from_dict", &from_dict<BandpassBeam>,
+        return_value_policy<manage_new_object>())
+      .staticmethod("from_dict")
+      .def_pickle(BandpassBeamPickleSuite());
 
     scitbx::af::boost_python::flex_wrapper<Beam>::plain("flex_Beam");
   }

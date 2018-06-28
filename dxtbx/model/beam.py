@@ -12,7 +12,7 @@ from __future__ import absolute_import, division
 
 import math
 import pycbf
-from dxtbx_model_ext import Beam
+from dxtbx_model_ext import Beam, BandpassBeam
 import libtbx.phil
 
 beam_phil_scope = libtbx.phil.parse('''
@@ -89,7 +89,10 @@ class BeamFactory:
       d = dict(t.items() + d.items())
 
     # Create the model from the dictionary
-    return Beam.from_dict(d)
+    if 'bandpass' in d:
+      return BandpassBeam.from_dict(d)
+    else:
+      return Beam.from_dict(d)
 
 
   @staticmethod
