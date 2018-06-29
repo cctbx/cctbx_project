@@ -2292,6 +2292,7 @@ class QRBuilder(PhenixBuilder):
   def add_tests(self):
     self.add_test_command('qr.test',
                           haltOnFailure=True,
+                          env = self.get_environment()
                           )
 
   def add_dispatchers(self):
@@ -2299,6 +2300,16 @@ class QRBuilder(PhenixBuilder):
 
   def rebuild_docs(self):
     pass
+
+  def get_environment(self, add_build_python_to_path=True):
+    environment = {}
+    mopac_envs = {
+      "MOPAC_LICENSE"  : "/home/builder/software/mopac",
+      "MOPAC_COMMAND"  : "/home/builder/software/mopac/mopac.csh",
+    }
+    for env, dirs in envs.items():
+      environment[env] = os.path.join(*dirs)
+    return environment
 
 def run(root=None):
   usage = """Usage: %prog [options] [actions]
