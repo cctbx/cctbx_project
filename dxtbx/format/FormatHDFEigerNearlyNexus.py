@@ -232,12 +232,12 @@ class EigerNXmxFixer(object):
     if 'omega' not in group:
       # In here assume goniometer axis is 1,0,0 unless (i) specified somewhere
       # we can know or (ii) a known special case. For (i) for this instrument
-      # listed here this /should/ be at
+      # listed here this is at
       #
-      # /entry/sample/transformations/omega/vector
+      # /entry/sample/transformations/omega->vector
       #
       # which will join the special case list once this is properly resolved
-      # as this corrently does not read right...
+      # as this corrently returns 0, -1, 0 so needs transforming...
       #
       # special cases:
       # E-32-0105 - Max IV, vertical axis
