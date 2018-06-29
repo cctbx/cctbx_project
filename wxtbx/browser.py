@@ -32,11 +32,11 @@ class browser_frame (wx.Frame) :
         self.Bind(webkit.EVT_WEBKIT_BEFORE_LOAD, self.OnBeforeLoad, self.viewer)
     elif (wx.Platform == '__WXMSW__') :
       try :
-        from wx.lib import iewin
+        from wx.html2 import WebView
       except ImportError, e :
         _import_error = str(e)
       else :
-        self.viewer = iewin.IEHtmlWindow(self, -1)
+        self.viewer = WebView.New(self)
     if (self.viewer is None) : # fallback (default on Linux)
       self.viewer = HtmlPanel(self)
       self._is_default_viewer = True
@@ -109,10 +109,7 @@ class browser_frame (wx.Frame) :
     self.toolbar.Realize()
 
   def LoadURL (self, url) :
-    if (wx.Platform == '__WXMSW__') :
-      self.viewer.LoadUrl(url)
-    else :
-      self.viewer.LoadURL(url)
+    self.viewer.LoadURL(url)
 
   def OnShow (self, event) :
     if (not self._was_shown) :
