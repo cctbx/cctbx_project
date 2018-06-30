@@ -745,7 +745,6 @@ class DataBlockDictImporter(object):
           template = load_path(imageset['master'], directory=directory)
           i0, i1 = scan.get_image_range()
           indices = imageset['images']
-          assert min(indices) <= i0-1 and max(indices) >= i1-1
           if check_format == False:
             format_class = FormatMultiImage
           else:
