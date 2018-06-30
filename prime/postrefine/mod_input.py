@@ -371,7 +371,7 @@ Prime: post-refinement and merging.
 
 For more detail and citation, see Enabling X-ray free electron laser crystallography
 for challenging biological systems from a limited number of crystals
-"DOI: http://dx.doi.org/10.7554/eLife.05421".
+"DOI: https://doi.org/10.7554/eLife.05421".
 
 Usage: prime.postrefine parameter.phil
 

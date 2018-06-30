@@ -43,7 +43,7 @@ class PubMedDirective(docutils.parsers.rst.Directive):
       if len(possible_doi) > 0:
         text.append('| |%s|' %possible_doi[0])
         raw_directives.append(raw_html_link_new_tab(
-          possible_doi[0], get_title, "http://dx.doi.org/%s" %possible_doi[0]))
+          possible_doi[0], get_title, "https://doi.org/%s" %possible_doi[0]))
 
       # Author list
       authors = [ " ".join([elem["LastName"],elem["Initials"]])

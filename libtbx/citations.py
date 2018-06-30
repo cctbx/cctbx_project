@@ -278,7 +278,7 @@ def format_citation_html (article) :
   if (article.url is not None) :
     output += """<a href="%s">%s</a>.""" % (article.url, journal_ref)
   elif (article.doi_id is not None) :
-    output += """<a href="http://dx.doi.org/%s">%s</a>.""" % (article.doi_id,
+    output += """<a href="https://doi.org/%s">%s</a>.""" % (article.doi_id,
       journal_ref)
   elif (article.pmid is not None) :
     output += """<a href="http://www.ncbi.nlm.nih.gov/pubmed/%s">%s</a>.""" % \

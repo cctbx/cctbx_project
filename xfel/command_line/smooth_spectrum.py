@@ -165,7 +165,7 @@ def estimate_signal_to_noise(x, y_noisy, y_smoothed, plot=False):
      See:
        The extraction of signal to noise values in x-ray absorption spectroscopy
        A. J. Dent, P. C. Stephenson, and G. N. Greaves
-       Rev. Sci. Instrum. 63, 856 (1992); http://dx.doi.org/10.1063/1.1142627
+       Rev. Sci. Instrum. 63, 856 (1992); https://doi.org/10.1063/1.1142627
   """
   noise = y_noisy - y_smoothed
   noise_sq = flex.pow2(noise)
