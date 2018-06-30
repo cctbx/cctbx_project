@@ -30,7 +30,7 @@ def test_format():
   actual = citations.format_citation_iucr(citation)
   assert not show_diff(actual, expected)
 
-  expected = """<b>Iterative-build OMIT maps: map improvement by iterative model building and refinement without model bias.</b> T.C. Terwilliger, R.W. Grosse-Kunstleve, P.V. Afonine, N.W. Moriarty, P.D. Adams, R.J. Read, P.H. Zwart, and L.-W. Hung. <a href="http://dx.doi.org/doi:10.1107/S0907444908004319"><i>Acta Cryst.</i> D<b>64</b>, 515-524 (2008)</a>."""
+  expected = """<b>Iterative-build OMIT maps: map improvement by iterative model building and refinement without model bias.</b> T.C. Terwilliger, R.W. Grosse-Kunstleve, P.V. Afonine, N.W. Moriarty, P.D. Adams, R.J. Read, P.H. Zwart, and L.-W. Hung. <a href="https://doi.org/doi:10.1107/S0907444908004319"><i>Acta Cryst.</i> D<b>64</b>, 515-524 (2008)</a>."""
   citation = citations.citations_db['autobuild_omit']
   actual = citations.format_citation_html(citation)
   assert not show_diff(actual, expected)

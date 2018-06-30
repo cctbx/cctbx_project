@@ -25,7 +25,7 @@
 
     Grosse-Kunstleve RW, Terwilliger TC, Sauter NK, Adams PD:
     *Automatic Fortran to C++ conversion with FABLE*.
-    `Source Code for Biology and Medicine 2012, 7:5 <http://dx.doi.org/10.1186/1751-0473-7-5>`_.
+    `Source Code for Biology and Medicine 2012, 7:5 <https://doi.org/10.1186/1751-0473-7-5>`_.
 
 - fable and fem development was supported by supplemental funding from
   the American Recovery and Reinvestment Act (ARRA) to NIH/NIGMS grant
