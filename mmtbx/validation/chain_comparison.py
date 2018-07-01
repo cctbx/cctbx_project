@@ -102,10 +102,11 @@ master_phil = iotbx.phil.parse("""
       .help =Maximum distance spanned by a pair of residues.  Set by \
             default as 3.8 A for protein and 8 A for RNA
 
-    min_similarity = 0.9
+    min_similarity = 0.99
       .type = float
       .short_caption = Minimum similarity in chains for uniqueness
-      .help = When choosing unique chains, use min_similarity cutoff
+      .help = When choosing unique chains, use min_similarity cutoff. \
+               This applies to both chain length and the sequence itself.
 
     target_length_from_matching_chains = False
       .type = bool
