@@ -331,14 +331,16 @@ public:
 
 public:
   inline
-  FlexImage(array_t rawdata,
+  FlexImage(array_t rawdata, const int& power_of_two,
             const double& brightness = 1.0,
             const DataType& saturation = 1.0,
             const bool& show_untrusted = false,
             const int& color_scheme_state = COLOR_GRAY):
     rawdata(rawdata),
-    brightness(brightness),saturation(saturation), nchannels(4),supports_rotated_tiles_antialiasing_recommended(false),
-    color_scheme_state(color_scheme_state),show_untrusted(show_untrusted){}
+    brightness(brightness),saturation(saturation), nchannels(4),
+    supports_rotated_tiles_antialiasing_recommended(false),
+    color_scheme_state(color_scheme_state),show_untrusted(show_untrusted),
+    binning(power_of_two){}
 
   inline
   FlexImage(array_t rawdata, const int& power_of_two,
@@ -678,7 +680,7 @@ class generic_flex_image: public FlexImage<double>{
   // readout is passed in size_readout1 and size_readout2.
   inline
   generic_flex_image(
-    array_t rawdata,
+    array_t rawdata, const int& power_of_two,
     const int& size1_readout,
     const int& size2_readout,
     const double& brightness = 1.0,
@@ -686,13 +688,12 @@ class generic_flex_image: public FlexImage<double>{
     const bool& show_untrusted = false,
     const int& color_scheme_state = COLOR_GRAY
     )
-    : FlexImage<double>(rawdata, brightness, saturation, show_untrusted,
-                        color_scheme_state),
+    : FlexImage<double>(rawdata, power_of_two, brightness, saturation,
+                        show_untrusted, color_scheme_state),
       size1_readout(size1_readout),
       size2_readout(size2_readout)
   {
     supports_rotated_tiles_antialiasing_recommended=true;
-    binning=1;
     zoom = 1./ binning;
     export_size_uncut1 = size1()/binning;
     export_size_uncut2 = size2()/binning;
@@ -728,11 +729,6 @@ class generic_flex_image: public FlexImage<double>{
       }
     }
 
-    export_size_cut1 *= fraction*apply_zoom;
-    export_size_cut2 *= fraction*apply_zoom;
-    export_m = af::versa<int, af::c_grid<2> >(
-       af::c_grid<2>(export_size_cut1,export_size_cut2));
-
     //Find out which readouts have any intersection with this Window
     windowed_readouts.clear();
     //Define the 4 corners of the Window rectangle A B C D, counterclockwise from top left,
@@ -759,6 +755,11 @@ class generic_flex_image: public FlexImage<double>{
         windowed_readouts.push_back(k);
       }
     }
+
+    export_size_cut1 = iround((export_size_cut1/binning)*fraction*apply_zoom);
+    export_size_cut2 = iround((export_size_cut2/binning)*fraction*apply_zoom);
+    export_m = af::versa<int, af::c_grid<2> >(
+       af::c_grid<2>(export_size_cut1,export_size_cut2));
 
   }
 

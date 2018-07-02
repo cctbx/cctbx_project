@@ -48,7 +48,7 @@ def _get_flex_image(
 
 
 def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
-                               show_untrusted=False, color_scheme=0):
+                               binning=1, show_untrusted=False, color_scheme=0):
   # From xfel.cftbx.cspad_detector.readHeader() and
   # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
   # merge this with _get_flex_image() above?  XXX Move to dxtbx Format
@@ -90,6 +90,7 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
     flex.grid(len(panels) * data_padded[0], data_padded[1]))
   my_flex_image = generic_flex_image(
     rawdata=rawdata,
+    binning=binning,
     size1_readout=data_max_focus[0],
     size2_readout=data_max_focus[1],
     brightness=brightness,
