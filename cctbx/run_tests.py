@@ -144,8 +144,7 @@ tst_list = (
    "$D/regression/tst_connectivity.py",
    "$D/regression/tst_diffuse.py",
    "$D/regression/tst_grm_modifications.py",
-   "$D/regression/tst_grm.py",
-   "$D/regression/tst_scattering_type_registry.py"
+   "$D/regression/tst_grm.py"
   )
 
 def run():

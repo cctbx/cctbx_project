@@ -337,6 +337,8 @@ general_tests = [
   "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
   "$D/regression/fix_cablam/tst_insertion_codes.py",
+  #
+  "$D/regression/tst_scattering_type_registry.py"
   ]
 
 probe_tests = [
