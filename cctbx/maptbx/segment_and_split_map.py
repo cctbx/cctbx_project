@@ -2381,6 +2381,27 @@ def get_map_object(file_name=None,out=sys.stdout):
   else:
     origin_frac=(0.,0.,0.)
 
+  # Special case: some resolve maps come in with grid of (0,n) and both
+  # 0th and nth values are present. Unit cell refers to unit_cell_grid.
+
+  # Remove this outer layer:
+
+  offsets=[]
+  for g,e in zip(m.unit_cell_grid,map_data.all() ):
+    offset=e-g
+    offsets.append(offset)
+  if offsets == [1,1,1] and map_data[0,0,0]==map_data[
+     map_data.all()[0]-1,
+     map_data.all()[1]-1,
+     map_data.all()[2]-1]:
+    print >>out, "\nRemoving outer layer of grid points assuming that "+\
+      "these are duplicates"
+    print >>out, "Original extent of map:",map_data.all()
+    map_data=map_data[:-1,:-1,:-1]
+    print >>out, "New extent of map:     ",map_data.all()
+    crystal_symmetry=original_crystal_symmetry
+    unit_cell=crystal_symmetry.unit_cell()
+
   map_data=scale_map(map_data,out=out)
 
   return map_data,space_group,unit_cell,crystal_symmetry,\
