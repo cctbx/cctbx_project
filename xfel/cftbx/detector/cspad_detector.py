@@ -148,6 +148,7 @@ class CSPadDetector(GenericDetector):
         rawdata = flex.double(flex.grid(self.size1, self.size2))
         my_flex_image = generic_flex_image(
           rawdata=rawdata,
+          binning=1,
           size1_readout=self._asic_focus[0],
           size2_readout=self._asic_focus[1],
           brightness=brightness,
