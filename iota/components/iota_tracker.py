@@ -1208,7 +1208,7 @@ class TrackerWindow(wx.Frame):
     for item in self.spotfinding_info:
       if item[4] is not None:
         try:
-          if type(item[4]) is tuple:
+          if type(item[4]) in (tuple, list):
             uc = item[4]
           else:
             uc = item[4].rsplit()
