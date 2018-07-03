@@ -2402,7 +2402,7 @@ def get_map_object(file_name=None,out=sys.stdout):
     crystal_symmetry=original_crystal_symmetry
     unit_cell=crystal_symmetry.unit_cell()
 
-  map_data=scale_map(map_data.as_double(),out=out)
+  map_data=scale_map(map_data,out=out)
 
   return map_data,space_group,unit_cell,crystal_symmetry,\
       origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid
