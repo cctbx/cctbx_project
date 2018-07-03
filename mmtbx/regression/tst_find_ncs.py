@@ -2,6 +2,7 @@ from __future__ import division
 
 from cStringIO import StringIO
 from mmtbx.ncs import ncs
+import sys
 
 def remove_blank(text):
   return text.replace("\n"," ").replace(".0 "," ").replace(". "," ").replace(" ","")
@@ -1381,7 +1382,37 @@ def tst_06():
 
   print "OK"
 
+def tst_07():
+  print "Generate operators for point-group symmetries"
+  from mmtbx.ncs.ncs import generate_ncs_ops
+  ncs_list=generate_ncs_ops(symmetry="ALL",op_max=3,
+    out=sys.stdout)
+  helical_ncs_list=generate_ncs_ops(symmetry="helical",helical_rot_deg=23,
+    helical_trans_z_angstrom=8, max_helical_ops_to_check=5,
+    out=sys.stdout)
+  ncs_list+=helical_ncs_list
+
+  name_and_ops_list=[]
+  for ncs_obj in ncs_list:
+    print ncs_obj.get_ncs_name(),ncs_obj.max_operators()
+    assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
+    from cStringIO import StringIO
+    f=StringIO()
+    ncs_obj.display_all(log=f)
+    text=f.getvalue()
+    name_and_ops_list.append([ncs_obj.get_ncs_name(),ncs_obj.max_operators()])
+
+  print name_and_ops_list
+  assert name_and_ops_list==[['I (b)', 60], ['I (d)', 60], ['I (f)', 60], ['I (a)', 60], ['I (c)', 60], ['I (e)', 60], ['C2 ', 2], ['C3 ', 3], ['D2 (a)', 4], ['D2 (b)', 4], ['D3 (a)', 6], ['D3 (b)', 6], ['Helical 23.00 deg    8.00 Z-trans ', 5]]
+
+
+  print "OK"
+
+
+
 if __name__=="__main__":
+  tst_07()
+  """
   tst_01()
   tst_02()
   tst_02a()
@@ -1390,3 +1421,5 @@ if __name__=="__main__":
   tst_04()
   tst_05()
   tst_06()
+  """
+

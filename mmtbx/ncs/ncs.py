@@ -154,7 +154,7 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
       return matrix.col(offset_frac)
 
 def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
-    rotate_about_y=None,out=sys.stdout):
+    rotate_about_y=None,ncs_name=None,out=sys.stdout):
   from mmtbx.ncs.ncs import ncs
   import iotbx.pdb
   ncs_object=ncs()
@@ -169,7 +169,8 @@ def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
     ncs_object.rotate_about_z(rot_deg=rotate_about_z,invert_matrices=True)
   if rotate_about_y:
     ncs_object.rotate_about_y(rot_deg=rotate_about_y,invert_matrices=True)
-
+  if ncs_name:
+    ncs_object.set_ncs_name(ncs_name)
   return ncs_object
 
 
@@ -198,11 +199,17 @@ def get_helical_symmetry(helical_rot_deg=None,
 
   from mmtbx.ncs.ncs import ncs
   ncs_object=ncs()
+  ncs_name="Helical %5.2f deg  %6.2f Z-trans " %(
+        helical_rot_deg,helical_trans_z_angstrom)
   ncs_object.ncs_from_import(rot_list=rots,trans_list=trans)
+  ncs_object.set_ncs_name(ncs_name)
+
+
   return ncs_object
 
-def get_d_symmetry(n=None,two_fold_along_x=True):
-  return get_c_symmetry(n=n,is_d=True,two_fold_along_x=two_fold_along_x)
+def get_d_symmetry(n=None,two_fold_along_x=True,ncs_name=None):
+  return get_c_symmetry(n=n,is_d=True,two_fold_along_x=two_fold_along_x,
+     ncs_name=ncs_name)
 
 def get_rot_z(rot_deg=None):
   import math
@@ -222,7 +229,7 @@ def get_rot_y(rot_deg=None):
                     -ss,0,cc,
                      0,1,0,))
 
-def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
+def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
   # generate n-fold C symmetry
   oper=get_rot_z(rot_deg=360./n)
   oper_inv=oper.inverse()
@@ -253,7 +260,1590 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None):
 
   ncs_object=ncs()
   ncs_object.ncs_from_import(rot_list=rots,trans_list=trans)
+  if ncs_name:
+    ncs_object.set_ncs_name(ncs_name)
+
   return ncs_object
+
+def generate_ncs_ops(symmetry=None,
+   helical_rot_deg=None,
+   helical_trans_z_angstrom=None,
+   op_max=None,
+   two_fold_along_x=None,
+   include_helical_symmetry=None,
+   max_helical_ops_to_check=None,
+   require_helical_or_point_group_symmetry=None,
+   out=sys.stdout):
+  # Generate ncs objects corresponding to common point-group symmetries in
+  #  conventional orientations such as C2 D7 etc.
+
+  ncs_list=[]
+  all=False
+  sym_type=None
+  sym_n=None
+  if symmetry.lower() in ['all','any']:
+    all=True
+  elif symmetry.lower() in ["i"]:
+    sym_type='I'
+  elif symmetry.lower().startswith("d"):
+    sym_type='D'
+    sym_n=int(symmetry[1:])
+  elif symmetry.lower().startswith("c"):
+    sym_type='C'
+    sym_n=int(symmetry[1:])
+  elif symmetry.lower() in ['helical','helix']:
+    sym_type='helical'
+
+  print >>out,"Sym type: %s  Sym N: %s" %(
+     sym_type,sym_n)
+
+  if sym_n:
+    i_start=sym_n
+    i_end=sym_n
+  else:
+    i_start=2
+    if op_max is None:
+      i_end=14
+    else:
+      i_end=op_max
+
+  # NOTE: the (a) (b) etc designations are arbitrary
+
+  from mmtbx.ncs.ncs import get_ncs_from_text, \
+      get_c_symmetry,get_d_symmetry,get_helical_symmetry
+  if sym_type=='I' or all:
+    if two_fold_along_x is None or two_fold_along_x==False:
+      ncs_list.append(get_ncs_from_text(text=icosahedral_b,
+        text_is_ncs_spec=True,ncs_name='I (b)'))
+      ncs_list.append(get_ncs_from_text(text=icosahedral_d,
+        text_is_ncs_spec=True,ncs_name='I (d)'))
+      ncs_list.append(get_ncs_from_text(text=icosahedral_f,
+         text_is_ncs_spec=True,
+         ncs_name='I (f)'))
+    if two_fold_along_x is None or two_fold_along_x==True:
+      ncs_list.append(get_ncs_from_text(text=icosahedral_b,
+          rotate_about_z=90,
+          text_is_ncs_spec=True,ncs_name='I (a)'))
+      ncs_list.append(get_ncs_from_text(text=icosahedral_d,
+          text_is_ncs_spec=True,rotate_about_z=90,
+           ncs_name='I (c)'))
+      ncs_list.append(get_ncs_from_text(text=icosahedral_f,
+          rotate_about_z=90,text_is_ncs_spec=True,
+          ncs_name='I (e)'))
+  if sym_type=='C' or all:
+    for i in xrange(i_start,i_end+1):
+      ncs_list.append(get_c_symmetry(n=i,ncs_name='C%d ' %(i)))
+  if sym_type=='D' or all:
+    for i in xrange(i_start,i_end+1):
+      if two_fold_along_x is None or two_fold_along_x==True:
+        ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=True,
+        ncs_name='D%d (a)' %(i)))
+      if two_fold_along_x is None or two_fold_along_x==False:
+        ncs_list.append(get_d_symmetry(n=i,two_fold_along_x=False,
+        ncs_name='D%d (b)' %(i)))
+  if sym_type=='helical' or (
+      all and include_helical_symmetry):
+     if helical_rot_deg is not None and helical_trans_z_angstrom is not None:
+      ncs_list.append(get_helical_symmetry(
+       helical_rot_deg=helical_rot_deg,
+       helical_trans_z_angstrom=helical_trans_z_angstrom,
+       max_ops=max_helical_ops_to_check))
+
+  return ncs_list
+
+# Symmetry for icosahedron in 3 settings
+
+
+icosahedral_f=\
+"""
+
+Summary of NCS information
+Mon Jul  2 11:08:24 2018
+/Users/terwill/Downloads/view/ncs_text
+
+source_info icosahedral_f.dat
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth  -14.5127   20.8478  102.7355
+new_operator
+
+rota_matrix    0.5000    0.8090   -0.3090
+rota_matrix   -0.8090    0.3090   -0.5000
+rota_matrix   -0.3090    0.5000    0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -55.8696   46.0690   77.1756
+new_operator
+
+rota_matrix   -0.3090    0.5000   -0.8090
+rota_matrix   -0.5000   -0.8090   -0.3090
+rota_matrix   -0.8090    0.3090    0.5000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth  -89.0540    7.6245   56.6665
+new_operator
+
+rota_matrix   -0.3090   -0.5000   -0.8090
+rota_matrix    0.5000   -0.8090    0.3090
+rota_matrix   -0.8090   -0.3090    0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -68.2062  -41.3569   69.5511
+new_operator
+
+rota_matrix    0.5000   -0.8090   -0.3090
+rota_matrix    0.8090    0.3090    0.5000
+rota_matrix   -0.3090   -0.5000    0.8090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -22.1372  -33.1844   98.0233
+new_operator
+
+rota_matrix   -1.0000    0.0000    0.0000
+rota_matrix    0.0000   -1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   14.5127  -20.8478  102.7355
+new_operator
+
+rota_matrix   -0.5000   -0.8090   -0.3090
+rota_matrix    0.8090   -0.3090   -0.5000
+rota_matrix    0.3090   -0.5000    0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   55.8696  -46.0690   77.1756
+new_operator
+
+rota_matrix    0.3090   -0.5000   -0.8090
+rota_matrix    0.5000    0.8090   -0.3090
+rota_matrix    0.8090   -0.3090    0.5000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   89.0540   -7.6245   56.6665
+new_operator
+
+rota_matrix    0.3090    0.5000   -0.8090
+rota_matrix   -0.5000    0.8090    0.3090
+rota_matrix    0.8090    0.3090    0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   68.2062   41.3569   69.5511
+new_operator
+
+rota_matrix   -0.5000    0.8090   -0.3090
+rota_matrix   -0.8090   -0.3090    0.5000
+rota_matrix    0.3090    0.5000    0.8090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   22.1372   33.1844   98.0233
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000   -1.0000    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth  -14.5127  -20.8478  -102.7355
+new_operator
+
+rota_matrix    0.5000   -0.8090    0.3090
+rota_matrix   -0.8090   -0.3090    0.5000
+rota_matrix   -0.3090   -0.5000   -0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -55.8696  -46.0690  -77.1756
+new_operator
+
+rota_matrix   -0.3090   -0.5000    0.8090
+rota_matrix   -0.5000    0.8090    0.3090
+rota_matrix   -0.8090   -0.3090   -0.5000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth  -89.0540   -7.6245  -56.6665
+new_operator
+
+rota_matrix   -0.3090    0.5000    0.8090
+rota_matrix    0.5000    0.8090   -0.3090
+rota_matrix   -0.8090    0.3090   -0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -68.2062   41.3569  -69.5511
+new_operator
+
+rota_matrix    0.5000    0.8090    0.3090
+rota_matrix    0.8090   -0.3090   -0.5000
+rota_matrix   -0.3090    0.5000   -0.8090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -22.1372   33.1844  -98.0233
+new_operator
+
+rota_matrix   -1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth   14.5127   20.8478  -102.7355
+new_operator
+
+rota_matrix   -0.5000    0.8090    0.3090
+rota_matrix    0.8090    0.3090    0.5000
+rota_matrix    0.3090    0.5000   -0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   55.8696   46.0690  -77.1756
+new_operator
+
+rota_matrix    0.3090    0.5000    0.8090
+rota_matrix    0.5000   -0.8090    0.3090
+rota_matrix    0.8090    0.3090   -0.5000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   89.0540    7.6245  -56.6665
+new_operator
+
+rota_matrix    0.3090   -0.5000    0.8090
+rota_matrix   -0.5000   -0.8090   -0.3090
+rota_matrix    0.8090   -0.3090   -0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   68.2062  -41.3569  -69.5511
+new_operator
+
+rota_matrix   -0.5000   -0.8090    0.3090
+rota_matrix   -0.8090    0.3090   -0.5000
+rota_matrix    0.3090   -0.5000   -0.8090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   22.1372  -33.1844  -98.0233
+new_operator
+
+rota_matrix   -0.0000   -0.0000   -1.0000
+rota_matrix   -1.0000    0.0000   -0.0000
+rota_matrix    0.0000    1.0000   -0.0000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth  -20.8478  102.7355   14.5127
+new_operator
+
+rota_matrix   -0.8090   -0.3090   -0.5000
+rota_matrix   -0.3090   -0.5000    0.8090
+rota_matrix   -0.5000    0.8090    0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -46.0690   77.1756   55.8696
+new_operator
+
+rota_matrix   -0.5000   -0.8090    0.3090
+rota_matrix    0.8090   -0.3090    0.5000
+rota_matrix   -0.3090    0.5000    0.8090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   -7.6245   56.6665   89.0540
+new_operator
+
+rota_matrix    0.5000   -0.8090    0.3090
+rota_matrix    0.8090    0.3090   -0.5000
+rota_matrix    0.3090    0.5000    0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   41.3569   69.5511   68.2062
+new_operator
+
+rota_matrix    0.8090   -0.3090   -0.5000
+rota_matrix   -0.3090    0.5000   -0.8090
+rota_matrix    0.5000    0.8090    0.3090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   33.1844   98.0233   22.1372
+new_operator
+
+rota_matrix    0.0000    0.0000    1.0000
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix   -0.0000    1.0000    0.0000
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   20.8478  102.7355  -14.5127
+new_operator
+
+rota_matrix    0.8090   -0.3090    0.5000
+rota_matrix    0.3090   -0.5000   -0.8090
+rota_matrix    0.5000    0.8090   -0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   46.0690   77.1756  -55.8696
+new_operator
+
+rota_matrix    0.5000   -0.8090   -0.3090
+rota_matrix   -0.8090   -0.3090   -0.5000
+rota_matrix    0.3090    0.5000   -0.8090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth    7.6245   56.6665  -89.0540
+new_operator
+
+rota_matrix   -0.5000   -0.8090   -0.3090
+rota_matrix   -0.8090    0.3090    0.5000
+rota_matrix   -0.3090    0.5000   -0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -41.3569   69.5511  -68.2062
+new_operator
+
+rota_matrix   -0.8090   -0.3090    0.5000
+rota_matrix    0.3090    0.5000    0.8090
+rota_matrix   -0.5000    0.8090   -0.3090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -33.1844   98.0233  -22.1372
+new_operator
+
+rota_matrix   -0.0000   -0.0000   -1.0000
+rota_matrix    1.0000   -0.0000   -0.0000
+rota_matrix   -0.0000   -1.0000    0.0000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   20.8478  -102.7355   14.5127
+new_operator
+
+rota_matrix    0.8090    0.3090   -0.5000
+rota_matrix    0.3090    0.5000    0.8090
+rota_matrix    0.5000   -0.8090    0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   46.0690  -77.1756   55.8696
+new_operator
+
+rota_matrix    0.5000    0.8090    0.3090
+rota_matrix   -0.8090    0.3090    0.5000
+rota_matrix    0.3090   -0.5000    0.8090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth    7.6245  -56.6665   89.0540
+new_operator
+
+rota_matrix   -0.5000    0.8090    0.3090
+rota_matrix   -0.8090   -0.3090   -0.5000
+rota_matrix   -0.3090   -0.5000    0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -41.3569  -69.5511   68.2062
+new_operator
+
+rota_matrix   -0.8090    0.3090   -0.5000
+rota_matrix    0.3090   -0.5000   -0.8090
+rota_matrix   -0.5000   -0.8090    0.3090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -33.1844  -98.0233   22.1372
+new_operator
+
+rota_matrix   -0.0000    0.0000    1.0000
+rota_matrix   -1.0000   -0.0000   -0.0000
+rota_matrix    0.0000   -1.0000   -0.0000
+tran_orth    -0.0000   -0.0000    0.0000
+
+center_orth  -20.8478  -102.7355  -14.5127
+new_operator
+
+rota_matrix   -0.8090    0.3090    0.5000
+rota_matrix   -0.3090    0.5000   -0.8090
+rota_matrix   -0.5000   -0.8090   -0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -46.0690  -77.1756  -55.8696
+new_operator
+
+rota_matrix   -0.5000    0.8090   -0.3090
+rota_matrix    0.8090    0.3090   -0.5000
+rota_matrix   -0.3090   -0.5000   -0.8090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   -7.6245  -56.6665  -89.0540
+new_operator
+
+rota_matrix    0.5000    0.8090   -0.3090
+rota_matrix    0.8090   -0.3090    0.5000
+rota_matrix    0.3090   -0.5000   -0.8090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   41.3569  -69.5511  -68.2062
+new_operator
+
+rota_matrix    0.8090    0.3090    0.5000
+rota_matrix   -0.3090   -0.5000    0.8090
+rota_matrix    0.5000   -0.8090   -0.3090
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   33.1844  -98.0233  -22.1372
+new_operator
+
+rota_matrix   -0.0000   -1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+rota_matrix   -1.0000    0.0000    0.0000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -102.7355   14.5127   20.8478
+new_operator
+
+rota_matrix    0.3090   -0.5000    0.8090
+rota_matrix    0.5000    0.8090    0.3090
+rota_matrix   -0.8090    0.3090    0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -77.1756   55.8696   46.0690
+new_operator
+
+rota_matrix    0.8090    0.3090    0.5000
+rota_matrix    0.3090    0.5000   -0.8090
+rota_matrix   -0.5000    0.8090    0.3090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth  -56.6665   89.0540    7.6245
+new_operator
+
+rota_matrix    0.8090    0.3090   -0.5000
+rota_matrix   -0.3090   -0.5000   -0.8090
+rota_matrix   -0.5000    0.8090   -0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -69.5511   68.2062  -41.3569
+new_operator
+
+rota_matrix    0.3090   -0.5000   -0.8090
+rota_matrix   -0.5000   -0.8090    0.3090
+rota_matrix   -0.8090    0.3090   -0.5000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -98.0233   22.1372  -33.1844
+new_operator
+
+rota_matrix   -0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+rota_matrix   -1.0000   -0.0000   -0.0000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -102.7355  -14.5127  -20.8478
+new_operator
+
+rota_matrix    0.3090    0.5000   -0.8090
+rota_matrix    0.5000   -0.8090   -0.3090
+rota_matrix   -0.8090   -0.3090   -0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -77.1756  -55.8696  -46.0690
+new_operator
+
+rota_matrix    0.8090   -0.3090   -0.5000
+rota_matrix    0.3090   -0.5000    0.8090
+rota_matrix   -0.5000   -0.8090   -0.3090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth  -56.6665  -89.0540   -7.6245
+new_operator
+
+rota_matrix    0.8090   -0.3090    0.5000
+rota_matrix   -0.3090    0.5000    0.8090
+rota_matrix   -0.5000   -0.8090    0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  -69.5511  -68.2062   41.3569
+new_operator
+
+rota_matrix    0.3090    0.5000    0.8090
+rota_matrix   -0.5000    0.8090   -0.3090
+rota_matrix   -0.8090   -0.3090    0.5000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth  -98.0233  -22.1372   33.1844
+new_operator
+
+rota_matrix    0.0000   -1.0000    0.0000
+rota_matrix   -0.0000   -0.0000   -1.0000
+rota_matrix    1.0000    0.0000   -0.0000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth  102.7355   14.5127  -20.8478
+new_operator
+
+rota_matrix   -0.3090   -0.5000   -0.8090
+rota_matrix   -0.5000    0.8090   -0.3090
+rota_matrix    0.8090    0.3090   -0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   77.1756   55.8696  -46.0690
+new_operator
+
+rota_matrix   -0.8090    0.3090   -0.5000
+rota_matrix   -0.3090    0.5000    0.8090
+rota_matrix    0.5000    0.8090   -0.3090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   56.6665   89.0540   -7.6245
+new_operator
+
+rota_matrix   -0.8090    0.3090    0.5000
+rota_matrix    0.3090   -0.5000    0.8090
+rota_matrix    0.5000    0.8090    0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   69.5511   68.2062   41.3569
+new_operator
+
+rota_matrix   -0.3090   -0.5000    0.8090
+rota_matrix    0.5000   -0.8090   -0.3090
+rota_matrix    0.8090    0.3090    0.5000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   98.0233   22.1372   33.1844
+new_operator
+
+rota_matrix   -0.0000    1.0000    0.0000
+rota_matrix   -0.0000   -0.0000    1.0000
+rota_matrix    1.0000    0.0000    0.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth  102.7355  -14.5127   20.8478
+new_operator
+
+rota_matrix   -0.3090    0.5000    0.8090
+rota_matrix   -0.5000   -0.8090    0.3090
+rota_matrix    0.8090   -0.3090    0.5000
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   77.1756  -55.8696   46.0690
+new_operator
+
+rota_matrix   -0.8090   -0.3090    0.5000
+rota_matrix   -0.3090   -0.5000   -0.8090
+rota_matrix    0.5000   -0.8090    0.3090
+tran_orth     0.0000   -0.0000    0.0000
+
+center_orth   56.6665  -89.0540    7.6245
+new_operator
+
+rota_matrix   -0.8090   -0.3090   -0.5000
+rota_matrix    0.3090    0.5000   -0.8090
+rota_matrix    0.5000   -0.8090   -0.3090
+tran_orth    -0.0000    0.0000   -0.0000
+
+center_orth   69.5511  -68.2062  -41.3569
+new_operator
+
+rota_matrix   -0.3090    0.5000   -0.8090
+rota_matrix    0.5000    0.8090    0.3090
+rota_matrix    0.8090   -0.3090   -0.5000
+tran_orth    -0.0000   -0.0000   -0.0000
+
+center_orth   98.0233  -22.1372  -33.1844
+
+
+"""
+icosahedral_d=\
+"""
+
+Summary of NCS information
+Mon Jul  2 11:08:15 2018
+/Users/terwill/Downloads/view/ncs_text
+
+source_info icosahedral_d.dat
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6708    0.1625    0.7236
+rota_matrix   -0.6882    0.5000    0.5257
+rota_matrix   -0.2764   -0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1382   -0.4253    0.8944
+rota_matrix   -0.9511   -0.3090    0.0000
+rota_matrix    0.2764   -0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1382   -0.9511    0.2764
+rota_matrix   -0.4253   -0.3090   -0.8507
+rota_matrix    0.8944    0.0000   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6708   -0.6882   -0.2764
+rota_matrix    0.1625    0.5000   -0.8507
+rota_matrix    0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4472    0.0000    0.8944
+rota_matrix    0.0000   -1.0000    0.0000
+rota_matrix    0.8944    0.0000   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9472   -0.1625    0.2764
+rota_matrix    0.1625   -0.5000   -0.8507
+rota_matrix    0.2764    0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8618    0.4253   -0.2764
+rota_matrix   -0.4253    0.3090   -0.8507
+rota_matrix   -0.2764    0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3090    0.9511    0.0000
+rota_matrix   -0.9511    0.3090    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.0528    0.6882    0.7236
+rota_matrix   -0.6882   -0.5000    0.5257
+rota_matrix    0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -1.0000   -0.0000   -0.0000
+rota_matrix   -0.0000    1.0000    0.0000
+rota_matrix   -0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6708    0.1625   -0.7236
+rota_matrix    0.6882    0.5000   -0.5257
+rota_matrix    0.2764   -0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1382   -0.4253   -0.8944
+rota_matrix    0.9511   -0.3090   -0.0000
+rota_matrix   -0.2764   -0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1382   -0.9511   -0.2764
+rota_matrix    0.4253   -0.3090    0.8507
+rota_matrix   -0.8944    0.0000    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6708   -0.6882    0.2764
+rota_matrix   -0.1625    0.5000    0.8507
+rota_matrix   -0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4472   -0.0000   -0.8944
+rota_matrix   -0.0000   -1.0000    0.0000
+rota_matrix   -0.8944    0.0000    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.9472   -0.1625   -0.2764
+rota_matrix   -0.1625   -0.5000    0.8507
+rota_matrix   -0.2764    0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8618    0.4253    0.2764
+rota_matrix    0.4253    0.3090    0.8507
+rota_matrix    0.2764    0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3090    0.9511   -0.0000
+rota_matrix    0.9511    0.3090   -0.0000
+rota_matrix   -0.0000   -0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.0528    0.6882   -0.7236
+rota_matrix    0.6882   -0.5000   -0.5257
+rota_matrix   -0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4472    0.5257    0.7236
+rota_matrix   -0.8507   -0.0000   -0.5257
+rota_matrix   -0.2764   -0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6382   -0.2629    0.7236
+rota_matrix   -0.2629   -0.8090   -0.5257
+rota_matrix    0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.0528   -0.6882    0.7236
+rota_matrix    0.6882   -0.5000   -0.5257
+rota_matrix    0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6708   -0.1625    0.7236
+rota_matrix    0.6882    0.5000   -0.5257
+rota_matrix   -0.2764    0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618    0.5878    0.7236
+rota_matrix   -0.2629    0.8090   -0.5257
+rota_matrix   -0.8944   -0.0000    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4472   -0.5257    0.7236
+rota_matrix    0.8507    0.0000    0.5257
+rota_matrix   -0.2764    0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618    0.2629    0.8944
+rota_matrix    0.5878    0.8090   -0.0000
+rota_matrix   -0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6708    0.6882    0.2764
+rota_matrix    0.1625    0.5000   -0.8507
+rota_matrix   -0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.9472    0.1625   -0.2764
+rota_matrix    0.1625   -0.5000   -0.8507
+rota_matrix   -0.2764   -0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8090   -0.5878    0.0000
+rota_matrix    0.5878   -0.8090   -0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4472   -0.5257   -0.7236
+rota_matrix   -0.8507   -0.0000   -0.5257
+rota_matrix    0.2764    0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618    0.2629   -0.8944
+rota_matrix   -0.5878    0.8090    0.0000
+rota_matrix    0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6708    0.6882   -0.2764
+rota_matrix   -0.1625    0.5000    0.8507
+rota_matrix    0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9472    0.1625    0.2764
+rota_matrix   -0.1625   -0.5000    0.8507
+rota_matrix    0.2764   -0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8090   -0.5878   -0.0000
+rota_matrix   -0.5878   -0.8090    0.0000
+rota_matrix   -0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4472    0.5257   -0.7236
+rota_matrix    0.8507    0.0000    0.5257
+rota_matrix    0.2764   -0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6382   -0.2629   -0.7236
+rota_matrix    0.2629   -0.8090    0.5257
+rota_matrix   -0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.0528   -0.6882   -0.7236
+rota_matrix   -0.6882   -0.5000    0.5257
+rota_matrix   -0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6708   -0.1625   -0.7236
+rota_matrix   -0.6882    0.5000    0.5257
+rota_matrix    0.2764    0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618    0.5878   -0.7236
+rota_matrix    0.2629    0.8090    0.5257
+rota_matrix    0.8944   -0.0000   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4472   -0.8507   -0.2764
+rota_matrix    0.5257   -0.0000   -0.8507
+rota_matrix    0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3090   -0.9511    0.0000
+rota_matrix    0.9511    0.3090   -0.0000
+rota_matrix    0.0000    0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618   -0.5878    0.7236
+rota_matrix    0.2629    0.8090    0.5257
+rota_matrix   -0.8944    0.0000    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618   -0.2629    0.8944
+rota_matrix   -0.5878    0.8090    0.0000
+rota_matrix   -0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8618   -0.4253    0.2764
+rota_matrix   -0.4253    0.3090   -0.8507
+rota_matrix    0.2764   -0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4472   -0.8507    0.2764
+rota_matrix   -0.5257   -0.0000    0.8507
+rota_matrix   -0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3090   -0.9511   -0.0000
+rota_matrix   -0.9511    0.3090    0.0000
+rota_matrix   -0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618   -0.5878   -0.7236
+rota_matrix   -0.2629    0.8090   -0.5257
+rota_matrix    0.8944    0.0000   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618   -0.2629   -0.8944
+rota_matrix    0.5878    0.8090   -0.0000
+rota_matrix    0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8618   -0.4253   -0.2764
+rota_matrix    0.4253    0.3090    0.8507
+rota_matrix   -0.2764   -0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4472    0.8507    0.2764
+rota_matrix    0.5257    0.0000   -0.8507
+rota_matrix   -0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1382    0.9511   -0.2764
+rota_matrix   -0.4253   -0.3090   -0.8507
+rota_matrix   -0.8944   -0.0000    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8090    0.5878    0.0000
+rota_matrix   -0.5878   -0.8090    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6382    0.2629    0.7236
+rota_matrix    0.2629   -0.8090    0.5257
+rota_matrix    0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1382    0.4253    0.8944
+rota_matrix    0.9511   -0.3090   -0.0000
+rota_matrix    0.2764    0.8507   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4472    0.8507   -0.2764
+rota_matrix   -0.5257    0.0000    0.8507
+rota_matrix    0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1382    0.9511    0.2764
+rota_matrix    0.4253   -0.3090    0.8507
+rota_matrix    0.8944   -0.0000   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8090    0.5878   -0.0000
+rota_matrix    0.5878   -0.8090   -0.0000
+rota_matrix   -0.0000   -0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6382    0.2629   -0.7236
+rota_matrix   -0.2629   -0.8090   -0.5257
+rota_matrix   -0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1382    0.4253   -0.8944
+rota_matrix   -0.9511   -0.3090    0.0000
+rota_matrix   -0.2764    0.8507    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+
+
+"""
+
+icosahedral_b=\
+"""
+
+Summary of NCS information
+Mon Jul  2 11:07:59 2018
+/Users/terwill/Downloads/view/ncs_text
+
+source_info icosahedral_b.dat
+
+
+
+
+new_ncs_group
+new_operator
+
+rota_matrix    1.0000   -0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000   -0.0000    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3090    0.9511   -0.0001
+rota_matrix   -0.9511    0.3090   -0.0002
+rota_matrix   -0.0001    0.0002    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8090    0.5878   -0.0003
+rota_matrix   -0.5878   -0.8090   -0.0001
+rota_matrix   -0.0003    0.0001    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8090   -0.5878   -0.0003
+rota_matrix    0.5878   -0.8090    0.0001
+rota_matrix   -0.0003   -0.0001    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3090   -0.9511   -0.0001
+rota_matrix    0.9511    0.3090    0.0002
+rota_matrix   -0.0001   -0.0002    1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.9473   -0.1623    0.2761
+rota_matrix   -0.1623   -0.5000   -0.8507
+rota_matrix    0.2761   -0.8507    0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4471   -0.5256   -0.7238
+rota_matrix    0.8508    0.0000   -0.5256
+rota_matrix    0.2762   -0.8508    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6709   -0.1623   -0.7236
+rota_matrix    0.6881    0.5000    0.5259
+rota_matrix    0.2764   -0.8507    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8617    0.4255    0.2765
+rota_matrix   -0.4255    0.3090    0.8506
+rota_matrix    0.2765   -0.8506    0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1384    0.4255    0.8943
+rota_matrix   -0.9511   -0.3090   -0.0002
+rota_matrix    0.2763   -0.8506    0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8617   -0.4255   -0.2765
+rota_matrix   -0.4255    0.3090    0.8506
+rota_matrix   -0.2765    0.8506   -0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6709    0.1623    0.7236
+rota_matrix    0.6881    0.5000    0.5259
+rota_matrix   -0.2764    0.8507   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4471    0.5256    0.7238
+rota_matrix    0.8508    0.0000   -0.5256
+rota_matrix   -0.2762    0.8508   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9473    0.1623   -0.2761
+rota_matrix   -0.1623   -0.5000   -0.8507
+rota_matrix   -0.2761    0.8507   -0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1384   -0.4255   -0.8943
+rota_matrix   -0.9511   -0.3090   -0.0002
+rota_matrix   -0.2763    0.8506   -0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8090    0.5878    0.0003
+rota_matrix    0.5878   -0.8090    0.0001
+rota_matrix    0.0003    0.0001   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8090   -0.5878    0.0003
+rota_matrix   -0.5878   -0.8090   -0.0001
+rota_matrix    0.0003   -0.0001   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3090   -0.9511    0.0001
+rota_matrix   -0.9511    0.3090   -0.0002
+rota_matrix    0.0001   -0.0002   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -1.0000    0.0000    0.0000
+rota_matrix    0.0000    1.0000    0.0000
+rota_matrix    0.0000    0.0000   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3090    0.9511    0.0001
+rota_matrix    0.9511    0.3090    0.0002
+rota_matrix    0.0001    0.0002   -1.0000
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1384    0.9511    0.2763
+rota_matrix   -0.4255   -0.3090    0.8506
+rota_matrix    0.8943    0.0002    0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4476    0.0000    0.8943
+rota_matrix    0.0000   -1.0000   -0.0000
+rota_matrix    0.8943   -0.0000    0.4476
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1384   -0.9511    0.2763
+rota_matrix    0.4255   -0.3090   -0.8506
+rota_matrix    0.8943   -0.0002    0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618   -0.5878   -0.7236
+rota_matrix    0.2630    0.8090   -0.5257
+rota_matrix    0.8944   -0.0001    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618    0.5878   -0.7236
+rota_matrix   -0.2630    0.8090    0.5257
+rota_matrix    0.8944    0.0001    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4471   -0.8508   -0.2762
+rota_matrix   -0.5256    0.0000   -0.8508
+rota_matrix    0.7238    0.5256   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618   -0.2630   -0.8944
+rota_matrix   -0.5878    0.8090   -0.0001
+rota_matrix    0.7236    0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6709    0.6881   -0.2764
+rota_matrix    0.1623    0.5000    0.8507
+rota_matrix    0.7236    0.5259   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.0531    0.6881    0.7237
+rota_matrix    0.6881   -0.5000    0.5259
+rota_matrix    0.7237    0.5259   -0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6379   -0.2630    0.7238
+rota_matrix    0.2630   -0.8090   -0.5257
+rota_matrix    0.7238    0.5257   -0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.0531   -0.6881   -0.7237
+rota_matrix    0.6881   -0.5000    0.5259
+rota_matrix   -0.7237   -0.5259    0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6709   -0.6881    0.2764
+rota_matrix    0.1623    0.5000    0.8507
+rota_matrix   -0.7236   -0.5259    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618    0.2630    0.8944
+rota_matrix   -0.5878    0.8090   -0.0001
+rota_matrix   -0.7236   -0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4471    0.8508    0.2762
+rota_matrix   -0.5256    0.0000   -0.8508
+rota_matrix   -0.7238   -0.5256    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6379    0.2630   -0.7238
+rota_matrix    0.2630   -0.8090   -0.5257
+rota_matrix   -0.7238   -0.5257    0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618    0.5878    0.7236
+rota_matrix    0.2630    0.8090   -0.5257
+rota_matrix   -0.8944    0.0001   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1384    0.9511   -0.2763
+rota_matrix    0.4255   -0.3090   -0.8506
+rota_matrix   -0.8943    0.0002   -0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4476   -0.0000   -0.8943
+rota_matrix   -0.0000   -1.0000    0.0000
+rota_matrix   -0.8943    0.0000   -0.4476
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1384   -0.9511   -0.2763
+rota_matrix   -0.4255   -0.3090    0.8506
+rota_matrix   -0.8943   -0.0002   -0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618   -0.5878    0.7236
+rota_matrix   -0.2630    0.8090    0.5257
+rota_matrix   -0.8944   -0.0001   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.1384   -0.4255    0.8943
+rota_matrix    0.9511   -0.3090    0.0002
+rota_matrix    0.2763    0.8506    0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.8617   -0.4255    0.2765
+rota_matrix    0.4255    0.3090   -0.8506
+rota_matrix    0.2765    0.8506    0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6709    0.1623   -0.7236
+rota_matrix   -0.6881    0.5000   -0.5259
+rota_matrix    0.2764    0.8507    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4471    0.5256   -0.7238
+rota_matrix   -0.8508    0.0000    0.5256
+rota_matrix    0.2762    0.8508    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.9473    0.1623    0.2761
+rota_matrix    0.1623   -0.5000    0.8507
+rota_matrix    0.2761    0.8507    0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.0531    0.6881   -0.7237
+rota_matrix   -0.6881   -0.5000   -0.5259
+rota_matrix   -0.7237    0.5259    0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6379   -0.2630   -0.7238
+rota_matrix   -0.2630   -0.8090    0.5257
+rota_matrix   -0.7238    0.5257    0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.4471   -0.8508    0.2762
+rota_matrix    0.5256    0.0000    0.8508
+rota_matrix   -0.7238    0.5256    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.3618   -0.2630    0.8944
+rota_matrix    0.5878    0.8090    0.0001
+rota_matrix   -0.7236    0.5257    0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6709    0.6881    0.2764
+rota_matrix   -0.1623    0.5000   -0.8507
+rota_matrix   -0.7236    0.5259    0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.3618    0.2630   -0.8944
+rota_matrix    0.5878    0.8090    0.0001
+rota_matrix    0.7236   -0.5257   -0.4472
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4471    0.8508   -0.2762
+rota_matrix    0.5256    0.0000    0.8508
+rota_matrix    0.7238   -0.5256   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.6379    0.2630    0.7238
+rota_matrix   -0.2630   -0.8090    0.5257
+rota_matrix    0.7238   -0.5257   -0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.0531   -0.6881    0.7237
+rota_matrix   -0.6881   -0.5000   -0.5259
+rota_matrix    0.7237   -0.5259   -0.4469
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6709   -0.6881   -0.2764
+rota_matrix   -0.1623    0.5000   -0.8507
+rota_matrix    0.7236   -0.5259   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.4471   -0.5256    0.7238
+rota_matrix   -0.8508    0.0000    0.5256
+rota_matrix   -0.2762   -0.8508   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.6709   -0.1623    0.7236
+rota_matrix   -0.6881    0.5000   -0.5259
+rota_matrix   -0.2764   -0.8507   -0.4471
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix   -0.8617    0.4255   -0.2765
+rota_matrix    0.4255    0.3090   -0.8506
+rota_matrix   -0.2765   -0.8506   -0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.1384    0.4255   -0.8943
+rota_matrix    0.9511   -0.3090    0.0002
+rota_matrix   -0.2763   -0.8506   -0.4474
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+new_operator
+
+rota_matrix    0.9473   -0.1623   -0.2761
+rota_matrix    0.1623   -0.5000    0.8507
+rota_matrix   -0.2761   -0.8507   -0.4473
+tran_orth     0.0000    0.0000    0.0000
+
+center_orth    0.0000    0.0000    0.0000
+
+
+"""
+
 
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
@@ -1420,6 +3010,7 @@ class ncs:
     self._exclude_h=exclude_h
     self._exclude_d=exclude_d
     self._ncs_obj = None
+    self._ncs_name = None # an optional name like "D3"
 
   def deep_copy(self,change_of_basis_operator=None,unit_cell=None,
       coordinate_offset=None,
@@ -1433,6 +3024,7 @@ class ncs:
     # make new ncs object with same overall params as this one:
     new=ncs(exclude_h=self._exclude_h,exclude_d=self._exclude_d)
     new.source_info=self.source_info
+    new._ncs_name=self._ncs_name
     new._ncs_read=self._ncs_read
     # deep_copy over all the ncs groups:
     for ncs_group in self._ncs_groups:
@@ -1819,6 +3411,9 @@ class ncs:
       log=sys.stdout
     count=0
     text=""
+    if self._ncs_name:
+      text+="NCS TYPE: %s " %(self._ncs_name)
+
     for ncs_group in self._ncs_groups:
       count+=1
       text+="\n\nGROUP "+str(count)
@@ -1930,6 +3525,12 @@ class ncs:
     if phil_str:
       if not quiet: out.write(phil_str + '\n')
     return phil_str
+
+  def set_ncs_name(self,ncs_name):
+    self._ncs_name=ncs_name
+
+  def get_ncs_name(self):
+    return self._ncs_name
 
   def add_source_info(self,source_info):
     if self.source_info is None:
