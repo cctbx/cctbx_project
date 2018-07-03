@@ -2328,6 +2328,10 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
 def get_map_object(file_name=None,out=sys.stdout):
 
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
+  # 2018-07-03 the unit_cell grid is now the original gridding and we do not
+  # have to have the entire unit cell to go ahead.  Use the small unit cell and
+  # what map is available in that case
+
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
   if file_name.endswith(".xplor"):
@@ -2348,6 +2352,16 @@ def get_map_object(file_name=None,out=sys.stdout):
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
 
+  if hasattr(m,'crystal_symmetry'):
+    crystal_symmetry=m.crystal_symmetry()
+    print >>out,"Reading crystal symmetry from map file"
+    space_group=crystal_symmetry.space_group()
+    unit_cell=crystal_symmetry.unit_cell()
+  else:
+    crystal_symmetry=None
+    space_group=None
+    unit_cell=None
+
   map_data=m.data
   acc=map_data.accessor()
   shift_needed = not \
@@ -2363,62 +2377,9 @@ def get_map_object(file_name=None,out=sys.stdout):
   else:
     origin_frac=(0.,0.,0.)
 
-  offsets=[]
-  need_offset=False
-  for o,g,e in zip(map_data.origin(),m.unit_cell_grid,map_data.all() ):
-    if o != 0:
-      raise Sorry("Sorry the origin of CCP4 style maps must be (0,0,0).\n"+
-        " The file %s has the origin of %s" %(file_name,str(map_data.origin())))
-    offset=e-g
-    if offset < 0 or offset > 1:
-      raise Sorry("Sorry the extent of CCP4 style maps must be the same as "+
-       "the grid or 1 grid point larger than the grid.  "+
-       "The file %s has a grid of %s and extent of %s" %(
-       file_name,str(m.unit_cell_grid),str(map_data.all())))
-    if offset: need_offset=True
-    offsets.append(offset)
-  if need_offset:
-    if offsets != [1,1,1]:
-      raise Sorry("Sorry the extent of CCP4 style maps must be the same or "+
-       "one more \nthan the grid, and all must be the same or all one more.  "+
-       "\nThe file %s has a grid of %s and extent of %s" %(
-       file_name,str(m.unit_cell_grid),str(map_data.all())))
-    if origin_frac!=(0.,0.,0.):  # this was a shifted map...we can't do this
-      raise Sorry("Sorry if a CCP4 map has an origin other than (0,0,0) "+
-        "the extent \nof the map must be the same as the grid for "+
-        "segment_and_split_map routines."+
-       "The file %s has a grid of %s and extent of %s" %(
-       file_name,str(m.unit_cell_grid),str(map_data.all())))
-    if offset: need_offset=True
-    map=map_data[:-1,:-1,:-1]
-    acc=map.accessor()
-  else:
-    map=map_data
+  map_data=scale_map(map_data,out=out)
 
-  # now get space group and cell
-  from cctbx import crystal
-  from cctbx import sgtbx
-  from cctbx import uctbx
-  if m.space_group_number==0:
-    n=1 # fix mrc formatting
-  else:
-    n=m.space_group_number
-  if hasattr(m,'unit_cell_parameters'):
-    space_group_info=sgtbx.space_group_info(number=n)
-    unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
-    crystal_symmetry=crystal.symmetry(
-      unit_cell=unit_cell,space_group_info=space_group_info)
-    print >>out, "\nCrystal symmetry used: "
-    crystal_symmetry.show_summary(f=out)
-    space_group=crystal_symmetry.space_group()
-  else:
-    space_group=None
-    unit_cell=None
-    crystal_symmetry=None
-
-  map=scale_map(map,out=out)
-
-  return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc
+  return map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc
 
 def write_ccp4_map(crystal_symmetry, file_name, map_data):
   iotbx.ccp4_map.write_ccp4_map(
