@@ -1331,8 +1331,6 @@ class structure(crystal.special_position_settings):
               val = eltbx.xray_scattering.n_gaussian_table_entry(
                 std_lbl, d_min, 0).gaussian()
               last_used_scattering_table = "n_gaussian"
-        if (val is None):
-          val = old_dict.get(t_undef, None)
         if (val is not None):
           self._scattering_type_registry.assign(t_undef, val)
           if last_used_scattering_table is not None:
