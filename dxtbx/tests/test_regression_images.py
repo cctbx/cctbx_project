@@ -11,10 +11,11 @@ import py.path
 
 from dxtbx.format.Registry import Registry
 import libtbx.load_env
-from iotbx import detectors
-from iotbx.command_line.detector_image_as_png import convert_image, run as pngrun
+from iotbx.command_line.detector_image_as_png import convert_image
+# from iotbx.command_line.detector_image_as_png import run as pngrun
 from rstbx.slip_viewer.slip_viewer_image_factory import SlipViewerImageFactory
 import scitbx.matrix
+
 
 def _dials_regression():
   """
@@ -51,6 +52,7 @@ def _generate_all_test_images():
   special_h5 = "/net/viper/raid1/dectris/eiger16MNov2015/2015_11_10/insu6_1_master.h5"
   try:
     import h5py
+    assert h5py.version, "Supress unused import warnings"
   except ImportError:
     yield pytest.mark.skip(reason="h5py not found")(special_h5), special_h5
   else:
@@ -82,9 +84,9 @@ def _generate_all_test_images():
     dials_regression = _dials_regression()
   except RuntimeError:
     # Have one, skipped placeholder test, if there is no dials_regression
-    yield (pytest.mark.skip(
-        reason="dials_regression required for image format tests")("image_examples"),
-           "image_examples")
+    yield (
+        pytest.mark.skip(reason="dials_regression required for image format tests")
+        ("image_examples"), "image_examples")
     return
 
   image_dir = os.path.join(dials_regression, "image_examples")
@@ -102,8 +104,10 @@ def _generate_all_test_images():
       # Give this file back
       yield (full_path, rel_path)
 
+
 # Generate this list once to use as a fixture
 _all_images = list(_generate_all_test_images())
+
 
 @pytest.fixture(
     params=[x[0] for x in _all_images], ids=[x[1] for x in _all_images])
@@ -113,6 +117,7 @@ def test_image(request, dials_regression):
   # Validate that our custom dials_regression is the same as the fixture
   assert _dials_regression() == dials_regression, "dials_regression mismatch"
   return request.param
+
 
 @pytest.fixture
 def test_image_for_reading(test_image):
@@ -135,6 +140,7 @@ def test_image_for_reading(test_image):
 
   return test_image
 
+
 @pytest.mark.regression
 def test_read_image(test_image_for_reading):
   """Test that all the regression images can be read"""
@@ -149,13 +155,13 @@ def test_read_image(test_image_for_reading):
   print("Format:", format_instance)
 
   # Test metadata reading
-  beam     = instance.get_beam()
-  gonio    = instance.get_goniometer()
+  instance.get_goniometer()
+  instance.get_beam()
+  instance.get_scan()
   detector = instance.get_detector()
   # From old test_dxtbx; get the image size
   if detector is not None:
     detector[0].get_image_size()
-  scan     = instance.get_scan()
 
   for panel in detector:
     d_mat = scitbx.matrix.sqr(panel.get_d_matrix())
@@ -175,7 +181,7 @@ def test_read_image(test_image_for_reading):
     if not isinstance(R_raw_data, tuple):
       R_raw_data = (R_raw_data,)
 
-    print("%-40s"%format_instance.__name__,R_raw_data[0].focus())
+    print("%-40s" % format_instance.__name__, R_raw_data[0].focus())
 
     # Set instance.detectorbase, if available. There used to be a blacklist
     # of files not to call this with, but relying on the attribute test
@@ -184,26 +190,26 @@ def test_read_image(test_image_for_reading):
     print("  Have detectorbase? ", hasattr(instance, "detectorbase"))
 
     # test the older detectorbase interface if available
-    if hasattr(instance,"detectorbase"):
-      I = SlipViewerImageFactory(test_image_for_reading)
-      I.read()
+    if hasattr(instance, "detectorbase"):
+      imgfactory = SlipViewerImageFactory(test_image_for_reading)
+      imgfactory.read()
       print("  Detectorbase:", instance.detectorbase.__class__.__name__)
 
       try:
-        print(I.rawdata.focus())
+        print(imgfactory.rawdata.focus())
       except AttributeError:
         # Not all instances have this attribute
         print("  multireadout")
 
-      I_raw_data = I.get_raw_data()
+      I_raw_data = imgfactory.get_raw_data()
       if not isinstance(I_raw_data, tuple):
         I_raw_data = (I_raw_data,)
 
-      #NOTE dxtbx and image factory arrays are compared here for identical values.
+      # NOTE dxtbx and image factory arrays are compared here for identical values.
       for Ip, Rp in zip(I_raw_data, R_raw_data):
         assert (Ip == Rp).all_eq(True)
 
-      OV = convert_image(test_image_for_reading,graphics_bin=2).output().getvalue()
+      convert_image(test_image_for_reading, graphics_bin=2).output().getvalue()
 
     print
 
@@ -218,20 +224,20 @@ def test_no_multiple_format_understanding(test_image):
 
   Registry.setup()
 
-  global highest_level, found_a_repeat
+  global any_understood, highest_level, found_a_repeat
 
   any_understood = False
 
   def recurse(format, image_file, level):
+    global any_understood, highest_level, found_a_repeat
     for child in format._children:
       understood = child.understand(image_file)
       if understood:
         any_understood = True
-        print ("level: %d"%(level), child.__name__)
-        global highest_level, found_a_repeat
+        print ("level: %d" % (level), child.__name__)
         found_a_repeat = level == highest_level
         highest_level = level
-        recurse(child, image_file, level+1)
+        recurse(child, image_file, level + 1)
 
   level = 1
   highest_level = 0
@@ -240,12 +246,11 @@ def test_no_multiple_format_understanding(test_image):
     understood = format.understand(test_image)
     if understood:
       any_understood = True
-      print ("level: %d"%(level), format.__name__)
+      print ("level: %d" % (level), format.__name__)
       found_a_repeat = level == highest_level
       highest_level = 1
-      recurse(format, test_image, level+1)
+      recurse(format, test_image, level + 1)
 
   assert not found_a_repeat, "image file understood by multiple Format objects"
   # It's a failure if nothing could understand this file
   assert any_understood, "No formatter could be found"
-
