@@ -741,13 +741,16 @@ def get_map_and_model(params=None,
 
   acc=None # accessor used to shift map back to original location if desired
   origin_frac=(0,0,0)
+  original_crystal_symmetry=crystal_symmetry
+  original_unit_cell_grid=None
   if map_data and crystal_symmetry:
     pass # we are set
 
   elif params.input_files.map_file:
     print >>out,"\nReading map from %s\n" %( params.input_files.map_file)
     from cctbx.maptbx.segment_and_split_map import get_map_object
-    map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
+    map_data,space_group,unit_cell,crystal_symmetry,\
+     origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid=\
       get_map_object(file_name=params.input_files.map_file,out=out)
     map_data=map_data.as_double()
     if origin_frac != (0,0,0) and acc is None:
@@ -767,6 +770,7 @@ def get_map_and_model(params=None,
          params.input_files.map_coeffs_file,
          str(params.input_files.map_coeffs_labels))
     crystal_symmetry=map_coeffs.crystal_symmetry()
+    original_crystal_symmetry=crystal_symmetry
     from cctbx.maptbx.segment_and_split_map import get_map_from_map_coeffs
     map_data=get_map_from_map_coeffs(
       map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry)
@@ -833,7 +837,10 @@ def get_map_and_model(params=None,
       ncs_obj=ncs_obj.coordinate_offset(
        coordinate_offset=matrix.col(origin_shift))
 
-  return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc
+  if original_unit_cell_grid is None and map_data is not None:
+    original_unit_cell_grid=map_data.all()
+  return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+    original_crystal_symmetry,original_unit_cell_grid
 
 
 def run(args=None,params=None,
@@ -857,7 +864,8 @@ def run(args=None,params=None,
   # get map_data and crystal_symmetry
 
   pdb_inp,map_data,half_map_data_list,ncs_obj,\
-        crystal_symmetry,acc=get_map_and_model(
+    crystal_symmetry,acc,original_crystal_symmetry,original_unit_cell_grid=\
+      get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
      pdb_inp=pdb_inp,
@@ -995,11 +1003,13 @@ def run(args=None,params=None,
       print >>out,\
        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
          str(offset_map_data.origin()),output_map_file)
+      write_ccp4_map(original_crystal_symmetry, output_map_file,
+        offset_map_data, output_unit_cell_grid=original_unit_cell_grid)
     else:
       print >>out,"\nWrote sharpened map with origin at 0,0,0 "+\
         "(NOTE: may not be \nsame as original location) to %s\n" %(
          output_map_file)
-    write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
+      write_ccp4_map(crystal_symmetry, output_map_file, offset_map_data)
 
   if write_output_files and params.output_files.shifted_sharpened_map_file:
     output_map_file=os.path.join(params.output_files.output_directory,

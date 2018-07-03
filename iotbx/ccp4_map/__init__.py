@@ -22,17 +22,25 @@ class _(boost.python.injector, ext.map_reader) :
     print >> out, prefix + "map grid:  ", self.data.all()
 
   def crystal_symmetry(self):
+    # This is "crystal_symmetry" of a box the size of the map that is present
     from cctbx import crystal
     map_all = self.map_data().all()
     if(map_all != self.unit_cell_grid):
+      # map that is present is not exactly one unit cell. Calculate cell params
       a,b,c, al,be,ga = self.unit_cell().parameters()
       a = a * map_all[0]/self.unit_cell_grid[0]
       b = b * map_all[1]/self.unit_cell_grid[1]
       c = c * map_all[2]/self.unit_cell_grid[2]
       return crystal.symmetry((a,b,c, al,be,ga), self.space_group_number)
     else:
-      return crystal.symmetry(self.unit_cell().parameters(),
-        self.space_group_number)
+      # map that is present is exactly one unit cell. Use unit cell symmetry
+      return self.unit_cell_crystal_symmetry()
+
+  def unit_cell_crystal_symmetry(self):
+    from cctbx import crystal
+    return crystal.symmetry(self.unit_cell().parameters(),
+      self.space_group_number)
+
 
   def unit_cell (self) :
     from cctbx import uctbx

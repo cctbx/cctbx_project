@@ -2354,11 +2354,15 @@ def get_map_object(file_name=None,out=sys.stdout):
 
   if hasattr(m,'crystal_symmetry'):
     crystal_symmetry=m.crystal_symmetry()
+    original_crystal_symmetry=m.unit_cell_crystal_symmetry()
     print >>out,"Reading crystal symmetry from map file"
     space_group=crystal_symmetry.space_group()
     unit_cell=crystal_symmetry.unit_cell()
+    original_unit_cell_grid=m.unit_cell_grid
   else:
     crystal_symmetry=None
+    original_crystal_symmetry=None
+    original_unit_cell_grid=None
     space_group=None
     unit_cell=None
 
@@ -2379,13 +2383,20 @@ def get_map_object(file_name=None,out=sys.stdout):
 
   map_data=scale_map(map_data,out=out)
 
-  return map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc
+  return map_data,space_group,unit_cell,crystal_symmetry,\
+      origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid
 
-def write_ccp4_map(crystal_symmetry, file_name, map_data):
+def write_ccp4_map(crystal_symmetry, file_name, map_data,
+    output_unit_cell_grid=None):
+
+  if output_unit_cell_grid is None:
+    output_unit_cell_grid=map_data.all()
+
   iotbx.ccp4_map.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),
+      unit_cell_grid = output_unit_cell_grid,
       map_data=map_data.as_double(),
       labels=flex.std_string([""]))
 
@@ -4486,16 +4497,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   else:
     pdb_hierarchy=None
 
+  original_crystal_symmetry=crystal_symmetry
   if map_data:
     pass # ok
   elif params.input_files.map_file:
-    from iotbx import ccp4_map
-    ccp4_map=iotbx.ccp4_map.map_reader(
-    file_name=params.input_files.map_file)
-    if not crystal_symmetry:
-      crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
-        ccp4_map.space_group_number)
-    map_data=ccp4_map.data.as_double()
+    map_data,space_group,unit_cell,crystal_symmetry,\
+      origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid=\
+        get_map_object(file_name=params.input_files.map_file)
+
   else:
     raise Sorry("Need ccp4 map")
   if not crystal_symmetry:
@@ -4559,8 +4568,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           "\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
            str(sharpened_map_data.origin()),sharpened_map_file)
-        write_ccp4_map(crystal_symmetry,
-            sharpened_map_file,sharpened_map_data)
+        write_ccp4_map(original_crystal_symmetry,
+            sharpened_map_file,sharpened_map_data,
+            output_unit_cell_grid=original_unit_cell_grid)
         params.input_files.map_file=sharpened_map_file # overwrite map_file name here
 
       # done with any sharpening
