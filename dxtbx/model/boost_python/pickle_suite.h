@@ -90,6 +90,7 @@ namespace dxtbx { namespace model { namespace boost_python {
       data["thickness"] = p.get_thickness();
       data["gain"] = p.get_gain();
       data["material"] = p.get_material();
+      data["identifier"] = p.get_identifier();
       data["mu"] = p.get_mu();
       data["mask"] = boost::python::list(p.get_mask());
       data["px_mm_strategy"] = p.get_px_mm_strategy();
@@ -139,6 +140,9 @@ namespace dxtbx { namespace model { namespace boost_python {
       }
       if (data.has_key("material")) {
         p.set_material(extract<std::string>(data["material"]));
+      }
+      if (data.has_key("identifier")) {
+        p.set_identifier(extract<std::string>(data["identifier"]));
       }
       if (data.has_key("mu")) {
         p.set_mu(extract<double>(data["mu"]));

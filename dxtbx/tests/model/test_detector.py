@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import six.moves.cPickle as pickle
 from dxtbx.model import Detector, Panel
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -11,6 +12,8 @@ def tst_get_gain(detector):
 def tst_get_identifier(detector):
   detector[0].set_identifier("HELLO")
   assert detector[0].get_identifier() == "HELLO"
+  detector2 = pickle.loads(pickle.dumps(detector))
+  assert detector[0].get_identifier() == detector2[0].get_identifier()
 
 def tst_get_pixel_lab_coord(detector):
   from scitbx import matrix
