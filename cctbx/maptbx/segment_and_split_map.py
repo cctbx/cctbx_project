@@ -2392,6 +2392,7 @@ def get_map_object(file_name=None,out=sys.stdout):
   if hasattr(m,'unit_cell_parameters'):
     space_group_info=sgtbx.space_group_info(number=n)
     unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
+    original_unit_cell_grid=m.unit_cell_grid
     original_crystal_symmetry=crystal.symmetry(
       unit_cell=unit_cell,space_group_info=space_group_info)
     if original_crystal_symmetry and map.all()==m.unit_cell_grid:
@@ -2401,25 +2402,29 @@ def get_map_object(file_name=None,out=sys.stdout):
       crystal_symmetry=m.crystal_symmetry()
       print >>out, "\nBox  crystal symmetry used: "
     crystal_symmetry.show_summary(f=out)
-
     space_group=crystal_symmetry.space_group()
     unit_cell=crystal_symmetry.unit_cell()
   else:
     space_group=None
     unit_cell=None
     crystal_symmetry=None
+    original_crystal_symmetry,original_unit_cell_grid=None,None
 
   map=scale_map(map,out=out)
 
-  original_crystal_symmetry,original_unit_cell_grid=None,None # ZZZ 
   return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
     original_crystal_symmetry,original_unit_cell_grid
 
-def write_ccp4_map(crystal_symmetry, file_name, map_data):
+def write_ccp4_map(crystal_symmetry, file_name, map_data,
+   output_unit_cell_grid=None):
+  if output_unit_cell_grid is None:
+    output_unit_cell_grid=map_data.all()
+
   iotbx.ccp4_map.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),
+      unit_cell_grid = output_unit_cell_grid,
       map_data=map_data.as_double(),
       labels=flex.std_string([""]))
 
