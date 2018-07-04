@@ -181,7 +181,8 @@ def get_map_data_and_symmetry(
 
   if map_file:
     from cctbx.maptbx.segment_and_split_map import get_map_object
-    map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc=\
+    map_data,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+      original_crystal_symmetry,original_unit_cell_grid=\
         get_map_object(file_name=map_file,out=out)
     map_data=map_data.as_double()
 

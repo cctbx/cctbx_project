@@ -2328,10 +2328,6 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
 def get_map_object(file_name=None,out=sys.stdout):
 
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
-  # 2018-07-03 the unit_cell grid is now the original gridding and we do not
-  # have to have the entire unit cell to go ahead.  Use the small unit cell and
-  # what map is available in that case
-
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
   if file_name.endswith(".xplor"):
@@ -2352,20 +2348,6 @@ def get_map_object(file_name=None,out=sys.stdout):
   print >>out,"EXTENT: ",m.data.all()
   print >>out,"IS PADDED: ",m.data.is_padded()
 
-  if hasattr(m,'crystal_symmetry'):
-    crystal_symmetry=m.crystal_symmetry()
-    original_crystal_symmetry=m.unit_cell_crystal_symmetry()
-    print >>out,"Reading crystal symmetry from map file"
-    space_group=crystal_symmetry.space_group()
-    unit_cell=crystal_symmetry.unit_cell()
-    original_unit_cell_grid=m.unit_cell_grid
-  else:
-    crystal_symmetry=None
-    original_crystal_symmetry=None
-    original_unit_cell_grid=None
-    space_group=None
-    unit_cell=None
-
   map_data=m.data
   acc=map_data.accessor()
   shift_needed = not \
@@ -2380,44 +2362,64 @@ def get_map_object(file_name=None,out=sys.stdout):
     origin_frac=origin_shift
   else:
     origin_frac=(0.,0.,0.)
-
-  # Special case: some resolve maps come in with grid of (0,n) and both
-  # 0th and nth values are present. Unit cell refers to unit_cell_grid.
-
-  # Remove this outer layer:
-
+  # determine if we need to trim off the outer part of the map duplicating inner
   offsets=[]
+  need_offset=False
   for g,e in zip(m.unit_cell_grid,map_data.all() ):
     offset=e-g
     offsets.append(offset)
-  if offsets == [1,1,1] and map_data[0,0,0]==map_data[
-     map_data.all()[0]-1,
-     map_data.all()[1]-1,
-     map_data.all()[2]-1]:
-    print >>out, "\nRemoving outer layer of grid points assuming that "+\
-      "these are duplicates"
-    print >>out, "Original extent of map:",map_data.all()
-    map_data=map_data[:-1,:-1,:-1]
-    print >>out, "New extent of map:     ",map_data.all()
-    crystal_symmetry=original_crystal_symmetry
+  if  offsets == [1,1,1]:
+    if origin_frac!=(0.,0.,0.):  # this was a shifted map...we can't do this
+      raise Sorry("Sorry if a CCP4 map has an origin other than (0,0,0) "+
+        "the extent \nof the map must be the same as the grid or 1 "+
+        "\ngreater for "+
+        "segment_and_split_map routines."+
+       "The file %s has a grid of %s and extent of %s" %(
+       file_name,str(m.unit_cell_grid),str(map_data.all())))
+    map=map_data[:-1,:-1,:-1]
+    acc=map.accessor()
+  else:
+    map=map_data
+
+  # now get space group and cell
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
+  if m.space_group_number==0:
+    n=1 # fix mrc formatting
+  else:
+    n=m.space_group_number
+  if hasattr(m,'unit_cell_parameters'):
+    space_group_info=sgtbx.space_group_info(number=n)
+    unit_cell=uctbx.unit_cell(m.unit_cell_parameters)
+    original_crystal_symmetry=crystal.symmetry(
+      unit_cell=unit_cell,space_group_info=space_group_info)
+    if original_crystal_symmetry and map.all()==m.unit_cell_grid:
+      crystal_symmetry=original_crystal_symmetry
+      print >>out, "\nUnit cell crystal symmetry used: "
+    else:
+      crystal_symmetry=m.crystal_symmetry()
+      print >>out, "\nBox  crystal symmetry used: "
+    crystal_symmetry.show_summary(f=out)
+
+    space_group=crystal_symmetry.space_group()
     unit_cell=crystal_symmetry.unit_cell()
+  else:
+    space_group=None
+    unit_cell=None
+    crystal_symmetry=None
 
-  map_data=scale_map(map_data,out=out)
+  map=scale_map(map,out=out)
 
-  return map_data,space_group,unit_cell,crystal_symmetry,\
-      origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid
+  original_crystal_symmetry,original_unit_cell_grid=None,None # ZZZ 
+  return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
+    original_crystal_symmetry,original_unit_cell_grid
 
-def write_ccp4_map(crystal_symmetry, file_name, map_data,
-    output_unit_cell_grid=None):
-
-  if output_unit_cell_grid is None:
-    output_unit_cell_grid=map_data.all()
-
+def write_ccp4_map(crystal_symmetry, file_name, map_data):
   iotbx.ccp4_map.write_ccp4_map(
       file_name=file_name,
       unit_cell=crystal_symmetry.unit_cell(),
       space_group=crystal_symmetry.space_group(),
-      unit_cell_grid = output_unit_cell_grid,
       map_data=map_data.as_double(),
       labels=flex.std_string([""]))
 
@@ -4518,14 +4520,16 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   else:
     pdb_hierarchy=None
 
-  original_crystal_symmetry=crystal_symmetry
   if map_data:
     pass # ok
   elif params.input_files.map_file:
-    map_data,space_group,unit_cell,crystal_symmetry,\
-      origin_frac,acc,original_crystal_symmetry,original_unit_cell_grid=\
-        get_map_object(file_name=params.input_files.map_file)
-
+    from iotbx import ccp4_map
+    ccp4_map=iotbx.ccp4_map.map_reader(
+    file_name=params.input_files.map_file)
+    if not crystal_symmetry:
+      crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
+        ccp4_map.space_group_number)
+    map_data=ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
   if not crystal_symmetry:
@@ -4589,9 +4593,8 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           "\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
            str(sharpened_map_data.origin()),sharpened_map_file)
-        write_ccp4_map(original_crystal_symmetry,
-            sharpened_map_file,sharpened_map_data,
-            output_unit_cell_grid=original_unit_cell_grid)
+        write_ccp4_map(crystal_symmetry,
+            sharpened_map_file,sharpened_map_data)
         params.input_files.map_file=sharpened_map_file # overwrite map_file name here
 
       # done with any sharpening
@@ -10875,3 +10878,4 @@ def run(args,
 
 if __name__=="__main__":
   run(args=sys.argv[1:])
+
