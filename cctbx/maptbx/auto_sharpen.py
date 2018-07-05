@@ -286,6 +286,13 @@ master_phil = iotbx.phil.parse("""
                 (choose region where there is high density).  Normally use\
                 False for X-ray data and True for cryo-EM.
 
+     density_select_threshold_in_auto_sharpen = None
+       .type = float
+       .short_caption = density_select threshold to choose box
+       .help = Threshold for density select choice of box. Default is 0.05. \
+               If your map has low overall contrast you might need to make this\
+               bigger such as 0.2.
+
      allow_box_if_b_iso_set = False
        .type = bool
        .short_caption = Allow box if b_iso set
@@ -902,6 +909,7 @@ def run(args=None,params=None,
            params.map_modification.overall_before_local,
         box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen,
         density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen,
+        density_select_threshold_in_auto_sharpen=params.map_modification.density_select_threshold_in_auto_sharpen,
         use_weak_density=params.map_modification.use_weak_density,
         discard_if_worse=params.map_modification.discard_if_worse,
         box_center=params.map_modification.box_center,

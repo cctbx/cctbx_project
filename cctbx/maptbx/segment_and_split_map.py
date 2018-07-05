@@ -536,6 +536,14 @@ master_phil = iotbx.phil.parse("""
                Normally use this as well as density_select=True which \
                carries out density_select at start of segmentation.
 
+     density_select_threshold_in_auto_sharpen = None
+       .type = float
+       .short_caption = density_select threshold to choose box
+       .help = Threshold for density select choice of box. Default is 0.05. \
+               If your map has low overall contrast you might need to make this\
+               bigger such as 0.2.
+
+
      allow_box_if_b_iso_set = False
        .type = bool
        .short_caption = Allow box if b_iso set
@@ -1794,6 +1802,7 @@ class sharpening_info:
       auto_sharpen=None,
       box_in_auto_sharpen=None,
       density_select_in_auto_sharpen=None,
+      density_select_threshold_in_auto_sharpen=None,
       use_weak_density=None,
       discard_if_worse=None,
       max_box_fraction=None,
@@ -1994,6 +2003,7 @@ class sharpening_info:
          params.map_modification.overall_before_local
       self.box_in_auto_sharpen=params.map_modification.box_in_auto_sharpen
       self.density_select_in_auto_sharpen=params.map_modification.density_select_in_auto_sharpen
+      self.density_select_threshold_in_auto_sharpen=params.map_modification.density_select_threshold_in_auto_sharpen
       self.use_weak_density=params.map_modification.use_weak_density
       self.discard_if_worse=params.map_modification.discard_if_worse
       self.box_center=params.map_modification.box_center
@@ -8375,6 +8385,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'local_sharpening',
        'box_in_auto_sharpen',
        'density_select_in_auto_sharpen',
+       'density_select_threshold_in_auto_sharpen',
        'use_weak_density',
        'resolution',
        'd_min_ratio',
@@ -8646,6 +8657,9 @@ def select_box_map_data(si=None,
     if si.density_select_in_auto_sharpen:
       args.append('density_select=True')
       #print >>out,"Using density_select in map_box"
+      if si.density_select_threshold_in_auto_sharpen is not None:
+        args.append('density_select_threshold=%s' %(
+          si.density_select_threshold_in_auto_sharpen))
     elif si.box_in_auto_sharpen and not si.mask_atoms:
       print >>out,"Using map_box with model"
     elif si.mask_atoms:
@@ -9402,6 +9416,7 @@ def auto_sharpen_map_or_map_coeffs(
         auto_sharpen=None,
         box_in_auto_sharpen=None, # n_residues, ncs_copies required if not False
         density_select_in_auto_sharpen=None,
+        density_select_threshold_in_auto_sharpen=None,
         allow_box_if_b_iso_set=None,
         use_weak_density=None,
         discard_if_worse=None,
