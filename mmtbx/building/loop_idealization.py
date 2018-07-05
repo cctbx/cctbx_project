@@ -594,7 +594,7 @@ class loop_idealization():
                   check_omega=self.params.make_all_trans)
           fixing_omega = fixing_omega or fixed_omega
           # print >> self.log, "Model %d, angles:" % i, comb
-          if self.params.make_all_trans and utils.n_bad_omegas(moving_h_set[-1]) != 0:
+          if self.params.make_all_trans and utils.n_bad_omegas(setted_h) != 0:
             # Skipping conformation where omega was set incorrectly for
             # some reason.
             print "Model_%d_angles_%s.pdb" % (i, comb),
