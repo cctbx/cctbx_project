@@ -26,18 +26,20 @@ def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False)
   result_h.reset_atom_i_seqs()
   fixed_omega = False
   phi_psi_atoms = utils.get_phi_psi_atoms(moving_h, omega=True)
-  assert len(phi_psi_atoms) == len(angles)
+  assert len(phi_psi_atoms) == len(angles), "%d != %d" % (len(phi_psi_atoms), len(angles))
   if not direction_forward:
     phi_psi_atoms.reverse()
     angles.reverse()
   for ps_atoms, target_angle_pair in zip(phi_psi_atoms, angles):
     phi_psi_pair = ps_atoms[0]
+    # print "phi_psi_pair", phi_psi_pair
     omega = ps_atoms[2]
     phi_psi_angles = utils.get_pair_angles(phi_psi_pair)
     # print "ps_atoms, target_angle_pair", phi_psi_angles, target_angle_pair
     # phi
-    if target_angle_pair[0] and phi_psi_angles[0]:
+    if target_angle_pair[0] is not None and phi_psi_angles[0] is not None:
       rotation_angle = -phi_psi_angles[0]+target_angle_pair[0]
+      # print "rot angle", rotation_angle
       # if not direction_forward:
       #   rotation_angle = -rotation_angle
       utils.rotate_atoms_around_bond(
@@ -47,8 +49,9 @@ def set_rama_angles(moving_h, angles, direction_forward=True, check_omega=False)
           angle=rotation_angle,
           direction_forward=direction_forward)
     # psi
-    if target_angle_pair[1] and phi_psi_angles[1]:
+    if target_angle_pair[1] is not None and phi_psi_angles[1] is not None:
       rotation_angle = -phi_psi_angles[1]+target_angle_pair[1]
+      # print "rot angle", rotation_angle
       # if not direction_forward:
       #   rotation_angle = -rotation_angle
       utils.rotate_atoms_around_bond(

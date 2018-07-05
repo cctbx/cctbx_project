@@ -73,7 +73,7 @@ loop_idealization
     .type = int
     .help = how many first variants to take from generated
     .expert_level = 2
-  variant_deviation_accept_level = low *med high
+  variant_deviation_accept_level = low *med high very_high
     .type = choice(multi=False)
     .help = what deviation from starting model is acceptable when screening \
       variants. med is fine for real-space, low is for reciprocal space.
@@ -392,6 +392,8 @@ class loop_idealization():
       accept_level_coeff = 0.5
     elif self.params.variant_deviation_accept_level == "high":
       accept_level_coeff = 1.5
+    elif self.params.variant_deviation_accept_level == "very_high":
+      accept_level_coeff = 2.5
     for k in adaptive_mc_rmsd:
       adaptive_mc_rmsd[k] = adaptive_mc_rmsd[k] * (1 + 0.3*num_of_run) * accept_level_coeff
     if fixing_omega:
@@ -591,14 +593,17 @@ class loop_idealization():
                   direction_forward=direction_forward,
                   check_omega=self.params.make_all_trans)
           fixing_omega = fixing_omega or fixed_omega
-          moving_h_set.append(setted_h)
           # print >> self.log, "Model %d, angles:" % i, comb
           if self.params.make_all_trans and utils.n_bad_omegas(moving_h_set[-1]) != 0:
+            # Skipping conformation where omega was set incorrectly for
+            # some reason.
             print "Model_%d_angles_%s.pdb" % (i, comb),
             print "got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas"
             moving_h_set[-1].write_pdb_file("Model_%d_angles_%s.pdb" % (i, comb))
             utils.list_omega(moving_h_set[-1], self.log)
-            assert 0
+            continue
+            # assert 0
+          moving_h_set.append(setted_h)
 
       if len(moving_h_set) == 0:
         # outlier was fixed before somehow...
