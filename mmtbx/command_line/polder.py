@@ -270,9 +270,18 @@ def print_validation(log, results, debug, pdb_hierarchy_selected):
     print >> log, "%4.2f %6.4f %6.4f %6.4f"%(c,d12_,d13_,d23_)
   ###
   if(debug):
-    box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
-    box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
-    box_3.write_ccp4_map(file_name="box_3_polder.ccp4")
+    #box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
+    #box_2.write_ccp4_map(file_name="box_2_polder.ccp4")
+    #box_3.write_ccp4_map(file_name="box_3_polder.ccp4")
+    write_map_box(
+      box      = box_1,
+      filename = "box_1_polder.ccp4")
+    write_map_box(
+      box      = box_2,
+      filename = "box_2_polder.ccp4")
+    write_map_box(
+      box      = box_3,
+      filename = "box_3_polder.ccp4")
     pdb_hierarchy_selected.adopt_xray_structure(box_1.xray_structure_box)
     pdb_hierarchy_selected.write_pdb_file(file_name="box_polder.pdb",
       crystal_symmetry=box_1.box_crystal_symmetry)
@@ -281,6 +290,15 @@ def print_validation(log, results, debug, pdb_hierarchy_selected):
   message = result_message(cc12 = cc12, cc13 = cc13, cc23 = cc23)
   print >> log, message
   return message
+
+def write_map_box(box, filename):
+    ccp4_map.write_ccp4_map(
+      file_name   = filename,
+      unit_cell   = box.xray_structure_box.unit_cell(),
+      space_group = box.xray_structure_box.space_group(),
+      map_data    = box.map_box,
+      labels      = flex.std_string([""]))
+
 
 def write_files(results, mask_output, debug, f_obs, prefix, log):
   # write mask files (if specified)
