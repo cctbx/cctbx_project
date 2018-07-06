@@ -68,7 +68,8 @@ af::versa<double, af::c_grid<3> > superpose_maps(
                    af::const_ref<double, af::c_grid<3> > const& map_data_1,
                    af::tiny<int, 3> const& n_real_2,
                    scitbx::mat3<double> const& rotation_matrix,
-                   scitbx::vec3<double> const& translation_vector)
+                   scitbx::vec3<double> const& translation_vector,
+                   bool wrapping)
 {
   int nx = n_real_2[0];
   int ny = n_real_2[1];
@@ -89,6 +90,13 @@ af::versa<double, af::c_grid<3> > superpose_maps(
           translation_vector;
         cctbx::fractional<> point_frac_in_2 =
           unit_cell_1.fractionalize(point_cart_in_2);
+        if (! wrapping){
+          if (
+           point_frac_in_2[0]<0 || point_frac_in_2[0] > 1 ||
+           point_frac_in_2[1]<0 || point_frac_in_2[1] > 1 ||
+           point_frac_in_2[2]<0 || point_frac_in_2[2] > 1 )
+          { continue; }
+        }
         result_map_ref(i,j,k) = tricubic_interpolation(map_data_1,
           point_frac_in_2);
   }}}
