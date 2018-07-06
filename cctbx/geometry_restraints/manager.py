@@ -1057,10 +1057,12 @@ class manager(Base_geometry):
     all_bonds_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
 
     t3 = time.time()
-    proxies_i_seqs = []
+    proxies_i_seqs = {}
+    np = 0
     proxies_iselection = []
     for p in proxies:
-      proxies_i_seqs.append(p.i_seqs)
+      proxies_i_seqs[p.i_seqs] = np
+      np += 1
       for i in list(p.i_seqs):
         if i not in proxies_iselection:
           proxies_iselection.append(i)
@@ -1102,9 +1104,11 @@ class manager(Base_geometry):
       n_proxy = None
       # Is this pair should be restrained?
       try:
-        n_proxy = proxies_i_seqs.index(pair_in_origninal_indeces)
+        n_proxy = proxies_i_seqs.get(pair_in_origninal_indeces, None)
       except ValueError:
         # there is no proxy for this pair, so we will not make a bond for it
+        continue
+      if n_proxy is None:
         continue
       # Sanity check (not necessary because of 'continue' in previous line)
       # print "n_proxy", n_proxy

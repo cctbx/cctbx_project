@@ -527,6 +527,7 @@ def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
         for rg in chain.residue_groups():
           if bool_selection[rg.atoms()[0].i_seq]:
             rgs.append(rg)
+        return rgs
   return rgs
 
 ########################################################################
