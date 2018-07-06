@@ -1093,9 +1093,12 @@ class manager(Base_geometry):
     t5 = time.time()
     # r_a connects i_seqs in pair_generator with original i_seqs
     r_a = list(reindexing_array(len(sites_cart), proxies_iselection.as_int()))
+    r_a_index = [0]*(len(sites_cart)+1)
+    for index, value in enumerate(r_a):
+      r_a_index[value] = index
     n_added_proxies = 0
     for pair in pair_generator:
-      pair_in_origninal_indeces = (r_a.index(pair.i_seq), r_a.index(pair.j_seq))
+      pair_in_origninal_indeces = (r_a_index[pair.i_seq], r_a_index[pair.j_seq])
       n_proxy = None
       # Is this pair should be restrained?
       try:
