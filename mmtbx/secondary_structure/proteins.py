@@ -515,17 +515,18 @@ def _find_start_residue (
   return -1
 
 def _get_residue_groups_from_selection(pdb_hierarchy, bool_selection):
+  # Selection should cover only one chain
   assert isinstance(bool_selection, flex.bool)
   i_seqs = bool_selection.iselection()
+  a = pdb_hierarchy.atoms()[i_seqs[0]]
+  ch_id = a.parent().parent().parent().id
   rgs = []
   for model in pdb_hierarchy.models():
     for chain in model.chains():
-      chain_i_seqs = flex.size_t(sorted(chain.atoms().extract_i_seq()))
-      if (chain_i_seqs.intersection(i_seqs).size() == 0) :
-        continue
-      for rg in chain.residue_groups():
-        if bool_selection[rg.atoms()[0].i_seq]:
-          rgs.append(rg)
+      if chain.id == ch_id:
+        for rg in chain.residue_groups():
+          if bool_selection[rg.atoms()[0].i_seq]:
+            rgs.append(rg)
   return rgs
 
 ########################################################################
