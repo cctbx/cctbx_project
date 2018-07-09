@@ -922,58 +922,6 @@ class annotation(structure_base):
     self.renumber_sheets()
     self.renumber_helices()
 
-  def multiply_to_asu(self, n_copies):
-    # from iotbx.ncs import format_num_as_str
-    # ncs_copies_chain_names = {'chain B_022':'CD' ...}
-    # def make_key(chain_id, n):
-    #   return "chain %s_%s" % (chain_id, format_num_as_str(n))
-    # def get_new_chain_id(old_chain_id, n_copy):
-    #   new_chain_id = ncs_copies_chain_names.get(
-    #       make_key(old_chain_id,n_copy), None)
-    #   if new_chain_id is None:
-    #     raise Sorry("Something went wrong in mulitplying HELIX/SHEET records")
-    #   return new_chain_id
-    from iotbx.pdb.hierarchy import suffixes_for_chain_ids
-    def get_new_chain_id(old_chain_id, n_copy):
-      assert len(old_chain_id) == 1
-      new_chain_id = old_chain_id+suffixes_for_chain_ids()[n_copy-1]
-      return new_chain_id
-    if n_copies < 1:
-      return
-    if n_copies+1 >= len(suffixes_for_chain_ids()):
-      return
-    new_helices = []
-    new_sheets = []
-    new_h_serial = 1
-    new_sheet_id = 1
-    for n_copy in xrange(1, n_copies+2):
-      for helix in self.helices:
-        new_helix = copy.deepcopy(helix)
-        new_helix.erase_hbond_list()
-        new_helix.set_new_chain_ids(
-            get_new_chain_id(new_helix.start_chain_id, n_copy))
-        new_helix.set_new_serial(new_h_serial, adopt_as_id=True)
-        new_h_serial += 1
-        new_helices.append(new_helix)
-      for sheet in self.sheets:
-        new_sheet = copy.deepcopy(sheet)
-        new_sheet.sheet_id = self.convert_id(new_sheet_id)
-        new_sheet_id += 1
-        new_sheet.erase_hbond_list()
-        for strand in new_sheet.strands:
-          strand.set_new_chain_ids(
-              get_new_chain_id(strand.start_chain_id, n_copy))
-          strand.sheet_id = "%s" % self.convert_id(new_sheet_id)
-        for reg in new_sheet.registrations:
-          if reg is not None:
-            reg.set_new_cur_chain_id(
-                get_new_chain_id(reg.cur_chain_id, n_copy))
-            reg.set_new_prev_chain_id(
-                get_new_chain_id(reg.prev_chain_id, n_copy))
-        new_sheets.append(new_sheet)
-    self.helices = new_helices
-    self.sheets = new_sheets
-
   def multiply_to_asu_2(self, chain_ids_dict):
     def get_new_chain_id(old_chain_id, n_copy):
       if n_copy == 0 and old_chain_id in chain_ids_dict:
@@ -1473,7 +1421,7 @@ class annotation(structure_base):
         keep_list.append(s1)
       for score2,s2 in score_list:
         if s2==s1 or s2 in keep_list or s2 in remove_list: continue
-        if not s1.has_chains_in_common(other=s2): continue 
+        if not s1.has_chains_in_common(other=s2): continue
         if s1.overlaps_with(other=s2,hierarchy=hierarchy):
           remove_list.append(s2)
     return keep_list
@@ -2061,7 +2009,7 @@ class pdb_helix (structure_base) :
   def chains_included(self):
     "Report list of all chains involved in this helix"
     chain_list=[self.start_chain_id]
-    if self.start_chain_id != self.start_chain_id: 
+    if self.start_chain_id != self.start_chain_id:
       chain_list.append(self.end_chain_id)
     return chain_list
 

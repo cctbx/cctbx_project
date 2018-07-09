@@ -1772,27 +1772,6 @@ SHEET    2 AA2 4 MET A  92  THR A  99  0
       '0Y', '0Z', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
       '1A', '1B', '1C', '1D', '1E'], sheet_ids
 
-
-def tst_multiply_to_asu_1():
-  ann_str = """\
-HELIX  233 233 PHE Z   12  CYS Z   43  1                                  32
-  """
-  ann = annotation.from_records(ann_str.split("\n"))
-  original_ann = ann.deep_copy()
-  assert ann.get_n_helices() == 1
-  ann.multiply_to_asu(n_copies=0)
-  assert ann.get_n_helices() == 1
-
-  ann = original_ann.deep_copy()
-  ann.multiply_to_asu(n_copies = 1)
-  # print ann
-  assert ann.get_n_helices() == 2
-
-  ann = original_ann.deep_copy()
-  ann.multiply_to_asu(n_copies = 2)
-  # print ann
-  assert ann.get_n_helices() == 3
-
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
@@ -1821,5 +1800,4 @@ if (__name__ == "__main__"):
   tst_filter_sheets_with_long_hbonds3()
   tst_reset_sheet_ids()
   tst_simple_elements()
-  tst_multiply_to_asu_1()
   print "OK time =%8.3f"%(time.time() - t0)
