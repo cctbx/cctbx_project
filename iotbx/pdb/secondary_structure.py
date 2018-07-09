@@ -982,24 +982,24 @@ class annotation(structure_base):
     n_copies = len(chain_ids_dict.values()[0]) + 1
     new_helices = []
     new_sheets = []
-    new_h_serial = 1
-    new_sheet_id = 1
+    new_h_serial = 0
+    new_sheet_id = 0
     for n_copy in xrange(n_copies):
       for helix in self.helices:
         new_helix = copy.deepcopy(helix)
         new_helix.erase_hbond_list()
         try:
+          new_h_serial += 1
           new_helix.set_new_chain_ids(
               get_new_chain_id(new_helix.start_chain_id, n_copy))
           new_helix.set_new_serial(new_h_serial, adopt_as_id=True)
-          new_h_serial += 1
           new_helices.append(new_helix)
         except KeyError:
           continue
       for sheet in self.sheets:
         new_sheet = copy.deepcopy(sheet)
-        new_sheet.sheet_id = self.convert_id(new_sheet_id)
         new_sheet_id += 1
+        new_sheet.sheet_id = self.convert_id(new_sheet_id)
         new_sheet.erase_hbond_list()
         try:
           for strand in new_sheet.strands:

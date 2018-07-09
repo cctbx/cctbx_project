@@ -591,12 +591,12 @@ def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
 HELIX    1   1 THR A    1  THR A    2  1                                   6
 HELIX    2   2 THR C    1  THR C    2  1                                   6
 HELIX    3   3 THR E    1  THR E    2  1                                   6
-SHEET    1   2 2 THR A   1  THR A   3  0
-SHEET    2   2 2 THR B   4  THR B   5 -1  O  THR B   4   N  THR A   2
-SHEET    1   3 2 THR C   1  THR C   3  0
-SHEET    2   3 2 THR D   4  THR D   5 -1  O  THR D   4   N  THR C   2
-SHEET    1   4 2 THR E   1  THR E   3  0
-SHEET    2   4 2 THR F   4  THR F   5 -1  O  THR F   4   N  THR E   2""")
+SHEET    1   1 2 THR A   1  THR A   3  0
+SHEET    2   1 2 THR B   4  THR B   5 -1  O  THR B   4   N  THR A   2
+SHEET    1   2 2 THR C   1  THR C   3  0
+SHEET    2   2 2 THR D   4  THR D   5 -1  O  THR D   4   N  THR C   2
+SHEET    1   3 2 THR E   1  THR E   3  0
+SHEET    2   3 2 THR F   4  THR F   5 -1  O  THR F   4   N  THR E   2""")
 
 def exercise_002(file_name="tst_mtrix_biomt_cmdl_002.pdb"):
   """
