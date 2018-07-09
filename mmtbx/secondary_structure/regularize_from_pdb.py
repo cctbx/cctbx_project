@@ -96,6 +96,37 @@ master_phil = iotbx.phil.parse("""
   }
   find_ss_structure { # Note overwrites values in find_ss_structure.py
 
+     ss_by_chain = None
+       .type = bool
+       .help = Find secondary structure only within individual chains. \
+               Alternative is to allow H-bonds between chains. Can be \
+               much slower with ss_by_chain=False. If your model is complete \
+               use ss_by_chain=True. If your model is many fragments, use \
+               ss_by_chain=False.  Not used in regularize_pdb
+       .short_caption = Secondary structure by chain
+       .style = hidden
+     max_rmsd = 1
+       .type = float
+       .help = Maximum rmsd to consider two chains with identical sequences \
+               as the same for ss identification. \
+               Not used in regularize_pdb
+       .short_caption = Maximum rmsd
+       .style = hidden
+     use_representative_chains = True
+       .type = bool
+       .help = Use a representative of all chains with the same sequence. \
+               Alternative is to examine each chain individually. Can be \
+               much slower with use_representative_of_chain=False if there \
+               are many symmetry copies. Ignored unless ss_by_chain is True. \
+               Not used in regularize_pdb
+       .style = hidden
+     max_representative_chains = 100
+       .type = float
+       .help = Maximum number of representative chains\
+               Not used in regularize_pdb
+       .short_caption = Maximum representative chains
+       .style = hidden
+
      find_alpha = True
        .type = bool
        .help = Find alpha helices
@@ -1638,6 +1669,7 @@ class replace_with_segments_from_pdb:
 
     # identify secondary structure
     fss=find_secondary_structure(params=params,models=models,
+     ss_by_chain=False,  # required (actually not as ignored for model input)
      helices_are_alpha=params.find_ss_structure.helices_are_alpha,
        out=out)
     return fss.models

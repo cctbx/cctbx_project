@@ -118,6 +118,35 @@ secondary_structure
       .help = Turn on secondary structure restraints for nucleic acids
     %s
   }
+     ss_by_chain = True
+       .type = bool
+       .help = Find secondary structure only within individual chains. \
+               Alternative is to allow H-bonds between chains. Can be \
+               much slower with ss_by_chain=False. If your model is complete \
+               use ss_by_chain=True. If your model is many fragments, use \
+               ss_by_chain=False. 
+       .short_caption = Secondary structure by chain
+       .expert_level = 1
+     max_rmsd = 1
+       .type = float
+       .help = Maximum rmsd to consider two chains with identical sequences \
+               as the same for ss identification
+       .short_caption = Maximum rmsd
+       .expert_level = 3
+     use_representative_chains = True
+       .type = bool
+       .help = Use a representative of all chains with the same sequence. \
+               Alternative is to examine each chain individually. Can be \
+               much slower with use_representative_of_chain=False if there \
+               are many symmetry copies. Ignored unless ss_by_chain is True.
+       .short_caption = Use representative chains
+       .expert_level = 3
+     max_representative_chains = 100
+       .type = float
+       .help = Maximum number of representative chains
+       .short_caption = Maximum representative chains
+       .expert_level = 3
+
   enabled = False
     .short_caption = Use secondary structure restraints
     .type = bool
@@ -317,6 +346,12 @@ class manager (object) :
       print >> self.log, "  running find_ss_from_ca..."
       fss = find_ss_from_ca.find_secondary_structure(
           hierarchy=pdb_hierarchy,
+          ss_by_chain=self.params.secondary_structure.ss_by_chain,
+          max_rmsd=self.params.secondary_structure.max_rmsd,
+          use_representative_chains=\
+           self.params.secondary_structure.use_representative_chains,
+          max_representative_chains=\
+           self.params.secondary_structure.max_representative_chains,
           out=null_out())
       return fss.get_annotation()
     elif self.params.secondary_structure.protein.search_method == "cablam":

@@ -57,6 +57,12 @@ import copy
 from libtbx.utils import null_out
 
 
+def lists_have_comment_element(a,b):
+  for x in a:
+    if x in b:
+      return True
+  return False
+
 def segments_are_similar(atom_selection_1=None,
    atom_selection_2=None,
    hierarchy=None,
@@ -424,9 +430,13 @@ class structure_base (object) :
     return ph.overall_counts().n_residues
 
   def count_h_bonds(self,hierarchy=None,
-       max_h_bond_length=None):
-    "Count good and poor H-bonds in this secondary structure"
-
+       max_h_bond_length=None,ss_by_chain=False):
+    "Count good and poor H-bonds in this hierarchy"
+    "This is generic version"
+    "This uses the annotation in self"
+    "Not appropriate for large structures unless you set ss_by_chain=True"
+    "Use instead annotation.count_h_bonds in general."
+    print "ZZ count_h_bonds",hierarchy.overall_counts().n_residues
     if hierarchy is None:
       raise AssertionError,"Require hierarchy for count_h_bonds"
 
@@ -444,7 +454,9 @@ class structure_base (object) :
       user_annotation_text=self.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
+      ss_by_chain=ss_by_chain,
       max_h_bond_length=max_h_bond_length,out=null_out())
+    print "ZZ done count_h_bonds",hierarchy.overall_counts().n_residues,fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
     return fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
 
 
@@ -495,6 +507,14 @@ class structure_base (object) :
     for x in all_list[1:]:
       atom_selection+=" %s (%s) " %(joiner,x)
     return atom_selection
+
+  def has_chains_in_common(self,other=None):
+    if lists_have_comment_element(
+       self.chains_included(),
+       other.chains_included()):
+      return True
+    else:
+      return False
 
   def overlaps_with(self,other=None,hierarchy=None):
     assert hierarchy
@@ -883,6 +903,24 @@ class annotation(structure_base):
       raise Sorry("Too many sheets in annotations: %d" % self.get_n_sheets())
     for i, sh in enumerate(self.sheets):
       sh.sheet_id = ids[i]
+
+  def renumber_helices(self):
+    i = 1
+    for helix in self.helices:
+      helix.set_new_serial(i, adopt_as_id=True)
+      i += 1
+
+  def renumber_sheets(self):
+    i = 1
+    for sheet in self.sheets:
+      sheet.sheet_id = self.convert_id(i)
+      for strand in sheet.strands:
+        strand.sheet_id = "%s" % self.convert_id(i)
+      i += 1
+
+  def renumber_helices_and_sheets(self):
+    self.renumber_sheets()
+    self.renumber_helices()
 
   def multiply_to_asu(self, n_copies):
     # from iotbx.ncs import format_num_as_str
@@ -1346,10 +1384,13 @@ class annotation(structure_base):
 
     #print >>out,"\nFinding matching and unique helices:"
 
+    print "ZZC helices"
     helices=self.get_unique_set(
        a1.helices,a2.helices,hierarchy=hierarchy,out=out)
     #print >>out,"\nFinding matching and unique sheets:"
+    print "ZZC sheets"
     sheets=self.get_unique_set(a1.sheets,a2.sheets,hierarchy=hierarchy,out=out)
+    print "ZZC donesheets"
 
     new_annotation=annotation(sheets=sheets,helices=helices)
     new_annotation=new_annotation.merge_sheets()
@@ -1432,6 +1473,7 @@ class annotation(structure_base):
         keep_list.append(s1)
       for score2,s2 in score_list:
         if s2==s1 or s2 in keep_list or s2 in remove_list: continue
+        if not s1.has_chains_in_common(other=s2): continue 
         if s1.overlaps_with(other=s2,hierarchy=hierarchy):
           remove_list.append(s2)
     return keep_list
@@ -1439,6 +1481,7 @@ class annotation(structure_base):
   def get_unique_set(self,h1_list,h2_list,hierarchy=None,
      out=sys.stdout):
     # Sheets should be split before using get_unique_set
+    print "ZZD unique set...",h1_list,h2_list,hierarchy.overall_counts().n_residues
     pairs=[]
     overlapping_but_not_matching_pairs=[]
     unique_h1=[]
@@ -1447,7 +1490,10 @@ class annotation(structure_base):
     used_h2=[]
     for h1 in h1_list:
       for h2 in h2_list:
-        if h2.is_similar_to(other=h1,hierarchy=hierarchy,
+        print "ZZD overlap check:",h1,h2
+        if not h2.has_chains_in_common(other=h1):
+          pass # nothting to do
+        elif h2.is_similar_to(other=h1,hierarchy=hierarchy,
             maximum_length_difference=self.maximum_length_difference,
             minimum_overlap=self.minimum_overlap):
           if not h1 in used_h1: used_h1.append(h1)
@@ -1462,9 +1508,11 @@ class annotation(structure_base):
     for h2 in h2_list:
       if not h2 in used_h2: unique_h2.append(h2)
 
+    print "ZZD unique...",pairs
     if pairs:
       #print >>out,"\nMatching pairs:"
       for [h1,h2] in pairs:
+        print "ZZD checking unique",h1,h2
 
         score_1,score_2=self.score_pair(h1,h2,
           maximize_h_bonds=self.maximize_h_bonds,
@@ -1472,8 +1520,8 @@ class annotation(structure_base):
           max_h_bond_length=self.max_h_bond_length,
           rescore_if_zero_scores=True,
           keep_self=self.keep_self)
-        #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
-        #print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str())
+        print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str()) # ZZ
+        print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str()) # ZZ
 
     if overlapping_but_not_matching_pairs:
       #print >>out,"\nOverlapping non-matching pairs:"
@@ -1507,7 +1555,7 @@ class annotation(structure_base):
         #print >>out,"OTHER: %7.1f\n%s" %(score_1,h2.as_pdb_str())
 
     unique=unique_h1+unique_h2
-
+    print "ZZD unique..."
 
     # Now take the best (or self if desired) of pairs and add on unique
     final_list=[]
@@ -1554,6 +1602,14 @@ class annotation(structure_base):
 
     return True,a1,a2
 
+  def chains_included(self):
+    "Report list of all chains involved "
+    chain_list=[]
+    for x in self.helices+self.sheets:
+      for c in x.chains_included():
+        if not x in chain_list: chain_list.append(x)
+    return chain_list
+
   def overlaps_with(self,other=None,hierarchy=None):
     "Returns True if any element of the annotation overlap"
 
@@ -1562,12 +1618,14 @@ class annotation(structure_base):
     assert hierarchy
     for h1 in a1.helices:
       for h2 in a2.helices:
-        if h1.overlaps_with(other=h2,hierarchy=hierarchy):
+        if h1.has_chains_in_common(other=h2) and \
+          h1.overlaps_with(other=h2,hierarchy=hierarchy):
           return True
 
     for s1 in a1.sheets:
       for s2 in a2.sheets:
-        if s1.overlaps_with(other=s2,hierarchy=hierarchy):
+        if s1.has_chains_in_common(other=s2) and \
+           s1.overlaps_with(other=s2,hierarchy=hierarchy):
           return True
 
     return False
@@ -1999,6 +2057,13 @@ class pdb_helix (structure_base) :
       # Should never happen
       assert 0, "Wrong helix_class creeped in object fields: %d" % (
           self.helix_class)
+
+  def chains_included(self):
+    "Report list of all chains involved in this helix"
+    chain_list=[self.start_chain_id]
+    if self.start_chain_id != self.start_chain_id: 
+      chain_list.append(self.end_chain_id)
+    return chain_list
 
   def is_same_as(self,other=None):
     # return True if it self has the same values as other
@@ -2827,6 +2892,17 @@ class pdb_sheet(structure_base):
       new_sheets.append(new_sheet)
       starting_sheet_id_number+=1
     return new_sheets
+
+  def chains_included(self):
+    "Report list of all chains involved in this sheet"
+    chain_list=[]
+    for strand in self.strands:
+      if not strand.start_chain_id in chain_list:
+        chain_list.append(strand.start_chain_id)
+      if strand.start_chain_id != strand.start_chain_id and \
+         not strand.end_chain_id in chain_list:
+          chain_list.append(strand.end_chain_id)
+    return chain_list
 
   def overlaps_with(self,other=None,hierarchy=None):
     "For sheet, overlaps if both members of any strand pair overlap"

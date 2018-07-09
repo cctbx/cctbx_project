@@ -461,13 +461,219 @@ ATOM    914  C   ALA B 282      10.577  -0.889   4.965  1.00 10.30           C
 ATOM    915  O   ALA B 282      10.663  -0.156   5.937  1.00 10.83           O
 ATOM    916  CB  ALA B 282       9.496  -3.180   4.899  1.00 14.45           C
 """
+multi_copy_text="""
+ATOM      1  CA  SERG2  11     672.659 271.890 642.978  1.00151.51           C
+ATOM      2  CA  HISG2  12     673.739 270.409 646.320  1.00157.48           C
+ATOM      3  CA  THRG2  13     676.617 268.051 647.149  1.00156.68           C
+ATOM      4  CA  GLYG2  14     675.899 264.844 649.034  1.00154.13           C
+ATOM      5  CA  GLYG2  15     679.108 264.054 650.891  1.00153.97           C
+ATOM      6  CA  THRG2  23     674.070 258.460 655.967  1.00160.53           C
+ATOM      7  CA  THRG2  24     676.423 255.647 656.957  1.00160.10           C
+ATOM      8  CA  ALAG2  25     679.963 254.891 655.848  1.00154.17           C
+ATOM      9  CA  ALAG2  26     680.922 251.245 656.223  1.00154.52           C
+ATOM     10  CA  ILEG2  37     680.349 251.357 651.276  1.00154.78           C
+ATOM     11  CA  ILEG2  38     678.241 254.479 651.807  1.00152.40           C
+ATOM     12  CA  GLYG2  39     674.481 254.465 652.075  1.00157.18           C
+ATOM     13  CA  PHEG2  40     672.890 257.774 651.173  1.00152.30           C
+ATOM     14  CA  GLUG2  41     669.611 257.161 652.958  1.00156.89           C
+ATOM     15  CA  ILEG2  49     666.867 263.693 645.296  1.00158.19           C
+ATOM     16  CA  GLUG2  50     667.733 263.423 641.604  1.00158.68           C
+ATOM     17  CA  TYRG2  51     671.207 262.216 640.645  1.00151.14           C
+ATOM     18  CA  VALG2  52     671.421 262.783 636.919  1.00155.98           C
+ATOM     19  CA  GLYG2  53     674.142 261.362 634.725  1.00154.05           C
+ATOM     20  CA  PROG2  62     690.221 255.358 649.160  1.00161.63           C
+ATOM     21  CA  ARGG2  63     693.277 254.515 651.225  1.00159.36           C
+ATOM     22  CA  THRG2  64     693.822 251.215 653.008  1.00158.95           C
+ATOM     23  CA  THRG2  65     695.857 250.702 656.156  1.00160.97           C
+ATOM     24  CA  GLUG2  66     699.182 248.925 656.483  1.00163.99           C
+ATOM     25  CA  SERG2  67     701.205 248.093 659.588  1.00166.35           C
+ATOM     26  CA  ILEG2  68     704.997 247.740 659.591  1.00170.65           C
+ATOM     27  CA  THRG2  69     707.072 246.430 662.481  1.00173.92           C
+ATOM     28  CA  GLYG2  70     710.480 248.079 662.226  1.00177.42           C
+ATOM     29  CA  ASPG2  75     713.949 252.746 655.039  1.00173.01           C
+ATOM     30  CA  THRG2  76     712.573 250.621 652.174  1.00170.65           C
+ATOM     31  CA  VALG2  77     708.870 249.996 652.727  1.00169.78           C
+ATOM     32  CA  VALG2  78     707.766 246.476 651.749  1.00172.32           C
+ATOM     33  CA  VALG2 100     699.875 259.341 647.120  1.00166.60           C
+ATOM     34  CA  ALAG2 101     700.963 257.718 650.404  1.00164.58           C
+ATOM     35  CA  VALG2 102     701.179 258.953 653.979  1.00162.87           C
+ATOM     36  CA  ALAG2 103     702.867 257.427 656.993  1.00165.65           C
+ATOM     37  CA  TYRG2 104     702.632 257.897 660.750  1.00167.15           C
+ATOM     38  CA  ASNG2 105     704.941 256.587 663.466  1.00170.08           C
+ATOM     39  CA  VALG2 106     702.716 255.629 666.398  1.00168.11           C
+ATOM     40  CA  GLYG2 109     703.748 260.527 667.204  1.00167.04           C
+ATOM     41  CA  VALG2 110     705.343 262.143 664.141  1.00167.66           C
+ATOM     42  CA  GLNG2 111     704.011 262.240 660.588  1.00166.26           C
+ATOM     43  CA  VALG2 112     706.906 260.533 658.815  1.00167.70           C
+ATOM     44  CA  ALAG2 116     711.004 258.660 647.111  1.00169.85           C
+ATOM     45  CA  VALG2 117     708.484 256.299 645.553  1.00170.77           C
+ATOM     46  CA  ASPG2 118     708.969 253.226 643.380  1.00174.41           C
+ATOM     47  CA  TYRG2 119     705.807 252.551 641.381  1.00171.25           C
+ATOM     48  CA  ASPG2 122     704.803 249.088 644.789  1.00174.07           C
+ATOM     49  CA  GLUG2 123     707.403 250.324 647.277  1.00173.78           C
+ATOM     50  CA  VALG2 124     707.938 253.704 648.922  1.00169.72           C
+ATOM     51  CA  THRG2 125     710.797 255.033 651.041  1.00171.78           C
+ATOM     52  CA  LEUG2 126     710.575 256.678 654.450  1.00169.68           C
+ATOM     53  CA  ASPG2 134     708.092 250.470 666.277  1.00176.26           C
+ATOM     54  CA  THRG2 135     704.740 250.368 664.472  1.00172.24           C
+ATOM     55  CA  VALG2 136     704.731 252.503 661.323  1.00167.53           C
+ATOM     56  CA  LYSG2 137     701.217 252.839 659.914  1.00163.35           C
+ATOM     57  CA  VALG2 138     701.163 253.650 656.194  1.00162.44           C
+ATOM     58  CA  TRPG2 139     698.086 254.634 654.195  1.00161.65           C
+ATOM     59  CA  PROG2 140     698.736 254.094 650.473  1.00160.01           C
+ATOM     60  CA  ILEG2 141     696.468 255.002 647.598  1.00161.49           C
+ATOM     61  CA  METG2 142     694.160 252.243 646.370  1.00158.89           C
+ATOM     62  CA  GLYG2 145     688.472 248.069 642.529  1.00161.75           C
+ATOM     63  CA  ASPG2 146     684.984 248.329 641.037  1.00161.37           C
+ATOM     64  CA  VALG2 147     682.243 250.828 641.888  1.00155.59           C
+ATOM     65  CA  GLNG2 148     678.568 251.150 640.989  1.00152.50           C
+ATOM     66  CA  PHEG2 149     675.564 253.048 642.353  1.00151.93           C
+ATOM     67  CA  ARGG2 150     672.598 250.981 643.552  1.00151.84           C
+ATOM     68  CA  LEUG2 151     669.086 252.076 644.529  1.00150.99           C
+ATOM     69  CA  VALG2 152     667.838 250.000 647.467  1.00152.42           C
+ATOM     70  CA  ASNG2 153     664.134 250.339 648.278  1.00153.50           C
+ATOM     71  CA  PROG2 168     687.142 250.935 637.661  1.00160.31           C
+ATOM     72  CA  LEUG2 169     688.516 252.524 640.783  1.00159.19           C
+ATOM     73  CA  TYRG2 170     692.006 253.510 639.589  1.00162.34           C
+ATOM     74  CA  ARGG2 171     690.581 255.651 636.779  1.00163.81           C
+ATOM     75  CA  TRPG2 172     689.312 257.923 639.532  1.00159.04           C
+ATOM     76  CA  HISG2 173     693.019 258.504 640.236  1.00160.31           C
+ATOM     77  CA  ASPG2 174     694.707 258.891 636.838  1.00163.51           C
+ATOM     78  CA  PHEG2 175     692.359 261.697 635.895  1.00164.10           C
+ATOM     79  CA  PROG2 176     692.847 264.852 637.973  1.00164.94           C
+ATOM     80  CA  GLYG2 188     672.254 256.633 634.404  1.00150.48           C
+ATOM     81  CA  SERG2 189     669.843 258.590 636.542  1.00151.32           C
+ATOM     82  CA  VALG2 190     668.359 258.078 640.009  1.00150.42           C
+ATOM     83  CA  THRG2 191     665.323 259.881 641.397  1.00151.52           C
+ATOM     84  CA  TRPG2 192     665.114 258.592 644.952  1.00154.98           C
+ATOM     85  CA  GLUG2 196     664.755 254.887 649.832  1.00156.20           C
+ATOM     86  CA  THRG2 197     668.559 254.735 649.786  1.00155.71           C
+ATOM     87  CA  VALG2 198     671.434 254.866 647.309  1.00153.21           C
+ATOM     88  CA  GLUG2 199     674.434 252.722 648.164  1.00153.70           C
+ATOM     89  CA  VALG2 200     677.820 252.558 646.464  1.00151.33           C
+ATOM     90  CA  LEUG2 201     679.168 249.071 645.768  1.00153.34           C
+ATOM     91  CA  LEUG2 202     682.922 248.516 645.715  1.00156.54           C
+ATOM     92  CA  ASPG2 203     684.797 245.322 644.888  1.00164.02           C
+ATOM     93  CA  ALAG2 204     688.441 245.597 645.932  1.00161.21           C
+ATOM     94  CA  GLUG2 225     680.703 263.065 647.464  1.00156.34           C
+ATOM     95  CA  GLNG2 226     678.643 263.859 644.399  1.00154.90           C
+ATOM     96  CA  ASPG2 227     676.860 266.889 643.014  1.00156.12           C
+ATOM     97  CA  VALG2 228     673.131 266.174 642.923  1.00155.70           C
+ATOM     98  CA  GLUG2 229     670.054 268.163 641.926  1.00154.93           C
+TER
+ATOM     99  CA  ARGWy  15     120.437 414.861 579.347  1.00 30.00           C
+ATOM    100  CA  LEUWy  16     118.463 412.415 577.240  1.00 30.00           C
+ATOM    101  CA  GLYWy  17     118.534 409.852 580.055  1.00 30.00           C
+ATOM    102  CA  ARGWy  18     117.304 412.493 582.499  1.00 30.00           C
+ATOM    103  CA  LEUWy  19     114.479 413.600 580.202  1.00 30.00           C
+ATOM    104  CA  VALWy  20     113.409 409.997 579.631  1.00 30.00           C
+ATOM    105  CA  ASPWy  21     113.538 409.209 583.359  1.00 30.00           C
+ATOM    106  CA  VALWy  22     111.688 412.291 584.630  1.00 30.00           C
+ATOM    107  CA  LEUWy  23     108.997 411.976 581.954  1.00 30.00           C
+ATOM    108  CA  GLUWy  24     108.327 408.259 582.608  1.00 30.00           C
+ATOM    109  CA  SERWy  36     103.189 389.864 586.522  1.00 30.00           C
+ATOM    110  CA  VALWy  37     101.527 389.072 583.207  1.00 30.00           C
+ATOM    111  CA  THRWy  38      99.495 386.332 584.885  1.00 30.00           C
+ATOM    112  CA  GLNWy  39      98.146 388.814 587.414  1.00 30.00           C
+ATOM    113  CA  ASNWy  40      97.643 391.329 584.620  1.00 30.00           C
+ATOM    114  CA  ILEWy  41      95.385 388.873 582.829  1.00 30.00           C
+ATOM    115  CA  ASPWy  42      93.727 387.970 586.116  1.00 30.00           C
+ATOM    116  CA  ARGWy  43      92.880 391.586 586.908  1.00 30.00           C
+ATOM    117  CA  THRWy  44      90.369 391.588 584.049  1.00 30.00           C
+ATOM    118  CA  ARGWy  45      89.329 387.934 583.798  1.00 30.00           C
+ATOM    119  CA  TYRWy  57      84.834 397.337 600.087  1.00 28.58           C
+ATOM    120  CA  PHEWy  58      84.256 397.935 603.745  1.00 28.58           C
+ATOM    121  CA  SERWy  59      81.080 397.288 605.631  1.00 28.58           C
+ATOM    122  CA  THRWy  60      80.129 397.085 609.232  1.00 28.58           C
+ATOM    123  CA  TRPWy  73      85.481 408.794 620.165  1.00 28.58           C
+ATOM    124  CA  GLUWy  74      85.299 405.315 618.767  1.00 28.58           C
+ATOM    125  CA  ARGWy  75      87.588 404.794 615.793  1.00 28.58           C
+ATOM    126  CA  LEUWy  76      86.761 402.474 612.929  1.00 28.58           C
+ATOM    127  CA  ASPWy  77      89.512 401.568 610.492  1.00 28.58           C
+ATOM    128  CA  GLUWy  83      86.218 407.191 598.572  1.00 28.58           C
+ATOM    129  CA  THRWy  84      82.465 406.937 598.909  1.00 28.58           C
+ATOM    130  CA  VALWy  85      81.270 406.635 602.487  1.00 28.58           C
+ATOM    131  CA  ASNWy  86      77.658 405.777 603.207  1.00 28.58           C
+ATOM    132  CA  ILEWy  87      76.187 406.153 606.676  1.00 28.58           C
+ATOM    133  CA  ARGWy  88      72.820 404.596 607.396  1.00 28.58           C
+ATOM    134  CA  THRWy  89      72.114 406.202 610.718  1.00 28.58           C
+ATOM    135  CA  ASPWy  92      71.821 410.436 615.695  1.00 28.58           C
+ATOM    136  CA  ILEWy  93      75.581 410.571 615.331  1.00 28.58           C
+ATOM    137  CA  ASPWy  94      78.611 412.814 615.160  1.00 28.58           C
+ATOM    138  CA  ILEWy  95      80.918 411.557 612.441  1.00 28.58           C
+ATOM    139  CA  ALAWy  96      84.503 412.633 611.924  1.00 28.58           C
+ATOM    140  CA  PHEWy  97      87.164 412.454 609.238  1.00 28.58           C
+ATOM    141  CA  VALWy 106      83.050 417.115 612.993  1.00 28.58           C
+ATOM    142  CA  ILEWy 107      79.837 416.570 611.051  1.00 28.58           C
+ATOM    143  CA  ARGWy 108      76.512 415.914 612.727  1.00 28.58           C
+ATOM    144  CA  VALWy 109      74.028 413.525 611.136  1.00 28.58           C
+ATOM    145  CA  ARGWy 110      70.503 413.339 612.503  1.00 28.58           C
+ATOM    146  CA  PROWy 115      71.316 408.056 604.780  1.00 28.58           C
+ATOM    147  CA  PHEWy 116      74.355 410.264 604.459  1.00 28.58           C
+ATOM    148  CA  THRWy 117      76.453 409.808 601.328  1.00 28.58           C
+ATOM    149  CA  ILEWy 118      79.595 411.826 601.263  1.00 28.58           C
+ATOM    150  CA  PHEWy 128      89.716 406.354 608.844  1.00 28.58           C
+ATOM    151  CA  ILEWy 129      86.461 407.343 610.499  1.00 28.58           C
+ATOM    152  CA  TRPWy 130      85.322 408.270 613.973  1.00 28.58           C
+ATOM    153  CA  LEUWy 131      81.953 408.127 615.714  1.00 28.58           C
+ATOM    154  CA  ARGWy 132      80.468 409.700 618.829  1.00 28.58           C
+ATOM    155  CA  GLNWy 133      76.929 409.395 620.092  1.00 28.58           C
+ATOM    156  CA  GLYWy 142      73.668 402.397 612.876  1.00 28.58           C
+ATOM    157  CA  ILEWy 143      75.268 400.971 609.792  1.00 28.58           C
+ATOM    158  CA  GLNWy 144      78.292 401.955 607.690  1.00 28.58           C
+ATOM    159  CA  ILEWy 145      78.857 400.860 604.078  1.00 28.58           C
+ATOM    160  CA  ILEWy 146      81.877 402.244 602.293  1.00 28.58           C
+ATOM    161  CA  ALAWy 147      82.888 401.759 598.671  1.00 28.58           C
+ATOM    162  CA  PHEWy 148      86.162 402.464 596.931  1.00 28.58           C
+TER
+ATOM    163  CA  PHEzy  21     113.436 495.542 626.654  1.00 30.00           C
+ATOM    164  CA  VALzy  22     113.344 495.929 630.415  1.00 30.00           C
+ATOM    165  CA  ASPzy  23     111.073 495.290 633.374  1.00  7.88           C
+ATOM    166  CA  GLUzy  24     110.713 497.176 636.654  1.00  8.25           C
+ATOM    167  CA  LEUzy  37     115.682 496.432 636.616  1.00  3.32           C
+ATOM    168  CA  THRzy  38     115.672 493.374 634.376  1.00  3.35           C
+ATOM    169  CA  ILEzy  39     116.974 493.440 630.814  1.00  3.43           C
+ATOM    170  CA  GLUzy  40     115.421 490.561 628.809  1.00  3.74           C
+ATOM    171  CA  THRzy  71     122.977 501.491 649.055  1.00  3.59           C
+ATOM    172  CA  ARGzy  72     124.767 499.630 646.282  1.00  3.24           C
+ATOM    173  CA  VALzy  73     123.947 499.218 642.600  1.00  2.99           C
+ATOM    174  CA  ILEzy  74     125.116 495.999 640.938  1.00  3.00           C
+ATOM    175  CA  VALzy  75     124.701 495.686 637.171  1.00  3.12           C
+ATOM    176  CA  GLNzy  76     125.420 492.035 636.492  1.00  3.11           C
+ATOM    177  CA  LYSzy  77     125.353 489.678 633.523  1.00  3.48           C
+ATOM    178  CA  CYSzy  78     122.996 486.732 633.998  1.00  3.94           C
+ATOM    179  CA  VALzy  90     130.042 494.542 634.875  1.00 30.00           C
+ATOM    180  CA  PHEzy  91     129.274 497.308 637.383  1.00  7.58           C
+ATOM    181  CA  ASNzy  92     129.328 497.553 641.172  1.00  6.80           C
+ATOM    182  CA  ASPzy  93     129.197 500.879 642.972  1.00  5.89           C
+ATOM    183  CA  THRzy  94     127.604 502.711 645.868  1.00  5.58           C
+ATOM    184  CA  LEUzy  95     124.478 504.593 644.818  1.00  5.02           C
+ATOM    185  CA  GLYzy  96     125.346 507.430 647.193  1.00 30.00           C
+ATOM    186  CA  ARGzy  97     128.447 508.119 645.122  1.00 30.00           C
+ATOM    187  CA  PHEzy  98     126.202 509.190 642.228  1.00  4.76           C
+ATOM    188  CA  ASPzy  99     124.945 512.783 642.059  1.00  4.32           C
+ATOM    189  CA  ASPzy 106     129.213 516.851 632.338  1.00  5.14           C
+ATOM    190  CA  PROzy 107     131.268 513.924 630.990  1.00  4.90           C
+ATOM    191  CA  ASPzy 108     133.647 514.165 633.930  1.00 30.00           C
+ATOM    192  CA  PHEzy 109     130.662 513.533 636.226  1.00 30.00           C
+ATOM    193  CA  METzy 110     129.553 510.289 634.565  1.00  5.10           C
+ATOM    194  CA  ARGzy 111     130.189 506.721 635.712  1.00  4.66           C
+ATOM    195  CA  ILEzy 124     119.871 488.710 630.783  1.00  4.01           C
+ATOM    196  CA  VALzy 125     121.381 491.733 632.532  1.00  3.51           C
+ATOM    197  CA  LYSzy 126     120.037 492.423 636.008  1.00  3.27           C
+ATOM    198  CA  VALzy 127     120.267 495.388 638.357  1.00  3.08           C
+ATOM    199  CA  PHEzy 128     120.504 494.509 642.045  1.00  3.07           C
+ATOM    200  CA  VALzy 129     119.824 497.272 644.564  1.00 30.00           C
+ATOM    201  CA  ASPzy 130     121.341 496.425 647.959  1.00 30.00           C
+ATOM    202  CA  ILEzy 131     119.598 498.577 650.580  1.00 30.00           C
+"""
 def tst_00():
   print "Finding sheets, splitting and merging...",
   import iotbx.pdb
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(std_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   records=fss.annotation.as_pdb_str()
   import iotbx.pdb.secondary_structure as ioss
   annotation=ioss.annotation.from_records(records=flex.split_lines(records))
@@ -567,7 +773,7 @@ def tst_01():
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_helix_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 8  Start: 1 End: 8
@@ -625,7 +831,7 @@ ATOM    193  CA  GLN A  26      13.132   4.360  16.583  1.00 46.66
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 8  Start: 1 End: 8
@@ -658,7 +864,7 @@ def tst_03():
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(helices_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 16  Start: 1 End: 16
@@ -767,7 +973,7 @@ ATOM    209  CA  GLYAa  72     186.003 131.073 282.428  1.00100.00           C
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 70  Start: 3 End: 72
@@ -809,7 +1015,7 @@ def tst_05():
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 8  Start: 50 End: 57
@@ -865,7 +1071,7 @@ ATOM    275  CA  ALA A  22      27.017  18.382   9.700  1.00  7.89           C
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
 
   expected_text="""
 Model 1  N: 21  Start: 2 End: 22
@@ -904,7 +1110,7 @@ ATOM    711  CA BPRO E   7      13.150  12.796 -12.241  0.50  9.73           C  
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,verbose=True,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,verbose=True,out=null_out())
 
   expected_text="""
 Model 1  N: 5  Start: 3 End: 7
@@ -953,7 +1159,7 @@ def tst_08():
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(std_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   records=fss.annotation.as_pdb_str()
   import iotbx.pdb.secondary_structure as ioss
 
@@ -1085,7 +1291,7 @@ chain 'Aa' and resid   52  through   55  chain 'Aa' and resid   50  through   57
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   records=fss.annotation.as_pdb_str()
   import iotbx.pdb.secondary_structure as ioss
 
@@ -1189,7 +1395,7 @@ def get_annotation(text):
   import iotbx.pdb.secondary_structure as ioss
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   records=fss.annotation.as_pdb_str()
   return ioss.annotation.from_records(records=flex.split_lines(records))
 
@@ -1269,7 +1475,7 @@ def tst_11():
   from cctbx.array_family import flex
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
   print ann.as_pdb_str()
 
@@ -1295,7 +1501,7 @@ def tst_11():
 
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(one_full_helix_text)).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
   print ann.as_pdb_str()
 
@@ -1324,7 +1530,7 @@ def tst_11():
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(two_chain_text+one_full_helix_text)
          ).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   ann=fss.get_annotation()
   print ann.as_pdb_str()
 
@@ -1341,7 +1547,7 @@ def tst_11():
   assert ann.count_residues(hierarchy=hierarchy) ==17
 
   print "\nMake sure force and original ss are equivalent"
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=ss_text,
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -1362,12 +1568,12 @@ def tst_11():
      other=force_fss.get_annotation(),hierarchy=hierarchy)
 
   print "\nCorrect bad H-bond register in input"
-  fix_fss=find_secondary_structure(hierarchy=hierarchy,
+  fix_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=bad_two_chain_helix_ss,
       force_secondary_structure_input=False,
       combine_annotations=False,
       search_secondary_structure=False,out=null_out())
-  fss=find_secondary_structure(hierarchy=hierarchy,
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       combine_annotations=False,
       out=null_out())
   print "\nInput:"
@@ -1387,7 +1593,7 @@ def tst_11():
   bad_anno=ioss.annotation.from_records(records=flex.split_lines(
       bad_two_chain_helix_ss_correct_resname))
 
-  no_fix_fss=find_secondary_structure(hierarchy=hierarchy,
+  no_fix_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=bad_anno.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -1407,7 +1613,7 @@ def tst_11():
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(negative_residues)
          ).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       combine_annotations=False,
       out=null_out())
   expected=ioss.annotation.from_records(records=flex.split_lines("""
@@ -1421,7 +1627,7 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP A  -5
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(hybrid_residues)
          ).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       combine_annotations=False,
       out=null_out())
   expected=ioss.annotation.from_records(records=flex.split_lines("""
@@ -1436,10 +1642,10 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   hierarchy=iotbx.pdb.input(source_info='text',
        lines=flex.split_lines(antiparallel_text)
          ).construct_hierarchy()
-  fss=find_secondary_structure(hierarchy=hierarchy,
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       combine_annotations=False,
       out=null_out())
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -1460,7 +1666,7 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
      other=force_fss.get_annotation(),hierarchy=hierarchy)
 
   print "\nRemove annotation with too few H-bonds"
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -1474,7 +1680,7 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
          number_of_poor_h_bonds,)
   assert number_of_good_h_bonds==4 and number_of_poor_h_bonds==0
 
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       combine_annotations=False,
       require_h_bonds=True,
@@ -1488,7 +1694,7 @@ SHEET    2   1 2 GLY A 138  ASN A 141 -1  N  ASN A 141   O  ASP AXYB2
   assert number_of_good_h_bonds==0 and number_of_poor_h_bonds==0
 
   print "\nNow remove annotation with too many poor H-bonds"
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=antiparallel_ss,
       combine_annotations=False,
       require_h_bonds=True,  # has no effect as force=true
@@ -2313,7 +2519,7 @@ SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
   print "\nAnnotation with insertion codes"
   print "\nInput annotation:"
   print annotation.as_pdb_str()
-  fss=find_secondary_structure(hierarchy=hierarchy,out=null_out())
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   new_annotation=fss.get_annotation()
   print "\nNew annotation:"
   expected=ioss.annotation.from_records(records=flex.split_lines("""
@@ -2332,7 +2538,7 @@ SHEET    1   1 2 GLN A 156A VAL A 164  0
 SHEET    2   1 2 TYR A 170  ASN A 175 -1
 """))
 
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=annotation.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -2369,7 +2575,7 @@ HELIX    1   1 ALA A    1A ALA A   16  1                                  16
   print "\nHelix annotation with insertion codes"
   print "NOTE: currently misses the residues with insertion codes except those"
   print "at the ends of a string of insertion codes"
-  fss=find_secondary_structure(hierarchy=hierarchy,
+  fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       out=null_out()).get_annotation()
   print fss.as_pdb_str()
   expected=ioss.annotation.from_records(
@@ -2379,7 +2585,7 @@ HELIX    1   1 ALA A    4D ALA A   16  1                                  13
   assert expected.is_same_as(fss)
 
   print "\nHelix annotation with input annotation and insertion codes"
-  force_fss=find_secondary_structure(hierarchy=hierarchy,
+  force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
       user_annotation_text=annotation.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
@@ -2438,6 +2644,23 @@ HELIX    1   1 VAL U   72  GLY U   77  5                                   6
   print merged.as_pdb_str()
   assert merged.is_same_as(other=annotation)
 
+def tst_15():
+  import iotbx.pdb
+  from cctbx.array_family import flex
+
+  hierarchy=iotbx.pdb.input(source_info='text',
+       lines=flex.split_lines(multi_copy_text)
+         ).construct_hierarchy()
+  annotation_std=find_secondary_structure(
+     hierarchy=hierarchy,ss_by_chain=False,use_representative_chains=False,out=null_out()).get_annotation()
+  annotation_chains=find_secondary_structure(
+     hierarchy=hierarchy,ss_by_chain=True,use_representative_chains=False,out=null_out()).get_annotation()
+  annotation_chains_rep=find_secondary_structure(
+     hierarchy=hierarchy,ss_by_chain=True,use_representative_chains=True,out=null_out()).get_annotation()
+  print annotation_std
+  assert annotation_std.is_same_as(other=annotation_chains)
+  assert annotation_std.is_same_as(other=annotation_chains_rep)
+  print "OK"
 
 if __name__=="__main__":
   import sys
@@ -2456,4 +2679,5 @@ if __name__=="__main__":
   tst_12()
   tst_13()
   tst_14()
+  tst_15()
   print "OK"

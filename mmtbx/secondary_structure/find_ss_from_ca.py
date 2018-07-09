@@ -49,7 +49,37 @@ master_phil = iotbx.phil.parse("""
   }
 
   find_ss_structure {  # note values from regularize_from_pdb overwrite these
-
+                       # Also values for ss_by_chain and
+                       #   max_rmsd are set in
+                       #   mmtbx/secondary_structure/__init__.py
+     ss_by_chain = True
+       .type = bool
+       .help = Find secondary structure only within individual chains. \
+               Alternative is to allow H-bonds between chains. Can be \
+               much slower with ss_by_chain=False. If your model is complete \
+               use ss_by_chain=True. If your model is many fragments, use \
+               ss_by_chain=False. 
+       .short_caption = Secondary structure by chain
+       .expert_level = 1
+     max_rmsd = 1
+       .type = float
+       .help = Maximum rmsd to consider two chains with identical sequences \
+               as the same for ss identification
+       .short_caption = Maximum rmsd
+       .expert_level = 3
+     use_representative_chains = True
+       .type = bool
+       .help = Use a representative of all chains with the same sequence. \
+               Alternative is to examine each chain individually. Can be \
+               much slower with use_representative_of_chain=False if there \
+               are many symmetry copies. Ignored unless ss_by_chain is True.
+       .short_caption = Use representative chains
+       .expert_level = 3
+     max_representative_chains = 100
+       .type = float
+       .help = Maximum number of representative chains
+       .short_caption = Maximum representative chains
+       .expert_level = 3
      find_alpha = True
        .type = bool
        .help = Find alpha helices
@@ -261,6 +291,7 @@ def split_model(model=None,hierarchy=None,verbose=False,info=None,
       cc.id=chain.id  # copy chain ID
       new_hierarchy.append_model(mm)
       mm.append_chain(cc)
+
       last_resseq=None
       last_r=None
       is_linked=None
@@ -742,12 +773,66 @@ def remove_bad_annotation(annotation,hierarchy=None,
 
   return no_overlap_annotation
 
+def hierarchy_from_chain(chain):
+  # create a hierarchy from a chain
+  new_hierarchy=iotbx.pdb.input(
+     source_info="Model", lines=flex.split_lines("")).construct_hierarchy()
+  mm=iotbx.pdb.hierarchy.model()
+  cc=chain.detached_copy()
+  cc.id=chain.id  # copy chain ID
+  new_hierarchy.append_model(mm)
+  mm.append_chain(cc)
+  return new_hierarchy
+
 
 def get_string_or_first_element_of_list(something):
   if type(something)==type([1,2,3]):
     return something[0]
   else:
     return something
+
+def sequence_from_hierarchy(hierarchy,chain_type='PROTEIN'):
+  from iotbx.pdb import amino_acid_codes
+  ott = amino_acid_codes.one_letter_given_three_letter
+
+  sequence=""
+  for model in hierarchy.models()[:1]:
+    for chain in model.chains()[:1]:
+      for rr in chain.residue_groups():
+        for atom_group in rr.atom_groups()[:1]:
+           sequence+=ott.get(atom_group.resname,"")
+  return sequence
+           
+def sites_are_similar(sites1,sites2,max_rmsd=1):
+  # return True if sites can be superimposed
+  if max_rmsd is None:
+    return True
+  if max_rmsd < 0:
+    return False
+  if sites1.size() != sites2.size():
+    return False
+
+  lsq_fit_obj=superpose.least_squares_fit(
+       reference_sites=sites1,
+       other_sites=sites2)
+  sites2_fitted=lsq_fit_obj.other_sites_best_fit()
+  rmsd = sites1.rms_difference(sites2_fitted)
+  if rmsd <=max_rmsd:
+    return True
+  else:
+    return False
+
+
+def sites_and_seq_from_hierarchy(hierarchy):
+  atom_selection="name ca"
+  sele=apply_atom_selection(atom_selection,hierarchy=hierarchy)
+  if sele.overall_counts().n_residues==0:
+    sites=flex.vec3_double()
+    sequence=""
+  else:
+    sites=sele.extract_xray_structure().sites_cart()
+    sequence=sequence_from_hierarchy(sele)
+  return sites,sequence
 
 class model_info: # mostly just a holder
   def __init__(self,hierarchy=None,id=0,info={},
@@ -2968,6 +3053,109 @@ class helix_strand_segments:
     text+='"'
     return text
 
+class fss_result_object:
+  # A holder for results of find_secondary_structure
+  def __init__(self,
+      id=None,
+      chain_id=None,
+      hierarchy=None,
+      number_of_good_h_bonds=None,
+      number_of_poor_h_bonds=None,
+      h_bond_text=None,
+      annotation=None,
+      sequence=None,
+      sites=None,
+      max_rmsd=1):
+    adopt_init_args(self, locals())
+
+    if hierarchy:  #
+      self.sites,self.sequence=sites_and_seq_from_hierarchy(hierarchy)
+
+    self.chain_id_list=[]
+    if self.chain_id:
+      self.chain_id_list.append(self.chain_id)
+
+  def show_summary(self,out=sys.stdout):
+    print >>out,"\nSummary of find_secondary_structure object %s" %(self.id),
+    print >>out,"for sequence: %s\n" %(self.sequence)
+    print >>out,"Chain ID's where this applies: %s" %(
+      " ".join(self.get_chain_id_list()))
+    print >>out,"Good H-bonds: %s  Poor H-bonds: %s " %(
+      self.number_of_good_h_bonds,self.number_of_poor_h_bonds)
+    print >>out,"H-bond text:\n%s" %(self.h_bond_text)
+    print >>out,"Annotation:\n%s" %(self.get_annotation())
+
+  def add_chain_id(self,chain_id=None):
+    if chain_id is not None:
+      self.chain_id_list.append(chain_id)
+
+
+  def add_info(self,chain_id=None,
+      number_of_good_h_bonds=None,
+      number_of_poor_h_bonds=None,
+      h_bond_text=None,
+      annotation=None,):
+    if chain_id is not None:
+      self.chain_id_list.append(chain_id)
+    if number_of_good_h_bonds is not None:
+      self.number_of_good_h_bonds=number_of_good_h_bonds
+    if number_of_poor_h_bonds is not None:
+      self.number_of_poor_h_bonds=number_of_poor_h_bonds
+    if h_bond_text is not None:
+      self.h_bond_text=h_bond_text
+    if annotation is not None:
+      self.annotation=annotation
+
+  def get_annotation(self):
+    return self.annotation
+
+  def get_chain_id_list(self):
+    return self.chain_id_list
+
+  def is_similar_fss_result(self,other):
+    if self.sequence != other.sequence:
+       return False
+    if not sites_are_similar(self.sites,other.sites,max_rmsd=self.max_rmsd):
+       return False
+    return True
+
+class conformation_group:
+  # A group of fss_results with the same sequence but different 
+  #  conformations
+  def __init__(self,
+    fss_result=None,
+    ):
+
+    self.fss_results=[]
+    self.last_id=0
+    if fss_result:
+       self.last_id+=1
+       fss_result.id=self.last_id
+       self.fss_results.append(fss_result)
+
+  def __repr__(self):
+    text="Conformation group with %s fss_results" %(
+       len(self.get_fss_result_list()))
+    if self.get_fss_result_list():
+      text+="\nSequence: %s" %( self.get_fss_result_list()[0].sequence)
+    return text
+
+  def get_fss_result_list(self):
+    return self.fss_results
+
+  def add_fss_result(self,fss_result=None):
+    if fss_result:
+       self.last_id+=1
+       fss_result.id=self.last_id
+       self.fss_results.append(fss_result)
+
+  def get_similar_fss_result(self,fss_result=None):
+    for fss_r in self.fss_results:
+      if fss_r.is_similar_fss_result(fss_result):
+        return fss_r
+    return None
+      
+   
 class find_secondary_structure: # class to look for secondary structure
 
   def __init__(self,params=None,args=None,hierarchy=None,models=None,
@@ -2979,7 +3167,12 @@ class find_secondary_structure: # class to look for secondary structure
       minimum_h_bonds=None,
       maximum_poor_h_bonds=None,
       helices_are_alpha=False,
+      ss_by_chain=None,
+      use_representative_chains=None,
+      max_representative_chains=None,
+      max_rmsd=None,
       verbose=None,out=sys.stdout):
+    adopt_init_args(self, locals())
 
     if not args: args=[]
 
@@ -2989,6 +3182,7 @@ class find_secondary_structure: # class to look for secondary structure
     if verbose is not None:
       params.control.verbose=verbose
     verbose=params.control.verbose
+
 
     if helices_are_alpha or params.find_ss_structure.helices_are_alpha:
       params.find_ss_structure.find_three_ten=False
@@ -3008,6 +3202,16 @@ class find_secondary_structure: # class to look for secondary structure
          force_secondary_structure_input
     force_secondary_structure_input=\
       params.input_files.force_secondary_structure_input
+    if ss_by_chain is not None:
+      params.find_ss_structure.ss_by_chain=ss_by_chain
+    if max_rmsd is not None:
+      params.find_ss_structure.max_rmsd=max_rmsd
+    if use_representative_chains is not None:
+      params.find_ss_structure.use_representative_chains=\
+        use_representative_chains
+    if max_representative_chains is not None:
+      params.find_ss_structure.max_representative_chains=\
+        max_representative_chains
 
     secondary_structure_input=params.input_files.secondary_structure_input
 
@@ -3031,6 +3235,7 @@ class find_secondary_structure: # class to look for secondary structure
     self.number_of_poor_h_bonds=0
     self.user_number_of_good_h_bonds=0
     self.user_number_of_poor_h_bonds=0
+    self.h_bond_text=""
 
     if verbose:
       local_out=out
@@ -3073,6 +3278,15 @@ class find_secondary_structure: # class to look for secondary structure
       self.models=models
     else:
       self.models=split_model(hierarchy=hierarchy)
+
+    # Decide if we are going to run in parts and just extend those to all
+    #   copies
+    self.args=args
+    self.params=params
+    self.hierarchy=hierarchy
+    if self.need_to_run_in_parts():
+       self.run_in_parts()
+       return  # done
 
     if force_secondary_structure_input or (not
        params.find_ss_structure.search_secondary_structure):
@@ -3189,6 +3403,12 @@ class find_secondary_structure: # class to look for secondary structure
           require_h_bonds=params.find_ss_structure.require_h_bonds,
           minimum_h_bonds=params.find_ss_structure.minimum_h_bonds,
           maximum_poor_h_bonds=params.find_ss_structure.maximum_poor_h_bonds,
+          ss_by_chain=params.find_ss_structure.ss_by_chain,
+          use_representative_chains=\
+            params.find_ss_structure.use_representative_chains,
+          max_representative_chains=\
+            params.find_ss_structure.max_representative_chains,
+          max_rmsd=params.find_ss_structure.max_rmsd,
           out=local_out)
         print >>out,fss.h_bond_text
         self.number_of_good_h_bonds=fss.number_of_good_h_bonds
@@ -3206,6 +3426,128 @@ class find_secondary_structure: # class to look for secondary structure
 
     self.show_summary(verbose=params.control.verbose,
       pdb_records_file=params.output_files.pdb_records_file,out=out)
+
+  def need_to_run_in_parts(self,
+     min_residues_for_parts=None,
+     min_average_chain_length=None,):
+    # run in parts if lots of ncs or big chains.
+    # Don't if lots of little fragments or model objects are supplied.
+    if not self.params.find_ss_structure.ss_by_chain:
+      return # not going to do this at all
+    if not self.hierarchy:
+      return # not going to do this at all. Only from hierarchy
+
+    oc=self.hierarchy.overall_counts()
+    if min_residues_for_parts and oc.n_residues < min_residues_for_parts:
+      return
+    if min_average_chain_length and \
+       oc.n_residues/max(1,oc.n_chains) < min_average_chain_length:
+      return
+
+    # Worth running on individual chains
+    return True
+
+  def run_in_parts(self):
+    print >>self.out, "\nRunning on full chains (no "+\
+        "intra-chain secondary structure)"
+
+    # Just run through all the chains and get their ss.  If duplicate chains
+    #   and use_representative_chains, copy results
+    local_params=deepcopy(self.params)
+    local_params.find_ss_structure.ss_by_chain=False
+    if self.params.control.verbose: 
+      local_out=self.out
+    else:
+      from libtbx.utils import null_out
+      local_out=null_out()
+    result_dict={} # fss_conformation_groups keyed by sequence to find quickly
+    unique_sequence_list=[]
+    for model in self.hierarchy.models()[:1]:
+      for chain in model.chains():
+        chain_id=chain.id
+        local_hierarchy=hierarchy_from_chain(chain)
+        # get fss_result holder
+        current_fss_result=fss_result_object(chain_id=chain_id,
+           hierarchy=local_hierarchy,
+           max_rmsd=self.params.find_ss_structure.max_rmsd)
+        if self.params.find_ss_structure.use_representative_chains and \
+          len(unique_sequence_list)< \
+            self.params.find_ss_structure.max_representative_chains:
+          # See if this sequence has been analyzed already:
+          cg=result_dict.get(current_fss_result.sequence,conformation_group())
+          # cg is either empty or a conformation_group with current sequence
+          existing_fss_result=cg.get_similar_fss_result(current_fss_result)
+          # if present, existing_fss_result is same conformation as current
+        else:
+          cg=conformation_group()
+          existing_fss_result=None
+        if existing_fss_result:
+          existing_fss_result.add_chain_id(chain_id=chain_id)
+        else: # get the analysis of this chain
+          fss=find_secondary_structure(
+            params=local_params,hierarchy=local_hierarchy,
+            user_annotation_text=self.user_annotation_text,
+            max_h_bond_length=self.max_h_bond_length,
+            force_secondary_structure_input=\
+              self.force_secondary_structure_input,
+            search_secondary_structure=self.search_secondary_structure,
+            combine_annotations=self.combine_annotations,
+            require_h_bonds=self.require_h_bonds,
+            minimum_h_bonds=self.minimum_h_bonds,
+            maximum_poor_h_bonds=self.maximum_poor_h_bonds,
+            verbose=self.verbose,out=local_out)
+          current_fss_result.add_info(  # add new information
+             number_of_good_h_bonds=fss.number_of_good_h_bonds,
+             number_of_poor_h_bonds=fss.number_of_poor_h_bonds,
+             h_bond_text=fss.h_bond_text,
+             annotation=fss.get_annotation())
+          # add new fss_result to empty conformation_group and save
+          cg.add_fss_result(fss_result=current_fss_result)
+          result_dict[current_fss_result.sequence]=cg
+          unique_sequence_list.append(current_fss_result.sequence)
+
+       
+    # Go through all chains and save annotation and number of good/poor h bonds 
+    print >>self.out,"\nAnalysis using %s unique sequences:" %(
+       len(unique_sequence_list))
+    print >>self.out,"Unique part of the analysis:"
+    all_sheets=[]
+    all_helices=[]
+    number_of_good_h_bonds=0
+    number_of_poor_h_bonds=0
+    import iotbx.pdb.secondary_structure as ioss
+    i=0
+    for sequence in unique_sequence_list:
+      cg=result_dict[sequence]
+      i+=1
+      print >>self.out,80*"="
+      print >>self.out,"\nAnalysis of chains with sequence %s: %s\n" %(
+        i,sequence)
+      print >>self.out,80*"="
+      for fss_result in cg.get_fss_result_list():
+        fss_result.show_summary(out=self.out)
+        chain_id_list=fss_result.get_chain_id_list()
+        chain_id=chain_id_list[0]
+        annotation=fss_result.get_annotation().deep_copy()
+        n=len(chain_id_list)
+        if len(chain_id_list)>1:
+          chain_id_list=chain_id_list[1:]
+          annotation.multiply_to_asu_2(chain_ids_dict={chain_id:chain_id_list})
+        all_helices+=annotation.helices
+        all_sheets+=annotation.sheets
+        number_of_good_h_bonds+=n*fss_result.number_of_good_h_bonds
+        number_of_poor_h_bonds+=n*fss_result.number_of_poor_h_bonds
+        
+    self.annotation=ioss.annotation(sheets=all_sheets,helices=all_helices)
+    self.annotation.renumber_helices_and_sheets()
+    self.number_of_good_h_bonds=number_of_good_h_bonds
+    self.number_of_poor_h_bonds=number_of_poor_h_bonds
+    print >>self.out,80*"="
+    print >>self.out,"\nFinal annotation and selections"
+    print >>self.out,80*"="
+    self.show_summary(out=self.out)
+    
+  
 
   def show_summary(self,verbose=None,pdb_records_file=None,out=sys.stdout):
 
