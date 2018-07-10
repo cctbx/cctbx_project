@@ -303,12 +303,21 @@ def env_dxtbx_from_slac_metrology(run, address):
       @param env psana run object
       @param address address string for a detector
   """
+  try:
+      import psana
+      PSANA2_VERSION = psana.__version__
+  except AttributeError:
+      PSANA2_VERSION = 0
+    
+  if PSANA2_VERSION:
+    # FIXME: get metrology from a pickle file until det interface is ready
+    import cPickle as pickle
+    metro = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/psana-nersc/demo18/input/metro.pickle'))
+    cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
-  # FIXME: get metrology from a pickle file until det interface is ready
-  import cPickle as pickle
-  metro = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/demo18/input/metro.pickle'))
+    from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
+    return FormatCBFCspadInMemory(cbf)
   
-  """
   from psana import Detector
   try:
     # try to load the geometry from the detector interface
@@ -330,7 +339,6 @@ def env_dxtbx_from_slac_metrology(run, address):
     return None
 
   metro = read_slac_metrology(metro_path, geometry)
-  """
 
   cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
