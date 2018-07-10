@@ -964,9 +964,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           # FIXME MONA: relace this with above when all detector interfaces are ready
           raw = det.raw(evt)
           pedestals = det.pedestals(run)
+          data = None
           import cPickle as pickle
-          gain_mask = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/psana-nersc/demo18/input/gain_mask.pickle', 'r'))
-          data = gain_mask * (raw - pedestals)
+          PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
+          if PS_CALIB_DIR:
+            gain_mask = pickle.load(open(os.path.join(PS_CALIB_DIR,'gain_mask.pickle'), 'r'))
+            data = gain_mask * (raw - pedestals)
         else:
           data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                       common_mode=self.common_mode,

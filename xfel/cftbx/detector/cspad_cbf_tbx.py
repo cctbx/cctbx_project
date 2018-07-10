@@ -312,7 +312,10 @@ def env_dxtbx_from_slac_metrology(run, address):
   if PSANA2_VERSION:
     # FIXME: get metrology from a pickle file until det interface is ready
     import cPickle as pickle
-    metro = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/psana-nersc/demo18/input/metro.pickle'))
+    import os
+    PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
+    assert PS_CALIB_DIR
+    metro = pickle.load(open(os.path.join(PS_CALIB_DIR,'metro.pickle'), 'r'))
     cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
     from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
