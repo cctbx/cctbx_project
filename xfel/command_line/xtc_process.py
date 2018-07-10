@@ -351,6 +351,33 @@ extra_dials_phil_str = '''
   }
 '''
 
+def filter(evt):
+    return True
+
+def run_psana2(ims, params):
+    """" Begins psana2
+    This setup a DataSource psana2 style. The parallelization is determined within
+    the generation of the DataSource.
+    
+    ims: InMemScript (cctbx driver class)
+    params: input parameters"""
+    
+    ds = psana.DataSource("exp=cxid9114:run=95:dir=%s"%params.input.xtc_dir, 
+            filter=filter, max_events=params.dispatch.max_events)
+    det = None
+    if ds.nodetype == "bd":
+        det = ds.Detector(params.input.address)
+
+    for run in ds.runs():
+        for evt in run.events():
+            if det:
+                ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+                ims.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
+                ims.spotfinder_mask = None
+                ims.integration_mask = None
+                ims.process_event(run, evt, det)
+                ims.finalize()
+
 class EventOffsetSerializer(object):
   """ Pickles python object """
   def __init__(self,psanaOffset):
@@ -596,6 +623,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         write_newline = os.path.exists(self.mpi_log_file_path)
         if write_newline: # needed if the there was a crash
           self.mpi_log_write("\n")
+   
+    # FIXME MONA: psana 2 has pedestals and geometry hardcoded for cxid9114.
+    # We can remove after return code when all interfaces are ready.
+    run_psana2(self, params)
+    return
 
     # set up psana
     if params.input.cfg is not None:
@@ -631,7 +663,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if params.format.file_format == "cbf":
       self.psana_det = psana.Detector(params.input.address, ds.env())
-
+    
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
       max_events = sys.maxint
@@ -867,17 +899,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # Used by database logger
     return self.run.run(), self.timestamp
 
-  def process_event(self, run, evt):
+  def process_event(self, run, evt, det=None):
     """
     Process a single event from a run
     @param run psana run object
     @param timestamp psana timestamp object
     """
-    time = evt.get(psana.EventId).time()
-    fid = evt.get(psana.EventId).fiducials()
-
-    sec  = time[0]
-    nsec = time[1]
+    sec  = evt.seconds
+    nsec = evt.nanoseconds
 
     ts = cspad_tbx.evt_timestamp((sec,nsec/1e6))
     if ts is None:
@@ -903,11 +932,14 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           return
 
     self.debug_start(ts)
-
+    
+    # FIXME MONA: below will be replaced with filter() callback
+    """
     if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
       print "Skipping event",ts
       self.debug_write("psana_skip", "skip")
       return
+    """
 
     print "Accepted", ts
     self.params = copy.deepcopy(self.params_cache)
@@ -916,11 +948,19 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
+        """
         data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                       common_mode=self.common_mode,
                                                       apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                       gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
                                                       per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
+        """
+        # FIXME MONA: relace this with above when all detector interfaces are ready
+        raw = det.raw(evt)
+        pedestals = det.pedestals(run)
+        import cPickle as pickle
+        gain_mask = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/demo18/input/gain_mask.pickle', 'r'))
+        data = gain_mask * (raw - pedestals)
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
@@ -1001,12 +1041,15 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
       return
-
+    
+    # FIXME MONA: radial avg. is currently disabled 
+    """
     # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
     key_low = 'cctbx.xfel.radial_average.two_theta_low'
     key_high = 'cctbx.xfel.radial_average.two_theta_high'
     tt_low = evt.get(key_low)
     tt_high = evt.get(key_high)
+    """
 
     if self.params.radial_average.enable:
       if tt_low is not None or tt_high is not None:

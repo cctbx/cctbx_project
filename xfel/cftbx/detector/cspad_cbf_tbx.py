@@ -303,6 +303,12 @@ def env_dxtbx_from_slac_metrology(run, address):
       @param env psana run object
       @param address address string for a detector
   """
+
+  # FIXME: get metrology from a pickle file until det interface is ready
+  import cPickle as pickle
+  metro = pickle.load(open('/reg/d/psdm/cxi/cxid9114/scratch/mona/l2/demo18/input/metro.pickle'))
+  
+  """
   from psana import Detector
   try:
     # try to load the geometry from the detector interface
@@ -324,6 +330,8 @@ def env_dxtbx_from_slac_metrology(run, address):
     return None
 
   metro = read_slac_metrology(metro_path, geometry)
+  """
+
   cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
