@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 06/22/2018
+Last Changed: 07/11/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -358,6 +358,8 @@ class SpotFinderMosflmThread():
         suffix = fname.split('-')[-1]
       elif '.' in fname:
         suffix = fname.split('.')[-1]
+      else:
+        suffix = fname
       img_number = int(''.join(n if n.isdigit() else '' for n in suffix))
       prefix = fname.replace(suffix, '')
       n_suffix = ''.join("#" if c.isdigit() else c for c in suffix)

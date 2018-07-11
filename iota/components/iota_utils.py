@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 03/30/2018
+Last Changed: 07/11/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -176,10 +176,13 @@ class InputFinder():
     contents = [i.replace('\n', '') for i in contents][:1000]
     content_test = [os.path.isfile(i) for i in contents]
 
-    if Counter(content_test).most_common(1)[0][0]:
-      return 'file list'
-    else:
-      return self.test_phil(path)
+    try:
+      if Counter(content_test).most_common(1)[0][0]:
+        return 'file list'
+      else:
+        return self.test_phil(path)
+    except IndexError:
+      return 'unidentified'
 
   def test_pickle(self, path):
     # Test if pickle, and if so, if it's an image or processed pickle

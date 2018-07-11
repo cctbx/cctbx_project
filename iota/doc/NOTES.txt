@@ -2,6 +2,8 @@ IOTA v1.1.033 - Image tracker update
 
 Bugfixes:
 - Fixed "Finite Chart" checkbox - it now works
+- Fixed filename bug when raw image file have no extensions
+- Expanded list of monoclinic notations for PRIME input file
 
 Features:
 - Tracker now tracks indexed images as well

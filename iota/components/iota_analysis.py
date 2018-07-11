@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 04/12/2018
+Last Changed: 07/11/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -765,7 +765,7 @@ class Analyzer(object):
       pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
 
     triclinic = ['P1']
-    monoclinic = ['C2', 'P2']
+    monoclinic = ['C2', 'P2', 'P121', 'C121']
     orthorhombic = ['P222', 'C222', 'I222', 'F222']
     tetragonal = ['I4', 'I422', 'P4', 'P422']
     hexagonal = ['P3', 'P312', 'P321', 'P6', 'P622']

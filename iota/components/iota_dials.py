@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 05/31/2018
+Last Changed: 07/11/2018
 Description : Runs DIALS spotfinding, indexing, refinement and integration
               modules. The entire thing works, but no optimization of parameters
               is currently available. This is very much a work in progress
@@ -231,7 +231,7 @@ class Integrator(object):
     self.phil = current_phil.extract()
 
    # Set general file-handling settings
-    file_basename = os.path.basename(source_image).split('.')[0]
+    file_basename = misc.make_filename(source_image)
     self.phil.output.datablock_filename = "{}/{}.json".format(object_folder, file_basename)
     self.phil.output.indexed_filename = "{}/{}_indexed.pickle".format(object_folder, file_basename)
     self.phil.output.strong_filename = "{}/{}_strong.pickle".format(object_folder, file_basename)

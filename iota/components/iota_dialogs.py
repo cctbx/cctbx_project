@@ -1256,25 +1256,40 @@ class CCTBXOptions(BaseBackendDialog):
     # # Grid search path (for select-only option)
     # grid_search_path = noneset(self.img_objects_path.ctr.GetValue())
 
-    # Filter options
+    # Filter params
     filter_on = bool(self.filt_lattice.toggle.GetValue() +
                      self.filt_uc.toggle.GetValue() +
                      self.filt_ref.toggle.GetValue() +
                      self.filt_res.toggle.GetValue()
                      )
-    lattice = noneset(self.filt_lattice.lattice.GetValue())
-    uc = noneset(', '.join([noneset(self.filt_uc.a.GetValue()),
-                            noneset(self.filt_uc.b.GetValue()),
-                            noneset(self.filt_uc.c.GetValue()),
-                            noneset(self.filt_uc.alpha.GetValue()),
-                            noneset(self.filt_uc.beta.GetValue()),
-                            noneset((self.filt_uc.gamma.GetValue()))
-                            ]
-                           )
-                 )
-    tolerance = noneset(self.filt_uc.tolerance.GetValue())
-    ref = noneset(self.filt_ref.ref.GetValue())
-    res = noneset(self.filt_res.res.GetValue())
+    if self.filt_lattice.toggle.GetValue():
+      lattice = self.filt_lattice.lattice.GetValue()
+    else:
+      lattice = None
+
+    if self.filt_uc.toggle.GetValue():
+      uc = ', '.join([
+        self.filt_uc.a.GetValue(),
+        self.filt_uc.b.GetValue(),
+        self.filt_uc.c.GetValue(),
+        self.filt_uc.alpha.GetValue(),
+        self.filt_uc.beta.GetValue(),
+        (self.filt_uc.gamma.GetValue())
+      ])
+      tolerance = self.filt_uc.tolerance.GetValue()
+    else:
+      uc = None
+      tolerance = None
+
+    if self.filt_ref.toggle.GetValue():
+      ref = noneset(self.filt_ref.ref.GetValue())
+    else:
+      ref = None
+
+    if self.filt_res.toggle.GetValue():
+      res = noneset(self.filt_res.res.GetValue())
+    else:
+      res = None
 
     # Populate IOTA settings
     proc_phil_text = '\n'.join([
@@ -1623,19 +1638,34 @@ class DIALSOptions(BaseBackendDialog):
                      self.filt_ref.toggle.GetValue() +
                      self.filt_res.toggle.GetValue()
                      )
-    lattice = noneset(self.filt_lattice.lattice.GetValue())
-    uc = noneset(', '.join([noneset(self.filt_uc.a.GetValue()),
-                            noneset(self.filt_uc.b.GetValue()),
-                            noneset(self.filt_uc.c.GetValue()),
-                            noneset(self.filt_uc.alpha.GetValue()),
-                            noneset(self.filt_uc.beta.GetValue()),
-                            noneset((self.filt_uc.gamma.GetValue()))
-                            ]
-                           )
-                 )
-    tolerance = noneset(self.filt_uc.tolerance.GetValue())
-    ref = noneset(self.filt_ref.ref.GetValue())
-    res = noneset(self.filt_res.res.GetValue())
+    if self.filt_lattice.toggle.GetValue():
+      lattice = self.filt_lattice.lattice.GetValue()
+    else:
+      lattice = None
+
+    if self.filt_uc.toggle.GetValue():
+      uc = ', '.join([
+                      self.filt_uc.a.GetValue(),
+                      self.filt_uc.b.GetValue(),
+                      self.filt_uc.c.GetValue(),
+                      self.filt_uc.alpha.GetValue(),
+                      self.filt_uc.beta.GetValue(),
+                      (self.filt_uc.gamma.GetValue())
+                      ])
+      tolerance = self.filt_uc.tolerance.GetValue()
+    else:
+      uc = None
+      tolerance = None
+
+    if self.filt_ref.toggle.GetValue():
+      ref = noneset(self.filt_ref.ref.GetValue())
+    else:
+      ref = None
+
+    if self.filt_res.toggle.GetValue():
+      res = noneset(self.filt_res.res.GetValue())
+    else:
+      res = None
 
     dials_phil_text = '\n'.join([
       'dials',
