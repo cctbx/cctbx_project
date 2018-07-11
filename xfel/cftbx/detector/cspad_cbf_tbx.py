@@ -308,7 +308,7 @@ def env_dxtbx_from_slac_metrology(run, address):
       PSANA2_VERSION = psana.__version__
   except AttributeError:
       PSANA2_VERSION = 0
-    
+
   if PSANA2_VERSION:
     # FIXME: get metrology from a pickle file until det interface is ready
     import cPickle as pickle
@@ -320,7 +320,7 @@ def env_dxtbx_from_slac_metrology(run, address):
 
     from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
     return FormatCBFCspadInMemory(cbf)
-  
+
   from psana import Detector
   try:
     # try to load the geometry from the detector interface
