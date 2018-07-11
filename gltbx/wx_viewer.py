@@ -79,6 +79,13 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     if hasattr(wx.glcanvas, 'WX_GL_RGBA'):
       kw['attribList'].append(wx.glcanvas.WX_GL_RGBA) # required on Windows
 
+    # Find the highest reasonable depth buffer this display supports - clearly
+    # if none are supported, no setting will be set
+    for buffer_depth in [24,16,8,4]:
+      if self.IsDisplaySupported([wx.glcanvas.WX_GL_DEPTH_SIZE, buffer_depth]):
+        kw['attribList'].extend([wx.glcanvas.WX_GL_DEPTH_SIZE, buffer_depth])
+        break
+
     if hasattr(wx.glcanvas, 'WX_GL_DOUBLEBUFFER'):
       try:
         if self.IsDisplaySupported(wx.glcanvas.WX_GL_DOUBLEBUFFER):
