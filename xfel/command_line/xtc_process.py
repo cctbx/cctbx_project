@@ -363,11 +363,11 @@ def run_psana2(ims, params):
     """" Begins psana2
     This setup a DataSource psana2 style. The parallelization is determined within
     the generation of the DataSource.
-    
+
     ims: InMemScript (cctbx driver class)
     params: input parameters"""
-    
-    ds = psana.DataSource("exp=cxid9114:run=95:dir=%s"%params.input.xtc_dir, 
+
+    ds = psana.DataSource("exp=cxid9114:run=95:dir=%s"%params.input.xtc_dir,
             filter=filter, max_events=params.dispatch.max_events)
     det = None
     if ds.nodetype == "bd":
@@ -628,7 +628,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         write_newline = os.path.exists(self.mpi_log_file_path)
         if write_newline: # needed if the there was a crash
           self.mpi_log_write("\n")
-   
+
     # FIXME MONA: psana 2 has pedestals and geometry hardcoded for cxid9114.
     # We can remove after return code when all interfaces are ready.
     if PSANA2_VERSION:
@@ -670,7 +670,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     if params.format.file_format == "cbf":
       self.psana_det = psana.Detector(params.input.address, ds.env())
-    
+
     # set this to sys.maxint to analyze all events
     if params.dispatch.max_events is None:
       max_events = sys.maxint
@@ -945,7 +945,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           return
 
     self.debug_start(ts)
-    
+
     # FIXME MONA: below will be replaced with filter() callback
     if not PSANA2_VERSION:
       if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
@@ -1057,8 +1057,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       from dials.command_line.estimate_gain import estimate_gain
       estimate_gain(imgset)
       return
-    
-    # FIXME MONA: radial avg. is currently disabled 
+
+    # FIXME MONA: radial avg. is currently disabled
     if not PSANA2_VERSION:
       # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
       key_low = 'cctbx.xfel.radial_average.two_theta_low'
