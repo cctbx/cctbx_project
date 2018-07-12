@@ -22,14 +22,17 @@ from libtbx.str_utils import wordwrap
 from libtbx.utils import multi_out, show_times, Sorry
 
 # =============================================================================
-def run_program(program_class=None, args=None, logger=None):
+def run_program(program_class=None, custom_process_arguments=None,
+                args=None, logger=None):
   '''
   Function for running programs using CCTBXParser and the program template
 
-  :param program_class:     ProgramTemplate type (required)
-  :param args:              list of command-line arguments (optional)
-  :param logger:            logger (e.g. multi_out) for output (optional)
-  :rtype:                   whatever is returned from program_class.get_results()
+  :param program_class:  ProgramTemplate type (required)
+  :param custom_process_arguments:
+                         Custom function to parse unknown arguments (optional)
+  :param args:           list of command-line arguments (optional)
+  :param logger:         logger (e.g. multi_out) for output (optional)
+  :rtype:                whatever is returned from program_class.get_results()
   '''
 
   assert (program_class is not None)
@@ -46,7 +49,9 @@ def run_program(program_class=None, args=None, logger=None):
   t = show_times(out=logger)
 
   # create parser
-  parser = CCTBXParser(program_class=program_class, logger=logger)
+  parser = CCTBXParser(program_class=program_class,
+                       custom_process_arguments=custom_process_arguments,
+                       logger=logger)
   namespace = parser.parse_args(args)
 
   # start program
