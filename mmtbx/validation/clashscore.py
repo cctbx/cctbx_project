@@ -296,8 +296,6 @@ class probe_clashscore_manager(object):
           '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
             ' "blt%d ogt%d not water" -' % (blt, ogt)
 
-    if verbose:
-      print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string)
 
@@ -571,6 +569,8 @@ def check_and_add_hydrogen(
   # add hydrogen if needed
   if has_reduce and (not keep_hydrogens):
     # set reduce running parameters
+    if verbose:
+      print "\nAdding H/D atoms with reduce...\n"
     build = "phenix.reduce -oh -his -flip -keep -allalt -limit{}"
     if not do_flips : build += " -pen9999"
     if nuclear:
@@ -595,6 +595,8 @@ def check_and_add_hydrogen(
       msg = 'phenix.reduce could not be detected on your system.\n'
       msg += 'Cannot add hydrogen to PDB file'
       print >> log,msg
+    if verbose:
+      print "\nUsing input model H/D atoms...\n"
     return r.as_pdb_string(cryst_sym),False
 
 #-----------------------------------------------------------------------
