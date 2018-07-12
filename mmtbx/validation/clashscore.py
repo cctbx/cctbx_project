@@ -55,6 +55,7 @@ class clashscore(validation):
     "clash_dict_b_cutoff",
     "list_dict",
     "b_factor_cutoff",
+    "fast",
     "probe_file",
     "probe_clashscore_manager"
   ]
@@ -67,6 +68,7 @@ class clashscore(validation):
 
   def __init__ (self,
       pdb_hierarchy,
+      fast = False, # do really fast clashscore, produce only the number
       keep_hydrogens=True,
       nuclear=False,
       force_unique_chain_ids=False,
@@ -78,6 +80,7 @@ class clashscore(validation):
       out=sys.stdout) :
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
+    self.fast = fast
     self.clashscore = None
     self.clashscore_b_cutoff = None
     self.clash_dict = {}
@@ -117,6 +120,7 @@ class clashscore(validation):
       self.probe_clashscore_manager = probe_clashscore_manager(
         h_pdb_string=input_str,
         nuclear=nuclear,
+        fast=self.fast,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
@@ -152,7 +156,7 @@ class clashscore(validation):
       k = self.clash_dict.keys()[0]
       #catches case where file has 1 model, but also has model/endmdl cards
       print >> out, prefix + "clashscore = %.2f" % self.clash_dict[k]
-      if self.clash_dict_b_cutoff[k] is not None:
+      if self.clash_dict_b_cutoff[k] is not None and self.b_factor_cutoff is not None:
         print >> out, "clashscore (B factor cutoff = %d) = %f" % \
           (self.b_factor_cutoff,
            self.clash_dict_b_cutoff[k])
@@ -160,11 +164,14 @@ class clashscore(validation):
       for k in sorted(self.clash_dict.keys()) :
         print >> out, prefix + "MODEL %s clashscore = %.2f" % (k,
           self.clash_dict[k])
-        if self.clash_dict_b_cutoff[k] is not None:
+        if self.clash_dict_b_cutoff[k] is not None and self.b_factor_cutoff is not None:
           print >> out, "MODEL%s clashscore (B factor cutoff = %d) = %f" % \
             (k, self.b_factor_cutoff, self.clash_dict_b_cutoff[k])
 
   def print_clashlist_old (self, out=sys.stdout):
+    if self.fast:
+      print >> out, "Bad Clashes >= 0.4 Angstrom - not available in fast=True mode"
+      return
     for k in self.list_dict.keys():
       if k == '':
         print >> out, "Bad Clashes >= 0.4 Angstrom:"
@@ -227,6 +234,7 @@ class probe_line_info_storage(object):
 class probe_clashscore_manager(object):
   def __init__(self,
                h_pdb_string,
+               fast = False,
                nuclear=False,
                largest_occupancy=10,
                b_factor_cutoff=None,
@@ -247,6 +255,7 @@ class probe_clashscore_manager(object):
     assert libtbx.env.has_module(name="probe")
 
     self.b_factor_cutoff = b_factor_cutoff
+    self.fast = fast
     self.use_segids=use_segids
     ogt = 10
     blt = self.b_factor_cutoff
@@ -323,7 +332,7 @@ class probe_clashscore_manager(object):
     new_hbond_hash = {}
     previous_line = None
     for line in probe_unformatted:
-      processed=False
+      # processed=False # garbage
       try:
         line_storage = probe_line_info_storage(line)
       except KeyboardInterrupt: raise
@@ -345,72 +354,127 @@ class probe_clashscore_manager(object):
       self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
+  def process_raw_probe_output_fast(self, lines):
+    def parse_line(line):
+      sp = line.split(':')
+      return sp[3], sp[4], float(sp[6])
+
+    def parse_h_line(line):
+      sp = line.split(':')
+      return sp[3], sp[4]
+
+    clashes = set() # [(src, targ), (src, targ)]
+    hbonds = [] # (src, targ), (targ, src)
+    n_cl = 0
+    n_hb = 0
+    prev_line = None
+    skip_the_rest = False
+    for l in lines:
+      rtype = l[6:8]
+      if rtype == 'so' or rtype == 'bo':
+        if skip_the_rest:
+          if prev_line and l[:43] == prev_line[:43]:
+            continue
+        srcAtom, targAtom, gap = parse_line(l)
+        if gap <= -0.4:
+          if (srcAtom, targAtom) not in clashes and (targAtom, srcAtom) not in clashes:
+            clashes.add((srcAtom, targAtom))
+            prev_line = l
+          skip_the_rest = True
+        else:
+          skip_the_rest = False
+
+      elif rtype == 'hb':
+        if prev_line and l[:43] == prev_line[:43]:
+          continue
+        srcAtom, targAtom = parse_h_line(l)
+        hbonds.append((srcAtom, targAtom))
+        hbonds.append((targAtom, srcAtom))
+        prev_line = l
+    hbonds_set = set(hbonds)
+    n_clashes = 0
+    for clash in clashes:
+      if clash not in hbonds_set:
+        n_clashes += 1
+    return n_clashes
+
   def run_probe_clashscore(self, pdb_string):
+    self.n_clashes = 0
+    self.n_clashes_b_cutoff = 0
+    self.clashscore_b_cutoff = None
+    self.bad_clashes = []
+    self.clashscore = None
+    self.n_atoms = 0
+    self.natoms_b_cutoff = 0
+
     probe_out = easy_run.fully_buffered(self.probe_txt,
       stdin_lines=pdb_string)
     if (probe_out.return_code != 0) :
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
-    printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
-                                                  stdin_lines=pdb_string)
-    self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
 
-    temp = self.process_raw_probe_output(probe_unformatted)
+    if not self.fast:
+      temp = self.process_raw_probe_output(probe_unformatted)
+      self.n_clashes = len(temp)
+      # XXX Warning: one more probe call here
+      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
+                                                    stdin_lines=pdb_string)
+      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
+    else:
+      self.n_clashes = self.process_raw_probe_output_fast(probe_unformatted)
 
-    self.n_clashes = len(temp)
-    if self.b_factor_cutoff is not None:
-      clashes_b_cutoff = 0
-      for clash_obj in temp:
-        if clash_obj.max_b_factor < self.b_factor_cutoff:
-          clashes_b_cutoff += 1
-      self.n_clashes_b_cutoff = clashes_b_cutoff
-    used = []
-    self.bad_clashes = []
-    for clash_obj in sorted(temp) :
-      test_key = clash_obj.id_str_no_atom_name()
-      test_key = clash_obj.id_str()
-      if test_key not in used:
-        used.append(test_key)
-        self.bad_clashes.append(clash_obj)
+    # getting number of atoms from probe
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
       stdin_lines=pdb_string) #.raise_if_errors().stdout_lines
     err = probe_info.format_errors_if_any()
     if err is not None and err.find("No atom data in input.")>-1:
-      self.clashscore = None
-      self.clashscore_b_cutoff = None
       return
     #if (len(probe_info) == 0) :
     #  raise RuntimeError("Empty PROBE output.")
-    self.n_atoms = 0
     n_atoms = 0
     for line in probe_info.stdout_lines:
-      processed=False
+      # processed=False # garbage
       try:
         dump, n_atoms = line.split(":")
       except KeyboardInterrupt: raise
       except ValueError:
         pass # something else (different from expected) got into output
     self.n_atoms = int(n_atoms)
-    self.natoms_b_cutoff = None
-    if self.probe_atom_b_factor is not None:
-      probe_info_b_factor = easy_run.fully_buffered(self.probe_atom_b_factor,
-        stdin_lines=pdb_string).raise_if_errors().stdout_lines
-      for line in probe_info_b_factor :
-        dump_b, natoms_b_cutoff = line.split(":")
-      self.natoms_b_cutoff = int(natoms_b_cutoff)
     if self.n_atoms == 0:
-      clashscore = 0.0
+      self.clashscore = 0.0
     else:
-      clashscore = (self.n_clashes * 1000) / self.n_atoms
-    self.clashscore = clashscore
-    clashscore_b_cutoff = None
-    if self.natoms_b_cutoff is not None and self.natoms_b_cutoff == 0:
-      clashscore_b_cutoff = 0.0
-    elif self.natoms_b_cutoff is not None:
-      clashscore_b_cutoff = \
-        (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
-    self.clashscore_b_cutoff = clashscore_b_cutoff
+      self.clashscore = (self.n_clashes * 1000) / self.n_atoms
+
+    if not self.fast:
+      # The rest is not necessary, we already got clashscore
+      if self.b_factor_cutoff is not None:
+        clashes_b_cutoff = 0
+        for clash_obj in temp:
+          if clash_obj.max_b_factor < self.b_factor_cutoff:
+            clashes_b_cutoff += 1
+        self.n_clashes_b_cutoff = clashes_b_cutoff
+      used = []
+
+      for clash_obj in sorted(temp) :
+        test_key = clash_obj.id_str_no_atom_name()
+        test_key = clash_obj.id_str()
+        if test_key not in used:
+          used.append(test_key)
+          self.bad_clashes.append(clash_obj)
+
+      if self.probe_atom_b_factor is not None:
+        probe_info_b_factor = easy_run.fully_buffered(self.probe_atom_b_factor,
+          stdin_lines=pdb_string).raise_if_errors().stdout_lines
+        for line in probe_info_b_factor :
+          dump_b, natoms_b_cutoff = line.split(":")
+        self.natoms_b_cutoff = int(natoms_b_cutoff)
+      self.clashscore_b_cutoff = None
+      if self.natoms_b_cutoff == 0:
+        self.clashscore_b_cutoff = 0.0
+      else :
+        self.clashscore_b_cutoff = \
+          (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
 
 def decode_atom_string (atom_str, use_segids=False) :
   # Example:

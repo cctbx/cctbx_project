@@ -13,6 +13,10 @@ master_phil_str = """
     .optional = False
     .help = '''input PDB file'''
 
+  fast = False
+    .type = bool
+    .help = ''' Produce only clashscore number, without anything else'''
+
   verbose = True
     .type = bool
 
@@ -43,6 +47,7 @@ phenix.clashscore file.pdb [params.eff] [options ...]
 Options:
 
   model=input_file          input PDB file
+  fast = False              Produce only clashscore number, without anything else
   keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
@@ -77,6 +82,7 @@ def run (args, out=sys.stdout, quiet=None) :
   hierarchy = pdb_in.file_object.hierarchy
   result = clashscore(
     pdb_hierarchy=hierarchy,
+    fast = params.fast,
     keep_hydrogens=params.keep_hydrogens,
     nuclear=params.nuclear,
     out=out,

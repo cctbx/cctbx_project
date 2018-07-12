@@ -1193,10 +1193,13 @@ def exercise_6():
   ms.show()
   #
   # IF you are about to change this - STOP! Likely you're doing something wrong!
+  # Essentially, this test is to prevent inserting parameters into
+  # mmtbx.model.statistics without much thinking. Most of parameters should
+  # go elsewhere.
   #
   import inspect
   r = inspect.getargspec(mmtbx.model.statistics.geometry.__init__)
-  assert r.args == ['self', 'pdb_hierarchy', 'use_hydrogens', 'use_nuclear', 'geometry_restraints_manager']
+  assert r.args == ['self', 'pdb_hierarchy', 'fast_clash', 'use_hydrogens', 'use_nuclear', 'geometry_restraints_manager'], r.args
 
 def exercise_from_hierarchy():
   def check_consistency(m1, m2):

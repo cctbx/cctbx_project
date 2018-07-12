@@ -20,10 +20,12 @@ from cctbx import adptbx
 class geometry(object):
   def __init__(self,
                pdb_hierarchy,
+               fast_clash=False,
                use_hydrogens=True,
                use_nuclear=False,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
+    self.fast_clash = fast_clash
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
@@ -159,12 +161,14 @@ class geometry(object):
   def clash(self):
     if self.cached_clash is None:
       self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
+                                     fast = self.fast_clash,
                                      keep_hydrogens = self.use_hydrogens,
-                                     nuclear = self.use_nuclear
+                                     nuclear = self.use_nuclear,
       )
     return group_args(
       score   = self.cached_clash.get_clashscore(),
-      clashes = self.cached_clash #XXX Bulky object -- REMOVE!
+      clashes = self.cached_clash #XXX Bulky object -- REMOVE! - Not kidding,
+          # it contains 1 probe output, which can be GigaBytes!
       )
 
   def cablam(self):

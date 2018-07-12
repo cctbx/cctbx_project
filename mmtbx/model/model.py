@@ -2751,6 +2751,7 @@ class manager(object):
     #
     return mmtbx.model.statistics.geometry(
       pdb_hierarchy               = ph_dc,
+      fast_clash = True,
       geometry_restraints_manager = rm.geometry)
 
   def occupancy_statistics(self):
