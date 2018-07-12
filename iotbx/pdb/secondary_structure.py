@@ -436,7 +436,6 @@ class structure_base (object) :
     "This uses the annotation in self"
     "Not appropriate for large structures unless you set ss_by_chain=True"
     "Use instead annotation.count_h_bonds in general."
-    print "ZZ count_h_bonds",hierarchy.overall_counts().n_residues
     if hierarchy is None:
       raise AssertionError,"Require hierarchy for count_h_bonds"
 
@@ -456,7 +455,6 @@ class structure_base (object) :
       combine_annotations=False,
       ss_by_chain=ss_by_chain,
       max_h_bond_length=max_h_bond_length,out=null_out())
-    print "ZZ done count_h_bonds",hierarchy.overall_counts().n_residues,fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
     return fss.number_of_good_h_bonds,fss.number_of_poor_h_bonds
 
 
@@ -1332,13 +1330,10 @@ class annotation(structure_base):
 
     #print >>out,"\nFinding matching and unique helices:"
 
-    print "ZZC helices"
     helices=self.get_unique_set(
        a1.helices,a2.helices,hierarchy=hierarchy,out=out)
     #print >>out,"\nFinding matching and unique sheets:"
-    print "ZZC sheets"
     sheets=self.get_unique_set(a1.sheets,a2.sheets,hierarchy=hierarchy,out=out)
-    print "ZZC donesheets"
 
     new_annotation=annotation(sheets=sheets,helices=helices)
     new_annotation=new_annotation.merge_sheets()
@@ -1429,7 +1424,6 @@ class annotation(structure_base):
   def get_unique_set(self,h1_list,h2_list,hierarchy=None,
      out=sys.stdout):
     # Sheets should be split before using get_unique_set
-    print "ZZD unique set...",h1_list,h2_list,hierarchy.overall_counts().n_residues
     pairs=[]
     overlapping_but_not_matching_pairs=[]
     unique_h1=[]
@@ -1438,7 +1432,6 @@ class annotation(structure_base):
     used_h2=[]
     for h1 in h1_list:
       for h2 in h2_list:
-        print "ZZD overlap check:",h1,h2
         if not h2.has_chains_in_common(other=h1):
           pass # nothting to do
         elif h2.is_similar_to(other=h1,hierarchy=hierarchy,
@@ -1456,11 +1449,9 @@ class annotation(structure_base):
     for h2 in h2_list:
       if not h2 in used_h2: unique_h2.append(h2)
 
-    print "ZZD unique...",pairs
     if pairs:
       #print >>out,"\nMatching pairs:"
       for [h1,h2] in pairs:
-        print "ZZD checking unique",h1,h2
 
         score_1,score_2=self.score_pair(h1,h2,
           maximize_h_bonds=self.maximize_h_bonds,
@@ -1468,8 +1459,8 @@ class annotation(structure_base):
           max_h_bond_length=self.max_h_bond_length,
           rescore_if_zero_scores=True,
           keep_self=self.keep_self)
-        print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str()) # ZZ
-        print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str()) # ZZ
+        #print >>out,"SELF : %7.1f\n%s" %(score_1,h1.as_pdb_str())
+        #print >>out,"OTHER: %7.1f\n%s" %(score_2,h2.as_pdb_str())
 
     if overlapping_but_not_matching_pairs:
       #print >>out,"\nOverlapping non-matching pairs:"
@@ -1503,7 +1494,6 @@ class annotation(structure_base):
         #print >>out,"OTHER: %7.1f\n%s" %(score_1,h2.as_pdb_str())
 
     unique=unique_h1+unique_h2
-    print "ZZD unique..."
 
     # Now take the best (or self if desired) of pairs and add on unique
     final_list=[]
