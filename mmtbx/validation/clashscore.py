@@ -268,7 +268,7 @@ class probe_clashscore_manager(object):
     probe_command = '"%s"' % probe_command   # in case of spaces in path
     if not nuclear:
       self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
+        '%s -u -q -mc -het -once -NOVDWOUT -CON "ogt%d not water" "ogt%d" -' % \
           (probe_command, ogt, ogt)
       #The -NOVDWOUT probe run above is faster for clashscore to parse,
       # the full_probe_txt version below is for printing to file for coot usage
@@ -283,7 +283,7 @@ class probe_clashscore_manager(object):
             (probe_command, blt, ogt)
     else: #use nuclear distances
       self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT -nuclear' % probe_command +\
+        '%s -u -q -mc -het -once -NOVDWOUT -CON -nuclear' % probe_command +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.full_probe_txt = \
         '%s -u -q -mc -het -once -nuclear' % probe_command +\
@@ -378,6 +378,41 @@ class probe_clashscore_manager(object):
         n_clashes += 1
     return n_clashes
 
+  def get_condenced_clashes(self, lines):
+    def parse_line(line):
+      sp = line.split(':')
+      return sp[3], sp[4], float(sp[6])
+    def parse_h_line(line):
+      sp = line.split(':')
+      return sp[3], sp[4]
+
+    clashes = set() # [(src, targ), (src, targ)]
+    hbonds = [] # (src, targ), (targ, src)
+    for l in lines:
+      rtype = l[6:8]
+      if rtype == 'so' or rtype == 'bo':
+        srcAtom, targAtom, gap = parse_line(l)
+        if gap <= -0.4:
+          # print l[:43], "good gap, saving", gap
+          if (srcAtom, targAtom) not in clashes and (targAtom, srcAtom) not in clashes:
+            clashes.add((srcAtom, targAtom))
+            # print (srcAtom, targAtom)
+      elif rtype == 'hb':
+        srcAtom, targAtom = parse_h_line(l)
+        hbonds.append((srcAtom, targAtom))
+        hbonds.append((targAtom, srcAtom))
+        prev_line = l
+    hbonds_set = set(hbonds)
+    n_clashes = 0
+    # print "clashes", len(clashes)
+    # print "hbonds", len(hbonds)
+    for clash in clashes:
+      if clash not in hbonds_set:
+        n_clashes += 1
+      # else:
+        # print "skipping", clash
+    return n_clashes
+
   def run_probe_clashscore(self, pdb_string):
     self.n_clashes = 0
     self.n_clashes_b_cutoff = 0
@@ -402,7 +437,7 @@ class probe_clashscore_manager(object):
                                                     stdin_lines=pdb_string)
       self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
     else:
-      self.n_clashes = self.process_raw_probe_output_fast(probe_unformatted)
+      self.n_clashes = self.get_condenced_clashes(probe_unformatted)
 
     # getting number of atoms from probe
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
