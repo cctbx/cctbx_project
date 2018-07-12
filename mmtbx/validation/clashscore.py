@@ -202,11 +202,11 @@ class clashscore(validation):
 
 class probe_line_info_storage(object):
   def __init__(self, line):
-    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
-    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
+    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.dot_count, \
+    self.min_gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
     self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
     self.tBval = line.split(":")
-    self.gap = float(self.gap)
+    self.min_gap = float(self.min_gap)
     self.x = float(self.x)
     self.y = float(self.y)
     self.z = float(self.z)
@@ -224,7 +224,7 @@ class probe_line_info_storage(object):
       atoms = [ atom2, atom1 ]
     clash_obj = clash(
       atoms_info=atoms,
-      overlap=self.gap,
+      overlap=self.min_gap,
       probe_type=self.type,
       outlier=abs(self.gap) > 0.4,
       max_b_factor=max(self.sBval, self.tBval),
@@ -305,18 +305,14 @@ class probe_clashscore_manager(object):
       key = line_info.srcAtom+line_info.targAtom
 
     if (line_info.type == "so" or line_info.type == "bo"):
-      if (line_info.gap <= -0.4):
+      if (line_info.min_gap <= -0.4):
         if (key in clash_hash) :
-          if (line_info.gap < clash_hash[key].gap):
+          if (line_info.min_gap < clash_hash[key].min_gap):
             clash_hash[key] = line_info
         else :
           clash_hash[key] = line_info
     elif (line_info.type == "hb"):
-      if (key in hbond_hash) :
-        if (line_info.gap < hbond_hash[key].gap):
-          hbond_hash[key] = line_info
-      else :
-        hbond_hash[key] = line_info
+      hbond_hash[key] = line_info
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
@@ -328,7 +324,6 @@ class probe_clashscore_manager(object):
   def process_raw_probe_output(self, probe_unformatted):
     new_clash_hash = {}
     new_hbond_hash = {}
-    previous_line = None
     for line in probe_unformatted:
       # processed=False # garbage
       try:
@@ -336,20 +331,7 @@ class probe_clashscore_manager(object):
       except KeyboardInterrupt: raise
       except ValueError:
         continue # something else (different from expected) got into output
-
-      if previous_line is not None:
-        if line_storage.is_similar(previous_line):
-          # modify previous line to store this one if needed
-          previous_line.gap = min(previous_line.gap, line_storage.gap)
-        else:
-          # seems like new group of lines, then dump previous and start new
-          # one
-          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
-          previous_line = line_storage
-      else:
-        previous_line = line_storage
-    if previous_line is not None:
-      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+      self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
   def process_raw_probe_output_fast(self, lines):
