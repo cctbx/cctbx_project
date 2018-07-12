@@ -100,7 +100,7 @@ advanced
     .expert_level = 1
   anomalous = False
     .type = bool
-    .short_caption = Use anomalous differences instead of amplitdues
+    .short_caption = Use anomalous differences instead of amplitudes
     .help = Experimental feature: generate a difference map using the \
       anomalous differences of each dataset instead of the amplitudes, \
       similar to the log-likelihood gradient difference map in Phaser \
