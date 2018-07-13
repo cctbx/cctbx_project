@@ -202,16 +202,19 @@ class clashscore(validation):
 
 class probe_line_info_storage(object):
   def __init__(self, line):
-    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.dot_count, \
-    self.min_gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
-    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
-    self.tBval = line.split(":")
-    self.min_gap = float(self.min_gap)
-    self.x = float(self.x)
-    self.y = float(self.y)
-    self.z = float(self.z)
-    self.sBval = float(self.sBval)
-    self.tBval = float(self.tBval)
+    # What is in line:
+    # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
+    sp = line.split(":")
+    self.type = sp[2]
+    self.srcAtom = sp[3]
+    self.targAtom = sp[4]
+    self.min_gap = float(sp[6])
+
+    self.x = float(sp[-5])
+    self.y = float(sp[-4])
+    self.z = float(sp[-3])
+    self.sBval = float(sp[-2])
+    self.tBval = float(sp[-1])
   def is_similar(self, other):
     assert isinstance(other, probe_line_info_storage)
     return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
@@ -226,7 +229,7 @@ class probe_line_info_storage(object):
       atoms_info=atoms,
       overlap=self.min_gap,
       probe_type=self.type,
-      outlier=abs(self.gap) > 0.4,
+      outlier=self.min_gap <= -0.4,
       max_b_factor=max(self.sBval, self.tBval),
       xyz=(self.x,self.y,self.z))
     return clash_obj
@@ -303,7 +306,6 @@ class probe_clashscore_manager(object):
     key = line_info.targAtom+line_info.srcAtom
     if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
       key = line_info.srcAtom+line_info.targAtom
-
     if (line_info.type == "so" or line_info.type == "bo"):
       if (line_info.min_gap <= -0.4):
         if (key in clash_hash) :
