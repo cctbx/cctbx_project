@@ -297,25 +297,14 @@ def get_calib_file_path(env, address, run):
     return None
   return ''.join(map(chr, path_nda))
 
-def env_dxtbx_from_slac_metrology(run, address):
+def env_dxtbx_from_slac_metrology(run, address, metro=None):
   """ Loads a dxtbx cspad cbf header only object from the metrology path stored
       in a psana run object's calibration store
       @param env psana run object
       @param address address string for a detector
   """
-  try:
-      import psana
-      PSANA2_VERSION = psana.__version__
-  except AttributeError:
-      PSANA2_VERSION = 0
-
-  if PSANA2_VERSION:
+  if metro is not None:
     # FIXME: get metrology from a pickle file until det interface is ready
-    import cPickle as pickle
-    import os
-    PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
-    assert PS_CALIB_DIR
-    metro = pickle.load(open(os.path.join(PS_CALIB_DIR,'metro.pickle'), 'r'))
     cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
 
     from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
