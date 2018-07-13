@@ -359,29 +359,42 @@ extra_dials_phil_str = '''
 def filter(evt):
     return True
 
-def run_psana2(ims, params):
+def run_psana2(ims, params, comm):
     """" Begins psana2
     This setup a DataSource psana2 style. The parallelization is determined within
     the generation of the DataSource.
 
     ims: InMemScript (cctbx driver class)
-    params: input parameters"""
-
-    ds = psana.DataSource("exp=cxid9114:run=95:dir=%s"%params.input.xtc_dir,
-            filter=filter, max_events=params.dispatch.max_events)
+    params: input parameters
+    comm: mpi comm for broadcasting per run calibration files"""
+    ds = psana.DataSource("exp=%s:run=%s:dir=%s" \
+        %(params.input.experiment, params.input.run_num, params.input.xtc_dir), \
+        filter=filter, max_events=params.dispatch.max_events)
     det = None
     if ds.nodetype == "bd":
-        det = ds.Detector(params.input.address)
+      det = ds.Detector(params.input.address)
 
     for run in ds.runs():
-        for evt in run.events():
-            if det:
-                ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
-                ims.dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
-                ims.spotfinder_mask = None
-                ims.integration_mask = None
-                ims.process_event(run, evt, det)
-                ims.finalize()
+      # broadcast cctbx per run calibration
+      if comm.Get_rank() == 0:
+        PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
+        assert PS_CALIB_DIR
+        metro = easy_pickle.load(os.path.join(PS_CALIB_DIR,'metro.pickle'))
+        dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
+      else:
+        metro = None
+        dials_mask = None
+      metro = comm.bcast(metro, root=0)
+      dials_mask = comm.bcast(dials_mask, root=0)
+
+      for evt in run.events():
+        if det:
+          ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address, metro=metro)
+          ims.dials_mask = dials_mask
+          ims.spotfinder_mask = None
+          ims.integration_mask = None
+          ims.process_event(run, evt, det)
+          ims.finalize()
 
 class EventOffsetSerializer(object):
   """ Pickles python object """
@@ -633,7 +646,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # We can remove after return code when all interfaces are ready.
     if PSANA2_VERSION:
         print("PSANA2_VERSION", PSANA2_VERSION)
-        run_psana2(self, params)
+        run_psana2(self, params, comm)
         return
 
     # set up psana
@@ -961,15 +974,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
         if PSANA2_VERSION:
-          # FIXME MONA: relace this with above when all detector interfaces are ready
-          raw = det.raw(evt)
-          pedestals = det.pedestals(run)
-          data = None
-          import cPickle as pickle
-          PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
-          if PS_CALIB_DIR:
-            gain_mask = pickle.load(open(os.path.join(PS_CALIB_DIR,'gain_mask.pickle'), 'r'))
-            data = gain_mask * (raw - pedestals)
+          # FIXME MONA: remove this when all detector interfaces are ready
+          data = det.raw(evt) - det.pedestals(run)
+          gain_mask = det.gain_mask(run)
+          if gain_mask is not None:
+            data *= gain_mask
         else:
           data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                       common_mode=self.common_mode,
