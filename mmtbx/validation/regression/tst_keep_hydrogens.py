@@ -76,7 +76,7 @@ def run():
           break
       print 'clashscore',cs
       if cs is None: continue
-      if keep: assert cs==44.44, "%s: clashscore is not 44.44 %s" % (prog, cs)
+      if keep: assert cs==66.67, "%s: clashscore is not 66.67 %s" % (prog, cs)
       else: assert cs==0, "%s: clashscore is not 0 %s" % (prog, cs)
 
 if __name__=="__main__":
