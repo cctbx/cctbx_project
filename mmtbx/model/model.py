@@ -2724,7 +2724,7 @@ class manager(object):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
-  def geometry_statistics(self):
+  def geometry_statistics(self, fast_clash=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
@@ -2751,7 +2751,7 @@ class manager(object):
     #
     return mmtbx.model.statistics.geometry(
       pdb_hierarchy               = ph_dc,
-      fast_clash = True,
+      fast_clash                  = fast_clash,
       geometry_restraints_manager = rm.geometry)
 
   def occupancy_statistics(self):
