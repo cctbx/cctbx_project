@@ -336,50 +336,6 @@ class probe_clashscore_manager(object):
       self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
-  def process_raw_probe_output_fast(self, lines):
-    def parse_line(line):
-      sp = line.split(':')
-      return sp[3], sp[4], float(sp[6])
-
-    def parse_h_line(line):
-      sp = line.split(':')
-      return sp[3], sp[4]
-
-    clashes = set() # [(src, targ), (src, targ)]
-    hbonds = [] # (src, targ), (targ, src)
-    n_cl = 0
-    n_hb = 0
-    prev_line = None
-    skip_the_rest = False
-    for l in lines:
-      rtype = l[6:8]
-      if rtype == 'so' or rtype == 'bo':
-        if skip_the_rest:
-          if prev_line and l[:43] == prev_line[:43]:
-            continue
-        srcAtom, targAtom, gap = parse_line(l)
-        if gap <= -0.4:
-          if (srcAtom, targAtom) not in clashes and (targAtom, srcAtom) not in clashes:
-            clashes.add((srcAtom, targAtom))
-            prev_line = l
-          skip_the_rest = True
-        else:
-          skip_the_rest = False
-
-      elif rtype == 'hb':
-        if prev_line and l[:43] == prev_line[:43]:
-          continue
-        srcAtom, targAtom = parse_h_line(l)
-        hbonds.append((srcAtom, targAtom))
-        hbonds.append((targAtom, srcAtom))
-        prev_line = l
-    hbonds_set = set(hbonds)
-    n_clashes = 0
-    for clash in clashes:
-      if clash not in hbonds_set:
-        n_clashes += 1
-    return n_clashes
-
   def get_condenced_clashes(self, lines):
     def parse_line(line):
       sp = line.split(':')
