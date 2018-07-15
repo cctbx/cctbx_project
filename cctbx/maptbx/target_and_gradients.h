@@ -239,8 +239,57 @@ template <
   typename MapFloatType,
   typename SiteFloatType>
 MapFloatType
+target_with_adjacent_similarity(
+  uctbx::unit_cell const& unit_cell,
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart,
+  af::const_ref<std::size_t> const& selection,
+  af::const_ref<SiteFloatType> const& weights)
+{
+  MapFloatType result = 0;
+  af::shared<MapFloatType> vals;
+  for(std::size_t i_site=0;i_site<selection.size();i_site++) {
+    MapFloatType mv = eight_point_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[selection[i_site]]));
+    if(weights[i_site] != 0.) mv = mv/weights[i_site];
+    result += mv;
+    vals.push_back(mv);
+  }
+  // Penalty for adjacent values being too dissimilar
+  for(std::size_t i=0;i<vals.size();i++) {
+    if(i>=0 && i+1<vals.size()) {
+      SiteFloatType v1 = vals[i];
+      SiteFloatType v2 = vals[i+1];
+      result -= std::abs(vals[i]-vals[i+1]);
+    }
+  }
+  return result;
+}
+
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+MapFloatType
 target(
   af::const_ref<MapFloatType, af::c_grid<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_frac)
+{
+  MapFloatType result = 0;
+  for(std::size_t i_site=0;i_site<sites_frac.size();i_site++) {
+    result += eight_point_interpolation(
+      density_map,
+      sites_frac[i_site]);
+  }
+  return result;
+}
+
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+MapFloatType
+target(
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
   af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_frac)
 {
   MapFloatType result = 0;

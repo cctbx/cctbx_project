@@ -155,6 +155,20 @@ namespace {
              arg("sites_cart"),
              arg("selection")));
 
+    def("real_space_target_simple_with_adjacent_similarity",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&,
+         af::const_ref<std::size_t > const&,
+         af::const_ref<double> const&))
+           cctbx::maptbx::target_and_gradients::simple::target_with_adjacent_similarity, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart"),
+             arg("selection"),
+             arg("weights")));
+
     def("real_space_target_simple",
       (double(*)
         (uctbx::unit_cell const&,
