@@ -2,7 +2,6 @@ from __future__ import division
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import iotbx.pdb
-import iotbx.ccp4_map
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
 import sys
@@ -10,6 +9,8 @@ from cctbx import maptbx
 from cctbx import crystal
 import boost.python
 cctbx_maptbx_ext = boost.python.import_ext("cctbx_maptbx_ext")
+from libtbx.test_utils import approx_equal
+fit_ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
 
 negate_map_table = {
   #"ala": False,
@@ -38,11 +39,12 @@ negate_map_table = {
 class run(object):
   def __init__(self,
                pdb_hierarchy,
-               map_data,
                crystal_symmetry,
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
+               map_data=None,
+               vdw_radii=None,
                do_all=False,
                backbone_sample=True,
                diff_map_data=None,
@@ -53,14 +55,19 @@ class run(object):
     self.number_of_outliers = None
     if(self.log is None): self.log = sys.stdout
     self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
-    self.special_position_settings = crystal.special_position_settings(
-      crystal_symmetry = self.crystal_symmetry)
-    self.special_position_indices = self.get_special_position_indices()
+    self.atom_names = flex.std_string(
+      [i.strip() for i in self.pdb_hierarchy.atoms().extract_name()])
+    self.special_position_settings = None
+    self.special_position_indices = None
+    if(self.crystal_symmetry is not None):
+      self.special_position_settings = crystal.special_position_settings(
+        crystal_symmetry = self.crystal_symmetry)
+      self.special_position_indices = self.get_special_position_indices()
     # Even better would be to pass it here. Ideally just use model
     self.atom_selection_cache = self.pdb_hierarchy.atom_selection_cache()
     self.selection_water_as_set = set(self.atom_selection_cache.\
         selection(string = "water").iselection())
-    if(self.massage_map):
+    if(self.massage_map and self.map_data is not None):
       self.target_map = self.prepare_target_map()
     else:
       self.target_map = map_data
@@ -69,13 +76,18 @@ class run(object):
     #
     if(not self.tune_up_only):
       self.loop(function = self.one_residue_iteration)
-      self.pdb_hierarchy.atoms().set_xyz(self.sites_cart)
+      assert approx_equal(self.sites_cart,
+        self.pdb_hierarchy.atoms().extract_xyz())
       print >> self.log, \
         "outliers after map fit: %d (percent: %6.2f)"%self.count_outliers()
     print >> self.log, "tune up"
+    assert approx_equal(self.sites_cart,
+      self.pdb_hierarchy.atoms().extract_xyz())
     self.loop(function = self.one_residue_tune_up)
     print >> self.log, \
       "outliers final: %d (percent: %6.2f)"%self.count_outliers()
+    assert approx_equal(self.sites_cart,
+      self.pdb_hierarchy.atoms().extract_xyz())
 
   def get_special_position_indices(self):
     site_symmetry_table = \
@@ -85,8 +97,15 @@ class run(object):
           self.pdb_hierarchy.atoms().extract_occ() != 1))
     return site_symmetry_table.special_position_indices()
 
-  def compute_negate_mask(self, residue, radius):
-    residue_i_selection = residue.atoms().extract_i_seq()
+  def get_nonbonded_bumpers(self, residue, radius):
+    if(self.special_position_settings is None): return None
+    if(self.vdw_radii is None): return None
+    #residue_i_selection = residue.atoms().extract_i_seq()
+    residue_i_selection = flex.size_t()
+    for a in residue.atoms():
+      if(not a.name.strip() in ["N", "C", "O"]):
+        residue_i_selection.append(a.i_seq)
+    #
     residue_b_selection = flex.bool(self.sites_cart.size(), residue_i_selection)
     selection_around_residue = self.special_position_settings.pair_generator(
       sites_cart      = self.sites_cart,
@@ -96,29 +115,25 @@ class run(object):
       list(set(selection_around_residue).difference(
         set(residue_i_selection)).difference(self.selection_water_as_set)))
     sites_cart = self.sites_cart.select(selection_around_residue_minus_residue)
-    sites_frac_p1 = self.crystal_symmetry.unit_cell().fractionalize(
-      self.crystal_symmetry.expand_to_p1(sites_cart =
-        self.sites_cart.select(selection_around_residue_minus_residue)))
-    return cctbx_maptbx_ext.mask(
-      sites_frac = sites_frac_p1,
-      unit_cell  = self.crystal_symmetry.cell_equivalent_p1().unit_cell(),
-      n_real     = self.target_map.all(),
-      mask_value_inside_molecule = -10,
-      mask_value_outside_molecule = 0,
-      radii = flex.double(sites_frac_p1.size(), 2.))
+    atom_names = self.atom_names.select(selection_around_residue_minus_residue)
+    #
+    radii = flex.double()
+    for an in atom_names:
+      try: radii.append(self.vdw_radii[an]-0.25)
+      except KeyError: radii.append(1.5) # XXX U, Uranium is a problem!
+    #
+    return fit_ext.xyzrad(sites_cart = sites_cart, radii = radii)
 
   def on_special_position(self, residue):
+    if(self.special_position_indices is None): return False
     if(self.special_position_indices.size()==0): return False
     for i_seq in residue.atoms().extract_i_seq():
       if(i_seq in self.special_position_indices): return True
     return False
 
   def prepare_target_map(self): # XXX This may need to go external
-    if self.map_data is None:
-      # This just makes dummy map to allow functionality working without it.
-      self.map_data = flex.double(flex.grid(50,50,50), 0)
-
-    map_data = self.map_data.deep_copy()
+    if(self.map_data is None): return None
+    map_data = self.map_data
     # truncate map
     selection = self.atom_selection_cache.selection(
       string = "element C or element O or element N")
@@ -154,30 +169,23 @@ class run(object):
       if(not need_fix): return
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
-    mask = self.compute_negate_mask(residue=residue, radius=negate_rad)
-    target_map_ = self.target_map + mask
-    if 0:
-      print r.residue.resseq, i_res
-      iotbx.ccp4_map.write_ccp4_map(
-        file_name      = "AMap.map",
-        unit_cell      = self.crystal_symmetry.unit_cell(),
-        space_group    = self.crystal_symmetry.space_group(),
-        gridding_first = (0,0,0),
-        gridding_last  = tuple(self.target_map.n_real()),
-        map_data       = target_map_,
-        labels         = flex.std_string(["DEBUG"]))
+    xyzrad_bumpers = self.get_nonbonded_bumpers(
+      residue=residue, radius=negate_rad)
+    unit_cell = None
+    if(self.crystal_symmetry is not None):
+      unit_cell = self.crystal_symmetry.unit_cell()
     mmtbx.refinement.real_space.fit_residue.run(
       residue           = residue,
+      vdw_radii         = self.vdw_radii,
+      xyzrad_bumpers    = xyzrad_bumpers,
       backbone_sample   = self.backbone_sample,
-      unit_cell         = self.crystal_symmetry.unit_cell(),
-      target_map        = target_map_,
+      unit_cell         = unit_cell,
+      target_map        = self.target_map,
       target_map_for_cb = self.target_map,
       mon_lib_srv       = self.mon_lib_srv,
       rotamer_manager   = self.rotamer_manager,
       sin_cos_table     = self.sin_cos_table)
-    self.sites_cart = self.sites_cart.set_selected(
-      residue.atoms().extract_i_seq(),
-      residue.atoms().extract_xyz())
+    self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
 
   def loop(self, function):
     get_class = iotbx.pdb.common_residue_names_get_class
@@ -215,6 +223,7 @@ class run(object):
         target_map      = self.target_map,
         mon_lib_srv     = self.mon_lib_srv,
         rotamer_manager = self.rotamer_manager.rotamer_evaluator)
+      self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
 
 class fix_outliers(object):
   def __init__(self,

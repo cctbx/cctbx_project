@@ -17,6 +17,74 @@ from cctbx import eltbx
 from libtbx.test_utils import approx_equal
 from mmtbx.maps.correlation import five_cc
 import mmtbx.model
+from cctbx.eltbx import tiny_pse
+from cctbx import eltbx
+
+# Test utils (common to all tests in this folder).
+# Perhaps to move to mmtbx/regression.
+
+import scitbx.math
+from libtbx.utils import null_out
+
+def setup_test(pdb_answer, pdb_poor, i_pdb, d_min, resolution_factor,
+               pdb_for_map = None):
+  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
+  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
+  #
+  pip = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  pip.pdb_interpretation.link_distance_cutoff=999
+  # answer
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
+  model_answer = mmtbx.model.manager(model_input=pdb_inp, process_input=True,
+    log=null_out(), pdb_interpretation_params=pip)
+  with open("answer_%s.pdb"%str(i_pdb), "w") as the_file:
+    the_file.write(model_answer.model_as_pdb())
+  #
+  model_ = model_answer.deep_copy()
+  if(pdb_for_map is not None):
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_for_map)
+    model_ = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+  #
+  xrs_answer = model_.get_xray_structure()
+  f_calc = xrs_answer.structure_factors(d_min = d_min).f_calc()
+  fft_map = f_calc.fft_map(resolution_factor=resolution_factor)
+  fft_map.apply_sigma_scaling()
+  target_map = fft_map.real_map_unpadded()
+  mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "answer_%s.mtz"%str(i_pdb))
+  # poor
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_poor)
+  model_poor = mmtbx.model.manager(model_input=pdb_inp, log=null_out(),
+    pdb_interpretation_params=pip)
+  with open("poor_%s.pdb"%str(i_pdb), "w") as the_file:
+    the_file.write(model_poor.model_as_pdb())
+  #
+  return group_args(
+    rotamer_manager  = rotamer_manager,
+    sin_cos_table    = sin_cos_table,
+    target_map       = target_map,
+    xrs_poor         = model_poor.get_xray_structure(),
+    ph_answer        = model_answer.get_hierarchy(),
+    vdw              = model_answer.get_vdw_radii(),
+    mon_lib_srv      = model_answer.get_mon_lib_srv(),
+    ph_poor          = model_poor.get_hierarchy(),
+    crystal_symmetry = f_calc.crystal_symmetry(),
+    model_poor       = model_poor)
+
+def check_sites_match(ph_answer, ph_refined, tol):
+  s1 = flex.vec3_double()
+  s2 = flex.vec3_double()
+  for a1,a2 in zip(ph_answer.atoms(), ph_refined.atoms()):
+    if((not a1.element.strip().upper() in ["H","D"]) and
+       (not a2.element.strip().upper() in ["H","D"])):
+      s1.append(a1.xyz)
+      s2.append(a2.xyz)
+  dist = flex.max(flex.sqrt((s1 - s2).dot()))
+  print dist, tol
+  assert dist < tol,  [dist, tol]
+
+# End test utils
 
 class rsr_model(object):
   def __init__(self,
@@ -110,6 +178,10 @@ def need_sidechain_fit(
   get_class = iotbx.pdb.common_residue_names_get_class
   assert get_class(residue.resname) == "common_amino_acid"
   if(residue.resname.strip().upper() in ["ALA", "GLY"]): return False
+  ### If it is rotamer OUTLIER
+  if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
+    return True
+  ###
   cl = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
     residue         = residue,
     mon_lib_srv     = mon_lib_srv,
@@ -156,14 +228,7 @@ def need_sidechain_fit(
       main_chain_sel.append(i_seq)
   #
   sites_frac = unit_cell.fractionalize(residue.atoms().extract_xyz())
-  ### If it is rotamer OUTLIER
-  if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
-    map_values = flex.double()
-    for i in side_chain_sel:
-      map_values.append(f_map.value_at_closest_grid_point(sites_frac[i]))
-    valid_outlier = map_values.all_gt(1.0)
-    return not valid_outlier
-  ###
+  #
   mv = []
   mv_orig = []
   if(fdiff_map is not None): diff_mv = []
@@ -233,21 +298,41 @@ class aa_residue_axes_and_clusters(object):
                residue,
                mon_lib_srv,
                backbone_sample):
-    self.clusters = []
-    atom_names = residue.atoms().extract_name()
+    self.clusters               = []
+    atoms                       = residue.atoms()
+    atoms_as_list               = list(atoms)
+    atom_names                  = atoms.extract_name()
+    self.weights                = flex.double()
+    self.clash_eval_selection   = flex.size_t()
+    self.clash_eval_h_selection = flex.bool(len(atoms_as_list), False)
+    self.rsr_eval_selection     = flex.size_t()
+    # Backbone sample
+    backrub_axis  = []
+    backrub_atoms_to_rotate = []
+    backrub_atoms_to_evaluate = []
+    counter = 0 # XXX DOES THIS RELY ON ORDER?
+    for atom in atoms:
+      an = atom.name.strip().upper()
+      ae = atom.element.strip().upper()
+      if(ae in ["H","D"]):
+        self.clash_eval_h_selection[counter]=True
+      if(an in ["N", "C"]):
+        backrub_axis.append(counter)
+      else:
+        backrub_atoms_to_rotate.append(counter)
+      if(an in ["CA", "O", "CB"]):
+        backrub_atoms_to_evaluate.append(counter)
+      if(not an in ["CA", "O", "CB", "C", "N", "HA", "H"]):
+        self.clash_eval_selection.append(counter)
+        if(not ae in ["H","D"]):
+          self.rsr_eval_selection.append(counter)
+      std_lbl = eltbx.xray_scattering.get_standard_label(
+        label=ae, exact=True, optional=True)
+      self.weights.append(tiny_pse.table(std_lbl).weight())
+      #
+      counter += 1
+    #
     if(backbone_sample):
-      backrub_axis  = []
-      backrub_atoms_to_rotate = []
-      backrub_atoms_to_evaluate = []
-      counter = 0 # XXX DOES THIS RELY ON ORDER?
-      for atom in residue.atoms():
-        if(atom.name.strip().upper() in ["N", "C"]):
-          backrub_axis.append(counter)
-        else:
-          backrub_atoms_to_rotate.append(counter)
-        if(atom.name.strip().upper() in ["CA", "O", "CB"]):
-          backrub_atoms_to_evaluate.append(counter)
-        counter += 1
       if(len(backrub_axis)==2 and len(backrub_atoms_to_evaluate)>0):
         self.clusters.append(cluster(
           axis            = flex.size_t(backrub_axis),
@@ -263,6 +348,16 @@ class aa_residue_axes_and_clusters(object):
           selection = flex.size_t(aa[1])
         else:
           selection = flex.size_t([aa[1][0]])
+        # Exclude pure H or D rotatable groups
+        elements_to_rotate = flex.std_string()
+        for etr in aa[1]:
+          elements_to_rotate.append(atoms_as_list[etr].element.strip())
+        c_H = elements_to_rotate.count("H")
+        c_D = elements_to_rotate.count("D")
+        etr_sz = elements_to_rotate.size()
+        if(c_H==etr_sz or c_D==etr_sz or c_H+c_D==etr_sz):
+          continue
+        #
         self.clusters.append(cluster(
           axis            = flex.size_t(aa[0]),
           atom_names      = atom_names,
