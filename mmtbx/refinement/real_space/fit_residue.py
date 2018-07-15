@@ -20,10 +20,10 @@ def flatten(l):
 class run(object):
   def __init__(self,
                residue,
-               vdw_radii,
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
+               vdw_radii=None,
                xyzrad_bumpers=None,
                target_map=None,
                target_map_for_cb=None,

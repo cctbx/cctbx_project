@@ -1173,7 +1173,6 @@ class manager(object):
     """
     Return van-der-Waals radii for known atom names.
     """
-    assert self._processed_pdb_file is not None
     m = self.get_mon_lib_srv()
     e = self.get_ener_lib()
     result = {}
