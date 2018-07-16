@@ -120,7 +120,7 @@ class run(object):
     radii = flex.double()
     for an in atom_names:
       try: radii.append(self.vdw_radii[an]-0.25)
-      except KeyError: radii.append(1.5) # XXX U, Uranium is a problem!
+      except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
     #
     return fit_ext.xyzrad(sites_cart = sites_cart, radii = radii)
 

@@ -103,7 +103,9 @@ class run(object):
       converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
         residue_name=self.residue.resname, atom_names = atom_names)
       mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
-      radii=flex.double([self.vdw_radii[n.strip()]-0.25 for n in mon_lib_names])
+      for n in mon_lib_names:
+        try: radii.append(self.vdw_radii[n.strip()]-0.25)
+        except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
       #
       xyzrad_residue = ext.xyzrad(sites_cart = sites, radii = radii)
       #
