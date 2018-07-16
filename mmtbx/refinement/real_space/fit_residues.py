@@ -158,7 +158,7 @@ class run(object):
   def one_residue_iteration(self, residue):
     if(residue.resname.strip().upper() in ["ALA","GLY","PRO"]): return
     if(self.on_special_position(residue=residue)): return
-    if(not self.do_all):
+    if(not self.do_all and self.map_data is not None):
       need_fix = mmtbx.refinement.real_space.need_sidechain_fit(
         residue           = residue,
         rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,

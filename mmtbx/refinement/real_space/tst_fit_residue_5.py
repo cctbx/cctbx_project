@@ -2,6 +2,7 @@ from __future__ import division
 import time
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
+import iotbx.pdb
 
 pdb_answer = """\
 CRYST1   14.230   10.991   17.547  90.00  90.00  90.00 P 1

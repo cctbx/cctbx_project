@@ -180,7 +180,7 @@ def exercise(pdb_poor_str, i_pdb, d_min = 1.0, resolution_factor = 0.1):
   mmtbx.refinement.real_space.check_sites_match(
     ph_answer  = t.ph_answer,
     ph_refined = result.pdb_hierarchy,
-    tol        = 0.1)
+    tol        = 0.15)
 
 if(__name__ == "__main__"):
   t0 = time.time()
