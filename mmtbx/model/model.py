@@ -1735,6 +1735,18 @@ class manager(object):
     print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
     return out.getvalue()
 
+  def neutralize_scatterers(self):
+    neutralized = False
+    xrs = self.get_xray_structure()
+    scatterers = xrs.scatterers()
+    for scatterer in scatterers:
+      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      if (neutralized_scatterer != scatterer.scattering_type):
+        neutralized = True
+        scatterer.scattering_type = neutralized_scatterer
+    if neutralized:
+      self.set_xray_structure(xray_structure = xrs)
+
   def idealize_h(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):
     """
