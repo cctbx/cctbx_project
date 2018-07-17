@@ -670,6 +670,43 @@ END
 """
   assert not show_diff(pdb_new, expected_output_pdb_3)
 
+def exercise_neutralize_scatterers():
+  input_pdb = """ATOM      1  N   TYR    22      -0.813  -2.199   1.423  1.00  0.00           N
+ATOM      2  CA  TYR    22       0.612  -2.082   1.127  1.00  0.00           C
+ATOM      3  C   TYR    22       1.441  -2.790   2.171  1.00  0.00           C
+ATOM      4  O   TYR    22       0.927  -3.375   3.128  1.00  0.00           O
+ATOM      5  CB  TYR    22       1.052  -0.589   1.096  1.00  0.00           C
+ATOM      6  CG  TYR    22       0.390   0.302   0.038  1.00  0.00           C
+ATOM      7  CD1 TYR    22       0.807   0.254  -1.296  1.00  0.00           C
+ATOM      8  CD2 TYR    22      -0.647   1.164   0.406  1.00  0.00           C
+ATOM      9  CE1 TYR    22       0.188   1.057  -2.250  1.00  0.00           C
+ATOM     10  CE2 TYR    22      -1.264   1.966  -0.549  1.00  0.00           C
+ATOM     11  CZ  TYR    22      -0.846   1.912  -1.877  1.00  0.00           C
+ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00  0.00           O1-
+"""
+  expected_output_pdb = """ATOM      1  N   TYR    22      -0.813  -2.199   1.423  1.00 10.00           N
+ATOM      2  CA  TYR    22       0.612  -2.082   1.127  1.00 10.00           C
+ATOM      3  C   TYR    22       1.441  -2.790   2.171  1.00 10.00           C
+ATOM      4  O   TYR    22       0.927  -3.375   3.128  1.00 10.00           O
+ATOM      5  CB  TYR    22       1.052  -0.589   1.096  1.00 10.00           C
+ATOM      6  CG  TYR    22       0.390   0.302   0.038  1.00 10.00           C
+ATOM      7  CD1 TYR    22       0.807   0.254  -1.296  1.00 10.00           C
+ATOM      8  CD2 TYR    22      -0.647   1.164   0.406  1.00 10.00           C
+ATOM      9  CE1 TYR    22       0.188   1.057  -2.250  1.00 10.00           C
+ATOM     10  CE2 TYR    22      -1.264   1.966  -0.549  1.00 10.00           C
+ATOM     11  CZ  TYR    22      -0.846   1.912  -1.877  1.00 10.00           C
+ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
+"""
+  ifn = "exercise_neutralize_scatterers.pdb"
+  open(ifn,"w").write(input_pdb)
+  cmd = 'phenix.pdbtools "%s" neutralize_scatterers=true adp.set_b_iso=10'%ifn
+  print cmd
+  run_command(command=cmd, verbose=False)
+  for line1, line2 in zip(open(ifn+"_modified.pdb").readlines(), expected_output_pdb.splitlines()):
+    line1 = line1.strip()
+    line2 = line2.strip()
+    assert line1 == line2
+
 def exercise_remove_atoms():
   import random
   random.seed(1)
@@ -1122,6 +1159,7 @@ def exercise(args):
   exercise_truncate_to_polyala()
   exercise_convert_met_to_semet()
   exercise_set_charge()
+  exercise_neutralize_scatterers()
   exercise_remove_atoms()
   exercise_mmcif_support()
   exercise_segid_manipulations()
