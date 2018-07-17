@@ -101,6 +101,7 @@ def superpose_ideal_residue_coordinates(pdb_hierarchy,
                     'F3S' : 'S',
                     #'F4S' : 'S', # not done yet
                     #'CLF' : 'Fe', # too flexible
+                    'DVT' : 'V',
                     }
   from iotbx import pdb
   from mmtbx.monomer_library import pdb_interpretation
