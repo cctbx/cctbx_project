@@ -306,7 +306,7 @@ class probe_clashscore_manager(object):
     key = line_info.targAtom+line_info.srcAtom
     if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
       key = line_info.srcAtom+line_info.targAtom
-    if (line_info.type == "so" or line_info.type == "bo"):
+    if (line_info.type == "bo"):
       if (line_info.min_gap <= -0.4):
         if (key in clash_hash) :
           if (line_info.min_gap < clash_hash[key].min_gap):
