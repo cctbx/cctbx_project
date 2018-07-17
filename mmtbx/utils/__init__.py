@@ -3015,6 +3015,7 @@ def check_and_set_crystal_symmetry(
       map_inps=[],
       miller_arrays=[],
       crystal_symmetry=None,
+      ignore_symmetry_conflicts=False,
       absolute_angle_tolerance =1.e-2,
       absolute_length_tolerance=1.e-2):
   # XXX This should go into a central place
@@ -3034,7 +3035,7 @@ def check_and_set_crystal_symmetry(
     from_coordinate_files     = [m.crystal_symmetry() for m in models],
     from_reflection_files     = [m.crystal_symmetry() for m in
                                  map_inps+miller_arrays],
-    enforce_similarity        = True,
+    enforce_similarity        = not ignore_symmetry_conflicts,
     absolute_angle_tolerance  = absolute_angle_tolerance,
     absolute_length_tolerance = absolute_length_tolerance)
   for model in models:
