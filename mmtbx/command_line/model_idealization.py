@@ -491,7 +491,8 @@ class model_idealization():
         and self.init_gm_model_statistics.omega.twisted_general <= 0.01
         and self.init_gm_model_statistics.omega.twisted_proline <= 0.01
         and self.init_gm_model_statistics.omega.cis_general <= 0.01
-        and self.init_gm_model_statistics.omega.cis_proline <= 0.01):
+        and self.init_gm_model_statistics.omega.cis_proline <= 0.01
+        and self.init_gm_model_statistics.rotamer.outliers <= 0.01):
       print >> self.log, "Simple minimization was enough"
       # Early exit!!!
       self.shift_and_write_result(
