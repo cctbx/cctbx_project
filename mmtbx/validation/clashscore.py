@@ -348,7 +348,7 @@ class probe_clashscore_manager(object):
     hbonds = [] # (src, targ), (targ, src)
     for l in lines:
       rtype = l[6:8]
-      if rtype == 'so' or rtype == 'bo':
+      if rtype == 'bo':
         srcAtom, targAtom, gap = parse_line(l)
         if gap <= -0.4:
           # print l[:43], "good gap, saving", gap
