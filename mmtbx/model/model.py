@@ -1746,6 +1746,7 @@ class manager(object):
         scatterer.scattering_type = neutralized_scatterer
     if neutralized:
       self.set_xray_structure(xray_structure = xrs)
+      self.unset_restraints_manager()
 
   def idealize_h(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):

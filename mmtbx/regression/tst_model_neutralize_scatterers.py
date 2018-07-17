@@ -14,16 +14,26 @@ neutral_atoms_list = ['Ru', 'Re', 'Ra', 'Rb', 'Rn', 'Rh', 'Be', 'Ba', 'Bi',
   'Y', 'Ac', 'Ag', 'Ir', 'Am', 'Al', 'As', 'Ar', 'Au', 'At', 'In', 'Mo']
 
 def run():
+  # Check if scatterers in xrs are neutral after calling function
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(
       model_input       = pdb_inp,
       log = null_out())
-
   model.neutralize_scatterers()
-
   xrs = model.get_xray_structure()
-
   for scatterer in xrs.scatterers():
+    assert (scatterer.scattering_type  in neutral_atoms_list)
+
+  # Check if pdb_hierarchy has neutral atoms as well
+  pdb_str_neutralized = model.model_as_pdb()
+  pdb_inp_neutralized = iotbx.pdb.input(
+    source_info=None,
+    lines=pdb_str_neutralized)
+  model_neutralized = mmtbx.model.manager(
+      model_input       = pdb_inp_neutralized,
+      log = null_out())
+  xrs_neutralized = model_neutralized.get_xray_structure()
+  for scatterer in xrs_neutralized.scatterers():
     assert (scatterer.scattering_type  in neutral_atoms_list)
 
 pdb_str = """
