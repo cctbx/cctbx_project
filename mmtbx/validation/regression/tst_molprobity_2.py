@@ -44,7 +44,7 @@ def exercise_protein () :
   # percentiles
   out4 = StringIO()
   result.show_summary(out=out4, show_percentiles=True)
-  assert ("""  Clashscore            =  61.23""" in
+  assert ("""  Clashscore            =  49.59""" in
     out4.getvalue()), out4.getvalue()
   # misc
   assert approx_equal(result.r_work(), 0.237) # from PDB header
@@ -55,7 +55,7 @@ def exercise_protein () :
   assert approx_equal(result.rms_angles(), 2.356740)
   assert approx_equal(result.rama_favored(), 96.47059)
   assert (result.cbeta_outliers() == 10)
-  assert approx_equal(result.molprobity_score(), 3.48, eps=0.01)
+  assert approx_equal(result.molprobity_score(), 3.39, eps=0.01)
   summary = result.summarize()
   gui_fields = list(summary.iter_molprobity_gui_fields())
   assert (len(gui_fields) == 6)

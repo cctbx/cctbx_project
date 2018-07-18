@@ -63,14 +63,12 @@ def exercise_clashscore ():
     if (unpickle) :
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
-    assert approx_equal(c_score, 58.82, eps=0.01)
+    assert approx_equal(c_score, 35.29, eps=0.01)
     bad_clashes_list = cs.results
     assert ([ c.format_old() for c in bad_clashes_list ] ==
       [' A  72  ARG  HG2  A  72  ARG  O   :1.048',
- ' A  71  LEU  HA   A  71  LEU HD12 :0.768',
- ' A  72  ARG  CG   A  72  ARG  O   :0.720',
- ' A  72  ARG  HB3  A  72  ARG  HE  :0.628',
- ' A  72  ARG  HD3  A  72  ARG HH11 :0.625']), [ c.format_old() for c in bad_clashes_list ]
+      ' A  71  LEU  HA   A  71  LEU HD12 :0.768',
+      ' A  72  ARG  CG   A  72  ARG  O   :0.720']), [ c.format_old() for c in bad_clashes_list ]
 
   #test nuclear distances
   cs = clashscore.clashscore(pdb_hierarchy=pdb_hierarchy, nuclear=True)
@@ -93,16 +91,14 @@ def exercise_clashscore ():
     if (unpickle) :
       cs = loads(dumps(cs))
     c_score = cs.get_clashscore()
-    assert approx_equal(c_score, 58.82, eps=0.01)
+    assert approx_equal(c_score, 35.29, eps=0.01)
     c_score_b_cutoff = cs.get_clashscore_b_cutoff()
-    assert approx_equal(c_score_b_cutoff, 65.78, eps=0.01)
+    assert approx_equal(c_score_b_cutoff, 39.47, eps=0.01)
     bad_clashes_list = cs.results
     assert ([ c.format_old() for c in bad_clashes_list ] ==
       [' A  72  ARG  HG2  A  72  ARG  O   :1.048',
       ' A  71  LEU  HA   A  71  LEU HD12 :0.768',
-      ' A  72  ARG  CG   A  72  ARG  O   :0.720',
-      ' A  72  ARG  HB3  A  72  ARG  HE  :0.628',
-      ' A  72  ARG  HD3  A  72  ARG HH11 :0.625']), [ c.format_old() for c in bad_clashes_list ]
+      ' A  72  ARG  CG   A  72  ARG  O   :0.720']), [ c.format_old() for c in bad_clashes_list ]
 
 # TODO
 def exercise_full_validation () :
