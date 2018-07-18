@@ -3,10 +3,15 @@ from __future__ import division
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
 #
+PSANA2_VERSION = 0
 try:
   import psana
+  PSANA2_VERSION = psana.__version__
 except ImportError:
   pass # for running at home without psdm build
+except AttributeError:
+  pass
+
 from xfel.cftbx.detector import cspad_cbf_tbx
 from xfel.cxi.cspad_ana import cspad_tbx, rayonix_tbx
 import pycbf, os, sys, copy, socket
@@ -351,6 +356,46 @@ extra_dials_phil_str = '''
   }
 '''
 
+def filter(evt):
+    return True
+
+def run_psana2(ims, params, comm):
+    """" Begins psana2
+    This setup a DataSource psana2 style. The parallelization is determined within
+    the generation of the DataSource.
+
+    ims: InMemScript (cctbx driver class)
+    params: input parameters
+    comm: mpi comm for broadcasting per run calibration files"""
+    ds = psana.DataSource("exp=%s:run=%s:dir=%s" \
+        %(params.input.experiment, params.input.run_num, params.input.xtc_dir), \
+        filter=filter, max_events=params.dispatch.max_events)
+    det = None
+    if ds.nodetype == "bd":
+      det = ds.Detector(params.input.address)
+
+    for run in ds.runs():
+      # broadcast cctbx per run calibration
+      if comm.Get_rank() == 0:
+        PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
+        assert PS_CALIB_DIR
+        metro = easy_pickle.load(os.path.join(PS_CALIB_DIR,'metro.pickle'))
+        dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
+      else:
+        metro = None
+        dials_mask = None
+      metro = comm.bcast(metro, root=0)
+      dials_mask = comm.bcast(dials_mask, root=0)
+
+      for evt in run.events():
+        if det:
+          ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address, metro=metro)
+          ims.dials_mask = dials_mask
+          ims.spotfinder_mask = None
+          ims.integration_mask = None
+          ims.process_event(run, evt, det)
+          ims.finalize()
+
 class EventOffsetSerializer(object):
   """ Pickles python object """
   def __init__(self,psanaOffset):
@@ -596,6 +641,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         write_newline = os.path.exists(self.mpi_log_file_path)
         if write_newline: # needed if the there was a crash
           self.mpi_log_write("\n")
+
+    # FIXME MONA: psana 2 has pedestals and geometry hardcoded for cxid9114.
+    # We can remove after return code when all interfaces are ready.
+    if PSANA2_VERSION:
+        print("PSANA2_VERSION", PSANA2_VERSION)
+        run_psana2(self, params, comm)
+        return
 
     # set up psana
     if params.input.cfg is not None:
@@ -867,17 +919,20 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # Used by database logger
     return self.run.run(), self.timestamp
 
-  def process_event(self, run, evt):
+  def process_event(self, run, evt, det=None):
     """
     Process a single event from a run
     @param run psana run object
     @param timestamp psana timestamp object
     """
-    time = evt.get(psana.EventId).time()
-    fid = evt.get(psana.EventId).fiducials()
-
-    sec  = time[0]
-    nsec = time[1]
+    if PSANA2_VERSION:
+      sec  = evt.seconds
+      nsec = evt.nanoseconds
+    else:
+      time = evt.get(psana.EventId).time()
+      fid = evt.get(psana.EventId).fiducials()
+      sec  = time[0]
+      nsec = time[1]
 
     ts = cspad_tbx.evt_timestamp((sec,nsec/1e6))
     if ts is None:
@@ -904,10 +959,12 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
 
     self.debug_start(ts)
 
-    if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
-      print "Skipping event",ts
-      self.debug_write("psana_skip", "skip")
-      return
+    # FIXME MONA: below will be replaced with filter() callback
+    if not PSANA2_VERSION:
+      if evt.get("skip_event") or "skip_event" in [key.key() for key in evt.keys()]:
+        print "Skipping event",ts
+        self.debug_write("psana_skip", "skip")
+        return
 
     print "Accepted", ts
     self.params = copy.deepcopy(self.params_cache)
@@ -916,11 +973,19 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
-        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+        if PSANA2_VERSION:
+          # FIXME MONA: remove this when all detector interfaces are ready
+          data = det.raw(evt) - det.pedestals(run)
+          gain_mask = det.gain_mask(run)
+          if gain_mask is not None:
+            data *= gain_mask
+        else:
+          data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
                                                       common_mode=self.common_mode,
                                                       apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
                                                       gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
                                                       per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
+
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
       if data is None:
@@ -1002,11 +1067,13 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       estimate_gain(imgset)
       return
 
-    # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
-    key_low = 'cctbx.xfel.radial_average.two_theta_low'
-    key_high = 'cctbx.xfel.radial_average.two_theta_high'
-    tt_low = evt.get(key_low)
-    tt_high = evt.get(key_high)
+    # FIXME MONA: radial avg. is currently disabled
+    if not PSANA2_VERSION:
+      # Two values from a radial average can be stored by mod_radial_average. If present, retrieve them here
+      key_low = 'cctbx.xfel.radial_average.two_theta_low'
+      key_high = 'cctbx.xfel.radial_average.two_theta_high'
+      tt_low = evt.get(key_low)
+      tt_high = evt.get(key_high)
 
     if self.params.radial_average.enable:
       if tt_low is not None or tt_high is not None:

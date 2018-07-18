@@ -780,6 +780,8 @@ def get_map_and_model(params=None,
     map_data=get_map_from_map_coeffs(
       map_coeffs=map_coeffs,crystal_symmetry=crystal_symmetry)
     acc=map_data.accessor()
+    original_crystal_symmetry=crystal_symmetry
+    original_unit_cell_grid=None
     if not params.crystal_info.resolution:
       params.crystal_info.resolution=map_coeffs.d_min()
       print >>out,"Resolution from map_coeffs is %7.2f A" %(
@@ -1008,7 +1010,7 @@ def run(args=None,params=None,
       print >>out,\
        "\nWrote sharpened map in original location with origin at %s\nto %s" %(
          str(offset_map_data.origin()),output_map_file)
-      write_ccp4_map(original_crystal_symmetry, output_map_file, 
+      write_ccp4_map(original_crystal_symmetry, output_map_file,
         offset_map_data,
         output_unit_cell_grid=original_unit_cell_grid)
     else:

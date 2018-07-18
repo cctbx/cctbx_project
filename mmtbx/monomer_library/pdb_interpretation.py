@@ -147,7 +147,7 @@ restraints_library_str = """
       .style = hidden
   }
 """
-ideal_ligands = ['SF4', 'F3S']
+ideal_ligands = ['SF4', 'F3S', 'DVT']
 ideal_ligands_str = ' '.join(ideal_ligands)
 master_params_str = """\
   %(restraints_library_str)s

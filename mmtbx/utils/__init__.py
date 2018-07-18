@@ -2387,6 +2387,7 @@ class extract_box_around_model_and_map(object):
                lower_bounds=None,
                upper_bounds=None,
                extract_unique=None,
+               keep_low_density=None,
                sequence=None,
                chain_type=None,
                solvent_content=None,
@@ -2554,7 +2555,7 @@ class extract_box_around_model_and_map(object):
     #    (origin shifted to 0,0,0)
     assert self.map_data.origin()==(0,0,0)
     args=[]
-    #ZZZargs.append("write_files=False")
+    args.append("write_files=False")
     args.append("add_neighbors=False") # XXX perhaps allow user to set this
     args.append("save_box_map_ncs_au=True")
     args.append("density_select=False")
@@ -2569,6 +2570,11 @@ class extract_box_around_model_and_map(object):
       args.append("molecular_mass=%s" %self.molecular_mass)
     if self.symmetry:
       args.append("symmetry=%s" %self.symmetry)
+    if self.keep_low_density:
+      args.append("iterate_with_remainder=True")
+    else:
+      args.append("iterate_with_remainder=False")
+ 
     # import params from s&s here and set them.  set write_files=false etc.
 
     ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
@@ -3015,6 +3021,7 @@ def check_and_set_crystal_symmetry(
       map_inps=[],
       miller_arrays=[],
       crystal_symmetry=None,
+      ignore_symmetry_conflicts=False,
       absolute_angle_tolerance =1.e-2,
       absolute_length_tolerance=1.e-2):
   # XXX This should go into a central place
@@ -3034,7 +3041,7 @@ def check_and_set_crystal_symmetry(
     from_coordinate_files     = [m.crystal_symmetry() for m in models],
     from_reflection_files     = [m.crystal_symmetry() for m in
                                  map_inps+miller_arrays],
-    enforce_similarity        = True,
+    enforce_similarity        = not ignore_symmetry_conflicts,
     absolute_angle_tolerance  = absolute_angle_tolerance,
     absolute_length_tolerance = absolute_length_tolerance)
   for model in models:

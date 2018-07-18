@@ -131,7 +131,7 @@ def exercise_1():
   for res in model.get_hierarchy().only_chain().only_conformer().residues():
     rotamers.append(model.get_rotamer_manager().evaluate_residue(res))
   # print rotamers
-  assert rotamers == ['p90', 'p'], rotamers
+  assert rotamers == ['m-80', 'p'], rotamers
 
 def exercise_2():
   model = get_necessary_inputs(pdb_str_2)
@@ -141,8 +141,8 @@ def exercise_2():
   rotamers = []
   for res in model.get_hierarchy().only_chain().only_conformer().residues():
     rotamers.append(model.get_rotamer_manager().evaluate_residue(res))
-  assert rotamers == ['mtt180', 'tttt', 't0', 'pt', 'm', 'pt0', 'm-40',
-      'EXCEPTION', 'tt', 'tttt'], rotamers
+  assert rotamers == ['mtt180', 'tttt', 'm-30', 'pt', 'p', 'mm-30', 'm-40',
+    'EXCEPTION', 'tt', 'tttt'], rotamers
 
 if (__name__ == "__main__"):
   exercise_1()

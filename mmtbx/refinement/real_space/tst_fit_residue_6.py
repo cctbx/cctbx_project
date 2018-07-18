@@ -1,12 +1,7 @@
 from __future__ import division
-import mmtbx.monomer_library.pdb_interpretation
-import iotbx.mtz
-from cctbx.array_family import flex
 import time
-from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residues
-import scitbx.math
-import mmtbx.idealized_aa_residues.rotamer_manager
+import mmtbx.refinement.real_space
 
 pdb_answer = """\
 CRYST1   14.074   16.834   17.360  90.00  90.00  90.00 P 1
@@ -68,66 +63,39 @@ TER
 END
 """
 
-def exercise(rotamer_manager, sin_cos_table, d_min = 1.0,
-             resolution_factor = 0.1):
-  # Make sure it kicks off existing water. Simple case: no alternatives.
+def exercise(d_min = 1.0, resolution_factor = 0.1):
+  """
+  Make sure it kicks off existing water. Simple case: no alternatives.
+  """
   #
-  # answer PDB
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_for_map)
-  pdb_inp.write_pdb_file(file_name = "for_map.pdb")
-  xrs_answer = pdb_inp.xray_structure_simple()
-  # answer map
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
-  xrs_map = pdb_inp.xray_structure_simple()
-  f_calc = xrs_map.structure_factors(d_min = d_min).f_calc()
-  fft_map = f_calc.fft_map(resolution_factor=resolution_factor)
-  fft_map.apply_sigma_scaling()
-  target_map = fft_map.real_map_unpadded()
-  mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "answer.mtz")
-  # poor
-  mon_lib_srv = monomer_library.server.server()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = mon_lib_srv,
-    ener_lib                 = monomer_library.server.ener_lib(),
-    raw_records              = flex.std_string(pdb_poor.splitlines()),
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-  pdb_hierarchy_poor = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xrs_poor = processed_pdb_file.xray_structure()
-  sites_cart_poor = xrs_poor.sites_cart()
-  pdb_hierarchy_poor.write_pdb_file(file_name = "poor.pdb")
+  t = mmtbx.refinement.real_space.setup_test(
+    pdb_answer        = pdb_answer,
+    pdb_poor          = pdb_poor,
+    i_pdb             = 0,
+    d_min             = d_min,
+    resolution_factor = resolution_factor,
+    pdb_for_map       = pdb_for_map)
   #
   result = mmtbx.refinement.real_space.fit_residues.run(
-    pdb_hierarchy     = pdb_hierarchy_poor,
-    crystal_symmetry  = xrs_poor.crystal_symmetry(),
-    map_data          = target_map,
+    pdb_hierarchy     = t.ph_poor,
+    vdw_radii         = t.vdw,
+    crystal_symmetry  = t.crystal_symmetry,
+    map_data          = t.target_map,
     do_all            = True,
-    rotamer_manager   = rotamer_manager,
-    sin_cos_table     = sin_cos_table,
-    mon_lib_srv       = mon_lib_srv)
-  result.pdb_hierarchy.write_pdb_file(file_name = "refined.pdb")
-  ###
+    rotamer_manager   = t.rotamer_manager,
+    sin_cos_table     = t.sin_cos_table,
+    mon_lib_srv       = t.mon_lib_srv)
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(0))
+  #
   sel = result.pdb_hierarchy.atom_selection_cache().selection("not water")
   result_hierarchy = result.pdb_hierarchy.select(sel)
-
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_answer)
-  pdb_inp.write_pdb_file(file_name = "answer.pdb")
-  xrs_answer = pdb_inp.xray_structure_simple()
-  dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
-    result_hierarchy.atoms().extract_xyz()).dot()))
-  print dist
-  assert dist < 0.4, dist
+  #
+  mmtbx.refinement.real_space.check_sites_match(
+    ph_answer  = t.ph_answer,
+    ph_refined = result_hierarchy,
+    tol        = 0.4)
 
 if(__name__ == "__main__"):
   t0 = time.time()
-  # load rotamer manager
-  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
-  # pre-compute sin and cos tables
-  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
-  exercise(
-    rotamer_manager = rotamer_manager,
-    sin_cos_table   = sin_cos_table)
+  exercise()
   print "Time: %6.4f"%(time.time()-t0)

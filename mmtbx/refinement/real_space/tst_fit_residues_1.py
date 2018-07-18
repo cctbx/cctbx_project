@@ -1,15 +1,9 @@
 from __future__ import division
-import mmtbx.monomer_library.pdb_interpretation
-import iotbx.mtz
-from cctbx.array_family import flex
 import time
-from mmtbx import monomer_library
 import mmtbx.refinement.real_space.fit_residues
-import iotbx.pdb
-import scitbx.math
-import mmtbx.idealized_aa_residues.rotamer_manager
+import mmtbx.refinement.real_space
 
-pdb_str_answer_1="""\n
+pdb_answer="""\n
 CRYST1   41.392   28.519   38.664  90.00  90.00  90.00 P 1
 ATOM      1  N   TRP A   2      28.561  21.020  25.897  1.00 20.00           N
 ATOM      2  CA  TRP A   2      27.109  21.152  25.866  1.00 20.00           C
@@ -389,7 +383,7 @@ TER
 END
 """
 
-pdb_str_poor_1="""\n
+pdb_poor="""\n
 CRYST1   41.392   28.519   38.664  90.00  90.00  90.00 P 1
 SCALE1      0.024159  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.035064  0.000000        0.00000
@@ -772,71 +766,37 @@ TER
 END
 """
 
-def exercise(pdb_str_answer, pdb_str_poor, rotamer_manager, sin_cos_table,
-             d_min, prefix, resolution_factor = 0.25):
-  # answer
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_answer)
-  pdb_inp.write_pdb_file(file_name = "answer_%s.pdb"%prefix)
-  xrs_answer = pdb_inp.xray_structure_simple()
-  f_calc = xrs_answer.structure_factors(d_min = d_min).f_calc()
-  fft_map = f_calc.fft_map(resolution_factor=resolution_factor)
-  fft_map.apply_sigma_scaling()
-  target_map = fft_map.real_map_unpadded()
-  mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FCmap")
-  mtz_object = mtz_dataset.mtz_object()
-  mtz_object.write(file_name = "answer_%s.mtz"%prefix)
-  # poor
-  mon_lib_srv = monomer_library.server.server()
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = mon_lib_srv,
-    ener_lib                 = monomer_library.server.ener_lib(),
-    raw_records              = flex.std_string(pdb_str_poor.splitlines()),
-    strict_conflict_handling = True,
-    force_symmetry           = True,
-    log                      = None)
-  pdb_hierarchy_poor = processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  xrs_poor = processed_pdb_file.xray_structure()
-  sites_cart_poor = xrs_poor.sites_cart()
-  pdb_hierarchy_poor.write_pdb_file(file_name = "poor_%s.pdb"%prefix)
-  dist = xrs_answer.mean_distance(other = xrs_poor)
-  print "start:", dist
-  ####
-  grm = mmtbx.restraints.manager(
-    geometry=processed_pdb_file.geometry_restraints_manager(show_energies=False),
-    normalization = True)
+def exercise(i_pdb = 0, d_min=1.0, resolution_factor = 0.25):
+  #
+  t = mmtbx.refinement.real_space.setup_test(
+    pdb_answer        = pdb_answer,
+    pdb_poor          = pdb_poor,
+    i_pdb             = i_pdb,
+    d_min             = d_min,
+    resolution_factor = resolution_factor)
+  #
+  ph = t.ph_poor
   for i in [1,2]:
-    print "-"*10
     result = mmtbx.refinement.real_space.fit_residues.run(
-      pdb_hierarchy     = pdb_hierarchy_poor,
-      crystal_symmetry  = xrs_poor.crystal_symmetry(),
-      map_data          = target_map,
+      pdb_hierarchy     = ph,
+      vdw_radii         = t.vdw,
+      crystal_symmetry  = t.crystal_symmetry,
+      map_data          = t.target_map,
       do_all            = True,
       massage_map       = False,
-      rotamer_manager   = rotamer_manager,
-      sin_cos_table     = sin_cos_table,
-      mon_lib_srv       = mon_lib_srv)
-    pdb_hierarchy_poor = result.pdb_hierarchy
+      rotamer_manager   = t.rotamer_manager,
+      sin_cos_table     = t.sin_cos_table,
+      mon_lib_srv       = t.mon_lib_srv)
+    ph = result.pdb_hierarchy
+  result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%str(i_pdb),
+    crystal_symmetry = t.crystal_symmetry)
   #
-  result.pdb_hierarchy.write_pdb_file(file_name = "refined_%s.pdb"%prefix,
-    crystal_symmetry=xrs_poor.crystal_symmetry())
-  dist = flex.max(flex.sqrt((xrs_answer.sites_cart() -
-    result.pdb_hierarchy.atoms().extract_xyz()).dot()))
-  assert dist < 0.48, dist
+  mmtbx.refinement.real_space.check_sites_match(
+    ph_answer  = t.ph_answer,
+    ph_refined = result.pdb_hierarchy,
+    tol        = 0.4)
 
 if(__name__ == "__main__"):
   t0 = time.time()
-  # load rotamer manager
-  rotamer_manager = mmtbx.idealized_aa_residues.rotamer_manager.load()
-  # pre-compute sin and cos tables
-  sin_cos_table = scitbx.math.sin_cos_table(n=10000)
-  inputs = [(pdb_str_answer_1,pdb_str_poor_1), ]
-  for i_test, inp in enumerate(inputs):
-    print "Test ", i_test, "*"*60
-    exercise(
-      pdb_str_answer  = inp[0],
-      pdb_str_poor    = inp[1],
-      rotamer_manager = rotamer_manager,
-      sin_cos_table   = sin_cos_table,
-      d_min           = 1.0,
-      prefix          = str(i_test))
+  exercise()
   print "Time: %6.4f"%(time.time()-t0)

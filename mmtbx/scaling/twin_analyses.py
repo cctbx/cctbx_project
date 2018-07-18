@@ -1024,13 +1024,13 @@ class h_test (scaling.xtriage_analysis):
           anomalous_flag=acentric_data.anomalous_flag(),
           twin_law=twin_law,
           fraction=fraction)
-      except ValueError, e :
+      except ValueError:
         if (miller_array.completeness < 0.05) : # XXX could check for anomalous
           raise Sorry("These data are severely incomplete, which breaks the "+
             "H-test for twinning.  We recommend that you use a full data set "+
             "in Xtriage, otherwise the statistical analyses may be invalid.")
         else :
-          raise e
+          raise
       self.mean_h = h_test_object.mean_h()
       self.mean_h2 = h_test_object.mean_h2()
       self.estimated_alpha = h_test_object.alpha()

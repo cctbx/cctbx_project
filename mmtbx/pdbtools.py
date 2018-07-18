@@ -221,6 +221,9 @@ set_charge
   charge = None
     .type = int(value_max=7,value_min=-3)
 }
+neutralize_scatterers = False
+  .type = bool
+  .short_caption = Neutralize all atoms in the model
 remove_fraction = None
   .short_caption = Remove atoms randomly (fraction)
   .type = float
@@ -241,12 +244,13 @@ def master_params():
 class modify(object):
   def __init__(self, model, params, log = None):
     self.log = log
+    self.params = params
     self.model = model
+    self._neutralize_scatterers()
     self.pdb_hierarchy = model.get_hierarchy()
     self.crystal_symmetry = model.crystal_symmetry()
     if(self.log is None): self.log = sys.stdout
     self.xray_structure = model.get_xray_structure()
-    self.params = params
     asc = self.pdb_hierarchy.atom_selection_cache(
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
@@ -665,6 +669,10 @@ class modify(object):
       sites_cart_rotated = raa * sites_cart.select(sel)
       self.xray_structure.set_sites_cart(
         sites_cart.set_selected(sel, sites_cart_rotated))
+
+  def _neutralize_scatterers(self):
+    if self.params.neutralize_scatterers:
+      self.model.neutralize_scatterers()
 
   def get_results(self):
     return group_args(

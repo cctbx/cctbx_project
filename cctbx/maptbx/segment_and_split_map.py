@@ -232,6 +232,16 @@ master_phil = iotbx.phil.parse("""
        .help = Unit Cell (used for boxed maps)
        .style = hidden
 
+     original_unit_cell = None
+       .type = unit_cell
+       .help = Original unit cell (of input map). Used internally
+       .style = hidden
+
+     original_unit_cell_grid = None
+       .type = ints
+       .help = Original unit cell grid (of input map). Used internally
+       .style = hidden
+
      molecular_mass = None
        .type = float
        .help = Molecular mass of molecule in Da. Used as alternative method \
@@ -4542,8 +4552,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     ccp4_map=iotbx.ccp4_map.map_reader(
     file_name=params.input_files.map_file)
     if not crystal_symmetry:
-      crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
-        ccp4_map.space_group_number)
+      crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
+      if params.crystal_info.original_unit_cell is None:
+        params.crystal_info.original_unit_cell=ccp4_map.unit_cell()
+      if params.crystal_info.original_unit_cell_grid is None:
+        params.crystal_info.original_unit_cell_grid=ccp4_map.unit_cell_grid
+
+      #crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
+        #ccp4_map.space_group_number)
     map_data=ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
@@ -4608,8 +4624,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,
           "\nWrote sharpened map in original location with "+\
              "origin at %s\nto %s" %(
            str(sharpened_map_data.origin()),sharpened_map_file)
-        write_ccp4_map(crystal_symmetry,
-            sharpened_map_file,sharpened_map_data)
+
+        # NOTE: original unit cell and grid
+        write_ccp4_map(
+          crystal.symmetry(
+            unit_cell=params.crystal_info.original_unit_cell,space_group='p1'),
+          sharpened_map_file,sharpened_map_data,
+          output_unit_cell_grid=params.crystal_info.original_unit_cell_grid,)
         params.input_files.map_file=sharpened_map_file # overwrite map_file name here
 
       # done with any sharpening
@@ -4672,6 +4693,16 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       "New unit cell:      (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
       crystal_symmetry.unit_cell().parameters())
 
+    # magnify original unit cell too..
+    cell=list(params.crystal_info.original_unit_cell.parameters())
+    for i in xrange(3):
+      cell[i]=cell[i]*params.map_modification.magnification
+    params.crystal_info.original_unit_cell=uctbx.unit_cell(
+       parameters=tuple(cell))
+    print >>out, "New original (full unit cell): "+\
+        "  (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
+      params.crystal_info.original_unit_cell.parameters())
+
     if params.output_files.magnification_map_file:
       file_name=os.path.join(params.output_files.output_directory,
         params.output_files.magnification_map_file)
@@ -4679,7 +4710,13 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       print >>out,"\nWriting magnification map (input map with "+\
         "magnification of %7.3f \n" %(params.map_modification.magnification) +\
         "applied) to %s \n" %(file_name)
-      write_ccp4_map(crystal_symmetry,file_name,map_data)
+      #write_ccp4_map(crystal_symmetry,file_name,map_data)
+      #  NOTE: original unit cell and grid
+      write_ccp4_map(
+        crystal.symmetry(
+          unit_cell=params.crystal_info.original_unit_cell,space_group='p1'),
+        file_name,map_data,
+        output_unit_cell_grid=params.crystal_info.original_unit_cell_grid,)
       params.input_files.map_file=file_name
     else:
       raise Sorry("Need a file name to write out magnification_map_file")
@@ -4813,27 +4850,6 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         print >>out,"NCS CC after selections: %7.2f   SCORE: %7.1f  OPS: %d" %(
          ncs_cc,score,box.ncs_object.max_operators())
     #-----------------------------
-
-    if box.unit_cell_parameters_from_ccp4_map and \
-       box.unit_cell_parameters_deduced_from_map_grid and \
-       box.unit_cell_parameters_from_ccp4_map !=  \
-          box.unit_cell_parameters_deduced_from_map_grid:
-      if selected_au_box:
-        raise Sorry("Unable to select an au box because unit cell "+
-         "parameters in map file \nwere not consistent." +
-        " (See 'Mismatch of unit cell parameters' above)\n")
-
-      print >>out,"Resetting original unit cell parameters based on "+\
-        "analysis of cell parameters and \nmap grid in map_box..."
-      print >>out,\
-        "Original unit cell parameters from CCP4 map \ngrid (used) are: " +\
-          "%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)\n" %tuple(
-          box.unit_cell_parameters_deduced_from_map_grid)
-      new_original_crystal_symmetry=crystal.symmetry(
-         unit_cell=box.unit_cell_parameters_deduced_from_map_grid,
-         space_group='p1')
-      tracking_data.set_original_crystal_symmetry(
-         crystal_symmetry=new_original_crystal_symmetry)
 
     origin_shift=box.shift_cart
     # Note: moving cell with (0,0,0) in middle to (0,0,0) at corner means
@@ -9577,8 +9593,6 @@ def auto_sharpen_map_or_map_coeffs(
             pdb_inp=pdb_inp,
             out=out)
       working_map=overall_si.map_data
-      from cctbx.maptbx.segment_and_split_map import write_ccp4_map
-      write_ccp4_map(crystal_symmetry,'working_map.ccp4',working_map)
       # Get solvent content again
       overall_si.solvent_content=None
       overall_si.solvent_fraction=get_iterated_solvent_fraction(

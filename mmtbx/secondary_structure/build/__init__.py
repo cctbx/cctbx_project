@@ -730,13 +730,17 @@ def substitute_ss(
     br_txt = model.model_as_pdb()
     with open("before_rotamers.pdb", 'w') as f:
       f.write(br_txt)
+    if(reference_map is None):
+      backbone_sample=False
+    else:
+      backbone_sample=True
     result = mmtbx.refinement.real_space.fit_residues.run(
         pdb_hierarchy     = model.get_hierarchy(),
         crystal_symmetry  = model.crystal_symmetry(),
         map_data          = reference_map,
         rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
         sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
-        backbone_sample   = True,
+        backbone_sample   = backbone_sample,
         mon_lib_srv       = model.get_mon_lib_srv(),
         log               = log)
     model.set_sites_cart(

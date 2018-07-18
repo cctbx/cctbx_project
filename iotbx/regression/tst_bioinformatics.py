@@ -4,6 +4,7 @@ from iotbx import bioinformatics
 import unittest
 import sys
 
+residue_basket="ACCDDDEEEE"
 sequence1 = "VVKMDGRKHRLILPEAKVQDSGEFECRTEGVSAFFGVTVQDPSGPS"
 sequence2 = "LVKFYGRKFVLLFMDQKTFDKYESKLETSGYEKFFIFCMASPISPA"
 name1 = "gi|159164330|pdb|2E6P|A"
@@ -1863,6 +1864,14 @@ TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
  """
 
   print "OK"
+def exercise_random_sequences () :
+  import random
+  random.seed(71231)
+  seq=bioinformatics.random_sequence(n_residues=100,
+     residue_basket=residue_basket)
+  print seq
+  assert seq=="EEEEDCDCCEEECDEADEEEADEEECAEDEDECEEEEEAECCEDEDCAEEEDCDDECDDDEEEDCEEEACEDEADCCEEDCCADECDCDCEAAEEADACE"
+
 
 def exercise_merge_sequences () :
   print "Testing merge_sequences ...",
@@ -1937,4 +1946,5 @@ alltests = unittest.TestSuite(
 if __name__ == "__main__":
   exercise_guess_chain_types()
   exercise_merge_sequences()
+  exercise_random_sequences()
   unittest.TextTestRunner( stream=sys.stdout, verbosity = 2 ).run( alltests )

@@ -79,7 +79,7 @@ def run(args, params=None, out=sys.stdout, model=None):
       map_data          = None,
       rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
       sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
-      backbone_sample   = True,
+      backbone_sample   = False,
       mon_lib_srv       = model.get_mon_lib_srv(),
       log               = out)
   model.set_sites_cart(

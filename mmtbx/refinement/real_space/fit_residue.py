@@ -7,6 +7,7 @@ import math
 from cctbx import maptbx
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
+import iotbx.pdb
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_rotamer_fit_ext")
@@ -22,6 +23,8 @@ class run(object):
                mon_lib_srv,
                rotamer_manager,
                sin_cos_table,
+               vdw_radii=None,
+               xyzrad_bumpers=None,
                target_map=None,
                target_map_for_cb=None,
                unit_cell=None,
@@ -31,23 +34,22 @@ class run(object):
     #
     if(target_map is None):
       assert not backbone_sample
-      assert unit_cell is None
     # Initial state
     rotamer_start = rotamer_manager.rotamer(residue=self.residue)
-    sites_cart_start=self.residue.atoms().extract_xyz()
-    if(target_map is not None):
-      target_start = self.get_target_value(sites_cart=sites_cart_start)
-    # Actual calculations
-    self.chi_angles = self.rotamer_manager.get_chi_angles(
-      resname=self.residue.resname)
-    co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+    sites_cart_start = self.residue.atoms().extract_xyz()
+    self.co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
       residue         = self.residue,
       mon_lib_srv     = self.mon_lib_srv,
       backbone_sample = True)
-    if(len(co.clusters)>0):
+    if(target_map is not None):
+      target_start = self.get_target_value(sites_cart = sites_cart_start)
+    # Actual calculations
+    self.chi_angles = self.rotamer_manager.get_chi_angles(
+      resname = self.residue.resname)
+    if(len(self.co.clusters)>0):
       if(backbone_sample):
-        self.fit_c_beta(c_beta_rotation_cluster = co.clusters[0])
-      self.fit_side_chain(clusters = co.clusters[1:])
+        self.fit_c_beta(c_beta_rotation_cluster = self.co.clusters[0])
+      self.fit_side_chain(clusters = self.co.clusters[1:])
       # Final state
       if(target_map is not None):
         target_final = self.get_target_value(
@@ -75,11 +77,13 @@ class run(object):
         mon_lib_srv = self.mon_lib_srv,
         residue     = self.residue)
     if(rotamer_iterator is None): return
-    selection = flex.size_t(flatten(clusters[0].vector))
+    #selection_rsr = flex.size_t(flatten(clusters[0].vector))
+    selection_clash = self.co.clash_eval_selection
+    selection_rsr   = self.co.rsr_eval_selection
     if(self.target_map is not None):
       start_target_value = self.get_target_value(
         sites_cart = self.residue.atoms().extract_xyz(),
-        selection  = selection)
+        selection  = selection_rsr)
     sites_cart_start = self.residue.atoms().extract_xyz()
     sites_cart_first_rotamer = list(rotamer_iterator)[0][1]
     self.residue.atoms().set_xyz(sites_cart_first_rotamer)
@@ -89,16 +93,47 @@ class run(object):
       cl = clusters[i]
       axes.append(flex.size_t(cl.axis))
       atr.append(flex.size_t(cl.atoms_to_rotate))
-    if(self.target_map is not None):
+    sites = self.residue.atoms().extract_xyz()
+    if(self.target_map is not None and self.xyzrad_bumpers is not None):
+      # Get vdW radii
+      radii = flex.double()
+      atom_names = []
+      for a in self.residue.atoms():
+        atom_names.append(a.name.strip())
+      converter = iotbx.pdb.residue_name_plus_atom_names_interpreter(
+        residue_name=self.residue.resname, atom_names = atom_names)
+      mon_lib_names = converter.atom_name_interpretation.mon_lib_names()
+      for n in mon_lib_names:
+        try: radii.append(self.vdw_radii[n.strip()]-0.25)
+        except KeyError: radii.append(1.5) # XXX U, Uranium, OXT are problems!
+      #
+      xyzrad_residue = ext.xyzrad(sites_cart = sites, radii = radii)
+      #
+      ro = ext.fit(
+        target_value             = start_target_value,
+        xyzrad_bumpers           = self.xyzrad_bumpers,
+        axes                     = axes,
+        rotatable_points_indices = atr,
+        angles_array             = self.chi_angles,
+        density_map              = self.target_map,
+        all_points               = xyzrad_residue,
+        unit_cell                = self.unit_cell,
+        selection_clash          = selection_clash,
+        selection_rsr            = selection_rsr,
+        sin_table                = self.sin_cos_table.sin_table,
+        cos_table                = self.sin_cos_table.cos_table,
+        step                     = self.sin_cos_table.step,
+        n                        = self.sin_cos_table.n)
+    elif(self.target_map is not None and self.xyzrad_bumpers is None):
       ro = ext.fit(
         target_value             = start_target_value,
         axes                     = axes,
         rotatable_points_indices = atr,
         angles_array             = self.chi_angles,
         density_map              = self.target_map,
-        all_points               = self.residue.atoms().extract_xyz(),
+        all_points               = sites,
         unit_cell                = self.unit_cell,
-        selection                = selection,
+        selection                = selection_rsr,
         sin_table                = self.sin_cos_table.sin_table,
         cos_table                = self.sin_cos_table.cos_table,
         step                     = self.sin_cos_table.step,
@@ -127,16 +162,19 @@ class run(object):
           self.residue.atoms().set_xyz(sites_cart_result)
         else:
           self.residue.atoms().set_xyz(sites_cart_start)
+    else:
+      self.residue.atoms().set_xyz(sites_cart_start)
 
   def fit_c_beta(self, c_beta_rotation_cluster):
     selection = flex.size_t(c_beta_rotation_cluster.selection)
     sites_cart = self.residue.atoms().extract_xyz()
+    sites_cart_start = sites_cart.deep_copy() # XXX
     start_target_value = self.get_target_value(
       sites_cart = sites_cart,
       selection  = selection,
       target_map = self.target_map_for_cb)
     ro = ext.fit(
-      target_value             = start_target_value,
+      target_value             = start_target_value+1.e-6,
       axes                     = [c_beta_rotation_cluster.axis],
       rotatable_points_indices = [c_beta_rotation_cluster.atoms_to_rotate],
       angles_array             = [[i*math.pi/180] for i in range(-20,21,1)],
@@ -151,11 +189,14 @@ class run(object):
     sites_cart_result = ro.result()
     if(sites_cart_result.size()>0):
       self.residue.atoms().set_xyz(sites_cart_result)
+    else:
+      self.residue.atoms().set_xyz(sites_cart_start)
 
 class run_with_minimization(object):
   def __init__(self,
                target_map,
                residue,
+               vdw_radii,
                xray_structure,
                mon_lib_srv,
                rotamer_manager,
@@ -209,6 +250,7 @@ class run_with_minimization(object):
   def fit_rotamers(self):
     sps = self.xray_structure.special_position_settings()
     mmtbx.refinement.real_space.fit_residue.run(
+      vdw_radii         = self.vdw_radii,
       target_map        = self.target_map_work,
       target_map_for_cb = self.target_map_orig,
       mon_lib_srv       = self.mon_lib_srv,

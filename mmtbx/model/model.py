@@ -1169,6 +1169,18 @@ class manager(object):
       print >> self.log, "No NCS restraint groups specified."
       print >> self.log
 
+  def get_vdw_radii(self):
+    """
+    Return van-der-Waals radii for known atom names.
+    """
+    m = self.get_mon_lib_srv()
+    e = self.get_ener_lib()
+    result = {}
+    for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
+      for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
+        result[k1]=e.lib_atom[v1.type_energy].vdw_radius
+    return result
+
   def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
     result = 0
     if (self.get_restraints_manager() is not None and
@@ -1722,6 +1734,19 @@ class manager(object):
         item.occupancy_sum)
     print >> out,prefix+fmt%("TOTAL",self.get_number_of_atoms(),atoms_occupancy_sum)
     return out.getvalue()
+
+  def neutralize_scatterers(self):
+    neutralized = False
+    xrs = self.get_xray_structure()
+    scatterers = xrs.scatterers()
+    for scatterer in scatterers:
+      neutralized_scatterer = filter(lambda x: x.isalpha(), scatterer.scattering_type)
+      if (neutralized_scatterer != scatterer.scattering_type):
+        neutralized = True
+        scatterer.scattering_type = neutralized_scatterer
+    if neutralized:
+      self.set_xray_structure(xray_structure = xrs)
+      self.unset_restraints_manager()
 
   def idealize_h(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):
@@ -2724,7 +2749,7 @@ class manager(object):
     return mmtbx.model.statistics.composition(
       pdb_hierarchy = self.get_hierarchy())
 
-  def geometry_statistics(self):
+  def geometry_statistics(self, fast_clash=True):
     scattering_table = \
         self.get_xray_structure().scattering_type_registry().last_table()
     if(self.restraints_manager is None): return None
@@ -2751,7 +2776,7 @@ class manager(object):
     #
     return mmtbx.model.statistics.geometry(
       pdb_hierarchy               = ph_dc,
-      fast_clash = True,
+      fast_clash                  = fast_clash,
       geometry_restraints_manager = rm.geometry)
 
   def occupancy_statistics(self):

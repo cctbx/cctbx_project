@@ -60,6 +60,19 @@ output_origin_grid_units = None
   .type = ints
   .help = You can set the origin of the output map (in grid units)
   .short_caption = Output origin (grid units)
+
+# for wx GUI
+map_file = None
+  .type = path
+  .help = Input map file
+include scope libtbx.phil.interface.tracking_params
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+}
 """
 
 def master_params():

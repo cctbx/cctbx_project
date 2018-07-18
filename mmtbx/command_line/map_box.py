@@ -148,6 +148,12 @@ master_phil = libtbx.phil.parse("""
             type is not protein it should be set as well.
     .short_caption = Extract unique
 
+  keep_low_density = True
+    .type = bool
+    .help = Get remainder (weak density) with extract_unique.
+    .short_caption = Get remainder
+    
+
   chain_type = *None PROTEIN DNA RNA
     .type = choice
     .help = Chain type. Only used if extract_unique is set. Has minor effect \
@@ -528,6 +534,7 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
+    keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
     sequence              = sequence,
     solvent_content       = params.solvent_content,

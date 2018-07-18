@@ -2060,3 +2060,15 @@ def chain_type_and_residues(text=None,chain_type=None,likely_chain_types=None):
     return None,None
   else:
     return ok_list[0],residues
+
+def random_sequence(n_residues=None,residue_basket=None):
+  assert n_residues and residue_basket
+  import random
+  s=""
+  nn=len(residue_basket)-1
+  for i in xrange(n_residues):
+    id=random.randint(0,nn)
+    s+=residue_basket[id]
+  return s
+
+  print dir(random)
