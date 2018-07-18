@@ -382,6 +382,8 @@ class Script(object):
         refls = reflections.select(reflections['id'] == experiment_id)
         refls['id'] = flex.int(len(refls), len(all_experiments)-1)
         all_reflections.extend(refls)
+
+    all_reflections.sort('miller_index_asymmetric')
     return all_experiments, all_reflections
 
   def validate(self):
