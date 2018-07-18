@@ -241,7 +241,7 @@ class fetch_packages (object) :
       if return_file_and_status:
         return op.join(self.dest_dir, output_file), size
       return op.join(self.dest_dir, output_file)
-    assert (size > 0), pkg_name
+    assert size > 0, "File %s has size %d" % (pkg_name, size)
     if return_file_and_status:
       return op.join(self.dest_dir, output_file), size
     return op.join(self.dest_dir, output_file)
