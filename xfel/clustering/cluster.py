@@ -315,13 +315,7 @@ class Cluster:
         r, e = sort_dials_raw_input(raw_input)
         dials_refls.extend(r)
         dials_expts.extend(e)
-      dials_refls_ids = [os.path.join(os.path.dirname(r), os.path.basename(r).split("_")[0])
-                         for r in dials_refls]
-      dials_expts_ids = [os.path.join(os.path.dirname(e), os.path.basename(e).split("_")[0])
-                         for e in dials_expts]
-      matches = [(dials_refls[i], dials_expts[dials_expts_ids.index(dials_refls_ids[i])])
-                  for i in xrange(len(dials_refls_ids)) if dials_refls_ids[i] in dials_expts_ids]
-      for (r, e) in matches:
+      for r, e in zip(dials_refls, dials_expts):
         this_frame = SingleDialsFrameFromFiles(refls_path=r, expts_path=e, **kwargs)
         if hasattr(this_frame, 'miller_array'):
           data.append(this_frame)
