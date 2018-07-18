@@ -70,10 +70,11 @@ class input(object):
     if(crystal_symmetry is None and model is not None):
       crystal_symmetry = model.crystal_symmetry()
     if([model, crystal_symmetry].count(None)==0):
-      if ignore_symmetry_conflicts: # Take crystal_symmetry
-        model = mmtbx.model.manager(
-          model_input = model.get_hierarchy().as_pdb_input(),
-          crystal_symmetry = crystal_symmetry)
+      if ignore_symmetry_conflicts: # Take crystal_symmetry if necessary
+        if not (model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)):
+          model = mmtbx.model.manager(
+            model_input = model.get_hierarchy().as_pdb_input(),
+            crystal_symmetry = crystal_symmetry)
       else:
         assert model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)
     if(not [map_data_1, map_data_2].count(None) in [0,2]):

@@ -152,7 +152,7 @@ master_phil = libtbx.phil.parse("""
     .type = bool
     .help = Get remainder (weak density) with extract_unique.
     .short_caption = Get remainder
-    
+
 
   chain_type = *None PROTEIN DNA RNA
     .type = choice
@@ -241,6 +241,11 @@ master_phil = libtbx.phil.parse("""
     .help = Do not go outside original map boundaries
     .short_caption = Restrict map size
 
+  ignore_symmetry_conflicts = False
+    .type=bool
+    .help = Ignore unit cell from model if it conflicts with the map.
+    .short_caption = Ignore symmetry conflicts
+
   gui
     .help = "GUI-specific parameter required for output directory"
   {
@@ -279,9 +284,28 @@ Parameters:"""%h
     print default_message
     master_phil.show(prefix="  ")
     return
+
+  # Process inputs ignoring symmetry conflicts just to get the value of
+  #   ignore_symmetry_conflicts...
+
   inputs = mmtbx.utils.process_command_line_args(args = args,
-    cmd_cs=crystal_symmetry,
-    master_params = master_phil)
+      cmd_cs=crystal_symmetry,
+      master_params = master_phil,
+      suppress_symmetry_related_errors=True)
+  params = inputs.params.extract()
+
+  # Now process inputs for real and write a nice error message if necessary.
+  try:
+    inputs = mmtbx.utils.process_command_line_args(args = args,
+      cmd_cs=crystal_symmetry,
+      master_params = master_phil,
+      suppress_symmetry_related_errors=params.ignore_symmetry_conflicts)
+  except Exception,e:
+    if str(e).find("symmetry mismatch ")>1:
+      raise Sorry(str(e)+"\nTry 'ignore_symmetry_conflicts=True'")
+    else:
+      raise e
+
   params = inputs.params.extract()
   master_phil.format(python_object=params).show(out=log)
 
