@@ -8,17 +8,20 @@ Redesign script for merging xfel data
 
 from xfel.merging.database.merging_database import mysql_master_phil
 master_phil="""
-data {
-  type = *glob dir file
-    .type = choice
-    .help = How is the data identified, either by glob, directory name, or file name?
+input {
   path = None
     .type = str
     .multiple = True
-    .help = paths is validated as a glob, directory or file, respectively.
-    .help = however, validation is delayed until data are assigned to parallel ranks?
+    .help = paths are validated as a glob, directory or file.
+    .help = however, validation is delayed until data are assigned to parallel ranks.
     .help = integrated_experiments (.json) and reflection tables (.pickle) must both be
     .help = present as matching files.  Only one need be explicitly specified.
+  reflections_suffix = _integrated.pickle
+    .type = str
+    .help = Find file names with this suffix for reflections
+  experiments_suffix = _integrated_experiments.json
+    .type = str
+    .help = Find file names with this suffix for experiments
 }
 
 filter
@@ -362,6 +365,25 @@ class Script(object):
     self.params = params
     self.options = options
 
+  def load_data(self):
+    from xfel.merging.application.input.file_loader import file_loader
+    from dxtbx.model.experiment_list import ExperimentList
+    from dials.array_family import flex
+    all_experiments = ExperimentList()
+    all_reflections = flex.reflection_table()
+
+    # example showing what reading all the data into a single experiment list/
+    # reflection table would look like
+    loader = file_loader(self.params)
+    for experiments_filename, reflections_filename in loader.filepair_generator():
+      experiments, reflections = loader.load_data(experiments_filename, reflections_filename)
+      for experiment_id, experiment in enumerate(experiments):
+        all_experiments.append(experiment)
+        refls = reflections.select(reflections['id'] == experiment_id)
+        refls['id'] = flex.int(len(refls), len(all_experiments)-1)
+        all_reflections.extend(refls)
+    return all_experiments, all_reflections
+
   def validate(self):
     from xfel.merging.application.validation.application import application
     application(self.params)
@@ -369,6 +391,8 @@ class Script(object):
   def run(self):
     print('''Mock run, merge some data.''')
     self.initialize()
+    experiments, reflections = self.load_data()
+    print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
     self.validate()
     # do other stuff
     return
