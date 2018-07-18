@@ -1280,6 +1280,8 @@ class info_object:
       origin_shift=None,
       crystal_symmetry=None, # after density_select
       original_crystal_symmetry=None, # before density_select
+      full_crystal_symmetry=None, # from real_map object
+      full_unit_cell_grid=None,  # from real_map object
       edited_volume_list=None,
       region_range_dict=None,
       selected_regions=None,
@@ -1422,6 +1424,12 @@ class info_object:
 
   def set_original_crystal_symmetry(self,crystal_symmetry):
     self.original_crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_full_crystal_symmetry(self,crystal_symmetry):
+    self.full_crystal_symmetry=deepcopy(crystal_symmetry)
+
+  def set_full_unit_cell_grid(self,unit_cell_grid):
+    self.full_unit_cell_grid=deepcopy(unit_cell_grid)
 
   def set_box_map_bounds_first_last(self,box_map_bounds_first,
       box_map_bounds_last):
@@ -4337,8 +4345,6 @@ def get_bounds_for_au_box(params,
       closest_sites.size(),params.segmentation.n_au_box)
     print >>out,"New rmsd: %7.1f A " %(
        radius_of_gyration_of_vector(closest_sites))
-    write_atoms(file_name='more_au.pdb',crystal_symmetry=box_crystal_symmetry,sites=closest_sites+coordinate_offset)
-    write_ccp4_map(box_crystal_symmetry,"more_au.ccp4",box_map_data)
 
   lower_bounds,upper_bounds=get_range(
      sites=closest_sites,map_data=box_map_data,
@@ -4553,13 +4559,10 @@ def get_params(args,map_data=None,crystal_symmetry=None,
     file_name=params.input_files.map_file)
     if not crystal_symmetry:
       crystal_symmetry=ccp4_map.crystal_symmetry() # 2018-07-18
-      if params.crystal_info.original_unit_cell is None:
-        params.crystal_info.original_unit_cell=ccp4_map.unit_cell()
-      if params.crystal_info.original_unit_cell_grid is None:
-        params.crystal_info.original_unit_cell_grid=ccp4_map.unit_cell_grid
-
-      #crystal_symmetry=crystal.symmetry(ccp4_map.unit_cell().parameters(),
-        #ccp4_map.space_group_number)
+      tracking_data.set_full_crystal_symmetry(
+        crystal.symmetry(ccp4_map.unit_cell().parameters(),
+         ccp4_map.space_group_number))
+      tracking_data.set_full_unit_cell_grid(ccp4_map.unit_cell_grid)
     map_data=ccp4_map.data.as_double()
   else:
     raise Sorry("Need ccp4 map")
@@ -4626,11 +4629,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
            str(sharpened_map_data.origin()),sharpened_map_file)
 
         # NOTE: original unit cell and grid
-        write_ccp4_map(
-          crystal.symmetry(
-            unit_cell=params.crystal_info.original_unit_cell,space_group='p1'),
+        write_ccp4_map(tracking_data.full_crystal_symmetry,
           sharpened_map_file,sharpened_map_data,
-          output_unit_cell_grid=params.crystal_info.original_unit_cell_grid,)
+          output_unit_cell_grid=tracking_data.full_unit_cell_grid,)
         params.input_files.map_file=sharpened_map_file # overwrite map_file name here
 
       # done with any sharpening
@@ -4694,14 +4695,14 @@ def get_params(args,map_data=None,crystal_symmetry=None,
       crystal_symmetry.unit_cell().parameters())
 
     # magnify original unit cell too..
-    cell=list(params.crystal_info.original_unit_cell.parameters())
+    cell=list(tracking_data.full_crystal_symmetry.unit_cell().parameters())
     for i in xrange(3):
       cell[i]=cell[i]*params.map_modification.magnification
-    params.crystal_info.original_unit_cell=uctbx.unit_cell(
-       parameters=tuple(cell))
+    tracking_data.set_full_crystal_symmetry(
+        crystal.symmetry(tuple(cell),ccp4_map.space_group_number))
     print >>out, "New original (full unit cell): "+\
         "  (%7.4f, %7.4f, %7.4f, %7.4f, %7.4f, %7.4f)" %(
-      params.crystal_info.original_unit_cell.parameters())
+      tracking_data.full_crystal_symmetry.unit_cell.parameters())
 
     if params.output_files.magnification_map_file:
       file_name=os.path.join(params.output_files.output_directory,
@@ -4712,11 +4713,9 @@ def get_params(args,map_data=None,crystal_symmetry=None,
         "applied) to %s \n" %(file_name)
       #write_ccp4_map(crystal_symmetry,file_name,map_data)
       #  NOTE: original unit cell and grid
-      write_ccp4_map(
-        crystal.symmetry(
-          unit_cell=params.crystal_info.original_unit_cell,space_group='p1'),
+      write_ccp4_map(tracking_data.full_crystal_symmetry,
         file_name,map_data,
-        output_unit_cell_grid=params.crystal_info.original_unit_cell_grid,)
+        output_unit_cell_grid=tracking_data.original_unit_cell_grid,)
       params.input_files.map_file=file_name
     else:
       raise Sorry("Need a file name to write out magnification_map_file")
