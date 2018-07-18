@@ -5,7 +5,8 @@ import sys, os
 import datetime
 from time import time
 from libtbx.utils import Sorry, multi_out, null_out
-from libtbx import Auto, easy_pickle, group_args
+from libtbx import Auto, easy_pickle, group_args, easy_run
+import libtbx.load_env
 from scitbx.array_family import flex
 from cStringIO import StringIO
 
@@ -598,18 +599,38 @@ class model_idealization():
         self.shift_and_write_result(
           model = self.model,
           fname_suffix="just_before_rota")
+      # run reduce
+      assert (libtbx.env.has_module(name="reduce"))
+
+      input_str = self.model.model_as_pdb()
+      build = "phenix.reduce" + " -quiet -build -allalt -NUC -"
+      output = easy_run.fully_buffered(build,
+                                   stdin_lines=input_str)
+      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+      p.pdb_interpretation.use_neutron_distances=True
+      h_input = iotbx.pdb.input(lines=output.stdout_lines, source_info=None)
+      h_model = mmtbx.model.manager(model_input = h_input,
+          process_input=True,
+          restraint_objects=self.model._restraint_objects,
+          pdb_interpretation_params=p)
+      sel = h_model.get_hd_selection()
+
+
+      # h_hierarchy = iotbx.pdb.input(lines=output, source_info=None).construct_hierarchy()
 
       result = mmtbx.refinement.real_space.fit_residues.run(
-          pdb_hierarchy     = self.model.get_hierarchy(),
+          vdw_radii         = h_model.get_vdw_radii(),
+          # pdb_hierarchy     = self.model.get_hierarchy(),
+          pdb_hierarchy     = h_model.get_hierarchy(),
           crystal_symmetry  = self.model.crystal_symmetry(),
           map_data          = self.master_map,
           rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
           sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
           backbone_sample   = False,
-          mon_lib_srv       = self.model.get_mon_lib_srv(),
+          mon_lib_srv       = h_model.get_mon_lib_srv(),
           log               = self.log)
       self.model.set_sites_cart(
-          sites_cart = result.pdb_hierarchy.atoms().extract_xyz(),
+          sites_cart = result.pdb_hierarchy.select(~sel).atoms().extract_xyz(),
           update_grm = True)
     if self.params.debug:
       self.shift_and_write_result(
