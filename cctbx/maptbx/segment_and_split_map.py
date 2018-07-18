@@ -2420,7 +2420,7 @@ def get_map_object(file_name=None,out=sys.stdout):
       print >>out, "\nUnit cell crystal symmetry used: "
     else:
       crystal_symmetry=m.crystal_symmetry()
-      print >>out, "\nBox  crystal symmetry used: "
+      print >>out, "\nBox crystal symmetry used: "
     crystal_symmetry.show_summary(f=out)
     space_group=crystal_symmetry.space_group()
     unit_cell=crystal_symmetry.unit_cell()
