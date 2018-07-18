@@ -202,16 +202,19 @@ class clashscore(validation):
 
 class probe_line_info_storage(object):
   def __init__(self, line):
-    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
-    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
-    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
-    self.tBval = line.split(":")
-    self.gap = float(self.gap)
-    self.x = float(self.x)
-    self.y = float(self.y)
-    self.z = float(self.z)
-    self.sBval = float(self.sBval)
-    self.tBval = float(self.tBval)
+    # What is in line:
+    # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
+    sp = line.split(":")
+    self.type = sp[2]
+    self.srcAtom = sp[3]
+    self.targAtom = sp[4]
+    self.min_gap = float(sp[6])
+
+    self.x = float(sp[-5])
+    self.y = float(sp[-4])
+    self.z = float(sp[-3])
+    self.sBval = float(sp[-2])
+    self.tBval = float(sp[-1])
   def is_similar(self, other):
     assert isinstance(other, probe_line_info_storage)
     return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
@@ -224,9 +227,9 @@ class probe_line_info_storage(object):
       atoms = [ atom2, atom1 ]
     clash_obj = clash(
       atoms_info=atoms,
-      overlap=self.gap,
+      overlap=self.min_gap,
       probe_type=self.type,
-      outlier=abs(self.gap) > 0.4,
+      outlier=self.min_gap <= -0.4,
       max_b_factor=max(self.sBval, self.tBval),
       xyz=(self.x,self.y,self.z))
     return clash_obj
@@ -268,7 +271,7 @@ class probe_clashscore_manager(object):
     probe_command = '"%s"' % probe_command   # in case of spaces in path
     if not nuclear:
       self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT "ogt%d not water" "ogt%d" -' % \
+        '%s -u -q -mc -het -once -NOVDWOUT -CON "ogt%d not water" "ogt%d" -' % \
           (probe_command, ogt, ogt)
       #The -NOVDWOUT probe run above is faster for clashscore to parse,
       # the full_probe_txt version below is for printing to file for coot usage
@@ -283,7 +286,7 @@ class probe_clashscore_manager(object):
             (probe_command, blt, ogt)
     else: #use nuclear distances
       self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT -nuclear' % probe_command +\
+        '%s -u -q -mc -het -once -NOVDWOUT -CON -nuclear' % probe_command +\
           ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
       self.full_probe_txt = \
         '%s -u -q -mc -het -once -nuclear' % probe_command +\
@@ -296,8 +299,6 @@ class probe_clashscore_manager(object):
           '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
             ' "blt%d ogt%d not water" -' % (blt, ogt)
 
-    if verbose:
-      print "\nUsing input model H/D atoms...\n"
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string)
 
@@ -305,20 +306,15 @@ class probe_clashscore_manager(object):
     key = line_info.targAtom+line_info.srcAtom
     if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
       key = line_info.srcAtom+line_info.targAtom
-
-    if (line_info.type == "so" or line_info.type == "bo"):
-      if (line_info.gap <= -0.4):
+    if (line_info.type == "bo"):
+      if (line_info.min_gap <= -0.4):
         if (key in clash_hash) :
-          if (line_info.gap < clash_hash[key].gap):
+          if (line_info.min_gap < clash_hash[key].min_gap):
             clash_hash[key] = line_info
         else :
           clash_hash[key] = line_info
     elif (line_info.type == "hb"):
-      if (key in hbond_hash) :
-        if (line_info.gap < hbond_hash[key].gap):
-          hbond_hash[key] = line_info
-      else :
-        hbond_hash[key] = line_info
+      hbond_hash[key] = line_info
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
@@ -330,7 +326,6 @@ class probe_clashscore_manager(object):
   def process_raw_probe_output(self, probe_unformatted):
     new_clash_hash = {}
     new_hbond_hash = {}
-    previous_line = None
     for line in probe_unformatted:
       # processed=False # garbage
       try:
@@ -338,64 +333,42 @@ class probe_clashscore_manager(object):
       except KeyboardInterrupt: raise
       except ValueError:
         continue # something else (different from expected) got into output
-
-      if previous_line is not None:
-        if line_storage.is_similar(previous_line):
-          # modify previous line to store this one if needed
-          previous_line.gap = min(previous_line.gap, line_storage.gap)
-        else:
-          # seems like new group of lines, then dump previous and start new
-          # one
-          self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
-          previous_line = line_storage
-      else:
-        previous_line = line_storage
-    if previous_line is not None:
-      self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+      self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
-  def process_raw_probe_output_fast(self, lines):
+  def get_condenced_clashes(self, lines):
     def parse_line(line):
       sp = line.split(':')
       return sp[3], sp[4], float(sp[6])
-
     def parse_h_line(line):
       sp = line.split(':')
       return sp[3], sp[4]
 
     clashes = set() # [(src, targ), (src, targ)]
     hbonds = [] # (src, targ), (targ, src)
-    n_cl = 0
-    n_hb = 0
-    prev_line = None
-    skip_the_rest = False
     for l in lines:
       rtype = l[6:8]
-      if rtype == 'so' or rtype == 'bo':
-        if skip_the_rest:
-          if prev_line and l[:43] == prev_line[:43]:
-            continue
+      if rtype == 'bo':
         srcAtom, targAtom, gap = parse_line(l)
         if gap <= -0.4:
+          # print l[:43], "good gap, saving", gap
           if (srcAtom, targAtom) not in clashes and (targAtom, srcAtom) not in clashes:
             clashes.add((srcAtom, targAtom))
-            prev_line = l
-          skip_the_rest = True
-        else:
-          skip_the_rest = False
-
+            # print (srcAtom, targAtom)
       elif rtype == 'hb':
-        if prev_line and l[:43] == prev_line[:43]:
-          continue
         srcAtom, targAtom = parse_h_line(l)
         hbonds.append((srcAtom, targAtom))
         hbonds.append((targAtom, srcAtom))
         prev_line = l
     hbonds_set = set(hbonds)
     n_clashes = 0
+    # print "clashes", len(clashes)
+    # print "hbonds", len(hbonds)
     for clash in clashes:
       if clash not in hbonds_set:
         n_clashes += 1
+      # else:
+        # print "skipping", clash
     return n_clashes
 
   def run_probe_clashscore(self, pdb_string):
@@ -422,7 +395,7 @@ class probe_clashscore_manager(object):
                                                     stdin_lines=pdb_string)
       self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
     else:
-      self.n_clashes = self.process_raw_probe_output_fast(probe_unformatted)
+      self.n_clashes = self.get_condenced_clashes(probe_unformatted)
 
     # getting number of atoms from probe
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
@@ -571,6 +544,8 @@ def check_and_add_hydrogen(
   # add hydrogen if needed
   if has_reduce and (not keep_hydrogens):
     # set reduce running parameters
+    if verbose:
+      print "\nAdding H/D atoms with reduce...\n"
     build = "phenix.reduce -oh -his -flip -keep -allalt -limit{}"
     if not do_flips : build += " -pen9999"
     if nuclear:
@@ -595,6 +570,8 @@ def check_and_add_hydrogen(
       msg = 'phenix.reduce could not be detected on your system.\n'
       msg += 'Cannot add hydrogen to PDB file'
       print >> log,msg
+    if verbose:
+      print "\nUsing input model H/D atoms...\n"
     return r.as_pdb_string(cryst_sym),False
 
 #-----------------------------------------------------------------------
