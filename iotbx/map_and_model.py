@@ -4,6 +4,7 @@ from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
+import sys
 
 def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   h0, h1, h2 = None, None, None
@@ -60,7 +61,8 @@ class input(object):
                # obtained from command-line args or from parameters. Consider
                # renaming parameter accordingly.
                crystal_symmetry = None,
-               box              = True):
+               box              = True,
+               ignore_symmetry_conflicts = False):
     #
     # We should be able to work without symmetry at all. Why not just box
     # model?
@@ -68,7 +70,12 @@ class input(object):
     if(crystal_symmetry is None and model is not None):
       crystal_symmetry = model.crystal_symmetry()
     if([model, crystal_symmetry].count(None)==0):
-      assert model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)
+      if ignore_symmetry_conflicts: # Take crystal_symmetry
+        model = mmtbx.model.manager(
+          model_input = model.get_hierarchy().as_pdb_input(),
+          crystal_symmetry = crystal_symmetry)
+      else:
+        assert model.crystal_symmetry().is_similar_symmetry(crystal_symmetry)
     if(not [map_data_1, map_data_2].count(None) in [0,2]):
       raise Sorry("None or two half-maps are required.")
     #
