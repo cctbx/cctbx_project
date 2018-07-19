@@ -43,6 +43,7 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
+               bselection=None,
                map_data=None,
                vdw_radii=None,
                do_all=False,
@@ -198,6 +199,8 @@ class run(object):
           for conformer in residue_group.conformers():
             residue = conformer.only_residue()
             if(get_class(residue.resname) != "common_amino_acid"): continue
+            if self.bselection is not None:
+              if not self.bselection[residue.atoms()[0].i_seq]: continue
             cntr += 1
             function(residue = residue)
     return cntr
