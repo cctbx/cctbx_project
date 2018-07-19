@@ -48,7 +48,6 @@ class map_symmetry:
     print ("Finding symmetry in map",file=self.log)
 
     from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map
-
     new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=self.params,
       map_data=self.map_data,
       crystal_symmetry=self.crystal_symmetry,

@@ -2999,6 +2999,7 @@ def get_ncs_from_map(params=None,
   print >>out,"Ranking of NCS types:"
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
   for score,cc_avg,ncs_obj,symmetry in results_list:
+    if not symmetry: symmetry=""
     print >>out," %6.2f  %5.2f    %2d          %s" %(
        score,cc_avg,ncs_obj.max_operators(), symmetry.strip(),)
 
@@ -3276,7 +3277,7 @@ def get_ncs_list(params=None,symmetry=None,
   # params.reconstruction_symmetry.max_helical_ops_to_check))
 
   if ncs_obj_to_check and ncs_obj_to_check.max_operators()>1:
-    return [ncs_obj_to_check],["SUPPLIED NCS"]
+    return [ncs_obj_to_check] # ,["SUPPLIED NCS"]
 
   from mmtbx.ncs.ncs import generate_ncs_ops
   ncs_list=generate_ncs_ops(
