@@ -3297,7 +3297,7 @@ def get_ncs_list(params=None,symmetry=None,
 
   # Generate helical symmetry from map if necessary
   if symmetry.lower()=='helical' or (
-      symmetry.lower()=='all' and
+      symmetry.lower() in ['all','any'] and
       params.reconstruction_symmetry.include_helical_symmetry):
      if helical_rot_deg is None or helical_trans_z_angstrom is None:
 
