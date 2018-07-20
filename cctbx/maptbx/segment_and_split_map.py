@@ -3027,6 +3027,7 @@ def get_ncs_from_map(params=None,
 
   print >>out,"\nBest NCS type is: ",
   print >>out,"\n  SCORE    CC   OPERATORS     SYMMETRY"
+  if not ncs_info: ncs_info=""
   print >>out," %6.2f  %5.2f    %2d          %s" %(
        score,cc_avg,ncs_obj.max_operators(), ncs_info.strip(),)
   return ncs_obj,cc_avg,score
