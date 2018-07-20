@@ -32,7 +32,10 @@ class map_symmetry:
     from libtbx import group_args
     return group_args(
      cc = self.cc,
-     ncs_object = self.ncs_object
+     ncs_object = self.ncs_object,
+     ncs_name = str(self.ncs_object.get_ncs_name()),
+     ncs_operators = self.ncs_object.max_operators(),
+     score=self.score,
     )
 
   def clean_up(self):
@@ -77,6 +80,7 @@ class map_symmetry:
     # Final results
     self.ncs_object=ncs_object
     self.cc=ncs_cc
+    self.score=ncs_score
 
   def get_resolution(self):
     if not self.params.crystal_info.resolution:
