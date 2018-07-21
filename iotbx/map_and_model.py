@@ -4,7 +4,6 @@ from libtbx.utils import Sorry
 from cctbx import maptbx
 from libtbx import group_args
 from scitbx.array_family import flex
-import sys
 
 def get_map_histograms(data, n_slots=20, data_1=None, data_2=None):
   h0, h1, h2 = None, None, None
@@ -108,13 +107,14 @@ class input(object):
     sites_cart = None
     if(self._model is not None):
       sites_cart = self._model.get_sites_cart()
-    soin = maptbx.shift_origin_if_needed(
+    self.soin = maptbx.shift_origin_if_needed(
       map_data         = self._map_data,
       sites_cart       = sites_cart,
       crystal_symmetry = crystal_symmetry)
-    self._map_data = soin.map_data
+    self.box = None
+    self._map_data = self.soin.map_data
     if(self._model is not None):
-      self._model.set_sites_cart(sites_cart = soin.sites_cart)
+      self._model.set_sites_cart(sites_cart = self.soin.sites_cart)
     if(self._half_map_data_1 is not None):
       self._half_map_data_1 = maptbx.shift_origin_if_needed(
         map_data         = self._half_map_data_1,
@@ -136,15 +136,15 @@ class input(object):
           xray_structure = xrs,
           map_data       = self._half_map_data_2,
           box_cushion    = 5.0).map_box
-      box = mmtbx.utils.extract_box_around_model_and_map(
+      self.box = mmtbx.utils.extract_box_around_model_and_map(
         xray_structure = xrs,
         map_data       = self._map_data,
         box_cushion    = 5.0)
       # This should be changed to call model.set_shift_manager(shift_manager=box)
       # For now just call _model.unset_restraints_manager() afterwards.
-      self._model.set_xray_structure(xray_structure = box.xray_structure_box)
+      self._model.set_xray_structure(xray_structure = self.box.xray_structure_box)
       self._crystal_symmetry = self._model.crystal_symmetry()
-      self._map_data = box.map_box
+      self._map_data = self.box.map_box
 
   def counts(self): return self._counts
 

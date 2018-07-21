@@ -443,7 +443,8 @@ class validation (slots_getstate_setstate) :
     """
     raise NotImplementedError()
 
-  def as_gui_table_data (self, outliers_only=True, include_zoom=False) :
+  def as_gui_table_data(self, outliers_only=True, include_zoom=False,
+                        shift=None):
     """
     Format results for display in the Phenix GUI.
     """
@@ -452,6 +453,13 @@ class validation (slots_getstate_setstate) :
       extra = []
       if (include_zoom) :
         extra = result.zoom_info()
+        if (shift is not None):
+          assert(len(shift) == 3)
+          xyz = extra[-1]
+          xyz = (xyz[0] + shift[0],
+                 xyz[1] + shift[1],
+                 xyz[2] + shift[2])
+          extra[1] = xyz
       row = result.as_table_row_phenix()
       assert (len(row) == len(self.gui_list_headers))
       table.append(row + extra)
