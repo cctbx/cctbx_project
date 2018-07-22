@@ -70,6 +70,11 @@ master_phil = libtbx.phil.parse("""
     .type = float
     .help = Resolution factor for calculation of map coefficients
     .short_caption = Resolution factor
+  scale_max = 99999
+    .type = float
+    .help = Maximum value of amplitudes for output mtz file. If None, apply\
+             volume scaling
+    .short_caption = Scale max
   resolution = None
     .type = float
     .help = Resolution for calculation of output map coefficients. Default is \
@@ -832,6 +837,7 @@ Parameters:"""%h
        d_min = maptbx.d_min_from_map(map_data=output_box.map_box,
          unit_cell=output_box.xray_structure_box.unit_cell())
      output_box.map_coefficients(d_min=d_min,
+       scale_max=params.scale_max,
        resolution_factor=params.resolution_factor, file_name=file_name,
        shift_back=shift_back)
 

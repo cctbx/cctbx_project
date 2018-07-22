@@ -25,6 +25,11 @@ resolution_factor = 0.333
           A scale factor of 0.5 gives the highest-resolution data allowed by \
           the map.  Usual is 0.33 or 0.25.
   .short_caption = Resolution factor
+scale_max = 99999
+  .type = float
+  .help = Maximum value of output map coefficients amplitudes.  If None \
+           use volume scaling
+  .short_caption = Scale max
 k_blur = 1
   .type = float
   .help = Scale applied to HL coefficients.  The HL coefficients are arbitrary\
@@ -251,6 +256,8 @@ def run(args, log=None, ccp4_map=None,
         raise Sorry(str(e))
 
 
+  if params.scale_max is not None:
+    f_obs_cmpl = f_obs_cmpl.apply_scaling(target_max=params.scale_max)
 
   from scitbx.matrix import col
   if col(shift_cart) != col((0,0,0,)):

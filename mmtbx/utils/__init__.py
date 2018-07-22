@@ -2574,7 +2574,7 @@ class extract_box_around_model_and_map(object):
       args.append("iterate_with_remainder=True")
     else:
       args.append("iterate_with_remainder=False")
- 
+
     # import params from s&s here and set them.  set write_files=false etc.
 
     ncs_group_obj,remainder_ncs_group_obj,tracking_data =\
@@ -2841,9 +2841,12 @@ Range for box:   %7.1f  %7.1f  %7.1f   to %7.1f  %7.1f  %7.1f""" %(
     return fft_map
 
   def map_coefficients(self, d_min, resolution_factor, file_name="box.mtz",
+     scale_max=None,
      shift_back=None):
     box_map_coeffs = self.box_map_coefficients(d_min = d_min,
       shift_back=shift_back)
+    if scale_max is not None:
+      box_map_coeffs = box_map_coeffs.apply_scaling(target_max=scale_max)
     if(file_name is not None):
       mtz_dataset = box_map_coeffs.as_mtz_dataset(column_root_label="BoxMap")
       mtz_object = mtz_dataset.mtz_object()
