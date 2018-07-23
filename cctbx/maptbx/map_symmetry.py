@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function
-import sys
+import sys, os
 from libtbx import adopt_init_args
 from libtbx.utils import null_out
 from scitbx.matrix import col
@@ -13,6 +13,7 @@ class map_symmetry:
 
   def __init__(self,params=None,
       map_data=None,
+      map_coeffs=None,
       crystal_symmetry=None,
       ncs_object=None,
       log=sys.stdout):
@@ -27,9 +28,23 @@ class map_symmetry:
       self.local_log=log
     else:
       self.local_log=null_out()
+    if self.params.reconstruction_symmetry.find_ncs_directly and \
+       not self.map_coeffs:
+      from cctbx.maptbx.segment_and_split_map import get_f_phases_from_map
+      self.map_coeffs,dummy=get_f_phases_from_map(map_data=self.map_data,
+        crystal_symmetry=self.crystal_symmetry,
+        d_min=self.params.crystal_info.resolution,
+        return_as_map_coeffs=True, # required
+        out=self.log)
+
 
   def get_results(self):
     from libtbx import group_args
+    if not self.ncs_object:
+      from mmtbx.ncs.ncs import ncs
+      self.ncs_object=ncs()
+      self.score=None
+      self.cc=None
     return group_args(
      cc = self.cc,
      ncs_object = self.ncs_object,
@@ -50,12 +65,16 @@ class map_symmetry:
 
     print ("Finding symmetry in map",file=self.log)
 
-    from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map
-    new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=self.params,
-      map_data=self.map_data,
-      crystal_symmetry=self.crystal_symmetry,
-      ncs_obj=self.ncs_object,
-      out=self.log)
+    if self.params.reconstruction_symmetry.find_ncs_directly:
+      new_ncs_obj,ncs_cc,ncs_score=self.find_ncs_from_density()
+
+    else:  # usual
+      from cctbx.maptbx.segment_and_split_map import run_get_ncs_from_map
+      new_ncs_obj,ncs_cc,ncs_score=run_get_ncs_from_map(params=self.params,
+        map_data=self.map_data,
+        crystal_symmetry=self.crystal_symmetry,
+        ncs_obj=self.ncs_object,
+        out=self.log)
 
     if not new_ncs_obj:
       print ("\nNo symmetry found..",file=self.log)
@@ -85,6 +104,32 @@ class map_symmetry:
     self.cc=ncs_cc
     self.score=ncs_score
 
+  def find_ncs_from_density(self):
+    print ("Finding symmetry in map by search for matching density",
+       file=self.log)
+    # Write out mtz file to search in...
+    temp_dir=self.params.output_files.temp_dir
+    if not os.path.isdir(temp_dir):
+      os.mkdir(temp_dir)
+    map_coeffs_file=os.path.join(temp_dir,"map_coeffs.mtz")
+    self.map_coeffs.as_mtz_dataset(
+       column_root_label='FWT').mtz_object().write(file_name=map_coeffs_file)
+
+
+    args=["%s" %(map_coeffs_file),"map_operators_inside_unit_cell=True"]
+    from phenix.command_line.find_ncs_from_density import \
+       find_ncs_from_density as find_ncs
+    find_ncs_from_density=find_ncs( args,out=self.log)
+    if hasattr(find_ncs_from_density,'ncs_object'):
+      ncs_object=find_ncs_from_density.ncs_object
+      ncs_cc=ncs_object.overall_cc()
+      ncs_score=ncs_cc*(ncs_object.max_operators())**0.5
+    else:
+      ncs_cc=None
+      ncs_object=None
+      ncs_score=None
+
+    return ncs_object,ncs_cc,ncs_score
   def get_resolution(self):
     if not self.params.crystal_info.resolution:
       from cctbx.maptbx import d_min_from_map
