@@ -15,6 +15,7 @@ def get_master_phil () :
   from mmtbx.command_line import generate_master_phil_with_inputs
   return generate_master_phil_with_inputs(
     enable_automatic_twin_detection=True,
+    enable_twin_law=True,
     enable_pdb_interpretation_params=True,
     enable_stop_for_unknowns=False,
     enable_unmerged_data=True,

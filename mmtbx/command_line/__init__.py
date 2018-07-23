@@ -46,6 +46,7 @@ input {
   energy = None
     .type = float
   %(phases_flag)s
+  %(automatic_twin_detection)s
   %(twin_law)s
 }
 %(pdb_interpretation)s
@@ -91,17 +92,22 @@ def generate_master_phil_with_inputs (
     "phases" : "",
     "unmerged" : "",
     "phases_flag" : "",
+    "automatic_twin_detection" : "",
     "twin_law" : "",
     "pdb_interpretation" : "",
   }
+  # for legacy, keep the 2 paramters for twin laws
+  # one for enabling automatic detection
+  # another for specifying a twin law
   if (enable_automatic_twin_detection) :
-    phil_extra_dict["twin_law"] = """
+    phil_extra_dict["automatic_twin_detection"] = """
       skip_twin_detection = False
         .type = bool"""
-  elif (enable_twin_law) :
+  if (enable_twin_law) :
     phil_extra_dict["twin_law"] = """
-      twin_law = None
+      twin_law = Auto
         .type = str
+        .help = Enter twin law if known.
         .input_size = 100"""
   if (enable_experimental_phases) :
     phil_extra_dict["phases"] = """
@@ -543,13 +549,13 @@ class load_model_and_data (object) :
     # FMODEL SETUP
     if (create_fmodel) and (data_and_flags is not None) :
       make_sub_header("F(model) initialization", out=self.log)
-      skip_twin_detection = getattr(params.input, "skip_twin_detection", None)
+      skip_twin_detection = getattr(params.input, "skip_twin_detection", True)
       twin_law = getattr(params.input, "twin_law", None)
       if (twin_law is Auto) :
         if (self.hl_coeffs is not None) :
           raise Sorry("Automatic twin law determination not supported when "+
             "experimental phases are used.")
-      elif (skip_twin_detection is not None) :
+      elif (not skip_twin_detection):
         twin_law = Auto
       if (twin_law is Auto) :
         print >> self.log, "Twinning will be detected automatically."
