@@ -120,7 +120,8 @@ class map_symmetry:
     from phenix.command_line.find_ncs_from_density import \
        find_ncs_from_density as find_ncs
     find_ncs_from_density=find_ncs( args,out=self.log)
-    if hasattr(find_ncs_from_density,'ncs_object'):
+    if hasattr(find_ncs_from_density,'ncs_object') and \
+        find_ncs_from_density.ncs_object:
       ncs_object=find_ncs_from_density.ncs_object
       ncs_cc=ncs_object.overall_cc()
       ncs_score=ncs_cc*(ncs_object.max_operators())**0.5
