@@ -127,16 +127,14 @@ master_phil = libtbx.phil.parse("""
   sequence_file = None
     .type = path
     .help = Sequence file (any standard format). Can be unique part or \
-            all copies.  Either sequence file or \
-            molecular mass required if extract_unique is True.
+            all copies.  Used in identification of unique part of map.
     .short_caption = Sequence file
 
   molecular_mass = None
     .type = float
     .help = Molecular mass of object in map in Da (i.e., 33000 for 33 Kd).\
               Used in identification \
-            of unique part of map. Either a sequence file or molecular mass\
-            is required if extract_unique is True.
+            of unique part of map.
     .short_caption = Molecular mass
 
   solvent_content = None
@@ -519,11 +517,6 @@ Parameters:"""%h
         n_dna=0
       params.molecular_mass=n_ops*(n_protein*110+(n_rna+n_dna)*330)
       print >>log,"\nEstimate of molecular mass is %.0f " %(params.molecular_mass)
-    elif not params.molecular_mass:
-      raise Sorry("Need a sequence file or molecular mass for extract_unique")
-  else:
-    molecular_mass=None
-#
   if params.density_select:
     print_statistics.make_sub_header(
     "Extracting box around selected density and writing output files", out=log)

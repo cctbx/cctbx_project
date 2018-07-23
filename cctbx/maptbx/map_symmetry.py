@@ -66,16 +66,19 @@ class map_symmetry:
         coordinate_offset=col(self.origin_shift_cart))
 
     print ("\nFinal symmetry obtained:",file=self.log)
-    print ("\nCorrelation of symmetry-related regions: %.2f   Copies: %d " %(
+    if ncs_object.get_ncs_name():
+      print ("NCS type: %s" %(ncs_object.get_ncs_name()),file=self.log)
+    print ("Correlation of symmetry-related regions: %.2f   Copies: %d " %(
        ncs_cc,ncs_object.max_operators()), file=self.log)
 
     if self.params.control.verbose:
       ncs_object.display_all(log=self.log)
     # write to output file
-    ncs_object.format_all_for_group_specification(
+    if self.params.output_files.symmetry_out:
+      ncs_object.format_all_for_group_specification(
          file_name=self.params.output_files.symmetry_out)
-    print ("\nWrote operators in .ncs_spec format to %s" %(
-      self.params.output_files.symmetry_out),file=self.log)
+      print ("\nWrote operators in .ncs_spec format to %s" %(
+        self.params.output_files.symmetry_out),file=self.log)
 
     # Final results
     self.ncs_object=ncs_object
