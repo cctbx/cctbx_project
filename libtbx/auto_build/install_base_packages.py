@@ -658,6 +658,7 @@ Installation of Python packages may fail.
         pip_cmd.append('--no-cache-dir')
       else:
         pip_call = pip.main
+      os.environ['PIP_REQ_TRACKER'] = pkg_info['cachedir']
       print "  Running with pip:", pip_cmd
       assert pip_call(pip_cmd) == 0, 'pip download failed'
       return
