@@ -64,6 +64,7 @@ class cablam_idealization(object):
     # with open("in.pdb",'w') as f:
     #   f.write(self.model.model_as_pdb())
 
+    print >> self.log, "CaBLAM idealization"
 
     if self.model.get_hierarchy().models_size() > 1:
       raise Sorry("Multi-model files are not supported")

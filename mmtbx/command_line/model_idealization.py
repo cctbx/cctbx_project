@@ -194,6 +194,7 @@ class model_idealization():
     params.pdb_interpretation.ncs_search.residue_match_radius=999.0
     params.pdb_interpretation.restraints_library.rdl = True
     params.pdb_interpretation.secondary_structure = self.params.secondary_structure
+    self.params_for_model = params
     self.model.set_pdb_interpretation_params(params)
 
 
@@ -447,7 +448,6 @@ class model_idealization():
     #
     # Cablam idealization
     #
-    print >> self.log, "CaBLAM idealization"
     self.params.cablam_idealization.find_ss_after_fixes = False
     ci_results = cablam_idealization(
         model=self.model,
@@ -602,25 +602,26 @@ class model_idealization():
       # run reduce
       assert (libtbx.env.has_module(name="reduce"))
 
-      input_str = self.model.model_as_pdb()
+      input_str = self.model.model_as_pdb(do_not_shift_back=True)
       build = "phenix.reduce" + " -quiet -build -allalt -NUC -"
       output = easy_run.fully_buffered(build,
                                    stdin_lines=input_str)
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.use_neutron_distances=True
+      p.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
+      p.pdb_interpretation.ncs_search.exclude_selection="water"
       h_input = iotbx.pdb.input(lines=output.stdout_lines, source_info=None)
       h_model = mmtbx.model.manager(model_input = h_input,
           process_input=True,
           restraint_objects=self.model._restraint_objects,
           pdb_interpretation_params=p)
       sel = h_model.get_hd_selection()
-
-
-      # h_hierarchy = iotbx.pdb.input(lines=output, source_info=None).construct_hierarchy()
+      h_model.setup_ncs_constraints_groups(filter_groups=True)
+      h_model._update_master_sel()
 
       result = mmtbx.refinement.real_space.fit_residues.run(
           vdw_radii         = h_model.get_vdw_radii(),
-          # pdb_hierarchy     = self.model.get_hierarchy(),
+          bselection        = h_model.get_master_selection(),
           pdb_hierarchy     = h_model.get_hierarchy(),
           crystal_symmetry  = self.model.crystal_symmetry(),
           map_data          = self.master_map,
@@ -632,6 +633,7 @@ class model_idealization():
       self.model.set_sites_cart(
           sites_cart = result.pdb_hierarchy.select(~sel).atoms().extract_xyz(),
           update_grm = True)
+      self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
     if self.params.debug:
       self.shift_and_write_result(
           model = self.model,
