@@ -87,6 +87,13 @@ structure_params_str = """
       .help = If true, the program will treat F+ and F- (if present) as \
         independent reflections when calculating data statistics.  (Not \
         recommended.)
+    enable_twinning = False
+      .type = bool
+      .help = Enable twinning
+    twin_law = Auto
+      .type = str
+      .short_caption = Twin law
+      .help = Twin law if available, automatic detection if not
   }
 """
 
@@ -350,6 +357,11 @@ def run_single_structure (params,
     ligand_selection=None,
     log=None) :
   if (log is None) : log = null_out()
+  twin_law = Auto
+  skip_twin_detection = not params.enable_twinning
+  if (params.twin_law is not None):
+    twin_law = params.twin_law
+    skip_twin_detection = True
   molprobity_args = [
     "pdb.file_name=\"%s\"" % params.pdb_file,
     "xray_data.file_name=\"%s\"" % params.mtz_file,
@@ -365,6 +377,8 @@ def run_single_structure (params,
     "use_pdb_header_resolution_cutoffs=True",
     "output.quiet=True",
     "nonbonded_distance_threshold=None",
+    "input.twin_law=%s" % twin_law,
+    "input.skip_twin_detection=%s" % skip_twin_detection
   ] + [ "monomers.file_name=\"%s\"" % cif for cif in params.cif_file ]
   if (ligand_selection is not None) :
     molprobity_args.append("ligand_selection=\"%s\"" % ligand_selection)
