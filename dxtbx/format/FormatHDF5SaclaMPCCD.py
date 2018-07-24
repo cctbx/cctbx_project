@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-
 from dxtbx.format.FormatHDF5 import FormatHDF5
 from dxtbx.format.FormatStill import FormatStill
 
@@ -8,6 +7,9 @@ from dxtbx.format.FormatStill import FormatStill
 # 161003: updated to follow dxtbx changes
 #         removed iotbx support, which was incomplete anyway
 # 161005: get wavelength from the file
+# 170929: read metadata for phase III and compact MPCCDs
+# 171003: fix mask
+# 180724: update 'understand' to exclude Rayonix data
 
 class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
   '''
@@ -27,6 +29,9 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     import h5py
 
     h5_handle = h5py.File(image_file, 'r')
+    if 'metadata/detector' in h5_handle:
+      if "Rayonix" in h5_handle['metadata/detector'].value:
+        return False
 
     for elem in h5_handle:
       if elem.startswith("tag-"):
@@ -53,6 +58,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     # awk '/corner_x/{x=50*$3} /corner_y/{y=50*$3; printf x","y","rot","}
     #      /\/ss/{rot=-atan2($3, $4)/3.141592*180}' input.geom
 
+    # Default value for Phase I MPCCD
     self.distance = 50.0 # mm
     self.panel_origins = [(-1755.000000, 51711.000000, 0.000000),
                           (-1711.000000, 24944.000000, 0.000000),
@@ -64,7 +70,13 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
                           (1655.000000, -51626.000000, 0.000000)] # um
     self.panel_rotations = [-89.906197, -89.915802, -89.980003, -89.929298,
                             89.963097, 89.880798, 90.000000, 90.029503]
+    self.thickness = 0.050
+    self.mask = None
 
+    # Read metadata if possible
+    self.read_metadata()
+
+    # Override by environmental variables
     import os
 
     if 'MPCCD_RECONST_MODE' in os.environ:
@@ -94,6 +106,32 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     self.tag = self._images[self.index]
     h5_handle.close()
 
+  def read_metadata(self):
+    import h5py
+    import numpy
+    h5_handle = h5py.File(self.image_filename, 'r')
+
+    if not 'metadata' in h5_handle: return
+    try:
+       distance = h5_handle['metadata/distance_in_mm'].value
+       panel_rotations = h5_handle['metadata/angle_in_rad'].value
+       posx = h5_handle['metadata/posx_in_um'].value
+       posy = h5_handle['metadata/posy_in_um'].value
+       posz = h5_handle['metadata/posz_in_um'].value
+       panel_origins = zip(posx, posy, posz)
+       sensor = h5_handle['metadata/sensor_id'][0]
+       thickness = 0.050
+       if sensor.startswith("MPCCD-8B"): thickness = 0.300 # Phase 3 sensor
+       orig_mask = numpy.logical_not(h5_handle['metadata/pixelmask'].value)
+       mask = self.split_panels(orig_mask, bool=True)
+    except Exception:
+       return
+    self.distance = distance
+    self.panel_rotations = panel_rotations
+    self.panel_origins = panel_origins
+    self.thickness = thickness
+    self.mask = mask
+
   def get_image_file(self, index=None):
     return self.image_filename
 
@@ -112,11 +150,10 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
     wavelength = self.get_beam(index).get_wavelength()
 
     from dxtbx.model import ParallaxCorrectedPxMmStrategy
-    t0 = 0.050  # sensor thickness in um
     from cctbx.eltbx import attenuation_coefficient
     table = attenuation_coefficient.get_table("Si")
     mu = table.mu_at_angstrom(wavelength) / 10.0
-    px_mm = ParallaxCorrectedPxMmStrategy(mu, t0)
+    px_mm = ParallaxCorrectedPxMmStrategy(mu, self.thickness)
 
     if self.RECONST_MODE:
       return self._detector_factory.simple(
@@ -131,7 +168,6 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         image_size = (self.RECONST_SIZE,
                       self.RECONST_SIZE),
         trusted_range = (-1, 65535),
-        px_mm = px_mm,
         mask = [])  # TODO: add gaps
 
     detector = Detector()
@@ -156,7 +192,7 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
       p.set_image_size((512, 1024))
       p.set_trusted_range((-1, 65535))
       p.set_pixel_size((self.PIXEL_SIZE, self.PIXEL_SIZE))
-      p.set_thickness(t0)
+      p.set_thickness(self.thickness)
       p.set_local_frame(
         fast.elems,
         slow.elems,
@@ -177,14 +213,28 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
   def get_num_images(self):
     return len(self._images)
 
-  def get_raw_data(self, index=None):
+  def split_panels(self, img, bool=False):
     import numpy
+    from scitbx.array_family import flex
+    tmp = []
 
+    for i in range(8):
+      xmin, ymin, xmax, ymax = 0, i * 1024, 512, (i + 1) * 1024
+      # To avoid "numpy.ndarray instance is not contiguous"
+      if bool:
+        source = numpy.ascontiguousarray(img[ymin:ymax,xmin:xmax])
+        tmp.append(flex.bool(source))
+      else:
+        source = numpy.ascontiguousarray(img[ymin:ymax,xmin:xmax], dtype=numpy.int32)
+        tmp.append(flex.int(source))
+
+    return tuple(tmp)
+
+  def get_raw_data(self, index=None):
     if index is not None and self.index != index:
       self.set_index(index)
 
     if self._raw_data is None:
-      from scitbx.array_family import flex
 
       if self.RECONST_MODE:
         self._raw_data = flex.int(self.reconst_image())
@@ -193,21 +243,12 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
         import h5py
         h5_handle = h5py.File(self.image_filename, 'r')
 
-        data = h5_handle[self.tag]["data"][()].astype(numpy.int32)
+        data = h5_handle[self.tag]["data"].value #[()].astype(numpy.int32)
         # [()] forces conversion to ndarray
         # this is 8192x512 (slow/fast) tiled image
-        tmp = []
-
         h5_handle.close()
 
-        for i in range(8):
-          xmin, ymin, xmax, ymax = 0, i * 1024, 512, (i + 1) * 1024
-          # To avoid "numpy.ndarray instance is not contiguous"
-          # TODO: Is this the right way?
-          source = numpy.ascontiguousarray(data[ymin:ymax,xmin:xmax])
-          tmp.append(flex.int(source))
-
-        self._raw_data = tuple(tmp)
+        self._raw_data = self.split_panels(data)
 
     return self._raw_data
 
@@ -286,6 +327,12 @@ class FormatHDF5SaclaMPCCD(FormatHDF5, FormatStill):
       self._detector_instance = self._detector()
 
     return self._detector_instance
+
+  def get_mask(self, index=None, goniometer=None):
+    # This means when the pixel mask is present, trusted region is ignored.
+    # The used provided masks (if any) will be automatically merged.
+    # see https://github.com/dials/dials/issues/236
+    return self.mask
 
   def get_beam(self, index=None):
     if index is not None and self.index != index:
