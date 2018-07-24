@@ -58,7 +58,7 @@ master_phil = iotbx.phil.parse("""
                Alternative is to allow H-bonds between chains. Can be \
                much slower with ss_by_chain=False. If your model is complete \
                use ss_by_chain=True. If your model is many fragments, use \
-               ss_by_chain=False. 
+               ss_by_chain=False.
        .short_caption = Secondary structure by chain
        .expert_level = 1
      max_rmsd = 1
@@ -802,7 +802,7 @@ def sequence_from_hierarchy(hierarchy,chain_type='PROTEIN'):
         for atom_group in rr.atom_groups()[:1]:
            sequence+=ott.get(atom_group.resname,"")
   return sequence
-           
+
 def sites_are_similar(sites1,sites2,max_rmsd=1):
   # return True if sites can be superimposed
   if max_rmsd is None:
@@ -3120,7 +3120,7 @@ class fss_result_object:
     return True
 
 class conformation_group:
-  # A group of fss_results with the same sequence but different 
+  # A group of fss_results with the same sequence but different
   #  conformations
   def __init__(self,
     fss_result=None,
@@ -3154,8 +3154,8 @@ class conformation_group:
       if fss_r.is_similar_fss_result(fss_result):
         return fss_r
     return None
-      
-   
+
+
 class find_secondary_structure: # class to look for secondary structure
 
   def __init__(self,params=None,args=None,hierarchy=None,models=None,
@@ -3455,7 +3455,7 @@ class find_secondary_structure: # class to look for secondary structure
     #   and use_representative_chains, copy results
     local_params=deepcopy(self.params)
     local_params.find_ss_structure.ss_by_chain=False
-    if self.params.control.verbose: 
+    if self.params.control.verbose:
       local_out=self.out
     else:
       from libtbx.utils import null_out
@@ -3506,8 +3506,8 @@ class find_secondary_structure: # class to look for secondary structure
           result_dict[current_fss_result.sequence]=cg
           unique_sequence_list.append(current_fss_result.sequence)
 
-       
-    # Go through all chains and save annotation and number of good/poor h bonds 
+
+    # Go through all chains and save annotation and number of good/poor h bonds
     print >>self.out,"\nAnalysis using %s unique sequences:" %(
        len(unique_sequence_list))
     print >>self.out,"Unique part of the analysis:"
@@ -3537,7 +3537,7 @@ class find_secondary_structure: # class to look for secondary structure
         all_sheets+=annotation.sheets
         number_of_good_h_bonds+=n*fss_result.number_of_good_h_bonds
         number_of_poor_h_bonds+=n*fss_result.number_of_poor_h_bonds
-        
+
     self.annotation=ioss.annotation(sheets=all_sheets,helices=all_helices)
     self.annotation.renumber_helices_and_sheets()
     self.number_of_good_h_bonds=number_of_good_h_bonds
@@ -3546,8 +3546,8 @@ class find_secondary_structure: # class to look for secondary structure
     print >>self.out,"\nFinal annotation and selections"
     print >>self.out,80*"="
     self.show_summary(out=self.out)
-    
-  
+
+
 
   def show_summary(self,verbose=None,pdb_records_file=None,out=sys.stdout):
 
