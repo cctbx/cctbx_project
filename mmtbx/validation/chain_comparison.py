@@ -70,6 +70,7 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = directory containing query PDB files (any number)
       .short_caption = Query directory
+      .style = directory
   }
   output_files {
 
@@ -140,7 +141,15 @@ master_phil = iotbx.phil.parse("""
         .type = bool
         .help = No printed output
         .short_caption = No printed output
+  }
 
+  include scope libtbx.phil.interface.tracking_params
+  gui
+    .help = "GUI-specific parameter required for output directory"
+  {
+    output_dir = None
+    .type = path
+    .style = output_dir
   }
 """, process_includes=True)
 master_params = master_phil
