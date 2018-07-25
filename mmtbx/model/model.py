@@ -1479,6 +1479,7 @@ class manager(object):
 
   def set_sites_cart_from_hierarchy(self, multiply_ncs=False):
     if (multiply_ncs and self.ncs_constraints_present()):
+      self._update_master_sel()
       new_coords = apply_transforms(
           ncs_coordinates=self.get_master_hierarchy().atoms().extract_xyz(),
           ncs_restraints_group_list=self.get_ncs_groups(),
