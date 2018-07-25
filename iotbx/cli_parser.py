@@ -483,10 +483,11 @@ class CCTBXParser(ParserBase):
       files = list()
       dirs = list()
       for path in paths:
-        if (os.path.isfile(path)):
-          files.append(path)
-        elif (os.path.isdir(path)):
-          dirs.append(path)
+        if (path is not None):
+          if (os.path.isfile(path)):
+            files.append(path)
+          elif (os.path.isdir(path)):
+            dirs.append(path)
       if (self.parse_files):
         self.process_files(files, message='Processing files from PHIL:')
       if (self.parse_dir):
