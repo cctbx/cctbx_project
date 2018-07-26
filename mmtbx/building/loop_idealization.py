@@ -98,7 +98,7 @@ master_phil = iotbx.phil.parse(loop_idealization_master_phil_str)
 
 class loop_idealization():
   def __init__(self,
-               model,
+               model, # changed in place
                params=None,
                reference_map=None,
                log=null_out(),
@@ -147,8 +147,9 @@ class loop_idealization():
     if (self.berkeley_p_before_minimization_rama_outliers <= 0.001 and
         (n_bad_omegas<1 and self.params.make_all_trans)):
       print >> self.log, "No ramachandran outliers, skipping CCD step."
-    print "n_bad_omegas", n_bad_omegas
-    print "self.params.make_all_trans",self.params.make_all_trans
+    if self.verbose:
+      print "n_bad_omegas", n_bad_omegas
+      print "self.params.make_all_trans",self.params.make_all_trans
     if not self.params.enabled:
       print >> self.log, "Loop idealization is not enabled, use 'enabled=True'."
     while (self.number_of_ccd_trials < self.params.number_of_ccd_trials
@@ -194,8 +195,9 @@ class loop_idealization():
           for resnum in exclusions:
             selection += " and not resseq %s" % resnum
         self.ref_exclusion_selection += "(%s) or " % selection
-        print "self.tried_rama_angles", self.tried_rama_angles
-        print "self.tried_final_rama_angles", self.tried_final_rama_angles
+        if self.verbose:
+          print "self.tried_rama_angles", self.tried_rama_angles
+          print "self.tried_final_rama_angles", self.tried_final_rama_angles
       #
       # dumping and reloading hierarchy to do proper rounding of coordinates
       resulting_pdb_h = iotbx.pdb.input(
@@ -219,10 +221,12 @@ class loop_idealization():
         self.model.get_hierarchy().write_pdb_file(
             file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
                 self.params.output_prefix))
-      print "self.params.minimize_whole", self.params.minimize_whole
+      if self.verbose:
+        print "self.params.minimize_whole", self.params.minimize_whole
       if self.params.minimize_whole:
         print >> self.log, "minimizing whole chain..."
-        print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
+        if self.verbose:
+          print >> self.log, "self.ref_exclusion_selection", self.ref_exclusion_selection
         # print >> sel
         # XXX but first let's check and fix rotamers...
         if self.params.fix_rotamers:
@@ -333,7 +337,6 @@ class loop_idealization():
 
     print >> self.log, "Combined outliers for fixing:", comb_rama_out_resnums
     for rama_out_resnum in comb_rama_out_resnums:
-      print >> self.log
       print >> self.log, "Fixing outlier:", rama_out_resnum
       self.log.flush()
 
@@ -345,10 +348,11 @@ class loop_idealization():
         ss_annotation=chain_ss_annot,
         tried_rama_angles_for_chain=tried_rama_angles_for_chain,
         tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)
-      print >> self.log, "listing outliers after loop minimization"
-      outp = utils.list_rama_outliers_h(new_h, self.model.get_ramachandran_manager())
-      print >> self.log, outp
-      utils.list_omega_outliers(new_h, self.log)
+      if self.verbose:
+        print >> self.log, "listing outliers after loop minimization"
+        outp = utils.list_rama_outliers_h(new_h, self.model.get_ramachandran_manager())
+        print >> self.log, outp
+        utils.list_omega_outliers(new_h, self.log)
       self.log.flush()
       working_h = new_h
       out_i += 1
@@ -510,10 +514,11 @@ class loop_idealization():
     for ccd_radius, change_all, change_radius, direction_forward in decided_variants:
     # while ccd_radius <= 3:
       fixing_omega = False
-      print >> self.log, "  Starting optimization with radius=%d, " % ccd_radius,
-      print >> self.log, "change_all=%s, change_radius=%d, " % (change_all, change_radius),
-      print >> self.log, "direction=forward" if direction_forward else "direction=backwards"
-      self.log.flush()
+      if self.verbose:
+        print >> self.log, "  Starting optimization with radius=%d, " % ccd_radius,
+        print >> self.log, "change_all=%s, change_radius=%d, " % (change_all, change_radius),
+        print >> self.log, "direction=forward" if direction_forward else "direction=backwards"
+        self.log.flush()
       #
       (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms,
           m_selection, contains_ss_element, anchor_present) = get_fixed_moving_parts(
@@ -525,9 +530,10 @@ class loop_idealization():
               n_previous=ccd_radius,
               ss_annotation=ss_annotation,
               direction_forward=direction_forward,
-              log=self.log)
+              log=self.log if self.verbose else None)
       # print "  moving_ref_atoms_iseqs", moving_ref_atoms_iseqs
-      print "  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()]
+      if self.verbose:
+        print "  moving_h resseqs:", [x.resseq for x in moving_h.residue_groups()]
       moving_h_set = []
       all_angles_combination_f = starting_conformations.get_all_starting_conformations(
           moving_h,
@@ -536,7 +542,7 @@ class loop_idealization():
           direction_forward=direction_forward,
           cutoff=self.params.variant_number_cutoff,
           change_all=change_all,
-          # log=self.log,
+          log=self.log if self.verbose else None,
           check_omega=self.params.make_all_trans,
           )
 
@@ -558,7 +564,8 @@ class loop_idealization():
           else:
             filter_out.append((None, None))
         ff_all_angles = []
-        print "filter_out", filter_out
+        if self.verbose:
+          print >> self.log, "filter_out", filter_out
         for comb in all_angles_combination_f:
           good = True
           for comb_pair, bad_pairs in zip(comb, filter_out):
@@ -572,8 +579,9 @@ class loop_idealization():
               break
           if good:
             ff_all_angles.append(comb)
-        print "len(all_angles_combination_f)", len(all_angles_combination_f)
-        print "len(ff_all_angles)", len(ff_all_angles)
+        if self.verbose:
+          print >> self.log, "len(all_angles_combination_f)", len(all_angles_combination_f)
+          print >> self.log, "len(ff_all_angles)", len(ff_all_angles)
         n_added = 0
         n_all_combination = len(ff_all_angles)
         if n_all_combination == 0:
@@ -610,9 +618,10 @@ class loop_idealization():
         # or there's a bug in get_starting_conformations
         print >> self.log, "outlier was fixed before somehow"
         return original_pdb_h
-      print "self.tried_rama_angles inside", self.tried_rama_angles
-      print "tried_rama_angles_for_chain", tried_rama_angles_for_chain
-      print "checking values", ccd_radius, change_all, change_radius, direction_forward
+      if self.verbose:
+        print >> self.log, "self.tried_rama_angles inside", self.tried_rama_angles
+        print >> self.log, "tried_rama_angles_for_chain", tried_rama_angles_for_chain
+        print >> self.log, "checking values", ccd_radius, change_all, change_radius, direction_forward
       for i, h in enumerate(moving_h_set):
         # if [x in tried_rama_angles_for_chain.keys() for x in out_res_num_list].count(True) > 0:
         #   print >> self.log, "Warning!!! make something here (check angles or so)"
@@ -708,7 +717,8 @@ class loop_idealization():
             tried_final_rama_angles_for_chain=tried_final_rama_angles_for_chain)):
           all_results.append((moved_with_side_chains_h.deep_copy(), mc_rmsd, resulting_rmsd, map_target, n_iter))
         else:
-          print >> self.log, "Duplicate."
+          if self.verbose:
+            print >> self.log, "Duplicate."
           continue
         (ccd_ok, target_rmsd) = self.ccd_solution_is_ok(
             anchor_rmsd=resulting_rmsd,
@@ -719,9 +729,11 @@ class loop_idealization():
             change_radius=change_radius,
             contains_ss_element=contains_ss_element,
             fixing_omega=fixing_omega)
-        print >> self.log, ", %.2f" % target_rmsd
+        if self.verbose:
+          print >> self.log, ", %.2f" % target_rmsd
         if ccd_ok:
-          print "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
+          if self.verbose:
+            print >> self.log, "Choosen result (mc_rmsd, anchor_rmsd, map_target, n_iter):", mc_rmsd, resulting_rmsd, map_target, n_iter
           # Save to tried_ccds
           for rn, angles in start_angles:
             if rn not in tried_rama_angles_for_chain.keys():
@@ -732,9 +744,10 @@ class loop_idealization():
             if rn not in tried_final_rama_angles_for_chain.keys():
               tried_final_rama_angles_for_chain[rn] = []
             tried_final_rama_angles_for_chain[rn].append(angles)
-          print >> self.log, "Ended up with", final_angles
-          print >> self.log, "Updated tried_rama_angles_for_chain:", tried_rama_angles_for_chain
-          print >> self.log, "Updated tried_final_rama_angles_for_chain:", tried_final_rama_angles_for_chain
+          if self.verbose:
+            print >> self.log, "Ended up with", final_angles
+            print >> self.log, "Updated tried_rama_angles_for_chain:", tried_rama_angles_for_chain
+            print >> self.log, "Updated tried_final_rama_angles_for_chain:", tried_final_rama_angles_for_chain
 
           self.log.flush()
           assert not minimize
@@ -763,7 +776,8 @@ class loop_idealization():
           #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
           final_rmsd = get_main_chain_rmsd_range(moved_with_side_chains_h,
               original_pdb_h, placing_range)
-          print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+          if self.verbose:
+            print >> self.log, "FINAL RMSD after minimization:", final_rmsd
           return moved_with_side_chains_h
 
 
@@ -815,19 +829,22 @@ class loop_idealization():
         #     file_name="%s_result_minimized_%d.pdb" % (prefix, i))
         final_rmsd = get_main_chain_rmsd_range(all_results[i][0],
             original_pdb_h, placing_range)
-        print >> self.log, "FINAL RMSD after minimization:", final_rmsd
+        if self.verbose:
+          print >> self.log, "FINAL RMSD after minimization:", final_rmsd
         return all_results[i][0]
       else:
-        print >> self.log, " NOT FOUND!"
-        for i in all_results:
-          print >> self.log, i[1:]
+        if self.verbose:
+          print >> self.log, " NOT FOUND!"
+          for i in all_results:
+            print >> self.log, i[1:]
       # === end of duplication!!!!
 
     else:
-      print >> self.log, "Epic FAIL: failed to fix rama outlier:", out_res_num_list
-      print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
-      for i in all_results:
-        print >> self.log, i[1:]
+      if self.verbose:
+        print >> self.log, "Epic FAIL: failed to fix rama outlier:", out_res_num_list
+        print >> self.log, "  Options were: (mc_rmsd, resultign_rmsd, n_iter)"
+        for i in all_results:
+          print >> self.log, i[1:]
     return original_pdb_h
 
   def get_resnums_of_chain_rama_outliers(self, pdb_hierarchy):
@@ -896,10 +913,12 @@ def get_loop_borders(pdb_hierarchy, center_resnum_list, ss_annot):
 
 
 def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previous,
-    include_intermediate=False, avoid_ss_annot=None):
+    include_intermediate=False, avoid_ss_annot=None, log=None):
   """
   Warning, this function most likely won't work properly with insertion codes
   """
+  if log is None:
+    log = StringIO()
   working_ss_annot = None
   if avoid_ss_annot is not None:
     working_ss_annot = avoid_ss_annot.deep_copy()
@@ -915,13 +934,13 @@ def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previo
   if not include_intermediate:
     # return residue_list[max(0,center_index-n_previous)].resseq, \
     #     residue_list[min(len(residue_list)-1,center_index+n_following)].resseq
-    print "center_index, resnum list", center_index, center_resnum_list
+    print >> log, "center_index, resnum list", center_index, center_resnum_list
     # assert len(center_index) == len(center_resnum_list)
     start_res_num = residue_list[max(0,center_index[0]-n_previous)].resseq_as_int()
     end_res_num = residue_list[min(len(residue_list)-1,center_index[-1]+n_following)].resseq_as_int()
     srn, ern = get_loop_borders(pdb_hierarchy, center_resnum_list, working_ss_annot)
-    print "start_res_num, end_res_num", start_res_num, end_res_num
-    print "srn, ern", srn, ern
+    print >> log, "start_res_num, end_res_num", start_res_num, end_res_num
+    print >> log, "srn, ern", srn, ern
     # srn, ern = -9999, 9999999
     # So now we have borders of the loop: srn, ern, center_resnum,
     # n_following, n_previous.
@@ -938,13 +957,13 @@ def get_res_nums_around(pdb_hierarchy, center_resnum_list, n_following, n_previo
 
     f_start_res_num = start_res_num
     f_end_res_num = end_res_num
-    print "srn, ern", srn, ern
-    print "f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
+    print >> log, "srn, ern", srn, ern
+    print >> log, "f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
     if f_end_res_num == hy36decode(4, center_resnum_list[-1]):
       f_end_res_num += 1
     if f_start_res_num == hy36decode(4,center_resnum_list[0]):
       f_start_res_num -= 1
-    print "after f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
+    print >> log, "after f_start_res_num, f_end_res_num", f_start_res_num, f_end_res_num
     return hy36encode(4, f_start_res_num), hy36encode(4, f_end_res_num)
   else:
     res = []
@@ -961,7 +980,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
   original_pdb_h = pdb_hierarchy.deep_copy()
   # print >> log, "  out_res_num, n_following, n_previous", out_res_num_list, n_following, n_previous
   start_res_num, end_res_num = get_res_nums_around(pdb_hierarchy, out_res_num_list,
-      n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation)
+      n_following, n_previous, include_intermediate=False, avoid_ss_annot=ss_annotation, log=log)
   print >> log, "  start_res_num, end_res_num", start_res_num, end_res_num
   xrs = original_pdb_h.extract_xray_structure()
   pdb_hierarchy.truncate_to_poly_gly()
@@ -1032,7 +1051,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
     else:
       anchor_present = False
     # print "  ", atoms[0].id_str()
-  print "anchor_present", anchor_present
+  print >> log, "anchor_present", anchor_present
   return (moving_h, moving_ref_atoms_iseqs, fixed_ref_atoms, m_selection,
       contains_ss_element, anchor_present)
 
