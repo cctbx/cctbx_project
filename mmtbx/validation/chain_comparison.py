@@ -155,7 +155,7 @@ master_phil = iotbx.phil.parse("""
 master_params = master_phil
 
 class rmsd_values:
-  def __init__(self):
+  def __init__(self,params=None):
     self.id_list=[]
     self.rmsd_list=[]
     self.n_list=[]
@@ -168,6 +168,8 @@ class rmsd_values:
     self.used_target=None
     self.used_query=None
     self.n_fragments_list=[]
+    self.file_info=""
+    self.params=params
 
   def add_match_percent(self,id=None,match_percent=None):
     ipoint=self.id_list.index(id)
@@ -229,6 +231,10 @@ class rmsd_values:
         return local_rmsd,local_n
     return 0,0
 
+  def show_summary(self,out=sys.stdout):
+    from mmtbx.validation.chain_comparison import write_summary
+    write_summary(params=self.params,file_list=[self.file_info],
+      rv_list=[self], out=out)
 
 def get_params(args,out=sys.stdout):
     command_line = iotbx.phil.process_command_line_with_files(
@@ -717,6 +723,7 @@ def run_test_unique_part_of_target_only(params=None,
   else:
     file_list=['Entire_target']
   write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
+  best_rv.file_info=file_list[0]
   return best_rv
 
 def run_all(params=None,
@@ -772,16 +779,18 @@ def run_all(params=None,
       else:
         raise Sorry(str(e))
     rv_list.append(rv)
+    rv.file_info=file_name
     file_list.append(file_name)
 
   write_summary(params=params,file_list=file_list,rv_list=rv_list, out=out)
+  return rv_list
 
 def write_summary(params=None,file_list=None,rv_list=None,
     max_dist=None,write_header=True,out=sys.stdout):
 
   if params and max_dist is None:
      max_dist=params.comparison.max_dist
-  if max_dist is None: max_dist=0.
+  if max_dist is None: max_dist=3.
 
   if write_header:
     print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
@@ -896,7 +905,6 @@ def select_segments_that_match(params=None,
         distance_per_site=distance_per_site,
         min_similarity=min_similarity,
       )
-
     rv_list.append(rv)
     file_list.append(params.crystal_info.chain_type)
     close_rmsd,close_n=rv.get_values('close')
@@ -1310,7 +1318,7 @@ def run(args=None,
     print >>out,"%s %d  %d  N: %d" %(
      direction,n_forward,n_reverse,chain_xyz_fract.size())
 
-  rv=rmsd_values()
+  rv=rmsd_values(params=params)
 
   id='forward'
   if forward_match_rmsd_list.size():
@@ -1440,4 +1448,7 @@ def run(args=None,
 
 if __name__=="__main__":
   args=sys.argv[1:]
-  run(args=args,out=sys.stdout)
+  rv=run(args=args,out=sys.stdout)
+  """
+  rv.show_summary()
+  """
