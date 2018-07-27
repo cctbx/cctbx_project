@@ -169,10 +169,16 @@ class FormatSMVRigakuEiger(FormatSMVRigaku):
     wavelength = float(self._header_dictionary['SCAN_WAVELENGTH'])
     mu = table.mu_at_angstrom(wavelength) / 10.0
 
-    return self._detector_factory.complex(
+    detector = self._detector_factory.complex(
         'PAD', detector_origin.elems, detector_fast.elems,
         detector_slow.elems, pixel_size, image_size, (underload, overload),
         px_mm=ParallaxCorrectedPxMmStrategy(mu, t0), mu=mu)
+
+    for panel in detector:
+      panel.set_thickness(t0)
+      panel.set_material(material)
+
+    return detector
 
   def _beam(self):
     '''Return a simple model for the beam.'''
