@@ -496,6 +496,7 @@ class DetectorFactory:
     p.set_trusted_range(tuple(map(float, trusted_range)))
     p.set_thickness(thickness)
     p.set_material(material)
+    p.set_mu(mu)
     p.set_px_mm_strategy(px_mm)
     p.set_identifier(identifier)
     if gain is not None:
