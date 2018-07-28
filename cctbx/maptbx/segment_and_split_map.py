@@ -2631,7 +2631,6 @@ def apply_sharpening(map_coeffs=None,
       print >>out,"\nApplying target scale factors vs resolution"
       if not map_coeffs:
         map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True)
-
       f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
       f_array_b_iso=get_b_iso(f_array,d_min=d_min)
       if not f_array.binner():
@@ -8224,6 +8223,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
      out=sys.stdout):
   si=sharpening_info_obj
 
+
   if si.sharpening_method=='no_sharpening':
      return map_and_b_object(map_data=map_data)
 
@@ -8256,6 +8256,7 @@ def sharpen_map_with_si(sharpening_info_obj=None,
 
   if si.is_model_sharpening() or si.is_half_map_sharpening():
     from cctbx.maptbx.refine_sharpening import scale_amplitudes
+    ff=f_array.phase_transfer(phase_source=phases,deg=True)
     map_and_b=scale_amplitudes(
       map_coeffs=f_array.phase_transfer(phase_source=phases,deg=True),
       si=si,overall_b=overall_b,out=out)
@@ -10224,6 +10225,7 @@ def run_auto_sharpen(
           scale_amplitudes(
             model_map_coeffs=model_map_coeffs,map_coeffs=map_coeffs,
             si=local_si,out=out)
+
           # local_si contains target_scale_factors now
           local_f_array=f_array
           local_phases=phases
@@ -10249,7 +10251,6 @@ def run_auto_sharpen(
           b_iso=b_min+i*delta_b
           local_si.b_sharpen=original_b_iso-b_iso
           local_si.b_iso=b_iso
-
 
         local_map_and_b=apply_sharpening(
             f_array=local_f_array,phases=local_phases,
@@ -10303,7 +10304,6 @@ def run_auto_sharpen(
 
         # ============================================
 
-
       if not local_best_si.is_model_sharpening() and \
           not local_best_si.is_half_map_sharpening():
         if local_best_si.sharpening_method=='resolution_dependent':
@@ -10352,6 +10352,7 @@ def run_auto_sharpen(
 
       ##########################################
       optimize_b_iso=True
+      print "ZAZA",n_cycles,optimize_b_blur_hires,optimize_d_cut,optimize_b_iso
       for cycle in xrange(n_cycles):
         if optimize_b_blur_hires:
           local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
@@ -10394,8 +10395,8 @@ def run_auto_sharpen(
            out=out)
 
       ##########################################
-
-      if local_best_si.score is not None and (
+      if (local_best_si.score is not None or
+         local_best_si.is_model_sharpening()) and (
           best_si.score is None or local_best_si.score > best_si.score):
         best_si=local_best_si
         best_map_and_b=local_best_map_and_b
@@ -10415,7 +10416,6 @@ def run_auto_sharpen(
       print >>out,"Improved score with sharpening..."
     else:
       print >>out,"Did not improve score with sharpening..."
-
   if return_bsi:
     map_data=best_map_and_b.map_data
     map_data=set_mean_sd_of_map(map_data=map_data,

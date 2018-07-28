@@ -13,11 +13,13 @@ master_phil = iotbx.phil.parse("""
       .type = path
       .help = File with CCP4-style map
       .short_caption = Map file
+      .style = file_type:ccp4_map bold input_file
 
     half_map_file = None
       .type = path
       .multiple = True
       .short_caption = Half map
+      .style = file_type:ccp4_map bold input_file
       .help = Half map (two should be supplied) for FSC calculation. Must \
                have grid identical to map_file
 
@@ -43,7 +45,8 @@ master_phil = iotbx.phil.parse("""
                 maximize map-model correlation.  This can be used \
                 to improve a map in regions where no model is yet \
                 built.
-      .short_caption = Model file
+      .style = file_type:pdb input_file
+      .short_caption = Model file (optional)
 
     ncs_file = None
       .type = path
@@ -56,6 +59,7 @@ master_phil = iotbx.phil.parse("""
     seq_file = None
        .type = path
        .short_caption = Sequence file
+       .style = file_type:seq input_file
        .help = Sequence file (unique chains only,  \
                1-letter code, chains separated by \
                blank line or greater-than sign.)  \
@@ -77,18 +81,21 @@ master_phil = iotbx.phil.parse("""
       .type = str
       .help = Input map file shifted to new origin.
       .short_caption = Shifted map file
+      .style = new_file
 
     sharpened_map_file = sharpened_map.ccp4
       .type = str
       .help = Sharpened input map file. In the same location as input map.
       .short_caption = Sharpened map file
       .input_size = 400
+      .style = new_file
 
     shifted_sharpened_map_file = None
       .type = str
       .help = Input map file shifted to place origin at 0,0,0 and sharpened.
       .short_caption = Shifted sharpened map file
       .input_size = 400
+      .style = new_file
 
     sharpened_map_coeffs_file = sharpened_map_coeffs.mtz
       .type = str
@@ -97,18 +104,20 @@ master_phil = iotbx.phil.parse("""
               written out as map coefficients
       .short_caption = Sharpened map coeffs file
       .input_size = 400
+      .style = new_file
 
     output_weight_map_pickle_file = weight_map_pickle_file.pkl
        .type = path
        .short_caption = Output weight map pickle file
        .help = Output weight map pickle file
+       .style = new_file
 
     output_directory =  None
       .type = path
       .help = Directory where output files are to be written \
                 applied.
       .short_caption = Output directory
-      .style = directory
+      .style = new_file directory
 
   }
 
@@ -126,6 +135,8 @@ master_phil = iotbx.phil.parse("""
        .type = float
        .short_caption = Resolution
        .help = Optional nominal resolution of the map.
+       .style = resolution
+
 
      solvent_content = None
        .type = float
