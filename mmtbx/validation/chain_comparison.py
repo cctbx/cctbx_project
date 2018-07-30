@@ -18,9 +18,9 @@ master_phil = iotbx.phil.parse("""
     pdb_in = None
       .type = path
       .multiple = True
-      .help = Input PDB file (enter once for target and once for query unless \
+      .help = Input PDB file (enter target first and then query)\
               query_dir is set)
-      .short_caption = Input PDB file
+      .short_caption = Target model or Query model
 
     unique_query_only = False
       .type = bool
@@ -55,7 +55,7 @@ master_phil = iotbx.phil.parse("""
 
     ncs_file = None
       .type = path
-      .short_caption = NCS file
+      .short_caption = NCS file (optional)
       .help = NCS file. \
                If unique_query_only is False (typically) \
                apply NCS to it to generate full query.  Normally used with \
@@ -69,7 +69,7 @@ master_phil = iotbx.phil.parse("""
     query_dir = None
       .type = path
       .help = directory containing query PDB files (any number)
-      .short_caption = Query directory
+      .short_caption = Query directory (optional)
       .style = directory
   }
   output_files {
@@ -1059,6 +1059,8 @@ def run(args=None,
 
   # get the hierarchies
   if not chain_hierarchy or not target_hierarchy:
+    if not chain_file or not target_file:
+      raise Sorry("Need at least 2 models (target and query)" )
     assert chain_file and target_file
     pdb_inp=get_pdb_inp(file_name=chain_file)
     if params.input_files.unique_target_pdb_in:
