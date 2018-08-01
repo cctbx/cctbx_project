@@ -1928,7 +1928,7 @@ class pdb_helix (structure_base) :
     """Returns dict. keys - cif field names, values - appropriate values."""
     result = {}
     result['conf_type_id'] = "HELX_P"
-    result['id'] = self.serial
+    result['id'] = self.serial if isinstance(self.serial, int) else self.serial.strip()
     result['pdbx_PDB_helix_id'] = self.helix_id
     result['beg_label_comp_id'] = self.start_resname
     result['beg_label_asym_id'] = self.start_chain_id
@@ -2667,8 +2667,9 @@ class pdb_sheet(structure_base):
   def as_cif_dict(self):
     """Returns dict. keys - cif field names, values - appropriate values,
     lists where needed."""
+    sheet_id_to_output = self.sheet_id if isinstance(self.sheet_id, int) else self.sheet_id.strip()
     result = {}
-    result['_struct_sheet.id'] = self.sheet_id
+    result['_struct_sheet.id'] = sheet_id_to_output
     result['_struct_sheet.type'] = '?'
     result['_struct_sheet.number_strands'] = self.n_strands
     result['_struct_sheet.details'] = '?'
@@ -2707,14 +2708,14 @@ class pdb_sheet(structure_base):
     for i, strand, registration in zip(range(self.n_strands), self.strands, self.registrations):
       # _struct_sheet_order
       if i != 0:
-        result['_struct_sheet_order.sheet_id'].append(self.sheet_id)
+        result['_struct_sheet_order.sheet_id'].append(sheet_id_to_output)
         result['_struct_sheet_order.range_id_1'].append(i)
         result['_struct_sheet_order.range_id_2'].append(i+1)
         result['_struct_sheet_order.offset'].append('?')
         result['_struct_sheet_order.sense'].append(strand.sense_as_cif())
 
       if strand is not None: # should always be True
-        result['_struct_sheet_range.sheet_id'].append(self.sheet_id)
+        result['_struct_sheet_range.sheet_id'].append(sheet_id_to_output)
         result['_struct_sheet_range.id'].append(i+1)
         result['_struct_sheet_range.beg_label_comp_id'].append(strand.start_resname)
         result['_struct_sheet_range.beg_label_asym_id'].append(strand.start_chain_id)
@@ -2726,7 +2727,7 @@ class pdb_sheet(structure_base):
         result['_struct_sheet_range.pdbx_end_PDB_ins_code'].append(self.icode_to_cif(strand.end_icode))
 
       if registration is not None:
-        result['_pdbx_struct_sheet_hbond.sheet_id'].append(self.sheet_id)
+        result['_pdbx_struct_sheet_hbond.sheet_id'].append(sheet_id_to_output)
         result['_pdbx_struct_sheet_hbond.range_id_1'].append(i)
         result['_pdbx_struct_sheet_hbond.range_id_2'].append(i+1)
         result['_pdbx_struct_sheet_hbond.range_1_label_atom_id'].append(registration.prev_atom.strip())
