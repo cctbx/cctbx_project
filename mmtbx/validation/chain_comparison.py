@@ -21,6 +21,7 @@ master_phil = iotbx.phil.parse("""
       .help = Input PDB file (enter target first and then query)\
               query_dir is set)
       .short_caption = Target model or Query model
+      .style = file_type:pdb input_file
 
     unique_query_only = False
       .type = bool
@@ -33,6 +34,7 @@ master_phil = iotbx.phil.parse("""
       .help = Target model identifying which element is selected with \
            unique_query_only. NOTE: must be specified by keyword.
       .short_caption = Target model
+      .style = file_type:pdb input_file
 
     unique_part_of_target_only = None
       .type = bool
@@ -231,10 +233,10 @@ class rmsd_values:
         return local_rmsd,local_n
     return 0,0
 
-  def show_summary(self,out=sys.stdout):
+  def show_summary(self,full_rows=None,out=sys.stdout):
     from mmtbx.validation.chain_comparison import write_summary
     write_summary(params=self.params,file_list=[self.file_info],
-      rv_list=[self], out=out)
+      rv_list=[self], full_rows=full_rows, out=out)
 
 def get_params(args,out=sys.stdout):
     command_line = iotbx.phil.process_command_line_with_files(
@@ -786,28 +788,26 @@ def run_all(params=None,
   return rv_list
 
 def write_summary(params=None,file_list=None,rv_list=None,
-    max_dist=None,write_header=True,out=sys.stdout):
+    max_dist=None,write_header=True,full_rows=True,out=sys.stdout):
 
   if params and max_dist is None:
      max_dist=params.comparison.max_dist
   if max_dist is None: max_dist=3.
 
   if write_header:
-    print >>out,"\nCLOSE is within %4.1f A. FAR is greater than this." %(
-      max_dist)
-    print >>out,"\nCA SCORE is fraction in close CA / rmsd of these CA."
-    print >>out,"\nSEQ SCORE is fraction (close and matching target sequence).\n"
-    print >>out,\
-        "\nMEAN LENGTH is the mean length of contiguous "+\
+    print >>out,"CLOSE is within %4.1f A." %( max_dist)
+    print >>out,"CA SCORE is (fraction close)/(rmsd of close residues)"
+    print >>out,"SEQ SCORE is fraction (close and matching target sequence)."
+    print >>out,"MEAN LENGTH is the mean length of contiguous "+\
         "segments in the match with "+\
        "target sequence. (Each gap/reverse of direction starts new segment).\n"
-
-    print >>out,"\n"
-    print >>out,"               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %"
-    print >>out,\
+    if full_rows:
+      print >>out,"\n"
+      print >>out,"               ----ALL RESIDUES---  CLOSE RESIDUES ONLY    %"
+      print >>out,\
               "     MODEL     --CLOSE-    --FAR-- FORWARD REVERSE MIXED"+\
               " FOUND  CA                  SEQ"
-    print >>out,"               RMSD   N      N       N       N      N  "+\
+      print >>out,"               RMSD   N      N       N       N      N  "+\
               "        SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH"+"\n"
 
   results_dict={}
@@ -835,9 +835,23 @@ def write_summary(params=None,file_list=None,rv_list=None,
     match_percent=rv.get_match_percent('close')
     fragments=rv.get_n_fragments('forward')+rv.get_n_fragments('reverse')
     mean_length=close_n/max(1,fragments)
-    print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
+    if full_rows:
+      print >>out,"%14s %4.2f %4d   %4d   %4d    %4d    %4d  %5.1f %6.2f   %5.1f      %6.2f  %5.1f" %(file_name,close_rmsd,close_n,far_away_n,forward_n,
          reverse_n,unaligned_n,percent_close,score,match_percent,seq_score,
          mean_length)
+    else:
+      print >>out,\
+         "ID: %14s \nClose rmsd: %4.2f A  (N=%4d)  (Far N=%4d) \n" %(
+            file_name,close_rmsd,close_n,far_away_n)+\
+         "Close residues in forward direction:"+\
+            " %d  Reverse: %d  Unaligned: %d" %(
+             forward_n, reverse_n,unaligned_n,) +\
+         "\nPercent close: %.1f %%   Score: %.2f \n" %(
+             percent_close,score)+\
+         "Percent matching sequence: %.1f \n" %(
+             match_percent)+\
+         "Sequence score:  %.2f  Mean match length: %.1f" %(
+               seq_score, mean_length)
 
 def get_target_length(target_chain_ids=None,hierarchy=None,
      target_length_from_matching_chains=None):
