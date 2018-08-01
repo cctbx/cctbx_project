@@ -177,10 +177,15 @@ class geometry(object):
   def cablam(self):
     result = cablam.cablamalyze(self.pdb_hierarchy, outliers_only=False,
       out=null_out(), quiet=True) # XXX Why it is different from others?
+    gui_table = group_args(column_labels = result.gui_list_headers,
+                           column_formats = result.gui_formats,
+                           data = result.as_gui_table_data(include_zoom=True),
+                           column_widths = result.wx_column_widths)
     return group_args(
       outliers    = result.percent_outliers(),
       disfavored  = result.percent_disfavored(),
-      ca_outliers = result.percent_ca_outliers())
+      ca_outliers = result.percent_ca_outliers(),
+      gui_table   = gui_table)
 
   def omega(self):
     result = omegalyze.omegalyze(pdb_hierarchy=self.pdb_hierarchy, quiet=True)
@@ -238,6 +243,7 @@ class geometry(object):
       self.cached_result.clash.clashes         = None
       self.cached_result.rotamer.rotalyze      = None
       self.cached_result.rotamer.omegalyze     = None
+      self.cached_result.cablam.gui_table      = None
     return self.cached_result
 
   def show(self, log=None, prefix="", lowercase=False):
