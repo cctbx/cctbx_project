@@ -21,11 +21,13 @@ class geometry(object):
   def __init__(self,
                pdb_hierarchy,
                fast_clash=False,
+               condensed_probe=False,
                use_hydrogens=True,
                use_nuclear=False,
                geometry_restraints_manager=None):
     self.pdb_hierarchy = pdb_hierarchy
     self.fast_clash = fast_clash
+    self.condensed_probe = condensed_probe
     self.restraints_source = None
     self.from_restraints = None
     self.use_hydrogens = use_hydrogens
@@ -162,6 +164,7 @@ class geometry(object):
     if self.cached_clash is None:
       self.cached_clash = clashscore(pdb_hierarchy = self.pdb_hierarchy,
                                      fast = self.fast_clash,
+                                     condensed_probe=self.condensed_probe,
                                      keep_hydrogens = self.use_hydrogens,
                                      nuclear = self.use_nuclear,
       )

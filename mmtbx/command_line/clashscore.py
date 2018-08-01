@@ -17,6 +17,10 @@ master_phil_str = """
     .type = bool
     .help = ''' Produce only clashscore number, without anything else'''
 
+  condensed_probe = False
+    .type = bool
+    .help = ''' Run probe with -CON parameter '''
+
   verbose = True
     .type = bool
 
@@ -48,6 +52,7 @@ Options:
 
   model=input_file          input PDB file
   fast = False              Produce only clashscore number, without anything else
+  condensed_probe=False     Run probe with -CON parameter
   keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
   nuclear=False             use nuclear x-H distances and vdW radii
   verbose=True              verbose text output
@@ -83,6 +88,7 @@ def run (args, out=sys.stdout, quiet=None) :
   result = clashscore(
     pdb_hierarchy=hierarchy,
     fast = params.fast,
+    condensed_probe = params.condensed_probe,
     keep_hydrogens=params.keep_hydrogens,
     nuclear=params.nuclear,
     out=out,

@@ -1199,7 +1199,7 @@ def exercise_6():
   #
   import inspect
   r = inspect.getargspec(mmtbx.model.statistics.geometry.__init__)
-  assert r.args == ['self', 'pdb_hierarchy', 'fast_clash', 'use_hydrogens', 'use_nuclear', 'geometry_restraints_manager'], r.args
+  assert r.args == ['self', 'pdb_hierarchy', 'fast_clash', 'condensed_probe','use_hydrogens', 'use_nuclear', 'geometry_restraints_manager'], r.args
 
 def exercise_from_hierarchy():
   def check_consistency(m1, m2):

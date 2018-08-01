@@ -56,6 +56,7 @@ class clashscore(validation):
     "list_dict",
     "b_factor_cutoff",
     "fast",
+    "condensed_probe",
     "probe_file",
     "probe_clashscore_manager"
   ]
@@ -69,6 +70,7 @@ class clashscore(validation):
   def __init__ (self,
       pdb_hierarchy,
       fast = False, # do really fast clashscore, produce only the number
+      condensed_probe = False, # Use -CON for probe. Reduces output 10x.
       keep_hydrogens=True,
       nuclear=False,
       force_unique_chain_ids=False,
@@ -81,6 +83,7 @@ class clashscore(validation):
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
+    self.condensed_probe = condensed_probe
     self.clashscore = None
     self.clashscore_b_cutoff = None
     self.clash_dict = {}
@@ -121,6 +124,7 @@ class clashscore(validation):
         h_pdb_string=input_str,
         nuclear=nuclear,
         fast=self.fast,
+        condensed_probe=self.condensed_probe,
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
@@ -200,25 +204,16 @@ class clashscore(validation):
           result.atoms_info[1].id_str(), result.overlap, result.xyz))
     return data
 
-class probe_line_info_storage(object):
+class probe_line_info(object): # this is parent
   def __init__(self, line):
-    # What is in line:
-    # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
-    sp = line.split(":")
-    self.type = sp[2]
-    self.srcAtom = sp[3]
-    self.targAtom = sp[4]
-    self.min_gap = float(sp[6])
+    self.overlap_value = None
 
-    self.x = float(sp[-5])
-    self.y = float(sp[-4])
-    self.z = float(sp[-3])
-    self.sBval = float(sp[-2])
-    self.tBval = float(sp[-1])
   def is_similar(self, other):
-    assert isinstance(other, probe_line_info_storage)
+    assert type(self) is type(other)
     return (self.srcAtom == other.srcAtom and self.targAtom == other.targAtom)
+
   def as_clash_obj(self, use_segids):
+    assert self.overlap_value is not None
     atom1 = decode_atom_string(self.srcAtom,  use_segids)
     atom2 = decode_atom_string(self.targAtom, use_segids)
     if (cmp(self.srcAtom, self.targAtom) < 0):
@@ -227,17 +222,51 @@ class probe_line_info_storage(object):
       atoms = [ atom2, atom1 ]
     clash_obj = clash(
       atoms_info=atoms,
-      overlap=self.min_gap,
+      overlap=self.overlap_value,
       probe_type=self.type,
-      outlier=self.min_gap <= -0.4,
+      outlier=self.overlap_value <= -0.4,
       max_b_factor=max(self.sBval, self.tBval),
       xyz=(self.x,self.y,self.z))
     return clash_obj
+
+class condensed_probe_line_info(probe_line_info):
+  def __init__(self, line):
+    super(condensed_probe_line_info, self).__init__(line)
+    # What is in line:
+    # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
+    sp = line.split(":")
+    self.type = sp[2]
+    self.srcAtom = sp[3]
+    self.targAtom = sp[4]
+    self.min_gap = float(sp[6])
+    self.x = float(sp[-5])
+    self.y = float(sp[-4])
+    self.z = float(sp[-3])
+    self.sBval = float(sp[-2])
+    self.tBval = float(sp[-1])
+    self.overlap_value = self.min_gap
+
+class raw_probe_line_info(probe_line_info):
+  def __init__(self, line):
+    super(raw_probe_line_info, self).__init__(line)
+    self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
+    self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
+    self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
+    self.tBval = line.split(":")
+    self.gap = float(self.gap)
+    self.x = float(self.x)
+    self.y = float(self.y)
+    self.z = float(self.z)
+    self.sBval = float(self.sBval)
+    self.tBval = float(self.tBval)
+    self.overlap_value = self.gap
+
 
 class probe_clashscore_manager(object):
   def __init__(self,
                h_pdb_string,
                fast = False,
+               condensed_probe=False,
                nuclear=False,
                largest_occupancy=10,
                b_factor_cutoff=None,
@@ -256,9 +285,13 @@ class probe_clashscore_manager(object):
       verbose (bool): verbosity of printout
     """
     assert libtbx.env.has_module(name="probe")
+    if fast and not condensed_probe:
+      raise Sorry("Incompatible parameters: fast=True and condensed=False:\n"+\
+        "There's no way to work fast without using condensed output.")
 
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
+    self.condensed_probe = condensed_probe
     self.use_segids=use_segids
     ogt = 10
     blt = self.b_factor_cutoff
@@ -269,35 +302,27 @@ class probe_clashscore_manager(object):
     probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
                                  'probe', 'exe', 'probe')
     probe_command = '"%s"' % probe_command   # in case of spaces in path
-    if not nuclear:
-      self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT -CON "ogt%d not water" "ogt%d" -' % \
-          (probe_command, ogt, ogt)
-      #The -NOVDWOUT probe run above is faster for clashscore to parse,
-      # the full_probe_txt version below is for printing to file for coot usage
-      self.full_probe_txt = \
-        '%s -u -q -mc -het -once "ogt%d not water" "ogt%d" -' % \
-          (probe_command, ogt, ogt)
-      self.probe_atom_txt = \
-        '%s -q -mc -het -dumpatominfo "ogt%d not water" -' % (probe_command, ogt)
-      if blt is not None:
-        self.probe_atom_b_factor = \
-          '%s -q -mc -het -dumpatominfo "blt%d ogt%d not water" -' % \
-            (probe_command, blt, ogt)
-    else: #use nuclear distances
-      self.probe_txt = \
-        '%s -u -q -mc -het -once -NOVDWOUT -CON -nuclear' % probe_command +\
-          ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
-      self.full_probe_txt = \
-        '%s -u -q -mc -het -once -nuclear' % probe_command +\
-          ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
-      self.probe_atom_txt = \
-        '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
-          ' "ogt%d not water" -' % ogt
-      if blt is not None:
-        self.probe_atom_b_factor = \
-          '%s -q -mc -het -dumpatominfo -nuclear' % probe_command +\
-            ' "blt%d ogt%d not water" -' % (blt, ogt)
+    nuclear_flag = ""
+    condensed_flag = ""
+    if nuclear:
+      nuclear_flag = "-nuclear"
+    if self.condensed_probe:
+      condensed_flag = "-CON"
+    self.probe_txt = \
+      '%s -u -q -mc -het -once -NOVDWOUT %s %s' % (probe_command, condensed_flag, nuclear_flag) +\
+        ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
+    #The -NOVDWOUT probe run above is faster for clashscore to parse,
+    # the full_probe_txt version below is for printing to file for coot usage
+    self.full_probe_txt = \
+      '%s -u -q -mc -het -once %s' % (probe_command, nuclear_flag) +\
+        ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
+    self.probe_atom_txt = \
+      '%s -q -mc -het -dumpatominfo %s' % (probe_command, nuclear_flag) +\
+        ' "ogt%d not water" -' % ogt
+    if blt is not None:
+      self.probe_atom_b_factor = \
+        '%s -q -mc -het -dumpatominfo %s' % (probe_command, nuclear_flag) +\
+          ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     self.h_pdb_string = h_pdb_string
     self.run_probe_clashscore(self.h_pdb_string)
@@ -306,15 +331,31 @@ class probe_clashscore_manager(object):
     key = line_info.targAtom+line_info.srcAtom
     if (cmp(line_info.srcAtom,line_info.targAtom) < 0):
       key = line_info.srcAtom+line_info.targAtom
-    if (line_info.type == "bo"):
-      if (line_info.min_gap <= -0.4):
-        if (key in clash_hash) :
-          if (line_info.min_gap < clash_hash[key].min_gap):
+    if self.condensed_probe:
+      if (line_info.type == "bo"):
+        if (line_info.min_gap <= -0.4):
+          if (key in clash_hash) :
+            if (line_info.min_gap < clash_hash[key].min_gap):
+              clash_hash[key] = line_info
+          else :
             clash_hash[key] = line_info
+      elif (line_info.type == "hb"):
+        hbond_hash[key] = line_info
+    else: # not condensed
+      if (line_info.type == "so" or line_info.type == "bo"):
+        if (line_info.overlap_value <= -0.4):
+          if (key in clash_hash) :
+            if (line_info.overlap_value < clash_hash[key].overlap_value):
+              clash_hash[key] = line_info
+          else :
+            clash_hash[key] = line_info
+      elif (line_info.type == "hb"):
+        if (key in hbond_hash) :
+          if (line_info.gap < hbond_hash[key].gap):
+            hbond_hash[key] = line_info
         else :
-          clash_hash[key] = line_info
-    elif (line_info.type == "hb"):
-      hbond_hash[key] = line_info
+          hbond_hash[key] = line_info
+
 
   def filter_dicts(self, new_clash_hash, new_hbond_hash):
     temp = []
@@ -326,17 +367,40 @@ class probe_clashscore_manager(object):
   def process_raw_probe_output(self, probe_unformatted):
     new_clash_hash = {}
     new_hbond_hash = {}
-    for line in probe_unformatted:
-      # processed=False # garbage
-      try:
-        line_storage = probe_line_info_storage(line)
-      except KeyboardInterrupt: raise
-      except ValueError:
-        continue # something else (different from expected) got into output
-      self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
+    if self.condensed_probe:
+      for line in probe_unformatted:
+        try:
+          line_storage = condensed_probe_line_info(line)
+        except KeyboardInterrupt: raise
+        except ValueError:
+          continue # something else (different from expected) got into output
+        self.put_group_into_dict(line_storage, new_clash_hash, new_hbond_hash)
+    else: # not condensed
+      previous_line = None
+      for line in probe_unformatted:
+        processed=False
+        try:
+          line_storage = raw_probe_line_info(line)
+        except KeyboardInterrupt: raise
+        except ValueError:
+          continue # something else (different from expected) got into output
+
+        if previous_line is not None:
+          if line_storage.is_similar(previous_line):
+            # modify previous line to store this one if needed
+            previous_line.overlap_value = min(previous_line.overlap_value, line_storage.overlap_value)
+          else:
+            # seems like new group of lines, then dump previous and start new
+            # one
+            self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
+            previous_line = line_storage
+        else:
+          previous_line = line_storage
+      if previous_line is not None:
+        self.put_group_into_dict(previous_line, new_clash_hash, new_hbond_hash)
     return self.filter_dicts(new_clash_hash, new_hbond_hash)
 
-  def get_condenced_clashes(self, lines):
+  def get_condensed_clashes(self, lines):
     def parse_line(line):
       sp = line.split(':')
       return sp[3], sp[4], float(sp[6])
@@ -395,7 +459,7 @@ class probe_clashscore_manager(object):
                                                     stdin_lines=pdb_string)
       self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
     else:
-      self.n_clashes = self.get_condenced_clashes(probe_unformatted)
+      self.n_clashes = self.get_condensed_clashes(probe_unformatted)
 
     # getting number of atoms from probe
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
@@ -407,7 +471,6 @@ class probe_clashscore_manager(object):
     #  raise RuntimeError("Empty PROBE output.")
     n_atoms = 0
     for line in probe_info.stdout_lines:
-      # processed=False # garbage
       try:
         dump, n_atoms = line.split(":")
       except KeyboardInterrupt: raise
