@@ -214,7 +214,7 @@ class run(object):
     total = self.loop(function = is_outlier)
     result = self.number_of_outliers
     self.number_of_outliers = None
-    if(total==0): return 0, 0
+    if(total==0): return 0
     return result
 
   def one_residue_tune_up(self, residue):
