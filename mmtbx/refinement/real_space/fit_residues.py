@@ -73,20 +73,20 @@ class run(object):
     else:
       self.target_map = map_data
     print >> self.log, \
-      "outliers start: %d (percent: %6.2f)"%self.count_outliers()
+      "outliers start: %d"%self.count_outliers()
     #
     if(not self.tune_up_only):
       self.loop(function = self.one_residue_iteration)
       assert approx_equal(self.sites_cart,
         self.pdb_hierarchy.atoms().extract_xyz())
       print >> self.log, \
-        "outliers after map fit: %d (percent: %6.2f)"%self.count_outliers()
+        "outliers after map fit: %d"%self.count_outliers()
     print >> self.log, "tune up"
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
     self.loop(function = self.one_residue_tune_up)
     print >> self.log, \
-      "outliers final: %d (percent: %6.2f)"%self.count_outliers()
+      "outliers final: %d"%self.count_outliers()
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
 
@@ -215,7 +215,7 @@ class run(object):
     result = self.number_of_outliers
     self.number_of_outliers = None
     if(total==0): return 0, 0
-    return result, result*100./total
+    return result
 
   def one_residue_tune_up(self, residue):
     re = self.rotamer_manager.rotamer_evaluator
