@@ -143,7 +143,7 @@ class run(object):
       if(selection[i_a]):
         site_frac = self.crystal_symmetry.unit_cell().fractionalize(a.xyz)
         mean_atom.append(map_data.eight_point_interpolation(site_frac))
-    mean_atom = flex.mean(mean_atom)
+    mean_atom = flex.mean_default(mean_atom,0)
     map_data = map_data.set_selected(map_data>mean_atom, mean_atom)
     # Blend maps if applicable
     if(self.diff_map_data is not None):
