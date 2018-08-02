@@ -499,8 +499,8 @@ def tst_01():
   f=StringIO()
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
-  expected_text="""
-
+  expected_text=\
+"""SEQ SCORE is fraction (close and matching target sequence).
 MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
@@ -540,6 +540,7 @@ def tst_02():
   r=run(crystal_symmetry=crystal_symmetry,
     chain_hierarchy=query_hierarchy,target_hierarchy=model_hierarchy,out=f)
   expected_text="""
+  SEQ SCORE is fraction (close and matching target sequence).
 MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
@@ -591,6 +592,7 @@ def tst_03():
   args=["query_dir=files","model.pdb"]
   r=run(args,out=f)
   expected_text="""
+  SEQ SCORE is fraction (close and matching target sequence).
 MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
@@ -821,6 +823,7 @@ def tst_06():
   args=['model.pdb','query.pdb','ncs_file=ncs.ncs_spec']
   r=run(args,out=f)
   expected_text="""
+  SEQ SCORE is fraction (close and matching target sequence).
 MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
 
 
