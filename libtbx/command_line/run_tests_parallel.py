@@ -50,7 +50,6 @@ def run (args, return_list_of_tests=None) :
         user_phil.append(arg_phil)
 
   params = master_phil.fetch(sources=user_phil).extract()
-
   if params.run_in_tmp_dir:
     from libtbx.test_utils import open_tmp_directory
     run_dir = open_tmp_directory()
@@ -77,10 +76,8 @@ def run (args, return_list_of_tests=None) :
   for module_name in params.module :
     module_tests = libtbx.test_utils.parallel.get_module_tests(module_name)
     all_tests.extend(module_tests)
-
   if return_list_of_tests:
     return all_tests
-
   if (len(all_tests) == 0) :
     raise Sorry("No test scripts found in %s." % params.directory)
   if (params.shuffle) :
