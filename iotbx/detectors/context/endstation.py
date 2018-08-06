@@ -70,7 +70,7 @@ def EndStation_from_ImageObject(imageobject,phil_params):
   endstation.set_rotation_axis("ROTATION HORIZ ANTI")
 
   import six
-  if isinstance(imageobject.parameters["DETECTOR_SN"],six.string_types) and \
+  if isinstance(imageobject.parameters.get("DETECTOR_SN",None),six.string_types) and \
     "S/N E-32-0105" in imageobject.parameters["DETECTOR_SN"]:
      # vertical goniometer axis at Max-IV
      endstation.set_rotation_axis("ROTATION VERT ANTI")
