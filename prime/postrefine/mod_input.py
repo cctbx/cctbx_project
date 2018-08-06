@@ -526,4 +526,7 @@ def read_frame(frame_file):
   except Exception:
     print "Warning: unable to read %s"%(frame_file)
     pass
+  if any([len(obs.data()) == 0 for obs in observations_pickle['observations']]):
+    print "Empty file %s"%(frame_file)
+    return
   return observations_pickle
