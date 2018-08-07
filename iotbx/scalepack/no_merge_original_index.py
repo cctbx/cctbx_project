@@ -350,6 +350,27 @@ def quick_test(file_name):
 
 def run(args):
   exercise_combine_symops_and_symbol()
+
+# This stuff is sitting in /net/cci/share/structure-lib defined by $CCI_STRUCTURE_LIB
+#
+# p9/data/infl.sca                                             5.9 Mb
+# p9/data/peak.sca                                             7.5 Mb
+# p9/data/high.sca                                             6.5 Mb
+# rh-dehalogenase/data/auki_rd_1.sca                           2   Mb
+# rh-dehalogenase/data/hgi2_rd_1.sca                           2.8 Mb
+# rh-dehalogenase/data/hgki_rd_1.sca                           4.3 Mb
+# rh-dehalogenase/data/ndac_rd_1.sca                           4.4 Mb
+# rh-dehalogenase/data/rt_rd_1.sca                             4.4 Mb
+# rh-dehalogenase/data/smac_1.sca                              3.6 Mb
+# vmp/data/infl.sca                                           13   Mb
+# vmp/data/peak.sca                                           14   Mb
+# vmp/data/high.sca                                            8   Mb
+# bnl_2003/karen/shelxd/p123-unmerged.sca                  No longer available
+# bnl_2003/karen/shelxd/pk1-unmerged.sca                   No longer available
+# bnl_2003/karen/shelxd/pk12-unmerged.sca                  No longer available
+# bnl_2003/karen/shelxd/pk1234-unmerged.sca                No longer available
+#                                                 Overal ~ 75 Mb!!!
+
   file_names = """
 p9/data/infl.sca
 p9/data/peak.sca
