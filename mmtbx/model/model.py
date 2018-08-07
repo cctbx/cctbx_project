@@ -1037,6 +1037,52 @@ class manager(object):
     #
     self.extract_tls_selections_from_input()
 
+  def set_reference_coordinate_restraints(self,
+      ref_model,
+      selection="all",
+      exclude_outliers=True,
+      sigma=0.2,
+      limit=1.0,
+      top_out=False):
+    rm = self.get_restraints_manager().geometry
+    rm.remove_reference_coordinate_restraints_in_place()
+
+    exclude_selection_ref = flex.bool(ref_model.get_number_of_atoms(), False)
+    exclude_selection_self = flex.bool(self.get_number_of_atoms(), False)
+    for sel, m in [(exclude_selection_ref, ref_model), (exclude_selection_self, self)]:
+      if m.has_hd():
+        sel |= m.get_hd_selection()
+      sel |= m.selection('water')
+
+    reference_hierarchy = ref_model.get_hierarchy().select(~exclude_selection_ref)
+    self_hierarchy = self.get_hierarchy().select(~exclude_selection_self)
+    # sanity check
+    for i, a in enumerate(self_hierarchy.atoms()):
+      ref_a = reference_hierarchy.atoms()[i]
+      # print "Sanity check: '%s' == '%s'" % (a.id_str(), ref_a.id_str())
+      if a.id_str() != ref_a.id_str():
+        raise Sorry("Something went wrong in setting reference coordinate restraints." + \
+            "Please refer this case to bugs@phenix-online.org"+ \
+            "'%s' != '%s'" % (a.id_str(), ref_a.id_str()))
+
+    rm.add_reference_coordinate_restraints_in_place(
+        pdb_hierarchy=reference_hierarchy,
+        selection=(~exclude_selection_self).iselection(),
+        exclude_outliers=exclude_outliers,
+        sigma=sigma,
+        limit=limit,
+        top_out=top_out,
+        n_atoms_in_target_model=self.get_number_of_atoms())
+    # for debugging
+    # n_rcr = self.get_restraints_manager().geometry.\
+    #     get_n_reference_coordinate_proxies()
+    # print >> self.log, "  Number of reference coordinate restraints generated:",\
+    #    n_rcr
+
+  def set_reference_torsion_restraints(self, ref_model):
+    rm = self.get_restraints_manager().geometry
+    rm.remove_reference_dihedral_manager()
+
   #
   # =======================================================================
   # NCS-related features.
@@ -1881,7 +1927,7 @@ class manager(object):
   def add_hydrogens(self, correct_special_position_tolerance,
         element = "H", neutron = False, occupancy=0.01):
     result = []
-    xs = self._xray_structure
+    xs = self.get_xray_structure()
     if(neutron): element = "D"
     frac = xs.unit_cell().fractionalize
     sites_cart = xs.sites_cart()

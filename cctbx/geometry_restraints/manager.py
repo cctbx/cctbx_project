@@ -581,8 +581,10 @@ class manager(Base_geometry):
       exclude_outliers=True,
       sigma=0.2,
       limit=1.0,
-      top_out=False):
+      top_out=False,
+      n_atoms_in_target_model=None):
     assert [all_chain_proxies, pdb_hierarchy].count(None) == 1
+    assert [all_chain_proxies, n_atoms_in_target_model].count(None) == 1
     if all_chain_proxies is None:
       assert isinstance(selection, flex.size_t)
     from mmtbx.geometry_restraints.reference import add_coordinate_restraints, \
@@ -590,6 +592,7 @@ class manager(Base_geometry):
 
     if isinstance(selection, flex.size_t):
       isel = selection
+      bsel = flex.bool(n_atoms_in_target_model, isel)
       sites_cart=pdb_hierarchy.atoms().extract_xyz()
     else:
       # should be deleted if all_chain_proxies won't be used
@@ -602,13 +605,13 @@ class manager(Base_geometry):
             "selection string: %s)") % selection)
       # print >> self.log, "*** Restraining %d atoms to initial coordinates ***" % \
       #     new_selection.size()
-      if exclude_outliers:
-        new_selection = exclude_outliers_from_reference_restraints_selection(
-            pdb_hierarchy=all_chain_proxies.pdb_hierarchy,
-            restraints_selection=new_selection)
+    if exclude_outliers:
+      new_selection = exclude_outliers_from_reference_restraints_selection(
+          pdb_hierarchy=pdb_hierarchy if pdb_hierarchy is not None else all_chain_proxies.pdb_hierarchy,
+          restraints_selection=new_selection if all_chain_proxies is not None else bsel)
       isel = new_selection.iselection()
     proxies = add_coordinate_restraints(
-        sites_cart=sites_cart.select(isel),
+        sites_cart=sites_cart.select(isel) if n_atoms_in_target_model is None else sites_cart,
         selection=isel,
         sigma=sigma,
         limit=limit,
@@ -727,6 +730,9 @@ class manager(Base_geometry):
   #=================================================================
   def adopt_reference_dihedral_manager(self, manager):
     self.reference_dihedral_manager = manager
+
+  def remove_reference_dihedral_manager(self):
+    self.reference_dihedral_manager = None
 
   def remove_reference_dihedrals_in_place(self, selection):
     if self.reference_dihedral_manager is not None:
