@@ -10352,7 +10352,6 @@ def run_auto_sharpen(
 
       ##########################################
       optimize_b_iso=True
-      print "ZAZA",n_cycles,optimize_b_blur_hires,optimize_d_cut,optimize_b_iso
       for cycle in xrange(n_cycles):
         if optimize_b_blur_hires:
           local_best_si,local_best_map_and_b=optimize_b_blur_or_d_cut_or_b_iso(
