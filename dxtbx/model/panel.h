@@ -200,14 +200,14 @@ namespace dxtbx { namespace model {
      * @param s0 The incident beam vector
      * @returns flex::double array containing 2theta at every pixel
      */
-    scitbx::af::shared<double> get_two_theta_array(vec3<double> s0) const {
+    scitbx::af::versa<double, scitbx::af::c_grid<2> > get_two_theta_array(vec3<double> s0) const {
       DXTBX_ASSERT(s0.length() > 0);
       size_t fast = image_size_[0], slow = image_size_[1];
 
-      scitbx::af::shared<double> result(slow * fast);
-      for (size_t i = 0; i < slow; i++) {
-        for (size_t j = 0; j < fast; j++) {
-          result[i * fast + j] = angle_safe(s0, get_pixel_lab_coord(vec2<double>(i,j)));
+      scitbx::af::versa<double, scitbx::af::c_grid<2> > result(scitbx::af::c_grid<2>(slow, fast));
+      for (size_t j = 0; j < slow; j++) {
+        for (size_t i = 0; i < fast; i++) {
+          result(j, i) = angle_safe(s0, get_pixel_lab_coord(vec2<double>(i,j)));
         }
       }
       return result;
