@@ -398,7 +398,8 @@ class manager(object):
     self.model.restraints_manager.geometry.\
         add_reference_coordinate_restraints_in_place(
             pdb_hierarchy=pdb_hierarchy,
-            selection=restraint_selection)
+            selection=restraint_selection,
+            n_atoms_in_target_model=self.model.get_number_of_atoms())
     ##### sanity check #####
     assert(self.model.restraints_manager.geometry.
            get_n_reference_coordinate_proxies() >= len(restraint_sites_cart))
