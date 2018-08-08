@@ -42,7 +42,7 @@ from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    add_reference_dihedral_restraints_if_requested, reference_model_str
+    add_reference_dihedral_restraints_if_requested, reference_model_str, reference_model
 from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
@@ -1076,9 +1076,27 @@ class manager(object):
     # print >> self.log, "  Number of reference coordinate restraints generated:",\
     #    n_rcr
 
-  def set_reference_torsion_restraints(self, ref_model):
-    rm = self.get_restraints_manager().geometry
-    rm.remove_reference_dihedral_manager()
+  def set_reference_torsion_restraints(self, ref_model, params=None):
+    geometry = self.get_restraints_manager().geometry
+    geometry.remove_reference_dihedral_manager()
+
+    if params is None:
+      params = iotbx.phil.parse(reference_model_str).extract()
+      params.reference_model.enabled=True
+    ter_indices = self._model_input.ter_indices()
+    if ter_indices is not None:
+      check_for_internal_chain_ter_records(
+        pdb_hierarchy=self.get_hierarchy(),
+        ter_indices=ter_indices)
+    rm = reference_model(
+      self,
+      reference_file_list=None,
+      reference_hierarchy_list=[ref_model.get_hierarchy()],
+      params=params.reference_model,
+      selection=None,
+      log=self.log)
+    rm.show_reference_summary(log=self.log)
+    geometry.adopt_reference_dihedral_manager(rm)
 
   #
   # =======================================================================
