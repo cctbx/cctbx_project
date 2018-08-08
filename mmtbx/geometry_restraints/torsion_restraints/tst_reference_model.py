@@ -4,6 +4,7 @@ from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
     reference_model, reference_model_params
 from mmtbx.geometry_restraints.torsion_restraints import utils
 from mmtbx.validation.rotalyze import rotalyze
+import mmtbx.model
 from cctbx.array_family import flex
 import iotbx.phil
 import iotbx.pdb
@@ -11,7 +12,6 @@ from libtbx.test_utils import show_diff
 import libtbx.load_env
 import cStringIO
 import sys, os, time
-from mmtbx.monomer_library.pdb_interpretation import process
 
 model_raw_records = """\
 CRYST1   41.566   72.307   92.870 108.51  93.02  90.06 P 1           4
@@ -96,11 +96,11 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_params = reference_model_params.extract()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(model_raw_records))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(model_raw_records),
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
     source_info=None,
@@ -108,7 +108,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
 
   reference_hierarchy_list.append(tmp_hierarchy)
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
          log=log)
@@ -209,7 +209,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model = model,
          reference_hierarchy_list=reference_hierarchy_list_alt_seq,
          params=all_pars.reference_model,
          log=log)
@@ -221,11 +221,11 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/1ywf.pdb",
     test=os.path.isfile)
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      file_name=pdb_file)
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(file_name=pdb_file,
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
   # pdb_hierarchy = iotbx.pdb.input(file_name=pdb_file).construct_hierarchy()
   reference_file_list = []
   reference_file_list.append(pdb_file)
@@ -235,7 +235,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
   work_pars.reference_model.enabled = True
 
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=reference_file_list,
          params=work_pars.reference_model,
          log=log)
@@ -252,7 +252,7 @@ def exercise_reference_model(args, mon_lib_srv, ener_lib):
     work_pars.reference_model.secondary_structure_only = True
     work_pars.reference_model.enabled = True
     rm.params = work_pars.reference_model
-    rm.get_reference_dihedral_proxies(processed_pdb_file=processed_pdb_file)
+    rm.get_reference_dihedral_proxies(model=model)
     reference_dihedral_proxies = rm.reference_dihedral_proxies
     ss_weight = 0
     for dp in reference_dihedral_proxies:
@@ -616,16 +616,15 @@ TER
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
 
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(pdb_str_original))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None),
+      process_input=True)
+
+  pdb_h = model.get_hierarchy()
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model = model,
          reference_file_list=['ref.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   # rm.show_reference_summary(log=log)
@@ -679,10 +678,8 @@ TER
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref_0.pdb', 'ref_1.pdb', 'ref_2.pdb', 'ref_3.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 124, \
@@ -708,20 +705,16 @@ TER
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref_0.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 31, \
       "Expecting 31 proxies, got %d" % rm.get_n_proxies()
   all_pars.reference_model.side_chain=False
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref_0.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 21, \
@@ -729,10 +722,8 @@ TER
   all_pars.reference_model.side_chain=True
   all_pars.reference_model.main_chain=False
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref_0.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 10, \
@@ -743,10 +734,8 @@ TER
   all_pars.reference_model.enabled = True
   all_pars.reference_model.file = 'ref_0.pdb'
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref_0.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 124, \
@@ -760,11 +749,9 @@ TER
   all_pars.reference_model.enabled = True
   all_pars.reference_model.use_starting_model_as_reference = True
   rm = reference_model(
-      processed_pdb_file=processed_pdb_file,
+      model=model,
       reference_hierarchy_list=\
-          [processed_pdb_file.all_chain_proxies.pdb_hierarchy],
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
+          [model.get_hierarchy()],
       params=all_pars.reference_model,
       log=log)
   rm.show_reference_summary(log=log)
@@ -961,16 +948,14 @@ TER
   all_pars = def_pars.fetch().extract()
   all_pars.reference_model.file = 'ref.pdb'
   all_pars.reference_model.enabled = True
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(pdb_str_original))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   assert rm.get_n_proxies() == 36, \
@@ -1044,17 +1029,15 @@ ATOM     20  OG  SER G 334      -5.954  69.950  50.396  1.00170.98           O
   pars = iotbx.phil.parse(params_text)
   all_pars = def_pars.fetch(pars).extract()
   all_pars.reference_model.enabled = True
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(pdb_str_original))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
 
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_file_list=['ref.pdb'],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
          params=all_pars.reference_model,
          log=log)
   rm.show_reference_summary(log=log)
@@ -1258,11 +1241,11 @@ TER     490       DG B  24
   ref_file.close()
   log = cStringIO.StringIO()
   # log = sys.stdout
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(pdb_str_original))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
   for include_chains in [True, False]:
     def_pars = reference_model_params
     pars = iotbx.phil.parse(params_text)
@@ -1275,10 +1258,8 @@ TER     490       DG B  24
       all_pars.reference_model.enabled = True
       all_pars.reference_model.file = "ref.pdb"
     rm = reference_model(
-           processed_pdb_file=processed_pdb_file,
+           model=model,
            reference_file_list=['ref.pdb'],
-           mon_lib_srv=mon_lib_srv,
-           ener_lib=ener_lib,
            params=all_pars.reference_model,
            log=log)
     rm.show_reference_summary(log=log)
@@ -1528,13 +1509,12 @@ ATOM   3429  O   GLU C  10       5.457  21.355  66.443  1.00 13.28      C    O
 TER
 END
   """
-  processed_pdb_file = process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=flex.split_lines(pdb_str_original))
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  model = mmtbx.model.manager(
+      model_input = iotbx.pdb.input(lines=flex.split_lines(pdb_str_original),
+                                    source_info=None),
+      process_input=True)
+  pdb_h = model.get_hierarchy()
   ref_h = pdb_h.deep_copy()
-  grm = processed_pdb_file.geometry_restraints_manager()
   # pdb_h.atoms().reset_i_seq()
   # ref_h.atoms().reset_i_seq()
 
@@ -1545,11 +1525,9 @@ END
   all_pars.reference_model.use_starting_model_as_reference=True
   all_pars.reference_model.enabled = True
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model=model,
          reference_hierarchy_list=\
-            [processed_pdb_file.all_chain_proxies.pdb_hierarchy],
-         mon_lib_srv=mon_lib_srv,
-         ener_lib=ener_lib,
+            [model.get_hierarchy()],
          params=all_pars.reference_model,
          log=log)
   rm.show_reference_summary(log=log)

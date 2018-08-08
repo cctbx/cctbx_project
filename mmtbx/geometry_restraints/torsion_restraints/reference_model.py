@@ -106,11 +106,8 @@ reference_model_params = iotbx.phil.parse(
     reference_model_str)
 
 def add_reference_dihedral_restraints_if_requested(
+    model,
     geometry,
-    processed_pdb_file,
-    mon_lib_srv=None,
-    ener_lib=None,
-    has_hd=False,
     params=None,
     selection=None,
     log=None):
@@ -123,8 +120,7 @@ def add_reference_dihedral_restraints_if_requested(
   reference_file_list = []
   reference_hierarchy_list = None
   if params.use_starting_model_as_reference:
-    reference_hierarchy_list = \
-        [processed_pdb_file.all_chain_proxies.pdb_hierarchy]
+    reference_hierarchy_list = [model.get_hierarchy()]
     reference_file_list = None
     print >> log, \
       "*** Restraining model using starting model ***"
@@ -133,18 +129,15 @@ def add_reference_dihedral_restraints_if_requested(
       reference_file_list.append(file_name)
   print >> log, "*** Adding Reference Model Restraints (torsion) ***"
   #test for inserted TER cards in working model
-  ter_indices = processed_pdb_file.all_chain_proxies.pdb_inp.ter_indices()
+  ter_indices = model._model_input.ter_indices()
   if ter_indices is not None:
     utils.check_for_internal_chain_ter_records(
-      pdb_hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      pdb_hierarchy=model.get_hierarchy(),
       ter_indices=ter_indices)
   rm = reference_model(
-    processed_pdb_file=processed_pdb_file,
+    model,
     reference_file_list=reference_file_list,
     reference_hierarchy_list=reference_hierarchy_list,
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    has_hd=has_hd,
     params=params,
     selection=selection,
     log=log)
@@ -154,12 +147,9 @@ def add_reference_dihedral_restraints_if_requested(
 class reference_model(object):
 
   def __init__(self,
-               processed_pdb_file,
+               model,
                reference_hierarchy_list=None,
                reference_file_list=None,
-               mon_lib_srv=None,
-               ener_lib=None,
-               has_hd=False,
                params=None,
                selection=None,
                log=None):
@@ -167,11 +157,12 @@ class reference_model(object):
             reference_file_list].count(None) == 1
     if(log is None):
       log = sys.stdout
+    # self.model = model
     self.params = params
     self.selection = selection
-    self.mon_lib_srv = mon_lib_srv
-    self.ener_lib = ener_lib
-    self.pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    self.mon_lib_srv = model.get_mon_lib_srv()
+    self.ener_lib = model.get_ener_lib()
+    self.pdb_hierarchy = model.get_hierarchy()
     self.pdb_hierarchy.reset_i_seq_if_necessary()
     sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
     if self.selection is None:
@@ -233,8 +224,7 @@ class reference_model(object):
       new_ref_dih_proxies = self.reference_dihedral_proxies = \
           cctbx.geometry_restraints.shared_dihedral_proxy()
     else:
-      new_ref_dih_proxies = self.get_reference_dihedral_proxies(
-          processed_pdb_file=processed_pdb_file)
+      new_ref_dih_proxies = self.get_reference_dihedral_proxies(model)
 
   def get_matching_from_self(self):
     """ Shortcut for the case when restraining on starting model """
@@ -531,9 +521,9 @@ class reference_model(object):
         return True
     return False
 
-  def get_reference_dihedral_proxies(self, processed_pdb_file):
+  def get_reference_dihedral_proxies(self, model):
     complete_dihedral_proxies = utils.get_dihedrals_and_phi_psi(
-        processed_pdb_file=processed_pdb_file)
+        model=model)
     generated_reference_dihedral_proxies = \
       cctbx.geometry_restraints.shared_dihedral_proxy()
     sigma = self.params.sigma

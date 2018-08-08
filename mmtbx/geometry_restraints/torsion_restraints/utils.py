@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb import amino_acid_codes, input
 from cctbx.array_family import flex
@@ -87,11 +87,11 @@ def get_complete_dihedral_proxies(
   # yet. For the main file only get_dihedrals_and_phi_psi below is called.
   # Still used for reference model torsion restraints
   #
+  import mmtbx.model
   assert [pdb_hierarchy,
           file_name,
           raw_records].count(None) == 2
   from mmtbx.monomer_library import server, pdb_interpretation
-  import cStringIO
   if log is None:
     log = sys.stdout
   if mon_lib_srv is None:
@@ -103,37 +103,30 @@ def get_complete_dihedral_proxies(
   if raw_records is not None:
     if (isinstance(raw_records, str)):
       raw_records = flex.split_lines(raw_records)
-  work_params = pdb_interpretation.master_params.extract()
-  work_params.c_beta_restraints=False
-  work_params.automatic_linking.link_none=True
-  work_params.clash_guard.nonbonded_distance_threshold = None
+  work_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  work_params.pdb_interpretation.c_beta_restraints=False
+  work_params.pdb_interpretation.automatic_linking.link_none=True
+  work_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+  pdb_inp = input(lines=raw_records, source_info=None)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      build_grm = True,
+      pdb_interpretation_params=work_params,
+      log=null_out())
+  return get_dihedrals_and_phi_psi(model)
 
-  processed_pdb_file_local = \
-    pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      params=work_params,
-      file_name=file_name,
-      raw_records=raw_records,
-      strict_conflict_handling=False,
-      crystal_symmetry=crystal_symmetry,
-      force_symmetry=True,
-      log=cStringIO.StringIO(),
-      substitute_non_crystallographic_unit_cell_if_necessary=True)
-  return get_dihedrals_and_phi_psi(processed_pdb_file_local)
-
-def get_dihedrals_and_phi_psi(processed_pdb_file):
+def get_dihedrals_and_phi_psi(model):
   from cctbx.geometry_restraints import dihedral_proxy_registry
   dihedral_registry = dihedral_proxy_registry(
       strict_conflict_handling=True)
   dihedral_registry.initialize_table()
   from mmtbx.conformation_dependent_library import generate_protein_threes
-  grm = processed_pdb_file.geometry_restraints_manager()
+  grm = model._processed_pdb_file.geometry_restraints_manager()
   dihedral_proxies = grm.get_dihedral_proxies().deep_copy()
   for p in dihedral_proxies:
     dihedral_registry.add_if_not_duplicated(p)
   for three in generate_protein_threes(
-      hierarchy=processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+      hierarchy=model.get_hierarchy(),
       geometry=None):
     proxies = three.get_dummy_dihedral_proxies(
         only_psi_phi_pairs=False)

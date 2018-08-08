@@ -33,7 +33,7 @@ import mmtbx.hydrogens
 from mmtbx.hydrogens import riding
 import mmtbx.model.statistics
 import mmtbx.monomer_library.server
-import mmtbx.geometry_restraints.torsion_restraints.utils as torsion_utils
+from mmtbx.geometry_restraints.torsion_restraints.utils import check_for_internal_chain_ter_records
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
 from mmtbx import utils
@@ -1011,11 +1011,8 @@ class manager(object):
     #     prefix=None)
     if hasattr(self._pdb_interpretation_params, "reference_model"):
       add_reference_dihedral_restraints_if_requested(
+          self,
           geometry=geometry,
-          processed_pdb_file=self._processed_pdb_file,
-          mon_lib_srv=self.get_mon_lib_srv(),
-          ener_lib=self.get_ener_lib(),
-          has_hd=self.has_hd(),
           params=self._pdb_interpretation_params.reference_model,
           selection=None,
           log=self.log)
@@ -1094,7 +1091,7 @@ class manager(object):
       ncs_torsion_params,
       sites_individual,
       log):
-    torsion_utils.check_for_internal_chain_ter_records(
+    check_for_internal_chain_ter_records(
         pdb_hierarchy = self.get_hierarchy(),
         ter_indices   = self._model_input.ter_indices())
     ncs_obj = self.get_ncs_obj()

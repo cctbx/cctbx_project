@@ -410,7 +410,8 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
   from mmtbx.geometry_restraints.torsion_restraints.tst_reference_model import \
       model_raw_records, reference_raw_records
   from mmtbx.geometry_restraints.torsion_restraints.reference_model import \
-    reference_model, reference_model_params
+    reference_model
+  import mmtbx.model
   # mstream = StringIO()
   from libtbx.utils import multi_out
   mstream = multi_out()
@@ -419,22 +420,21 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
   mstreamfile = open(mstream_file_name, "w")
   mstream.register("logfile", mstreamfile)
 
-  work_params = reference_model_params.extract()
+  work_params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   work_params.reference_model.enabled = True
   work_params.reference_model.fix_outliers = False
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-      mon_lib_srv=mon_lib_srv,
-      ener_lib=ener_lib,
-      raw_records=model_raw_records.split('\n'),
-      log=mstream)
-  pdb_h = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  pdb_inp = iotbx.pdb.input(lines=model_raw_records.split('\n'), source_info=None)
+  model = mmtbx.model.manager(
+      model_input = pdb_inp,
+      process_input=True,
+      pdb_interpretation_params = work_params)
   reference_hierarchy_list = []
   tmp_hierarchy = iotbx.pdb.input(
     source_info=None,
     lines=reference_raw_records.split('\n')).construct_hierarchy()
   reference_hierarchy_list.append(tmp_hierarchy)
   rm = reference_model(
-         processed_pdb_file=processed_pdb_file,
+         model = model,
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
          log=mstream)
