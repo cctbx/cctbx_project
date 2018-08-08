@@ -351,7 +351,7 @@ def run():
   if (not libtbx.env.has_module("reduce")) :
     print "Reduce not installed."
     return
-  # exercise_adopting_coord_restraints()
+  exercise_adopting_coord_restraints()
   exercise_adopting_coord_restraints_water()
 
   print format_cpu_times()
