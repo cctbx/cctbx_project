@@ -252,8 +252,10 @@ def run_call_back(flags,
     i_structure = count()
     for entry in strudat_entries:
       if (i_structure.next() % chunk_n != chunk_i): continue
-      print >> sys.stderr, "strudat tag:", entry.tag
-      sys.stderr.flush()
+      # XXX Not sure why this stderr output is necessary. Disabling to clean
+      # up t96 output.
+      # print >> sys.stderr, "strudat tag:", entry.tag
+      # sys.stderr.flush()
       print >> out, "strudat tag:", entry.tag
       out.flush()
       for use_u_aniso in use_u_aniso_flags:
