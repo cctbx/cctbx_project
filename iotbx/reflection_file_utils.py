@@ -846,7 +846,8 @@ def make_joined_set (miller_arrays) :
     crystal_symmetry=miller_arrays[0].crystal_symmetry(),
     indices=master_indices,
     anomalous_flag=False)
-  return master_set.map_to_asu().unique_under_symmetry()
+  return \
+    master_set.map_to_asu().unique_under_symmetry().remove_systematic_absences()
 
 def extract_miller_array_from_file(file_name, label=None, type=None, log=None):
   if(log is None): log = sys.stdout

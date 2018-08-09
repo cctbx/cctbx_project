@@ -405,9 +405,25 @@ def extract(file_name,
         if (n_missing > 0) :
           if (extend_flags) :
             from cctbx import r_free_utils
+            # determine flag values
+            fvals = list(set(ma.data()))
+            fval = None
+            if(len(fvals)==1):
+              fval = fvals[0]
+            elif(len(fvals)==2):
+              f1 = (ma.data()==fvals[0]).count(True)/ma.data().size()
+              f2 = (ma.data()==fvals[1]).count(True)/ma.data().size()
+              if(f1<f2): fval = fvals[0]
+              else:      fval = fvals[1]
+            else:
+              fval = 0
+              if(not fval in fvals):
+                raise Sorry("Cannot determine free-R flag value.")
+            assert fval is not None
+            #
             ma = r_free_utils.extend_flags(
               r_free_flags=ma,
-              test_flag_value=0,
+              test_flag_value=fval,
               array_label=label,
               complete_set=complete_set,
               preserve_input_values=True,
@@ -418,7 +434,7 @@ def extract(file_name,
               "array '%s' - this may "+
               "cause problems if you try to use the MTZ file for refinement "+
               "or map calculation.  We recommend that you extend the flags "+
-              "to cover all reflections (--extend-flags on the command line).")
+              "to cover all reflections (--extend_flags on the command line).")
               % (n_missing, label))
       # Get rid of fake (0,0,0) reflection in some CIFs
       ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
