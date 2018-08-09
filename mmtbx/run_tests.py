@@ -57,12 +57,12 @@ general_tests = [
   "$D/refinement/tst_rigid_body_groups_from_pdb_chains.py",
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
-  "$D/regression/tst_model_mtrix.py",
-  "$D/regression/tst_model_2.py",
-  "$D/regression/tst_model_biomt_mtrix.py",
-  "$D/regression/tst_model_neutralize_scatterers.py",
-  "$D/regression/tst_model_cart_ref_restraints.py",
-  "$D/regression/tst_model_tors_ref_restraints.py",
+  "$D/regression/model/tst_model_mtrix.py",
+  "$D/regression/model/tst_model_2.py",
+  "$D/regression/model/tst_model_biomt_mtrix.py",
+  "$D/regression/model/tst_model_neutralize_scatterers.py",
+  "$D/regression/model/tst_model_cart_ref_restraints.py",
+  "$D/regression/model/tst_model_tors_ref_restraints.py",
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
@@ -351,7 +351,7 @@ general_tests = [
   ]
 
 probe_tests = [
-  "$D/regression/tst_model.py",
+  "$D/regression/model/tst_model.py",
   "$D/regression/tst_altloc_chain_break.py",
   "$D/regression/ncs/tst_geometry_minimization_ncs_constraints.py",
   "$D/regression/tst_clashes.py",

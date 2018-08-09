@@ -4,7 +4,7 @@ import libtbx.load_env
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import approx_equal
 import iotbx.pdb
-from mmtbx.regression import tst_model_cart_ref_restraints
+from mmtbx.regression.model import tst_model_cart_ref_restraints
 
 
 def exercise_adopting_ref_tors_restraints_h():
