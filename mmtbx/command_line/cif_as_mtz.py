@@ -407,6 +407,7 @@ def extract(file_name,
             from cctbx import r_free_utils
             # determine flag values
             fvals = list(set(ma.data()))
+            print "fvals", fvals
             fval = None
             if(len(fvals)==1):
               fval = fvals[0]
@@ -415,20 +416,24 @@ def extract(file_name,
               f2 = (ma.data()==fvals[1]).count(True)/ma.data().size()
               if(f1<f2): fval = fvals[0]
               else:      fval = fvals[1]
+            elif(len(fvals)==0):
+              fval = None
             else:
               fval = 0
               if(not fval in fvals):
                 raise Sorry("Cannot determine free-R flag value.")
-            assert fval is not None
             #
-            ma = r_free_utils.extend_flags(
-              r_free_flags=ma,
-              test_flag_value=fval,
-              array_label=label,
-              complete_set=complete_set,
-              preserve_input_values=True,
-              allow_uniform_flags=True,
-              log=sys.stdout)
+            if(fval is not None):
+              ma = r_free_utils.extend_flags(
+                r_free_flags=ma,
+                test_flag_value=fval,
+                array_label=label,
+                complete_set=complete_set,
+                preserve_input_values=True,
+                allow_uniform_flags=True,
+                log=sys.stdout)
+            else:
+              ma = None
           else :
             libtbx.warn(("%d reflections do not have R-free flags in the "+
               "array '%s' - this may "+
@@ -437,8 +442,9 @@ def extract(file_name,
               "to cover all reflections (--extend_flags on the command line).")
               % (n_missing, label))
       # Get rid of fake (0,0,0) reflection in some CIFs
-      ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
-        negate=True).set_info(ma.info())
+      if(ma is not None):
+        ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),
+          negate=True).set_info(ma.info())
 
       if return_as_miller_arrays:
         miller_array_list.append(ma)
@@ -461,11 +467,12 @@ def extract(file_name,
       while label in column_labels:
         label = label_base + "-%i" %(i)
         i += 1
-      column_labels.add(label)
-      dataset.add_miller_array(ma,
-        column_root_label=label,
-        label_decorator=dec,
-        column_types=column_types)
+      if(ma is not None):
+        column_labels.add(label)
+        dataset.add_miller_array(ma,
+          column_root_label=label,
+          label_decorator=dec,
+          column_types=column_types)
   if return_as_miller_arrays:
     return miller_array_list
   else:
