@@ -70,7 +70,7 @@ class ModelDataManager(DataManagerBase):
                      model_str, overwrite=overwrite)
 
   def update_pdb_interpretation_for_model(
-      self, filename, pdb_interpretation_extract):
+    self, filename, pdb_interpretation_extract):
     '''
     Pass PHIL extract to model class
     model class handles finding and matching of PHIL scopes
