@@ -10,6 +10,7 @@ import libtbx.phil
 from iotbx.file_reader import any_file
 from libtbx.utils import multi_out, Sorry
 
+# =============================================================================
 # mapping from DataManager datatypes to any_file file types
 any_file_type = {
   'map_coefficients':'hkl',
@@ -39,6 +40,32 @@ for i in range(len(supported_datatypes)):
 
 default_datatypes = ['miller_array', 'model', 'phil', 'real_map', 'restraint',
                      'sequence']
+
+# -----------------------------------------------------------------------------
+# Additional PHIL scope for models and Miller arrays for specifying purpose
+model_phil_str = '''
+model
+  .multiple = True
+{
+  file_name = None
+    .type = path
+  type = *x_ray neutron
+    .type = choice(multi=False)
+}
+'''
+
+miller_array_phil_str = '''
+data
+  .multiple = True
+{
+  file_name = None
+    .type = path
+  type = *x_ray neutron electron
+    .type = choice(multi=False)
+  labels = None
+    .type = str
+}
+'''
 
 # =============================================================================
 def load_datatype_modules(datatypes=None):
@@ -231,9 +258,9 @@ class DataManagerBase(object):
     to the existing ones and will NOT override the current default file
     '''
     # sanity checks
-    if (type(phil) == libtbx.phil.scope):
+    if (isinstance(phil, libtbx.phil.scope)):
       working_phil = self.master_phil.fetch(source=phil)
-    elif (type(phil) == libtbx.phil.scope_extract):
+    elif (isinstance(phil, libtbx.phil.scope_extract)):
       working_phil = self.master_phil.format(python_object=phil)
     else:
       raise Sorry('A libtbx.phil.scope or libtbx.phil.scope_extract object is required')
