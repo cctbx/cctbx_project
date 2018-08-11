@@ -41,32 +41,6 @@ for i in range(len(supported_datatypes)):
 default_datatypes = ['miller_array', 'model', 'phil', 'real_map', 'restraint',
                      'sequence']
 
-# -----------------------------------------------------------------------------
-# Additional PHIL scope for models and Miller arrays for specifying purpose
-model_phil_str = '''
-model
-  .multiple = True
-{
-  file_name = None
-    .type = path
-  type = *x_ray neutron
-    .type = choice(multi=False)
-}
-'''
-
-miller_array_phil_str = '''
-data
-  .multiple = True
-{
-  file_name = None
-    .type = path
-  type = *x_ray neutron electron
-    .type = choice(multi=False)
-  labels = None
-    .type = str
-}
-'''
-
 # =============================================================================
 def load_datatype_modules(datatypes=None):
   '''

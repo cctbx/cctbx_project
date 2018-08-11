@@ -8,6 +8,21 @@ from iotbx.data_manager import DataManagerBase
 from libtbx.utils import Sorry
 
 # =============================================================================
+# optional PHIL scope for specifying miller_array usage
+miller_array_phil_str = '''
+data
+  .multiple = True
+{
+  file_name = None
+    .type = path
+  type = *x_ray neutron electron
+    .type = choice(multi=False)
+  labels = None
+    .type = str
+}
+'''
+
+# =============================================================================
 class MillerArrayDataManager(DataManagerBase):
 
   datatype = 'miller_array'
