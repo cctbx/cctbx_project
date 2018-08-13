@@ -536,8 +536,8 @@ class CCTBXParser(ParserBase):
         self.data_manager.get_default_model_name(), working_phil_extract)
 
     # update default model and data scopes, if necessary
-    # see iotbx.data_manager.model_phil_str and
-    # iotbx.data_manager.miller_array_phil_str for PHIL definitions
+    # see iotbx.data_manager.model.model_phil_str and
+    # iotbx.data_manager.miller_array.miller_array_phil_str for PHIL definitions
     if (hasattr(working_phil_extract, 'model') and
         hasattr(working_phil_extract, 'data')):
       update_phil = False

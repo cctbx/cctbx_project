@@ -4,7 +4,9 @@ from __future__ import division, print_function
 
 import iotbx.phil
 
+from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
+from iotbx.reflection_file_utils import reflection_file_server
 from libtbx.utils import Sorry
 
 # =============================================================================
@@ -111,6 +113,50 @@ class MillerArrayDataManager(DataManagerBase):
   def write_miller_array_file(self, filename, miller_arrays, overwrite=False):
     raise NotImplementedError
 
+  def get_reflection_file_server(self, filenames=None, crystal_symmetry=None,
+                                 force_symmetry=None):
+    '''
+    Return the file server for a single miller_array file or mulitple files
+
+    :param filenames:         list of filenames or None
+    :param crystal_symmetry:  cctbx.crystal.symmetry object or None
+    :param force_symmetry:    bool or None
+
+    '''
+    # use default miller_array file if no filenames provided
+    if (filenames is None):
+      filenames = [self.get_default_miller_array_name()]
+
+    # force crystal symmetry if a crystal symmetry is provided
+    if ((crystal_symmetry is not None) and
+        (force_symmetry is None)):
+      force_symmetry = True
+    if (force_symmetry is None):
+      force_symmetry = False
+
+    #  determine crystal symmetry from file list, if not provided
+    if (crystal_symmetry is None):
+      try:
+        from_reflection_files = list()
+        for filename in filenames:
+          miller_arrays = self.get_miller_arrays(filename=filename)
+          for miller_array in miller_arrays:
+            from_reflection_files.append(miller_array.crystal_symmetry())
+        crystal_symmetry = crystal.select_crystal_symmetry(
+          from_reflection_files=from_reflection_files)
+      except Exception:
+        raise Sorry('A unit cell and space group could not be determined from the "filenames" argument. Please provide a list of filenames.')
+
+    # crystal_symmetry and force_symmetry should be set by now
+    reflection_files = list()
+    for filename in filenames:
+      reflection_files.append(self.get_miller_array(filename))
+    file_server = reflection_file_server(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry,
+      reflection_files=reflection_files)
+    return file_server
+
   # -----------------------------------------------------------------------------
   # base functions for miller_array datatypes
   def _add_miller_array_phil_str(self, datatype):
@@ -201,7 +247,7 @@ class MillerArrayDataManager(DataManagerBase):
 
     return labels
 
-  def _get_arrays(self, datatype, labels=None, filename=None):
+  def _get_arrays(self, datatype, filename=None, labels=None):
     filename = self._check_miller_array_default_filename(datatype, filename)
     if (filename not in getattr(self, 'get_%s_names' % datatype)()):
       self.process_miller_array_file(filename)
@@ -209,16 +255,16 @@ class MillerArrayDataManager(DataManagerBase):
       labels = self._get_array_labels(datatype, filename=filename)
     else:
       if (not isinstance(labels, list)):
-        raise Sorry('The labels object should be a list of labels')
+        raise Sorry('The labels argument should be a list of labels')
 
     storage_dict = getattr(self, '_%s_arrays' % datatype)
     self._check_miller_array_storage_dict(datatype, storage_dict, filename)
     arrays = list()
     for label in labels:
-      arrays.append(self._get_array_by_label(datatype, label, filename))
+      arrays.append(self._get_array_by_label(datatype, filename, label))
     return arrays
 
-  def _get_array_by_label(self, datatype, label, filename):
+  def _get_array_by_label(self, datatype, filename, label):
     storage_dict = getattr(self, '_%s_arrays' % datatype)
     if (label in storage_dict[filename].keys()):
       return storage_dict[filename][label]

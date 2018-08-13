@@ -6,6 +6,7 @@ import libtbx.load_env
 import libtbx.phil
 import mmtbx.model
 
+from cctbx import crystal
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
 
@@ -400,6 +401,18 @@ def test_miller_array_datatype():
     assert(label in labels)
 
   os.remove('test.phil')
+
+  # test file server
+  fs1 = dm.get_reflection_file_server()
+  fs2 = dm.get_reflection_file_server([data_mtz, data_mtz])
+  assert(len(2*fs1.miller_arrays) == len(fs2.miller_arrays))
+  cs = crystal.symmetry(
+    unit_cell=dm.get_miller_arrays()[0].crystal_symmetry().unit_cell(),
+    space_group_symbol='P1')
+  fs = dm.get_reflection_file_server(crystal_symmetry=cs)
+  assert(fs.crystal_symmetry.is_similar_symmetry(cs))
+  assert(not fs.crystal_symmetry.is_similar_symmetry(
+    dm.get_miller_arrays()[0].crystal_symmetry()))
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
