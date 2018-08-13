@@ -1,4 +1,3 @@
-
 from __future__ import division
 from string import digits
 from cctbx import geometry_restraints
@@ -314,8 +313,10 @@ def get_any_linking_carbon(atom_group1, atom_group2, bonds, verbose=False):
         oxygens.append(ba)
         residues.append(ba.parent())
     if len(oxygens)==2: # anomeric carbon not linkable
-      assert 0
-      return None
+      outl = 'Anomeric carbon "%s" has two oxygens. Need to remove non-ring O.' % (
+        atom.quote(),
+        )
+      raise Sorry(outl)
     if linking:
       return atom, True
 
