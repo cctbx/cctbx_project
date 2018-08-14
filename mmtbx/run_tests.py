@@ -243,6 +243,7 @@ general_tests = [
   "$D/regression/tst_helix_sheet_recs_as_pdb_files.py",
   "$D/regression/tst_command_line_input.py",
   "$D/regression/tst_cif_as_mtz_wavelengths.py",
+  "$D/regression/tst_cif_as_mtz_neutron.py",
   "$D/building/tst_extend_sidechains.py",
   "$D/building/tst_extend_sidechains_2.py",
   # alt confs
