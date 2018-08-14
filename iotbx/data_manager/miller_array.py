@@ -7,6 +7,7 @@ import iotbx.phil
 from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
 from iotbx.reflection_file_utils import reflection_file_server
+from libtbx.str_utils import wordwrap
 from libtbx.utils import Sorry
 
 # =============================================================================
@@ -23,6 +24,43 @@ data
     .type = str
 }
 '''
+
+def get_reflection_file_server(data_manager, params, datatype='x_ray'):
+  '''
+  Convenience function for getting a reflection file server based on a selection
+  of Miller arrays from the iotbx.data_manager.miller_array.miller_array_phil_str
+  PHIL scope
+
+  :params data_manager: DataManager with processed files
+  :type data_manager: iotbx.data_manager.DataManager object
+  :params params: PHIL extract with set parameters
+  :type params: libtbx.phil.scope_extract object
+  :params datatype: matches type property in miller_array_phil_str
+  :type datatype: str
+  :rtype: iotbx.reflection_file_utils.reflection_file_server object or None
+
+  The function returns None if there are no files that match datatype.
+  '''
+
+  filenames = list()
+  labels = list()
+
+  # find files
+  if (hasattr(params, 'data')):
+    try:
+      for scope in params.data:
+        if (scope.type == datatype):
+          filenames.append(scope.file_name)
+          labels.append(scope.labels)
+    except (TypeError, AttributeError):
+      raise Sorry(wordwrap('The "data" scope is not in the expected format. See iotbx.data_manager.miller_array.miller_array_phil_str for the expected format.'))
+
+  # get file server
+  rfs = None
+  if (len(filenames) > 0):
+    rfs = data_manager.get_reflection_file_server(filenames=filenames,
+                                                  labels=labels)
+  return rfs
 
 # =============================================================================
 class MillerArrayDataManager(DataManagerBase):

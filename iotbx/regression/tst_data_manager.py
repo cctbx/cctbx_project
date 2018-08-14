@@ -9,6 +9,7 @@ import mmtbx.model
 from cctbx import crystal
 from libtbx.utils import Sorry
 from iotbx.data_manager import DataManager
+from iotbx.data_manager.miller_array import get_reflection_file_server
 
 # -----------------------------------------------------------------------------
 def test_data_manager():
@@ -418,6 +419,21 @@ def test_miller_array_datatype():
   assert(len(fs.get_miller_arrays(None)) == 1)
   miller_array = fs.get_amplitudes(None,None,True,None,None)
   assert(miller_array.info().label_string() == 'I,as_amplitude_array,merged')
+
+  master_phil_str = '''
+include scope iotbx.data_manager.miller_array.miller_array_phil_str
+  '''
+  master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
+  master_extract = master_phil.extract()
+  master_extract.data[0].file_name = data_mtz
+  master_extract.data[0].labels = 'IPR,SIGIPR,merged'
+  fs = get_reflection_file_server(dm, master_extract)
+  assert(len(fs.get_miller_arrays(None)) == 1)
+  master_extract.data[0].type = 'neutron'
+  fs = get_reflection_file_server(dm, master_extract)
+  assert(fs is None)
+  fs = get_reflection_file_server(dm, master_extract, datatype='neutron')
+  assert(len(fs.get_miller_arrays(None)) == 1)
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
