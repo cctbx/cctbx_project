@@ -182,6 +182,7 @@ class reference_model(object):
         reference_file_list=reference_file_list,
         mon_lib_srv=self.mon_lib_srv,
         ener_lib=self.ener_lib,
+        restraint_objects=model.get_restraint_objects(),
         log=log)
     self.i_seq_name_hash = utils.build_name_hash(
                              pdb_hierarchy=self.pdb_hierarchy)

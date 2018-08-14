@@ -57,6 +57,7 @@ general_tests = [
   "$D/refinement/tst_rigid_body_groups_from_pdb_chains.py",
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
+  "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
   "$D/regression/model/tst_model_mtrix.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",

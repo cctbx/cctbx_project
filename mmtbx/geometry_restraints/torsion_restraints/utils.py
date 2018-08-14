@@ -30,6 +30,7 @@ def get_reference_dihedral_proxies(
       mon_lib_srv=None,
       ener_lib=None,
       crystal_symmetry=None,
+      restraint_objects=None,
       log=None):
   from mmtbx.monomer_library import server
   if log is None:
@@ -46,6 +47,7 @@ def get_reference_dihedral_proxies(
                          mon_lib_srv=mon_lib_srv,
                          ener_lib=ener_lib,
                          crystal_symmetry=crystal_symmetry,
+                         restraint_objects=restraint_objects,
                          log=log)
     reference_dihedral_proxies[file_name]=dihedral_proxies
   return reference_dihedral_proxies
@@ -81,6 +83,7 @@ def get_complete_dihedral_proxies(
       mon_lib_srv=None,
       ener_lib=None,
       crystal_symmetry=None,
+      restraint_objects=None,
       log=None):
   #
   # This function is called only for reference files, that were not processed
@@ -112,6 +115,7 @@ def get_complete_dihedral_proxies(
       model_input = pdb_inp,
       build_grm = True,
       pdb_interpretation_params=work_params,
+      restraint_objects=restraint_objects,
       log=null_out())
   return get_dihedrals_and_phi_psi(model)
 
