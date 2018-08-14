@@ -105,7 +105,7 @@ class MillerArrayDataManager(DataManagerBase):
     miller_arrays = self.get_miller_array(filename).as_miller_arrays()
     labels = list()
     for array in miller_arrays:
-      label = ', '.join(array.info().labels)
+      label = array.info().label_string()
       labels.append(label)
       self._miller_array_arrays[filename][label] = array
     self._miller_array_labels[filename] = labels
@@ -113,19 +113,33 @@ class MillerArrayDataManager(DataManagerBase):
   def write_miller_array_file(self, filename, miller_arrays, overwrite=False):
     raise NotImplementedError
 
-  def get_reflection_file_server(self, filenames=None, crystal_symmetry=None,
-                                 force_symmetry=None):
+  def get_reflection_file_server(self, filenames=None, labels=None,
+                                 crystal_symmetry=None, force_symmetry=None):
     '''
     Return the file server for a single miller_array file or mulitple files
 
     :param filenames:         list of filenames or None
+    :param labels:            list of lists of labels or None
     :param crystal_symmetry:  cctbx.crystal.symmetry object or None
     :param force_symmetry:    bool or None
 
+    The order in filenames and labels should match, e.g. labels[0] should be the
+    labels for filenames[0]. The lengths of filenames and labels should be equal
+    as well. If all the labels in a file are to be added, set the labels entry
+    to None, e.g. labels[0] = None.
     '''
+
     # use default miller_array file if no filenames provided
     if (filenames is None):
-      filenames = [self.get_default_miller_array_name()]
+      default_filename = self._check_miller_array_default_filename(
+        'miller_array')
+      filenames = [default_filename]
+
+    # set labels
+    if (labels is None):
+      labels = [None for filename in filenames]
+
+    assert(len(filenames) == len(labels))
 
     # force crystal symmetry if a crystal symmetry is provided
     if ((crystal_symmetry is not None) and
@@ -138,23 +152,31 @@ class MillerArrayDataManager(DataManagerBase):
     if (crystal_symmetry is None):
       try:
         from_reflection_files = list()
-        for filename in filenames:
+        for filename, file_labels in zip(filenames, labels):
           miller_arrays = self.get_miller_arrays(filename=filename)
           for miller_array in miller_arrays:
-            from_reflection_files.append(miller_array.crystal_symmetry())
+            if ((file_labels is None) or
+                (miller_array.info().label_string() in file_labels)):
+              from_reflection_files.append(miller_array.crystal_symmetry())
         crystal_symmetry = crystal.select_crystal_symmetry(
           from_reflection_files=from_reflection_files)
       except Exception:
         raise Sorry('A unit cell and space group could not be determined from the "filenames" argument. Please provide a list of filenames.')
 
     # crystal_symmetry and force_symmetry should be set by now
-    reflection_files = list()
-    for filename in filenames:
-      reflection_files.append(self.get_miller_array(filename))
+    miller_arrays = list()
+    for filename, file_labels in zip(filenames, labels):
+      file_arrays = self.get_miller_array(filename=filename).\
+        as_miller_arrays(crystal_symmetry=crystal_symmetry,
+                         force_symmetry=force_symmetry)
+      for miller_array in file_arrays:
+        if ((file_labels is None) or
+            (miller_array.info().label_string() in file_labels)):
+          miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
-      reflection_files=reflection_files)
+      miller_arrays=miller_arrays)
     return file_server
 
   # -----------------------------------------------------------------------------
@@ -286,8 +308,7 @@ class MillerArrayDataManager(DataManagerBase):
       label = set(array.info().labels)
       common_labels = known_labels.intersection(label)
       if (len(common_labels) > 0):
-        label = ', '.join(array.info().labels)
-        labels.append(label)
+        labels.append(array.info().label_string())
         datatype_dict = getattr(self, '_%s_arrays' % datatype)
         if (filename not in datatype_dict.keys()):
           datatype_dict[filename] = dict()

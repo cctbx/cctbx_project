@@ -378,8 +378,9 @@ def test_miller_array_datatype():
   dm.process_miller_array_file(data_mtz)
 
   # test labels
-  labels = ['M_ISYM', 'BATCH', 'I, SIGI', 'IPR, SIGIPR', 'FRACTIONCALC',
-            'XDET', 'YDET', 'ROT', 'WIDTH', 'LP', 'MPART', 'FLAG', 'BGPKRATIOS']
+  labels = ['M_ISYM', 'BATCH', 'I,SIGI,merged', 'IPR,SIGIPR,merged',
+            'FRACTIONCALC', 'XDET', 'YDET', 'ROT', 'WIDTH', 'LP', 'MPART',
+            'FLAG', 'BGPKRATIOS']
   for label in dm.get_miller_array_labels():
     assert(label in labels)
 
@@ -387,7 +388,7 @@ def test_miller_array_datatype():
 
   # test access by label
   label = dm.get_miller_array_labels()[3]
-  new_label = ', '.join(dm.get_miller_arrays(labels=[label])[0].info().labels)
+  new_label = dm.get_miller_arrays(labels=[label])[0].info().label_string()
   assert(label == new_label)
 
   # test custom PHIL
@@ -405,7 +406,7 @@ def test_miller_array_datatype():
   # test file server
   fs1 = dm.get_reflection_file_server()
   fs2 = dm.get_reflection_file_server([data_mtz, data_mtz])
-  assert(len(2*fs1.miller_arrays) == len(fs2.miller_arrays))
+  assert(2*len(fs1.miller_arrays) == len(fs2.miller_arrays))
   cs = crystal.symmetry(
     unit_cell=dm.get_miller_arrays()[0].crystal_symmetry().unit_cell(),
     space_group_symbol='P1')
@@ -413,6 +414,10 @@ def test_miller_array_datatype():
   assert(fs.crystal_symmetry.is_similar_symmetry(cs))
   assert(not fs.crystal_symmetry.is_similar_symmetry(
     dm.get_miller_arrays()[0].crystal_symmetry()))
+  fs = dm.get_reflection_file_server(labels=['I,SIGI,merged'])
+  assert(len(fs.get_miller_arrays(None)) == 1)
+  miller_array = fs.get_amplitudes(None,None,True,None,None)
+  assert(miller_array.info().label_string() == 'I,as_amplitude_array,merged')
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):

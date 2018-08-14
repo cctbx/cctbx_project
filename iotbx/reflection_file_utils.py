@@ -466,6 +466,7 @@ class reflection_file_server(object):
         crystal_symmetry=None,
         force_symmetry=None,
         reflection_files=None,
+        miller_arrays=None,
         err=None):
     self.crystal_symmetry = crystal_symmetry
     self.force_symmetry = force_symmetry
@@ -477,6 +478,8 @@ class reflection_file_server(object):
         self.miller_arrays.extend(reflection_file.as_miller_arrays(
           crystal_symmetry=self.crystal_symmetry,
           force_symmetry=self.force_symmetry))
+    if (miller_arrays is not None):
+      self.miller_arrays.extend(miller_arrays)
     self.file_name_miller_arrays = {}
     for miller_array in self.miller_arrays:
       self.file_name_miller_arrays.setdefault(
