@@ -615,13 +615,15 @@ def format_ramachandran_plot_title (position_type, residue_type) :
   return title
 
 class ramachandran_plot_mixin (graphics.rotarama_plot_mixin) :
-  extent = [-179,179,-179,179]
+  extent = [-180,180,-180,180]
   def set_labels (self, y_marks=()) :
     axes = self.plot.get_axes()
     axes.set_xlabel("Phi")
     axes.set_xticks([-120,-60,0,60,120])
     axes.set_ylabel("Psi")
     axes.set_yticks([-120,-60,0,60,120])
+    axes.set_ylim((-182,182))
+    axes.set_xlim((-182,182))
 
 class ramachandran_plot (data_plots.simple_matplotlib_plot,
                          ramachandran_plot_mixin) :
