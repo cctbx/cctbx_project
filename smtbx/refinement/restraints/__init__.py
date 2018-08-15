@@ -22,6 +22,7 @@ class manager(object):
   bond_similarity_proxies=None
   adp_similarity_proxies=None
   rigid_bond_proxies=None
+  rigu_proxies=None
   isotropic_adp_proxies=None
   #new
   fixed_u_eq_adp_proxies=None
@@ -102,6 +103,12 @@ class manager(object):
         sites_cart=sites_cart, site_labels=site_labels, u_cart=u_cart,
         f=f, prefix=prefix, max_items=max_items)
       print >> f
+    if (self.rigu_proxies is not None):
+      self.rigu_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=sites_cart, site_labels=site_labels, u_cart=u_cart,
+        f=f, prefix=prefix, max_items=max_items)
+      print >> f
     if (self.isotropic_adp_proxies is not None):
       self.isotropic_adp_proxies.show_sorted(
         by_value="residual", site_labels=site_labels,
@@ -124,6 +131,7 @@ class manager(object):
       dihedral_proxies=self.dihedral_proxies,
       bond_similarity_proxies=self.bond_similarity_proxies,
       rigid_bond_proxies=self.rigid_bond_proxies,
+      rigu_proxies=self.rigu_proxies,
       adp_similarity_proxies=self.adp_similarity_proxies,
       isotropic_adp_proxies=self.isotropic_adp_proxies,
       adp_u_eq_similarity_proxies=self.adp_u_eq_similarity_proxies,
@@ -164,6 +172,9 @@ class manager(object):
     if self.rigid_bond_proxies is not None:
       adp_proxies.append(self.rigid_bond_proxies)
       n_restraints += self.rigid_bond_proxies.size()
+    if self.rigu_proxies is not None:
+      adp_proxies.append(self.rigu_proxies)
+      n_restraints += 3 * self.rigu_proxies.size()
     # construct restraints matrix
     linearised_eqns = linearised_eqns_of_restraint(
       n_restraints, n_params)
