@@ -12,7 +12,7 @@ class command_stream(object):
   commands_allowing_atom_names = dict([ (cmd, 1) for cmd in [
     'ANIS', 'BIND', 'BLOC', 'BOND', 'CHIV', 'CONF', 'CONN', 'DANG', 'DELU',
     'DFIX', 'EADP', 'EXYZ', 'FLAT', 'FREE', 'HFIX', 'HTAB', 'ISOR', 'MPLA',
-    'NCSY', 'OMIT', 'RTAB', 'SADI', 'SAME', 'SIMU'
+    'NCSY', 'OMIT', 'RTAB', 'SADI', 'SAME', 'SIMU', 'RIGU'
   ]])
 
   shelx_commands = dict([ (cmd, 1) for cmd in [

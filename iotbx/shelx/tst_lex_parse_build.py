@@ -685,6 +685,60 @@ def exercise_restraint_parsing():
     assert shared_rigid_bond_proxy[i].i_seqs == expected_i_seqs[i]
     assert approx_equal(shared_rigid_bond_proxy[i].weight,
                         expected_weights[i])
+
+  # RIGU simple
+  proxies = parse_restraints(ins_rigu_simple)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 5
+  expected_i_seqs = ((0,1),(0,2),(1,2),(1,3),(2,3))
+  for i in range(5):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight, 62500)
+  # RIGU with s1
+  proxies = parse_restraints(ins_rigu_s1)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 5
+  for i in range(5):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight, 2500)
+  # RIGU with s1 and s2
+  proxies = parse_restraints(ins_rigu_s1_s2)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 5
+  expected_weights = (10000,2500,10000,2500,10000)
+  for i in range(5):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight,
+                        expected_weights[i])
+  # RIGU with atoms
+  proxies = parse_restraints(ins_rigu_atoms)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight,62500)
+  # RIGU with s1 and atoms
+  proxies = parse_restraints(ins_rigu_s1_atoms)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight,2500)
+  # RIGU with s1, s2 and atoms
+  proxies = parse_restraints(ins_rigu_s1_s2_atoms)
+  shared_rigu_proxy \
+      = proxies['rigu']
+  assert shared_rigu_proxy.size() == 3
+  for i in range(3):
+    assert shared_rigu_proxy[i].i_seqs == expected_i_seqs[i]
+    assert approx_equal(shared_rigu_proxy[i].weight,
+                        expected_weights[i])
+
   # ISOR simple
   proxies = parse_restraints(ins_isor_simple)
   shared_isotropic_adp_proxy \
@@ -1247,6 +1301,14 @@ ins_delu_atoms = template_ins("DELU C1 C2 C3")
 ins_delu_s1_atoms = template_ins("DELU 0.02 C1 C2 C3")
 ins_delu_s1_s2_atoms = template_ins(
   "DELU 0.01 0.02 C1 C2 C3")
+
+ins_rigu_simple = template_ins("RIGU")
+ins_rigu_s1 = template_ins("RIGU 0.02")
+ins_rigu_s1_s2 = template_ins("RIGU 0.01 0.02")
+ins_rigu_atoms = template_ins("RIGU C1 C2 C3")
+ins_rigu_s1_atoms = template_ins("RIGU 0.02 C1 C2 C3")
+ins_rigu_s1_s2_atoms = template_ins(
+  "RIGU 0.01 0.02 C1 C2 C3")
 
 ins_isor_simple = template_ins("ISOR")
 ins_isor_s = template_ins("ISOR 0.2")
