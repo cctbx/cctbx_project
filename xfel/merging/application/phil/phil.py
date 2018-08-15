@@ -365,27 +365,6 @@ class Script(object):
     self.params = params
     self.options = options
 
-  def load_data(self):
-    from xfel.merging.application.input.file_loader import file_loader
-    from dxtbx.model.experiment_list import ExperimentList
-    from dials.array_family import flex
-    all_experiments = ExperimentList()
-    all_reflections = flex.reflection_table()
-
-    # example showing what reading all the data into a single experiment list/
-    # reflection table would look like
-    loader = file_loader(self.params)
-    for experiments_filename, reflections_filename in loader.filepair_generator():
-      experiments, reflections = loader.load_data(experiments_filename, reflections_filename)
-      for experiment_id, experiment in enumerate(experiments):
-        all_experiments.append(experiment)
-        refls = reflections.select(reflections['id'] == experiment_id)
-        refls['id'] = flex.int(len(refls), len(all_experiments)-1)
-        all_reflections.extend(refls)
-
-    all_reflections.sort('miller_index_asymmetric')
-    return all_experiments, all_reflections
-
   def validate(self):
     from xfel.merging.application.validation.application import application
     application(self.params)
@@ -393,9 +372,12 @@ class Script(object):
   def run(self):
     print('''Mock run, merge some data.''')
     self.initialize()
-    experiments, reflections = self.load_data()
-    print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
+
+    #experiments, reflections = self.load_data()
+    #print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
+
     self.validate()
+
     # do other stuff
     return
 
