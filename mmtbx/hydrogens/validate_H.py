@@ -507,8 +507,9 @@ class validate_H(object):
                              atom_info_hd.xyz) )
     self.outliers_bonds = outliers_bonds
 
-    bond_mean_delta = bond_mean_delta/n_bonds
-    bond_mean = bond_mean/n_bonds
+    if n_bonds:
+      bond_mean_delta = bond_mean_delta/n_bonds
+      bond_mean = bond_mean/n_bonds
 
     xray_distances_used = False
     # value 0.08 was obtained by checking all 123 neutron models deposited
