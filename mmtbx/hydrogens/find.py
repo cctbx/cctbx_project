@@ -932,7 +932,7 @@ def build_water_hydrogens_from_map2(model, fmodel, params=None, log=None):
   assert hd_sel.count(True) >= len(next_to_i_seqs)
   assert_water_is_consistent(model)
   if False:
-    model.idealize_h()
+    model.idealize_h_minimization()
     model.get_hierarchy(sync_with_xray_structure=True)
     mmtbx.utils.assert_model_is_consistent(model)
     assert_water_is_consistent(model)

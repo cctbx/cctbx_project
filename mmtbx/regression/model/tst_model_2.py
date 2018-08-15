@@ -112,7 +112,7 @@ END
 
 def run():
   if (not libtbx.env.has_module("reduce")) :
-    print "Reduce not installed, needed for model.idealize_h(). skipping"
+    print "Reduce not installed, needed for model.idealize_h_minimization(). skipping"
     return
   for pdb_str in [pdb_str_1, pdb_str_2]:
     for use_neutron_distances in [True, False]:
@@ -127,7 +127,7 @@ def run():
         log                       = null_out())
       r1 = m.geometry_statistics()
       #m.setup_riding_h_manager()
-      m.idealize_h(show=False)
+      m.idealize_h_minimization(show=False)
       r2 = m.geometry_statistics()
       print "%6.3f %6.3f %6.3f %6.3f"%(
         r1.angle().mean,r1.bond().mean, r2.angle().mean,r2.bond().mean)

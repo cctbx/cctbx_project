@@ -1516,12 +1516,18 @@ class manager(object):
     assert self.riding_h_manager is None
     if not self.has_hd(): return
     if(self.restraints_manager is None): return
-    sites_cart = self._xray_structure.sites_cart()
     self.riding_h_manager = riding.manager(
       pdb_hierarchy       = self.get_hierarchy(),
       geometry_restraints = self.get_restraints_manager().geometry)
     if(idealize):
-      self.riding_h_manager.idealize(sites_cart = sites_cart)
+      self.idealize_h_riding()
+
+  def idealize_h_riding(self):
+    if self.riding_h_manager is None:
+      self.setup_riding_h_manager(idealize=True)
+    else:
+      sites_cart = self.get_sites_cart()
+      self.riding_h_manager.idealize(sites_cart=sites_cart)
       self.set_sites_cart(sites_cart)
 
   def get_hierarchy(self, sync_with_xray_structure=False):
@@ -1658,7 +1664,7 @@ class manager(object):
           bp.values()[i].distance_ideal = self.original_xh_lengths[counter]
           counter += 1
     self.original_xh_lengths = None
-    self.idealize_h(show=False)
+    self.idealize_h_minimization(show=False)
 
   def isolated_atoms_selection(self):
     if(self.restraints_manager is None):
@@ -1810,7 +1816,7 @@ class manager(object):
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
-  def idealize_h(self, correct_special_position_tolerance=1.0,
+  def idealize_h_minimization(self, correct_special_position_tolerance=1.0,
                    selection=None, show=True, nuclear=False):
     """
     Perform geometry regularization on hydrogen atoms only.
@@ -1882,12 +1888,6 @@ class manager(object):
         print >> self.log,\
         "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
         (flex.mean(xhd), flex.max(xhd))
-
-  #def idealize_h(self):
-  #   if(self.riding_h_manager is None):
-  #     self.setup_riding_h_manager()
-  #   self.riding_h_manager.idealize(
-  #     sites_cart = self._xray_structure.sites_cart())
 
   def extract_water_residue_groups(self):
     result = []
@@ -2047,7 +2047,7 @@ class manager(object):
         sites_individual = True,
         s_occupancies    = neutron)
     self.reprocess_pdb_hierarchy_inefficient()
-    self.idealize_h()
+    self.idealize_h_minimization()
 
   def reprocess_pdb_hierarchy_inefficient(self):
     # XXX very inefficient
