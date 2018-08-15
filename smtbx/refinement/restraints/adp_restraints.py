@@ -102,7 +102,7 @@ class rigid_bond_restraints(object):
 
 class rigu_restraints(object):
   def __init__(self, xray_structure=None, pair_sym_table=None, proxies=None,
-               i_seqs=None, sigma_12=0.01, sigma_13=None,
+               i_seqs=None, sigma_12=0.004, sigma_13=None,
                buffer_thickness=3.5):
     """ sigma_12 and sigma_13 are the effective standard deviations used for
         1,2- and 1,3-distances respectively
