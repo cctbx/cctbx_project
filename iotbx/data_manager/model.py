@@ -29,8 +29,74 @@ class ModelDataManager(DataManagerBase):
 
   # ---------------------------------------------------------------------------
   # Models
+  def add_model_phil_str(self):
+    '''
+    Add custom PHIL and storage for type
+    '''
+
+    # set up storage
+    # self._model_types = dict()  # [filename] = type
+    self._model_types = dict()
+    self._default_model_type = 'x_ray'
+    self._possible_model_types = ['x_ray', 'neutron', 'electron']
+
+    # custom PHIL section
+    custom_phil_str = '''
+model
+  .multiple = True
+{
+  file = None
+    .type = path
+    .style = file_type:pdb input_file
+  type = *%s
+    .type = choice(multi=False)
+}
+''' % ' '.join(self._possible_model_types)
+
+    # custom PHIL scope
+    self._custom_model_phil = iotbx.phil.parse(custom_phil_str)
+
+    return custom_phil_str
+
+  def export_model_phil_extract(self):
+    '''
+    Export custom PHIL extract
+    '''
+    extract = list()
+    filenames = self.get_model_names()
+    for filename in filenames:
+      item_extract = self._custom_model_phil.extract().model[0]
+      item_extract.file = filename
+      item_extract.type = self._model_types.get(
+        filename, self._default_model_type)
+      extract.append(item_extract)
+    return extract
+
+  def load_model_phil_extract(self, phil_extract):
+    '''
+    Load custom PHIL extract
+    '''
+    extract = phil_extract.data_manager.model
+    for item_extract in extract:
+      if ((not hasattr(item_extract, 'file')) or
+          (not hasattr(item_extract, 'type'))):
+        raise Sorry('This PHIL is not properly defined for the "model" datatype.\n There should be a parameter for the filename ("file") and type ("type").\n')
+
+      # process file
+      self.process_model_file(item_extract.file)
+      self._model_types[item_extract.file] = item_extract.type
+
   def add_model(self, filename, data):
     return self._add(ModelDataManager.datatype, filename, data)
+
+  def set_default_model_type(self, model_type):
+    if (model_type not in self._possible_model_types):
+      raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
+                  (model_type, ', '.join(self._possible_model_types)))
+    self._default_model_type = model_type
+
+  def get_default_model_type(self):
+    return self._default_model_type
 
   def set_default_model(self, filename):
     return self._set_default(ModelDataManager.datatype, filename)
@@ -43,6 +109,21 @@ class ModelDataManager(DataManagerBase):
         restraint_objects.append((filename, self.get_restraint(filename)))
       model.set_restraint_objects(restraint_objects)
     return model
+
+  def set_model_type(self, filename=None, model_type=None):
+    if (filename is None):
+      filename = self.get_default_model_name()
+    if (model_type is None):
+      model_type = self._default_model_type
+    elif (model_type not in self._possible_model_types):
+      raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
+                  (model_type, ', '.join(self._possible_model_types)))
+    self._model_types[filename] = model_type
+
+  def get_model_type(self, filename=None):
+    if (filename is None):
+      filename = self.get_default_model_name()
+    return self._model_types.get(filename, self._default_model_type)
 
   def get_model_names(self):
     return self._get_names(ModelDataManager.datatype)

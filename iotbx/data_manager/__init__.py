@@ -154,7 +154,7 @@ class DataManagerBase(object):
 
       # default PHIL
       else:
-        # model_files = None
+        # sequence_files = None
         #   .type = path
         #   .multiple = True
         self.master_phil_str += '%s_files = None\n' % datatype
@@ -166,7 +166,7 @@ class DataManagerBase(object):
           self.master_phil_str += '.style = file_type:%s input_file\n' % \
                                             file_type
 
-      # default_model = None
+      # default_sequence = None
       #   .type = path
       self.master_phil_str += 'default_%s = None\n' % datatype
       self.master_phil_str += '.type = path\n'

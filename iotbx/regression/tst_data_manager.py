@@ -2,6 +2,7 @@ from __future__ import division, print_function
 
 import os
 
+import iotbx.phil
 import libtbx.load_env
 import libtbx.phil
 import mmtbx.model
@@ -27,7 +28,7 @@ def test_data_manager():
 
   # exporting phil
   working_phil = a.export_phil_scope()
-  assert(working_phil.extract().data_manager.model_files == ['a', 'c'])
+  assert(len(working_phil.extract().data_manager.model) == 2)
 
   # data tracking
   try:
@@ -81,7 +82,7 @@ data_manager {
 
   # loading file with phil
   a = DataManager(datatypes=['phil'])
-  test_phil = libtbx.phil.parse(test_phil_str)
+  test_phil = iotbx.phil.parse(test_phil_str)
   a.load_phil_scope(test_phil)
 
   assert('data_manager_test.eff' in a.get_phil_names())
@@ -190,10 +191,40 @@ MASTER      238    0    0    0    0    0    0    6   66    1    0    1
 END
 '''
 
+  # test reading/writing PDB
+  test_filename = 'test_model.pdb'
+  test_eff = 'model.eff'
   dm = DataManager(['model'])
-  dm.process_model_str('test', model_str)
-  assert('test' in dm.get_model_names())
+  dm.process_model_str(test_filename, model_str)
+  dm.write_model_file(test_filename, model_str, True)
+  assert(test_filename in dm.get_model_names())
 
+  # test type
+  assert(dm.get_model_type() == 'x_ray')
+  dm.set_model_type(test_filename, 'neutron')
+  assert(dm.get_model_type() == 'neutron')
+  phil_scope = dm.export_phil_scope()
+  extract = phil_scope.extract()
+  assert(extract.data_manager.model[0].type == 'neutron')
+  with open(test_eff, 'w') as f:
+    f.write(phil_scope.as_str())
+  new_phil_scope = iotbx.phil.parse(file_name=test_eff)
+  new_dm = DataManager(['model'])
+  new_dm.load_phil_scope(new_phil_scope)
+  assert(new_dm.get_model_type(test_filename) == 'neutron')
+  new_dm = DataManager(['model'])
+  try:
+    new_dm.set_default_model_type('nonsense')
+  except Sorry:
+    pass
+  new_dm.set_default_model_type('electron')
+  new_dm.process_model_file(test_filename)
+  assert(new_dm.get_model_type() == 'electron')
+
+  os.remove(test_eff)
+  os.remove(test_filename)
+
+  # test reading/writing CIF
   test_filename = 'test_model_datatype.cif'
   dm.write_model_file(test_filename,
                       dm.get_model().model_as_mmcif(), overwrite=True)
@@ -201,9 +232,10 @@ END
   os.remove(test_filename)
   assert(test_filename in dm.get_model_names())
 
+  # test pdb_interpretation
   extract = mmtbx.model.manager.get_default_pdb_interpretation_params()
   extract.pdb_interpretation.use_neutron_distances = True
-  dm.update_pdb_interpretation_for_model('test', extract)
+  dm.update_pdb_interpretation_for_model(test_filename, extract)
   assert(dm.get_model().restraints_manager is None)
 
 # -----------------------------------------------------------------------------
@@ -393,9 +425,8 @@ def test_miller_array_datatype():
   assert(label == new_label)
 
   # test custom PHIL
-  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(),
-                     overwrite=True)
-  loaded_phil = libtbx.phil.parse(file_name='test.phil')
+  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
   assert(data_mtz == new_dm.get_default_miller_array_name())
@@ -403,6 +434,23 @@ def test_miller_array_datatype():
     assert(label in labels)
 
   os.remove('test.phil')
+
+  # test type
+  assert(dm.get_miller_array_type() == 'x_ray')
+  dm.set_miller_array_type(data_mtz, 'electron')
+  assert(dm.get_miller_array_type() == 'electron')
+  dm.write_phil_file('test_phil', dm.export_phil_scope().as_str(), True)
+  loaded_phil = iotbx.phil.parse(file_name='test_phil')
+  new_dm.load_phil_scope(loaded_phil)
+  assert(new_dm.get_miller_array_type() == 'electron')
+  new_dm = DataManager(['miller_array'])
+  try:
+    new_dm.set_default_miller_array_type('q')
+  except Sorry:
+    pass
+  new_dm.set_default_miller_array_type('neutron')
+  new_dm.process_miller_array_file(data_mtz)
+  assert(new_dm.get_miller_array_type() == 'neutron')
 
   # test file server
   fs1 = dm.get_reflection_file_server()
@@ -423,7 +471,7 @@ def test_miller_array_datatype():
   master_phil_str = '''
 include scope iotbx.data_manager.miller_array.miller_array_phil_str
   '''
-  master_phil = libtbx.phil.parse(master_phil_str, process_includes=True)
+  master_phil = iotbx.phil.parse(master_phil_str, process_includes=True)
   master_extract = master_phil.extract()
   master_extract.data[0].file_name = data_mtz
   master_extract.data[0].labels = 'IPR,SIGIPR,merged'

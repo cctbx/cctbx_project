@@ -73,7 +73,7 @@ class MillerArrayDataManager(DataManagerBase):
 
   def add_miller_array_phil_str(self):
     '''
-    Add custom PHIL and storage for labels
+    Add custom PHIL and storage for type and labels
     '''
     return self._add_miller_array_phil_str(MillerArrayDataManager.datatype)
 
@@ -95,6 +95,13 @@ class MillerArrayDataManager(DataManagerBase):
     self._add(MillerArrayDataManager.datatype, filename, data)
     self._filter_miller_array_child_datatypes(filename)
 
+  def set_default_miller_array_type(self, array_type=None):
+    return self._set_default_miller_array_type(MillerArrayDataManager.datatype,
+                                               array_type)
+
+  def get_default_miller_array_type(self):
+    return self._get_default_miller_array_type(MillerArrayDataManager.datatype)
+
   def set_default_miller_array(self, filename):
     return self._set_default(MillerArrayDataManager.datatype, filename)
 
@@ -103,6 +110,14 @@ class MillerArrayDataManager(DataManagerBase):
     Returns the main file object
     '''
     return self._get(MillerArrayDataManager.datatype, filename)
+
+  def set_miller_array_type(self, filename=None, array_type=None):
+    return self._set_miller_array_type(MillerArrayDataManager.datatype,
+                                       filename, array_type)
+
+  def get_miller_array_type(self, filename=None):
+    return self._get_miller_array_type(MillerArrayDataManager.datatype,
+                                       filename)
 
   def get_miller_array_labels(self, filename=None):
     '''
@@ -222,22 +237,31 @@ class MillerArrayDataManager(DataManagerBase):
   def _add_miller_array_phil_str(self, datatype):
 
     # set up storage
+    # self._miller_array_types = dict()       # [filename] = type
     # self._miller_array_labels = dict()      # [filename] = label list
     # self._miller_array_arrays = dict()      # [filename] = array dict
+    setattr(self, '_%s_types' % datatype, dict())
+    setattr(self, '_default_%s_type' % datatype, 'x_ray')
+    setattr(self, '_possible_%s_types' % datatype,
+            ['x_ray', 'neutron', 'electron'])
     setattr(self, '_%s_labels' % datatype, dict())
     setattr(self, '_%s_arrays' % datatype, dict())
 
     # custom PHIL section
-    custom_phil_str = '%s\n.multiple = True\n{\n' % datatype
-    custom_phil_str += 'file = None\n'
-    custom_phil_str += '.type = path\n'
-
-    # property for wx GUI (will be removed)
-    custom_phil_str += '.style = file_type:hkl input_file\n'
-
-    custom_phil_str += 'labels = None\n'
-    custom_phil_str += '.type = str\n.multiple = True\n'
-    custom_phil_str += '}\n'
+    custom_phil_str = '''
+%s
+  .multiple = True
+{
+  file = None
+    .type = path
+    .style = file_type:hkl input_file
+  type = *%s
+    .type = choice(multi=False)
+  labels = None
+    .type = str
+    .multiple = True
+}
+''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
 
     # custom PHIL scope
     setattr(self, '_custom_%s_phil' % datatype,
@@ -255,6 +279,9 @@ class MillerArrayDataManager(DataManagerBase):
       item_extract = getattr(self, '_custom_%s_phil' % datatype).extract()
       item_extract = getattr(item_extract, '%s' % datatype)[0]
       item_extract.file = filename
+      item_extract.type = getattr(self, '_%s_types' % datatype).\
+                          get(filename,
+                              getattr(self, '_default_%s_type' % datatype))
       item_extract.labels = self._get_array_labels(datatype, filename=filename)
       extract.append(item_extract)
     return extract
@@ -263,15 +290,46 @@ class MillerArrayDataManager(DataManagerBase):
     extract = phil_extract.data_manager
     extract = getattr(extract, '%s' % datatype)
     for item_extract in extract:
-      if ( (not hasattr(item_extract, 'file')) or
-           (not hasattr(item_extract, 'labels')) ):
-        raise Sorry('This PHIL is not properly defined for the %s datatype.\n There should be a parameter for the filename ("file") and labels ("labels").\n')
+      if ((not hasattr(item_extract, 'file')) or
+          (not hasattr(item_extract, 'labels')) or
+          (not hasattr(item_extract, 'type'))):
+        raise Sorry('This PHIL is not properly defined for the %s datatype.\n There should be a parameter for the filename ("file"), type ("type"), and labels ("labels").\n')
 
       # process file
       getattr(self, 'process_%s_file' % datatype)(item_extract.file)
+      getattr(self, '_%s_types' % datatype)[item_extract.file] = \
+        item_extract.type
       # update labels
       getattr(self, '_%s_labels' % datatype)[item_extract.file] = \
         item_extract.labels
+
+  def _set_default_miller_array_type(self, datatype, array_type):
+    if (array_type not in getattr(self, '_possible_%s_types' % datatype)):
+      raise Sorry('Unrecognized %s type, "%s," possible choices are %s.' %
+                  (datatype, array_type,
+                   ', '.join(getattr(self, '_possible_%s_types' % datatype))))
+    setattr(self, '_default_%s_type' % datatype, array_type)
+
+  def _get_default_miller_array_type(self, datatype):
+    return getattr(self, '_default_%s_type' % datatype)
+
+  def _set_miller_array_type(self, datatype, filename=None, array_type=None):
+    if (filename is None):
+      filename = self._get_default_name(datatype)
+    if (array_type is None):
+      array_type = getattr(self, '_default_%s_type' % datatype)
+    elif (array_type not in getattr(self, '_possible_%s_types' % datatype)):
+      raise Sorry('Unrecognized %s type, "%s," possible choices are %s.' %
+                  (datatype,
+                   array_type,
+                   ', '.join(getattr(self, '_possible_%s_types' % datatype))))
+    setattr(self, '_default_%s_type' % datatype, array_type)
+
+  def _get_miller_array_type(self, datatype, filename=None):
+    if (filename is None):
+      filename = self._get_default_name(datatype)
+    return getattr(self, '_%s_types' % datatype).\
+      get(filename, getattr(self, '_default_%s_type' % datatype))
 
   def _filter_miller_array_child_datatypes(self, filename):
     # filter arrays (e.g self.filter_map_coefficients_arrays)
