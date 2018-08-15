@@ -301,9 +301,12 @@ class FormatCBFMini(FormatCBF):
     polarization_fraction = beam.get_polarization_fraction()
 
     # get exposure information
-    exposure_period = scan.get_exposure_times()[0]
-    phi_start = scan.get_oscillation()[0]
-    osc = scan.get_oscillation()[1]
+    if scan is None:
+      exposure_period = phi_start = osc = 0
+    else:
+      exposure_period = scan.get_exposure_times()[0]
+      phi_start = scan.get_oscillation()[0]
+      osc = scan.get_oscillation()[1]
 
     # automatically account for read-out time?
     # exposure_time = exposure_period-0.00203  # this is apropriate for Pilatus3 S
