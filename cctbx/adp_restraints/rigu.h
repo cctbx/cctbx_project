@@ -14,9 +14,11 @@ using scitbx::vec3;
 using scitbx::mat3;
 using scitbx::sym_mat3;
 
-  /* RIGU restraint
+  /** RIGU restraint
    * Restrains U33, U13 and U23 of 2 adps expressed in a cartesian base along the bond of the 2 atoms.
    * U33 is aligned along the bond
+   * See Thorn, A., Dittrich, B. & Sheldrick, G. M. (2012). Acta Cryst. A68, 448-451.
+   * and Parois, P., Arnold, J. & Cooper, R. (2018). J. Appl. Cryst. 51, 1059-1068.
   */
 
   struct rigu_proxy
@@ -88,10 +90,20 @@ using scitbx::sym_mat3;
     }
     
     
-    //! Gradient of delta_z with respect to u_cart[0]
+    //! Gradient of U_cart after linear transformation RM (basis aligned along bond) in respect to Uij_cart
     scitbx::sym_mat3<double> grad_delta_n(int r) const {
       scitbx::sym_mat3<double> result;
 
+      /* See Parois, P., Arnold, J. & Cooper, R. (2018). J. Appl. Cryst. 51, 1059-1068.
+       * for the detail on how it works
+       *
+       * The U tensors are vectorize as 9 elements vectors column by column to simplify the calculations
+       * Operations like V = A U B translate then to vec(V) = (B^t @ A) U with @ the kronecker product
+       */
+      
+      /** dUcart contains the 6 partial derivatives dU_cart/dUij_cart writen as vectors. 
+       *  The 6 columns vectors are then stacked column wise to form dUcart
+       */
       static const double dUcart[9][6] = {
         //dU11 dU22 dU33 dU12 dU13 dU23
         { 1,   0,   0,   0,   0,   0}, // U11
@@ -108,9 +120,8 @@ using scitbx::sym_mat3;
       double **kron, **dU;
       int i,j,k,l,startRow,startCol;
 
-
+      //! calulating the kronecker product
       kron = (double**)malloc(9*sizeof(double*));
-     
       for(i=0;i<9;i++){
         kron[i] = (double*)malloc(9*sizeof(double));
       }
@@ -127,7 +138,7 @@ using scitbx::sym_mat3;
         }
       }
         
-      //dU=matmul(kron, dUcart)
+      //! dU=matmul(kron, dUcart). Derivatives of (RM Ucart RM^t)
       dU = (double **)calloc(9, sizeof(double *));
       for (int i = 0; i < 9; i++)
         dU[i] = (double *)calloc(6, sizeof(double));
@@ -142,6 +153,7 @@ using scitbx::sym_mat3;
         }
       }        
 
+      //! partial derivatives against Uij are then just a row in dU 
       for(int i = 0; i< 6; i++) {
         result[i] = dU[r][i];
       }
@@ -231,6 +243,7 @@ using scitbx::sym_mat3;
       scitbx::sym_mat3<double> grad_u_star;
       std::size_t row_i;
       
+      //! First part of the restraint. rigid bond component. U^1cart_33 = U^2cart_33
       grad_u_cart = grad_delta_n(8);
       scitbx::matrix::matrix_transposed_vector(
         6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
@@ -248,6 +261,7 @@ using scitbx::sym_mat3;
       linearised_eqns.deltas[row_i] = delta_33_;
       }
       
+      //! Second part of the restraint. U^1cart_13 = U^2cart_13
       grad_u_cart = grad_delta_n(6);
       scitbx::matrix::matrix_transposed_vector(
         6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
@@ -266,6 +280,7 @@ using scitbx::sym_mat3;
       }
       
       
+      //! third part of the restraint. U^1cart_23 = U^2cart_23
       grad_u_cart = grad_delta_n(7);
       scitbx::matrix::matrix_transposed_vector(
         6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
@@ -284,7 +299,7 @@ using scitbx::sym_mat3;
       }            
     }
 
-    double delta_33() { return delta_33_; }
+    double delta_33() { return delta_33_; } 
     double delta_13() { return delta_13_; }
     double delta_23() { return delta_23_; }
 
@@ -293,7 +308,11 @@ using scitbx::sym_mat3;
     void init_delta(af::tiny<scitbx::vec3<double>, 2> const &sites,
       af::tiny<scitbx::sym_mat3<double>, 2> const &u_cart)
     {      
+      
+      //! first step, calculating the rotation matrix to align U33 along the bond
       vec3<double> rot3 = sites[0] - sites[1];
+      
+      // Any perpendicular axis will do
       vec3<double> rot2;
       rot2[0] = rot3[2];
       rot2[1] = rot3[2];
@@ -305,17 +324,20 @@ using scitbx::sym_mat3;
         rot2[2] = rot3[1];
       }
     
+      // Last axis to form a direct orthonormal basis
       vec3<double> rot1 = rot2.cross(rot3);
 
       RM.set_row(0, rot1.normalize());
       RM.set_row(1, rot2.normalize());
       RM.set_row(2, rot3.normalize());
     
+      //! Calculating Ucart in the new basis 
       mat3<double> tmp1(u_cart[0]);
       RUcart1 = (RM*tmp1)*RM.transpose();
       mat3<double> tmp2(u_cart[1]);
       RUcart2 = (RM*tmp2)*RM.transpose();
     
+      //! calculating the 3 deltas involved
       delta_33_ = RUcart1(2,2) - RUcart2(2,2);
       delta_13_ = RUcart1(0,2) - RUcart2(0,2);
       delta_23_ = RUcart1(1,2) - RUcart2(1,2);
