@@ -2308,9 +2308,14 @@ class manager(object):
     result = self._xray_structure.select(~sel)
     return result
 
-  def percent_of_single_atom_residues(self):
+  def percent_of_single_atom_residues(self, macro_molecule_only=True):
     sizes = flex.int()
-    for r in self.get_hierarchy().residue_groups():
+    h = self.get_hierarchy()
+    if(macro_molecule_only):
+      asc = h.atom_selection_cache()
+      s = asc.selection("protein or nucleotide")
+      h = h.select(s)
+    for r in h.residue_groups():
       sizes.append(r.atoms().size())
     return sizes.count(1)*100./sizes.size()
 
