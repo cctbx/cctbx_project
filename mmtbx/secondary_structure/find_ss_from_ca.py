@@ -811,7 +811,8 @@ def sites_are_similar(sites1,sites2,max_rmsd=1):
     return False
   if sites1.size() != sites2.size():
     return False
-
+  if sites1.size() < 3:
+    return False
   lsq_fit_obj=superpose.least_squares_fit(
        reference_sites=sites1,
        other_sites=sites2)
