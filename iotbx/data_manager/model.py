@@ -113,8 +113,16 @@ model
       filename = self.get_default_model_name()
     return self._model_types.get(filename, self._default_model_type)
 
-  def get_model_names(self):
-    return self._get_names(ModelDataManager.datatype)
+  def get_model_names(self, model_type=None):
+    all_names = self._get_names(ModelDataManager.datatype)
+    names = list()
+    if (model_type is None):
+      names = all_names
+    else:
+      for filename in all_names:
+        if (model_type == self.get_model_type(filename)):
+          names.append(filename)
+    return names
 
   def get_default_model_name(self):
     return self._get_default_name(ModelDataManager.datatype)

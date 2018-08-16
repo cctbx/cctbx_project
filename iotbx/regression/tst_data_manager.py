@@ -219,6 +219,9 @@ END
   new_dm.set_default_model_type('electron')
   new_dm.process_model_file(test_filename)
   assert(new_dm.get_model_type() == 'electron')
+  assert(len(new_dm.get_model_names()) == 1)
+  assert(len(new_dm.get_model_names(model_type='electron')) == 1)
+  assert(len(new_dm.get_model_names(model_type='neutron')) == 0)
 
   os.remove(test_eff)
   os.remove(test_filename)
