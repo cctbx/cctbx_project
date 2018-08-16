@@ -2312,8 +2312,7 @@ class manager(object):
     sizes = flex.int()
     h = self.get_hierarchy()
     if(macro_molecule_only):
-      asc = h.atom_selection_cache()
-      s = asc.selection("protein or nucleotide")
+      s = self.selection("protein or nucleotide")
       h = h.select(s)
     for r in h.residue_groups():
       sizes.append(r.atoms().size())
