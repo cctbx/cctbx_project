@@ -13,6 +13,8 @@ tst_list = (
   "$D/tst_easy_mp.py",
   "$D/tst_easy_mp_state.py",
   "$D/tst_easy_pickle.py",
+  "$D/tst_fully_buffered_timeout.py",
+  "$D/tst_scheduling.py",
   "$D/easy_run.py",
   "$D/tst_containers.py",
   "$D/tst_path.py",
@@ -32,6 +34,10 @@ tst_list = (
   "$D/clusterTests.py",
   "$D/tst_lzw.py",
   "$D/tst_citations.py",
+  "$D/tst_python_code_parsing.py",
+  "$D/tst_representation.py",
+  "$D/tst_runtime_utils.py",
+  "$D/tst_xmlrpc_utils.py",
   )
 
 def run():
