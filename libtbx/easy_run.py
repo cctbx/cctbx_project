@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import subprocess
 import sys
+from threading import Timer
 
 def _show_lines(lines, out, prefix):
   if (out is None): out = sys.stdout
@@ -123,6 +124,7 @@ class fully_buffered_subprocess(fully_buffered_base):
 
   def __init__(self,
         command,
+        timeout=None,
         stdin_lines=None,
         join_stdout_stderr=False,
         stdout_splitlines=True,
@@ -131,8 +133,14 @@ class fully_buffered_subprocess(fully_buffered_base):
     self.join_stdout_stderr = join_stdout_stderr
     if (not isinstance(command, str)):
       command = subprocess.list2cmdline(command)
+    #
+    # This will make shell=True in Popen to own command, and when we will
+    # p.kill(), command should be killed as well.
+    # From here:
+    # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
+    command = "exec " + command
     if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
-      command = ("DYLD_LIBRARY_PATH=%s exec "%\
+      command = ("DYLD_LIBRARY_PATH=%s "%\
                  os.environ.get("DYLD_LIBRARY_PATH","")) + command
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
@@ -152,7 +160,15 @@ class fully_buffered_subprocess(fully_buffered_base):
       stderr=stderr,
       universal_newlines=True,
       close_fds=(sys.platform != 'win32'))
-    o, e = p.communicate(input=stdin_lines)
+    if timeout is not None:
+      timer = Timer(timeout, p.kill)
+      try:
+        timer.start()
+        o, e = p.communicate(input=stdin_lines)
+      finally:
+        timer.cancel()
+    else:
+      o, e = p.communicate(input=stdin_lines)
     if (stdout_splitlines):
       self.stdout_buffer = None
       self.stdout_lines = o.splitlines()
