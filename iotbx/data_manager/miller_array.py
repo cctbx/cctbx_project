@@ -7,60 +7,7 @@ import iotbx.phil
 from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
 from iotbx.reflection_file_utils import reflection_file_server
-from libtbx.str_utils import wordwrap
 from libtbx.utils import Sorry
-
-# =============================================================================
-# optional PHIL scope for specifying miller_array usage
-miller_array_phil_str = '''
-data
-  .multiple = True
-{
-  file_name = None
-    .type = path
-  type = *x_ray neutron electron
-    .type = choice(multi=False)
-  labels = None
-    .type = str
-}
-'''
-
-def get_reflection_file_server(data_manager, params, datatype='x_ray'):
-  '''
-  Convenience function for getting a reflection file server based on a selection
-  of Miller arrays from the iotbx.data_manager.miller_array.miller_array_phil_str
-  PHIL scope
-
-  :params data_manager: DataManager with processed files
-  :type data_manager: iotbx.data_manager.DataManager object
-  :params params: PHIL extract with set parameters
-  :type params: libtbx.phil.scope_extract object
-  :params datatype: matches type property in miller_array_phil_str
-  :type datatype: str
-  :rtype: iotbx.reflection_file_utils.reflection_file_server object or None
-
-  The function returns None if there are no files that match datatype.
-  '''
-
-  filenames = list()
-  labels = list()
-
-  # find files
-  if (hasattr(params, 'data')):
-    try:
-      for scope in params.data:
-        if (scope.type == datatype):
-          filenames.append(scope.file_name)
-          labels.append(scope.labels)
-    except (TypeError, AttributeError):
-      raise Sorry(wordwrap('The "data" scope is not in the expected format. See iotbx.data_manager.miller_array.miller_array_phil_str for the expected format.'))
-
-  # get file server
-  rfs = None
-  if (len(filenames) > 0):
-    rfs = data_manager.get_reflection_file_server(filenames=filenames,
-                                                  labels=labels)
-  return rfs
 
 # =============================================================================
 class MillerArrayDataManager(DataManagerBase):
@@ -167,12 +114,14 @@ class MillerArrayDataManager(DataManagerBase):
     raise NotImplementedError
 
   def get_reflection_file_server(self, filenames=None, labels=None,
+                                 array_type=None,
                                  crystal_symmetry=None, force_symmetry=None):
     '''
     Return the file server for a single miller_array file or mulitple files
 
     :param filenames:         list of filenames or None
     :param labels:            list of lists of labels or None
+    :param array_type:        "x_ray", "neutron", "electron", or None
     :param crystal_symmetry:  cctbx.crystal.symmetry object or None
     :param force_symmetry:    bool or None
 
@@ -180,6 +129,8 @@ class MillerArrayDataManager(DataManagerBase):
     labels for filenames[0]. The lengths of filenames and labels should be equal
     as well. If all the labels in a file are to be added, set the labels entry
     to None, e.g. labels[0] = None.
+
+    If array_type is None, files of any type are allowed.
     '''
 
     # use default miller_array file if no filenames provided
@@ -219,13 +170,15 @@ class MillerArrayDataManager(DataManagerBase):
     # crystal_symmetry and force_symmetry should be set by now
     miller_arrays = list()
     for filename, file_labels in zip(filenames, labels):
-      file_arrays = self.get_miller_array(filename=filename).\
-        as_miller_arrays(crystal_symmetry=crystal_symmetry,
-                         force_symmetry=force_symmetry)
-      for miller_array in file_arrays:
-        if ((file_labels is None) or
-            (miller_array.info().label_string() in file_labels)):
-          miller_arrays.append(miller_array)
+      if ((array_type is None) or
+          (array_type == self.get_miller_array_type(filename))):
+        file_arrays = self.get_miller_array(filename=filename).\
+          as_miller_arrays(crystal_symmetry=crystal_symmetry,
+                           force_symmetry=force_symmetry)
+        for miller_array in file_arrays:
+          if ((file_labels is None) or
+              (miller_array.info().label_string() in file_labels)):
+            miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
