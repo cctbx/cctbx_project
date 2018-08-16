@@ -2233,8 +2233,11 @@ def equivalent_sigma_from_cumulative_histogram_match(
   #
   return tmp2
 
+# MARKED_FOR_DELETION_OLEG
+# REASON: not used, not tested.
 def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
       verbose=True):
+  assert 0
   assert [pdb_hierarchy, model].count(None)==1
   if(log is None): log = sys.stdout
   if(fmodel.xray_structure.hd_selection().count(True)==0): return
@@ -2269,6 +2272,7 @@ def optimize_h(fmodel, mon_lib_srv, pdb_hierarchy=None, model=None, log=None,
     print >> log, "  after optimization:  r_work=%6.4f r_free=%6.4f"%(
       fmodel.r_work(), fmodel.r_free())
   #
+# END_MARKED_FOR_DELETION_OLEG
 
 class set_map_to_value(object):
   def __init__(self, map_data, xray_structure, atom_radius, value):
