@@ -535,30 +535,6 @@ class CCTBXParser(ParserBase):
       self.data_manager.update_pdb_interpretation_for_model(
         self.data_manager.get_default_model_name(), working_phil_extract)
 
-    # update default model and data scopes, if necessary
-    # see iotbx.data_manager.model.model_phil_str and
-    # iotbx.data_manager.miller_array.miller_array_phil_str for PHIL definitions
-    if (hasattr(working_phil_extract, 'model') and
-        hasattr(working_phil_extract, 'data')):
-      update_phil = False
-      if (self.data_manager.supports('model')):
-        if (isinstance(working_phil_extract.model, list) and
-            (len(working_phil_extract.model) == 1)):
-          if (working_phil_extract.model[0].file_name is None):
-            working_phil_extract.model[0].file_name = self.data_manager.\
-                                                      get_default_model_name()
-            update_phil = True
-      if (self.data_manager.supports('miller_array')):
-        if (isinstance(working_phil_extract.data, list) and
-            (len(working_phil_extract.data) == 1)):
-          if (working_phil_extract.data[0].file_name is None):
-            working_phil_extract.data[0].file_name = \
-              self.data_manager.get_default_miller_array_name()
-            update_phil = True
-      if (update_phil):
-        self.working_phil = self.master_phil.format(
-          python_object=working_phil_extract)
-
   # ---------------------------------------------------------------------------
   def show_phil_summary(self):
     '''
