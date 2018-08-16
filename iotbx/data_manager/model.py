@@ -10,19 +10,6 @@ from iotbx.data_manager import DataManagerBase
 from libtbx.utils import Sorry
 
 # =============================================================================
-# optional PHIL scope for specifying model usage
-model_phil_str = '''
-model
-  .multiple = True
-{
-  file_name = None
-    .type = path
-  type = *x_ray neutron
-    .type = choice(multi=False)
-}
-'''
-
-# =============================================================================
 class ModelDataManager(DataManagerBase):
 
   datatype = 'model'
@@ -47,6 +34,7 @@ model
 {
   file = None
     .type = path
+    .short_caption = Model file
     .style = file_type:pdb input_file
   type = *%s
     .type = choice(multi=False)
