@@ -99,104 +99,6 @@ class group_operators (object) :
       print >> out, ""
     print >> out, ""
 
-def find_ncs_operators (pdb_hierarchy, max_rmsd=2.0, try_sieve_fit=True,
-    log=None) :
-  """
-  Determines all possible NCS transformation matrices for the input structure,
-  based on sequence alignemnt and simple C-alpha superposition.  There may be
-  multiple sets of operators but these will eventually become a flat list.
-
-  :param max_rmsd: maximum allowable RMSD between NCS-related chains for use
-    in ligand superposition
-  :param try_sieve_fit: also perform a sieve fit between chains and use the
-    resulting operator if the RMSD is lower than the global fit
-  :param log: filehandle-like object
-  :returns: list of lists of group_operators objects
-  """
-  import iotbx.ncs
-  from scitbx.math import superpose
-  from scitbx.array_family import flex
-  ncs_obj = iotbx.ncs.input(hierarchy=pdb_hierarchy)
-  ncs_groups = []
-  for k,v in ncs_obj.ncs_to_asu_selection.iteritems():
-    ncs_groups.append([k]+v)
-  if (len(ncs_groups) == 0) :
-    raise Sorry("No NCS present in the input model.")
-  for k, group in enumerate(ncs_groups) :
-    print >> log, "Group %d:" % (k+1)
-    for sele in group :
-      print >> log, "  %s" % sele
-  selection_cache = pdb_hierarchy.atom_selection_cache()
-  pdb_atoms = pdb_hierarchy.atoms()
-  sites_cart = pdb_atoms.extract_xyz()
-  operators = []
-  def get_selection (sele_str) :
-    sele_str = "(%s) and name CA and (altloc ' ' or altloc A)" % sele_str
-    return selection_cache.selection(sele_str).iselection()
-  for restraint_group in ncs_groups :
-    group_ops = []
-    assert (len(restraint_group) >= 2)
-    # XXX This is currently an all-vs-all loop, which means that each
-    # NCS relationship will be calculated (and stored) twice.  Need to figure
-    # out whether this actually matters in practice.
-    for j, sele_str in enumerate(restraint_group) :
-      sele_j = get_selection(sele_str)
-      group = group_operators(sele_j, sele_str, sites_cart)
-      assert (len(sele_j) > 0)
-      calpha_ids = []
-      for i_seq in sele_j :
-        resid = resid_str(pdb_atoms[i_seq])
-        if (not resid in calpha_ids) :
-          calpha_ids.append(resid)
-      for k, sele_str_k in enumerate(restraint_group) :
-        if (k == j) : continue
-        sele_k = get_selection(sele_str_k)
-        group_sele = flex.size_t()
-        group_ids = set([])
-        assert (len(sele_k) > 0)
-        # poor man's sequence alignment
-        for i_seq in sele_k :
-          id_str = resid_str(pdb_atoms[i_seq])
-          if (id_str in group_ids) :
-            continue
-          group_ids.add(id_str)
-          if (id_str in calpha_ids) :
-            group_sele.append(i_seq)
-        first_sele_copy = flex.size_t() #first_sele.deep_copy()
-        delete_indices = []
-        for i_seq, id_str in zip(sele_j, calpha_ids) :
-          if (id_str in group_ids) :
-            first_sele_copy.append(i_seq)
-        assert (len(first_sele_copy) == len(group_sele))
-        assert (len(group_sele) > 0)
-        sites_ref = sites_cart.select(first_sele_copy)
-        sites_group = sites_cart.select(group_sele).deep_copy()
-        lsq_fit = superpose.least_squares_fit(
-          reference_sites=sites_ref,
-          other_sites=sites_group)
-        sites_fit = lsq_fit.r.elems * sites_group + lsq_fit.t.elems
-        rmsd = sites_ref.rms_difference(sites_fit)
-        if (try_sieve_fit) :
-          lsq_fit_2 = superpose.sieve_fit(
-            sites_fixed=sites_ref,
-            sites_moving=sites_group,
-            frac_discard=0.25)
-          sites_fit_2 = lsq_fit_2.r.elems * sites_group + lsq_fit_2.t.elems
-          rmsd_2 = sites_ref.rms_difference(sites_fit)
-          if (rmsd_2 < rmsd) :
-            print >> log, "  using sieve fit (RMSD = %.3f, RMSD(all) = %.3f)" %\
-              (rmsd_2, rmsd)
-            lsq_fit = lsq_fit_2
-            rmsd = rmsd_2
-        print >> log, "  %d versus %d RMSD = %.3f" % (j+1, k+1, rmsd)
-        if (rmsd <= max_rmsd) :
-          group.add_operator(lsq_fit.rt().inverse(), sele_str_k)
-        else :
-          print >> log, "  exceeds cutoff, will not use this operator"
-      group_ops.append(group)
-    operators.append(group_ops)
-  return operators
-
 class sample_operators (object) :
   """
   Determines an appropriate "reference" ligand, and samples the density around
@@ -246,16 +148,26 @@ class sample_operators (object) :
     sites_ref = best_ligand.atoms().extract_xyz()
     min_dist = sys.maxint
     best_group = None
-    for op_group in ncs_operators :
-      dxyz = op_group.distance_from_center(sites_ref)
+    shifts = ncs_operators.get_ncs_groups_shifts(
+      self.xray_structure.sites_cart(),
+      sites_ref
+      )
+    for i, s in enumerate(shifts):
+      dxyz = xyz_distance(s[0], (0,0,0))
       if (dxyz < min_dist) :
-        best_group = op_group
+        best_group = i
         min_dist = dxyz
+    array_of_str_selections = ncs_operators.get_array_of_str_selections()[0]
     if (best_group is not None) :
       print >> log, "This appears to be bound to the selection \"%s\"" % \
-        best_group.selection_string
+        array_of_str_selections[best_group]
+    if best_group==0: pass
+    else:
+      print 'best_group',best_group
+      assert 0
+    # always have the first ligand in the master
     self.new_ligands = []
-    for j, operator in enumerate(best_group.operators) :
+    for j, operator in enumerate(ncs_operators[0].copies) :
       new_ligand = best_ligand.detached_copy()
       atoms = new_ligand.atoms()
       sites_new = operator.r.elems * sites_ref + operator.t.elems
@@ -590,16 +502,15 @@ class apply_ligand_ncs (object) :
     if (log is None) : log = sys.stdout
     assert (ligand_code is not None) and (len(ligand_code) <= 3)
     make_sub_header("Determining NCS operators", log)
-    ncs_ops = find_ncs_operators(pdb_hierarchy,
-      max_rmsd=params.max_rmsd,
-      log=log)
-    ncs_ops_flat = []
-    for op_group in ncs_ops :
-      ncs_ops_flat.extend(op_group)
-    print >> log, "Summary of NCS operators:"
-    for ncs_group in ncs_ops :
-      for k, group in enumerate(ncs_group) :
-        group.show_summary(log, prefix="  ")
+    import iotbx.ncs
+    ncs_obj = iotbx.ncs.input(hierarchy=pdb_hierarchy)
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+
+    if 0:
+      print >> log, "Summary of NCS operators:"
+      for ncs_group in ncs_ops :
+        for k, group in enumerate(ncs_group) :
+          group.show_summary(log, prefix="  ")
     print >> log, "Looking for ligands named %s..." % ligand_code
     ligands = extract_ligand_residues(pdb_hierarchy, ligand_code,
       only_segid=only_segid)
@@ -610,7 +521,7 @@ class apply_ligand_ncs (object) :
     sampler = sample_operators(
       fmodel=fmodel,
       pdb_hierarchy=pdb_hierarchy,
-      ncs_operators=ncs_ops_flat,
+      ncs_operators=nrgl, #ncs_ops_flat,
       params=params,
       ligands=ligands,
       log=log)

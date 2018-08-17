@@ -457,6 +457,20 @@ class class_ncs_restraints_group_list(list):
         shifts.append(mu_m)
     return shifts
 
+  def get_ncs_groups_shifts(self, sites_cart, current):
+    shifts = []
+    for nrg in self:
+      master_ncs_selection = nrg.master_iselection
+      master_xyz = sites_cart.select(master_ncs_selection)
+      mu_m = flex.vec3_double([master_xyz.mean()])
+      shifts.append(mu_m-current.mean())
+      for ncs_copy in nrg.copies:
+        asu_selection = ncs_copy.iselection
+        asu_xyz = sites_cart.select(asu_selection)
+        mu_i = flex.vec3_double([asu_xyz.mean()])
+        shifts.append(mu_i-current.mean())
+    return shifts
+
   def get_extended_ncs_selection(self, refine_selection):
     """
     Args:
