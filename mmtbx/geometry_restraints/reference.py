@@ -80,6 +80,8 @@ def add_coordinate_restraints(
     selection = flex.bool(
       len(sites_cart),
       True).iselection()
+  # Not clear why this assertion should present. What if we want to restrain
+  # only part of the molecule?
   assert len(sites_cart) == len(selection)
   weight = 1.0 / (sigma**2)
   for k, i_seq in enumerate(selection):

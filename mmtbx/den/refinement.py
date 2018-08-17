@@ -386,23 +386,23 @@ class manager(object):
       nproc                  = 1)
 
   def minimize(self, ca_only=False):
-    pdb_hierarchy = self.model.get_hierarchy(sync_with_xray_structure=True)
+    sel = "all"
+    restraint_sites_cart = self.model.get_sites_cart().deep_copy()
     if ca_only:
-      ca_selection = pdb_hierarchy.get_peptide_c_alpha_selection()
       restraint_sites_cart = self.model.get_sites_cart().\
-        deep_copy().select(ca_selection)
-      restraint_selection = ca_selection
-    else:
-      restraint_sites_cart = self.model.get_sites_cart().deep_copy()
-      restraint_selection = pdb_hierarchy.atoms().extract_i_seq()
-    self.model.restraints_manager.geometry.\
-        add_reference_coordinate_restraints_in_place(
-            pdb_hierarchy=pdb_hierarchy,
-            selection=restraint_selection,
-            n_atoms_in_target_model=self.model.get_number_of_atoms())
+          deep_copy().select(ca_selection)
+      sel = "name CA"
+    self.model.set_reference_coordinate_restraints(
+        ref_model=self.model,
+        selection=sel,
+        exclude_outliers=False)
     ##### sanity check #####
-    assert(self.model.restraints_manager.geometry.
-           get_n_reference_coordinate_proxies() >= len(restraint_sites_cart))
+    # How this check was supposed to hold up when ca_only=True???
+    # When ca_only=True, number of restraints will be less than number of atoms.
+    # Good that users never change defaults (minimize_c_alpha_only = False).
+    n_rcp = self.model.get_restraints_manager().geometry.get_n_reference_coordinate_proxies()
+    n_sc = len(restraint_sites_cart)
+    assert n_rcp >= n_sc, "%d >= %d fail" % (n_rcp, n_sc)
     ########################
 
     # selection = self.model.selection_moving
