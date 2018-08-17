@@ -5,7 +5,7 @@ from mmtbx.validation import graphics
 from iotbx import data_plots
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
-import sys
+import os, sys
 
 OUTLIER_THRESHOLD = 0.003
 ALLOWED_THRESHOLD = 0.02
@@ -311,7 +311,7 @@ Incompatible identifiers for one or more atoms in a residue:
 %s
 This is usually caused by atoms with a different segid from the rest of the
 residue.  You can use %s to reset the
-segid.""" % (atom.format_atom_record()), outl)
+segid.""" % (atom.format_atom_record(), outl))
         assert key == cur_label[4:]
   return key
 
