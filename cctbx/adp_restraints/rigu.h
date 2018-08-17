@@ -52,6 +52,7 @@ using scitbx::sym_mat3;
       weight(weight_)
     {
       init_delta(sites, u_cart);
+      calc_gradients();
     }
 
     //! Constructor.
@@ -69,6 +70,7 @@ using scitbx::sym_mat3;
           params.sites_cart[proxy.i_seqs[0]], params.sites_cart[proxy.i_seqs[1]]),
         af::tiny<scitbx::sym_mat3<double>, 2>(
           params.u_cart[proxy.i_seqs[0]], params.u_cart[proxy.i_seqs[1]]));
+      calc_gradients();
     }
 
     //! weight * delta[i]**2.
@@ -89,73 +91,13 @@ using scitbx::sym_mat3;
       return residual33() + residual13() + residual23(); 
     }
     
-    
     //! Gradient of U_cart after linear transformation RM (basis aligned along bond) in respect to Uij_cart
     scitbx::sym_mat3<double> grad_delta_n(int r) const {
       scitbx::sym_mat3<double> result;
 
-      /* See Parois, P., Arnold, J. & Cooper, R. (2018). J. Appl. Cryst. 51, 1059-1068.
-       * for the detail on how it works
-       *
-       * The U tensors are vectorize as 9 elements vectors column by column to simplify the calculations
-       * Operations like V = A U B translate then to vec(V) = (B^t @ A) U with @ the kronecker product
-       */
-      
-      /** dUcart contains the 6 partial derivatives dU_cart/dUij_cart writen as vectors. 
-       *  The 6 columns vectors are then stacked column wise to form dUcart
-       */
-      static const double dUcart[9][6] = {
-        //dU11 dU22 dU33 dU12 dU13 dU23
-        { 1,   0,   0,   0,   0,   0}, // U11
-        { 0,   0,   0,   1,   0,   0}, // U21
-        { 0,   0,   0,   0,   1,   0}, // U23
-        { 0,   0,   0,   1,   0,   0}, // U21
-        { 0,   1,   0,   0,   0,   0}, // U22
-        { 0,   0,   0,   0,   0,   1}, // U23
-        { 0,   0,   0,   0,   1,   0}, // U31
-        { 0,   0,   0,   0,   0,   1}, // U32
-        { 0,   0,   1,   0,   0,   0}, // U33
-      };
-      
-      double **kron, **dU;
-      int i,j,k,l,startRow,startCol;
-
-      //! calulating the kronecker product
-      kron = (double**)malloc(9*sizeof(double*));
-      for(i=0;i<9;i++){
-        kron[i] = (double*)malloc(9*sizeof(double));
-      }
-     
-      for(i=0;i<3;i++){
-        for(j=0;j<3;j++){
-          startRow = i*3;
-          startCol = j*3;
-          for(k=0;k<3;k++){
-            for(l=0;l<3;l++){
-              kron[startRow+k][startCol+l] = RM(i,j)*RM(k,l);
-            }
-          }
-        }
-      }
-        
-      //! dU=matmul(kron, dUcart). Derivatives of (RM Ucart RM^t)
-      dU = (double **)calloc(9, sizeof(double *));
-      for (int i = 0; i < 9; i++)
-        dU[i] = (double *)calloc(6, sizeof(double));
-
-      double tmp;
-      for (i = 0; i < 9; i++) {
-        for (j = 0; j < 6; j++) {
-          tmp = 0.0;
-          for (k = 0; k < 9; k++)
-            tmp += kron[i][k] * dUcart[k][j];
-          dU[i][j] = tmp;
-        }
-      }        
-
-      //! partial derivatives against Uij are then just a row in dU 
+      //! partial derivatives against Uij are then just a row in dRUcart 
       for(int i = 0; i< 6; i++) {
-        result[i] = dU[r][i];
+        result[i] = dRUcart[r][i];
       }
       return result;
     }
@@ -242,68 +184,37 @@ using scitbx::sym_mat3;
       scitbx::sym_mat3<double> grad_u_cart;
       scitbx::sym_mat3<double> grad_u_star;
       std::size_t row_i;
+      int const indices[3] = {8,6,7}; //! derivatives to consider: U33, U13, U23
+      double const deltas[3] = {delta_33_,delta_13_,delta_23_};
       
-      //! First part of the restraint. rigid bond component. U^1cart_33 = U^2cart_33
-      grad_u_cart = grad_delta_n(8);
-      scitbx::matrix::matrix_transposed_vector(
-        6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
-      row_i = linearised_eqns.next_row();
-      for (std::size_t i=0;i<2;i++) {
-        if (i == 1) grad_u_star = -grad_u_star;
-        cctbx::xray::parameter_indices const &ids_i
-          = parameter_map[i_seqs[i]];
-        if (ids_i.u_aniso == -1) continue;
-        for (std::size_t j=0;j<6;j++) {
-          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
-            = grad_u_star[j];
+      for (std::size_t k; k<3; k++) {
+        grad_u_cart = grad_delta_n(indices[k]);
+        scitbx::matrix::matrix_transposed_vector(
+          6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
+        row_i = linearised_eqns.next_row();
+        for (std::size_t i=0;i<2;i++) {
+          if (i == 1) grad_u_star = -grad_u_star;
+          cctbx::xray::parameter_indices const &ids_i
+            = parameter_map[i_seqs[i]];
+          if (ids_i.u_aniso == -1) continue;
+          for (std::size_t j=0;j<6;j++) {
+            linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
+              = grad_u_star[j];
+          }
+          linearised_eqns.weights[row_i] = weight;
+          linearised_eqns.deltas[row_i] = deltas[k];
         }
-      linearised_eqns.weights[row_i] = weight;
-      linearised_eqns.deltas[row_i] = delta_33_;
       }
-      
-      //! Second part of the restraint. U^1cart_13 = U^2cart_13
-      grad_u_cart = grad_delta_n(6);
-      scitbx::matrix::matrix_transposed_vector(
-        6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
-      row_i = linearised_eqns.next_row();
-      for (std::size_t i=0;i<2;i++) {
-        if (i == 1) grad_u_star = -grad_u_star;
-        cctbx::xray::parameter_indices const &ids_i
-          = parameter_map[i_seqs[i]];
-        if (ids_i.u_aniso == -1) continue;
-        for (std::size_t j=0;j<6;j++) {
-          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
-            = grad_u_star[j];
-        }
-      linearised_eqns.weights[row_i] = weight;
-      linearised_eqns.deltas[row_i] = delta_13_;
-      }
-      
-      
-      //! third part of the restraint. U^1cart_23 = U^2cart_23
-      grad_u_cart = grad_delta_n(7);
-      scitbx::matrix::matrix_transposed_vector(
-        6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
-      row_i = linearised_eqns.next_row();
-      for (std::size_t i=0;i<2;i++) {
-        if (i == 1) grad_u_star = -grad_u_star;
-        cctbx::xray::parameter_indices const &ids_i
-          = parameter_map[i_seqs[i]];
-        if (ids_i.u_aniso == -1) continue;
-        for (std::size_t j=0;j<6;j++) {
-          linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
-            = grad_u_star[j];
-        }
-      linearised_eqns.weights[row_i] = weight;
-      linearised_eqns.deltas[row_i] = delta_23_;
-      }            
+            
     }
 
     double delta_33() { return delta_33_; } 
     double delta_13() { return delta_13_; }
     double delta_23() { return delta_23_; }
+    double delta() { return delta_33_+delta_13_+delta_23_; }
 
     double weight;
+
   protected:
     void init_delta(af::tiny<scitbx::vec3<double>, 2> const &sites,
       af::tiny<scitbx::sym_mat3<double>, 2> const &u_cart)
@@ -343,28 +254,65 @@ using scitbx::sym_mat3;
       delta_23_ = RUcart1(1,2) - RUcart2(1,2);
     }
 
+    //! Calculate all the partial derivatives of the adp in the local cartesian coordinate system.
+    void calc_gradients() {
+      /* See Parois, P., Arnold, J. & Cooper, R. (2018). J. Appl. Cryst. 51, 1059-1068.
+       * for the detail on how it works
+       *
+       * The U tensors are vectorized as 9 elements vectors column by column to simplify the calculations
+       * Operations like V = A U B translate then to vec(V) = (B^t @ A) U with @ the kronecker product
+       */
+      
+      /** dUcart contains the 6 partial derivatives dU_cart/dUij_cart writen as vectors. 
+       *  The 6 columns vectors are then stacked column wise to form dUcart
+       */
+      static const double dUcart[9][6] = {
+        //dU11 dU22 dU33 dU12 dU13 dU23
+        { 1,   0,   0,   0,   0,   0}, // U11
+        { 0,   0,   0,   1,   0,   0}, // U21
+        { 0,   0,   0,   0,   1,   0}, // U23
+        { 0,   0,   0,   1,   0,   0}, // U21
+        { 0,   1,   0,   0,   0,   0}, // U22
+        { 0,   0,   0,   0,   0,   1}, // U23
+        { 0,   0,   0,   0,   1,   0}, // U31
+        { 0,   0,   0,   0,   0,   1}, // U32
+        { 0,   0,   1,   0,   0,   0}, // U33
+      };
+      
+      double kron[9][9];    
+      int i,j,k,l,startRow,startCol;
+
+      //! calulating the kronecker product    
+      for(i=0;i<3;i++){
+        for(j=0;j<3;j++){
+          startRow = i*3;
+          startCol = j*3;
+          for(k=0;k<3;k++){
+            for(l=0;l<3;l++){
+              kron[startRow+k][startCol+l] = RM(i,j)*RM(k,l);
+            }
+          }
+        }
+      }
+        
+      //! vec(dRUcart) = kron vec(dUcart). Derivatives of (RUcart = RM Ucart RM^t)
+      for (i = 0; i < 9; i++) {
+        for (j = 0; j < 6; j++) {
+          for (k = 0; k < 9; k++) {
+            dRUcart[i][j] += kron[i][k] * dUcart[k][j];
+          }
+        }
+      }       
+    }
+    
     double delta_33_;
     double delta_13_;
     double delta_23_;
     mat3<double> RUcart1, RUcart2;
     mat3<double> RM;
-    double bond_length_sq;
+        
+    double dRUcart[9][6];
   };
-
-  /*! \brief Fast computation of rigu::deltas() given an array
-      of rigu proxies.
-   */
-  af::shared<double>
-  rigu_deltas(
-    adp_restraint_params<double> const &params,
-    af::const_ref<rigu_proxy> const& proxies)
-  {
-    af::shared<double> result((af::reserve(proxies.size())));
-    for(std::size_t i=0; i<proxies.size(); i++) {
-      result.push_back(rigu(params, proxies[i]).delta_33());
-    }
-    return result;
-  }
 
 }} // namespace cctbx::adp_restraints
 

@@ -87,10 +87,6 @@ namespace {
         adp_restraint_residuals<rigu_proxy,rigu>::impl,
         (arg("params"),
          arg("proxies")));
-      def("rigu_deltas",
-        rigu_deltas,
-        (arg("params"),
-         arg("proxies")));
   }
 
 }
