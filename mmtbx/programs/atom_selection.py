@@ -56,7 +56,7 @@ Usage examples:
     all_bsel = flex.bool(atoms.size(), False)
     for selection_string in self.params.atom_selection_program.inselection:
       print("Selecting '%s'" % selection_string, file=self.logger)
-      isel = model.iselection(selstr=selection_string)
+      isel = model.iselection(string=selection_string)
       all_bsel.set_selected(isel, True)
       if self.params.atom_selection_program.write_pdb_file is None:
         print("  %d atom%s selected" % plural_s(isel.size()), file=self.logger)

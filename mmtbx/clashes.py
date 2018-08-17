@@ -115,7 +115,7 @@ class remove_clashes(object):
     if not self.remove_selection_string:
       self.new_model=self.model.deep_copy() # nothing to do
     else:
-      sel1 = self.model.selection(selstr = " NOT (%s) " %(
+      sel1 = self.model.selection(string = " NOT (%s) " %(
          self.remove_selection_string))
       self.new_model=self.model.select(sel1)
 

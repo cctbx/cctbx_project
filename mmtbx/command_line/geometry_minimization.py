@@ -366,7 +366,7 @@ class run(object):
 
   def atom_selection(self, prefix):
     broadcast(m=prefix, log = self.log)
-    self.selection = self.model.selection(selstr = self.params.selection)
+    self.selection = self.model.selection(string = self.params.selection)
     print >> self.log, "  selected %s atoms out of total %s"%(
       str(self.selection.count(True)),str(self.selection.size()))
 

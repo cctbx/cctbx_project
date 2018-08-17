@@ -30,7 +30,7 @@ def exercise_2(eps = 1.e-6):
   selections = []
   selection_strings = ["chain A", "chain B", "chain C"]
   for string in selection_strings:
-      selections.append(model.selection(selstr = string))
+      selections.append(model.selection(string = string))
 ################
   selection = flex.bool(model.get_number_of_atoms(), True)
   class refinement_flags: pass

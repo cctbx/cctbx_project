@@ -628,17 +628,17 @@ class manager(object):
     else:
       return self.ias_manager.get_ias_selection()
 
-  def selection(self, selstr, optional=True):
+  def selection(self, string, optional=True):
     if self.all_chain_proxies is None:
-      return self.get_atom_selection_cache().selection(selstr, optional=optional)
+      return self.get_atom_selection_cache().selection(string, optional=optional)
     else:
       return self.all_chain_proxies.selection(
-          selstr,
+          string,
           cache=self._atom_selection_cache,
           optional=optional)
 
-  def iselection(self, selstr):
-    result = self.selection(selstr)
+  def iselection(self, string):
+    result = self.selection(string)
     if result is None:
       return None
     return result.iselection()

@@ -908,7 +908,7 @@ def get_atom_selections(
 
 def atom_selection(model, string, allow_empty_selection = False):
   result = model.selection(
-    selstr=string,
+    string=string,
     optional=(allow_empty_selection is not None))
   if (result is None):
     return None
