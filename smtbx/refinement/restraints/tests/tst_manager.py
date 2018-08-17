@@ -26,6 +26,9 @@ def exercise_manager(verbose=0):
   rigid_bond_proxies = \
     adp_restraints.rigid_bond_restraints(
       pair_sym_table=pair_sym_table).proxies
+  rigu_proxies = \
+    adp_restraints.rigu_restraints(
+      pair_sym_table=pair_sym_table).proxies
   isotropic_adp_proxies = \
     adp_restraints.isotropic_adp_restraints(
       xray_structure=xray_structure,
@@ -63,6 +66,7 @@ def exercise_manager(verbose=0):
     bond_similarity_proxies=bond_similarity_proxies,
     adp_similarity_proxies=adp_similarity_proxies,
     rigid_bond_proxies=rigid_bond_proxies,
+    rigu_proxies=rigu_proxies,
     isotropic_adp_proxies=isotropic_adp_proxies)
   sio = StringIO()
   manager.show_sorted(xray_structure, max_items=1, f=sio)
@@ -115,6 +119,16 @@ scatterers O7
            C12
    delta_z    sigma   weight residual
  -6.42e-01 1.00e-02 1.00e+04 4.12e+03
+... (remaining 59 not shown)
+
+Rigu bond restraints: 60
+Sorted by residual:
+scatterers O7
+           C12
+   delta_z    sigma   weight residual
+ -6.42e-01 4.00e-03 6.25e+04 2.57e+04
+ -1.12e+00 4.00e-03 6.25e+04 7.84e+04
+ -1.12e+00 4.00e-03 6.25e+04 2.63e+04
 ... (remaining 59 not shown)
 
 Isotropic ADP restraints: 22
