@@ -122,7 +122,8 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
   model = mmtbx.model.manager(
       model_input=pdb_structure,
       crystal_symmetry=cs,
-      pdb_interpretation_params=defpars)
+      pdb_interpretation_params=defpars,
+      stop_for_unknowns=False)
   pdb_hierarchy = model.get_hierarchy()
   geometry = model.get_restraints_manager().geometry
   if len(pdb_hierarchy.models()) != 1 :
