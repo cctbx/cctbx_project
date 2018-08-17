@@ -4,7 +4,7 @@
 from __future__ import division
 from mmtbx.validation.rna_validate import rna_validation
 import iotbx.phil
-import sys
+import os, sys
 
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
@@ -26,9 +26,9 @@ def get_master_phil():
     include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
   }
 """, process_includes=True)
-
+prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """
-phenix.rna_validate file.pdb [params.eff] [options ...]
+%(prog)s file.pdb [params.eff] [options ...]
 
 Options:
 
@@ -37,9 +37,9 @@ Options:
 
 Example:
 
-  phenix.rna_validate pdb=1u8d.pdb outliers_only=False
+  %(prog)s pdb=1u8d.pdb outliers_only=False
 
-"""
+""" % locals()
 
 def run (args, out=sys.stdout, quiet=False) :
   from mmtbx.monomer_library import pdb_interpretation

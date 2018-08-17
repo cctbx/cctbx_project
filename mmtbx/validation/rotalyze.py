@@ -12,7 +12,7 @@ ALLOWED_THRESHOLD = 0.02
 
 class rotamer (residue) :
   """
-  Result class for protein sidechain rotamer analysis (phenix.rotalyze).
+  Result class for protein sidechain rotamer analysis (molprobity.rotalyze).
   """
   __rotamer_attr__ = [
     "score",
@@ -302,12 +302,16 @@ def get_residue_key(atom_group):
     else:
       if altloc == cur_altloc:
         if (key != cur_label[4:]) :
+          if os.getenv('CCP4'):
+            outl = 'a model editor'
+          else:
+            outl = 'phenix.pdbtools or phenix.pdb_editor'
           raise Sorry("""\
 Incompatible identifiers for one or more atoms in a residue:
 %s
 This is usually caused by atoms with a different segid from the rest of the
-residue.  You can use phenix.pdbtools or phenix.pdb_editor to reset the
-segid.""" % atom.format_atom_record())
+residue.  You can use %s to reset the
+segid.""" % (atom.format_atom_record()), outl)
         assert key == cur_label[4:]
   return key
 

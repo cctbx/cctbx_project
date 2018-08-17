@@ -7,7 +7,7 @@ import mmtbx.validation.ramalyze
 import iotbx.phil
 from libtbx.utils import Usage, Sorry
 import os.path
-import sys
+import os, sys
 
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
@@ -25,9 +25,9 @@ def get_master_phil():
       .type = str
       .help = Comma separated file list to accumulate onto one plot
 """, process_includes=True)
-
+prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """
-phenix.ramalyze file.pdb [params.eff] [options ...]
+%(prog)s file.pdb [params.eff] [options ...]
 
 Options:
 
@@ -38,8 +38,8 @@ Options:
 
 Example:
 
-  phenix.ramalyze model=1ubq.pdb outliers_only=True
-"""
+  %(prog)s model=1ubq.pdb outliers_only=True
+""" % locals()
 
 def run (args, out=sys.stdout, quiet=False) :
   cmdline = iotbx.phil.process_command_line_with_files(

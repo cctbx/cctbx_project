@@ -4,7 +4,7 @@ import iotbx.phil
 import os.path
 from libtbx import slots_getstate_setstate
 import numpy
-import sys
+import os, sys
 
 ################################################################################
 # omegalyze.py
@@ -41,9 +41,9 @@ def get_master_phil():
       .type = bool
       .help = "Prints this help message if true"
 """, process_includes=True)
-
+prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """
-phenix.omegalyze file.pdb [params.eff] [options ...]
+%(prog)s file.pdb [params.eff] [options ...]
 
 Options:
 
@@ -69,16 +69,16 @@ Options:
     counts of non-proline cis and twisted peptides relative to total non-proline
       peptides with measurable omega dihedrals across all chains
 
-  Cis Prolines occur in ~5% of prolines (1 in 20) at high resolution
-  Non-Proline Cis residues occur in ~0.05% of residues (1 in 2000) and require
+  Cis Prolines occur in ~5%% of prolines (1 in 20) at high resolution
+  Non-Proline Cis residues occur in ~0.05%% of residues (1 in 2000) and require
     clear support from experimental data or homology.
   Twisted peptides are even less frequent and are highly suspect without
     high-resolution data.
 
 Example:
 
-  phenix.omegalyze model=1ubq.pdb kinemage=True
-"""
+  %(prog)s model=1ubq.pdb kinemage=True
+""" % locals()
 
 #{{{ XXX Use these constants internally, not the strings
 OMEGA_GENERAL = 0
@@ -110,7 +110,7 @@ def single_offset(p1,p2,offset):
 
 class omega_result(residue):
   """
-  Result class for protein backbone omega angle analysis (phenix.omegalyze).
+  Result class for protein backbone omega angle analysis (molprobity.omegalyze).
   """
   __omega_attr__ = [
     "res_type",

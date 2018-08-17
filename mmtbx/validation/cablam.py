@@ -73,8 +73,9 @@ cablam {
 #-------------------------------------------------------------------------------
 def usage():
   #prints help text
+  prog = os.getenv('LIBTBX_DISPATCHER_NAME')
   sys.stderr.write("""
-phenix.cablam file.pdb [options ...]
+%(prog)s file.pdb [options ...]
 
 Options:
 
@@ -103,7 +104,7 @@ Options:
                           residues
 
   help=False            prints this usage text, plus an interpretation guide
-""")
+""" % locals())
 #-------------------------------------------------------------------------------
 #}}}
 

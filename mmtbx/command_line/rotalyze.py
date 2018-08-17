@@ -6,7 +6,7 @@ from __future__ import division
 import mmtbx.validation.rotalyze
 import iotbx.phil
 from libtbx.utils import Usage
-import sys
+import os, sys
 
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
@@ -18,9 +18,9 @@ def get_master_phil():
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
 """, process_includes=True)
-
+prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """\
-phenix.rotalyze file.pdb [params.eff] [options ...]
+%(prog)s file.pdb [params.eff] [options ...]
 
 Options:
 
@@ -30,8 +30,8 @@ Options:
 
 Example:
 
-  phenix.rotalyze model=1ubq.pdb outliers_only=True
-"""
+  %(prog)s model=1ubq.pdb outliers_only=True
+""" % locals()
 
 def run (args, out=sys.stdout, quiet=False) :
   cmdline = iotbx.phil.process_command_line_with_files(

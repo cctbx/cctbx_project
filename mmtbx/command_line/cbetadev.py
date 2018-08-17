@@ -6,7 +6,7 @@ import mmtbx.validation.cbetadev
 import iotbx.phil
 from libtbx.utils import Usage
 import os.path
-import sys
+import os, sys
 
 def get_master_phil():
   return iotbx.phil.parse(input_string="""
@@ -19,11 +19,13 @@ def get_master_phil():
 """, process_includes=True)
 
 def run (args, out=sys.stdout, quiet=False) :
+  prog = os.getenv('LIBTBX_DISPATCHER_NAME')
+  usage_string = "%s file.pdb [params.eff] [options ...]" % prog
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil=get_master_phil(),
     pdb_file_def="model",
-    usage_string="phenix.cbetadev file.pdb [params.eff] [options ...]")
+    usage_string=usage_string)
   params = cmdline.work.extract()
   if (params.model is None) :
     raise Usage(usage_string)

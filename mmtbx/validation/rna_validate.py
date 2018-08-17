@@ -331,7 +331,7 @@ class rna_suites (rna_geometry) :
     self.n_triaged = self.n_incomplete = self.n_suites = 0
     self.average_suiteness = None
     total_suiteness = 0
-    suitename = "phenix.suitename -report -pointIDfields 7 -altIDfield 6  -"
+    suitename = "molprobity.suitename -report -pointIDfields 7 -altIDfield 6  -"
     backbone_dihedrals = utils.get_rna_backbone_dihedrals(
       processed_pdb_file=None,
       pdb_hierarchy=pdb_hierarchy,

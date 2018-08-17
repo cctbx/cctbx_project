@@ -299,8 +299,11 @@ class probe_clashscore_manager(object):
       ogt = largest_occupancy
 
     self.probe_atom_b_factor = None
-    probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
-                                 'probe', 'exe', 'probe')
+    if os.getenv('CCP4'):
+      probe_command = os.path.join(os.environ['CCP4'],'bin','probe')
+    else:
+      probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                                   'probe', 'exe', 'probe')
     probe_command = '"%s"' % probe_command   # in case of spaces in path
     nuclear_flag = ""
     condensed_flag = ""
@@ -609,14 +612,14 @@ def check_and_add_hydrogen(
     # set reduce running parameters
     if verbose:
       print "\nAdding H/D atoms with reduce...\n"
-    build = "phenix.reduce -oh -his -flip -keep -allalt -limit{}"
+    build = "molprobity.reduce -oh -his -flip -keep -allalt -limit{}"
     if not do_flips : build += " -pen9999"
     if nuclear:
       build += " -nuc -"
     else:
       build += " -"
     build = build.format(time_limit)
-    trim = "phenix.reduce -quiet -trim -"
+    trim = "molprobity.reduce -quiet -trim -"
     stdin_lines = r.as_pdb_string(cryst_sym)
     clean_out = easy_run.fully_buffered(trim,stdin_lines=stdin_lines)
     if (clean_out.return_code != 0) :
@@ -630,7 +633,7 @@ def check_and_add_hydrogen(
     return reduce_str,True
   else:
     if not has_reduce:
-      msg = 'phenix.reduce could not be detected on your system.\n'
+      msg = 'molprobity.reduce could not be detected on your system.\n'
       msg += 'Cannot add hydrogen to PDB file'
       print >> log,msg
     if verbose:
@@ -696,7 +699,7 @@ class nqh_flips (validation) :
   def __init__ (self, pdb_hierarchy) :
     re_flip = re.compile(":FLIP")
     validation.__init__(self)
-    reduce_out = easy_run.fully_buffered("phenix.reduce -BUILD -",
+    reduce_out = easy_run.fully_buffered("molprobity.reduce -BUILD -",
       stdin_lines=pdb_hierarchy.as_pdb_string())
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(

@@ -5,7 +5,7 @@ from __future__ import division
 from mmtbx.validation.clashscore import clashscore
 from libtbx.utils import Usage
 import iotbx.phil
-import sys
+import os, sys
 
 master_phil_str = """
   model = None
@@ -44,9 +44,9 @@ master_phil_str = """
     .type = int
     .help = '''B factor cutoff for use with MolProbity'''
 """
-
+prog=os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """\
-phenix.clashscore file.pdb [params.eff] [options ...]
+%(prog)s file.pdb [params.eff] [options ...]
 
 Options:
 
@@ -61,8 +61,8 @@ Options:
 
 Example:
 
-  phenix.clashscore model=1ubq.pdb keep_hydrogens=True
-"""
+  %(prog)s model=1ubq.pdb keep_hydrogens=True
+""" % locals()
 
 def run (args, out=sys.stdout, quiet=None) :
   """
