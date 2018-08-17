@@ -34,6 +34,7 @@ from iotbx import cif
 from libtbx import str_utils
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
+from libtbx import easy_run
 import random, sys, os
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
@@ -3150,3 +3151,45 @@ def model_from_sites_cart(sites_cart,
   return mmtbx.model.manager(model_input = None, pdb_hierarchy=hierarchy,
      crystal_symmetry=crystal_symmetry)
 # END_MARKED_FOR_DELETION_OLEG
+
+class run_reduce_with_timeout(easy_run.fully_buffered):
+  def __init__(self,
+      stdin_lines,
+      parameters = "",
+      file_name=None,
+      override_auto_timeout_with=None,
+      join_stdout_stderr=False,
+      stdout_splitlines=True,
+      bufsize=-1):
+    assert [stdin_lines, file_name].count(None) == 1
+
+    size_bytes = len(stdin_lines) if stdin_lines is not None else 0
+    command_to_run="phenix.reduce "
+    if file_name is not None:
+      assert os.path.isfile(file_name)
+      size_bytes = os.path.getsize(file_name)
+      command_to_run += file_name + " "
+    command_to_run += parameters
+    size_in_mb = size_bytes / 1024 / 1024
+
+    expected_runtime = 200
+    if override_auto_timeout_with is not None:
+      expected_runtime = override_auto_timeout_with
+    else:
+      # temp, estimate on number/size of stdin_lines, maybe include parameters
+      # into consideration
+      if size_in_mb > 30:
+        # here 2 is my rough estimate, 3 is extra just in case.
+        # For 200Mb of a structure this will allow 10 minutes, where in one occasion
+        # it took 3m30s.
+        expected_runtime = size_in_mb * 2 * 2
+    # print "expected_runtime", expected_runtime
+    # now run parent init
+    # command_to_run="sleep 100"
+    super(run_reduce_with_timeout, self).__init__(
+        command=command_to_run,
+        timeout=expected_runtime,
+        stdin_lines=stdin_lines,
+        join_stdout_stderr=join_stdout_stderr,
+        stdout_splitlines=stdout_splitlines,
+        bufsize=bufsize)
