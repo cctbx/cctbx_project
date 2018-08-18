@@ -3164,7 +3164,7 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
     assert [stdin_lines, file_name].count(None) == 1
 
     size_bytes = len(stdin_lines) if stdin_lines is not None else 0
-    command_to_run="phenix.reduce "
+    command_to_run="molprobity.reduce "
     if file_name is not None:
       assert os.path.isfile(file_name)
       size_bytes = os.path.getsize(file_name)
@@ -3185,7 +3185,6 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
         expected_runtime = size_in_mb * 2 * 2
     # print "expected_runtime", expected_runtime
     # now run parent init
-    # command_to_run="sleep 100"
     super(run_reduce_with_timeout, self).__init__(
         command=command_to_run,
         timeout=expected_runtime,

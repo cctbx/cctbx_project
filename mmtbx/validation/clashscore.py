@@ -5,6 +5,7 @@ All-atom contact analysis.  Requires Reduce and Probe (installed separately).
 
 from __future__ import division
 from mmtbx.validation import validation, atoms, atom_info, residue
+from mmtbx.utils import run_reduce_with_timeout
 from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
@@ -612,20 +613,22 @@ def check_and_add_hydrogen(
     # set reduce running parameters
     if verbose:
       print "\nAdding H/D atoms with reduce...\n"
-    build = "molprobity.reduce -oh -his -flip -keep -allalt -limit{}"
+    build = "-oh -his -flip -keep -allalt -limit{}"
     if not do_flips : build += " -pen9999"
     if nuclear:
       build += " -nuc -"
     else:
       build += " -"
     build = build.format(time_limit)
-    trim = "molprobity.reduce -quiet -trim -"
+    trim = " -quiet -trim -"
     stdin_lines = r.as_pdb_string(cryst_sym)
-    clean_out = easy_run.fully_buffered(trim,stdin_lines=stdin_lines)
+    clean_out = run_reduce_with_timeout(parameters=trim,stdin_lines=stdin_lines)
     if (clean_out.return_code != 0) :
       msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
       raise Sorry(msg_str % (trim, "\n".join(clean_out.stderr_lines)))
-    build_out = easy_run.fully_buffered(build,stdin_lines=clean_out.stdout_lines)
+    build_out = run_reduce_with_timeout(
+        parameters=build,
+        stdin_lines=clean_out.stdout_lines)
     if (build_out.return_code != 0) :
       msg_str = "Reduce crashed with command '%s' - dumping stderr:\n%s"
       raise Sorry(msg_str % (build, "\n".join(build_out.stderr_lines)))
@@ -699,8 +702,9 @@ class nqh_flips (validation) :
   def __init__ (self, pdb_hierarchy) :
     re_flip = re.compile(":FLIP")
     validation.__init__(self)
-    reduce_out = easy_run.fully_buffered("molprobity.reduce -BUILD -",
-      stdin_lines=pdb_hierarchy.as_pdb_string())
+    reduce_out = run_reduce_with_timeout(
+        parameters="-BUILD -",
+        stdin_lines=pdb_hierarchy.as_pdb_string())
     from mmtbx.validation import utils
     use_segids = utils.use_segids_in_place_of_chainids(
       hierarchy=pdb_hierarchy)

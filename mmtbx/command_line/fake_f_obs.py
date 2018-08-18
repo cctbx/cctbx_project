@@ -12,6 +12,7 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
 from mmtbx.tls import ladp
+from mmtbx.utils import run_reduce_with_timeout
 import mmtbx.tls.tools
 import mmtbx.f_model
 import iotbx.phil
@@ -375,7 +376,8 @@ def run(args, log = sys.stdout):
   pdb_file_name = processed_args.pdb_file_names[0]
   if(params.f_obs.f_calc.atomic_model.add_hydrogens):
     pdb_file_name_r = os.path.basename(pdb_file_name)+"_reduce"
-    easy_run.go("phenix.reduce %s > %s"% (pdb_file_name, pdb_file_name_r))
+    # easy_run.go("phenix.reduce %s > %s"% (pdb_file_name, pdb_file_name_r))
+    run_reduce_with_timeout(file_name=pdb_file_name, parameters=" > %s" % pdb_file_name_r)
     pdb_file_name = pdb_file_name_r
   pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
   pdbi_params = mmtbx.monomer_library.pdb_interpretation.master_params.extract()

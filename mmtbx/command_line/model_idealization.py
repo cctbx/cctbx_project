@@ -5,7 +5,7 @@ import sys, os
 import datetime
 from time import time
 from libtbx.utils import Sorry, multi_out, null_out
-from libtbx import Auto, easy_pickle, group_args, easy_run
+from libtbx import Auto, easy_pickle, group_args
 import libtbx.load_env
 from scitbx.array_family import flex
 from cStringIO import StringIO
@@ -603,9 +603,9 @@ class model_idealization():
       assert (libtbx.env.has_module(name="reduce"))
 
       input_str = self.model.model_as_pdb(do_not_shift_back=True)
-      build = "phenix.reduce" + " -quiet -build -allalt -NUC -"
-      output = easy_run.fully_buffered(build,
-                                   stdin_lines=input_str)
+      output = mmtbx.utils.run_reduce_with_timeout(
+          parameters=" -quiet -build -allalt -NUC -",
+          stdin_lines=input_str)
       p = mmtbx.model.manager.get_default_pdb_interpretation_params()
       p.pdb_interpretation.use_neutron_distances=True
       p.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
