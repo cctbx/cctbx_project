@@ -34,6 +34,7 @@ filter
     .multiple = True
   n_obs {
     min = 15
+      .type = int
       .help = Minimum number of observations for subsequent processing
   }
   a_list
@@ -370,12 +371,9 @@ class Script(object):
     application(self.params)
 
   def run(self):
-    print('''Mock run, merge some data.''')
+    print('''Initializing and validating phil...''')
+
     self.initialize()
-
-    #experiments, reflections = self.load_data()
-    #print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
-
     self.validate()
 
     # do other stuff

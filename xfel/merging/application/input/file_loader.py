@@ -46,8 +46,12 @@ class file_loader(object):
     from cctbx.crystal import symmetry
     from dials.array_family import flex
 
+
     experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
     reflections = easy_pickle.load(reflections_filename)
+
+    #from IPython import embed; embed()
+
     mapped_reflections = flex.reflection_table()
 
     for experiment_id, experiment in enumerate(experiments):
@@ -98,7 +102,44 @@ class Script(Script_Base):
     experiments, reflections = self.load_data()
     print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
 
+
+    from IPython import embed; embed()
+
+
     # do other stuff
+    count = {}
+    average_intensity = {}
+    esd = {}
+    rmsd = {}
+    hkl_cur = (0,0,0)
+
+    for i, ref in enumerate(reflections):
+       hkl = ref.get('miller_index')
+       if ( hkl_cur != hkl ): # new hkl
+           hkl_cur = hkl
+           average_intensity[hkl]     = ref.get('intensity.sum.value')
+           esd[hkl]                   = ref.get('intensity.sum.variance')
+           rmsd[hkl]                  = 0
+           count[hkl]                 = 1
+       else: # same hkl
+           average_intensity[hkl]    += ref.get('intensity.sum.value')
+           esd[hkl]                  += ref.get('intensity.sum.variance')
+           count[hkl]                += 1
+
+    for hkl in average_intensity:
+        average_intensity[hkl] /= count[hkl]
+        esd[hkl] /= count[hkl]
+
+    for i, ref in enumerate(reflections):
+        hkl = ref.get('miller_index')
+        rmsd[hkl] += (ref.get('intensity.sum.value') - average_intensity[hkl]) ** 2
+
+    for hkl in rmsd:
+        rmsd[hkl] /= count[hkl]
+        rmsd[hkl] = rmsd[hkl] ** 0.5
+
+    print ('Symmetry-independent relections intensities: %d; esd: %d; rmsd: %d'%(len(average_intensity), len(esd), len(rmsd)))
+
     return
 
 if __name__ == '__main__':
