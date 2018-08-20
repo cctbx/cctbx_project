@@ -167,14 +167,18 @@ class fully_buffered_subprocess(fully_buffered_base):
       close_fds=(sys.platform != 'win32'),
       preexec_fn=os.setsid)
     if timeout is not None:
-      r = [None, None]
-      thread = threading.Thread(target=target, args=(p, stdin_lines, r))
-      thread.start()
-      thread.join(timeout)
-      if thread.is_alive():
-        os.killpg(os.getpgid(p.pid), signal.SIGTERM)
-        thread.join()
-      o, e = r[0], r[1]
+      if sys.platform != 'win32':
+        r = [None, None]
+        thread = threading.Thread(target=target, args=(p, stdin_lines, r))
+        thread.start()
+        thread.join(timeout)
+        if thread.is_alive():
+          os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+          thread.join()
+        o, e = r[0], r[1]
+      else: # sys.platform == 'win32'
+        # don't respect timeout for now
+        o, e = p.communicate(input=stdin_lines)
     else:
       o, e = p.communicate(input=stdin_lines)
     if (stdout_splitlines):
