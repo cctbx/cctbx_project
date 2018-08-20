@@ -382,12 +382,12 @@ class GoniometerFactory:
         axis_names.append(cbf_handle.get_value())
         axis = []
         for i in range(3):
-          cbf_handle.find_column("vector[%i]" %(i+1))
+          cbf_handle.find_column("vector[%i]" % (i+1))
           axis.append(float(cbf_handle.get_value()))
         axes.append(axis)
         cbf_handle.find_column("depends_on")
         depends_on.append(cbf_handle.get_value())
-        cbf_handle.next_row()
+      cbf_handle.next_row()
 
     # find the starting angles of each goniometer axis and figure out which one
     # is the scan axis (i.e. non-zero angle_increment)
@@ -395,7 +395,9 @@ class GoniometerFactory:
     for i in range(cbf_handle.count_rows()):
       cbf_handle.find_column("axis_id")
       axis_name = cbf_handle.get_value()
-      if axis_name not in axis_names: continue
+      if axis_name not in axis_names:
+        cbf_handle.next_row()
+        continue
       cbf_handle.find_column("angle_start")
       axis_angle = float(cbf_handle.get_value())
       cbf_handle.find_column("angle_increment")
