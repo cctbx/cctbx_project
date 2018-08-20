@@ -143,9 +143,8 @@ class fully_buffered_subprocess(fully_buffered_base):
     # Timeout functionality based on:
     # https://stackoverflow.com/questions/1191374/using-module-subprocess-with-timeout
     # https://stackoverflow.com/questions/4789837/how-to-terminate-a-python-subprocess-launched-with-shell-true
-    command = "exec " + command
     if (sys.platform == 'darwin'):   # bypass SIP on OS X 10.11
-      command = ("DYLD_LIBRARY_PATH=%s "%\
+      command = ("DYLD_LIBRARY_PATH=%s exec "%\
                  os.environ.get("DYLD_LIBRARY_PATH","")) + command
     if (stdin_lines is not None):
       if (not isinstance(stdin_lines, str)):
