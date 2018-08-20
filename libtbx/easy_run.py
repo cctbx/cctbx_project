@@ -165,7 +165,7 @@ class fully_buffered_subprocess(fully_buffered_base):
       stderr=stderr,
       universal_newlines=True,
       close_fds=(sys.platform != 'win32'),
-      preexec_fn=os.setsid)
+      preexec_fn=os.setsid if sys.platform != 'win32' else None)
     if timeout is not None:
       if sys.platform != 'win32':
         r = [None, None]
