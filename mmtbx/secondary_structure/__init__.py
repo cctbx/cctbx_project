@@ -124,7 +124,7 @@ secondary_structure
                Alternative is to allow H-bonds between chains. Can be \
                much slower with ss_by_chain=False. If your model is complete \
                use ss_by_chain=True. If your model is many fragments, use \
-               ss_by_chain=False. 
+               ss_by_chain=False.
        .short_caption = Secondary structure by chain
        .expert_level = 1
      max_rmsd = 1

@@ -1,5 +1,4 @@
 from __future__ import division
-import iotbx.phil
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.lbfgs
 import mmtbx.refinement.minimization_ncs_constraints

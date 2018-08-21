@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import os
 import subprocess
 import sys
-from threading import Timer
 import threading
 import signal
 
