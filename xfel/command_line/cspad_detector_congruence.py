@@ -152,6 +152,71 @@ def get_bounds(root, pg):
   else:
     return panel_bounds(root, pg)
 
+def detector_plot_dict(params, detector, data, title, units_str, show=True, reverse_colormap=False):
+  """
+  Use matplotlib to plot a detector, color coding panels according to data
+  @param detector detector reference detector object
+  @param data python dictionary of panel names as keys and numbers as values
+  @param title title string for plot
+  @param units_str string with a formatting statment for units on each panel
+  """
+  # initialize the color map
+  values = flex.double(data.values())
+  norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
+  if reverse_colormap:
+    cmap = plt.cm.get_cmap(params.colormap + "_r")
+  else:
+    cmap = plt.cm.get_cmap(params.colormap)
+  sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+  if len(values) == 0:
+    print "no values"
+    return
+  elif len(values) == 1:
+    sm.set_array(np.arange(values[0], values[0], 1)) # needed for colorbar
+  else:
+    sm.set_array(np.arange(flex.min(values), flex.max(values), (flex.max(values)-flex.min(values))/20)) # needed for colorbar
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111, aspect='equal')
+  max_dim = 0
+  root = detector.hierarchy()
+  rf = col(root.get_fast_axis())
+  rs = col(root.get_slow_axis())
+  for pg_id, pg in enumerate(iterate_detector_at_level(root, 0, params.hierarchy_level)):
+    if pg.get_name() not in data:
+      continue
+    # get panel coordinates
+    p0, p1, p2, p3 = get_bounds(root, pg)
+
+    v1 = p1-p0
+    v2 = p3-p0
+    vcen = ((v2/2) + (v1/2)) + p0
+
+    # add the panel to the plot
+    ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color=sm.to_rgba(data[pg.get_name()]), fill=True))
+    ax.annotate("%d %s"%(pg_id, units_str%data[pg.get_name()]), vcen[0:2], ha='center')
+
+    if params.draw_normal_arrows:
+      pgn = col(pg.get_normal())
+      v = col((rf.dot(pgn), rs.dot(pgn), 0))
+      v *= 10000
+      ax.arrow(vcen[0], vcen[1], v[0], v[1], head_width=5.0, head_length=10.0, fc='k', ec='k')
+
+    # find the plot maximum dimensions
+    for p in [p0, p1, p2, p3]:
+      for c in p[0:2]:
+        if abs(c) > max_dim:
+          max_dim = abs(c)
+
+  # plot the results
+  ax.set_xlim((-max_dim,max_dim))
+  ax.set_ylim((-max_dim,max_dim))
+  ax.set_xlabel("mm")
+  ax.set_ylabel("mm")
+  fig.colorbar(sm)
+  plt.title(title)
+  if show:
+    plt.show()
 
 class Script(object):
   ''' Class to parse the command line options. '''
@@ -740,80 +805,14 @@ class Script(object):
 
     if params.show_plots:
       # Plot the results
-      self.detector_plot_dict(detectors[0], refl_counts, u"%sN reflections"%tag, u"%6d", show=False)
-      #self.detector_plot_dict(detectors[0], delta_normals, u"%sAngle between normal vectors (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
-      self.detector_plot_dict(detectors[0], z_angles, u"%sZ rotation angle between panels (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
-      self.detector_plot_dict(detectors[0], f_deltas, u"%sFast displacements between panels (microns)"%tag, u"%4.1f", show=False)
-      self.detector_plot_dict(detectors[0], s_deltas, u"%sSlow displacements between panels (microns)"%tag, u"%4.1f", show=False)
-      self.detector_plot_dict(detectors[0], z_offsets_d, u"%sZ offsets along detector normal (microns)"%tag, u"%4.1f", show=False)
-      self.detector_plot_dict(detectors[0], z_deltas, u"%sZ displacements between panels (microns)"%tag, u"%4.1f", show=False)
-      self.detector_plot_dict(detectors[0], o_deltas, u"%sOverall displacements between panels (microns)"%tag, u"%4.1f", show=False)
-      plt.show()
-
-  def detector_plot_dict(self, detector, data, title, units_str, show=True, reverse_colormap=False):
-    """
-    Use matplotlib to plot a detector, color coding panels according to data
-    @param detector detector reference detector object
-    @param data python dictionary of panel names as keys and numbers as values
-    @param title title string for plot
-    @param units_str string with a formatting statment for units on each panel
-    """
-    # initialize the color map
-    values = flex.double(data.values())
-    norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
-    if reverse_colormap:
-      cmap = plt.cm.get_cmap(self.params.colormap + "_r")
-    else:
-      cmap = plt.cm.get_cmap(self.params.colormap)
-    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
-    if len(values) == 0:
-      print "no values"
-      return
-    elif len(values) == 1:
-      sm.set_array(np.arange(values[0], values[0], 1)) # needed for colorbar
-    else:
-      sm.set_array(np.arange(flex.min(values), flex.max(values), (flex.max(values)-flex.min(values))/20)) # needed for colorbar
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, aspect='equal')
-    max_dim = 0
-    root = detector.hierarchy()
-    rf = col(root.get_fast_axis())
-    rs = col(root.get_slow_axis())
-    for pg_id, pg in enumerate(iterate_detector_at_level(root, 0, self.params.hierarchy_level)):
-      if pg.get_name() not in data:
-        continue
-      # get panel coordinates
-      p0, p1, p2, p3 = get_bounds(root, pg)
-
-      v1 = p1-p0
-      v2 = p3-p0
-      vcen = ((v2/2) + (v1/2)) + p0
-
-      # add the panel to the plot
-      ax.add_patch(Polygon((p0[0:2],p1[0:2],p2[0:2],p3[0:2]), closed=True, color=sm.to_rgba(data[pg.get_name()]), fill=True))
-      ax.annotate("%d %s"%(pg_id, units_str%data[pg.get_name()]), vcen[0:2], ha='center')
-
-      if self.params.draw_normal_arrows:
-        pgn = col(pg.get_normal())
-        v = col((rf.dot(pgn), rs.dot(pgn), 0))
-        v *= 10000
-        ax.arrow(vcen[0], vcen[1], v[0], v[1], head_width=5.0, head_length=10.0, fc='k', ec='k')
-
-      # find the plot maximum dimensions
-      for p in [p0, p1, p2, p3]:
-        for c in p[0:2]:
-          if abs(c) > max_dim:
-            max_dim = abs(c)
-
-    # plot the results
-    ax.set_xlim((-max_dim,max_dim))
-    ax.set_ylim((-max_dim,max_dim))
-    ax.set_xlabel("mm")
-    ax.set_ylabel("mm")
-    fig.colorbar(sm)
-    plt.title(title)
-    if show:
+      detector_plot_dict(self.params, detectors[0], refl_counts, u"%sN reflections"%tag, u"%6d", show=False)
+      #detector_plot_dict(self.params, detectors[0], delta_normals, u"%sAngle between normal vectors (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
+      detector_plot_dict(self.params, detectors[0], z_angles, u"%sZ rotation angle between panels (\N{DEGREE SIGN})"%tag, u"%.2f\N{DEGREE SIGN}", show=False)
+      detector_plot_dict(self.params, detectors[0], f_deltas, u"%sFast displacements between panels (microns)"%tag, u"%4.1f", show=False)
+      detector_plot_dict(self.params, detectors[0], s_deltas, u"%sSlow displacements between panels (microns)"%tag, u"%4.1f", show=False)
+      detector_plot_dict(self.params, detectors[0], z_offsets_d, u"%sZ offsets along detector normal (microns)"%tag, u"%4.1f", show=False)
+      detector_plot_dict(self.params, detectors[0], z_deltas, u"%sZ displacements between panels (microns)"%tag, u"%4.1f", show=False)
+      detector_plot_dict(self.params, detectors[0], o_deltas, u"%sOverall displacements between panels (microns)"%tag, u"%4.1f", show=False)
       plt.show()
 
 if __name__ == '__main__':

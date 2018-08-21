@@ -333,7 +333,7 @@ def reflection_wavelength_from_pixels(experiments, reflections):
   table['reflection_wavelength_from_pixels'] = wavelengths
   return table
 
-from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name, get_center
+from xfel.command_line.cspad_detector_congruence import iterate_detector_at_level, iterate_panels, id_from_name, get_center, detector_plot_dict
 from xfel.command_line.cspad_detector_congruence import Script as DCScript
 class Script(DCScript):
   ''' Class to parse the command line options. '''
@@ -1049,11 +1049,11 @@ class ResidualsPlotter(object):
 
       if params.plots.grouped_stats:
         # Plots with single values per panel
-        self.detector_plot_dict(detector, refl_counts, u"%s N reflections"%t, u"%6d", show=False)
-        self.detector_plot_dict(detector, rmsds, "%s Positional RMSDs (microns)"%t, u"%4.1f", show=False)
-        self.detector_plot_dict(detector, radial_rmsds, "%s Radial RMSDs (microns)"%t, u"%4.1f", show=False)
-        self.detector_plot_dict(detector, transverse_rmsds, "%s Transverse RMSDs (microns)"%t, u"%4.1f", show=False)
-        self.detector_plot_dict(detector, ttdpcorr, r"%s $\Delta2\Theta$ vs. $\Delta\Psi$ CC"%t, u"%5.3f", show=False)
+        detector_plot_dict(self.params, detector, refl_counts, u"%s N reflections"%t, u"%6d", show=False)
+        detector_plot_dict(self.params, detector, rmsds, "%s Positional RMSDs (microns)"%t, u"%4.1f", show=False)
+        detector_plot_dict(self.params, detector, radial_rmsds, "%s Radial RMSDs (microns)"%t, u"%4.1f", show=False)
+        detector_plot_dict(self.params, detector, transverse_rmsds, "%s Transverse RMSDs (microns)"%t, u"%4.1f", show=False)
+        detector_plot_dict(self.params, detector, ttdpcorr, r"%s $\Delta2\Theta$ vs. $\Delta\Psi$ CC"%t, u"%5.3f", show=False)
 
       if params.plots.unit_cell_histograms: self.plot_unitcells(experiments)
       if params.plots.stats_by_2theta:      self.plot_data_by_two_theta(reflections, tag)
