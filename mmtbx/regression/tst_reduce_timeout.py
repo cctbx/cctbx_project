@@ -40,6 +40,7 @@ def exercise(prefix="tst_reduce_timeout_1"):
   assert t1-t0 < 0.1
   assert rr.return_code == -15
 
+  t0 = time()
   rr = run_reduce_with_timeout(
       stdin_lines=model_1yjp,
       file_name=None,
