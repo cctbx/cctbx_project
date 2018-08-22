@@ -294,7 +294,7 @@ class installer (object) :
     packages += ['cython', 'hdf5', 'h5py', 'numpy', 'pythonextra', 'docutils']
     packages += ['libsvm', 'lz4_plugin']
     # Development and testing packages.
-    packages += ['pytest', 'junitxml']
+    packages += ['pytest']
     # GUI packages.
     if options.build_gui or options.build_all or options.download_only:
       packages += [
@@ -705,7 +705,6 @@ Installation of Python packages may fail.
       'libsvm',
       'pytest',
       'pythonextra',
-      'junitxml',
       'hdf5',
       'h5py',
       'biopython',
@@ -1017,10 +1016,6 @@ _replace_sysconfig_paths(build_time_vars)
       package_version=DOCUTILS_VERSION,
       confirm_import_module="docutils",
     )
-
-  def build_junitxml(self):
-    self.build_python_module_pip(
-      'junit-xml', package_version=JUNIT_XML_VERSION)
 
   def build_pytest(self):
     self.build_python_module_pip(
