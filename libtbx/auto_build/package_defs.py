@@ -84,8 +84,8 @@ SCIPY_VERSION = "1.0.0"
 SCIKIT_LEARN_VERSION = "0.19.1"
 
 # HDF5
-BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/"
-HDF5_PKG = "hdf5-1.10.2.tar.bz2"
+BASE_HDF5_PKG_URL = "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.3/src/"
+HDF5_PKG = "hdf5-1.10.3.tar.bz2"
 
 # GUI dependencies
 LIBPNG_PKG = "libpng-1.5.26.tar.gz"
