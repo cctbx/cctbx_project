@@ -1092,10 +1092,9 @@ _replace_sysconfig_paths(build_time_vars)
       confirm_import_module="mpi4py")
 
   def build_py2app(self):
-    self.build_python_module_simple(
-      pkg_url=BASE_CCI_PKG_URL,
-      pkg_name=PY2APP_PKG,
-      pkg_name_label="py2app",
+    self.build_python_module_pip(
+      package_name='py2app',
+      package_version=PY2APP_VERSION,
       confirm_import_module="py2app")
 
   def build_reportlab(self):

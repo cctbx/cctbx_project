@@ -70,6 +70,7 @@ H5PY_VERSION="2.8.0"
 MOCK_VERSION="2.0.0"
 NUMPY_VERSION="1.13.3"
 PILLOW_VERSION = "4.2.1"
+PY2APP_VERSION="0.7.3"
 PYTEST_VERSION = "3.6.4"
 PYTEST_XDIST_VERSION = "1.22.5"
 SIX_VERSION="1.11.0"
@@ -122,8 +123,6 @@ if (sys.platform.startswith("linux")):
   distribution = platform.dist()
   if ( (distribution[0] == 'redhat') and (distribution[1].startswith('5')) ):
     MATPLOTLIB_PKG = "matplotlib-1.5.1.tar.gz"
-
-PY2APP_PKG = "py2app-0.7.3.tar.gz"                    # Mac only
 
 PYOPENGL_PKG = "PyOpenGL-3.1.0.tar.gz"
 # https://pypi.python.org/pypi/Send2Trash
@@ -272,7 +271,7 @@ def fetch_all_dependencies (dest_dir,
         FONTCONFIG_PKG, RENDER_PKG, XRENDER_PKG, XFT_PKG, PIXMAN_PKG,
         CAIRO_PKG, HARFBUZZ_PKG, PANGO_PKG, ATK_PKG, TIFF_PKG, GTK_PKG,
         GTK_ENGINE_PKG, GTK_THEME_PKG, FONT_PKG, WXPYTHON_PKG,
-        MATPLOTLIB_PKG, PY2APP_PKG, SEND2TRASH_PKG,
+        MATPLOTLIB_PKG, SEND2TRASH_PKG,
       ] :
       fetch_package(pkg_name)
 
