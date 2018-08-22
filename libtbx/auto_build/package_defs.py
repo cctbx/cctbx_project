@@ -49,8 +49,8 @@ def get_pypi_package_information(package, version=None, information_only=False):
   return package
 
 DEPENDENCIES_BASE = "https://cdn.rawgit.com/dials/dependencies/master/"
-OPENSSL_PKG = "openssl-1.0.2n.tar.gz"    # OpenSSL
-PYTHON3_PKG = "Python-3.6.5.tgz"
+OPENSSL_PKG = "openssl-1.0.2p.tar.gz"    # OpenSSL
+PYTHON3_PKG = "Python-3.7.0.tgz"
 PYTHON_PKG = "Python-2.7.15.tgz"
 
 # from CCI
@@ -63,22 +63,22 @@ IPYTHON_PKG = "ipython-3.2.1.tar.gz"     # IPython
 LIBSVM_PKG = "libsvm-3.17_cci.tar.gz"
 
 # from PyPi
-CYTHON_VERSION="0.27.3"
-DOCUTILS_VERSION="0.12"
+CYTHON_VERSION = "0.28.5"
+DOCUTILS_VERSION = "0.14"
 FUTURE_VERSION="0.16"
 H5PY_VERSION="2.8.0"
 JUNIT_XML_VERSION="1.7"
 MOCK_VERSION="2.0.0"
 NUMPY_VERSION="1.13.3"
 PILLOW_VERSION = "4.2.1"
-PYTEST_VERSION="3.4.1"
-PYTEST_XDIST_VERSION="1.22.2"
+PYTEST_VERSION = "3.6.4"
+PYTEST_XDIST_VERSION = "1.22.5"
 SIX_VERSION="1.11.0"
-SPHINX_VERSION="1.7.2" # for documentation
+SPHINX_VERSION = "1.7.7" # for documentation
 MPI4PY_VERSION="3.0.0"
-JINJA2_VERSION = "2.9.6"
-ORDEREDSET_VERSION = "2.0"
-PROCRUNNER_VERSION = "0.6.1"
+JINJA2_VERSION = "2.10"
+ORDEREDSET_VERSION = "2.0.1"
+PROCRUNNER_VERSION = "0.7.0"
 TABULATE_VERSION = "0.8.2"
 SCIPY_VERSION = "1.0.0"
 SCIKIT_LEARN_VERSION = "0.19.1"
