@@ -1424,16 +1424,10 @@ _replace_sysconfig_paths(build_time_vars)
     os.chdir(self.tmp_dir)
 
   def build_wxpython(self):
-    if self.wxpython4:
-      print "Building wxPython4 is currently not supported and will most " \
-            "likely fail until wxPython 4.0.2 is released"
-      # 4.0.2 will contain the fix for https://github.com/wxWidgets/Phoenix/issues/780
+    if self.wxpython4 or self.python3:
       self.build_python_module_pip(
-        'wxPython', package_version="4.0.1",
+        'wxPython', package_version="4.0.3",
         confirm_import_module='wx')
-      return
-    if self.python3:
-      print "Skipping installation of wxPython3 - no point doing this on Python3"
       return
 
     pkg_log = self.start_building_package("wxPython")
