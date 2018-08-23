@@ -175,10 +175,6 @@ class model_idealization():
     self.master_map = None # Map for only one NCS copy, or == reference_map if no NCS
     self.init_ref_map = None # separate map for initial GM. Should be tighter than the 2 above
 
-    self.whole_grm = None
-    self.master_grm = None
-    self.working_grm = None
-
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     params.pdb_interpretation.peptide_link.ramachandran_restraints = True
@@ -429,15 +425,6 @@ class model_idealization():
           hierarchy=self.model.get_hierarchy(),
           log=log)
 
-  def get_grm(self):
-    # first make whole grm using self.whole_pdb_h
-    self.model.get_restraints_manager()
-    self.whole_grm = self.model.get_restraints_manager()
-    # set SS restratins
-    self.set_ss_restraints(self.ann)
-    # now select part of it for working with master hierarchy
-    # self.update_grms()
-
   def _setup_model_h(self):
     if self.model_h is not None:
       return
@@ -506,7 +493,10 @@ class model_idealization():
     t_0 = time()
     self.ann = self.model.get_ss_annotation()
 
-    self.get_grm()
+    self.model.get_restraints_manager()
+    # set SS restratins
+    self.set_ss_restraints(self.ann)
+
     self.model.setup_ncs_constraints_groups()
 
     self.init_model_statistics = self.get_statistics(self.model)
