@@ -51,7 +51,9 @@ class manager(object):
         compute_gradients=False
         make_header("Initializing AMBER", out=log)
         print >> log, "  topology    : %s" % params.amber.topology_file_name
-        print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
+        print >> log, "  atom order  : %s" % params.amber.order_file_name
+        if params.amber.coordinate_file_name:
+          print >> log, "  coordinates : %s" % params.amber.coordinate_file_name
         from amber_adaptbx import interface
         self.amber_structs, sander = interface.get_amber_struct_object(params)
         self.sander=sander # used for cleanup
