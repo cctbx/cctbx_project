@@ -31,6 +31,8 @@ import mmtbx.refinement.real_space.fit_residues
 import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 
+from elbow.command_line.ready_set import model_interface as ready_set_model_interface
+
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
 master_params_str = """
@@ -267,6 +269,7 @@ class model_idealization():
       self.model.remove_alternative_conformations(always_keep_one_conformer=True)
 
     self.model = self.model.remove_hydrogens()
+    self.model_h = None
 
     self.time_for_init = time()-t_0
 
@@ -435,6 +438,69 @@ class model_idealization():
     # now select part of it for working with master hierarchy
     # self.update_grms()
 
+  def _setup_model_h(self):
+    if self.model_h is not None:
+      return
+    if not self.model.has_hd():
+      self.model_h = ready_set_model_interface(
+          model=self.model,
+          params=["add_h_to_water=False",
+                  "optimise_final_geometry_of_hydrogens=True"],
+          )
+    else:
+      self.model_h = self.model.deep_copy()
+    params_h = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params_h.pdb_interpretation.use_neutron_distances=True
+    params_h.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
+    params_h.pdb_interpretation.ncs_search.exclude_selection="water"
+    self.model_h.set_pdb_interpretation_params(params_h)
+    self.model_h.get_restraints_manager()
+    self.model_h.idealize_h_riding()
+    self.model_h.setup_ncs_constraints_groups(filter_groups=True)
+    self.model_h._update_master_sel()
+
+  def _update_model_h(self):
+    if self.model_h is None:
+      self._setup_model_h()
+    # transfer coords model -> model_h
+    sc = self.model_h.get_sites_cart()
+    sc.set_selected(~self.model_h.get_hd_selection(), self.model.get_sites_cart())
+    self.model_h.set_sites_cart(sc)
+    self.model_h.idealize_h_riding()
+
+
+  def idealize_rotamers(self):
+    print >> self.log, "Fixing rotamers..."
+    self.log.flush()
+    if self.params.debug:
+      self.shift_and_write_result(
+        model = self.model,
+        fname_suffix="just_before_rota")
+    # run reduce
+    assert (libtbx.env.has_module(name="reduce"))
+    assert (libtbx.env.has_module(name="elbow"))
+
+    self._update_model_h()
+
+    result = mmtbx.refinement.real_space.fit_residues.run(
+        vdw_radii         = self.model_h.get_vdw_radii(),
+        bselection        = self.model_h.get_master_selection(),
+        pdb_hierarchy     = self.model_h.get_hierarchy(),
+        crystal_symmetry  = self.model.crystal_symmetry(),
+        map_data          = self.master_map,
+        rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
+        sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
+        backbone_sample   = False,
+        mon_lib_srv       = self.model_h.get_mon_lib_srv(),
+        log               = self.log)
+    self.model.set_sites_cart(
+        sites_cart = result.pdb_hierarchy.select(~self.model_h.get_hd_selection()).atoms().extract_xyz(),
+        update_grm = True)
+    self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
+    if self.params.debug:
+      self.shift_and_write_result(
+          model = self.model,
+          fname_suffix="rota_ideal")
 
   def run(self):
     t_0 = time()
@@ -592,52 +658,9 @@ class model_idealization():
     # fixing remaining rotamer outliers
     if (self.params.additionally_fix_rotamer_outliers and
         self.after_loop_idealization.rotamer.outliers > 0.004):
+      self.idealize_rotamers()
 
-      print >> self.log, "Fixing rotamers..."
-      self.log.flush()
-      if self.params.debug:
-        self.shift_and_write_result(
-          model = self.model,
-          fname_suffix="just_before_rota")
-      # run reduce
-      assert (libtbx.env.has_module(name="reduce"))
 
-      input_str = self.model.model_as_pdb(do_not_shift_back=True)
-      output = mmtbx.utils.run_reduce_with_timeout(
-          parameters=" -quiet -build -allalt -NUC -",
-          stdin_lines=input_str)
-      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      p.pdb_interpretation.use_neutron_distances=True
-      p.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
-      p.pdb_interpretation.ncs_search.exclude_selection="water"
-      h_input = iotbx.pdb.input(lines=output.stdout_lines, source_info=None)
-      h_model = mmtbx.model.manager(model_input = h_input,
-          process_input=True,
-          restraint_objects=self.model._restraint_objects,
-          pdb_interpretation_params=p)
-      sel = h_model.get_hd_selection()
-      h_model.setup_ncs_constraints_groups(filter_groups=True)
-      h_model._update_master_sel()
-
-      result = mmtbx.refinement.real_space.fit_residues.run(
-          vdw_radii         = h_model.get_vdw_radii(),
-          bselection        = h_model.get_master_selection(),
-          pdb_hierarchy     = h_model.get_hierarchy(),
-          crystal_symmetry  = self.model.crystal_symmetry(),
-          map_data          = self.master_map,
-          rotamer_manager   = mmtbx.idealized_aa_residues.rotamer_manager.load(),
-          sin_cos_table     = scitbx.math.sin_cos_table(n=10000),
-          backbone_sample   = False,
-          mon_lib_srv       = h_model.get_mon_lib_srv(),
-          log               = self.log)
-      self.model.set_sites_cart(
-          sites_cart = result.pdb_hierarchy.select(~sel).atoms().extract_xyz(),
-          update_grm = True)
-      self.model.set_sites_cart_from_hierarchy(multiply_ncs=True)
-    if self.params.debug:
-      self.shift_and_write_result(
-          model = self.model,
-          fname_suffix="rota_ideal")
 
     self.after_rotamer_fixing = self.get_statistics(self.model)
     ref_hierarchy_for_final_gm = self.original_boxed_hierarchy
