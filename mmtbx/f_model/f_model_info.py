@@ -338,7 +338,7 @@ class info(object):
 
     loop = iotbx.cif.model.loop(
       header=(
-        #"_refine_ls_shell.pdbx_refine_id",
+        "_refine_ls_shell.pdbx_refine_id",
         #"_refine_ls_shell.pdbx_total_number_of_bins_used",
         "_refine_ls_shell.d_res_high",
         "_refine_ls_shell.d_res_low",
@@ -358,6 +358,7 @@ class info(object):
     for bin in self.bins:
       d_max, d_min = [float(d) for d in bin.d_range.split('-')]
       loop.add_row((
+        '?',
         round_2_for_cif(d_min),
         round_2_for_cif(d_max),
         bin.n_work,
