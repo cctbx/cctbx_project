@@ -310,12 +310,13 @@ class geometry(object):
       result = result.swapcase()
     print >> log, result
 
-  def as_cif_block(self, cif_block=None):
+  def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
     if cif_block is None:
       cif_block = iotbx.cif.model.block()
     cif_block["_refine.pdbx_stereochemistry_target_values"] = \
       self.restraints_source
     loop = iotbx.cif.model.loop(header=(
+      "_refine_ls_restr.pdbx_refine_id",
       "_refine_ls_restr.type",
       "_refine_ls_restr.number",
       "_refine_ls_restr.dev_ideal",
@@ -327,11 +328,11 @@ class geometry(object):
     res = self.result()
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
-    loop.add_row(("f_bond_d",           b.n, round_4_for_cif(b.mean), "?", "?"))
-    loop.add_row(("f_angle_d",          a.n, round_4_for_cif(a.mean), "?", "?"))
-    loop.add_row(("f_chiral_restr",     c.n, round_4_for_cif(c.mean), "?", "?"))
-    loop.add_row(("f_plane_restr",      p.n, round_4_for_cif(p.mean), "?", "?"))
-    loop.add_row(("f_dihedral_angle_d", d.n, round_4_for_cif(d.mean), "?", "?"))
+    loop.add_row((pdbx_refine_id, "f_bond_d",           b.n, round_4_for_cif(b.mean), "?", "?"))
+    loop.add_row((pdbx_refine_id, "f_angle_d",          a.n, round_4_for_cif(a.mean), "?", "?"))
+    loop.add_row((pdbx_refine_id, "f_chiral_restr",     c.n, round_4_for_cif(c.mean), "?", "?"))
+    loop.add_row((pdbx_refine_id, "f_plane_restr",      p.n, round_4_for_cif(p.mean), "?", "?"))
+    loop.add_row((pdbx_refine_id, "f_dihedral_angle_d", d.n, round_4_for_cif(d.mean), "?", "?"))
     cif_block.add_loop(loop)
     return cif_block
 
@@ -556,7 +557,12 @@ class info(object):
     # XXX Neutron data?
 
     if self.geometry is not None:
-      cif_block = self.geometry.as_cif_block(cif_block=cif_block)
+      pdbx_refine_id = ''
+      if self.data_x is not None:
+        pdbx_refine_id = 'X-ray'
+      if self.data_n is not None:
+        pdbx_refine_id = 'Neutron' if self.data_x is None else 'X-ray+Neutron'
+      cif_block = self.geometry.as_cif_block(cif_block=cif_block, pdbx_refine_id=pdbx_refine_id)
     if self.adp is not None:
       cif_block = self.adp.as_cif_block(cif_block=cif_block)
       cif_block["_reflns.B_iso_Wilson_estimate"] = round_2_for_cif(self.wilson_b)
