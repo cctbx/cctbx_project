@@ -153,6 +153,7 @@ def atom_type_cif_loop(xray_structure, format="mmcif"):
   scattering_type_registry = xray_structure.scattering_type_registry()
   unique_gaussians = scattering_type_registry.unique_gaussians_as_list()
   max_n_gaussians = max([gaussian.n_terms() for gaussian in unique_gaussians])
+  max_n_gaussians = max(max_n_gaussians, 4) # Need for compliance with mmcif_pdbx_v50
   # _atom_type_* loop
   header = ['_atom_type%ssymbol' %separator,
             '_atom_type%sscat_dispersion_real' %separator,
