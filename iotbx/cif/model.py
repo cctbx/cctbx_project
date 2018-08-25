@@ -12,6 +12,7 @@ from cctbx.array_family import flex
 
 class cif(DictMixin):
   def __init__(self, blocks=None):
+    self._errors = None
     if blocks is not None:
       self.blocks = OrderedDict(blocks)
     else:
@@ -80,17 +81,20 @@ class cif(DictMixin):
   def validate(self, dictionary, show_warnings=True, error_handler=None, out=None):
     if out is None: out = sys.stdout
     from iotbx.cif import validation
-    errors = {}
+    self._errors = {}
     if error_handler is None:
       error_handler = validation.ErrorHandler()
     for key, block in self.blocks.iteritems():
       error_handler = error_handler.__class__()
       dictionary.set_error_handler(error_handler)
       block.validate(dictionary)
-      errors.setdefault(key, error_handler)
+      self._errors.setdefault(key, error_handler)
       if error_handler.error_count or error_handler.warning_count:
         error_handler.show(show_warnings=show_warnings, out=out)
     return error_handler
+
+  def get_errors(self):
+    return self._errors
 
   def sort(self, recursive=False, key=None, reverse=False):
     self.blocks = OrderedDict(sorted(self.blocks.items(), key=key, reverse=reverse))
