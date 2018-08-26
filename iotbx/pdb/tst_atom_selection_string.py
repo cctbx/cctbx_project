@@ -808,6 +808,17 @@ ATOM      9  CA aVAL A   1      -4.195   1.706  13.326  0.50 16.74           C
   assert isel.size()==1
   h0 = h.select(isel)
   assert approx_equal(h0.atoms().extract_xyz()[0][0], -4.890)
+  ###
+  # case 1
+  isel = asc.selection("chain A resseq 1 and altid a").iselection()
+  assert isel.size()==1
+  h0 = h.select(isel)
+  assert approx_equal(h0.atoms().extract_xyz()[0][0], -4.195)
+  # case 2
+  isel = asc.selection("chain A resseq 1 and altid A").iselection()
+  assert isel.size()==1
+  h0 = h.select(isel)
+  assert approx_equal(h0.atoms().extract_xyz()[0][0], -4.890)
 
 if __name__=='__main__':
   test_get_clean_selection_string()
