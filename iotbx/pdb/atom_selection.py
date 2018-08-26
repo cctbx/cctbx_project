@@ -205,7 +205,8 @@ class cache(slots_getstate_setstate):
     return _get_map_string(
       map=self.altloc,
       pattern=pattern,
-      wildcard_escape_char=self.wildcard_escape_char)
+      wildcard_escape_char=self.wildcard_escape_char,
+      unconditionally_case_insensitive=False)
 
   def get_resname(self, pattern):
     return _get_map_string(
