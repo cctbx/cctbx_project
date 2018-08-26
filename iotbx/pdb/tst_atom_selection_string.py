@@ -4,6 +4,7 @@ from iotbx.pdb.atom_selection import get_clean_selection_string
 from mmtbx.ncs.ncs_search import get_chains_info
 from scitbx.array_family import flex
 import iotbx.pdb
+from libtbx.test_utils import approx_equal
 
 test_pdb_1 = '''\
 CRYST1  577.812  448.715  468.790  90.00  90.00  90.00 P 1
@@ -786,6 +787,28 @@ def test_13():
   # print tsel
   assert tsel == "(chain 'A' and (resid 260 through 261 or (resid 262 and (name N or name CA or name C or name O )) or resid 301))"
 
+def test_14():
+  """
+  Test correct handling of altloc upper and lower cases.
+  """
+  lines = """
+CRYST1   45.640   40.754   30.275  90.00  90.00  90.00 P 21 21 21
+ATOM      2  CA AVAL A   1      -4.890   1.653  12.849  0.50 13.49           C
+ATOM      9  CA aVAL A   1      -4.195   1.706  13.326  0.50 16.74           C
+  """
+  h = iotbx.pdb.input(source_info=None, lines=lines).construct_hierarchy()
+  asc = h.atom_selection_cache()
+  # case 1
+  isel = asc.selection("chain A resseq 1 and altloc a").iselection()
+  assert isel.size()==1
+  h0 = h.select(isel)
+  assert approx_equal(h0.atoms().extract_xyz()[0][0], -4.195)
+  # case 2
+  isel = asc.selection("chain A resseq 1 and altloc A").iselection()
+  assert isel.size()==1
+  h0 = h.select(isel)
+  assert approx_equal(h0.atoms().extract_xyz()[0][0], -4.890)
+
 if __name__=='__main__':
   test_get_clean_selection_string()
   test_selection_string_from_selection()
@@ -806,5 +829,5 @@ if __name__=='__main__':
   test_11()
   test_12()
   test_13()
-
+  test_14()
   print "OK"
