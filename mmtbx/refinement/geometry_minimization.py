@@ -55,25 +55,18 @@ def add_rotamer_restraints(
       mon_lib_srv=None,
       rotamer_manager=None):
   pdb_hierarchy_for_proxies = mmtbx.utils.switch_rotamers(
-    pdb_hierarchy  = pdb_hierarchy.deep_copy(),
-    mode           = "exact_match",
-    accept_allowed = accept_allowed,
-    selection      = selection,
-    mon_lib_srv    = mon_lib_srv,
-    rotamer_manager= rotamer_manager)
-  mmtbx.utils.switch_rotamers(
-    pdb_hierarchy  = pdb_hierarchy,
+    pdb_hierarchy  = pdb_hierarchy,#.deep_copy(),
     mode           = mode,
     accept_allowed = accept_allowed,
     selection      = selection,
     mon_lib_srv    = mon_lib_srv,
     rotamer_manager= rotamer_manager)
   restraints_manager.geometry.add_chi_torsion_restraints_in_place(
-      pdb_hierarchy   = pdb_hierarchy_for_proxies,
-      sites_cart      = pdb_hierarchy_for_proxies.atoms().extract_xyz(),
-      chi_angles_only = True,
-      sigma           = sigma)
-  return pdb_hierarchy, restraints_manager
+    pdb_hierarchy   = pdb_hierarchy_for_proxies,
+    sites_cart      = pdb_hierarchy_for_proxies.atoms().extract_xyz(),
+    chi_angles_only = True,
+    sigma           = sigma)
+  return pdb_hierarchy_for_proxies, restraints_manager
 
 class run2(object):
   def __init__(self,
