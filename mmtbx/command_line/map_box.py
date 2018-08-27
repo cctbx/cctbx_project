@@ -457,6 +457,7 @@ Parameters:"""%h
     crystal_symmetry=inputs.crystal_symmetry)
   xray_structure.show_summary(f=log)
   #
+  if not params.selection: params.selection="all"
   selection = pdb_hierarchy.atom_selection_cache().selection(
     string = params.selection)
   if selection.size():
