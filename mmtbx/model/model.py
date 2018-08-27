@@ -833,17 +833,15 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
     # here we are outputting a huge number of restraints
-    #
-    if (self.all_chain_proxies is not None
-        and self.all_chain_proxies.cif is not None):
+    if (self.all_chain_proxies is not None):
+      restraints = self.all_chain_proxies.extract_restraints_as_cif_blocks()
       # should writing ALL restraints be optional?
       skip_residues = one_letter_given_three_letter.keys() + ['HOH']
-      restraints = self.all_chain_proxies.cif
       keys = restraints.keys()
       for key in keys:
         if key.replace('comp_', '') in skip_residues:
           del restraints[key]
-      cif.update(self.all_chain_proxies.cif)
+      cif.update(restraints)
     cif.show(out=out, align_columns=align_columns)
     return out.getvalue()
 

@@ -1133,8 +1133,11 @@ class monomer_mapping(slots_getstate_setstate):
             self.apply_mod(mod_mod_id=mmid["DIL_chir_02_both"])
           elif (d_aa_rn == "DTH"):
             self.apply_mod(mod_mod_id=mmid["DTH_chir_02_both"])
+      cif_object = self.monomer.cif_object
       if (self.incomplete_info is None):
         self.resolve_unexpected()
+      # strange behaviour of mods destroys cif_object
+      self.monomer.cif_object = cif_object
     if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
       apply_cif_links_mm_pdbres_dict[self.pdb_residue_id_str].setdefault(
         self.i_conformer, []).append(self)
@@ -2399,8 +2402,7 @@ class build_chain_proxies(object):
         fatal_problem_max_lines=10,
                ):
     if restraints_loading_flags is None: restraints_loading_flags={}
-    import iotbx.cif.model
-    self.cif = iotbx.cif.model.cif()
+    self._cif = cif_output_holder()
     self.pdb_link_records = {}
     self.conformation_dependent_restraints_list = \
       conformation_dependent_restraints_list
@@ -2489,11 +2491,11 @@ class build_chain_proxies(object):
         chainid=residue.parent().parent().id,
         specific_residue_restraints=specific_residue_restraints)
       if mm.monomer and mm.monomer.cif_object:
+        self._cif.chem_comps.append(mm.monomer.chem_comp)
         if specific_residue_restraints:
-          self.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
+          self._cif.cif["comp_specific_%s" % residue.resname.strip()] = mm.monomer.cif_object
         else:
-          self.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
-
+          self._cif.cif["comp_%s" % residue.resname.strip()] = mm.monomer.cif_object
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -2922,6 +2924,18 @@ class geometry_restraints_proxy_registries(object):
         "Number of resolved parallelity restraint conflicts: %d"
           % self.planarity.n_resolved_conflicts)
 
+class cif_output_holder:
+  def __init__(self):
+    import iotbx.cif.model
+    self.cif = iotbx.cif.model.cif()
+    self.chem_comps = []
+
+  def update(self, other):
+    self.cif.update(other.cif)
+    for cc in other.chem_comps:
+      if cc not in self.chem_comps:
+        self.chem_comps.append(cc)
+
 from mmtbx.monomer_library.linking_mixins import linking_mixins
 
 class build_all_chain_proxies(linking_mixins):
@@ -2944,12 +2958,7 @@ class build_all_chain_proxies(linking_mixins):
         carbohydrate_callback=None,
         restraints_loading_flags=None,
                 ):
-    import iotbx.cif.model
-    # assert [pdb_inp, pdb_hierarchy].count(None) == 1
-    # MARKED_FOR_DELETION_OLEG
-    # Reason: sub-optimal place for store this kind of information.
-    # Proposal: not available yet, needs to be discussed.
-    self.cif = iotbx.cif.model.cif()
+    self._cif = cif_output_holder()
     # Proposal: use origin id in proxies.
     self.pdb_link_records = {}
     # END_MARKED_FOR_DELETION_OLEG
@@ -3226,7 +3235,7 @@ class build_all_chain_proxies(linking_mixins):
             apply_restraints_specifications=apply_restraints_specifications,
             log=log,
             )
-          self.cif.update(chain_proxies.cif)
+          self._cif.update(chain_proxies._cif)
           assert not chain_proxies.pdb_link_records
           self.conformation_dependent_restraints_list = \
             chain_proxies.conformation_dependent_restraints_list
@@ -3500,6 +3509,18 @@ class build_all_chain_proxies(linking_mixins):
     # pdb_hierarchy convert these back to an af_shared_atom array
     state["pdb_atoms"] = [ hroot.atoms()[i] for i in state["pdb_atoms"] ]
     self.__dict__.update( state )
+
+  def extract_restraints_as_cif_blocks(self):
+    chem_comp_loops = []
+    for cc in self._cif.chem_comps:
+      chem_comp_loops.append(cc.as_cif_loop())
+    for key, block in self._cif.cif.items():
+      for cc in chem_comp_loops:
+        cc_id = cc.get('_chem_comp.id')[0]
+        if key=='comp_%s' % cc_id:
+          block.add_loop(cc)
+          break
+    return self._cif.cif
 
   def update_internals_due_to_coordinates_change(self, pdb_h):
     self.pdb_hierarchy = pdb_h
@@ -4851,7 +4872,7 @@ class build_all_chain_proxies(linking_mixins):
       ))
       loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
       cif_block.add_loop(loop)
-      self.cif["link_SS"] = cif_block
+      self._cif["link_SS"] = cif_block
       # FIXME missing loop contents in some situations
       #disulfide_cif_block = iotbx.cif.model.block()
       #disulfide_cif_loop = iotbx.cif.model.loop(header=(
@@ -5054,7 +5075,7 @@ class build_all_chain_proxies(linking_mixins):
       ))
       loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
       cif_block.add_loop(loop)
-      self.cif["link_SS"] = cif_block
+      self._cif.cif["link_SS"] = cif_block
       #cif_block = iotbx.cif.model.block()
       #loop = iotbx.cif.model.loop(header=(
       #  "_phenix.link_id",

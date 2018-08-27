@@ -68,18 +68,35 @@ class looped_data(object):
       print >> f, "_%s.%s: %s" % (
         self.__class__.__name__, key, getattr(self, key))
 
-  def show_loop_header(self, f):
+  def show_loop_header(self, f=None):
+    if (f is None): f = sys.stdout
     print >> f, "loop_"
     for key in self.cif_keywords():
       print >> f, "_%s.%s" % (
         self.__class__.__name__, key)
 
-  def show_loop_data(self, f):
+  def generate_loop_data(self):
+    rc = []
     for key in self.cif_keywords():
       val = getattr(self, key)
       if (val in (None, "")): val = "."
+      yield val
+
+  def show_loop_data(self, f=None):
+    if (f is None): f = sys.stdout
+    for val in self.generate_loop_data():
       print >> f, val,
     print >> f
+
+  def as_cif_loop(self):
+    import iotbx
+    out_loop = iotbx.cif.model.loop(
+      header=['_%s.%s' % (self.__class__.__name__, x) for x in self.cif_keywords()])
+    row = []
+    for val in self.generate_loop_data():
+      row.append(val)
+    out_loop.add_row(row)
+    return out_loop
 
 def show_loop(data_list, f):
   first = True

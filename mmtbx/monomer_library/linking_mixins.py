@@ -302,7 +302,7 @@ class linking_mixins(object):
                                   log                         = None,
                                   verbose                     = False,
                                   ):
-    assert hasattr(self, "cif")
+    assert hasattr(self, "_cif")
     if max_bonded_cutoff is None:
       max_bonded_cutoff = max(metal_coordination_cutoff,
                               amino_acid_bond_cutoff,
@@ -752,7 +752,7 @@ Residue classes
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs[0] # odd?
         if verbose: print "predefined residue named link",key
-        self.cif["link_%s" % key] = link.cif_object
+        self._cif.cif["link_%s" % key] = link.cif_object
         continue
       #
       #if atoms_must_be:
@@ -796,7 +796,7 @@ Residue classes
         links.setdefault(key, [])
         links[key].append([atom_group1, atom_group2])
         links[key][-1]+=bond_i_seqs
-        self.cif["link_%s" % key] = cif
+        self._cif.cif["link_%s" % key] = cif
         continue
       elif link:
         count, bond_i_seqs = _apply_link_using_proxies(
