@@ -339,8 +339,13 @@ Parameters:"""%h
     raise Sorry("Cannot set both keep_map_size and bounds")
   if (params.upper_bounds and not params.lower_bounds):
     raise Sorry("Please set lower_bounds if you set upper_bounds")
-  if (params.extract_unique and not params.resolution):
-    raise Sorry("Please set resolution for extract_unique")
+  if (params.extract_unique):
+    if (not params.resolution):
+      raise Sorry("Please set resolution for extract_unique")
+    if (not params.molecular_mass) and (not params.sequence_file):
+      raise Sorry("Please set molecular_mass or a sequence file for extract_unique")
+    if (not params.symmetry) and (not params.symmetry_file):
+      raise Sorry("Please set symmetry or symmetry_file for extract_unique")
 
   if params.keep_input_unit_cell_and_grid and (
       (params.output_unit_cell_grid is not None ) or
