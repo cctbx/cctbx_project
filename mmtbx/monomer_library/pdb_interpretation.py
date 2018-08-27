@@ -4872,7 +4872,7 @@ class build_all_chain_proxies(linking_mixins):
       ))
       loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
       cif_block.add_loop(loop)
-      self._cif["link_SS"] = cif_block
+      self._cif.cif["link_SS"] = cif_block
       # FIXME missing loop contents in some situations
       #disulfide_cif_block = iotbx.cif.model.block()
       #disulfide_cif_loop = iotbx.cif.model.loop(header=(
