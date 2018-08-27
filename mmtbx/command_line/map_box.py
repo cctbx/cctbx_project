@@ -117,11 +117,10 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Symmetry
   symmetry_file = None
     .type = path
-    .help = Symmetry file to be offset based on origin shift.\
+    .help = Symmetry file.\
             Symmetry or symmetry_file required if extract_unique=True.  \
             May be a \
-            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file. \
-            Must be specified by keyword as in: symmetry_file=xxx.ncs_spec.
+            Phenix .ncs_spec file or BIOMTR records or a resolve ncs file.
     .short_caption = Symmetry file
 
   sequence_file = None
@@ -146,7 +145,8 @@ master_phil = libtbx.phil.parse("""
 
   extract_unique = False
     .type = bool
-    .help = Extract unique part of map. Requires symmetry_file or symmetry and\
+    .help = Extract unique part of map. Requires either symmetry_file or \
+            symmetry and\
             either sequence file or molecular mass to be supplied. If chain \
             type is not protein it should be set as well.
     .short_caption = Extract unique
@@ -157,7 +157,7 @@ master_phil = libtbx.phil.parse("""
     .short_caption = Get remainder
 
 
-  chain_type = *None PROTEIN DNA RNA
+  chain_type = None *PROTEIN DNA RNA
     .type = choice
     .help = Chain type. Only used if extract_unique is set. Has minor effect \
             in setting thresholds for identification of molecular region.\
@@ -196,20 +196,22 @@ master_phil = libtbx.phil.parse("""
 
   keep_origin = True
     .type=bool
-    .help = If True, write out map, map_coefficients, and model \
+    .help = Write out map, map_coefficients, and model \
             with origin in original location.  \
-            If false, shifted origin to (0,0,0).  \
-            NOTE: The unit_cell for all output will be the \
-              map_box unit cell unless output_unit_cell is specified. \
-             Only the origin is kept/shifted.\
+            If False, shift the origin to (0,0,0).  \
+            NOTE: to cut out a part of a map, shift the origin to (0,0,0),\
+               and make a new small map use keep_origin=False\
+               keep_input_unit_cell_and_grid=False
     .short_caption = Keep origin
 
   keep_input_unit_cell_and_grid = True
      .type = bool
-     .help = You can keep the input unit_cell dimensions and unit_cell_grid. \
-             Same as specifying output_unit_cell with the input unit cell \
-              dimensions and output_unit_cell_grid with the input grid for the \
-              unit cell.
+     .help = Keep the input unit_cell dimensions and unit_cell_grid. \
+             If False, use the dimensions and grid of the cut out box as the \
+              unit cell map_box dimensions and grid.\
+            NOTE: to cut out a part of a map, shift the origin to (0,0,0),\
+               and make a new small map set keep_origin=False and \
+               keep_input_unit_cell_and_grid=False
      .short_caption = Keep input unit cell and grid
 
   output_unit_cell = None
