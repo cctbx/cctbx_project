@@ -111,18 +111,22 @@ ATOM     96  HB2BSER A   5      29.498 -20.638  45.691  0.36 22.55           H
 ATOM     97  HB3BSER A   5      28.462 -20.665  46.898  0.36 23.83           H
 ATOM     98  HG BSER A   5      27.486 -22.196  46.000  0.36 22.10           H
 TER
-HETATM   99  O   HOH B   1      25.202 -21.329 -23.306  1.00 30.00           O
-HETATM  100  D1  HOH B   1      25.963 -20.763 -23.255  1.00 30.00           D
-HETATM  101  D2  HOH B   1      24.439 -20.764 -23.305  1.00 30.00           D
-HETATM  102  O   HOH B   2      26.442 -21.454 -25.349  1.00 30.00           O
-HETATM  103  D1  HOH B   2      27.249 -20.953 -25.339  1.00 30.00           D
-HETATM  104  O   HOH B   3      24.970 -18.184 -24.460  1.00 30.00           O
-HETATM  105  O   HOH B   4      21.573 -23.174 -24.023  1.00 30.00           O
-HETATM  106  D2  HOH B   4      20.731 -22.736 -24.071  1.00 30.00           D
-HETATM  107  D1 AHOH B   4      22.045 -22.784 -23.297  1.00 30.00           D
-HETATM  108  D1 BHOH B   4      22.145 -21.784 -22.297  1.00 30.00           D
-HETATM  109  D1  HOH B   5      21.772 -27.767 -28.880  1.00 30.00           D
-TER
+HETATM  100  O   DOD B   1      25.202 -21.329 -23.306  1.00 30.00           O
+HETATM  101  D1  DOD B   1      25.963 -20.763 -23.255  1.00 30.00           D
+HETATM  102  D2  DOD B   1      24.439 -20.764 -23.305  1.00 30.00           D
+HETATM  103  O   HOH B   2      26.442 -21.454 -25.349  1.00 30.00           O
+HETATM  104  D1  HOH B   2      27.249 -20.953 -25.339  1.00 30.00           D
+HETATM  105  O   HOH B   3      24.970 -18.184 -24.460  1.00 30.00           O
+HETATM  106  O   HOH B   4      21.573 -23.174 -24.023  1.00 30.00           O
+HETATM  107  D2  HOH B   4      20.731 -22.736 -24.071  1.00 30.00           D
+HETATM  108  D1 AHOH B   4      22.045 -22.784 -23.297  1.00 30.00           D
+HETATM  109  D1 BHOH B   4      22.145 -21.784 -22.297  1.00 30.00           D
+HETATM  110  D1  HOH B   5      21.772 -27.767 -28.880  1.00 30.00           D
+HETATM  111  O   DOD B   6      17.493 -24.723 -25.229  1.00 20.00           O
+HETATM  112  D1  DOD B   6      17.492 -25.660 -25.470  1.00 20.00           D
+HETATM  113  D2  DOD B   6      18.304 -24.255 -25.470  1.00 20.00           D
+HETATM  114  D3  DOD B   6      16.682 -24.254 -25.470  1.00 20.00           D
+TER     115      HOH B   6
 HETATM    1  PG  ATP C   1       3.232  -0.948  -8.256  1.00 20.00      A    P
 HETATM    2  O1G ATP C   1       4.490  -0.168  -7.985  1.00 20.00      A    O
 HETATM    3  O2G ATP C   1       2.572  -0.420  -9.500  1.00 20.00      A    O-1
@@ -168,7 +172,6 @@ HETATM   42 HN62 ATP C   1       1.445   0.610   7.769  1.00 20.00      A    H
 HETATM   43  H2  ATP C   1      -2.804  -0.294   6.573  1.00 20.00      A    H
 TER
 END
-
 """
 
 # exercise1 a) The C beta DB2 and DB3 atoms are swapped
@@ -552,6 +555,7 @@ def get_results_from_validate_H(neutron_distances, pdb_str):
   model = mmtbx.model.manager(
       model_input = pdb_inp,
       build_grm   = True,
+      stop_for_unknowns = False,
       pdb_interpretation_params = pi_params)
 
   c = validate_H(model = model,
@@ -588,12 +592,12 @@ def exercise():
   hd_atoms_with_occ_0 = oc.hd_atoms_with_occ_0
 
   assert (oc.count_h == 42)
-  assert (oc.count_d == 36)
+  assert (oc.count_d == 39)
   assert (oc.count_h_protein == 30)
   assert (oc.count_d_protein == 29)
   assert (oc.count_h_water == 0)
-  assert (oc.count_d_water == 7)
-  assert (oc.count_water == 5)
+  assert (oc.count_d_water == 10)
+  assert (oc.count_water == 5 + 1)
   assert (oc.count_water_0h == 1)
   assert (oc.count_water_1h == 1)
   assert (oc.count_water_2h == 1)

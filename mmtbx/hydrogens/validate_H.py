@@ -376,6 +376,7 @@ class validate_H(object):
     count_h_water, count_d_water = 0, 0
     count_water = 0
     count_water_0h, count_water_1h, count_water_2h = 0, 0, 0
+    count_water_more_h = 0
     count_water_altconf = 0
     count_water_no_oxygen = 0
     hd_atoms_with_occ_0 = []
@@ -406,6 +407,8 @@ class validate_H(object):
               count_water_0h += 1
             elif count_o_in_rg == 0:
               count_water_no_oxygen += 1
+            elif count_hd_in_rg > 2:
+              count_water_more_h += 1
       for atom in residue_group.atoms():
         resname = atom.parent().resname
         if (get_class(name=resname) in protein):
@@ -413,47 +416,41 @@ class validate_H(object):
             continue
           count_hd_atoms_protein += 1
           if (atom.occ == 0):
-            hd_atoms_with_occ_0.append(
-                                       (atom.id_str(),
-                                        atom.xyz))
+            hd_atoms_with_occ_0.append((atom.id_str(), atom.xyz))
           if (atom.occ <1 and atom.occ > 0 and atom.parent().altloc == ''):
             single_hd_atoms_occ_lt_1.append(
                                             (atom.id_str(),
                                              atom.occ,
                                              atom.xyz))
-          if (is_hydrogen(atom)):
-            count_h_protein += 1
-          elif (is_deuterium(atom)):
-            count_d_protein += 1
+          if (is_hydrogen(atom)):    count_h_protein += 1
+          elif (is_deuterium(atom)): count_d_protein += 1
         elif (get_class(name=resname) == 'common_water'):
-          if (is_hydrogen(atom)):
-            count_h_water += 1
-          elif (is_deuterium(atom)):
-            count_d_water += 1
+          if (is_hydrogen(atom)):    count_h_water += 1
+          elif (is_deuterium(atom)): count_d_water += 1
     assert (count_hd_atoms_protein == count_h_protein + count_d_protein)
     assert (count_water_1h + count_water_2h + count_water_0h + \
-      count_water_altconf + count_water_no_oxygen == count_water)
+      count_water_altconf + count_water_no_oxygen + count_water_more_h == count_water)
     assert (count_water == n_water)
 
     count_h_other = count_h - count_h_protein - count_h_water
     count_d_other = count_d - count_d_protein - count_d_water
 
     self.overall_counts_hd = group_args(
-      count_h               = count_h,
-      count_d               = count_d,
-      count_h_protein       = count_h_protein,
-      count_d_protein       = count_d_protein,
-      count_h_water         = count_h_water,
-      count_d_water         = count_d_water,
-      count_h_other         = count_h_other,
-      count_d_other         = count_d_other,
-      count_water           = count_water,
-      count_water_0h        = count_water_0h,
-      count_water_1h        = count_water_1h,
-      count_water_2h        = count_water_2h,
-      count_water_altconf   = count_water_altconf,
-      count_water_no_oxygen = count_water_no_oxygen,
-      hd_atoms_with_occ_0   = hd_atoms_with_occ_0,
+      count_h                  = count_h,
+      count_d                  = count_d,
+      count_h_protein          = count_h_protein,
+      count_d_protein          = count_d_protein,
+      count_h_water            = count_h_water,
+      count_d_water            = count_d_water,
+      count_h_other            = count_h_other,
+      count_d_other            = count_d_other,
+      count_water              = count_water,
+      count_water_0h           = count_water_0h,
+      count_water_1h           = count_water_1h,
+      count_water_2h           = count_water_2h,
+      count_water_altconf      = count_water_altconf,
+      count_water_no_oxygen    = count_water_no_oxygen,
+      hd_atoms_with_occ_0      = hd_atoms_with_occ_0,
       single_hd_atoms_occ_lt_1 = single_hd_atoms_occ_lt_1
       )
 
