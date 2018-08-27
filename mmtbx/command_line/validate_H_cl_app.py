@@ -192,6 +192,7 @@ Usage:
     pi_params = pdb_interpretation_phil.extract()
     pi_params.pdb_interpretation.use_neutron_distances = \
       self.work_params.use_neutron_distances
+    #pi_params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     #pi_params.pdb_interpretation.restraints_library.cdl=False
     return pi_params
 
@@ -208,6 +209,7 @@ Usage:
         model_input               = self.pdb_inp,
 #        process_input             = True,
         build_grm                 = True,
+        stop_for_unknowns         = False,
         pdb_interpretation_params = pi_params,
         restraint_objects         = self.input_objects.cif_objects)
 
