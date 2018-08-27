@@ -130,55 +130,33 @@ class Script(Script_Base):
 
     print("Rank %d managed to distribute %d of %d reflections"%(rank, total_distributed_reflections, len(reflections)))
 
-    def average_reflection_intensities(self, reflections):
-         count = {}
-    average_intensity = {}
-    esd = {}
-    rmsd = {}
-    hkl_cur = (0,0,0) # current hkl
+  # Given a list of reflections (assume it's the same hkl), caclulate their intensity statistics
+  def calc_reflection_intensity_stats(self, reflections):
 
-    #from IPython import embed; embed()
+    if( len(reflections) == 0 ):
+      return ()
 
-    for i, ref in enumerate(self.reflections):
-      hkl = ref.get('miller_index_asymmetric')
-      #print('\nhkl: %s'% str(hkl))
+    count = 0
+    average_intensity = 0.0
+    esd = 0.0
+    rmsd = 0.0
 
-      if( hkl_cur != hkl ): # encountered a new hkl
+    for ref in reflections:
+      #hkl = ref.get('miller_index_asymmetric')
+      average_intensity   += ref.get('intensity.sum.value')
+      esd                 += ref.get('intensity.sum.variance')
+      count               += 1
 
-        # verify that the new hkl is not present in the dictionary
-        if( hkl in average_intensity ):
-          print ("HKL %s was encountered previously" % str(hkl))
+    average_intensity /= count
+    esd /= count
 
-        if(hkl_cur != {0,0,0} and hkl < hkl_cur):
-          print("HKL out of order: hkl_cur=%s; hkl=%s"%(hkl_cur,hkl))
+    for ref in reflections:
+      rmsd += (ref.get('intensity.sum.value') - average_intensity) ** 2
 
-        hkl_cur = hkl # update current hkl
-        average_intensity[hkl]     = ref.get('intensity.sum.value')
-        esd[hkl]                   = ref.get('intensity.sum.variance')
-        rmsd[hkl]                  = 0
-        count[hkl]                 = 1
+    rmsd /= count
+    rmsd = rmsd ** 0.5
 
-      else: # hkl hasn't changed - keep averaging for the current hkl
-        average_intensity[hkl]    += ref.get('intensity.sum.value')
-        esd[hkl]                  += ref.get('intensity.sum.variance')
-        count[hkl]                += 1
-
-    for hkl in average_intensity:
-        average_intensity[hkl] /= count[hkl]
-        esd[hkl] /= count[hkl]
-
-    for i, ref in enumerate(self.reflections):
-        hkl = ref.get('miller_index_asymmetric')
-        rmsd[hkl] += (ref.get('intensity.sum.value') - average_intensity[hkl]) ** 2
-
-    for hkl in rmsd:
-        rmsd[hkl] /= count[hkl]
-        rmsd[hkl] = rmsd[hkl] ** 0.5
-        #if(rmsd[hkl]==0):
-        #  print('\nZero rmsd: hkl: %s; count: %d'% (str(hkl),count[hkl]) )
-
-
-
+    return (average_intensity, count, esd, rmsd)
 
   def run(self, comm):
 
@@ -257,8 +235,8 @@ class Script(Script_Base):
 
       self.distribute_reflections_over_hkl_chunks(rank=rank, reflections=reflections, chunks=chunks)
 
-      #######################################
-      # ALL TO ALL
+      #######################################################################
+      # ALL TO ALL: EACH RANK GETS ALL CHUNKS OF THE SAME KIND FROM ALL RANKS
       received_chunks = comm.alltoall(chunks)
       received_chunks_count = len(received_chunks)
       print ("\nAfter ALL-TO-ALL rank %d received %d chunks of hkl-intensity dictionaries" % (rank, received_chunks_count) )
@@ -266,7 +244,7 @@ class Script(Script_Base):
         min_hkl = str(min(received_chunks[chunk_index]))
         max_hkl = str(max(received_chunks[chunk_index]))
         print("Rank: %d; Chunk: %d; Size: %d; Min HKL: %s; Max HKL: %s" % (rank, chunk_index, len(received_chunks[chunk_index]), min_hkl, max_hkl))
-      ########################################
+      ########################################################################
 
       ###################################################################
       # EACH RANK CONSOLIDATING ALL REFLECTION LISTS FROM RECEIVED CHUNKS
@@ -275,11 +253,12 @@ class Script(Script_Base):
           received_chunks[0][hkl] += received_chunks[chunk_index][hkl]
       ###################################################################
 
-      ########################################################
+      ######################################################################################################
       # EACH RANK MERGING
+      hkl_intensity_stats = {}
       for hkl in received_chunks[0]:
-        merge_intensities(reflections=received_chunks[0][hkl])
-      ########################################################
+        hkl_intensity_stats[hkl] = self.calc_reflection_intensity_stats(reflections=received_chunks[0][hkl])
+      ######################################################################################################
     else:
        print ("\nRank %d received no data" % rank)
 
