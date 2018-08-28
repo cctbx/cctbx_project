@@ -5,88 +5,24 @@ import sys
 Functions for merging reflections
 """
 
-class hkl_intensity_merger(object):
-  def __init__(self, params, reflections):
-    self.params = params
-    self.reflections = reflections
-
-  def merge(self, comm):
-
-    rank = comm.Get_rank()
-
-    count = {}
-    average_intensity = {}
-    esd = {}
-    rmsd = {}
-    hkl_cur = (0,0,0) # current hkl
-
-    #from IPython import embed; embed()
-
-    for i, ref in enumerate(self.reflections):
-      hkl = ref.get('miller_index_asymmetric')
-      #print('\nhkl: %s'% str(hkl))
-
-      if( hkl_cur != hkl ): # encountered a new hkl
-
-        # verify that the new hkl is not present in the dictionary
-        if( hkl in average_intensity ):
-          print ("HKL %s was encountered previously" % str(hkl))
-
-        if(hkl_cur != {0,0,0} and hkl < hkl_cur):
-          print("HKL out of order: hkl_cur=%s; hkl=%s"%(hkl_cur,hkl))
-
-        hkl_cur = hkl # update current hkl
-        average_intensity[hkl]     = ref.get('intensity.sum.value')
-        esd[hkl]                   = ref.get('intensity.sum.variance')
-        rmsd[hkl]                  = 0
-        count[hkl]                 = 1
-
-      else: # hkl hasn't changed - keep averaging for the current hkl
-        average_intensity[hkl]    += ref.get('intensity.sum.value')
-        esd[hkl]                  += ref.get('intensity.sum.variance')
-        count[hkl]                += 1
-
-    for hkl in average_intensity:
-        average_intensity[hkl] /= count[hkl]
-        esd[hkl] /= count[hkl]
-
-    for i, ref in enumerate(self.reflections):
-        hkl = ref.get('miller_index_asymmetric')
-        rmsd[hkl] += (ref.get('intensity.sum.value') - average_intensity[hkl]) ** 2
-
-    for hkl in rmsd:
-        rmsd[hkl] /= count[hkl]
-        rmsd[hkl] = rmsd[hkl] ** 0.5
-        #if(rmsd[hkl]==0):
-        #  print('\nZero rmsd: hkl: %s; count: %d'% (str(hkl),count[hkl]) )
-
-    #print ('Symmetry-independent relections intensities - lenghts of output arrays: %d; esd: %d; rmsd: %d'%(len(average_intensity), len(esd), len(rmsd)))
-
-    print("\nRank %d has merged a list of %d reflections into a list of %d reflections; Multiplicity (min,max): (%d,%d); Intensity (min,max): (%d,%d); ESD (min,max): (%d,%d); RMSD (min,max): (%d,%d)"
-      % (rank, len(self.reflections), len(average_intensity), min(count.values()), max(count.values()),\
-      min(average_intensity.values()), max(average_intensity.values()), min(esd.values()), max(esd.values()), min(rmsd.values()), max(rmsd.values())))
-
-    #print ('Minimum and maximum reflection multiplicity: %d, %d'% (min(count.values()), max(count.values())) )
-    #print ('Minimum and maximum reflection intensity: %d, %d'% (min(average_intensity.values()), max(average_intensity.values())) )
-    #print ('Minimum and maximum reflection esd: %d, %d'% (min(esd.values()), max(esd.values())) )
-    #print ('Minimum and maximum reflection rmsd: %d, %d'% (min(rmsd.values()), max(rmsd.values())) )
-
-    return
-
 from xfel.merging.application.input.file_loader_mpi import Script as Script_Base
+from dials.array_family import flex
+
+def merging_reflection_table():
+  table = flex.reflection_table()
+  table['miller_index'] = flex.miller_index()
+  table['intensity']    = flex.double()
+  table['multiplicity'] = flex.int()
+  table['esd']          = flex.double()
+  table['rmsd']         = flex.double()
+  return table
 
 class Script(Script_Base):
   '''A class for running the script.'''
 
-  def merge_data(self, comm, reflections):
-    merger = hkl_intensity_merger(self.params, reflections)
-    merger.merge(comm = comm)
-    return
-
-  # given unit cell and space group info, generate all miller indexes
+  # given unit cell, space group info, and resolution, generate all miller indices
   def generate_all_miller_indices(self):
 
-    #from IPython import embed; embed()
     from cctbx import miller
     from cctbx.crystal import symmetry
 
@@ -106,35 +42,51 @@ class Script(Script_Base):
 
     return None
 
-  # for each reflection find an hkl chunk, containing the reflection's hkl; append that reflection to the list of reflections for that hkl
+  # For each reflection find an hkl chunk, containing the reflection's hkl; append that reflection to the list of reflections for that hkl
+  # Here we are assuming the input reflection list is sorted on miller indices
   def distribute_reflections_over_hkl_chunks(self, rank, reflections, chunks):
-    hkl_cur = (0,0,0) # current hkl
+
+    # initializations
+    hkl_cur = None # current hkl
     chunk_cur = None # chunk containing current hkl
+    index_min = -1 # the first index in the sorted reflection list, where we encounter an hkl
+    index_max = -1 # the (last + 1) index where we encounter the hkl
 
     #from IPython import embed; embed()
 
     total_distributed_reflections = 0
     for i, ref in enumerate(reflections):
       hkl = ref.get('miller_index_asymmetric')
-      #print('\nhkl: %s'% str(hkl))
-
       if( hkl_cur != hkl ): # encountered a new hkl
+        if( hkl_cur != None ): # if there exists a previous hkl and a chunk for it, add all of that hkl's reflections to the corresponding chunk
+          assert(index_min >= 0)
+          if( chunk_cur != None ):
+            index_max = i
+            #TODO: to avoid reflection list copying, use extend() instead of append()
+            #chunk_cur[hkl].extend(reflections[index_min:index_max])
+            for j in range(index_min, index_max):
+              chunk_cur[hkl_cur].append(reflections[j])
+            total_distributed_reflections += (index_max - index_min)
+          else:
+            #print("\nHKL: %s is not found in any of the chunks"%str(hkl))
+            pass
 
-        hkl_cur = hkl # update current hkl and its chunk
+        # update current hkl, its starting index, and its chunk id
+        hkl_cur = hkl
+        index_min = i
         chunk_cur = self.get_hkl_chunk(hkl=hkl, chunks=chunks)
-
-      # append a reflection to the list of reflections for the current hkl
-      if( chunk_cur != None ):
-        chunk_cur[hkl].append(ref)
-        total_distributed_reflections += 1
 
     print("Rank %d managed to distribute %d of %d reflections"%(rank, total_distributed_reflections, len(reflections)))
 
-  # Given a list of reflections (assume it's the same hkl), caclulate their intensity statistics
+  # Given a list of reflections, calculate their intensity statistics. Use case: a list of symmetry-equivalent reflections
   def calc_reflection_intensity_stats(self, reflections):
 
     if( len(reflections) == 0 ):
-      return ()
+      return dict()
+
+
+    # TODO: use library methods for the statistics
+
 
     count = 0
     average_intensity = 0.0
@@ -156,7 +108,10 @@ class Script(Script_Base):
     rmsd /= count
     rmsd = rmsd ** 0.5
 
-    return (average_intensity, count, esd, rmsd)
+    return {'average' : average_intensity,
+            'count' : count,
+            'esd' : esd,
+            'rmsd': rmsd}
 
   def run(self, comm):
 
@@ -164,41 +119,41 @@ class Script(Script_Base):
     rank_count = comm.Get_size()
 
     if( rank == 0 ):
+      ################
+      # GET FILE LIST
       self.initialize()
       self.validate()
       file_list = self.get_list()
-
       print("rank 0 got a list of %d items"%len(file_list))
 
-      ####################################################
-      # GENERATE ALL MILLER INDEXES
+      #############################
+      # GENERATE ALL MILLER INDICES
       full_miller_set = self.generate_all_miller_indices()
-      ####################################################
+      print("\nGenerated %d miller indices"%full_miller_set.indices().size())
 
-      #################################################################
-      # SPLIT MILLER INDEXES INTO CHUNKS
+      ###################################################################
+      # SPLIT MILLER INDICES INTO CHUNKS TO BE DISTRIBUTED OVER THE RANKS
       import numpy as np
       split_set = np.array_split(full_miller_set.indices(), rank_count)
-      #from IPython import embed; embed()
-      #print("\nSplit Miller set into %d sets"%split_set.size())
-      #################################################################
 
+      # within chunks, create an empty container for every hkl
       list_of_chunks_of_hkl_dictionaries = []
       for chunk in split_set:
-        chunk_of_hkl_dictionaries = {}
+        chunk_of_hkl_dictionaries = dict()
         for hkl_array in chunk:
           hkl = (hkl_array[0], hkl_array[1], hkl_array[2])
           chunk_of_hkl_dictionaries[hkl] = list()
         list_of_chunks_of_hkl_dictionaries.append(chunk_of_hkl_dictionaries)
 
-      print("\nGenerated %d chunks of hkl dictionaries"%len(list_of_chunks_of_hkl_dictionaries))
+      print("\nGenerated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
 
       #from IPython import embed; embed()
 
       #self.params.input.path = None # the input is already parsed
-      ################################################
-      # BROADCASTING
-      print ('Transmitting file list of length %d'%(len(file_list)))
+
+      #########################################
+      # BROADCAST WORK FROM RANK 0 TO ALL RANKS
+      print ('\nTransmitting file list of length %d'%(len(file_list)))
 
       transmitted = dict(params = self.params, options = self.options, file_list = file_list, list_of_chunks_of_hkl_dictionaries = list_of_chunks_of_hkl_dictionaries)
 
@@ -206,61 +161,83 @@ class Script(Script_Base):
       transmitted = None
 
     transmitted = comm.bcast(transmitted, root = 0)
-    ################################################
 
     self.params = transmitted['params']
     self.options = transmitted['options']
     new_file_list = transmitted['file_list'][rank::rank_count]
     chunks = transmitted['list_of_chunks_of_hkl_dictionaries']
     #from IPython import embed; embed()
-    print ("\nRank %d received a file list of %d jason-pickle file pairs as well as %d chunks of hkl dictionaries" % (rank, len(new_file_list), len(chunks)))
+    print ("\nRank %d received a file list of %d json-pickle file pairs and %d chunks of hkl containers" % (rank, len(new_file_list), len(chunks)))
 
     if( len(new_file_list) > 0 ):
       print ("\nRank %d: first file to load is: %s" % (rank, str(new_file_list[0])))
 
-      #########################################################
-      # EACH RANK LOADING DATA
+      ######################
+      # EACH RANK: LOAD DATA
       experiments, reflections = self.load_data(new_file_list)
       print ('\nRank %d has read %d experiments consisting of %d reflections'%(rank, len(experiments), len(reflections)))
-      #########################################################
 
-      #############################################################################
-      # EACH RANK DISTRIBUTING ITS REFLECTIONS, OVER ALL HKL CHUNKS
-      #############################################################################
-
+      #######################################################
+      # EACH RANK: DISTRIBUTE REFLECTIONS OVER ALL HKL CHUNKS
       for chunk_index in range(0, len(chunks)):
         min_hkl = str(min(chunks[chunk_index]))
         max_hkl = str(max(chunks[chunk_index]))
-        print("Rank: %d; Chunk: %d; Size: %d; Min HKL: %s; Max HKL: %s" % (rank, chunk_index, len(chunks[chunk_index]), min_hkl, max_hkl))
+        print("\nRank %d received chunk: %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (rank, chunk_index, len(chunks[chunk_index]), min_hkl, max_hkl))
 
       self.distribute_reflections_over_hkl_chunks(rank=rank, reflections=reflections, chunks=chunks)
-
-      #######################################################################
-      # ALL TO ALL: EACH RANK GETS ALL CHUNKS OF THE SAME KIND FROM ALL RANKS
-      received_chunks = comm.alltoall(chunks)
-      received_chunks_count = len(received_chunks)
-      print ("\nAfter ALL-TO-ALL rank %d received %d chunks of hkl-intensity dictionaries" % (rank, received_chunks_count) )
-      for chunk_index in range(0,received_chunks_count):
-        min_hkl = str(min(received_chunks[chunk_index]))
-        max_hkl = str(max(received_chunks[chunk_index]))
-        print("Rank: %d; Chunk: %d; Size: %d; Min HKL: %s; Max HKL: %s" % (rank, chunk_index, len(received_chunks[chunk_index]), min_hkl, max_hkl))
-      ########################################################################
-
-      ###################################################################
-      # EACH RANK CONSOLIDATING ALL REFLECTION LISTS FROM RECEIVED CHUNKS
-      for hkl in received_chunks[0]:
-        for chunk_index in range(1,received_chunks_count):
-          received_chunks[0][hkl] += received_chunks[chunk_index][hkl]
-      ###################################################################
-
-      ######################################################################################################
-      # EACH RANK MERGING
-      hkl_intensity_stats = {}
-      for hkl in received_chunks[0]:
-        hkl_intensity_stats[hkl] = self.calc_reflection_intensity_stats(reflections=received_chunks[0][hkl])
-      ######################################################################################################
     else:
-       print ("\nRank %d received no data" % rank)
+      print ("\nRank %d received no data" % rank)
+
+    #######################################################################
+    # EACH RANK: RECEIVE ALL HKL CHUNKS (WITH THE SAME HKLS) FROM ALL RANKS
+    print("\nRank %d executing MPI all-to-all...\n"%rank)
+    received_chunks = comm.alltoall(chunks)
+    received_chunks_count = len(received_chunks)
+    print ("\nAfter all-to-all rank %d received %d chunks of hkl containers" % (rank, received_chunks_count) )
+    for chunk_index in range(0,received_chunks_count):
+      min_hkl = str(min(received_chunks[chunk_index]))
+      max_hkl = str(max(received_chunks[chunk_index]))
+      print("\nAfter all-to-all rank %d received chunk %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (rank, chunk_index, len(received_chunks[chunk_index]), min_hkl, max_hkl))
+
+    ######################################################################
+    # EACH RANK: CONSOLIDATE ALL REFLECTION LISTS FROM ALL RECEIVED CHUNKS
+    print("\nRank %d consolidating reflection lists...\n"%rank)
+    for hkl in received_chunks[0]:
+      for chunk_index in range(1,received_chunks_count):
+        received_chunks[0][hkl] += received_chunks[chunk_index][hkl]
+
+    #########################################
+    # EACH RANK: MERGE REFLECTION INTENSITIES
+    print("\nRank %d doing intensity statistics...\n"%rank)
+    all_rank_merged_reflections = merging_reflection_table()
+
+    #from IPython import embed; embed()
+
+
+    for hkl in received_chunks[0]:
+      if( len(received_chunks[0][hkl]) > 0 ):
+        intensity_stats = self.calc_reflection_intensity_stats(reflections=received_chunks[0][hkl])
+        all_rank_merged_reflections.append({'miller_index': hkl,
+                                            'intensity': intensity_stats['average'],
+                                            'multiplicity': intensity_stats['count'],
+                                            'esd' : intensity_stats['esd'],
+                                            'rmsd' : intensity_stats['rmsd']})
+
+    #############################################
+    # EACH RANK: SEND REFLECTION TABLES TO RANK 0
+    if rank != 0:
+      print("\nRank %d executing MPI gathering of all reflection tables at rank 0..."%rank)
+    all_merged_reflection_tables = comm.gather(all_rank_merged_reflections, root = 0)
+    #from IPython import embed; embed()
+
+    ####################################
+    # RANK 0: DO FINAL MERGING OF TABLES
+    if rank == 0:
+      print ("\nRank 0 doing final merging of reflection tables received from all ranks...")
+      final_merged_reflection_table = merging_reflection_table()
+      for table in all_merged_reflection_tables:
+        final_merged_reflection_table.extend(table)
+      print("Rank 0 total merged reflections: {}".format(final_merged_reflection_table.size()) )
 
     #from IPython import embed; embed()
 
