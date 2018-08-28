@@ -408,6 +408,7 @@ category_order = [
   '_refine_ls_shell',
   '_pdbx_refine_tls',
   '_pdbx_refine_tls_group',
+  '_struct_asym',
   '_struct_conf',
   '_struct_conf_type',
   '_struct_conn',
@@ -424,6 +425,8 @@ category_order = [
   '_entity_poly',
   '_entity_poly_seq',
   '_atom_type',
+  '_chem_comp',
+  '_chem_comp_atom',
   '_atom_site',
 ]
 

@@ -3515,6 +3515,22 @@ class build_all_chain_proxies(linking_mixins):
     for cc in self._cif.chem_comps:
       chem_comp_loops.append(cc.as_cif_loop())
     for key, block in self._cif.cif.items():
+      for loop in block.iterloops():
+        if '_chem_comp_plane_atom.comp_id' in loop.keys():
+          # plane atom - add plane
+          plane_ids = []
+          comp_id = loop.get('_chem_comp_plane_atom.comp_id')[0]
+          for k, item in loop.iteritems():
+            if k=='_chem_comp_plane_atom.plane_id':
+              for plane_id in item:
+                if plane_id not in plane_ids: plane_ids.append(plane_id)
+          plane_loop = iotbx.cif.model.loop(header=[
+            '_chem_comp_plane.comp_id',
+            '_chem_comp_plane.id',
+            ])
+          for plane_id in plane_ids:
+            plane_loop.add_row([comp_id, plane_id])
+          block.add_loop(plane_loop)
       for cc in chem_comp_loops:
         cc_id = cc.get('_chem_comp.id')[0]
         if key=='comp_%s' % cc_id:
