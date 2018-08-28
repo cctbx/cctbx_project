@@ -154,7 +154,7 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
       return matrix.col(offset_frac)
 
 def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
-    rotate_about_y=None,ncs_name=None,out=sys.stdout):
+    rotate_about_y=None,rotate_about_new_y=None,ncs_name=None,out=sys.stdout):
   from mmtbx.ncs.ncs import ncs
   import iotbx.pdb
   ncs_object=ncs()
@@ -165,6 +165,8 @@ def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
     pdb_inp=iotbx.pdb.input(lines=flex.split_lines(text),source_info='string')
     ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp=pdb_inp,log=out)
 
+  if rotate_about_new_y:
+    ncs_object.rotate_about_y(rot_deg=rotate_about_new_y,invert_matrices=True)
   if rotate_about_z:
     ncs_object.rotate_about_z(rot_deg=rotate_about_z,invert_matrices=True)
   if rotate_about_y:
@@ -292,10 +294,12 @@ def generate_ncs_ops(symmetry=None,
     sym_type='T'
   elif symmetry.lower().startswith("d"):
     sym_type='D'
-    sym_n=int(symmetry[1:])
+    if len(symmetry)>1:
+      sym_n=int(symmetry[1:])
   elif symmetry.lower().startswith("c"):
     sym_type='C'
-    sym_n=int(symmetry[1:])
+    if len(symmetry)>1:
+      sym_n=int(symmetry[1:])
   elif symmetry.lower() in ['helical','helix']:
     sym_type='helical'
 
@@ -348,12 +352,13 @@ def generate_ncs_ops(symmetry=None,
         text_is_ncs_spec=True,ncs_name='O (b)'))
   if sym_type=='T' or all:
     if two_fold_along_x is None or two_fold_along_x==False:
-      ncs_list.append(get_ncs_from_text(text=tetrahedral_b,
-        rotate_about_y=54.73563863,
-        rotate_about_z=-45,
+      ncs_list.append(get_ncs_from_text(text=tetrahedral_a,
         text_is_ncs_spec=True,ncs_name='T (a)'))
     if two_fold_along_x is None or two_fold_along_x==True:
-      ncs_list.append(get_ncs_from_text(text=tetrahedral_b,
+      ncs_list.append(get_ncs_from_text(text=tetrahedral_a,
+        # rotate_about_y=54.73563863,
+        # rotate_about_z=-45,
+        rotate_about_y=45,
         text_is_ncs_spec=True,ncs_name='T (b)'))
 
   if sym_type=='C' or all:
@@ -1372,6 +1377,82 @@ center_orth    0.0000    0.0000    0.0000
 
 
 """
+tetrahedral_a=\
+"""
+new_operator
+rota_matrix  1.000  0.000  0.000  
+rota_matrix  0.000  1.000  0.000  
+rota_matrix  0.000  0.000  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  0.833  0.289  -0.471  
+rota_matrix  -0.288  -0.500  -0.816  
+rota_matrix  -0.472  0.816  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.668  -0.577  -0.471  
+rota_matrix  -0.578  0.003  0.816  
+rota_matrix  -0.469  0.817  -0.335  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.166  0.290  0.943  
+rota_matrix  0.867  0.499  -0.001  
+rota_matrix  -0.471  0.817  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.500  0.866  -0.000  
+rota_matrix  -0.866  -0.500  0.000  
+rota_matrix  0.000  0.001  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.667  0.577  -0.471  
+rota_matrix  0.578  0.000  -0.816  
+rota_matrix  -0.471  -0.817  -0.333  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  0.833  -0.290  -0.471  
+rota_matrix  0.287  -0.501  0.816  
+rota_matrix  -0.473  -0.815  -0.335  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.168  -0.288  0.943  
+rota_matrix  -0.866  0.501  -0.001  
+rota_matrix  -0.472  -0.816  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.500  -0.866  0.000  
+rota_matrix  0.866  -0.500  0.001  
+rota_matrix  -0.000  0.000  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.166  -0.866  -0.471  
+rota_matrix  -0.289  0.500  -0.817  
+rota_matrix  0.943  0.000  -0.333  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  -0.165  0.866  -0.471  
+rota_matrix  0.291  0.499  0.816  
+rota_matrix  0.942  -0.002  -0.335  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+new_operator
+rota_matrix  0.334  -0.001  0.943  
+rota_matrix  -0.001  -1.000  -0.001  
+rota_matrix  0.943  -0.001  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
+"""
+
 
 tetrahedral_b=\
 """

@@ -118,6 +118,8 @@ class map_symmetry:
 
 
     args=["%s" %(map_coeffs_file),"map_operators_inside_unit_cell=True"]
+    if self.params.crystal_info.resolution:
+      args.append("resolution=%s" %(self.params.crystal_info.resolution))
     from phenix.command_line.find_ncs_from_density import \
        find_ncs_from_density as find_ncs
     find_ncs_from_density=find_ncs( args,out=self.log)

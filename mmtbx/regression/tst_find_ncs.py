@@ -1396,14 +1396,16 @@ def tst_07():
   for ncs_obj in ncs_list:
     print ncs_obj.get_ncs_name(),ncs_obj.max_operators()
     assert ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
+    #print ncs_obj.is_helical_along_z() or ncs_obj.is_point_group_symmetry()
     from cStringIO import StringIO
     f=StringIO()
     ncs_obj.display_all(log=f)
     text=f.getvalue()
+    #print text
     name_and_ops_list.append([ncs_obj.get_ncs_name(),ncs_obj.max_operators()])
 
   print name_and_ops_list
-  assert name_and_ops_list==[['I (b)', 60], ['I (d)', 60], ['I (f)', 60], ['I (a)', 60], ['I (c)', 60], ['I (e)', 60], ['C2 ', 2], ['C3 ', 3], ['D2 (a)', 4], ['D2 (b)', 4], ['D3 (a)', 6], ['D3 (b)', 6], ['Helical 23.00 deg    8.00 Z-trans ', 5]]
+  assert name_and_ops_list==[['I (b)', 60], ['I (d)', 60], ['I (f)', 60], ['I (a)', 60], ['I (c)', 60], ['I (e)', 60], ['O (a)', 24], ['O (b)', 24], ['T (a)', 12], ['T (b)', 12], ['C2 ', 2], ['C3 ', 3], ['D2 (a)', 4], ['D2 (b)', 4], ['D3 (a)', 6], ['D3 (b)', 6], ['Helical 23.00 deg    8.00 Z-trans ', 5]]
 
 
   print "OK"
@@ -1412,7 +1414,6 @@ def tst_07():
 
 if __name__=="__main__":
   tst_07()
-  """
   tst_01()
   tst_02()
   tst_02a()
@@ -1421,5 +1422,4 @@ if __name__=="__main__":
   tst_04()
   tst_05()
   tst_06()
-  """
 
