@@ -1114,10 +1114,10 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     h_cif_block.add_loop(chem_comp_atom_loop)
     for row in struct_asym_ids: struct_asym_loop.add_row([row])
     h_cif_block.add_loop(struct_asym_loop)
-    for row in entity_ids: entity_loop.add_row([row])
-    h_cif_block.add_loop(entity_loop)
-    for row in entity_poly_seq_nums: entity_poly_seq_loop.add_row([row])
-    h_cif_block.add_loop(entity_poly_seq_loop)
+    #for row in entity_ids: entity_loop.add_row([row])
+    #h_cif_block.add_loop(entity_loop)
+    #for row in entity_poly_seq_nums: entity_poly_seq_loop.add_row([row])
+    #h_cif_block.add_loop(entity_poly_seq_loop)
     #
     return h_cif_block
 
