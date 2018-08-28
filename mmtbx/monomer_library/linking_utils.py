@@ -239,7 +239,11 @@ def get_classes(atom, important_only=False, verbose=False):
       get_class(atom_group.resname,
                 consider_ccp4_mon_lib_rna_dna=consider_ccp4_mon_lib_rna_dna),
       )
+  if atom_group.resname == 'UNK': # does this need more checks
+    gc = 'common_amino_acid'
   gc = redirect.get(gc,gc)
+  if verbose:
+    print 'final class', gc
   for i, attr in enumerate(attrs):
     rc = None
     if i:

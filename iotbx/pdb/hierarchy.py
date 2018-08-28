@@ -994,18 +994,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     struct_asym_loop = iotbx.cif.model.loop(header=(
       '_struct_asym.id',
       ))
-    # truncated versions of those in as_cif_block_in_sequence
-    entity_loop = iotbx.cif.model.loop(header=(
-      '_entity.id',
-      ))
-    entity_poly_seq_loop = iotbx.cif.model.loop(header=(
-      '_entity_poly_seq.num',
-    ))
     chem_comp_ids = []
     chem_comp_atom_ids = []
     struct_asym_ids = []
-    entity_ids = []
-    entity_poly_seq_nums = []
     #
     label_seq_id = 0
     number_label_asym_id = 0
@@ -1071,10 +1062,7 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
               if label_asym_id not in struct_asym_ids:
                 struct_asym_ids.append(label_asym_id)
               atom_site_label_entity_id.append(entity_id)
-              if entity_id not in entity_ids: entity_ids.append(entity_id)
               atom_site_label_seq_id.append(str(label_seq_id))
-              if label_seq_id not in entity_poly_seq_nums:
-                entity_poly_seq_nums.append(label_seq_id)
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
@@ -1114,10 +1102,6 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
     h_cif_block.add_loop(chem_comp_atom_loop)
     for row in struct_asym_ids: struct_asym_loop.add_row([row])
     h_cif_block.add_loop(struct_asym_loop)
-    #for row in entity_ids: entity_loop.add_row([row])
-    #h_cif_block.add_loop(entity_loop)
-    #for row in entity_poly_seq_nums: entity_poly_seq_loop.add_row([row])
-    #h_cif_block.add_loop(entity_poly_seq_loop)
     #
     return h_cif_block
 
