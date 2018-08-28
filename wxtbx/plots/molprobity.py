@@ -12,10 +12,10 @@ from math import sqrt, floor
 class rotarama_plot (wxtbx.plots.plot_container) :
   hit_test_radius = 3.0
   hit_test_minimum_difference = 0.5
-  def __init__ (self, parent) :
+  def __init__ (self, parent, figure_size=(8,8)) :
     wxtbx.plots.plot_container.__init__(self,
       parent=parent,
-      figure_size=(8,8),
+      figure_size=figure_size,
       handle_left_click=True)
 
   def show_plot (self, *args, **kwds) :
