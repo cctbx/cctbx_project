@@ -360,6 +360,8 @@ def generate_ncs_ops(symmetry=None,
         # rotate_about_z=-45,
         rotate_about_y=45,
         text_is_ncs_spec=True,ncs_name='T (b)'))
+    ncs_list.append(get_ncs_from_text(text=tetrahedral_b,
+           text_is_ncs_spec=True,ncs_name='T (c)'))
 
   if sym_type=='C' or all:
     for i in xrange(i_start,i_end+1):
@@ -1457,77 +1459,77 @@ center_orth  0.000  0.000  0.000
 tetrahedral_b=\
 """
 new_operator
-rota_matrix  1.0  0.0  0.0
-rota_matrix  0.0  1.0  0.0
-rota_matrix  0.0  0.0  1.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  1.000  0.000  0.000  
+rota_matrix  0.000  1.000  0.000  
+rota_matrix  0.000  0.000  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -0.0  0.0  1.0
-rota_matrix  -1.0  -0.0  -0.0
-rota_matrix  0.0  -1.0  0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -1.000  0.001  0.001  
+rota_matrix  0.001  0.333  0.943  
+rota_matrix  0.000  0.943  -0.333  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -0.0  -1.0  -0.0
-rota_matrix  0.0  0.0  -1.0
-rota_matrix  1.0  -0.0  0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  0.499  0.288  0.818  
+rota_matrix  0.867  -0.166  -0.470  
+rota_matrix  0.001  0.943  -0.333  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -1.0  0.1  0.0
-rota_matrix  0.1  1.0  -0.1
-rota_matrix  -0.0  -0.1  -1.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  0.498  -0.287  -0.818  
+rota_matrix  -0.867  -0.167  -0.469  
+rota_matrix  -0.002  0.943  -0.332  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  0.0  0.0  -1.0
-rota_matrix  1.0  -0.1  0.0
-rota_matrix  -0.1  -1.0  -0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -0.500  0.866  -0.000  
+rota_matrix  -0.866  -0.500  -0.000  
+rota_matrix  -0.000  0.000  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -0.0  -1.0  0.1
-rota_matrix  -0.0  0.1  1.0
-rota_matrix  -1.0  0.0  -0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  0.499  -0.866  0.001  
+rota_matrix  -0.289  -0.166  0.943  
+rota_matrix  -0.817  -0.471  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  1.0  -0.0  0.0
-rota_matrix  -0.0  -1.0  -0.0
-rota_matrix  0.0  0.0  -1.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -0.498  0.287  0.818  
+rota_matrix  -0.289  0.834  -0.469  
+rota_matrix  -0.817  -0.471  -0.332  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -0.0  -0.0  -1.0
-rota_matrix  -1.0  0.1  0.0
-rota_matrix  0.1  1.0  -0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  0.000  0.574  -0.819  
+rota_matrix  0.578  -0.668  -0.469  
+rota_matrix  -0.816  -0.473  -0.332  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  0.0  1.0  -0.0
-rota_matrix  -0.0  0.0  1.0
-rota_matrix  1.0  -0.0  0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -0.500  -0.866  0.000  
+rota_matrix  0.866  -0.500  -0.000  
+rota_matrix  0.000  -0.000  1.000  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  -1.0  -0.0  0.0
-rota_matrix  0.0  -1.0  0.1
-rota_matrix  0.0  0.1  1.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  0.501  0.866  0.001  
+rota_matrix  0.289  -0.168  0.943  
+rota_matrix  0.816  -0.472  -0.334  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  0.0  -0.0  1.0
-rota_matrix  1.0  0.0  -0.0
-rota_matrix  -0.0  1.0  0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -0.000  -0.577  0.817  
+rota_matrix  -0.578  -0.667  -0.470  
+rota_matrix  0.816  -0.472  -0.333  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 new_operator
-rota_matrix  0.0  1.0  -0.0
-rota_matrix  -0.0  -0.0  -1.0
-rota_matrix  -1.0  0.0  0.0
-tran_orth  0.0  0.0  0.0
-center_orth  0.0  0.0  0.0
+rota_matrix  -0.498  -0.288  -0.818  
+rota_matrix  0.289  0.834  -0.470  
+rota_matrix  0.818  -0.470  -0.332  
+tran_orth  0.000  0.000  0.000  
+center_orth  0.000  0.000  0.000  
 """
 octahedral_a=\
 """
