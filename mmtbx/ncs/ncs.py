@@ -1380,77 +1380,77 @@ center_orth    0.0000    0.0000    0.0000
 tetrahedral_a=\
 """
 new_operator
-rota_matrix  1.000  0.000  0.000  
-rota_matrix  0.000  1.000  0.000  
-rota_matrix  0.000  0.000  1.000  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  1.000  0.000  0.000
+rota_matrix  0.000  1.000  0.000
+rota_matrix  0.000  0.000  1.000
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  0.833  0.289  -0.471  
-rota_matrix  -0.288  -0.500  -0.816  
-rota_matrix  -0.472  0.816  -0.334  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  0.833  0.289  -0.471
+rota_matrix  -0.288  -0.500  -0.816
+rota_matrix  -0.472  0.816  -0.334
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.668  -0.577  -0.471  
-rota_matrix  -0.578  0.003  0.816  
-rota_matrix  -0.469  0.817  -0.335  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.668  -0.577  -0.471
+rota_matrix  -0.578  0.003  0.816
+rota_matrix  -0.469  0.817  -0.335
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.166  0.290  0.943  
-rota_matrix  0.867  0.499  -0.001  
-rota_matrix  -0.471  0.817  -0.334  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.166  0.290  0.943
+rota_matrix  0.867  0.499  -0.001
+rota_matrix  -0.471  0.817  -0.334
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.500  0.866  -0.000  
-rota_matrix  -0.866  -0.500  0.000  
-rota_matrix  0.000  0.001  1.000  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.500  0.866  -0.000
+rota_matrix  -0.866  -0.500  0.000
+rota_matrix  0.000  0.001  1.000
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.667  0.577  -0.471  
-rota_matrix  0.578  0.000  -0.816  
-rota_matrix  -0.471  -0.817  -0.333  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.667  0.577  -0.471
+rota_matrix  0.578  0.000  -0.816
+rota_matrix  -0.471  -0.817  -0.333
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  0.833  -0.290  -0.471  
-rota_matrix  0.287  -0.501  0.816  
-rota_matrix  -0.473  -0.815  -0.335  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  0.833  -0.290  -0.471
+rota_matrix  0.287  -0.501  0.816
+rota_matrix  -0.473  -0.815  -0.335
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.168  -0.288  0.943  
-rota_matrix  -0.866  0.501  -0.001  
-rota_matrix  -0.472  -0.816  -0.334  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.168  -0.288  0.943
+rota_matrix  -0.866  0.501  -0.001
+rota_matrix  -0.472  -0.816  -0.334
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.500  -0.866  0.000  
-rota_matrix  0.866  -0.500  0.001  
-rota_matrix  -0.000  0.000  1.000  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.500  -0.866  0.000
+rota_matrix  0.866  -0.500  0.001
+rota_matrix  -0.000  0.000  1.000
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.166  -0.866  -0.471  
-rota_matrix  -0.289  0.500  -0.817  
-rota_matrix  0.943  0.000  -0.333  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.166  -0.866  -0.471
+rota_matrix  -0.289  0.500  -0.817
+rota_matrix  0.943  0.000  -0.333
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  -0.165  0.866  -0.471  
-rota_matrix  0.291  0.499  0.816  
-rota_matrix  0.942  -0.002  -0.335  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  -0.165  0.866  -0.471
+rota_matrix  0.291  0.499  0.816
+rota_matrix  0.942  -0.002  -0.335
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 new_operator
-rota_matrix  0.334  -0.001  0.943  
-rota_matrix  -0.001  -1.000  -0.001  
-rota_matrix  0.943  -0.001  -0.334  
-tran_orth  0.000  0.000  0.000  
-center_orth  0.000  0.000  0.000  
+rota_matrix  0.334  -0.001  0.943
+rota_matrix  -0.001  -1.000  -0.001
+rota_matrix  0.943  -0.001  -0.334
+tran_orth  0.000  0.000  0.000
+center_orth  0.000  0.000  0.000
 """
 
 
