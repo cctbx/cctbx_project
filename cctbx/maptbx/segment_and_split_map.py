@@ -3043,6 +3043,8 @@ def optimize_center_position(map_data,sites_orth,crystal_symmetry,
      ncs_in_cell_only=None,
      helical_trans_z_angstrom=None,out=sys.stdout):
 
+  if ncs_info is None:
+    ncs_info="None"
   symmetry=ncs_info.split()[0]
   print >>out,"Optimizing center position...type is %s" %(ncs_info)
 

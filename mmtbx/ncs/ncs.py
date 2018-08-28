@@ -226,8 +226,9 @@ def get_rot_y(rot_deg=None):
   ss=math.sin(theta)
   from scitbx import matrix
   return matrix.sqr((cc,0,ss,
+                     0,1,0,
                     -ss,0,cc,
-                     0,1,0,))
+                     ))
 
 def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
   # generate n-fold C symmetry
@@ -285,6 +286,10 @@ def generate_ncs_ops(symmetry=None,
     all=True
   elif symmetry.lower() in ["i"]:
     sym_type='I'
+  elif symmetry.lower() in ["o"]:
+    sym_type='O'
+  elif symmetry.lower() in ["t"]:
+    sym_type='T'
   elif symmetry.lower().startswith("d"):
     sym_type='D'
     sym_n=int(symmetry[1:])
@@ -296,6 +301,9 @@ def generate_ncs_ops(symmetry=None,
 
   print >>out,"Sym type: %s  Sym N: %s" %(
      sym_type,sym_n)
+  if sym_type is None and not all:
+    from libtbx.utils import Sorry
+    raise Sorry("Unknown symmetry type: '%s' " %(symmetry))
 
   if sym_n:
     i_start=sym_n
@@ -330,6 +338,24 @@ def generate_ncs_ops(symmetry=None,
       ncs_list.append(get_ncs_from_text(text=icosahedral_f,
           rotate_about_z=90,text_is_ncs_spec=True,
           ncs_name='I (e)'))
+  if sym_type=='O' or all:
+    if two_fold_along_x is None or two_fold_along_x==True:
+      ncs_list.append(get_ncs_from_text(text=octahedral_a,
+        text_is_ncs_spec=True,ncs_name='O (a)'))
+    if two_fold_along_x is None or two_fold_along_x==False:
+      ncs_list.append(get_ncs_from_text(text=octahedral_a,
+        rotate_about_z=45,
+        text_is_ncs_spec=True,ncs_name='O (b)'))
+  if sym_type=='T' or all:
+    if two_fold_along_x is None or two_fold_along_x==False:
+      ncs_list.append(get_ncs_from_text(text=tetrahedral_b,
+        rotate_about_y=54.73563863,
+        rotate_about_z=-45,
+        text_is_ncs_spec=True,ncs_name='T (a)'))
+    if two_fold_along_x is None or two_fold_along_x==True:
+      ncs_list.append(get_ncs_from_text(text=tetrahedral_b,
+        text_is_ncs_spec=True,ncs_name='T (b)'))
+
   if sym_type=='C' or all:
     for i in xrange(i_start,i_end+1):
       ncs_list.append(get_c_symmetry(n=i,ncs_name='C%d ' %(i)))
@@ -1345,6 +1371,229 @@ tran_orth     0.0000    0.0000    0.0000
 center_orth    0.0000    0.0000    0.0000
 
 
+"""
+
+tetrahedral_b=\
+"""
+new_operator
+rota_matrix  1.0  0.0  0.0
+rota_matrix  0.0  1.0  0.0
+rota_matrix  0.0  0.0  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  0.0  1.0
+rota_matrix  -1.0  -0.0  -0.0
+rota_matrix  0.0  -1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -1.0  -0.0
+rota_matrix  0.0  0.0  -1.0
+rota_matrix  1.0  -0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  0.1  0.0
+rota_matrix  0.1  1.0  -0.1
+rota_matrix  -0.0  -0.1  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  0.0  -1.0
+rota_matrix  1.0  -0.1  0.0
+rota_matrix  -0.1  -1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -1.0  0.1
+rota_matrix  -0.0  0.1  1.0
+rota_matrix  -1.0  0.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  1.0  -0.0  0.0
+rota_matrix  -0.0  -1.0  -0.0
+rota_matrix  0.0  0.0  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -0.0  -1.0
+rota_matrix  -1.0  0.1  0.0
+rota_matrix  0.1  1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  1.0  -0.0
+rota_matrix  -0.0  0.0  1.0
+rota_matrix  1.0  -0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  -0.0  0.0
+rota_matrix  0.0  -1.0  0.1
+rota_matrix  0.0  0.1  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -0.0  1.0
+rota_matrix  1.0  0.0  -0.0
+rota_matrix  -0.0  1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  1.0  -0.0
+rota_matrix  -0.0  -0.0  -1.0
+rota_matrix  -1.0  0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+"""
+octahedral_a=\
+"""
+new_operator
+rota_matrix  1.0  0.0  0.0
+rota_matrix  0.0  1.0  0.0
+rota_matrix  0.0  0.0  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -1.0  -0.0
+rota_matrix  1.0  0.0  0.0
+rota_matrix  -0.0  -0.0  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  0.0  -0.0
+rota_matrix  -0.0  -1.0  0.0
+rota_matrix  -0.0  0.0  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  1.0  -0.0
+rota_matrix  -0.0  -0.0  -1.0
+rota_matrix  -1.0  0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -0.0  1.0
+rota_matrix  -0.0  1.0  0.0
+rota_matrix  -1.0  -0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  0.0  -0.0
+rota_matrix  0.0  -0.0  -1.0
+rota_matrix  -0.0  -1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  0.0  -1.0
+rota_matrix  1.0  -0.0  -0.0
+rota_matrix  -0.0  -1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  1.0  -0.0
+rota_matrix  -1.0  -0.0  0.0
+rota_matrix  0.0  0.0  1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -1.0  -0.0
+rota_matrix  0.0  0.0  -1.0
+rota_matrix  1.0  -0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  1.0  -0.0  -0.0
+rota_matrix  -0.0  0.0  -1.0
+rota_matrix  0.0  1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -0.0  1.0
+rota_matrix  0.0  -1.0  -0.0
+rota_matrix  1.0  0.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  -0.0  1.0
+rota_matrix  1.0  0.0  0.0
+rota_matrix  -0.0  1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  0.0  -1.0
+rota_matrix  -0.0  -1.0  -0.0
+rota_matrix  -1.0  0.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -1.0  0.0
+rota_matrix  -0.0  0.0  1.0
+rota_matrix  -1.0  -0.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  1.0  0.0
+rota_matrix  0.0  -0.0  1.0
+rota_matrix  1.0  0.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -0.0  -1.0
+rota_matrix  -1.0  0.0  -0.0
+rota_matrix  0.0  1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  -0.0  0.0
+rota_matrix  0.0  0.0  1.0
+rota_matrix  -0.0  1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  1.0  0.0  0.0
+rota_matrix  0.0  -1.0  -0.0
+rota_matrix  0.0  0.0  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  1.0  0.0
+rota_matrix  1.0  -0.0  -0.0
+rota_matrix  -0.0  0.0  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -1.0  0.0  0.0
+rota_matrix  0.0  1.0  -0.0
+rota_matrix  -0.0  -0.0  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  0.0  -1.0  0.0
+rota_matrix  -1.0  -0.0  -0.0
+rota_matrix  0.0  -0.0  -1.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  1.0  0.0  0.0
+rota_matrix  -0.0  -0.0  1.0
+rota_matrix  0.0  -1.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  0.0  -1.0
+rota_matrix  0.0  1.0  0.0
+rota_matrix  1.0  -0.0  -0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
+new_operator
+rota_matrix  -0.0  0.0  1.0
+rota_matrix  -1.0  -0.0  -0.0
+rota_matrix  0.0  -1.0  0.0
+tran_orth  0.0  0.0  0.0
+center_orth  0.0  0.0  0.0
 """
 
 icosahedral_b=\
