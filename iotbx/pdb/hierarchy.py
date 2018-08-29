@@ -1058,9 +1058,9 @@ class _(boost.python.injector, ext.root, __hash_eq_mixin):
               atom_site_pdbx_formal_charge.append(atom_charge)
               atom_site_phenix_scat_dispersion_real.append(fp)
               atom_site_phenix_scat_dispersion_imag.append(fdp)
-              atom_site_label_asym_id.append(label_asym_id)
-              if label_asym_id not in struct_asym_ids:
-                struct_asym_ids.append(label_asym_id)
+              atom_site_label_asym_id.append(label_asym_id.strip())
+              if label_asym_id.strip() not in struct_asym_ids:
+                struct_asym_ids.append(label_asym_id.strip())
               atom_site_label_entity_id.append(entity_id)
               atom_site_label_seq_id.append(str(label_seq_id))
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
