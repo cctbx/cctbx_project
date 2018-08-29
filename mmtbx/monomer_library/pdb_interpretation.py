@@ -3531,6 +3531,14 @@ class build_all_chain_proxies(linking_mixins):
           for plane_id in plane_ids:
             plane_loop.add_row([comp_id, plane_id])
           block.add_loop(plane_loop)
+        if '_chem_link_bond.link_id' in loop.keys():
+          # link id
+          comp_id = loop.get('_chem_link_bond.link_id')[0]
+          link_loop = iotbx.cif.model.loop(header=[
+            '_chem_link.id',
+            ])
+          link_loop.add_row([comp_id])
+          block.add_loop(link_loop)
       for cc in chem_comp_loops:
         cc_id = cc.get('_chem_comp.id')[0]
         if key=='comp_%s' % cc_id:
