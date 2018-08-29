@@ -119,16 +119,16 @@ class model_based_arrays (object) :
       return cc_work, cc_free, r_work, r_free
     return [None] * 4
 
-def get_filtering_convention (i_obs, sigma_filtering=Auto) :
+def get_filtering_convention (i_obs, sigma_filtering=Auto):
   info = i_obs.info()
-  if (sigma_filtering in [Auto, "auto"]) :
-    if (info.source_type == "xds_ascii") :
+  if sigma_filtering in [Auto, "auto"]:
+    if info is not None and info.source_type == "xds_ascii":
       sigma_filtering = "xds"
-    elif (info.source_type == "ccp4_mtz") :
+    elif info is not None and info.source_type == "ccp4_mtz":
       sigma_filtering = "scala"
-    elif (info.source_type == "scalepack_no_merge_original_index") :
+    elif info is not None and info.source_type == "scalepack_no_merge_original_index":
       sigma_filtering = "scalepack"
-    else : # XXX default to the most conservative method
+    else: # XXX default to the most conservative method
       sigma_filtering = "scala"
   return sigma_filtering
 
