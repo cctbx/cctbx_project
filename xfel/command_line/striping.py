@@ -38,7 +38,7 @@ striping {
   trial = None
     .type = int
     .help = "Trial identifier for an XFEL GUI formatted processing trial."
-  stripe = True
+  stripe = False
     .type = bool
     .help = "Enable to select results evenly spaced across each rungroup"
             "(stripes) as opposed to contiguous chunks."
