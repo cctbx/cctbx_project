@@ -87,9 +87,9 @@ def torsion_search_nested(residue, clusters, rotamer_eval, states):
           angle        = angle, deg=True)
         xyz_moved[atom] = new_xyz
     residue.atoms().set_xyz(xyz_moved)
-    #if(rotamer_eval.evaluate_residue(residue = residue) ==rid):
-    fl = rotamer_eval.evaluate_residue(residue = residue)
-    if(fl != "OUTLIER" and str(fl).upper() != "NONE"):
+    fl = rotamer_eval.evaluate_residue_2(residue = residue)
+    #if(fl != "OUTLIER" and str(fl).upper() != "NONE"):
+    if(fl == "Favored"):
       states.add(sites_cart=xyz_moved)
       good.append(angles)
   return states, good, nested_loop
@@ -124,7 +124,7 @@ def exercise(file_name):
   print "file_name, n_clusters, n_good_angles, total:", file_name, \
     len(clusters), len(good_angles), len(nested_loop), tt
   easy_pickle.dump(
-    file_name="%s-coarse_step10.pickle"%file_name[:-4],
+    file_name="%s-coarse_step10_favored.pickle"%file_name[:-4],
     obj=good_angles)
 
 if(__name__ == "__main__"):

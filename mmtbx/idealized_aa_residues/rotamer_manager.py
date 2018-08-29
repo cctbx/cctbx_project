@@ -29,14 +29,17 @@ aa_codes = [
 ]
 
 class load(object):
-  def __init__(self):
+  def __init__(self, rotamers="all"):
+    assert rotamers in ["all", "favored", "allowed"]
     self.rotamer_evaluator = RotamerEval()
     path=libtbx.env.find_in_repositories("mmtbx/idealized_aa_residues/data")
     self.result = {}
     for aa_code in aa_codes:
       try:
-        chi_angles = easy_pickle.load(
-          file_name="/".join([path,"%s-coarse_step10.pickle"%aa_code]))
+        if(  rotamers=="all"):     f = "%s-coarse_step10.pickle"%aa_code
+        elif(rotamers=="favored"): f = "%s-coarse_step10_favored.pickle"%aa_code
+        else: raise RuntimeError("Not implemented: rotamers=%s"%rotamers)
+        chi_angles = easy_pickle.load(file_name = "/".join([path,f]))
         # XXX Fix later
         chi_angles_ = []
         for chi in chi_angles:
