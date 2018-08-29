@@ -1,20 +1,31 @@
-IOTA v1.1.033 - Image tracker update
+IOTA v1.2.001 - UI update
 
 Bugfixes:
-- Fixed "Finite Chart" checkbox - it now works
-- Fixed filename bug when raw image file have no extensions
-- Expanded list of monoclinic notations for PRIME input file
+
 
 Features:
-- Tracker now tracks indexed images as well
-- Added indexing / integration options for tracker DIALS backend
-- Removed Properties button (will be a simplified UI for now)
-- Determine best symmetry for Cluster unit cell result
-- Made iota.single_image stdout compatible with BluIce Raster display
-- Increased "file not found" timeout to 30 sec
-- Added paramfile option to tracker (can now input any settings this way)
-- Selected points in tracker now indicate indexing status (if any)
-- Tracker marks subfolder changes (i.e. for different runs)
+- Now with three (3) runtime information tabs:
+  1. Log (as before)
+  2. Processing, updated every 1 second, with res / no. spots charts, Wilson
+     B-factor histogram, and the hkl plot
+  3. Analysis, updated every 30 seconds, with unit cell histograms, clustering
+     results and basic PRIME results (i.e. only initial merging)
+- Processing and analysis charts are only updated when tab is active to speed up
+ the UI
+- Runtime clustering and PRIME runs on a separate thread so as not to lock up
+the UI
+- Analysis tab can be toggled to not even show using a toolbar button
+- Removed "invert boolean mask" option; now mask inversion only used when
+necessary (i.e. if using Labelit-based backend), and not when using DIALS
+- Added "flip beamXY" option; is necessary in a few cases, and will need to be
+turned on only if images are not properly cropped / padded for Labelit. Since
+Labelit is mostly deprecated, I don't anticipate there being a need to make this
+ option smarter
+- Moved Interceptor calculations to separate thread; UI thread for plots only
+- Adjusted Analyzer's cluster info handling with new consensus SG lookup
+
 
 Known issues:
+- UI remains really slow when using XDisplay
+- Clustering reporting needs touch-up in IOTA log file
 

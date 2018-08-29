@@ -3,14 +3,13 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 03/22/2018
+Last Changed: 08/29/2018
 Description : Runs cctbx.xfel integration module either in grid-search or final
               integration mode. Has options to output diagnostic visualizations.
               Includes selector class for best integration result selection
 '''
 
 import os
-import sys
 import uuid
 import numpy as np
 
@@ -334,11 +333,7 @@ class Integrator(object):
                        'mos':mosaicity, 'epv':ewald_proximal_volume,
                        'info':int_status,'ok':True}
       except ValueError:
-        import traceback
-        print
         print self.img
-        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
-        sys.exit()
 
 
     # write integration logfile

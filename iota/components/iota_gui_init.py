@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 04/04/2018
+Last Changed: 08/29/2018
 Description : IOTA GUI Initialization module
 '''
 
@@ -937,7 +937,11 @@ class InitAll(object):
       pass
 
     # Determine input base
-    self.input_base = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
+    common_pfx = os.path.abspath(os.path.dirname(os.path.commonprefix(self.input_list)))
+    if len(self.params.input) == 1:
+      self.input_base = os.path.commonprefix([self.params.input[0], common_pfx])
+    else:
+      self.input_base = common_pfx
 
     # Initialize main log
     self.logfile = os.path.abspath(os.path.join(self.int_base, 'iota.log'))

@@ -6,7 +6,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/31/2018
-Last Changed: 06/22/2018
+Last Changed: 08/29/2018
 Description : IOTA Single Image: can process single image using DIALS,
 with an array of options (i.e. anything from only spotfinding, to indexing,
 space group determination, refinement, integration)
@@ -20,6 +20,7 @@ import numpy as np
 
 from iotbx import phil as ip
 from dxtbx.datablock import DataBlockFactory
+from xfel.command_line.frame_extractor import ConstructFrame
 
 from threading import Thread
 
@@ -33,7 +34,7 @@ from iota.components.iota_input import write_defaults
 
 def parse_command_args():
   """ Parses command line arguments (only options for now) """
-  parser = argparse.ArgumentParser(prog='iota.intercept')
+  parser = argparse.ArgumentParser(prog='iota.single_image')
   parser.add_argument('path', type=str, nargs = '?', default = None,
                       help = 'Path to data file')
   parser.add_argument('--backend', type=str, default='dials',
@@ -219,7 +220,7 @@ class DIALSSpfIdx(Thread):
                 print indexed
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
-                frame = self.processor.frame
+                frame = ConstructFrame(integrated, experiments[0]).make_frame()
                 status = 'integrated'
               except Exception, e:
                 err.append('INTEGRATION ERROR: {}'.format(e))
@@ -242,9 +243,9 @@ class DIALSSpfIdx(Thread):
       if len(observed) < self.min_bragg:
         res = (99, 99)
 
-      elapsed = time.time() - start
-      info = [self.index, len(observed), self.img, sg, uc]
-      return status, info, res, score, elapsed, err
+    elapsed = time.time() - start
+    info = [self.index, len(observed), self.img, sg, uc]
+    return status, info, res, score, elapsed, err
 
 
   def run(self):
@@ -271,19 +272,21 @@ class DIALSSpfIdx(Thread):
 
     if info is not None:
       idx, n_spots, img_path, sg, uc = info
-      print 'IMAGE #{}: {}'.format(idx, img_path)
-      print 'SPOTS FOUND: {}'.format(n_spots)
-      print 'INDEXING: {} INDEXED SPOTS'.format(score)
-      if res[0] != 99:
-        print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
-      if sg is not None and uc is not None:
-        print 'BRAVAIS LATTICE: {}'.format(sg)
-        print 'UNIT CELL: {}'.format(uc)
-      print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
 
-      if err != []:
-        for e in err:
-          print e
+      if self.verbose:
+        print 'IMAGE #{}: {}'.format(idx, img_path)
+        print 'SPOTS FOUND: {}'.format(n_spots)
+        print 'INDEXING: {} INDEXED SPOTS'.format(score)
+        if res[0] != 99:
+          print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
+        if sg is not None and uc is not None:
+          print 'BRAVAIS LATTICE: {}'.format(sg)
+          print 'UNIT CELL: {}'.format(uc)
+        print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
+
+        if err != []:
+          for e in err:
+            print e
 
       if self.output is not None:
         with open(self.output, 'a') as outf:

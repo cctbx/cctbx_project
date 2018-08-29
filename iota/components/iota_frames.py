@@ -3,16 +3,18 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 05/11/2018
+Last Changed: 08/29/2018
 Description : IOTA GUI Windows / frames
 '''
 
 import os
+import shutil
 import wx
 from wxtbx import bitmaps
 import wx.lib.buttons as btn
 from wx import richtext as rt
 from wx.lib.scrolledpanel import ScrolledPanel
+from wx.aui import AuiNotebook
 
 import numpy as np
 import time
@@ -33,8 +35,12 @@ assert Axes3D
 from libtbx import easy_run
 from libtbx import easy_pickle as ep
 from libtbx.utils import to_unicode
-from cctbx import miller, crystal
+from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
+
+from prime.postrefine.mod_mx import mx_handler
+import prime.postrefine.mod_threads as pthr
+import prime.postrefine.mod_plotter as ppl
 
 from iota.components.iota_utils import InputFinder
 from iota.components.iota_analysis import Analyzer, Plotter
@@ -441,7 +447,10 @@ class FileListCtrl(ct.CustomListCtrl):
       self.delete_button(index=0)
 
   def delete_button(self, index):
-    self.image_count -= int(self.ctr.GetItemText(index))
+    try:
+      self.image_count -= int(self.ctr.GetItemText(index))
+    except ValueError:
+      self.image_count = 0
     self.all_data_images.pop(self.ctr.GetItemData(index).path, None)
     self.update_total_image_count()
     self.ctr.DeleteItem(index)
@@ -585,8 +594,10 @@ class ProcessingTab(ScrolledPanel):
     self.nref_list = []
     self.res_list = []
     self.indices = []
+    self.b_factors = []
     self.spacegroup = None
     self.idx_array = None
+    self.b_factor_array = None
 
     self.hkl_view_axis = 'l'
     self.pick = {'image':None, 'index':0, 'axis':None, 'picked':False}
@@ -603,8 +614,6 @@ class ProcessingTab(ScrolledPanel):
     self.int_panel = wx.Panel(self)
     int_sizer = wx.BoxSizer(wx.VERTICAL)
     self.int_panel.SetSizer(int_sizer)
-    self.int_figure = Figure(figsize=(1, 2.5))
-    self.int_figure.patch.set_visible(False)    # create transparent background
 
     # Image info sizer
     self.info_sizer = wx.GridBagSizer(0, 5)
@@ -635,6 +644,8 @@ class ProcessingTab(ScrolledPanel):
     self.Bind(wx.EVT_BUTTON, self.onArrow, self.btn_left)
 
     # Charts
+    self.int_figure = Figure(figsize=(1, 2.5))
+    self.int_figure.patch.set_visible(False)    # create transparent background
     int_gsp = gridspec.GridSpec(2, 1, wspace=0, hspace=0)
 
     # Resolution / No. strong reflections chart
@@ -658,58 +669,34 @@ class ProcessingTab(ScrolledPanel):
     self.int_canvas = FigureCanvas(self.int_panel, -1, self.int_figure)
     int_sizer.Add(self.int_canvas, 1, flag=wx.EXPAND)
 
-    # UC Histogram / cluster figure
-    self.uc_panel = wx.Panel(self)
-    uc_sizer = wx.BoxSizer(wx.VERTICAL)
-    self.uc_panel.SetSizer(uc_sizer)
-    self.uc_figure = Figure(figsize=(1, 2.5))
-    self.uc_figure.patch.set_visible(False)    # create transparent background
+    # Wilson (<I> vs. res) plot
+    self.wp_panel = wx.Panel(self)
+    wp_sizer = wx.BoxSizer(wx.VERTICAL)
+    self.wp_panel.SetSizer(wp_sizer)
 
-    uc_gsub = gridspec.GridSpec(2, 3, wspace=0, hspace=0)
-    self.a_axes = self.uc_figure.add_subplot(uc_gsub[0])
-    self.a_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.a_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.b_axes = self.uc_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
-    self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.b_axes.get_yticklabels(), visible=False)
-    self.c_axes = self.uc_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
-    self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.c_axes.get_yticklabels(), visible=False)
-    self.alpha_axes = self.uc_figure.add_subplot(uc_gsub[3])
-    self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.beta_axes = self.uc_figure.add_subplot(uc_gsub[4],
-                                                 sharey=self.alpha_axes)
-    self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.beta_axes.get_yticklabels(), visible=False)
-    self.gamma_axes = self.uc_figure.add_subplot(uc_gsub[5],
-                                                  sharey=self.alpha_axes)
-    self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
-    plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+    self.wp_figure = Figure(figsize=(0.3, 0.6))
+    self.wp_figure.patch.set_visible(False)
+    self.wp_axes = self.wp_figure.add_subplot(111)
+    self.wp_axes.set_ylabel("<I>")
 
-    self.uc_figure.set_tight_layout(True)
-    self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
-    uc_sizer.Add(self.uc_canvas, 1, flag=wx.EXPAND)
+    self.wp_figure.set_tight_layout(True)
+    self.wp_canvas = FigureCanvas(self.wp_panel, -1, self.wp_figure)
+    wp_sizer.Add(self.wp_canvas, 1, flag=wx.EXPAND)
 
     # HKL (or slice) plot
     self.hkl_panel = wx.Panel(self)
     hkl_sizer = wx.BoxSizer(wx.VERTICAL)
     self.hkl_panel.SetSizer(hkl_sizer)
-    self.hkl_figure = Figure(figsize=(0.25, 0.25))
+
+    self.hkl_figure = Figure(figsize=(0.3, 0.3))
     self.hkl_figure.patch.set_visible(False)    # create transparent background
 
     self.hkl_axes = self.hkl_figure.add_subplot(111, frameon=False)
-    # self.hkl_axes.set_aspect('equal')
     self.hkl_axes.set_xticks([])
     self.hkl_axes.set_yticks([])
 
-    self.hkl_figure.set_tight_layout(True)
     self.hkl_canvas = FigureCanvas(self.hkl_panel, -1, self.hkl_figure)
-    hkl_sizer.Add(self.hkl_canvas, 1, flag=wx.EXPAND)
+    hkl_sizer.Add(self.hkl_canvas, 1,flag=wx.EXPAND)
 
     self.hkl_sg = ct.OptionCtrl(self.hkl_panel,
                                 items=[('sg', 'P1')],
@@ -718,7 +705,8 @@ class ProcessingTab(ScrolledPanel):
                                 checkbox_label='Space Group: ',
                                 label_size=wx.DefaultSize,
                                 ctrl_size=wx.DefaultSize)
-    hkl_sizer.Add(self.hkl_sg, flag=wx.ALL | wx.ALIGN_CENTER, border=5)
+    hkl_sizer.Add(self.hkl_sg, flag=wx.ALIGN_CENTER)
+
     self.Bind(wx.EVT_TEXT_ENTER, self.onSGTextEnter, self.hkl_sg.sg)
     self.Bind(wx.EVT_CHECKBOX, self.onSGCheckbox, self.hkl_sg.toggle)
 
@@ -737,11 +725,11 @@ class ProcessingTab(ScrolledPanel):
 
     self.main_fig_sizer.Add(self.int_panel, pos=(0, 0), span=(2, 6),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.uc_panel, pos=(2, 0), span=(2, 4),
+    self.main_fig_sizer.Add(self.wp_panel, pos=(2, 0), span=(2, 4),
                             flag=wx.EXPAND)
     self.main_fig_sizer.Add(self.hkl_panel, pos=(2, 4), span=(2, 2),
                             flag=wx.EXPAND)
-    self.main_fig_sizer.Add(self.proc_panel, pos= (4, 0), span=(1, 6),
+    self.main_fig_sizer.Add(self.proc_panel, pos=(4, 0), span=(1, 6),
                             flag=wx.EXPAND)
 
     self.main_fig_sizer.AddGrowableCol(0)
@@ -751,6 +739,7 @@ class ProcessingTab(ScrolledPanel):
     self.main_fig_sizer.AddGrowableCol(4)
     self.main_fig_sizer.AddGrowableCol(5)
     self.main_fig_sizer.AddGrowableRow(1)
+    self.main_fig_sizer.AddGrowableRow(2)
     self.main_fig_sizer.AddGrowableRow(3)
 
     cid = self.int_canvas.mpl_connect('pick_event', self.on_pick)
@@ -884,7 +873,7 @@ class ProcessingTab(ScrolledPanel):
   def draw_plots(self):
     if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
       self.draw_integration_plots()
-      self.draw_uc_histograms()
+      self.draw_b_factors()
       self.draw_measured_indices()
       self.int_canvas.draw()
     self.Layout()
@@ -902,6 +891,8 @@ class ProcessingTab(ScrolledPanel):
       nsref_ylabel = 'Reflections (I/{0}(I) > {1})' \
                      ''.format(r'$\sigma$',
                                self.gparams.cctbx.selection.min_sigma)
+
+
       self.nsref = self.nsref_axes.scatter(self.nsref_x, self.nsref_y, s=45,
                                            marker='o', edgecolors='black',
                                            color='#ca0020', picker=True)
@@ -982,165 +973,29 @@ class ProcessingTab(ScrolledPanel):
     except ValueError, e:
       print "RES ERROR: ", e
 
-  def calculate_uc_histogram(self, a, axes, xticks_loc='top', set_ylim=False):
-    n, bins = np.histogram(a, 50)
-    left = np.array(bins[:-1])
-    right = np.array(bins[1:])
-    bottom = np.zeros(len(left))
-    top = bottom + n
-    XY = np.array(
-      [[left, left, right, right], [bottom, top, top, bottom]]).T
-    barpath = path.Path.make_compound_path_from_polys(XY)
-    patch = mpatches.PathPatch(barpath, fc='#4575b4', lw=0, alpha=0.75)
-    axes.add_patch(patch)
 
-    axes.set_xlim(left[0], right[-1])
-    if set_ylim:
-      axes.set_ylim(bottom.min(), 1.05 * top.max())
+  def draw_b_factors(self):
+    self.wp_axes.clear()
+    self.wp_axes.set_xlabel('B-factor')
+    self.wp_axes.set_ylabel('Count')
+    self.wp_axes.set_title('Wilson B-factor Histogram')
+    if len(self.b_factors) > 0:
+      self.wp_axes.hist(self.b_factors, 50, normed=False, facecolor='#4575b4',
+                        histtype='stepfilled')
 
-    # axes.hist(a, 50, normed=False, facecolor='#4575b4',
-    #                  histtype='stepfilled')
-    axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
-    axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+      # n, bins = np.histogram(self.b_factors, 50)
+      # left = np.array(bins[:-1])
+      # right = np.array(bins[1:])
+      # bottom = np.zeros(len(left))
+      # top = bottom + n
+      # XY = np.array(
+      #   [[left, left, right, right], [bottom, top, top, bottom]]).T
+      # barpath = path.Path.make_compound_path_from_polys(XY)
+      # patch = mpatches.PathPatch(barpath, fc='#4575b4', lw=0, alpha=0.75)
+      # self.wp_axes.add_patch(patch)
+      # self.wp_axes.set_xlim(left[0], right[-1])
+      # self.wp_axes.set_ylim(bottom.min(), 1.05 * top.max())
 
-    if xticks_loc == 'top':
-      axes.xaxis.tick_top()
-    elif xticks_loc == 'bottom':
-      axes.xaxis.tick_bottom()
-
-
-
-  def draw_uc_histograms(self):
-    try:
-      # Unit cell histograms
-      finished = [i for i in self.finished_objects if
-                  i.fail == None and i.final['final'] != None]
-      if len(finished) > 0:
-        self.a_axes.clear()
-        self.b_axes.clear()
-        self.c_axes.clear()
-        self.alpha_axes.clear()
-        self.beta_axes.clear()
-        self.gamma_axes.clear()
-
-        a = [i.final['a'] for i in finished]
-        b = [i.final['b'] for i in finished]
-        c = [i.final['c'] for i in finished]
-        alpha = [i.final['alpha'] for i in finished]
-        beta = [i.final['beta'] for i in finished]
-        gamma = [i.final['gamma'] for i in finished]
-
-        self.calculate_uc_histogram(a, self.a_axes,
-                                    xticks_loc='top', set_ylim=True)
-        edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
-        self.a_axes.set_ylabel(edge_ylabel)
-
-        self.calculate_uc_histogram(b, self.b_axes, xticks_loc='top')
-        plt.setp(self.b_axes.get_yticklabels(), visible=False)
-
-        self.calculate_uc_histogram(c, self.c_axes, xticks_loc='top')
-        plt.setp(self.c_axes.get_yticklabels(), visible=False)
-
-        self.calculate_uc_histogram(alpha, self.alpha_axes,
-                                    xticks_loc='bottom', set_ylim=True)
-        ang_ylabel = '{}, {}, {} ({})'.format(r'$\alpha$', r'$\beta$',
-                                              r'$\gamma$', r'$^\circ$')
-        self.alpha_axes.set_ylabel(ang_ylabel)
-
-        self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
-        plt.setp(self.beta_axes.get_yticklabels(), visible=False)
-
-        self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
-        plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
-
-    except ValueError, e:
-      print 'UC HISTOGRAM ERROR: ', e
-
-  # def draw_beamXY_plot(self):
-      # try:
-      #   # Beam XY (cumulative)
-      #   info = []
-      #   wavelengths = []
-      #   distances = []
-      #   cells = []
-      #
-      #   # Import relevant info
-      #   for obj in self.finished_objects:
-      #     fin = obj.final
-      #     pickle = fin['final']
-      #     if 'wavelength' in obj.final:
-      #       info.append([pickle, fin['beamX'], fin['beamY']])
-      #       wavelengths.append(fin['wavelength'])
-      #       distances.append(fin['distance'])
-      #       cells.append([fin['a'], fin['b'], fin['c'],
-      #               fin['alpha'], fin['beta'], fin['gamma']])
-      #     else:
-      #       if (pickle is not None and
-      #               os.path.isfile(pickle)):
-      #         try:
-      #           beam = ep.load(pickle)
-      #           info.append([pickle, beam['xbeam'], beam['ybeam']])
-      #           wavelengths.append(beam['wavelength'])
-      #           distances.append(beam['distance'])
-      #           cells.append(beam['observations'][0].unit_cell().parameters())
-      #         except Exception, e:
-      #           print 'BEAMXY_PLOT_ERROR: ', e
-      #           pass
-      #
-      #   # Calculate beam center coordinates and distances
-      #   if len(info) > 0:
-      #     beamX = [i[1] for i in info]
-      #     beamY = [j[2] for j in info]
-      #     beam_dist = [math.hypot(i[1] - np.median(beamX), i[2] -
-      #                             np.median(beamY)) for i in info]
-      #
-      #     wavelength = np.median(wavelengths)
-      #     det_distance = np.median(distances)
-      #     a = np.median([i[0] for i in cells])
-      #     b = np.median([i[1] for i in cells])
-      #     c = np.median([i[2] for i in cells])
-      #
-      #     # Calculate predicted L +/- 1 misindexing distance for each cell edge
-      #     aD = det_distance * math.tan(2 * math.asin(wavelength / (2 * a)))
-      #     bD = det_distance * math.tan(2 * math.asin(wavelength / (2 * b)))
-      #     cD = det_distance * math.tan(2 * math.asin(wavelength / (2 * c)))
-      #
-      #     # Calculate axis limits of beam center scatter plot
-      #     beamxy_delta = np.ceil(np.max(beam_dist))
-      #     xmax = round(np.median(beamX) + beamxy_delta)
-      #     xmin = round(np.median(beamX) - beamxy_delta)
-      #     ymax = round(np.median(beamY) + beamxy_delta)
-      #     ymin = round(np.median(beamY) - beamxy_delta)
-      #
-      #     if xmax == xmin:
-      #       xmax += 0.5
-      #       xmin -= 0.5
-      #     if ymax == ymin:
-      #       ymax += 0.5
-      #       ymin -= 0.5
-      #
-      #     # Plot beam center scatter plot
-      #     self.bxy_axes.clear()
-      #     self.bxy_axes.axis('equal')
-      #     self.bxy_axes.axis([xmin, xmax, ymin, ymax])
-      #     self.bxy_axes.scatter(beamX, beamY, alpha=1, s=20, c='grey', lw=1)
-      #     self.bxy_axes.plot(np.median(beamX), np.median(beamY), markersize=8, marker='o', c='yellow', lw=2)
-      #
-      #     # Plot projected mis-indexing limits for all three axes
-      #     circle_a = plt.Circle((np.median(beamX), np.median(beamY)), radius=aD, color='r', fill=False, clip_on=True)
-      #     circle_b = plt.Circle((np.median(beamX), np.median(beamY)), radius=bD, color='g', fill=False, clip_on=True)
-      #     circle_c = plt.Circle((np.median(beamX), np.median(beamY)), radius=cD, color='b', fill=False, clip_on=True)
-      #     self.bxy_axes.add_patch(circle_a)
-      #     self.bxy_axes.add_patch(circle_b)
-      #     self.bxy_axes.add_patch(circle_c)
-      #     self.bxy_axes.set_xlabel('BeamX (mm)', fontsize=10)
-      #     self.bxy_axes.set_ylabel('BeamY (mm)', fontsize=10)
-      #     self.bxy_axes.set_title('Beam Center Coordinates')
-      #
-      #   self.int_canvas.draw()
-      #
-      # except ValueError, e:
-      #   print 'BEAM XY ERROR: ', e
 
   def draw_measured_indices(self):
     # Extract indices from list and apply symmetry if any via miller object
@@ -1159,73 +1014,75 @@ class ProcessingTab(ScrolledPanel):
     else:
       crystal_symmetry = crystal.symmetry(space_group_symbol='P1')
 
-    try:
-      ms = miller.set(crystal_symmetry=crystal_symmetry,
-                      indices=self.idx_array, anomalous_flag=False)
-      equiv = ms.multiplicities().merge_equivalents()
-      merged_indices = equiv.redundancies()
+    if len(self.idx_array) > 0:
+      try:
+        ms = miller.set(crystal_symmetry=crystal_symmetry,
+                        indices=self.idx_array, anomalous_flag=False)
+        equiv = ms.multiplicities().merge_equivalents()
+        merged_indices = equiv.redundancies()
 
-    except Exception, e:
-      print 'HKL ERROR: ', e
-      return
+      except Exception, e:
+        print 'HKL ERROR: ', e
+        return
 
-    # Draw a h0, k0, or l0 slice of merged data so far
-    self.hkl_axes.clear()
-    try:
-      self.hkl_colorbar.remove()
-    except Exception:
-      pass
+      # Draw a h0, k0, or l0 slice of merged data so far
+      self.hkl_axes.clear()
+      try:
+        self.hkl_colorbar.remove()
+      except Exception:
+        pass
 
-    slice = merged_indices.slice(axis=self.hkl_view_axis,
-                                 slice_start=0, slice_end=0)
+      slice = merged_indices.slice(axis=self.hkl_view_axis,
+                                   slice_start=0, slice_end=0)
 
-    hkl = [i[0] for i in slice]
-    freq = [i[1] for i in slice]
+      hkl = [i[0] for i in slice]
+      freq = [i[1] for i in slice]
 
-    if self.hkl_view_axis == 'l':
-      x = [i[0] for i in hkl]
-      y = [i[1] for i in hkl]
-      self.hkl_axes.set_xlabel('h', weight='bold')
-      self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
-    elif self.hkl_view_axis == 'k':
-      x = [i[0] for i in hkl]
-      y = [i[2] for i in hkl]
-      self.hkl_axes.set_xlabel('h', weight='bold')
-      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-    elif self.hkl_view_axis == 'h':
-      x = [i[1] for i in hkl]
-      y = [i[2] for i in hkl]
-      self.hkl_axes.set_xlabel('k', weight='bold')
-      self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
-    else:
-      # if for some reason this goes to plotting without any indices
-      x = np.zeros(500)
-      y = np.zeros(500)
-      freq = np.zeros(500)
+      if self.hkl_view_axis == 'l':
+        x = [i[0] for i in hkl]
+        y = [i[1] for i in hkl]
+        self.hkl_axes.set_xlabel('h', weight='bold')
+        self.hkl_axes.set_ylabel('k', weight='bold', rotation='horizontal')
+      elif self.hkl_view_axis == 'k':
+        x = [i[0] for i in hkl]
+        y = [i[2] for i in hkl]
+        self.hkl_axes.set_xlabel('h', weight='bold')
+        self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+      elif self.hkl_view_axis == 'h':
+        x = [i[1] for i in hkl]
+        y = [i[2] for i in hkl]
+        self.hkl_axes.set_xlabel('k', weight='bold')
+        self.hkl_axes.set_ylabel('l', weight='bold', rotation='horizontal')
+      else:
+        # if for some reason this goes to plotting without any indices
+        x = np.zeros(500)
+        y = np.zeros(500)
+        freq = np.zeros(500)
 
-    # Format plot
-    hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=1)
-    self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
-    self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
-    self.hkl_axes.set_xticks([])
-    self.hkl_axes.set_yticks([])
-    self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
-    self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
+      # Format plot
+      hkl_scatter = self.hkl_axes.scatter(x, y, c=freq, cmap="jet", s=1)
+      self.hkl_axes.axhline(0, lw=0.5, c='black', ls='-')
+      self.hkl_axes.axvline(0, lw=0.5, c='black', ls='-')
+      self.hkl_axes.set_xticks([])
+      self.hkl_axes.set_yticks([])
+      self.hkl_axes.xaxis.set_label_coords(x=1, y=0.5)
+      self.hkl_axes.yaxis.set_label_coords(x=0.5, y=1)
 
-    try:
-      xmax = abs(max(x, key=abs))
-      ymax = abs(max(y, key=abs))
-      self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
-      self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
-    except ValueError, e:
-      pass
+      try:
+        xmax = abs(max(x, key=abs))
+        ymax = abs(max(y, key=abs))
+        self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
+        self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
+      except ValueError, e:
+        pass
 
-    norm = colors.Normalize(vmin=0, vmax=np.max(freq))
-    self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter, ax=self.hkl_axes,
-                                                 cmap='jet', norm=norm,
-                                                 orientation='vertical',
-                                                 aspect=40,
-                                                 use_gridspec=True)
+      norm = colors.Normalize(vmin=0, vmax=np.max(freq))
+      self.hkl_colorbar = self.hkl_figure.colorbar(hkl_scatter,
+                                                   ax=self.hkl_axes,
+                                                   cmap='jet', norm=norm,
+                                                   orientation='vertical',
+                                                   aspect=40,
+                                                   use_gridspec=True)
 
   def onImageView(self, e):
     filepath = self.info_txt.GetValue()
@@ -1351,6 +1208,207 @@ class ProcessingTab(ScrolledPanel):
     if event.button == 1 and self.dblclick:
       self.show_image_group(e=event)
       self.view_proc_images()
+
+class LiveAnalysisTab(ScrolledPanel):
+  def __init__(self,
+               parent,
+               init=None,
+               gparams=None,
+               finished_objects=None):
+    self.parent = parent
+    self.init = init
+    self.gparams = gparams
+    self.finished_objects = finished_objects
+    self.cluster_info = None
+    self.pparams = None
+    self.prime_info = None
+    self.tb1 = None
+
+    ScrolledPanel.__init__(self, parent)
+    self.main_fig_sizer = wx.GridBagSizer(0, 0)
+
+    # Set regular font
+    plt.rc('font', family='sans-serif', size=plot_font_size)
+    plt.rc('mathtext', default='regular')
+
+    # UC Histogram / cluster figure
+    self.uc_panel = wx.Panel(self)
+    uc_box = wx.StaticBox(self.uc_panel, label='Unit Cell Histograms')
+    uc_sizer = wx.StaticBoxSizer(uc_box, wx.VERTICAL)
+    self.uc_panel.SetSizer(uc_sizer)
+    self.uc_figure = Figure(figsize=(1, 2.5))
+    self.uc_figure.patch.set_visible(False)  # create transparent background
+
+    uc_gsub = gridspec.GridSpec(2, 3, wspace=0, hspace=0)
+    self.a_axes = self.uc_figure.add_subplot(uc_gsub[0])
+    self.a_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.a_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    self.b_axes = self.uc_figure.add_subplot(uc_gsub[1], sharey=self.a_axes)
+    self.b_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.b_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.b_axes.get_yticklabels(), visible=False)
+    self.c_axes = self.uc_figure.add_subplot(uc_gsub[2], sharey=self.a_axes)
+    self.c_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.c_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.c_axes.get_yticklabels(), visible=False)
+    self.alpha_axes = self.uc_figure.add_subplot(uc_gsub[3])
+    self.alpha_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.alpha_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    self.beta_axes = self.uc_figure.add_subplot(uc_gsub[4],
+                                                sharey=self.alpha_axes)
+    self.beta_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.beta_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+    self.gamma_axes = self.uc_figure.add_subplot(uc_gsub[5],
+                                                 sharey=self.alpha_axes)
+    self.gamma_axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    self.gamma_axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+    plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+
+    self.uc_figure.set_tight_layout(True)
+    self.uc_canvas = FigureCanvas(self.uc_panel, -1, self.uc_figure)
+    uc_sizer.Add(self.uc_canvas, 1, flag=wx.EXPAND)
+
+    # UC Clustering Result
+    self.cluster_panel = wx.Panel(self)
+    cluster_box = wx.StaticBox(self.cluster_panel, label='Unit Cell Clustering')
+    cluster_box_sizer = wx.StaticBoxSizer(cluster_box, wx.VERTICAL)
+    self.cluster_panel.SetSizer(cluster_box_sizer)
+    self.cluster_list = ct.CustomListCtrl(self.cluster_panel, size=(-1, 100))
+    self.cluster_list.ctr.InsertColumn(0, "#")
+    self.cluster_list.ctr.InsertColumn(1, "Lattice")
+    self.cluster_list.ctr.InsertColumn(2, "Unit Cell", width=200)
+    self.cluster_list.ctr.setResizeColumn(3)
+    cluster_box_sizer.Add(self.cluster_list, proportion=1, flag=wx.EXPAND)
+
+    # PRIME result
+    self.tb1_panel = wx.Panel(self)
+    tb1_box = wx.StaticBox(self.tb1_panel, label='PRIME Merging Statistics ('
+                                                 'no postref)')
+    self.tb1_box_sizer = wx.StaticBoxSizer(tb1_box, wx.HORIZONTAL)
+    self.tb1_panel.SetSizer(self.tb1_box_sizer)
+
+    self.main_fig_sizer.Add(self.uc_panel, pos=(0, 0), span=(2, 4),
+                            flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.cluster_panel, pos=(2, 0), span=(2, 3),
+                            flag=wx.EXPAND)
+    self.main_fig_sizer.Add(self.tb1_panel, pos=(2, 3), span=(2, 1),
+                            flag=wx.EXPAND)
+
+    self.main_fig_sizer.AddGrowableCol(0)
+    self.main_fig_sizer.AddGrowableCol(1)
+    self.main_fig_sizer.AddGrowableCol(2)
+    # self.main_fig_sizer.AddGrowableCol(3)
+    self.main_fig_sizer.AddGrowableRow(1)
+    self.main_fig_sizer.AddGrowableRow(2)
+
+    self.SetSizer(self.main_fig_sizer)
+
+  def draw_plots(self):
+    if self.cluster_info is not None:
+      self.report_clustering_results()
+    if (self.prime_info is not None and self.pparams is not None):
+      self.report_prime_results()
+    self.draw_uc_histograms()
+    self.Layout()
+    self.SetupScrolling()
+
+  def report_clustering_results(self):
+    self.cluster_list.ctr.DeleteAllItems()
+    clusters = sorted(self.cluster_info, key=lambda i:i['number'], reverse=True)
+    for c in clusters:
+      i = clusters.index(c)
+      idx = self.cluster_list.ctr.InsertStringItem(i, str(c['number']))
+      self.cluster_list.ctr.SetStringItem(idx, 1, str(c['pg']))
+      self.cluster_list.ctr.SetStringItem(idx, 2, str(c['uc']))
+
+  def report_prime_results(self):
+    # Remove previous data if exists
+    if self.tb1 is not None:
+      self.tb1.Destroy()
+
+    self.plot = ppl.Plotter(self.pparams, self.prime_info)
+    self.tb1_labels, self.tb1_data = self.plot.table_one()
+    self.tb1 = ct.TableCtrl(self.tb1_panel,
+                            rlabels=self.tb1_labels,
+                            # rlabel_size=(150, -1),
+                            contents=self.tb1_data,
+                            label_style='bold')
+    self.tb1_box_sizer.Add(self.tb1, 1, flag=wx.EXPAND | wx.ALL, border=10)
+
+  def calculate_uc_histogram(self, a, axes, xticks_loc='top', set_ylim=False):
+    n, bins = np.histogram(a, 50)
+    left = np.array(bins[:-1])
+    right = np.array(bins[1:])
+    bottom = np.zeros(len(left))
+    top = bottom + n
+    XY = np.array(
+      [[left, left, right, right], [bottom, top, top, bottom]]).T
+    barpath = path.Path.make_compound_path_from_polys(XY)
+    patch = mpatches.PathPatch(barpath, fc='#4575b4', lw=0, alpha=0.75)
+    axes.add_patch(patch)
+
+    axes.set_xlim(left[0], right[-1])
+    if set_ylim:
+      axes.set_ylim(bottom.min(), 1.05 * top.max())
+
+    # axes.hist(a, 50, normed=False, facecolor='#4575b4',
+    #                  histtype='stepfilled')
+    axes.xaxis.get_major_ticks()[0].label1.set_visible(False)
+    axes.xaxis.get_major_ticks()[-1].label1.set_visible(False)
+
+    if xticks_loc == 'top':
+      axes.xaxis.tick_top()
+    elif xticks_loc == 'bottom':
+      axes.xaxis.tick_bottom()
+
+
+  def draw_uc_histograms(self):
+    try:
+      # Unit cell histograms
+      finished = [i for i in self.finished_objects if
+                  i.fail == None and i.final['final'] != None]
+      if len(finished) > 0:
+        self.a_axes.clear()
+        self.b_axes.clear()
+        self.c_axes.clear()
+        self.alpha_axes.clear()
+        self.beta_axes.clear()
+        self.gamma_axes.clear()
+
+        a = [i.final['a'] for i in finished]
+        b = [i.final['b'] for i in finished]
+        c = [i.final['c'] for i in finished]
+        alpha = [i.final['alpha'] for i in finished]
+        beta = [i.final['beta'] for i in finished]
+        gamma = [i.final['gamma'] for i in finished]
+
+        self.calculate_uc_histogram(a, self.a_axes,
+                                    xticks_loc='top', set_ylim=True)
+        edge_ylabel = 'a, b, c ({})'.format(r'$\AA$')
+        self.a_axes.set_ylabel(edge_ylabel)
+
+        self.calculate_uc_histogram(b, self.b_axes, xticks_loc='top')
+        plt.setp(self.b_axes.get_yticklabels(), visible=False)
+
+        self.calculate_uc_histogram(c, self.c_axes, xticks_loc='top')
+        plt.setp(self.c_axes.get_yticklabels(), visible=False)
+
+        self.calculate_uc_histogram(alpha, self.alpha_axes,
+                                    xticks_loc='bottom', set_ylim=True)
+        ang_ylabel = '{}, {}, {} ({})'.format(r'$\alpha$', r'$\beta$',
+                                              r'$\gamma$', r'$^\circ$')
+        self.alpha_axes.set_ylabel(ang_ylabel)
+
+        self.calculate_uc_histogram(beta, self.beta_axes, xticks_loc='bottom')
+        plt.setp(self.beta_axes.get_yticklabels(), visible=False)
+
+        self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
+        plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
+
+    except ValueError, e:
+      print 'UC HISTOGRAM ERROR: ', e
+
 
 class SummaryTab(ScrolledPanel):
   def __init__(self,
@@ -1643,7 +1701,7 @@ class SummaryTab(ScrolledPanel):
       analysis = Analyzer(init=self.init,
                           all_objects=self.final_objects,
                           gui_mode=True)
-      pg, uc, clusters = analysis.unit_cell_analysis()
+      clusters = analysis.unit_cell_analysis()
       if clusters != []:
         self.report_clustering_results(clusters=clusters)
 
@@ -1655,7 +1713,7 @@ class SummaryTab(ScrolledPanel):
       idx = self.cluster_info.ctr.InsertStringItem(i, str(c['number']))
       self.cluster_info.ctr.SetStringItem(idx, 1, str(c['pg']))
       self.cluster_info.ctr.SetStringItem(idx, 2, str(c['uc']))
-      if c['filename'] != '*':
+      if c['filename'] not in ('*', None):
         self.cluster_info.ctr.SetStringItem(idx, 3, c['filename'])
 
     self.Refresh()
@@ -1701,10 +1759,20 @@ class ProcWindow(wx.Frame):
     self.timeout_start = None
     self.find_new_images = self.monitor_mode
     self.start_object_finder = True
+
+    self.running_cluster = False
+    self.running_prime = False
+    self.draw_analysis = False
+
     self.finished_objects = []
     self.read_object_files = []
     self.new_images = []
     self.indices = []
+    self.cluster_info = None
+    self.pparams = None
+    self.prime_info = None
+
+    self.mxh = mx_handler()
 
     self.main_panel = wx.Panel(self)
     self.main_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1727,6 +1795,11 @@ class ProcWindow(wx.Frame):
                                                 label='Monitor',
                                                 bitmap=watch_bmp,
                                                 shortHelp='Monitor Mode')
+    hist_bmp = bitmaps.fetch_icon_bitmap('mimetypes', 'spreadsheet', size=32)
+    self.tb_btn_analysis = self.proc_toolbar.AddCheckLabelTool(wx.ID_ANY,
+                                              label='Analysis',
+                                              bitmap=hist_bmp,
+                                              shortHelp='Toggle Runtime Analysis Tab')
     self.proc_toolbar.Realize()
 
     # Status box
@@ -1743,11 +1816,13 @@ class ProcWindow(wx.Frame):
 
     # Tabbed output window(s)
     self.proc_panel = wx.Panel(self.main_panel)
-    self.proc_nb = wx.Notebook(self.proc_panel, style=0)
-    self.chart_tab = ProcessingTab(self.proc_nb)
+    # self.proc_nb = wx.Notebook(self.proc_panel, style=0)
+    self.proc_nb = AuiNotebook(self.proc_panel, style=wx.aui.AUI_NB_TOP)
+    self.proc_tab = ProcessingTab(self.proc_nb)
     self.log_tab = LogTab(self.proc_nb)
+    self.chart_tab = LiveAnalysisTab(self.proc_nb)
     self.proc_nb.AddPage(self.log_tab, 'Log')
-    self.proc_nb.AddPage(self.chart_tab, 'Charts')
+    self.proc_nb.AddPage(self.proc_tab, 'Processing')
     self.proc_nb.SetSelection(1)
     self.proc_sizer = wx.BoxSizer(wx.VERTICAL)
     self.proc_sizer.Add(self.proc_nb, 1, flag=wx.EXPAND | wx.ALL, border=3)
@@ -1771,17 +1846,25 @@ class ProcWindow(wx.Frame):
 
     # Output polling timer
     self.timer = wx.Timer(self)
+    self.chart_timer = wx.Timer(self)
 
-    # Event bindings
+    # PostEvent bindings
     self.Bind(thr.EVT_ALLDONE, self.onFinishedProcess)
     self.Bind(thr.EVT_IMGDONE, self.onFinishedImageFinder)
+    self.Bind(thr.EVT_CLUSTERDONE, self.onFinishedCluster)
+    self.Bind(pthr.EVT_ALLDONE, self.onFinishedPRIME)
+
+    # Event bindings
     self.sb.Bind(wx.EVT_SIZE, self.onStatusBarResize)
     self.Bind(wx.EVT_TIMER, self.onTimer, id=self.timer.GetId())
+    self.Bind(wx.EVT_TIMER, self.onChartTimer, id=self.chart_timer.GetId())
+    self.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onTabChange, self.proc_nb)
 
     # Button bindings
     self.Bind(wx.EVT_TOOL, self.onAbort, self.tb_btn_abort)
     self.Bind(wx.EVT_TOOL, self.onResume, self.tb_btn_resume)
     self.Bind(wx.EVT_TOOL, self.onMonitor, self.tb_btn_monitor)
+    self.Bind(wx.EVT_TOOL, self.onAnalysis, self.tb_btn_analysis)
 
     # Determine if monitor mode was previously selected
     if self.gparams.advanced.monitor_mode:
@@ -1792,6 +1875,30 @@ class ProcWindow(wx.Frame):
           self.monitor_mode_timeout = 30
         else:
           self.monitor_mode_timeout = self.gparams.advanced.monitor_mode_timeout_length
+
+  def onTabChange(self, e):
+    ''' Only update displays if user changes to the tab '''
+    # tab = self.proc_nb.GetSelection()
+    # if tab == 0:
+    #   self.display_log()
+    # if tab == 1:
+    #   self.plot_integration()
+    # if tab == 2:
+    #   self.plot_live_analysis()
+    pass
+
+  def onAnalysis(self, e):
+    if self.proc_toolbar.GetToolState(self.tb_btn_analysis.GetId()):
+      self.proc_nb.InsertPage(n=2, page=self.chart_tab, text='Analysis',
+                              select=True)
+      if self.proc_nb.GetSelection() != 2:
+        self.proc_nb.SetSelection(2)
+      self.draw_analysis = True
+    else:
+      if self.proc_nb.GetSelection() == 2:
+        self.proc_nb.SetSelection(1)
+      self.proc_nb.RemovePage(2)
+      self.draw_analysis = False
 
   def onMonitor(self, e):
     if self.proc_toolbar.GetToolState(self.tb_btn_monitor.GetId()):
@@ -1867,9 +1974,11 @@ class ProcWindow(wx.Frame):
       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), True)
 
       # Run processing, etc.
+      self.timer.Start(1000)
+      self.chart_timer.Start(15000)
       self.state = 'resume'
       self.process_images()
-      self.timer.Start(5000)
+
 
   def recover(self, int_path, status, init, params):
     self.recovery = True
@@ -1885,6 +1994,7 @@ class ProcWindow(wx.Frame):
     self.nref_list = [0] * len(self.img_list)
     self.nref_xaxis = [i[0] for i in self.img_list]
     self.res_list = [0] * len(self.img_list)
+
 
     self.state = status
     self.finished_objects = []
@@ -1906,7 +2016,8 @@ class ProcWindow(wx.Frame):
       self.status_txt.SetLabel('Running...')
       self.process_images()
       self.good_to_go = True
-      self.timer.Start(5000)
+      self.timer.Start(1000)
+      self.chart_timer.Start(15000)
 
       # write init file
       ep.dump(os.path.join(self.init.int_base, 'init.cfg'), self.init)
@@ -1923,6 +2034,7 @@ class ProcWindow(wx.Frame):
     font.SetWeight(wx.NORMAL)
     self.status_txt.SetFont(font)
     self.status_txt.SetForegroundColour('black')
+
 
     if self.init.params.cctbx.selection.select_only.flag_on:
       self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for
@@ -1951,11 +2063,10 @@ class ProcWindow(wx.Frame):
       elif self.state == 'resume':
         iterable = self.new_images
         self.img_list.extend(self.new_images)
+        self.nref_list.extend([0] * len(self.new_images))
+        self.nref_xaxis.extend([i[0] for i in self.new_images])
+        self.res_list.extend([0] * len(self.new_images))
         self.new_images = []
-        # self.status_summary = [0] * len(self.img_list)
-        # self.nref_list = [0] * len(self.img_list)
-        # self.nref_xaxis = [i[0] for i in self.img_list]
-        # self.res_list = [0] * len(self.img_list)
         self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
                                  ''.format(len(iterable), len(self.img_list)))
         self.start_object_finder = True
@@ -1971,6 +2082,11 @@ class ProcWindow(wx.Frame):
                                  ''.format(len(self.img_list)))
     self.gauge_process.SetRange(len(self.img_list))
 
+    iter_path = os.path.join(self.init.int_base, 'iter.cfg')
+    init_path = os.path.join(self.init.int_base, 'init.cfg')
+    ep.dump(iter_path, iterable)
+    ep.dump(init_path, self.init)
+
     if self.gparams.mp_method == 'multiprocessing':
       self.img_process = thr.ProcThread(self,
                                         init=self.init,
@@ -1982,11 +2098,7 @@ class ProcWindow(wx.Frame):
       self.img_process = None
       self.job_id = None
       queue = self.gparams.mp_queue
-      iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-      init_path = os.path.join(self.init.int_base, 'init.cfg')
       nproc = self.init.params.n_processors
-      ep.dump(iter_path, iterable)
-      ep.dump(init_path, self.init)
 
       if self.init.params.mp_method == 'lsf':
         logfile = os.path.join(self.init.int_base, 'bsub.log')
@@ -2070,18 +2182,39 @@ class ProcWindow(wx.Frame):
 
         # Dataset information
         if self.recovery:
-          pg = analysis.cons_pg
-          uc = analysis.cons_uc
-          clusters = analysis.clusters
+          if hasattr(analysis, 'clusters'):
+            clusters = analysis.clusters
+            pg = clusters[0]['pg']
+            uc = clusters[0]['uc']
+          else:
+            clusters = []
+            if hasattr(analysis, 'cons_pg'):
+              pg = analysis.cons_pg
+            else:
+              pg = None
+            if hasattr(analysis, 'cons_uc'):
+              uc = analysis.cons_uc
+            else:
+              uc = None
         else:
           analysis.print_results()
-          pg, uc, clusters = analysis.unit_cell_analysis()
+          clusters = analysis.unit_cell_analysis()
+          pg = clusters[0]['pg']
+          uc = clusters[0]['uc']
 
         if clusters != []:
           self.summary_tab.report_clustering_results(clusters=clusters)
 
-        self.summary_tab.pg_txt.SetLabel(str(pg))
-        unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+        if pg != None:
+          self.summary_tab.pg_txt.SetLabel(str(pg))
+        if uc is not None:
+          if type(uc) is str:
+            unit_cell = uc
+          else:
+            unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
+        else:
+          unit_cell = ''
+
         self.summary_tab.uc_txt.SetLabel(unit_cell)
         res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
                                   np.mean(analysis.hres),
@@ -2145,8 +2278,8 @@ class ProcWindow(wx.Frame):
           analysis.make_prime_input(filename=prime_file)
 
         # Display summary
-        self.proc_nb.AddPage(self.summary_tab, 'Analysis')
-        self.proc_nb.SetSelection(2)
+        self.proc_nb.AddPage(self.summary_tab, 'Summary', select=True)
+        # self.proc_nb.SetSelection(2)
 
       # Signal end of run
       font = self.sb.GetFont()
@@ -2157,14 +2290,14 @@ class ProcWindow(wx.Frame):
 
     # Finish up
     self.display_log()
-    self.plot_integration()
+    self.plot_integration(force_plot=True)
+    self.plot_live_analysis(force_plot=True)
 
     # Stop timer
     self.timer.Stop()
-
+    self.chart_timer.Stop()
 
   def display_log(self):
-    ''' Display PRIME stdout '''
     if os.path.isfile(self.init.logfile):
       with open(self.init.logfile, 'r') as out:
         out.seek(self.bookmark)
@@ -2175,28 +2308,51 @@ class ProcWindow(wx.Frame):
       self.log_tab.log_window.AppendText(output)
       self.log_tab.log_window.SetInsertionPoint(ins_pt)
 
-  def plot_integration(self):
+  def plot_integration(self, force_plot=False):
+    ''' This function will plot fast-drawing runtime processing charts on the
+        "Processing" tab '''
+
     if (self.nref_list is not None and self.res_list is not None) :
+      self.proc_tab.init = self.init
+      self.proc_tab.gparams = self.gparams
+      self.proc_tab.finished_objects = self.finished_objects
+      self.proc_tab.img_list = self.img_list
+      self.proc_tab.res_list = self.res_list
+      self.proc_tab.nref_list = self.nref_list
 
-      self.chart_tab.init = self.init
-      self.chart_tab.gparams = self.gparams
-      self.chart_tab.finished_objects = self.finished_objects
-      self.chart_tab.img_list = self.img_list
-      self.chart_tab.res_list = self.res_list
-      self.chart_tab.nref_list = self.nref_list
-
-      if self.chart_tab.spacegroup is None:
+      if self.proc_tab.spacegroup is None:
         if self.gparams.advanced.integrate_with == 'dials':
           sg = self.gparams.dials.target_space_group
           if sg is not None:
-            self.chart_tab.spacegroup = str(sg)
+            self.proc_tab.spacegroup = str(sg)
         else:
-          self.chart_tab.spacegroup = 'P1'
+          self.proc_tab.spacegroup = 'P1'
 
-      self.chart_tab.indices = self.indices
+      self.proc_tab.indices = self.indices
       self.indices = []
-      self.chart_tab.draw_plots()
-      self.chart_tab.draw_summary()
+      self.proc_tab.b_factors.extend(self.b_factors)
+      self.b_factors = []
+
+      if self.proc_nb.GetSelection() == 1 or force_plot:
+        self.proc_tab.draw_plots()
+        self.proc_tab.draw_summary()
+
+  def plot_live_analysis(self, force_plot=False):
+    ''' This function will plot in-depth analysis that will (importantly)
+        involve expensive and slow-drawing charts on the Live Analysis tab '''
+
+    if (self.nref_list is not None and self.res_list is not None) :
+      self.chart_tab.init = self.init
+      self.chart_tab.gparams = self.gparams
+      self.chart_tab.finished_objects = self.finished_objects
+
+      self.chart_tab.cluster_info = self.cluster_info
+      self.chart_tab.prime_info = self.prime_info
+      self.chart_tab.pparams = self.pparams
+
+      if (self.proc_nb.GetSelection() == 2 or self.draw_analysis) or force_plot:
+        self.chart_tab.draw_plots()
+
 
   def find_objects(self, find_old=False):
     if find_old:
@@ -2239,17 +2395,151 @@ class ProcWindow(wx.Frame):
 
   def populate_data_points(self, objects=None):
     self.indices = []
+    self.b_factors = []
     if objects is not None:
       for obj in objects:
         try:
           self.nref_list[obj.img_index - 1] = obj.final['strong']
           self.res_list[obj.img_index - 1] = obj.final['res']
           if 'observations' in obj.final:
-            self.indices.extend([i[0] for i in obj.final['observations']])
+            obs = obj.final['observations']
+            self.indices.extend([i[0] for i in obs])
+            try:
+              asu_contents = self.mxh.get_asu_contents(500)
+              observations_as_f = obs.as_amplitude_array()
+              observations_as_f.setup_binner(auto_binning=True)
+              wp = statistics.wilson_plot(observations_as_f, asu_contents,
+                                          e_statistics=True)
+              self.b_factors.append(wp.wilson_b)
+            except RuntimeError, e:
+              self.b_factors.append(0)
         except Exception, e:
           print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
           pass
 
+  def onChartTimer(self, e):
+    self.plot_live_analysis()
+    if not self.running_cluster:
+      self.run_clustering_thread()
+
+  def run_clustering_thread(self):
+    # Run clustering
+    if (self.finished_objects is not None or self.finished_objects != []):
+      if self.proc_nb.GetSelection() == 2:
+        iterable = []
+        for obj in self.finished_objects:
+          try:
+            fin = obj.final
+            iterable.append([float(fin['a']),
+                             float(fin['b']),
+                             float(fin['c']),
+                             float(fin['alpha']),
+                             float(fin['beta']),
+                             float(fin['gamma']),
+                             fin['sg']
+                             ])
+          except Exception:
+            pass
+        self.running_cluster = True
+        cl_thread = thr.ClusterThread(self, iterable=iterable)
+        cl_thread.start()
+
+  def onFinishedCluster(self, e):
+    self.cluster_info = e.GetValue()
+    self.running_cluster = False
+
+    # Output cluster results
+    cluster_info_file = os.path.join(self.init.int_base, 'cluster_info.pickle')
+    ep.dump(cluster_info_file, obj=self.cluster_info)
+
+    if not self.running_prime:
+      self.pparams = None
+      self.run_prime_thread()
+
+  def run_prime_thread(self):
+    # Run PRIME (basic merge only)
+    if (self.finished_objects is not None or self.finished_objects != []):
+      if self.proc_nb.GetSelection() == 2:
+        # Collect list of final integrated pickles and write to file
+        final_files = [o.final['final'] for o in self.finished_objects if
+                       (o.final['final'] is not None and
+                        os.path.isfile(o.final['final']))]
+        final_list_file = os.path.join(self.init.int_base, 'finished_pickles.lst')
+        with open(final_list_file, 'w') as ff:
+          ff.write('\n'.join(final_files))
+
+        # make PRIME input file
+        if self.cluster_info is not None:
+          cl_sorted = sorted(self.cluster_info, key=lambda i: i['number'],
+                             reverse=True)
+          best_pg = cl_sorted[0]['pg'].split('/')[0]
+          best_uc = cl_sorted[0]['uc']
+
+          analyzer = Analyzer(init=self.init,
+                              all_objects=self.finished_objects,
+                              gui_mode=False)
+          analyzer.prime_data_path = final_list_file
+          analyzer.cons_pg = best_pg
+          analyzer.cons_uc = best_uc
+
+          prime_phil = analyzer.make_prime_input(filename='live_prime.phil',
+                                       run_zero=True)
+          self.pparams = prime_phil.extract()
+
+          # Modify specific options based in IOTA settings
+          # Queue options
+          if (
+                  self.init.params.mp_method == 'lsf' and
+                  self.init.params.mp_queue is not None
+          ):
+            self.pparams.queue.mode = 'bsub'
+            self.pparams.queue.qname = self.init.params.mp_queue
+
+          # Number of processors (automatically, 1/2 of IOTA procs)
+          self.pparams.n_processors = int(self.init.params.n_processors / 2)
+
+          # Generate command args
+          cmd_args_list = ['n_postref_cycle=0',
+                           'queue.mode={}'.format(self.pparams.queue.mode),
+                           'queue.qname={}'.format(self.pparams.queue.qname),
+                           'n_processors={}'.format(self.pparams.n_processors)
+                           ]
+          cmd_args = ' '.join(cmd_args_list)
+
+          # remove previous run to avoid conflict
+          prime_dir = os.path.join(self.init.int_base, 'prime/000')
+          if os.path.isdir(prime_dir):
+            shutil.rmtree(prime_dir)
+
+          # Launch PRIME
+          self.running_prime = True
+          out_file = os.path.join(prime_dir, 'log.txt')
+          prime_file = os.path.join(self.init.int_base, 'live_prime.phil')
+          prime_thread = pthr.PRIMEThread(self,
+                                          prime_file=prime_file,
+                                          out_file=out_file,
+                                          cmd_args=cmd_args,
+                                          signal_finished=True)
+          prime_thread.start()
+
+  def onFinishedPRIME(self, e):
+    self.running_prime = False
+    if self.pparams is not None:
+      self.get_prime_stats()
+
+  def get_prime_stats(self):
+    stats_folder = os.path.join(self.pparams.run_no, 'stats')
+    if os.path.isdir(stats_folder):
+      stat_files = [os.path.join(stats_folder, i) for i in
+                    os.listdir(stats_folder) if i.endswith('stat')]
+      if stat_files != []:
+        assert len(stat_files) == 1
+        stat_file = stat_files[0]
+        if os.path.isfile(stat_file):
+          self.prime_info = ep.load(stat_file)
+          live_prime_info_file = os.path.join(self.init.int_base,
+                                              'life_prime_info.pickle')
+          shutil.copyfile(stat_file, live_prime_info_file)
 
   def onTimer(self, e):
     if self.abort_initiated:
@@ -2347,6 +2637,7 @@ class ProcWindow(wx.Frame):
   def finish_process(self):
     import shutil
     self.timer.Stop()
+    self.chart_timer.Stop()
 
     if self.finished_objects is None:
       font = self.sb.GetFont()
@@ -2374,11 +2665,33 @@ class ProcWindow(wx.Frame):
         analysis = None
 
       if self.finished_objects == []:
+        # Get image processing data from finished objects
         if analysis is not None and hasattr(analysis, 'image_objects'):
           self.finished_objects = [i for i in analysis.image_objects if
                                    i is not None and i.status == 'final']
         else:
           self.find_objects(find_old=True)
+
+        # Check for and recover clustering data
+        cluster_info_file = os.path.join(self.init.int_base,
+                                         'cluster_info.pickle')
+        if os.path.isfile(cluster_info_file):
+          self.cluster_info = ep.load(cluster_info_file)
+
+        # Check for and recover live PRIME results
+        live_prime_phil = os.path.join(self.init.int_base, 'live_prime.phil')
+        if os.path.isfile(live_prime_phil):
+          import iotbx.phil as ip
+          from prime.postrefine.mod_input import master_phil as prime_master_phil
+          with open(live_prime_phil, 'r') as lpf:
+            contents = lpf.read()
+          prime_phil = ip.parse(contents)
+          prime_phil = prime_master_phil.fetch(prime_phil)
+          self.pparams = prime_phil.extract()
+          live_prime_info_file = os.path.join(self.init.int_base,
+                                              'life_prime_info.pickle')
+          if os.path.isfile(live_prime_info_file):
+            self.prime_info = ep.load(live_prime_info_file)
 
       self.populate_data_points(objects=self.finished_objects)
 
@@ -2388,7 +2701,8 @@ class ProcWindow(wx.Frame):
 
       else:
         if len(self.finished_objects) > 0:
-          self.plot_integration()
+          self.plot_integration(force_plot=True)
+          self.plot_live_analysis(force_plot=True)
         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
           self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
 
@@ -2418,7 +2732,8 @@ class ProcWindow(wx.Frame):
                             ''.format(len(self.final_objects), len(self.img_list)), 1)
       if len(self.final_objects) > 0:
         # Signal end of run
-        self.plot_integration()
+        self.plot_integration(force_plot=True)
+        self.plot_live_analysis(force_plot=True)
         self.analyze_results()
       else:
         font = self.sb.GetFont()

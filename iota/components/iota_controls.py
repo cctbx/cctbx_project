@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/08/2016
-Last Changed: 06/22/2018
+Last Changed: 08/29/2018
 Description : IOTA GUI controls
 '''
 
@@ -975,9 +975,9 @@ class TableCtrl(CtrlBase):
 
   def __init__(self, parent,
                clabels=[],
-               clabel_size=(200, -1),
+               clabel_size=wx.DefaultSize,
                rlabels=[],
-               rlabel_size=(200, -1),
+               rlabel_size=wx.DefaultSize,
                contents=[],
                label_style='normal',
                content_style='normal'):

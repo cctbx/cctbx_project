@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/12/2014
-Last Changed: 07/11/2018
+Last Changed: 08/29/2018
 Description : Module with miscellaneous useful functions and classes
 '''
 
@@ -162,12 +162,13 @@ def find_base_dir(dirname):
 def make_image_path(raw_img, input_base, base_path):
   """ Makes path for output images """
   path = os.path.dirname(raw_img)
-  if os.path.relpath(path, input_base) == '.':
+  relpath = os.path.relpath(path, input_base)
+  if relpath == '.':
     dest_folder = base_path
   else:
-    dest_folder = '{0}/{1}'.format(base_path,
-                                   os.path.relpath(path, input_base))
+    dest_folder = os.path.join(base_path, relpath)
   return os.path.normpath(dest_folder)
+  # return dest_folder
 
 def make_filename(path):
   bname = os.path.basename(path)

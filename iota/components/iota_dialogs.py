@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 01/17/2017
-Last Changed: 05/24/2018
+Last Changed: 08/29/2018
 Description : IOTA GUI Dialogs
 '''
 
@@ -535,6 +535,10 @@ class ImportWindow(BaseDialog):
                                     ctrl_size=(150, -1))
     conv_box_sizer.Add(self.mod_square, 1, flag=wx.ALL | wx.EXPAND, border=10)
 
+    self.flip_beamxy = wx.CheckBox(self, label='Flip BeamXY for crop or pad')
+    conv_box_sizer.Add(self.flip_beamxy, flag=wx.ALL | wx.EXPAND, border=10)
+    self.flip_beamxy.SetValue(False)
+
     self.mod_beamstop = ct.OptionCtrl(self,
                                       items=[('threshold', 0.0)],
                                       label='Beamstop shadow threshold',
@@ -561,13 +565,6 @@ class ImportWindow(BaseDialog):
                                  label_size=wx.DefaultSize,
                                  buttons=True)
     conv_box_sizer.Add(self.mod_mask, 1, flag=wx.ALL | wx.EXPAND, border=10)
-
-    self.mask_invert = wx.CheckBox(self,
-                                   label='Invert boolean mask')
-    self.mask_invert.SetValue(False)
-    self.mask_invert.Disable()
-    conv_box_sizer.Add(self.mask_invert, flag=wx.ALL, border=10)
-
 
     # Image triage options
     trg_box = wx.StaticBox(self, label='Diffraction Triage Options')
@@ -619,12 +616,20 @@ class ImportWindow(BaseDialog):
     self.main_sizer.Add(dialog_box, flag=wx.EXPAND | wx.ALIGN_RIGHT | wx.ALL,
                    border=10)
 
+    self.Bind(wx.EVT_CHOICE, self.onImageModChoice, self.mod_square.ctr)
     self.Bind(wx.EVT_CHOICE, self.onTriageChoice, self.img_triage.ctr)
     self.Bind(wx.EVT_BUTTON, self.onOK, id=wx.ID_OK)
     self.Bind(wx.EVT_BUTTON, self.onMaskBrowse, self.mod_mask.btn_browse)
     self.Bind(wx.EVT_BUTTON, self.onViewMask, self.mod_mask.btn_mag)
 
     self.read_phil()
+
+  def onImageModChoice(self, e):
+    selection = self.mod_square.ctr.GetSelection()
+    if selection > 0:
+      self.flip_beamxy.Enable()
+    else:
+      self.flip_beamxy.Disable()
 
   def onTriageChoice(self, e):
     selection = self.img_triage.ctr.GetString(self.img_triage.ctr.GetSelection())
@@ -641,7 +646,6 @@ class ImportWindow(BaseDialog):
     if dlg.ShowModal() == wx.ID_OK:
       filepath = dlg.GetPaths()[0]
       self.mod_mask.ctr.SetValue(filepath)
-      self.mask_invert.Enable()
 
   def onViewMask(self, e):
     import iota.components.iota_threads as thr
@@ -708,13 +712,17 @@ class ImportWindow(BaseDialog):
     else:
       idx = 1
     self.mod_square.ctr.SetSelection(idx)
+    if idx > 0:
+      self.flip_beamxy.Enable()
+    else:
+      self.flip_beamxy.Disable()
+
+    self.flip_beamxy.SetValue(self.params.advanced.flip_beamXY)
+
     if str(self.params.image_conversion.mask).lower() == 'none':
       self.mod_mask.ctr.SetValue('')
-      self.mask_invert.Disable()
     else:
       self.mod_mask.ctr.SetValue(str(self.params.image_conversion.mask))
-      self.mask_invert.Enable()
-      self.mask_invert.SetValue(self.params.image_conversion.invert_boolean_mask)
     self.mod_beamstop.threshold.SetValue(
       str(self.params.image_conversion.beamstop))
     self.mod_detZ.detZ.SetValue(str(self.params.image_conversion.distance))
@@ -757,6 +765,14 @@ class ImportWindow(BaseDialog):
     else:
       conv_pickle_prefix = self.conv_rename.custom.GetValue()
 
+    if self.flip_beamxy.Enabled:
+      if self.flip_beamxy.GetValue():
+        flip_beamXY = True
+      else:
+        flip_beamXY = False
+    else:
+      flip_beamXY = False
+
     self.phil_text = '\n'.join([
     'image_conversion',
     '{',
@@ -766,7 +782,6 @@ class ImportWindow(BaseDialog):
     '  square_mode = {}'.format(self.mod_square.ctr.GetString(
       self.mod_square.ctr.GetSelection())),
     '  mask = {}'.format(maskpath),
-    '  invert_boolean_mask = {}'.format(self.mask_invert.GetValue()),
     '  beamstop = {}'.format(self.mod_beamstop.threshold.GetValue()),
     '  distance = {}'.format(self.mod_detZ.detZ.GetValue()),
     '  beam_center',
@@ -789,6 +804,10 @@ class ImportWindow(BaseDialog):
     '    height_max = {}'.format(triage_spot_height_max),
     '    step_size = {}'.format(triage_step_size),
     '  }',
+    '}',
+    'advanced',
+    '{',
+    '  flip_beamXY = {}'.format(flip_beamXY),
     '}'])
     self.import_phil = ip.parse(self.phil_text)
     e.Skip()

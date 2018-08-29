@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 07/21/2017
-Last Changed: 06/25/2018
+Last Changed: 08/29/2018
 Description : IOTA image-tracking GUI module
 '''
 
@@ -21,11 +21,6 @@ from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
 
 from iotbx import phil as ip
-
-from xfel.clustering.cluster import Cluster
-from cctbx.uctbx import unit_cell
-from cctbx.sgtbx import lattice_symmetry
-from cctbx import crystal
 
 from iota.components.iota_dialogs import DIALSSpfDialog
 from iota.components.iota_utils import InputFinder
@@ -194,7 +189,6 @@ class TrackChart(wx.Panel):
 
     # Plot bindings
     self.track_figure.canvas.mpl_connect('button_press_event', self.onPress)
-    # self.track_figure.canvas.mpl_connect('scroll_event', self.onScroll)
 
     self.reset_chart()
 
@@ -387,7 +381,6 @@ class TrackChart(wx.Panel):
 
     acc = [int(i) for i in all_acc if i > self.x_min and i < self.x_max]
     rej = [int(i) for i in all_rej if i > self.x_min and i < self.x_max]
-    idx = [int(i) for i in nref_i if i > self.x_min and i < self.x_max]
 
     self.acc_plot.set_xdata(nref_x)
     self.rej_plot.set_xdata(nref_x)
@@ -401,7 +394,10 @@ class TrackChart(wx.Panel):
     self.Layout()
 
     count = '{}'.format(len([i for i in nref_xy if i[1] >= min_bragg]))
+    idx_count = '{}'.format(len(nref_i[~np.isnan(nref_i)]))
+
     self.main_window.tracker_panel.count_txt.SetLabel(count)
+    self.main_window.tracker_panel.idx_count_txt.SetLabel(idx_count)
     self.main_window.tracker_panel.info_sizer.Layout()
 
     # Set up scroll bar
@@ -431,14 +427,9 @@ class ImageList(wx.Panel):
     self.main_sizer = wx.StaticBoxSizer(self.main_box, wx.VERTICAL)
     self.SetSizer(self.main_sizer)
 
-    #self.image_list = FileListCtrl(self)
     self.image_list = VirtualListCtrl(self)
     self.main_sizer.Add(self.image_list, 1, flag=wx.EXPAND)
 
-
-# class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
-#   def __init__(self, parent):
-#     ct.CustomImageListCtrl.__init__(self, parent=parent)
 
 class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
   def __init__(self, parent):
@@ -452,8 +443,6 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     self.ctr.InsertColumn(0, "#", width=50)
     self.ctr.InsertColumn(1, "File", width=150)
     self.ctr.InsertColumn(2, "No. Spots", width=3)
-    #self.ctr.setResizeColumn(1)
-    #self.ctr.setResizeColumn(2)
 
     # Bindings
     self.Bind(ulc.EVT_LIST_ITEM_SELECTED, self.OnItemSelected)
@@ -686,8 +675,7 @@ class TrackerWindow(wx.Frame):
     self.spf_backend = 'mosflm'
     self.run_indexing = False
     self.run_integration = False
-
-    self.reset_spotfinder()
+    self.running_clustering = False
 
     # Status bar
     self.sb = self.CreateStatusBar()
@@ -769,11 +757,6 @@ class TrackerWindow(wx.Frame):
 
     # Spotfinder / timer bindings
     self.Bind(thr.EVT_SPFDONE, self.onSpfOneDone)
-    self.Bind(thr.EVT_SPFALLDONE, self.onSpfAllDone)
-    self.Bind(thr.EVT_SPFTERM, self.onSpfTerminated)
-    self.Bind(wx.EVT_TIMER, self.onSpfTimer, id=self.spf_timer.GetId())
-    self.Bind(wx.EVT_TIMER, self.onUCTimer, id=self.uc_timer.GetId())
-    self.Bind(wx.EVT_TIMER, self.onPlotOnlyTimer, id=self.ff_timer.GetId())
 
     # Settings bindings
     self.Bind(wx.EVT_SPINCTRL, self.onMinBragg,
@@ -782,6 +765,29 @@ class TrackerWindow(wx.Frame):
               self.tracker_panel.chart_window.ctr)
     self.Bind(wx.EVT_CHECKBOX, self.onChartRange,
               self.tracker_panel.chart_window.toggle)
+
+    # Initialize tracker
+    self.initialize_spotfinder()
+
+  def onZoom(self, e):
+    if self.tb_btn_zoom.IsToggled():
+      self.toolbar.ToggleTool(self.tb_btn_view.GetId(), False)
+
+  def onList(self, e):
+    if self.tb_btn_view.IsToggled():
+      self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), False)
+
+  def initialize_spotfinder(self):
+    self.done_list = []
+    self.data_list = []
+    self.spotfinding_info = []
+    self.plot_idx = 0
+    self.bookmark = 0
+    self.all_info = []
+    self.current_min_bragg = 0
+    self.waiting = False
+    self.submit_new_images = False
+    self.terminated = False
 
     # Read arguments if any
     self.args, self.phil_args = parse_command_args('').parse_known_args()
@@ -811,43 +817,43 @@ class TrackerWindow(wx.Frame):
     # Determine how the tracker will track images: from file output by
     # iota.single_image, or by turning over actual files. If the latter,
     # determine at what point the tracker will start the tracking
+    auto_start = True
+    min_back = None
     if self.args.file is not None:
       self.results_file = self.args.file
-      self.start_spotfinding(from_file=True)
     elif self.args.path is not None:
       path = os.path.abspath(self.args.path)
       self.open_images_and_get_ready(path=path)
       if self.args.start:
         print 'IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE'
-        self.start_spotfinding()
       elif self.args.proceed:
         print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO'
-        self.start_spotfinding(min_back=-1)
+        min_back = -1
       elif self.args.time > 0:
         min_back = -self.args.time[0]
         print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
               ''.format(min_back)
-        self.start_spotfinding(min_back=min_back)
+      else:
+        auto_start = False
 
-  def onZoom(self, e):
-    if self.tb_btn_zoom.IsToggled():
-      self.toolbar.ToggleTool(self.tb_btn_view.GetId(), False)
+    # Initialize processing thread
+    if self.args.file is None:
+      self.proc_thread = thr.InterceptorThread(self,
+                                               data_folder=self.data_folder,
+                                               term_file=self.term_file,
+                                               proc_params=self.params,
+                                               backend=self.args.backend,
+                                               n_proc=self.args.nproc,
+                                               min_back=min_back,
+                                               run_indexing=self.run_indexing,
+                                               run_integration=self.run_integration)
+    else:
+      self.proc_thread = thr.InterceptorFileThread(self,
+                                                   results_file=self.args.file,
+                                                   reorder=self.args.reorder)
 
-  def onList(self, e):
-    if self.tb_btn_view.IsToggled():
-      self.toolbar.ToggleTool(self.tb_btn_zoom.GetId(), False)
-
-  def reset_spotfinder(self):
-    self.done_list = []
-    self.data_list = []
-    self.spotfinding_info = []
-    self.plot_idx = 0
-    self.bookmark = 0
-    self.all_info = []
-    self.current_min_bragg = 0
-    self.waiting = False
-    self.submit_new_images = False
-    self.terminated = False
+    if auto_start:
+      self.start_spotfinding()
 
 
   def onWrtFile(self, e):
@@ -910,9 +916,7 @@ class TrackerWindow(wx.Frame):
     self.terminated = True
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), False)
     self.toolbar.EnableTool(self.tb_btn_stop.GetId(), False)
-    with open(self.term_file, 'w') as tf:
-      tf.write('')
-    self.msg = 'Stopping...'
+    self.stop_run()
 
   def remove_term_file(self):
     try:
@@ -937,7 +941,7 @@ class TrackerWindow(wx.Frame):
       self.data_folder = path
 
     self.remove_term_file()
-    self.reset_spotfinder()
+    # self.initialize_spotfinder()
 
     self.tracker_panel.chart.reset_chart()
     self.toolbar.EnableTool(self.tb_btn_run.GetId(), True)
@@ -970,7 +974,7 @@ class TrackerWindow(wx.Frame):
   def onRunSpotfinding(self, e):
     self.start_spotfinding()
 
-  def start_spotfinding(self, min_back=None, from_file=False):
+  def start_spotfinding(self):
     ''' Start timer and perform spotfinding on found images '''
     self.terminated = False
     self.tracker_panel.chart.draw_bragg_line()
@@ -987,84 +991,31 @@ class TrackerWindow(wx.Frame):
     else:
       self.sb.SetStatusText('{}'.format(self.spf_backend.upper()), 0)
 
-    if from_file:
-      self.ff_timer.Start(1000)
-      self.uc_timer.Start(15000)
-    else:
-      self.submit_new_images = True
-      self.spf_timer.Start(1000)
-      self.uc_timer.Start(15000)
+    self.proc_thread.start()
+    self.proc_thread.prc_timer.Start(1000)
+    self.proc_thread.cls_timer.Start(15000)
 
   def stop_run(self):
     timer_txt = '[ xxxxxx ]'
     self.msg = 'STOPPED SPOTFINDING!'
     self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
-    if self.spf_timer.IsRunning():
-      self.spf_timer.Stop()
-    if self.ff_timer.IsRunning():
-      self.ff_timer.Stop()
-    if self.uc_timer.IsRunning():
-      self.uc_timer.Stop()
 
-  def run_spotfinding(self, submit_list=None):
-    ''' Generate the spot-finder thread and run it '''
-    if submit_list is not None and len(submit_list) > 0:
-      self.spf_thread = thr.SpotFinderThread(self,
-                                             data_list=submit_list,
-                                             term_file=self.term_file,
-                                             proc_params=self.params,
-                                             backend=self.spf_backend,
-                                             n_proc=self.args.nproc,
-                                             run_indexing=self.run_indexing,
-                                             run_integration=self.run_integration)
-      self.spf_thread.start()
+    if self.proc_thread is not None:
+      if self.proc_thread.prc_timer.IsRunning():
+        self.proc_thread.prc_timer.Stop()
+      if self.proc_thread.cls_timer.IsRunning():
+        self.proc_thread.cls_timer.Stop()
+      self.proc_thread.terminate_thread()
 
 
   def onSpfOneDone(self, e):
     ''' Occurs on every wx.PostEvent instance; updates lists of images with
     spotfinding results '''
     if not self.terminated:
-      info = e.GetValue()
-      if info is not None:
-        idx = int(info[0]) + len(self.done_list)
-        obs_count = info[1]
-        img_path = info[2]
-        self.spotfinding_info.append([idx, obs_count, img_path,
-                                      info[3], info[4]])
-        self.all_info.append([idx, obs_count, img_path])
-
-
-  def onSpfAllDone(self, e):
-    self.done_list.extend(e.GetValue())
-    self.submit_new_images = True
-
-  def onSpfTerminated(self, e):
-    self.stop_run()
-    self.toolbar.EnableTool(self.tb_btn_open.GetId(), True)
-
-  def find_new_images(self, min_back=None, last_file=None):
-    found_files = ginp.make_input_list([self.data_folder],
-                                       filter=True,
-                                       filter_type='image',
-                                       last=last_file,
-                                       min_back=min_back)
-
-    # Sometimes duplicate files are found anyway; clean that up
-    found_files = list(set(found_files) - set(self.data_list))
-
-    # Add new files to the data list & clean up
-    self.data_list.extend(found_files)
-    self.data_list = sorted(self.data_list, key=lambda i:i)
-
-    if self.waiting:
-      if len(found_files) > 0:
-        self.waiting = False
-        self.msg = 'Tracking new images in {} ...'.format(self.data_folder)
-        self.start_spotfinding()
-    else:
-      if len(found_files) == 0:
-        self.msg = 'Waiting for new images in {} ...'.format(self.data_folder)
-        self.waiting = True
+      self.msg, self.spotfinding_info, self.cluster_info = e.GetValue()
+      self.msg = self.proc_thread.msg
+      self.update_spinner()
+      self.plot_results()
 
   def update_spinner(self):
     ''' Update spotfinding chart '''
@@ -1075,72 +1026,6 @@ class TrackerWindow(wx.Frame):
     tick = ['-o-----', '--o----', '---o---', '----o--', '-----o-']
     timer_txt = '[ {0} ]'.format(tick[self.spin_update])
     self.sb.SetStatusText('{} {}'.format(timer_txt, self.msg), 1)
-
-  def onPlotOnlyTimer(self, e):
-    if self.terminated:
-      self.stop_run()
-    else:
-      if self.results_file is not None and os.path.isfile(self.results_file):
-        st = time.time()
-        with open(self.results_file, 'r') as rf:
-          rf.seek(self.bookmark)
-          split_info = [i.replace('\n','').split(' ') for i in rf.readlines()]
-          self.bookmark = rf.tell()
-
-        if self.args.reorder:
-          idx_offset = len(self.spotfinding_info)
-          new_info = [
-            [split_info.index(i) + idx_offset,
-             int(i[1]), i[2], i[3], tuple(i[4:10])] if len(i) > 5  else
-            [split_info.index(i) + idx_offset,
-             int(i[1]), i[2], misc.makenone(i[3]), misc.makenone(i[4])]
-             for i in split_info]
-        else:
-          new_info = [
-            [int(i[0]), int(i[1]), i[2], i[3], tuple(i[4:10])] if len(i) > 5 else
-            [int(i[0]), int(i[1]), i[2], misc.makenone(i[3]), misc.makenone(i[4])]
-             for i in split_info]
-
-        if len(new_info) > 0:
-          self.msg = 'Tracking new images in {} ...'.format(self.results_file)
-          self.spotfinding_info.extend(new_info)
-          if len(self.spotfinding_info) > 0:
-            indexed = [i for i in self.spotfinding_info if i[4] is not None]
-            self.tracker_panel.idx_count_txt.SetLabel(str(len(indexed)))
-          self.plot_results()
-        else:
-          self.msg = 'Waiting for new images in {} ...'.format(self.results_file)
-
-      else:
-        self.msg = 'Waiting for new run to initiate...'
-
-      self.update_spinner()
-
-
-  def onSpfTimer(self, e):
-    self.update_spinner()
-
-    if not self.terminated:
-      if len(self.spotfinding_info) > 0:
-        indexed = [i for i in self.spotfinding_info if i[3] is not None]
-        self.tracker_panel.idx_count_txt.SetLabel(str(len(indexed)))
-        self.plot_results()
-
-      if self.data_list != []:
-        last_file = self.data_list[-1]
-      else:
-        last_file = None
-      self.find_new_images(last_file=last_file)
-
-      if self.submit_new_images:
-        unproc_images = list(set(self.data_list) - set(self.done_list))
-        unproc_images = sorted(unproc_images, key=lambda i:i)
-        if len(unproc_images) > 0:
-          self.submit_new_images = False
-          self.run_spotfinding(submit_list=unproc_images)
-
-    else:
-      self.stop_run()
 
   def update_image_list(self):
     listctrl = self.tracker_panel.image_list.image_list.ctr
@@ -1173,105 +1058,50 @@ class TrackerWindow(wx.Frame):
       listctrl.InitializeDataMap(self.data_dict)
 
   def plot_results(self):
+    ''' Plot processing results; if indexing was turned on, will also provide
+    unit cell clustering results '''
 
-    if self.plot_idx <= len(self.spotfinding_info):
-      new_frames = [i[0] for i in self.spotfinding_info[self.plot_idx:]]
-      new_counts = [i[1] for i in self.spotfinding_info[self.plot_idx:]]
-      idx_counts = [i[1] if i[3] is not None else np.nan
-                         for i in self.spotfinding_info[self.plot_idx:]]
+    # Plot spotfinding / indexing results
+    if self.spotfinding_info is not None and len(self.spotfinding_info) > 0:
+      if self.plot_idx <= len(self.spotfinding_info):
+        new_frames = [i[0] for i in self.spotfinding_info[self.plot_idx:]]
+        new_counts = [i[1] for i in self.spotfinding_info[self.plot_idx:]]
+        idx_counts = [i[1] if i[3] is not None else np.nan
+                           for i in self.spotfinding_info[self.plot_idx:]]
 
-      # Try finding where data comes from a new folder
-      new_paths = []
-      for info in self.spotfinding_info[self.plot_idx:]:
-        cur_dir = os.path.dirname(info[2])
-        cur_idx = self.spotfinding_info.index(info)
-        if cur_idx > 0:
-          prev_idx = cur_idx - 1
-          prev_dir = os.path.dirname(self.spotfinding_info[prev_idx][2])
-          if cur_dir != prev_dir:
-            new_paths.append((info[0], cur_dir))
-        else:
-          new_paths.append((info[0], cur_dir))
-
-      self.tracker_panel.chart.draw_plot(new_x=new_frames,
-                                         new_y=new_counts,
-                                         new_i=idx_counts,
-                                         new_p=new_paths)
-      self.plot_idx = self.spotfinding_info.index(self.spotfinding_info[-1]) + 1
-
-
-  def onUCTimer(self, e):
-    self.cluster_unit_cells()
-
-  def cluster_unit_cells(self):
-    input = []
-    for item in self.spotfinding_info:
-      if item[4] is not None:
-        try:
-          if type(item[4]) in (tuple, list):
-            uc = item[4]
+        # Try finding where data comes from a new folder
+        new_paths = []
+        for info in self.spotfinding_info[self.plot_idx:]:
+          cur_dir = os.path.dirname(info[2])
+          cur_idx = self.spotfinding_info.index(info)
+          if cur_idx > 0:
+            prev_idx = cur_idx - 1
+            prev_dir = os.path.dirname(self.spotfinding_info[prev_idx][2])
+            if cur_dir != prev_dir:
+              new_paths.append((info[0], cur_dir))
           else:
-            uc = item[4].rsplit()
-          info_line = [float(i) for i in uc]
-          info_line.append(item[3])
-          input.append(info_line)
-        except ValueError:
-          pass
+            new_paths.append((info[0], cur_dir))
 
-    with misc.Capturing() as junk_output:
-      try:
-        ucs = Cluster.from_iterable(iterable=input)
-        clusters, _ = ucs.ab_cluster(5000,
-                                     log=False, write_file_lists=False,
-                                     schnell=True, doplot=False)
-      except Exception, e:
-        print e
-        clusters = []
+        self.tracker_panel.chart.draw_plot(new_x=new_frames,
+                                           new_y=new_counts,
+                                           new_i=idx_counts,
+                                           new_p=new_paths)
+        self.plot_idx = self.spotfinding_info.index(self.spotfinding_info[-1]) + 1
 
-    if len(clusters) > 0:
-      uc_summary = []
-      for cluster in clusters:
-        sorted_pg_comp = sorted(cluster.pg_composition.items(),
-                                key=lambda x: -1 * x[1])
-        pg_nums = [pg[1] for pg in sorted_pg_comp]
-        cons_pg = sorted_pg_comp[np.argmax(pg_nums)]
+    # Plot clustering results
+    if self.cluster_info is not None:
+      clusters = sorted(self.cluster_info, key=lambda i: i['number'],
+                        reverse=True)
+      uc_dims = clusters[0]['uc'].rsplit()
+      u = misc.UnicodeCharacters()
+      uc_line = "{} = {}, {} = {}, {} = {}, {} = {}, {} = {}, {} =  {} " \
+                "".format('a', uc_dims[0], 'b', uc_dims[1], 'c', uc_dims[2],
+                          u.alpha, uc_dims[3], u.beta, uc_dims[4], u.gamma,
+                          uc_dims[5])
 
-        uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
-                   cluster.stdevs]
-        uc_summary.append(uc_info)
-
-      # select the most prevalent unit cell (most members in cluster)
-      uc_freqs = [i[0] for i in uc_summary]
-      uc_pick = uc_summary[np.argmax(uc_freqs)]
-      cons_uc = uc_pick[2]
-
-      # Here will determine the best symmetry for the given unit cell (better
-      # than previous method of picking the "consensus" point group from list)
-      uc_init = unit_cell(cons_uc)
-      symmetry = crystal.symmetry(unit_cell=uc_init, space_group_symbol='P1')
-      groups = lattice_symmetry.metric_subgroups(input_symmetry=symmetry,
-                                                 max_delta=3)
-      top_group = groups.result_groups[0]
-      best_uc = top_group['best_subsym'].unit_cell().parameters()
-      best_sg = top_group['best_subsym'].space_group_info()
-
-      uchr = misc.UnicodeCharacters()
-
-      uc_line = "a = {:<6.2f}, b = {:<6.2f}, c ={:<6.2f}, " \
-                "{} = {:<6.2f}, {} = {:<6.2f}, {} = {:<6.2f}" \
-                "".format(best_uc[0], best_uc[1], best_uc[2],
-                          uchr.alpha,  best_uc[3], uchr.beta,
-                          best_uc[4], uchr.gamma,  best_uc[5])
-      sg_line = str(best_sg)
-
-      self.tracker_panel.pg_txt.SetLabel(sg_line)
+      self.tracker_panel.pg_txt.SetLabel(clusters[0]['pg'])
       self.tracker_panel.uc_txt.SetLabel(uc_line)
-      self.tracker_panel.chart.draw_plot()
-
 
   def onQuit(self, e):
-    self.spf_timer.Stop()
-    self.uc_timer.Stop()
-    with open(self.term_file, 'w') as tf:
-      tf.write('')
     self.Close()
+    self.stop_run()

@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/23/2016
+Last Changed: 08/29/2018
 Description : PRIME GUI Threading module
 '''
 
@@ -61,20 +61,38 @@ class PRIMEThread(Thread):
   def __init__(self,
                parent,
                prime_file,
-               out_file,
-               command=None):
+               out_file=None,
+               command=None,
+               cmd_args=None,
+               signal_finished=False,
+               verbose=False):
     Thread.__init__(self)
     self.parent = parent
     self.prime_file = prime_file
     self.out_file = out_file
     self.command = command
+    self.cmd_args = cmd_args
+    self.signal_finished = signal_finished
+    self.verbose = verbose
 
   def run(self):
     if os.path.isfile(self.out_file):
       os.remove(self.out_file)
     if self.command is None:
-      cmd = 'prime.run {}'.format(self.prime_file, self.out_file)
+      if self.cmd_args is None:
+        args = ''
+      else:
+        args = self.cmd_args
+
+      cmd = 'prime.run {} {}'.format(self.prime_file, args)
     else:
       cmd = self.command
 
-    easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+    if self.verbose:
+      easy_run.fully_buffered(cmd, join_stdout_stderr=True).show_stdout()
+    else:
+      easy_run.fully_buffered(cmd, join_stdout_stderr=True)
+
+    if self.signal_finished:
+      evt = AllDone(tp_EVT_ALLDONE, -1)
+      wx.PostEvent(self.parent, evt)

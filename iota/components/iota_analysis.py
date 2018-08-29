@@ -4,7 +4,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/07/2015
-Last Changed: 07/11/2018
+Last Changed: 08/29/2018
 Description : Analyzes integration results and outputs them in an accessible
               format. Includes (optional) unit cell analysis by hierarchical
               clustering (Zeldin, et al., Acta Cryst D, 2013). In case of
@@ -22,7 +22,7 @@ import math
 
 import cPickle as pickle
 from libtbx import easy_pickle as ep
-from cctbx.uctbx import unit_cell
+from cctbx import crystal, uctbx, sgtbx
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -302,6 +302,9 @@ class Analyzer(object):
     self.prime_data_path = None
 
     # Create an analysis_result object to save info into
+    AnalysisResult.print_results = self.print_results
+    AnalysisResult.unit_cell_analysis = self.unit_cell_analysis
+    AnalysisResult.print_summary = self.print_summary
     self.analysis_result = AnalysisResult()
 
     self.cons_pg = None
@@ -560,39 +563,52 @@ class Analyzer(object):
               mark_output = '*'
               output_file = None
 
-            # Populate clustering info for GUI display
-            uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
-                          "{:<6.2f} {:<6.2f} {:<6.2f} " \
-                          "".format(cluster.medians[0], cluster.medians[1],
-                                    cluster.medians[2], cluster.medians[3],
-                                    cluster.medians[4], cluster.medians[5])
-            cluster_info = {'number':len(cluster.members),
-                            'pg': cons_pg[0],
-                            'uc':uc_no_stdev,
-                            'filename':mark_output}
-            self.clusters.append(cluster_info)
-
           else:
             mark_output = ''
             output_file = None
 
+          # Populate clustering info for GUI display
+          uc_init = uctbx.unit_cell(cluster.medians)
+          symmetry = crystal.symmetry(unit_cell=uc_init,
+                                      space_group_symbol='P1')
+          groups = sgtbx.lattice_symmetry.\
+            metric_subgroups(input_symmetry=symmetry, max_delta=3)
+          top_group = groups.result_groups[0]
+          best_uc = top_group['best_subsym'].unit_cell().parameters()
+          best_sg = top_group['best_subsym'].space_group_info()
+
+          uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                        "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                        "".format(best_uc[0], best_uc[1], best_uc[2],
+                                  best_uc[3], best_uc[4], best_uc[5])
+          cluster_info = {'number':len(cluster.members),
+                          'pg': best_sg,
+                          'uc':uc_no_stdev,
+                          'filename':mark_output}
+          self.clusters.append(cluster_info)
+
           # format and record output
-          uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
-                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
-                    "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
-                    "{}".format('({})'.format(len(cluster.members)), cons_pg[0],
-                                          cluster.medians[0], cluster.stdevs[0],
-                                          cluster.medians[1], cluster.stdevs[1],
-                                          cluster.medians[2], cluster.stdevs[2],
-                                          cluster.medians[3], cluster.stdevs[3],
-                                          cluster.medians[4], cluster.stdevs[4],
-                                          cluster.medians[5], cluster.stdevs[5],
-                                          mark_output)
-          uc_table.append(uc_line)
+          # TODO: How to propagate stdevs after conversion from Niggli?
+          # uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+          #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), "\
+          #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   "\
+          #           "{}".format('({})'.format(len(cluster.members)), cons_pg[0],
+          #                                 cluster.medians[0], cluster.stdevs[0],
+          #                                 cluster.medians[1], cluster.stdevs[1],
+          #                                 cluster.medians[2], cluster.stdevs[2],
+          #                                 cluster.medians[3], cluster.stdevs[3],
+          #                                 cluster.medians[4], cluster.stdevs[4],
+          #                                 cluster.medians[5], cluster.stdevs[5],
+          #                                 mark_output)
+          # uc_table.append(uc_line)
+          uc_table.append("{:<6}:  {} {}".format(len(cluster.members),
+                                                 uc_no_stdev, mark_output))
           lattices = ', '.join(['{} ({})'.format(i[0], i[1]) for
                                 i in sorted_pg_comp])
-          uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
-                     output_file, uc_line, lattices]
+          # uc_info = [len(cluster.members), cons_pg[0], cluster.medians,
+          #            output_file, uc_line, lattices]
+          uc_info = [len(cluster.members), best_sg, best_uc, output_file,
+                         uc_no_stdev, lattices]
           uc_summary.append(uc_info)
 
       else:
@@ -609,22 +625,47 @@ class Analyzer(object):
         uc_sg = [i.final['sg'] for i in self.final_objects]
         cons_pg = Counter(uc_sg).most_common(1)[0][0]
         all_pgs = Counter(uc_sg).most_common()
-        uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
-                  "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
-                  "{}".format('({})'.format(len(self.final_objects)), cons_pg,
-                              np.median(uc_a), np.std(uc_a),
-                              np.median(uc_b), np.std(uc_b),
-                              np.median(uc_c), np.std(uc_c),
-                              np.median(uc_alpha), np.std(uc_alpha),
-                              np.median(uc_beta), np.std(uc_beta),
-                              np.median(uc_gamma), np.std(uc_gamma), '')
         unit_cell = (np.median(uc_a), np.median(uc_b), np.median(uc_c),
                      np.median(uc_alpha), np.median(uc_beta), np.median(uc_gamma))
-        uc_table.append(uc_line)
+
+        # Populate clustering info for GUI display
+        uc_init = uctbx.unit_cell(unit_cell)
+        symmetry = crystal.symmetry(unit_cell=uc_init,
+                                    space_group_symbol='P1')
+        groups = sgtbx.lattice_symmetry. \
+          metric_subgroups(input_symmetry=symmetry, max_delta=3)
+        top_group = groups.result_groups[0]
+        best_uc = top_group['best_subsym'].unit_cell().parameters()
+        best_sg = top_group['best_subsym'].space_group_info()
+
+        uc_no_stdev = "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                      "{:<6.2f} {:<6.2f} {:<6.2f} " \
+                      "".format(best_uc[0], best_uc[1], best_uc[2],
+                                best_uc[3], best_uc[4], best_uc[5])
+        cluster_info = {'number': len(self.final_objects),
+                        'pg': best_sg,
+                        'uc': uc_no_stdev,
+                        'filename': None}
+        self.clusters.append(cluster_info)
+
+        # uc_line = "{:<6} {:^4}:  {:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+        #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f}), " \
+        #           "{:<6.2f} ({:>5.2f}), {:<6.2f} ({:>5.2f})   " \
+        #           "{}".format('({})'.format(len(self.final_objects)), cons_pg,
+        #                       np.median(uc_a), np.std(uc_a),
+        #                       np.median(uc_b), np.std(uc_b),
+        #                       np.median(uc_c), np.std(uc_c),
+        #                       np.median(uc_alpha), np.std(uc_alpha),
+        #                       np.median(uc_beta), np.std(uc_beta),
+        #                       np.median(uc_gamma), np.std(uc_gamma), '')
+        #
+        # uc_table.append(uc_line)
+        uc_table.append(uc_no_stdev)
         lattices = ', '.join(['{} ({})'.format(i[0], i[1]) for i in all_pgs])
-        uc_info = [len(self.final_objects), cons_pg, unit_cell, None,
-                   uc_line, lattices]
+        # uc_info = [len(self.final_objects), cons_pg, unit_cell, None,
+        #            uc_line, lattices]
+        uc_info = [len(self.final_objects), best_sg, best_uc, None,
+                   uc_no_stdev, lattices]
         uc_summary.append(uc_info)
 
       uc_table.append('\nMost common unit cell:\n')
@@ -635,7 +676,6 @@ class Analyzer(object):
       uc_table.append(uc_pick[4])
       uc_table.append('\nBravais Lattices in Biggest Cluster: {}'
                       ''.format(uc_pick[5]))
-
       self.cons_pg = uc_pick[1]
       self.cons_uc = uc_pick[2]
 
@@ -650,7 +690,7 @@ class Analyzer(object):
       self.analysis_result.__setattr__('cons_uc', self.cons_uc)
 
       if self.gui_mode:
-        return self.cons_pg, self.cons_uc, self.clusters
+        return self.clusters
 
 
   def print_summary(self, write_files=True):
@@ -752,17 +792,20 @@ class Analyzer(object):
       ep.dump(analyzer_file, self.analysis_result)
 
 
-  def make_prime_input(self, filename='prime.phil'):
+  def make_prime_input(self,
+                       filename='prime.phil',
+                       run_zero=False):
     """ Imports default PRIME input parameters, modifies correct entries and
         prints out a starting PHIL file to be used with PRIME
     """
-
     if self.params.advanced.integrate_with == 'cctbx':
       img_pickle = self.final_objects[0].final['img']
       pixel_size = pickle.load(open(img_pickle, "rb"))['PIXEL_SIZE']
     elif self.params.advanced.integrate_with == 'dials':
       proc_pickle = self.final_objects[0].final['final']
       pixel_size = pickle.load(open(proc_pickle, 'rb'))['pixel_size']
+    else:
+      pixel_size = 0
 
     triclinic = ['P1']
     monoclinic = ['C2', 'P2', 'P121', 'C121']
@@ -772,8 +815,15 @@ class Analyzer(object):
     rhombohedral = ['R3', 'R32']
     cubic = ['F23', 'F432', 'I23', 'I432', 'P23', 'P432']
 
-    sg = self.cons_pg.replace(" ", "")
-    uc = ['{:4.2f}'.format(i) for i in self.cons_uc]
+    try:
+      sg = self.cons_pg.replace(" ", "")
+    except AttributeError:
+      sg = 'P1'
+
+    try:
+      uc = ['{:4.2f}'.format(i) for i in self.cons_uc]
+    except Exception:
+      uc = ['100', '100', '100', '90', '90', '90']
 
     if sg in triclinic:
       crystal_system = 'Triclinic'
@@ -798,14 +848,19 @@ class Analyzer(object):
       idx_ambiguity_sample = 300
       idx_ambiguity_selected = 100
     else:
-      idx_ambiguity_sample = int(len(self.final_objects) / 2)
-      idx_ambiguity_selected = int(idx_ambiguity_sample / 3)
+      idx_ambiguity_sample = int(round(len(self.final_objects) / 2))
+      idx_ambiguity_selected = int(round(idx_ambiguity_sample / 3))
 
     prime_params = mod_input.master_phil.extract()
 
-    prime_params.data = [self.prime_data_path]
+    if run_zero:
+      run_no = '000'
+    else:
+      run_no = '001'
+
     prime_params.run_no = os.path.join(os.path.dirname(self.prime_data_path),
-                                       'prime/001')
+                                         'prime/{}'.format(run_no))
+    prime_params.data = [self.prime_data_path]
     prime_params.title = 'Auto-generated by IOTA v{} on {}'.format(self.ver, self.now)
     prime_params.scale.d_min = np.mean(self.hres)
     prime_params.scale.d_max = 8
@@ -821,7 +876,7 @@ class Analyzer(object):
     prime_params.postref.allparams.d_max = np.max(self.lres)
     prime_params.merge.d_min = np.mean(self.hres)
     prime_params.merge.d_max = np.max(self.lres)
-    prime_params.target_unit_cell = unit_cell(self.cons_uc)
+    prime_params.target_unit_cell = uctbx.unit_cell(self.cons_uc)
     prime_params.target_space_group = sg
     prime_params.target_crystal_system = crystal_system
     prime_params.pixel_size_mm = pixel_size

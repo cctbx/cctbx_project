@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 07/11/2018
+Last Changed: 08/29/2018
 Description : Creates image object. If necessary, converts raw image to pickle
               files; crops or pads pickle to place beam center into center of
               image; masks out beam stop. (Adapted in part from
@@ -86,18 +86,18 @@ class SingleImage(object):
     self.fin_base = init.fin_base
     self.log_base = init.log_base
     self.viz_base = init.viz_base
-    self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
-
     filename = misc.make_filename(self.conv_img)
 
+    self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
     self.obj_file = os.path.abspath(os.path.join(self.obj_path, filename + ".int"))
     self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
-    self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
     self.fin_file = os.path.abspath(os.path.join(self.fin_path, filename + "_int.pickle"))
-    self.final['final'] = self.fin_file
-    self.final['img'] = self.conv_img
     self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
     self.viz_file = os.path.join(self.viz_path, filename + "_int.png")
+    self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
+
+    self.final['final'] = self.fin_file
+    self.final['img'] = self.conv_img
 
     # Create actual folders (if necessary)
     try:
@@ -345,19 +345,23 @@ class SingleImage(object):
     data['DATA'] = img_masked
     return data
 
-  def apply_mask_from_file(self, data, mask_file, invert=False):
+  def apply_mask_from_file(self, data, mask_file):
     img_raw_bytes = data['DATA']
 
     full_mask = ep.load(mask_file)
     assert len(full_mask) == 1
-    if invert:
+
+    if self.params.advanced.integrate_with == 'cctbx':
       mask = full_mask[0] == False
-    else:
+    elif self.params.advanced.integrate_with == 'dials':
       mask = full_mask[0]
+    else:
+      mask = None
 
-    img_masked = img_raw_bytes.set_selected(mask, -2)
+    if mask is not None:
+      img_masked = img_raw_bytes.set_selected(mask, -2)
+      data['DATA'] = img_masked
 
-    data['DATA'] = img_masked
     return data
 
   def import_image(self):
@@ -465,10 +469,13 @@ class SingleImage(object):
         except OSError:
           pass
       else:
+        self.input_base = self.conv_base
         if rename_choice == "auto_filename":
           prefix = self.user_id
         elif rename_choice == "custom_filename":
           prefix = self.params.image_conversion.rename_pickle_prefix
+        else:
+          prefix = 'iota'
         number = int(os.path.basename(self.conv_base))
         self.conv_img = os.path.abspath(os.path.join(self.conv_base,
                     "{}_{}_{:05d}.pickle".format(prefix, number, self.img_index)))
@@ -480,9 +487,8 @@ class SingleImage(object):
                      self.params.image_conversion.beam_center.y]
       square = self.params.image_conversion.square_mode
       mask_file = self.params.image_conversion.mask
-      invert = self.params.image_conversion.invert_boolean_mask
       if mask_file is not None:
-        img_data = self.apply_mask_from_file(img_data, mask_file, invert)
+        img_data = self.apply_mask_from_file(img_data, mask_file)
       if beam_center != [0,0]:
         pixel_size = img_data['PIXEL_SIZE']
         img_data['BEAM_CENTER_X'] = int(round(beam_center[0] * pixel_size))
@@ -504,7 +510,6 @@ class SingleImage(object):
                                               img_data['SIZE1'],
                                               img_data['SIZE2'],
                                               img_data['DISTANCE']))
-      self.input_base = self.conv_base
       self.status = 'converted'
 
       # Save converted image pickle
@@ -555,20 +560,19 @@ class SingleImage(object):
     filename = misc.make_filename(self.conv_img)
     self.test_filename = filename
 
-    try:
-      if not self.params.image_conversion.convert_only:
-        self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
-        self.obj_file = os.path.abspath(os.path.join(self.obj_path,
-                                      filename + ".int"))
-        self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
-        self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
-        self.fin_file = os.path.abspath(os.path.join(self.fin_path,
-                       "int_{}.pickle".format(filename)))
-        self.final['final'] = self.fin_file
-        self.final['img'] = self.conv_img
-        self.int_log = os.path.join(self.log_path, filename + '.tmp')
-        self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
-        self.viz_file = os.path.join(self.viz_path, "int_{}.png".format(filename))
+    if not self.params.image_conversion.convert_only:
+      self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
+      self.obj_file = os.path.abspath(os.path.join(self.obj_path,
+                                    filename + ".int"))
+      self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
+      self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
+      self.fin_file = os.path.abspath(os.path.join(self.fin_path,
+                     "int_{}.pickle".format(filename)))
+      self.final['final'] = self.fin_file
+      self.final['img'] = self.conv_img
+      self.int_log = os.path.join(self.log_path, filename + '.tmp')
+      self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
+      self.viz_file = os.path.join(self.viz_path, "int_{}.png".format(filename))
 
       # Create actual folders (if necessary)f
       try:
@@ -587,10 +591,6 @@ class SingleImage(object):
 
       # Save image object to file
       ep.dump(self.obj_file, self)
-    except Exception, e:
-      with open('exception.txt', 'w') as ef:
-        ef.write(filename)
-        ef.write(e)
 
     # If conversion only option is selected, write conversion info to log
     else:

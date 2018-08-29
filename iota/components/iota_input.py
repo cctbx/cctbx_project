@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 10/10/2014
-Last Changed: 04/05/2018
+Last Changed: 08/29/2018
 Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
               and PHIL defaults if selected.
 '''
@@ -51,9 +51,6 @@ image_conversion
   mask = None
     .type = path
     .help = Mask for ignored pixels
-  invert_boolean_mask = False
-    .type = bool
-    .help = Set to true if applying DIALS mask to Labelit processing
   beamstop = 0
     .type = float
     .help = Beamstop shadow threshold, zero to skip
@@ -283,7 +280,7 @@ advanced
   estimate_gain = False
     .type = bool
     .help = Estimates detector gain (helps improve spotfinding in DIALS)
-  flip_beamXY = True
+  flip_beamXY = False
     .type = bool
     .help = flip beamX and beamY parameters when modifying image for cctbx
   debug = False
