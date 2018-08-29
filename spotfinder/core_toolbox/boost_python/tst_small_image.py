@@ -40,7 +40,7 @@ OOOOOOO
         if (c == "O"):
           pixel = (oi+i, oj+j)
           #print "beam center pixel:", pixel
-          image[pixel] = work_params.signal_max
+          image[pixel] = work_params.signal_max//1000
   return image
 
 def process(work_params, image):
@@ -62,6 +62,8 @@ def process(work_params, image):
     peripheral_margin = work_params.spotfinder.peripheral_margin,
     saturation = work_params.signal_max)
   dobj.set_tiling("")
+  dobj.set_peak_intensity_maximum_factor(100.)
+  dobj.set_minimum_spot_area(10)
   dobj.set_scanbox_windows(work_params.spotfinder.scanbox_windows)
   dobj.parameter_guarantees()
   dobj.get_underload()
@@ -112,6 +114,9 @@ fill_beam_center = False
    [argument_interpreter.process(arg=arg) for arg in args])
   work_params = updated_params.extract()
   image = compute_image(work_params)
+  #from matplotlib import pyplot as plt
+  #plt.imshow(image.as_numpy_array(),cmap="hot", interpolation="nearest")
+  #plt.show()
   return process(work_params, image)
 
 def run_scanbox_tests():
@@ -136,13 +141,16 @@ def run_scanbox_tests():
   #  most likely in the diffimage::search_maximas() procedure.
   run("""spotfinder.scanbox_windows=10,10,10 detector.pixels=25,25 peripheral_margin=0""".split(" "))
 
-  for dp in [100,101]:
+  for dp,pkpx in [(100,32),(101,29)]:
     #print "detector pixels:", (dp,dp)
     spots = run([
       "detector.pixels=%d,%d" % (dp,dp),
       "fill_beam_center=True"]).spots
     assert spots.size() == 1
     spot = spots[0]
+    assert pkpx == len(spot.bodypixels)
+    #for px in spot.bodypixels:
+    #  print px.x, px.y
     #print (spot.ctr_mass_x(), spot.ctr_mass_y())
     #print
 
