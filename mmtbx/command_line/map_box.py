@@ -344,7 +344,7 @@ Parameters:"""%h
       raise Sorry("Please set resolution for extract_unique")
     if (not params.molecular_mass) and (not params.sequence_file):
       raise Sorry("Please set molecular_mass or a sequence file for extract_unique")
-    if (not params.symmetry) and (not params.symmetry_file):
+    if (not params.symmetry) and (not params.symmetry_file) and (not ncs_object):
       raise Sorry("Please set symmetry or symmetry_file for extract_unique")
 
   if params.keep_input_unit_cell_and_grid and (
