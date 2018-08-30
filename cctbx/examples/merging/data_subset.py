@@ -40,7 +40,7 @@ def mapper_factory(base_class):
       remapped_FSIM.frame   = remapped_frame
       remapped_FSIM.miller  = remapped_miller
 
-      if kwargs.has_key('experiments'):
+      if 'experiments' in kwargs:
         # XXX seems like we need to implement a proper select statement for ExperimentList
         # kwargs["experiments"] = kwargs["experiments"].select(G_visited==1)
         from dxtbx.model import ExperimentList

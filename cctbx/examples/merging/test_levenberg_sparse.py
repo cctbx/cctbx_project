@@ -95,7 +95,7 @@ class xscale6e(object):
     levenberg_helper = choice_as_helper_base(self.params.levmar.parameter_flags)
     self.helper = levenberg_helper(initial_estimates = self.x)
     self.helper.set_cpp_data(FSIM, self.N_I, self.N_G)
-    if kwargs.has_key("experiments"):
+    if "experiments" in kwargs:
       self.helper.set_wavelength([e.beam.get_wavelength() for e in kwargs["experiments"]])
       self.helper.set_domain_size([2.*e.crystal.get_domain_size_ang() for e in kwargs["experiments"]])#ad hoc factor of 2
       self.helper.set_Astar_matrix([e.crystal.get_A() for e in kwargs["experiments"]])

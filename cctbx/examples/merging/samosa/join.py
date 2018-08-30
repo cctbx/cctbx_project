@@ -312,7 +312,7 @@ class scaling_manager (scaling_manager_base) :
     # fall back on the value given on the command line.  XXX The
     # wavelength parameter should probably be removed from master_phil
     # once all pickled integration files contain it.
-    if (result.has_key("wavelength")):
+    if ("wavelength" in result):
       wavelength = result["wavelength"]
     elif (self.params.wavelength is not None):
       wavelength = self.params.wavelength
