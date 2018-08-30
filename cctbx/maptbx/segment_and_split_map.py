@@ -2354,7 +2354,6 @@ def scale_map_coeffs(map_coeffs,scale_max=None,out=sys.stdout):
 
 
 def get_map_object(file_name=None,out=sys.stdout):
-
   # read a ccp4 map file and return sg,cell and map objects 2012-01-16
   if not os.path.isfile(file_name):
     raise Sorry("The map file %s is missing..." %(file_name))
@@ -2387,7 +2386,7 @@ def get_map_object(file_name=None,out=sys.stdout):
       m.data.origin()[0]/m.data.all()[0],
       m.data.origin()[1]/m.data.all()[1],
       m.data.origin()[2]/m.data.all()[2])
-    origin_frac=origin_shift
+    origin_frac=origin_shift  # NOTE: fraction of NEW cell
   else:
     origin_frac=(0.,0.,0.)
   # determine if we need to trim off the outer part of the map duplicating inner
@@ -2439,7 +2438,6 @@ def get_map_object(file_name=None,out=sys.stdout):
     original_crystal_symmetry,original_unit_cell_grid=None,None
 
   map=scale_map(map,out=out)
-
   return map,space_group,unit_cell,crystal_symmetry,origin_frac,acc,\
     original_crystal_symmetry,original_unit_cell_grid
 
