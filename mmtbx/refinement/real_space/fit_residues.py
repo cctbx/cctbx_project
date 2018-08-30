@@ -43,6 +43,7 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
+               outliers_only=False,
                bselection=None,
                map_data=None,
                vdw_radii=None,
@@ -53,6 +54,8 @@ class run(object):
                tune_up_only=False,
                log = None):
     adopt_init_args(self, locals())
+    if(self.do_all): assert not outliers_only
+    if(self.outliers_only): assert not do_all
     self.number_of_outliers = None
     if(self.log is None): self.log = sys.stdout
     self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
@@ -165,6 +168,7 @@ class run(object):
         rotamer_evaluator = self.rotamer_manager.rotamer_evaluator,
         mon_lib_srv       = self.mon_lib_srv,
         unit_cell         = self.crystal_symmetry.unit_cell(),
+        outliers_only     = self.outliers_only,
         f_map             = self.map_data,
         fdiff_map         = self.diff_map_data)
       if(not need_fix): return

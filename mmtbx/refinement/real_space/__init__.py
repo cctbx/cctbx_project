@@ -170,6 +170,7 @@ def need_sidechain_fit(
       mon_lib_srv,
       unit_cell,
       f_map,
+      outliers_only=False,
       fdiff_map=None,
       small_f_map=0.9):
   """
@@ -181,6 +182,7 @@ def need_sidechain_fit(
   ### If it is rotamer OUTLIER
   if(rotamer_evaluator.evaluate_residue(residue)=="OUTLIER"):
     return True
+  if(outliers_only): return False
   ###
   cl = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
     residue         = residue,
