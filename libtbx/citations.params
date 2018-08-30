@@ -383,6 +383,18 @@ citation {
 }
 
 citation {
+  article_id = reel
+  authors = Moriarty NW, Draizen EJ, Adams PD
+  title = An editor for the generation and customization of geometry restraints
+  journal = Acta Crystallogr D Biol Crystallogr
+  volume = 73
+  pages = 123-130
+  year = 2017
+  doi_id = "10.1107/S2059798316016570"
+  pmid = 28177308
+}
+
+citation {
   article_id = find_ncs
   authors = Terwilliger TC
   title = Rapid automatic NCS identification using heavy-atom substructures.
