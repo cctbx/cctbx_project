@@ -1016,6 +1016,14 @@ class annotation(structure_base):
           row.append(v)
         helix_loop.add_row(row)
       loops.append(helix_loop)
+      type_prefix = "_struct_conf_type."
+      type_names = ["id", "criteria", "reference"]
+      conf_type_ids = set(helix_loop["_struct_conf.conf_type_id"])
+      type_loop = iotbx.cif.model.loop(header=(
+          ["%s%s" % (type_prefix, x) for x in type_names]))
+      for conf_type in conf_type_ids:
+        type_loop.add_row([conf_type, "?", "?"])
+      loops.append(type_loop)
     if self.get_n_sheets() > 0:
       struct_sheet_loop = iotbx.cif.model.loop(header=(
           '_struct_sheet.id',
@@ -1927,6 +1935,11 @@ class pdb_helix (structure_base) :
   def as_cif_dict(self):
     """Returns dict. keys - cif field names, values - appropriate values."""
     result = {}
+    # XXX This is most default type of helix.
+    # Refer here for the others:
+    # http://mmcif.wwpdb.org/dictionaries/mmcif_mdb.dic/Items/_struct_conf_type.id.html
+    # Note, that PDB itself does not assign proper helix types in mmCIF although it has
+    # no problems doing it for PDB format and pretty pictures on the web-site.
     result['conf_type_id'] = "HELX_P"
     result['id'] = self.serial if isinstance(self.serial, int) else self.serial.strip()
     result['pdbx_PDB_helix_id'] = self.helix_id

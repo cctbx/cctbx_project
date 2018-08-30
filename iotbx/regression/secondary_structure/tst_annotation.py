@@ -514,6 +514,13 @@ loop_
   HELX_P  2  2  ARG  B  287  ?  GLN  B  292  ?  0  ?  5
   HELX_P  3  3  PRO  A    1  ?  LEU  A    5  ?  0  ?  4
 """
+  cif_answer_conf_type_loop = """\
+loop_
+  _struct_conf_type.id
+  _struct_conf_type.criteria
+  _struct_conf_type.reference
+  HELX_P  ?  ?
+"""
   pdb_answer_minimal_helix = """\
 HELIX    1   1 ARG A   87  GLN A   92  1                                   5
 HELIX    2   2 ARG B  287  GLN B  292  1                                   5
@@ -539,13 +546,13 @@ HELIX    3   3 PRO A    1  LEU A    5  1                                   4"""
   assert not show_diff(ann.as_pdb_str(), pdb_answer_minimal_helix)
 
   cif_loops = ann.as_cif_loops()
-  assert len(cif_loops) == 1
-  helix_loop = cif_loops[0]
-  out = StringIO()
-  helix_loop.show(out)
-  v = out.getvalue()
-  # print "\"%s\"" % v
-  assert not show_diff(out.getvalue(), cif_answer_minimal_helix)
+  assert len(cif_loops) == 2
+  for i, answer in enumerate([cif_answer_minimal_helix, cif_answer_conf_type_loop]):
+    out = StringIO()
+    cif_loops[i].show(out)
+    v = out.getvalue()
+    # print "\"%s\"" % v
+    assert not show_diff(out.getvalue(), answer)
 
 def tst_from_minimal_cif_sheet():
   cif_minimal_sheet = """\
@@ -695,7 +702,7 @@ loop_
 
   ann = annotation.from_records(pdb_str.split("\n"))
   cif_loops = ann.as_cif_loops()
-  assert len(cif_loops) == 1
+  assert len(cif_loops) == 2
   helix_loop = cif_loops[0]
   out = StringIO()
   helix_loop.show(out)
@@ -708,7 +715,7 @@ loop_
   # needed to make nice columns.
   ann = annotation.from_records(pdb_str2.split("\n"))
   cif_loops = ann.as_cif_loops()
-  assert len(cif_loops) == 1
+  assert len(cif_loops) == 2
   helix_loop = cif_loops[0]
   out = StringIO()
   helix_loop.show(out)
