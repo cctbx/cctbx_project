@@ -237,9 +237,10 @@ def rigu_as_cif_loop(xray_structure, proxies):
   loop = model.loop(header=(
     "_restr_RIGU_atom_site_label_1",
     "_restr_RIGU_atom_site_label_2",
-    "_restr_RIGU_Uxx",
     "_restr_RIGU_target_weight_param",
-    "_restr_RIGU_diff",
+    "_restr_RIGU_U13_diff",
+    "_restr_RIGU_U23_diff",
+    "_restr_RIGU_U33_diff"
   ))
   for proxy in proxies:
     restraint = adp_restraints.rigu(
@@ -247,19 +248,11 @@ def rigu_as_cif_loop(xray_structure, proxies):
       proxy=proxy)
     loop.add_row((site_labels[proxy.i_seqs[0]],
                   site_labels[proxy.i_seqs[1]],
-                  "U_33",
                   fmt % math.sqrt(1/proxy.weight),
-                  fmt % restraint.delta_33()))
-    loop.add_row((site_labels[proxy.i_seqs[0]],
-                  site_labels[proxy.i_seqs[1]],
-                  "U_13",
-                  fmt % math.sqrt(1/proxy.weight),
-                  fmt % restraint.delta_13()))
-    loop.add_row((site_labels[proxy.i_seqs[0]],
-                  site_labels[proxy.i_seqs[1]],
-                  "U_23",
-                  fmt % math.sqrt(1/proxy.weight),
-                  fmt % restraint.delta_23()))
+                  fmt % restraint.delta_13(),
+                  fmt % restraint.delta_23(),
+                  fmt % restraint.delta_33()
+                 ))
   return loop
 
 def adp_similarity_as_cif_loop(xray_structure, proxies):
