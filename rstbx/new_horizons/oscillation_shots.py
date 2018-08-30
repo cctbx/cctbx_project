@@ -248,7 +248,7 @@ class IntegrateCharacters:
     self.best_counter = 1
 
     for index in self.M.best()[0:len(self.M.best())-1]:
-      if index.has_key('status') and index['status'] in [
+      if 'status' in index and index['status'] in [
         'unlikely','very_unlikely']:continue
       if float(self.triclinic['integration']['resolution'])==0.0:
         raise Sorry("No signal detected in triclinic integration trial")
@@ -283,7 +283,7 @@ class IntegrateCharacters:
   def save_best(self):
     file = self.horizons_phil.indexing.completeness_pickle
     for index in self.M.best():
-      if index.has_key('integration'):
+      if 'integration' in index:
         if index['counter']==self.best_counter:
           local = index["integration"]
           info = dict(
@@ -324,7 +324,7 @@ class IntegrateCharacters:
     print "New Horizons Integration results:"
     print "Solution  SpaceGroup Beam x   y  distance  Resolution Mosaicity RMS"
     for index in self.M.best():
-      if index.has_key('integration'):
+      if 'integration' in index:
         limitobject = ResolutionAnalysisMetaClass( index['integration'], self.horizons_phil )
         if index['counter']==self.best_counter:
           print ":)",
@@ -374,7 +374,7 @@ class IntegrateCharacters:
 
     #Sublattice analysis
     for index in self.M.best():
-      if index['counter']==1 and index.has_key('integration'):
+      if index['counter']==1 and 'integration' in index:
         results = index['integration']["results"]
         obs = [item.get_obs(index['integration']["spacegroup"]) for item in results]
         try:

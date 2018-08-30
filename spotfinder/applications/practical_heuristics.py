@@ -213,7 +213,8 @@ class ListManager(dict):
       builtin.append(key); builtin.append("N_"+key)
     return builtin
 
-  def has_key(self,key): return key in self.keys()
+  def has_extended_key(self,key): # For Python 3 compatibility, make clear that ListManager has a specialized has_key behavior
+    return key in self.keys()
 
 def pickle_safe_spotcenter(spot,algorithm):
   #Image overlays and autoindexing maintain backward compatibility
@@ -257,7 +258,7 @@ class heuristics_base(object):
     pimage = image
     pimage.read()
     #print "Detector type",type(pimage)
-    if not pd.has_key('endstation'):
+    if 'endstation' not in pd:
       from iotbx.detectors.context import endstation
       pd['endstation']=endstation.EndStation_from_ImageObject(pimage,self.phil_params)
       for key in pd['endstation'].mosflm():
@@ -271,13 +272,13 @@ class heuristics_base(object):
     self.size1       = float(pd['size1'])
     pd['size2']      = "%d"%pimage.size2
     self.size2       = float(pd['size2'])
-    if not pd.has_key('osc_start'): pd['osc_start'] = {}
+    if 'osc_start' not in pd: pd['osc_start'] = {}
     pd['osc_start'][framenumber] = "%f"%pimage.osc_start
-    if not pd.has_key('file'): pd['file'] = {}
+    if 'file' not in pd: pd['file'] = {}
     pd['file'][framenumber] = pimage.filename
     self.two_theta_degrees = float(pd['twotheta'])
 
-    if not pd.has_key('xbeam') or not pd.has_key('ybeam'):
+    if 'xbeam' not in pd or 'ybeam' not in pd:
       raise SpotfinderError("Deprecation warning: inputs had no beam position",pd)
     self.complex_nominal_center = complex(float(pd["xbeam"]),float(pd["ybeam"]))
 
@@ -642,7 +643,7 @@ class heuristics_base(object):
       # The assumption may be wrong; e.g. the high resid may be due to very low
       # background instead of high s/n; or due to some geometrical distortion.
       #This breaks encapsulation and will have to be re-organized in the future.
-      if not pd.has_key('special_resid'): pd['special_resid']=''
+      if 'special_resid' not in pd: pd['special_resid']=''
       if fstats['intensity'][0]>160.: pd['special_resid']='RESID 10.0 #High s/n'
       #The most unusual thing about the procrun0000077831/TMC114_WT2_run77831_1_001
       #dataset is its large differential between spot areas of the largest spots
@@ -798,9 +799,9 @@ class heuristics_base(object):
               print "REJECT spot on exception"
               pass #sometimes throw an error when majoraxis is requested (edge spots)
 
-    if fstats.has_key('lo_pass_resolution_spots'):
+    if fstats.has_extended_key('lo_pass_resolution_spots'):
       fstats.alias('lo_pass_resolution_spots','spots_resolution')
-    elif fstats.has_key('ice_free_resolution_spots'):
+    elif fstats.has_extended_key('ice_free_resolution_spots'):
       fstats.alias('ice_free_resolution_spots','spots_resolution')
     else:
       fstats.alias('hi_pass_resolution_spots','spots_resolution')
@@ -826,7 +827,7 @@ class heuristics_base(object):
      except Exception:
       pass #if there aren't enough spots, just skip the tabular printout
 
-    if not pd.has_key('masks'):  pd['masks']={}
+    if 'masks' not in pd:  pd['masks']={}
     pd['masks'][framenumber] = None
     if fstats['N_spots_inlier'] > ( #guard against C++ hard-coded minimum
       self.phil_params.codecamp.minimum_spot_count or 25):
@@ -868,11 +869,10 @@ class heuristics_base(object):
                   'N_spots_inlier','intensity','area',
                   'neighbor','maxcel','resolution',
                   'distl_resolution','ice-ring_impact']:
-        if self.images[frame].has_key(key):
+        if self.images[frame].has_extended_key(key):
           print "\t"+key,self.images[frame][key]
       for key in ['eccen']:
-        if self.images[frame].has_key('eccen'):
-          if self.images[frame].has_key(key):
+          if self.images[frame].has_extended_key(key):
             print "\t"+key,self.images[frame][key]
 
   def determine_maxcell(self,frame,pd):

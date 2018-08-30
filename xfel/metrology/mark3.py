@@ -20,7 +20,7 @@ class fit_translation2(fit_translation):
 
     for iframe in xrange(len(self.FRAMES["frame_id"])):
       frame_id = self.FRAMES["frame_id"][iframe]
-      if not self.bandpass_models.has_key(frame_id):
+      if frame_id not in self.bandpass_models:
 
         reserve_orientation = self.FRAMES["orientation"][iframe]
         effective_orientation = reserve_orientation
@@ -138,7 +138,7 @@ class fit_translation2(fit_translation):
     self.frame_dely = {}
     for x in xrange(len(self.frame_id)):
       frame_id = self.frame_id[x]
-      if not self.frame_delx.has_key(frame_id):
+      if frame_id not in self.frame_delx:
         self.frame_delx[frame_id] = flex.double()
         self.frame_dely[frame_id] = flex.double()
       self.frame_delx[frame_id].append(self.correction_vector_x[x])

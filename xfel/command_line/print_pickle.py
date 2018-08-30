@@ -149,7 +149,7 @@ if __name__=="__main__":
     doplots = False
 
   for data in generate_data_from_streams(args, verbose=True):
-    if data.has_key('TIMESTAMP'):
+    if 'TIMESTAMP' in data:
       # this is how FormatPYunspecified guesses the address
       if not "DETECTOR_ADDRESS" in data:
         # legacy format; try to guess the address

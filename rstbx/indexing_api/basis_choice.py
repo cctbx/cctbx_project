@@ -140,7 +140,7 @@ class SolutionTracker:
 def increase_mosaicity(pd,ai,verbose=1):
   '''the parameter dictionary must be revised if the combo search determined
       that the minimum necessary mosaicity needed to be raised'''
-  if pd.has_key('mosaicity'):
+  if 'mosaicity' in pd:
     old_mosaicity = float(pd['mosaicity'])
     new_mosaicity = ai.getMosaicity()
     if new_mosaicity>old_mosaicity:

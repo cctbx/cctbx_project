@@ -193,7 +193,7 @@ def address_and_timestamp_from_detector_format_version(format_name):
   @return tuple of address and end_time of this format version
   """
 
-  if _detector_format_version_dict.has_key(format_name):
+  if format_name in _detector_format_version_dict:
     return (_detector_format_version_dict[format_name]['address'],
             _detector_format_version_dict[format_name]['end_time'])
   return None, None

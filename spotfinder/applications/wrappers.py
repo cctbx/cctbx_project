@@ -35,7 +35,7 @@ def spotfinder_factory(absrundir,frames,phil_params):
 
   for framenumber in local_frames:
     try:
-      assert Spotfinder.images.has_key(framenumber)
+      assert framenumber in Spotfinder.images
     except Exception:
       Spotfinder.register_frames(framenumber,frames)
       if phil_params.spotfinder_verbose: Spotfinder.show()
@@ -59,7 +59,7 @@ class DistlOrganizer(object):
     if self.phil_params.distl.dxtbx:
       self.set_dxtbx_input()
       return
-    if kwargs.has_key('argument_module'):
+    if 'argument_module' in kwargs:
       # new interface
       self.setCommandInput(kwargs['argument_module'])
 

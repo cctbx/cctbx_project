@@ -19,7 +19,7 @@ def get_observations(set,file_names,params):
 
     full_path = file_name = op.abspath(name)
     obj = easy_pickle.load(file_name=full_path)
-    if not obj.has_key("observations"): continue
+    if "observations" not in obj: continue
     unit_cell = obj["observations"][0].unit_cell()
     result_array = obj["observations"][0]
     #unit_cell, img_miller_indices = obj

@@ -30,7 +30,7 @@ class DetectorImageBase(object):
     if self.size1%bin!=0: return
     self.parameters['SIZE1']=self.parameters['SIZE1']//bin
     self.parameters['SIZE2']=self.parameters['SIZE2']//bin
-    if self.parameters.has_key('CCD_IMAGE_SATURATION'):
+    if 'CCD_IMAGE_SATURATION' in self.parameters:
       self.parameters['CCD_IMAGE_SATURATION']=self.parameters['CCD_IMAGE_SATURATION']*bin*bin
     self.parameters['PIXEL_SIZE']=self.parameters['PIXEL_SIZE']*bin
     self.bin = bin
@@ -151,7 +151,7 @@ class DetectorImageBase(object):
     return Spotfinder,this_frame
 
   def debug_write(self,fileout,mod_data=None):
-    if not self.parameters.has_key("TWOTHETA"):
+    if "TWOTHETA" not in self.parameters:
       self.parameters["TWOTHETA"]=0.0
     from iotbx.detectors import ImageException
     try:
@@ -164,7 +164,7 @@ class DetectorImageBase(object):
       endian = 0
       self.parameters["BYTE_ORDER"]="little_endian"
 
-    if self.parameters.has_key("DETECTOR_SN"):
+    if "DETECTOR_SN" in self.parameters:
       try:
         self.parameters["DETECTOR_SN"] = int(self.parameters["DETECTOR_SN"])
       except ValueError:

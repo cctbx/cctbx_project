@@ -242,7 +242,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         annresultidx = i*NEAR
         obsidx = IS_adapt.nn[annresultidx]
         this_distancesq = IS_adapt.distances[annresultidx]
-        if not one_to_one.has_key(obsidx) or \
+        if obsidx not in one_to_one or \
            this_distancesq < one_to_one[obsidx]["distancesq"]:
            if math.sqrt(this_distancesq) < idx_cutoff:
              one_to_one[obsidx] = dict(spot=obsidx,pred=i,distancesq=this_distancesq)

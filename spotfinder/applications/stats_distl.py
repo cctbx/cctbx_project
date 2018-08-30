@@ -10,7 +10,7 @@ def pretty_filename(spotfinder,key):
     return spotfinder.pd['template']
 
 def optionally_add_saturation(canonical_info,image):
-  if image.has_key('saturation'):
+  if image.has_extended_key('saturation'):
     sat_info = ("%6s",image['saturation'].message(),
                       image['saturation'].format())
     canonical_info.append(sat_info)
@@ -20,7 +20,7 @@ def optionally_add_saturation(canonical_info,image):
     canonical_info.append(sat_info)
 
 def optionally_add_saturation_webice(canonical_info,image):
-  if image.has_key('saturation'):
+  if image.has_extended_key('saturation'):
     sat_info = ("%5s %%",image['saturation'].message().split("%")[1],
                       "%.1f"%(100*image['saturation'].p_saturation))
     canonical_info.append(sat_info)
@@ -30,7 +30,7 @@ def optionally_add_saturation_webice(canonical_info,image):
     canonical_info.append(sat_info)
 
 def key_adaptor(mapping,key,idx=None):
-  if mapping.has_key(key):
+  if mapping.has_extended_key(key):
     if idx == None:
       return mapping[key]
     else: return mapping[key][idx]
@@ -98,7 +98,7 @@ def webice_image_stats(Spotfinder,key):
 def notes(Spotfinder,key):
     print
     image = Spotfinder.images[key]
-    if image.has_key('resolution_divisor'):
+    if image.has_extended_key('resolution_divisor'):
       print "Bin population cutoff for method 2 resolution: %.0f%%"%(
         100./image['resolution_divisor'])
 

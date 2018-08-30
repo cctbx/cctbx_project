@@ -607,7 +607,7 @@ def small_cell_index(path, horiz_phil):
                            timestamp=None,
                            wavelength=beam.get_wavelength())
 
-  if not DATA.has_key('DETECTOR_ADDRESS') or DATA['DETECTOR_ADDRESS'] is None:
+  if 'DETECTOR_ADDRESS' not in DATA or DATA['DETECTOR_ADDRESS'] is None:
     DATA['DETECTOR_ADDRESS'] = 'CxiDs1-0|Cspad-0'
 
   if horiz_phil.small_cell.override_beam_x is not None:

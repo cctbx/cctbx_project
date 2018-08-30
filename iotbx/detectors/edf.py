@@ -42,10 +42,10 @@ class EDFImage:
 
    #forced typing of attributes:
    for attribute in ['run','Image','Size','Dim_1','Dim_2']:
-     if self.parameters.has_key(attribute):
+     if attribute in self.parameters:
        self.parameters[attribute]=int(self.parameters[attribute])
    for attribute in ['count_time',]:
-     if self.parameters.has_key(attribute):
+     if attribute in self.parameters:
        self.parameters[attribute]=float(self.parameters[attribute])
 
    self.type_size = {'SignedInteger':4, 'UnsignedShort':2, 'Float':4}[self.parameters['DataType']]

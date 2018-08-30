@@ -39,7 +39,7 @@ class refinement_base(object):
     )
     OO.ucbp3 = bandpass_gaussian(parameters=parameters)
 
-    if OO.parent.__dict__.has_key("horizons_phil"):
+    if "horizons_phil" in OO.parent.__dict__:
       the_tiles = OO.parent.imagefiles.images[OO.parent.image_number
       ].get_tile_manager(OO.parent.horizons_phil
       ).effective_tiling_as_flex_int(
@@ -53,7 +53,7 @@ class refinement_base(object):
       signal_penetration = integration_signal_penetration)
 
     # test for horizons_phil simply skips the subpixel correction for initial labelit indexing
-    if OO.parent.__dict__.has_key("horizons_phil"):
+    if "horizons_phil" in OO.parent.__dict__:
       if OO.parent.horizons_phil.integration.subpixel_joint_model.translations is not None:
         "Subpixel corrections: using joint-refined translation + rotation"
         T = OO.parent.horizons_phil.integration.subpixel_joint_model.translations

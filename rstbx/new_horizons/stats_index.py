@@ -54,14 +54,14 @@ class AutoIndexOrganizer:
     self.verbose = verbose
     self.horizons_phil = kwargs["horizons_phil"]
     #self.horizons_phil.persist.show()
-    assert kwargs.has_key('argument_module')
+    assert 'argument_module' in kwargs
     self.setCommandInput(kwargs['argument_module'])
     if self.verbose: print "Process frames in directory:",self.Files.filenames.FN[0].cwd
 
-    if kwargs.has_key('delegate'):
+    if 'delegate' in kwargs:
       self.setIndexingDelegate(kwargs['delegate'])
     self.exception_passthru = 0
-    if kwargs.has_key('exception_passthru'):
+    if 'exception_passthru' in kwargs:
       self.exception_passthru = kwargs['exception_passthru']
     print '\n'.join(self.Files.filenames())
 
@@ -102,12 +102,12 @@ class AutoIndexOrganizer:
 
   def pickle_the_results(self):
       for key in ['best_integration','triclinic']:
-        if self.info.has_key(key):
-         if self.info[key].has_key('minimizer'): #not attained when best==tri
+        if key in self.info:
+         if 'minimizer' in self.info[key]: #not attained when best==tri
           del self.info[key]['minimizer'] # Must remove
 
          # temporary section pending an analysis of which data need to be persistent
-         if self.info[key]["integration"].has_key('results'):
+         if 'results' in self.info[key]["integration"]:
           #future options 1) make the whole object picklable--write test script
           #2) just pickle the data needed for the GUI
           del self.info[key]["integration"]['results']
@@ -117,6 +117,6 @@ class AutoIndexOrganizer:
   def process(self):
     self.printSpots()
     self.executeDelegate()
-    if self.__dict__.has_key('info'): #if indexing worked
+    if 'info' in self.__dict__: #if indexing worked
       self.pickle_the_results()
       return self.info

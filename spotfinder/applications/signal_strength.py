@@ -29,9 +29,9 @@ def run_signal_strength_core(params,E):
   #Image analysis requested by NE-CAT (Point of contact: Craig Ogata)
   for key in Org.S.images.keys():
     # List of spots between specified high- and low-resolution limits
-    if Org.S.images[key].has_key('lo_pass_resolution_spots'):
+    if Org.S.images[key].has_extended_key('lo_pass_resolution_spots'):
       spots = Org.S.images[key]['lo_pass_resolution_spots']
-    elif Org.S.images[key].has_key('inlier_spots'):
+    elif Org.S.images[key].has_extended_key('inlier_spots'):
       spots = Org.S.images[key]['inlier_spots']
     else:
       spots = []

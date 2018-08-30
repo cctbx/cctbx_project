@@ -43,7 +43,7 @@ class new_horizons_state:
       M = best_compatibility_to_IndexPrinter(ai,P,self.pd,files,
           spotfinder_results)
     #------------------------------------------------------------
-    if self.horizons_phil.__dict__.has_key("writer"):
+    if "writer" in self.horizons_phil.__dict__:
       self.horizons_phil.writer.make_image_plots_detail(
         ai=ai,pd=self.pd,inframes=files,spotfinder_results=spotfinder_results)
 

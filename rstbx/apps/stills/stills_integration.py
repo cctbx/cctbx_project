@@ -54,7 +54,7 @@ class api:
         best_compatibility_to_IndexPrinter
       M = best_compatibility_to_IndexPrinter(ai,P,pd,files,spotfinder_results,horizons_phil=self.horizons_phil)
     #------------------------------------------------------------
-    if labelit_commands.__dict__.has_key("writer"):
+    if "writer" in labelit_commands.__dict__:
       labelit_commands.writer.make_image_plots_detail(
         ai=ai,pd=pd,inframes=files,spotfinder_results=spotfinder_results)
     if not labelit_commands.index_only:

@@ -67,7 +67,7 @@ class ADSCImage(DetectorImageBase):
           if len(matches)>0:
             if matches[-1] not in [None,"None","unknown"]:
               self.parameters[tag] = datatype(matches[-1])
-      if not self.parameters.has_key("TWOTHETA"):
+      if "TWOTHETA" not in self.parameters:
         self.parameters["TWOTHETA"]=0.0
 
 

@@ -497,7 +497,7 @@ def load_result (file_name,
       obj = easy_pickle.load(file_name=file_name)
     except Exception:
       return None
-  if (not obj.has_key("observations")) :
+  if ("observations" not in obj) :
     return None
   if params.isoform_name is not None:
     if not "identified_isoform" in obj:
@@ -1182,7 +1182,7 @@ class scaling_manager (intensity_data) :
     # fall back on the value given on the command line.  XXX The
     # wavelength parameter should probably be removed from master_phil
     # once all pickled integration files contain it.
-    if (result.has_key("wavelength")):
+    if ("wavelength" in result):
       wavelength = result["wavelength"]
     elif (self.params.wavelength is not None):
       wavelength = self.params.wavelength

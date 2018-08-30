@@ -116,10 +116,10 @@ def EndStation_from_ImageObject(imageobject,phil_params):
      imageobject.serial_number in [414] and \
      phil_params.goniometer_rotation.lower().find(
        'pringle-shen')>=0 and \
-     imageobject.parameters.has_key('AXIS') and \
+     'AXIS' in imageobject.parameters and \
      imageobject.parameters['AXIS']=='phi':
        endstation.set_rotation_axis("ROTATION VERT ANTI")
-       if imageobject.parameters.has_key('OMEGA') and \
+       if 'OMEGA' in imageobject.parameters and \
           imageobject.parameters['OMEGA'] != 0.0 :
           omega = imageobject.parameters['OMEGA']
           from iotbx.detectors import rotate_vector_around
@@ -245,7 +245,7 @@ ADCOFFSet 5
        #  (above 32767).  Otherwise MOSFLM can crash with SERIOUS ERROR message.
 
      # Both DTrek and Raxis formats have "RAXIS" vendortype but only Raxis has "head" attribute
-     if imageobject.__dict__.has_key("head") and \
+     if "head" in imageobject.__dict__ and \
         imageobject.head['Device'].lower().find('r-axis2')==0:
        endstation.mos['mosflm_detector']=endstation.mos['mosflm_detector']+\
                                          'detector raxis'

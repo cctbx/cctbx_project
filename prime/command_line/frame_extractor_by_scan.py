@@ -39,9 +39,9 @@ class ConstructFrame(object):
     self.frame = self.get_template_pickle()
     self.pixel_size = experiment.detector[0].get_pixel_size()[0]
 
-    if reflections.has_key('intensity.prf.value'):
+    if 'intensity.prf.value' in reflections:
       self.method = 'prf' # integration by profile fitting
-    elif reflections.has_key('intensity.sum.value'):
+    elif 'intensity.sum.value' in reflections:
       self.method = 'sum' # integration by simple summation
     #self.reflections = reflections.select(reflections['intensity.' + self.method + '.variance'] > 0) # keep only spots with sigmas above zero
     self.reflections = reflections
@@ -131,14 +131,14 @@ class ConstructFrame(object):
 
   # collect predicted spot positions
   def populate_pixel_positions(self):
-    assert self.reflections.has_key('xyzcal.px'), "no calculated spot positions"
+    assert 'xyzcal.px' in self.reflections, "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
     for i in xrange(len(self.reflections['xyzcal.px'])):
       self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][1::-1])) # 1::-1 reverses the order taking only the first two elements first.
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
   def populate_corrections(self):
-    assert self.reflections.has_key('xyzobs.px.value') and self.reflections.has_key('xyzcal.px'), "no calculated or observed spot positions"
+    assert 'xyzobs.px.value' in self.reflections and 'xyzcal.px' in self.reflections, "no calculated or observed spot positions"
     assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
     self.frame['correction_vectors'] = [[]]
     for idx in xrange(len(self.reflections['xyzobs.px.value'])):

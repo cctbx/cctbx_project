@@ -80,7 +80,7 @@ def load_result (file_name,
   """
   # Ignore frames with no integrated reflections.
   obj = frame
-  if (not obj.has_key("observations")) :
+  if ("observations" not in obj) :
     return None
 
   if reindex_op == "h,k,l":

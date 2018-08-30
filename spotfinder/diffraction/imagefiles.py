@@ -36,7 +36,7 @@ class FileName:
     self.base = fn
     self.cwd = dirname
   def fullpath(self):
-    if self.__dict__.has_key("full_url"):
+    if "full_url" in self.__dict__:
       return self.full_url
     return os.path.join(os.path.abspath(self.cwd),self.base)
   def isImageFileName(self):
@@ -241,7 +241,7 @@ class spotfinder_image_files(H5_aware_image_files):
     self.acceptable_use_tests_basic()
 
   def acceptable_use_tests_basic(self):
-    if self.images[0].parameters.has_key('TWOTHETA'):
+    if 'TWOTHETA' in self.images[0].parameters:
       if abs(self.images[0].twotheta) < 0.02:  #round off to zero and
                                                #retain legacy behavior
         for ik in xrange(len(self.images)):

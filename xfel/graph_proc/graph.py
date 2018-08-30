@@ -116,7 +116,7 @@ class Graph(Cluster):
     logging.debug("Edges added to graph.")
 
     # Position vertices
-    if not kwargs.has_key('pos') :
+    if 'pos' not in kwargs :
       kwargs['pos'] = nx.spring_layout(nx_graph, iterations=1000)
 
     # Organise Edge colors

@@ -50,7 +50,7 @@ class xscaling_manager (scaling_manager) :
                len(self.frames["cc"]),
                statsy.mean(),  statsy.unweighted_sample_standard_deviation(),
                )
-    if self.params.scaling.report_ML and self.frames.has_key("half_mosaicity_deg"):
+    if self.params.scaling.report_ML and "half_mosaicity_deg" in self.frames:
       mosaic = self.frames["half_mosaicity_deg"].select(self.those_accepted)
       Mstat = flex.mean_and_variance(mosaic)
       print >> self.log, "%5d images, half mosaicity is %6.3f +/- %5.3f degrees"%(

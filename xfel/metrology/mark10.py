@@ -291,7 +291,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
       frame_id = self.frame_id[x]
       frame_param_no = self.frame_id_to_param_no[frame_id]
       if frame_param_no >= self.n_refined_frames: continue
-      if not self.frame_del_radial.has_key(frame_id):
+      if frame_id not in self.frame_del_radial:
         self.frame_del_radial[frame_id] = flex.double()
         self.frame_del_azimuthal[frame_id] = flex.double()
 
@@ -817,7 +817,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
       else:
         detector_origin = col((-self.FRAMES["beam_x"][iframe],-self.FRAMES["beam_y"][iframe],0.))
 
-      if not self.bandpass_models.has_key(frame_id):
+      if frame_id not in self.bandpass_models:
 
         reserve_orientation = self.FRAMES["orientation"][iframe]
         effective_orientation = reserve_orientation
@@ -863,7 +863,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
         ucbp3.set_vector_output_pointers(self.vector_data,
                                          frame_id,iframe<self.n_refined_frames)
 
-        if not self.bandpass_models.has_key("best_index"):
+        if "best_index" not in self.bandpass_models:
           from labelit.dptbx import lepage
           M = lepage.character(effective_orientation)
           s = len(M.best())
