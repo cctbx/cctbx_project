@@ -1212,6 +1212,28 @@ citation {
 }
 
 citation {
+  article_id = phenix.real_space_refine
+  authors = Afonine PV, Poon BK, Read RJ, Sobolev OV, Terwilliger TC, Urzhumtsev A, Adams PD
+  title = Real-space refinement in PHENIX for cryo-EM and crystallography
+  journal = Acta Cryst. D
+  volume = 74
+  pages = 531-544
+  year = 2018
+  doi_id = 10.1107/S2059798318006551
+}
+
+citation {
+  article_id = phenix.validation_cryoem
+  authors = Afonine PV, Klaholz BP, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD, Urzhumtsev A
+  title = New tools for the analysis and validation of cryo-EM maps and atomic odels
+  journal = Acta Cryst. D
+  volume = 74
+  pages = None
+  year = 2018
+  doi_id = 10.1107/S2059798318009324
+}
+
+citation {
   article_id = phenix.polder
   authors = Liebschner D, Afonine PV, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD
   title = Polder maps: improving OMIT maps by excluding bulk solvent
