@@ -4883,20 +4883,7 @@ class build_all_chain_proxies(linking_mixins):
     disulfide_cif_block = None
     disulfide_cif_loop = None
     if disulfide_sym_table.size():
-      cif_block = iotbx.cif.model.block()
-      loop = iotbx.cif.model.loop(header=(
-        "_chem_link_bond.link_id",
-        "_chem_link_bond.atom_1_comp_id",
-        "_chem_link_bond.atom_id_1",
-        "_chem_link_bond.atom_2_comp_id",
-        "_chem_link_bond.atom_id_2",
-        "_chem_link_bond.type",
-        "_chem_link_bond.value_dist",
-        "_chem_link_bond.value_dist_esd",
-      ))
-      loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
-      cif_block.add_loop(loop)
-      self._cif.cif["link_SS"] = cif_block
+      self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
       # FIXME missing loop contents in some situations
       #disulfide_cif_block = iotbx.cif.model.block()
       #disulfide_cif_loop = iotbx.cif.model.loop(header=(
@@ -4926,12 +4913,6 @@ class build_all_chain_proxies(linking_mixins):
       site_symmetry_table=self.site_symmetry_table())
     bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
 
-    #_ = asu_mappings.site_symmetry_table()
-    #for bond in self.geometry_proxy_registries.bond_simple.proxies:
-    #  if bond.rt_mx_ji is None: continue
-    #  sepi_obj = _.symmetry_equivalent_pair_interactions(
-    #    i_seq=bond.i_seqs[0], j_seq=bond.i_seqs[1], rt_mx_ji=bond.rt_mx_ji)
-    #  sepi = sepi_obj.get()
     geometry_restraints.add_pairs(
       bond_asu_table, self.geometry_proxy_registries.bond_simple.proxies)
     #
@@ -5085,30 +5066,8 @@ class build_all_chain_proxies(linking_mixins):
                                     sym_str,
                                     ))
         added = True
-    if added:
-      cif_block = iotbx.cif.model.block()
-      loop = iotbx.cif.model.loop(header=(
-        "_chem_link_bond.link_id",
-        "_chem_link_bond.atom_1_comp_id",
-        "_chem_link_bond.atom_id_1",
-        "_chem_link_bond.atom_2_comp_id",
-        "_chem_link_bond.atom_id_2",
-        "_chem_link_bond.type",
-        "_chem_link_bond.value_dist",
-        "_chem_link_bond.value_dist_esd",
-      ))
-      loop.add_row(("SS", "1", "SG", "2", "SG", "single", "2.031", "0.020"))
-      cif_block.add_loop(loop)
-      self._cif.cif["link_SS"] = cif_block
-      #cif_block = iotbx.cif.model.block()
-      #loop = iotbx.cif.model.loop(header=(
-      #  "_phenix.link_id",
-      #  "_phenix.atom_id_1",
-      #  "_phenix.atom_id_2",
-      #  "_phenix.sym_op",
-      #))
-      #cif_block.add_loop(loop)
-      #self.cif["phenix_applied_SS"] = cif_block
+    if added: self._cif.cif["link_SS"] = disulfide_link.as_cif_block()
+    #
     # ====================== End of disulfides ========================
     #
     if (processed_edits is not None):

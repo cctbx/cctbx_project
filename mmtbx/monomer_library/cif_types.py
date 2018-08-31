@@ -820,6 +820,12 @@ class link_link_id:
   def get_planes(self):
     return group_planes(self.plane_list)
 
+  def as_cif_block(self):
+    import iotbx
+    block = iotbx.cif.model.block()
+    for loop in self.cif_object.iterloops(): block.add_loop(loop)
+    return block
+
   def as_geometry_restraints_motif_manipulation(self):
     result = geometry_restraints.motif_manipulation()
     result.id = if_none(self.chem_link.id, "")
