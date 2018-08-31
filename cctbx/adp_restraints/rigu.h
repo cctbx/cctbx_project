@@ -184,20 +184,20 @@ using scitbx::sym_mat3;
       scitbx::sym_mat3<double> grad_u_cart;
       scitbx::sym_mat3<double> grad_u_star;
       std::size_t row_i;
-      int const indices[3] = {8,6,7}; //! derivatives to consider: U33, U13, U23
-      double const deltas[3] = {delta_33_,delta_13_,delta_23_};
+      int const indices[3] = {8, 6, 7}; //! derivatives to consider: U33, U13, U23
+      double const deltas[3] = {delta_33_, delta_13_, delta_23_};
       
-      for (std::size_t k; k<3; k++) {
+      for (std::size_t k = 0; k < 3; k++) {
         grad_u_cart = grad_delta_n(indices[k]);
         scitbx::matrix::matrix_transposed_vector(
           6, 6, f.begin(), grad_u_cart.begin(), grad_u_star.begin());
         row_i = linearised_eqns.next_row();
-        for (std::size_t i=0;i<2;i++) {
+        for (std::size_t i = 0; i < 2; i++) {
           if (i == 1) grad_u_star = -grad_u_star;
           cctbx::xray::parameter_indices const &ids_i
             = parameter_map[i_seqs[i]];
           if (ids_i.u_aniso == -1) continue;
-          for (std::size_t j=0;j<6;j++) {
+          for (std::size_t j = 0; j < 6; j++) {
             linearised_eqns.design_matrix(row_i, ids_i.u_aniso+j)
               = grad_u_star[j];
           }
@@ -283,12 +283,12 @@ using scitbx::sym_mat3;
       int i,j,k,l,startRow,startCol;
 
       //! calulating the kronecker product    
-      for(i=0;i<3;i++){
-        for(j=0;j<3;j++){
+      for(i = 0; i < 3; i++){
+        for(j = 0; j < 3; j++){
           startRow = i*3;
           startCol = j*3;
-          for(k=0;k<3;k++){
-            for(l=0;l<3;l++){
+          for(k = 0; k < 3; k++){
+            for(l = 0; l < 3; l++){
               kron[startRow+k][startCol+l] = RM(i,j)*RM(k,l);
             }
           }
@@ -296,6 +296,7 @@ using scitbx::sym_mat3;
       }
         
       //! vec(dRUcart) = kron vec(dUcart). Derivatives of (RUcart = RM Ucart RM^t)
+      memset(&dRUcart[0][0], 0, 9*6*sizeof(dRUcart[0][0]));
       for (i = 0; i < 9; i++) {
         for (j = 0; j < 6; j++) {
           for (k = 0; k < 9; k++) {
@@ -311,7 +312,7 @@ using scitbx::sym_mat3;
     mat3<double> RUcart1, RUcart2;
     mat3<double> RM;
         
-    double dRUcart[9][6] = {};
+    double dRUcart[9][6];
   };
 
 }} // namespace cctbx::adp_restraints
