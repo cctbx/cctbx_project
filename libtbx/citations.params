@@ -1233,3 +1233,15 @@ citation {
   pmid = None
   doi_id = 10.1101/247049
 }
+
+citation {
+  article_id = map_to_model
+  authors = Terwilliger TC, Adams PD, Afonine PV, Sobolev OV
+  title = A fully automatic method yielding initial models from high-resolution electron cryo-microscopy maps
+  year = 2018
+  journal = bioRxiv
+  volume = None
+  pages = None
+  pmid = None
+  doi_id = 10.1101/267138
+}
