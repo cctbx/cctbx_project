@@ -311,7 +311,7 @@ using scitbx::sym_mat3;
     mat3<double> RUcart1, RUcart2;
     mat3<double> RM;
         
-    double dRUcart[9][6];
+    double dRUcart[9][6] = {};
   };
 
 }} // namespace cctbx::adp_restraints
