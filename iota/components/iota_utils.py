@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 12/19/2016
-Last Changed: 07/11/2018
+Last Changed: 08/31/2018
 Description : Module with basic utilities of broad applications in IOTA
 '''
 
@@ -335,6 +335,68 @@ class InputFinder():
                                       min_back=min_back)
         input_list.extend(filepaths)
     return input_list
+
+
+class ObjectFinder(object):
+  ''' A class for finding pickled IOTA image objects and reading in their
+  contents; outputs a list of Python objects containing information about
+  individual images, including a list of integrated intensities '''
+
+  def __init__(self):
+    ''' Constructor '''
+    self.ginp = InputFinder()
+
+  def find_objects(self, obj_folder, read_object_files=None, find_old=False):
+    ''' Seek and import IOTA image objects
+
+    :param obj_folder: path to objects (which can be in subfolders)
+    :param read_object_files: list of already-read-in objects
+    :param find_old: find all objects in folder, regardless of other settings
+    :return: list of image objects
+    '''
+    if find_old:
+      min_back = None
+    else:
+      min_back = -1
+
+    # Find objects and filter out already-read objects if any
+    object_files = self.ginp.get_file_list(obj_folder,
+                                           ext_only='int',
+                                           min_back=min_back)
+
+    if read_object_files is not None:
+      new_object_files = list(set(object_files) - set(read_object_files))
+    else:
+      new_object_files = object_files
+
+    # For backwards compatibility, read and append observations to objects
+    new_objects = [self.read_object_file(i) for i in new_object_files]
+    new_finished_objects = [i for i in new_objects if
+                            i is not None and i.status == 'final']
+
+    return new_finished_objects
+
+  def read_object_file(self, filepath):
+    ''' Load pickled image object; if necessary, extract observations from
+    the image pickle associated with object, and append to object
+
+    :param filepath: path to image object file
+    :return: read-in (and modified) image object
+    '''
+    try:
+      object = ep.load(filepath)
+      if object.final['final'] is not None:
+        pickle_path = object.final['final']
+        if os.path.isfile(pickle_path):
+          pickle = ep.load(pickle_path)
+          object.final['observations'] = pickle['observations'][0]
+      return object
+    except Exception, e:
+      print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
+      return None
+
+
+# ---------------------------------- Other ----------------------------------- #
 
 class RadAverageCalculator(object):
   def __init__(self, image=None, datablock=None):

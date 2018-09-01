@@ -1,28 +1,12 @@
-IOTA v1.2.001 - UI update
+IOTA v1.2.002 - UI update
 
 Bugfixes:
 
 
 Features:
-- Now with three (3) runtime information tabs:
-  1. Log (as before)
-  2. Processing, updated every 1 second, with res / no. spots charts, Wilson
-     B-factor histogram, and the hkl plot
-  3. Analysis, updated every 30 seconds, with unit cell histograms, clustering
-     results and basic PRIME results (i.e. only initial merging)
-- Processing and analysis charts are only updated when tab is active to speed up
- the UI
-- Runtime clustering and PRIME runs on a separate thread so as not to lock up
-the UI
-- Analysis tab can be toggled to not even show using a toolbar button
-- Removed "invert boolean mask" option; now mask inversion only used when
-necessary (i.e. if using Labelit-based backend), and not when using DIALS
-- Added "flip beamXY" option; is necessary in a few cases, and will need to be
-turned on only if images are not properly cropped / padded for Labelit. Since
-Labelit is mostly deprecated, I don't anticipate there being a need to make this
- option smarter
-- Moved Interceptor calculations to separate thread; UI thread for plots only
-- Adjusted Analyzer's cluster info handling with new consensus SG lookup
+- Removed param requirement for the PRIME Plotter module
+- Removed user / icon definition in PRIME Threads module
+- Added stand-alone image object finder module in utils
 
 
 Known issues:

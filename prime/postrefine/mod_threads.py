@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 08/29/2018
+Last Changed: 08/31/2018
 Description : PRIME GUI Threading module
 '''
 
@@ -34,8 +34,8 @@ elif (wx.Platform == '__WXMSW__'):
   LABEL_SIZE = 11
   CAPTION_SIZE = 9
 
-user = os.getlogin()
-icons = os.path.join(os.path.dirname(os.path.abspath(ct.__file__)), 'icons/')
+# user = os.getlogin()
+# icons = os.path.join(os.path.dirname(os.path.abspath(ct.__file__)), 'icons/')
 
 def str_split(string, delimiters=(' ', ','), maxsplit=0):
   import re

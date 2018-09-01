@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/01/2016
-Last Changed: 05/24/2018
+Last Changed: 08/30/2018
 Description : PRIME GUI frames module
 '''
 
@@ -390,7 +390,8 @@ class SummaryTab(wx.Panel):
 
     self.info = info
     self.pparams = pparams
-    self.plot = Plotter(self.pparams, self.info)
+    self.plot = Plotter(info=self.info,
+                        anomalous_flag=self.pparams.target_anomalous_flag)
 
     self.summary_sizer = wx.BoxSizer(wx.VERTICAL)
 
