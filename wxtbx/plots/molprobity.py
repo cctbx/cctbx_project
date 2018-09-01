@@ -12,11 +12,12 @@ from math import sqrt, floor
 class rotarama_plot (wxtbx.plots.plot_container) :
   hit_test_radius = 3.0
   hit_test_minimum_difference = 0.5
-  def __init__ (self, parent, figure_size=(8,8)) :
+  def __init__ (self, parent, figure_size=(8,8), xyz_shift=None) :
     wxtbx.plots.plot_container.__init__(self,
       parent=parent,
       figure_size=figure_size,
       handle_left_click=True)
+    self.xyz_shift = xyz_shift
 
   def show_plot (self, *args, **kwds) :
     if self.disabled : return
@@ -35,7 +36,12 @@ class rotarama_plot (wxtbx.plots.plot_container) :
         closest_point = i
         min_dist = dist
     if closest_point is not None :
-      self.parent.zoom_callback(xyz=self._xyz[closest_point])
+      xyz = self._xyz[closest_point]
+      if (self.xyz_shift is not None):
+        xyz = (xyz[0] + self.xyz_shift[0],
+               xyz[1] + self.xyz_shift[1],
+               xyz[2] + self.xyz_shift[2])
+      self.parent.zoom_callback(xyz=xyz)
 
 class ramalyze_plot (rotarama_plot,
                      ramalyze.ramachandran_plot_mixin) :
