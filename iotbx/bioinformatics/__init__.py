@@ -1873,7 +1873,10 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None):
       chain_sequences.append(chain_sequence)
   sequence_as_string=""
   for chain_sequence in chain_sequences:
-    sequence_as_string+=chain_sequence+"\n"
+    if sequence_as_string:
+      sequence_as_string+="\n"+chain_sequence
+    else:
+      sequence_as_string=chain_sequence
   return sequence_as_string
 
 
