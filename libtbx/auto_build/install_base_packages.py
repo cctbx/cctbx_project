@@ -270,7 +270,7 @@ class installer (object) :
     if options.dials:
       options.build_gui = True
       options.build_all = True
-      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn']
+      packages += ['pillow', 'jinja2', 'orderedset', 'procrunner', 'scipy', 'scikit_learn', 'tqdm']
     if options.xia2:
       options.build_gui = True
       options.build_all = True
@@ -721,6 +721,7 @@ Installation of Python packages may fail.
       'jinja2',
       'orderedset',
       'procrunner',
+      'tqdm',
       'tabulate',
       # ...
       'freetype',
@@ -1150,6 +1151,9 @@ _replace_sysconfig_paths(build_time_vars)
     self.build_python_module_pip(
       'procrunner', package_version=PROCRUNNER_VERSION,
       confirm_import_module='procrunner')
+
+  def build_tqdm(self):
+    self.build_python_module_pip('tqdm', package_version=TQDM_VERSION)
 
   def build_tabulate(self):
     self.build_python_module_pip(
