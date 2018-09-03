@@ -266,7 +266,7 @@ class Cluster:
         this_frame = CellOnlyFrame(crystal_symmetry, path=name, name=name)
         if hasattr(this_frame, 'crystal_symmetry'):
             data.append(this_frame)
-      except Exception, e:
+      except Exception as e:
         pass
 
     return cls(data, _prefix, _message)

@@ -28,7 +28,7 @@ def run(args):
   for arg in args:
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
 

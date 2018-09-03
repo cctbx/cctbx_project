@@ -170,7 +170,7 @@ class xes_from_histograms(object):
         # i.e. not multiprocessing
         try:
           gaussians = pixel_histograms.fit_one_histogram(pixel)
-        except RuntimeError, e:
+        except RuntimeError as e:
           print "Error fitting pixel %s" %str(pixel)
           print str(e)
           mask[pixel] = 1
@@ -186,7 +186,7 @@ class xes_from_histograms(object):
       if gain_map is None:
         try:
           view_pixel_histograms.check_pixel_histogram_fit(hist, gaussians)
-        except view_pixel_histograms.PixelFitError, e:
+        except view_pixel_histograms.PixelFitError as e:
           print "PixelFitError:", str(pixel), str(e)
           mask[pixel] = 1
           continue

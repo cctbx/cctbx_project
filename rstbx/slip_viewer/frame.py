@@ -266,7 +266,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
     try:
       # determine if the beam intersects one of the panels
       panel_id, (x_mm,y_mm) = detector.get_ray_intersection(beam.get_s0())
-    except RuntimeError, e:
+    except RuntimeError as e:
       if not ("DXTBX_ASSERT(" in str(e) and ") failure" in str(e)):
         # unknown exception from dxtbx
         raise e
@@ -290,7 +290,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
         # ill posed.
         try:
           x_mm,y_mm = detector[0].get_beam_centre(beam.get_s0())
-        except RuntimeError, e:
+        except RuntimeError as e:
           if 'DXTBX_ASSERT' in str(e):
             x_mm, y_mm = 0.0, 0.0
           else:
@@ -328,7 +328,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
 
     try:
       title = file_name_or_data.full_path
-    except AttributeError, e:
+    except AttributeError as e:
       title = str(file_name_or_data)
     self.SetTitle(title)
 

@@ -39,7 +39,7 @@ for runroot in os.listdir("."):
       #if os.path.exists(destpath_l): continue
       try:
         data = easy_pickle.load(picklepath)
-      except Exception, e:
+      except Exception as e:
         print "Pickle failed to load", picklepath
         continue
       if not "fuller_kapton_absorption_correction" in data:
@@ -120,7 +120,7 @@ for runroot in os.listdir("."):
         try:
           assert len(data[key]) == len(sel_l)
           islist = True
-        except TypeError, e:
+        except TypeError as e:
           islist = False
 
         if islist:

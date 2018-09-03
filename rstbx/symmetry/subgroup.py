@@ -101,7 +101,7 @@ class metric_subgroups(base_subgroups):
         cb_op_corr = cb_op_inp_best.inverse()
         try:
           best_subsym_corr = best_subsym.change_basis(cb_op_corr)
-        except RuntimeError, e:
+        except RuntimeError as e:
           if (str(e).find("Unsuitable value for rational rotation matrix.") < 0):
             raise
         else:

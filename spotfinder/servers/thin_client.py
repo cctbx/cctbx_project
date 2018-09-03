@@ -34,7 +34,7 @@ def kill_server(host,port):
       fields = query_object, files = [])
       Response.getresponse()
       Response.close()
-  except socketerror,e:
+  except socketerror as e:
     pass
 
 def do_main(filepath, host, port):

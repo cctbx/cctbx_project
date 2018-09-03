@@ -105,7 +105,7 @@ def generate_streams_from_path(tar_or_other):
         k = os.path.basename(K[nt].path)
         fileIO = T.extractfile(member=K[nt])
         yield fileIO,K[nt].path
-    except ReadError,e:
+    except ReadError as e:
       fileIO = open(tar_or_other,'rb')
       yield fileIO,tar_or_other
 
@@ -129,9 +129,9 @@ def generate_data_from_streams(args, verbose=False):
           data["path"] = path
           yield data
 
-      except UnpicklingError,e:
+      except UnpicklingError as e:
         if verbose: print "\ndoesn't unpickle",path
-      except EOFError,e:
+      except EOFError as e:
         if verbose: print "\nEOF error",path
 
 if __name__=="__main__":

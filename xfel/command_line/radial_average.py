@@ -74,12 +74,12 @@ def run (args, source_data = None) :
     if (not "=" in arg) :
       try :
         user_phil.append(libtbx.phil.parse("""file_path=%s""" % arg))
-      except ValueError, e :
+      except ValueError as e :
         raise Sorry("Unrecognized argument '%s'" % arg)
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = master_phil.fetch(sources=user_phil).extract()
   if params.file_path is None or not os.path.isfile(params.file_path) and source_data is None:

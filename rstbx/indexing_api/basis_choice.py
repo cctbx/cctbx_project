@@ -75,18 +75,18 @@ def select_best_combo_of(ai,better_than=0.36,candidates=20,basis=15,spot_sep=0.4
 
         solutions.append(this_solution)
       try_counter+=1
-    except (FewSpots),f:
+    except (FewSpots) as f:
       #print "COMBO: (%d,%d,%d) rejected on too few spots"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except (SmallUnitCellVolume),f:
+    except (SmallUnitCellVolume) as f:
       #print "COMBO: (%d,%d,%d) rejected on small cell volume"%(combo[0],combo[1],combo[2])
       continue
-    except (KGerror),f:
+    except (KGerror) as f:
       #print "COMBO: (%d,%d,%d) rejected on Krivy-Gruber iterations"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except (RuntimeError),f:
+    except (RuntimeError) as f:
       if str(f).find("Iteration limit exceeded")>0: continue
       print "Report this problem to DIALS developers:"
       print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])

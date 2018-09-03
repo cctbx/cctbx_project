@@ -151,7 +151,7 @@ if (__name__ == "__main__"):
       result.plots.show_all_pyplot()
       from wxtbx.command_line import loggraph
       loggraph.run([result.loggraph_file])
-    except Exception, e :
+    except Exception as e :
       print "Can't display plots"
       print "You should be able to view them by running this command:"
       print "  wxtbx.loggraph %s" % result.loggraph_file

@@ -20,7 +20,7 @@ def run(args):
   for arg in args:
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
   print "Printing results for trial", params.trial, "using a hit cutoff of", params.n_strong_cutoff, "reflections"
@@ -54,7 +54,7 @@ def run(args):
   for run_no, rungroup_id in zip(runs, rungroups):
     try:
       timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min)()
-    except Exception, e:
+    except Exception as e:
       print "Couldn't get run", run_no
       continue
     n_hit = (n_strong >= params.n_strong_cutoff).count(True)

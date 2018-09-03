@@ -28,7 +28,7 @@ if (__name__ == "__main__") :
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -53,7 +53,7 @@ if (__name__ == "__main__") :
         experiments = ExperimentListFactory.from_json_file(params.metrology)
         assert len(experiments) == 1
         detector = experiments[0].detector
-      except Exception, e:
+      except Exception as e:
         detector = None
 
     if detector is None:
@@ -62,7 +62,7 @@ if (__name__ == "__main__") :
       try:
         from PSCalib.GeometryAccess import GeometryAccess
         geometry = GeometryAccess(params.metrology)
-      except Exception, e:
+      except Exception as e:
         geometry = None
 
       if geometry is None:

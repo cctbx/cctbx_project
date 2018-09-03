@@ -31,7 +31,7 @@ if (__name__ == "__main__") :
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()
@@ -93,7 +93,7 @@ if (__name__ == "__main__") :
         raise Sorry("%s not a recognized category"%src_cbf.category_name())
     try:
       src_cbf.next_category()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
   assert n_found == len(req_names)

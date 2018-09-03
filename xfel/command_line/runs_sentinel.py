@@ -62,7 +62,7 @@ def run(args):
 
   try:
     dbobj = db.dbconnect(host=params.db.host, db=params.db.name, username=params.db.user, password=password)
-  except Exception, e:
+  except Exception as e:
     raise Sorry(e)
 
   from xfel.xpp.simulate import file_table

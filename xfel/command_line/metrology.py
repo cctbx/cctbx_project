@@ -86,9 +86,9 @@ def run(args):
   work_params = get_phil(args)
   try:
     validate_phil(work_params)
-  except Sorry, s:
+  except Sorry as s:
     raise s
-  except Exception, s:
+  except Exception as s:
     raise s
 
   C = fit_translation4(work_params)

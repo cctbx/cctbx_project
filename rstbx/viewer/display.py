@@ -184,7 +184,7 @@ class XrayView (wx.Panel) :
       else :
         try :
           info = self._img.get_point_info(x, y)
-        except IndexError, e :
+        except IndexError as e :
           # FIXME this really shouldn't happen
           print e
         else :

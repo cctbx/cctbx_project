@@ -403,7 +403,7 @@ class common_mode_correction(mod_event_info):
         self.cspad_img = cspad_tbx.image(
           self.address, cspad_tbx.getConfig(self.address, env),
           evt, env, self.sections)
-      except Exception, e:
+      except Exception as e:
         self.logger.error("Error reading image data: " + str(e))
         evt.put(skip_event_flag(), "skip_event")
         return

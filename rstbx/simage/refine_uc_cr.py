@@ -36,12 +36,12 @@ class refinery(object):
       vals = tuple(O.x[:6])
       try:
         O.unit_cell = uctbx.unit_cell(vals)
-      except RuntimeError, e:
+      except RuntimeError as e:
         raise InfeasibleError(str(e))
       vals = matrix.col(O.x[6:]) / O.uq_scale
       try:
         vals = vals.normalize()
-      except ZeroDivisionError, e:
+      except ZeroDivisionError as e:
         raise InfeasibleError(str(e))
       if (O.average_unit_cell is not None):
         O.unit_cell = O.average_unit_cell(O.unit_cell)

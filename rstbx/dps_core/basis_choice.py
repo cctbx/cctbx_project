@@ -146,20 +146,20 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
                           'volume':ai.getOrientation().unit_cell().volume()}
         solutions.append(this_solution)
       try_counter+=1
-    except (FewSpots),f:
+    except (FewSpots) as f:
       #print "COMBO: (%d,%d,%d) rejected on too few spots"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except (SmallUnitCellVolume),f:
+    except (SmallUnitCellVolume) as f:
       #print "Small COMBO: (%d,%d,%d) rejected on small cell volume"%(combo[0],combo[1],combo[2])
       continue
-    except (KGerror),f:
+    except (KGerror) as f:
       #print "KG COMBO: (%d,%d,%d) rejected on Krivy-Gruber iterations"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
-    except ValueError, f :
+    except ValueError as f :
       if str(f).find("Corrupt metrical matrix")>=0: continue # colinear or coplanar
-    except (RuntimeError),f:
+    except (RuntimeError) as f:
       if str(f).find("Iteration limit exceeded")>0: continue
       if str(f).find("Matrix is not invertible")>=0: continue# colinear or coplanar
       print "Report this problem to LABELIT developers:"

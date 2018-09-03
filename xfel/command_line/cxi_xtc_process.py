@@ -123,7 +123,7 @@ class Script(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
     params = phil_scope.fetch(sources=user_phil).extract()

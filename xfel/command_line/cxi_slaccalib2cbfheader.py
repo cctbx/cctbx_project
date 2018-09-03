@@ -38,7 +38,7 @@ def run(args):
     else :
       try :
         user_phil.append(libtbx.phil.parse(arg))
-      except RuntimeError, e :
+      except RuntimeError as e :
         raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
 
   params = master_phil.fetch(sources=user_phil).extract()

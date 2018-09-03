@@ -199,7 +199,7 @@ def read_slac_metrology(path = None, geometry = None, plot=False, include_asic_o
     try:
       from PSCalib.GeometryAccess import GeometryAccess
       geometry = GeometryAccess(path)
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Can't parse this metrology file")
 
   metro = {}
@@ -285,7 +285,7 @@ def get_calib_file_path(env, address, run):
     # try to get it from the detector interface
     psana_det = Detector(address, run.env())
     return psana_det.pyda.geoaccess(run).path
-  except Exception, e:
+  except Exception as e:
     pass
 
   # try to get it from the calib store directly
@@ -315,7 +315,7 @@ def env_dxtbx_from_slac_metrology(run, address, metro=None):
     # try to load the geometry from the detector interface
     psana_det = Detector(address, run.env())
     geometry = psana_det.pyda.geoaccess(run)
-  except Exception, e:
+  except Exception as e:
     geometry = None
 
   if geometry is None:
@@ -741,7 +741,7 @@ def add_frame_specific_cbf_tables(cbf, wavelength, timestamp, trusted_ranges, di
       cbf.find_column("array_id")
       array_names.append(cbf.get_value())
       cbf.next_row()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
 
@@ -760,7 +760,7 @@ def add_tiles_to_cbf(cbf, tiles, verbose = False):
       cbf.find_column("array_id")
       array_names.append(cbf.get_value())
       cbf.next_row()
-    except Exception, e:
+    except Exception as e:
       assert "CBF_NOTFOUND" in e.message
       break
 

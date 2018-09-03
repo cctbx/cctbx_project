@@ -245,7 +245,7 @@ class pixel_histograms(object):
     if len(fitted_gaussians) > 1:
       try:
         check_pixel_histogram_fit(histogram, fitted_gaussians)
-      except PixelFitError, e:
+      except PixelFitError as e:
         print "PixelFitError:", str(e)
       gain = fitted_gaussians[1].params[1] - fitted_gaussians[0].params[1]
       print "gain: %s" %gain

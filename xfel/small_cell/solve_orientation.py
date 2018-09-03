@@ -38,7 +38,7 @@ class small_cell_orientation:
 
   try:
     result = np.linalg.lstsq(hkl,xyz)
-  except Exception,e:
+  except Exception as e:
     print "Exception while calculating basis vectors: %s"%e.message
     return None
 

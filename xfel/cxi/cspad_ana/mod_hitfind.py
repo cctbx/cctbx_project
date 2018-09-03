@@ -175,7 +175,7 @@ class mod_hitfind(common_mode.common_mode_correction, distl_hitfinder):
                                       # this is not set or is zero or less
         db.create_tables(dbobj, self.m_db_table_name)
 
-      except Exception,e:
+      except Exception as e:
         self.logger.info("Couldn't create root tables: %s"%(e))
       dbobj.close()
 

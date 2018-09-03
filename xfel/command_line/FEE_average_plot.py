@@ -132,7 +132,7 @@ def run(args):
           continue
       try:
         data = evt.get(Camera.FrameV1,src)
-      except ValueError,e:
+      except ValueError as e:
         src = Source('BldInfo(%s)'%params.input.address)
         data = evt.get(Bld.BldDataSpectrometerV1, src)
       if data is None:
@@ -144,7 +144,7 @@ def run(args):
       try:
         data = np.array(data.data16().astype(np.int32))
         two_D=True
-      except AttributeError,e:
+      except AttributeError as e:
         data = np.array(data.hproj().astype(np.float64))
 
       if two_D:

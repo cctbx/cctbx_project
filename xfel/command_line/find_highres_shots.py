@@ -83,7 +83,7 @@ class Script(object):
         filepath = os.path.join(path, filename)
         try:
           data = easy_pickle.load(filepath)
-        except Exception, e:
+        except Exception as e:
           print "Couldn't read", filepath
           continue
 

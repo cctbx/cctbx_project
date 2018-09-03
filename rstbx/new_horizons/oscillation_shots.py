@@ -143,7 +143,7 @@ class IntegrateCharacters:
       local["r_mosaicity"]=setting["mosaicity"]
       try:
         local["ewald_proximal_volume"]=integrate_worker.ewald_proximal_volume
-      except Exception, e:
+      except Exception as e:
         local["ewald_proximal_volume"]=None
 
       if (self.horizons_phil.indexing.open_wx_viewer) :

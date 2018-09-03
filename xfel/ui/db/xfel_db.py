@@ -171,14 +171,14 @@ class xfel_db_application(object):
           if et > 1:
             print 'Query % 6d SQLTime Taken = % 10.6f seconds' % (self.query_count, et), query[:min(len(query),145)]
         return cursor
-      except OperationalError, e:
+      except OperationalError as e:
         if "Can't connect to MySQL server" not in str(e):
           raise e
         retry_count += 1
         print "Couldn't connect to MYSQL, retry", retry_count
         time.sleep(sleep_time)
         sleep_time *= 2
-      except Exception, e:
+      except Exception as e:
         print "Couldn't execute MYSQL query.  Query:"
         print query
         print "Exception:"

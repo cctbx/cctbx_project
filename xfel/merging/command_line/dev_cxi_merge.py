@@ -118,7 +118,7 @@ class Script(object):
     if False : #(self.params.output.show_plots) :
       try :
         plot_overall_completeness(completeness)
-      except Exception, e :
+      except Exception as e :
         print "ERROR: can't show plots"
         print "  %s" % str(e)
     print >> self.out, "\n"
@@ -199,7 +199,7 @@ class Script(object):
           result.plots.show_all_pyplot()
           from wxtbx.command_line import loggraph
           loggraph.run([result.loggraph_file])
-        except Exception, e :
+        except Exception as e :
           print "Can't display plots"
           print "You should be able to view them by running this command:"
           print "  wxtbx.loggraph %s" % result.loggraph_file

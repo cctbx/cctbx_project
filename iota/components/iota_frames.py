@@ -867,7 +867,7 @@ class ProcessingTab(ScrolledPanel):
 
       self.proc_canvas.draw()
 
-    except ValueError, e:
+    except ValueError as e:
       print 'SUMMARY PLOT ERROR: ', e
 
   def draw_plots(self):
@@ -910,7 +910,7 @@ class ProcessingTab(ScrolledPanel):
       self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
       self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    except ValueError, e:
+    except ValueError as e:
       print "NSREF ERROR: ", e
 
     try:
@@ -970,7 +970,7 @@ class ProcessingTab(ScrolledPanel):
         self.btn_right.Enable()
         self.btn_viewer.Enable()
 
-    except ValueError, e:
+    except ValueError as e:
       print "RES ERROR: ", e
 
 
@@ -1007,7 +1007,7 @@ class ProcessingTab(ScrolledPanel):
         equiv = ms.multiplicities().merge_equivalents()
         merged_indices = equiv.redundancies()
 
-      except Exception, e:
+      except Exception as e:
         print 'HKL ERROR: ', e
         return
 
@@ -1059,7 +1059,7 @@ class ProcessingTab(ScrolledPanel):
         ymax = abs(max(y, key=abs))
         self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
         self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
-      except ValueError, e:
+      except ValueError as e:
         pass
 
       norm = colors.Normalize(vmin=0, vmax=np.max(freq))
@@ -1129,7 +1129,7 @@ class ProcessingTab(ScrolledPanel):
             search = False
           else:
             search = True
-      except IndexError, e:
+      except IndexError as e:
         search = False
         self.pick['index'] = idx
         self.pick['image'] = None
@@ -1389,7 +1389,7 @@ class LiveAnalysisTab(ScrolledPanel):
         self.calculate_uc_histogram(gamma, self.gamma_axes, xticks_loc='bottom')
         plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
-    except ValueError, e:
+    except ValueError as e:
       print 'UC HISTOGRAM ERROR: ', e
 
 
@@ -2695,7 +2695,7 @@ class ProcWindow(wx.Frame):
           print command
           easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
           print 'JOB NAME = ', self.job_id
-        except thr.IOTATermination, e:
+        except thr.IOTATermination as e:
           print 'IOTA: JOB TERMINATED',  e
       else:
         print 'IOTA ERROR: COMMAND NOT ISSUED!'
@@ -2959,7 +2959,7 @@ class ProcWindow(wx.Frame):
           pickle = ep.load(pickle_path)
           object.final['observations'] = pickle['observations'][0]
       return object
-    except Exception, e:
+    except Exception as e:
       print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
       return None
 
@@ -2981,9 +2981,9 @@ class ProcWindow(wx.Frame):
               wp = statistics.wilson_plot(observations_as_f, asu_contents,
                                           e_statistics=True)
               self.b_factors.append(wp.wilson_b)
-            except RuntimeError, e:
+            except RuntimeError as e:
               self.b_factors.append(0)
-        except Exception, e:
+        except Exception as e:
           print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
           pass
 

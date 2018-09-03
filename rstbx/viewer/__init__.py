@@ -232,7 +232,7 @@ class image (screen_params) :
       from iotbx.detectors import ImageFactory, ImageException
       try :
         img = ImageFactory(file_name)
-      except ImageException, e :
+      except ImageException as e :
         raise Sorry(str(e))
       img.read()
     else :

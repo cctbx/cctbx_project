@@ -74,7 +74,7 @@ def run(args, verbose=False):
       integrated = reporter.Integrated.sum()
       top.child(SimpleNode(tag="integrated",contents="%.3f"%integrated))
 
-  except Exception,e:
+  except Exception as e:
     top.child(SimpleNode(tag="status",contents=repr(e)))
     top.emit(logger)
     return logger.getvalue()

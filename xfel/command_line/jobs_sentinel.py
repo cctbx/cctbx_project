@@ -153,7 +153,7 @@ def run(args):
     # need to get a new connection each iteration to prevent caching
     try:
       dbobj = db.dbconnect(host=params.db.host, db=params.db.name, username=params.db.user, password=password)
-    except Exception, e:
+    except Exception as e:
       raise Sorry(e)
 
     # Get the set of known runs in the experiment database

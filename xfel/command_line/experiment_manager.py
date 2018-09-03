@@ -144,7 +144,7 @@ class initialize(object):
           cursor = self.dbobj.cursor()
           try:
             cursor.execute(cmd)
-          except Exception, e:
+          except Exception as e:
             print "Failed to create table. SQL command:"
             print cmd
             print e
@@ -527,7 +527,7 @@ def run(args):
 
   try:
     dbobj = db.dbconnect(host=params.db.host, db=params.db.name, username=params.db.user, password=password)
-  except Exception, e:
+  except Exception as e:
     raise Sorry(e)
 
   initialize(params, dbobj)()

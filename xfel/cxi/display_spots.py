@@ -185,7 +185,7 @@ def run_one_index_core(horizons_phil):
 
   try:
     info.process()
-  except Exception, e:
+  except Exception as e:
     e.info = info
     raise e
 

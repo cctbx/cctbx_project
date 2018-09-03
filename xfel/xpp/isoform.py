@@ -37,7 +37,7 @@ class application(manager):
       cursor.execute("use %s;"%self.params.db.name)
 
       return db
-    except Exception,e:
+    except Exception as e:
       print e
       raise RuntimeError("Couldn't connect to mysql database")
 

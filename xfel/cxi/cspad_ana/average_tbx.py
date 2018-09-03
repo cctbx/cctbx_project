@@ -339,7 +339,7 @@ class average_mixin(common_mode.common_mode_correction):
       queue_nmemb = self._metadata['nmemb']
       queue_time = self._metadata['time']
       queue_wavelength = self._metadata['wavelength']
-    except Empty, KeyError:
+    except (Empty, KeyError):
       pass
 
     # If a complete set of items could be retrieved from the shared

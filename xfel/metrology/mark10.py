@@ -32,7 +32,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
       detector_origin = self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
       try:
         self.bandpass_models[frame_id].gaussian_fast_slow()
-      except Exception,e:
+      except Exception as e:
         print "Exception from picture",e
         raise e
 
@@ -43,7 +43,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
        all_model.collect_distance(self.bandpass_models[frame_id].part_distance,frame_id)
        self.FRAMES["refined_detector_origin"][iframe] = detector_origin/(-PIXEL_SZ)
 
-      except Exception,e:
+      except Exception as e:
           print "Exception from collect",e
           raise e
 
@@ -734,7 +734,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
             self.g_factor.x[iparam+6*iframe] = current_values[2+iparam]
           try:
             self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
-          except Exception, e:
+          except Exception as e:
             print "Failed on", iframe, self.FRAMES["unique_file_name"][iframe]
             raise e
 

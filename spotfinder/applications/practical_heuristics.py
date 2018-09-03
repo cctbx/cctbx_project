@@ -295,9 +295,9 @@ class heuristics_base(object):
     try: sf = Distl(arguments,pimage,pd,
             report_overloads=self.phil_params.distl_report_overloads,
             params=self.phil_params)
-    except Sorry, e:
+    except Sorry as e:
       raise e
-    except Exception, e:
+    except Exception as e:
       raise SpotfinderError("Spotfinder cannot analyze image %s :"%pimage.filename + e.message)
 
     #To support sublattice detection, make pixel-wise Z-scores persistent

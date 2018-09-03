@@ -92,7 +92,7 @@ class PilatusImage(DetectorImageBase):
              ).uncompress_data(self.size1,self.size2)
       self.bin_safe_set_data( data )
 
-    except Exception, e:
+    except Exception as e:
       raise ImageException(
           "unable to read miniCBF data; contact authors; error=\"%s\"" % \
           str(e).strip())

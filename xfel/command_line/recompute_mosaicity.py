@@ -81,7 +81,7 @@ class Script(object):
       try:
         nv = nave_parameters(params = None, experiments=experiments[i:i+1], reflections=refls, refinery=None, graph_verbose=False)
         crystal_model_nv = nv()
-      except Exception, e:
+      except Exception as e:
         continue
       domain_size.append(experiments[i].crystal.get_domain_size_ang() - crystal_model_nv.get_domain_size_ang())
       mosaic_angle.append(experiments[i].crystal.get_half_mosaicity_deg() - crystal_model_nv.get_half_mosaicity_deg())

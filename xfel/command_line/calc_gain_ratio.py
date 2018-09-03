@@ -42,7 +42,7 @@ def run(args):
   for arg in args :
     try :
       user_phil.append(phil.parse(arg))
-    except RuntimeError, e :
+    except RuntimeError as e :
       raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   params = phil_scope.fetch(sources=user_phil).extract()
 

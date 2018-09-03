@@ -124,7 +124,7 @@ def run(argv=None):
         myfiles = files[rank*chunk:(rank+1)*chunk]
         if rank == 0:
           myfiles += files[len(files)-len(files)%size:len(files)]
-      except ImportError, e:
+      except ImportError as e:
         print "MPI not found, multiprocessing disabled"
         myfiles = files
 
