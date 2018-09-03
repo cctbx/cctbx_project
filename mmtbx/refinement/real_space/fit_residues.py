@@ -36,6 +36,49 @@ negate_map_table = {
   "lys": 8
 }
 
+def get_mean_side_chain_density_value(hierarchy, map_data, unit_cell):
+  results = flex.double()
+  get_class = iotbx.pdb.common_residue_names_get_class
+  main_chain = ["N","CA","CB","C","O"]
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        conformers = residue_group.conformers()
+        if(len(conformers)>1): continue
+        for conformer in residue_group.conformers():
+          residue = conformer.only_residue()
+          if(get_class(residue.resname) != "common_amino_acid"): continue
+          sites_cart = flex.vec3_double()
+          atoms = residue.atoms()
+          for a in atoms:
+            if(a.name.strip() in main_chain): continue
+            sites_cart.append(a.xyz)
+          if(sites_cart.size()==0): continue
+          mv = maptbx.real_space_target_simple(
+            unit_cell   = unit_cell,
+            density_map = map_data,
+            sites_cart  = sites_cart)
+          results.append(mv)
+  return flex.mean(results)
+
+def get_mean_side_chain_density_value_residue(residue, map_data, unit_cell):
+  results = flex.double()
+  get_class = iotbx.pdb.common_residue_names_get_class
+  main_chain = ["N","CA","CB","C","O"]
+  if(get_class(residue.resname) != "common_amino_acid"): return None
+  sites_cart = flex.vec3_double()
+  atoms = residue.atoms()
+  for a in atoms:
+    if(a.name.strip() in main_chain): continue
+    sites_cart.append(a.xyz)
+  if(sites_cart.size()==0): return None
+  mv = maptbx.real_space_target_simple(
+    unit_cell   = unit_cell,
+    density_map = map_data,
+    sites_cart  = sites_cart)
+  results.append(mv)
+  return flex.mean(results)
+
 class run(object):
   def __init__(self,
                pdb_hierarchy,
@@ -54,9 +97,16 @@ class run(object):
                tune_up_only=False,
                log = None):
     adopt_init_args(self, locals())
+    self.did_it_for = 0
     if(self.do_all): assert not outliers_only
     if(self.outliers_only): assert not do_all
     self.number_of_outliers = None
+    self.mean_side_chain_density = None
+    if(self.map_data is not None):
+      self.mean_side_chain_density = get_mean_side_chain_density_value(
+        hierarchy = self.pdb_hierarchy,
+        map_data  = self.map_data,
+        unit_cell = self.crystal_symmetry.unit_cell())
     if(self.log is None): self.log = sys.stdout
     self.sites_cart = self.pdb_hierarchy.atoms().extract_xyz()
     self.atom_names = flex.std_string(
@@ -92,6 +142,9 @@ class run(object):
       "outliers final: %d"%self.count_outliers()
     assert approx_equal(self.sites_cart,
       self.pdb_hierarchy.atoms().extract_xyz())
+    #
+    print >> self.log, "Did it for:", self.did_it_for
+    #
 
   def get_special_position_indices(self):
     site_symmetry_table = \
@@ -171,6 +224,14 @@ class run(object):
         outliers_only     = self.outliers_only,
         f_map             = self.map_data,
         fdiff_map         = self.diff_map_data)
+      # XXX Totally ad hoc, to rationalize later!
+      mv_r = get_mean_side_chain_density_value_residue(
+        residue   = residue,
+        map_data  = self.map_data,
+        unit_cell = self.crystal_symmetry.unit_cell())
+      if(mv_r is not None and mv_r<self.mean_side_chain_density/2):
+        need_fix = True
+      #
       if(not need_fix): return
     negate_rad = negate_map_table[residue.resname.strip().lower()]
     if(not negate_rad): return
@@ -179,6 +240,7 @@ class run(object):
     unit_cell = None
     if(self.crystal_symmetry is not None):
       unit_cell = self.crystal_symmetry.unit_cell()
+    self.did_it_for +=1
     mmtbx.refinement.real_space.fit_residue.run(
       residue           = residue,
       vdw_radii         = self.vdw_radii,
