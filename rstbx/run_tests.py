@@ -25,6 +25,7 @@ tst_list = (
   "$D/diffraction/tst_ewald_sphere.py",
   "$D/diffraction/tst_partial_derivatives.py",
   "$D/diffraction/fastbragg/tst_bragg_minimal.py",
+  run,
   )
 
 def run_standalones():
