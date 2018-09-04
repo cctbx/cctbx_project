@@ -214,7 +214,7 @@ using scitbx::sym_mat3;
     double delta() { return delta_33_+delta_13_+delta_23_; }
 
     double weight;
-
+    
   protected:
     void init_delta(af::tiny<scitbx::vec3<double>, 2> const &sites,
       af::tiny<scitbx::sym_mat3<double>, 2> const &u_cart)
@@ -252,6 +252,15 @@ using scitbx::sym_mat3;
       delta_33_ = RUcart1(2,2) - RUcart2(2,2);
       delta_13_ = RUcart1(0,2) - RUcart2(0,2);
       delta_23_ = RUcart1(1,2) - RUcart2(1,2);
+      
+      //! Update weight see Thorn, A., Dittrich, B. & Sheldrick, G. M. (2012). Acta Cryst. A68, 448-451
+      //! sqrt(p**2 + UeqA + UeqB) * d * p *sigma
+      double d = rot3.length();
+      double const p = 0.5; 
+      double UeqA = u_cart[0].trace()/3.0;
+      double UeqB = u_cart[1].trace()/3.0;
+      weight = weightfinal(weight, p, d, UeqA, UeqB);
+
     }
 
     //! Calculate all the partial derivatives of the adp in the local cartesian coordinate system.
@@ -304,6 +313,11 @@ using scitbx::sym_mat3;
           }
         }
       }       
+    }
+
+    //! weights in RIGU depends on the distance between atoms, Ueq and a fixed parameter p
+    double weightfinal(double weight, double p, double d, double UeqA, double UeqB) {
+      return p*p / ((p*p + UeqA + UeqB) * d*d) * weight;
     }
     
     double delta_33_;
