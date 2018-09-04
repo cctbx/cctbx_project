@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import cctbx.array_family.flex # import dependency
 from cctbx import uctbx # import dependency
 import boost.python
@@ -12,6 +12,15 @@ class basis_type:
 class _(boost.python.injector,ext.crystal_orientation):
 
   def __getattr__(self,tag):
+    if tag in 'abc':
+      from scitbx.matrix import col
+      direct = self.direct_matrix()
+      if tag=='a':
+        return col((direct[0],direct[1],direct[2]))
+      elif tag=='b':
+        return col((direct[3],direct[4],direct[5]))
+      elif tag=='c':
+        return col((direct[6],direct[7],direct[8]))
     mm = self.unit_cell().metrical_matrix()
     if tag=='A':
       return mm[0]
@@ -85,3 +94,28 @@ class _(boost.python.injector,ext.crystal_orientation):
     return crystal_orientation( mat3 \
          * matrix.sqr(self.unit_cell().fractionalization_matrix()).transpose(),\
          basis_type.reciprocal)
+
+  def get_U_as_sqr(self):
+    from scitbx import matrix
+    uc = self.unit_cell()
+    B_UPPER = matrix.sqr(self.unit_cell().orthogonalization_matrix())
+    Unitary = matrix.sqr(self.direct_matrix()) * B_UPPER.inverse()
+    return Unitary
+
+  def show(self,legend=None,basis=basis_type.direct):
+    from scitbx import matrix
+    uc = self.unit_cell()
+    B_UPPER = matrix.sqr(self.unit_cell().orthogonalization_matrix())
+    Unitary = matrix.sqr(self.direct_matrix()) * B_UPPER.inverse()
+
+    A  = self.direct_matrix()
+    if legend is not None: print ("%s:"%legend)
+    print ("""    Unit cell:  %9.3f,%9.3f,%9.3f,%7.2f,%7.2f,%7.2f"""%(uc.parameters()))
+    print ("""    U matrix:   %9.3f,%9.3f,%9.3f,
+                %9.3f,%9.3f,%9.3f,
+                %9.3f,%9.3f,%9.3f"""%(Unitary.elems)
+    )
+    print ("""    A direct:   %9.3f,%9.3f,%9.3f,
+                %9.3f,%9.3f,%9.3f,
+                %9.3f,%9.3f,%9.3f"""%(A)
+    )
