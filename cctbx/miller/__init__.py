@@ -3036,7 +3036,7 @@ class array(set):
           binned_results.append( mean )
         return binned_data(binner=self.binner(), data=binned_results, data_fmt="%7.4f")
     else:
-     return None
+      return None
 
 
   def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
@@ -4720,9 +4720,10 @@ class array(set):
     if scale_indices is not None: # HKLF 5
       assert scale_indices.size() == self.indices().size()
       assert not (twin_fractions is None or len(twin_fractions) == 0)
+      assert not twin_components
       result = observations.observations(
         self.indices(), self.data(), self.sigmas(),
-        scale_indices, twin_fractions, tw_cmps)
+        scale_indices, twin_fractions)
       result.fo_sq = array(
         miller_set=set(
           crystal_symmetry=self,
