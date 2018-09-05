@@ -2,6 +2,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_value_policy.hpp>
 
 #include <scitbx/stl/vector_wrapper.h>
 #include <cctbx/xray/observations.h>
@@ -13,15 +14,26 @@ namespace {
   struct observations_wrapper {
 
     typedef observations<FloatType> obst;
-    static boost::python::tuple detwin(obst const& self,
+    static obst detwin(obst const& self,
       cctbx::sgtbx::space_group const& space_group,
       bool anomalous_flag,
       scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
       scitbx::af::const_ref<FloatType> const& fc_sqs)
     {
-      scitbx::af::tiny<scitbx::af::shared<FloatType>, 2> result =
-        self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
-      return boost::python::make_tuple(result[0], result[1]);
+      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
+    }
+
+    static obst customized_detwin(obst const& self,
+      cctbx::sgtbx::space_group const& space_group,
+      bool anomalous_flag,
+      scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
+      scitbx::af::const_ref<FloatType> const& fc_sqs,
+      scitbx::af::shared<
+      cctbx::xray::twin_component<FloatType>*> const&
+        merohedral_components)
+    {
+      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs,
+        merohedral_components);
     }
 
     typedef typename obst::index_twin_component itct;
@@ -47,9 +59,7 @@ namespace {
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<FloatType> const&,
                   scitbx::af::shared<int> const&,
-                  scitbx::af::shared<cctbx::xray::twin_fraction<FloatType>*> const&,
-                  scitbx::af::shared<
-                    cctbx::xray::twin_component<FloatType>*> const& >
+                  scitbx::af::shared<cctbx::xray::twin_fraction<FloatType>*> const& >
              ((arg("indices"),
                arg("data"),
                arg("sigmas"),
@@ -71,14 +81,16 @@ namespace {
         .add_property("twin_fractions", &obst::twin_fractions)
         .add_property("merohedral_components", &obst::merohedral_components)
         .add_property("measured_scale_indices", &obst::measured_scale_indices)
-        .def("iterator", &obst::iterator)
+        .def("iterator", &obst::iterator, rbv())
         .def("detwin", detwin)
+        .def("customized_detwin", customized_detwin)
         ;
 
-      typedef typename obst::iterator_ itrt;
+      typedef typename obst::iterator_holder itrt;
       class_<itrt>("iterator", no_init)
         .def("has_next", &itrt::has_next)
         .def("next", &itrt::next)
+        .def("reset", &itrt::next)
         ;
 
       typedef typename obst::filter_result frt;

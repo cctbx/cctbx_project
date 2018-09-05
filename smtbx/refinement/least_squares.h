@@ -130,22 +130,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
         &jacobian_transpose_matching_grad_fc,
       bool compute_grad)
     {
+      typedef typename cctbx::xray::observations<FloatType>::iterator_holder itr_t;
       FloatType obs = f_calc_function.observable;
       if (reflections.has_twin_components()) {
-        typename cctbx::xray::observations<FloatType>::iterator_ itr =
-          reflections.iterator(i_h);
-        scitbx::af::shared<cctbx::xray::twin_fraction<FloatType> const*>
-          to_update;
-        FloatType identity_part = 0,
+        itr_t itr = reflections.iterator(i_h);
+        FloatType identity_part = obs,
           obs_scale = reflections.scale(i_h);
         obs *= obs_scale;
         if (compute_grad) {
           gradients *= obs_scale;
-          if (itr.measured_fraction != 0 && itr.measured_fraction->grad) {
-            gradients[itr.measured_fraction->grad_index] +=
-              f_calc_function.observable;
-            to_update.push_back(itr.measured_fraction);
-          }
         }
         while (itr.has_next()) {
           typename cctbx::xray::observations<FloatType>::index_twin_component
@@ -159,17 +152,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
             if (twc.fraction != 0 && twc.fraction->grad) {
               SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
                 twc.fraction->grad_index >= gradients.size()));
-              gradients[twc.fraction->grad_index] += f_calc_function.observable;
-              to_update.push_back(twc.fraction);
+              gradients[twc.fraction->grad_index] +=
+                f_calc_function.observable - identity_part;
             }
-            else if (twc.fraction == 0) {
-              identity_part = f_calc_function.observable;
-            }
-          }
-        }
-        if (identity_part != 0) {
-          for (size_t i=0; i < to_update.size(); i++) {
-            gradients[to_update[i]->grad_index] -= identity_part;
           }
         }
       }
