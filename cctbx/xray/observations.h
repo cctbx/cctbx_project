@@ -64,7 +64,7 @@ namespace cctbx { namespace xray {
         min_i_o_sig(min_i_o_sig_),
         res_filter(res_d_min_ > 0 || res_d_max_ > 0)
       {}
-      
+
       bool is_to_omit(miller::index<> const& h,
         FloatType f_sq, FloatType sig) const
       {
@@ -186,7 +186,7 @@ namespace cctbx { namespace xray {
       }
     };
   protected:
-    
+
     // need to keep indices if the custom constructor is used
     struct local_twin_component {
       miller::index<> h;
@@ -206,7 +206,7 @@ namespace cctbx { namespace xray {
     scitbx::af::shared<twin_fraction<FloatType>*> twin_fractions_;
     scitbx::af::shared<int> measured_scale_indices_;
     mutable FloatType prime_fraction_;
-    
+
     void validate_data() {
       CCTBX_ASSERT(indices_.size()==data_.size());
       CCTBX_ASSERT(indices_.size()==sigmas_.size());
@@ -272,7 +272,7 @@ namespace cctbx { namespace xray {
     }
 
   public:
-    
+
     // hklf 4 + optional merohedral twinning
     observations(scitbx::af::shared<miller::index<> > const& indices,
       scitbx::af::shared<FloatType> const& data,
@@ -287,7 +287,7 @@ namespace cctbx { namespace xray {
       validate_data();
       process_merohedral_components(merohedral_components);
     }
-    
+
     // hklf 5
     observations(scitbx::af::shared<miller::index<> > const& indices,
       scitbx::af::shared<FloatType> const& data,
@@ -300,7 +300,7 @@ namespace cctbx { namespace xray {
       build_indices_twin_components(indices, data, sigmas, scale_indices);
       update_prime_fraction();
     }
-    
+
     /* customised copy constructor - with possible external twin fractions
     and twin components, used for the Flack parameter refinement, when the
     inversion twin law needs to be added
@@ -333,7 +333,7 @@ namespace cctbx { namespace xray {
       }
       return iterator_holder(new m_iterator_(*this, i));
     }
-    
+
     /* must be called before using scale(index) or iterator */
     void update_prime_fraction() const {
       FloatType sum=0;
@@ -366,7 +366,6 @@ namespace cctbx { namespace xray {
       return rv;
     }
 
-
     observations detwin(
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
@@ -379,7 +378,7 @@ namespace cctbx { namespace xray {
       res.process_merohedral_components(merohedral_components);
       return res;
     }
-    
+
     observations detwin(
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
@@ -417,11 +416,11 @@ namespace cctbx { namespace xray {
     }
 
     scitbx::af::shared<FloatType> data() const { return data_; }
-    
+
     scitbx::af::shared<FloatType> sigmas() const { return sigmas_; }
-    
+
     scitbx::af::shared<miller::index<> > indices() const { return indices_; }
-    
+
     scitbx::af::shared<int> measured_scale_indices() const {
       return measured_scale_indices_;
     }
