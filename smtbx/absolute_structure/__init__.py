@@ -124,12 +124,12 @@ class hooft_analysis(object):
     self.G = G_numerator/G_denominator
     sigma_squared_G_numerator = 0
     # Numerical integration using trapezoidal rule
-    next = None
+    next_ = None
     for i, gamma in enumerate(xfrange(min_gamma, max_gamma, d_gamma)):
-      previous = next
-      next = math.pow((gamma - self.G), 2) * p_u_gammas[i] * d_gamma
+      previous = next_
+      next_ = math.pow((gamma - self.G), 2) * p_u_gammas[i] * d_gamma
       if i == 0: continue
-      sigma_squared_G_numerator += 0.5 * (previous + next)
+      sigma_squared_G_numerator += 0.5 * (previous + next_)
     self.hooft_y = (1-self.G)/2
     self.sigma_G = math.sqrt(sigma_squared_G_numerator/G_denominator)
     self.sigma_y = self.sigma_G/2
@@ -302,8 +302,9 @@ class flack_analysis(object):
       exti = xray.dummy_extinction_correction()
     adopt_init_args(self, locals())
     assert obs_.fo_sq.anomalous_flag()
+    assert not(obs_.twin_fractions and obs_.merohedral_components)
+
     xray_structure = xray_structure.deep_copy_scatterers()
-    flags = xray_structure.scatterer_flags()
     for sc in xray_structure.scatterers():
       f = xray.scatterer_flags()
       f.set_use_u_aniso(sc.flags.use_u_aniso())
@@ -311,13 +312,9 @@ class flack_analysis(object):
       f.set_use_fp_fdp(True)
       sc.flags = f
 
-    twin_fractions = obs_.twin_fractions
-    twin_components = obs_.merohedral_components
-    for tw in twin_fractions: tw.grad = False
-    for tc in twin_components: tc.grad = False
-
+    twin_fractions = ()
     it = xray.twin_component(sgtbx.rot_mx((-1,0,0,0,-1,0,0,0,-1)), 0.2, True)
-    twin_components += (it,)
+    twin_components = (it,)
     obs = observations.customized_copy(obs_, twin_fractions, twin_components)
     # reparameterisation needs all fractions
     twin_fractions += twin_components
