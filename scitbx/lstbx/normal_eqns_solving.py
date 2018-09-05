@@ -140,15 +140,20 @@ class iterations(object):
     a = self.non_linear_ls.normal_matrix_packed_u()
     a.matrix_packed_u_diagonal_add_in_place(value*a.matrix_packed_u_diagonal())
 
-  def do_scale_shifts(self, max_shift_over_esd):
+  def do_scale_shifts(self, limit_shift_over_su):
     x = self.non_linear_ls.step()
     esd = self.non_linear_ls.covariance_matrix().matrix_packed_u_diagonal()
-    x_over_esd = flex.abs(x/flex.sqrt(esd))
-    max_val = flex.max(x_over_esd)
-    if max_val < self.convergence_as_shift_over_esd:
+    ls_shifts_over_su = flex.abs(x/flex.sqrt(esd))
+    #max shift for the LS
+    self.max_ls_shift_over_su = flex.max(ls_shifts_over_su)
+    jac_tr = self.non_linear_ls.actual.\
+      reparametrisation.jacobian_transpose_matching_grad_fc()
+    self.shifts_over_su = jac_tr.transpose() * ls_shifts_over_su
+    self.max_shift_over_su = flex.max(self.shifts_over_su)
+    if self.max_shift_over_su < self.convergence_as_shift_over_esd:
       return True
-    if max_val > max_shift_over_esd:
-      shift_scale = max_shift_over_esd/max_val
+    if self.max_ls_shift_over_su > limit_shift_over_su:
+      shift_scale = limit_shift_over_su/self.max_ls_shift_over_su
       x *= shift_scale
     return False
 
