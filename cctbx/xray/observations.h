@@ -244,7 +244,7 @@ namespace cctbx { namespace xray {
       for (int i=0; i<indices.size(); i++) {
         if (scale_indices[i] < 0) {
           int s_ind = -scale_indices[i]-1;
-          CCTBX_ASSERT(!(s_ind < 0 || (s_ind-1) >= twin_fractions_.size()));
+          CCTBX_ASSERT(s_ind <= twin_fractions_.size());
           index_components_[index].push_back(
             local_twin_component(indices[i], s_ind-1));
         }
@@ -393,14 +393,13 @@ namespace cctbx { namespace xray {
       miller::lookup_utils::lookup_tensor<FloatType>
         twin_map(fo_sq_indices, space_group, anomalous_flag);
       update_prime_fraction();
-      bool generic_twin = twin_fractions_.size() != 0;
-      scitbx::af::shared<miller::index<> > idx_dtw;
-      scitbx::af::shared<FloatType> i_dtw;
-      scitbx::af::shared<FloatType> s_dtw;
+      scitbx::af::shared<FloatType> i_dtw(data_.size());
+      scitbx::af::shared<FloatType> s_dtw(data_.size());
       for (int i = 0; i < data_.size(); i++) {
         long hi = twin_map.find_hkl(indices_[i]);
         CCTBX_ASSERT(hi >= 0);
-        FloatType fo_sq_prime_scaled = fc_sqs[hi] * scale(i);
+        FloatType fo_sq_prime = fc_sqs[hi];
+        FloatType fo_sq_prime_scaled = fo_sq_prime * scale(i);
         FloatType twin_contrib = 0;
         iterator_holder itr = iterator(i);
         while (itr.has_next()) {
@@ -409,31 +408,11 @@ namespace cctbx { namespace xray {
           CCTBX_ASSERT(ti >= 0);
           twin_contrib += tw.scale()*fc_sqs[ti];
         }
-        FloatType scale = 1. / (fo_sq_prime_scaled + twin_contrib);
-        idx_dtw.push_back(indices_[i]);
-        FloatType s = fo_sq_prime_scaled * scale;
-        i_dtw.push_back(data_[i] * s);
-        s_dtw.push_back(sigmas_[i] * s);
-        if (generic_twin) {
-          itr.reset();
-          while (itr.has_next()) {
-            index_twin_component tw = itr.next();
-            long ti = twin_map.find_hkl(tw.h);
-            idx_dtw.push_back(tw.h);
-            s = tw.scale()*fc_sqs[ti] * scale;
-            i_dtw.push_back(data_[i] * s);
-            s_dtw.push_back(sigmas_[i] * s);
-          }
-        }
-        else {
-          i_dtw.push_back(data_[i] * scale);
-          s_dtw.push_back(sigmas_[i] * scale);
-        }
+        FloatType scale = fo_sq_prime / (fo_sq_prime_scaled + twin_contrib);
+        i_dtw[i] = data_[i] * scale;
+        s_dtw[i] = sigmas_[i] * scale;
       }
-      return generic_twin
-        ? observations(idx_dtw, i_dtw, s_dtw,
-          scitbx::af::shared<twin_component<FloatType>*>())
-        : observations(indices_, i_dtw, s_dtw,
+      return observations(indices_, i_dtw, s_dtw,
           scitbx::af::shared<twin_component<FloatType>*>());
     }
 
