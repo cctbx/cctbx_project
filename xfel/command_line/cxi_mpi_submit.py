@@ -208,7 +208,7 @@ class Script(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except RuntimeError, e:
+        except RuntimeError as e:
           dispatcher_args.append(arg)
     scope, unused = phil_scope.fetch(sources=user_phil, track_unused_definitions=True)
     params = scope.extract()
@@ -357,7 +357,7 @@ class Script(object):
       try:
         result = easy_run.fully_buffered(command=submit_command)
         result.raise_if_errors()
-      except Exception, e:
+      except Exception as e:
         if not "Warning: job being submitted without an AFS token." in str(e):
           raise e
 

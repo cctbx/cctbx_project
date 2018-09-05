@@ -34,15 +34,15 @@ def integrate_one_image(data):
 
   try:
     run_one_index_core(horizons_phil)
-  except NoAutoIndex,e:
+  except NoAutoIndex as e:
     print "NoAutoIndex"
     print e
-  except Sorry,e:
+  except Sorry as e:
     print e
-  except ZeroDivisionError,e:
+  except ZeroDivisionError as e:
     print "ZeroDivisionError"
     print e
-  except Exception,e:
+  except Exception as e:
     print "ANOTHER exception"
     print e
 

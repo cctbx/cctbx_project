@@ -388,7 +388,7 @@ def process_input(args,
       command_line_params = argument_interpreter.process(arg=arg)
       final_phil = final_phil.fetch(sources=[command_line_params,])
       consume.append(arg)
-    except Sorry,e:
+    except Sorry as e:
       pass
   for item in consume:
     phil_args.remove(item)

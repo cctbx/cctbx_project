@@ -142,7 +142,7 @@ class SingleImage(object):
     try:
       with misc.Capturing() as junk_output:
         loaded_img = dxtbx.load(self.raw_img)
-    except Exception, e:
+    except Exception as e:
       print 'IOTA IMPORT ERROR:', e
       loaded_img = None
       pass
@@ -200,7 +200,7 @@ class SingleImage(object):
           datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
           imageset = datablock.extract_imagesets()[0]
           self.gain = estimate_gain(imageset)
-        except Exception, e:
+        except Exception as e:
           self.gain = 1.0
     else:
       self.gain = 1.0
@@ -416,7 +416,7 @@ class SingleImage(object):
           data_array = img_data['DATA'].as_numpy_array().astype(float)
           self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
                                                  beam_x_px - 20:beam_x_px + 20])
-        except Exception, e:
+        except Exception as e:
           print 'IMPORT ERROR: ', e
 
     # Log initial image information

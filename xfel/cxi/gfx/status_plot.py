@@ -61,12 +61,12 @@ def draw_plot (figure, t, det_z, laser01, laser04, laser04_power, si_foil,
   ax6.grid(True, color="0.75")
   try :
     ax1.plot(t, det_z, linewidth=1, color=[1.0, 0.0, 0.0])
-  except ValueError, e :
+  except ValueError as e :
     print "error plotting det_z:", e
     print len(t), len(det_z)
   try :
     ax2.plot(t, si_foil, linewidth=1, color=[0.2, 0.4, 0.6])
-  except ValueError, e :
+  except ValueError as e :
     print "error plotting si_foil:", e
     print len(t), len(si_foil)
   ax3.plot(t, wavelength, linewidth=1, color=[0.0,1.0,0.5])

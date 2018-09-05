@@ -441,7 +441,7 @@ class Resource(object):
         try:
             import json
             self.layers = json.load(open(fname))
-        except IOError, e:
+        except IOError as e:
             msg = 'Error opening %s: %s' % (fname, str(e))
             raise IOError(msg)
 

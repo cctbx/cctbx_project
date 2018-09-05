@@ -83,7 +83,7 @@ class XTermIOTA():
           img_object = img.SingleImage(input_entry, self.init)
           img_object.import_image()
         img_object.process()
-    except Exception, e:
+    except Exception as e:
       pass
 
     return img_object

@@ -120,7 +120,7 @@ class manager (manager_base):
     for suffix in '_frame.db', '_miller.db', '_observation.db':
       try:
         remove(self.params.output.prefix + suffix)
-      except OSError, e:
+      except OSError as e:
         pass # deliberate - file does not exist
 
     self._db_commands_queue.put(('miller', (1, 2, 3), indices, None))

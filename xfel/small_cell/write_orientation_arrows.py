@@ -21,7 +21,7 @@ for dirname in sys.argv[1:]:
     print "Reading", os.path.join(dirname, filename)
     try:
       data = easy_pickle.load(os.path.join(dirname, filename))
-    except Exception, e:
+    except Exception as e:
       print "Couldn't read", filename
       continue
     ori = data['current_orientation'][0]

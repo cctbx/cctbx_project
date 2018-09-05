@@ -124,7 +124,7 @@ class Plotter(object):
       try:
         info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
                     (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
-      except IOError, e:
+      except IOError as e:
         pass
 
     # Calculate beam center coordinates and distances

@@ -110,7 +110,7 @@ dataset
                    ''.format(i, param_value, param_type, param_doc)
       param_lines.append(param_line)
 
-    except TypeError, e:
+    except TypeError as e:
       print i, e
       pass
 

@@ -35,7 +35,7 @@ def load_cxi_phil(path, args=[]):
       horizons_phil = horizons_phil.fetch(sources=[command_line_params,])
       consume.append(arg)
 
-    except Sorry,e:
+    except Sorry as e:
       pass
 
   for item in consume:

@@ -58,7 +58,7 @@ def run(args):
       continue
     try:
       user_phil.append(parse(arg))
-    except Exception, e:
+    except Exception as e:
       raise Sorry("Unrecognized argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()
   sf_params = sf_scope.extract()

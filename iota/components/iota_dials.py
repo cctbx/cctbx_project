@@ -49,7 +49,7 @@ class IOTADialsProcessor(Processor):
       Lfat = refined_settings_factory_from_refined_triclinic(
         sgparams, experiments, reflections,
         lepage_max_delta=5, nproc=1, refiner_verbosity=10)
-    except Exception, e:
+    except Exception as e:
       # If refinement fails, reset to P1 (experiments remain modified by Lfat
       # if there's a refinement failure, which causes issues down the line)
       for expt in experiments:
@@ -194,7 +194,7 @@ class Triage(object):
       else:
         log_info = 'REJECTED! {} observed reflections.'.format(len(observed))
         status = 'failed triage'
-    except Exception, e:
+    except Exception as e:
       status = 'failed triage'
       return status, 'REJECTED! SPOT-FINDING ERROR!'
 
@@ -349,7 +349,7 @@ class Integrator(object):
         print "{:-^100}\n".format(" SPOTFINDING: ")
         self.find_spots()
         print "{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed)))
-      except Exception, e:
+      except Exception as e:
         if hasattr(e, "classname"):
           print e.classname, "for %s:"%self.img[0],
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
@@ -366,7 +366,7 @@ class Integrator(object):
           if self.indexed is not None:
            print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
                                        "".format(len(self.indexed)))
-        except Exception, e:
+        except Exception as e:
           if hasattr(e, "classname"):
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
@@ -388,7 +388,7 @@ class Integrator(object):
             print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
           else:
             print "{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY ")
-        except Exception, e:
+        except Exception as e:
           print "Bravais / Reindexing Error: ", e
 
       if self.fail == None:
@@ -398,7 +398,7 @@ class Integrator(object):
           self.integrate()
           print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
                                       "".format(len(self.integrated)))
-        except Exception, e:
+        except Exception as e:
           if hasattr(e, "classname"):
             print e.classname, "for %s:"%self.img[0],
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])

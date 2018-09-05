@@ -81,7 +81,7 @@ class manager:
     for suffix in '_frame.pickle', '_miller.pickle', '_observation.pickle':
       try:
         remove(self.params.output.prefix + suffix)
-      except OSError, e:
+      except OSError as e:
         pass # deliberate - file does not exist
 
     self.miller = indices

@@ -55,7 +55,7 @@ class Distl(w_Distl):
     self.get_underload()
     try:
       self.pxlclassify()
-    except Exception, e:
+    except Exception as e:
       if str(e).find("cannot distinguish signal")>0: print e
       else: raise e
     self.search_icerings()

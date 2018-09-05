@@ -121,7 +121,7 @@ def run_signal_strength_core(params,E):
       from rstbx.viewer.spotfinder_wrap import spot_wrapper
       spot_wrapper(params).display(path = params.distl.image,
                                    organizer = Org)
-    except ImportError,e:
+    except ImportError as e:
       from libtbx.utils import Sorry
       # must use phenix.wxpython for wx display
       raise Sorry(str(e)+" Try setting env variable PHENIX_GUI_ENVIRONMENT=1")

@@ -36,7 +36,7 @@ def do_work(img_no):
     try:
       raw_data = data.get_raw_data(img_no)
       break
-    except KeyError, ValueError:
+    except (KeyError, ValueError):
       n_fails +=1
       print "Fail to read, attempt number", n_fails
       if n_fails > 100:

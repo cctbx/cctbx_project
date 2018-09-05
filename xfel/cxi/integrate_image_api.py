@@ -50,22 +50,22 @@ def integrate_one_image(data, **kwargs):
   print "XFEL processing: %s"%path
   try:
     return run_one_index_core(horizons_phil)
-  except NoAutoIndex,e:
+  except NoAutoIndex as e:
     print "NoAutoIndex", data['TIMESTAMP'], e
     info = e.info
-  except AutoIndexError,e:
+  except AutoIndexError as e:
     print "FailedAutoIndex", data['TIMESTAMP'], e
     info = e.info
-  except Sorry,e:
+  except Sorry as e:
     print "Sorry", data['TIMESTAMP'], e
     info = e.info
-  except ZeroDivisionError,e:
+  except ZeroDivisionError as e:
     print "ZeroDivisionError", data['TIMESTAMP'], e
     info = e.info
-  except SpotfinderError,e:
+  except SpotfinderError as e:
     print "Too few spots from Spotfinder", data['TIMESTAMP'], e
     info = e.info
-  except Exception,e:
+  except Exception as e:
     print "ANOTHER exception", data['TIMESTAMP'], e
     import traceback
     traceback.print_exc()
@@ -74,7 +74,7 @@ def integrate_one_image(data, **kwargs):
   # return number of spotfinder spots
   try:
     return len(info.organizer.S.images[info.organizer.frames[0]]['spots_total'])
-  except Exception, e:
+  except Exception as e:
     print "Couldn't find spotfinding results", data['TIMESTAMP']
 
 if __name__=="__main__":

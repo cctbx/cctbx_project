@@ -1871,9 +1871,7 @@ def get_sequence_from_pdb(file_name=None,text=None,hierarchy=None):
           chain_sequence+=one_letter_code_dict.get(atom_group.resname,"")
           break
       chain_sequences.append(chain_sequence)
-  sequence_as_string=""
-  for chain_sequence in chain_sequences:
-    sequence_as_string+=chain_sequence+"\n"
+  sequence_as_string="\n".join(chain_sequences)
   return sequence_as_string
 
 

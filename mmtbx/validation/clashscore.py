@@ -455,6 +455,18 @@ class probe_clashscore_manager(object):
         "\n".join(probe_out.stderr_lines))
     probe_unformatted = probe_out.stdout_lines
 
+    # Debugging facility, do not remove!
+    # import random
+    # tempdir = "tmp_for_probe_debug_%d" % random.randint(1000,9999)
+    # while os.path.isdir(tempdir):
+    #   tempdir = "tmp_for_probe_debug_%d" % random.randint(1000,9999)
+    # os.mkdir(tempdir)
+    # print "Dumping info to %s" % tempdir
+    # with open(tempdir + os.sep + 'model.pdb', 'w') as f:
+    #   f.write(pdb_string)
+    # with open(tempdir + os.sep + 'probe_out.txt', 'w') as f:
+    #   f.write('\n'.join(probe_unformatted))
+
     if not self.fast:
       temp = self.process_raw_probe_output(probe_unformatted)
       self.n_clashes = len(temp)

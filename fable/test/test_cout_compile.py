@@ -206,7 +206,7 @@ class process_file_info(object):
           disable_warnings=(file_name in file_names_disable_warnings),
           show_command=opts.verbose,
           Error=BuildError)
-      except BuildError, e:
+      except BuildError as e:
         handle_exception(e)
         fem_exe_name = None
       #
@@ -216,7 +216,7 @@ class process_file_info(object):
         buffers = easy_run.fully_buffered(command=ifort_cmd)
         try:
           buffers.raise_if_errors_or_output(Error=BuildError)
-        except BuildError, e:
+        except BuildError as e:
           handle_exception(e)
           ifort_exe_name = None
       #
@@ -247,7 +247,7 @@ class process_file_info(object):
             class ExeError(RuntimeError): pass
             try:
               buffers.raise_if_errors(Error=ExeError)
-            except ExeError, e:
+            except ExeError as e:
               handle_exception(e)
               buffers = None
           if (buffers is not None):

@@ -107,7 +107,7 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
     try:
       beam_center += col(panel.get_beam_centre_lab(beam.get_s0()))
       npanels += 1
-    except RuntimeError, e: # catch DXTBX_ASSERT for no intersection
+    except RuntimeError as e: # catch DXTBX_ASSERT for no intersection
       pass
   beam_center /= (npanels / 1e-3)
 

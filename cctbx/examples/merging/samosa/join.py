@@ -145,7 +145,7 @@ class scaling_manager (scaling_manager_base) :
       try :
         import multiprocessing
         self._scale_all_parallel(file_names, db_mgr)
-      except ImportError, e :
+      except ImportError as e :
         print >> self.log, \
           "multiprocessing module not available (requires Python >= 2.6)\n" \
           "will scale frames serially"
@@ -644,7 +644,7 @@ def run(args):
   if False : #(work_params.output.show_plots) :
     try :
       plot_overall_completeness(completeness)
-    except Exception, e :
+    except Exception as e :
       print "ERROR: can't show plots"
       print "  %s" % str(e)
   print >> out, "\n"

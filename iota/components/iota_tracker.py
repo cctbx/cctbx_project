@@ -334,7 +334,7 @@ class TrackChart(wx.Panel):
     self.bragg_line.set_ydata(min_bragg)
     try:
       self.draw_plot()
-    except AttributeError, e:
+    except AttributeError as e:
       pass
 
   def draw_plot(self, new_x=None, new_y=None, new_i=None, new_p=None):

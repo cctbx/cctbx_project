@@ -173,7 +173,7 @@ class nanoBraggThread(Thread):
     try:
       evt = nanoBraggAllDone(tp_EVT_NBDONE, -1, pixels=self.SIM.raw_pixels)
       wx.PostEvent(self.parent, evt)
-    except Exception, e:
+    except Exception as e:
       print e
 
   def fcalc_from_pdb(self, resolution=None, algorithm=None, wavelength=0.9):

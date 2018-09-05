@@ -107,7 +107,7 @@ class detector_surface(wx.Window):
         from rstbx.simage.run_labelit_index import process
         try:
           ai = process(work_params=O.work_params, spots=O.spots)
-        except Exception, e:
+        except Exception as e:
           print "Indexing exception:", e
           print
           return

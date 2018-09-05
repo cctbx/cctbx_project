@@ -828,7 +828,7 @@ def get_ebeam(evt):
   try:
     # pyana
     ebeam = evt.getEBeam()
-  except AttributeError, e:
+  except AttributeError as e:
     from psana import Source, Bld
     src = Source('BldInfo(EBeam)')
     ebeam = evt.get(Bld.BldDataEBeamV6, src)

@@ -14,7 +14,7 @@ def do_main_apache(filepath, host, port):
     log = Response.read()
     Response.close()
     return log
-  except Exception,e:
+  except Exception as e:
     return str(e)
 
 def single_thread(idx):

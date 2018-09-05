@@ -1494,7 +1494,7 @@ def get_crystal_orientation(spots, sym, img, beam_x, beam_y, distance, use_minim
       else:
         print "Invalid rotation matrix.  Determinant: ", det
         return None
-  except Exception,e: # can fail here w/ a corrupt metrical matrix or math domain error
+  except Exception as e: # can fail here w/ a corrupt metrical matrix or math domain error
     print e.message
     return None
 

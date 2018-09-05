@@ -46,7 +46,7 @@ class agipd_cxigeom2nexus(object):
       else:
         try:
           user_phil.append(parse(arg))
-        except Exception, e:
+        except Exception as e:
           raise Sorry("Unrecognized argument: %s"%arg)
     self.params = phil_scope.fetch(sources=user_phil).extract()
 

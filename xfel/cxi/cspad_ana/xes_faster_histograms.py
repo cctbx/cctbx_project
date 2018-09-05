@@ -130,7 +130,7 @@ class xes_from_histograms(object):
           #pixel_histograms.plot_combo(pixel, gaussians)
           mask[pixel] = 1
           continue
-      except RuntimeError, e:
+      except RuntimeError as e:
           print "Error fitting pixel %s" %str(pixel)
           print str(e)
           mask[pixel] = 1

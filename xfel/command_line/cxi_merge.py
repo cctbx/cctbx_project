@@ -376,7 +376,7 @@ def get_observations (work_params):
     subsubset = work_params.data_subsubsets.subsubset
     subsubset_total = work_params.data_subsubsets.subsubset_total
     extension = work_params.filename_extension
-  except Exception,e:
+  except Exception as e:
     exit("Changed the interface for get_observations, please contact authors "+str(e))
 
   print "Step 1.  Get a list of all files"
@@ -778,7 +778,7 @@ class scaling_manager (intensity_data) :
       try :
         import multiprocessing
         self._scale_all_parallel(file_names, db_mgr)
-      except ImportError, e :
+      except ImportError as e :
         print >> self.log, \
           "multiprocessing module not available (requires Python >= 2.6)\n" \
           "will scale frames serially"
@@ -1116,7 +1116,7 @@ class scaling_manager (intensity_data) :
           self.add_frame(scaled)
         input_queue.task_done()
 
-    except Exception, e :
+    except Exception as e :
       print >> self.log, str(e)
       return None
 
@@ -1167,11 +1167,11 @@ class scaling_manager (intensity_data) :
       if result is None:
         return null_data(
           file_name=file_name, log_out=out.getvalue(), file_error=True)
-    except OutlierCellError, e :
+    except OutlierCellError as e :
       print >> out, str(e)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_cell=True)
-    except WrongBravaisError, e :
+    except WrongBravaisError as e :
       print >> out, str(e)
       return null_data(
         file_name=file_name, log_out=out.getvalue(), wrong_bravais=True)
@@ -1313,7 +1313,7 @@ class scaling_manager (intensity_data) :
         from xfel.merging.absorption import show_observations as aso
         try:
           ASO = aso(observations, unobstructed, self.params, out=out, n_bins=N_bins)
-        except Exception, e:
+        except Exception as e:
           # in development encountered:
           # RuntimeError, flex.mean() of empty array
           # ValueError, max() arg is empty sequence
@@ -1525,7 +1525,7 @@ class scaling_manager (intensity_data) :
       try:
         postx.run_plain()
         observations_original_index,observations,matches = postx.result_for_cxi_merge(file_name)
-      except (AssertionError,ValueError,RuntimeError),e:
+      except (AssertionError,ValueError,RuntimeError) as e:
         return null_data(file_name=file_name, log_out=out.getvalue(), reason=e)
 
       self.postrefinement_params = postx.parameterization_class(postx.MINI.x)
@@ -1752,7 +1752,7 @@ def run(args):
   if False : #(work_params.output.show_plots) :
     try :
       plot_overall_completeness(completeness)
-    except Exception, e :
+    except Exception as e :
       print "ERROR: can't show plots"
       print "  %s" % str(e)
   print >> out, "\n"
@@ -2135,7 +2135,7 @@ if (__name__ == "__main__"):
       result.plots.show_all_pyplot()
       from wxtbx.command_line import loggraph
       loggraph.run([result.loggraph_file])
-    except Exception, e :
+    except Exception as e :
       print "Can't display plots"
       print "You should be able to view them by running this command:"
       print "  wxtbx.loggraph %s" % result.loggraph_file

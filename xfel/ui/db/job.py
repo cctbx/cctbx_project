@@ -221,7 +221,7 @@ def submit_all_jobs(app):
     all_jobs.append(j)
     try:
       j.submission_id = submit_job(app, job)
-    except Exception, e:
+    except Exception as e:
       print "Couldn't submit job:", str(e)
       j.status = "SUBMIT_FAIL"
       raise

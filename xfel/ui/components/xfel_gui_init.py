@@ -856,7 +856,7 @@ class Clusterer():
         pickles = [os.path.join(path, i) for i in os.listdir(path) if
                    i.endswith('pickle') and 'int-' in i]
         all_pickles = all_pickles + pickles
-      except OSError, error:
+      except OSError as error:
         print 'Folder not found!'
         print error
 
@@ -2687,7 +2687,7 @@ class MergeTab(BaseTab):
         pickles = [os.path.join(path, i) for i in os.listdir(path) if
                    i.endswith('pickle') and 'int-' in i]
         self.all_pickles = self.all_pickles + pickles
-      except OSError, error:
+      except OSError as error:
         print 'Folder not found: {}'.format(path)
         continue
 

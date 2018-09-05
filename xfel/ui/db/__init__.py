@@ -3,7 +3,7 @@ from libtbx.utils import Sorry
 
 try:
   import MySQLdb
-except ImportError, e:
+except ImportError as e:
   pass
 
 def get_run_path(rootpath, trial, rungroup, run):
@@ -23,7 +23,7 @@ def get_db_connection(params, block=True):
     try:
       dbobj=MySQLdb.connect(passwd=password,user=params.db.user,host=params.db.host,db=params.db.name)
       return dbobj
-    except Exception,e:
+    except Exception as e:
       retry_count += 1
       if not block: raise e
       if "Too many connections" in str(e):

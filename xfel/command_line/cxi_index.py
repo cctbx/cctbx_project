@@ -76,7 +76,7 @@ if (__name__ == "__main__"):
     file, arguments, kwargs = item
     try:
       run_one_index(file, *arguments, **({'display':display}))
-    except Exception, e:
+    except Exception as e:
       if hasattr(e, "classname"):
         print e.classname, "for %s:"%file,
       else:

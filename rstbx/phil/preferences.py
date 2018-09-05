@@ -60,7 +60,7 @@ class RunTimePreferences(object):
         self.phil_scope = self.phil_scope.fetch(sources=[command_line_params,])
         consume.append(arg)
 
-      except Sorry,e:
+      except Sorry as e:
         pass
 
     for item in consume:

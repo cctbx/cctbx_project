@@ -357,12 +357,12 @@ def parse_retaining_scope(args, master_scope=master_scope):
     if os.path.isfile(arg):
       try:
         file_phil.append(parse(file_name=arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized file: %s" % arg)
     else:
       try:
         cmdl_phil.append(parse(arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized argument: %s" % arg)
 
   run_scope = master_scope.fetch(sources=file_phil)

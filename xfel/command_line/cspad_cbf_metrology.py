@@ -123,14 +123,14 @@ def run(args):
         if os.path.splitext(arg)[1] == ".phil":
           refine_phil_file = arg
           continue
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized file %s"%arg)
     if os.path.isdir(arg):
       paths.append(arg)
     else:
       try:
         user_phil.append(parse(arg))
-      except Exception, e:
+      except Exception as e:
         raise Sorry("Unrecognized argument: %s"%arg)
 
   params = phil_scope.fetch(sources=user_phil).extract()

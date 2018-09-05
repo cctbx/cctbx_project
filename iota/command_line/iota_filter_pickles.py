@@ -85,7 +85,7 @@ def main(hdf5Filename, data, destDir, powder):
         shutil.copy(filename, destDirSelected+'/'+ntpath.basename(filename))
         print filename, _evr92, destDirSelected, 'sucess'
       cnSuccess += 1
-    except IOError, err:
+    except IOError as err:
       print err
       txtError += ','.join(map(str, list(_key)))
       txtError += ',%d, %f\n'%(_rt,_ipm3)

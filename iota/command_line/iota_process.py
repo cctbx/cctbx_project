@@ -61,7 +61,7 @@ class ProcessAll(Thread):
       end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
       with open(end_filename, 'w') as ef:
         ef.write('')
-    except IOTATermination, e:
+    except IOTATermination as e:
       aborted_file = os.path.join(self.init.int_base, '.aborted.tmp')
       with open(aborted_file, 'w') as abtf:
         abtf.write('')

@@ -641,7 +641,7 @@ class CalibrationDialog(BaseDialog):
       results.show_stdout()
       results.show_stderr()
       results.raise_if_errors()
-    except Exception, exc:
+    except Exception as exc:
       if not "Warning: job being submitted without an AFS token." in str(exc):
         raise exc
     os.chdir(cwd)
@@ -1097,7 +1097,7 @@ class TagDialog(BaseDialog):
           elif item[0] == -1:
             self.db.create_tag(name=item[1].m_text, comment=item[2].m_text)
 
-    except Exception, exception:
+    except Exception as exception:
       print str(exception)
 
     e.Skip()
@@ -1913,7 +1913,7 @@ class TrialDialog(BaseDialog):
       msg = None
       try:
         trial_params, unused = phil_scope.fetch(parse(target_phil_str), track_unused_definitions = True)
-      except Exception, e:
+      except Exception as e:
         msg = '\nParameters incompatible with %s dispatcher:\n%s\n' % (dispatcher, str(e))
       else:
         if len(unused) > 0:
@@ -1923,7 +1923,7 @@ class TrialDialog(BaseDialog):
 
         try:
           params = trial_params.extract()
-        except Exception, e:
+        except Exception as e:
           if msg is None: msg = ""
           msg += '\nOne or more values could not be parsed:\n%s\n' % str(e)
 

@@ -2118,6 +2118,8 @@ class sharpening_info:
       if self.b_sharpen is not None:
         print >>out,"Overall b_sharpen applied:      %7.2f A**2" %(
           self.b_sharpen)
+      if self.b_iso is not None:
+        print >>out,"Final b_iso obtained:           %7.2f A**2" %(self.b_iso)
       if self.input_d_cut:
         print >>out,"High-resolution cutoff:         %7.2f A" %(self.input_d_cut)
       else:
@@ -2157,8 +2159,8 @@ class sharpening_info:
 
     if self.sharpening_method in ["b_iso_to_d_cut"] and \
       self.k_sharpen and self.resolution:
-        print >>out,"Transition from sharpening"
-        print >>out,"   to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen)
+        print >>out,"Transition from sharpening"+\
+        " to not sharpening (k_sharpen):%7.2f " %(self.k_sharpen)
 
     print >>out,"\nSharpening target used:         %s" %(
        target_summary_dict.get(self.sharpening_target))
@@ -2701,7 +2703,8 @@ def apply_sharpening(map_coeffs=None,
     map_data=get_map_from_map_coeffs(map_coeffs=sharpened_map_coeffs,
       crystal_symmetry=crystal_symmetry,
        n_real=n_real)
-    return map_and_b_object(map_data=map_data)
+    mb=map_and_b_object(map_data=map_data,final_b_iso=actual_b_iso)
+    return mb
 
 def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
      n_real=None):
@@ -10319,7 +10322,6 @@ def run_auto_sharpen(
              local_best_si.k_sharpen)
         if local_best_si.score is not None:
           local_best_si.show_summary(out=out)
-
           print >>out,\
            "Adjusted surface area: %7.3f  Kurtosis: %7.3f  Score: %7.3f\n" %(
            local_best_si.adjusted_sa,local_best_si.kurtosis,local_best_si.score)

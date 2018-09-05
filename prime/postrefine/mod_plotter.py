@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 05/25/2016
-Last Changed: 09/12/2017
+Last Changed: 08/30/2018
 Description : PRIME Result Plotter module
 '''
 
@@ -15,8 +15,8 @@ from libtbx import utils as u
 class Plotter(object):
   ''' Class with function to plot various PRIME charts (includes Table 1) '''
 
-  def __init__(self, params, info, output_dir=None):
-    self.params = params
+  def __init__(self, info, output_dir=None, anomalous_flag=False):
+    self.target_anomalous_flag = anomalous_flag
     self.info = info
     self.output_dir = output_dir
 
@@ -101,7 +101,7 @@ class Plotter(object):
     ax_cc12.ticklabel_format(axis='y', style='plain')
     ax_cc12.set_ylim(0, 100)
 
-    if self.params.target_anomalous_flag:
+    if self.target_anomalous_flag:
       ax_cc12.set_ylabel(r'$CC_{1/2}$ anom (%)', fontsize=15)
     else:
       ax_cc12.set_ylabel(r'$CC_{1/2}$ (%)', fontsize=15)

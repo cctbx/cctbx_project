@@ -43,13 +43,13 @@ def run(args):
     if os.path.isfile(arg):
       try:
         user_phil.append(parse(file_name=arg))
-      except Exception, e:
+      except Exception as e:
         print str(e)
         raise Sorry("Couldn't parse phil file %s"%arg)
     else:
       try:
         user_phil.append(parse(arg))
-      except Exception, e:
+      except Exception as e:
         print str(e)
         raise Sorry("Couldn't parse argument %s"%arg)
   params = phil_scope.fetch(sources=user_phil).extract()

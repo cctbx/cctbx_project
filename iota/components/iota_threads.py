@@ -3,7 +3,7 @@ from __future__ import division
 '''
 Author      : Lyubimov, A.Y.
 Created     : 04/14/2014
-Last Changed: 08/29/2018
+Last Changed: 08/31/2018
 Description : IOTA GUI Threads and PostEvents
 '''
 
@@ -115,7 +115,7 @@ class ProcThread(Thread):
       img_objects = parallel_map(iterable=self.iterable,
                                  func = self.full_proc_wrapper,
                                  processes=self.init.params.n_processors)
-    except IOTATermination, e:
+    except IOTATermination as e:
       self.aborted = True
       print e
       return
@@ -124,7 +124,7 @@ class ProcThread(Thread):
     try:
       evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
       wx.PostEvent(self.parent, evt)
-    except Exception, e:
+    except Exception as e:
       pass
 
   def full_proc_wrapper(self, input_entry):
@@ -138,9 +138,9 @@ class ProcThread(Thread):
                                          abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except IOTATermination, e:
+    except IOTATermination as e:
       raise e
-    except Exception, e:
+    except Exception as e:
       pass
 
 class ImageFinderThread(Thread):
@@ -203,7 +203,7 @@ class ObjectFinderThread(Thread):
     try:
       object = ep.load(filepath)
       return object
-    except EOFError, e:
+    except EOFError as e:
       print 'OBJECT_IMPORT_ERROR: ', e
       return None
 
@@ -225,705 +225,127 @@ class ImageViewerThread(Thread):
     command = '{} {}'.format(self.viewer, self.file_string)
     easy_run.fully_buffered(command)
 
+# -------------------------------- UI Thread --------------------------------- #
 
-# class IOTAUIThread(Thread):
-#   ''' Main thread for IOTA UI; will contain all times and call all the other
-#   threads - processing, object finding, etc. - separately; will use
-#   PostEvents to send data to the main UI thread, which will plot only. The
-#   idea is to prevent UI blocking as much as possible '''
-#
-#   def __init__(self,
-#                parent,
-#                gparams,
-#                target_phil,
-#                tmp_aborted_file=None):
-#     Thread.__init__(self)
-#     self.parent = parent
-#
-#     self.logtext = ''
-#     self.obj_counter = 0
-#     self.bookmark = 0
-#     self.gparams = gparams
-#     self.target_phil = target_phil
-#     self.tmp_aborted_file = tmp_aborted_file
-#
-#     self.state = 'process'
-#     self.recovery = False
-#
-#     self.abort_initiated = False
-#     self.monitor_mode = False
-#     self.monitor_mode_timeout = None
-#     self.timeout_start = None
-#     self.find_new_images = self.monitor_mode
-#     self.start_object_finder = True
-#
-#     self.running_cluster = False
-#     self.running_prime = False
-#     self.draw_analysis = False
-#
-#     self.finished_objects = []
-#     self.read_object_files = []
-#     self.new_images = []
-#     self.indices = []
-#     self.cluster_info = None
-#     self.pparams = None
-#     self.prime_info = None
-#
-#     self.mxh = mx_handler()
-#
-#     # Timers
-#     self.plt_timer = wx.Timer()
-#     self.anl_timer = wx.Timer()
-#
-#     # Bindings
-#     self.plt_timer.Bind(wx.EVT_TIMER, self.onPlotTimer)
-#     self.anl_timer.Bind(wx.EVT_TIMER, self.onAnalysisTimer)
-#
-#   def run(self):
-#     pass
-#
-#   def onPlotTimer(self, e):
-#     ''' One second timer for status check and plotting '''
-#
-#     # Check for abort signal
-#     if self.abort_initiated:
-#       if self.img_process is not None:
-#         self.run_aborted = self.img_process.aborted
-#       elif self.gparams.mp_method == 'lsf':
-#         info_command = 'bjobs -J {}'.format(self.job_id)
-#         lsf_info = easy_run.fully_buffered(info_command).stdout_lines
-#         self.run_aborted = (lsf_info == [])
-#       else:
-#         self.run_aborted = os.path.isfile(self.tmp_aborted_file)
-#
-#       if self.run_aborted:
-#         self.finish_process()
-#     else:
-#       self.run_aborted = False
-#
-#     # Find processed image objects
-#     if self.start_object_finder:
-#       self.start_object_finder = False
-#       if self.finished_objects is None or self.finished_objects == []:
-#         self.last_object = None
-#       else:
-#         self.last_object = self.finished_objects[-1]
-#       self.find_objects()
-#
-#     # Run an instance of new image finder on a separate thread
-#     if self.find_new_images:
-#       self.find_new_images = False
-#       ext_image_list = self.img_list + self.new_images
-#       img_finder = ImageFinderThread(self,
-#                                      image_paths=self.gparams.input,
-#                                      image_list=ext_image_list)
-#       img_finder.start()
-#
-#     # Check if all images have been looked at; if yes, finish process
-#     if self.obj_counter >= len(self.img_list):
-#       if self.monitor_mode:
-#         if len(self.new_images) > 0:
-#           self.status_txt.SetLabel('Found {} new images'.format(len(self.new_images)))
-#           self.timeout_start = None
-#           self.state = 'new images'
-#           self.process_images()
-#         else:
-#           if self.monitor_mode_timeout != None:
-#             if self.timeout_start is None:
-#               self.timeout_start = time.time()
-#             else:
-#               interval = time.time() - self.timeout_start
-#               if interval >= self.monitor_mode_timeout:
-#                 self.status_txt.SetLabel('Timed out. Finishing...')
-#                 self.finish_process()
-#               else:
-#                 timeout_msg = 'No images found! Timing out in {} seconds' \
-#                             ''.format(int(self.monitor_mode_timeout - interval))
-#                 self.status_txt.SetLabel(timeout_msg)
-#           else:
-#             self.find_new_images = self.monitor_mode
-#             self.status_txt.SetLabel('No new images found! Waiting ...')
-#       else:
-#         self.status_txt.SetLabel('Wrapping up ...')
-#         self.finish_process()
-#
-#   def onAnalysisTimer(self, e):
-#     self.plot_live_analysis()
-#     if not self.running_cluster:
-#       self.run_clustering_thread()
-#
-#   def run_clustering_thread(self):
-#     # Run clustering
-#     if (self.finished_objects is not None or self.finished_objects != []):
-#       if self.proc_nb.GetSelection() == 2:
-#         iterable = []
-#         for obj in self.finished_objects:
-#           try:
-#             fin = obj.final
-#             iterable.append([float(fin['a']),
-#                              float(fin['b']),
-#                              float(fin['c']),
-#                              float(fin['alpha']),
-#                              float(fin['beta']),
-#                              float(fin['gamma']),
-#                              fin['sg']
-#                              ])
-#           except Exception:
-#             pass
-#         self.running_cluster = True
-#         cl_thread = thr.ClusterThread(self, iterable=iterable)
-#         cl_thread.start()
-#
-#   def onFinishedCluster(self, e):
-#     self.cluster_info = e.GetValue()
-#     self.running_cluster = False
-#
-#     # Output cluster results
-#     cluster_info_file = os.path.join(self.init.int_base, 'cluster_info.pickle')
-#     ep.dump(cluster_info_file, obj=self.cluster_info)
-#
-#     if not self.running_prime:
-#       self.pparams = None
-#       self.run_prime_thread()
-#
-#   def run_prime_thread(self):
-#     # Run PRIME (basic merge only)
-#     if (self.finished_objects is not None or self.finished_objects != []):
-#       if self.proc_nb.GetSelection() == 2:
-#         # Collect list of final integrated pickles and write to file
-#         final_files = [o.final['final'] for o in self.finished_objects if
-#                        (o.final['final'] is not None and
-#                         os.path.isfile(o.final['final']))]
-#         final_list_file = os.path.join(self.init.int_base, 'finished_pickles.lst')
-#         with open(final_list_file, 'w') as ff:
-#           ff.write('\n'.join(final_files))
-#
-#         # make PRIME input file
-#         if self.cluster_info is not None:
-#           cl_sorted = sorted(self.cluster_info, key=lambda i: i['number'],
-#                              reverse=True)
-#           best_pg = cl_sorted[0]['pg'].split('/')[0]
-#           best_uc = cl_sorted[0]['uc']
-#
-#           analyzer = Analyzer(init=self.init,
-#                               all_objects=self.finished_objects,
-#                               gui_mode=False)
-#           analyzer.prime_data_path = final_list_file
-#           analyzer.cons_pg = best_pg
-#           analyzer.cons_uc = best_uc
-#
-#           prime_phil = analyzer.make_prime_input(filename='live_prime.phil',
-#                                        run_zero=True)
-#           self.pparams = prime_phil.extract()
-#
-#           # Modify specific options based in IOTA settings
-#           # Queue options
-#           if (
-#                   self.init.params.mp_method == 'lsf' and
-#                   self.init.params.mp_queue is not None
-#           ):
-#             self.pparams.queue.mode = 'bsub'
-#             self.pparams.queue.qname = self.init.params.mp_queue
-#
-#           # Number of processors (automatically, 1/2 of IOTA procs)
-#           self.pparams.n_processors = int(self.init.params.n_processors / 2)
-#
-#           # Generate command args
-#           cmd_args_list = ['n_postref_cycle=0',
-#                            'queue.mode={}'.format(self.pparams.queue.mode),
-#                            'queue.qname={}'.format(self.pparams.queue.qname),
-#                            'n_processors={}'.format(self.pparams.n_processors)
-#                            ]
-#           cmd_args = ' '.join(cmd_args_list)
-#
-#           # remove previous run to avoid conflict
-#           prime_dir = os.path.join(self.init.int_base, 'prime/000')
-#           if os.path.isdir(prime_dir):
-#             shutil.rmtree(prime_dir)
-#
-#           # Launch PRIME
-#           self.running_prime = True
-#           out_file = os.path.join(prime_dir, 'log.txt')
-#           prime_file = os.path.join(self.init.int_base, 'live_prime.phil')
-#           prime_thread = pthr.PRIMEThread(self,
-#                                           prime_file=prime_file,
-#                                           out_file=out_file,
-#                                           cmd_args=cmd_args,
-#                                           signal_finished=True)
-#           prime_thread.start()
-#
-#   def onFinishedPRIME(self, e):
-#     self.running_prime = False
-#     if self.pparams is not None:
-#       self.get_prime_stats()
-#
-#   def get_prime_stats(self):
-#     stats_folder = os.path.join(self.pparams.run_no, 'stats')
-#     if os.path.isdir(stats_folder):
-#       stat_files = [os.path.join(stats_folder, i) for i in
-#                     os.listdir(stats_folder) if i.endswith('stat')]
-#       if stat_files != []:
-#         assert len(stat_files) == 1
-#         stat_file = stat_files[0]
-#         if os.path.isfile(stat_file):
-#           self.prime_info = ep.load(stat_file)
-#           live_prime_info_file = os.path.join(self.init.int_base,
-#                                               'life_prime_info.pickle')
-#           shutil.copyfile(stat_file, live_prime_info_file)
-#
-#   def process_images(self):
-#     ''' One-fell-swoop importing / triaging / integration of images '''
-#
-#     # Set font properties for status window
-#     font = self.sb.GetFont()
-#     font.SetWeight(wx.NORMAL)
-#     self.status_txt.SetFont(font)
-#     self.status_txt.SetForegroundColour('black')
-#
-#
-#     if self.init.params.cctbx.selection.select_only.flag_on:
-#       self.img_list = [[i, len(self.init.gs_img_objects) + 1, j] for
-#                        i, j in enumerate(self.init.gs_img_objects, 1)]
-#       iterable = self.img_list
-#       self.status_summary = [0] * len(self.img_list)
-#       self.nref_list = [0] * len(self.img_list)
-#       self.nref_xaxis = [i[0] for i in self.img_list]
-#       self.res_list = [0] * len(self.img_list)
-#       type = 'object'
-#       self.status_txt.SetLabel('Re-running selection...')
-#     else:
-#       type = 'image'
-#       if self.state == 'new images':
-#         iterable = self.new_images
-#         self.img_list.extend(self.new_images)
-#         self.new_images = []
-#         self.status_summary.extend([0] * len(iterable))
-#         self.nref_list.extend([0] * len(iterable))
-#         self.nref_xaxis.extend([i[0] for i in iterable])
-#         self.res_list.extend([0] * len(iterable))
-#         self.status_txt.SetForegroundColour('black')
-#         self.status_txt.SetLabel('Processing additional {} images ({} total)...'
-#                                  ''.format(len(iterable), len(self.img_list)))
-#         self.plot_integration()
-#       elif self.state == 'resume':
-#         iterable = self.new_images
-#         self.img_list.extend(self.new_images)
-#         self.nref_list.extend([0] * len(self.new_images))
-#         self.nref_xaxis.extend([i[0] for i in self.new_images])
-#         self.res_list.extend([0] * len(self.new_images))
-#         self.new_images = []
-#         self.status_txt.SetLabel('Processing {} remaining images ({} total)...'
-#                                  ''.format(len(iterable), len(self.img_list)))
-#         self.start_object_finder = True
-#       else:
-#         self.img_list = [[i, len(self.init.input_list) + 1, j] for
-#                          i, j in enumerate(self.init.input_list, 1)]
-#         iterable = self.img_list
-#         self.status_summary = [0] * len(self.img_list)
-#         self.nref_list = [0] * len(self.img_list)
-#         self.nref_xaxis = [i[0] for i in self.img_list]
-#         self.res_list = [0] * len(self.img_list)
-#         self.status_txt.SetLabel('Processing {} images...'
-#                                  ''.format(len(self.img_list)))
-#     self.gauge_process.SetRange(len(self.img_list))
-#
-#     iter_path = os.path.join(self.init.int_base, 'iter.cfg')
-#     init_path = os.path.join(self.init.int_base, 'init.cfg')
-#     ep.dump(iter_path, iterable)
-#     ep.dump(init_path, self.init)
-#
-#     if self.gparams.mp_method == 'multiprocessing':
-#       self.img_process = thr.ProcThread(self,
-#                                         init=self.init,
-#                                         iterable=iterable,
-#                                         input_type=type,
-#                                         term_file=self.tmp_abort_file)
-#       self.img_process.start()
-#     else:
-#       self.img_process = None
-#       self.job_id = None
-#       queue = self.gparams.mp_queue
-#       nproc = self.init.params.n_processors
-#
-#       if self.init.params.mp_method == 'lsf':
-#         logfile = os.path.join(self.init.int_base, 'bsub.log')
-#         pid = os.getpid()
-#         try:
-#           user = os.getlogin()
-#         except OSError:
-#           user = 'iota'
-#         self.job_id = 'J_{}{}'.format(user[0], pid)
-#         command = 'bsub -o {} -q {} -n {} -J {} ' \
-#                   'iota.process {} --files {} --type {} --stopfile {}' \
-#                   ''.format(logfile, queue, nproc, self.job_id,
-#                             init_path, iter_path, type, self.tmp_abort_file)
-#       elif self.init.params.mp_method == 'torq':
-#         params = '{} --files {} --type {} --stopfile {}' \
-#                  ''.format(init_path, iter_path, type, self.tmp_abort_file)
-#         command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
-#                   ''.format(self.init.params.output, params)
-#       else:
-#         command = None
-#       if command is not None:
-#         try:
-#           print command
-#           easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-#           print 'JOB NAME = ', self.job_id
-#         except thr.IOTATermination, e:
-#           print 'IOTA: JOB TERMINATED',  e
-#       else:
-#         print 'IOTA ERROR: COMMAND NOT ISSUED!'
-#         return
-#
-#   def analyze_results(self, analysis=None):
-#     if len(self.final_objects) == 0:
-#       self.status_txt.SetForegroundColour('red')
-#       self.status_txt.SetLabel('No images successfully integrated')
-#
-#     else:
-#       if not self.gparams.image_conversion.convert_only:
-#         self.status_txt.SetForegroundColour('black')
-#         self.status_txt.SetLabel('Analyzing results...')
-#
-#         # Do analysis
-#         if analysis is None:
-#           self.recovery = False
-#           analysis = Analyzer(self.init,
-#                               self.finished_objects,
-#                               gui_mode=True)
-#         plot = Plotter(self.gparams,
-#                        self.final_objects,
-#                        self.init.viz_base)
-#
-#         # Initialize summary tab
-#         prime_file = os.path.join(self.init.int_base,
-#                                   '{}.phil'.format(self.gparams.advanced.prime_prefix))
-#         self.summary_tab = SummaryTab(self.proc_nb,
-#                                       init=self.init,
-#                                       gparams=self.gparams,
-#                                       final_objects=self.final_objects,
-#                                       out_dir=os.path.dirname(prime_file),
-#                                       plot=plot)
-#
-#         # Run information
-#         self.summary_tab.title_txt.SetLabel(noneset(self.gparams.description))
-#         self.summary_tab.folder_txt.SetLabel(self.gparams.output)
-#
-#         # Analysis of integration
-#         if self.gparams.advanced.integrate_with == 'cctbx':
-#           self.summary_tab.sih_min.SetLabel("{:4.0f}".format(np.min(analysis.s)))
-#           self.summary_tab.sih_max.SetLabel("{:4.0f}".format(np.max(analysis.s)))
-#           self.summary_tab.sih_avg.SetLabel("{:4.2f}".format(np.mean(analysis.s)))
-#           self.summary_tab.sih_std.SetLabel("{:4.2f}".format(np.std(analysis.s)))
-#           self.summary_tab.sph_min.SetLabel("{:4.0f}".format(np.min(analysis.h)))
-#           self.summary_tab.sph_max.SetLabel("{:4.0f}".format(np.max(analysis.h)))
-#           self.summary_tab.sph_avg.SetLabel("{:4.2f}".format(np.mean(analysis.h)))
-#           self.summary_tab.sph_std.SetLabel("{:4.2f}".format(np.std(analysis.h)))
-#           self.summary_tab.spa_min.SetLabel("{:4.0f}".format(np.min(analysis.a)))
-#           self.summary_tab.spa_max.SetLabel("{:4.0f}".format(np.max(analysis.a)))
-#           self.summary_tab.spa_avg.SetLabel("{:4.2f}".format(np.mean(analysis.a)))
-#           self.summary_tab.spa_std.SetLabel("{:4.2f}".format(np.std(analysis.a)))
-#
-#         # Dataset information
-#         if self.recovery:
-#           if hasattr(analysis, 'clusters'):
-#             clusters = analysis.clusters
-#             pg = clusters[0]['pg']
-#             uc = clusters[0]['uc']
-#           else:
-#             clusters = []
-#             if hasattr(analysis, 'cons_pg'):
-#               pg = analysis.cons_pg
-#             else:
-#               pg = None
-#             if hasattr(analysis, 'cons_uc'):
-#               uc = analysis.cons_uc
-#             else:
-#               uc = None
-#         else:
-#           analysis.print_results()
-#           clusters = analysis.unit_cell_analysis()
-#
-#           print 'DEBUG: CLUSTERS = ', clusters
-#           pg = clusters[0]['pg']
-#           uc = clusters[0]['uc']
-#
-#         if clusters != []:
-#           self.summary_tab.report_clustering_results(clusters=clusters)
-#
-#         if pg != None:
-#           self.summary_tab.pg_txt.SetLabel(str(pg))
-#         if uc is not None:
-#           if type(uc) is str:
-#             unit_cell = uc
-#           else:
-#             unit_cell = " ".join(['{:4.1f}'.format(i) for i in uc])
-#         else:
-#           unit_cell = ''
-#
-#         self.summary_tab.uc_txt.SetLabel(unit_cell)
-#         res = to_unicode(u"{:4.2f} - {:4.2f} {}".format(np.mean(analysis.lres),
-#                                   np.mean(analysis.hres),
-#                                   u'\u212B'))
-#         self.summary_tab.rs_txt.SetLabel(res)
-#
-#         if self.recovery and (
-#                 hasattr(analysis, 'beamX_mm') and
-#                 hasattr(analysis, 'beamY_mm') and
-#                 hasattr(analysis, 'pixel_size')
-#                 ):
-#           beamX_mm = analysis.beamX_mm
-#           beamY_mm = analysis.beamY_mm
-#           pixel_size = analysis.pixel_size
-#         else:
-#           with warnings.catch_warnings():
-#             # To catch any 'mean of empty slice' runtime warnings
-#             warnings.simplefilter("ignore", category=RuntimeWarning)
-#             beamxy_calc = plot.calculate_beam_xy()
-#             beamX, beamY = beamxy_calc[:2]
-#             pixel_size = beamxy_calc[-1]
-#             beamX_mm = np.median(beamX)
-#             beamY_mm = np.median(beamY)
-#         beamX_px = beamX_mm / pixel_size
-#         beamY_px = beamY_mm / pixel_size
-#         beamXY = "X = {:4.1f} mm / {:4.0f} px\n" \
-#                  "Y = {:4.1f} mm / {:4.0f} px" \
-#                  "".format(beamX_mm, beamX_px, beamY_mm, beamY_px)
-#         self.summary_tab.xy_txt.SetLabel(beamXY)
-#
-#         # Summary
-#         if self.recovery:
-#           self.summary_tab.readin_txt.SetLabel(str(analysis.n_all_objects))
-#           self.summary_tab.nodiff_txt.SetLabel(str(analysis.n_no_diff_objects))
-#           self.summary_tab.w_diff_txt.SetLabel(str(analysis.n_diff_objects))
-#           if self.gparams.advanced.integrate_with == 'cctbx':
-#             self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
-#             self.summary_tab.noprf_txt.SetLabel(str(analysis.n_filter_fail_objects))
-#           elif self.gparams.advanced.integrate_with == 'dials':
-#             self.summary_tab.nospf_txt.SetLabel(str(analysis.n_not_spf_objects))
-#             self.summary_tab.noidx_txt.SetLabel(str(analysis.n_not_idx_objects))
-#             self.summary_tab.noint_txt.SetLabel(str(analysis.n_not_int_objects))
-#             self.summary_tab.noflt_txt.SetLabel(str(analysis.n_filter_fail_objects))
-#           self.summary_tab.final_txt.SetLabel(str(analysis.n_final_objects))
-#         else:
-#           self.summary_tab.readin_txt.SetLabel(str(len(analysis.all_objects)))
-#           self.summary_tab.nodiff_txt.SetLabel(str(len(analysis.no_diff_objects)))
-#           self.summary_tab.w_diff_txt.SetLabel(str(len(analysis.diff_objects)))
-#           if self.gparams.advanced.integrate_with == 'cctbx':
-#             self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-#             self.summary_tab.noprf_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-#           elif self.gparams.advanced.integrate_with == 'dials':
-#             self.summary_tab.nospf_txt.SetLabel(str(len(analysis.not_spf_objects)))
-#             self.summary_tab.noidx_txt.SetLabel(str(len(analysis.not_idx_objects)))
-#             self.summary_tab.noint_txt.SetLabel(str(len(analysis.not_int_objects)))
-#             self.summary_tab.noflt_txt.SetLabel(str(len(analysis.filter_fail_objects)))
-#           self.summary_tab.final_txt.SetLabel(str(len(analysis.final_objects)))
-#
-#           # Generate input file for PRIME
-#           analysis.print_summary()
-#           analysis.make_prime_input(filename=prime_file)
-#
-#         # Display summary
-#         self.proc_nb.AddPage(self.summary_tab, 'Summary', select=True)
-#         print 'DEBUG: ANALYSIS PAGE # = ', self.proc_nb.GetSelection()
-#         # self.proc_nb.SetSelection(2)
-#
-#       # Signal end of run
-#       font = self.sb.GetFont()
-#       font.SetWeight(wx.BOLD)
-#       self.status_txt.SetFont(font)
-#       self.status_txt.SetForegroundColour('blue')
-#       self.status_txt.SetLabel('DONE')
-#
-#     # Finish up
-#     self.display_log()
-#     self.plot_integration(force_plot=True)
-#     self.plot_live_analysis(force_plot=True)
-#
-#     # Stop timer
-#     self.timer.Stop()
-#     self.chart_timer.Stop()
-#
-#   def find_objects(self, find_old=False):
-#     if find_old:
-#       min_back = None
-#     else:
-#       min_back = -1
-#     object_files = ginp.get_file_list(self.init.obj_base,
-#                                       ext_only='int',
-#                                       min_back=min_back)
-#     new_object_files = list(set(object_files) - set(self.read_object_files))
-#     new_objects = [self.read_object_file(i) for i in new_object_files]
-#     new_finished_objects = [i for i in new_objects if
-#                             i is not None and i.status == 'final']
-#
-#     self.finished_objects.extend(new_finished_objects)
-#     self.read_object_files = [i.obj_file for i in self.finished_objects]
-#
-#     self.populate_data_points(objects=new_finished_objects)
-#
-#     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
-#       if self.finished_objects != []:
-#         self.finish_process()
-#       else:
-#         return
-#     else:
-#       self.start_object_finder = True
-#
-#   def read_object_file(self, filepath):
-#     try:
-#       object = ep.load(filepath)
-#       if object.final['final'] is not None:
-#         pickle_path = object.final['final']
-#         if os.path.isfile(pickle_path):
-#           pickle = ep.load(pickle_path)
-#           object.final['observations'] = pickle['observations'][0]
-#       return object
-#     except Exception, e:
-#       print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
-#       return None
-#
-#   def populate_data_points(self, objects=None):
-#     self.indices = []
-#     self.b_factors = []
-#     if objects is not None:
-#       for obj in objects:
-#         try:
-#           self.nref_list[obj.img_index - 1] = obj.final['strong']
-#           self.res_list[obj.img_index - 1] = obj.final['res']
-#           if 'observations' in obj.final:
-#             obs = obj.final['observations']
-#             self.indices.extend([i[0] for i in obs])
-#             try:
-#               asu_contents = self.mxh.get_asu_contents(500)
-#               observations_as_f = obs.as_amplitude_array()
-#               observations_as_f.setup_binner(auto_binning=True)
-#               wp = statistics.wilson_plot(observations_as_f, asu_contents,
-#                                           e_statistics=True)
-#               self.b_factors.append(wp.wilson_b)
-#             except RuntimeError, e:
-#               self.b_factors.append(0)
-#         except Exception, e:
-#           print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
-#           pass
-#
-#
-#   def finish_process(self):
-#     import shutil
-#     self.timer.Stop()
-#     self.chart_timer.Stop()
-#
-#     if self.finished_objects is None:
-#       font = self.sb.GetFont()
-#       font.SetWeight(wx.BOLD)
-#       self.status_txt.SetFont(font)
-#       self.status_txt.SetForegroundColour('blue')
-#       self.status_txt.SetLabel('OBJECT READ-IN ERROR! NONE IMPORTED')
-#       return
-#
-#     if str(self.state).lower() in ('finished', 'aborted', 'unknown'):
-#       self.gauge_process.Hide()
-#       font = self.sb.GetFont()
-#       font.SetWeight(wx.BOLD)
-#       self.status_txt.SetFont(font)
-#       run_no = int(self.init.int_base.split('/')[-1])
-#       self.status_txt.SetLabel('Run #{} Loaded!'.format(run_no))
-#       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
-#       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
-#       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
-#
-#       analysis_file = os.path.join(self.init.int_base, 'analysis.pickle')
-#       if os.path.isfile(analysis_file):
-#         analysis = ep.load(analysis_file)
-#       else:
-#         analysis = None
-#
-#       if self.finished_objects == []:
-#         # Get image processing data from finished objects
-#         if analysis is not None and hasattr(analysis, 'image_objects'):
-#           self.finished_objects = [i for i in analysis.image_objects if
-#                                    i is not None and i.status == 'final']
-#         else:
-#           self.find_objects(find_old=True)
-#
-#         # Check for and recover clustering data
-#         cluster_info_file = os.path.join(self.init.int_base,
-#                                          'cluster_info.pickle')
-#         if os.path.isfile(cluster_info_file):
-#           self.cluster_info = ep.load(cluster_info_file)
-#
-#         # Check for and recover live PRIME results
-#         live_prime_phil = os.path.join(self.init.int_base, 'live_prime.phil')
-#         if os.path.isfile(live_prime_phil):
-#           import iotbx.phil as ip
-#           from prime.postrefine.mod_input import master_phil as prime_master_phil
-#           with open(live_prime_phil, 'r') as lpf:
-#             contents = lpf.read()
-#           prime_phil = ip.parse(contents)
-#           prime_phil = prime_master_phil.fetch(prime_phil)
-#           self.pparams = prime_phil.extract()
-#           live_prime_info_file = os.path.join(self.init.int_base,
-#                                               'life_prime_info.pickle')
-#           if os.path.isfile(live_prime_info_file):
-#             self.prime_info = ep.load(live_prime_info_file)
-#
-#       self.populate_data_points(objects=self.finished_objects)
-#
-#       if str(self.state).lower() == 'finished':
-#         self.final_objects = [i for i in self.finished_objects if i.fail is None]
-#         self.analyze_results(analysis=analysis)
-#
-#       else:
-#         if len(self.finished_objects) > 0:
-#           self.plot_integration(force_plot=True)
-#           self.plot_live_analysis(force_plot=True)
-#         if os.path.isfile(os.path.join(self.init.int_base, 'init.cfg')):
-#           self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-#
-#       return
-#
-#     elif self.run_aborted:
-#       self.gauge_process.Hide()
-#       font = self.sb.GetFont()
-#       font.SetWeight(wx.BOLD)
-#       self.status_txt.SetFont(font)
-#       self.status_txt.SetForegroundColour('red')
-#       self.status_txt.SetLabel('ABORTED BY USER')
-#       self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-#       try:
-#         shutil.rmtree(self.init.tmp_base)
-#       except Exception:
-#         pass
-#       print 'JOB TERMINATED!'
-#       return
-#     else:
-#       self.final_objects = [i for i in self.finished_objects if i.fail == None]
-#       self.gauge_process.Hide()
-#       self.proc_toolbar.EnableTool(self.tb_btn_abort.GetId(), False)
-#       self.proc_toolbar.EnableTool(self.tb_btn_monitor.GetId(), False)
-#       self.proc_toolbar.ToggleTool(self.tb_btn_monitor.GetId(), False)
-#       self.sb.SetStatusText('{} of {} images successfully integrated'\
-#                             ''.format(len(self.final_objects), len(self.img_list)), 1)
-#       if len(self.final_objects) > 0:
-#         # Signal end of run
-#         self.plot_integration(force_plot=True)
-#         self.plot_live_analysis(force_plot=True)
-#         self.analyze_results()
-#       else:
-#         font = self.sb.GetFont()
-#         font.SetWeight(wx.BOLD)
-#         self.status_txt.SetFont(font)
-#         self.status_txt.SetForegroundColour('blue')
-#         self.status_txt.SetLabel('NO IMAGES PROCESSED')
-#
-#       print 'JOB FINISHED!'
-#
-#       try:
-#         shutil.rmtree(self.init.tmp_base)
-#       except Exception:
-#         pass
+# Set up events for finishing one timer cycle
 
-# ------------------------------ IMAGE TRACKING ------------------------------ #
+tp_EVT_PROCTIMER = wx.NewEventType()
+EVT_PROCTIMER = wx.PyEventBinder(tp_EVT_PROCTIMER, 1)
+
+class ProcTimerDone(wx.PyCommandEvent):
+  ''' Send event at every ProcTimer ping  '''
+  def __init__(self, etype, eid, info=None):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+    self.info = info
+  def GetValue(self):
+    return self.info
+
+class ProcessingInfo(object):
+
+  def __init__(self):
+    ''' constructor '''
+
+    self.image_objects = None
+    self.nref_list = None
+    self.res_list = None
+    self.img_list = None
+    self.indices = None
+    self.b_factors = None
+    self.cluster_info = None
+    self.prime_info = None
+
+class IOTAUIThread(Thread):
+  ''' Main thread for IOTA UI; will contain all times and call all the other
+  threads - processing, object finding, etc. - separately; will use
+  PostEvents to send data to the main UI thread, which will plot only. The
+  idea is to prevent UI blocking as much as possible '''
+
+  def __init__(self,
+               parent,
+               gparams,
+               target_phil,
+               tmp_aborted_file=None,
+               proc_info_file=None,
+               recover=False):
+    Thread.__init__(self)
+    self.parent = parent
+    self.gparams = gparams
+    self.target_phil = target_phil
+    self.tmp_aborted_file = tmp_aborted_file
+    self.recover = recover
+
+    # Instantiate info object
+    if proc_info_file is None:
+      self.info = ProcessingInfo()
+    else:
+      self.info = ep.load(proc_info_file)
+
+    # Timers
+    self.plt_timer = wx.Timer()
+    self.anl_timer = wx.Timer()
+
+    # Bindings
+    self.plt_timer.Bind(wx.EVT_TIMER, self.onPlotTimer)
+    self.anl_timer.Bind(wx.EVT_TIMER, self.onAnalysisTimer)
+
+  def run(self):
+    if self.recover:
+      self.recover_info()
+    else:
+      pass
+
+  def onPlotTimer(self, e):
+    ''' One second timer for status check and plotting '''
+
+    # Send info to UI
+    info = []
+    evt = SpotFinderOneDone(tp_EVT_PROCTIMER, -1, info=info)
+    wx.PostEvent(self.parent, evt)
+
+  def onAnalysisTimer(self, e):
+    pass
+
+  def recover_info(self):
+    ''' Recover information from previous run (is here only for
+    backwards compatibility reasons; normally all info will come from file) '''
+    pass
+
+  def run_clustering_thread(self):
+    # Run clustering
+    pass
+
+  def onFinishedCluster(self, e):
+    pass
+
+  def run_prime_thread(self):
+    # Run PRIME (basic merge only)
+    pass
+
+  def onFinishedPRIME(self, e):
+    pass
+
+  def get_prime_stats(self):
+    pass
+
+  def process_images(self):
+    ''' One-fell-swoop importing / triaging / integration of images '''
+    pass
+
+  def analyze_results(self, analysis=None):
+    pass
+
+
+  def find_objects(self, find_old=False):
+    pass
+
+  def read_object_file(self, filepath):
+    pass
+
+  def populate_data_points(self, objects=None):
+    pass
+
+
+#------------------------------ IMAGE TRACKING ------------------------------ #
 
 tp_EVT_SPFDONE = wx.NewEventType()
 EVT_SPFDONE = wx.PyEventBinder(tp_EVT_SPFDONE, 1)
@@ -984,7 +406,7 @@ class SpotFinderDIALSThread():
         try:
           datablock = DataBlockFactory.from_filenames([img])[0]
           observed = self.processor.find_spots(datablock=datablock)
-        except Exception, e:
+        except Exception as e:
           fail = True
           observed = []
           pass
@@ -995,7 +417,7 @@ class SpotFinderDIALSThread():
             try:
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
-            except Exception, e:
+            except Exception as e:
               fail = True
               pass
 
@@ -1027,7 +449,7 @@ class SpotFinderDIALSThread():
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-              except Exception, e:
+              except Exception as e:
                 fail = True
                 pass
 
@@ -1037,7 +459,7 @@ class SpotFinderDIALSThread():
                 print indexed
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
-              except Exception, e:
+              except Exception as e:
                 pass
 
       return [idx, int(len(observed)), img, sg, uc]
@@ -1182,7 +604,7 @@ class SpotFinderThread(Thread):
                    func=self.spf_wrapper,
                    callback=self.callback,
                    processes=self.n_proc)
-    except IOTATermination, e:
+    except IOTATermination as e:
       self.terminated = True
       print e
 
@@ -1199,7 +621,7 @@ class SpotFinderThread(Thread):
       # evt = SpotFinderAllDone(tp_EVT_SPFALLDONE, -1, info=info)
       # wx.PostEvent(self.parent, evt)
       return
-    except TypeError, e:
+    except TypeError as e:
       print e
       return
 
@@ -1222,7 +644,7 @@ class SpotFinderThread(Thread):
         return result
       else:
         return [int(self.data_list.index(img)), 0, img, None, None]
-    except IOTATermination, e:
+    except IOTATermination as e:
       raise e
 
   def callback(self, info):
@@ -1312,7 +734,7 @@ class InterceptorFileThread(Thread):
           info_line = [float(i) for i in uc]
           info_line.append(item[3])
           input.append(info_line)
-        except ValueError, e:
+        except ValueError as e:
           print 'CLUSTER ERROR: ', e
           pass
 
@@ -1429,7 +851,7 @@ class InterceptorThread(Thread):
             info_line = [float(i) for i in uc]
             info_line.append(item[3])
             input.append(info_line)
-          except ValueError, e:
+          except ValueError as e:
             print 'CLUSTER ERROR: ', e
             pass
 
