@@ -1178,7 +1178,8 @@ namespace dxtbx {
      * @param grid_size The grid_size
      * @returns the image grid
      */
-    ImageGrid from_imageset(const ImageSet &imageset, int2 grid_size) const {
+    static
+    ImageGrid from_imageset(const ImageSet &imageset, int2 grid_size) {
       ImageGrid result(imageset.data(), imageset.indices().const_ref(), grid_size);
       return result;
     }

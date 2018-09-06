@@ -763,6 +763,7 @@ namespace dxtbx { namespace boost_python {
              arg("grid_size"))))
       .def("get_grid_size", &ImageGrid::get_grid_size)
       .def("from_imageset", &ImageGrid::from_imageset)
+      .staticmethod("from_imageset")
       .def_pickle(ImageGridPickleSuite())
       ;
 
