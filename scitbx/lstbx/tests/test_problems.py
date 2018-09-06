@@ -5,66 +5,72 @@ from scitbx.array_family import flex
 from scitbx.lstbx import normal_eqns
 import libtbx
 
-class polynomial_fit(normal_eqns.non_linear_ls_with_separable_scale_factor,
-                     normal_eqns.non_linear_ls_mixin):
-  """ Fit yc(t) = -t^3 + a t^2 + b t + c to synthetic data produced by
-      yo(t) = 2 t^2 (1-t) + noise, with an overall scale factor on yc(t)
-      whose optimal value is therefore 2.
-  """
 
-  noise = 1e-5
-  n_data = 10
-  x_0 = flex.double((0.5, 0.3, 0.2))
+def polynomial_fit(non_linear_ls_with_separable_scale_factor_impl):
+  class klass(non_linear_ls_with_separable_scale_factor_impl,
+              normal_eqns.non_linear_ls_mixin):
+    """ Fit yc(t) = -t^3 + a t^2 + b t + c to synthetic data produced by
+        yo(t) = 2 t^2 (1-t) + noise, with an overall scale factor on yc(t)
+        whose optimal value is therefore 2.
+    """
 
-  def __init__(self, normalised, **kwds):
-    super(polynomial_fit, self).__init__(n_parameters=3,
-                                         normalised=normalised)
-    libtbx.adopt_optional_init_args(self, kwds)
-    self.t = t = flex.double_range(self.n_data)/self.n_data
-    noise = self.noise*flex.double([ (-1)**i for i in xrange(self.n_data) ])
-    self.yo = 2.*t**2.*(1-t) + noise
-    self.one = flex.double(self.n_data, 1)
-    self.t2 = t**2
-    self.t3 = t**3
-    self.restart()
+    noise = 1e-5
+    n_data = 10
+    x_0 = flex.double((0.5, 0.3, 0.2))
 
-  def restart(self):
-    self.x = self.x_0.deep_copy()
-    self.old_x = None
+    def __init__(self, normalised, **kwds):
+      super(klass, self).__init__(n_parameters=3,
+                                  normalised=normalised)
+      libtbx.adopt_optional_init_args(self, kwds)
+      self.t = t = flex.double_range(self.n_data)/self.n_data
+      noise = self.noise*flex.double([ (-1)**i for i in xrange(self.n_data) ])
+      self.yo = 2.*t**2.*(1-t) + noise
+      self.one = flex.double(self.n_data, 1)
+      self.t2 = t**2
+      self.t3 = t**3
+      self.restart()
 
-  def step_forward(self):
-    self.old_x = self.x.deep_copy()
-    self.x += self.step()
+    def restart(self):
+      self.x = self.x_0.deep_copy()
+      self.old_x = None
 
-  def step_backward(self):
-    assert self.old_x is not None
-    self.x, self.old_x = self.old_x, None
+    def step_forward(self):
+      self.old_x = self.x.deep_copy()
+      self.x += self.step()
 
-  def parameter_vector_norm(self):
-    return self.x.norm()
+    def step_backward(self):
+      assert self.old_x is not None
+      self.x, self.old_x = self.old_x, None
 
-  def build_up(self, objective_only=False):
-    self.reset()
-    a, b, c = self.x
-    one, t, t2, t3 = self.one, self.t, self.t2, self.t3
-    yc = -t3 + a*t2 + b*t + c
-    grad_yc = (t2, t, one)
-    jacobian_yc = flex.double(flex.grid(self.n_data, self.n_parameters))
-    for j, der_r in enumerate(grad_yc):
-      jacobian_yc.matrix_paste_column_in_place(der_r, j)
-    self.add_equations(yc, jacobian_yc, self.yo, weights=None)
-    self.finalise()
+    def parameter_vector_norm(self):
+      return self.x.norm()
+
+    def build_up(self, objective_only=False):
+      self.reset()
+      a, b, c = self.x
+      one, t, t2, t3 = self.one, self.t, self.t2, self.t3
+      yc = -t3 + a*t2 + b*t + c
+      grad_yc = (t2, t, one)
+      jacobian_yc = flex.double(flex.grid(self.n_data, self.n_parameters))
+      for j, der_r in enumerate(grad_yc):
+        jacobian_yc.matrix_paste_column_in_place(der_r, j)
+      self.add_equations(yc, jacobian_yc, self.yo, weights=None)
+      self.finalise()
+  return klass
 
 
-class polynomial_fit_with_penalty(polynomial_fit):
+def polynomial_fit_with_penalty(non_linear_ls_with_separable_scale_factor_impl):
+  class klass(polynomial_fit(non_linear_ls_with_separable_scale_factor_impl)):
 
-  def build_up(self, objective_only=False):
-    super(polynomial_fit_with_penalty, self).build_up(objective_only)
-    a, b, c = self.x
-    reduced = self.reduced_problem()
-    reduced.add_equation(residual=(a - b + c - 2),
-                         grad_residual=flex.double((1, -1, 1)),
-                         weight=1)
+    def build_up(self, objective_only=False):
+      super(klass, self).build_up(objective_only)
+      a, b, c = self.x
+      reduced = self.reduced_problem()
+      reduced.add_equation(residual=(a - b + c - 2),
+                           grad_residual=flex.double((1, -1, 1)),
+                           weight=1)
+  return klass
+
 
 class exponential_fit(
   normal_eqns.non_linear_ls,

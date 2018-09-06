@@ -8,6 +8,12 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/packed_matrix.h>
 #include <vector>
+#include <algorithm>
+
+#ifdef CCTBX_HAS_LAPACKE
+#include <boost_adaptbx/floating_point_exceptions.h>
+#include <fast_linalg/lapacke.h>
+#endif
 
 namespace scitbx { namespace matrix { namespace cholesky {
 
@@ -66,13 +72,35 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
 
   /// Inverse of U^T U
-  /** This uses the alternative method presented at the end of section 2.8.3
-      in Ake Bjorck's classic book.
+  /** If LAPACKE is available (through module fast_linalg), then use XPPTRI.
+      Otherwise, use an implementation of the alternative method presented
+      at the end of section 2.8.3 in Ake Bjorck's classic book. Never use the
+      latter in production code where speed matters because it is horrendously
+      inefficient.
    */
   template <typename FloatType>
   af::versa<FloatType, af::packed_u_accessor>
   inverse_of_u_transpose_u(af::ref<FloatType, af::packed_u_accessor> const &u) {
     typedef FloatType f_t;
+#ifdef CCTBX_HAS_LAPACKE
+    // Usual trick: U^T U = L L^T where L = U^T is stored columnwise
+    // since U is stored rowwise
+    using namespace fast_linalg;
+    unsigned n = u.accessor().n;
+    af::versa<f_t, af::packed_u_accessor> result(
+      n, af::init_functor_null<f_t>());
+    af::shared<f_t> l_rfp(n*(n+1)/2, af::init_functor_null<f_t>());
+    tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, u.begin(), l_rfp.begin());
+    {
+      using namespace boost_adaptbx::floating_point;
+      exception_trapping guard(exception_trapping::dont_trap);
+      lapack_int info =
+        pftri(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin());
+      SCITBX_ASSERT(!info)(info);
+    }
+    tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin(), result.begin());
+    return result;
+#else
     af::versa<f_t, af::packed_u_accessor> result(u.accessor(),
                                                  af::init_functor_null<f_t>());
     af::ref<f_t, af::packed_u_accessor> c = result.ref();
@@ -93,8 +121,8 @@ namespace scitbx { namespace matrix { namespace cholesky {
       }
     }
     return result;
+#endif
   }
-
 
   /// Cholesky decomposition A = L L^T in place
   template <typename FloatType>
@@ -156,7 +184,11 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
 
   /// Cholesky decomposition A = U^T U in place
-  /** Reference: algorithm 4.2.2 in Golub and Van Loan */
+  /** If module fast_linalg is available, use  LAPACK dpftrf and consort.
+      Otherwise, use a handcrafted implementation of algorithm 4.2.2
+      in Golub and Van Loan. The former is orders of magnitude faster than
+      the latter.
+  */
   template <typename FloatType>
   struct u_transpose_u_decomposition_in_place
   {
@@ -179,6 +211,18 @@ namespace scitbx { namespace matrix { namespace cholesky {
     u_transpose_u_decomposition_in_place(matrix_u_ref const &a_)
       : u(a_)
     {
+#ifdef CCTBX_HAS_LAPACKE
+      using namespace fast_linalg;
+      unsigned n = u.accessor().n;
+      af::shared<scalar_t> l(u.size(), af::init_functor_null<scalar_t>());
+      tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, a_.begin(), l.begin());
+      lapack_int info = pftrf(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin());
+      SCITBX_ASSERT(info >= 0);
+      if(info > 0) {
+        failure = failure_info<scalar_t>(info, 0);
+      }
+      tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin(), u.begin());
+#else
       scalar_t *a = a_.begin();
       int n = a_.n_columns();
       for (int i=0; i<n; ++i) {
@@ -200,6 +244,7 @@ namespace scitbx { namespace matrix { namespace cholesky {
 
         symmetric_packed_u_rank_1_update(n-i-1, a, u, scalar_t(-1));
       }
+#endif
     }
 
     /// Solve A x = b in place
