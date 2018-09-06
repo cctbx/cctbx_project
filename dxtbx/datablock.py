@@ -1047,7 +1047,7 @@ class DataBlockDumper(object):
     dictionary = [db.to_dict() for db in self._datablocks]
     if compact:
       json.dump(dictionary, open(filename, "w"),
-        separators=(',',':'), ensure_ascii=True)
+        separators=(',',':'), ensure_ascii=True, cls=AutoEncoder)
     else:
       json.dump(dictionary, open(filename, "w"),
         indent=2, ensure_ascii=True, cls=AutoEncoder)
