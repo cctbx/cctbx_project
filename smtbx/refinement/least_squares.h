@@ -57,8 +57,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
       design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
     {
-      typedef typename accumulate_reflection_chunk<
-                NormalEquations, WeightingScheme, OneMillerIndexFcalc, build_design_matrix>
+      typedef accumulate_reflection_chunk<
+                NormalEquations, WeightingScheme, OneMillerIndexFcalc>
               accumulate_reflection_chunk_t;
       typedef boost::shared_ptr<NormalEquations>
               normal_equations_ptr_t;
@@ -131,9 +131,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     /// in the range [begin, end)
     template <class NormalEquations,
       template<typename> class WeightingScheme,
-      class OneMillerIndexFcalc,
-      bool build_design_matrix
-    >
+      class OneMillerIndexFcalc>
     struct accumulate_reflection_chunk {
       int begin, end;
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
@@ -311,7 +309,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only)
+        objective_only, may_parallelise_)
     {}
   };
 
@@ -351,7 +349,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         normal_equations,
         reflections, f_mask, weighting_scheme, scale_factor, f_calc_function,
         jacobian_transpose_matching_grad_fc, exti,
-        objective_only)
+        objective_only, may_parallelise_)
     {}
 
     af::versa<FloatType, af::c_grid<2> > design_matrix() {
