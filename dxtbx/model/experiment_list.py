@@ -515,7 +515,7 @@ class ExperimentListDumper(object):
       else:
         separators = None
         indent = 2
-      text = json.dumps(obj, 
+      text = json.dumps(obj,
                         separators=separators,
                         indent=indent,
                         ensure_ascii=True,
