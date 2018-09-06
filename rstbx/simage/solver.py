@@ -585,7 +585,7 @@ def check_refine_uc_cr(work_params, image_mdls,
 
 def build_images(work_params, i_calc, reindexing_assistant):
   result = []
-  from create import add_noise
+  from .create import add_noise
   from rstbx.simage import image_simple
   from cctbx.array_family import flex
   if (not work_params.apply_random_reindexing):
@@ -1101,7 +1101,7 @@ def run_with_pickle(file_name):
   process_core(work_params, i_calc.p1_anom, reindexing_assistant, image_mdls)
 
 def run_fresh(args):
-  import run_spotfinder
+  from . import run_spotfinder
   work_params = run_spotfinder.process_args(
     args=args,
     extra_phil_str="""\
@@ -1136,7 +1136,7 @@ pickle_image_models = False
 write_image_models_to_mtz_files = False
   .type = bool
 """)
-  from create import build_i_calc
+  from .create import build_i_calc
   i_calc = build_i_calc(work_params)
   i_calc.p1_anom.show_comprehensive_summary()
   print

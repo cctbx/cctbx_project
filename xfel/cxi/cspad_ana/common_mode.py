@@ -11,8 +11,8 @@ from __future__ import division
 __version__ = "$Revision$"
 
 import numpy
-from parse_calib         import Section
-from parse_calib         import calib2sections
+from .parse_calib         import Section
+from .parse_calib         import calib2sections
 
 from libtbx import easy_pickle
 from scitbx.array_family import flex

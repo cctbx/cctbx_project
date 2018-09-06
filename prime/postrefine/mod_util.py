@@ -9,9 +9,9 @@ import numpy as np
 from copy import deepcopy
 import cPickle as pickle
 from collections import Counter
-from mod_merge_data import merge_data_handler
-from mod_mx import mx_handler
-from mod_leastsqr import good_unit_cell
+from .mod_merge_data import merge_data_handler
+from .mod_mx import mx_handler
+from .mod_leastsqr import good_unit_cell
 
 class intensities_scaler(object):
   """

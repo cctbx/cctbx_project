@@ -18,7 +18,7 @@ from xfel.cxi.cspad_ana.parse_calib import calib2sections
 from scitbx.array_family import flex
 from iotbx.detectors.npy import NpyImage
 from spotfinder.applications.xfel import cxi_phil
-from make_mask import point_inside_circle
+from xfel.command_line.make_mask import point_inside_circle
 
 master_phil = libtbx.phil.parse("""
 detector_format_version = None
@@ -78,7 +78,7 @@ if (__name__ == "__main__") :
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
   from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
-  from convert_gain_map import fake_env, fake_config, fake_evt, fake_cspad_ElementV2
+  from xfel.command_line.convert_gain_map import fake_env, fake_config, fake_evt, fake_cspad_ElementV2
   address, timestamp = address_and_timestamp_from_detector_format_version(params.detector_format_version)
   timestamp = evt_timestamp((timestamp,0))
 

@@ -13,7 +13,7 @@ will be set to low gain.
 import sys, numpy, math
 import libtbx.phil
 from libtbx.utils import Sorry
-from make_mask import point_inside_circle
+from xfel.command_line.make_mask import point_inside_circle
 
 master_phil = libtbx.phil.parse("""
 resolution = None

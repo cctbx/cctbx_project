@@ -24,9 +24,9 @@ from cctbx.array_family import flex
 from scitbx.matrix import sqr
 from cctbx.uctbx import unit_cell
 from cctbx.crystal_orientation import crystal_orientation
-from mod_lbfgs import lbfgs_handler
-from mod_lbfgs_partiality import lbfgs_partiality_handler
-from mod_partiality import partiality_handler
+from .mod_lbfgs import lbfgs_handler
+from .mod_lbfgs_partiality import lbfgs_partiality_handler
+from .mod_partiality import partiality_handler
 
 def coefficient_of_determination(y, y_model):
   mean_y = flex.mean(y)

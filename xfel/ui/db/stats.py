@@ -78,7 +78,7 @@ class Stats(object):
     if len(results) == 0:
       return []
     cell_ids = set([str(r[0]) for r in results])
-    from experiment import Cell
+    from .experiment import Cell
     cells = self.app.get_all_x(Cell, 'cell', where = "WHERE id IN (%s)"%", ".join(cell_ids))
     self.app.link_cell_bins(cells)
 

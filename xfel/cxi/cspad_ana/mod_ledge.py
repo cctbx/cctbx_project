@@ -251,7 +251,7 @@ class mod_ledge(common_mode.common_mode_correction):
     # viewer through a shared multiprocessing array.  XXX This needs a
     # bit more thought to come up with a sensible interface.
     if self._display:
-      from mod_view import _xray_frame_process
+      from .mod_view import _xray_frame_process
       from multiprocessing import Array, Process, Manager
       from rstbx.viewer import display
 
