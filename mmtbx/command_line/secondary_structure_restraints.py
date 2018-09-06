@@ -192,6 +192,9 @@ def run (args, params=None, out=sys.stdout, log=sys.stderr) :
         log=out)
     if hb_proxies.size() > 0:
       if work_params.format == "pymol" :
+        file_load_add = "load %s" % work_params.file_name[0]
+        # surprisingly, pymol handles filenames with whitespaces without quotes...
+        print >> result_out, file_load_add
         bonds_in_format = hb_proxies.as_pymol_dashes(
             pdb_hierarchy=pdb_hierarchy)
       elif work_params.format == "kinemage" :
