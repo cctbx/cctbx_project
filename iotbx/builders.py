@@ -129,6 +129,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     adp_restraint_types = {
       'adp_similarity': smtbx_adp_restraints.adp_similarity_restraints,
       'rigid_bond': smtbx_adp_restraints.rigid_bond_restraints,
+      'rigu': smtbx_adp_restraints.rigu_restraints,
       'isotropic_adp': smtbx_adp_restraints.isotropic_adp_restraints,
       'fixed_u_eq_adp': smtbx_adp_restraints.fixed_u_eq_adp_restraints,
       'adp_u_eq_similarity': smtbx_adp_restraints.adp_u_eq_similarity_restraints,
@@ -137,6 +138,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
     adp_restraint_types_requiring_connectivity_only = {
       'adp_similarity': smtbx_adp_restraints.adp_similarity_restraints,
       'rigid_bond': smtbx_adp_restraints.rigid_bond_restraints,
+      'rigu': smtbx_adp_restraints.rigu_restraints,
     }
   else:
     adp_restraint_types = {}
@@ -157,6 +159,7 @@ class restrained_crystal_structure_builder(crystal_structure_builder):
       'bond_similarity': geometry_restraints.shared_bond_similarity_proxy(),
       'adp_similarity': adp_restraints.shared_adp_similarity_proxy(),
       'rigid_bond': adp_restraints.shared_rigid_bond_proxy(),
+      'rigu': adp_restraints.shared_rigu_proxy(),
       'isotropic_adp': adp_restraints.shared_isotropic_adp_proxy(),
       'fixed_u_eq_adp': adp_restraints.shared_fixed_u_eq_adp_proxy(),
       'adp_u_eq_similarity': adp_restraints.shared_adp_u_eq_similarity_proxy(),

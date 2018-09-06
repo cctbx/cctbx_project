@@ -7,6 +7,7 @@ env_bpl.SharedLibrary(
     "adp_restraints_bpl.cpp",
     "adp_restraints_ext.cpp",
     "rigid_bond_bpl.cpp",
+    "rigu_bpl.cpp",
     "adp_similarity_bpl.cpp",
     "isotropic_adp_bpl.cpp",
     "aniso_restraints_bpl.cpp",
