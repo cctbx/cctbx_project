@@ -24,23 +24,23 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
     self.hierarchy = hierarchy.root()
     # These items are mandatory for the _atom_site loop, all others are optional
-    type_symbol = cif_block.get("_atom_site.type_symbol")
-    atom_labels = cif_block.get("_atom_site.auth_atom_id")
+    type_symbol = self._wrap_loop_if_needed(cif_block, "_atom_site.type_symbol")
+    atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_atom_id")
     if atom_labels is None:
-      atom_labels = cif_block.get("_atom_site.label_atom_id") # corresponds to chem comp atom name
-    alt_id = cif_block.get("_atom_site.label_alt_id") # alternate conformer id
-    label_asym_id = cif_block.get("_atom_site.label_asym_id") # chain id
-    auth_asym_id = cif_block.get("_atom_site.auth_asym_id")
+      atom_labels = self._wrap_loop_if_needed(cif_block, "_atom_site.label_atom_id") # corresponds to chem comp atom name
+    alt_id = self._wrap_loop_if_needed(cif_block,"_atom_site.label_alt_id") # alternate conformer id
+    label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
+    auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")
     if label_asym_id is None: label_asym_id = auth_asym_id
     if auth_asym_id is None: auth_asym_id = label_asym_id
-    comp_id = cif_block.get("_atom_site.auth_comp_id")
+    comp_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_comp_id")
     if comp_id is None:
-      comp_id = cif_block.get("_atom_site.label_comp_id") # residue name
-    entity_id = cif_block.get("_atom_site.label_entity_id")
-    seq_id = cif_block.get("_atom_site.auth_seq_id")
+      comp_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_comp_id") # residue name
+    entity_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_entity_id")
+    seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_seq_id")
     if seq_id is None:
-      seq_id = cif_block.get("_atom_site.label_seq_id") # residue number
-    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0
+      seq_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_seq_id") # residue number
+    assert [atom_labels, alt_id, auth_asym_id, comp_id, entity_id, seq_id].count(None) == 0, "someting is not present"
     assert type_symbol is not None
 
     atom_site_fp = cif_block.get('_atom_site.phenix_scat_dispersion_real')
@@ -51,27 +51,26 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     atom_site_id = cif_block.get("_atom_site.id")
     # only permitted values are ATOM or HETATM
     group_PDB = cif_block.get("_atom_site.group_PDB")
-
     # TODO: read esds
-    B_iso_or_equiv = flex.double(cif_block.get("_atom_site.B_iso_or_equiv"))
-    cart_x = flex.double(cif_block.get("_atom_site.Cartn_x"))
-    cart_y = flex.double(cif_block.get("_atom_site.Cartn_y"))
-    cart_z = flex.double(cif_block.get("_atom_site.Cartn_z"))
-    occu = flex.double(cif_block.get("_atom_site.occupancy"))
-    formal_charge = cif_block.get("_atom_site.pdbx_formal_charge")
+    B_iso_or_equiv = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.B_iso_or_equiv"))
+    cart_x = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_x"))
+    cart_y = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_y"))
+    cart_z = flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.Cartn_z"))
+    occu =   flex.double(self._wrap_loop_if_needed(cif_block, "_atom_site.occupancy"))
+    formal_charge = self._wrap_loop_if_needed(cif_block, "_atom_site.pdbx_formal_charge")
     # anisotropic b-factors
     # TODO: read esds
-    anisotrop_id = cif_block.get("_atom_site_anisotrop.id")
+    anisotrop_id = self._wrap_loop_if_needed(cif_block, "_atom_site_anisotrop.id")
     adps = None
     if anisotrop_id is not None:
-      u_ij = [cif_block.get("_atom_site_anisotrop.U[%s][%s]" %(ij[0], ij[1]))
+      u_ij = [self._wrap_loop_if_needed(cif_block, "_atom_site_anisotrop.U[%s][%s]" %(ij[0], ij[1]))
               for ij in ("11", "22", "33", "12", "13", "23")]
       assert u_ij.count(None) in (0, 6)
       if u_ij.count(None) == 0:
         adps = u_ij
       else:
         assert u_ij.count(None) == 6
-        b_ij = [cif_block.get("_atom_site_anisotrop.B[%s][%s]" %(ij[0], ij[1]))
+        b_ij = [self._wrap_loop_if_needed(cif_block, "_atom_site_anisotrop.B[%s][%s]" %(ij[0], ij[1]))
                 for ij in ("11", "22", "33", "12", "13", "23")]
         assert b_ij.count(None) in (0, 6)
         if b_ij.count(None) == 0:
@@ -201,6 +200,15 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     if len(self.hierarchy.models()) == 1:
       # for compatibility with single-model PDB files
       self.hierarchy.models()[0].id = ""
+
+  def _wrap_loop_if_needed(self, cif_block, name):
+    data = cif_block.get(name)
+    if data is None:
+      return data
+    if isinstance(data, basestring):
+      data = flex.std_string([data])
+    return data
+
 
 def format_pdb_atom_name(atom_name, atom_type):
   # The PDB-format atom name is 4 characters long (columns 13 - 16):

@@ -107,6 +107,7 @@ tst_list = (
   "$D/bioinformatics/test/tst_alignment_as_hsearch.py",
   "$D/bioinformatics/test/tst_ebi_wu_blast_xml.py",
   "$D/bioinformatics/test/tst_ncbi_blast_xml.py",
+  "$D/regression/tst_cif_as_pdb_1atom.py",
   )
 
 def run():
