@@ -59,7 +59,7 @@ def get_mean_side_chain_density_value(hierarchy, map_data, unit_cell):
             density_map = map_data,
             sites_cart  = sites_cart)
           results.append(mv)
-  return flex.mean(results)
+  return flex.mean_default(results,0)
 
 def get_mean_side_chain_density_value_residue(residue, map_data, unit_cell):
   results = flex.double()
@@ -77,7 +77,7 @@ def get_mean_side_chain_density_value_residue(residue, map_data, unit_cell):
     density_map = map_data,
     sites_cart  = sites_cart)
   results.append(mv)
-  return flex.mean(results)
+  return flex.mean_default(results,0)
 
 class run(object):
   def __init__(self,
