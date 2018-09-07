@@ -50,7 +50,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting            >(klass);
       def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting           >(klass);
 
-#ifdef CCTBX_HAS_LAPACKE
+#if defined(CCTBX_HAS_LAPACKE)
       typedef
         lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
         FloatType,
@@ -73,6 +73,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def("observables", &wt::observables)
           .def("f_calc", &wt::f_calc)
           .def("weights", &wt::weights)
+          .add_property("available_threads", &wt::available_threads)
           ;
       }
     };
@@ -88,6 +89,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .def("observables", &wt::observables)
           .def("f_calc", &wt::f_calc)
           .def("weights", &wt::weights)
+          .add_property("available_threads", &wt::available_threads)
           .def("design_matrix", &wt::design_matrix)
           ;
       }

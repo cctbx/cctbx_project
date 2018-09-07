@@ -125,6 +125,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
     af::shared<FloatType> weights() { return weights_; }
 
+    int available_threads() const {
+      return boost::thread::physical_concurrency();
+    }
+
   protected:
     af::versa<FloatType, af::c_grid<2> > design_matrix() { return design_matrix_; }
     /// Accumulate from reflections whose indices are
