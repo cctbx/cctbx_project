@@ -1,5 +1,6 @@
 import libtbx.load_env
 import sys
+import os
 from os import path
 
 Import("env_etc")
@@ -14,31 +15,51 @@ env_etc.fast_linalg_common_includes = [
 
 # It is assumed OpenBLAS was installed inside Python
 # This is how conda installs it for example
-openblas_inc = path.join(sys.prefix, 'Library', 'include')
-openblas_lib = path.join(sys.prefix, 'Library', 'lib')
+openblas_dirs = [os.environ.get('OPENBLAS_DIR', None),
+  path.join(sys.prefix),
+  path.join(sys.prefix, 'Library')]
 
 def enable_fast_linalg(env):
   if not libtbx.env.has_module('fast_linalg'):
     return
+
   test_code = """\
     #include <cblas.h>
     #include <lapacke.h>
     int threads() { return openblas_get_num_threads(); }
   """
-  env_etc.include_registry.append(
-    env=env,
-    paths=env_etc.fast_linalg_common_includes + [openblas_inc])
-  env.Append(LIBS=['openblas'], LIBPATH=openblas_lib)
+  #avoid the same procedure to be called numerous times
+  try:
+    openblas_dir = libtbx.openblas_dir
+    compilation_tested = True
+  except:
+    compilation_tested = False
+    openblas_dir = None
+    for ob_dir in openblas_dirs:
+      if not ob_dir:
+        continue
+      if path.exists(path.join(ob_dir, 'include', 'cblas.h')):
+        openblas_dir = ob_dir
+        print("Located openblas at %s" %ob_dir)
+        break
+    libtbx.openblas_dir = openblas_dir
+  if openblas_dir:
+    env_etc.include_registry.append(
+      env=env,
+      paths=env_etc.fast_linalg_common_includes + [path.join(openblas_dir, 'include')])
+    env.Append(LIBS=['openblas'], LIBPATH=path.join(openblas_dir, 'lib'))
   for flag in ("CCTBX_FAST_LINALG_USES_OPENBLAS",
                "CCTBX_HAS_CBLAS", "CCTBX_HAS_LAPACKE",
                "LAPACK_COMPLEX_STRUCTURE", "HAVE_LAPACK_CONFIG_H", "ADD_"):
     flag = "-D" + flag
     env.Append(CXXFLAGS=flag)
     env.Append(SHCXXFLAGS=flag)
-  conf = env.Configure()
-  flag = conf.TryCompile(test_code, extension='.cpp')
-  conf.Finish()
-  assert flag, "OpenBLAS is not available but it is necessary for fast_linalg"
+  if not compilation_tested:
+    conf = env.Configure()
+    flag = conf.TryCompile(test_code, extension='.cpp')
+    conf.Finish()
+    assert flag, "OpenBLAS is not available but it is necessary for fast_linalg"
+
 env_etc.enable_fast_linalg = enable_fast_linalg
 
 Import("env_base")
@@ -63,3 +84,4 @@ if not env_etc.no_boost_python:
   env.SharedLibrary(target='#lib/fast_linalg_ext', source=['ext.cpp'])
 
 SConscript("tests/SConscript")
+
