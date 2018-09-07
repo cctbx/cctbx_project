@@ -432,7 +432,7 @@ class model_idealization():
       self.model_h = ready_set_model_interface(
           model=self.model,
           params=["add_h_to_water=False",
-                  "optimise_final_geometry_of_hydrogens=True"],
+                  "optimise_final_geometry_of_hydrogens=False"],
           )
     else:
       self.model_h = self.model.deep_copy()
@@ -492,6 +492,8 @@ class model_idealization():
   def run(self):
     t_0 = time()
     self.ann = self.model.get_ss_annotation()
+    self._setup_model_h()
+    self.model.set_restraint_objects(self.model_h.get_restraint_objects())
 
     self.model.get_restraints_manager()
     # set SS restratins
