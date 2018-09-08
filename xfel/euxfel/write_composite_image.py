@@ -100,7 +100,7 @@ if __name__ == '__main__':
   image_writer = composite_image_writer(sys.argv[1:])
   handle = h5py.File(image_writer.params.cxi_file, 'r')
   n_frames = len(handle['entry_1/instrument_1/detector_1/distance'])
-  for mode in image_writer.params.composite_mode: 
+  for mode in image_writer.params.composite_mode:
     outfile = os.path.splitext(image_writer.params.cxi_file)[0]+"_"+mode+".h5"
     output_handle = h5py.File(outfile, 'w')
     image_writer.recursive_copy(handle, output_handle,mode=mode,n_frames=n_frames)
