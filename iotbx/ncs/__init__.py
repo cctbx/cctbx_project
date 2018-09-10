@@ -105,8 +105,7 @@ class input(object):
 
     Args:
     -----
-      ncs_phil_groups: a list of ncs_groups_container object, containing
-        master NCS selection and a list of NCS copies selection
+      ncs_phil_groups:  iotbx.phil.parse(ncs_group_phil_str).extract().ncs_group
       chain_max_rmsd (float): limit of rms difference between chains to be considered
         as copies
       min_percent (float): Threshold for similarity between chains
