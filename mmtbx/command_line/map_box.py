@@ -151,6 +151,12 @@ master_phil = libtbx.phil.parse("""
             type is not protein it should be set as well.
     .short_caption = Extract unique
 
+  regions_to_keep = None
+    .type = int
+    .short_caption = Regions to keep
+    .help = You can specify a limit to the number of regions to keep\
+             when generating the asymmetric unit of density.
+
   keep_low_density = True
     .type = bool
     .help = Get remainder (weak density) with extract_unique.
@@ -342,10 +348,11 @@ Parameters:"""%h
   if (params.extract_unique):
     if (not params.resolution):
       raise Sorry("Please set resolution for extract_unique")
-    if (not params.molecular_mass) and (not params.sequence_file):
-      raise Sorry("Please set molecular_mass or a sequence file for extract_unique")
-    if (not params.symmetry) and (not params.symmetry_file) and (not ncs_object):
-      raise Sorry("Please set symmetry or symmetry_file for extract_unique")
+    if (not params.symmetry) and (not params.symmetry_file) and \
+        (not ncs_object):
+      from mmtbx.ncs.ncs import ncs
+      ncs_object=ncs()
+      ncs_object.set_unit_ncs()
 
   if params.keep_input_unit_cell_and_grid and (
       (params.output_unit_cell_grid is not None ) or
@@ -564,6 +571,7 @@ Parameters:"""%h
     lower_bounds          = params.lower_bounds,
     upper_bounds          = params.upper_bounds,
     extract_unique        = params.extract_unique,
+    regions_to_keep        = params.regions_to_keep,
     keep_low_density      = params.keep_low_density,
     chain_type            = params.chain_type,
     sequence              = sequence,

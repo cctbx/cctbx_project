@@ -2392,6 +2392,7 @@ class extract_box_around_model_and_map(object):
                lower_bounds=None,
                upper_bounds=None,
                extract_unique=None,
+               regions_to_keep=None,
                keep_low_density=None,
                sequence=None,
                chain_type=None,
@@ -2422,7 +2423,7 @@ class extract_box_around_model_and_map(object):
       # upper_bounds
       from scitbx.matrix import col
       extract_unique_map_data,extract_unique_crystal_symmetry=\
-         self.get_map_from_segment_and_split()
+         self.get_map_from_segment_and_split(regions_to_keep=regions_to_keep)
       lower_bounds=extract_unique_map_data.origin()
       upper_bounds=tuple(
         col(extract_unique_map_data.focus())-col((1,1,1)))
@@ -2554,7 +2555,7 @@ class extract_box_around_model_and_map(object):
   def cut_and_copy_map(self,map_data=None):
     return maptbx.copy(map_data,self.gridding_first, self.gridding_last)
 
-  def get_map_from_segment_and_split(self):
+  def get_map_from_segment_and_split(self,regions_to_keep=None):
     from cctbx.maptbx.segment_and_split_map import run as segment_and_split_map
     # NOTE: calling with shifted map data and ncs_object
     #    (origin shifted to 0,0,0)
@@ -2578,6 +2579,9 @@ class extract_box_around_model_and_map(object):
     if self.keep_low_density:
       args.append("iterate_with_remainder=True")
     else:
+      args.append("iterate_with_remainder=False")
+    if self.regions_to_keep:
+      args.append("regions_to_keep=%s" %(self.regions_to_keep))
       args.append("iterate_with_remainder=False")
 
     # import params from s&s here and set them.  set write_files=false etc.

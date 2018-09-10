@@ -591,6 +591,12 @@ master_phil = iotbx.phil.parse("""
         .short_caption = Resolution bins
         .help = Number of resolution bins for sharpening. Default is 20.
 
+     regions_to_keep = None
+       .type = int
+       .short_caption = Regions to keep
+       .help = You can specify a limit to the number of regions to keep\
+                when generating the asymmetric unit of density.
+
       max_regions_to_test = None
         .type = int
         .short_caption = Max regions to test
@@ -937,6 +943,7 @@ def run(args=None,params=None,
         eps=params.map_modification.eps,
         n_bins=params.map_modification.n_bins,
         max_regions_to_test=params.map_modification.max_regions_to_test,
+        regions_to_keep=params.map_modification.regions_to_keep,
         fraction_occupied=params.map_modification.fraction_occupied,
         sharpening_target=params.map_modification.sharpening_target,
         d_min_ratio=params.map_modification.d_min_ratio,

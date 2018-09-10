@@ -511,6 +511,12 @@ master_phil = iotbx.phil.parse("""
              estimate correct part \
              of model-based map. If None, estimated from max(FSC).
 
+     regions_to_keep = None
+       .type = int
+       .short_caption = Regions to keep
+       .help = You can specify a limit to the number of regions to keep\
+                when generating the asymmetric unit of density.
+
      auto_sharpen = True
        .type = bool
        .short_caption = Automatically determine sharpening
@@ -1971,6 +1977,7 @@ class sharpening_info:
       self.sa_percent=params.map_modification.sa_percent
       self.region_weight=params.map_modification.region_weight
       self.max_regions_to_test=params.map_modification.max_regions_to_test
+      self.regions_to_keep=params.map_modification.regions_to_keep
       self.d_min_ratio=params.map_modification.d_min_ratio
       self.scale_max=params.map_modification.scale_max
 
@@ -2710,6 +2717,12 @@ def get_map_from_map_coeffs(map_coeffs=None,crystal_symmetry=None,
      n_real=None):
     from cctbx import maptbx
     from cctbx.maptbx import crystal_gridding
+    if map_coeffs.crystal_symmetry().space_group_info()!= \
+       crystal_symmetry.space_group_info():
+      assert str(map_coeffs.crystal_symmetry().space_group_info()
+          ).replace(" ","").lower()=='p1'
+      # use map_coeffs.crystal_symmetry
+      crystal_symmetry=map_coeffs.crystal_symmetry()
     if n_real:
       cg=crystal_gridding(
         unit_cell=crystal_symmetry.unit_cell(),
@@ -4475,14 +4488,7 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   from cctbx.maptbx.auto_sharpen import set_sharpen_params
   params=set_sharpen_params(params,out)
 
-  if (not params.map_modification.auto_sharpen or
-       params.map_modification.b_iso is not None) and (
-    not params.crystal_info.molecular_mass and
-    not params.crystal_info.solvent_content and
-    not params.input_files.seq_file and not params.crystal_info.sequence and
-    not sequence):
-     raise Sorry("Please use auto_sharpen or supply molecular mass or "+
-        "solvent_content or a sequence file")
+
   if params.input_files.seq_file and not params.crystal_info.sequence and \
       not sequence:
     if not params.crystal_info.sequence:
@@ -4587,6 +4593,25 @@ def get_params(args,map_data=None,crystal_symmetry=None,
   # Get the NCS object
   ncs_obj,dummy_tracking_data=get_ncs(params=params,
     ncs_object=ncs_object,out=out)
+
+  if (not params.map_modification.auto_sharpen or
+       params.map_modification.b_iso is not None) and (
+      not params.crystal_info.molecular_mass and
+      not params.crystal_info.solvent_content and
+      not params.input_files.seq_file and not params.crystal_info.sequence and
+      not sequence):
+    params.crystal_info.solvent_content=get_iterated_solvent_fraction(
+        crystal_symmetry=crystal_symmetry,
+        verbose=params.control.verbose,
+        resolve_size=params.control.resolve_size,
+        map=map_data,
+        out=out)
+    if params.crystal_info.solvent_content:
+      print >>out,"Estimated solvent content: %.2f" %(
+        params.crystal_info.solvent_content)
+    else:
+      raise Sorry("Unable to estimate solvent content...please supply "+
+        "solvent_content \nor molecular_mass")
 
   if params.map_modification.auto_sharpen or \
         params.map_modification.b_iso is not None or \
@@ -6897,6 +6922,8 @@ def select_regions_in_au(params,
 
   selected_regions=best_selected_regions
   selected_regions.sort()
+  if params.map_modification.regions_to_keep:
+    selected_regions=selected_regions[:params.map_modification.regions_to_keep]
 
   rms=get_closest_neighbor_rms(ncs_group_obj=ncs_group_obj,
     selected_regions=selected_regions,verbose=False,out=out)
@@ -7214,7 +7241,6 @@ def write_output_files(params,
     removed_ncs=None,
     out=sys.stdout):
 
-
   if params.output_files.au_output_file_stem:
     au_mask_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_mask.ccp4")
     au_map_output_file=os.path.join(tracking_data.params.output_files.output_directory,params.output_files.au_output_file_stem+"_map.ccp4")
@@ -7272,17 +7298,17 @@ def write_output_files(params,
     bool_selected_regions=bool_selected_regions.set_selected(
        s_ncs_related,False)
 
-  # Identify full (possibly expanded) ncs au starting with what we have
-  au_mask=get_one_au(tracking_data=tracking_data,
-    starting_mask=bool_selected_regions,
-    removed_ncs=removed_ncs,
-    ncs_obj=ncs_group_obj.ncs_obj,map_data=map_data,out=out)
-
-  print >>out,"\nExpanding NCS AU if necessary..."
-  print >>out,"Size of AU mask: %s  Current size of AU: %s" %(
-    au_mask.count(True),bool_selected_regions.count(True))
-  bool_selected_regions=(bool_selected_regions | au_mask)
-  print >>out,"New size of AU mask: %s" %(bool_selected_regions.count(True))
+  if tracking_data.params.map_modification.regions_to_keep is None:
+    # Identify full (possibly expanded) ncs au starting with what we have
+    au_mask=get_one_au(tracking_data=tracking_data,
+       starting_mask=bool_selected_regions,
+      removed_ncs=removed_ncs,
+      ncs_obj=ncs_group_obj.ncs_obj,map_data=map_data,out=out)
+    print >>out,"\nExpanding NCS AU if necessary..."
+    print >>out,"Size of AU mask: %s  Current size of AU: %s" %(
+      au_mask.count(True),bool_selected_regions.count(True))
+    bool_selected_regions=(bool_selected_regions | au_mask)
+    print >>out,"New size of AU mask: %s" %(bool_selected_regions.count(True))
 
   sites_cart=get_marked_points_cart(mask_data=bool_selected_regions,
      unit_cell=ncs_group_obj.crystal_symmetry.unit_cell(),
@@ -8450,6 +8476,7 @@ def set_up_si(var_dict=None,crystal_symmetry=None,
        'n_bins',
        'eps',
        'max_regions_to_test',
+       'regions_to_keep',
        'fraction_occupied',
        'rmsd',
        'rmsd_resolution_factor',
@@ -9422,6 +9449,7 @@ def auto_sharpen_map_or_map_coeffs(
         n_bins=None,
         eps=None,
         max_regions_to_test=None,
+        regions_to_keep=None,
         fraction_occupied=None,
         input_weight_map_pickle_file=None,
         output_weight_map_pickle_file=None,
@@ -10597,7 +10625,8 @@ def get_one_au(tracking_data=None,
     overall_mask=overall_mask,
     every_nth_point=every_nth_point)
 
-  print >>out,"Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
+  print >>out,\
+    "Points in au: %d  in ncs: %d  (total %7.1f%%)   both: %d Not marked: %d" %(
      au_mask.count(True),ncs_mask.count(True),
      100.*float(au_mask.count(True)+ncs_mask.count(True))/au_mask.size(),
      (au_mask & ncs_mask).count(True),
@@ -10828,6 +10857,7 @@ def run(args,
   #  Optimize the closeness of centers
 
   # Select group of regions that are close together and represent one au
+
   ncs_group_obj,scattered_points=\
      select_regions_in_au(
      params,
