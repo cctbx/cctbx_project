@@ -1608,6 +1608,7 @@ class manager(Base_geometry):
       sites_cart = self._sites_cart_used_for_pair_proxies
 
     if pair_proxies.bond_proxies is not None:
+      # write covalent bonds
       pair_proxies.bond_proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
@@ -1615,11 +1616,10 @@ class manager(Base_geometry):
           f=f,
           origin_id=default_origin_id)
       print >> f
-      for label, origin_id in [
-        ["Bond-like", origin_ids.get_origin_id('hydrogen bonds')],
-        ["Metal coordination", origin_ids.get_origin_id('metal coordination')],
-         ["User supplied restraints", origin_ids.get_origin_id('edits')],
-        ]:
+      for key in origin_ids.get_bond_origin_id_labels():
+        origin_id=origin_ids.get_origin_id(key)
+        if origin_id==default_origin_id: continue
+        label=origin_ids.get_geo_file_header(key)
         tempbuffer = StringIO.StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -1638,13 +1638,10 @@ class manager(Base_geometry):
         f=f,
         origin_id=default_origin_id)
       print >> f
-      for label, origin_id in [
-        ["SS restraints around h-bond",
-         origin_ids.get_origin_id('hydrogen bonds')],
-        ['Metal coordination',
-         origin_ids.get_origin_id('metal coordination')],
-        ["User supplied restraints", origin_ids.get_origin_id('edits')],
-      ]:
+      for key in origin_ids.get_angle_origin_id_labels():
+        origin_id=origin_ids.get_origin_id(key)
+        if origin_id==default_origin_id: continue
+        label=origin_ids.get_geo_file_header(key, internals='angles')
         tempbuffer = StringIO.StringIO()
         self.angle_proxies.show_sorted(
             by_value="residual",
@@ -1655,10 +1652,34 @@ class manager(Base_geometry):
             origin_id=origin_id)
         print >> f, label, tempbuffer.getvalue()[5:]
 
+    if (self.dihedral_proxies is not None):
+      self.dihedral_proxies.show_sorted(
+        by_value="residual",
+        sites_cart=sites_cart,
+        site_labels=site_labels,
+        f=f,
+        origin_id=default_origin_id)
+      print >> f
+      for key in origin_ids.get_dihedral_origin_id_labels():
+        origin_id=origin_ids.get_origin_id(key)
+        if origin_id==default_origin_id: continue
+        label=origin_ids.get_geo_file_header(key, internals='dihedrals')
+        if label is None: continue
+        label = '%s torsion' % label
+        tempbuffer = StringIO.StringIO()
+        self.dihedral_proxies.show_sorted(
+            by_value="residual",
+            sites_cart=sites_cart,
+            site_labels=site_labels,
+            f=tempbuffer,
+            prefix="",
+            origin_id=origin_id)
+        print >> f, label, tempbuffer.getvalue()[9:]
+
     for p_label, proxies in [
-        ("Dihedral angle", self.get_dihedral_proxies()),
-        ("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
-        ("Side chain torsion angle", self.get_chi_torsion_proxies()),
+        #("Dihedral angle", self.get_dihedral_proxies()),
+        #("C-Beta improper torsion angle", self.get_c_beta_torsion_proxies()),
+        #("Side chain torsion angle", self.get_chi_torsion_proxies()),
         ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
         ("", self.ramachandran_manager),

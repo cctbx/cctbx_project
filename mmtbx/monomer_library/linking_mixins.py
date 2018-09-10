@@ -9,6 +9,8 @@ from mmtbx.monomer_library import glyco_utils
 import bondlength_defaults
 from libtbx.utils import Sorry
 
+origin_ids = geometry_restraints.linking_class.linking_class()
+
 hydrogens = ["H", "D", "T"]
 
 class ResidueLinkClass(dict):
@@ -874,7 +876,7 @@ Residue classes
         bond_name = "h-dna"
       elif (linking_utils.get_classes(atom1, important_only=True)=="metal" or
             linking_utils.get_classes(atom2, important_only=True)=="metal"):
-        bond_name = "metal-coordination"
+        bond_name = "metal coordination"
       if sym_op:
         sym_bonds += 1
         bond_data.append( (atoms[i_seq].id_str(),
@@ -921,7 +923,9 @@ Residue classes
     for ijk, sym_pair in enumerate(pair_sym_table.iterator()):
       i_seq, j_seq = sym_pair.i_seqs()
       origin_id=0
-      if bond_data[ijk][-1]=="metal-coordination": origin_id=2
+      print bond_data[ijk]
+      if bond_data[ijk][-1]=="metal coordination":
+        origin_id=origin_ids['metal coordination']
       #assert len(bond_i_seqs)==1
       assert i_seq == nonbonded_i_seqs[i_seq]
       assert j_seq == nonbonded_i_seqs[j_seq]
@@ -1061,7 +1065,7 @@ Residue classes
         sym_bonds,
         )
       for caption, bond_type in [
-          ("Coordination",'metal-coordination'),
+          ("Coordination",'metal coordination'),
           ("Other bonds",'bond'),
         ]:
         print >> log, "  %s:" % caption

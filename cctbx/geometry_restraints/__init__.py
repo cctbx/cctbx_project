@@ -463,6 +463,7 @@ def _bond_show_sorted_impl(self,
   if n_not_shown is None: n_not_shown = 0
   print >> f, "%sBond restraints: %d" % (prefix, len_sorted_table+n_not_shown)
   if (f is None): f = sys.stdout
+  if len_sorted_table+n_not_shown==0: return
   print >> f, "%sSorted by %s:" % (prefix, by_value)
   if sorted_table is not None:
     for restraint_info in sorted_table :
@@ -1281,14 +1282,16 @@ class _(boost.python.injector, shared_dihedral_proxy):
         unit_cell=None,
         f=None,
         prefix="",
-        max_items=None):
+        max_items=None,
+        origin_id=None):
 
     _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label=proxy_label,
         item_label="dihedral",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
-        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items)
+        site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
+        origin_id=origin_id)
 
   def get_sorted (self,
         by_value,
@@ -1830,7 +1833,8 @@ def _show_sorted_impl(O,
   if n_not_shown is None: n_not_shown = 0
   print >> f, "%s%s restraints: %d" % (prefix, proxy_label, len_sorted_table+n_not_shown)
   if (O.size() == 0): return
-  if (proxy_type is dihedral):
+  if len_sorted_table+n_not_shown==0: return
+  if (proxy_type is dihedral) and origin_id==0:
     n_harmonic = O.count_harmonic()
     n_sinusoidal = O.size() - n_harmonic
     print >> f, prefix+"  sinusoidal: %d" % n_sinusoidal

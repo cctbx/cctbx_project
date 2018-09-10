@@ -2,40 +2,26 @@ from __future__ import division
 
 bond_origin_ids = {}
 angle_origin_ids = {}
+torsion_origin_ids = {}
 origin_ids = [bond_origin_ids,
               angle_origin_ids,
+              torsion_origin_ids,
               ]
+
+class origins(list):
+  def __init__(self, item, internals=None):
+    self.internals = internals
+    for i, l in enumerate(item):
+      self.append(l)
+      if i==3:
+        self.header = l
+
+  def __repr__(self):
+    return list.__repr__(self) + ' is %s' % self.internals
 
 starting_id = 0
 for link_info in [
     ['covalent geometry'],
-    ['hydrogen bonds',
-     'hydrogen bonds added both for protein SS and NA basepairs',
-     '',
-    ],
-    ['metal coordination'],
-    ['edits',
-     '',
-     'www.phenix-online.org/documentation/reference/refinement.html#definition-of-custom-bonds-and-angles'
-    ],
-    ['C-beta',
-     'C-beta restraints are (only) dihedrals used by default',
-     ],
-    ['chi angles',
-     'Torsion restraints on chi angles (side-chain rotamers)',
-     ],
-    ]:
-  for oi in origin_ids:
-    assert starting_id not in oi
-    oi[starting_id] = link_info
-  starting_id+=1
-
-starting_id = 20
-for link_info in [
-    ['Misc. bond',
-     'Bond created based on atom type and distance.',
-     '',
-    ],
     ['SS BOND', # short desc.
      # complete desc.
      'Disulphide bond for CYS-like sulphur atoms within 3A (default) using '
@@ -43,13 +29,59 @@ for link_info in [
      'Some bonds are automatically excluded based on distance from metals.',
      # citation
      'Comput. Cryst. Newsl. (2015), 6, 13-13.',
+     # geo file header - bond, angle, dihedral (None will suppress output)
+     ['Disulphide bridge']*3,
     ],
-  ]:
+    ['hydrogen bonds',
+     'hydrogen bonds added both for protein SS and NA basepairs',
+     '',
+     ['Bond-like', 'Secondary Structure restraints around h-bond', None],
+    ],
+    ['metal coordination',
+     '',
+     '',
+     ['Metal coordination']*2+[None],
+    ],
+    ['edits',
+     '',
+     'www.phenix-online.org/documentation/reference/refinement.html#definition-of-custom-bonds-and-angles',
+     ['User supplied']*3,
+    ],
+    #['Misc. bond',
+    # 'Bond created based on atom type and distance.',
+    # '',
+    #],
+    ]:
   for oi in origin_ids:
     assert starting_id not in oi
-    oi[starting_id] = link_info
+    oi[starting_id] = origins(link_info, internals=[0,1,2])
+  starting_id+=1
+
+# only angles
+for link_info in []:
+  angle_origin_ids[starting_id] = origins(link_info, internals=[1])
+  starting_id+=1
+
+# only dihedrals
+for link_info in [
+    ['C-beta',
+     'C-beta restraints are (only) dihedrals used by default',
+     '',
+     [None, None, 'C-Beta improper'],
+     ],
+    ['chi angles',
+     'Torsion restraints on chi angles (side-chain rotamers)',
+     '',
+     [None, None, 'Side chain'],
+     ],
+  ]:
+  torsion_origin_ids[starting_id] = origins(link_info, internals=[2])
   starting_id+=1
 
 if __name__=="__main__":
+  print '-'*80
   print bond_origin_ids
+  print '-'*80
   print angle_origin_ids
+  print '-'*80
+  print torsion_origin_ids

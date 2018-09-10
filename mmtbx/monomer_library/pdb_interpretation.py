@@ -4937,6 +4937,7 @@ class build_all_chain_proxies(linking_mixins):
       j_seq = self.cystein_sulphur_i_seqs[sym_pair.j_seq]
       # add atoms to PDB link object
       # need to include sym. op.
+      specific_origin_id = origin_ids.get_origin_id('SS BOND')
       self.pdb_link_records.setdefault("SSBOND", [])
       self.pdb_link_records["SSBOND"].append([self.pdb_atoms[i_seq],
                                               self.pdb_atoms[j_seq],
@@ -4948,7 +4949,9 @@ class build_all_chain_proxies(linking_mixins):
         j_seq=j_seq,
         params=geometry_restraints.bond_params(
           distance_ideal=disulfide_bond.value_dist,
-          weight=1/disulfide_bond.value_dist_esd**2))
+          weight=1/disulfide_bond.value_dist_esd**2,
+          origin_id=specific_origin_id,
+          ))
       bond_asu_table.add_pair(
         i_seq=i_seq,
         j_seq=j_seq,
@@ -5010,12 +5013,14 @@ class build_all_chain_proxies(linking_mixins):
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[lookup["1CB"],i_seq,j_seq],
             angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
+            weight=angle_weight,
+            origin_id=specific_origin_id)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
           proxy = geometry_restraints.angle_proxy(
             i_seqs=[i_seq,j_seq,lookup["2CB"]],
             angle_ideal=disulfide_angle.value_angle,
-            weight=angle_weight)
+            weight=angle_weight,
+            origin_id=specific_origin_id)
           self.geometry_proxy_registries.angle.add_if_not_duplicated(proxy=proxy)
           if 0:
             indent=14
@@ -5057,7 +5062,8 @@ class build_all_chain_proxies(linking_mixins):
               angle_ideal=disulfide_torsion.value_angle,
               weight=1/disulfide_torsion.value_angle_esd**2,
               periodicity=disulfide_torsion.period,
-              alt_angle_ideals=alt_value_angle)
+              alt_angle_ideals=alt_value_angle,
+              origin_id=specific_origin_id)
             self.geometry_proxy_registries.dihedral.add_if_not_duplicated(proxy=proxy)
       if disulfide_cif_loop is not None:
         disulfide_cif_loop.add_row(("SS",
