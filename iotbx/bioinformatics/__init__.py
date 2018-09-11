@@ -727,7 +727,7 @@ def parse_sequence_str(data, format):
 seq_sequence_parse = generic_sequence_parser(
   regex = re.compile(
     r"""
-    ^ > \s*
+    ^ > [ \t\v\f]*
     (?P<name> [^\n]* ) \n
     (?P<sequence> [^>^*]* )
     \*?\s*
