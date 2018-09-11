@@ -201,6 +201,12 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
+  unit_cell = None
+    .type = unit_cell
+    .help = override the average or reference unit cell
+  space_group = None
+    .type = space_group
+    .help = override the identified space group
 }
 merging {
   refine_G_Imodel = False
@@ -1072,6 +1078,11 @@ class scaling_manager (intensity_data) :
         space_group_info=self.miller_set.space_group_info())
     else :
       final_symm = self.miller_set
+    if (self.params.output.unit_cell is not None or self.params.output.space_group is not None) :
+      output_uc = self.params.output.unit_cell or final_symm.unit_cell()
+      output_sg = self.params.output.space_group or final_symm.space_group_info()
+      final_symm = symmetry(unit_cell=output_uc,
+                            space_group_info=output_sg)
     all_obs = miller.array(
       miller_set=self.miller_set.customized_copy(
         crystal_symmetry=final_symm),
