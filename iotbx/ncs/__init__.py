@@ -18,23 +18,26 @@ ncs_search_options = """\
 ncs_search
   .short_caption = Search options
   .style = box
+  .help = Set of parameters for NCS search procedure. Some of them also used \
+      for filtering user-supplied ncs_group.
 {
   enabled = False
     .type = bool
-    .help = Use NCS restraints or constraints in refinement (can be \
-              determined automatically)
+    .help = Enable NCS restraints or constraints in refinement (in some cases \
+        may be switched on inside refinement program).
     .short_caption = Use NCS
     .style = noauto bold
   exclude_selection = "element H or element D or water"
     .type = atom_selection
     .help = Atoms selected by this selection will be excluded from the model \
-      before search procedures will run.
+      before any NCS search and/or filtering procedures. There is no way \
+      atoms defined by this selection will be in NCS.
     .expert_level = 2
   chain_similarity_threshold = 0.85
     .type=float
     .short_caption = Sequence alignment threshold
-    .help='''Threshold for similarity between matching chains.
-      A smaller value cause more chains to be grouped together and can lower
+    .help='''Threshold for sequence similarity between matching chains.
+      A smaller value may cause more chains to be grouped together and can lower
       the number of common residues'''
     .expert_level = 0
   chain_max_rmsd = 2.
@@ -45,13 +48,13 @@ ncs_search
     .expert_level = 0
   residue_match_radius = 4.0
     .type = float
-    .help = Max allowed distance difference between pairs of matching \
+    .help = Maximum allowed distance difference between pairs of matching \
         atoms of two residues
     .expert_level = 0
   try_shortcuts = False
     .type = bool
-    .help = Try very quick check and rapid process when chains are identical. \
-        if not, procedure will perform proper search automatically.
+    .help = Try very quick check to speed up the search when chains are identical. \
+        If failed, regular search will be performed automatically.
     .expert_level = 0
   minimum_number_of_atoms_in_copy = 3
     .type = int
@@ -66,6 +69,8 @@ ncs_group_phil_str = '''\
 ncs_group
   .multiple = True
   .short_caption = NCS group definition
+  .help = The definition of one NCS group. Note, that almost always in \
+    refinement programs they will be checked and filtered if needed.
   .style = auto_align
   .expert_level=0
   {
