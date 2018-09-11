@@ -131,13 +131,13 @@ restraints_library_str = """
       .type = bool
       .short_caption = Use Conformation-Dependent Library
       .help = Use Conformation Dependent Library (CDL) \
-        for geometry minimization restraints
+        for geometry restraints
       .style = bold
     omega_cdl = False
       .type = bool
       .short_caption = Use Omega Conformation-Dependent Library
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
-        for geometry minimization restraints
+        for geometry restraints
       .style = hidden
     rdl = False
       .type = bool
