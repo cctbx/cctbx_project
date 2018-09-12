@@ -47,6 +47,7 @@ from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
+import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -1567,8 +1568,9 @@ class manager(object):
     self.model_statistics_info = None
 
   def set_b_iso(self, b_iso):
-    self._xray_structure.set_b_iso(values = b_iso)
-    self._pdb_hierarchy.atoms().set_b(b_iso)# adopt_xray_structure(self._xray_structure)
+    if(self._xray_structure is not None):
+      self._xray_structure.set_b_iso(values = b_iso)
+    self._pdb_hierarchy.atoms().set_b(b_iso)
     self._update_pdb_atoms()
     self.model_statistics_info = None
 
@@ -2305,6 +2307,14 @@ class manager(object):
     if(self.use_ias): sel = sel | self.get_ias_selection()
     result = self._xray_structure.select(~sel)
     return result
+
+  def non_bonded_overlaps(self):
+    assert self.has_hd()
+    return nbo.info(
+      geometry_restraints_manager = self.get_restraints_manager().geometry,
+      macro_molecule_selection    = self.selection("protein or nucleotide"),
+      sites_cart                  = self.get_sites_cart(),
+      hd_sel                      = self.selection("element H or element D"))
 
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
     sizes = flex.int()
