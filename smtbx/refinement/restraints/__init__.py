@@ -151,6 +151,10 @@ class manager(object):
       for proxy in self.bond_similarity_proxies:
         n_restraints += proxy.i_seqs.size()
       geometry_proxies.append(self.bond_similarity_proxies)
+    if self.chirality_proxies is not None:
+      for proxy in self.chirality_proxies:
+        n_restraints += 1
+      geometry_proxies.append(self.chirality_proxies)
     adp_proxies = []
     if self.adp_similarity_proxies is not None:
       adp_proxies.append(self.adp_similarity_proxies)

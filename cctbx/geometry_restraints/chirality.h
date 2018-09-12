@@ -2,6 +2,9 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_CHIRALITY_H
 
 #include <cctbx/geometry_restraints/utils.h>
+#include <cctbx/restraints.h>
+#include <cctbx/geometry/geometry.h>
+#include <scitbx/constants.h>
 
 namespace cctbx { namespace geometry_restraints {
 
@@ -117,6 +120,23 @@ namespace cctbx { namespace geometry_restraints {
         init_volume_model();
       }
 
+      chirality(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        chirality_proxy const& proxy)
+      :
+        volume_ideal(proxy.volume_ideal),
+        both_signs(proxy.both_signs),
+        weight(proxy.weight)
+      {
+        for(int i=0;i<4;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          sites[i] = sites_cart[i_seq];
+        }
+        init_volume_model();
+      }
+
       //! weight * delta**2.
       /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
        */
@@ -132,11 +152,44 @@ namespace cctbx { namespace geometry_restraints {
       gradients() const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
-        double f = delta_sign * 2 * weight * delta;
+        double f = delta_sign * 2 * delta;
         result[1] = f * d_02_cross_d_03;
         result[2] = f * d_03.cross(d_01);
         result[3] = f * d_01.cross(d_02);
         result[0] = -result[1]-result[2]-result[3];
+        return result;
+      }
+
+      af::tiny<scitbx::vec3<double>, 4>
+      gradients_smtbx() const
+      {
+        /** The definition of the volume is different here
+         *  a = sites[0]-sites[1]
+         *  b = sites[1]-sites[2]
+         *  c = sites[2]-sites[3]
+         *  V = a . (b x c)/6.0
+         *
+         *  Also, L = (6V)**2 is used to build the restraint, see:
+         *  Bourhis, L. J., et. al. (2015). Acta Cryst. A71, 59-75.
+         *
+         *  The calculations of the derivatives is different. The first
+         *  derivative (sites[0]) is as described but the other ones are
+         *  derived mathectically using the same expression (Eq. 1)
+         *  instead of using circular permutation of the indices
+         *
+         *  Eq 1:
+         *  (sites[0]-sites[1]) . [ (sites[1]-sites[2]) x (sites[2]-sites[3]) ]
+         **/
+        af::tiny<scitbx::vec3<double>, 4> result;
+        /** the minus sign comes from the different tetrahedron
+         *  used to calculate the volume, 2.0 is from the chain rule
+         *  (u**2)' = 2 u u' (' mark the derivative)
+         **/
+        double f = -2.0 * volume_model;
+        result[0] = f * (sites[1]-sites[2]).cross(sites[2]-sites[3]);
+        result[1] = f * (sites[2]-sites[3]).cross(sites[0]-sites[2]);
+        result[2] =-f * (sites[1]-sites[3]).cross(sites[0]-sites[1]);
+        result[3] =-f * (sites[0]-sites[1]).cross(sites[1]-sites[2]);
         return result;
       }
 
@@ -150,7 +203,33 @@ namespace cctbx { namespace geometry_restraints {
       {
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
-          gradient_array[i_seqs[i]] += grads[i];
+          gradient_array[i_seqs[i]] += weight * grads[i];
+        }
+      }
+
+      void
+      linearise(
+        uctbx::unit_cell const& unit_cell,
+        cctbx::restraints::linearised_eqns_of_restraint<double> &linearised_eqns,
+        cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
+        chirality_proxy const& proxy) const
+      {
+        chirality_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
+        af::tiny<scitbx::vec3<double>, 4> grads = gradients_smtbx();
+        std::size_t row_i = linearised_eqns.next_row();
+        for(int i=0;i<4;i++) {
+          grads[i] = unit_cell.fractionalize_gradient(grads[i]);
+          cctbx::xray::parameter_indices const &ids_i
+            = parameter_map[i_seqs[i]];
+          if (ids_i.site == -1) continue;
+          for (int j=0;j<3;j++) {
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) += grads[i][j];
+          }
+
+          //! The weight is given for V, scaling for L = 36V**2
+          //! Note: Var(X**2) = 2*Var(X)**2
+          linearised_eqns.weights[row_i] = proxy.weight*proxy.weight/(36.0*36.0*2.0);
+          linearised_eqns.deltas[row_i] = volume_model*volume_model - 36.0*volume_ideal*volume_ideal;
         }
       }
 
