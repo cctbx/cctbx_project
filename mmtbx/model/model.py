@@ -2447,7 +2447,9 @@ class manager(object):
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)
-    self._xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry())
+    self._pdb_hierarchy.sort_atoms_in_place()
+    self._pdb_hierarchy.atoms_reset_serial()
+    self.update_xrs()
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
     self.pdb_atoms = self._pdb_hierarchy.atoms()
