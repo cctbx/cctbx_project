@@ -1568,11 +1568,8 @@ class manager(object):
     self.model_statistics_info = None
 
   def set_b_iso(self, b_iso):
-    if(self._xray_structure is not None):
-      self._xray_structure.set_b_iso(values = b_iso)
-    self._pdb_hierarchy.atoms().set_b(b_iso)
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
+    self.get_xray_structure().set_b_iso(values = b_iso)
+    self.set_sites_cart_from_xrs()
 
   def set_sites_cart(self, sites_cart, update_grm=False):
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
