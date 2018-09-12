@@ -49,11 +49,9 @@ master_phil = iotbx.phil.parse("""
   rama_selection = None
     .type = atom_selection
     .short_caption = Atom selection for Ramachandran restraints
+    .help = Selection of part of the model for which \
+        Ramachandran restraints will be set up.
     .expert_level = 1
-  rama_exclude_sec_str = False
-    .type = bool
-    .expert_level = 1
-    .short_caption = Exclude secondary structure from Ramachandran restraints
 """)
 
 def is_proxy_present(proxies, n_seq, proxy):
@@ -63,21 +61,20 @@ def is_proxy_present(proxies, n_seq, proxy):
   return ps.size() > 0
 
 class ramachandran_manager(object):
-  def __init__ (self, pdb_hierarchy, atom_selection=None, params=None,
+  def __init__ (self, pdb_hierarchy, params=None,
       log=sys.stdout, proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
     adopt_init_args(self, locals(), exclude=["log"])
+    if self.params is None:
+      self.params = master_phil.fetch().extract()
     self.bool_atom_selection = None
-    if self.atom_selection is None:
+    if self.params.rama_selection is None:
       self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
     else:
       cache = pdb_hierarchy.atom_selection_cache()
-      self.bool_atom_selection = cache.selection(atom_selection)
-    if params is None:
-      params = master_phil.fetch().extract()
-    self.params = params
+      self.bool_atom_selection = cache.selection(self.params.rama_selection)
     if initialize:
       if(self.params.rama_potential == "oldfield"):
         self.tables = ramachandran_plot_data(
@@ -96,7 +93,6 @@ class ramachandran_manager(object):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
     return ramachandran_manager(
         pdb_hierarchy=self.pdb_hierarchy,
-        atom_selection=self.atom_selection,
         params=self.params,
         log=log,
         proxies=result_proxies,
