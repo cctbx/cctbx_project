@@ -226,10 +226,10 @@ namespace cctbx { namespace geometry_restraints {
             linearised_eqns.design_matrix(row_i, ids_i.site+j) += grads[i][j];
           }
 
-          //! The weight is given for V, scaling for L = 36V**2
+          //! The weight is given for 6V, scaling for L = (6V)**2
           //! Note: Var(X**2) = 2*Var(X)**2
-          linearised_eqns.weights[row_i] = proxy.weight*proxy.weight/(36.0*36.0*2.0);
-          linearised_eqns.deltas[row_i] = volume_model*volume_model - 36.0*volume_ideal*volume_ideal;
+          linearised_eqns.weights[row_i] = proxy.weight*proxy.weight/2.0;
+          linearised_eqns.deltas[row_i] = volume_model*volume_model - volume_ideal*volume_ideal;
         }
       }
 

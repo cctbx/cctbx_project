@@ -59,6 +59,13 @@ def exercise_manager(verbose=0):
       i_seqs=((14,36),(12,38)),
       weights=(10,10),
       sym_ops=(sgtbx.rt_mx(),sgtbx.rt_mx())))
+  chirality_proxies=cctbx.geometry_restraints.shared_chirality_proxy()
+  chirality_proxies.append(
+    cctbx.geometry_restraints.chirality_proxy(
+      i_seqs=(14,36,12,38),
+      weight=10**4,
+      volume_ideal=1.2,
+      both_signs=False))
   # setup restraints manager
   manager = restraints.manager(
     bond_proxies=bond_proxies,
@@ -67,7 +74,8 @@ def exercise_manager(verbose=0):
     adp_similarity_proxies=adp_similarity_proxies,
     rigid_bond_proxies=rigid_bond_proxies,
     rigu_proxies=rigu_proxies,
-    isotropic_adp_proxies=isotropic_adp_proxies)
+    isotropic_adp_proxies=isotropic_adp_proxies,
+    chirality_proxies=chirality_proxies)
   sio = StringIO()
   manager.show_sorted(xray_structure, max_items=1, f=sio)
   if sys.platform.startswith("win") and sys.version_info[:2] < (2,6):
@@ -93,6 +101,15 @@ angle C3
     ideal   model   delta    sigma   weight residual
    110.00  108.00    2.00 7.07e-01 2.00e+00 8.03e+00
 ... (remaining 2 not shown)
+
+Chirality restraints: 1
+Sorted by residual:
+chirality O9
+          C9
+          O8
+          C10
+  both_signs  ideal   model   delta    sigma   weight residual
+    False      1.20    2.52   -1.32 1.00e-02 1.00e+04 1.75e+04
 
 Bond similarity restraints: 1
 Sorted by residual:
