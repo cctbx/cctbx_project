@@ -8,10 +8,13 @@ import os
 import boost.python
 from scitbx.array_family import flex
 from mmtbx.validation import ramalyze
+from mmtbx.conformation_dependent_library import generate_protein_threes
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
     ramachandran_residual_sum, phi_psi_targets
+ext2 = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 master_phil = iotbx.phil.parse("""
   rama_weight = 1.0
@@ -52,6 +55,12 @@ master_phil = iotbx.phil.parse("""
     .help = Selection of part of the model for which \
         Ramachandran restraints will be set up.
     .expert_level = 1
+  restrain_rama_outliers = True
+    .type = bool
+    .help = Apply restraints to Ramachandran outliers
+  restrain_rama_allowed = True
+    .type = bool
+    .help = Apply restraints to residues in allowed region on Ramachandran plot
 """)
 
 def is_proxy_present(proxies, n_seq, proxy):
@@ -101,16 +110,31 @@ class ramachandran_manager(object):
 
   def extract_proxies(self, log):
     self.proxies = ext.shared_phi_psi_proxy()
-    from mmtbx.conformation_dependent_library import generate_protein_threes
     selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
+    # it would be great to save rama_eval, but the fact that this is called in
+    # pdb_interpretation, not in mmtbx.model makes it impossible
+    need_filtering = not (self.params.restrain_rama_outliers and
+                          self.params.restrain_rama_allowed)
+    if need_filtering:
+      self.rama_eval = rama_eval()
     for three in generate_protein_threes(
         hierarchy=selected_h,
         geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
-      phi_atoms, psi_atoms = rc
       rama_key = three.get_ramalyze_key()
+      if need_filtering:
+        angles = three.get_phi_psi_angles()
+        rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
+        r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
+        if (r_evaluation == ramalyze.RAMALYZE_OUTLIER and
+            not self.params.restrain_rama_outliers):
+          continue
+        if (r_evaluation == ramalyze.RAMALYZE_ALLOWED and
+            not self.params.restrain_rama_allowed):
+          continue
+      phi_atoms, psi_atoms = rc
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
       r_name = resnames[1]
@@ -251,7 +275,6 @@ class ramachandran_manager(object):
 
 
 def load_tables (params=None) :
-  import boost.python
   if (params is None) :
     params = master_phil.fetch().extract()
   if (params.scale_allowed <= 0.0) :
