@@ -795,9 +795,8 @@ def substitute_ss(
   t9 = time()
   if processed_params.file_name_before_regularization is not None:
     grm.geometry.pair_proxies(sites_cart=model.get_sites_cart())
-    if grm.geometry.ramachandran_manager is not None:
-      grm.geometry.ramachandran_manager.update_phi_psi_targets(
-          sites_cart=model.get_sites_cart())
+    grm.geometry.update_ramachandran_restraints_phi_psi_targets(
+        hierarchy=model.get_hierarchy())
     print >> log, "Outputting model before regularization %s" % processed_params.file_name_before_regularization
 
     m_txt = model.model_as_pdb()

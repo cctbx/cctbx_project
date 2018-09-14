@@ -439,7 +439,7 @@ class minimize_wrapper_with_map():
     while min_monitor.need_more_cycles():
       print >> self.log, "Cycle number", min_monitor.get_current_cycle_n()
       self.model.get_restraints_manager().geometry.update_ramachandran_restraints_phi_psi_targets(
-          sites_cart=self.model.get_sites_cart())
+          hierarchy=self.model.get_hierarchy())
       print >> self.log, "  Updating rotamer restraints..."
       add_rotamer_restraints(
         pdb_hierarchy      = self.model.get_hierarchy(),

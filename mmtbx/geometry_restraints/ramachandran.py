@@ -75,9 +75,17 @@ class ramachandran_manager(object):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
-    adopt_init_args(self, locals(), exclude=["log"])
+    self.hierarchy = pdb_hierarchy # only for def select()
+    self.params = params
+    self.log = log
+    self.proxies = proxies
+    self.tables = tables
+    self.initialize = initialize
+
     if self.params is None:
       self.params = master_phil.fetch().extract()
+    self.need_filtering = not (self.params.restrain_rama_outliers and
+                          self.params.restrain_rama_allowed)
     self.bool_atom_selection = None
     if self.params.rama_selection is None:
       self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
@@ -91,32 +99,33 @@ class ramachandran_manager(object):
       else :
         self.tables = load_tables(params)
       # get proxies
-      self.extract_proxies(log=log)
+      self.extract_proxies(pdb_hierarchy)
     else:
-      assert proxies is not None
+      assert self.proxies is not None
     if(self.params.rama_potential == "oldfield"):
-      self.target_phi_psi = self.update_phi_psi_targets(
-        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
+      self.target_phi_psi = self.update_phi_psi_targets_on_init(
+        hierarchy = pdb_hierarchy)
+    self.initialize = False
 
-  def proxy_select(self, n_seq, iselection, log=sys.stdout):
+  def proxy_select(self, n_seq, iselection):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
-    return ramachandran_manager(
-        pdb_hierarchy=self.pdb_hierarchy,
+    new_manager = ramachandran_manager(
+        pdb_hierarchy=self.hierarchy,
         params=self.params,
-        log=log,
+        log=self.log,
         proxies=result_proxies,
         tables=self.tables,
         initialize=False)
+    return new_manager
 
-  def extract_proxies(self, log):
+  def extract_proxies(self, hierarchy):
+    self.hierarchy = hierarchy
     self.proxies = ext.shared_phi_psi_proxy()
-    selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
+    selected_h = hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
-    need_filtering = not (self.params.restrain_rama_outliers and
-                          self.params.restrain_rama_allowed)
-    if need_filtering:
+    if self.need_filtering:
       self.rama_eval = rama_eval()
     for three in generate_protein_threes(
         hierarchy=selected_h,
@@ -124,7 +133,7 @@ class ramachandran_manager(object):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
       rama_key = three.get_ramalyze_key()
-      if need_filtering:
+      if self.need_filtering:
         angles = three.get_phi_psi_angles()
         rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
         r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
@@ -148,14 +157,14 @@ class ramachandran_manager(object):
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
-    print >> log, ""
-    print >> log, "  %d Ramachandran restraints generated." % (
+    print >> self.log, ""
+    print >> self.log, "  %d Ramachandran restraints generated." % (
         self.get_n_proxies())
 
-  def update_phi_psi_targets(self, sites_cart):
+  def update_phi_psi_targets_on_init(self, hierarchy):
     if(self.params.rama_potential != "oldfield"): return None
     self.target_phi_psi = phi_psi_targets(
-      sites_cart=sites_cart,
+      sites_cart=hierarchy.atoms().extract_xyz(),
       proxies=self.proxies,
       general_table=self.tables.general,
       gly_table=self.tables.gly,
@@ -164,6 +173,13 @@ class ramachandran_manager(object):
       prepro_table=self.tables.prepro,
       ileval_table=self.tables.ileval)
     return self.target_phi_psi
+
+  def update_phi_psi_targets(self, hierarchy):
+    self.hierarchy = hierarchy
+    if self.need_filtering and not self.initialize:
+      self.extract_proxies(hierarchy)
+    self.update_phi_psi_targets_on_init(hierarchy)
+
 
   def target_and_gradients(self,
       unit_cell,
