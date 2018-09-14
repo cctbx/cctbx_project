@@ -3170,7 +3170,7 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
     size_bytes = len(stdin_lines) if stdin_lines is not None else 0
     command_to_run="molprobity.reduce "
     if file_name is not None:
-      assert os.path.isfile(file_name)
+      assert os.path.isfile(file_name), 'no file_name : %s' % file_name
       size_bytes = os.path.getsize(file_name)
       command_to_run += file_name + " "
     command_to_run += parameters
