@@ -13,52 +13,17 @@ env_etc.fast_linalg_common_includes = [
   env_etc.boost_include,
 ]
 
-# It is assumed OpenBLAS was installed inside Python
-# This is how conda installs it for example
-openblas_dirs = [os.environ.get('OPENBLAS_DIR', None),
-  path.join(sys.prefix),
-  path.join(sys.prefix, 'Library')]
-
 def enable_fast_linalg(env):
   if not libtbx.env.has_module('fast_linalg'):
     return
-
-  test_code = """\
-    #include <cblas.h>
-    #include <lapacke.h>
-    int threads() { return openblas_get_num_threads(); }
-  """
-  #avoid the same procedure to be called numerous times
-  try:
-    openblas_dir = libtbx.openblas_dir
-    compilation_tested = True
-  except:
-    compilation_tested = False
-    openblas_dir = None
-    for ob_dir in openblas_dirs:
-      if not ob_dir:
-        continue
-      if path.exists(path.join(ob_dir, 'include', 'cblas.h')):
-        openblas_dir = ob_dir
-        print("Located openblas at %s" %ob_dir)
-        break
-    libtbx.openblas_dir = openblas_dir
-  if openblas_dir:
-    env_etc.include_registry.append(
-      env=env,
-      paths=env_etc.fast_linalg_common_includes + [path.join(openblas_dir, 'include')])
-    env.Append(LIBS=['openblas'], LIBPATH=path.join(openblas_dir, 'lib'))
-  for flag in ("CCTBX_FAST_LINALG_USES_OPENBLAS",
-               "CCTBX_HAS_CBLAS", "CCTBX_HAS_LAPACKE",
-               "LAPACK_COMPLEX_STRUCTURE", "HAVE_LAPACK_CONFIG_H", "ADD_"):
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.fast_linalg_common_includes)
+  env.Append(LIBS=['boost_filesystem', 'fast_linalg'])
+  for flag in ("USE_FAST_LINALG",):
     flag = "-D" + flag
     env.Append(CXXFLAGS=flag)
     env.Append(SHCXXFLAGS=flag)
-  if not compilation_tested:
-    conf = env.Configure()
-    flag = conf.TryCompile(test_code, extension='.cpp')
-    conf.Finish()
-    assert flag, "OpenBLAS is not available but it is necessary for fast_linalg"
 
 env_etc.enable_fast_linalg = enable_fast_linalg
 
@@ -79,9 +44,17 @@ if not env_etc.no_boost_python:
   env_fast_linalg_boost_python_ext = fast_linalg_envs[1]
   Export("env_fast_linalg_boost_python_ext")
 
+env = env_fast_linalg_base.Clone()
+if 'fast_linalg' in env['LIBS']:
+  env['LIBS'].remove('fast_linalg')
+if sys.platform[:3] != 'win':
+  env['LIBS'].append("dl")
+fast_linalg = env.SharedLibrary(target='#lib/fast_linalg', source=['np_ext.cpp'])
+
 if not env_etc.no_boost_python:
   env = env_fast_linalg_boost_python_ext.Clone()
-  env.SharedLibrary(target='#lib/fast_linalg_ext', source=['ext.cpp'])
+  fast_linalg_ext = env.SharedLibrary(target='#lib/fast_linalg_ext', source=['ext.cpp'])
+  Depends(fast_linalg_ext, fast_linalg)
 
 SConscript("tests/SConscript")
 

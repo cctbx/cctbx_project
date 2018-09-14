@@ -2,10 +2,14 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/object.hpp>
+#include <boost/filesystem.hpp>
 
 #include <fast_linalg/environment.h>
+#include <fast_linalg/lapacke.h>
 
-namespace fast_linalg { namespace {
+namespace fast_linalg {
+
+namespace {
 
   void init_module() {
     using namespace boost::python;
@@ -21,6 +25,9 @@ namespace fast_linalg { namespace {
                     "The family of the CPU\n\n"
                     "E.g. \"Nehalem\" for an Intel processor.")
       .add_property("build_config", &e::build_config)
+      .add_static_property("initialised", &fast_linalg::is_initialised)
+      .def("initialise", &fast_linalg::initialise, (arg("lib_name")))
+      .staticmethod("initialise")
       ;
     scope().attr("env") = object(new environment());
   }

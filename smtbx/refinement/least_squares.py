@@ -13,20 +13,28 @@ from scitbx.lstbx import normal_eqns
 from scitbx.array_family import flex
 from smtbx.structure_factors import direct
 from smtbx.refinement.restraints import origin_fixing_restraints
-
 import math
 
 def crystallographic_ls_class(non_linear_ls_with_separable_scale_factor=None):
   """ Construct a class for crystallographic L.S. based on the given engine
   """
-  nls = (non_linear_ls_with_separable_scale_factor or
-         (normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3
-          if libtbx.env.has_module('fast_linalg') else
-          normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2))
+  def get_base_class(non_linear_ls_with_separable_scale_factor):
+    base_class = non_linear_ls_with_separable_scale_factor
+    if not base_class:
+      try:
+        from fast_linalg import env
+        if env.initialised:
+          base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_3
+        else:
+          base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
+      except:
+        base_class = normal_eqns.non_linear_ls_with_separable_scale_factor_BLAS_2
+    #print("Chosen: " + str(base_class))
+    return base_class
 
-  class klass(nls):
+  class klass(get_base_class(non_linear_ls_with_separable_scale_factor)):
 
-    non_linear_ls_engine = nls
+    non_linear_ls_engine = get_base_class(non_linear_ls_with_separable_scale_factor)
 
     default_weighting_scheme = mainstream_shelx_weighting
     weighting_scheme = "default"

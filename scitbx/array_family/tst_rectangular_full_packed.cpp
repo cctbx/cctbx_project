@@ -3,9 +3,7 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/simple_io.h>
-#ifdef CCTBX_HAS_LAPACKE
 #include <fast_linalg/lapacke.h>
-#endif
 #include <stdio.h>
 
 namespace af = scitbx::af;
@@ -21,10 +19,10 @@ typedef af::versa<double, af::rectangular_full_packed_accessor<af::lower> >
 typedef af::const_ref<double, af::f_grid<2,int> > rect_t;
 
 int main() {
-#ifndef CCTBX_HAS_LAPACKE
-  printf("Test of accessor for rectangular full packed format skipped\n");
-  return 0;
-#else
+  if (!fast_linalg::is_initialised()) {
+    printf("Test of accessor for rectangular full packed format skipped\n");
+    return 0;
+  }
   bool failed = false;
   for(int n=0; n<10; n++) {
     // simulate upper packed by columns
@@ -34,7 +32,8 @@ int main() {
     upper_rfp_t u_rfp(n);
 
     // Build RFP
-    LAPACKE_dtpttf(LAPACK_COL_MAJOR, 'N', 'U', n, u_p.begin(), u_rfp.begin());
+    fast_linalg::tpttf(fast_linalg::LAPACK_COL_MAJOR, 'N', 'U',
+      n, u_p.begin(), u_rfp.begin());
 
     // Check accessor works
     bool this_failed = false;
@@ -71,5 +70,4 @@ int main() {
     printf("OK\n");
     return 0;
   }
-#endif
 }

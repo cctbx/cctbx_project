@@ -62,7 +62,6 @@ namespace scitbx { namespace matrix {
   };
 
 
-#ifdef CCTBX_HAS_LAPACKE
 #include <fast_linalg/lapacke.h>
 
   /// Symmetric rank-N update \f$A^T A\f$, specified row by row
@@ -130,8 +129,6 @@ namespace scitbx { namespace matrix {
     af::versa<T, af::packed_u_accessor> aaT_rfp, aaT_packed;
     int cols;
   };
-
-#endif
 
 }}
 

@@ -9,11 +9,8 @@
 #include <scitbx/array_family/accessors/packed_matrix.h>
 #include <vector>
 #include <algorithm>
-
-#ifdef CCTBX_HAS_LAPACKE
 #include <boost_adaptbx/floating_point_exceptions.h>
 #include <fast_linalg/lapacke.h>
-#endif
 
 namespace scitbx { namespace matrix { namespace cholesky {
 
@@ -82,46 +79,47 @@ namespace scitbx { namespace matrix { namespace cholesky {
   af::versa<FloatType, af::packed_u_accessor>
   inverse_of_u_transpose_u(af::ref<FloatType, af::packed_u_accessor> const &u) {
     typedef FloatType f_t;
-#ifdef CCTBX_HAS_LAPACKE
-    // Usual trick: U^T U = L L^T where L = U^T is stored columnwise
-    // since U is stored rowwise
-    using namespace fast_linalg;
-    unsigned n = u.accessor().n;
-    af::versa<f_t, af::packed_u_accessor> result(
-      n, af::init_functor_null<f_t>());
-    af::shared<f_t> l_rfp(n*(n+1)/2, af::init_functor_null<f_t>());
-    tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, u.begin(), l_rfp.begin());
-    {
-      using namespace boost_adaptbx::floating_point;
-      exception_trapping guard(exception_trapping::dont_trap);
-      lapack_int info =
-        pftri(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin());
-      SCITBX_ASSERT(!info)(info);
-    }
-    tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin(), result.begin());
-    return result;
-#else
-    af::versa<f_t, af::packed_u_accessor> result(u.accessor(),
-                                                 af::init_functor_null<f_t>());
-    af::ref<f_t, af::packed_u_accessor> c = result.ref();
-
-    int n = u.accessor().n;
-    for (int k=n-1; k>=0; --k) {
-      // formula (2.8.13)
-      c(k,k) = 1/u(k,k);
-      for (int j=k+1; j<n; ++j) c(k,k) -= u(k,j)*c(k,j);
-      c(k,k) *= 1/u(k,k);
-
-      // formula (2.8.14)
-      for (int i=k-1; i>=0; --i) {
-        c(i,k) = 0;
-        for (int j=i+1; j<=k; ++j) c(i,k) += u(i,j)*c(j,k);
-        for (int j=k+1; j<n; ++j) c(i,k) += u(i,j)*c(k,j);
-        c(i,k) *= -1/u(i,i);
+    if (fast_linalg::is_initialised()) {
+      // Usual trick: U^T U = L L^T where L = U^T is stored columnwise
+      // since U is stored rowwise
+      using namespace fast_linalg;
+      unsigned n = u.accessor().n;
+      af::versa<f_t, af::packed_u_accessor> result(
+        n, af::init_functor_null<f_t>());
+      af::shared<f_t> l_rfp(n*(n+1)/2, af::init_functor_null<f_t>());
+      tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, u.begin(), l_rfp.begin());
+      {
+        using namespace boost_adaptbx::floating_point;
+        exception_trapping guard(exception_trapping::dont_trap);
+        lapack_int info =
+          pftri(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin());
+        SCITBX_ASSERT(!info)(info);
       }
+      tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l_rfp.begin(), result.begin());
+      return result;
     }
-    return result;
-#endif
+    else {
+      af::versa<f_t, af::packed_u_accessor> result(u.accessor(),
+                                                 af::init_functor_null<f_t>());
+      af::ref<f_t, af::packed_u_accessor> c = result.ref();
+
+      int n = u.accessor().n;
+      for (int k=n-1; k>=0; --k) {
+        // formula (2.8.13)
+        c(k,k) = 1/u(k,k);
+        for (int j=k+1; j<n; ++j) c(k,k) -= u(k,j)*c(k,j);
+        c(k,k) *= 1/u(k,k);
+
+        // formula (2.8.14)
+        for (int i=k-1; i>=0; --i) {
+          c(i,k) = 0;
+          for (int j=i+1; j<=k; ++j) c(i,k) += u(i,j)*c(j,k);
+          for (int j=k+1; j<n; ++j) c(i,k) += u(i,j)*c(k,j);
+          c(i,k) *= -1/u(i,i);
+        }
+      }
+      return result;
+    }
   }
 
   /// Cholesky decomposition A = L L^T in place
@@ -211,40 +209,41 @@ namespace scitbx { namespace matrix { namespace cholesky {
     u_transpose_u_decomposition_in_place(matrix_u_ref const &a_)
       : u(a_)
     {
-#ifdef CCTBX_HAS_LAPACKE
-      using namespace fast_linalg;
-      unsigned n = u.accessor().n;
-      af::shared<scalar_t> l(u.size(), af::init_functor_null<scalar_t>());
-      tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, a_.begin(), l.begin());
-      lapack_int info = pftrf(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin());
-      SCITBX_ASSERT(info >= 0);
-      if(info > 0) {
-        failure = failure_info<scalar_t>(info, 0);
-      }
-      tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin(), u.begin());
-#else
-      scalar_t *a = a_.begin();
-      int n = a_.n_columns();
-      for (int i=0; i<n; ++i) {
-        /// Compute U(i,i) while checking positive-definiteness
-        scalar_t a_ii = *a;
-        if (a_ii <= 0) {
-          failure = failure_info<scalar_t>(i, a_ii);
-          return;
+      if (fast_linalg::is_initialised()) {
+        using namespace fast_linalg;
+        unsigned n = u.accessor().n;
+        af::shared<scalar_t> l(u.size(), af::init_functor_null<scalar_t>());
+        tpttf(LAPACK_COL_MAJOR, 'N', 'L', n, a_.begin(), l.begin());
+        lapack_int info = pftrf(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin());
+        SCITBX_ASSERT(info >= 0);
+        if (info > 0) {
+          failure = failure_info<scalar_t>(info, 0);
         }
-        a_ii = std::sqrt(a_ii);
-        *a++ = a_ii;
-
-        /// Compute U(i, i+1:)
-        scalar_t *u = a;
-        for (int j=i+1; j<n; ++j) {
-          scalar_t &a_ij = *a;
-          *a++ = a_ij / a_ii;
-        }
-
-        symmetric_packed_u_rank_1_update(n-i-1, a, u, scalar_t(-1));
+        tfttp(LAPACK_COL_MAJOR, 'N', 'L', n, l.begin(), u.begin());
       }
-#endif
+      else {
+        scalar_t *a = a_.begin();
+        int n = a_.n_columns();
+        for (int i = 0; i < n; ++i) {
+          /// Compute U(i,i) while checking positive-definiteness
+          scalar_t a_ii = *a;
+          if (a_ii <= 0) {
+            failure = failure_info<scalar_t>(i, a_ii);
+            return;
+          }
+          a_ii = std::sqrt(a_ii);
+          *a++ = a_ii;
+
+          /// Compute U(i, i+1:)
+          scalar_t *u = a;
+          for (int j = i + 1; j < n; ++j) {
+            scalar_t &a_ij = *a;
+            *a++ = a_ij / a_ii;
+          }
+
+          symmetric_packed_u_rank_1_update(n - i - 1, a, u, scalar_t(-1));
+        }
+      }
     }
 
     /// Solve A x = b in place

@@ -168,11 +168,9 @@ namespace boost_python {
     non_linear_ls_with_separable_scale_factor_wrapper<
       double, matrix::sum_of_symmetric_rank_1_updates>
       ::wrap(basename + "__level_2_blas_impl");
-#ifdef CCTBX_HAS_LAPACKE
     non_linear_ls_with_separable_scale_factor_wrapper<
       double, matrix::rank_n_update>
       ::wrap(basename + "__level_3_blas_impl");
-#endif
   }
 
 }}}}

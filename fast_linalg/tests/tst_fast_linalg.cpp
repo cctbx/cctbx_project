@@ -45,7 +45,7 @@ bool check_packed_full(int N, const double *x, const double *y) {
   if(correct) std::cout << "passed!\n";
   return correct;
 }
-
+using namespace fast_linalg;
 int main() {
   bool all_correct = true;
 
@@ -70,7 +70,8 @@ int main() {
   std::cout << "Rectangular Full Data # "
             << "[" << N << "x" << K << "]" << "[" << N << "x" << K << "]^T : ";
   double c[N*N];
-  cblas_dsyrk(CblasRowMajor, CblasUpper, CblasNoTrans, N, K,
+  fast_linalg::dsyrk(
+    CblasRowMajor, CblasUpper, CblasNoTrans, N, K,
               1.0, a, K, 0.0, c, N);
   double c_ref[N*N] = { 30,  70, 110, 150,  190,  230,
                          0, 174, 278, 382,  486,  590,
@@ -85,7 +86,7 @@ int main() {
             << "[" << N << "x" << K << "]" << "[" << N << "x" << K << "]^T : ";
   // Usual trick: pretend we use column-major and demand transposed operation
   double cp[N*(N+1)/2];
-  LAPACKE_dsfrk(LAPACK_COL_MAJOR, 'N', 'L', 'T', N, K, 1.0, a, K, 0.0, cp);
+  fast_linalg::sfrk(fast_linalg::LAPACK_COL_MAJOR, 'N', 'L', 'T', N, K, 1.0, a, K, 0.0, cp);
   /* Mathematica code to compute the expected result:
   c11 = ArrayFlatten[{{0}, { LowerTriangularize[c[[;; 3, ;; 3]]]}}] +
    ArrayFlatten[{{UpperTriangularize[c[[4 ;;, 4 ;;]]]}, {0}}];
@@ -106,7 +107,7 @@ int main() {
   // The trick here is that the lower triangle in column-major
   // is the upper triangle in row-major that we want.
   double cp1[N*(N+1)/2];
-  LAPACKE_dtfttp(LAPACK_COL_MAJOR, 'N', 'L', N, cp_ref, cp1);
+  fast_linalg::tfttp(fast_linalg::LAPACK_COL_MAJOR, 'N', 'L', N, cp_ref, cp1);
   std::cout << "Rectangular full packed -> packed # ";
   all_correct = all_correct && check_packed_full(N, cp1, c_ref);
 

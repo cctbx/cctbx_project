@@ -50,7 +50,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
       def_init_<ObjectType, NormalEquations_BLAS2, unit_weighting            >(klass);
       def_init_<ObjectType, NormalEquations_BLAS2, sigma_weighting           >(klass);
 
-#if defined(CCTBX_HAS_LAPACKE)
       typedef
         lstbx::normal_equations::non_linear_ls_with_separable_scale_factor<
         FloatType,
@@ -59,7 +58,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
       def_init_<ObjectType, NormalEquations_BLAS3, mainstream_shelx_weighting>(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, unit_weighting            >(klass);
       def_init_<ObjectType, NormalEquations_BLAS3, sigma_weighting           >(klass);
-#endif
     }
 
     struct normal_equation_building {
