@@ -29,6 +29,7 @@ PAD          1475 1679  172  172 pilatus-2M
 PAD          2463 2527  172  172 pilatus-6M
 PAD          2463 5071  172  172 pilatus-12M
 PAD          2070 2167   75   75 eiger-4M
+PAD          2070 2164   75   75 eiger-4M
 PAD          3110 3269   75   75 eiger-9M
 PAD          4150 4371   75   75 eiger-16M
 PAD          2100 2290  150  150 adsc-HF4M
