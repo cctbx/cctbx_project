@@ -152,6 +152,8 @@ def exercise_adp_restraints_as_cif():
   xs = smtbx.development.sucrose()
   rigid_bond_proxies = smtbx_adp_restraints.rigid_bond_restraints(
     xray_structure=xs).proxies[:3]
+  rigu_proxies = smtbx_adp_restraints.rigu_restraints(
+    xray_structure=xs).proxies[:3]
   adp_similarity_proxies = smtbx_adp_restraints.adp_similarity_restraints(
     xray_structure=xs).proxies[:3]
   isotropic_adp_proxies = smtbx_adp_restraints.isotropic_adp_restraints(
@@ -160,6 +162,7 @@ def exercise_adp_restraints_as_cif():
   iotbx.cif.restraints.add_to_cif_block(
     cif_block, xs,
     rigid_bond_proxies=rigid_bond_proxies,
+    rigu_proxies=rigu_proxies,
     adp_similarity_proxies=adp_similarity_proxies,
     isotropic_adp_proxies=isotropic_adp_proxies)
   s = StringIO()
@@ -174,6 +177,17 @@ loop_
   O1  C1  0.0100  0.0176   0.0006
   O1  C2  0.0100  0.0194  -0.0053
   O1  C3  0.0100  0.0177   0.0013
+
+loop_
+  _restr_RIGU_atom_site_label_1
+  _restr_RIGU_atom_site_label_2
+  _restr_RIGU_target_weight_param
+  _restr_RIGU_U13_diff
+  _restr_RIGU_U23_diff
+  _restr_RIGU_U33_diff
+  O1  C1  0.004000  -0.002796  -0.000917   0.000599
+  O1  C2  0.004000   0.000894  -0.001962  -0.005274
+  O1  C3  0.004000  -0.002962   0.000664   0.001305
 
 loop_
   _restr_U_similar_atom_site_label_1
