@@ -261,14 +261,16 @@ diffracted[3]=diffracted_v[2];
                                 if (subS == oversample-1 && subF == oversample-1 && thick_tic==detector_thicksteps-1){
                                 if (source == sources-1 && phi_tic == phisteps-1 && mos_tic == mosaic_domains-1) {
                                   polar = MC.polar;  //breaks const correctness
+if (printout){
+  h0 = MC.h0;
+  k0 = MC.k0;
+  l0 = MC.l0;
+  F_cell = MC.F_cell;
+}
                                 }
                                 }
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I_reduction += MC.I_increment; //breaks const correctness
-h0 = MC.h0;
-k0 = MC.k0;
-l0 = MC.l0;
-F_cell = MC.F_cell;
                             }
                             /* end of mosaic loop */
                             I+=I_reduction;
