@@ -53,10 +53,19 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.model:
     models = [params.model]
   elif params.model_list:
-    models = params.model_list.split(',')
+    if os.path.isfile(params.model_list):
+      with open(params.model_list, 'r') as f:
+        models = f.read().split('\n')
+        models = [m for m in models if m != ""]
+    else:
+      models = params.model_list.split(',')
     params.verbose=False
+    params.model=models[0]
   results = []
   for model in models:
+    if not os.path.isfile(model) and params.model_list:
+      print "Cannot find '%s', skipping." % model
+      continue
     pdb_in = cmdline.get_file(model, force_type="pdb")
     hierarchy = pdb_in.file_object.hierarchy
     hierarchy.atoms().reset_i_seq()
