@@ -32,7 +32,7 @@ def check_array_alignment(array_alignment, n, pairs):
 @pytest.mark.parametrize("n", range(2,6))
 def test_given_members_size(array_alignment, n, n_trials=10):
   random.seed(0)
-  i_mbrs = range(n)
+  i_mbrs = list(range(n))
   for i_trial in xrange(n_trials):
     random.shuffle(i_mbrs)
     #

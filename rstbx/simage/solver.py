@@ -439,7 +439,7 @@ class refinery(object):
       mp_results = easy_mp.pool_map(
         fixed_func=refinement_target_eps(
           O.image_mdls, O.work_params.usable_partiality_threshold, eps),
-        args=range(n_mdls),
+        args=list(range(n_mdls)),
         chunksize=1,
         log=sys.stdout)
       g.resize(n_mdls)
@@ -526,7 +526,7 @@ def index_and_integrate(work_params, image_mdls):
     from libtbx import easy_mp
     mp_results = easy_mp.pool_map(
       fixed_func=mp_func,
-      args=range(n_mdls),
+      args=list(range(n_mdls)),
       chunksize=1,
       log=sys.stdout,
       func_wrapper="buffer_stdout_stderr")
@@ -647,7 +647,7 @@ def build_images(work_params, i_calc, reindexing_assistant):
     from libtbx import easy_mp
     result = easy_mp.pool_map(
       fixed_func=build_one_image,
-      args=range(n_mdls),
+      args=list(range(n_mdls)),
       chunksize=1,
       log=sys.stdout)
     for im in result:
@@ -808,7 +808,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
       i_perm_and_scale_by_i_img={i_img: i_perm_and_scale(0, 1)},
       miis_perms=[_ for _,__ in miis_perms],
       esti_perms=[_ for __,_ in miis_perms]))
-  remaining = range(n_imgs)
+  remaining = list(range(n_imgs))
   cluster_pairs = [{} for _ in xrange(n_imgs)]
   def process_cp(i_rem, j_rem):
     i_clu = remaining[i_rem]
@@ -850,7 +850,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
           from libtbx import easy_mp
           mp_results = easy_mp.pool_map(
             fixed_func=process_chunk,
-            args=range(n_chunks),
+            args=list(range(n_chunks)),
             chunksize=1,
             log=sys.stdout)
           for cps in mp_results:

@@ -102,7 +102,7 @@ def run(args):
         fee = Image(header, "FEE", data) # make a 2D plot
         publish.send("FEE", fee) # send to the display
 
-        spectrumplot = XYPlot(header, 'summed 1D trace', range(data.shape[1]), spectrum) # make a 1D plot
+        spectrumplot = XYPlot(header, 'summed 1D trace', list(range(data.shape[1])), spectrum) # make a 1D plot
         publish.send("SPECTRUM", spectrumplot) # send to the display
 
         fee = Image(header, "DC_OFFSET", dc_offset) # make a 2D plot

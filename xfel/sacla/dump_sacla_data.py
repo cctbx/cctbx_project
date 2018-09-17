@@ -62,6 +62,6 @@ def do_work(img_no):
   easy_pickle.dump(dest_path, imgdict)
 
 easy_mp.pool_map(
-            args=range(data.get_num_images()),
+            args=list(range(data.get_num_images())),
             func=do_work,
             processes=4)

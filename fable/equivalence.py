@@ -22,7 +22,7 @@ def array_alignment(members_size, i_mbr_byte_offset_pairs):
         diff_matrix[i] = d
       elif (dd != d):
         raise RuntimeError(msg_directly_conflicting)
-  cluster_indices = range(n)
+  cluster_indices = list(range(n))
   clusters = []
   for i in xrange(n):
     clusters.append([])

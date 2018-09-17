@@ -94,7 +94,7 @@ class agipd_cxigeom2nexus(object):
     instrument.attrs['NX_class'] = 'NXinstrument'
     agipd = instrument.create_group('AGIPD')
     agipd.attrs['NX_class'] = 'NXdetector_group'
-    agipd.create_dataset('group_index', data = range(1,3), dtype='i')
+    agipd.create_dataset('group_index', data = list(range(1,3)), dtype='i')
     data = ['AGIPD','ELE_D0']
     agipd.create_dataset('group_names',(2,), data=data, dtype='S12')
     agipd.create_dataset('group_parent',(2,), data=[-1,1], dtype='i')
