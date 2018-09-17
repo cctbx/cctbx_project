@@ -122,6 +122,7 @@ class manager(object):
       bond_proxies=self.bond_proxies,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      chirality_proxies=self.chirality_proxies,
       bond_similarity_proxies=self.bond_similarity_proxies,
       rigid_bond_proxies=self.rigid_bond_proxies,
       adp_similarity_proxies=self.adp_similarity_proxies,
