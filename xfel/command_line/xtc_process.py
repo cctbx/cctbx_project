@@ -327,6 +327,15 @@ xtc_phil_str = '''
                 which events to process. Some processes will finish early and go    \
                 idle, but no MPI overhead is incurred.
     }
+    composite_stride = None
+      .type = int
+      .help = For MPI, if using composite mode, specify how many ranks to    \
+              aggregate data from.  For example, if you have 100 processes,  \
+              composite mode will output N*100 files, where N is the number  \
+              of file types (json, pickle, etc). If you specify stride = 25, \
+              then each group of 25 process will send their results to 4     \
+              processes and only N*4 files will be created. Ideally, match   \
+              stride to the number of processors per node.
   }
 '''
 
