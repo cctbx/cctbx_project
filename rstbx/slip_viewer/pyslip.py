@@ -22,7 +22,7 @@ difficulty for most uses is to generate the map tiles.
 [1] http://wiki.openstreetmap.org/index.php/Slippy_Map
 """
 from __future__ import division
-
+from six.moves import range
 
 # Copyright (c) 2010, Ross Wilson (rzzzwilson@gmail.com). All rights reserved.
 #
