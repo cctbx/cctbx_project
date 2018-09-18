@@ -25,7 +25,8 @@ class rotarama_plot_mixin (object) :
                  contours=None,
                  xyz=None,
                  extent=None,
-                 y_marks=None) :
+                 y_marks=None,
+                 point_style='bo') :
     # points = [(x,y,label, isoutlier(bool)), (), ...]
     import matplotlib.cm
     self._points = []
@@ -58,12 +59,12 @@ class rotarama_plot_mixin (object) :
       non_out = list(itertools.ifilterfalse(lambda x: x[3], points))
       non_out_columns = zip(*non_out)
       if len(out) > 0:
-        self.plot.plot(tuple(out_columns[0]), tuple(out_columns[1]), 'bo', markerfacecolor='red')
+        self.plot.plot(tuple(out_columns[0]), tuple(out_columns[1]), point_style, markerfacecolor='red')
         if show_labels :
-          for x, y, l, _ in out:
+          for x, y, label, _ in out:
             self.plot.text(x, y, label, color='black')
       if len(non_out) > 0:
-        self.plot.plot(non_out_columns[0], non_out_columns[1], 'bo', markerfacecolor='white')
+        self.plot.plot(non_out_columns[0], non_out_columns[1], point_style, markerfacecolor='white')
     self.canvas.draw()
 
 class residue_bin (slots_getstate_setstate) :

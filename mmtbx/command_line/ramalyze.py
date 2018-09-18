@@ -18,6 +18,11 @@ def get_master_phil():
     show_labels = True
       .type = bool
       .help = Show labels on outlier residues
+    point_style = 'bo'
+      .type = str
+      .help = choose style of points, use matplotlib format from e.g. here: \
+        https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html \
+        very small is ',', little bigger is '.'
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
@@ -90,7 +95,8 @@ def run (args, out=sys.stdout, quiet=False) :
     result.write_plots(
         plot_file_base=plot_file_base,
         out=out,
-        show_labels=params.show_labels)
+        show_labels=params.show_labels,
+        point_style=params.point_style)
   if params.wxplot :
     try :
       import wxtbx.app

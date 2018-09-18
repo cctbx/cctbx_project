@@ -255,7 +255,7 @@ class ramalyze (validation) :
     self.results += other.results
     return self
 
-  def write_plots (self, plot_file_base, out, show_labels=True) :
+  def write_plots (self, plot_file_base, out, show_labels=True, point_style='bo') :
     """
     Write a set of six PNG images representing the plots for each residue type.
 
@@ -277,7 +277,8 @@ class ramalyze (validation) :
         position_type=pos,
         title=format_ramachandran_plot_title(pos, '*'),
         file_name=plot_file_name,
-        show_labels=show_labels)
+        show_labels=show_labels,
+        point_style=point_style)
       print >> out, "  wrote %s" % plot_file_name
 
   def display_wx_plots (self, parent=None,
@@ -636,7 +637,8 @@ def draw_ramachandran_plot (points,
                             position_type,
                             title,
                             file_name,
-                            show_labels=True) :
+                            show_labels=True,
+                            point_style='bo') :
   p = ramachandran_plot()
   # XXX where do these numbers come from?
   # They are probably wrong/inconsistent.
@@ -653,5 +655,6 @@ def draw_ramachandran_plot (points,
     points=points,
     show_labels=show_labels,
     colormap="Blues",
-    contours=contours)
+    contours=contours,
+    point_style=point_style)
   p.save_image(file_name)
