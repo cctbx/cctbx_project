@@ -803,6 +803,8 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
         except Exception as e:
           print "Error caught in main loop"
           print str(e)
+        print "Synchronizing rank %d"%rank
+        comm.Barrier()
         print "Rank %d done with main loop"%rank
       else:
         import resource
