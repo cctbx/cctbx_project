@@ -232,7 +232,7 @@ class Script(Script_Base):
           hkl = (hkl_array[0], hkl_array[1], hkl_array[2])
           chunk_of_hkl_dictionaries[hkl] = list()
         list_of_chunks_of_hkl_dictionaries.append(chunk_of_hkl_dictionaries)
-  
+
       self.mpi_log_write("\nRank 0 generated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
       #print("\nRank 0 generated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
 
@@ -263,10 +263,10 @@ class Script(Script_Base):
     self.mpi_log_write ("\nRank %d received a file list of %d json-pickle file pairs and %d chunks of hkl containers" % (self.rank, len(new_file_list), len(chunks)))
     comm.barrier()
     self.log_step_time(comm, "BROADCAST", True)
-    
+
     rank_experiment_count = 0
     rank_reflection_count = 0
-    
+
     if( len(new_file_list) > 0 ):
       self.mpi_log_write("\nRank %d: first file to load is: %s" % (self.rank, str(new_file_list[0])))
 
@@ -280,8 +280,8 @@ class Script(Script_Base):
       reflections = self.sort_reflections_by_asu_miller_index(experiments, reflections)
 
       comm.barrier()
-      self.log_step_time(comm, "LOAD", True)      
-            
+      self.log_step_time(comm, "LOAD", True)
+
       ############################################################
       # GET THE TOTAL NUMBER OF LOADED EXPERIMENTS AND REFLECTIONS
       rank_experiment_count = len(experiments)
@@ -305,14 +305,14 @@ class Script(Script_Base):
       self.mpi_log_write ("\nRank %d received no data" % self.rank)
       comm.barrier()
       comm.barrier()
-      comm.barrier()    
-    
+      comm.barrier()
+
     ##############################################################################
     # MPI-REDUCE AND REPORT THE TOTAL NUMBER OF LOADED EXPERIMENTS AND REFLECTIONS
     total_experiment_count = comm.reduce(rank_experiment_count, MPI.SUM, 0)
     if( self.rank == 0 ):
       self.mpi_log_write('\nAll ranks have read %d experiments'%total_experiment_count)
-        
+
     #######################################################################
     # EACH RANK: RECEIVE ALL HKL CHUNKS (WITH THE SAME HKLS) FROM ALL RANKS
     self.log_step_time(comm, "ALL-TO-ALL")
