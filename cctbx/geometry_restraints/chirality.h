@@ -32,23 +32,49 @@ namespace cctbx { namespace geometry_restraints {
       origin_id(origin_id_)
     {}
 
+    //! Constructor.
+    chirality_proxy(
+      i_seqs_type const& i_seqs_,
+      optional_container<af::shared<sgtbx::rt_mx> > const& sym_ops_,
+      double volume_ideal_,
+      bool both_signs_,
+      double weight_,
+      unsigned char origin_id_)
+    :
+      i_seqs(i_seqs_),
+      sym_ops(sym_ops_),
+      volume_ideal(volume_ideal_),
+      both_signs(both_signs_),
+      weight(weight_),
+      origin_id(origin_id_)
+    {
+      if ( sym_ops.get() != 0 ) {
+        CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+    }
+
     //! Support for proxy_select (and similar operations).
     chirality_proxy(
       i_seqs_type const& i_seqs_,
       chirality_proxy const& proxy)
     :
       i_seqs(i_seqs_),
+      sym_ops(proxy.sym_ops),
       volume_ideal(proxy.volume_ideal),
       both_signs(proxy.both_signs),
       weight(proxy.weight),
       origin_id(proxy.origin_id)
-    {}
+    {
+      if ( sym_ops.get() != 0 ) {
+        CCTBX_ASSERT(sym_ops.get()->size() == i_seqs.size());
+      }
+    }
 
     chirality_proxy
     scale_weight(
       double factor) const
     {
-      return chirality_proxy(i_seqs, volume_ideal, both_signs, weight*factor,
+      return chirality_proxy(i_seqs, sym_ops, volume_ideal, both_signs, weight*factor,
           origin_id);
     }
 
@@ -61,6 +87,9 @@ namespace cctbx { namespace geometry_restraints {
         for(unsigned j=i+1;j<4;j++) {
           if (result.i_seqs[i] > result.i_seqs[j]) {
             std::swap(result.i_seqs[i], result.i_seqs[j]);
+            if ( sym_ops.get() != 0 ) {
+              std::swap(result.sym_ops[i], result.sym_ops[j]);
+            }
             if (!both_signs) result.volume_ideal *= -1;
           }
         }
@@ -70,6 +99,8 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Indices into array of sites.
     i_seqs_type i_seqs;
+    //! Optional array of symmetry operations.
+    optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
     //! Parameter.
     double volume_ideal;
     //! Parameter.
@@ -133,6 +164,13 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
+          if ( proxy.sym_ops.get() != 0 ) {
+            sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+            if ( !rt_mx.is_unit_mx() ) {
+              sites[i] = unit_cell.orthogonalize(
+                rt_mx * unit_cell.fractionalize(sites[i]));
+            }
+          }
         }
         init_volume_model();
       }
@@ -181,39 +219,32 @@ namespace cctbx { namespace geometry_restraints {
         cctbx::xray::parameter_map<cctbx::xray::scatterer<double> > const &parameter_map,
         chirality_proxy const& proxy) const
       {
-        /** V = a . (b x c)
-         *  L = V**2
-         *  dL = 2.0 V dV 
-         *
-         *  See Bourhis, L. J., et. al. (2015). Acta Cryst. A71, 59-75.
-         *  The calculations of the derivatives here is different 
-         *  from the paper. Using L = V**2 for the restraint remains
-         *
-         **/
-
         chirality_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         std::size_t row_i = linearised_eqns.next_row();
-        double f = 2.0 * volume_model;
         for(int i=0;i<4;i++) {
           grads[i] = unit_cell.fractionalize_gradient(grads[i]);
+          if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
+            scitbx::mat3<double> r_inv
+              = sym_ops[i].r().inverse().as_double();
+            grads[i] = grads[i] * r_inv;
+          }
           cctbx::xray::parameter_indices const &ids_i =
             parameter_map[i_seqs[i]];
           if (ids_i.site == -1) continue;
           for (int j=0;j<3;j++) {
-            linearised_eqns.design_matrix(row_i, ids_i.site+j) += f * grads[i][j];
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) += delta_sign * grads[i][j];
           }
 
-          //! The weight is given for V = a . (b x c), scaling for L = V**2
-          //! Note: Var(X**2) = 2*Var(X)**2
-          linearised_eqns.weights[row_i] = proxy.weight*proxy.weight/2.0;
-          linearised_eqns.deltas[row_i] = 
-            volume_model*volume_model - volume_ideal*volume_ideal;
+          linearised_eqns.weights[row_i] = proxy.weight;
+          linearised_eqns.deltas[row_i] = volume_ideal + delta_sign * volume_model;
         }
       }
 
       //! Cartesian coordinates of the sites defining the chiral center.
       af::tiny<scitbx::vec3<double>, 4> sites;
+      //! Optional array of symmetry operations.
+      optional_container<af::shared<sgtbx::rt_mx> > sym_ops;
       //! Parameter (usually as passed to the constructor).
       double volume_ideal;
       //! Parameter (usually as passed to the constructor).
@@ -245,6 +276,11 @@ namespace cctbx { namespace geometry_restraints {
         delta_sign = -1;
         if (both_signs && volume_model < 0) delta_sign = 1;
         delta = volume_ideal + delta_sign * volume_model;
+        std::cout << sites[0][0] << " " << sites[0][1] << " " << sites[0][2] << "\n";
+        std::cout << sites[1][0] << " " << sites[1][1] << " " << sites[1][2] << "\n";
+        std::cout << sites[2][0] << " " << sites[2][1] << " " << sites[2][2] << "\n";
+        std::cout << sites[3][0] << " " << sites[3][1] << " " << sites[3][2] << "\n";
+        std::cout << volume_ideal << " " << volume_model << " " << delta << "\n";
       }
   };
 
@@ -258,6 +294,16 @@ namespace cctbx { namespace geometry_restraints {
     return detail::generic_deltas<chirality_proxy, chirality>::get(
       sites_cart, proxies);
   }
+  inline
+  af::shared<double>
+  chirality_deltas(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<chirality_proxy> const& proxies)
+  {
+    return detail::generic_deltas<chirality_proxy, chirality>::get(
+      unit_cell, sites_cart, proxies);
+  }
 
   /*! Fast computation of chirality::residual() given an array of
       chirality proxies.
@@ -270,6 +316,16 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residuals<chirality_proxy, chirality>::get(
       sites_cart, proxies);
+  }
+  inline
+  af::shared<double>
+  chirality_residuals(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<chirality_proxy> const& proxies)
+  {
+    return detail::generic_residuals<chirality_proxy, chirality>::get(
+      unit_cell, sites_cart, proxies);
   }
 
   /*! Fast computation of sum of chirality::residual() and gradients

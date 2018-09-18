@@ -64,7 +64,7 @@ class manager(object):
       self.chirality_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        unit_cell=unit_cell, f=f, prefix=prefix, max_items=max_items)
       print >> f
     if (self.planarity_proxies is not None):
       self.planarity_proxies.show_sorted(
