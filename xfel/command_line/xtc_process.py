@@ -379,32 +379,34 @@ def run_psana2(ims, params, comm):
     comm: mpi comm for broadcasting per run calibration files"""
     ds = psana.DataSource("exp=%s:run=%s:dir=%s" \
         %(params.input.experiment, params.input.run_num, params.input.xtc_dir), \
-        filter=filter, max_events=params.dispatch.max_events)
-    det = None
-    if ds.nodetype == "bd":
-      det = ds.Detector(params.input.address)
+        filter=filter, max_events=params.dispatch.max_events, det_name=params.input.address)
 
     for run in ds.runs():
+      det = ds.Detector(ds.det_name)
       # broadcast cctbx per run calibration
       if comm.Get_rank() == 0:
         PS_CALIB_DIR = os.environ.get('PS_CALIB_DIR')
         assert PS_CALIB_DIR
-        metro = easy_pickle.load(os.path.join(PS_CALIB_DIR,'metro.pickle'))
         dials_mask = easy_pickle.load(params.format.cbf.invalid_pixel_mask)
       else:
-        metro = None
         dials_mask = None
-      metro = comm.bcast(metro, root=0)
       dials_mask = comm.bcast(dials_mask, root=0)
 
       for evt in run.events():
-        if det:
-          ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address, metro=metro)
-          ims.dials_mask = dials_mask
-          ims.spotfinder_mask = None
-          ims.integration_mask = None
-          ims.process_event(run, evt, det)
-          ims.finalize()
+        ims.base_dxtbx = cspad_cbf_tbx.env_dxtbx_from_slac_metrology(run, params.input.address)
+        ims.dials_mask = dials_mask
+        ims.spotfinder_mask = None
+        ims.integration_mask = None
+        ims.psana_det = det
+        if params.format.file_format == 'cbf':
+          if params.format.cbf.cspad.common_mode.algorithm == "custom":
+            ims.common_mode = params.format.cbf.cspad.common_mode.custom_parameterization
+            assert ims.common_mode is not None
+          else:
+            ims.common_mode = params.format.cbf.cspad.common_mode.algorithm # could be None or default
+        ims.process_event(run, evt)
+    
+    ims.finalize()
 
 class EventOffsetSerializer(object):
   """ Pickles python object """
@@ -931,7 +933,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     # Used by database logger
     return self.run.run(), self.timestamp
 
-  def process_event(self, run, evt, det=None):
+  def process_event(self, run, evt):
     """
     Process a single event from a run
     @param run psana run object
@@ -985,18 +987,11 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     if self.params.format.file_format == 'cbf':
       if self.params.format.cbf.mode == "cspad":
         # get numpy array, 32x185x388
-        if PSANA2_VERSION:
-          # FIXME MONA: remove this when all detector interfaces are ready
-          data = det.raw(evt) - det.pedestals(run)
-          gain_mask = det.gain_mask(run)
-          if gain_mask is not None:
-            data *= gain_mask
-        else:
-          data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
-                                                      common_mode=self.common_mode,
-                                                      apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
-                                                      gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
-                                                      per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
+        data = cspad_cbf_tbx.get_psana_corrected_data(self.psana_det, evt, use_default=False, dark=True,
+                                                    common_mode=self.common_mode,
+                                                    apply_gain_mask=self.params.format.cbf.cspad.gain_mask_value is not None,
+                                                    gain_mask_value=self.params.format.cbf.cspad.gain_mask_value,
+                                                    per_pixel_gain=self.params.format.cbf.cspad.per_pixel_gain)
 
       elif self.params.format.cbf.mode == "rayonix":
         data = rayonix_tbx.get_data_from_psana_event(evt, self.params.input.address)
