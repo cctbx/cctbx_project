@@ -20,7 +20,31 @@ def merging_reflection_table():
 class Script(Script_Base):
   '''A class for running the script.'''
 
-  # given unit cell, space group info, and resolution, generate all miller indices
+  def sort_reflections_by_asu_miller_index(self, experiments, reflections):
+    from cctbx import miller
+    from cctbx.crystal import symmetry
+    from dials.array_family import flex
+
+    sorted_reflections = flex.reflection_table()
+
+    for experiment_id, experiment in enumerate(experiments):
+
+      refls = reflections.select(reflections['id'] == experiment_id)
+
+      SYM = symmetry(unit_cell = experiment.crystal.get_unit_cell(), space_group = str(self.params.filter.unit_cell.value.target_space_group))
+      mset = SYM.miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), indices=refls['miller_index'])
+
+      refls['miller_index_original'] = refls['miller_index']
+      del refls['miller_index']
+
+      refls['miller_index_asymmetric'] = mset.map_to_asu().indices()
+      sorted_reflections.extend(refls)
+
+    sorted_reflections.sort('miller_index_asymmetric')
+
+    return sorted_reflections
+
+  # given a unit cell, space group info, and resolution, generate all miller indices
   def generate_all_miller_indices(self):
 
     from cctbx import miller
@@ -29,7 +53,7 @@ class Script(Script_Base):
     unit_cell = self.params.filter.unit_cell.value.target_unit_cell
     space_group_info = self.params.filter.unit_cell.value.target_space_group
     symm = symmetry(unit_cell = unit_cell, space_group_info = space_group_info)
-    miller_set = symm.build_miller_set(anomalous_flag=False, d_max=1000.0, d_min=self.params.filter.resolution.d_min)
+    miller_set = symm.build_miller_set(anomalous_flag=(not self.params.merging.merge_anomalous), d_max=1000.0, d_min=self.params.filter.resolution.d_min)
 
     return miller_set
 
@@ -40,7 +64,8 @@ class Script(Script_Base):
       if( hkl in chunk ):
         return chunk
 
-    #print ("\nHKL: %s is not present in any of the chunks"%str(hkl))
+    # TODO: in debug mode
+    #self.mpi_log_write ("\nHKL: %s is not present in any of the chunks"%str(hkl))
 
     return None
 
@@ -78,7 +103,7 @@ class Script(Script_Base):
           hkl_cur = hkl
           index_min = i
 
-    print("Rank %d managed to distribute %d of %d reflections"%(self.rank, total_distributed_reflection_count, len(reflections)))
+    self.mpi_log_write("\nRank %d managed to distribute %d out of %d reflections"%(self.rank, total_distributed_reflection_count, len(reflections)))
 
     '''
     number_of_allocated_reflections = dict()
@@ -87,19 +112,15 @@ class Script(Script_Base):
       for hkl in chunks[chunk_index]:
         if len(chunks[chunk_index][hkl]) > 0:
           number_of_allocated_reflections[chunk_index] += len(chunks[chunk_index][hkl])
-      print("\nRank %d chunk %d allocated reflections: %d"%(self.rank, chunk_index, number_of_allocated_reflections[chunk_index]))
+      self.mpi_log_write("\nRank %d chunk %d allocated reflections: %d"%(self.rank, chunk_index, number_of_allocated_reflections[chunk_index]))
     '''
-
-
   # Given a list of reflections, calculate their intensity statistics. Use case: a list of symmetry-equivalent reflections
   def calc_reflection_intensity_stats(self, reflections):
 
     if( len(reflections) == 0 ):
       return dict()
 
-
     # TODO: use library methods for the statistics
-
 
     count = 0
     average_intensity = 0.0
@@ -150,11 +171,12 @@ class Script(Script_Base):
     else: # finished - calculate the spent time
       self.timing_table[step][2] = MPI.Wtime() - self.timing_table[step][1]
 
-  def save_log(self):
-    if not self.do_timing: # for now the log is used for timimg only
+  def timing_log_write(self):
+    if not self.do_timing:
       return
 
-    filename = "timing_" + str(self.rank_count) + "_" + str(self.rank) + ".out"
+    filename = self.params.output.output_dir + '/timing_%06d_%06d.out'%(self.rank_count, self.rank)
+
     log_file = open(filename,'w')
 
     for step, value in sorted(self.timing_table.iteritems(), key=lambda (k,v): (v,k)):
@@ -162,6 +184,10 @@ class Script(Script_Base):
 
     log_file.close()
 
+  def mpi_log_write(self, string):
+    mpi_log_file_handle = open(self.mpi_log_file_path, 'a')
+    mpi_log_file_handle.write(string)
+    mpi_log_file_handle.close()
 
   def run(self, comm, timing=True):
 
@@ -178,16 +204,20 @@ class Script(Script_Base):
       self.initialize()
       self.validate()
 
+      self.mpi_log_file_path = self.params.output.output_dir + '/rank_%06d_%06d.out'%(self.rank_count, self.rank)
+
       ################
       # GET FILE LIST
       self.log_step_time(comm, "SETUP")
       file_list = self.get_list()
-      print("rank 0 got a list of %d items"%len(file_list))
+      self.mpi_log_write("\nRank 0 generated a list of %d file items"%len(file_list))
+      #print("\nRank 0 generated a list of %d file items"%len(file_list))
 
       #############################
       # GENERATE ALL MILLER INDICES
       full_miller_set = self.generate_all_miller_indices()
-      print("\nGenerated %d miller indices"%full_miller_set.indices().size())
+      self.mpi_log_write("\nRank 0 generated %d miller indices"%full_miller_set.indices().size())
+      #print("\nRank 0 generated %d miller indices"%full_miller_set.indices().size())
 
       ###################################################################
       # SPLIT MILLER INDICES INTO CHUNKS TO BE DISTRIBUTED OVER THE RANKS
@@ -202,15 +232,17 @@ class Script(Script_Base):
           hkl = (hkl_array[0], hkl_array[1], hkl_array[2])
           chunk_of_hkl_dictionaries[hkl] = list()
         list_of_chunks_of_hkl_dictionaries.append(chunk_of_hkl_dictionaries)
-
-      print("\nGenerated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
+  
+      self.mpi_log_write("\nRank 0 generated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
+      #print("\nRank 0 generated %d chunks of hkl containers"%len(list_of_chunks_of_hkl_dictionaries))
 
       #self.params.input.path = None # the input is already parsed
       self.log_step_time(comm, "SETUP", True)
 
       #########################################
       # BROADCAST WORK FROM RANK 0 TO ALL RANKS
-      print ('\nTransmitting file list of length %d'%(len(file_list)))
+      self.mpi_log_write("\nRank 0 transmitting file list of length %d"%(len(file_list)))
+      #print('\nRank 0 transmitting file list of length %d'%(len(file_list)))
 
       transmitted = dict(params = self.params, options = self.options, file_list = file_list, list_of_chunks_of_hkl_dictionaries = list_of_chunks_of_hkl_dictionaries)
 
@@ -225,56 +257,85 @@ class Script(Script_Base):
     self.options = transmitted['options']
     new_file_list = transmitted['file_list'][self.rank::self.rank_count]
     chunks = transmitted['list_of_chunks_of_hkl_dictionaries']
-    print ("\nRank %d received a file list of %d json-pickle file pairs and %d chunks of hkl containers" % (self.rank, len(new_file_list), len(chunks)))
+
+    self.mpi_log_file_path = self.params.output.output_dir + '/rank_%06d_%06d.out'%(self.rank_count, self.rank)
+
+    self.mpi_log_write ("\nRank %d received a file list of %d json-pickle file pairs and %d chunks of hkl containers" % (self.rank, len(new_file_list), len(chunks)))
     comm.barrier()
     self.log_step_time(comm, "BROADCAST", True)
-
+    
+    rank_experiment_count = 0
+    rank_reflection_count = 0
+    
     if( len(new_file_list) > 0 ):
-      print ("\nRank %d: first file to load is: %s" % (self.rank, str(new_file_list[0])))
+      self.mpi_log_write("\nRank %d: first file to load is: %s" % (self.rank, str(new_file_list[0])))
 
       ######################
       # EACH RANK: LOAD DATA
       comm.barrier()
       self.log_step_time(comm, "LOAD")
       experiments, reflections = self.load_data(new_file_list)
-      print ('\nRank %d has read %d experiments consisting of %d reflections'%(self.rank, len(experiments), len(reflections)))
+      self.mpi_log_write ('\nRank %d has read %d experiments consisting of %d reflections'%(self.rank, len(experiments), len(reflections)))
+
+      reflections = self.sort_reflections_by_asu_miller_index(experiments, reflections)
+
       comm.barrier()
-      self.log_step_time(comm, "LOAD", True)
+      self.log_step_time(comm, "LOAD", True)      
+            
+      ############################################################
+      # GET THE TOTAL NUMBER OF LOADED EXPERIMENTS AND REFLECTIONS
+      rank_experiment_count = len(experiments)
+      rank_reflection_count = len(reflections)
 
       #######################################################
       # EACH RANK: DISTRIBUTE REFLECTIONS OVER ALL HKL CHUNKS
       self.log_step_time(comm, "DISTRIBUTE")
-      for chunk_index in range(0, len(chunks)):
-        min_hkl = str(min(chunks[chunk_index]))
-        max_hkl = str(max(chunks[chunk_index]))
-        print("\nRank %d received chunk: %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (self.rank, chunk_index, len(chunks[chunk_index]), min_hkl, max_hkl))
+
+      # TODO: in debug mode
+      #for chunk_index in range(0, len(chunks)):
+        #min_hkl = str(min(chunks[chunk_index]))
+        #max_hkl = str(max(chunks[chunk_index]))
+
+        #self.mpi_log_write("\nRank %d received chunk: %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (self.rank, chunk_index, len(chunks[chunk_index]), min_hkl, max_hkl))
+
       self.distribute_reflections_over_hkl_chunks(reflections=reflections, chunks=chunks)
       comm.barrier()
       self.log_step_time(comm, "DISTRIBUTE", True)
     else:
-      print ("\nRank %d received no data" % self.rank)
+      self.mpi_log_write ("\nRank %d received no data" % self.rank)
       comm.barrier()
       comm.barrier()
-      comm.barrier()
-
+      comm.barrier()    
+    
+    ##############################################################################
+    # MPI-REDUCE AND REPORT THE TOTAL NUMBER OF LOADED EXPERIMENTS AND REFLECTIONS
+    total_experiment_count = comm.reduce(rank_experiment_count, MPI.SUM, 0)
+    if( self.rank == 0 ):
+      self.mpi_log_write('\nAll ranks have read %d experiments'%total_experiment_count)
+        
     #######################################################################
     # EACH RANK: RECEIVE ALL HKL CHUNKS (WITH THE SAME HKLS) FROM ALL RANKS
     self.log_step_time(comm, "ALL-TO-ALL")
-    print("\nRank %d executing MPI all-to-all...\n"%self.rank)
+    self.mpi_log_write("\nRank %d executing MPI all-to-all..."%self.rank)
+
     received_chunks = comm.alltoall(chunks)
+
     received_chunks_count = len(received_chunks)
-    print ("\nAfter all-to-all rank %d received %d chunks of hkl containers" % (self.rank, received_chunks_count) )
-    for chunk_index in range(0,received_chunks_count):
-      min_hkl = str(min(received_chunks[chunk_index]))
-      max_hkl = str(max(received_chunks[chunk_index]))
-      print("\nAfter all-to-all rank %d received chunk %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (self.rank, chunk_index, len(received_chunks[chunk_index]), min_hkl, max_hkl))
+    self.mpi_log_write ("\nRank %d after all-to-all received %d chunks of hkl containers" % (self.rank, received_chunks_count) )
+
+    # TODO: in debug mode
+    #for chunk_index in range(0,received_chunks_count):
+      #min_hkl = str(min(received_chunks[chunk_index]))
+      #max_hkl = str(max(received_chunks[chunk_index]))
+      #self.mpi_log_write("\nRank %d after all-to-all received chunk %d: HKL count: %d; Min HKL: %s; Max HKL: %s" % (self.rank, chunk_index, len(received_chunks[chunk_index]), min_hkl, max_hkl))
+
     comm.barrier()
     self.log_step_time(comm, "ALL-TO-ALL", True)
 
     ######################################################################
     # EACH RANK: CONSOLIDATE ALL REFLECTION LISTS FROM ALL RECEIVED CHUNKS
     self.log_step_time(comm, "CONSOLIDATE")
-    print("\nRank %d consolidating reflection lists...\n"%self.rank)
+    self.mpi_log_write("\nRank %d consolidating reflection lists..."%self.rank)
     for hkl in received_chunks[0]:
       for chunk_index in range(1,received_chunks_count):
         received_chunks[0][hkl] += received_chunks[chunk_index][hkl]
@@ -284,7 +345,7 @@ class Script(Script_Base):
     ####################################################
     # EACH RANK: DO STATISTICS ON REFLECTION INTENSITIES
     self.log_step_time(comm, "AVERAGE")
-    print("\nRank %d doing intensity statistics...\n"%self.rank)
+    self.mpi_log_write("\nRank %d doing intensity statistics..."%self.rank)
     all_rank_merged_reflections = merging_reflection_table()
 
     for hkl in received_chunks[0]:
@@ -296,7 +357,7 @@ class Script(Script_Base):
                                             'esd' : intensity_stats['esd'],
                                             'rmsd' : intensity_stats['rmsd']})
 
-    print ("\nr\Rank %d merged %d reflection intensities"%(self.rank, all_rank_merged_reflections.size()))
+    self.mpi_log_write ("\nRank %d merged %d reflection intensities"%(self.rank, all_rank_merged_reflections.size()))
     comm.barrier()
     self.log_step_time(comm, "AVERAGE", True)
 
@@ -304,7 +365,7 @@ class Script(Script_Base):
     # EACH RANK: SEND REFLECTION TABLES TO RANK 0
     self.log_step_time(comm, "GATHER")
     if self.rank != 0:
-      print("\nRank %d executing MPI gathering of all reflection tables at rank 0..."%self.rank)
+      self.mpi_log_write("\nRank %d executing MPI gathering of all reflection tables at rank 0..."%self.rank)
     all_merged_reflection_tables = comm.gather(all_rank_merged_reflections, root = 0)
     comm.barrier()
     self.log_step_time(comm, "GATHER", True)
@@ -313,17 +374,18 @@ class Script(Script_Base):
     # RANK 0: DO FINAL MERGING OF TABLES
     if self.rank == 0:
       self.log_step_time(comm, "MERGE")
-      print ("\nRank 0 doing final merging of reflection tables received from all ranks...")
+      self.mpi_log_write ("\nRank 0 doing final merging of reflection tables received from all ranks...")
       final_merged_reflection_table = merging_reflection_table()
       for table in all_merged_reflection_tables:
         final_merged_reflection_table.extend(table)
-      print("Rank 0 total merged reflections: {}".format(final_merged_reflection_table.size()) )
+      self.mpi_log_write("\nRank 0 total merged reflections: {}".format(final_merged_reflection_table.size()) )
       self.log_step_time(comm, "MERGE", True)
 
     comm.barrier()
     self.log_step_time(comm, "TOTAL", True)
+    self.timing_log_write()
 
-    self.save_log()
+    MPI.Finalize()
 
     return
 
