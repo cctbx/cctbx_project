@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os,math
 from cctbx.array_family import flex
 from cctbx.crystal import symmetry
@@ -49,7 +50,7 @@ def get_observations(set,file_names,params):
   print "Only %d of %d obs arrays had the correct cell"%(returned,len(file_names))
 
 def plot_overall_completeness(completeness):
-  completeness_range = xrange(-1,flex.max(completeness)+1)
+  completeness_range = range(-1,flex.max(completeness)+1)
   completeness_counts = [completeness.count(n) for n in completeness_range]
   from matplotlib import pyplot as plt
   plt.plot(completeness_range,completeness_counts,"r+")

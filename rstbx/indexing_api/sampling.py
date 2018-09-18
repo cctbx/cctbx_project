@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from rstbx.array_family import flex
 from rstbx.dps_core import Direction
@@ -33,7 +34,7 @@ class SimpleSampler(sampling.SimpleSamplerTool):
     hemisphere_solutions = flex.Direction();
     hemisphere_solutions.reserve(size);
 
-    for i in xrange(len(input_directions)):
+    for i in range(len(input_directions)):
       sampled_direction = ai.fft_result(input_directions[i])
       if sampled_direction.kval > kval_cutoff:
         hemisphere_solutions.append(sampled_direction)
@@ -41,7 +42,7 @@ class SimpleSampler(sampling.SimpleSamplerTool):
     if (hemisphere_solutions.size()<3):
       return hemisphere_solutions
     kvals = flex.double([
-  hemisphere_solutions[x].kval for x in xrange(len(hemisphere_solutions))])
+  hemisphere_solutions[x].kval for x in range(len(hemisphere_solutions))])
 
     perm = flex.sort_permutation(kvals,True)
 
@@ -83,7 +84,7 @@ class HemisphereSampler(SimpleSampler):
 
     hemisphere_solutions = flex.Direction();
     hemisphere_solutions.reserve(size);
-    for i in xrange(len(input_directions)):
+    for i in range(len(input_directions)):
       D = sampled_direction = ai.fft_result(input_directions[i])
 
       if D.real < self.max_cell_input and sampled_direction.kval > kval_cutoff:
@@ -93,7 +94,7 @@ class HemisphereSampler(SimpleSampler):
     if (hemisphere_solutions.size()<3):
       return hemisphere_solutions
     kvals = flex.double([
-  hemisphere_solutions[x].kval for x in xrange(len(hemisphere_solutions))])
+  hemisphere_solutions[x].kval for x in range(len(hemisphere_solutions))])
 
     perm = flex.sort_permutation(kvals,True)
 
@@ -179,13 +180,13 @@ class HemisphereSampler(SimpleSampler):
     neighborid = A.nn
 
     accept_flag = flex.bool(len(self.angles))
-    for idx in xrange(len(neighbors)):
+    for idx in range(len(neighbors)):
       # use small angle approximation to test if target is within desired radius
       if neighbors[idx] < self.quick_grid:
         accept_flag[neighborid[idx]] = True
 
     #go through all of the original target angles
-    for iz in xrange(len(self.angles)):
+    for iz in range(len(self.angles)):
       if accept_flag[iz]:
         self.restricted.append(self.angles[iz])
 

@@ -6,6 +6,7 @@
    metrology and crystal orientation.
 """
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 import iotbx.phil
 import math
@@ -40,7 +41,7 @@ def consistency_controls(DATA,params,annotate=False):#DATA is an instance of cor
   db = CART.connection()
   cursor = db.cursor()
 
-  for iframe in xrange(len(DATA.FRAMES["frame_id"])):
+  for iframe in range(len(DATA.FRAMES["frame_id"])):
     frame = DATA.FRAMES["frame_id"][iframe]
     selection = (DATA.frame_id == frame)
     match_count = selection.count(True)
@@ -106,14 +107,14 @@ def consistency_controls(DATA,params,annotate=False):#DATA is an instance of cor
         plt.plot(detector_x,detector_y,
           markerfacecolor="b",marker=".",markeredgewidth=0,linestyle="None")
         if annotate:
-          for idx in xrange(len(spotfx)):
+          for idx in range(len(spotfx)):
             plt.annotate("%s"%str(hkl[idx]), xy=(spotfx[idx],spotfy[idx]),
                          xytext=None, xycoords="data", textcoords="data", arrowprops=None,
                          color="red",size=8)
             plt.annotate("%s"%str(hkl[idx]), xy=(spotcx[idx],spotcy[idx]),
                          xytext=None, xycoords="data", textcoords="data", arrowprops=None,
                          color="green",size=8)
-          for idx in xrange(len(fetched)):
+          for idx in range(len(fetched)):
             plt.annotate("%s"%str(integrated_hkl[idx]), xy=(detector_x[idx],detector_y[idx]),
                          xytext=None, xycoords="data", textcoords="data", arrowprops=None,
                          color="blue",size=8)

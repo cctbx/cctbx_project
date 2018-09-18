@@ -5,6 +5,7 @@
     stream events as being a two color event or not.
 '''
 from __future__ import division
+from six.moves import range
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 import numpy as np
@@ -114,7 +115,7 @@ class mod_spectrum_filter_v2(object):
       if one_D:
         # filtering out outlier spikes in FEE data
         data = np.array(data.hproj().astype(np.float64))
-        for i in xrange(len(data)):
+        for i in range(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
         if self.dark is not None:
@@ -135,12 +136,12 @@ class mod_spectrum_filter_v2(object):
       if not one_D:
         # the x-coordinate of the weighted center of peak region
         weighted_peak_one_positions = []
-        for i in xrange(self.peak_one_range_min,self.peak_one_range_max):
+        for i in range(self.peak_one_range_min,self.peak_one_range_max):
           weighted_peak_one_positions.append(spectrum[i]*i)
         weighted_sum_peak_one = sum(weighted_peak_one_positions)
         weighted_peak_one_center_position = weighted_sum_peak_one//sum(spectrum[self.peak_one_range_min:self.peak_one_range_max])
         weighted_peak_two_positions = []
-        for i in xrange(self.peak_two_range_min,self.peak_two_range_max):
+        for i in range(self.peak_two_range_min,self.peak_two_range_max):
           weighted_peak_two_positions.append(spectrum[i]*i)
         weighted_sum_peak_two = sum(weighted_peak_two_positions)
         weighted_peak_two_center_position = weighted_sum_peak_two//sum(spectrum[self.peak_two_range_min:self.peak_two_range_max])

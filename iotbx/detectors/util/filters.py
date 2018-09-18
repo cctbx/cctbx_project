@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math,copy
 from scitbx.array_family import flex
 from iotbx.detectors import low_pass_filter
@@ -34,10 +35,10 @@ def hi_pass_filter(complex_data):
 
   sz_x = complex_data.focus()[0]
   sz_y = complex_data.focus()[1]
-  for x in xrange(sz_x):
+  for x in range(sz_x):
     #dx = min(x,sz_x-x)
     dx = abs((sz_x/2)-x)
-    for y in xrange(sz_y):
+    for y in range(sz_y):
       #dy = min(y,sz_y-y)
       dy = abs((sz_y/2)-y)
       dist = math.hypot(dx,dy)
@@ -75,25 +76,25 @@ class padded_unpadded:
 
     leading_line = result.matrix_copy_block(
       i_row=self.leading1,i_column=0,n_rows=1,n_columns=self.size2)
-    for irow in xrange(self.leading1):
+    for irow in range(self.leading1):
       result.matrix_paste_block_in_place(
         block = leading_line,i_row=irow,i_column=0)
 
     trailing_line = result.matrix_copy_block(
       i_row=self.size1-self.trailing1-1,i_column=0,n_rows=1,n_columns=self.size2)
-    for irow in xrange(self.trailing1):
+    for irow in range(self.trailing1):
       result.matrix_paste_block_in_place(
         block = trailing_line,i_row=self.size1-self.trailing1+irow,i_column=0)
 
     leading_line = result.matrix_copy_block(
       i_row=0,i_column=self.leading2,n_rows=self.size1,n_columns=1)
-    for icolumn in xrange(self.leading2):
+    for icolumn in range(self.leading2):
       result.matrix_paste_block_in_place(
         block = leading_line,i_row=0,i_column=icolumn)
 
     trailing_line = result.matrix_copy_block(
       i_row=0, i_column=self.size2-self.trailing2-1,n_rows=self.size2,n_columns=1)
-    for icolumn in xrange(self.trailing2):
+    for icolumn in range(self.trailing2):
       result.matrix_paste_block_in_place(
         block = trailing_line,i_row=0, i_column=self.size2-self.trailing2+icolumn)
 

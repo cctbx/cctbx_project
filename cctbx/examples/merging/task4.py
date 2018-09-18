@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 from cctbx.uctbx import unit_cell
 try:
@@ -54,7 +55,7 @@ def prepare_simulation_with_noise(sim, transmittance,
   if ordered_intensities is not None:
     uc = ordered_intensities.unit_cell()
     stol_sq = flex.double()
-    for i in xrange(len(result.miller)):
+    for i in range(len(result.miller)):
       this_hkl = ordered_intensities.indices()[result.miller[i]]
       stol_sq_item = uc.stol_sq(this_hkl)
       stol_sq.append(stol_sq_item)
@@ -107,7 +108,7 @@ def prepare_observations_for_scaling(work_params,obs,reference_intensities=None,
   if reference_intensities is not None:
     uc = reference_intensities.unit_cell()
     stol_sq = flex.double()
-    for i in xrange(len(result.miller)):
+    for i in range(len(result.miller)):
       this_hkl = reference_intensities.indices()[result.miller[i]]
       stol_sq_item = uc.stol_sq(this_hkl)
       stol_sq.append(stol_sq_item)

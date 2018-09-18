@@ -13,6 +13,7 @@ downwind modules.  If @c negate is @c True, mismatching events are
 selected instead.  Events with missing timestamps are always skipped.
 """
 from __future__ import division
+from six.moves import range
 
 __version__ = "$Revision$"
 
@@ -107,7 +108,7 @@ class mod_filter(object):
              positive if @p l > @p r
     """
 
-    for i in xrange(2):
+    for i in range(2):
       if (l[i] < r[i]):
         return -1
       if (l[i] > r[i]):

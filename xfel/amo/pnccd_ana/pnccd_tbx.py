@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from psana import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -388,9 +389,9 @@ def assemble_image(img, msk = None) :
     masD   = np.zeros((512,512))
 
     x=0;
-    for i in xrange(4) :
-        for j in xrange(512) :
-            for k in xrange(512) :
+    for i in range(4) :
+        for j in range(512) :
+            for k in range(512) :
                 if i == 0:
                    panA[j,k] = img[x]
                    masA[j,k] = msk[x]
@@ -451,7 +452,7 @@ def get_static_mask(msk,cent,r_max,msk_a,msk_w):
     x,y = np.ogrid[:dim[0],:dim[1]]
     cx,cy = cent
 
-    for i in xrange(len(msk_a)) :
+    for i in range(len(msk_a)) :
 
         tmin,tmax = np.deg2rad((int(msk_a[i])-int(msk_w[i]),int(msk_a[i])+int(msk_w[i])))
 
@@ -518,7 +519,7 @@ def get_polar(img, msk, cent, r_max, r_min = 0, dr = 1, nPhi = None, dPhi = 1, m
 
     if (msk_a is not None) and (msk_w is not None) :
        # Mask out selected angles
-       for i in xrange(len(msk_a)) :
+       for i in range(len(msk_a)) :
            pcmsk[:,(int(msk_a[i])-int(msk_w[i])):(int(msk_a[i])+int(msk_w[i]))] = 0
 
 
@@ -647,9 +648,9 @@ def get_beam(img, msk, r_max, dr = 1, cent0 = None, dx = 0, dy = 0, ang = 45, da
        x      = 0
 
        # Step through grid and score correlation between slices seperated by 180 deg
-       for xx in xrange(cent0[0]-dx,cent0[0]+dx+1) :
+       for xx in range(cent0[0]-dx,cent0[0]+dx+1) :
            y = 0
-           for yy in xrange(cent0[1]-dy,cent0[1]+dy+1) :
+           for yy in range(cent0[1]-dy,cent0[1]+dy+1) :
 
                   pcimg, pcmsk = get_polar(img, msk, [xx, yy], r_max, r_min = 0, dr = dr, nPhi = na, dPhi = 1 )
 
@@ -696,7 +697,7 @@ def get_beam(img, msk, r_max, dr = 1, cent0 = None, dx = 0, dy = 0, ang = 45, da
           img2[(cent[1]-10):(cent[1]+10),cent[0]] = 1e6
           img2[cent[1],(cent[0]-10):(cent[0]+10)] = 1e6
 
-          for rr in xrange(50,int(img2.shape[0]/2),50) :
+          for rr in range(50,int(img2.shape[0]/2),50) :
               circ = circles(rr,cent,img2.shape)
               img2  = img2 + circ
 
@@ -1064,7 +1065,7 @@ def get_bl(q, phi, saxs, c2, lambd, q_lim = None , phi_lim = None, l_max = 40) :
     c2recon = np.zeros(c2.shape)
 
     # Loop over all q
-    for qq in xrange(q_lim[0],q_lim[1]) :
+    for qq in range(q_lim[0],q_lim[1]) :
         # Compute theta
         theta = np.pi/2 - np.arcsin((q[qq]*lambd)/(4*np.pi))
         x     = np.cos(theta)**2 + np.sin(theta)**2 * np.cos(phi[phi_lim[0]:phi_lim[1]])
@@ -1072,7 +1073,7 @@ def get_bl(q, phi, saxs, c2, lambd, q_lim = None , phi_lim = None, l_max = 40) :
 #        x     = max(x,-1)
         y     = 0
         # Loop over all l
-        for ll in xrange(0,l_max):
+        for ll in range(0,l_max):
             Plm    = np.polynomial.legendre.legval(x,ll)
             P[:,y] = (1/(4*np.pi))*Plm
             y     += 1
@@ -1102,7 +1103,7 @@ def get_h5_event(file_stamps) :
     timestamps = []
     filenr     = []
 
-    for i in xrange(len(file_stamps)) :
+    for i in range(len(file_stamps)) :
 
         temp = file_stamps['f0'][i].split('/')
         timestamps.append(temp[1])
@@ -1158,7 +1159,7 @@ def get_psana_event(file_stamps) :
 
     timestamps = []
 
-    for i in xrange(len(file_stamps)) :
+    for i in range(len(file_stamps)) :
 
 
         sec   = int(file_stamps[i][1])

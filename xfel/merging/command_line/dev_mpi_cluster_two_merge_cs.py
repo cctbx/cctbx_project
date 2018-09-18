@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.mpi.cluster_two_merge_cs
 from __future__ import division
+from six.moves import range
 import sys,time
 from libtbx.utils import Usage
 
@@ -163,7 +164,7 @@ class Script(base_Script):
       tar_file_names = transmitted_info["file_names"]
       if timing: print "~SCALER_WORKERS START RANK=%d TIME=%f;"%(rank,tt())
       if rank == 0:
-        for ix in xrange(len(tar_file_names)):
+        for ix in range(len(tar_file_names)):
           rankreq = comm.recv(source=MPI.ANY_SOURCE)
           comm.send(ix,dest=rankreq)
         for rankreq in range(size-1):
@@ -185,7 +186,7 @@ class Script(base_Script):
     # Distribute chunks of TAR files to each MPI rank.
     # The files are equidistributed across all the available ranks.
     else:
-      file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
+      file_names = [transmitted_info["file_names"][i] for i in range(len(transmitted_info["file_names"])) if i%size == rank]
       if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
       scaler_worker._scale_all_serial(file_names, db_mgr)
       if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())

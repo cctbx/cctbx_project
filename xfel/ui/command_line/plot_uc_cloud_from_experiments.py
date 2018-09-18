@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_uc_cloud_from_experiments
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -92,7 +93,7 @@ class Script(object):
             gnuplot.write("% 3.10f % 3.10f % 3.10f\n"%(info['a'], info['b'], info['c']))
         info_list.append(infos)
     else:
-      experiments_tags = [str(i) for i in xrange(len(experiments_list))]
+      experiments_tags = [str(i) for i in range(len(experiments_list))]
       info_list = []
       for experiments in experiments_list:
         infos = []

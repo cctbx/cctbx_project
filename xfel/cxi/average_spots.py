@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # The average_spots jiffy calculates average pickled images of either
@@ -141,7 +142,7 @@ def spot_add(path, spot_sum, dist_sum, nrg_sum, nmemb):
 
   # XXX Note that x and y are flipped in the summation.
   for spot in info.S.images[info.frames[0]]["spots_inlier"]:
-    for i in xrange(len(spot.bodypixels)):
+    for i in range(len(spot.bodypixels)):
       spot_sum[spot.bodypixels[i].x, spot.bodypixels[i].y] += spot.wts[i]
 
   return (spot_sum, dist_sum, nrg_sum, nmemb)

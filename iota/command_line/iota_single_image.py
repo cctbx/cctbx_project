@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME iota.single_image
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -233,7 +234,7 @@ class DIALSSpfIdx(Thread):
         beam = datablock.unique_beams()[0]
 
         s1 = flex.vec3_double()
-        for i in xrange(len(observed)):
+        for i in range(len(observed)):
           s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
             observed['xyzobs.px.value'][i][0:2]))
         two_theta = s1.angle(beam.get_s0())

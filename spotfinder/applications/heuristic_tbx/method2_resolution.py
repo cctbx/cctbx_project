@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from libtbx.table_utils import Spreadsheet,Formula
 from spotfinder.core_toolbox import bin_populations
@@ -28,12 +29,12 @@ class ResolutionShells(Spreadsheet):
       return self.Limit[0]/math.pow(shellnumber+1,1.0/3.0)
 
     #this little loop consumes 1.2 seconds of CPU time for a 1400-row spreadsheet
-    for xrow in xrange(1,Total_rows):
+    for xrow in range(1,Total_rows):
       self.Limit[xrow] = BinRes(xrow)
       self.Fract[xrow] = fractionCalculator(self.Limit[xrow])
 
     bp = bin_populations(spots,self.Limit[0])
-    for c in xrange(min(Total_rows,len(bp))): #reconcile inconsistent bin counts
+    for c in range(min(Total_rows,len(bp))): #reconcile inconsistent bin counts
         self.Population[c]=bp[c]
 
     self.Limit.format = "%.2f"
@@ -52,12 +53,12 @@ class ResolutionShells(Spreadsheet):
        no contiguous stretch of populations < cutoff, which is longer than 10.
     """
     pop = []
-    for x in xrange(0,last+1):
+    for x in range(0,last+1):
       if self.Population[x]>cutoff: pop.append(1)
       else: pop.append(0)
 
     requalify=[0,]
-    for x in xrange(1,last+1):
+    for x in range(1,last+1):
       if pop[x]==0: requalify.append(requalify[x-1]+1)
       else:
          requalify.append(0)
@@ -65,7 +66,7 @@ class ResolutionShells(Spreadsheet):
         break
 
     pop = pop[0:x+1]
-    for x in xrange(len(pop)-1,-1,-1):
+    for x in range(len(pop)-1,-1,-1):
       if pop[x]==1:
         #print "In Vetter with input",last,"output",x
         return x

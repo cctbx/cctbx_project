@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 import h5py
 import numpy as np
@@ -119,7 +120,7 @@ class agipd_cxigeom2nexus(object):
     fast = max([int(panel['max_fs']) for panel in panels])+1
     slow = max([int(panel['max_ss']) for panel in panels])+1
     pixel_size = panels[0]['pixel_size']
-    assert [pixel_size == panels[i+1]['pixel_size'] for i in xrange(len(panels)-1)].count(False) == 0
+    assert [pixel_size == panels[i+1]['pixel_size'] for i in range(len(panels)-1)].count(False) == 0
 
     quad_fast = fast
     quad_slow = slow // self.n_quads
@@ -136,18 +137,18 @@ class agipd_cxigeom2nexus(object):
     data_name = 'data'
     detector[alias] = h5py.SoftLink('/entry/data/%s'%data_name)
 
-    for quad in xrange(self.n_quads):
+    for quad in range(self.n_quads):
       q_key = "q%d"%quad
       q_name = 'AXIS_D0Q%d'%quad
       quad_vector = self.hierarchy[q_key].local_origin.elems
       self.create_vector(transformations, q_name, 0.0, depends_on='AXIS_D0', equipment='detector', equipment_component='detector_quad',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = quad_vector, offset_units = 'mm')
-      for module_num in xrange(self.n_modules):
+      for module_num in range(self.n_modules):
         m_key = "p%d"%((quad*self.n_modules)+module_num)
         m_name = 'AXIS_D0Q%dM%d'%(quad, module_num)
         module_vector = self.hierarchy[q_key][m_key].local_origin.elems
         self.create_vector(transformations, m_name, 0.0, depends_on=q_name, equipment='detector', equipment_component='detector_module',transformation_type='rotation', units='degrees', vector=(0., 0., -1.), offset = module_vector, offset_units = 'mm')
 
-        for asic_num in xrange(self.n_asics):
+        for asic_num in range(self.n_asics):
           a_key = "p%da%d"%((quad*self.n_modules)+module_num, asic_num)
           a_name = 'AXIS_D0Q%dM%dA%d'%(quad, module_num, asic_num)
           asic_vector = self.hierarchy[q_key][m_key][a_key]['local_origin'].elems

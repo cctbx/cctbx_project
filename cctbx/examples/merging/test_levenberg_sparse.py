@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 import math
 import iotbx.phil
@@ -140,9 +141,9 @@ class xscale6e(object):
     Nx = len(self.helper.x)
     all_elems = flex.double(Nx*Nx)
     ctr = 0
-    for x in xrange(Nx):
+    for x in range(Nx):
       x_0 = ctr
-      for y in xrange(Nx-1,x-1,-1):
+      for y in range(Nx-1,x-1,-1):
         all_elems[ Nx*x+y ] = packed[x_0+(y-x)]
         ctr += 1
         if x!= y:
@@ -150,8 +151,8 @@ class xscale6e(object):
     return all_elems
   def pretty(self, matrix, max_col=67,format="%6.0g",zformat="%6.0f"):
     Nx = len(self.helper.x)
-    for islow in xrange(Nx):
-      for ifast in xrange(min(max_col,Nx)):
+    for islow in range(Nx):
+      for ifast in range(min(max_col,Nx)):
         if matrix(islow,ifast)==0.:
           print zformat%0,
         else:
@@ -160,8 +161,8 @@ class xscale6e(object):
     print
   def prettynz(self, matrix, max_col=67,format="%6.0g",zformat="%6.0f"):
     Nx = len(self.helper.x)
-    for x in xrange(Nx):
-      for y in xrange(min(max_col,Nx)):
+    for x in range(Nx):
+      for y in range(min(max_col,Nx)):
           if abs(matrix(x,y))< 1E-10:
             print zformat%0,
           else:
@@ -170,21 +171,21 @@ class xscale6e(object):
   def permutation_ordering_to_matrix(self,ordering):
     matcode = flex.int(ordering.size()**2)
     Nx = ordering.size()
-    for islow in xrange(Nx):
+    for islow in range(Nx):
       matcode[Nx*islow + ordering[islow]] = 1
     return sqr(matcode)
   def lower_triangular_packed_to_matrix(self,lower):
     Nx = len(self.helper.x)
     lower_elem = flex.double(Nx*Nx)
     ctr = 0
-    for irow in xrange(Nx): # loop over rows
-      for icol in xrange(irow + 1): # loop over columns
+    for irow in range(Nx): # loop over rows
+      for icol in range(irow + 1): # loop over columns
         lower_elem[Nx*irow + icol] = lower[ctr]
         ctr+=1
     return sqr(lower_elem)
   def diagonal_vector_to_matrix(self,diag):
     diag_elem = flex.double(diag.size()**2)
-    for irow in xrange(diag.size()): # loop over rows
+    for irow in range(diag.size()): # loop over rows
       diag_elem[diag.size()*irow + irow] = diag[irow]
     return sqr(diag_elem)
   def unstable_matrix_inversion_diagonal(self,Lower,Diag,Transpose):
@@ -192,29 +193,29 @@ class xscale6e(object):
     ### Demonstrate that inverting the matrix is numerically unstable
     Nx = len(self.helper.x)
     error_diagonal_elems = flex.double(Nx)
-    for j_element in xrange(Nx):
+    for j_element in range(Nx):
 
       # now solve for the vector p = D * LT * x by substitution in eqn L * p = b
       # b is the column vector of zeroes except jth_element is 1.
       p = flex.double(Nx)
       p[j_element] = 1.
-      for p_idx in xrange(j_element+1,Nx):
-        for subs_idx in xrange(j_element,p_idx):
+      for p_idx in range(j_element+1,Nx):
+        for subs_idx in range(j_element,p_idx):
           p[p_idx] -= Lower(p_idx,subs_idx) * p[subs_idx]
 
       Pvec = col(p)
 
       # now solve for the vector q = LT * x by division in eqn D * q = b
-      q = flex.double([ p[i] / Diag(i,i) for i in xrange(Nx)] )
+      q = flex.double([ p[i] / Diag(i,i) for i in range(Nx)] )
       #  this is the unstable step.  We can't divide by tiny denominators
       Qvec = col(q)
 
       # now solve for the jth element of x in the eqn LT * x = q
       xelem = flex.double(Qvec.elems)
 
-      for x_idx in xrange(Nx-1,j_element-1,-1):  #comment this in for production
-      #for x_idx in xrange(Nx-1,-1,-1):
-        for subs_idx in xrange(x_idx+1, Nx):
+      for x_idx in range(Nx-1,j_element-1,-1):  #comment this in for production
+      #for x_idx in range(Nx-1,-1,-1):
+        for subs_idx in range(x_idx+1, Nx):
           xelem[x_idx] -= Transpose(x_idx,subs_idx) * xelem[subs_idx]
       Xvec = col(xelem) # got the whole vector; only need j_element for the error matrix diagonal
       error_diagonal_elems[j_element] = xelem[j_element]
@@ -238,13 +239,13 @@ class xscale6e(object):
 
     print "ia",len(svd_inverse),len(sigma)
     IA = sqr(svd_inverse)
-    for i in xrange(self.helper.x.size()):
+    for i in range(self.helper.x.size()):
       if i == self.N_I or i == self.N_I + self.N_G:  print
       print "%2d %10.4f %10.4f %10.4f"%(
         i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i)))
 
     from matplotlib import pyplot as plt
-    plt.plot(flex.sqrt(flex.double([IA(i,i) for i in xrange(self.N_I)])),
+    plt.plot(flex.sqrt(flex.double([IA(i,i) for i in range(self.N_I)])),
              flex.sqrt(1./diagonal_curvatures[:self.N_I]), "r.")
     plt.title("Structure factor e.s.d's from normal matrix curvatures vs. SVD variance diagonal")
     plt.axes().set_aspect("equal")
@@ -301,7 +302,7 @@ class xscale6e(object):
 
     Variance_diagonal = self.unstable_matrix_inversion_diagonal(Lower,Diag,Transpose)
 
-    for i in xrange(self.helper.x.size()):
+    for i in range(self.helper.x.size()):
       if i == self.N_I or i == self.N_I + self.N_G:  print
       print "%2d %10.4f %10.4f %10.4f"%(
         i, self.helper.x[i], math.sqrt(1./diagonal_curvatures[i]), math.sqrt(IA(i,i))),
@@ -341,7 +342,7 @@ class xscale6e(object):
       from scitbx.linalg.svd import inverse_via_svd
       svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
       IA = sqr(svd_inverse)
-      estimated_stddev = flex.double([math.sqrt(IA(i,i)) for i in xrange(self.helper.x.size())])
+      estimated_stddev = flex.double([math.sqrt(IA(i,i)) for i in range(self.helper.x.size())])
     else:
       # estimate standard deviations by normal matrix curvatures
       diagonal_curvatures = self.helper.get_normal_matrix_diagonal()

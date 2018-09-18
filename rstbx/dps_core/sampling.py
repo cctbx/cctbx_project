@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from rstbx.array_family import flex
 from rstbx.dps_core import Direction, directional_show, SimpleSamplerTool
@@ -35,7 +36,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
     hemisphere_solutions = flex.Direction();
     hemisphere_solutions.reserve(size);
     #print "# of input directions", len(input_directions)
-    for i in xrange(len(input_directions)):
+    for i in range(len(input_directions)):
       D = sampled_direction = ai.fft_result(input_directions[i])
 
       #hardcoded parameter in for silicon example.  Not sure at this point how
@@ -47,7 +48,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
     if (hemisphere_solutions.size()<3):
       return hemisphere_solutions
     kvals = flex.double([
-  hemisphere_solutions[x].kval for x in xrange(len(hemisphere_solutions))])
+  hemisphere_solutions[x].kval for x in range(len(hemisphere_solutions))])
 
     perm = flex.sort_permutation(kvals,True)
 
@@ -83,7 +84,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
       cutoff_divisor,grid=self.incr)
 
     if verbose:
-      for i in xrange(len(unrefined_basis_vectors)):
+      for i in range(len(unrefined_basis_vectors)):
         D = unrefined_basis_vectors[i];
         if diagnostic:  directional_show(D, "SE%5d"%i)
 

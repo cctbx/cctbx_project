@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 
 class show_observations:
@@ -96,14 +97,14 @@ class show_observations:
   def set_limits(self, unobstructed):
     acceptable_resolution_bins = [
       bin.mean_I_sigI > self.params.significance_filter.sigma for bin in self.result]
-    acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+    acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                        if False not in acceptable_resolution_bins[:i+1]]
 
     N_acceptable_bins = max(acceptable_nested_bin_sequences)
     self.result[N_acceptable_bins].limit="*"
 
     unatten_acceptable = N_acceptable_bins
-    for x in xrange(N_acceptable_bins,len(self.result)):
+    for x in range(N_acceptable_bins,len(self.result)):
       if self.result[x].unatten_mean_I_sigI > self.params.significance_filter.sigma:
         unatten_acceptable = x
       else:
@@ -112,7 +113,7 @@ class show_observations:
     self.result[unatten_acceptable].unatten_limit="*"
 
     atten_acceptable = N_acceptable_bins
-    for x in xrange(N_acceptable_bins,1,-1):
+    for x in range(N_acceptable_bins,1,-1):
       if self.result[x].atten_mean_I_sigI < self.params.significance_filter.sigma:
         atten_acceptable = x - 1
 

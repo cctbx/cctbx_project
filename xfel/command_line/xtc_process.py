@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.xtc_process
@@ -481,7 +482,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
       psana_mask = flex.bool(psana_mask == 1)
     assert psana_mask.focus() == (32, 185, 388)
     dials_mask = []
-    for i in xrange(32):
+    for i in range(32):
       dials_mask.append(psana_mask[i:i+1,:,:194])
       dials_mask[-1].reshape(flex.grid(185,194))
       dials_mask.append(psana_mask[i:i+1,:,194:])
@@ -499,7 +500,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
           "The following definitions were not recognised" in str(e):
         deprecated_params = ['mask_nonbonded_pixels','gain_mask_value','algorithm','custom_parameterization']
         deprecated_strs = ['%s','%s','common_mode.%s','common_mode.%s']
-        for i in xrange(len(deprecated_params)):
+        for i in range(len(deprecated_params)):
           if deprecated_params[i] in str(e):
             print "format.cbf.%s"%(deprecated_strs[i]%deprecated_params[i]), "has changed to format.cbf.cspad.%s"%(deprecated_strs[i]%deprecated_params[i])
       raise
@@ -728,7 +729,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
             if self.params.format.cbf.cspad.mask_nonbonded_pixels:
               psana_mask = self.psana_det.mask(run.run(),calib=False,status=False,edges=False,central=False,unbond=True,unbondnbrs=True)
               dials_mask = self.psana_mask_to_dials_mask(psana_mask)
-              self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in xrange(len(dials_mask))]
+              self.dials_mask = [self.dials_mask[i] & dials_mask[i] for i in range(len(dials_mask))]
         else:
           if params.format.cbf.mode == "cspad":
             psana_mask = self.psana_det.mask(run.run(),calib=True,status=True,edges=True,central=True,unbond=True,unbondnbrs=True)

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import StringIO
 
 def run(args, verbose=False):
@@ -68,7 +69,7 @@ def run(args, verbose=False):
       reporter = Org.S.reporters[key][-1]
       normalizer = reporter.weights.sum()
       summation = 0;
-      for x in xrange(reporter.S_table_rows):
+      for x in range(reporter.S_table_rows):
         summation += reporter.weights[x] * reporter.MeanIsigI[x]
       top.child(SimpleNode(tag="mean_isigi",contents="%.3f"%(summation/normalizer)))
       integrated = reporter.Integrated.sum()

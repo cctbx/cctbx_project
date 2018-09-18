@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 op = os.path
 import sys
@@ -167,7 +168,7 @@ class miller_image_map(libtbx.slots_getstate_setstate):
 
   def __init__(O, miller_indices):
     O.miller_indices = miller_indices
-    O.map = [[] for i in xrange(O.miller_indices.size())]
+    O.map = [[] for i in range(O.miller_indices.size())]
 
   def enter(O, i_img, miller_index_i_seqs):
     map = O.map
@@ -641,7 +642,7 @@ def build_images(work_params, i_calc, reindexing_assistant):
       scale=scale,
       i_perm=i_perm)
   if (not use_mp):
-    for i_img in xrange(n_mdls):
+    for i_img in range(n_mdls):
       result.append(build_one_image(i_img))
   else:
     from libtbx import easy_mp
@@ -740,7 +741,7 @@ class cluster_info(object):
     scale_min = 1/scale_max
     miis_i, esti_i = O.miis_perms[0], O.esti_perms[0]
     result = []
-    for j_perm in xrange(len(reindexing_assistant.cb_ops)):
+    for j_perm in range(len(reindexing_assistant.cb_ops)):
       miis_j, esti_j = other.miis_perms[j_perm], other.esti_perms[j_perm]
       i_seqs, j_seqs = miis_i.intersection_i_seqs(other=miis_j)
       if (i_seqs.size() < 2):
@@ -809,7 +810,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
       miis_perms=[_ for _,__ in miis_perms],
       esti_perms=[_ for __,_ in miis_perms]))
   remaining = list(range(n_imgs))
-  cluster_pairs = [{} for _ in xrange(n_imgs)]
+  cluster_pairs = [{} for _ in range(n_imgs)]
   def process_cp(i_rem, j_rem):
     i_clu = remaining[i_rem]
     j_clu = remaining[j_rem]
@@ -825,22 +826,22 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
       if (not work_params.multiprocessing or n_imgs*(n_imgs-1) <= chunk_size):
         import time
         time_start = time.time()
-        for i_rem in xrange(n_imgs):
-          for j_rem in xrange(i_rem+1, n_imgs):
+        for i_rem in range(n_imgs):
+          for j_rem in range(i_rem+1, n_imgs):
             process_cp(i_rem, j_rem)
         from libtbx.utils import show_wall_clock_time
         show_wall_clock_time(seconds=time.time()-time_start)
       else:
         def mp():
           ij_list = []
-          for i_rem in xrange(n_imgs):
-            for j_rem in xrange(i_rem+1, n_imgs):
+          for i_rem in range(n_imgs):
+            for j_rem in range(i_rem+1, n_imgs):
               ij_list.append((i_rem,j_rem))
           n_chunks = len(ij_list) // chunk_size
           print "Number of chunks for computing cluster pairs:", n_chunks
           print
           def process_chunk(i_chunk):
-            for j_chunk in xrange(chunk_size):
+            for j_chunk in range(chunk_size):
               i = i_chunk * chunk_size + j_chunk
               if (i == len(ij_list)):
                 break
@@ -858,7 +859,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
               main.update(sub)
         mp()
     else:
-      for i_rem in xrange(max_j_rem):
+      for i_rem in range(max_j_rem):
         i_clu = remaining[i_rem]
         cps_i = cluster_pairs[i_clu]
         if (max_j_clu in cps_i):
@@ -867,7 +868,7 @@ def build_image_cluster(work_params, reindexing_assistant, image_mdls, usables):
           if (max_i_clu in cps_i):
             del cps_i[max_i_clu]
           process_cp(i_rem, max_i_rem)
-      for j_rem in xrange(max_i_rem+1, len(remaining)):
+      for j_rem in range(max_i_rem+1, len(remaining)):
         process_cp(max_i_rem, j_rem)
     max_score = 0
     max_i_rem = None
@@ -903,7 +904,7 @@ def check_image_cluster(
       scales_input,
       cluster):
   from scitbx.array_family import flex
-  for i_perm in xrange(len(cluster.miis_perms)):
+  for i_perm in range(len(cluster.miis_perms)):
     expected = i_calc.select(cluster.miis_perms[i_perm])
     reconstr = expected.customized_copy(data=cluster.esti_perms[i_perm])
     print "i_perm:", i_perm
@@ -1146,7 +1147,7 @@ write_image_models_to_mtz_files = False
   else:
     _ = work_params
     base36_timestamp = _.base36_timestamp
-    for _.noise.random_seed in xrange(_.sample_random_seeds):
+    for _.noise.random_seed in range(_.sample_random_seeds):
       _.base36_timestamp = base36_timestamp + "_%04d" % _.noise.random_seed
       process(_, i_calc)
   show_vm_info("Final:")

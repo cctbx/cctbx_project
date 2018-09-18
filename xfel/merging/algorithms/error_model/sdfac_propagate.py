@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from dials.array_family import flex
 import math
 from rstbx.symmetry.constraints.parameter_reduction \
@@ -66,7 +67,7 @@ class sdfac_propagate(error_modeler_base):
       current = table[parameter_name]*1 # make a copy
 
       sre = symmetrize_reduce_enlarge(self.scaler.params.target_space_group.group())
-      for i in xrange(len(table)):
+      for i in range(len(table)):
         sre.set_orientation(orientation=table['b_matrix'][i])
         vals = list(sre.forward_independent_parameters())
         vals[cryst_param] += DELTA
@@ -104,7 +105,7 @@ class sdfac_propagate(error_modeler_base):
     ex = col((1,0,0))       # crystal rotation x axis
     ey = col((0,1,0))       # crystal rotation y axis
 
-    for i in xrange(len(ct)):
+    for i in range(len(ct)):
       # Need to copy crystal specific terms for each reflection. Equivalent to a JOIN in SQL.
       n_refl = ct['n_refl'][i]
       rx.extend(flex.mat3_double(n_refl, ex.axis_and_angle_as_r3_rotation_matrix(ct['thetax'][i])))
@@ -190,20 +191,20 @@ class sdfac_propagate(error_modeler_base):
     sre = symmetrize_reduce_enlarge(self.scaler.params.target_space_group.group())
     c_gstar_params = None
 
-    for i in xrange(len(ct)):
+    for i in range(len(ct)):
       # Get the G* unit cell parameters from cctbx
       sre.set_orientation(orientation=ct['b_matrix'][i])
       p = sre.forward_independent_parameters()
       if c_gstar_params is None:
-        c_gstar_params = [flex.double() for j in xrange(len(p))]
+        c_gstar_params = [flex.double() for j in range(len(p))]
 
-      for j in xrange(len(p)):
+      for j in range(len(p)):
         c_gstar_params[j].append(p[j])
 
     # Compute the error in the unit cell terms from the distribution of unit cell parameters provided
     print >> self.log, "Free G* parameters"
     sigma_gstar = flex.double()
-    for j in xrange(len(c_gstar_params)):
+    for j in range(len(c_gstar_params)):
       stats  = flex.mean_and_variance(c_gstar_params[j])
       print >> self.log, "G* %d %.4f *1e-5 +/- %.4f *1e-5"%(j, stats.mean()*1e5, stats.unweighted_sample_standard_deviation()*1e5)
       sigma_gstar.append(stats.unweighted_sample_standard_deviation())
@@ -232,7 +233,7 @@ class sdfac_propagate(error_modeler_base):
     gstar_params = None
     gstar_derivatives = None
 
-    for i in xrange(len(ct)):
+    for i in range(len(ct)):
       n_refl = ct['n_refl'][i]
 
       # Derivatives of rx/y wrt thetax/y come from cctbx
@@ -245,10 +246,10 @@ class sdfac_propagate(error_modeler_base):
       dB_dp = sre.forward_gradients()
       if gstar_params is None:
         assert gstar_derivatives is None
-        gstar_params = [flex.double() for j in xrange(len(p))]
-        gstar_derivatives = [flex.mat3_double() for j in xrange(len(p))]
+        gstar_params = [flex.double() for j in range(len(p))]
+        gstar_derivatives = [flex.mat3_double() for j in range(len(p))]
       assert len(p) == len(dB_dp) == len(gstar_params) == len(gstar_derivatives)
-      for j in xrange(len(p)):
+      for j in range(len(p)):
         gstar_params[j].extend(flex.double(n_refl, p[j]))
         gstar_derivatives[j].extend(flex.mat3_double(n_refl, tuple(dB_dp[j])))
 
@@ -275,7 +276,7 @@ class sdfac_propagate(error_modeler_base):
 
     # Derivatives wrt the unit cell parameters
     dI_dgstar = []
-    for j in xrange(len(gstar_params)):
+    for j in range(len(gstar_params)):
       dI_dgstar.append(compute_dI_dp(r['ry'] * r['rx'] * r['u'] * gstar_derivatives[j] * r['h']))
 
     # Derivatives wrt the crystal orientation
@@ -312,13 +313,13 @@ class sdfac_propagate(error_modeler_base):
       # Show comparisons to finite differences
       n_cryst_params = sre.constraints.n_independent_params()
       print "Showing finite differences and derivatives for each parameter (first few reflections only)"
-      for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff'] + ['c%d'%cp for cp in xrange(n_cryst_params)],
+      for parameter_name, table, derivatives, delta, in zip(['iobs', 'thetax', 'thetay', 'wavelength', 'deff'] + ['c%d'%cp for cp in range(n_cryst_params)],
                                                     [refls, ct, ct, ct, ct] + [ct]*n_cryst_params,
                                                     [dI_dIobs, dI_dthetax, dI_dthetay, dI_dlambda, dI_deff] + dI_dgstar,
                                                     [1e-7]*5 + [1e-11]*n_cryst_params):
         finite_g = self.finite_difference(parameter_name, table, delta)
         print parameter_name
-        for refl_id in xrange(min(10, len(refls))):
+        for refl_id in range(min(10, len(refls))):
           print "%d % 21.1f % 21.1f"%(refl_id, finite_g[refl_id], derivatives[refl_id])
         stats = flex.mean_and_variance(finite_g-derivatives)
         stats_finite = flex.mean_and_variance(finite_g)
@@ -352,7 +353,7 @@ class sdfac_propagate(error_modeler_base):
     # Propagate errors
     refls['isigi'] = refls['scaled_intensity'] / \
                      flex.sqrt((sigma_Iobs**2 * dI_dIobs**2) +
-                     sum([self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2 for j in xrange(len(self.error_terms.sigma_gstar))]) +
+                     sum([self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2 for j in range(len(self.error_terms.sigma_gstar))]) +
                      (self.error_terms.sigma_thetax**2 * dI_dthetax**2) +
                      (self.error_terms.sigma_thetay**2 * dI_dthetay**2) +
                      (self.error_terms.sigma_lambda**2 * dI_dlambda**2) +
@@ -370,7 +371,7 @@ class sdfac_propagate(error_modeler_base):
                   (flex.sqrt(self.error_terms.sigma_thetay**2 * dI_dthetay**2), "Thetay term"),
                   (flex.sqrt(self.error_terms.sigma_lambda**2 * dI_dlambda**2), "Wavelength term"),
                   (flex.sqrt(self.error_terms.sigma_deff**2 * dI_deff**2), "Deff term")] + \
-                 [(flex.sqrt(self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2), "Gstar term %d"%j) for j in xrange(len(self.error_terms.sigma_gstar))]
+                 [(flex.sqrt(self.error_terms.sigma_gstar[j]**2 * dI_dgstar[j]**2), "Gstar term %d"%j) for j in range(len(self.error_terms.sigma_gstar))]
       print >> self.log, "%20s % 20s % 20s % 20s"%("Data name","Quartile 1", "Median", "Quartile 3")
       for data, title in all_data:
         fns = five_number_summary(data)
@@ -385,7 +386,7 @@ class sdfac_propagate(error_modeler_base):
       sigma = Intensity / refls['isigi']
       variance = sigma * sigma
 
-      for i in xrange(len(refls)):
+      for i in range(len(refls)):
         j = refls['miller_id'][i]
         self.scaler.summed_wt_I[j] += Intensity[i] / variance[i]
         self.scaler.summed_weight[j] += 1 / variance[i]

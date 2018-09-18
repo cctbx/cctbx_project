@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os,time
 import threading
 output_lock = threading.RLock()
@@ -18,7 +19,7 @@ def do_main_apache(filepath, host, port):
     return str(e)
 
 def single_thread(idx):
-  for x in xrange(1):
+  for x in range(1):
     filepath, host, port = [ABS_DATA_TEMPLATE%idx,HOST,PORT]
     port = int(port)
     if OUTPUT_FILE is not None:
@@ -46,7 +47,7 @@ if __name__=="__main__":
   HOST = "viper"
   PORT = "8125"
   N_CLIENT_THREADS = 48
-  IMAGE_RANGE = xrange(1,721)
+  IMAGE_RANGE = range(1,721)
   DISTL_OPTIONS = ["distl.res.outer=3.3","distl.bins.verbose=True"]
   SERVER_TYPE = ["Python","Apache"][1] # choose 0=Python, 1=Apache mod-python
   TIME_DELAY = 0.10 # seconds per-image throughput, depends on server

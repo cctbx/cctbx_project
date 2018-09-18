@@ -1,5 +1,6 @@
 """Specialization code for 2011 JCSG pilot experiment; not general use"""
 from __future__ import division
+from six.moves import range
 try:
   import cPickle as pickle
 except ImportError:
@@ -21,7 +22,7 @@ class api:
     labelit_phil.merge_command_line(args)
     E = Empty()
     E.argv=['Empty']
-    for x in xrange(len(args)):
+    for x in range(len(args)):
       E.argv.append(args[x])
     E.horizons_phil=labelit_commands
 

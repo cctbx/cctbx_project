@@ -1,5 +1,6 @@
 # LIBTBX_SET_DISPATCHER_NAME dev.mpi.cluster_two_merge
 from __future__ import division
+from six.moves import range
 import sys,time
 
 from xfel.command_line.cxi_merge import scaling_manager as scaling_manager_base
@@ -113,7 +114,7 @@ class Script(base_Script):
     assert scaler_worker.params.backend == 'FS' # only option that makes sense
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
-    file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
+    file_names = [transmitted_info["file_names"][i] for i in range(len(transmitted_info["file_names"])) if i%size == rank]
     if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
     scaler_worker._scale_all_serial(file_names, db_mgr)
     if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())

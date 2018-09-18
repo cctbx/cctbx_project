@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from psana import *
 import sys
@@ -35,9 +36,9 @@ def h5gen(run,timestamps = None, first = None, last = None):
 
     times     = timestamps
     nevents   = len(times)
-    mytimes,myevents  = zip(*[(times[i],i) for i in xrange(nevents) if (i+nom)%denom == 0])
+    mytimes,myevents  = zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0])
 
-    for j in xrange(len(mytimes)):
+    for j in range(len(mytimes)):
          yield myevents[j],mytimes[j]
 
 
@@ -67,9 +68,9 @@ def idxgen(run,timestamps = None, first = None, last = None):
 
     times     = timestamps[first:last]
     nevents   = len(times)
-    mytimes,myevents  = zip(*[(times[i],i) for i in xrange(nevents) if (i+nom)%denom == 0])
+    mytimes,myevents  = zip(*[(times[i],i) for i in range(nevents) if (i+nom)%denom == 0])
 
-    for j in xrange(len(mytimes)):
+    for j in range(len(mytimes)):
          yield myevents[j],run.event(mytimes[j])
 
 

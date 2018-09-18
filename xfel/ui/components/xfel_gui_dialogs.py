@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -1670,7 +1671,7 @@ class SelectRunBlocksDialog(BaseDialog):
                                              ctrl_size=(450, 350),
                                              direction='vertical',
                                              choices=choices)
-    for i in xrange(len(selected)):
+    for i in range(len(selected)):
       self.runblocks_list.ctr.Check(i, selected[i])
 
     self.runblocks_sizer = wx.BoxSizer(wx.VERTICAL)

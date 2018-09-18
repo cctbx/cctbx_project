@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from xfel.merging.algorithms.error_model.sdfac_refine_lbfgs import sdfac_refinery, sdfac_refine_refltable_lbfgs, lbfgs_minimizer
 from xfel.merging.algorithms.error_model.sdfac_propagate import sdfac_propagate, error_terms, r2d
 from scitbx.array_family import flex
@@ -129,7 +130,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 2"
-    for i in xrange(len(self.scaler.ISIGI)):
+    for i in range(len(self.scaler.ISIGI)):
       hkl_id = self.scaler.ISIGI['miller_id'][i]
       Intensity = self.scaler.ISIGI['scaled_intensity'][i] # scaled intensity
       sigma = Intensity / self.scaler.ISIGI['isigi'][i] # corrected sigma
@@ -141,7 +142,7 @@ class sdfac_propagate_and_refine(sdfac_refine_refltable_lbfgs):
       from matplotlib.pyplot import cm
       from matplotlib import pyplot as plt
       import numpy as np
-      for i in xrange(2):
+      for i in range(2):
         f = plt.figure(i)
         lines = plt.gca().get_lines()
         color=cm.rainbow(np.linspace(0,1,len(lines)))

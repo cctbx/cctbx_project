@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 crystalline_density = 2.3290 / 1000.# g/(mm^3) #wikipedia
 
 # Custer JS et al (1994) Density of amorphous Si. Applied Phys. Lett. 64: 437-439.
@@ -37,7 +38,7 @@ def eV_from_Ang(Ang):
   return 12398.424/Ang
 
 if __name__=="__main__":
-  for eV in xrange(2000, 30500, 500):
+  for eV in range(2000, 30500, 500):
     print eV, "%.2f"%Si_mass_attenuation().from_energy_eV(eV)
   print Si_mass_attenuation().from_wavelength_Angstrom(1.3)
   print Si_mass_attenuation().from_wavelength_Angstrom(1.297461)*amorphous_density

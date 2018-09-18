@@ -921,7 +921,7 @@ class PySlip(_BufferedCanvas):
         default_offset_y = kwargs.get('offset_y', self.DefaultPolygonOffsetY)
 
         draw_data = []
-        for x in xrange(0,len(data),5):
+        for x in range(0,len(data),5):
           # Calculate ellipse center, major and minor axes.
           side1=col(( (data[x][0]+data[x+1][0])/2., (data[x][1]+data[x+1][1])/2.))
           side2=col(( (data[x+1][0]+data[x+2][0])/2., (data[x+1][1]+data[x+2][1])/2.))

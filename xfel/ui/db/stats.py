@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 
 class Stats(object):
@@ -126,7 +127,7 @@ class HitrateStats(object):
         min_bin_index = d_mins.index(min(d_mins))
       else:
         d_maxes = [float(b.d_max) for b in bins]
-        qualified_bin_indices = [i for i in xrange(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
+        qualified_bin_indices = [i for i in range(len(bins)) if d_maxes[i] >= self.d_min and d_mins[i] <= self.d_min]
         if len(qualified_bin_indices) == 0: continue
         min_bin_index = qualified_bin_indices[0]
       high_res_bin_ids.append(str(bins[min_bin_index].id))

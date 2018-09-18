@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -54,8 +55,8 @@ class small_cell_spot:
     self.peak_pixels = flex.vec3_int()
     l, r, t, b, z0, z1 = self.spot_dict['bbox']
     z = z1-z0
-    for my, y in zip(xrange(b-t),xrange(t,b)):
-      for mx, x in zip(xrange(r-l),xrange(l,r)):
+    for my, y in zip(range(b-t),range(t,b)):
+      for mx, x in zip(range(r-l),range(l,r)):
         self.peak_pixels.append((x,y,z))
 
 
@@ -255,7 +256,7 @@ class small_cell_callbacks:
       #bcx, bcy = frame._img._raw.detector_coords_as_image_coords_float(self.beam_y, self.beam_x)
       #bcx, bcy = frame.pyslip.tiles.picture_fast_slow_to_map_relative(bcx + 0.5, bcy + 0.5)
       ring_text = []
-      for pxl, i, idx in zip(L_pixels, xrange(len(L_pixels)), ring_indices):
+      for pxl, i, idx in zip(L_pixels, range(len(L_pixels)), ring_indices):
         if pxl > 100: continue
 
         ring_data = [(bcx, bcy,
@@ -439,9 +440,9 @@ def write_cell (ori,wavelength,max_clique,phil,img):
 
   f = open("cell.dat",'w')
   dots = 10
-  for h in xrange(-dots,dots):
-    for k in xrange(-4,4):
-      for l in xrange(-dots,dots):
+  for h in range(-dots,dots):
+    for k in range(-4,4):
+      for l in range(-dots,dots):
         v = A * col([h,k,l])
         f.write(" % 6.3f % 6.3f % 6.3f\n"%(v[0],v[1],v[2]))
   f.close()
@@ -649,8 +650,8 @@ def small_cell_index(path, horiz_phil):
     focus = sb.mask.focus()
     l, r, t, b, z0, z1 = sb.bbox
     coords = []
-    for my, y in zip(xrange(b-t),xrange(t,b)):
-      for mx, x in zip(xrange(r-l),xrange(l,r)):
+    for my, y in zip(range(b-t),range(t,b)):
+      for mx, x in zip(range(r-l),range(l,r)):
         if sb.mask[0,my,mx] == mask_peak:
           coords.append((x,y))
     test = flex.bool([is_bad_pixel(raw_data,c) for c in coords])
@@ -689,8 +690,8 @@ def small_cell_index(path, horiz_phil):
     l, r, t, b, z0, z1 = ref['shoebox'].bbox
     coords = []
 
-    for my, y in zip(xrange(b-t),xrange(t,b)):
-      for mx, x in zip(xrange(r-l),xrange(l,r)):
+    for my, y in zip(range(b-t),range(t,b)):
+      for mx, x in zip(range(r-l),range(l,r)):
         if ref['shoebox'].mask[0,my,mx] == mask_peak:
           p = col((x,y)) - beam_center
           pa = p.dot(azimuthal)
@@ -979,8 +980,8 @@ def small_cell_index(path, horiz_phil):
 
     print "converting to flex"
     graph_flex = flex.bool(flex.grid(len(graph),len(graph)))
-    for j in xrange(len(graph)):
-      for i in xrange(len(graph)):
+    for j in range(len(graph)):
+      for i in range(len(graph)):
         graph_flex[i,j] = bool(graph[i][j])
 
     #calcuate maximum size cliques using the Bron-Kerbosch algorithm:
@@ -1530,7 +1531,7 @@ def get_crystal_orientation(spots, sym, img, beam_x, beam_y, distance, use_minim
   #constraints.append(img.distance)
 
   def simplex_uc(x):
-    for i in xrange(4):
+    for i in range(4):
       if x[i] < constraints[i] * 0.95:
         x[i] = constraints[i] * 0.95
       elif x[i] > constraints[i] * 1.05:
@@ -1835,7 +1836,7 @@ def grow_by(pixels, amt):
 def get_background_value(img, center):
   square_radius = 5
   data = flex.double()
-  for j in xrange(2*square_radius+1):
+  for j in range(2*square_radius+1):
     pass # THIS FUNCTION NOT USED YET
 
 def reject_background_outliers(bg_pixels, bg_vals):
@@ -1869,7 +1870,7 @@ def reject_background_outliers(bg_pixels, bg_vals):
 
   culled_bg = []
   culled_bg_vals = []
-  for i in xrange(len(fit_vals)):
+  for i in range(len(fit_vals)):
     if abs(fit_vals[i]) < 3 * stddev:
       culled_bg.append(bg_pixels[i])
       culled_bg_vals.append(bg_vals[i])

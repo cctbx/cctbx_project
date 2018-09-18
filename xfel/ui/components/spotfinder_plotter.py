@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
@@ -6,7 +7,7 @@ from matplotlib import pyplot as plt
 def get_spotfinder_stats(timestamps, n_strong, n_min,
   tuple_of_timestamp_boundaries, lengths, run_numbers):
   # n_strong is a flex.double and n_min is an integer
-  iterator = xrange(len(timestamps))
+  iterator = range(len(timestamps))
   half_window = min(50, max(int(len(timestamps)//20), 1))
   # spotfinding more than n_min spots rate in a sliding window
   enough_spots = n_strong >= n_min
@@ -55,9 +56,9 @@ def plot_spotfinder_stats(stats,
     return None
   n_runs = len(boundaries)//2
   if len(run_tags) != n_runs:
-    run_tags = [[] for i in xrange(n_runs)]
+    run_tags = [[] for i in range(n_runs)]
   if len(run_statuses) != n_runs:
-    run_statuses = [None for i in xrange(n_runs)]
+    run_statuses = [None for i in range(n_runs)]
   if minimalist:
     print "Minimalist mode activated."
     f, (ax1, ax2) = plt.subplots(2, sharex=True, sharey=False)
@@ -91,7 +92,7 @@ def plot_spotfinder_stats(stats,
   run_ends = boundaries[1::2]
   start = 0
   end = -1
-  for idx in xrange(len(run_numbers)):
+  for idx in range(len(run_numbers)):
     start_t = run_starts[idx]
     end_t = run_ends[idx]
     if start_t is None or end_t is None: continue
@@ -154,7 +155,7 @@ def plot_multirun_spotfinder_stats(runs,
   lengths = []
   runs_with_data = []
   offset = 0
-  for idx in xrange(len(runs)):
+  for idx in range(len(runs)):
     r = runs[idx]
     if len(r[0]) > 0:
       if compress_runs:

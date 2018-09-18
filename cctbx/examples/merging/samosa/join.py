@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil
@@ -199,7 +200,7 @@ class scaling_manager (scaling_manager_base) :
     # Each process accumulates its own statistics in serial, and the
     # grand total is eventually collected by the main process'
     # _add_all_frames() function.
-    for i in xrange(nproc) :
+    for i in range(nproc) :
       sm = scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
         func=sm,
@@ -402,7 +403,7 @@ class scaling_manager (scaling_manager_base) :
       #show_observations(observations, out=sys.stdout, n_bins=N_bins)
       acceptable_resolution_bins = [
         bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
-      acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+      acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                          if False not in acceptable_resolution_bins[:i+1]]
       if len(acceptable_nested_bin_sequences)==0:
         return null_data(
@@ -652,7 +653,7 @@ def run(args):
   # Sum the observations of I and I/sig(I) for each reflection.
   sum_I = flex.double(miller_set.size(), 0.)
   sum_I_SIGI = flex.double(miller_set.size(), 0.)
-  for i in xrange(miller_set.size()) :
+  for i in range(miller_set.size()) :
     index = miller_set.indices()[i]
     if index in scaler.ISIGI :
       for t in scaler.ISIGI[index]:
@@ -727,7 +728,7 @@ class scaling_result (group_args) :
 #-----------------------------------------------------------------------
 # graphical goodies
 def plot_overall_completeness(completeness):
-  completeness_range = xrange(-1,flex.max(completeness)+1)
+  completeness_range = range(-1,flex.max(completeness)+1)
   completeness_counts = [completeness.count(n) for n in completeness_range]
   from matplotlib import pyplot as plt
   plt.plot(completeness_range,completeness_counts,"r+")

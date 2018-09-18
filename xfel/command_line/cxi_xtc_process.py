@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.xtc_process
@@ -207,9 +208,9 @@ class Script(object):
         # chop the list into pieces, depending on rank.  This assigns each process
         # events such that the get every Nth event where N is the number of processes
         print "Striping events"
-        mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+        mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
 
-        for i in xrange(len(mytimes)):
+        for i in range(len(mytimes)):
           self.process_event(run, mytimes[i])
       run.end()
     ds.end()

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 import math
@@ -46,7 +47,7 @@ class trumpet_plot(object):
           N = len(dcolors)
           CMAP = plt.get_cmap("rainbow")
           if self.refined.get("partiality_array",None) is None:
-            for n in xrange(N):
+            for n in range(N):
               fig.plot([tt_selected[n]],[dp_selected[n]],
               color=CMAP(dnorm(dcolors[n])),marker=".", markersize=10)
           else:
@@ -54,7 +55,7 @@ class trumpet_plot(object):
             partials_select = partials.select(positive)
             partials_selected = partials_select.select(order)
             assert len(partials)==len(positive)
-            for n in xrange(N):
+            for n in range(N):
               fig.plot([tt_selected[n]],[dp_selected[n]],
               color=CMAP(dnorm(dcolors[n])),marker=".", markersize=20*partials_selected[n])
               # change the markersize to indicate partiality.
@@ -94,7 +95,7 @@ class trumpet_plot(object):
     mosaic_domain_size_ang = self.refined["mosaic_domain_size_ang"]
     red_curve_domain_size_ang = self.refined.get("red_curve_domain_size_ang",mosaic_domain_size_ang)
     a_step = self.AD1TF7B_MAX2T / 50.
-    a_range = flex.double([a_step*x for x in xrange(1,50)]) # domain two-theta array
+    a_range = flex.double([a_step*x for x in range(1,50)]) # domain two-theta array
     #Bragg law [d=L/2sinTH]
     d_spacing = (wavelength/(2.*flex.sin(math.pi*a_range/360.)))
     # convert two_theta to a delta-psi.  Formula for Deffective [Dpsi=d/2Deff]

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.print_pickle
@@ -49,7 +50,7 @@ def keywise_printout(data):
         acceptable_resolution_bins.append(avg_i_sigi >= 1.0)
 
       acceptable_resolution_bins = [acceptable_resolution_bins[i] if False not in acceptable_resolution_bins[:i+1] else False
-                                    for i in xrange(len(acceptable_resolution_bins))]
+                                    for i in range(len(acceptable_resolution_bins))]
       best_res = None
       for i, ok in zip(binner.range_used(), acceptable_resolution_bins):
         d_max, d_min = binner.bin_d_range(i)
@@ -101,7 +102,7 @@ def generate_streams_from_path(tar_or_other):
       T = tarfile.open(name=tar_or_other, mode='r')
       K = T.getmembers()
       NT = len(K)
-      for nt in xrange(NT):
+      for nt in range(NT):
         k = os.path.basename(K[nt].path)
         fileIO = T.extractfile(member=K[nt])
         yield fileIO,K[nt].path

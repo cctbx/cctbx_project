@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import time
 
 class phil_validation:
@@ -46,7 +47,7 @@ class file_table:
     for item in self.times:
       self.unixtimes.append(  time.mktime(time.strptime(item[:19],"%Y-%m-%dT%H:%M:%S"))  )
     self.rundict = {}
-    for i in xrange(len(self.runs)):
+    for i in range(len(self.runs)):
       if enforce80: #assume the required FEE spectrometer data is in stream 80
         if self.items[i].find("-s80-") < 0: continue
       if enforce81: #assume the required FEE spectrometer data is in stream 81

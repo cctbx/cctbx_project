@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.plot_reflection_stats
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -84,8 +85,8 @@ class Script(object):
       reflections['difference_vector_norms'] = (reflections['xyzcal.mm']-reflections['xyzobs.mm.value']).norms()
       reflections = setup_stats(detector, experiments, reflections, two_theta_only=True) # add two theta to reflection table
       sorted_two_theta = flex.sorted(reflections['two_theta_obs'])
-      bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in xrange(n_bins)]
-      bin_high = [bin_low[i+1] for i in xrange(n_bins-1)]
+      bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in range(n_bins)]
+      bin_high = [bin_low[i+1] for i in range(n_bins-1)]
       bin_high.append(sorted_two_theta[-1]+arbitrary_padding)
 
       x_centers = flex.double()
@@ -100,7 +101,7 @@ class Script(object):
       print "# 2theta Res N dXY IsigI"
 
       # Compute stats for each bin
-      for i in xrange(n_bins):
+      for i in range(n_bins):
         refls = reflections.select((reflections['two_theta_obs'] >= bin_low[i]) & (reflections['two_theta_obs'] < bin_high[i]))
         # Only compute deltaXY stats on reflections with I/sigI at least 5
         i_sigi = refls['intensity.sum.value']/flex.sqrt(refls['intensity.sum.variance'])
@@ -152,7 +153,7 @@ class Script(object):
     assert len(params.input.experiments) == len(params.input.reflections)
 
     # Plotit!
-    for i in xrange(len(params.input.experiments)):
+    for i in range(len(params.input.experiments)):
       plotit(params.input.reflections[i].data, params.input.experiments[i].data)
 
     # Set up labels

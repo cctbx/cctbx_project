@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from libtbx import easy_pickle
 from dials.array_family import flex
@@ -24,7 +25,7 @@ class ReflectionsRadialLengths(object):
       self.beam = experiment.beam
     self.s0 = matrix.col(self.beam.get_unit_s0())
     self.panel_s0_intersections = flex.vec2_double(
-      [self.det[i].get_ray_intersection_px(self.s0) for i in xrange(len(self.det))])
+      [self.det[i].get_ray_intersection_px(self.s0) for i in range(len(self.det))])
   def get_one_spot_length_width_angle(self, id):
     # the radial direction is along the vector from the beam center to
     # the spot centroid for each spot
@@ -64,7 +65,7 @@ class ReflectionsRadialLengths(object):
     return (length, width, angle)
   def get_spot_lengths_px(self):
     self.lengths, self.widths, self.angles = \
-      flex.vec3_double([self.get_one_spot_length_width_angle(id) for id in xrange(len(self.strong))]).parts()
+      flex.vec3_double([self.get_one_spot_length_width_angle(id) for id in range(len(self.strong))]).parts()
     return self.lengths
   def get_spot_width(self):
     if not hasattr(self, "widths"):

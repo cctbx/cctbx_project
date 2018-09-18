@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
@@ -31,7 +32,7 @@ def get_multirun_should_have_indexed_timestamps(stats_by_run,
                                                 n_strong_cutoff=40,
                                                 indexed=False):
   timestamps = []
-  for idx in xrange(len(stats_by_run)):
+  for idx in range(len(stats_by_run)):
     r = stats_by_run[idx]
     if len(r[0]) > 0:
       timestamps.append(
@@ -108,7 +109,7 @@ def get_run_stats(timestamps,
   print "%d first lattices" % (n_lattices >= 1).count(True)
   print "%d multiple lattices" % (n_lattices >= 2).count(True)
   print "%d total lattices" % (flex.sum(n_lattices))
-  iterator = xrange(len(resolutions))
+  iterator = range(len(resolutions))
   # hit rate of drops (observe solvent) or crystals (observe strong spots)
   # since -1 is used as a flag for "did not store this value", and we want a quotient,
   # set the numerator value to 0 whenever either the numerator or denominator is -1
@@ -197,9 +198,9 @@ def plot_run_stats(stats,
     return None
   n_runs = len(boundaries)//2
   if len(run_tags) != n_runs:
-    run_tags = [[] for i in xrange(n_runs)]
+    run_tags = [[] for i in range(n_runs)]
   if len(run_statuses) != n_runs:
-    run_statuses = [None for i in xrange(n_runs)]
+    run_statuses = [None for i in range(n_runs)]
   if minimalist:
     print "Minimalist mode activated."
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True, sharey=False)
@@ -249,7 +250,7 @@ def plot_run_stats(stats,
   run_ends = boundaries[1::2]
   start = 0
   end = -1
-  for idx in xrange(len(run_numbers)):
+  for idx in range(len(run_numbers)):
     start_t = run_starts[idx]
     end_t = run_ends[idx]
     if start_t is None or end_t is None: continue
@@ -336,7 +337,7 @@ def plot_multirun_stats(runs,
   lengths = []
   runs_with_data = []
   offset = 0
-  for idx in xrange(len(runs)):
+  for idx in range(len(runs)):
     r = runs[idx]
     if len(r[0]) > 0:
       if compress_runs:

@@ -16,6 +16,7 @@
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 #
 from __future__ import division
+from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
@@ -258,10 +259,10 @@ def setup_stats(detector, experiments, reflections, two_theta_only = False):
       beam_centre = panel.get_beam_centre_lab(s0)
       bcl.extend(flex.vec3_double(len(expt_refls), beam_centre))
       cal_x, cal_y, _ = expt_refls['xyzcal.px'].parts()
-      ttc.extend(flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in xrange(len(expt_refls))]))
+      ttc.extend(flex.double([panel.get_two_theta_at_pixel(s0, (cal_x[i], cal_y[i])) for i in range(len(expt_refls))]))
       if 'xyzobs.px.value' in expt_refls:
         obs_x, obs_y, _ = expt_refls['xyzobs.px.value'].parts()
-        tto.extend(flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in xrange(len(expt_refls))]))
+        tto.extend(flex.double([panel.get_two_theta_at_pixel(s0, (obs_x[i], obs_y[i])) for i in range(len(expt_refls))]))
     panel_refls['beam_centre_lab'] = bcl
     panel_refls['two_theta_cal'] = ttc * (180/math.pi) #+ (0.5*panel_refls['delpsical.rad']*panel_refls['two_theta_obs'])
     if 'xyzobs.px.value' in expt_refls:
@@ -316,7 +317,7 @@ def reflection_wavelength_from_pixels(experiments, reflections):
     unit_cell = expt.crystal.get_unit_cell()
     d = unit_cell.d(refls['miller_index'])
 
-    for i in xrange(len(refls)):
+    for i in range(len(refls)):
       sb = refls['shoebox'][i]
       # find the coordinates with signal
       mask = flex.bool([(m & valid_code) != 0 for m in sb.mask])
@@ -376,7 +377,7 @@ class Script(DCScript):
       # case for passing in multiple images on the command line
       assert len(params.input.reflections) == len(detectors)
       reflections = flex.reflection_table()
-      for expt_id in xrange(len(detectors)):
+      for expt_id in range(len(detectors)):
         subset = params.input.reflections[expt_id].data
         subset['id'] = flex.int(len(subset), expt_id)
         reflections.extend(subset)
@@ -581,7 +582,7 @@ class ResidualsPlotter(object):
       data.extend(flex.vec2_double([(i, 0), (i, flex.max(h.slots()))]))
     data = self.get_bounded_data(data, bounds)
     tmp = [data[:n]]
-    for i in xrange(len(colors)):
+    for i in range(len(colors)):
       tmp.append(data[n+(i*2):n+((i+1)*2)])
     data = tmp
 
@@ -600,11 +601,11 @@ class ResidualsPlotter(object):
     x_extent = max(r)
     y_extent = len(r)
     xobs = [i/x_extent for i in sorted(r)]
-    yobs = [i/y_extent for i in xrange(y_extent)]
+    yobs = [i/y_extent for i in range(y_extent)]
     obs = [(x, y) for x, y in zip(xobs, yobs)]
 
     ncalc = 100
-    xcalc = [i/ncalc for i in xrange(ncalc)]
+    xcalc = [i/ncalc for i in range(ncalc)]
     ycalc = [1-math.exp((-i**2)/(2*(sigma**2))) for i in xcalc]
     calc = [(x, y) for x, y in zip(xcalc, ycalc)]
 
@@ -772,7 +773,7 @@ class ResidualsPlotter(object):
 
         if params.repredict.refine_mode == 'per_experiment':
           refined_reflections = flex.reflection_table()
-          for expt_id in xrange(len(experiments)):
+          for expt_id in range(len(experiments)):
             if params.verbose: print "*"*80, "EXPERIMENT", expt_id
             refls = reflections.select(reflections['id']==expt_id)
             refls['id'] = flex.int(len(refls), 0)
@@ -1009,7 +1010,7 @@ class ResidualsPlotter(object):
         bin_low = []
         bin_high = []
         data = flex.sorted(reflections['two_theta_obs'])
-        for i in xrange(n_bins):
+        for i in range(n_bins):
           bin_low = data[i*bin_size]
           if (i+1)*bin_size >= len(reflections):
             bin_high = data[-1]
@@ -1065,7 +1066,7 @@ class ResidualsPlotter(object):
         for k in pg_bc_dists:
           vdict[pg_bc_dists[k]] = k
         sorted_keys = [vdict[v] for v in sorted_values if vdict[v] in rmsds]
-        x = [sorted_values[i] for i in xrange(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
+        x = [sorted_values[i] for i in range(len(sorted_values)) if pg_bc_dists.keys()[i] in rmsds]
 
         self.plot_multi_data(x,
                              [[pg_refls_count_d[k] for k in sorted_keys],
@@ -1170,8 +1171,8 @@ class ResidualsPlotter(object):
     n_bins = 30
     arbitrary_padding = 1
     sorted_two_theta = flex.sorted(reflections['two_theta_obs'])
-    bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in xrange(n_bins)]
-    bin_high = [bin_low[i+1] for i in xrange(n_bins-1)]
+    bin_low = [sorted_two_theta[int((len(sorted_two_theta)/n_bins) * i)] for i in range(n_bins)]
+    bin_high = [bin_low[i+1] for i in range(n_bins-1)]
     bin_high.append(sorted_two_theta[-1]+arbitrary_padding)
 
     title = "%sBinned data by two theta (n reflections per bin: %.1f)"%(tag, len(sorted_two_theta)/n_bins)
@@ -1186,7 +1187,7 @@ class ResidualsPlotter(object):
     #delta_two_theta = flex.double()
     rmsd_delta_two_theta = flex.double()
 
-    for i in xrange(n_bins):
+    for i in range(n_bins):
       x_centers.append(((bin_high[i]-bin_low[i])/2) + bin_low[i])
       refls = reflections.select((reflections['two_theta_obs'] >= bin_low[i]) & (reflections['two_theta_obs'] < bin_high[i]))
       n = len(refls)

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cspad.circular_gain_mask
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
 # $Id
@@ -91,8 +92,8 @@ if (__name__ == "__main__") :
   print "Panel:",; sys.stdout.flush()
   for p_id, panel in enumerate(img.get_detector()):
     print p_id,; sys.stdout.flush()
-    for y in xrange(185):
-      for x in xrange(194):
+    for y in range(185):
+      for x in range(194):
         lx, ly, lz = panel.get_pixel_lab_coord((x,y))
         if annulus:
           if not point_inside_circle(lx,ly,beam_center[0],beam_center[1],outer) or point_inside_circle(lx,ly,beam_center[0],beam_center[1],inner):

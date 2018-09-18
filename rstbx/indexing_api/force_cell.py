@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx.matrix import col,sqr
 from scitbx.math import unimodular_generator
@@ -39,7 +40,7 @@ def force_cell(index_engine,target_cell,verbose=False):
     if verbose:
       print "N candidates:",index_engine.n_candidates()
       from rstbx.dps_core import directional_show
-      for x in xrange(index_engine.n_candidates()):
+      for x in range(index_engine.n_candidates()):
         directional_show( index_engine[x], "vector %d:"%x )
     Ns = index_engine.n_candidates()
     best = {"score":1.E100}
@@ -52,7 +53,7 @@ def force_cell(index_engine,target_cell,verbose=False):
                  "c":{"match":[],"length":working_cell.parameters()[2]},
                 }
       for key in vectors.keys():
-        for ns in xrange(Ns):
+        for ns in range(Ns):
           if is_length_match(vectors[key]["length"],index_engine[ns].real):
             vectors[key]["match"].append(ns)
         #print key, vectors[key]
@@ -64,8 +65,8 @@ def force_cell(index_engine,target_cell,verbose=False):
       for key in lines.keys():
         xmatch = len(vectors[lines[key]["points"][0]]["match"])
         ymatch = len(vectors[lines[key]["points"][1]]["match"])
-        for xi in xrange(xmatch):
-          for yi in xrange(ymatch):
+        for xi in range(xmatch):
+          for yi in range(ymatch):
             xkey = vectors[lines[key]["points"][0]]["match"][abs(xi)]
             ykey = vectors[lines[key]["points"][1]]["match"][abs(yi)]
             #print key,xkey,ykey,

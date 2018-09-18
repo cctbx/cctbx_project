@@ -7,6 +7,7 @@
 XXX Better named cspad_base?
 """
 from __future__ import division
+from six.moves import range
 
 __version__ = "$Revision$"
 
@@ -445,7 +446,7 @@ class common_mode_correction(mod_event_info):
           q_mask = 1
         else:
           q_mask = config.quadMask()
-        for q in xrange(len(self.sections)):
+        for q in range(len(self.sections)):
           if (not((1 << q) & q_mask)):
             continue
 
@@ -457,7 +458,7 @@ class common_mode_correction(mod_event_info):
             s_mask = config.roiMask()
           else:
             s_mask = config.roiMask(q)
-          for s in xrange(len(self.sections[q])):
+          for s in range(len(self.sections[q])):
             # XXX DAQ misconfiguration?  This mask appears not to work
             # reliably for the Sc1 detector.
 #            if (not((1 << s) & s_mask)):

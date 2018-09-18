@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.display_metrology
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -169,7 +170,7 @@ if (__name__ == "__main__") :
           ax.set_xlim((-100, 100))
           ax.set_ylim((-100, 100))
         else:
-          for quad_id in xrange(4):
+          for quad_id in range(4):
             for sensor_id, sensor in enumerate(root.get_list_of_children()[quad_id*8:(quad_id+1)*8]):
               sensor_x, sensor_y, sensor_z = sensor.get_pixel_coords()
               #transformed_x, transformed_y, transformed_z = quad.transform_geo_coord_arrays(sensor_x, sensor_y, sensor_z)
@@ -234,7 +235,7 @@ if (__name__ == "__main__") :
     for asic_number, (y1, x1, y2, x2) in enumerate([(active_areas[(i*4)+0]+1,
                                                      active_areas[(i*4)+1]+1,
                                                      active_areas[(i*4)+2]-1,
-                                                     active_areas[(i*4)+3]-1) for i in xrange(len(active_areas)//4)]):
+                                                     active_areas[(i*4)+3]-1) for i in range(len(active_areas)//4)]):
       ax.add_patch(Rectangle((x1,y1), x2-x1, y2-y1, color="grey"))
       ax.annotate(asic_number, (x1+(x2-x1)/2,y1+(y2-y1)/2))
 

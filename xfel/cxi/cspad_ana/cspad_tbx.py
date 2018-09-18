@@ -10,6 +10,7 @@ XXX Better named cspad_common?
 XXX Read out detector temperature (see Hart et al., 2012)?
 """
 from __future__ import division
+from six.moves import range
 
 import math
 import numpy
@@ -139,8 +140,8 @@ def cbcaa(config, sections):
     # lower-right corner is exclusive.  XXX Should subtract one from
     # x, y on lower-right corner and verify with zoom.  XXX All this
     # should probably go by now
-    for q in xrange(4): # loop over quadrants
-      for i in xrange(8): # loop over two-by-one:s XXX variable name!
+    for q in range(4): # loop over quadrants
+      for i in range(8): # loop over two-by-one:s XXX variable name!
 
         # Skip this two-by-one if it is missing.
         if not (config.roiMask(q) & 0x1 << i):
@@ -224,7 +225,7 @@ def cbcaa(config, sections):
   else:
     q_mask = config.quadMask()
 
-  for q in xrange(len(sections)):
+  for q in range(len(sections)):
     if (not((1 << q) & q_mask)):
       continue
 
@@ -245,7 +246,7 @@ def cbcaa(config, sections):
       s_mask = config.roiMask()
     else:
       s_mask = config.roiMask(q)
-    for s in xrange(len(sections[q])):
+    for s in range(len(sections[q])):
       if (not((1 << s) & s_mask)):
         continue
       c = sections[q][s].corners_asic()
@@ -277,11 +278,11 @@ def CsPad2x2Image(data, config, sections):
   # cause any further breakage XXX Does this still work for runs 4 and
   # 5?
 #  s = config.sections
-#  mask = map(s, xrange(2))
+#  mask = map(s, range(2))
 
   # For this detector, the quadrant index is always zero.
   q_idx = 0
-  for s in xrange(2):
+  for s in range(2):
     # XXX DAQ misconfiguration?  This mask appears not to work
     # reliably for the Sc1 detector.
 #    if (s not in mask[q_idx]):
@@ -306,7 +307,7 @@ def evt_get_quads(address, evt, env):
     cspad = evt.get(CsPad.DataV2, src)
     if cspad is None:
       return None
-    quads = [cspad.quads(i) for i in xrange(cspad.quads_shape()[0])]
+    quads = [cspad.quads(i) for i in range(cspad.quads_shape()[0])]
   return quads
 
 def CsPadDetector(address, evt, env, sections, right=True, quads=None):
@@ -370,7 +371,7 @@ def CsPadDetector(address, evt, env, sections, right=True, quads=None):
       # psana
       # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
       # x, y times, and & is the bitwise AND operator
-      q_mask = [i for i in xrange(len(sections[q_idx])) if 1 << i & config.roiMask(q_idx)]
+      q_mask = [i for i in range(len(sections[q_idx])) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, assert that there is data for each unmasked
     # section.
@@ -405,15 +406,15 @@ def CsPadElement(data3d, qn, config):
   """
 
   # If any sections are missing, insert zeros.
-  mask = map(config.sections, xrange(4))
+  mask = map(config.sections, range(4))
   if (len(data3d) < 8):
     zsec = numpy.zeros((185, 388), dtype = data3d.dtype)
-    for i in xrange(8) :
+    for i in range(8) :
       if (i not in mask[qn]):
         data3d = numpy.insert(data3d, i, zsec, axis = 0)
 
   pairs = []
-  for i in xrange(8) :
+  for i in range(8) :
     # Insert gap between ASIC:s in the 2x1.
     asics = numpy.hsplit(data3d[i], 2)
     gap   = numpy.zeros((185, 4), dtype = data3d.dtype)
@@ -429,7 +430,7 @@ def CsPadElement(data3d, qn, config):
 
   # Make the array for this quadrant, and insert the 2x1 sections.
   quadrant = numpy.zeros((npix_quad, npix_quad), dtype = data3d.dtype)
-  for sec in xrange(8):
+  for sec in range(8):
     nrows, ncols = pairs[sec].shape
 
     # x,y  in quadrant coordinate system
@@ -1526,7 +1527,7 @@ def image_xpp(address, evt, env, aa, quads = None):
       # psana
       # as above, using config.roiMask, a bitstring where the ith bit is true if the ith sensor is active. x << y means bitwise shift
       # x, y times, and & is the bitwise AND operator
-      q_mask = [i for i in xrange(config.numSect()//config.numQuads()) if 1 << i & config.roiMask(q_idx)]
+      q_mask = [i for i in range(config.numSect()//config.numQuads()) if 1 << i & config.roiMask(q_idx)]
 
     # For consistency, one could/should verify that len(q_data) is
     # equal to len(sections[q_idx]).
@@ -1606,8 +1607,8 @@ def iplace(dst, src, angle, center):
     # components in coordinate system of the untransformed source
     # image, (xp, yp).  Then do bilinear interpolation based on the
     # four pixels with integer coordinates around (xp, yp).
-    for x in xrange(xlim[0], xlim[1]):
-        for y in xrange(ylim[0], ylim[1]):
+    for x in range(xlim[0], xlim[1]):
+        for y in range(ylim[0], ylim[1]):
             xp =  c * x + s * y + 0.5 * src.shape[0]
             yp = -s * x + c * y + 0.5 * src.shape[1]
             if (xp >= 0 and math.ceil(xp) < src.shape[0] and

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -329,7 +330,7 @@ class lbfgs_minimizer_base:
     self.f = functional
     DELTA = 1.E-7
     self.g = flex.double()
-    for x in xrange(self.n):
+    for x in range(self.n):
       templist = list(self.x)
       templist[x]+=DELTA
       dvalues = flex.double(templist)

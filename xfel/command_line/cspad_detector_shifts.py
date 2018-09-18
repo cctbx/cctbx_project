@@ -12,6 +12,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_shifts
 #
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx.matrix import col
 from libtbx.phil import parse
@@ -125,7 +126,7 @@ class Script(ParentScript):
       return shift
 
     # Iterate through the hierarchy levels
-    for level in xrange(params.max_hierarchy_level+1):
+    for level in range(params.max_hierarchy_level+1):
       delta_xy = flex.double()
       r_offsets = flex.double()
       t_offsets = flex.double()

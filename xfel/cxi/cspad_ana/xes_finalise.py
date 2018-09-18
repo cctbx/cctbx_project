@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 import glob
 
@@ -186,7 +187,7 @@ def get_spectrum(spectrum_focus, mask_focus=None):
       if (column_i in omit_columns
           or column_i+1 in omit_columns
           or column_i-1 in omit_columns): continue
-    plot_x = flex.int(xrange(spectrum.size()))
+    plot_x = flex.int(range(spectrum.size()))
     plot_y = spectrum.deep_copy()
     for i in reversed(sorted(omit_columns)):
       del plot_x[i]

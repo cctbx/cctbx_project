@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import libtbx
 import sys
 
@@ -118,12 +119,12 @@ def kirian_delta_vs_ewald_proximity(
   a_inv = a_matrix.inverse()
   dsx, dsy = detector_size
   dpx, dpy = detector_pixels
-  deltas = [[] for _ in xrange(len(miller_indices))]
+  deltas = [[] for _ in range(len(miller_indices))]
   h_lookup = {}
   for i,h in enumerate(miller_indices):
     h_lookup[h] = i
-  for pi in xrange(dpx):
-    for pj in xrange(dpy):
+  for pi in range(dpx):
+    for pj in range(dpy):
       cx = ((pi + 0.5) / dpx - 0.5) * dsx
       cy = ((pj + 0.5) / dpy - 0.5) * dsy
       lo = matrix.col((cx, cy, -detector_distance))

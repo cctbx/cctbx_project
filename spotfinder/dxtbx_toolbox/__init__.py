@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import spotfinder.array_family.flex # implicit import
 
 import boost.python
@@ -14,7 +15,7 @@ class Distl:
 
     npanels = len(detector)
     self.finderlist = []
-    for n in xrange(npanels):
+    for n in range(npanels):
       SF = w_Distl(optionstring="",report_overloads=False)
 
       panel = detector[n]

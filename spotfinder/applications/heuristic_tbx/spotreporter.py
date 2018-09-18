@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from libtbx.table_utils import Spreadsheet
 from spotfinder.core_toolbox import bin_populations
@@ -39,7 +40,7 @@ class spotreporter(Spreadsheet):
         return 1./math.pow((shellnumber+1)*volume_fraction,1.0/3.0)
 
       #this little loop consumes 1.2 seconds of CPU time for a 1400-row spreadsheet
-      for xrow in xrange(0,Total_rows):
+      for xrow in range(0,Total_rows):
         self.Limit[xrow] = BinRes(xrow)
         self.Fract[xrow] = fractionCalculator(self.Limit[xrow])
 
@@ -58,14 +59,14 @@ class spotreporter(Spreadsheet):
         self.addColumn('Missing')
         self.addColumn('Population',0)
 
-        for xrow in xrange(0,self.S_table_rows):
+        for xrow in range(0,self.S_table_rows):
           self.Limit[xrow] = use_binning_of.binning.Limit[xrow]
           self.Fract[xrow] = use_binning_of.binning.Fract[xrow]
           self.Missing[xrow] = use_binning_of.binning.Missing[xrow]
         Total_rows = self.S_table_rows
 
     bp = bin_populations(spots,self.Limit[0])
-    for c in xrange(min(Total_rows,len(bp))): #reconcile inconsistent bin counts
+    for c in range(min(Total_rows,len(bp))): #reconcile inconsistent bin counts
         self.Population[c]=bp[c]
 
     self.Limit.format = "%.2f"
@@ -90,13 +91,13 @@ class spotreporter(Spreadsheet):
     self.addColumn('MnSkew',0) #mean eccentricity spots within the shell
     self.MnSkew.format = "%.3f"
     index=0
-    for row in xrange(self.S_table_rows):
+    for row in range(self.S_table_rows):
       row_values = flex.double()
       bkg_values = flex.double()
       sz_values = flex.double()
       eccen_values = flex.double()
       skew_values = flex.double()
-      for idx in xrange(self.Population[row]):
+      for idx in range(self.Population[row]):
         spot_signal = flex.sum(fstats.master[indices[index]].wts)
         bkg_signal = flex.sum(fstats.master[indices[index]].bkg)
         spot_sz = len(fstats.master[indices[index]].wts)
@@ -123,7 +124,7 @@ class spotreporter(Spreadsheet):
     from spotfinder.math_support.sphere_formulae import sphere_volume_minus_missing_cone
     last_cumulative_sphere_volume = 0.0
     last_cumulative_corrected_volume = 0.0
-    for xrow in xrange(0,total_rows):
+    for xrow in range(0,total_rows):
       this_sphere_volume = sphere_volume(1./self.Limit[xrow])
       this_corrected_volume = sphere_volume_minus_missing_cone(1./self.Limit[xrow],self.wavelength)
       shell_volume = this_sphere_volume - last_cumulative_sphere_volume
@@ -137,7 +138,7 @@ class spotreporter(Spreadsheet):
     self.PxlBkgrd.format = "%.1f"
     self.addColumn('MnWndwSz') # mean size (in pixels) of the scanbox windows in the shell
     self.MnWndwSz.format = "%.0f"
-    for irow in xrange(self.S_table_rows):
+    for irow in range(self.S_table_rows):
       self.PxlBkgrd[irow] = flex.double()
       self.MnWndwSz[irow] = flex.double()
     sortedidx = flex.sort_permutation(spotfinder.background_resolutions(),reverse=True)
@@ -145,14 +146,14 @@ class spotreporter(Spreadsheet):
     reverse_backgrounds = spotfinder.background_means().select(sortedidx)
     reverse_wndw_sz = spotfinder.background_wndw_sz().select(sortedidx)
     row = 0
-    for x in xrange(len(reverse_resolutions)):
+    for x in range(len(reverse_resolutions)):
       while reverse_resolutions[x] < self.Limit[row]:
         row += 1
         if row >= self.S_table_rows: break
       if row >= self.S_table_rows: break
       self.PxlBkgrd[row].append(reverse_backgrounds[x])
       self.MnWndwSz[row].append(reverse_wndw_sz[x])
-    for irow in xrange(self.S_table_rows):
+    for irow in range(self.S_table_rows):
       #print irow, len(self.PxlBkgrd[irow])
       #print list(self.PxlBkgrd[irow])
       #print list(self.PxlSigma[irow])
@@ -165,10 +166,10 @@ class spotreporter(Spreadsheet):
     self.addColumn('MeanIsigI',0) #mean I over sig(I) for spots within the shell
     self.MeanIsigI.format = "%.3f"
     index=0
-    for row in xrange(self.S_table_rows):
+    for row in range(self.S_table_rows):
       if self.PxlBkgrd[row] == None: continue
       IsigI_values = flex.double()
-      for idx in xrange(self.Population[row]):
+      for idx in range(self.Population[row]):
         # Use International Tables Vol F (2001) equation 11.2.5.9 (p. 214)
         I_s = flex.sum(self.persist_fstats.master[self.persist_indices[index]].wts)
         I_bg = flex.sum(self.persist_fstats.master[self.persist_indices[index]].bkg)
@@ -205,9 +206,9 @@ MnSkew: mean skewness for spots within the shell; skew:= (maximum-center_of_grav
 """; not_implemented="[PxlGain: estimate of the average gain for scanbox windows in the shell]"
     if self.original_binning: print legend
     print message+":"
-    to_print = [max([self.Population[i] for i in xrange(j,self.S_table_rows)])>0
+    to_print = [max([self.Population[i] for i in range(j,self.S_table_rows)])>0
                 and self.PxlBkgrd[j] != None
-           for j in xrange(self.S_table_rows)]
+           for j in range(self.S_table_rows)]
     self.printTable(default,printed_rows=to_print)
 
   def vetter(self,cutoff,last):
@@ -218,12 +219,12 @@ MnSkew: mean skewness for spots within the shell; skew:= (maximum-center_of_grav
        no contiguous stretch of populations < cutoff, which is longer than 10.
     """
     pop = []
-    for x in xrange(0,last+1):
+    for x in range(0,last+1):
       if self.Population[x]>cutoff: pop.append(1)
       else: pop.append(0)
 
     requalify=[0,]
-    for x in xrange(1,last+1):
+    for x in range(1,last+1):
       if pop[x]==0: requalify.append(requalify[x-1]+1)
       else:
          requalify.append(0)
@@ -231,7 +232,7 @@ MnSkew: mean skewness for spots within the shell; skew:= (maximum-center_of_grav
         break
 
     pop = pop[0:x+1]
-    for x in xrange(len(pop)-1,-1,-1):
+    for x in range(len(pop)-1,-1,-1):
       if pop[x]==1:
         #print "In Vetter with input",last,"output",x
         return x

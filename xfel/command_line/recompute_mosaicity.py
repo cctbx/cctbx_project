@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #!/usr/bin/env python
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
@@ -76,7 +77,7 @@ class Script(object):
     mosaic_angle = flex.double()
     filtered_reflections = flex.reflection_table()
 
-    for i in xrange(len(experiments)):
+    for i in range(len(experiments)):
       refls = reflections.select(reflections['id'] == i)
       try:
         nv = nave_parameters(params = None, experiments=experiments[i:i+1], reflections=refls, refinery=None, graph_verbose=False)

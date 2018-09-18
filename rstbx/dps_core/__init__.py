@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex # import dependency
 
 import boost.python
@@ -85,9 +86,9 @@ class _(boost.python.injector, ext.dps_core):
     MAXINDEX=basis
     bases = range(min(MAXINDEX,nc))
     comb=[]
-    for pp in xrange(len(bases)-2):
-      for qq in xrange(pp+1,len(bases)-1):
-        for rr in xrange(qq+1, len(bases)):
+    for pp in range(len(bases)-2):
+      for qq in range(pp+1,len(bases)-1):
+        for rr in range(qq+1, len(bases)):
           comb.append((bases[pp],bases[qq],bases[rr]))
     comb.sort(combocmp)
     return comb

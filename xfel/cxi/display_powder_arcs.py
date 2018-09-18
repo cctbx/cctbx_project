@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 import mmtbx.command_line.fmodel
 import mmtbx.utils
@@ -71,11 +72,11 @@ def superimpose_powder_arcs(image,params):
     detector_d = flex.double()
     detector_radius = flex.double()
 
-    for x in xrange(data.focus()[0]):
+    for x in range(data.focus()[0]):
       dx = x-beamx
       dx_sq = dx*dx;
 
-      for y in xrange(data.focus()[1]):
+      for y in range(data.focus()[1]):
         dy = y-beamy
         radius = math.sqrt(dx_sq+dy*dy)*pxlsz
         detector_radius.append(radius)
@@ -112,7 +113,7 @@ def superimpose_powder_arcs(image,params):
     THREESIGMA=1.5
     SIGMA = 0.20
     SCALE = 0.003
-    for x in xrange(50000):#len(detector_d)):
+    for x in range(50000):#len(detector_d)):
       if x%10000==0: print x
       if detector_d[d_order_image[x]]>2.1:
         pxl_radius = detector_radius[d_order_image[x]]
@@ -126,7 +127,7 @@ def superimpose_powder_arcs(image,params):
           while spot_radius[d_order_spots[spot_ptr_min]]+THREESIGMA < pxl_radius:
             spot_ptr_min += 1
             print x, pxl_radius,"increase spot_ptr_min" , spot_ptr_min
-          for sidx in xrange(spot_ptr_min,spot_ptr_max):
+          for sidx in range(spot_ptr_min,spot_ptr_max):
             spot_rad = spot_radius[d_order_spots[sidx]]
             delta_rad = spot_rad-pxl_radius
             #gaussian distribution with SIGMA=1 (1 pixel sigma)

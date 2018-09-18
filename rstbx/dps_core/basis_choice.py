@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import exceptions,math,types
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
@@ -109,7 +110,7 @@ class HandleCombo:
     assert not 0 in [isinstance(x,Direction) for x in solns]
     self.ai.combo_state = solns # for derived feature in LABELIT
     realaxis=[]
-    for i in xrange(3):
+    for i in range(3):
       realaxis.append(  vector.col(solns[i].dvec) * solns[i].real )
     matA = [  realaxis[0].elems[0],realaxis[0].elems[1],realaxis[0].elems[2],
               realaxis[1].elems[0],realaxis[1].elems[1],realaxis[1].elems[2],
@@ -130,7 +131,7 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
   try_counter = 0
   solutions = SolutionTracker()
   if diagnostic:
-    for x in xrange(ai.n_candidates()):
+    for x in range(ai.n_candidates()):
       directional_show(ai[x],message="BC%d"%x)
 
   for combo in C:

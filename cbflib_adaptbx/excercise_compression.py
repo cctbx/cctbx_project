@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 from cbflib_adaptbx import uncompress,compress,assert_equal
 from libtbx.development.timers import Profiler
@@ -17,7 +18,7 @@ def basic_tests(verbose=True):
   #special deltas to test the compression algorithm
   addresses = [3,6,9,12,15,18]
   deltas = [-127,128,-32767,32768,-2147483647,2147483647]
-  for x in xrange(6):
+  for x in range(6):
     initial_intdata[addresses[x]-1]=0
     initial_intdata[addresses[x]]=deltas[x]
 

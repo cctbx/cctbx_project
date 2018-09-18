@@ -4,6 +4,7 @@
 #
 # $Id$
 from __future__ import division
+from six.moves import range
 
 from xfel.command_line.cxi_merge import scaling_manager
 from dials.array_family import flex
@@ -70,7 +71,7 @@ class refltable_scaling_manager(scaling_manager):
         # of all observations of the reflection with the given index.
         N = 0
         m = 0
-        for j in xrange(len(refls)):
+        for j in range(len(refls)):
           N += 1
           m += refls['isigi'][j]
 
@@ -153,7 +154,7 @@ class refltable_scaling_manager(scaling_manager):
     # Each process accumulates its own statistics in serial, and the
     # grand total is eventually collected by the main process'
     # _add_all_frames() function.
-    for i in xrange(nproc) :
+    for i in range(nproc) :
       sm = refltable_scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
         func=sm,
@@ -257,7 +258,7 @@ class refltable_scaling_manager(scaling_manager):
     # Sum the observations of I and I/sig(I) for each reflection.
     sum_I = flex.double(self.miller_set.size(), 0.)
     sum_I_SIGI = flex.double(self.miller_set.size(), 0.)
-    for i in xrange(len(self.ISIGI)):
+    for i in range(len(self.ISIGI)):
       j = self.ISIGI['miller_id'][i]
       sum_I[j] += self.ISIGI['scaled_intensity'][i]
       sum_I_SIGI[j] += self.ISIGI['isigi'][i]

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math
 
@@ -16,7 +17,7 @@ def green_curve_area(twotheta, deltaphi):
   ordered_deltaphi = deltaphi.select(order)
 
   area = 0.
-  for idx in xrange(len(ordered_deltaphi)-1):
+  for idx in range(len(ordered_deltaphi)-1):
     deltaX = ordered_two_theta[idx+1] - ordered_two_theta[idx]
 
     averageY = ordered_deltaphi[idx+1] + ordered_deltaphi[idx]
@@ -44,7 +45,7 @@ def ewald_proximal_volume(wavelength_ang,resolution_cutoff_ang,domain_size_ang,f
     # compicated integral for mosaic spread volume, must be calculated numerically
     summation = 0.
     N_terms = 100
-    for x in xrange(N_terms):
+    for x in range(N_terms):
       phi = (x/N_terms) * TT
       # inner integral over radius r
       integral = math.pow( R_prime + (full_mosaicity_rad * R_L * math.sin(phi)/2.), 3.) - \

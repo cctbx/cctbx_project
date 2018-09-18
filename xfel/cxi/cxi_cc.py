@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 import math
 from libtbx.str_utils import format_value
@@ -111,8 +112,8 @@ def split_sigma_test(self, other, scale, use_binning=False, show_plot=False):
     order_b = flex.sort_permutation(normal_b)
     # plots for debugging
     from matplotlib import pyplot as plt
-    plt.plot(xrange(len(order_a)),normal_a.select(order_a),"b.")
-    plt.plot(xrange(len(order_b)),normal_b.select(order_b),"r.")
+    plt.plot(range(len(order_a)),normal_a.select(order_a),"b.")
+    plt.plot(range(len(order_b)),normal_b.select(order_b),"r.")
     plt.show()
     """
     from cctbx.examples.merging.sigma_correction import ccp4_model
@@ -220,7 +221,7 @@ def correlation(self,other, include_negatives=False):
     sum_yy = 0
     sum_x = 0
     sum_y = 0
-    for idx in xrange(self.indices().size()):
+    for idx in range(self.indices().size()):
 
       assert self.indices()[idx]==other.indices()[idx]
       I_r = other.data()[idx]
@@ -337,7 +338,7 @@ def load_cc_data(params,reindexing_op,output):
       continue
     uniform[x].setup_binner(n_bins=NBIN)
 
-  for x in xrange(len(uniform[1].indices())):
+  for x in range(len(uniform[1].indices())):
     if have_iso_ref:
       assert uniform[0].indices()[x] == uniform[1].indices()[x]
     assert uniform[1].indices()[x] == uniform[2].indices()[x]

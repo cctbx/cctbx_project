@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 def slip_callback(self,frame):
   #best_params=self.use_case_3_simulated_annealing()
   #best_params = self.use_case_3_grid_refine(frame)
@@ -25,14 +26,14 @@ def slip_callback(self,frame):
 
   bmask_data = []; foreground_data = []
   count_integrated = 0
-  for imsk in xrange(len(self.BSmasks)):
+  for imsk in range(len(self.BSmasks)):
     smask_keys = self.get_ISmask(imsk)
     bmask = self.BSmasks[imsk]
     if len(bmask.keys())==0: continue
     count_integrated+=1
 
     # foreground: integration mask
-    for ks in xrange(0,len(smask_keys),2):
+    for ks in range(0,len(smask_keys),2):
       foreground_data.append(
         frame.pyslip.tiles.picture_fast_slow_to_map_relative(
          smask_keys[ks+1] + 0.5,smask_keys[ks] + 0.5))

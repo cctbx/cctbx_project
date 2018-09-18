@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.fee_view
@@ -84,7 +85,7 @@ def run(args):
 
     # chop the list into pieces, depending on rank.  This assigns each process
     # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
 
     for i, t in enumerate(mytimes):
       evt = run.event(t)

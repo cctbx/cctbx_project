@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from dials.array_family import flex # implicit dependency
 import libtbx.load_env # implicit dependency
 import cPickle as pickle
@@ -123,12 +124,12 @@ def extend_predictions(pdata, int_pickle_path, image_info, dmin=1.5, dump=False,
   # active_area_object = active_area_filter(active_areas)
   # aa_predicted, aa_hkllist = active_area_object(predicted, hkllist, 0.11)
   # extended_mapped_predictions = flex.vec2_double()
-  # for i in xrange(len(aa_predicted)):
+  # for i in range(len(aa_predicted)):
   # extended_mapped_predictions.append(aa_predicted[i][0:2])
 
   # return predictions without re-applying an active area filter
   newpreds = flex.vec2_double()
-  for i in xrange(len(predicted)):
+  for i in range(len(predicted)):
     newpreds.append((predicted[i][0]/pixel_size, img_size-predicted[i][1]/pixel_size))
   # finally, record new predictions as member data
   pdata['mapped_predictions_to_edge'] = newpreds

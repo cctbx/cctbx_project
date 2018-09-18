@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import sys
 from cctbx.array_family import flex
 from libtbx.str_utils import format_value
@@ -62,7 +63,7 @@ def show_overall_observations(Fit_I,Fit_I_stddev,I_visited,ordered,sim,
   model_subset.setup_binner(d_max=(d_max or 100000), d_min=d_min, n_bins=n_bins)
   result = []
   multiplicity = flex.int(len(Fit_I))
-  for iraw in xrange(len(sim.miller)):
+  for iraw in range(len(sim.miller)):
     multiplicity[sim.miller[iraw]] += 1
   cumulative_unique = 0
   cumulative_meas   = 0

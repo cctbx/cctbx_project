@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import h5py, os, sys
 import numpy as np
 from libtbx.phil import parse
@@ -68,20 +69,20 @@ class composite_image_writer(object):
           if mode == 'max':
             dmax = np.zeros((8192, 128))
             dmax[:] = -np.inf
-            for i in xrange(n_frames):
+            for i in range(n_frames):
               frame = dataset[i]
               dmax = np.maximum(dmax, frame)
             result = dmax.reshape(1 ,8192, 128)
           elif mode == 'mean':
             dsum = np.zeros((8192, 128))
-            for i in xrange(n_frames):
+            for i in range(n_frames):
               frame = dataset[i]
               dsum += frame
             result = (dsum/n_frames).reshape(1 ,8192, 128)
           elif mode == 'stdev':
             dsum = np.zeros((8192, 128))
             dsumsq = np.zeros((8192, 128))
-            for i in xrange(n_frames):
+            for i in range(n_frames):
               frame = dataset[i]
               dsum += frame
               dsumsq += frame*frame

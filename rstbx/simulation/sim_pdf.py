@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 page_origin = (20.,220.)
 boxedge = 500.
@@ -91,7 +92,7 @@ if __name__=="__main__":
    data_array = flex.double(flex.grid((768,768)),1.0)
    print data_array.focus()
    data_array = flex.double(flex.grid((7,7)),255)
-   for x in xrange(7):
+   for x in range(7):
      data_array[(3,x)] = 0.
      data_array[(x,3)] = 0.
    try:

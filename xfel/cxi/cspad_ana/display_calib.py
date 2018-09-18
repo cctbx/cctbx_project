@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #! /usr/bin/python
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
@@ -35,8 +36,8 @@ def display_calib(dirname, right, verbose):
   colours  = []
   patches  = []
   sections = calib2sections(dirname)
-  for q in xrange(len(sections)):
-    for s in xrange(len(sections[q])):
+  for q in range(len(sections)):
+    for s in range(len(sections[q])):
 
       # Get the vertices of the section s in quadrant q, and round
       # rotation angles to integer multiples of 90 degrees by default.
@@ -46,7 +47,7 @@ def display_calib(dirname, right, verbose):
       # increases downwards.  Ensure that the eight sections within
       # the quadrants are coloured consistently.
       vertices = sections[q][s].corners(right)
-      for i in xrange(len(vertices)):
+      for i in range(len(vertices)):
         vertices[i] = [vertices[i][1], vertices[i][0]]
 
       art = mpatches.Circle(vertices[0], 10)

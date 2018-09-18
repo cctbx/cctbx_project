@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from rstbx.indexing_api import cpp_absence_test
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 
@@ -27,9 +28,9 @@ max_spiral = max(modularities)
 
 def generate_spiral_order():  #This is G0 in the paper
   points = []
-  for x in xrange(max_spiral,-max_spiral-1,-1):
-    for y in xrange(max_spiral,-max_spiral-1,-1):
-      for z in xrange(max_spiral,-max_spiral-1,-1):
+  for x in range(max_spiral,-max_spiral-1,-1):
+    for y in range(max_spiral,-max_spiral-1,-1):
+      for z in range(max_spiral,-max_spiral-1,-1):
         np = (x,y,z)
         points.append(np)
   points.sort(radcmp)
@@ -40,7 +41,7 @@ spiral_order = generate_spiral_order()
 
 def good_pred(obs):
     good = 0
-    for i in xrange(obs.size()):
+    for i in range(obs.size()):
       o = obs[i]
       if abs(o[0] - round(o[0]))<0.2 and abs(o[1] - round(o[1]))<0.2 and \
          abs(o[2] - round(o[2]))<0.2:
@@ -148,7 +149,7 @@ class AbsenceHandler:
 
     for test in R:
         cum = cpp_absence_test(self.hkl,test['mod'],test['vec'])
-        for counter in xrange(test['mod']):
+        for counter in range(test['mod']):
           #print test['vec'],test['mod'],float(cum[counter])/self.N
           if float(cum[counter])/self.N > 0.8 and counter==0:
             # (if counter != 0 there is no obvious way to correct this)

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -439,7 +440,7 @@ class RunStatsSentinel(Thread):
             self.run_tags.append([tag.name for tag in run.tags])
 
       jobs = self.db.get_all_jobs()
-      for idx in xrange(len(self.run_numbers)):
+      for idx in range(len(self.run_numbers)):
         run_no = self.run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
@@ -486,7 +487,7 @@ class RunStatsSentinel(Thread):
 
     image_paths_by_run = []
     timestamps_and_params_by_run = []
-    for i in xrange(len(runs)):
+    for i in range(len(runs)):
       run = runs[i]
       ts = timestamps[i]
       outdir = "out" if indexed else "all"
@@ -642,7 +643,7 @@ class SpotfinderSentinel(Thread):
               self.spot_length_stats.append((flex.double(), flex.double(), flex.double()))
 
       jobs = self.db.get_all_jobs()
-      for idx in xrange(len(self.run_numbers)):
+      for idx in range(len(self.run_numbers)):
         run_no = self.run_numbers[idx]
         rg_id = rungroup_ids[idx]
         t_id = trial_ids[idx]
@@ -1510,7 +1511,7 @@ class JobsTab(BaseTab):
                   self.trial_choice.ctr.GetSelection())
 
   def GetSelectedJobIds(self):
-    return [self.job_list.GetItemData(i) for i in xrange(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
+    return [self.job_list.GetItemData(i) for i in range(self.job_list.GetItemCount()) if self.job_list.IsSelected(i)]
 
   def onStopJob(self, e):
     if self.all_jobs is None:
@@ -1635,7 +1636,7 @@ class JobsTab(BaseTab):
           self.data[job.id] = [t, r, rg, sid, s]
           found_it = False
           # Look to see if item already in list
-          for i in xrange(self.job_list.GetItemCount()):
+          for i in range(self.job_list.GetItemCount()):
             if self.job_list.GetItemData(i) == job.id:
               self.job_list.SetStringItem(i, 3, sid)
               self.job_list.SetStringItem(i, 4, s)
@@ -1649,7 +1650,7 @@ class JobsTab(BaseTab):
 
       # Remove items not sent in the event or otherwise filtered out
       # Need to do it in reverse order to avoid list re-ordering when deleting items
-      for i in reversed(xrange(self.job_list.GetItemCount())):
+      for i in reversed(range(self.job_list.GetItemCount())):
         if self.job_list.GetItemData(i) not in self.data:
           self.job_list.DeleteItem(i)
 
@@ -1658,7 +1659,7 @@ class JobsTab(BaseTab):
       self.job_list.RestoreSortOrder(self.job_list_col, self.job_list_sort_flag)
 
       # Restore selected items
-      for i in xrange(self.job_list.GetItemCount()):
+      for i in range(self.job_list.GetItemCount()):
         job_id = self.job_list.GetItemData(i)
         if job_id in selected_jobs:
           self.job_list.Select(i)
@@ -2247,13 +2248,13 @@ class RunStatsTab(SpotfinderTab):
     thread.start()
 
   def onDumpImages(self, e):
-    for idx in xrange(len(self.should_have_indexed_timestamps)):
+    for idx in range(len(self.should_have_indexed_timestamps)):
       params, ts_list = self.should_have_indexed_timestamps[idx]
       imgs = self.should_have_indexed_image_paths[idx]
       self.dump_timestamps(params, ts_list, imgs)
 
   def onOpenImages(self, e):
-    for idx in xrange(len(self.strong_indexed_image_timestamps)):
+    for idx in range(len(self.strong_indexed_image_timestamps)):
       params, ts_list = self.strong_indexed_image_timestamps[idx]
       ext = '.' + params['format']
       image_paths = self.strong_indexed_image_paths[idx][:self.n_dump]

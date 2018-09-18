@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 import sys
 from dials.array_family import flex
@@ -83,7 +84,7 @@ class reduction(object):
                # but code can and should be borrowed from cxi.merge
         acceptable_resolution_bins = [
           bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
-        acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+        acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                            if False not in acceptable_resolution_bins[:i+1]]
         N_acceptable_bins = max(acceptable_nested_bin_sequences) + 1
         imposed_res_filter = float(bin_results[N_acceptable_bins-1].d_range.split()[2])

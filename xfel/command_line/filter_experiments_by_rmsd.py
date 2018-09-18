@@ -13,6 +13,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.filter_experiments_by_rmsd
 #
 from __future__ import division
+from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
@@ -129,7 +130,7 @@ class Script(object):
 
     data = flex.double()
     counts = flex.double()
-    for i in xrange(len(experiments)):
+    for i in range(len(experiments)):
       dvns = difference_vector_norms.select(reflections['id']==i)
       counts.append(len(dvns))
       if len(dvns) == 0:
@@ -161,7 +162,7 @@ class Script(object):
     outliers.set_selected(data > q3_x + cut_x, True)
     #outliers.set_selected(col < q1_x - cut_x, True) # Don't throw away the images that are outliers in the 'good' direction!
 
-    for i in xrange(len(experiments)):
+    for i in range(len(experiments)):
       if outliers[i]:
         continue
       refls = reflections.select(reflections['id']==i)

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math
 
@@ -169,7 +170,7 @@ class lbfgs_minimizer(object):
       l = flex.double(self.n, 1e-8)
 
       if len(l) > 3:
-        for p in xrange(7,len(l)):
+        for p in range(7,len(l)):
           l[p] = 1e-15 # g*
 
       self.minimizer = lbfgsb.minimizer(
@@ -193,12 +194,12 @@ class lbfgs_minimizer(object):
 
     if self.show_finite_differences:
       finite_g = flex.double()
-      for x in xrange(self.n):
+      for x in range(self.n):
         finite_g.append(finite_difference(
           lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
           values, x))
 
-      for x in xrange(self.n):
+      for x in range(self.n):
         print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
 
     print >> self.out, "functional value % 20.3f"%functional,
@@ -220,12 +221,12 @@ class lbfgs_minimizer(object):
 
     if self.show_finite_differences:
       finite_g = flex.double()
-      for x in xrange(self.n):
+      for x in range(self.n):
         finite_g.append(finite_difference(
           lambda v: self.refinery.functional(self.refinery.fvec_callable(v)),
           values, x))
 
-      for x in xrange(self.n):
+      for x in range(self.n):
         print >> self.out, "p%d finite % 20.10f analytical % 20.10f"%(x, finite_g[x], self.g[x])
 
     print >> self.out, "functional value % 20.3f"%functional,

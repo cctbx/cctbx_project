@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import sys
 
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
@@ -166,7 +167,7 @@ class Script(base_Script):
     from xfel.merging.database.merging_database_fs import manager2 as manager
     db_mgr = manager(scaler_worker.params)
 
-    file_names = [transmitted_info["file_names"][i] for i in xrange(len(transmitted_info["file_names"])) if i%size == rank]
+    file_names = [transmitted_info["file_names"][i] for i in range(len(transmitted_info["file_names"])) if i%size == rank]
     if timing: print "SCALER_WORKERS START RANK=%d TIME=%f"%(rank, tt())
     scaler_worker._scale_all_serial(file_names, db_mgr)
     if timing: print "SCALER_WORKERS END RANK=%d TIME=%f"%(rank, tt())

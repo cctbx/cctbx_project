@@ -5,6 +5,7 @@
 # $Id: stills_merge.py 20545 2014-08-25 22:22:15Z idyoung $
 
 from __future__ import division
+from six.moves import range
 
 import iotbx.phil
 from cctbx.array_family import flex
@@ -31,7 +32,7 @@ def eval_ending (file_name):
       refl_name = os.path.join(dir_name, basename.split(pair[0])[0] + pair[1])
       fragment = basename.split(pair[0])[0]
       digit = "0" # if fragment contains no digit
-      for i in xrange(len(fragment)):
+      for i in range(len(fragment)):
         if fragment[-i-1].isdigit():
           digit = fragment[-i-1]
           break
