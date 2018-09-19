@@ -298,26 +298,24 @@ def get_calib_file_path(env, address, run):
     return None
   return ''.join(map(chr, path_nda))
 
-def env_dxtbx_from_slac_metrology(run, address, metro=None):
+def env_dxtbx_from_slac_metrology(run, address):
   """ Loads a dxtbx cspad cbf header only object from the metrology path stored
       in a psana run object's calibration store
       @param env psana run object
       @param address address string for a detector
   """
-  if metro is not None:
-    # FIXME: get metrology from a pickle file until det interface is ready
-    cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
-
-    from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
-    return FormatCBFCspadInMemory(cbf)
-
-  from psana import Detector
-  try:
-    # try to load the geometry from the detector interface
-    psana_det = Detector(address, run.env())
-    geometry = psana_det.pyda.geoaccess(run)
-  except Exception as e:
-    geometry = None
+  from xfel.command_line.xtc_process import PSANA2_VERSION
+  if PSANA2_VERSION:
+    det = run.ds.Detector(address)
+    geometry = det.geometry(run)
+  else:
+    from psana import Detector
+    try:
+      # try to load the geometry from the detector interface
+      psana_det = Detector(address, run.env())
+      geometry = psana_det.pyda.geoaccess(run)
+    except Exception as e:
+      geometry = None
 
   if geometry is None:
     metro_path = get_calib_file_path(run.env(), address, run)
