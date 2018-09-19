@@ -27,6 +27,7 @@ from libtbx.utils import null_out, to_str, Sorry
 import iotbx.pdb
 import libtbx.load_env
 import libtbx.phil
+import libtbx.program_template
 import mmtbx.model
 import os.path
 import sys
