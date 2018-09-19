@@ -106,7 +106,7 @@ namespace fast_linalg {
     cblas_dsyrk_t *cblas_dsyrk;
 
     static Wrapper &instance() {
-      SCITBX_ASSERT(instance_() != 0);
+      SCITBX_ASSERT(initialised());
       return *instance_();
     }
 
@@ -143,7 +143,7 @@ void initialise_fast_linalg(const std::string &lib_name) {
   if (Wrapper::instance_() == 0) {
     new Wrapper();
   }
-  Wrapper::instance().initialise(lib_name);
+  Wrapper::instance_()->initialise(lib_name);
 }
 //............................................................................
 void finalise_fast_linalg() {
