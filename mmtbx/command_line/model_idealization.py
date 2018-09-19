@@ -437,6 +437,8 @@ class model_idealization():
     else:
       self.model_h = self.model.deep_copy()
     params_h = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    params_h.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    params_h.pdb_interpretation.max_reasonable_bond_distance = None
     params_h.pdb_interpretation.use_neutron_distances=True
     params_h.pdb_interpretation.ncs_search = self.params_for_model.pdb_interpretation.ncs_search
     params_h.pdb_interpretation.ncs_search.exclude_selection="water"
