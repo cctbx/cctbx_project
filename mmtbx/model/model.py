@@ -1235,10 +1235,12 @@ class manager(object):
     """
     m = self.get_mon_lib_srv()
     e = self.get_ener_lib()
+    e_lib_atom_keys = e.lib_atom.keys()
     result = {}
     for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
       for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
-        result[k1]=e.lib_atom[v1.type_energy].vdw_radius
+        if(v1.type_energy in e_lib_atom_keys):
+          result[k1]=e.lib_atom[v1.type_energy].vdw_radius
     return result
 
   def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):

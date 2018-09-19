@@ -58,6 +58,7 @@ general_tests = [
   "$D/refinement/tst_refinement_flags.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model.py",
   "$D/geometry_restraints/torsion_restraints/tst_reference_model_ligands.py",
+  # model tests, some more elsewhere in this file
   "$D/regression/model/tst_model_mtrix.py",
   "$D/regression/model/tst_model_2.py",
   "$D/regression/model/tst_model_biomt_mtrix.py",
@@ -65,6 +66,8 @@ general_tests = [
   "$D/regression/model/tst_model_cart_ref_restraints.py",
   "$D/regression/model/tst_model_tors_ref_restraints.py",
   "$D/regression/model/tst_model_remove_alternative_conformations.py",
+  "$D/regression/model/tst_model_get_vdw_radii.py",
+  #
   "$D/regression/tst_fmodel.py",
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
