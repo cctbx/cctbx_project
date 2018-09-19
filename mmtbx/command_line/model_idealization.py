@@ -126,6 +126,12 @@ debug = False
 verbose = False
   .type = bool
   .help = More output to log
+restrain_rama_outliers = True
+  .type = bool
+  .help = Apply restraints to Ramachandran outliers
+restrain_rama_allowed = True
+  .type = bool
+  .help = Apply restraints to residues in allowed region on Ramachandran plot
 %s
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
@@ -177,9 +183,13 @@ class model_idealization():
 
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+
     params.pdb_interpretation.peptide_link.ramachandran_restraints = True
+    params.pdb_interpretation.peptide_link.restrain_rama_outliers = self.params.restrain_rama_outliers
+    params.pdb_interpretation.peptide_link.restrain_rama_allowed = self.params.restrain_rama_allowed
     params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
     params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
+
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     if self.params.loop_idealization.make_all_trans:
       params.pdb_interpretation.peptide_link.apply_all_trans = True
