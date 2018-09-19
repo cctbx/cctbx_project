@@ -405,7 +405,7 @@ def run_psana2(ims, params, comm):
           else:
             ims.common_mode = params.format.cbf.cspad.common_mode.algorithm # could be None or default
         ims.process_event(run, evt)
-    
+
     ims.finalize()
 
 class EventOffsetSerializer(object):
