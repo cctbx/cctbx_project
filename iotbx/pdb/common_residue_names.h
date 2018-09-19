@@ -35,6 +35,29 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     0
   };
 
+  static const char* d_amino_acid[] = {
+    "DAL",
+    "DAR",
+    "DAS",
+    "DCY",
+    "DGL",
+    "DGN",
+    "DHI",
+    "DIL",
+    "DLE",
+    "DLY",
+    "DPN",
+    "DPR",
+    "DSG",
+    "DSN",
+    "DTH",
+    "DTR",
+    "DTY",
+    "DVA",
+    "MED",
+    0
+  };
+
   static const char* rna_dna[] = {
     "A  ",
     "C  ",
@@ -352,6 +375,15 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
 
   inline
   const std::set<str3>&
+  d_amino_acid_set()
+  {
+    static std::set<str3> result;
+    initialize_set(result, d_amino_acid);
+    return result;
+  }
+
+  inline
+  const std::set<str3>&
   modified_amino_acid_set()
   {
     static std::set<str3> result;
@@ -418,6 +450,7 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
   get_class(str3 const& name, bool consider_ccp4_mon_lib_rna_dna=false)
   {
     static const std::set<str3>& aa_set = amino_acid_set();
+    static const std::set<str3>& d_aa_set = d_amino_acid_set();
     static const std::set<str3>& modified_aa_set = modified_amino_acid_set();
     static const std::set<str3>& na_set = rna_dna_set();
     static const std::set<str3>& modified_na_set = modified_rna_dna_set();
@@ -426,6 +459,7 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     static const std::set<str3>& sm_set = small_molecule_set();
     static const std::set<str3>& e_set = element_set();
     static const std::string common_amino_acid("common_amino_acid");
+    static const std::string d_amino_acid("d_amino_acid");
     static const std::string modified_amino_acid("modified_amino_acid");
     static const std::string common_rna_dna("common_rna_dna");
     static const std::string modified_rna_dna("modified_rna_dna");
@@ -436,6 +470,9 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     static const std::string other("other");
     if (aa_set.find(name) != aa_set.end()) {
       return common_amino_acid;
+    }
+    if (d_aa_set.find(name) != d_aa_set.end()) {
+      return d_amino_acid;
     }
     if (modified_aa_set.find(name) != modified_aa_set.end()) {
       return modified_amino_acid;
