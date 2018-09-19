@@ -1607,6 +1607,31 @@ namespace {
     remove_residue_group(secondary);
   }
 
+  bool
+  chain::is_polymer_chain() const
+  {
+    unsigned n_rg = residue_groups_size();
+    int n_polymer_res=0, n_water=0, n_unk = 0, n_non_polymer=0;
+    for (unsigned i_rg=0; i_rg<n_rg; i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      std::vector<atom_group> const& ags = rg.atom_groups();
+      str3 resname = ags[0].data->resname;
+      std::string res_class = common_residue_names::get_class(resname, true);
+      if (res_class.compare("common_amino_acid") == 0 ||
+          res_class.compare("d_amino_acid") == 0 ||
+          res_class.compare("modified_amino_acid") == 0 ||
+          res_class.compare("common_rna_dna") == 0 ||
+          res_class.compare("modified_rna_dna") == 0 ||
+          res_class.compare("ccp4_mon_lib_rna_dna") == 0) n_polymer_res += 1;
+      if (res_class.compare("common_water") == 0)         n_water += 1;
+      if (res_class.compare("other") == 0 ||
+          res_class.compare("common_element") == 0)       n_non_polymer += 1;
+      if (resname == "UNK")                               n_unk += 1;
+    }
+    if (n_polymer_res > n_non_polymer || n_unk > n_non_polymer) return true;
+    return false;
+  }
+
   af::shared<std::size_t>
   chain::merge_disconnected_residue_groups_with_pure_altloc()
   {

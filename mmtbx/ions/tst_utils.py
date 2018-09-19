@@ -52,7 +52,6 @@ HETATM    7 CL    CL X   8      -2.713  20.673 -12.004  0.79 20.10      ION CL1-
 HETATM    3 CL    CL X   9     -13.440   1.272 -23.660  0.64 21.31      ION CL1-
 HETATM   11 CL    CL X  10     -10.068 -10.650   0.239  0.53 22.83      ION CL1-
 HETATM    4 MG    MG X  11     -14.099  16.408  -0.840  1.00 14.87      ION MG2+
-TER
 """)
 
 if (__name__ == "__main__") :

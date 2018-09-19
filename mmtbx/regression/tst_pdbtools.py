@@ -948,20 +948,16 @@ HETATM    7  O2  PO4     1      -6.901  25.919  37.049  1.00 41.07           O
 HETATM    8  O3  PO4     1      -8.894  24.741  38.097  1.00 45.09           O
 HETATM    9  O4  PO4     1      -7.722  26.556  39.350  1.00 42.48           O
 HETATM   10  P   PO4     1      -7.520  25.376  38.369  1.00 39.37           P
-TER
 ATOM     11 CL   CL  B   1       6.302   6.419   1.560  0.50 10.00          Cl
-TER
 ATOM     12  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
 ATOM     13  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
 ATOM     14  H1  HOH A   3       1.160   5.211   6.437  1.00 15.00           H
 ATOM     15  H2  HOH A   3       1.122   5.579   7.967  1.00 15.00           H
-TER
 HETATM   16  O   HOH B   2      47.616  10.724 150.212  1.00 46.48       B   O
 HETATM   17  O  AHOH B   3      46.408  16.672 146.066  0.50 12.81       B   O
 HETATM   18  O   HOH B   4      29.343  12.806 185.898  1.00 35.57       B   O
 HETATM   19  O  BHOH B   5      43.786  12.615 147.734  0.50 28.43       B   O
 HETATM   20  O   HOH B   6      35.068  19.167 155.349  1.00 15.97       B   O
-TER
 END
 """
   open("tst_pdbtools_move_waters.pdb", "w").write(pdb_in)
