@@ -101,7 +101,8 @@ class magnification_anisotropic_9_params(object):
     O.density_map = density_map
     O.unit_cell = unit_cell
     O.sites_cart = sites_cart
-    O.x = flex.double(K.elems)
+    O.K = K
+    O.x = flex.double(O.K.elems)
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.minimizer = scitbx.lbfgs.run(
@@ -117,7 +118,7 @@ class magnification_anisotropic_9_params(object):
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
     # can this be done nicer?
-    K = matrix.sqr(
+    O.K = matrix.sqr(
       [O.x[0], O.x[1], O.x[2],
        O.x[3], O.x[4], O.x[5],
        O.x[6], O.x[7], O.x[8]])
@@ -125,7 +126,7 @@ class magnification_anisotropic_9_params(object):
       unit_cell  = O.unit_cell,
       map_target = O.density_map,
       sites_cart = O.sites_cart,
-      K          = K)
+      K          = O.K)
     return -1.* o.target(), o.gradients()*(-1.)
 
 class lbfgs(object):
