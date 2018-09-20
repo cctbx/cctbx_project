@@ -211,13 +211,13 @@ public:
       FloatType gy = gXYZ[1];
       FloatType gz = gXYZ[2];
       gradients_[0] += gx*x; // gk11
-      gradients_[1] += gx*y; // gk12
-      gradients_[2] += gx*z; // gk13
-      gradients_[3] += gy*x; // gk21
+      gradients_[1] += 0;//gx*y; // gk12
+      gradients_[2] += 0;//gx*z; // gk13
+      gradients_[3] += 0;//gy*x; // gk21
       gradients_[4] += gy*y; // gk22
-      gradients_[5] += gy*z; // gk23
-      gradients_[6] += gz*x; // gk31
-      gradients_[7] += gz*y; // gk32
+      gradients_[5] += 0;//gy*z; // gk23
+      gradients_[6] += 0;//gz*x; // gk31
+      gradients_[7] += 0;//gz*y; // gk32
       gradients_[8] += gz*z; // gk33
     }
   }

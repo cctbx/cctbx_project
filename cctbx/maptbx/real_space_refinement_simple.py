@@ -61,34 +61,6 @@ def local_standard_deviations_gradients(
     grad_cols.append((targets[0]-targets[1])/(2*delta))
   return flex.vec3_double(*grad_cols)
 
-def magnification_isotropic(map_data, sites_cart, unit_cell,
-                            sites_cart_fraction_to_use=0.25):
-  assert sites_cart_fraction_to_use >  0.
-  assert sites_cart_fraction_to_use <= 1.
-  if(sites_cart_fraction_to_use<1.0):
-    s = flex.random_bool(sites_cart.size(), sites_cart_fraction_to_use)
-    sites_cart_ = sites_cart.select(s)
-  else:
-    sites_cart_ = sites_cart
-  return maptbx.magnification_isotropic(
-    unit_cell   = unit_cell,
-    density_map = map_data,
-    sites_cart  = sites_cart_)
-
-def magnification_anisotropic(map_data, sites_cart, unit_cell,
-                            sites_cart_fraction_to_use=0.25):
-  assert sites_cart_fraction_to_use >  0.
-  assert sites_cart_fraction_to_use <= 1.
-  if(sites_cart_fraction_to_use<1.0):
-    s = flex.random_bool(sites_cart.size(), sites_cart_fraction_to_use)
-    sites_cart_ = sites_cart.select(s)
-  else:
-    sites_cart_ = sites_cart
-  return maptbx.magnification_anisotropic(
-    unit_cell   = unit_cell,
-    density_map = map_data,
-    sites_cart  = sites_cart_)
-
 class magnification_anisotropic_9_params(object):
 
   def __init__(O,
