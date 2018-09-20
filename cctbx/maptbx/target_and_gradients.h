@@ -125,6 +125,57 @@ magnification_isotropic(
   return m_best;
 }
 
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+scitbx::vec3<MapFloatType>
+magnification_anisotropic(
+  uctbx::unit_cell const& unit_cell,
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart)
+{
+  MapFloatType t_best = 0;
+  for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+    t_best += tricubic_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[i_site]));
+  }
+  MapFloatType m_min  = 0.9;
+  MapFloatType m_max  = 1.1;
+  MapFloatType inc    = 0.01;
+  MapFloatType m1_best = 1.0;
+  MapFloatType m2_best = 1.0;
+  MapFloatType m3_best = 1.0;
+  MapFloatType m1 = m_min;
+  while(m1<=m_max) {
+    MapFloatType m2 = m_min;
+    while(m2<=m_max) {
+      MapFloatType m3 = m_min;
+      while(m3<=m_max) {
+        MapFloatType t = 0;
+        for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+          scitbx::vec3<SiteFloatType> s = sites_cart[i_site];
+          scitbx::vec3<SiteFloatType> sm =
+            scitbx::vec3<SiteFloatType>(s[0]*m1,s[1]*m2,s[2]*m3);
+          t += eight_point_interpolation(
+            density_map,
+            unit_cell.fractionalize(sm));
+        }
+        if(t>t_best) {
+          t_best = t;
+          m1_best = m1;
+          m2_best = m2;
+          m3_best = m3;
+        }
+        m3 += inc;
+      }
+      m2 += inc;
+    }
+    m1 += inc;
+  }
+  return scitbx::vec3<MapFloatType>(m1_best, m2_best, m3_best);
+}
+
 template <typename FloatType=double>
 class magnification
 {

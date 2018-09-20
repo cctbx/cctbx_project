@@ -141,6 +141,16 @@ namespace {
              arg("unit_cell"),
              arg("density_map"),
              arg("sites_cart")));
+
+    def("magnification_anisotropic",
+      (scitbx::vec3<double>(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::magnification_anisotropic, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
     //- Magnification end ------------------------------------------------------
 
     {
