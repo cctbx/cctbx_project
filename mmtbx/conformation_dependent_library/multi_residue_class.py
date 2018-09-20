@@ -27,7 +27,7 @@ class RestraintsRegistry(dict):
     else:
       dict.__setitem__(self, key, item)
 
-class ThreeProteinResidues(list):
+class ProteinResidues(list):
   def __init__(self,
                geometry,
                length=3, # CDL & other psi/phi apps
@@ -46,10 +46,14 @@ class ThreeProteinResidues(list):
     self.end = None
 
   def __repr__(self):
-    return self.show()
+    if 0: return self.show()
+    outl = ''
+    for residue in self:
+      outl += '%s ' % residue.resname
+    return '"%s"\n' % outl
 
   def show(self):
-    outl = "ThreeProteinResidues"
+    outl = "%sProteinResidues" % self.length
     for residue in self:
       if residue is not None: outl += " %s(%s)" % (residue.resname, residue.resseq)
       else: outl += ' "%s"' % residue
@@ -59,7 +63,7 @@ class ThreeProteinResidues(list):
     return outl
 
   def show_detailed(self):
-    outl = "ThreeProteinResidues"
+    outl = "%sProteinResidues" % self.length
     for residue in self:
       outl += "\nREMARK"
       for atom in residue.atoms():
@@ -71,29 +75,7 @@ class ThreeProteinResidues(list):
       for atom in residue.atoms():
         yield atom
 
-  def get_omega_value(self,
-                      omega_cdl=False,
-                     ):
-    #
-    # this is very poor! there needs to be a better way to check for cis-
-    #
-    for i, residue in enumerate(self):
-      if i==0: continue
-      if omega_cdl:
-        if len(self)==3:
-          if i==1: continue
-      else:
-        if i==2: continue
-      ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
-      ccn2, outl2 = get_c_ca_n(self[i-1], return_subset=True)
-      ca1 = ccn1[1]
-      n = ccn1[2]
-      c = ccn2[0]
-      ca2 = ccn2[1]
-      omega_atoms = [ca1, n, c, ca2]
-      if None in omega_atoms: return None
-      omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
-      return omega
+  def get_omega_value(self): assert 0
 
   def _define_omega_a_la_duke_using_limit(self,
                                           omega,
@@ -118,15 +100,8 @@ class ThreeProteinResidues(list):
         print self
     return cis_peptide_bond
 
-  def trans_group(self,
-                  limit=45.,
-                  verbose=False,
-                  ):
-    omega = self.get_omega_value() #omega_cdl=omega_cdl)
-    if omega is None: return None
-    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='trans':
-      return True
-    return False
+  def trans_group(self, limit=30.):
+    return not self.cis_group(limit=limit)
 
   def is_pure_main_conf(self):
     tmp = [rg.is_pure_main_conf for rg in self]
@@ -135,8 +110,10 @@ class ThreeProteinResidues(list):
   def are_linked(self,
                  return_value=False,
                  use_distance_always=False,
+                 bond_cut_off=2.,
                  verbose=True):
     d2 = None
+    bond_cut_off *= bond_cut_off
     for i, residue in enumerate(self):
       if i==0: continue
       ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
@@ -158,13 +135,13 @@ class ThreeProteinResidues(list):
       if n is None or c is None: return False
       if self.bond_params_table is None:
         d2 = distance2(n,c)
-        if d2<4: bond=True
+        if d2<bond_cut_off: bond=True
         else: bond=False
       else:
         bond=self.bond_params_table.lookup(c.i_seq, n.i_seq)
         if not bond and use_distance_always:
           # needed for situations where atoms are added and the i_seq is updated
-          if distance2(n,c)<4: bond=True
+          if distance2(n,c)<bond_cut_off: bond=True
       if not bond:
         break
     else:
@@ -174,12 +151,85 @@ class ThreeProteinResidues(list):
 
   def append(self, residue):
     list.append(self, residue)
-    while len(self)>3:
+    while len(self)>self.length:
       del self[0]
-    if len(self)>=2:
+    if len(self)>=self.length-1:
       while not self.are_linked():
         del self[0]
         if len(self)==0: break
+
+  def get_i_seqs(self): assert 0
+
+  def get_resnames(self):
+    rc = []
+    for residue in self: rc.append(residue.resname)
+    return rc
+
+  def get_phi_psi_angles(self): assert 0
+
+  def is_pure_main_conf(self):
+    for one in self:
+      if not one.is_pure_main_conf: return False
+    return True
+
+  def altloc(self):
+    if self.is_pure_main_conf(): return ' '
+    rc=[]
+    for one in self:
+      rc.append(self[0].parent().altloc)
+    rc = filter(None,rc)
+    assert rc
+    return rc[0]
+
+class TwoProteinResidues(ProteinResidues):
+  def get_omega_value(self,
+                      omega_cdl=False,
+                      ):
+    ccn1, outl1 = get_c_ca_n(self[0], return_subset=True)
+    ccn2, outl2 = get_c_ca_n(self[1], return_subset=True)
+    ca1 = ccn1[1]
+    n = ccn1[2]
+    c = ccn2[0]
+    ca2 = ccn2[1]
+    omega_atoms = [ca1, n, c, ca2]
+    if None in omega_atoms: return None
+    omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
+    return omega
+
+class ThreeProteinResidues(ProteinResidues):
+  def get_omega_value(self,
+                      omega_cdl=False,
+                     ):
+    #
+    # this is very poor! there needs to be a better way to check for cis-
+    #
+    for i, residue in enumerate(self):
+      if i==0: continue
+      if omega_cdl:
+        if len(self)==self.length:
+          if i==1: continue
+      else:
+        if i==2: continue
+      ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
+      ccn2, outl2 = get_c_ca_n(self[i-1], return_subset=True)
+      ca1 = ccn1[1]
+      n = ccn1[2]
+      c = ccn2[0]
+      ca2 = ccn2[1]
+      omega_atoms = [ca1, n, c, ca2]
+      if None in omega_atoms: return None
+      omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
+      return omega
+
+  def trans_group(self,
+                  limit=45.,
+                  verbose=False,
+                  ):
+    omega = self.get_omega_value() #omega_cdl=omega_cdl)
+    if omega is None: return None
+    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='trans':
+      return True
+    return False
 
   def provide_second_sub_unit_if_unlinked(self):
     # used if residue is appended using superclass method
@@ -207,8 +257,24 @@ class ThreeProteinResidues(list):
       if atom: atoms["%s_plus_1" % name.strip()] = atom
     return atoms
 
-  def get_resnames(self):
-    return self[0].resname, self[1].resname, self[2].resname
+  def get_ramalyze_key(self,
+                       limit=30.,
+                       verbose=False,
+                       ):
+    from mmtbx.validation import ramalyze
+    # defined in mmtbx.validation.ramalyze:
+    # res_types = ["general", "glycine", "cis-proline", "trans-proline",
+    #              "pre-proline", "isoleucine or valine"]
+    #
+    # This should be consistent with mmtbx/validation/ramalyze.py,
+    # lines 179-195. Particularly, prepro comes before ile/val
+    if self[1].resname == "PRO":
+      if self.cis_group(limit=limit): return ramalyze.RAMA_CISPRO
+      else: return ramalyze.RAMA_TRANSPRO
+    elif self[1].resname == "GLY": return ramalyze.RAMA_GLYCINE
+    elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
+    elif self[1].resname in ["ILE", "VAL"]: return ramalyze.RAMA_ILE_VAL
+    else: return ramalyze.RAMA_GENERAL
 
   def get_phi_psi_atoms(self,
                         only_psi_phi_pairs=True,
@@ -305,6 +371,26 @@ class ThreeProteinResidues(list):
         print 'phi_or_psi',phi_or_psi
     return dihedrals
 
+  def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
+    #
+    # Needs testing. One of the candidates is 3j0d, chain I, the first
+    # residue is missing CA atom.
+    #
+    from cctbx.geometry_restraints import dihedral_proxy
+    atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs)
+    proxies = []
+    if atoms is None: return proxies
+    for dihedral in atoms:
+      if None not in dihedral:
+        proxy = dihedral_proxy(
+            i_seqs=[atom.i_seq for atom in dihedral],
+            angle_ideal=0,
+            weight=1)
+        proxies.append(proxy)
+    return proxies
+  #
+  # CDL specific methods
+  #
   def get_cdl_key(self,
                   exact=False,
                   only_psi_phi_pairs=True,
@@ -323,43 +409,6 @@ class ThreeProteinResidues(list):
       else:
         key.append(round_to_ten(phi_or_psi))
     return tuple(key)
-
-  def get_ramalyze_key(self,
-                       limit=30.,
-                       verbose=False,
-                       ):
-    from mmtbx.validation import ramalyze
-    # defined in mmtbx.validation.ramalyze:
-    # res_types = ["general", "glycine", "cis-proline", "trans-proline",
-    #              "pre-proline", "isoleucine or valine"]
-    #
-    # This should be consistent with mmtbx/validation/ramalyze.py,
-    # lines 179-195. Particularly, prepro comes before ile/val
-    if self[1].resname == "PRO":
-      if self.cis_group(limit=limit): return ramalyze.RAMA_CISPRO
-      else: return ramalyze.RAMA_TRANSPRO
-    elif self[1].resname == "GLY": return ramalyze.RAMA_GLYCINE
-    elif self[2].resname == "PRO": return ramalyze.RAMA_PREPRO
-    elif self[1].resname in ["ILE", "VAL"]: return ramalyze.RAMA_ILE_VAL
-    else: return ramalyze.RAMA_GENERAL
-
-  def get_dummy_dihedral_proxies(self, only_psi_phi_pairs=True):
-    #
-    # Needs testing. One of the candidates is 3j0d, chain I, the first
-    # residue is missing CA atom.
-    #
-    from cctbx.geometry_restraints import dihedral_proxy
-    atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs)
-    proxies = []
-    if atoms is None: return proxies
-    for dihedral in atoms:
-      if None not in dihedral:
-        proxy = dihedral_proxy(
-            i_seqs=[atom.i_seq for atom in dihedral],
-            angle_ideal=0,
-            weight=1)
-        proxies.append(proxy)
-    return proxies
 
   def apply_updates(self,
                     restraint_values,
@@ -475,20 +524,6 @@ class ThreeProteinResidues(list):
           assert 0
         angle.angle_ideal = averages[key]/averages.n[key]
 
-  def is_pure_main_conf(self):
-    for one in self:
-      if not one.is_pure_main_conf: return False
-    return True
-
-  def altloc(self):
-    if self.is_pure_main_conf(): return ' '
-    rc=[]
-    for one in self:
-      rc.append(self[0].parent().altloc)
-    rc = filter(None,rc)
-    assert rc
-    return rc[0]
-
 if __name__=="__main__":
   import sys
   from iotbx import pdb
@@ -498,8 +533,13 @@ if __name__=="__main__":
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   geometry_restraints_manager = get_geometry_restraints_manager(filename)
   pdb_hierarchy.reset_i_seq_if_necessary()
+  from mmtbx.conformation_dependent_library import generate_protein_twos
   from mmtbx.conformation_dependent_library import generate_protein_threes
-  for threes in generate_protein_threes(pdb_hierarchy,
+  if 1:
+    generate_protein_tuples = generate_protein_twos
+  else:
+    generate_protein_tuples = generate_protein_threes
+  for threes in generate_protein_tuples(pdb_hierarchy,
                                         geometry_restraints_manager,
                                         #verbose=verbose,
                                         ):
@@ -507,6 +547,7 @@ if __name__=="__main__":
     print '  omega   %5.1f' % threes.get_omega_value()
     print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
     print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-    print "  rama    %s" % threes.get_ramalyze_key()
+    try: print "  rama    %s" % threes.get_ramalyze_key()
+    except: print '  rama not specified'
     print '  conf    %s' % threes.is_pure_main_conf()
   print "OK"

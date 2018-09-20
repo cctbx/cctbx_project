@@ -10,6 +10,8 @@ import mmtbx.conformation_dependent_library.cdl_utils
 
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues, RestraintsRegistry
+from mmtbx.conformation_dependent_library.multi_residue_class import \
+  TwoProteinResidues
 
 chararcters_36 = letters[:26]+digits
 
@@ -54,14 +56,22 @@ def get_restraint_values(threes, interpolate=False):
     restraint_values = cdl_database[res_type_group][key]
   return restraint_values
 
-def generate_protein_threes(hierarchy,
+def generate_protein_tuples(hierarchy,
                             geometry,
                             include_non_linked=False,
-                            omega_cdl=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
+                            # CDL specific
+                            omega_cdl=False,
+                            length=None,
                             verbose=False,
                             ):
+  assert length
+  print 'length',length
+  if length==3:
+    ProteinResidues = ThreeProteinResidues
+  elif length==2:
+    ProteinResidues = TwoProteinResidues
   peptide_lookup = ['common_amino_acid']
   if include_non_standard_peptides:
     peptide_lookup.append('modified_amino_acid')
@@ -69,7 +79,7 @@ def generate_protein_threes(hierarchy,
   backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
   backbone_hierarchy = hierarchy.select(backbone_sel)
   get_class = iotbx.pdb.common_residue_names_get_class
-  threes = ThreeProteinResidues(geometry, registry=registry)
+  threes = ProteinResidues(geometry, registry=registry, length=length)
   loop_hierarchy=hierarchy
   if backbone_only: loop_hierarchy=backbone_hierarchy
   for model in loop_hierarchy.models():
@@ -93,16 +103,16 @@ def generate_protein_threes(hierarchy,
             continue
           if include_non_linked:
             list.append(threes, residue)
-            if len(threes)>3: del threes[0]
+            if len(threes)>length: del threes[0]
           else:
             threes.append(residue)
-          if len(threes)!=3:
+          if len(threes)!=length:
             if omega_cdl:
-              if len(threes)==2:
+              if len(threes)==length-1:
                 threes.insert(0,None)
               else: continue
             else: continue
-          assert len(threes)<=3
+          assert len(threes)<=length
           list_of_threes.append(copy.copy(threes))
         # per conformer
         for i, threes in enumerate(list_of_threes):
@@ -111,13 +121,53 @@ def generate_protein_threes(hierarchy,
           if i==len(list_of_threes)-1:
             threes.end = True
           else:
-            if len(threes)!=3:
+            if len(threes)!=length:
               pass
             elif threes[1] != list_of_threes[i+1][0]:
               threes.end = True
               list_of_threes[i+1].start = True
           yield threes
-      threes = ThreeProteinResidues(geometry, registry=registry)
+      threes = ProteinResidues(geometry, registry=registry, length=length)
+
+def generate_protein_threes(hierarchy,
+                            geometry,
+                            include_non_linked=False,
+                            backbone_only=True,
+                            include_non_standard_peptides=False,
+                            # CDL specific
+                            omega_cdl=False,
+                            verbose=False,
+                            ):
+  for threes in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    omega_cdl=omega_cdl,
+    length=3,
+    ):
+    yield threes
+
+def generate_protein_twos(hierarchy,
+                          geometry,
+                          include_non_linked=False,
+                          backbone_only=True,
+                          include_non_standard_peptides=False,
+                          # CDL specific
+                          omega_cdl=False,
+                          verbose=False,
+                          ):
+  for twos in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    omega_cdl=omega_cdl,
+    length=2,
+    ):
+    yield twos
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
