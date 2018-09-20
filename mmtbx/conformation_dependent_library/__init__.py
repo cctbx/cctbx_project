@@ -67,7 +67,6 @@ def generate_protein_tuples(hierarchy,
                             verbose=False,
                             ):
   assert length
-  print 'length',length
   if length==3:
     ProteinResidues = ThreeProteinResidues
   elif length==2:

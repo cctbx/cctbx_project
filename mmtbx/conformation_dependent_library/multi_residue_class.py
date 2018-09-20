@@ -46,7 +46,7 @@ class ProteinResidues(list):
     self.end = None
 
   def __repr__(self):
-    if 0: return self.show()
+    if 1: return self.show()
     outl = ''
     for residue in self:
       outl += '%s ' % residue.resname
@@ -185,8 +185,8 @@ class TwoProteinResidues(ProteinResidues):
   def get_omega_value(self,
                       omega_cdl=False,
                       ):
-    ccn1, outl1 = get_c_ca_n(self[0], return_subset=True)
-    ccn2, outl2 = get_c_ca_n(self[1], return_subset=True)
+    ccn1, outl1 = get_c_ca_n(self[1], return_subset=True)
+    ccn2, outl2 = get_c_ca_n(self[0], return_subset=True)
     ca1 = ccn1[1]
     n = ccn1[2]
     c = ccn2[0]
