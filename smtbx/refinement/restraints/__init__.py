@@ -65,7 +65,7 @@ class manager(object):
       self.chirality_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        unit_cell=unit_cell, f=f, prefix=prefix, max_items=max_items)
       print >> f
     if (self.planarity_proxies is not None):
       self.planarity_proxies.show_sorted(
@@ -129,6 +129,7 @@ class manager(object):
       bond_proxies=self.bond_proxies,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      chirality_proxies=self.chirality_proxies,
       bond_similarity_proxies=self.bond_similarity_proxies,
       rigid_bond_proxies=self.rigid_bond_proxies,
       rigu_proxies=self.rigu_proxies,
