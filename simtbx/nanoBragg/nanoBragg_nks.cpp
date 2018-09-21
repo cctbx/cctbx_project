@@ -232,7 +232,7 @@ diffracted[3]=diffracted_v[2];
                     for(int source=0;source<sources;++source){
 
                         source_const SC(source, diffracted, this);
-                        source_path = SC.source_path; //breaks const correctness
+                        //source_path = SC.source_path; //breaks const correctness
 
                         /* rough cut to speed things up when we aren't using whole detector */
                         if(dmin > 0.0 && SC.stol > 0.0)
