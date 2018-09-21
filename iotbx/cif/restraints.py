@@ -181,6 +181,7 @@ def chirality_as_cif_loop(xray_structure, proxies):
     "_restr_chirality_weight_param",
     "_restr_chirality_diff",
   ))
+  unit_mxs = [sgtbx.rt_mx()]*4
   for proxy in proxies:
     restraint = geometry_restraints.chirality(
       unit_cell=unit_cell,
