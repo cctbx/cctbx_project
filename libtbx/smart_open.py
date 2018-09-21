@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import io
 import os
 
 from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open
