@@ -127,6 +127,14 @@ namespace {
                                     arg("map_target"),
                                     arg("sites_cart"),
                                     arg("K"))))
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
+             scitbx::vec3<double> const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("K"))))
         .def("target", &w_t::target)
         .def("gradients", &w_t::gradients)
       ;

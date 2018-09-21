@@ -61,15 +61,16 @@ def local_standard_deviations_gradients(
     grad_cols.append((targets[0]-targets[1])/(2*delta))
   return flex.vec3_double(*grad_cols)
 
-class magnification_anisotropic_9_params(object):
+class magnification_anisotropic_minimization(object):
 
   def __init__(O,
         sites_cart,
         density_map,
         unit_cell,
-        K, # magnification 3*3 general matrix (not necessarily symmetric)
+        K, # magnification 3*3  matrix, or a triplet (diagonal only)
         lbfgs_termination_params=None,
         lbfgs_exception_handling_params=None):
+    assert [isinstance(K, matrix.sqr), isinstance(K, matrix.col)].count(True)==1
     O.density_map = density_map
     O.unit_cell = unit_cell
     O.sites_cart = sites_cart
@@ -89,11 +90,13 @@ class magnification_anisotropic_9_params(object):
       O.number_of_function_evaluations += 1
       return O.f_start, O.g_start
     O.number_of_function_evaluations += 1
-    # can this be done nicer?
-    O.K = matrix.sqr(
-      [O.x[0], O.x[1], O.x[2],
-       O.x[3], O.x[4], O.x[5],
-       O.x[6], O.x[7], O.x[8]])
+    if(isinstance(O.K, matrix.sqr)):
+      O.K = matrix.sqr(
+        [O.x[0], O.x[1], O.x[2],
+         O.x[3], O.x[4], O.x[5],
+         O.x[6], O.x[7], O.x[8]])
+    else:
+      O.K = matrix.col([O.x[0], O.x[1], O.x[2]])
     o = maptbx.target_and_gradients_simple_magnification(
       unit_cell  = O.unit_cell,
       map_target = O.density_map,
