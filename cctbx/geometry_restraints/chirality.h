@@ -190,9 +190,10 @@ namespace cctbx { namespace geometry_restraints {
       gradients() const
       {
         af::tiny<scitbx::vec3<double>, 4> result;
-        result[1] = d_02_cross_d_03;
-        result[2] = d_03.cross(d_01);
-        result[3] = d_01.cross(d_02);
+        double f = delta_sign * 2.0 * delta * weight;
+        result[1] = f * d_02_cross_d_03;
+        result[2] = f * d_03.cross(d_01);
+        result[3] = f * d_01.cross(d_02);
         result[0] = -result[1]-result[2]-result[3];
         return result;
       }
@@ -205,10 +206,9 @@ namespace cctbx { namespace geometry_restraints {
         af::ref<scitbx::vec3<double> > const& gradient_array,
         chirality_proxy::i_seqs_type const& i_seqs) const
       {
-        double f = delta_sign * 2.0 * delta * weight;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         for(int i=0;i<4;i++) {
-          gradient_array[i_seqs[i]] += f * grads[i];
+          gradient_array[i_seqs[i]] += grads[i];
         }
       }
 
@@ -222,6 +222,7 @@ namespace cctbx { namespace geometry_restraints {
         chirality_proxy::i_seqs_type const& i_seqs = proxy.i_seqs;
         af::tiny<scitbx::vec3<double>, 4> grads = gradients();
         std::size_t row_i = linearised_eqns.next_row();
+        double f = 1.0 /( 2.0 * delta * weight );
         for(int i=0;i<4;i++) {
           grads[i] = unit_cell.fractionalize_gradient(grads[i]);
           if ( sym_ops.get() != 0 && !sym_ops[i].is_unit_mx() ) {
@@ -233,7 +234,7 @@ namespace cctbx { namespace geometry_restraints {
             parameter_map[i_seqs[i]];
           if (ids_i.site == -1) continue;
           for (int j=0;j<3;j++) {
-            linearised_eqns.design_matrix(row_i, ids_i.site+j) += delta_sign * grads[i][j];
+            linearised_eqns.design_matrix(row_i, ids_i.site+j) += f * grads[i][j];
           }
 
           linearised_eqns.weights[row_i] = proxy.weight;
