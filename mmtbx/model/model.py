@@ -669,7 +669,6 @@ class manager(object):
     self._xray_structure = xray_structure
     self.set_sites_cart_from_xrs()
     self._update_has_hd()
-    self._update_pdb_atoms()
     self._crystal_symmetry = xray_structure.crystal_symmetry()
     # XXX what else needs to be done here?
     #     ph.adopt_xray_structure(xray_structure)
@@ -2386,6 +2385,8 @@ class manager(object):
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
     new._update_master_sel()
+    new._mon_lib_srv = self._mon_lib_srv
+    new._ener_lib = self._ener_lib
     return new
 
   def number_of_ordered_solvent_molecules(self):
