@@ -11,7 +11,7 @@ import mmtbx.conformation_dependent_library.cdl_utils
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues, RestraintsRegistry
 from mmtbx.conformation_dependent_library.multi_residue_class import \
-  TwoProteinResidues
+  TwoProteinResidues, FourProteinResidues, FiveProteinResidues
 
 chararcters_36 = letters[:26]+digits
 
@@ -67,10 +67,12 @@ def generate_protein_tuples(hierarchy,
                             verbose=False,
                             ):
   assert length
-  if length==3:
-    ProteinResidues = ThreeProteinResidues
-  elif length==2:
-    ProteinResidues = TwoProteinResidues
+  assert length>1
+  assert length<=5
+  if length==3: ProteinResidues = ThreeProteinResidues
+  elif length==2: ProteinResidues = TwoProteinResidues
+  elif length==4: ProteinResidues = FourProteinResidues
+  elif length==5: ProteinResidues = FiveProteinResidues
   peptide_lookup = ['common_amino_acid']
   if include_non_standard_peptides:
     peptide_lookup.append('modified_amino_acid')
@@ -167,6 +169,46 @@ def generate_protein_twos(hierarchy,
     length=2,
     ):
     yield twos
+
+def generate_protein_fours(hierarchy,
+                           geometry,
+                           include_non_linked=False,
+                           backbone_only=True,
+                           include_non_standard_peptides=False,
+                           # CDL specific
+                           #omega_cdl=False,
+                           verbose=False,
+                           ):
+  for fours in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    #omega_cdl=omega_cdl,
+    length=4,
+    ):
+    yield fours
+
+def generate_protein_fives(hierarchy,
+                           geometry,
+                           include_non_linked=False,
+                           backbone_only=True,
+                           include_non_standard_peptides=False,
+                           # CDL specific
+                           #omega_cdl=False,
+                           verbose=False,
+                           ):
+  for fives in generate_protein_tuples(
+    hierarchy,
+    geometry,
+    include_non_linked=include_non_linked,
+    backbone_only=backbone_only,
+    include_non_standard_peptides=include_non_standard_peptides,
+    #omega_cdl=omega_cdl,
+    length=5,
+    ):
+    yield fives
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,

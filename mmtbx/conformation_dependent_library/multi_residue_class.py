@@ -5,7 +5,9 @@ from scitbx.math import dihedral_angle
 from libtbx.utils import Sorry
 
 from mmtbx.conformation_dependent_library.cdl_utils import \
-  get_c_ca_n, distance2, round_to_ten
+  get_c_ca_n, distance2, round_to_ten, get_omega_value, get_phi_psi_angles
+from mmtbx.conformation_dependent_library.cdl_utils import \
+  get_ca_dihedrals
 from mmtbx.conformation_dependent_library.cdl_setup import columns
 
 class RestraintsRegistry(dict):
@@ -181,20 +183,22 @@ class ProteinResidues(list):
     assert rc
     return rc[0]
 
+  def get_omega_values(self,
+                       omega_cdl=None,
+                       verbose=False,
+                       ):
+    rc=[]
+    for i, residue in enumerate(self):
+      if i==0: continue
+      omega = get_omega_value(residue, self[i-1], verbose=verbose)
+      rc.append(omega)
+    return rc
+
 class TwoProteinResidues(ProteinResidues):
   def get_omega_value(self,
                       omega_cdl=False,
                       ):
-    ccn1, outl1 = get_c_ca_n(self[1], return_subset=True)
-    ccn2, outl2 = get_c_ca_n(self[0], return_subset=True)
-    ca1 = ccn1[1]
-    n = ccn1[2]
-    c = ccn2[0]
-    ca2 = ccn2[1]
-    omega_atoms = [ca1, n, c, ca2]
-    if None in omega_atoms: return None
-    omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
-    return omega
+    return get_omega_value(self[1], self[0])
 
 class ThreeProteinResidues(ProteinResidues):
   def get_omega_value(self,
@@ -210,15 +214,7 @@ class ThreeProteinResidues(ProteinResidues):
           if i==1: continue
       else:
         if i==2: continue
-      ccn1, outl1 = get_c_ca_n(residue, return_subset=True)
-      ccn2, outl2 = get_c_ca_n(self[i-1], return_subset=True)
-      ca1 = ccn1[1]
-      n = ccn1[2]
-      c = ccn2[0]
-      ca2 = ccn2[1]
-      omega_atoms = [ca1, n, c, ca2]
-      if None in omega_atoms: return None
-      omega = dihedral_angle(sites=[atom.xyz for atom in omega_atoms], deg=True)
+      omega = get_omega_value(residue, self[i-1])
       return omega
 
   def trans_group(self,
@@ -524,6 +520,32 @@ class ThreeProteinResidues(ProteinResidues):
           assert 0
         angle.angle_ideal = averages[key]/averages.n[key]
 
+class FourProteinResidues(ProteinResidues):
+  def cis_group(self): assert 0
+
+  def get_omega_values(self,
+                       omega_cdl=None,
+                       verbose=False,
+                       ):
+    assert omega_cdl is None, 'can not use omega_cdl for %sProteinResidues' % self.length
+    return ProteinResidues.get_omega_values(self, verbose=verbose)
+
+  def get_phi_psi_angles(self, verbose=False):
+    if verbose:
+      for residue in self:
+        print residue.id_str()
+    return get_phi_psi_angles(self, verbose=verbose)
+
+  def get_ca_dihedrals(self, verbose=False):
+    if verbose:
+      for residue in self:
+        print residue.id_str()
+    return get_ca_dihedrals(self)
+
+class FiveProteinResidues(FourProteinResidues):
+  def get_cablam_info(self):
+    assert 0
+
 if __name__=="__main__":
   import sys
   from iotbx import pdb
@@ -535,19 +557,31 @@ if __name__=="__main__":
   pdb_hierarchy.reset_i_seq_if_necessary()
   from mmtbx.conformation_dependent_library import generate_protein_twos
   from mmtbx.conformation_dependent_library import generate_protein_threes
-  if 1:
-    generate_protein_tuples = generate_protein_twos
-  else:
-    generate_protein_tuples = generate_protein_threes
-  for threes in generate_protein_tuples(pdb_hierarchy,
-                                        geometry_restraints_manager,
-                                        #verbose=verbose,
-                                        ):
-    print threes
-    print '  omega   %5.1f' % threes.get_omega_value()
-    print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-    print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-    try: print "  rama    %s" % threes.get_ramalyze_key()
-    except: print '  rama not specified'
-    print '  conf    %s' % threes.is_pure_main_conf()
-  print "OK"
+  from mmtbx.conformation_dependent_library import generate_protein_fours
+  from mmtbx.conformation_dependent_library import generate_protein_fives
+  for i, generate_protein_tuples in enumerate([
+    generate_protein_twos,
+    generate_protein_threes,
+    generate_protein_fours,
+    generate_protein_fives,
+    ]):
+    for threes in generate_protein_tuples(pdb_hierarchy,
+                                          geometry_restraints_manager,
+                                          #verbose=verbose,
+                                          ):
+      print threes
+      try: print '  omega   %5.1f' % threes.get_omega_value()
+      except: print '  omega is not valid'
+      print '  omegas  %s' % threes.get_omega_values()
+      try: print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
+      except: print '  cis? is not valid'
+      try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
+      except: print '  tran? is not valid'
+      try: print "  rama    %s" % threes.get_ramalyze_key()
+      except: print '  rama not specified'
+      print '  conf    %s' % threes.is_pure_main_conf()
+      try: print '  phi/psi %s' % threes.get_phi_psi_angles()
+      except: print '  phi/psi not specified'
+      try: print '  CA dihedrals %s' % threes.get_ca_dihedrals()
+      except: print '  CA dihedrals not specified'
+    print "OK",i+2
