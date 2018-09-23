@@ -96,11 +96,9 @@ def get_phi_psi_angles(residues, verbose=False):
     if i<2: continue
     atoms = get_phi_psi_atoms(*tuple(residues[i-2:i+1]), verbose=verbose)
     assert atoms
-    tmp = []
     for dihedral in atoms:
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
-      tmp.append(phi_or_psi)
-    dihedrals.append(tmp)
+      dihedrals.append(phi_or_psi)
   if verbose:
     print 'dihedrals'
     for phi_or_psi in dihedrals:

@@ -94,7 +94,8 @@ ATOM   1246  OH  TYR A 150       5.685  56.901  13.541  1.00 20.26           O
 """,
   }
 
-def get_geometry_restraints_manager(pdb_filename,
+def get_geometry_restraints_manager(pdb_filename=None,
+                                    raw_records=None,
                                     #pdb_inp,
                                     #pdb_hierarchy,
                                     ):
@@ -109,7 +110,7 @@ def get_geometry_restraints_manager(pdb_filename,
   processed_pdb = pdb_interpretation.process(
     mon_lib_srv,
     ener_lib,
-    #raw_records=lines,
+    raw_records=raw_records,
     file_name=pdb_filename,
     )
   geometry_restraints_manager = processed_pdb.geometry_restraints_manager()

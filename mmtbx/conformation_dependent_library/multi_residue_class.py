@@ -88,22 +88,36 @@ class ProteinResidues(list):
     else: return 'twisted'
 
   def cis_group(self,
-                limit=45.,
+                limit=30.,
                 omega_cdl=False, # need last not middle
                 verbose=False):
-    cis_peptide_bond = False
-    omega = self.get_omega_value(omega_cdl=omega_cdl)
-    if omega is None: return None
-    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='cis':
-      cis_peptide_bond = True
-    if verbose:
-      if cis_peptide_bond:
-        print 'cis peptide bond', cis_peptide_bond, omega
-        print self
-    return cis_peptide_bond
+    # is any omega a cis angle?
+    assert not omega_cdl
+    #cis_peptide_bond = False
+    #omega = self.get_omega_value(omega_cdl=omega_cdl)
+    #if omega is None: return None
+    omegas = self.get_omega_values()
+    assert omegas
+    def _is_cis(angle):
+      return self._define_omega_a_la_duke_using_limit(angle, limit=limit)=='cis'
+    if filter(_is_cis, omegas): return True
+    return False
+    #if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='cis':
+    #  cis_peptide_bond = True
+    #if verbose:
+    #  if cis_peptide_bond:
+    #    print 'cis peptide bond', cis_peptide_bond, omega
+    #    print self
+    #return cis_peptide_bond
 
   def trans_group(self, limit=30.):
     return not self.cis_group(limit=limit)
+
+  def cis_trans_twisted_list(self, limit=30.):
+    omegas = self.get_omega_values()
+    def _is_cis_trans_twisted(angle):
+      return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
+    return map(_is_cis_trans_twisted, omegas)
 
   def is_pure_main_conf(self):
     tmp = [rg.is_pure_main_conf for rg in self]
@@ -577,6 +591,7 @@ if __name__=="__main__":
       except: print '  cis? is not valid'
       try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
       except: print '  tran? is not valid'
+      print '  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list())
       try: print "  rama    %s" % threes.get_ramalyze_key()
       except: print '  rama not specified'
       print '  conf    %s' % threes.is_pure_main_conf()
