@@ -9,6 +9,7 @@
 #include <cctbx/geometry_restraints/bond.h>
 #include <cctbx/geometry_restraints/dihedral.h>
 #include <cctbx/geometry_restraints/bond_similarity.h>
+#include <cctbx/geometry_restraints/chirality.h>
 #include <cctbx/adp_restraints/adp_similarity.h>
 #include <cctbx/adp_restraints/rigid_bond.h>
 #include <cctbx/adp_restraints/rigu.h>
@@ -133,6 +134,9 @@ namespace boost_python {
 
     linearise_restraints_with_parameter_map_wrapper<
       double, geom_res::dihedral_proxy, geom_res::dihedral>::wrap();
+
+    linearise_restraints_with_parameter_map_wrapper<
+      double, geom_res::chirality_proxy, geom_res::chirality>::wrap();
 
     //linearise_restraints_with_parameter_map_wrapper<
     //  double, double, geom_res::planarity_proxy, geom_res::planarity>::wrap();

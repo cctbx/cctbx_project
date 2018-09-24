@@ -3,10 +3,13 @@
 
 #include <scitbx/error.h>
 #include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/versa_matrix.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/accessors/mat_grid.h>
 #include <scitbx/math/copysign.h>
 #include <scitbx/math/numeric_limits.h>
+#include <scitbx/matrix/householder.h>
+#include <scitbx/matrix/move.h>
 #include <algorithm>
 #include <functional>
 #include <limits>
@@ -679,6 +682,125 @@ reconstruct(af::const_ref<T, af::mat_grid> const &u,
   }
   return result;
 }
+
+template <typename FloatType>
+struct decompose {
+  typedef af::c_grid<2> dim;
+  typedef af::versa<FloatType, dim> matrix_t;
+  typedef af::ref<FloatType, af::mat_grid> matrix_ref_t;
+  typedef af::const_ref<FloatType, af::mat_grid> matrix_const_ref_t;
+
+  matrix_t u, v;
+  af::shared<FloatType> sigma;
+  bool has_u, has_v;
+
+  decompose(matrix_ref_t const &a,
+    FloatType crossover=static_cast<FloatType>(5./3),
+    bool accumulate_u=false, bool accumulate_v=false)
+    : has_u(accumulate_u), has_v(accumulate_v)
+  {
+    using namespace scitbx::matrix;
+    using namespace scitbx::matrix::householder;
+    int n_cols = a.n_columns(),
+      n_rows = a.n_rows();
+    if (n_rows > n_cols*crossover ||
+      n_cols > n_rows*crossover)
+    {
+      matrix_t t, q;
+      bool taller = n_rows > n_cols*crossover;
+      if (taller) {
+        qr_decomposition<FloatType> qr(a, accumulate_u);
+        t = copy_upper_triangle<FloatType>(a);
+        if (accumulate_u) {
+          qr.accumulate_q_in_place();
+          q = af::mat_const_ref_as_versa<FloatType>(a);
+        }
+      }
+      else {
+        lq_decomposition<FloatType> lq(a, accumulate_v);
+        t = matrix::copy_lower_triangle<FloatType>(a);
+        if (accumulate_v) {
+          lq.accumulate_q_in_place();
+          q = af::mat_const_ref_as_versa<FloatType>(a);
+        }
+      }
+      bidiagonalisation<FloatType> bdg(t.ref());
+      if (accumulate_u) {
+        u = bdg.u();
+      }
+      if (accumulate_v) {
+        v = bdg.v();
+      }
+      std::pair<af::shared<FloatType>, af::shared<FloatType> > df =
+        af::matrix_upper_bidiagonal<FloatType>(t.ref());
+      bidiagonal_decomposition<FloatType> svd(
+        df.first.ref(), df.second.ref(), svd::upper_bidiagonal_kind,
+        u.ref(), accumulate_u, v.ref(), accumulate_v);
+      svd.compute();
+      SCITBX_ASSERT(svd.has_converged);
+      svd.sort();
+      if (taller) {
+        if (accumulate_u) {
+          u = af::matrix_multiply<FloatType>(q.ref(), u.ref());
+        }
+      }
+      else if (accumulate_v) {
+        v = af::matrix_transpose_multiply<FloatType>(q.ref(), v.ref());
+      }
+      sigma = df.first;
+    }
+    else {
+      bidiagonalisation<FloatType> bdg(a);
+      if (accumulate_u) {
+        u = bdg.u();
+      }
+      if (accumulate_v) {
+        v = bdg.v();
+      }
+      int m_kind;
+      std::pair<af::shared<FloatType>, af::shared<FloatType> > df;
+      if (n_rows >= n_cols) {
+        df = af::matrix_upper_bidiagonal<FloatType>(a);
+        m_kind = upper_bidiagonal_kind;
+      }
+      else {
+        df = af::matrix_lower_bidiagonal<FloatType>(a);
+        m_kind = lower_bidiagonal_kind;
+      }
+      bidiagonal_decomposition<FloatType> svd(
+        df.first.ref(), df.second.ref(), m_kind,
+        u.ref(), accumulate_u, v.ref(), accumulate_v);
+      svd.compute();
+      SCITBX_ASSERT(svd.has_converged);
+      svd.sort();
+      sigma = df.first;
+    }
+  }
+
+  matrix_t getU() const {
+    SCITBX_ASSERT(has_u);
+    return u;
+  }
+  matrix_t getV() const {
+    SCITBX_ASSERT(has_v);
+    return v;
+  }
+  af::shared<FloatType> getSigma() const {
+    return sigma;
+  }
+
+  matrix_t reconstruct() const {
+    SCITBX_ASSERT(has_u && has_v);
+    return svd::reconstruct<FloatType>(
+      u.const_ref(), v.const_ref(), sigma.const_ref());
+  }
+
+  std::size_t numerical_rank(FloatType delta) {
+    FloatType *p = std::upper_bound(sigma.begin(), sigma.end(), delta,
+      std::greater_equal<FloatType>());
+    return p - sigma.begin();
+  }
+};
 
 }}} // scitbx::matrix::svd
 

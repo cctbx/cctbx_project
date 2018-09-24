@@ -67,7 +67,7 @@ class manager(object):
       self.chirality_proxies.show_sorted(
         by_value="residual",
         sites_cart=sites_cart, site_labels=site_labels,
-        f=f, prefix=prefix, max_items=max_items)
+        unit_cell=unit_cell, f=f, prefix=prefix, max_items=max_items)
       print(file=f)
     if (self.planarity_proxies is not None):
       self.planarity_proxies.show_sorted(
@@ -131,6 +131,7 @@ class manager(object):
       bond_proxies=self.bond_proxies,
       angle_proxies=self.angle_proxies,
       dihedral_proxies=self.dihedral_proxies,
+      chirality_proxies=self.chirality_proxies,
       bond_similarity_proxies=self.bond_similarity_proxies,
       rigid_bond_proxies=self.rigid_bond_proxies,
       rigu_proxies=self.rigu_proxies,
@@ -153,6 +154,10 @@ class manager(object):
       for proxy in self.bond_similarity_proxies:
         n_restraints += proxy.i_seqs.size()
       geometry_proxies.append(self.bond_similarity_proxies)
+    if self.chirality_proxies is not None:
+      for proxy in self.chirality_proxies:
+        n_restraints += 1
+      geometry_proxies.append(self.chirality_proxies)
     adp_proxies = []
     if self.adp_similarity_proxies is not None:
       adp_proxies.append(self.adp_similarity_proxies)

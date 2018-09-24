@@ -43,6 +43,26 @@ def exercise_geometry_restraints_as_cif():
       angle_ideal=90,
       weight=3),
   ))
+  chirality_proxies = geometry_restraints.shared_chirality_proxy((
+    geometry_restraints.chirality_proxy(
+      i_seqs = [1,0,1,0],
+      sym_ops = (sgtbx.rt_mx("1+y,1-x+y, z-1/3"),
+                 sgtbx.rt_mx(),
+                 sgtbx.rt_mx("x-y,x,z-2/3"),
+                 sgtbx.rt_mx("1-x,y-x,1/3-z")),
+      volume_ideal=1.2,
+      both_signs=False,
+      weight=2),
+    geometry_restraints.chirality_proxy(
+      i_seqs = [1,0,1,0],
+      sym_ops = (sgtbx.rt_mx("1+y,1-x+y, z-1/3"),
+                 sgtbx.rt_mx(),
+                 sgtbx.rt_mx("x-y,x,z-2/3"),
+                 sgtbx.rt_mx("1-x,y-x,1/3-z")),
+      volume_ideal=1.2,
+      both_signs=True,
+      weight=2),
+  ))
   angle_proxies = geometry_restraints.shared_angle_proxy((
     geometry_restraints.angle_proxy(
       i_seqs = [1,0,1],
@@ -80,6 +100,7 @@ def exercise_geometry_restraints_as_cif():
     bond_proxies=bond_proxies,
     angle_proxies=angle_proxies,
     dihedral_proxies=dihedral_proxies,
+    chirality_proxies=chirality_proxies,
     bond_similarity_proxies=bond_similarity_proxies)
   s = StringIO()
   cif_block.show(out=s)
@@ -122,6 +143,21 @@ loop_
   _restr_torsion_diff
   O  Si  O  Si  3_664  1  2_554  7_655  -30.0000  0.7071   6.9078
   O  Si  O  Si  3_664  1  4_554  2       90.0000  0.5774  11.7036
+
+loop_
+  _restr_chirality_atom_site_label_1
+  _restr_chirality_atom_site_label_2
+  _restr_chirality_atom_site_label_3
+  _restr_chirality_atom_site_label_4
+  _restr_chirality_site_symmetry_1
+  _restr_chirality_site_symmetry_2
+  _restr_chirality_site_symmetry_3
+  _restr_chirality_site_symmetry_4
+  _restr_chirality_volume_target
+  _restr_chirality_weight_param
+  _restr_chirality_diff
+  O  Si  O  Si  3_664  1  2_554  7_655  1.2000  0.7071   2.4415
+  O  Si  O  Si  3_664  1  2_554  7_655  1.2000  0.7071  -0.0415
 
 loop_
   _restr_equal_distance_class_class_id

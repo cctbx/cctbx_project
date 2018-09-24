@@ -10,33 +10,46 @@ import sys
 import random
 from libtbx.test_utils import approx_equal
 
+import scitbx.linalg as linalg
+
 from scitbx.array_family import flex
 
-def exercise_svd_basic():
+def exercise_svd_basic(klass):
   a = flex.double(xrange(1,19))
   sigma = [ 45.8945322027251, 1.6407053035305987, 0 ]
   a.resize(flex.grid(6,3))
-  svd = scitbx.linalg.svd.real(
+  svd = klass(
     a.deep_copy(),
     accumulate_u=True,
     accumulate_v=True)
+
   assert approx_equal(svd.sigma, sigma)
   a1 = svd.reconstruct()
   assert matrix_equality_ratio(a, a1) < 10
   assert matrix_normality_ratio(svd.u) < 10
   assert matrix_normality_ratio(svd.v) < 10
-  svd = scitbx.linalg.svd.real(a.deep_copy(),
+  svd = klass(a.deep_copy(),
                              accumulate_u=False, accumulate_v=False)
   assert approx_equal(svd.sigma, sigma)
-  assert not svd.u and not svd.v
+  if klass == scitbx.linalg.svd.real:
+    assert not svd.u and not svd.v
+  else:
+    try:
+      svd.u
+      raise Exception_expected
+    except:
+      pass  
   try:
     svd.reconstruct()
     raise Exception_expected
   except AssertionError:
     pass
+  except RuntimeError:
+    if klass == scitbx.linalg.svd_decompose:
+      pass
 
   a = a.matrix_transpose()
-  svd = scitbx.linalg.svd.real(
+  svd = klass(
     a.deep_copy(),
     accumulate_u=True,
     accumulate_v=True)
@@ -49,7 +62,7 @@ def exercise_svd_basic():
   a = flex.double(xrange(1,13))
   sigma = [25.436835633480246818, 1.7226122475210637387, 0]
   a.reshape(flex.grid(3,4))
-  svd = scitbx.linalg.svd.real(
+  svd = klass(
     a.deep_copy(),
     accumulate_u=True,
     accumulate_v=True)
@@ -60,7 +73,7 @@ def exercise_svd_basic():
   assert matrix_normality_ratio(svd.v) < 10
 
   a = a.matrix_transpose()
-  svd = scitbx.linalg.svd.real(
+  svd = klass(
     a.deep_copy(),
     accumulate_u=True,
     accumulate_v=True)
@@ -79,8 +92,9 @@ class test_case(object):
   exercise_tntbx = False
   eps=scitbx.math.double_numeric_limits.epsilon
 
-  def __init__(self, **kwds):
+  def __init__(self, klass, **kwds):
     libtbx.adopt_optional_init_args(self, kwds)
+    self.klass = klass
     self.exercise_tntbx = self.exercise_tntbx and tntbx is not None
     if self.exercise_tntbx:
       self.accumulate_u = self.accumulate_v = True
@@ -108,7 +122,7 @@ class test_case(object):
         if not n_tests: print
         print (m,n),
         sys.stdout.flush()
-      svd = scitbx.linalg.svd.real(a, self.accumulate_u, self.accumulate_v)
+      svd = self.klass(a, self.accumulate_u, self.accumulate_v)
       if self.show_progress:
         print '!',
         sys.stdout.flush()
@@ -135,7 +149,7 @@ class test_case(object):
     from libtbx.easy_profile import easy_profile
     self.scitbx_report = []
     self.tntbx_report = []
-    prof_scitbx = easy_profile(scitbx.linalg.svd.real,
+    prof_scitbx = easy_profile(self.klass,
                                 file_name='svd.py', func_name='__init__',
                                 line=None)
     if tntbx is not None:
@@ -186,7 +200,7 @@ class chunks_of_small_and_big_singular_values_case(test_case):
     return sigma
 
 
-def exercise_densely_distributed_singular_values(show_progress, full_coverage):
+def exercise_densely_distributed_singular_values(show_progress, full_coverage, klass):
   n = 40
   m = 2*n
   n_runs = 20
@@ -203,14 +217,14 @@ def exercise_densely_distributed_singular_values(show_progress, full_coverage):
     n_tests += 1
     for i_case, sigma in enumerate(sigmas):
       a = gen.matrix_with_singular_values(sigma)
-      svd = scitbx.linalg.svd.real(a, accumulate_u=False, accumulate_v=False)
+      svd = klass(a, accumulate_u=False, accumulate_v=False)
       if i_case > 0: sigma = sigma.select(
         flex.sort_permutation(sigma, reverse=True))
       delta = (svd.sigma - sigma)/sigma/tol
       assert delta.all_lt(5)
   print "%i done." % n_tests
 
-def exercise_singular_matrix():
+def exercise_singular_matrix(klass):
   n = 20
   m = 3*n
   tol = 10*scitbx.math.double_numeric_limits.epsilon
@@ -222,8 +236,7 @@ def exercise_singular_matrix():
   for r in rows: a.extend(r)
   a.reshape(flex.grid(n, m))
   a = a.matrix_transpose()
-  svd = scitbx.linalg.svd.real(a.deep_copy(),
-                             accumulate_u=True, accumulate_v=True)
+  svd = klass(a.deep_copy(), accumulate_u=True, accumulate_v=True)
   assert svd.numerical_rank(svd.sigma[0]*tol) == n-2
 
 def exercise_inverse():
@@ -260,24 +273,28 @@ def exercise_inverse():
         assert approx_equal( uu[(aa,bb)], tmp,1e-3 )
 
 
-
-
-
-
-
-def run(show_progress, exercise_tntbx, full_coverage):
-  exercise_inverse()
-  exercise_svd_basic()
-  exercise_singular_matrix()
+def run_for_class(show_progress, exercise_tntbx, full_coverage, klass):
+  print("Executing for: %s" %str(klass))
+  if klass == scitbx.linalg.svd.real:
+    exercise_inverse()
+  exercise_svd_basic(klass)
+  exercise_svd_basic(klass)
+  exercise_singular_matrix(klass)
   exercise_densely_distributed_singular_values(show_progress=show_progress,
-                                               full_coverage=full_coverage)
+                                               full_coverage=full_coverage,
+                                               klass=klass)
   t = chunks_of_small_and_big_singular_values_case(
     show_progress=show_progress,
     exercise_tntbx=exercise_tntbx,
     full_coverage=full_coverage,
+    klass=klass
   )
   t.exercise_increasing_dimensions()
-  print libtbx.utils.format_cpu_times()
+  print libtbx.utils.format_cpu_times(klass)
+
+def run(show_progress, exercise_tntbx, full_coverage):
+  run_for_class(show_progress, exercise_tntbx, full_coverage, scitbx.linalg.svd.real)
+  run_for_class(show_progress, exercise_tntbx, full_coverage, linalg.svd_decompose)
 
 def time(show_progress, exercise_tntbx):
   t = chunks_of_small_and_big_singular_values_case(
