@@ -178,5 +178,3 @@ def test_rigu():
     for i in range(proxies.size()):
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
-
-
