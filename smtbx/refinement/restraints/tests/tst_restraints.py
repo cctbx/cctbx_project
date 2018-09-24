@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from scitbx.lstbx import normal_eqns_solving
 from cctbx import geometry_restraints, adp_restraints, sgtbx, adptbx
 from cctbx.array_family import flex
@@ -370,7 +372,7 @@ def exercise_restrained_refinement(options):
     step_threshold=step_threshold,
     track_all=True)
   if options.verbose:
-    print "%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed())
+    print("%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed()))
   sc = ls.xray_structure.scatterers()
   for p in bond_proxies:
     d = uc.distance(*[ sc[i_pair].site for i_pair in p.i_seqs ])
@@ -385,7 +387,7 @@ def exercise_restrained_refinement(options):
     tau=1e-3,
     track_all=True)
   if options.verbose:
-    print "%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed())
+    print("%i %s steps in %.6f s" % (cycles.n_iterations, cycles, t.elapsed()))
   sc = ls.xray_structure.scatterers()
   sc = ls.xray_structure.scatterers()
   for p in bond_proxies:

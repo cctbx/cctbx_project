@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math,copy
 import scitbx.math
 from scitbx.array_family import flex
@@ -18,7 +19,7 @@ class fit_translation2(fit_translation):
     PIXEL_SZ = 0.11 # mm/pixel
     all_model = mark3_collect_data(self.frame_id, self.HKL)
 
-    for iframe in xrange(len(self.FRAMES["frame_id"])):
+    for iframe in range(len(self.FRAMES["frame_id"])):
       frame_id = self.FRAMES["frame_id"][iframe]
       if frame_id not in self.bandpass_models:
 
@@ -97,7 +98,7 @@ class fit_translation2(fit_translation):
   def nominal_tile_centers(self,corners):
     self.To_x =flex.double(64)
     self.To_y = flex.double(64)
-    for x in xrange(64):
+    for x in range(64):
       self.To_x[x] = (corners[4*x] + corners[4*x+2])/2.
       self.To_y[x] = (corners[4*x+1] + corners[4*x+3])/2.
 
@@ -136,7 +137,7 @@ class fit_translation2(fit_translation):
     fit_translation.post_min_recalc(self)
     self.frame_delx = {}
     self.frame_dely = {}
-    for x in xrange(len(self.frame_id)):
+    for x in range(len(self.frame_id)):
       frame_id = self.frame_id[x]
       if frame_id not in self.frame_delx:
         self.frame_delx[frame_id] = flex.double()
@@ -149,7 +150,7 @@ class fit_translation2(fit_translation):
     delrot= flex.double() # delta rotation in degrees
     weight= flex.double() #
     displacement = [] # vector between two same-sensor ASICS in pixels
-    for x in xrange(len(self.tiles) // 8):
+    for x in range(len(self.tiles) // 8):
       delrot.append(self.x[len(self.tiles) // 2 +2*x] - self.x[len(self.tiles) // 2 + 1 +2*x])
       radii.append((self.radii[2*x]+self.radii[2*x+1])/2)
       weight.append(min([self.tilecounts[2*x],self.tilecounts[2*x+1]]))
@@ -180,12 +181,12 @@ class fit_translation2(fit_translation):
     tangen_sigmas = flex.double(len(self.tiles) // 4)
 
     wtaveg = [0.]*(len(self.tiles) // 4)
-    for x in xrange(len(self.tiles) // 4):
+    for x in range(len(self.tiles) // 4):
       if self.tilecounts[x] >= 3:
         wtaveg[x] = self.weighted_average_angle_deg_from_tile(x, self.post_mean_cv[x], self.correction_vector_x,
           self.correction_vector_y)
 
-    for idx in xrange(len(self.tiles) // 4):
+    for idx in range(len(self.tiles) // 4):
       x = sort_radii[idx]
       if self.tilecounts[x] < 3:
         radial = (0,0)
@@ -246,12 +247,12 @@ class fit_translation2(fit_translation):
            flex.sum(
              flex.double([
                (min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) * (self.x[len(self.tiles) // 2 +2*isen] - self.x[len(self.tiles) // 2 + 1 +2*isen])**2
-               for isen in xrange(len(self.tiles) // 8)]
+               for isen in range(len(self.tiles) // 8)]
              )
            )/
            flex.sum(
              flex.double(
-               [(min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) for isen in xrange(len(self.tiles) // 8)]
+               [(min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) for isen in range(len(self.tiles) // 8)]
              )
            )
         )),

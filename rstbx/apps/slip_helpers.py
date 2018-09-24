@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from libtbx.test_utils import approx_equal
 from scitbx.array_family import flex
@@ -55,7 +56,7 @@ class minimizer(object):
     f = get_score(self.x)
 
     gradients = flex.double(len(self.x))
-    for i in xrange(self.n):
+    for i in range(self.n):
       #factors = [1.000]*self.n
      # factors[i] *= 1.001
      # D_i = 0.001 * self.x[i]
@@ -103,7 +104,7 @@ class wrapper_of_use_case_bp3(object):
       T = phil_params.integration.subpixel_joint_model.translations
       import copy
       resortedT = copy.copy(T)
-      for tt in xrange(0,len(T),2):
+      for tt in range(0,len(T),2):
         resortedT[tt] = T[tt+1]
         resortedT[tt+1] = T[tt]
 
@@ -213,13 +214,13 @@ class slip_callbacks:
           show_levels=[-2, -1, 0, 1, 2, 3, 4, 5])
 
     yellow_data = []; cyan_data = []
-    for imsk in xrange(len(self.BSmasks)):
+    for imsk in range(len(self.BSmasks)):
       smask_keys = self.get_ISmask(imsk)
       bmask = self.BSmasks[imsk]
       if len(bmask.keys())==0: continue
 
       # CYAN: integration mask
-      for ks in xrange(0,len(smask_keys),2):
+      for ks in range(0,len(smask_keys),2):
         cyan_data.append(
           frame.pyslip.tiles.picture_fast_slow_to_map_relative(
            smask_keys[ks+1] + 0.5,smask_keys[ks] + 0.5))
@@ -526,7 +527,7 @@ class slip_callbacks:
 
     polydata = []
     beam_pos = col(beam_coor[0])
-    for idx in xrange(len(map_relative_hi)):
+    for idx in range(len(map_relative_hi)):
       hi_pos = col(map_relative_hi[idx])
       lo_pos = col(map_relative_lo[idx])
       radial_vector = (hi_pos-beam_pos)
@@ -587,7 +588,7 @@ class slip_callbacks:
     poly = cpp_results.spot_rectangles((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.))
     map_relative_poly = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(poly)
     cpp_polydata = []
-    for idx in xrange(0,len(map_relative_poly),5):
+    for idx in range(0,len(map_relative_poly),5):
       cpp_polydata.append( ([ map_relative_poly[idx+0],
                               map_relative_poly[idx+1],
                               map_relative_poly[idx+2],
@@ -603,7 +604,7 @@ class slip_callbacks:
     poly = cpp_results.spot_rectregions((self.inputai.getBase().ybeam,self.inputai.getBase().xbeam,0.),1.0)
     map_relative_poly = frame.pyslip.tiles.vec_picture_fast_slow_to_map_relative(poly)
     cpp_polydata = []
-    for idx in xrange(0,len(map_relative_poly),5):
+    for idx in range(0,len(map_relative_poly),5):
       cpp_polydata.append( ([ map_relative_poly[idx+0],
                               map_relative_poly[idx+1],
                               map_relative_poly[idx+2],
@@ -663,7 +664,7 @@ class slip_callbacks:
       query.append(pixel[0]); query.append(pixel[1])
     self.adapt.query(query)
     import math
-    for p in xrange(N_enclosed):
+    for p in range(N_enclosed):
       if math.sqrt(self.adapt.distances[p]) < 0.1:
         N_enclosed_body_pixels += 1
 
@@ -679,7 +680,7 @@ class slip_callbacks:
     for pixel in marginal_pixels:
       query.append(pixel[0]); query.append(pixel[1])
     self.adapt.query(query)
-    for p in xrange(N_marginal):
+    for p in range(N_marginal):
       if math.sqrt(self.adapt.distances[p]) < 0.1:
         N_marginal_body_pixels += 1
         marginal_body += 0.5 + 0.5 * math.cos (-math.pi * margin_distances[p]) #taking MARGIN==1
@@ -764,7 +765,7 @@ class slip_callbacks:
       query.append(pixel[0]); query.append(pixel[1])
     self.adapt.query(query)
     import math
-    for p in xrange(N_enclosed):
+    for p in range(N_enclosed):
       if math.sqrt(self.adapt.distances[p]) < 0.1:
         N_enclosed_body_pixels += 1
 
@@ -780,7 +781,7 @@ class slip_callbacks:
     for pixel in marginal_pixels:
       query.append(pixel[0]); query.append(pixel[1])
     self.adapt.query(query)
-    for p in xrange(N_marginal):
+    for p in range(N_marginal):
       if math.sqrt(self.adapt.distances[p]) < 0.1:
         N_marginal_body_pixels += 1
         marginal_body += 0.5 + 0.5 * math.cos (-math.pi * margin_distances[p]) #taking MARGIN==1
@@ -901,7 +902,7 @@ class slip_callbacks:
     last_score = wrapbp3.score_only()
     low_score = last_score + 0 # makes a copy
     Tstart = 600
-    for T in xrange(Tstart, 1, -1):
+    for T in range(Tstart, 1, -1):
       decreasing_increment = (T/Tstart)*SA.random_increment()
       last_x = SA.x.deep_copy()
       test_params = SA.x + decreasing_increment
@@ -991,7 +992,7 @@ class slip_callbacks:
     last_score = wrapbp3.score_only()
     low_score = last_score + 0 # makes a copy
     Tstart = 600
-    for T in xrange(Tstart, 1, -1):
+    for T in range(Tstart, 1, -1):
       decreasing_increment = (T/Tstart)*SA.random_increment()
       last_x = SA.x.deep_copy()
       test_params = SA.x + decreasing_increment
@@ -1097,7 +1098,7 @@ class slip_callbacks:
     last_score = wrapbp3.score_only()
     low_score = last_score + 0 # makes a copy
     Tstart = 900
-    for T in xrange(Tstart, 1, -1):
+    for T in range(Tstart, 1, -1):
       decreasing_increment = (T/Tstart)*SA.random_increment()
       last_x = SA.x.deep_copy()
       test_params = SA.x + decreasing_increment

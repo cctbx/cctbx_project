@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 import os, sys, copy
 from iotbx.detectors.npy import NpyImage
@@ -113,7 +114,7 @@ class wrapper_of_callback(object):
 
       dc.SetPen(wx.Pen('orange'))
       dc.SetBrush(wx.Brush('red', wx.TRANSPARENT))
-      for i in xrange(0, len(aa), 4):
+      for i in range(0, len(aa), 4):
         p = wxpanel._img.image_coords_as_screen_coords(aa[i + 1], aa[i + 0])
         p2 = wxpanel._img.image_coords_as_screen_coords(aa[i + 3]-1, aa[i + 2]-1)
         dc.DrawRectangle(x=p[0], y=p[1], width=p2[0]-p[0],height=p2[1]-p[1])

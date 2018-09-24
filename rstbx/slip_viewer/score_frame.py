@@ -3,6 +3,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 import wx
 
@@ -87,7 +88,7 @@ class ScoreSettingsPanel(wx.Panel):
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdatePrevious, id=self._id_previous)
     self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateText, id=self._id_text)
 
-    for i in xrange(self._root_frame.image_chooser.GetCount()):
+    for i in range(self._root_frame.image_chooser.GetCount()):
       _scores[self._root_frame.get_key(self._root_frame.image_chooser.GetClientData(i))] = None
 
   def OnNext(self, event):

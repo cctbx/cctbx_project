@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.generate_circular_gain_mask
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -18,7 +19,7 @@ from xfel.cxi.cspad_ana.parse_calib import calib2sections
 from scitbx.array_family import flex
 from iotbx.detectors.npy import NpyImage
 from spotfinder.applications.xfel import cxi_phil
-from make_mask import point_inside_circle
+from xfel.command_line.make_mask import point_inside_circle
 
 master_phil = libtbx.phil.parse("""
 detector_format_version = None
@@ -78,7 +79,7 @@ if (__name__ == "__main__") :
 
   from xfel.cxi.cspad_ana.cspad_tbx import dpack, evt_timestamp, cbcaa, pixel_size, CsPadDetector
   from iotbx.detectors.cspad_detector_formats import address_and_timestamp_from_detector_format_version
-  from convert_gain_map import fake_env, fake_config, fake_evt, fake_cspad_ElementV2
+  from xfel.command_line.convert_gain_map import fake_env, fake_config, fake_evt, fake_cspad_ElementV2
   address, timestamp = address_and_timestamp_from_detector_format_version(params.detector_format_version)
   timestamp = evt_timestamp((timestamp,0))
 
@@ -153,11 +154,11 @@ if (__name__ == "__main__") :
 
   print "Percent done: 0",; sys.stdout.flush()
   next_percent = 10
-  for y in xrange(data.focus()[1]):
+  for y in range(data.focus()[1]):
     if y*100/data.focus()[1] > next_percent:
       print next_percent,; sys.stdout.flush()
       next_percent += 10
-    for x in xrange(data.focus()[0]):
+    for x in range(data.focus()[0]):
       if annulus:
         if not point_inside_circle(x,y,beam_center[0],beam_center[1],outer) or point_inside_circle(x,y,beam_center[0],beam_center[1],inner):
           data[y,x] = 1
@@ -182,7 +183,7 @@ if (__name__ == "__main__") :
   assert len(angles) == int(len(effective_active_areas)/4)
 
   raw_data = flex.int(flex.grid((11840,194)))
-  for i in xrange(int(len(effective_active_areas)/4)):
+  for i in range(int(len(effective_active_areas)/4)):
     ul_slow = effective_active_areas[4 * i + 0]
     ul_fast = effective_active_areas[4 * i + 1]
     lr_slow = effective_active_areas[4 * i + 2]

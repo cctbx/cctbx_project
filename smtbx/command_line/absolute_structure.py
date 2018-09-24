@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 # LIBTBX_SET_DISPATCHER_NAME smtbx.absolute_structure
 
 from cctbx.array_family import flex
@@ -27,7 +29,7 @@ def crawl(directory, ext='cif', log=None, atomic_form_factors=None,
                  inelastic_form_factors=inelastic_form_factors,
                  chiral_space_groups_only=chiral_space_groups_only,
                  outlier_cutoff_factor=outlier_cutoff_factor)
-      except Exception, e:
+      except Exception as e:
         continue
 
 def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
@@ -61,9 +63,9 @@ def run_once(file_path, nu=None, log=None, atomic_form_factors=None,
   if fc.space_group().is_centric() or (chiral_space_groups_only and
                                        not fc.space_group().is_chiral()):
     return
-  print >> log, file_path
+  print(file_path, file=log)
   fc.space_group_info().show_summary(f=log)
-  print >> log, "space_group.is_chiral(): " + str(fc.space_group().is_chiral())
+  print("space_group.is_chiral(): " + str(fc.space_group().is_chiral()), file=log)
   absolute_structure_analysis(xs, fo2, fc, scale, nu=nu, log=log,
                               outlier_cutoff_factor=outlier_cutoff_factor)
   log.flush()
@@ -122,8 +124,8 @@ def structure_factors_from_ins_res(file_path):
   xs = builder.structure
   twin_components = builder.twin_components
   if twin_components and not xs.space_group().is_centric():
-    print file_path
-    print 'twin: ', twin_components[0].twin_law.as_hkl()
+    print(file_path)
+    print('twin: ', twin_components[0].twin_law.as_hkl())
 
   xs.set_inelastic_form_factors(
     photon=builder.wavelength_in_angstrom, table="sasaki")
@@ -136,13 +138,13 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
     log = sys.stdout
   hooft_analysis = absolute_structure.hooft_analysis(
     fo2, fc, scale_factor=scale, outlier_cutoff_factor=outlier_cutoff_factor)
-  print >> log, "Gaussian analysis:"
+  print("Gaussian analysis:", file=log)
   hooft_analysis.show(out=log)
   NPP = absolute_structure.bijvoet_differences_probability_plot(
     hooft_analysis)
-  print >> log, "Probability plot:"
+  print("Probability plot:", file=log)
   NPP.show(out=log)
-  print >> log
+  print(file=log)
   if nu is None:
     nu = absolute_structure.maximise_students_t_correlation_coefficient(
       NPP.y, min_nu=1, max_nu=200)
@@ -156,12 +158,12 @@ def absolute_structure_analysis(xs, fo2, fc, scale, nu=None, log=None,
     outlier_cutoff_factor=outlier_cutoff_factor)
   tPP = absolute_structure.bijvoet_differences_probability_plot(
     t_analysis, use_students_t_distribution=True, students_t_nu=nu)
-  print >> log, "Student's t analysis:"
-  print >> log, "nu: %.2f" %nu
+  print("Student's t analysis:", file=log)
+  print("nu: %.2f" %nu, file=log)
   t_analysis.show(out=log)
-  print >> log, "Probability plot:"
+  print("Probability plot:", file=log)
   tPP.show(out=log)
-  print >> log
+  print(file=log)
   if xs is not None:
     flack = absolute_structure.flack_analysis(xs, fo2.as_xray_observations())
     flack.show(out=log)
@@ -213,7 +215,7 @@ def run(args):
              inelastic_form_factors=command_line.options.inelastic_form_factors,
              outlier_cutoff_factor=command_line.options.outlier_cutoff_factor)
   else:
-    print "Please provide a valid file or directory"
+    print("Please provide a valid file or directory")
 
 
 if __name__ == '__main__':

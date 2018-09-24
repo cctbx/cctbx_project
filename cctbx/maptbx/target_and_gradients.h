@@ -86,6 +86,185 @@ namespace cctbx {
     namespace target_and_gradients {
       namespace simple {
 
+using scitbx::mat3;
+
+//- Magnification begin --------------------------------------------------------
+
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+MapFloatType
+magnification_isotropic(
+  uctbx::unit_cell const& unit_cell,
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart)
+{
+  MapFloatType t_best = 0;
+  for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+    t_best += tricubic_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[i_site]));
+  }
+  MapFloatType m_min  = 0.9;
+  MapFloatType m_max  = 1.1;
+  MapFloatType inc    = 0.0001;
+  MapFloatType m_best = 1.0;
+  while(m_min<=m_max) {
+    MapFloatType t = 0;
+    for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+      t += eight_point_interpolation( //tricubic_interpolation(
+        density_map,
+        unit_cell.fractionalize(sites_cart[i_site])*m_min);
+    }
+    if(t>t_best) {
+      t_best = t;
+      m_best = m_min;
+    }
+    m_min += inc;
+  }
+  return m_best;
+}
+
+// Too slow to be practical in most cases. Also, inc needs to be 0.0001 which
+// will make it impossible.
+template <
+  typename MapFloatType,
+  typename SiteFloatType>
+scitbx::vec3<MapFloatType>
+magnification_anisotropic(
+  uctbx::unit_cell const& unit_cell,
+  af::const_ref<MapFloatType, af::c_grid_padded<3> > const& density_map,
+  af::const_ref<scitbx::vec3<SiteFloatType> > const& sites_cart)
+{
+  MapFloatType t_best = 0;
+  for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+    t_best += tricubic_interpolation(
+      density_map,
+      unit_cell.fractionalize(sites_cart[i_site]));
+  }
+  MapFloatType m_min  = 0.9;
+  MapFloatType m_max  = 1.1;
+  MapFloatType inc    = 0.01;
+  MapFloatType m1_best = 1.0;
+  MapFloatType m2_best = 1.0;
+  MapFloatType m3_best = 1.0;
+  MapFloatType m1 = m_min;
+  while(m1<=m_max) {
+    MapFloatType m2 = m_min;
+    while(m2<=m_max) {
+      MapFloatType m3 = m_min;
+      while(m3<=m_max) {
+        MapFloatType t = 0;
+        for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+          scitbx::vec3<SiteFloatType> s = sites_cart[i_site];
+          scitbx::vec3<SiteFloatType> sm =
+            scitbx::vec3<SiteFloatType>(s[0]*m1,s[1]*m2,s[2]*m3);
+          t += eight_point_interpolation(
+            density_map,
+            unit_cell.fractionalize(sm));
+        }
+        if(t>t_best) {
+          t_best = t;
+          m1_best = m1;
+          m2_best = m2;
+          m3_best = m3;
+        }
+        m3 += inc;
+      }
+      m2 += inc;
+    }
+    m1 += inc;
+  }
+  return scitbx::vec3<MapFloatType>(m1_best, m2_best, m3_best);
+}
+
+template <typename FloatType=double>
+class magnification
+{
+public:
+
+  magnification(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<FloatType, af::c_grid_padded<3> > const& map_data,
+    af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
+    mat3<FloatType> const& K)
+  {
+    gradients_.resize(9, 0);
+    af::c_grid_padded<3> a = map_data.accessor();
+    scitbx::vec3<FloatType> step;
+    for(unsigned i=0;i<3;i++) {
+      step[i] = unit_cell.parameters()[i] / a.all()[i];
+    }
+    target_ = 0;
+    for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+      scitbx::vec3<FloatType> site_cart = sites_cart[i_site];
+      FloatType x = site_cart[0];
+      FloatType y = site_cart[1];
+      FloatType z = site_cart[2];
+      af::tiny<FloatType, 4> result = tricubic_interpolation_with_gradients(
+        map_data,
+        unit_cell.fractionalize(K * site_cart),
+        step);
+      target_ += result[0];
+      scitbx::vec3<FloatType> gXYZ =
+        unit_cell.orthogonalize(scitbx::vec3<FloatType>(
+          result[1],result[2],result[3]));
+      FloatType gx = gXYZ[0];
+      FloatType gy = gXYZ[1];
+      FloatType gz = gXYZ[2];
+
+      gradients_[0] += gx*x; // gk11
+      gradients_[1] += gx*y; // gk12
+      gradients_[2] += gx*z; // gk13
+      gradients_[3] += gy*x; // gk21
+      gradients_[4] += gy*y; // gk22
+      gradients_[5] += gy*z; // gk23
+      gradients_[6] += gz*x; // gk31
+      gradients_[7] += gz*y; // gk32
+      gradients_[8] += gz*z; // gk33
+    }
+  }
+
+  magnification(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<FloatType, af::c_grid_padded<3> > const& map_data,
+    af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
+    scitbx::vec3<FloatType> const& K)
+  {
+    gradients_.resize(3, 0);
+    af::c_grid_padded<3> a = map_data.accessor();
+    scitbx::vec3<FloatType> step;
+    for(unsigned i=0;i<3;i++) {
+      step[i] = unit_cell.parameters()[i] / a.all()[i];
+    }
+    target_ = 0;
+    for(std::size_t i_site=0;i_site<sites_cart.size();i_site++) {
+      scitbx::vec3<FloatType> s = sites_cart[i_site];
+      scitbx::vec3<FloatType> sm =
+        scitbx::vec3<FloatType>(s[0]*K[0],s[1]*K[1],s[2]*K[2]);
+      af::tiny<FloatType, 4> result = tricubic_interpolation_with_gradients(
+        map_data,
+        unit_cell.fractionalize(sm),
+        step);
+      target_ += result[0];
+      scitbx::vec3<FloatType> gXYZ =
+        unit_cell.orthogonalize(scitbx::vec3<FloatType>(
+          result[1],result[2],result[3]));
+      gradients_[0] += gXYZ[0]*s[0]; // gk11
+      gradients_[1] += gXYZ[1]*s[1]; // gk22
+      gradients_[2] += gXYZ[2]*s[2]; // gk33
+    }
+  }
+
+  FloatType target_;
+  af::shared<FloatType> gradients_;
+
+  FloatType target() { return target_; }
+  af::shared<FloatType> gradients() { return gradients_; }
+};
+
+//- Magnification end ----------------------------------------------------------
+
 template <typename FloatType=double>
 class compute
 {

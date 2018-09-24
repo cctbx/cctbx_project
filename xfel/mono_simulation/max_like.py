@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math
 from math import exp,pi,log,pow
@@ -48,7 +49,7 @@ class minimizer:
   def functional_only(self,alpha,eta):
 
     #print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     if False:
       from matplotlib import pyplot as plt
@@ -94,7 +95,7 @@ class minimizer:
     alpha = exp(self.x[0])
     eta = exp(self.x[1])
     #print "alpha",alpha, "eta",eta
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     partf_partP0 = 0.
     partf_partP1 = 0.
@@ -202,7 +203,7 @@ class minimizer:
     eplus = exp(self.x[1]+EPSILON)
     eminu = exp(self.x[1]-EPSILON)
 
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
     partf_partalpha = 0.
     partf_parteta = 0.

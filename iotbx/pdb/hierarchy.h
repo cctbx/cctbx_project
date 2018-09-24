@@ -1221,6 +1221,9 @@ namespace hierarchy {
 
       void
       sort_atoms_in_place();
+
+      bool
+      is_polymer_chain() const;
   };
 
   //! Model attributes.

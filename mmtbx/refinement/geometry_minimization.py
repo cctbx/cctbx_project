@@ -145,7 +145,7 @@ class run2(object):
     for i_macro_cycle in xrange(number_of_macro_cycles):
       print >> self.log, "  macro-cycle:", i_macro_cycle
       self.restraints_manager.geometry.update_ramachandran_restraints_phi_psi_targets(
-        sites_cart=self.pdb_hierarchy.atoms().extract_xyz())
+        hierarchy=self.pdb_hierarchy)
       if(alternate_nonbonded_off_on and i_macro_cycle<=number_of_macro_cycles/2):
         geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
       self.update_cdl_restraints(macro_cycle=i_macro_cycle)
@@ -296,9 +296,8 @@ def minimize_wrapper_for_ramachandran(
 
   grm.geometry.pair_proxies(
       sites_cart=model.get_sites_cart())
-  if grm.geometry.ramachandran_manager is not None:
-    grm.geometry.ramachandran_manager.update_phi_psi_targets(
-        sites_cart=model.get_sites_cart())
+  grm.geometry.update_ramachandran_restraints_phi_psi_targets(
+      hierarchy=model.get_hierarchy())
 
   if reference_rotamers and original_pdb_h is not None:
     # make selection excluding rotamer outliers

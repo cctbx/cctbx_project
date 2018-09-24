@@ -6,6 +6,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 from rstbx.dials_core.integration_core import show_observations
 import iotbx.phil
@@ -201,6 +202,12 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
+  unit_cell = None
+    .type = unit_cell
+    .help = override the average or reference unit cell
+  space_group = None
+    .type = space_group
+    .help = override the identified space group
 }
 merging {
   refine_G_Imodel = False
@@ -392,7 +399,7 @@ def get_observations (work_params):
       T = tarfile.open(name=tarname, mode='r')
       K = T.getmembers()
       NT = len(K)
-      for nt in xrange(NT):
+      for nt in range(NT):
         k = os.path.basename(K[nt].path)
         file_names.append("%s;member%05d;timestamp%s"%(tarname,nt,k))
       print tarname,NT
@@ -436,7 +443,7 @@ def get_observations (work_params):
     if work_params.a_list is not None:
       print ("A_LIST: %d names rejected for not being on the a_list, leaving %d accepted"%(n_sorry, len(file_names)))
     if subsubset is not None and subsubset_total is not None:
-      file_names = [file_names[i] for i in xrange(len(file_names)) if (i+subsubset)%subsubset_total == 0]
+      file_names = [file_names[i] for i in range(len(file_names)) if (i+subsubset)%subsubset_total == 0]
   print "Number of pickle files found:", len(file_names)
   print
   return file_names
@@ -508,7 +515,7 @@ def load_result (file_name,
     pass
     #raise WrongBravaisError("Skipping file with h,k,l")
   else:
-    for idx in xrange(len(obj["observations"])):
+    for idx in range(len(obj["observations"])):
       obj["observations"][idx] = obj["observations"][idx].change_basis(reindex_op)
     from cctbx.sgtbx import change_of_basis_op
     cb_op = change_of_basis_op(reindex_op)
@@ -608,7 +615,7 @@ def load_result (file_name,
     slow_max = max(slow_max1, slow_max2)
     accepted = flex.bool()
     px_preds = obj['mapped_predictions'][0]
-    for idx in xrange(px_preds.size()):
+    for idx in range(px_preds.size()):
       pred_fast, pred_slow = px_preds[idx]
       if (pred_fast < fast_min) or (pred_fast > fast_max) or (pred_slow < slow_min) or (pred_slow > slow_max):
         accepted.append(True)
@@ -867,7 +874,7 @@ class scaling_manager (intensity_data) :
     # Each process accumulates its own statistics in serial, and the
     # grand total is eventually collected by the main process'
     # _add_all_frames() function.
-    for i in xrange(nproc) :
+    for i in range(nproc) :
       sm = scaling_manager(self.miller_set, self.i_model, self.params)
       pool.apply_async(
         func=sm,
@@ -1016,7 +1023,7 @@ class scaling_manager (intensity_data) :
     sum_x  = 0
     sum_y  = 0
     N      = 0
-    for i in xrange(len(self.summed_N)):
+    for i in range(len(self.summed_N)):
       if (self.summed_N[i] <= 0):
         continue
       # skip structure factor if i_model.sigma is invalid (intentionally < 0)
@@ -1052,7 +1059,7 @@ class scaling_manager (intensity_data) :
       multiplicity_flag = (self.summed_N > self.params.merging.minimum_multiplicity)
     Iobs_all = flex.double(self.miller_set.size())
     SigI_all = flex.double(self.miller_set.size())
-    for i in xrange(len(Iobs_all)):
+    for i in range(len(Iobs_all)):
       if (self.summed_weight[i] > 0.):
        if (multiplicity_flag[i]):
         Iobs_all[i] = self.summed_wt_I[i] / self.summed_weight[i]
@@ -1072,6 +1079,11 @@ class scaling_manager (intensity_data) :
         space_group_info=self.miller_set.space_group_info())
     else :
       final_symm = self.miller_set
+    if (self.params.output.unit_cell is not None or self.params.output.space_group is not None) :
+      output_uc = self.params.output.unit_cell or final_symm.unit_cell()
+      output_sg = self.params.output.space_group or final_symm.space_group_info()
+      final_symm = symmetry(unit_cell=output_uc,
+                            space_group_info=output_sg)
     all_obs = miller.array(
       miller_set=self.miller_set.customized_copy(
         crystal_symmetry=final_symm),
@@ -1337,7 +1349,7 @@ class scaling_manager (intensity_data) :
       else:
         acceptable_resolution_bins = [
           bin.mean_I_sigI > self.params.significance_filter.sigma for bin in bin_results]
-        acceptable_nested_bin_sequences = [i for i in xrange(len(acceptable_resolution_bins))
+        acceptable_nested_bin_sequences = [i for i in range(len(acceptable_resolution_bins))
                                            if False not in acceptable_resolution_bins[:i+1]]
         if len(acceptable_nested_bin_sequences)==0:
           return null_data(
@@ -1365,7 +1377,7 @@ class scaling_manager (intensity_data) :
         # get a rough estimate for the SDFAC, assuming that negative measurements
         # represent false predictions and therefore normally distributed noise.
         no_signal = I_over_sig.select(I_over_sig<0.)
-        for xns in xrange(len(no_signal)):
+        for xns in range(len(no_signal)):
           no_signal.append(-no_signal[xns])
         Stats = flex.mean_and_variance(no_signal)
         SDFAC = Stats.unweighted_sample_standard_deviation()
@@ -1627,7 +1639,7 @@ class scaling_manager (intensity_data) :
   def sum_intensities(self):
     sum_I = flex.double(self.miller_set.size(), 0.)
     sum_I_SIGI = flex.double(self.miller_set.size(), 0.)
-    for i in xrange(self.miller_set.size()) :
+    for i in range(self.miller_set.size()) :
       index = self.miller_set.indices()[i]
       if index in self.ISIGI :
         for t in self.ISIGI[index]:
@@ -2029,7 +2041,7 @@ class scaling_result (group_args) :
 #-----------------------------------------------------------------------
 # graphical goodies
 def plot_overall_completeness(completeness):
-  completeness_range = xrange(-1,flex.max(completeness)+1)
+  completeness_range = range(-1,flex.max(completeness)+1)
   completeness_counts = [completeness.count(n) for n in completeness_range]
   from matplotlib import pyplot as plt
   plt.plot(completeness_range,completeness_counts,"r+")

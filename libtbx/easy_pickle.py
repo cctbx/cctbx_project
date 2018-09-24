@@ -5,10 +5,12 @@ file_name ends with .gz. Also provides functions to read that object back.
 """
 
 from __future__ import absolute_import, division, print_function
-import cPickle
+
 import os
+
 from libtbx.str_utils import show_string
 from libtbx import smart_open
+from six.moves import cPickle
 
 def _open(file_name, mode):
   """

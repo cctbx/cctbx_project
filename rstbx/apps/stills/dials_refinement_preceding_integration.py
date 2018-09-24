@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from rstbx.apps.stills.simple_integration import IntegrationMetaProcedure
 from rstbx.apps import simple_integration
 from scitbx import matrix
@@ -180,7 +181,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
       indexed_pairs = []
       correction_vectors = []
       self.correction_vectors = []
-      for icand in xrange(len(sorted_cl)):
+      for icand in range(len(sorted_cl)):
         # somewhat arbitrary sigma = 1.0 cutoff for outliers
         indexed_pairs.append(indexed_pairs_provisional[clorder[icand]])
         correction_vectors.append(correction_vectors_provisional[clorder[icand]])
@@ -303,10 +304,10 @@ class integrate_one_frame(IntegrationMetaProcedure):
                           predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
-    for i in xrange(len(self.predicted)): # loop over predicteds
+    for i in range(len(self.predicted)): # loop over predicteds
       B_S_mask = {}
       keys = self.get_bsmask(i)
-      for k in xrange(0,len(keys),2):
+      for k in range(0,len(keys),2):
         B_S_mask[(keys[k],keys[k+1])]=True
       self.BSmasks.append(B_S_mask)
     #print "Done"
@@ -462,7 +463,7 @@ class integrate_one_frame(IntegrationMetaProcedure):
 
     pxlsz = detector[0].get_pixel_size()
 
-    for idx in xrange(self.length):
+    for idx in range(self.length):
       R['xyzobs.mm.value'][idx] = (R['xyzobs.px.value'][idx][0]*pxlsz[0], R['xyzobs.px.value'][idx][1]*pxlsz[1], R['xyzobs.px.value'][idx][2])
       R['xyzobs.mm.variance'][idx] = (R['xyzobs.px.variance'][idx][0]*pxlsz[0], R['xyzobs.px.variance'][idx][1]*pxlsz[1], R['xyzobs.px.variance'][idx][2])
 

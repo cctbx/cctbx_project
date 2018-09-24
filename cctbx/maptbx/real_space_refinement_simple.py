@@ -3,6 +3,7 @@ from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from cctbx import xray
+from scitbx import matrix
 
 def local_standard_deviations_target_per_site(
       unit_cell, density_map, weight_map, weight_map_scale_factor,
@@ -59,6 +60,49 @@ def local_standard_deviations_gradients(
         site_radii=site_radii))
     grad_cols.append((targets[0]-targets[1])/(2*delta))
   return flex.vec3_double(*grad_cols)
+
+class magnification_anisotropic_minimization(object):
+
+  def __init__(O,
+        sites_cart,
+        density_map,
+        unit_cell,
+        K, # magnification 3*3  matrix, or a triplet (diagonal only)
+        lbfgs_termination_params=None,
+        lbfgs_exception_handling_params=None):
+    assert [isinstance(K, matrix.sqr), isinstance(K, matrix.col)].count(True)==1
+    O.density_map = density_map
+    O.unit_cell = unit_cell
+    O.sites_cart = sites_cart
+    O.K = K
+    O.x = flex.double(O.K.elems)
+    O.number_of_function_evaluations = -1
+    O.f_start, O.g_start = O.compute_functional_and_gradients()
+    O.minimizer = scitbx.lbfgs.run(
+      target_evaluator=O,
+      termination_params=lbfgs_termination_params,
+      exception_handling_params=lbfgs_exception_handling_params)
+    O.f_final, O.g_final = O.compute_functional_and_gradients()
+    del O.x
+
+  def compute_functional_and_gradients(O):
+    if (O.number_of_function_evaluations == 0):
+      O.number_of_function_evaluations += 1
+      return O.f_start, O.g_start
+    O.number_of_function_evaluations += 1
+    if(isinstance(O.K, matrix.sqr)):
+      O.K = matrix.sqr(
+        [O.x[0], O.x[1], O.x[2],
+         O.x[3], O.x[4], O.x[5],
+         O.x[6], O.x[7], O.x[8]])
+    else:
+      O.K = matrix.col([O.x[0], O.x[1], O.x[2]])
+    o = maptbx.target_and_gradients_simple_magnification(
+      unit_cell  = O.unit_cell,
+      map_target = O.density_map,
+      sites_cart = O.sites_cart,
+      K          = O.K)
+    return -1.* o.target(), o.gradients()*(-1.)
 
 class lbfgs(object):
 

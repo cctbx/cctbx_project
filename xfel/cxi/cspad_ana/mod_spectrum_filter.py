@@ -5,6 +5,7 @@
     stream events as being a two color event or not.
 '''
 from __future__ import division
+from six.moves import range
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 import numpy as np
@@ -138,14 +139,14 @@ class mod_spectrum_filter(object):
 
       # the x-coordinate of the weighted center of peak region
       weighted_peak_one_positions = []
-      for i in xrange(peak_one_lower_limit,peak_one_upper_limit):
+      for i in range(peak_one_lower_limit,peak_one_upper_limit):
         weighted_peak_one_positions.append(spectrum[i]*i)
 
       weighted_sum_peak_one = sum(weighted_peak_one_positions)
       weighted_peak_one_center_position = weighted_sum_peak_one//sum(spectrum[peak_one_lower_limit:peak_one_upper_limit])
 
       weighted_peak_two_positions = []
-      for i in xrange(peak_two_lower_limit,peak_two_upper_limit):
+      for i in range(peak_two_lower_limit,peak_two_upper_limit):
         weighted_peak_two_positions.append(spectrum[i]*i)
 
       weighted_sum_peak_two = sum(weighted_peak_two_positions)

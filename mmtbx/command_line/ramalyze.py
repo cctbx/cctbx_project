@@ -18,6 +18,11 @@ def get_master_phil():
     show_labels = True
       .type = bool
       .help = Show labels on outlier residues
+    point_style = 'bo'
+      .type = str
+      .help = choose style of points, use matplotlib format from e.g. here: \
+        https://matplotlib.org/api/_as_gen/matplotlib.axes.Axes.plot.html \
+        very small is ',', little bigger is '.'
     wxplot = False
       .type = bool
       .help = Display interactive plots (requires wxPython and Matplotlib)
@@ -53,10 +58,19 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.model:
     models = [params.model]
   elif params.model_list:
-    models = params.model_list.split(',')
+    if os.path.isfile(params.model_list):
+      with open(params.model_list, 'r') as f:
+        models = f.read().split('\n')
+        models = [m for m in models if m != ""]
+    else:
+      models = params.model_list.split(',')
     params.verbose=False
+    params.model=models[0]
   results = []
   for model in models:
+    if not os.path.isfile(model) and params.model_list:
+      print "Cannot find '%s', skipping." % model
+      continue
     pdb_in = cmdline.get_file(model, force_type="pdb")
     hierarchy = pdb_in.file_object.hierarchy
     hierarchy.atoms().reset_i_seq()
@@ -81,7 +95,8 @@ def run (args, out=sys.stdout, quiet=False) :
     result.write_plots(
         plot_file_base=plot_file_base,
         out=out,
-        show_labels=params.show_labels)
+        show_labels=params.show_labels,
+        point_style=params.point_style)
   if params.wxplot :
     try :
       import wxtbx.app

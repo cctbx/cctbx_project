@@ -64,6 +64,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     }
   }
 
+  // Why we have separate write functions? see
+  // iotbx/pdb/construct_hierarchy.cpp:input_atoms_with_labels_generator::run
   void
   models_as_pdb_string(
     stream_write& write,
@@ -93,7 +95,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
           ch.residue_groups(),
           interleaved_conf,
           atom_hetatm, sigatm, anisou, siguij, output_break_records);
-        write("TER\n", 4U);
+        if (ch.is_polymer_chain()) write("TER\n", 4U);
       }
       if (n_mds != 1U) {
         write("ENDMDL\n", 7U);

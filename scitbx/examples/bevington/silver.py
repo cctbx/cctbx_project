@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import scitbx.lbfgs
 from scitbx.array_family import flex
 from math import exp,sqrt
@@ -190,9 +191,9 @@ class dense_worker(object):
     nm_elem = flex.double(25)
     self.c = flex.double(5)
     ctr = 0
-    for x in xrange(5):
+    for x in range(5):
       x_0 = ctr
-      for y in xrange(4,x-1,-1):
+      for y in range(4,x-1,-1):
         nm_elem[ 5*x+y ] = upper[x_0+(y-x)]
         ctr += 1
         if x!= y:
@@ -203,7 +204,7 @@ class dense_worker(object):
     self.helper.solve()
     #print list(self.helper.step_equations().cholesky_factor_packed_u())
     error_matrix = NM.inverse()
-    self.error_diagonal = [error_matrix(a,a) for a in xrange(5)]
+    self.error_diagonal = [error_matrix(a,a) for a in range(5)]
     print "End of minimization: Converged", self.helper.counter,"cycles"
 
 def levenberg_example(verbose):
@@ -241,9 +242,9 @@ class eigen_worker(object):
     Nx = len(self.helper.x)
     all_elems = flex.double(Nx*Nx)
     ctr = 0
-    for x in xrange(Nx):
+    for x in range(Nx):
       x_0 = ctr
-      for y in xrange(Nx-1,x-1,-1):
+      for y in range(Nx-1,x-1,-1):
         all_elems[ Nx*x+y ] = norm_mat_packed_upper[x_0+(y-x)]
         ctr += 1
         if x!= y:
@@ -268,7 +269,7 @@ class eigen_worker(object):
     from scitbx.linalg.svd import inverse_via_svd
     svd_inverse,sigma = inverse_via_svd(NM.as_flex_double_matrix())
     IA = sqr(svd_inverse)
-    self.error_diagonal = flex.double([IA(i,i) for i in xrange(self.helper.x.size())])
+    self.error_diagonal = flex.double([IA(i,i) for i in range(self.helper.x.size())])
 
     print "End of minimization: Converged", self.helper.counter,"cycles"
 

@@ -1,4 +1,5 @@
 from __future__ import division, absolute_import
+from __future__ import print_function
 
 import sys
 import random
@@ -22,11 +23,11 @@ from smtbx import absolute_structure
 
 try:
   distributions.students_t_distribution(1)
-except RuntimeError, e:
+except RuntimeError as e:
   # XXX Student's t distribution is not supported with GCC 3.2 builds
   if str(e).startswith("Implementation not available in this build."):
     students_t_available = False
-    print "Skipping exercise_hooft_analysis() with Student's t distribution."
+    print("Skipping exercise_hooft_analysis() with Student's t distribution.")
   else:
     raise RuntimeError(e)
 else:

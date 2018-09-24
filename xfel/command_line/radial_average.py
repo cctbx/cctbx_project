@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.radial_average
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -160,7 +161,7 @@ def run (args, source_data = None) :
   if params.verbose:
     logger.write("Generating average...tile:")
     logger.flush()
-  for tile in xrange(len(the_tiles)//4):
+  for tile in range(len(the_tiles)//4):
     if params.verbose:
       logger.write(" %d"%tile)
       logger.flush()
@@ -179,13 +180,13 @@ def run (args, source_data = None) :
 
   # calculte standard devations
   std_devs = [math.sqrt((sums_sq[i]-sums[i]*results[i])/counts[i])
-              if counts[i] > 0 else 0 for i in xrange(len(sums))]
+              if counts[i] > 0 else 0 for i in range(len(sums))]
 
   xvals = flex.double(len(results))
   max_twotheta = float('-inf')
   max_result   = float('-inf')
 
-  for i in xrange(len(results)):
+  for i in range(len(results)):
     twotheta = i * extent_two_theta/params.n_bins
     xvals[i] = twotheta
 
@@ -211,7 +212,7 @@ def run (args, source_data = None) :
   return xvals, results
 
 def get_tile_id(tiles, x, y):
-    for tile in xrange(len(tiles)//4):
+    for tile in range(len(tiles)//4):
       x1,y1,x2,y2 = get_tile_coords(tiles, tile)
       if x <= x2 and x >= x1 and y <= y2 and y >= y1:
         return tile
@@ -274,7 +275,7 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
   #tiles_list = (2, 18)
   #tiles_list = (48, 49)
   tiles_list = (35, 48, 49, 51)
-  #tiles_list = xrange(64)
+  #tiles_list = range(64)
   arraysx = np.array([])
   arraysy = np.array([])
   arraysz = np.array([])
@@ -290,8 +291,8 @@ def show_tiles(the_tiles, img, phil, bc, handedness=0):
     y = np.array([0]*(w*h))
     z = np.array([0]*(w*h))
 
-    for j in xrange(h):
-      for i in xrange(w):
+    for j in range(h):
+      for i in range(w):
         t_id = get_tile_id(the_tiles,x1+i,y1+j)
         if tile != t_id:
           print "bug! tile: %d, t_id %d, x %d, y %d"%(tile,t_id,x1+i,y1+j)

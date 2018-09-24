@@ -49,11 +49,6 @@ class Script(Script_Base):
 
     print ('Rank %d has read %d experiments consisting of %d reflections'%(rank, len(experiments), len(reflections)))
 
-
-    #from IPython import embed; embed()
-
-    # do other stuff
-
     return
 
   def load_data(self, file_list):
@@ -75,7 +70,6 @@ class Script(Script_Base):
         refls['id'] = flex.int(len(refls), len(all_experiments)-1)
         all_reflections.extend(refls)
 
-    all_reflections.sort('miller_index_asymmetric')
     return all_experiments, all_reflections
 
 if __name__ == '__main__':

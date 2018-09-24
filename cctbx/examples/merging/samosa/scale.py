@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os,sys
 import libtbx
 import iotbx.phil
@@ -157,7 +158,7 @@ def run(show_plots,args):
       x_axis = matrix.col((1.,0.,0.))
       y_axis = matrix.col((0.,1.,0.))
       out = open("aaaaa","w")
-      for x in xrange(len(all_A)):
+      for x in range(len(all_A)):
         Rx = x_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_x[x], deg=True)
         Ry = y_axis.axis_and_angle_as_r3_rotation_matrix(angle=all_y[x], deg=True)
         modified_A = Rx * Ry * all_A[x]

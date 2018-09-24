@@ -195,6 +195,8 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+  // Why we have separate write functions? see
+  // iotbx/pdb/hierarchy_write.cpp:models_as_pdb_string
   void
   input_atoms_with_labels_generator::run(input const& inp)
   {

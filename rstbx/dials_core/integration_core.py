@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 from scitbx import matrix
 
@@ -90,15 +91,15 @@ class integration_core(simple_integration):
 
   def integration_masks_as_xy_tuples(self):
     values = []
-    for imsk in xrange(len(self.BSmasks)):
+    for imsk in range(len(self.BSmasks)):
       smask_keys = self.get_ISmask(imsk)
-      for ks in xrange(0,len(smask_keys),2):
+      for ks in range(0,len(smask_keys),2):
         values.append((smask_keys[ks],smask_keys[ks+1]))
     return values
 
   def background_masks_as_xy_tuples(self):
     values = []
-    for imsk in xrange(len(self.BSmasks)):
+    for imsk in range(len(self.BSmasks)):
       bmask = self.BSmasks[imsk]
       for key in bmask.keys():
         values.append((key[0],key[1]))
@@ -116,13 +117,13 @@ class integration_core(simple_integration):
         dc.SetBrush(wx.BLUE_BRUSH)
         dc.DrawCircle(x,y,1)
 
-    for imsk in xrange(len(self.BSmasks)):
+    for imsk in range(len(self.BSmasks)):
       smask_keys = self.get_ISmask(imsk)
       bmask = self.BSmasks[imsk]
       if len(bmask.keys())==0: continue
 
       # CYAN: integration mask
-      for ks in xrange(0,len(smask_keys),2):
+      for ks in range(0,len(smask_keys),2):
         x,y = wxpanel._img.image_coords_as_screen_coords(smask_keys[ks+1],
                                                          smask_keys[ks])
         dc.SetPen(wx.Pen('cyan'))
@@ -169,12 +170,12 @@ class integration_core(simple_integration):
     Distsq = flex.double()
     self.sorted = [] # a generic list of points close in distance to a central point
     if self.mask_focus[image_number] == None: return
-    for i in xrange(-self.mask_focus[image_number][0],1+self.mask_focus[image_number][0]):
-      for j in xrange(-self.mask_focus[image_number][1],1+self.mask_focus[image_number][1]):
+    for i in range(-self.mask_focus[image_number][0],1+self.mask_focus[image_number][0]):
+      for j in range(-self.mask_focus[image_number][1],1+self.mask_focus[image_number][1]):
         Incr.append(matrix.col((i,j)))
         Distsq.append(i*i+j*j)
     order = flex.sort_permutation(Distsq)
-    for i in xrange(len(order)):
+    for i in range(len(order)):
       #print i,order[i],Distsq[order[i]],Incr[order[i]]
       self.sorted.append(Incr[order[i]])
 

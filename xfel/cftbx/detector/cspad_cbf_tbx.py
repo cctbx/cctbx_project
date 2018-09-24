@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # $Id: cspad_cbf_tbx.py
@@ -263,10 +264,10 @@ def read_slac_metrology(path = None, geometry = None, plot=False, include_asic_o
       for sensor_id, sensor in enumerate(quad.get_list_of_children()):
         add_sensor(quad_id, sensor_id, sensor)
   elif len(root.get_list_of_children()) == 32:
-    for quad_id in xrange(4):
+    for quad_id in range(4):
       metro[(0,quad_id)] = basis(orientation = null_ori, translation = matrix.col((0,0,0)))
       sensors = root.get_list_of_children()
-      for sensor_id in xrange(8):
+      for sensor_id in range(8):
         add_sensor(quad_id, sensor_id, sensors[quad_id*4+sensor_id])
   else:
     assert False
@@ -297,26 +298,24 @@ def get_calib_file_path(env, address, run):
     return None
   return ''.join(map(chr, path_nda))
 
-def env_dxtbx_from_slac_metrology(run, address, metro=None):
+def env_dxtbx_from_slac_metrology(run, address):
   """ Loads a dxtbx cspad cbf header only object from the metrology path stored
       in a psana run object's calibration store
       @param env psana run object
       @param address address string for a detector
   """
-  if metro is not None:
-    # FIXME: get metrology from a pickle file until det interface is ready
-    cbf = get_cspad_cbf_handle(None, metro, 'cbf', None, "test", None, 100, verbose = True, header_only = True)
-
-    from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
-    return FormatCBFCspadInMemory(cbf)
-
-  from psana import Detector
-  try:
-    # try to load the geometry from the detector interface
-    psana_det = Detector(address, run.env())
-    geometry = psana_det.pyda.geoaccess(run)
-  except Exception as e:
-    geometry = None
+  from xfel.command_line.xtc_process import PSANA2_VERSION
+  if PSANA2_VERSION:
+    det = run.ds.Detector(address)
+    geometry = det.geometry(run)
+  else:
+    from psana import Detector
+    try:
+      # try to load the geometry from the detector interface
+      psana_det = Detector(address, run.env())
+      geometry = psana_det.pyda.geoaccess(run)
+    except Exception as e:
+      geometry = None
 
   if geometry is None:
     metro_path = get_calib_file_path(run.env(), address, run)
@@ -380,7 +379,7 @@ def format_object_from_data(base_dxtbx, data, distance, wavelength, timestamp, a
 
   # Get the data and add it to the cbf handle. Split it out by quads.
   tiles = {}
-  for i in xrange(4):
+  for i in range(4):
     tiles[(0,i)] = data[i:i+1,:,:,:]
     tiles[(0,i)].reshape(flex.grid((8,185,388)))
   add_tiles_to_cbf(cbf,tiles)
@@ -862,16 +861,16 @@ def copy_cbf_header(src_cbf, skip_sections = False):
   for cat in categories:
     src_cbf.find_category(cat)
     columns = []
-    for i in xrange(src_cbf.count_columns()):
+    for i in range(src_cbf.count_columns()):
       src_cbf.select_column(i)
       columns.append(src_cbf.column_name())
 
     dst_cbf.add_category(cat, columns)
 
-    for i in xrange(src_cbf.count_rows()):
+    for i in range(src_cbf.count_rows()):
       src_cbf.select_row(i)
       row = []
-      for j in xrange(src_cbf.count_columns()):
+      for j in range(src_cbf.count_columns()):
         src_cbf.select_column(j)
         row.append(src_cbf.get_value())
       dst_cbf.add_row(row)

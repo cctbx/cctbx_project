@@ -8,10 +8,13 @@ import os
 import boost.python
 from scitbx.array_family import flex
 from mmtbx.validation import ramalyze
+from mmtbx.conformation_dependent_library import generate_protein_threes
 
 ext = boost.python.import_ext("mmtbx_ramachandran_restraints_ext")
 from mmtbx_ramachandran_restraints_ext import lookup_table, \
     ramachandran_residual_sum, phi_psi_targets
+ext2 = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
+from mmtbx_validation_ramachandran_ext import rama_eval
 
 master_phil = iotbx.phil.parse("""
   rama_weight = 1.0
@@ -49,11 +52,15 @@ master_phil = iotbx.phil.parse("""
   rama_selection = None
     .type = atom_selection
     .short_caption = Atom selection for Ramachandran restraints
+    .help = Selection of part of the model for which \
+        Ramachandran restraints will be set up.
     .expert_level = 1
-  rama_exclude_sec_str = False
+  restrain_rama_outliers = True
     .type = bool
-    .expert_level = 1
-    .short_caption = Exclude secondary structure from Ramachandran restraints
+    .help = Apply restraints to Ramachandran outliers
+  restrain_rama_allowed = True
+    .type = bool
+    .help = Apply restraints to residues in allowed region on Ramachandran plot
 """)
 
 def is_proxy_present(proxies, n_seq, proxy):
@@ -63,21 +70,28 @@ def is_proxy_present(proxies, n_seq, proxy):
   return ps.size() > 0
 
 class ramachandran_manager(object):
-  def __init__ (self, pdb_hierarchy, atom_selection=None, params=None,
+  def __init__ (self, pdb_hierarchy, params=None,
       log=sys.stdout, proxies=None, tables=None, initialize=True):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
-    adopt_init_args(self, locals(), exclude=["log"])
+    self.hierarchy = pdb_hierarchy # only for def select()
+    self.params = params
+    self.log = log
+    self.proxies = proxies
+    self.tables = tables
+    self.initialize = initialize
+
+    if self.params is None:
+      self.params = master_phil.fetch().extract()
+    self.need_filtering = not (self.params.restrain_rama_outliers and
+                          self.params.restrain_rama_allowed)
     self.bool_atom_selection = None
-    if self.atom_selection is None:
+    if self.params.rama_selection is None:
       self.bool_atom_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
     else:
       cache = pdb_hierarchy.atom_selection_cache()
-      self.bool_atom_selection = cache.selection(atom_selection)
-    if params is None:
-      params = master_phil.fetch().extract()
-    self.params = params
+      self.bool_atom_selection = cache.selection(self.params.rama_selection)
     if initialize:
       if(self.params.rama_potential == "oldfield"):
         self.tables = ramachandran_plot_data(
@@ -85,36 +99,51 @@ class ramachandran_manager(object):
       else :
         self.tables = load_tables(params)
       # get proxies
-      self.extract_proxies(log=log)
+      self.extract_proxies(pdb_hierarchy)
     else:
-      assert proxies is not None
+      assert self.proxies is not None
     if(self.params.rama_potential == "oldfield"):
-      self.target_phi_psi = self.update_phi_psi_targets(
-        sites_cart = self.pdb_hierarchy.atoms().extract_xyz())
+      self.target_phi_psi = self.update_phi_psi_targets_on_init(
+        hierarchy = pdb_hierarchy)
+    self.initialize = False
 
-  def proxy_select(self, n_seq, iselection, log=sys.stdout):
+  def proxy_select(self, n_seq, iselection):
     result_proxies = self.proxies.proxy_select(n_seq, iselection)
-    return ramachandran_manager(
-        pdb_hierarchy=self.pdb_hierarchy,
-        atom_selection=self.atom_selection,
+    new_manager = ramachandran_manager(
+        pdb_hierarchy=self.hierarchy,
         params=self.params,
-        log=log,
+        log=self.log,
         proxies=result_proxies,
         tables=self.tables,
         initialize=False)
+    return new_manager
 
-  def extract_proxies(self, log):
+  def extract_proxies(self, hierarchy):
+    self.hierarchy = hierarchy
     self.proxies = ext.shared_phi_psi_proxy()
-    from mmtbx.conformation_dependent_library import generate_protein_threes
-    selected_h = self.pdb_hierarchy.select(self.bool_atom_selection)
+    selected_h = hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
+    # it would be great to save rama_eval, but the fact that this is called in
+    # pdb_interpretation, not in mmtbx.model makes it impossible
+    if self.need_filtering:
+      self.rama_eval = rama_eval()
     for three in generate_protein_threes(
         hierarchy=selected_h,
         geometry=None):
       rc = three.get_phi_psi_atoms()
       if rc is None: continue
-      phi_atoms, psi_atoms = rc
       rama_key = three.get_ramalyze_key()
+      if self.need_filtering:
+        angles = three.get_phi_psi_angles()
+        rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
+        r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
+        if (r_evaluation == ramalyze.RAMALYZE_OUTLIER and
+            not self.params.restrain_rama_outliers):
+          continue
+        if (r_evaluation == ramalyze.RAMALYZE_ALLOWED and
+            not self.params.restrain_rama_allowed):
+          continue
+      phi_atoms, psi_atoms = rc
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
       r_name = resnames[1]
@@ -128,14 +157,14 @@ class ramachandran_manager(object):
           i_seqs=i_seqs)
       if not is_proxy_present(self.proxies, n_seq, proxy):
         self.proxies.append(proxy)
-    print >> log, ""
-    print >> log, "  %d Ramachandran restraints generated." % (
+    print >> self.log, ""
+    print >> self.log, "  %d Ramachandran restraints generated." % (
         self.get_n_proxies())
 
-  def update_phi_psi_targets(self, sites_cart):
+  def update_phi_psi_targets_on_init(self, hierarchy):
     if(self.params.rama_potential != "oldfield"): return None
     self.target_phi_psi = phi_psi_targets(
-      sites_cart=sites_cart,
+      sites_cart=hierarchy.atoms().extract_xyz(),
       proxies=self.proxies,
       general_table=self.tables.general,
       gly_table=self.tables.gly,
@@ -144,6 +173,13 @@ class ramachandran_manager(object):
       prepro_table=self.tables.prepro,
       ileval_table=self.tables.ileval)
     return self.target_phi_psi
+
+  def update_phi_psi_targets(self, hierarchy):
+    self.hierarchy = hierarchy
+    if self.need_filtering and not self.initialize:
+      self.extract_proxies(hierarchy)
+    self.update_phi_psi_targets_on_init(hierarchy)
+
 
   def target_and_gradients(self,
       unit_cell,
@@ -255,7 +291,6 @@ class ramachandran_manager(object):
 
 
 def load_tables (params=None) :
-  import boost.python
   if (params is None) :
     params = master_phil.fetch().extract()
   if (params.scale_allowed <= 0.0) :

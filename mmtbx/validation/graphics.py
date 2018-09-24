@@ -5,6 +5,7 @@ Base classes for visualization of MolProbity analysis using matplotlib.
 
 from __future__ import division
 from libtbx import slots_getstate_setstate
+import itertools
 
 class rotarama_plot_mixin (object) :
   extent = [0, 360, 0, 360]
@@ -24,7 +25,9 @@ class rotarama_plot_mixin (object) :
                  contours=None,
                  xyz=None,
                  extent=None,
-                 y_marks=None) :
+                 y_marks=None,
+                 point_style='bo') :
+    # points = [(x,y,label, isoutlier(bool)), (), ...]
     import matplotlib.cm
     self._points = []
     self._xyz = []
@@ -45,18 +48,23 @@ class rotarama_plot_mixin (object) :
     else :
       self.set_labels(y_marks=y_marks)
     self.plot.set_title(title)
-    if (points is not None) :
-      if (xyz is not None) : assert (len(xyz) == len(points))
-      for i, (x, y, label, is_outlier) in enumerate(points) :
-        self._points.append((x,y))
-        if is_outlier :
-          self.plot.plot((x,),(y,), 'bo', markerfacecolor='red')
-          if show_labels :
+    if points is not None:
+      if xyz is not None: assert (len(xyz) == len(points))
+      out = list(itertools.ifilter(lambda x: x[3], points))
+      out_columns = zip(*out)
+      # ^^^^ is doing e.g. this:
+      # >>> l = [(1,2), (3,4), (8,9)]
+      # >>> zip(*l)
+      # [(1, 3, 8), (2, 4, 9)]
+      non_out = list(itertools.ifilterfalse(lambda x: x[3], points))
+      non_out_columns = zip(*non_out)
+      if len(out) > 0:
+        self.plot.plot(tuple(out_columns[0]), tuple(out_columns[1]), point_style, markerfacecolor='red')
+        if show_labels :
+          for x, y, label, _ in out:
             self.plot.text(x, y, label, color='black')
-        else :
-          self.plot.plot((x,),(y,), 'bo', markerfacecolor='white')
-        if (xyz is not None) :
-          self._xyz.append(xyz[i])
+      if len(non_out) > 0:
+        self.plot.plot(non_out_columns[0], non_out_columns[1], point_style, markerfacecolor='white')
     self.canvas.draw()
 
 class residue_bin (slots_getstate_setstate) :

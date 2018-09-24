@@ -1,11 +1,15 @@
-from __future__ import division, absolute_import
+from __future__ import absolute_import, division, print_function
+
+import functools
+import math
+import operator
+
 from scitbx.math.ext import *
 import scitbx.linalg.eigensystem
 import scitbx.math.gaussian # implicit import
 from scitbx import matrix
 from scitbx.array_family import flex
 from boost import rational # implicit import
-import math
 
 gaussian_fit_1d_analytical.__doc__ = """
 Fits a gaussian function to a list of points.
@@ -88,12 +92,11 @@ def r3_rotation_average_rotation_matrix_from_matrices(*matrices):
   """
 
   if not matrices:
-    raise TypeError, "Average of empty sequence"
+    raise TypeError("Average of empty sequence")
 
-  import operator
   import scitbx.matrix
 
-  average = reduce(
+  average = functools.reduce(
     operator.add,
     [ scitbx.matrix.col( r3_rotation_matrix_as_unit_quaternion( e ) )
       for e in matrices ]
@@ -111,13 +114,12 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
   """
 
   if not matrices:
-    raise TypeError, "Average of empty sequence"
+    raise TypeError("Average of empty sequence")
 
   if maxiter < 0 or convergence <= 0:
-    raise ValueError, "Invalid iteration parameters"
+    raise ValueError("Invalid iteration parameters")
 
   from scitbx.math import so3_lie_algebra
-  import operator
 
   conv_sq = convergence * convergence
   norm = 1.0 / len( matrices )
@@ -125,7 +127,7 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
 
   for i in range( maxiter ):
     inverse = current.inverse()
-    log_diff = norm * reduce(
+    log_diff = norm * functools.reduce(
       operator.add,
       [ so3_lie_algebra.element.from_rotation_matrix( matrix = inverse * m )
         for m in matrices ]
@@ -136,7 +138,7 @@ def r3_rotation_average_rotation_via_lie_algebra(matrices, maxiter = 100, conver
 
     current *= log_diff.exponential()
 
-  raise RuntimeError, "Iteration limit exceeded"
+  raise RuntimeError("Iteration limit exceeded")
 
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
@@ -174,7 +176,7 @@ class erf_verification(object):
       if (self.max_delta < delta):
         self.max_delta = delta
         if (delta > self.tolerance):
-          print x, expected_result, result, delta
+          print(x, expected_result, result, delta)
 
 class minimum_covering_sphere_nd(object):
 

@@ -232,7 +232,7 @@ diffracted[3]=diffracted_v[2];
                     for(int source=0;source<sources;++source){
 
                         source_const SC(source, diffracted, this);
-                        source_path = SC.source_path; //breaks const correctness
+                        //source_path = SC.source_path; //breaks const correctness
 
                         /* rough cut to speed things up when we aren't using whole detector */
                         if(dmin > 0.0 && SC.stol > 0.0)
@@ -261,14 +261,16 @@ diffracted[3]=diffracted_v[2];
                                 if (subS == oversample-1 && subF == oversample-1 && thick_tic==detector_thicksteps-1){
                                 if (source == sources-1 && phi_tic == phisteps-1 && mos_tic == mosaic_domains-1) {
                                   polar = MC.polar;  //breaks const correctness
+if (printout){
+  h0 = MC.h0;
+  k0 = MC.k0;
+  l0 = MC.l0;
+  F_cell = MC.F_cell;
+}
                                 }
                                 }
                                 /* convert amplitudes into intensity (photons per steradian) */
                                 I_reduction += MC.I_increment; //breaks const correctness
-h0 = MC.h0;
-k0 = MC.k0;
-l0 = MC.l0;
-F_cell = MC.F_cell;
                             }
                             /* end of mosaic loop */
                             I+=I_reduction;

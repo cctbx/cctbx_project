@@ -5,7 +5,7 @@ from cctbx.uctbx.determine_unit_cell import NCDist
 import scipy.cluster.hierarchy as hcluster
 import numpy as np
 import json
-from SingleFrame import SingleFrame
+from .SingleFrame import SingleFrame
 import logging
 
 

@@ -45,7 +45,8 @@ class manager(object):
   def init_amber(self, params, pdb_hierarchy, log):
     if hasattr(params, "amber"):
       self.use_amber = params.amber.use_amber
-      print_amber_energies = params.amber.print_amber_energies
+      self.print_amber_energies = params.amber.print_amber_energies
+      self.log = log
       if (self.use_amber) :
         sites_cart = pdb_hierarchy.atoms().extract_xyz()
         compute_gradients=False
@@ -65,7 +66,10 @@ class manager(object):
           amber_structs=self.amber_structs)
         geometry = amber_geometry_manager.energies_sites(
           crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients)
+          compute_gradients = compute_gradients,
+          log=log,
+          print_amber_energies=self.print_amber_energies,
+          )
 
   def cleanup_amber(self):
     if self.sander and self.amber_structs:
@@ -191,7 +195,11 @@ class manager(object):
           amber_structs=self.amber_structs)
         result.geometry = amber_geometry_manager.energies_sites(
           crystal_symmetry = self.geometry.crystal_symmetry,
-          compute_gradients = compute_gradients)
+          compute_gradients = compute_gradients,
+          # these are only available for use_amber=True
+          log=self.log,
+          print_amber_energies=self.print_amber_energies,
+          )
 
       elif (self.use_afitt and
             len(sites_cart)==self.afitt_object.total_model_atoms

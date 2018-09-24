@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os, re
 from iotbx.detectors import ImageFactory, url_support
 from iotbx.detectors.beam_center_convention import convert_beam_instrument_to_imageblock
@@ -186,12 +187,12 @@ class image_files:
     return [item.number for item in self.filenames.FN[0:wedgelimit]]
 
   def imageindex(self,indexnumber): # gives the actual image
-    for s in xrange(len(self.filenames.frames())):
+    for s in range(len(self.filenames.frames())):
       if self.filenames.frames()[s]==indexnumber:
         return self.images[s]
 
   def imagepath(self,indexnumber): #convenience function for finding filename
-    for s in xrange(len(self.filenames.frames())):
+    for s in range(len(self.filenames.frames())):
       if self.filenames.frames()[s]==indexnumber:
         return self.filenames()[s]
 
@@ -244,7 +245,7 @@ class spotfinder_image_files(H5_aware_image_files):
     if 'TWOTHETA' in self.images[0].parameters:
       if abs(self.images[0].twotheta) < 0.02:  #round off to zero and
                                                #retain legacy behavior
-        for ik in xrange(len(self.images)):
+        for ik in range(len(self.images)):
           self.images[ik].parameters['TWOTHETA']=0.0
 
   def site_modifications(self,imageobject,filenameobject):

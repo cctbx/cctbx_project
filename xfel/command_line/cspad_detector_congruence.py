@@ -13,6 +13,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_congruence
 #
 from __future__ import division
+from six.moves import range
 from dials.array_family import flex
 from scitbx.matrix import col
 from matplotlib import pyplot as plt
@@ -264,13 +265,13 @@ class Script(object):
     # for a detector with 4 hierarchy levels
     """
     print "Testing iterate_detector_at_level"
-    for level in xrange(4):
+    for level in range(4):
       print "iterating at level", level
       for panelg in iterate_detector_at_level(detectors[0].hierarchy(), 0, level):
         print panelg.get_name()
 
     print "Testing iterate_panels"
-    for level in xrange(4):
+    for level in range(4):
       print "iterating at level", level
       for panelg in iterate_detector_at_level(detectors[0].hierarchy(), 0, level):
         for panel in iterate_panels(panelg):
@@ -633,7 +634,7 @@ class Script(object):
     table_header = ["PanelG"]
     table_header2 = ["Id"]
     table_header3 = [""]
-    for i in xrange(len(detectors)):
+    for i in range(len(detectors)):
       table_header.extend(["D%d"%i]*4)
       table_header2.extend(["RMSD", "rRMSD", "tRMSD", "N refls"])
       table_header3.extend(["(microns)"]*3)

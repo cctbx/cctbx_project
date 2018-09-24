@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import h5py
 import copy
 from scitbx.array_family import flex
@@ -26,8 +27,8 @@ if __name__=="__main__":
   single_process = False
 
   if single_process:
-    for islow in xrange(185):
-      for jfast in xrange(388):
+    for islow in range(185):
+      for jfast in range(388):
         histo1 = histograms[islow*388+jfast,:]
         nphotons = fit_3_gaussian.test_fit(histo1,plot=False)
         print islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons)
@@ -41,14 +42,14 @@ if __name__=="__main__":
     def run_fast(args):
       islow = args[0]
       result_val = flex.int(388)
-      for jfast in xrange(388):
+      for jfast in range(388):
         histo1 = histograms[islow*388+jfast,:]
         nphotons = fit_3_gaussian.test_fit(histo1,plot=False)
         print islow*388+jfast, "of %d, # photons= %d"%(len(histograms),nphotons)
         result_val[jfast]=nphotons
       return {islow:result_val}
 
-    iterable = [(i,) for i in xrange(185)]
+    iterable = [(i,) for i in range(185)]
     results = easy_mp.parallel_map(
       func=run_fast,
       iterable=iterable,
@@ -60,7 +61,7 @@ if __name__=="__main__":
     for result in results:
       for key in result.keys():
         values = result[key]
-        for i in xrange(len(values)):
+        for i in range(len(values)):
           inelastic[key,i] = values[i]
 
   # save fitting result:

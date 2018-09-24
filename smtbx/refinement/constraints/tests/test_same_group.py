@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints, model
@@ -7,7 +8,7 @@ import math
 from libtbx.test_utils import approx_equal
 import os
 
-def exercise_basics():
+def test_basics():
   # construct a simple structure whose sites and u_iso's are to be refined
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -85,7 +86,7 @@ def exercise_basics():
                      jacobian_transpose_matching_grad_fc,
                      sc_params)
 
-def exercise_real_life_structure():
+def test_real_life_structure():
   working_dir = os.path.dirname(__file__)
   res = os.path.join(working_dir, 'sucrose_p1.res')
   xs = xray.structure.from_shelx(filename=res)
@@ -96,14 +97,3 @@ def exercise_real_life_structure():
   ls = m.least_squares()
   ls.build_up()
   # wip
-
-def exercise():
-  exercise_basics()
-  exercise_real_life_structure()
-
-def run():
-  exercise()
-  print 'OK'
-
-if __name__ == '__main__':
-  run()

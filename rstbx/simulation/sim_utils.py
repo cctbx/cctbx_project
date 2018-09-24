@@ -1,10 +1,11 @@
 from __future__ import division
+from six.moves import range
 import math,random
 from libtbx.test_utils import approx_equal
 from scitbx import matrix
 
 def generate_random_rotation(count):
-  for x in xrange(count):
+  for x in range(count):
 
     u1=random.random()
     u2=random.random()

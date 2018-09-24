@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #-*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_average
@@ -246,8 +247,8 @@ the output images in the folder cxi49812.
     nevents = min(len(times),maxevents)
     # chop the list into pieces, depending on rank.  This assigns each process
     # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
-    for i in xrange(len(mytimes)):
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
+    for i in range(len(mytimes)):
       if i%10==0: print 'Rank',rank,'processing event',rank*len(mytimes)+i,', ',i,'of',len(mytimes)
       evt = run.event(mytimes[i])
       #print "Event #",rank*mylength+i," has id:",evt.get(EventId)
@@ -484,40 +485,40 @@ the output images in the folder cxi49812.
           return self.d
 
       if xpp:
-        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in range(4)]
         mean = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         mean = flex.double(mean.astype(np.float64))
 
-        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in range(4)]
         stddev = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         stddev = flex.double(stddev.astype(np.float64))
 
-        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in range(4)]
         maxall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
         maxall = flex.double(maxall.astype(np.float64))
 
         if command_line.options.do_minimum_projection:
-          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in range(4)]
           minall = cspad_tbx.image_xpp(old_style_address, None, ds.env(), active_areas, quads = quads)
           minall = flex.double(minall.astype(np.float64))
       else:
-        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, mean[i*8:(i+1)*8,:,:]) for i in range(4)]
         mean = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         mean = flex.double(mean.astype(np.float64))
 
-        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, stddev[i*8:(i+1)*8,:,:]) for i in range(4)]
         stddev = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         stddev = flex.double(stddev.astype(np.float64))
 
-        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+        quads = [fake_quad(i, maxall[i*8:(i+1)*8,:,:]) for i in range(4)]
         maxall = cspad_tbx.CsPadDetector(
           address, evt, ds.env(), sections, quads=quads)
         maxall = flex.double(maxall.astype(np.float64))
 
         if command_line.options.do_minimum_projection:
-          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in xrange(4)]
+          quads = [fake_quad(i, minall[i*8:(i+1)*8,:,:]) for i in range(4)]
           minall = cspad_tbx.CsPadDetector(
             address, evt, ds.env(), sections, quads=quads)
           minall = flex.double(minall.astype(np.float64))

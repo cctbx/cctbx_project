@@ -760,7 +760,7 @@ class Cluster:
       #                                    bins=[range(-90, 91), range(0, 361)])
       # No symmetry mates until we can verify what the cctbx libs are doing
       density_hist = np.histogram2d(lat, lon,
-                                    bins=[range(-90, 91), range(0, 361)])
+                                    bins=[list(range(-90, 91)), list(range(0, 361))])
       smoothed = ndi.gaussian_filter(density_hist[0], (15, 15), mode='wrap')
       local_intensity = []
       x_for_plot = []

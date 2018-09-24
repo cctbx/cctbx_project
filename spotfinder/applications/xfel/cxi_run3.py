@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 from scitbx import matrix
 """Standalone program gives tile translations for the CXI pad detector;
@@ -58,7 +59,7 @@ class quadrant:
     g = flex.double()
     g.reserve(len(self.x))
     eps = 1e-6
-    for i in xrange(len(self.x)):
+    for i in range(len(self.x)):
       xi = self.x[i]
       self.x[i] = xi+eps
       f_eps = get_f()
@@ -78,7 +79,7 @@ class quadrant:
 def parse(string):
   words = string.split()
   values = []
-  for x in xrange(len(words)//2):
+  for x in range(len(words)//2):
     values.append((int(words[2*x]),int(words[2*x+1])))
   return values
 
@@ -239,7 +240,7 @@ def derive_tile_translations(quads):
   tile_list=[]
   tile_translations=[]
   tile_flags=[]
-  for itile in xrange(len(params.distl.detector_tiling)//4):
+  for itile in range(len(params.distl.detector_tiling)//4):
     corner_UL = matrix.col([params.distl.detector_tiling[itile*4],
                             params.distl.detector_tiling[itile*4+1]])
     corner_LR = matrix.col([params.distl.detector_tiling[itile*4+2],

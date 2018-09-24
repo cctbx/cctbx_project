@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 def predict_spot_positions(
       work_params,
       miller_indices,
@@ -38,10 +39,10 @@ def sum_pixels(pixels, point_spread_inner, point_spread_outer, center):
   n_inner = 0
   sum_outer = 0
   sum_inner = 0
-  for i in xrange(0, point_spread_outer+1):
+  for i in range(0, point_spread_outer+1):
     pi = pxb + i
     if (pi < 0 or pi >= dpx): return 0
-    for j in xrange(0, point_spread_outer+1):
+    for j in range(0, point_spread_outer+1):
       pj = pyb + j
       if (pj < 0 or pj >= dpy): return 0
       pcx = (pi + 0.5) - pxf

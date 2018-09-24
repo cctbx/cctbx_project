@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math, sys
 
@@ -47,7 +48,7 @@ class simplex_minimizer(object):
       mt = flex.mersenne_twister(seed)
       random_func = mt.random_double
 
-    for i in xrange(self.n+1):
+    for i in range(self.n+1):
       self.starting_simplex.append(random_func(self.n))
 
     self.optimizer = simplex_opt( dimension = self.n,
@@ -114,7 +115,7 @@ class sdfac_refine(error_modeler_base):
       sum_x  = 0
       sum_y  = 0
       N      = 0
-      for i in xrange(len(data_a)):
+      for i in range(len(data_a)):
         I_r       = data_a[i]
         I_o       = data_b[i]
         N      += 1
@@ -152,7 +153,7 @@ class sdfac_refine(error_modeler_base):
       a = 0.5
 
     sorted_data = flex.sorted(data)
-    rankits = flex.double([norm.quantile((i+1-a)/(n+1-(2*a))) for i in xrange(n)])
+    rankits = flex.double([norm.quantile((i+1-a)/(n+1-(2*a))) for i in range(n)])
 
     if rankits_sel is None:
       corr, slope, offset = self.get_overall_correlation_flex(sorted_data, rankits)
@@ -223,12 +224,12 @@ class sdfac_refine(error_modeler_base):
     print >> self.log, "Computing intensity bins.",
     all_mean_Is = flex.double()
     only_means = flex.double()
-    for hkl_id in xrange(self.scaler.n_refl):
+    for hkl_id in range(self.scaler.n_refl):
       hkl = self.scaler.miller_set.indices()[hkl_id]
       if hkl not in self.scaler.ISIGI: continue
       n = len(self.scaler.ISIGI[hkl])
       # get scaled intensities
-      intensities = flex.double([self.scaler.ISIGI[hkl][i][0] for i in xrange(n)])
+      intensities = flex.double([self.scaler.ISIGI[hkl][i][0] for i in range(n)])
       meanI = flex.mean(intensities)
       only_means.append(meanI)
       all_mean_Is.extend(flex.double([meanI]*n))
@@ -238,7 +239,7 @@ class sdfac_refine(error_modeler_base):
     sels = []
     binned_intensities = []
     min_all_mean_Is = flex.min(all_mean_Is)
-    for i in xrange(n_bins):
+    for i in range(n_bins):
       sel = (all_mean_Is > (min_all_mean_Is + step * i)) & (all_mean_Is < (min_all_mean_Is + step * (i+1)))
       if sel.all_eq(False): continue
       sels.append(sel)
@@ -277,13 +278,13 @@ class sdfac_refine(error_modeler_base):
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 2"
-    for hkl_id in xrange(self.scaler.n_refl):
+    for hkl_id in range(self.scaler.n_refl):
       hkl = self.scaler.miller_set.indices()[hkl_id]
       if hkl not in self.scaler.ISIGI: continue
 
       n = len(self.scaler.ISIGI[hkl])
 
-      for i in xrange(n):
+      for i in range(n):
         Intensity = self.scaler.ISIGI[hkl][i][0] # scaled intensity
         sigma = Intensity / self.scaler.ISIGI[hkl][i][1] # corrected sigma
         variance = sigma * sigma
@@ -321,7 +322,7 @@ def setup_isigi_stats(ISIGI, indices):
   """
   sumI = flex.double(len(indices), 0)
   n_refl = flex.double(len(indices), 0)
-  for i in xrange(len(ISIGI)):
+  for i in range(len(ISIGI)):
     hkl_id = ISIGI['miller_id'][i]
     sumI[hkl_id] += ISIGI['scaled_intensity'][i]
     n_refl[hkl_id] += 1
@@ -329,7 +330,7 @@ def setup_isigi_stats(ISIGI, indices):
   all_meanI = flex.double(len(ISIGI), 0)
   all_n_refl = flex.double(len(ISIGI), 0)
   all_imeanprime = flex.double(len(ISIGI), 0)
-  for i in xrange(len(ISIGI)):
+  for i in range(len(ISIGI)):
     hkl_id = ISIGI['miller_id'][i]
     all_meanI[i] = sumI[hkl_id]/n_refl[hkl_id]
     all_n_refl[i] = n_refl[hkl_id]
@@ -422,7 +423,7 @@ class sdfac_refine_refltable(sdfac_refine):
       step = (flex.max(meanI)-min_meanI)/n_bins
       print >> self.log, "Bin size:", step
 
-      for i in xrange(n_bins):
+      for i in range(n_bins):
         if i+1 == n_bins:
           sel = (meanI >= (min_meanI + step * i))
         else:
@@ -434,7 +435,7 @@ class sdfac_refine_refltable(sdfac_refine):
       # n obs per bin is the same
       sorted_meanI = meanI.select(flex.sort_permutation(meanI))
       bin_size = len(meanI)/n_bins
-      for i in xrange(n_bins):
+      for i in range(n_bins):
         bin_min = sorted_meanI[int(i*bin_size)]
         sel = meanI >= bin_min
         if i+1 == n_bins:
@@ -478,7 +479,7 @@ class sdfac_refine_refltable(sdfac_refine):
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
     print >> self.log, "Applying sdfac/sdb/sdadd 2"
-    for i in xrange(len(self.scaler.ISIGI)):
+    for i in range(len(self.scaler.ISIGI)):
       hkl_id = self.scaler.ISIGI['miller_id'][i]
       Intensity = self.scaler.ISIGI['scaled_intensity'][i] # scaled intensity
       sigma = Intensity / self.scaler.ISIGI['isigi'][i] # corrected sigma
@@ -490,7 +491,7 @@ class sdfac_refine_refltable(sdfac_refine):
       from matplotlib.pyplot import cm
       from matplotlib import pyplot as plt
       import numpy as np
-      for i in xrange(2):
+      for i in range(2):
         f = plt.figure(i)
         lines = plt.gca().get_lines()
         color=cm.rainbow(np.linspace(0,1,len(lines)))

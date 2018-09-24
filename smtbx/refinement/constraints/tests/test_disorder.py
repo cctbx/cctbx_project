@@ -1,39 +1,8 @@
-from __future__ import division
-from smtbx import refinement
-import smtbx.refinement.constraints as core
-from iotbx import shelx
-from cStringIO import StringIO
+from __future__ import absolute_import, division, print_function
+
 import itertools
 
-def exercise_with_disorder():
-  p = shelx.parse_smtbx_refinement_model(file=StringIO(disordered))
-  xs = p.structure
-  mi = xs.build_miller_set(d_min=0.6, anomalous_flag=True)
-  fcalc = mi.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
-  xm = refinement.model(fo_sq=fcalc.norm(),
-                        xray_structure=xs,
-                        constraints=p.constraints,
-                        restraints_manager=p.restraints_manager,
-                        weighting_scheme=p.weighting_scheme,
-                        temperature_in_celsius=p.temperature_in_celsius,
-                        conformer_indices=p.conformer_indices)
-  assert xm.temperature_in_celsius == -153
-  ls = xm.least_squares()
-  expected_reparametrisation_for = {}
-  for i in (13, 14, 15):
-    for s in 'ABCDEF':
-      pivot_letter = 'A' if s < 'D' else 'B'
-      expected_reparametrisation_for["H%i%s" % (i,s)] = (
-        core.terminal_tetrahedral_xh3_sites, "C%i%s" % (i,pivot_letter))
-  for sc, params in itertools.izip(
-    ls.reparametrisation.structure.scatterers(),
-    ls.reparametrisation.asu_scatterer_parameters):
-    if sc.scattering_type != 'H':
-      continue
-    (expected_type, expected_pivot) = expected_reparametrisation_for[sc.label]
-    assert isinstance(params.site, expected_type)
-    assert ([sc1.label for sc1 in params.site.argument(0).scatterers] ==
-            [expected_pivot])
+from six.moves import cStringIO as StringIO
 
 disordered = """
 TITL 00asb006 in Pca2(1)
@@ -98,10 +67,36 @@ PART 0
 HKLF 4
 """
 
-def run():
-  exercise_with_disorder()
-  print 'OK'
+def test_with_disorder():
+  from iotbx import shelx
+  from smtbx import refinement
+  import smtbx.refinement.constraints as core
 
-
-if __name__ == '__main__':
-    run()
+  p = shelx.parse_smtbx_refinement_model(file=StringIO(disordered))
+  xs = p.structure
+  mi = xs.build_miller_set(d_min=0.6, anomalous_flag=True)
+  fcalc = mi.structure_factors_from_scatterers(xs, algorithm="direct").f_calc()
+  xm = refinement.model(fo_sq=fcalc.norm(),
+                        xray_structure=xs,
+                        constraints=p.constraints,
+                        restraints_manager=p.restraints_manager,
+                        weighting_scheme=p.weighting_scheme,
+                        temperature_in_celsius=p.temperature_in_celsius,
+                        conformer_indices=p.conformer_indices)
+  assert xm.temperature_in_celsius == -153
+  ls = xm.least_squares()
+  expected_reparametrisation_for = {}
+  for i in (13, 14, 15):
+    for s in 'ABCDEF':
+      pivot_letter = 'A' if s < 'D' else 'B'
+      expected_reparametrisation_for["H%i%s" % (i,s)] = (
+        core.terminal_tetrahedral_xh3_sites, "C%i%s" % (i,pivot_letter))
+  for sc, params in itertools.izip(
+    ls.reparametrisation.structure.scatterers(),
+    ls.reparametrisation.asu_scatterer_parameters):
+    if sc.scattering_type != 'H':
+      continue
+    (expected_type, expected_pivot) = expected_reparametrisation_for[sc.label]
+    assert isinstance(params.site, expected_type)
+    assert ([sc1.label for sc1 in params.site.argument(0).scatterers] ==
+            [expected_pivot])

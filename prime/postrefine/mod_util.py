@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.uctbx import unit_cell
 from cctbx import miller, crystal, statistics
 from cctbx.array_family import flex
@@ -9,9 +10,9 @@ import numpy as np
 from copy import deepcopy
 import cPickle as pickle
 from collections import Counter
-from mod_merge_data import merge_data_handler
-from mod_mx import mx_handler
-from mod_leastsqr import good_unit_cell
+from .mod_merge_data import merge_data_handler
+from .mod_mx import mx_handler
+from .mod_leastsqr import good_unit_cell
 
 class intensities_scaler(object):
   """
@@ -549,7 +550,7 @@ class intensities_scaler(object):
       n_rows = 3
       n_cols = int(math.ceil(len(params)/n_rows))
       num_bins = 10
-      for i in xrange(len(params)-1):
+      for i in range(len(params)-1):
         tmp_params = params_array[:,i].astype(np.float)
         plt.subplot(n_rows,n_cols,i+1)
         plt.hist(tmp_params, num_bins, normed=0, facecolor='green', alpha=0.5)

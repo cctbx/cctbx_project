@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME LM14.einsle
 import sys,os
 import iotbx.pdb
@@ -65,7 +66,7 @@ class Model:
 
   def get_scatterer_model_idx(self,ions,group_sulfurs):
     if not group_sulfurs:
-      return flex.size_t(xrange(len(ions.scatterers())))
+      return flex.size_t(range(len(ions.scatterers())))
     # if it is desired to group all the sulfurs together
     sulfur_idx = None
     parameter_no = 0
@@ -341,7 +342,7 @@ class FPP_optimizer:
       dnorm = Normalize()
       dnorm.autoscale(wt.as_numpy_array())
       CMAP = plt.get_cmap("rainbow")
-      for ij in xrange(len(self.diffs.data())):
+      for ij in range(len(self.diffs.data())):
         #blue represents zero weight:  red, large weight
         plt.plot([df[ij]],[dano[ij]],color=CMAP(dnorm(wt[ij])),marker=".", markersize=4)
 
@@ -468,7 +469,7 @@ if __name__ == "__main__":
 
   anomalous_diffs = scaled_obs_ampl.anomalous_differences()
 
-  for x in xrange(5):
+  for x in range(5):
     print anomalous_diffs.indices()[x], anomalous_diffs.data()[x],anomalous_diffs.sigmas()[x]
 
   M.wavelength_independent_phases(params.group_sulfurs)

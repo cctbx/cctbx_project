@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os,math
 from scitbx import matrix
 from cctbx.array_family import flex
@@ -130,7 +131,7 @@ class lines(correction_vector_store):
        print "Valueerror"
 
     self.database.send_insert_command()
-    for x in xrange(64):
+    for x in range(64):
       if self.tilecounts[x]==0: continue
       self.radii[x]/=self.tilecounts[x]
       sum_cv = matrix.col(self.mean_cv[x])
@@ -160,7 +161,7 @@ def run_correction_vector_plot(working_phil):
   master_coords = L.master_coords
   master_cv = L.master_cv
   master_tiles = L.master_tiles
-  for idx in xrange(0,len(master_coords),10):
+  for idx in range(0,len(master_coords),10):
     if matrix.col(master_cv[idx]).length() < L.tile_rmsd[ master_tiles[idx] ]:
       pass
       #close_x.append(master_coords[idx][0])
@@ -182,7 +183,7 @@ def run_correction_vector_plot(working_phil):
   tile_rmsds = flex.double()
   radial_sigmas = flex.double(64)
   tangen_sigmas = flex.double(64)
-  for idx in xrange(64):
+  for idx in range(64):
     x = sort_radii[idx]
     print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
       x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],
@@ -212,12 +213,12 @@ def run_correction_vector_plot(working_phil):
   print "Weighted average tangential sigma %6.2f"%tstats.mean()
 
   if working_phil.show_plots is True:
-    plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in xrange(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in xrange(64)],"go")
-    for x in xrange(64):
+    plt.plot([(L.tiles[4*x+0]+L.tiles[4*x+2])/2. for x in range(64)],[(L.tiles[4*x+1]+L.tiles[4*x+3])/2. for x in range(64)],"go")
+    for x in range(64):
       plt.text(10+(L.tiles[4*x+0]+L.tiles[4*x+2])/2.,10+(L.tiles[4*x+1]+L.tiles[4*x+3])/2.,"%d"%x)
     plt.show()
 
-    for idx in xrange(64):
+    for idx in range(64):
       x = sort_radii[idx]
       print "Tile %2d: radius %7.2f, %6d observations, delx %5.2f  dely %5.2f, rmsd = %5.2f"%(
         x, L.radii[x], L.tilecounts[x], L.mean_cv[x][0], L.mean_cv[x][1],

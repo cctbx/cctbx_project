@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.gain_map
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT
@@ -175,7 +176,7 @@ def convert_detector(raw_data, detector_format_version, address, optical_metrolo
       active_areas = xpp_active_areas[detector_format_version]['active_areas']
       det = flex.double([0]*(1765*1765))
       det.reshape(flex.grid((1765,1765)))
-      for i in xrange(64):
+      for i in range(64):
         row = active_areas[i*4]
         col = active_areas[i*4 + 1]
         block = flex.double(raw_data[i * 185:(i+1)*185, :])

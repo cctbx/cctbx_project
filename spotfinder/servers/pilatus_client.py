@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart
@@ -57,7 +58,7 @@ def do_main(filepath, force_binning, convention, host, port):
     Q.show_header()
   get_spotfinder_url(Q,host,port)
 
-  for x in xrange(12):
+  for x in range(12):
     file = "file://%s?slice=%d"%(absfile,x)
     Q = get_labelit_image_object(file, convention)
     if force_binning:

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from cctbx.array_family import flex
 from scitbx import matrix
@@ -71,7 +72,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       #self.hi = self.bp3_wrapper.ucbp3.selected_hi_predictions()
       #self.lo = self.bp3_wrapper.ucbp3.selected_lo_predictions()
       #print list(self.partialities)
-      #for x in xrange(len(self.hi)):
+      #for x in range(len(self.hi)):
       #  print "%4d %4d %4d  %7.1f %7.1f %7.1f %7.1f PARTIAL %7.2f"%(
       #  self.hkllist[x][0], self.hkllist[x][1],self.hkllist[x][2],
       #  self.hi[x][0], self.hi[x][1],
@@ -224,9 +225,9 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       print "idx_cutoff distance in pixels",idx_cutoff
     if not self.horizons_phil.integration.enable_one_to_one_safeguard:
      # legacy code, no safeguard against many-to-one predicted-to-observation mapping
-     for i in xrange(len(self.predicted)): # loop over predicteds
-      #for n in xrange(NEAR): # loop over near spotfinder spots
-      for n in xrange(1): # only consider the nearest spotfinder spot
+     for i in range(len(self.predicted)): # loop over predicteds
+      #for n in range(NEAR): # loop over near spotfinder spots
+      for n in range(1): # only consider the nearest spotfinder spot
         Match = dict(spot=IS_adapt.nn[i*NEAR+n],pred=i)
         if n==0 and math.sqrt(IS_adapt.distances[i*NEAR+n]) < idx_cutoff:
           indexed_pairs_provisional.append(Match)
@@ -238,7 +239,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
           c_v_p_flex.append((vector[0],vector[1],0.))
     else:
       one_to_one = {}
-      for i in xrange(len(self.predicted)): # loop over predicteds
+      for i in range(len(self.predicted)): # loop over predicteds
         annresultidx = i*NEAR
         obsidx = IS_adapt.nn[annresultidx]
         this_distancesq = IS_adapt.distances[annresultidx]
@@ -298,7 +299,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
         raise Sorry("Not enough indexed spots to reject outliers; have %d need >%d" % (limit, ACCEPTABLE_LIMIT))
 
       y_data = flex.double(len(sorted_cl))
-      for i in xrange(len(y_data)):
+      for i in range(len(y_data)):
         y_data[i] = float(i)/float(len(y_data))
 
       # ideas are explained in Sauter & Poon (2010) J Appl Cryst 43, 611-616.
@@ -313,7 +314,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       indexed_pairs = []
       correction_vectors = []
       self.correction_vectors = []
-      for icand in xrange(len(sorted_cl)):
+      for icand in range(len(sorted_cl)):
         # somewhat arbitrary sigma = 1.0 cutoff for outliers
         if (sorted_cl[icand]-inv_cdf[icand])/fitted_rayleigh.distribution.sigma > 1.0:
           break
@@ -359,7 +360,7 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
       print "After outlier rejection %d indexed spotfinder spots remain."%len(indexed_pairs)
       if False:
         rayleigh_cdf = [
-          fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in xrange(len(sorted_cl))]
+          fitted_rayleigh.distribution.cdf(x=sorted_cl[c]) for c in range(len(sorted_cl))]
         from matplotlib import pyplot as plt
         plt.plot(sorted_cl,y_data,"r+")
         #plt.plot(sorted_cl,rayleigh_cdf,"g.")
@@ -474,10 +475,10 @@ class IntegrationMetaProcedure(integration_core,slip_callbacks):
                           predicted=self.predicted,
                           OS_adapt=OS_adapt,
                           sorted=flex_sorted);
-    for i in xrange(len(self.predicted)): # loop over predicteds
+    for i in range(len(self.predicted)): # loop over predicteds
       B_S_mask = {}
       keys = self.get_bsmask(i)
-      for k in xrange(0,len(keys),2):
+      for k in range(0,len(keys),2):
         B_S_mask[(keys[k],keys[k+1])]=True
       self.BSmasks.append(B_S_mask)
     #print "Done"

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import exceptions
 from scitbx import lbfgs
 from libtbx import adopt_init_args
@@ -46,44 +47,44 @@ class s_minimizer:
 
     if self.constraint == 'monoclinic':
       self.f = D*D + F*F
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*D*dD_dAij[x] + 2.*F*dF_dAij[x])
 
     elif self.constraint == 'orthorhombic':
       self.f = D*D + E*E + F*F
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*D*dD_dAij[x] + 2.*E*dE_dAij[x] + 2.*F*dF_dAij[x])
 
     elif self.constraint == 'tetragonal':
       self.f = D*D + E*E + F*F + (A-B)*(A-B)
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*D*dD_dAij[x] + 2.*E*dE_dAij[x] + 2.*F*dF_dAij[x] +
                       2.*(A-B)*(dA_dAij[x]-dB_dAij[x]))
 
     elif self.constraint == 'cubic':
       self.f = D*D + E*E + F*F + (A-B)*(A-B) + (A-C)*(A-C)
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*D*dD_dAij[x] + 2.*E*dE_dAij[x] + 2.*F*dF_dAij[x] +
                       2.*(A-B)*(dA_dAij[x]-dB_dAij[x]) +
                       2.*(A-C)*(dA_dAij[x]-dC_dAij[x]))
 
     elif self.constraint == 'rhombohedral':
       self.f = (A-B)*(A-B) + D*D + E*E + (F+A/2.)*(F+A/2.)
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*(A-B)*(dA_dAij[x]-dB_dAij[x]) +
                       2.*D*dD_dAij[x] + 2.*E*dE_dAij[x] +
                       2.*(F+A/2.)*(dF_dAij[x]+dA_dAij[x]/2.) )
 
     elif self.constraint == 'hexagonal':
       self.f = D*D + E*E + (A-B)*(A-B) + (F+A/2.)*(F+A/2.)
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(2.*D*dD_dAij[x] + 2.*E*dE_dAij[x] +
                       2.*(A-B)*(dA_dAij[x]-dB_dAij[x])  +
                       2.*(F+A/2.)*(dF_dAij[x]+dA_dAij[x]/2.))
 
     elif self.constraint == 'triclinic':
       self.f = 0.0
-      for x in xrange(self.n):
+      for x in range(self.n):
         self.g.append(0.0)
 
     else:

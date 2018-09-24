@@ -590,6 +590,10 @@ Error
 > chain_A
  TPDCVTGKVE YTKYNDDDTF TVKVGDKELF TNRWNLQSLL LSAQITGMTV TIKTNACHNG
  GGFSEVIFR*
+
+>
+ TPDCVTGKVE YTKYNDDDTF TVKVGDKELF TNRWNLQSLL LSAQITGMTV TIKTNACHNG
+ GGFSEVIFR
 >chain_A"""
 
 seq_sequence = "TPDCVTGKVEYTKYNDDDTFTVKVGDKELFTNRWNLQSLLLSAQITGMTVTIKTNACHNGGGFSEVIFR"
@@ -918,7 +922,7 @@ class test_sequence_parse(unittest.TestCase):
 
     ( sequences, unknowns ) = bioinformatics.seq_sequence_parse( seq )
 
-    self.assertEqual( len( sequences ), 3 )
+    self.assertEqual( len( sequences ), 4 )
     self.assertEqual( unknowns, [ "\nError\n", ">chain_A" ] )
 
     self.assertEqual(
@@ -947,6 +951,15 @@ class test_sequence_parse(unittest.TestCase):
       sequences[2].sequence,
       seq_sequence
       )
+
+    self.assertEqual(
+      sequences[3].name,
+      ''
+    )
+    self.assertEqual(
+      sequences[3].sequence,
+      seq_sequence
+    )
 
     ( fastas, unknowns ) = bioinformatics.seq_sequence_parse( fasta )
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math
 from math import exp,pi,log
@@ -44,10 +45,10 @@ class minimizer:
   def functional_only(self,alpha,eta):
 
     #print "Deff_ang",1./alpha,"FWmos_deg",eta*180./pi
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
     f = 0.
 
-    for i in xrange(len(self.d_pos)):
+    for i in range(len(self.d_pos)):
       psi_model = (self.d_pos[i]*alpha + eta)/2.
       psi_i = self.psi_pos[i]
       B = self.escalate / psi_model
@@ -61,7 +62,7 @@ class minimizer:
       gx = 1./(1+exp(expBnegarg ) ) * (1+exp(self.escalate))
       prob = fx * gx
       f -= math.log(prob)
-    for i in xrange(len(self.d_neg)):
+    for i in range(len(self.d_neg)):
       psi_model = (self.d_neg[i]*alpha + eta)/2.
       psi_i = self.psi_neg[i]
       B = self.escalate / psi_model
@@ -84,7 +85,7 @@ class minimizer:
     alpha = exp(self.x[0])
     eta = exp(self.x[1])
     #print "alpha",alpha, "eta",eta
-    allobs = xrange(self.Nobs)
+    allobs = range(self.Nobs)
 
     partf_partP0 = 0.
     partf_partP1 = 0.
@@ -190,7 +191,7 @@ if __name__=="__main__":
   xdata = flex.double()
   yydata = flex.double()
 
-  for x in xrange(-1000,1000):
+  for x in range(-1000,1000):
     delpsi = 0.5*pi*(x/1000.)
     delpsimodel = 0.1
     zfloat = delpsi/delpsimodel

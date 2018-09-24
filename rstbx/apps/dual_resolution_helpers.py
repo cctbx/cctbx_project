@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx.array_family import flex
 from scitbx.matrix import col
@@ -39,7 +40,7 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
     mos_high = mos_max + 0.
     steps = math.pow(mos_high/mos_low,1./20.)
     from bpcx_regression.use_case_1_2.compare_bpcx_xds import cc,cc_slope
-    for i in xrange(20):
+    for i in range(20):
       mos_test = mos_low * math.pow(steps,i)
 
 
@@ -57,7 +58,7 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
       if not len(pred_tt_sort)>len(obs_tt_sort):continue
       conversion = len(pred_tt_sort)/len(obs_tt_sort)
       select_pred_tt_sort = flex.double()
-      for x in xrange(len(obs_tt_sort)):
+      for x in range(len(obs_tt_sort)):
         select_pred_tt_sort.append(pred_tt_sort[int(x * conversion)])
       print "len select pred",len(select_pred_tt_sort)
       corr_test = cc(obs_tt_sort, select_pred_tt_sort)
@@ -75,7 +76,7 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
     modified_pred_x=flex.double()
     modified_pred_y=flex.double()
     ipred = 0
-    for iobs in xrange(len(obs_tt_sort)):
+    for iobs in range(len(obs_tt_sort)):
       try:
         while pred_full_set_best[ipred]<obs_tt_sort[iobs]: ipred+=1
       except IndexError:
@@ -88,24 +89,24 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
     #  y = low resolution modified_pred_x
 
     #N = int(len(obs_tt_sort)*0.75) # take the first half of obs
-    #X = flex.double(xrange(N)).as_numpy_array()
+    #X = flex.double(range(N)).as_numpy_array()
     #Y = flex.double(modified_pred_x[:N]).as_numpy_array()
     #from labelit.diffraction.limits import linear_fit
     #K,B,corr = linear_fit(X,Y)
     #print K,B,corr
 
     ccc=[];cccx=[];
-    for x in xrange(int(len(obs_tt_sort)/3),len(obs_tt_sort)):
+    for x in range(int(len(obs_tt_sort)/3),len(obs_tt_sort)):
       cccx.append(x)
-      ccc.append(cc(xrange(x),modified_pred_x[0:x]))
-      #print x,cc(xrange(x),modified_pred_x[0:x])
-      corr,slope = cc_slope(xrange(x),modified_pred_x[0:x])
+      ccc.append(cc(range(x),modified_pred_x[0:x]))
+      #print x,cc(range(x),modified_pred_x[0:x])
+      corr,slope = cc_slope(range(x),modified_pred_x[0:x])
       scaled_modified_pred_x = modified_pred_x/slope
 
       second_modified_pred_x=flex.double()
       second_modified_pred_y=flex.double()
       ipred = 0
-      for ixx in xrange(len(obs_tt_sort)):
+      for ixx in range(len(obs_tt_sort)):
         try:
           while scaled_modified_pred_x[ipred]<ixx: ipred+=1
         except IndexError:
@@ -128,9 +129,9 @@ def get_model_ref_limits(self,raw_image,spotfinder,imageindex,inputai,
       from matplotlib import pyplot as plt
       #plt.plot(delx,dely,"r.")
       #plt.show()
-      plt.plot(xrange(len(tt)),obs_tt_sort,"r.")
-      plt.plot(flex.double(xrange(len(pred_two_theta_rad_best))),pred_two_theta_rad_best,"g.")
-      #plt.plot(flex.double(xrange(len(pred_full_set_best))),pred_full_set_best,"b.")
+      plt.plot(range(len(tt)),obs_tt_sort,"r.")
+      plt.plot(flex.double(range(len(pred_two_theta_rad_best))),pred_two_theta_rad_best,"g.")
+      #plt.plot(flex.double(range(len(pred_full_set_best))),pred_full_set_best,"b.")
       plt.plot(cccx, ccc,"b.")
       plt.plot(scaled_modified_pred_x, modified_pred_y,"b.")
       #plt.plot(modified_pred_x/B,modified_pred_y,"y.")

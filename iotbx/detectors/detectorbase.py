@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import copy
 from iotbx.detectors import ReadADSC
 from scitbx.array_family import flex
@@ -376,7 +377,7 @@ class tile_manager_base(object):
     if reapply_peripheral_margin:
       try:    peripheral_margin = self.working_params.distl.peripheral_margin
       except Exception: peripheral_margin = 2
-      for i in xrange(len(IT) // 4):
+      for i in range(len(IT) // 4):
         IT[4 * i + 0] += peripheral_margin
         IT[4 * i + 1] += peripheral_margin
         IT[4 * i + 2] -= peripheral_margin
@@ -398,7 +399,7 @@ class tile_manager_base(object):
       for flag in self.working_params.distl.tile_flags :
         expand_flags=expand_flags + [flag]*4
       Zero_IT = flex.int()
-      for idx in xrange(len(IT)):
+      for idx in range(len(IT)):
         Zero_IT.append(expand_flags[idx]*IT[idx])
       return Zero_IT
 

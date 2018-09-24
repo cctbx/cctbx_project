@@ -13,6 +13,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.detector_statistics
 #
 from __future__ import division
+from six.moves import range
 from libtbx.phil import parse
 import libtbx.load_env
 from libtbx.utils import Usage
@@ -70,7 +71,7 @@ class Script(object):
       "sensors, I.E. 2x1s",
       "ASICs, I.E. individual tiles"]
 
-    for i in xrange(3):
+    for i in range(3):
       c = command%(level_json%(params.tag, 1, i),
                    level_pickle%(params.tag, 1, i),
                    level_json%(params.tag, 2, i),

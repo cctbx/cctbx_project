@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import omptbx
 
 def exercise():
@@ -30,7 +31,7 @@ def exercise():
   #
   env.dynamic = False
   env.nested = False
-  for i in xrange(1,5):
+  for i in range(1,5):
     env.num_threads = i
     if (omptbx.have_omp_h):
       assert env.num_threads == i

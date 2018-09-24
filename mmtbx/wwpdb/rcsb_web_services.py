@@ -205,6 +205,9 @@ def get_custom_report_table (pdb_ids, columns, log=sys.stdout,
 def get_high_resolution_for_structures (pdb_ids) :
   return get_custom_report_table(pdb_ids, columns=["highResolutionLimit"])
 
+def get_high_resolution_and_residue_count_for_structures(pdb_ids):
+  return get_custom_report_table(pdb_ids, columns=["highResolutionLimit", 'residueCount'])
+
 def get_ligand_info_for_structures (pdb_ids) :
   """Return a list of ligands in the specified structure(s), including the
   SMILES strings."""

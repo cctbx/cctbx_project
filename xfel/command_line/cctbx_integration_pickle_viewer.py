@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cctbx.integration_pickle_viewer
 from cctbx.array_family import flex # implicit dependency
 from matplotlib import pyplot as plt
@@ -30,7 +31,7 @@ def plot_preds(pdata, active_areas=LG36_active_areas):
     print "pickle may not be an integration pickle! skipping..."
     return
   plt.scatter(preds_slow, preds_fast, c='blue', marker='.')
-  for i in xrange(64):
+  for i in range(64):
     aa = active_areas[4*i:4*i+4]
     plt.plot(
       [aa[1], aa[1], aa[3], aa[3], aa[1]],

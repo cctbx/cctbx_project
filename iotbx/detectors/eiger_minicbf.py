@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException
@@ -64,7 +65,7 @@ class EigerCBFImage(DetectorImageBase):
       headerclose= rawdata.index("_array_data.data")
       self.header = rawdata[headeropen+1:headerclose]
       self.headerlines = [x.strip() for x in self.header.split("#")]
-      for idx in xrange(len(self.headerlines)):
+      for idx in range(len(self.headerlines)):
         for character in '\r\n,();':
           self.headerlines[idx] = self.headerlines[idx].replace(character,'')
 
@@ -123,7 +124,7 @@ class EigerCBFImage(DetectorImageBase):
         header_lines.append(record)
       self.header = "\n".join(header_lines)
       self.headerlines = [x.strip() for x in self.header.split("\n")]
-      for idx in xrange(len(self.headerlines)):
+      for idx in range(len(self.headerlines)):
         for character in '\r\n,();':
           self.headerlines[idx] = self.headerlines[idx].replace(character,'')
 

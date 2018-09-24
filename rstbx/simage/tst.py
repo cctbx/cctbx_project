@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import sys, os
 op = os.path
 
@@ -20,7 +21,7 @@ def exercise_image_simple():
   dpx, dpy = 4, 5
   for ewald_proximity,star in [(0.1, " "), (0.5, "*")]:
     image_lines = []
-    for point_spread in xrange(1,5+1):
+    for point_spread in range(1,5+1):
       for spot_intensity_factor in [0.5, 1, None]:
         if (spot_intensity_factor is None):
           spot_intensity_factors = None
@@ -29,7 +30,7 @@ def exercise_image_simple():
         for apply_proximity_factor in [False, True]:
           if (star == "*"):
             expected_sum_image_pixels = expected_sum_image_pixels_iter.next()
-          for code in xrange(16):
+          for code in range(16):
             store_miller_index_i_seqs = bool(code & 0x1)
             store_spots = bool(code & 0x2)
             store_signals = bool(code & 0x4)
@@ -95,9 +96,9 @@ def exercise_image_simple():
               else:
                 assert sum_image_pixels == 0
       assert image.pixels.all() == (dpx,dpy)
-      for i in xrange(dpx):
+      for i in range(dpx):
         line = []
-        for j in xrange(dpy):
+        for j in range(dpy):
           if (image.pixels[(i,j)]): c = star
           else: c = " "
           line.append(c)

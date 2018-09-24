@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -400,7 +401,7 @@ class lbfgs_minimizer_base:
     self.f = functional
     DELTA = 1.E-7
     self.g = flex.double()
-    for x in xrange(self.n):
+    for x in range(self.n):
       templist = list(self.x)
       templist[x]+=DELTA
       dvalues = flex.double(templist)
@@ -435,7 +436,7 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     self.gg_4 = flex.sum(2. * self.func * jacobian[4])
     DELTA = 1.E-7
     self.g = flex.double()
-    for x in xrange(self.n):
+    for x in range(self.n):
       templist = list(self.x)
       templist[x]+=DELTA
       dvalues = flex.double(templist)
@@ -464,7 +465,7 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     self.f = functional
     jacobian = self.refinery.jacobian_callable(values)
     self.g = flex.double(self.n)
-    for ix in xrange(self.n):
+    for ix in range(self.n):
       self.g[ix] = flex.sum(2. * self.func * jacobian[ix])
     print >> self.out, "rms %10.3f"%math.sqrt(flex.mean(self.func*self.func)),
     values.show(self.out)

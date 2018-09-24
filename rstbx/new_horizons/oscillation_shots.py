@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math,os, cPickle as pickle,cStringIO as StringIO
 from labelit.dptbx.status import cellstr
 from libtbx.utils import Sorry
@@ -89,7 +90,7 @@ class IntegrateCharacters:
 
     print "Limiting resolution",integration_limit
     local["results"] = []
-    for i in xrange(len(frames)):
+    for i in range(len(frames)):
       print "---------BEGIN Integrate one frame %d %s" % \
           (frames[i], os.path.split(self.files.filenames()[i])[-1])
       #P = Profiler("worker")
@@ -356,7 +357,7 @@ class IntegrateCharacters:
           from scitbx.array_family import flex
           xx = flex.double()
           yy = flex.double()
-          for idx in xrange(hackobs.indices().size()):
+          for idx in range(hackobs.indices().size()):
             hkl = hackobs.indices()[idx]
             thisobs = hackobs.data()[idx]
             lookupidx = hackhkl.index(hkl)

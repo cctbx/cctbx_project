@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -28,7 +29,7 @@ class speckfinder:
 
       percentile90 = active_data[order[int(0.9*len(active_data))]]
       maximas = flex.vec2_double()
-      for idx in xrange(len(active_data)-1, int(0.9*len(active_data)), -1):
+      for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > 2.0 * percentile90:
           if self.verbose: print "    ", idx, active_data[order[idx]]
           irow = order[idx] // (asic[3]-asic[1])
@@ -68,7 +69,7 @@ class speckfinder:
       stats = flex.mean_and_variance(active_data)
       print "stats are mean",stats.mean(),"sigma",stats.unweighted_sample_standard_deviation()
       maximas = flex.vec2_double()
-      for idx in xrange(len(active_data)-1, int(0.9*len(active_data)), -1):
+      for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > stats.mean() + 6.0*stats.unweighted_sample_standard_deviation():
           if self.verbose: print "    ", idx, active_data[order[idx]]
           irow = order[idx] // (asic[3]-asic[1])
@@ -111,7 +112,7 @@ class speckfinder:
         #print "The 99-percentile pixel is ",active_data[order[int(0.99*len(active_data))]]
 
       maximas = flex.vec2_double()
-      for idx in xrange(len(active_data)-1, int(0.9*len(active_data)), -1):
+      for idx in range(len(active_data)-1, int(0.9*len(active_data)), -1):
         if active_data[order[idx]] > stats.mean() + 12.0*stats.unweighted_sample_standard_deviation():
           if self.verbose: print "    ", idx, active_data[order[idx]]
           irow = order[idx] // (raw_asic[3]-raw_asic[1])
@@ -146,7 +147,7 @@ class speckfinder:
     assert len(self.active_areas)%4 == 0
     # apply an additional margin of 1 pixel, since we don't seem to be
     # registering the global margin.
-    asics = [(B[i]+1,B[i+1]+1,B[i+2]-1,B[i+3]-1) for i in xrange(0,len(B),4)]
+    asics = [(B[i]+1,B[i+1]+1,B[i+2]-1,B[i+3]-1) for i in range(0,len(B),4)]
 
     from scitbx.matrix import col
     centre_mm = col((float(inputpd["xbeam"]),float(inputpd["ybeam"])))
@@ -154,7 +155,7 @@ class speckfinder:
     distances = flex.double()
     cenasics = flex.vec2_double()
     self.corners = []
-    for iasic in xrange(len(asics)):
+    for iasic in range(len(asics)):
       cenasic = ((asics[iasic][2] + asics[iasic][0])/2. ,
                  (asics[iasic][3] + asics[iasic][1])/2. )
       cenasics.append(cenasic)
@@ -164,7 +165,7 @@ class speckfinder:
     self.flags = flex.int(len(asics),0)
     #Use the central 8 asics (central 4 sensors)
     self.green = []
-    for i in xrange(32):
+    for i in range(32):
       #self.green.append( cenasics[orders[i]] )
       self.corners.append (asics[orders[i]])
       #self.green.append((self.corners[-1][0],self.corners[-1][1]))
@@ -176,7 +177,7 @@ class clustering:
     self.verbose=False
     #for the next spot, define the universe of possible pixels (working targets)
     # and the map of which pixels have been visited already (pixel_visited)
-    working_targets = list(xrange(len(maxima)))
+    working_targets = list(range(len(maxima)))
     pixel_visited = flex.bool(len(working_targets),False)
     self.spots = []
     while len(working_targets) > 0:
@@ -189,7 +190,7 @@ class clustering:
       pixel_visited[0]=True
       while len(connection_stack) > 0:
         idx_current = connection_stack[-1]
-        for idx_target in xrange(len(working_targets)):
+        for idx_target in range(len(working_targets)):
           if not pixel_visited[idx_target]:
             distance = math.hypot( maxima[working_targets[idx_current]][0]-
                                    maxima[working_targets[idx_target]][0],
@@ -225,7 +226,7 @@ class clustering:
       pixels = [col(((frow)+asic[0],(fcol)+asic[1])) for frow,fcol in spot]
       pixel_values = [active_block[(int(frow),int(fcol))] for frow,fcol in spot]
       numerator = col((0.0,0.0)); denominator = 0.0
-      for ispot in xrange(len(spot)):
+      for ispot in range(len(spot)):
         numerator += (pixel_values[ispot]-percentile90)*pixels[ispot]
         denominator += pixel_values[ispot]-percentile90
       if len(spot) < 20:

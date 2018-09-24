@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 import math
 from scitbx.matrix import col,sqr
@@ -59,7 +60,7 @@ class refinement_base(object):
         T = OO.parent.horizons_phil.integration.subpixel_joint_model.translations
         import copy
         resortedT = copy.copy(T)
-        for tt in xrange(0,len(T),2):
+        for tt in range(0,len(T),2):
           resortedT[tt] = T[tt+1]
           resortedT[tt+1] = T[tt]
         OO.ucbp3.set_subpixel(
@@ -75,7 +76,7 @@ class refinement_base(object):
     OO.ucbp3.set_domain_size(280. * 17.) # for Holton psI simulation; probably doesn't detract from general case
 
 class refinement(refinement_base):
-  grid = xrange(-20,20)
+  grid = range(-20,20)
 
   def __init__(OO,self,use_inverse_beam=False,mosaic_refinement_target="LSQ",pvr_fix=True):
     OO.mosaic_refinement_target = mosaic_refinement_target # least squares or max-likelihood
@@ -147,7 +148,7 @@ class refinement(refinement_base):
             [OO.ucbp3.simple_forward_calculation_spot_position(
             wavelength = OO.central_wavelength_ang,
             observation_no = obsno).rotax_excursion_rad*180./math.pi
-            for obsno in xrange(len(self.indexed_pairs))])
+            for obsno in range(len(self.indexed_pairs))])
 
           rmsdexc = math.sqrt(flex.mean(excursions*excursions))
           excursi.append(rmsdexc)
@@ -211,7 +212,7 @@ class refinement(refinement_base):
             [OO.ucbp3.simple_forward_calculation_spot_position(
             wavelength = OO.central_wavelength_ang,
             observation_no = obsno).rotax_excursion_rad_pvr/(2.*math.pi)
-            for obsno in xrange(len(OO.parent.indexed_pairs))])
+            for obsno in range(len(OO.parent.indexed_pairs))])
 
           degrees = 360.*excursions
           rmsdexc = math.sqrt(flex.mean(degrees*degrees))
@@ -240,14 +241,14 @@ class refinement(refinement_base):
             wavelength = OO.central_wavelength_ang,
             observation_no = obsno,
             dA_drotxy = dA_drotx)
-            for obsno in xrange(len(OO.parent.indexed_pairs))]
+            for obsno in range(len(OO.parent.indexed_pairs))]
 
           dexc_droty = [
             OO.ucbp3.simple_part_excursion_part_rotxy(
             wavelength = OO.central_wavelength_ang,
             observation_no = obsno,
             dA_drotxy = dA_droty)
-            for obsno in xrange(len(OO.parent.indexed_pairs))]
+            for obsno in range(len(OO.parent.indexed_pairs))]
           return flex.double(dexc_drotx)/(2.*math.pi), flex.double(dexc_droty)/(2.*math.pi)
 
       value = per_frame_helper()
@@ -316,7 +317,7 @@ class refinement(refinement_base):
       two_thetas_env = flex.double()
       dspacings_env = flex.double()
       excursion_rads_env = flex.double()
-      for x in xrange(0,n_bins):
+      for x in range(0,n_bins):
         subset = order[x*bin_sz:(x+1)*bin_sz]
         two_thetas_env.append( flex.mean(two_thetas.select(subset)) )
         dspacings_env.append( flex.mean(dspacings.select(subset)))
@@ -372,7 +373,7 @@ class refinement(refinement_base):
               OO.ucbp3.simple_forward_calculation_spot_position(
               wavelength = OO.central_wavelength_ang,
               observation_no = obsno).position
-              for obsno in xrange(len(OO.parent.indexed_pairs))]
+              for obsno in range(len(OO.parent.indexed_pairs))]
         print len(positions)
         print positions # model-predicted positions
         print len(OO.parent.spots)
@@ -400,7 +401,7 @@ class refinement(refinement_base):
               OO.ucbp3.simple_forward_calculation_spot_position(
               wavelength = OO.central_wavelength_ang,
               observation_no = obsno).position_to_fictitious
-              for obsno in xrange(len(OO.parent.indexed_pairs))]
+              for obsno in range(len(OO.parent.indexed_pairs))]
         # Do some work to calculate an rmsd
         diff_vecs = flex.vec3_double()
         for p,xspot in zip(positions_to_fictitious, meas_spots):
@@ -515,7 +516,7 @@ class refinement(refinement_base):
       plt.show()
 
 class refinement2(refinement_base):
-  grid = xrange(-20,20)
+  grid = range(-20,20)
 
   def __init__(OO,self):
 
@@ -555,7 +556,7 @@ class refinement2(refinement_base):
                    OO.parent.spots[OO.parent.indexed_pairs[obsno]["spot"]].ctr_mass_x(),
                   0.0))
              ).length()
-            for obsno in xrange(len(OO.parent.indexed_pairs))])
+            for obsno in range(len(OO.parent.indexed_pairs))])
 
           rmsdexc = math.sqrt(flex.mean(displacements*displacements))
           print "rotz %7.3f degrees, RMSD displacement %7.3f pixels"%(

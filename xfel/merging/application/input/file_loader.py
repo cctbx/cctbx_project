@@ -42,31 +42,12 @@ class file_loader(object):
 
   # used by worker rank
   def load_data(self, experiments_filename, reflections_filename):
-    from cctbx import miller
-    from cctbx.crystal import symmetry
-    from dials.array_family import flex
-
 
     experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = False)
     reflections = easy_pickle.load(reflections_filename)
 
-    #from IPython import embed; embed()
+    return experiments, reflections
 
-    mapped_reflections = flex.reflection_table()
-
-    for experiment_id, experiment in enumerate(experiments):
-      refls = reflections.select(reflections['id'] == experiment_id)
-
-      mset = miller.set(symmetry(unit_cell = experiment.crystal.get_unit_cell(),
-                                 space_group = experiment.crystal.get_space_group()),
-                        refls['miller_index'])
-
-      refls['miller_index_original'] = refls['miller_index']
-      del refls['miller_index']
-      refls['miller_index_asymmetric'] = mset.map_to_asu().indices()
-      mapped_reflections.extend(refls)
-
-    return experiments, mapped_reflections
 
 from xfel.merging.application.phil.phil import Script as Script_Base
 
@@ -90,7 +71,6 @@ class Script(Script_Base):
         refls['id'] = flex.int(len(refls), len(all_experiments)-1)
         all_reflections.extend(refls)
 
-    all_reflections.sort('miller_index_asymmetric')
     return all_experiments, all_reflections
 
   def run(self):
@@ -101,44 +81,6 @@ class Script(Script_Base):
 
     experiments, reflections = self.load_data()
     print ('Read %d experiments consisting of %d reflections'%(len(experiments), len(reflections)))
-
-
-    from IPython import embed; embed()
-
-
-    # do other stuff
-    count = {}
-    average_intensity = {}
-    esd = {}
-    rmsd = {}
-    hkl_cur = (0,0,0)
-
-    for i, ref in enumerate(reflections):
-       hkl = ref.get('miller_index')
-       if ( hkl_cur != hkl ): # new hkl
-           hkl_cur = hkl
-           average_intensity[hkl]     = ref.get('intensity.sum.value')
-           esd[hkl]                   = ref.get('intensity.sum.variance')
-           rmsd[hkl]                  = 0
-           count[hkl]                 = 1
-       else: # same hkl
-           average_intensity[hkl]    += ref.get('intensity.sum.value')
-           esd[hkl]                  += ref.get('intensity.sum.variance')
-           count[hkl]                += 1
-
-    for hkl in average_intensity:
-        average_intensity[hkl] /= count[hkl]
-        esd[hkl] /= count[hkl]
-
-    for i, ref in enumerate(reflections):
-        hkl = ref.get('miller_index')
-        rmsd[hkl] += (ref.get('intensity.sum.value') - average_intensity[hkl]) ** 2
-
-    for hkl in rmsd:
-        rmsd[hkl] /= count[hkl]
-        rmsd[hkl] = rmsd[hkl] ** 0.5
-
-    print ('Symmetry-independent relections intensities: %d; esd: %d; rmsd: %d'%(len(average_intensity), len(esd), len(rmsd)))
 
     return
 

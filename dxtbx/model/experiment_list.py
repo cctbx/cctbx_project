@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import pkg_resources
 
 from dxtbx.model import Experiment, ExperimentList
+from dxtbx.datablock import AutoEncoder
 
 class InvalidExperimentListError(RuntimeError):
   """
@@ -509,9 +510,16 @@ class ExperimentListDumper(object):
 
     for fname, obj  in to_write:
       if compact:
-        text = json.dumps(obj, separators=(',',':'), ensure_ascii=True)
+        separators = (',', ':')
+        indent = None
       else:
-        text = json.dumps(obj, indent=2, ensure_ascii=True)
+        separators = None
+        indent = 2
+      text = json.dumps(obj,
+                        separators=separators,
+                        indent=indent,
+                        ensure_ascii=True,
+                        cls=AutoEncoder)
 
       # If a filename is set then dump to file otherwise return string
       if fname is not None:

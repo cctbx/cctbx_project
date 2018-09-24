@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from rstbx.array_family import flex
 from rstbx.indexing_api import dps_extended
 from rstbx.indexing_api.sampling import hemisphere_shortcut
@@ -64,7 +65,7 @@ class _(boost.python.injector, dps_extended):
     nh = min ( self.getSolutions().size(), 20) # extended API
     solutions = self.getSolutions() #extended API
     sum_score = 0.0
-    for t in xrange(nh):
+    for t in range(nh):
       #if t!=unique:continue
       dfft = Directional_FFT(angle = solutions[t], xyzdata = reciprocal_space_vectors,
                             granularity = self.granularity, amax = self.amax, # extended API
@@ -143,8 +144,8 @@ class _(boost.python.injector, dps_extended):
       plot = False
       if plot:
         scores = flex.double()
-        for x in xrange(-grid,grid+1):
-         for y in xrange(-grid,grid+1):
+        for x in range(-grid,grid+1):
+         for y in range(-grid,grid+1):
           ref = matrix.col(self.S0_vector)
           newvec = ref + x*0.0002*beamr1 + y*0.0002*beamr2
           normal = newvec.normalize() * self.inv_wave
@@ -155,7 +156,7 @@ class _(boost.python.injector, dps_extended):
 
           from matplotlib import pyplot as plt
           plt.figure()
-          CS = plt.contour([i*0.2 for i in xrange(grid)],[i*0.2 for i in xrange(grid)], excursi.as_numpy_array())
+          CS = plt.contour([i*0.2 for i in range(grid)],[i*0.2 for i in range(grid)], excursi.as_numpy_array())
           plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f")
           plt.title("Score as to beam likelihood")
           plt.scatter([0.1*(grid-1)],[0.1*(grid-1)],color='g',marker='o')
@@ -237,8 +238,8 @@ class _(boost.python.injector, dps_extended):
         plot_px_sz = self.detector[0].get_pixel_size()[0]
         grid = max(1,int(scope/plot_px_sz))
         scores = flex.double()
-        for y in xrange(-grid,grid+1):
-         for x in xrange(-grid,grid+1):
+        for y in range(-grid,grid+1):
+         for x in range(-grid,grid+1):
           new_origin_offset = x*plot_px_sz*beamr1 + y*plot_px_sz*beamr2
           scores.append( self.get_origin_offset_score(new_origin_offset) )
 
@@ -248,8 +249,8 @@ class _(boost.python.injector, dps_extended):
           def igrid(x): return x - (widegrid//2)
           from matplotlib import pyplot as plt
           plt.figure()
-          CS = plt.contour([igrid(i)*plot_px_sz for i in xrange(widegrid)],
-                           [igrid(i)*plot_px_sz for i in xrange(widegrid)], excursi.as_numpy_array())
+          CS = plt.contour([igrid(i)*plot_px_sz for i in range(widegrid)],
+                           [igrid(i)*plot_px_sz for i in range(widegrid)], excursi.as_numpy_array())
           plt.clabel(CS, inline=1, fontsize=10, fmt="%6.3f")
           plt.title("Wide scope search for detector origin offset")
           plt.scatter([0.0],[0.0],color='g',marker='o')

@@ -288,6 +288,9 @@ output {
   title = None
     .type = str
     .help = Title for run - will appear in MTZ file header
+        output_dir = None
+    .type = str
+    .help = output file directory
 }
 
 statistics {

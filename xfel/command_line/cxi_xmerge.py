@@ -5,6 +5,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 import iotbx.phil
 from cctbx.array_family import flex
@@ -224,7 +225,7 @@ def run(args):
     return None
 # --- End of x scaling
   scaler.uc_values = unit_cell_distribution()
-  for icell in xrange(len(scaler.frames["unit_cell"])):
+  for icell in range(len(scaler.frames["unit_cell"])):
     if scaler.params.model is None:
       scaler.uc_values.add_cell(
       unit_cell=scaler.frames["unit_cell"][icell])
@@ -253,7 +254,7 @@ def run(args):
       log=out)
     scaler.scale_all()
     scaler.uc_values = unit_cell_distribution()
-    for icell in xrange(len(scaler.frames["unit_cell"])):
+    for icell in range(len(scaler.frames["unit_cell"])):
       if scaler.params.model is None:
         scaler.uc_values.add_cell(
         unit_cell=scaler.frames["unit_cell"][icell])
@@ -332,7 +333,7 @@ def run(args):
     scaler.corr_values = scaler.frames["cc"]
 
     scaler.rejected_fractions = flex.double(scaler.frames["frame_id"].size(), 0.)
-    for irej in xrange(len(scaler.rejected_fractions)):
+    for irej in range(len(scaler.rejected_fractions)):
       if scaler.n_obs[irej] > 0:
         scaler.rejected_fractions = scaler.n_rejected[irej]/scaler.n_obs[irej]
   # ---------- End of new code ----------------

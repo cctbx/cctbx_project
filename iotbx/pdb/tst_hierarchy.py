@@ -838,15 +838,15 @@ def exercise_chain():
   r.append_model(m)
   c = pdb.hierarchy.chain(id="c")
   m.append_chain(c)
-  assert r.as_pdb_string() == "TER\n"
+  assert r.as_pdb_string() == "", r.as_pdb_string()
   rg = pdb.hierarchy.residue_group(resseq="s", icode="j")
   c.append_residue_group(residue_group=rg)
-  ag = pdb.hierarchy.atom_group(altloc="a", resname="r")
+  ag = pdb.hierarchy.atom_group(altloc="a", resname="ALA")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("n"))
-  assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
+  assert ag.only_atom().pdb_label_columns() == "n   aALA c   sj"
   assert not show_diff(r.as_pdb_string(), """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00
 TER
 """)
   rg = pdb.hierarchy.residue_group(resseq="t", icode="k")
@@ -862,11 +862,10 @@ TER
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("o"))
   assert not show_diff(r.as_pdb_string(), """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-TER
 """)
   #
   atoms = c.atoms()
@@ -880,21 +879,19 @@ TER
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
 """
   assert not show_diff(r.as_pdb_string(), """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-%sTER
-""" % siguij_2_line)
+%s""" % siguij_2_line)
   assert r.as_pdb_string(output_break_records=False) == """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-TER
 """
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
@@ -905,15 +902,14 @@ SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
 """
   atoms[0].set_charge("Cg")
   assert not show_diff(r.as_pdb_string(), """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
 %sATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-%sTER
-""" % (siguij_0_line, siguij_2_line))
+%s""" % (siguij_0_line, siguij_2_line))
   sio = StringIO()
   assert r.as_pdb_string(cstringio=sio, interleaved_conf=1) is sio
   assert r.as_pdb_string(cstringio=sio, interleaved_conf=2) is sio
@@ -924,58 +920,52 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
     r.as_pdb_string(cstringio=sio, siguij=False, return_cstringio=False),
     str)
   expected = """\
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
-TER
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   aALA c   sj    6000   3000   8000   2000   9000   1000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
-TER
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   aALA c   sj    6000   3000   8000   2000   9000   1000        Cg
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
-TER
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   aALA c   sj    6000   3000   8000   2000   9000   1000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
-TER
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+SIGUIJ      n   aALA c   sj    6000   3000   8000   2000   9000   1000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
-TER
-ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
-SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+ATOM        n   aALA c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   aALA c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   aALA c   sj   60000  30000  80000  20000  90000  10000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-TER
 """
   if (pdb.hierarchy.atom.has_siguij()):
     assert not show_diff(sio.getvalue(), expected)
@@ -990,7 +980,6 @@ TER
   assert not show_diff(r.as_pdb_string(
     atom_hetatm=False, sigatm=False, anisou=False, siguij=False), """\
 BREAK
-TER
 """)
   #
   a = pdb.hierarchy.atom()
@@ -4657,9 +4646,9 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     s = h.as_pdb_string()
     d = hashlib.md5(s).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
-      assert d == "c4089359af431bb2962d6a8e457dd86f"
+      assert d == "c4089359af431bb2962d6a8e457dd86f", d
     else:
-      assert d == "a1dd6605ed08b56862b9d7ae6b9a547b"
+      assert d == "2c78c9a2e7113216a442c1866979ff26", d
     h.write_pdb_file(file_name="tmp_tst_hierarchy.pdb")
     assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), s)
     h = pdb.input(
@@ -4903,14 +4892,26 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
   hierarchy = pdb_inp.construct_hierarchy(sort_atoms=False)
-  check_wpf(hierarchy, expected=pdb_string+"TER\n")
+  check_wpf(hierarchy, expected=pdb_string)
   rem = "REMARK EXERCISE"
-  for obj in [pdb_inp, hierarchy]:
-    print >> open("tmp_tst_hierarchy.pdb", "w"), rem
-    obj.write_pdb_file(
-      file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
-    assert not show_diff(
-      open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
+
+  # XXX Yes, pdb_inp and hierarchy are not consistent in terms of TER
+  # records. It looks like a minor issue nowadays. hierarchy is compliant
+  # with current PDB policy on TER. If pdb_inp is absolutely needed to
+  # comply too, welcome to figure out how to modify
+  # iotbx/pdb/construct_hierarchy.cpp: input_atoms_with_labels_generator::run
+  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  pdb_inp.write_pdb_file(
+    file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
+  assert not show_diff(
+    open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
+  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  hierarchy.write_pdb_file(
+    file_name="tmp_tst_hierarchy.pdb", open_append=True, append_end=True)
+  assert not show_diff(
+    open("tmp_tst_hierarchy.pdb").read(), rem+"\n"+pdb_string+"END\n")
+
+
   check_wpf(
     hierarchy,
     kwargs={"crystal_symmetry": (2,3,4,80,90,100), "cryst1_z": 5},
@@ -4919,23 +4920,34 @@ CRYST1    2.000    3.000    4.000  80.00  90.00 100.00 P 1           5
 SCALE1      0.500000  0.088163 -0.015793        0.00000
 SCALE2      0.000000  0.338476 -0.060632        0.00000
 SCALE3      0.000000  0.000000  0.253979        0.00000
-""" + pdb_string+"TER\n")
+""" + pdb_string)
   check_wpf(
     hierarchy,
     kwargs={"cryst1_z": 7, "write_scale_records": False},
     expected="""\
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
-""" + pdb_string+"TER\n")
-  for obj in [pdb_inp, hierarchy]:
-    print >> open("tmp_tst_hierarchy.pdb", "w"), rem
-    obj.write_pdb_file(
-      file_name="tmp_tst_hierarchy.pdb",
-      cryst1_z="",
-      write_scale_records=False,
-      open_append=True)
-    assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
+""" + pdb_string)
+
+  # XXX see comment on L 4898
+  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  pdb_inp.write_pdb_file(
+    file_name="tmp_tst_hierarchy.pdb",
+    cryst1_z="",
+    write_scale_records=False,
+    open_append=True)
+  assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
+  print >> open("tmp_tst_hierarchy.pdb", "w"), rem
+  hierarchy.write_pdb_file(
+    file_name="tmp_tst_hierarchy.pdb",
+    cryst1_z="",
+    write_scale_records=False,
+    open_append=True)
+  assert not show_diff(open("tmp_tst_hierarchy.pdb").read(), rem + """
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+""" + pdb_string)
+
   #
   # only pdb entry (as of 2008 Mar 26) for which
   # s1 = h1.as_pdb_string(interleaved_conf=1)
@@ -5008,7 +5020,6 @@ ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
 ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
 ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-TER
 END
 """)
   pdb.rewrite_normalized(
@@ -5024,7 +5035,6 @@ ATOM      3  O4  SO4     0       2.131   9.251   8.823  1.00 10.00           O
 ATOM      4  S   SO4     0       3.302   8.419   8.560  1.00 10.00           S
 ATOM      5  O2 ASO4     0       3.098   7.095   9.140  0.80 10.00           O
 ATOM      6  O2 BSO4     0       3.498   7.495   9.440  0.20 10.00           O
-TER
 END
 """)
   #
@@ -5321,16 +5331,12 @@ ENDMDL
   check_wpf(hierarchy, trailing=trailing, expected="""\
 ATOM      1  X1      A
 ATOM      2  X2      A
-TER
 ATOM      3  X1      B
 ATOM      4  X2      B
-TER
 ATOM      1  Y1      A
 ATOM      2  Y2      A
-TER
 ATOM      3  Y1      B
 ATOM      4  Y2      B
-TER
 """)
   #
   for suffixes in [Auto, "FG"]:
@@ -5346,16 +5352,12 @@ TER
     check_wpf(joined, trailing=trailing, expected="""\
 ATOM      1  X1     A%s
 ATOM      2  X2     A%s
-TER
 ATOM      3  X1     B%s
 ATOM      4  X2     B%s
-TER
 ATOM      1  Y1     A%s
 ATOM      2  Y2     A%s
-TER
 ATOM      3  Y1     B%s
 ATOM      4  Y2     B%s
-TER
 """ % (f,f,f,f,g,g,g,g))
   #
   roots = [pdb_inp.construct_hierarchy() for pdb_inp in [
@@ -5384,38 +5386,28 @@ ENDMDL
 MODEL        1
 ATOM      1  X1     A1
 ATOM      2  X2     A1
-TER
 ATOM      3  X1     B1
 ATOM      4  X2     B1
-TER
 ATOM      1  P1     A2
 ATOM      2  P2     A2
-TER
 ATOM      3  P1     B2
 ATOM      4  P2     B2
-TER
 ENDMDL
 MODEL        2
 ATOM      1  Y1     A1
 ATOM      2  Y2     A1
-TER
 ATOM      3  Y1     B1
 ATOM      4  Y2     B1
-TER
 ATOM      1  Q1     A2
 ATOM      2  Q2     A2
-TER
 ATOM      3  Q1     B2
 ATOM      4  Q2     B2
-TER
 ENDMDL
 MODEL        3
 ATOM      1  Z1     A1
 ATOM      2  Z2     A1
-TER
 ATOM      3  Z1     B1
 ATOM      4  Z2     B1
-TER
 ENDMDL
 """)
 
@@ -5732,7 +5724,6 @@ ATOM      0  S   SO4 C   4       3.302   8.419   8.560  1.00 10.00           S
 ATOM      1  O1  SO4 C   4       3.497   8.295   7.118  1.00 10.00           O
 ATOM      4  O3  SO4 C   4       4.481   9.037   9.159  1.00 10.00           O
 ATOM      5  O4  SO4 C   4       2.131   9.251   8.823  1.00 10.00           O
-TER
 """)
   # distance-based connectivity
   pdb_hierarchy = pdb.input(source_info=None, lines="""\

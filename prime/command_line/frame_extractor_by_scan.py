@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME prime.frame_extractor
 """
 Author      : Uervirojnangkoorn, M.
@@ -133,7 +134,7 @@ class ConstructFrame(object):
   def populate_pixel_positions(self):
     assert 'xyzcal.px' in self.reflections, "no calculated spot positions"
     self.frame['mapped_predictions'][0] = flex.vec2_double()
-    for i in xrange(len(self.reflections['xyzcal.px'])):
+    for i in range(len(self.reflections['xyzcal.px'])):
       self.frame['mapped_predictions'][0].append(tuple(self.reflections['xyzcal.px'][i][1::-1])) # 1::-1 reverses the order taking only the first two elements first.
 
   # generate a list of dictionaries containing a series of corrections for each predicted reflection
@@ -141,7 +142,7 @@ class ConstructFrame(object):
     assert 'xyzobs.px.value' in self.reflections and 'xyzcal.px' in self.reflections, "no calculated or observed spot positions"
     assert self.frame['xbeam'] is not 0 and self.frame['ybeam'] is not 0, "invalid beam center"
     self.frame['correction_vectors'] = [[]]
-    for idx in xrange(len(self.reflections['xyzobs.px.value'])):
+    for idx in range(len(self.reflections['xyzobs.px.value'])):
       if self.reflections['xyzcal.px'][idx][0:2] != self.reflections['xyzobs.px.value'][idx][0:2]:
         theoret_center = 1765/2, 1765/2
         refined_center = self.frame['xbeam']/self.pixel_size, self.frame['ybeam']/self.pixel_size # px to mm conversion
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     print "unable to process:", importer.unhandled
   experiment = flatten_experiments(importer.experiments)[0]
   scan = experiment.scan
-  for scan_no in xrange(scan.get_image_range()[0], scan.get_image_range()[1]):
+  for scan_no in range(scan.get_image_range()[0], scan.get_image_range()[1]):
     #build each frame
     frame = ConstructFrameFromFiles(params.pickle_name, params.json_name, scan_no).make_frame()
     if not params.output_dir is None:

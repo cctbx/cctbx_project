@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.matrix import sqr,col
 from math import sin,cos,pi
 from scitbx.array_family import flex
@@ -68,8 +69,8 @@ class one_sensor(object):
     ref_data = flex.double()
     rot_data = flex.double()
     constant = rot45*(asci_origin - beam_center) +beam_center - asci_origin
-    for xcoord in xrange(quad[2]-quad[0]):
-      for ycoord in xrange(quad[3]-quad[1]):
+    for xcoord in range(quad[2]-quad[0]):
+      for ycoord in range(quad[3]-quad[1]):
 
         acoord = col((float(xcoord),float(ycoord)))
         #prime = rot45*(acoord + asci_origin - beam_center) + beam_center - asci_origin

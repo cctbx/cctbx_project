@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -327,7 +328,7 @@ class PopUpCharts(object):
     #   patches = [mpatches.Patch(
     #     color=rgb_alphas[i].get_facecolor(),
     #     label=legend_list[i])
-    #   for i in xrange(len(rgb_alphas))]
+    #   for i in range(len(rgb_alphas))]
     #   fig.legend(patches, 'upper right')
 
     gsp.update(wspace=0)
@@ -387,7 +388,7 @@ class PopUpCharts(object):
 
     ax = fig.add_subplot(111, projection='3d')
 
-    for ia in xrange(len(a)):
+    for ia in range(len(a)):
       ax.scatter(a[ia],b[ia],c[ia],c='r',marker='+')
 
     ax.set_xlabel(AA)

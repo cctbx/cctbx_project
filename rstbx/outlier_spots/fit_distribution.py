@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 import scitbx.math
 from scitbx import lbfgs
@@ -59,7 +60,7 @@ class fit_cdf(object):
       predicted = self.distribution.cdf(x=self.x_data)
     else:
       predicted = flex.double(self.n)
-      for i in xrange(self.n):
+      for i in range(self.n):
         predicted[i] = self.distribution.cdf(x=self.x_data[i])
     difference = predicted - self.y_data
 
@@ -69,9 +70,9 @@ class fit_cdf(object):
       gradients = self.distribution.gradients(x=self.x_data, nparams=len(self.x), difference=difference)
       return f,gradients
     gradients = flex.double(len(self.x))
-    for i in xrange(self.n):
+    for i in range(self.n):
       g_i = self.distribution.cdf_gradients(x=self.x_data[i])
-      for j in xrange(len(self.x)):
+      for j in range(len(self.x)):
         gradients[j] = gradients[j] + difference[i]*g_i[j]
     gradients = 2.0*gradients
     return f,gradients
@@ -134,7 +135,7 @@ class rayleigh(object):
     # sigma is the mode of the distribution
     # approximate with the median (cdf = 0.5)
     midpoint = None
-    for i in xrange(len(x_data)):
+    for i in range(len(x_data)):
       if (y_data[i] > 0.5):
         midpoint = i
         break

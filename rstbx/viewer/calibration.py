@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 import math
 try:
@@ -71,7 +72,7 @@ class pdb_code_wrapper(sb_wrapper):
       self.uc = intensities.unit_cell()
       spacings = self.uc.d(self.hkl_list)
       rev_order = flex.sort_permutation(spacings,reverse = True)
-      for x in xrange(len(rev_order)):
+      for x in range(len(rev_order)):
         print self.hkl_list[rev_order[x]], spacings[rev_order[x]]
       self.experimental_d =  spacings.select(rev_order)
 

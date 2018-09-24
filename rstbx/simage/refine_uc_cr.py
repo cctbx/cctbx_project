@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 class InfeasibleError(RuntimeError): pass
 
 class refinery(object):
@@ -74,7 +75,7 @@ class refinery(object):
     g = flex.double()
     g.reserve(10)
     eps = 1e-5
-    for i in xrange(10):
+    for i in range(10):
       xi = O.x[i]
       O.x[i] = xi+eps
       f_eps = get_f()

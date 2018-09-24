@@ -69,7 +69,7 @@ if (__name__ == "__main__"):
 
   #0 .read input parameters and frames (pickle files)
   iph, frame_files = read_input(args = sys.argv[1:])
-  frames = range(len(frame_files))
+  frames = list(range(len(frame_files)))
 
   #1. prepare reference miller array
   if iph.file_name_ref_mtz == '':

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 from spotfinder.diffraction.imagefiles import quick_image
 from spotfinder.servers.multipart_encoder import post_multipart
@@ -63,7 +64,7 @@ def do_main(filepath, force_binning, convention, host, port):
                         Q.vendor_specific_null_value
                       ).module_count()
 
-  for x in xrange(number_of_modules):
+  for x in range(number_of_modules):
     file = "file://%s?slice=%d"%(absfile,x)
     Q = get_labelit_image_object(file, convention)
     if force_binning:

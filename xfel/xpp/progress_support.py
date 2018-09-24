@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from cctbx.array_family import flex
 from cctbx.miller import match_multi_indices
 from cctbx.miller import set as mset
@@ -177,7 +178,7 @@ class progress_manager(manager):
     print len(observations.data())
     print len(indices)
     print len(sel_observations)
-    for x in xrange(len(observations.data())):
+    for x in range(len(observations.data())):
       print x,observations.indices().select(sel_observations)[x],
       print set_original_hkl[x],
       index_into_hkl_id = matches.pairs()[x][0]

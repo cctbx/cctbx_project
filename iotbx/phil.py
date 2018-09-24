@@ -1,11 +1,14 @@
-from __future__ import division
+from __future__ import absolute_import, division, print_function
+
+import os
+import sys
+
 from cctbx import sgtbx
 from cctbx import uctbx
 import libtbx.phil.command_line
 from libtbx.utils import Sorry, Usage, import_python_object
 from libtbx.phil import tokenizer
 from libtbx import Auto
-import sys, os
 
 class unit_cell_converters(object):
 
@@ -209,14 +212,14 @@ Full parameters:
       if (self.integer_def is not None) :
         try :
           int_value = int(arg)
-        except ValueError, e :
+        except ValueError:
           pass
         else :
           return libtbx.phil.parse("%s=%d" % (self.integer_def, int_value))
       if (self.float_def is not None) :
         try :
           float_value = float(arg)
-        except ValueError, e :
+        except ValueError:
           pass
         else :
           return libtbx.phil.parse("%s=%g" % (self.float_def, float_value))
@@ -296,13 +299,13 @@ class setup_app_generic (object) :
         try :
           user_phil = parse(file_name=arg)
           sources.append(user_phil)
-        except Exception, e :
+        except Exception as e :
           unused_args.append(os.path.abspath(arg))
       elif arg != "" and not arg.startswith("-") :
         try :
           params = interpreter.process(arg=arg)
         except RuntimeError :
-          print >> log, "%s does not appear to be a parameter definition" % arg
+          print("%s does not appear to be a parameter definition" % arg, file=log)
           unused_args.append(arg)
         else :
           sources.append(params)
@@ -311,10 +314,10 @@ class setup_app_generic (object) :
     try :
       working_phil = master_phil.fetch(sources=sources,
          skip_incompatible_objects=True)
-    except Exception, e :
-      print >> log, "Error incorporating parameters from user-specified file(s):"
-      print >> log, str(e)
-      print >> log, "Will revert to default parameters for this run."
+    except Exception as e :
+      print("Error incorporating parameters from user-specified file(s):", file=log)
+      print(str(e), file=log)
+      print("Will revert to default parameters for this run.", file=log)
       working_phil = master_phil.fetch()
 
     assert working_phil is not None

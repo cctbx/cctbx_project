@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.make_mask
@@ -193,8 +194,8 @@ def run(argv=None):
       if circle_y + radius > maxy: maxy = circle_y + radius
 
     sel = avg_d == command_line.options.mask_pix_val
-    for j in xrange(miny, maxy):
-      for i in xrange(minx, maxx):
+    for j in range(miny, maxy):
+      for i in range(minx, maxx):
         idx = j * avg_d.focus()[0] + i
         if not sel[idx]:
           if poly_mask is not None and point_in_polygon((i,j),poly_mask):

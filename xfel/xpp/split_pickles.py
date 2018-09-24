@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from libtbx import easy_pickle
 from cctbx import miller # import dependency
 import os
@@ -61,7 +62,7 @@ for runroot in os.listdir("."):
       sel_nomid = []
 
       all_good = True
-      for i in xrange(len(preds)):
+      for i in range(len(preds)):
         # all preds left of the beam center
         p1_sel = preds[i].parts()[1] < bx
         # mostly will be preds right of the beam center, but includes a few to the left of middle strip

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math,copy
 import scitbx.math
 from scitbx.array_family import flex
@@ -19,7 +20,7 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
 
   def curvatures(self):
     curvs = flex.double([0.]*128)
-    for x in xrange(64):
+    for x in range(64):
       curvs[2*x] = 2. * self.selection_counts[x]
       curvs[2*x+1]=2. * self.selection_counts[x]
     return curvs
@@ -31,7 +32,7 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
     self.model_calcx = self.spotcx.deep_copy()
     self.model_calcy = self.spotcy.deep_copy()
 
-    for x in xrange(64):
+    for x in range(64):
       selection = self.selections [x]
       self.model_calcx.set_selected(selection, self.model_calcx + self.x[2*x])
       self.model_calcy.set_selected(selection, self.model_calcy + self.x[2*x+1])
@@ -43,7 +44,7 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
     calc_obs_diffy = self.model_calcy - self.spotfy
 
     gradients = flex.double([0.]*128)
-    for x in xrange(64):
+    for x in range(64):
       selection = self.selections [x]
       gradients[2*x] = 2. * flex.sum( calc_obs_diffx.select(selection) )
       gradients[2*x+1]=2. * flex.sum( calc_obs_diffy.select(selection) )
@@ -166,12 +167,12 @@ class fit_translation(correction_vectors,lbfgs_with_curvatures_mix_in):
     tangen_sigmas = flex.double(64)
 
     wtaveg = [0.]*64
-    for x in xrange(64):
+    for x in range(64):
       if self.tilecounts[x] >= 3:
         wtaveg[x] = self.weighted_average_angle_deg_from_tile(x, self.post_mean_cv[x], self.correction_vector_x,
           self.correction_vector_y)
 
-    for idx in xrange(64):
+    for idx in range(64):
       x = sort_radii[idx]
       if self.tilecounts[x] < 3:
         radial = (0,0)

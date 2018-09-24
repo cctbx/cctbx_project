@@ -115,6 +115,52 @@ namespace {
       ;
     }
 
+    //- Magnification begin ----------------------------------------------------
+    {
+      typedef cctbx::maptbx::target_and_gradients::simple::magnification<double> w_t;
+      class_<w_t>("target_and_gradients_simple_magnification", no_init)
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
+             scitbx::mat3<double> const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("K"))))
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
+             scitbx::vec3<double> const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("K"))))
+        .def("target", &w_t::target)
+        .def("gradients", &w_t::gradients)
+      ;
+    }
+
+    def("magnification_isotropic",
+      (double(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::magnification_isotropic, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
+
+    def("magnification_anisotropic",
+      (scitbx::vec3<double>(*)
+        (uctbx::unit_cell const&,
+         af::const_ref<double, af::c_grid_padded<3> > const&,
+         af::const_ref<scitbx::vec3<double> > const&))
+           cctbx::maptbx::target_and_gradients::simple::magnification_anisotropic, (
+             arg("unit_cell"),
+             arg("density_map"),
+             arg("sites_cart")));
+    //- Magnification end ------------------------------------------------------
+
     {
       typedef cctbx::maptbx::target_and_gradients::simple::compute<double> w_t;
       class_<w_t>("target_and_gradients_simple", no_init)

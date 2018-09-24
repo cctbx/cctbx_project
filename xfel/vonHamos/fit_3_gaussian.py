@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import h5py
 import math
 from matplotlib import pyplot as plt
@@ -75,7 +76,7 @@ class derived_class(faster_methods_for_pixel_histograms):
     low_idx = self.work_params.fit_limits[0]
     high_idx = self.work_params.fit_limits[1]
 
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     free_x = slot_centers[low_idx:high_idx]
     #print list(free_x)
@@ -121,7 +122,7 @@ class derived_class(faster_methods_for_pixel_histograms):
       normalisation = (flex.sum(slots) + histogram.n_out_of_slot_range()) / 1e5
       print "normalising by factor: ", normalisation
       slots /= normalisation
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     bins, data = hist_outline(slot_width=1,slots=slots,slot_centers=slot_centers)
     if log_scale:
@@ -152,7 +153,7 @@ class derived_class(faster_methods_for_pixel_histograms):
       def __init__(OO):
 
         slots = flex.double(histogram.astype(np.float64))
-        slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+        slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
         x = slot_centers
         y_calc = flex.double(x.size(), 0)
@@ -160,9 +161,9 @@ class derived_class(faster_methods_for_pixel_histograms):
           y_calc += g(x)
 
         #figure a good window for plotting the residual, taken as 5 sigma away from extreme gaussian
-        ceilings = [gaussians[n].params[1] + 5.*gaussians[n].params[2] for n in xrange(len(gaussians))]
+        ceilings = [gaussians[n].params[1] + 5.*gaussians[n].params[2] for n in range(len(gaussians))]
         ceiling = max(ceilings)
-        floors = [gaussians[n].params[1] - 5.*gaussians[n].params[2] for n in xrange(len(gaussians))]
+        floors = [gaussians[n].params[1] - 5.*gaussians[n].params[2] for n in range(len(gaussians))]
         floor = min(floors)
         #print floors
         #print ceilings
@@ -216,7 +217,7 @@ class derived_class(faster_methods_for_pixel_histograms):
     low_idx = self.work_params.fit_limits[0]
     high_idx = self.work_params.fit_limits[1]
 
-    slot_centers = flex.double(xrange(self.work_params.first_slot_value,
+    slot_centers = flex.double(range(self.work_params.first_slot_value,
                                       self.work_params.first_slot_value + len(histogram)))
     free_x = slot_centers[low_idx:high_idx]
 
@@ -413,7 +414,7 @@ if __name__=="__main__":
     plt.show()
 
   test_fit(histo1)
-  for i1 in xrange(80, 150):
+  for i1 in range(80, 150):
     print "Pair i j ",i1,j1
     histo1 = histograms[i1*388+j1,:]
     test_fit(histo1)

@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from cctbx import maptbx
 from cctbx.development import random_structure
 from cctbx import miller
@@ -44,7 +46,7 @@ def run():
 
     assert approx_equal(padded, unpadded, 1e-15)
 
-  print format_cpu_times()
+  print(format_cpu_times())
 
 
 if __name__ == '__main__':

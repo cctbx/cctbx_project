@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 from scitbx import matrix
 from cctbx import miller
@@ -280,7 +281,7 @@ class lbfgs_minimizer_derivatives(lbfgs_minimizer_base):
     self.f = functional
     jacobian = self.refinery.jacobian_callable(values)
     self.g = flex.double(self.n)
-    for ix in xrange(self.n):
+    for ix in range(self.n):
       self.g[ix] = flex.sum(2. * self.refinery.WEIGHTS * self.func * jacobian[ix])
     print >> self.out, "rms %10.3f"%math.sqrt(flex.sum(self.refinery.WEIGHTS*self.func*self.func)/
                                               flex.sum(self.refinery.WEIGHTS)),

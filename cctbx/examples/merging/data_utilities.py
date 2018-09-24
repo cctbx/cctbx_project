@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 
 def I_and_G_base_estimate(data,params=None):
@@ -23,7 +24,7 @@ def I_and_G_base_estimate(data,params=None):
 def plot_it(fit, sim, mode=None):
   sub_fit = []
   sub_sim = []
-  for i in xrange(len(fit)):
+  for i in range(len(fit)):
     if sim[i] > 0:
       sub_fit.append(fit[i])
       sub_sim.append(sim[i])

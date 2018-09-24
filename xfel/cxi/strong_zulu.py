@@ -2,7 +2,7 @@ from __future__ import division
 import os
 
 def integrate_one_image(data):
-  from display_spots import run_one_index_core
+  from .display_spots import run_one_index_core
   from labelit.dptbx.error import NoAutoIndex
   from libtbx.utils import Sorry
 

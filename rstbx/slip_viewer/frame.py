@@ -6,6 +6,7 @@
 # $Id$
 
 from __future__ import division
+from six.moves import range
 
 import os
 import wx
@@ -237,7 +238,7 @@ class XrayFrame (AppFrame,XFBaseClass) :
       """
 
       key = self.get_key(file_name_or_data)
-      for i in xrange(self.image_chooser.GetCount()) :
+      for i in range(self.image_chooser.GetCount()) :
         if (key == str(self.image_chooser.GetClientData(i))) :
           return i
       if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :
@@ -650,14 +651,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
         if not isinstance(data, tuple): # XXX should not need this test
           data = (data,)
         if len(detector) > 1:
-          from tile_generation import _get_flex_image_multipanel
+          from .tile_generation import _get_flex_image_multipanel
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
             raw_data=data,
             beam=raw_img.get_beam())
         else:
-          from tile_generation import _get_flex_image
+          from .tile_generation import _get_flex_image
           flex_img = _get_flex_image(
             brightness=self.settings.brightness / 100,
             data=data[0],
@@ -759,14 +760,14 @@ class XrayFrame (AppFrame,XFBaseClass) :
         if not isinstance(data, tuple): # XXX should not need this test
           data = (data,)
         if len(detector) > 1:
-          from tile_generation import _get_flex_image_multipanel
+          from .tile_generation import _get_flex_image_multipanel
           flex_img = _get_flex_image_multipanel(
             brightness=self.settings.brightness / 100,
             panels=detector,
             raw_data=data,
             beam=raw_img.get_beam())
         else:
-          from tile_generation import _get_flex_image
+          from .tile_generation import _get_flex_image
           flex_img = _get_flex_image(
             brightness=self.settings.brightness / 100,
             data=data[0],

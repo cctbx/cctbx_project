@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 
 from xfel.merging.algorithms.error_model.error_modeler_base import error_modeler_base
@@ -12,17 +13,17 @@ class errors_from_residuals(error_modeler_base):
     self.scaler.summed_weight= flex.double(self.scaler.n_refl, 0.)
     self.scaler.summed_wt_I  = flex.double(self.scaler.n_refl, 0.)
 
-    for hkl_id in xrange(self.scaler.n_refl):
+    for hkl_id in range(self.scaler.n_refl):
       hkl = self.scaler.miller_set.indices()[hkl_id]
       if hkl not in self.scaler.ISIGI: continue
 
       n = len(self.scaler.ISIGI[hkl])
       if n > 1:
-        variance = flex.mean_and_variance(flex.double([self.scaler.ISIGI[hkl][i][0] for i in xrange(n)])).unweighted_sample_variance()
+        variance = flex.mean_and_variance(flex.double([self.scaler.ISIGI[hkl][i][0] for i in range(n)])).unweighted_sample_variance()
       else:
         continue
 
-      for i in xrange(n):
+      for i in range(n):
         Intensity = self.scaler.ISIGI[hkl][i][0] # scaled intensity
         self.scaler.summed_wt_I[hkl_id] += Intensity / variance
         self.scaler.summed_weight[hkl_id] += 1 / variance
@@ -42,7 +43,7 @@ class errors_from_residuals_refltable(error_modeler_base):
     hkl_sumI = flex.double(self.scaler.n_refl, 0)
     n_obs = flex.double(self.scaler.n_refl, 0)
 
-    for i in xrange(len(self.scaler.ISIGI)):
+    for i in range(len(self.scaler.ISIGI)):
       idx = self.scaler.ISIGI['miller_id'][i]
       hkl_sumI[idx] += self.scaler.ISIGI['scaled_intensity'][i]
 
@@ -54,12 +55,12 @@ class errors_from_residuals_refltable(error_modeler_base):
 
     print >> self.log, "Variance step 2 of 3..."
     hkl_sumsq = flex.double(self.scaler.n_refl, 0)
-    for i in xrange(len(self.scaler.ISIGI)):
+    for i in range(len(self.scaler.ISIGI)):
       idx = self.scaler.ISIGI['miller_id'][i]
       hkl_sumsq[idx] += (self.scaler.ISIGI['scaled_intensity'][i] - hkl_mean[idx])**2
 
     print >> self.log, "Variance step 3 of 3..."
-    for i in xrange(len(self.scaler.ISIGI)):
+    for i in range(len(self.scaler.ISIGI)):
       idx = self.scaler.ISIGI['miller_id'][i]
       n = n_obs[idx]
       if n <= 1:

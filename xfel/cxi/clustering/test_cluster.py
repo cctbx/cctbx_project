@@ -1,6 +1,6 @@
 
 from __future__ import division
-from Cluster import Cluster
+from .Cluster import Cluster
 
 import logging
 FORMAT = '%(levelname)s %(module)s.%(funcName)s: %(message)s'

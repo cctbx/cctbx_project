@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.stripe_experiment
@@ -332,14 +333,14 @@ def allocate_chunks(results_dir,
     refls = [c for c in contents if c.endswith(refl_ending)]
     expts, refls = match_dials_files(expts, refls, expt_ending, refl_ending)
     if stripe:
-      for i in xrange(num):
+      for i in range(num):
         expts_stripe = expts[i::num]
         refls_stripe = refls[i::num]
         batch_chunks[batch].append((expts_stripe, refls_stripe))
       print "striped %d experiments in %s with %d experiments per stripe and %d stripes" % \
         (len(expts), batch, len(batch_chunks[batch][0][0]), len(batch_chunks[batch]))
     else:
-      for i in xrange(num):
+      for i in range(num):
         expts_chunk = expts[i*size:(i+1)*size]
         refls_chunk = refls[i*size:(i+1)*size]
         batch_chunks[batch].append((expts_chunk, refls_chunk))
@@ -477,7 +478,7 @@ class Script(object):
     self.cwd = os.getcwd()
     tag = "stripe" if self.params.striping.stripe else "chunk"
     for batch, ch_list in batch_chunks.iteritems():
-      for idx in xrange(len(ch_list)):
+      for idx in range(len(ch_list)):
         chunk = ch_list[idx]
 
         # reset for this chunk/stripe

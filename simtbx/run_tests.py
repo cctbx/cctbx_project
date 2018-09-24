@@ -4,6 +4,7 @@ import libtbx.load_env
 
 tst_list = (
     "$D/nanoBragg/tst_nanoBragg_minimal.py",
+    "$D/nanoBragg/tst_gaussian_mosaicity.py",
     )
 
 def run () :

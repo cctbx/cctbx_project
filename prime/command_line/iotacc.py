@@ -297,7 +297,7 @@ if __name__=="__main__":
   for cryst_id in os.listdir(data_dir):
     cryst_ids.append(cryst_id)
 
-  shot_nos = range(iparams.iotacc.n_shots)
+  shot_nos = list(range(iparams.iotacc.n_shots))
   run_no = iparams.run_no
 
   if os.path.exists(run_no):

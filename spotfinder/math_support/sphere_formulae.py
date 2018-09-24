@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 
 """radius is taken to be d_star, or 1/resolution limit in units of distance"""
@@ -55,7 +56,7 @@ class simplex_integration:
     Nsteps = 100
     dz = R/Nsteps
     weighted_sum = 0.0
-    for iz in xrange(Nsteps):
+    for iz in range(Nsteps):
       z = (2*iz+1)*R/(2.*Nsteps)
       if z > V:  # area element is part of segment S
         chord_length = 2. * math.sqrt(R*R - z*z)
@@ -83,7 +84,7 @@ def print_table():
   wavelength = 1.0 # Angstrom
   K = 1./wavelength
   print "R     K      Vsph  Vewld     D      S      V    Xroid  Vobs   o/s    S/V  Xroid/R"
-  for x in xrange(1,21):
+  for x in range(1,21):
     radius = 0.1 * x # inverse Angstroms
     Vsph = sphere_volume(radius) # reciprocal space volume out to inverse resolution == radius
     Vewld= vol_of_Ewald_sphere_solid_of_revolution(wavelength) # reciprocal space volume

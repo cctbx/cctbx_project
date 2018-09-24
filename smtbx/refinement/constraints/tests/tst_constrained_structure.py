@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 from cctbx import crystal, xray
 from cctbx.array_family import flex
 from smtbx.refinement import constraints
@@ -51,7 +53,7 @@ class test_case(object):
                   == [expected_pivot]), sc.label
         except KeyError:
           if not warned_once:
-            print "Warning: incomplete test coverage for H constraint types"
+            print("Warning: incomplete test coverage for H constraint types")
             warned_once = True
             continue
     self.check_reparametrisation_construction_more()
@@ -64,7 +66,7 @@ class test_case(object):
       assert (tuple(self.reparametrisation.mapping_to_grad_fc)
               == self.expected_mapping_to_grad_fc)
     else:
-      print "No mapping to grad Fc test"
+      print("No mapping to grad Fc test")
 
 
   def check_refinement_stability(self):
@@ -124,7 +126,7 @@ class test_case(object):
     display(xray_structure=self.xray_structure)
 
   def run(self):
-    print "[ %s ]" % self.__class__.__name__
+    print("[ %s ]" % self.__class__.__name__)
     self.connectivity_table = smtbx.utils.connectivity_table(
       self.xray_structure)
     for sc in self.xray_structure.scatterers():
@@ -769,10 +771,9 @@ class symmetry_equivalent_test_case(test_case):
         h2a = params.site
         (pivot, pivot_neighbour_0, pivot_neighbour_1,
          bond_length, h_c_h_angle) = h2a.arguments()
-        expected = [ (core.independent_site_parameter, 'S1'),
-                     (core.symmetry_equivalent_site_parameter, 'C2',
-                      '-x+1,y,-z+3/2') ]
-        expected.sort()
+        expected = sorted([ (core.independent_site_parameter, 'S1'),
+                            (core.symmetry_equivalent_site_parameter, 'C2',
+                                '-x+1,y,-z+3/2') ])
         actual = []
         for n in (pivot_neighbour_0, pivot_neighbour_1):
           if type(n) == core.independent_site_parameter:

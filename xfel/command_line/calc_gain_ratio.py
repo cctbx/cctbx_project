@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.calc_gain_ratio
@@ -57,7 +58,7 @@ def run(args):
 
   gain_masks = []
   assert psana_gain_mask.focus() == (32, 185, 388)
-  for i in xrange(32):
+  for i in range(32):
     gain_masks.append(psana_gain_mask[i:i+1,:,:194])
     gain_masks[-1].reshape(flex.grid(185,194))
     gain_masks.append(psana_gain_mask[i:i+1,:,194:])
@@ -71,8 +72,8 @@ def run(args):
 
     panel_sum = 0
     panel_count = 0
-    for s in xrange(data.focus()[1]):
-      for f in xrange(data.focus()[0]):
+    for s in range(data.focus()[1]):
+      for f in range(data.focus()[0]):
         if f+1 == data.focus()[0]:
           continue
         if (not mask[f,s]) and mask[f+1,s] and data[f+1,s] != 0:

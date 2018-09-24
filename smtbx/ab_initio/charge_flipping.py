@@ -34,6 +34,8 @@ Cryst. A64:123-134, 2008
 """
 
 from __future__ import division, generators
+from __future__ import print_function
+from __future__ import absolute_import
 
 from libtbx import object_oriented_patterns as oop
 from libtbx import adopt_optional_init_args
@@ -385,8 +387,8 @@ class solving_iterator(object):
     interrupted by break will reliably result in a call
     solving_iterator_obj.clean_up() in Python 2.5+ while the code should
     still run on earlier versions of Python but without the clean-up. """
-    while 1:
-      try: state = self.state.next()
+    while True:
+      try: state = next(self.state)
       except StopIteration: break
       try: yield self.flipping_iterator
       except GeneratorExit: break
@@ -425,7 +427,7 @@ class solving_iterator(object):
     if self.normalisations_for is not None:
       self.normalisations = self.normalisations_for(f_obs)
       f_obs /= self.normalisations.data()
-    while 1:
+    while True:
       self.flipping_iterator.start(f_obs, self.initial_phases_for(f_obs))
       yield self.guessing_delta
 
@@ -437,7 +439,7 @@ class solving_iterator(object):
   def _guessing_delta_with_c_tot_over_c_flip(self):
     flipping = self.flipping_iterator
     delta_needs_initialisation = True
-    while 1:
+    while True:
       self.f_calc_solutions = []
       if delta_needs_initialisation:
         flipping.delta = flipping.rho_map.flipped_fraction_as_delta(
@@ -462,7 +464,7 @@ class solving_iterator(object):
           flipping.delta *= 1.07
 
   def _guessing_delta_with_map_sigma(self):
-    while 1:
+    while True:
       self.f_calc_solutions = []
       sigmas = flex.double()
       for i in xrange(self.max_delta_guessing_iterations):
@@ -470,18 +472,18 @@ class solving_iterator(object):
         sigmas.append(sigma)
         self.flipping_iterator.delta = self.delta_over_sigma * sigma
         if len(sigmas) < self.min_delta_guessing_iterations:
-          self.flipping_iterator.next()
+          next(self.flipping_iterator)
           continue
         sigma_tail_stats = scitbx.math.basic_statistics(sigmas[-5:])
         if (abs(sigma_tail_stats.bias_corrected_standard_deviation
                 /sigma_tail_stats.mean) < self.map_sigma_stability_threshold):
           break
         if self.yield_during_delta_guessing: yield self.guessing_delta
-        self.flipping_iterator.next()
+        next(self.flipping_iterator)
       yield self.solving
 
   def _solving(self):
-    while 1:
+    while True:
       i_attempt = 0
       while i_attempt < self.max_attempts_to_get_phase_transition:
         i_attempt += 1
@@ -507,7 +509,7 @@ class solving_iterator(object):
       yield self.finished
 
   def _polishing(self):
-    while 1:
+    while True:
       if 0: # Display map
         from crys3d.qttbx import map_viewer
         map_viewer.display(fft_map=self.flipping_iterator.f_calc.fft_map(),
@@ -521,7 +523,7 @@ class solving_iterator(object):
         self.flipping_iterator.denormalise(self.normalisations)
         skewness = flex.double()
         for i in xrange(self.extra_iterations_on_f_after_phase_transition):
-          self.flipping_iterator.next()
+          next(self.flipping_iterator)
           skewness.append(self.flipping_iterator.rho_map.skewness())
           if i < 3: continue
           stats = scitbx.math.median_statistics(skewness[-3:])
@@ -533,11 +535,11 @@ class solving_iterator(object):
                                     phases=self.flipping_iterator.f_calc,
                                     f_000=0)
       for i in xrange(self.polishing_iterations):
-        low_density_elimination.next()
+        next(low_density_elimination)
       yield self.evaluating
 
   def _evaluating(self, original_f_obs):
-    while 1:
+    while True:
       attempts = 0
       while attempts < self.max_attempts_to_get_sharp_correlation_map:
         attempts += 1
@@ -559,50 +561,49 @@ def loop(solving, verbose=True, out=sys.stdout):
       # Guessing a value of delta leading to subsequent good convergence
       if verbose:
         if previous_state is solving.solving:
-          print >> out, "** Restarting (no phase transition) **"
+          print("** Restarting (no phase transition) **", file=out)
         elif previous_state is solving.evaluating:
-          print >> out, "** Restarting (no sharp correlation map) **"
+          print("** Restarting (no sharp correlation map) **", file=out)
       if verbose == "highly":
         if previous_state is not solving.guessing_delta:
-          print >> out, "Guessing delta..."
-          print >> out, ("%10s | %10s | %10s | %10s | %10s | %10s | %10s"
+          print("Guessing delta...", file=out)
+          print(("%10s | %10s | %10s | %10s | %10s | %10s | %10s"
                             % ('delta', 'delta/sig', 'R', 'F000',
-                               'c_tot', 'c_flip', 'c_tot/c_flip'))
-          print >> out, "-"*90
+                               'c_tot', 'c_flip', 'c_tot/c_flip')), file=out)
+          print("-"*90, file=out)
         rho = flipping.rho_map
         c_tot = rho.c_tot()
         c_flip = rho.c_flip(flipping.delta)
         # to compare with superflip output
         c_tot *= flipping.fft_scale; c_flip *= flipping.fft_scale
-        print >> out, \
-              "%10.4f | %10.4f | %10.3f | %10.3f | %10.1f | %10.1f | %10.2f"\
+        print("%10.4f | %10.4f | %10.3f | %10.3f | %10.1f | %10.1f | %10.2f"\
               % (flipping.delta, flipping.delta/rho.sigma(),
                  flipping.r1_factor(), flipping.f_000,
-                 c_tot, c_flip, c_tot/c_flip)
+                 c_tot, c_flip, c_tot/c_flip), file=out)
 
     elif solving.state is solving.solving:
       # main charge flipping loop to solve the structure
       if verbose=="highly":
         if previous_state is not solving.solving:
-          print >> out
-          print >> out, "Solving..."
-          print >> out, "with delta=%.4f" % flipping.delta
-          print >> out
-          print >> out, "%5s | %10s | %10s" % ('#', 'F000', 'skewness')
-          print >> out, '-'*33
-        print >> out, "%5i | %10.1f | %10.3f" % (
+          print(file=out)
+          print("Solving...", file=out)
+          print("with delta=%.4f" % flipping.delta, file=out)
+          print(file=out)
+          print("%5s | %10s | %10s" % ('#', 'F000', 'skewness'), file=out)
+          print('-'*33, file=out)
+        print("%5i | %10.1f | %10.3f" % (
           solving.iteration_index,
           flipping.f_000,
-          flipping.rho_map.skewness())
+          flipping.rho_map.skewness()), file=out)
 
     elif solving.state is solving.polishing:
       if verbose == 'highly':
-        print >> out
-        print >> out, "Polishing"
+        print(file=out)
+        print("Polishing", file=out)
     elif solving.state is solving.finished:
       if solving.max_attempts_exceeded:
-        print >> out
-        print >> out, "** Maximum number of attempts exceeded: it won't solve!"
+        print(file=out)
+        print("** Maximum number of attempts exceeded: it won't solve!", file=out)
       break
     previous_state = solving.state
 

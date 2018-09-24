@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import struct
 
 header_struct = [
@@ -120,7 +121,7 @@ class Raxis(object):
 
   def dump(self):
     ptr = 0
-    for x in xrange(0,len(CharTemp),2):
+    for x in range(0,len(CharTemp),2):
       unsigned_int = struct.unpack( "!H",self.CharTemp[x:x+2] )[0]
       if unsigned_int <= 32767:
         print float(unsigned_int)

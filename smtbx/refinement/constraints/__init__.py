@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import absolute_import, print_function
 
 import warnings
 
@@ -238,7 +239,7 @@ class reparametrisation(ext.reparametrisation):
     return self.jacobian_transpose_matching(self.mapping_to_grad_fc)
 
   def add_new_occupancy_parameter(self, i_sc):
-    if self.shared_occupancies.has_key(i_sc):
+    if i_sc in self.shared_occupancies:
       return self.shared_occupancies[i_sc]
     occ = self.asu_scatterer_parameters[i_sc].occupancy
     if occ is None:
@@ -248,7 +249,7 @@ class reparametrisation(ext.reparametrisation):
     return occ
 
   def add_new_site_parameter(self, i_scatterer, symm_op=None):
-    if self.shared_sites.has_key(i_scatterer):
+    if i_scatterer in self.shared_sites:
       return self.shared_sites[i_scatterer]
     s = self.asu_scatterer_parameters[i_scatterer].site
     if s is None:
@@ -264,17 +265,17 @@ class reparametrisation(ext.reparametrisation):
     return s
 
   def add_new_site_proxy_parameter(self, param, i, i_sc):
-    if self.shared_sites.has_key(i_sc):
+    if i_sc in self.shared_sites:
       return self.shared_sites[i_sc]
     self.shared_sites[i_sc] = self.add(rigid_site_proxy, param, i)
 
   def add_new_same_group_site_proxy_parameter(self, param, i, i_sc):
-    if self.shared_sites.has_key(i_sc):
+    if i_sc in self.shared_sites:
       return self.shared_sites[i_sc]
     self.shared_sites[i_sc] = self.add(same_group_site_proxy, param, i)
 
   def add_new_thermal_displacement_parameter(self, i_scatterer):
-    if self.shared_Us.has_key(i_scatterer):
+    if i_scatterer in self.shared_Us:
       return self.shared_Us[i_scatterer]
     u = self.asu_scatterer_parameters[i_scatterer].u
     if u is None:

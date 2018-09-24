@@ -1,5 +1,5 @@
-from __future__ import division
-from libtbx.test_utils import show_diff
+from __future__ import absolute_import, division, print_function
+
 from smtbx.refinement import restraints
 from smtbx.refinement.restraints import adp_restraints
 import smtbx.development
@@ -7,10 +7,10 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 import cctbx.geometry_restraints
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 import sys
 
-def exercise_manager(verbose=0):
+def test_manager():
   xray_structure = smtbx.development.sucrose()
   xray_structure.scatterers()[10].set_use_u_iso_only()
   asu_mappings = xray_structure.asu_mappings(buffer_thickness=3.5)
@@ -84,7 +84,7 @@ def exercise_manager(verbose=0):
     # with 3 digits rather than 2.
     pass
   else:
-    assert not show_diff(sio.getvalue(), """\
+    assert sio.getvalue() == """\
 Bond restraints: 3
 Sorted by residual:
 bond O3
@@ -160,12 +160,4 @@ scatterer O3
  U23 -8.63e-03 2.00e-01 2.50e+01
 ... (remaining 21 not shown)
 
-""")
-  if (0 or verbose): print sio.getvalue()
-
-def run(verbose=0):
-  exercise_manager(verbose=verbose)
-  print "OK"
-
-if __name__ == "__main__":
-  run(verbose=("--verbose" in sys.argv[1:]))
+"""

@@ -9,7 +9,7 @@ from __future__ import division
 import os
 import logging
 
-import cspad_tbx
+from . import cspad_tbx
 
 
 class mod_pulnix_dump(object):

@@ -1,7 +1,8 @@
 from __future__ import division
+from six.moves import range
 from scitbx import lbfgs
 from cctbx.array_family import flex
-from mod_lbfgs_partiality import lbfgs_partiality_handler
+from .mod_lbfgs_partiality import lbfgs_partiality_handler
 
 class lbfgs_handler(object):
   """
@@ -38,7 +39,7 @@ class lbfgs_handler(object):
     #calculate gradient for each parameter
     DELTA = 1.E-7
     self.g = flex.double()
-    for x in xrange(self.n):
+    for x in range(self.n):
       templist = list(self.x)
       templist[x]+=DELTA
       dvalues = flex.double(templist)

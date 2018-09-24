@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- Mode: Python; c-basic-offset: 2; indent-tabs-mode: nil; tab-width: 8 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME cxi.mpi_submit
@@ -229,7 +230,7 @@ class Script(object):
     # If a trial number wasn't included, find the next available, up to 999 trials
     if params.input.trial is None:
       found_one = False
-      for i in xrange(1000):
+      for i in range(1000):
         trialdir = os.path.join(rundir, "%03d"%i)
         if params.input.rungroup is not None:
           trialdir += "_rg%03d"%params.input.rungroup
@@ -254,7 +255,7 @@ class Script(object):
     stdoutdir = os.path.join(trialdir, "stdout")
     os.mkdir(stdoutdir)
     if params.output.split_logs:# test parameter for split_log then open and close log file and loop over nprocs
-      for i in xrange(params.mp.nproc):
+      for i in range(params.mp.nproc):
         error_files = os.path.join(stdoutdir,"error_rank%04d.out"%i)
         log_files = os.path.join(stdoutdir,"log_rank%04d.out"%i)
         open(log_files,'a').close()

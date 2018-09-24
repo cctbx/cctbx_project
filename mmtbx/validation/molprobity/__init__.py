@@ -27,6 +27,7 @@ from libtbx.utils import null_out, to_str, Sorry
 import iotbx.pdb
 import libtbx.load_env
 import libtbx.phil
+import libtbx.program_template
 import mmtbx.model
 import os.path
 import sys
@@ -997,3 +998,13 @@ class multi_criterion_view (slots_getstate_setstate) :
       title="MolProbity multi-criterion plot",
       validation=self)
     frame.Show()
+
+# =============================================================================
+# MolProbity ProgramTemplate
+class ProgramTemplate(libtbx.program_template.ProgramTemplate):
+
+  def get_results_as_JSON(self):
+    return None
+
+  def get_results_as_PDB_JSON(self):
+    return None

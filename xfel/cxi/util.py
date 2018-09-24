@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import os
 
 #for integration pickles:
@@ -20,7 +21,7 @@ def is_odd_numbered(file_name, use_hash = False):
         file_name = os.path.basename(file_name).split(allowable)[0]
         break
   #can not find standard filename extension, instead find the last digit:
-  for idx in xrange(1,len(file_name)+1):
+  for idx in range(1,len(file_name)+1):
     if file_name[-idx].isdigit():
       return int(file_name[-idx])%2==1
   raise ValueError

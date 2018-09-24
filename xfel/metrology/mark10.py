@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scipy.optimize import leastsq # special import
 import math,copy
 import scitbx.math
@@ -25,7 +26,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     all_model = mark3_collect_data(self.frame_id, self.HKL)
     self.FRAMES["refined_detector_origin"] = flex.vec3_double(len(self.FRAMES["frame_id"]))
 
-    for iframe in xrange(len(self.FRAMES["frame_id"])):
+    for iframe in range(len(self.FRAMES["frame_id"])):
       frame_id = self.FRAMES["frame_id"][iframe]
       self.frame_id_to_param_no[frame_id] = iframe
 
@@ -82,7 +83,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     self.FRAMES["detector_origin_x_refined"]=flex.double()
     self.FRAMES["detector_origin_y_refined"]=flex.double()
     self.FRAMES["distance_refined"]=flex.double()
-    for iframe in xrange(len(self.FRAMES["frame_id"])):
+    for iframe in range(len(self.FRAMES["frame_id"])):
       if iframe < self.n_refined_frames:
         SIGN = -1.
         PIXEL_SZ = 0.11 # mm/pixel
@@ -118,8 +119,8 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
     if time_series:
       from matplotlib import pyplot as plt
-      plt.plot(xrange(len(order)),time_sorted_x_beam,"r-")
-      plt.plot(xrange(len(order)),time_sorted_y_beam,"b-")
+      plt.plot(range(len(order)),time_sorted_x_beam,"r-")
+      plt.plot(range(len(order)),time_sorted_y_beam,"b-")
       plt.show()
 
     for item in order:
@@ -195,7 +196,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
   def compute_finite_difference_gradients_if_requested(self):
     for param_array,tag in zip([self.frame_rotz],["frame_rotz"]):
       result = flex.double()
-      for np in xrange(len(param_array.x)):
+      for np in range(len(param_array.x)):
         reserve = param_array.x[np]
         epsilon = 0.00001
         param_array.x[np] = reserve + epsilon
@@ -287,7 +288,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
     zunit = col([0.,0.,1.])
     self.frame_del_radial = {}
     self.frame_del_azimuthal = {}
-    for x in xrange(len(self.frame_id)):
+    for x in range(len(self.frame_id)):
       frame_id = self.frame_id[x]
       frame_param_no = self.frame_id_to_param_no[frame_id]
       if frame_param_no >= self.n_refined_frames: continue
@@ -387,12 +388,12 @@ class fit_translation4(mark5_iteration,fit_translation2):
              flex.double([
                (min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) *
                     (self.tile_rotations.x[2*isen] - self.tile_rotations.x[1+2*isen])**2
-               for isen in xrange(len(self.tiles) // 8)]
+               for isen in range(len(self.tiles) // 8)]
              )
            )/
            flex.sum(
              flex.double(
-               [(min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) for isen in xrange(len(self.tiles) // 8)]
+               [(min([self.tilecounts[2*isen],self.tilecounts[2*isen+1]])) for isen in range(len(self.tiles) // 8)]
              )
            )
         )),
@@ -676,12 +677,12 @@ class fit_translation4(mark5_iteration,fit_translation2):
     print "integration {"
     print "  subpixel_joint_model{"
     print "rotations= \\"
-    for irot in xrange(len(self.tile_rotations.x)):
+    for irot in range(len(self.tile_rotations.x)):
       print " %11.8f "%self.tile_rotations.x[irot],
       if irot%4==3 and irot!=len(self.tile_rotations.x)-1: print "\\"
     print
     print "translations= \\"
-    for irot in xrange(len(self.tile_translations.x)):
+    for irot in range(len(self.tile_translations.x)):
       print " %11.8f"%self.tile_translations.x[irot],
       if irot%4==3 and irot!=len(self.tile_translations.x)-1: print "\\"
     print
@@ -692,13 +693,13 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
 
   def run_cycle_b(self,iteration):
-    for iframe in xrange(len(self.FRAMES["frame_id"])):
+    for iframe in range(len(self.FRAMES["frame_id"])):
       frame_id = self.FRAMES["frame_id"][iframe]
       self.frame_id_to_param_no[frame_id] = iframe
 
     self.bandpass_models = {}
     all_model = mark3_collect_data(self.frame_id, self.HKL)
-    for iframe in xrange(min(self.n_refined_frames,len(self.FRAMES["frame_id"]))):
+    for iframe in range(min(self.n_refined_frames,len(self.FRAMES["frame_id"]))):
       frame_id = self.FRAMES["frame_id"][iframe]
       file_name = self.FRAMES["unique_file_name"][iframe]
 
@@ -710,14 +711,14 @@ class fit_translation4(mark5_iteration,fit_translation2):
           pfh.spotfx = flex.double()
           pfh.spotfy = flex.double()
           pfh.cosine = [math.cos(self.tile_rotations.x[tidx]*(math.pi/180))
-                        for tidx in xrange(len(self.To_x))]
+                        for tidx in range(len(self.To_x))]
           pfh.sine   = [math.sin(self.tile_rotations.x[tidx]*(math.pi/180))
-                        for tidx in xrange(len(self.To_x))]
+                        for tidx in range(len(self.To_x))]
           self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
           self.bandpass_models[frame_id].gaussian_fast_slow()
           mean_position = self.bandpass_models[frame_id].mean_position
           first_index = all_model.get_first_index(frame_id)
-          for ridx in xrange(mean_position.size()):
+          for ridx in range(mean_position.size()):
             pfh.master_tiles.append( self.master_tiles[first_index + ridx] );
             pfh.spotfx.append( self.spotfx[first_index + ridx] );
             pfh.spotfy.append( self.spotfy[first_index + ridx] );
@@ -730,7 +731,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
 #          self.mean_energy_factor.x[iframe] = current_values[2]
 #          self.bandpass_logfac.x[iframe] = current_values[3]
 #          self.mosaicity_factor.x[iframe] = current_values[4]
-          for iparam in xrange(self.bandpass_models["n_independent"]):
+          for iparam in range(self.bandpass_models["n_independent"]):
             self.g_factor.x[iparam+6*iframe] = current_values[2+iparam]
           try:
             self.parameter_based_model_one_frame_detail(frame_id,iframe,all_model)
@@ -746,7 +747,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
 
           translations    = self.tile_translations.x
           fval = []
-          for ridx in xrange(mean_position.size()):
+          for ridx in range(mean_position.size()):
             itile = pfh.master_tiles[ridx];
 
             calc_minus_To_x = mean_position[ridx][1] - self.To_x[itile];
@@ -784,7 +785,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
 #              self.mean_energy_factor.x[iframe],self.bandpass_logfac.x[iframe],
 #              self.mosaicity_factor.x[iframe]
              ] + [self.g_factor.x[n+6*iframe]
-                  for n in xrange(self.bandpass_models["n_independent"])],
+                  for n in range(self.bandpass_models["n_independent"])],
         args = (frame_id,iframe,all_model),
         Dfun = None, #estimate the Jacobian
         full_output = True)
@@ -896,7 +897,7 @@ class fit_translation4(mark5_iteration,fit_translation2):
         convert = AGconvert()
         convert.forward(effective_orientation)
         u_independent = list(self.bandpass_models["constraints"].independent_params(all_params=convert.G))
-        for x in xrange(self.bandpass_models["n_independent"]):
+        for x in range(self.bandpass_models["n_independent"]):
           u_independent[x] *= self.g_factor.x[x+6*iframe]
         u_star = self.bandpass_models["constraints"].all_params(independent_params=tuple(u_independent))
         convert.validate_and_setG(u_star)

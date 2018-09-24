@@ -1,12 +1,36 @@
-Import("env_cctbx_boost_python_ext")
-env = env_cctbx_boost_python_ext.Clone()
-env.Prepend(LIBS=["cctbx", "omptbx"])
-
 import libtbx.load_env
-dist_dir = libtbx.env.dist_path("cctbx")
 import os
-sourcedir = os.path.join(dist_dir,"uctbx","determine_unit_cell")
-if os.path.isfile(os.path.join(sourcedir,"NCDist.h")):
-  env.SharedLibrary(target="#lib/determine_unit_cell_ext", source=[
-  "ext.cpp",
-  ])
+Import ("env_etc")
+
+ncdist_resource_flags=[]
+env_etc.ncdist_resource_common_includes = []
+
+env_etc.ncdist_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("boost"),"../ncdist"))
+if os.path.isdir(env_etc.ncdist_dist):
+    # only get here if the repo is checked out in the modules directory:
+    # git clone git@github.com:yayahjb/ncdist.git
+    env_etc.ncdist_resource_common_includes.append(
+      env_etc.ncdist_dist
+    )
+    ncdist_resource_flags.append("HAVE_NCDIST")
+
+if (not env_etc.no_boost_python):
+  Import("env_cctbx_boost_python_ext")
+  env_metrics = env_cctbx_boost_python_ext.Clone()
+  env_metrics.Prepend(LIBS=["cctbx", "omptbx"])
+
+  dist_dir = libtbx.env.dist_path("cctbx")
+  sourcedir = os.path.join(dist_dir,"uctbx","determine_unit_cell")
+  if os.path.isfile(os.path.join(sourcedir,"NCDist.h")):
+    ncdist_resource_flags.append("HAVE_SINGLEFILE_NCDIST")
+    env_metrics.Prepend(CPPDEFINES=ncdist_resource_flags)
+    env_metrics.SharedLibrary(target="#lib/determine_unit_cell_ext",
+                              source=["ext.cpp",]
+  )
+
+  env_etc.include_registry.append(
+    env=env_metrics,
+    paths=env_etc.ncdist_resource_common_includes)
+  Export("env_metrics")
+
+# Other developers: I apologize in advance if this SConscript causes problems. Let me know --NKS.

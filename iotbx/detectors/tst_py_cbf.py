@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import iotbx.cif
 import sys, email.parser, copy, hashlib, base64
 from cbflib_adaptbx import uncompress,assert_equal
@@ -160,7 +161,7 @@ class pyCBFImage(CBFImage):
     #  for the correct array_id
     array_mask = model["_array_structure_list.array_id"]==array_id
     precedence = [int(a) for a in model["_array_structure_list.precedence"]]
-    for i in xrange(len(array_mask)):
+    for i in range(len(array_mask)):
       if not array_mask[i]: precedence[i]=0
     idx = precedence.index(axis_number)
     axis_index = int( model["_array_structure_list.index"][idx] )
@@ -169,7 +170,7 @@ class pyCBFImage(CBFImage):
     #Now find the array element size for the given axis_index
     array_mask = model["_array_element_size.array_id"]==array_id
     index_array = [int(a) for a in model["_array_element_size.index"]]
-    for i in xrange(len(array_mask)):
+    for i in range(len(array_mask)):
       if not array_mask[i]: index_array[i]=0
     size_index = index_array.index(axis_index)
 

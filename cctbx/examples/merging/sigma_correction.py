@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from scitbx.array_family import flex
 class ccp4_model(object):
   """Implement a sigma correction for semi-datasets, inspired by the classic
@@ -40,8 +41,8 @@ class ccp4_model(object):
     # plots for debugging
     from matplotlib import pyplot as plt
     cumnorm = plt.subplot(321)
-    cumnorm.plot(xrange(len(order_a)),normal_a.select(order_a),"b.")
-    cumnorm.plot(xrange(len(order_b)),normal_b.select(order_b),"r.")
+    cumnorm.plot(range(len(order_a)),normal_a.select(order_a),"b.")
+    cumnorm.plot(range(len(order_b)),normal_b.select(order_b),"r.")
     #plt.show()
     logger = plt.subplot(324)
     logger.loglog(a_data,b_data,"r.")
@@ -56,7 +57,7 @@ class ccp4_model(object):
     mean_order = flex.sort_permutation(mean_values)
     scatters = flex.double(50)
     scattersb = flex.double(50)
-    for isubsection in xrange(50):
+    for isubsection in range(50):
       subselect = mean_order[isubsection*len(mean_order)//50:(isubsection+1)*len(mean_order)//50]
       vals = normal_a.select(subselect)
       #scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_standard_deviation()
@@ -66,7 +67,7 @@ class ccp4_model(object):
       #scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_standard_deviation()
       scattersb[isubsection] = flex.mean_and_variance(valsb).unweighted_sample_variance()
     aaronsplot = plt.subplot(325)
-    aaronsplot.plot(xrange(50), 2. * scatters, "b.")
+    aaronsplot.plot(range(50), 2. * scatters, "b.")
     plt.show()
 
   @staticmethod
@@ -98,7 +99,7 @@ class ccp4_model(object):
         self.n = 2
         self.x = flex.double([0.5,0.0])
         self.starting_simplex = []
-        for i in xrange(self.n+1):
+        for i in range(self.n+1):
           self.starting_simplex.append(flex.random_double(self.n))
 
         self.optimizer = simplex_opt( dimension = self.n,
@@ -129,7 +130,7 @@ class ccp4_model(object):
         mean_order = flex.sort_permutation(mean_values)
         scatters = flex.double(50)
         scattersb = flex.double(50)
-        for isubsection in xrange(50):
+        for isubsection in range(50):
           subselect = mean_order[isubsection*len(mean_order)//50:(isubsection+1)*len(mean_order)//50]
           vals = normal_a.select(subselect)
           scatters[isubsection] = flex.mean_and_variance(vals).unweighted_sample_variance()

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.calibdir2cbfheader
 # $Id
 #
@@ -69,12 +70,12 @@ if (__name__ == "__main__") :
     corrections_params = horizons_phil.extract()
 
     bc = [0,0]
-    for q in xrange(len(sections)):
+    for q in range(len(sections)):
       corner = sections[q][1].corners(True)[0]
       bc     = [bc[0] + corner[1] / len(sections), bc[1] + corner[0] / len(sections)]
     beam = col(bc)
 
-    for itile in xrange(len(corrections_params.distl.tile_translations) // 4): # 128 tile_translations/4 = 32 sensors
+    for itile in range(len(corrections_params.distl.tile_translations) // 4): # 128 tile_translations/4 = 32 sensors
       # order of quads in sections (UL,UR,LR,LL) is not the same as in quad_translations (UL,UR,LL,LR)
       sections_quad = itile//8
       phil_quad = [0,1,3,2].index(sections_quad)

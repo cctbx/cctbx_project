@@ -47,6 +47,7 @@ from mmtbx.geometry_restraints.torsion_restraints.torsion_ncs import torsion_ncs
 from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
+import cctbx.geometry_restraints.nonbonded_overlaps as nbo
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_validation_ramachandran_ext")
@@ -668,7 +669,6 @@ class manager(object):
     self._xray_structure = xray_structure
     self.set_sites_cart_from_xrs()
     self._update_has_hd()
-    self._update_pdb_atoms()
     self._crystal_symmetry = xray_structure.crystal_symmetry()
     # XXX what else needs to be done here?
     #     ph.adopt_xray_structure(xray_structure)
@@ -1234,10 +1234,12 @@ class manager(object):
     """
     m = self.get_mon_lib_srv()
     e = self.get_ener_lib()
+    e_lib_atom_keys = e.lib_atom.keys()
     result = {}
     for k0,v0 in zip(m.comp_comp_id_dict.keys(), m.comp_comp_id_dict.values()):
       for k1,v1 in zip(v0.atom_dict().keys(), v0.atom_dict().values()):
-        result[k1]=e.lib_atom[v1.type_energy].vdw_radius
+        if(v1.type_energy in e_lib_atom_keys):
+          result[k1]=e.lib_atom[v1.type_energy].vdw_radius
     return result
 
   def get_n_excessive_site_distances_cartesian_ncs(self, excessive_distance_limit=1.5):
@@ -1567,10 +1569,8 @@ class manager(object):
     self.model_statistics_info = None
 
   def set_b_iso(self, b_iso):
-    self._xray_structure.set_b_iso(values = b_iso)
-    self._pdb_hierarchy.atoms().set_b(b_iso)# adopt_xray_structure(self._xray_structure)
-    self._update_pdb_atoms()
-    self.model_statistics_info = None
+    self.get_xray_structure().set_b_iso(values = b_iso)
+    self.set_sites_cart_from_xrs()
 
   def set_sites_cart(self, sites_cart, update_grm=False):
     assert sites_cart.size() == self._pdb_hierarchy.atoms_size() == \
@@ -2306,6 +2306,14 @@ class manager(object):
     result = self._xray_structure.select(~sel)
     return result
 
+  def non_bonded_overlaps(self):
+    assert self.has_hd()
+    return nbo.info(
+      geometry_restraints_manager = self.get_restraints_manager().geometry,
+      macro_molecule_selection    = self.selection("protein or nucleotide"),
+      sites_cart                  = self.get_sites_cart(),
+      hd_sel                      = self.selection("element H or element D"))
+
   def percent_of_single_atom_residues(self, macro_molecule_only=True):
     sizes = flex.int()
     h = self.get_hierarchy()
@@ -2377,6 +2385,8 @@ class manager(object):
       new_ncs_groups = self._ncs_groups.select(selection)
       new._ncs_groups = new_ncs_groups
     new._update_master_sel()
+    new._mon_lib_srv = self._mon_lib_srv
+    new._ener_lib = self._ener_lib
     return new
 
   def number_of_ordered_solvent_molecules(self):
@@ -2437,7 +2447,9 @@ class manager(object):
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer)
-    self._xray_structure = self._pdb_hierarchy.extract_xray_structure(crystal_symmetry=self.crystal_symmetry())
+    self._pdb_hierarchy.sort_atoms_in_place()
+    self._pdb_hierarchy.atoms_reset_serial()
+    self.update_xrs()
     self._atom_selection_cache = None
     n_old_atoms = self.get_number_of_atoms()
     self.pdb_atoms = self._pdb_hierarchy.atoms()

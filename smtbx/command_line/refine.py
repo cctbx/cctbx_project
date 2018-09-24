@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 # LIBTBX_SET_DISPATCHER_NAME smtbx.refine
 
 import os
@@ -70,10 +72,10 @@ def run(filenames, options):
 
   sgi = xm.xray_structure.space_group_info()
   sg = sgi.group()
-  print "Space group: %s" % sgi.type().hall_symbol()
-  print "\t* %scentric" % ('non-','')[sg.is_centric()]
-  print "\t* %schiral" % ('a','')[sg.is_chiral()]
-  print "%i reflections" % len(xm.fo_sq.indices)
+  print("Space group: %s" % sgi.type().hall_symbol())
+  print("\t* %scentric" % ('non-','')[sg.is_centric()])
+  print("\t* %schiral" % ('a','')[sg.is_chiral()])
+  print("%i reflections" % len(xm.fo_sq.indices))
 
   # At last...
   for sc in xm.xray_structure.scatterers():
@@ -81,20 +83,20 @@ def run(filenames, options):
     if sc.flags.use_u_iso(): sc.flags.set_grad_u_iso(True)
     if sc.flags.use_u_aniso(): sc.flags.set_grad_u_aniso(True)
   ls = xm.least_squares()
-  print "%i atoms" % len(ls.reparametrisation.structure.scatterers())
-  print "%i refined parameters" % ls.reparametrisation.n_independents
+  print("%i atoms" % len(ls.reparametrisation.structure.scatterers()))
+  print("%i refined parameters" % ls.reparametrisation.n_independents)
   steps = lstbx.normal_eqns_solving.naive_iterations(
     non_linear_ls=ls,
     n_max_iterations=options.max_cycles,
     gradient_threshold=options.stop_if_max_derivative_below,
     step_threshold=options.stop_if_shift_norm_below)
-  print "Normal equations building time: %.3f s" % \
-        steps.non_linear_ls.normal_equations_building_time
-  print "Normal equations solving time: %.3f s" % \
-        steps.non_linear_ls.normal_equations_solving_time
+  print("Normal equations building time: %.3f s" % \
+        steps.non_linear_ls.normal_equations_building_time)
+  print("Normal equations solving time: %.3f s" % \
+        steps.non_linear_ls.normal_equations_solving_time)
   t0 = current_time()
   cov = ls.covariance_matrix_and_annotations()
-  print "Covariance matrix building: %.3f" % (current_time() - t0)
+  print("Covariance matrix building: %.3f" % (current_time() - t0))
 
   # Write result to disk
   if out_ext != '.cif':
@@ -169,9 +171,9 @@ if __name__ == '__main__':
   except number_of_arguments_error:
     parser.print_usage()
     sys.exit(1)
-  except command_line_error, err:
-    print >>sys.stderr, "\nERROR: %s\n" % err
+  except command_line_error as err:
+    print("\nERROR: %s\n" % err, file=sys.stderr)
     parser.print_help()
     sys.exit(1)
   t1 = current_time()
-  print "Total time: %.3f s" % (t1 - t0)
+  print("Total time: %.3f s" % (t1 - t0))

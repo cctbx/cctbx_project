@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME xpp.beamcenter
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -66,8 +67,8 @@ if (__name__ == "__main__"):
       mask = mask[mask_center[0] - px_max:mask_center[0] + px_max, mask_center[1] - px_max:mask_center[1] + px_max]
       panel_origin = col((mask_center[0] - px_max,mask_center[1] - px_max))
 
-      for y in xrange(mask.focus()[1]):
-        for x in xrange(mask.focus()[0]):
+      for y in range(mask.focus()[1]):
+        for x in range(mask.focus()[0]):
           l = (col((x-px_max+mask_center[0],y-px_max+mask_center[1])) - mask_center).length()
           if l < px_min or l > px_max:
             mask[x,y] = False

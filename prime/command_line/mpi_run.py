@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME prime.mpi_run
 """
 Find initial scaling factors for all integration results
@@ -63,7 +64,7 @@ def master(frame_token, iparams, activity):
     pres_dict = {}
     for pres in results:
       if pres: pres_dict[pres.pickle_filename]=pres
-    for i in xrange(len(frame_files)):
+    for i in range(len(frame_files)):
       rankreq = comm.recv(source=MPI.ANY_SOURCE)
       comm.send((activity, (i, frame_files[i], iparams, miller_array_ref, pres_dict[frame_files[i]] if frame_files[i] in pres_dict else None, avg_mode)), dest=rankreq)
   print "Master for %s is completed. Time to stop all %d clients"%(activity, size-1)
@@ -181,7 +182,7 @@ def run(argv):
     results = None
   n_postref_cycle = comm.bcast(n_postref_cycle, root=0)
   avg_mode = 'weighted'
-  for i_iter in xrange(n_postref_cycle):
+  for i_iter in range(n_postref_cycle):
     comm.Barrier()
     if i_iter == n_postref_cycle -1: avg_mode = 'final'
     if rank == 0:

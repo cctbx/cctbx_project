@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME distl.find_active_area
 import os, sys
 from iotbx.detectors.npy import NpyImage
@@ -32,7 +33,7 @@ def run_one(path, display):
   PC = find_active_area(data)
 
   sources = []; sinks = []
-  for x in xrange(0,len(PC),2):
+  for x in range(0,len(PC),2):
     if PC[x]>=0:
       sources.append((PC[x],PC[x+1]))
     else:

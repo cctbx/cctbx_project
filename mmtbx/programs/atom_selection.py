@@ -66,6 +66,16 @@ Usage examples:
     if self.params.atom_selection_program.write_pdb_file is not None:
       print ("Writing file:", show_string(self.params.atom_selection_program.write_pdb_file),file=self.logger)
       selected_model = model.select(all_bsel)
+      selected_model.set_ss_annotation(selected_model.get_ss_annotation().\
+          filter_annotation(
+              hierarchy=selected_model.get_hierarchy(),
+              asc=selected_model.get_atom_selection_cache(),
+              remove_short_annotations=False,
+              remove_3_10_helices=False,
+              remove_empty_annotations=True,
+              concatenate_consecutive_helices=False,
+              split_helices_with_prolines=False,
+              filter_sheets_with_long_hbonds=False))
       if self.params.atom_selection_program.cryst1_replacement_buffer_layer is not None:
         box = uctbx.non_crystallographic_unit_cell_with_the_sites_in_its_center(
             sites_cart=selected_model.get_atoms().extract_xyz(),

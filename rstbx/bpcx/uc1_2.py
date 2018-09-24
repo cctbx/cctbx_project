@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 #!/usr/bin/env cctbx.python
 #
 # Biostruct-X Data Reduction Use Case 1.2:
@@ -235,7 +236,7 @@ def test(configuration_file, img_range, dmin = None):
 
     r2d = 180.0 / math.pi
 
-    for iobs in xrange(len(obs_hkl)):
+    for iobs in range(len(obs_hkl)):
       hkl = obs_hkl[iobs]
       f = obs_fast[iobs]
       s = obs_slow[iobs]

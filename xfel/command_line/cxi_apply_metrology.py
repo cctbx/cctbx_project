@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME cxi.apply_metrology
 # $Id
 #
@@ -114,7 +115,7 @@ if (__name__ == "__main__") :
       assert src_cbf.count_columns() == dst_cbf.count_columns()
       assert src_cbf.count_rows() == dst_cbf.count_rows()
 
-      for j in xrange(src_cbf.count_rows()):
+      for j in range(src_cbf.count_rows()):
         src_cbf.rewind_column()
         dst_cbf.rewind_column()
 
@@ -129,7 +130,7 @@ if (__name__ == "__main__") :
           dst_cbf.find_column(key)
           dst_cbf.find_row(src_cbf.get_value())
 
-        for i in xrange(src_cbf.count_columns()):
+        for i in range(src_cbf.count_columns()):
           src_cbf.select_column(i)
           dst_cbf.find_column(src_cbf.column_name())
           if src_cbf.get_value() != dst_cbf.get_value():
@@ -143,7 +144,7 @@ if (__name__ == "__main__") :
       assert src_cbf.count_columns() == dst_cbf.count_columns()
       assert src_cbf.count_rows() == dst_cbf.count_rows()
 
-      for j in xrange(src_cbf.count_rows()):
+      for j in range(src_cbf.count_rows()):
         src_cbf.rewind_column()
         dst_cbf.rewind_column()
 
@@ -157,7 +158,7 @@ if (__name__ == "__main__") :
         dst_cbf.find_column(key)
         dst_cbf.find_row(src_cbf.get_value())
 
-        for i in xrange(src_cbf.count_columns()):
+        for i in range(src_cbf.count_columns()):
           src_cbf.select_column(i)
           dst_cbf.find_column(src_cbf.column_name())
 

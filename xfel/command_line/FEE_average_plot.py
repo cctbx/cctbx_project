@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from psana import *
 import numpy as np
 from libtbx import easy_pickle
@@ -115,7 +116,7 @@ def run(args):
     nevents = min(len(times),max_events)
   # chop the list into pieces, depending on rank.  This assigns each process
   # events such that the get every Nth event where N is the number of processes
-    mytimes = [times[i] for i in xrange(nevents) if (i+rank)%size == 0]
+    mytimes = [times[i] for i in range(nevents) if (i+rank)%size == 0]
     print len(mytimes)
     #mytimes = mytimes[len(mytimes)-1000:len(mytimes)]
     totals = np.array([0.0])
@@ -154,7 +155,7 @@ def run(args):
         two_D_data = np.double(data)
       else:
       #used to fix underflow problem that was present in earlier release of psana and pressent for LH80
-        for i in xrange(len(data)):
+        for i in range(len(data)):
           if data[i]>1000000000:
             data[i]=data[i]-(2**32)
         if 'dark' in locals():

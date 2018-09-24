@@ -3,6 +3,7 @@
 
 """
 from __future__ import division
+from six.moves import range
 from psana                              import *
 
 import numpy             as np
@@ -354,7 +355,7 @@ class fluctuation_scattering(object):
          # Multiplot, plot C2 for 10 q-points
          multi   = MultiPlot(n_c2,title,ncols=5)
          step    = round(len(self.q) / (n_q + 1))
-         for p in xrange(n_q):
+         for p in range(n_q):
              R    = XYPlot(n_c2,'q = '+ str(np.around(self.q[(p+1)*step],decimals=3)),self.phi,c2[(p+1)*step],xlabel='dPhi')
              multi.add(R)
          publish.send('C2',multi)

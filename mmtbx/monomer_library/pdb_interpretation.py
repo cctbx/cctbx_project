@@ -131,13 +131,13 @@ restraints_library_str = """
       .type = bool
       .short_caption = Use Conformation-Dependent Library
       .help = Use Conformation Dependent Library (CDL) \
-        for geometry minimization restraints
+        for geometry restraints
       .style = bold
     omega_cdl = False
       .type = bool
       .short_caption = Use Omega Conformation-Dependent Library
       .help = Use Omega Conformation Dependent Library (omega-CDL) \
-        for geometry minimization restraints
+        for geometry restraints
       .style = hidden
     rdl = False
       .type = bool
@@ -5549,13 +5549,13 @@ class process(object):
       pep_link_params = self.all_chain_proxies.params.peptide_link
       if pep_link_params.ramachandran_restraints :
         if (not pep_link_params.discard_psi_phi) :
+          # Not sure anymore why this is necessary
           raise Sorry("You may not use Ramachandran restraints when "+
-            "discard_phi_psi=False.")
+            "discard_psi_phi=False.")
         ramachandran_manager = ramachandran.ramachandran_manager(
-            self.all_chain_proxies.pdb_hierarchy,
-            pep_link_params.rama_selection,
-            pep_link_params,
-            self.log)
+            pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
+            params=pep_link_params,
+            log=self.log)
         self._geometry_restraints_manager.set_ramachandran_restraints(
             ramachandran_manager)
 

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 # -*- mode: python; coding: utf-8; indent-tabs-mode: nil; python-indent: 2 -*-
 #
 # LIBTBX_SET_DISPATCHER_NAME frame.unpickler
@@ -241,7 +242,7 @@ class construct_reflection_table_and_experiment_list(object):
   def refl_s1_maker(self):
     from scitbx.matrix import col
     self.reflections['s1'] = sciflex.vec3_double(self.length)
-    for idx in xrange(self.length):
+    for idx in range(self.length):
       coords = col(self.detector[0].get_pixel_lab_coord(self.reflections['xyzobs.px.value'][idx][0:2])).normalize()
       self.reflections['s1'][idx] = tuple(coords)
 

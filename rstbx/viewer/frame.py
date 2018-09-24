@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 import rstbx.viewer.display
 import wxtbx.plots
@@ -201,7 +202,7 @@ class XrayFrame (wx.Frame) :
     """
 
     key = self.get_key(file_name_or_data)
-    for i in xrange(self.image_chooser.GetCount()) :
+    for i in range(self.image_chooser.GetCount()) :
       if (key == self.image_chooser.GetClientData(i)) :
         return i
     if (self.image_chooser.GetCount() >= self.CHOOSER_SIZE) :

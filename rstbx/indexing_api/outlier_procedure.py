@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 from rstbx_ext import SpotClass
 from scitbx.array_family import flex
 from rstbx.indexing_api import outlier_detection
@@ -66,7 +67,7 @@ def main_go(index_engine,verbose=False,phil_set=None):
       raw_spot_input = flex.vec3_double()
       assert len(process_dictionary['indexing'])==len(index_engine.get_observed_spot_positions(False))
       aipos = index_engine.get_observed_spot_positions(False)
-      for ij in xrange(len(process_dictionary['indexing'])):
+      for ij in range(len(process_dictionary['indexing'])):
         spot = process_dictionary["indexing"][ij]
         if index_engine.get_status(ij)==SpotClass.OUTLIER:
           raw_spot_input.append((spot[0],spot[1],spot[2]))

@@ -3,6 +3,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cspad.cbf_metrology
 #
 from __future__ import division
+from six.moves import range
 import os, sys, random
 from iotbx.phil import parse
 from libtbx import easy_run
@@ -296,7 +297,7 @@ def refine_hierarchical(params, merged_scope, combine_phil):
     print "Retaining", len(data.select(sel)), "out of", len(data), "reflections"
     easy_pickle.dump(combined_path, data.select(sel))
 
-  for i in xrange(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
+  for i in range(params.start_at_hierarchy_level, params.refine_to_hierarchy_level+1):
     if params.rmsd_filter.enable:
       input_name = "filtered"
     else:
@@ -395,11 +396,11 @@ def refine_expanding(params, merged_scope, combine_phil):
     panels.extend(rest)
 
   levels = {0: (0,1)} # levels 0 and 1
-  for i in xrange(7):
+  for i in range(7):
     levels[i+1] = (2,) # level 2
 
   previous_step_and_level = None
-  for j in xrange(8):
+  for j in range(8):
     from libtbx import easy_pickle
     print "Filtering out all reflections except those on panels %s"%(", ".join(["%d"%p for p in steps[j]]))
     combined_path = "%s_%s_reflections.pickle"%(params.tag, input_name)
@@ -493,7 +494,7 @@ def refine_expanding(params, merged_scope, combine_phil):
         print "Average displacement along normals: %f +/- %f"%(stats.mean(), stats.unweighted_sample_standard_deviation())
 
         # Verify the variation isn't significant
-        for k in xrange(1, len(displacements)):
+        for k in range(1, len(displacements)):
           assert approx_equal(displacements[0], displacements[k])
         # If all of the panel groups in this level moved, no need to do anything.
         if len(displacements) != len(list(iterate_detector_at_level(detector.hierarchy(), 0, i))):
@@ -515,7 +516,7 @@ def refine_expanding(params, merged_scope, combine_phil):
         for panel_group in iterate_detector_at_level(detector.hierarchy(), 0, i):
           displacements.append(col(panel_group.get_local_fast_axis()).cross(col(panel_group.get_local_slow_axis())).dot(col(panel_group.get_local_origin())))
 
-        for k in xrange(1, len(displacements)):
+        for k in range(1, len(displacements)):
           assert approx_equal(displacements[0], displacements[k])
 
         dump = ExperimentListDumper(experiments)

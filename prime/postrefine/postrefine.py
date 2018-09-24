@@ -2,16 +2,16 @@ from __future__ import division
 from cctbx.array_family import flex
 from cctbx import miller, crystal
 import cPickle as pickle
-from mod_leastsqr import leastsqr_handler
-from mod_results import postref_results
+from .mod_leastsqr import leastsqr_handler
+from .mod_results import postref_results
 from cctbx.crystal import symmetry
 from scitbx.matrix import sqr
 from cctbx import statistics
-from mod_partiality import partiality_handler
-from mod_lbfgs_partiality import lbfgs_partiality_handler
-from mod_mx import mx_handler
+from .mod_partiality import partiality_handler
+from .mod_lbfgs_partiality import lbfgs_partiality_handler
+from .mod_mx import mx_handler
 import math, os
-from mod_input import read_frame
+from .mod_input import read_frame
 
 class postref_handler(object):
   """

@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 
 from xfel.util.reflection_length import ReflectionsRadialLengthsFromFiles
 from dials.array_family import flex
@@ -38,7 +39,7 @@ def get_spot_length_stats(outdir, ref_stats=None):
         if db.split("datablock.json")[0] + "strong.pickle" in strong
         else None
         for db in datablocks]
-    for i in xrange(len(timestamps)):
+    for i in range(len(timestamps)):
       ts, s, db = timestamps[i], strong[i], datablocks[i]
       if s is not None:
         process_pair(s, db, ts=ts)

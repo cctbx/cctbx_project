@@ -1,4 +1,5 @@
 from __future__ import division
+from six.moves import range
 import math
 
 class neighbor_analysis(object):
@@ -21,7 +22,7 @@ class neighbor_analysis(object):
     IS_adapt.query(query)
 
     direct = flex.double()
-    for i in xrange(len(rs_vectors)):
+    for i in range(len(rs_vectors)):
        direct.append(1.0/math.sqrt(IS_adapt.distances[i]))
 
     # determine the most probable nearest neighbor distance (direct space)
