@@ -95,13 +95,13 @@ def run():
                                         geometry_restraints_manager,
                                         #verbose=verbose,
                                         )):
-    print threes
+    print i, threes
     print '  omega   %5.1f' % threes.get_omega_value()
     print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
     print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
     print "  rama    %s" % threes.get_ramalyze_key()
     print '  conf    %s' % threes.is_pure_main_conf()
-    assert threes.cis_group()==refine[i]
+    assert threes.cis_group()==refine[i], '%s!=%s' % (threes.cis_group(), refine[i])
     assert threes.cis_group(limit=30)==omegalyze[i]
 
   for j in range(0,181,10):

@@ -1240,7 +1240,8 @@ def test_threes_methods():
       hierarchy=tmp_hierarchy,
       geometry=None):
     # there should be only one!
-    assert three.get_resnames() == ("CYS", "TYR", "PRO")
+    assert three.get_resnames() == ["CYS", "TYR", "PRO"], '%s!=%s' % (
+      three.get_resnames(), ["CYS", "TYR", "PRO"])
 
 if __name__=="__main__":
   args = sys.argv[1:]

@@ -63,7 +63,7 @@ def main():
       except: pass
       try: print "  cis?    %-5s %s" % (rc, threes.cis_group(limit=30))
       except: print '  cis? is not valid'
-      if i>=2: assert rc==None
+      if i>=2: assert (rc==None or rc==False), '%s!=%s' % (rc, None)
       else: assert rc == False
       try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
       except: print '  tran? is not valid'

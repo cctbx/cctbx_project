@@ -66,8 +66,8 @@ class ProteinResidues(list):
 
   def show_detailed(self):
     outl = "%sProteinResidues" % self.length
+    outl += "\nREMARK"
     for residue in self:
-      outl += "\nREMARK"
       for atom in residue.atoms():
         outl += "\n%s" % atom.format_atom_record()
     return outl
@@ -81,8 +81,10 @@ class ProteinResidues(list):
 
   def _define_omega_a_la_duke_using_limit(self,
                                           omega,
-                                          limit=45,
+                                          limit=45.,
                                           ):
+    print '_define_omega_a_la_duke_using_limit',omega,abs(omega)
+    if omega is None: return None
     if abs(omega)<limit: return 'cis'
     elif 180-abs(omega)<limit: return 'trans'
     else: return 'twisted'
@@ -92,7 +94,7 @@ class ProteinResidues(list):
                 omega_cdl=False, # need last not middle
                 verbose=False):
     # is any omega a cis angle?
-    assert not omega_cdl
+    # assert not omega_cdl
     #cis_peptide_bond = False
     #omega = self.get_omega_value(omega_cdl=omega_cdl)
     #if omega is None: return None
@@ -113,7 +115,7 @@ class ProteinResidues(list):
   def trans_group(self, limit=30.):
     return not self.cis_group(limit=limit)
 
-  def cis_trans_twisted_list(self, limit=30.):
+  def cis_trans_twisted_list(self, limit=45.):
     omegas = self.get_omega_values()
     def _is_cis_trans_twisted(angle):
       return self._define_omega_a_la_duke_using_limit(angle, limit=limit)
@@ -221,6 +223,7 @@ class ThreeProteinResidues(ProteinResidues):
     #
     # this is very poor! there needs to be a better way to check for cis-
     #
+    assert not omega_cdl
     for i, residue in enumerate(self):
       if i==0: continue
       if omega_cdl:
@@ -231,18 +234,9 @@ class ThreeProteinResidues(ProteinResidues):
       omega = get_omega_value(residue, self[i-1])
       return omega
 
-  def trans_group(self,
-                  limit=45.,
-                  verbose=False,
-                  ):
-    omega = self.get_omega_value() #omega_cdl=omega_cdl)
-    if omega is None: return None
-    if self._define_omega_a_la_duke_using_limit(omega, limit=limit)=='trans':
-      return True
-    return False
-
   def provide_second_sub_unit_if_unlinked(self):
     # used if residue is appended using superclass method
+    assert 0
     if not self.are_linked():
       sub_unit = copy.copy(self) # calls append to delete first sub unit
       while not self.are_linked():
@@ -535,8 +529,6 @@ class ThreeProteinResidues(ProteinResidues):
         angle.angle_ideal = averages[key]/averages.n[key]
 
 class FourProteinResidues(ProteinResidues):
-  def cis_group(self): assert 0
-
   def get_omega_values(self,
                        omega_cdl=None,
                        verbose=False,
