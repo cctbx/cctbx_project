@@ -15,6 +15,7 @@ def add_to_cif_block(cif_block, xray_structure,
                      chirality_proxies=None,
                      bond_similarity_proxies=None,
                      rigid_bond_proxies=None,
+                     rigu_proxies=None,
                      adp_similarity_proxies=None,
                      isotropic_adp_proxies=None,
                      adp_u_eq_similarity_proxies=None,
@@ -33,6 +34,8 @@ def add_to_cif_block(cif_block, xray_structure,
     for loop in loops: cif_block.add_loop(loop)
   if rigid_bond_proxies is not None:
     cif_block.add_loop(rigid_bond_as_cif_loop(xray_structure, rigid_bond_proxies))
+  if rigu_proxies is not None:
+    cif_block.add_loop(rigu_as_cif_loop(xray_structure, rigu_proxies))
   if adp_similarity_proxies is not None:
     cif_block.add_loop(
       adp_similarity_as_cif_loop(xray_structure, adp_similarity_proxies))
@@ -267,6 +270,33 @@ def rigid_bond_as_cif_loop(xray_structure, proxies):
                   fmt % math.sqrt(1/proxy.weight),
                   fmt % (0.5*(restraint.z_12()+restraint.z_21())),
                   fmt % restraint.delta_z()))
+  return loop
+
+def rigu_as_cif_loop(xray_structure, proxies):
+  unit_cell = xray_structure.unit_cell()
+  sites_cart = xray_structure.sites_cart()
+  u_cart = xray_structure.scatterers().extract_u_cart(unit_cell)
+  site_labels = xray_structure.scatterers().extract_labels()
+  fmt = "%.6f"
+  loop = model.loop(header=(
+    "_restr_RIGU_atom_site_label_1",
+    "_restr_RIGU_atom_site_label_2",
+    "_restr_RIGU_target_weight_param",
+    "_restr_RIGU_U13_diff",
+    "_restr_RIGU_U23_diff",
+    "_restr_RIGU_U33_diff"
+  ))
+  for proxy in proxies:
+    restraint = adp_restraints.rigu(
+      adp_restraint_params(sites_cart=sites_cart, u_cart=u_cart),
+      proxy=proxy)
+    loop.add_row((site_labels[proxy.i_seqs[0]],
+                  site_labels[proxy.i_seqs[1]],
+                  fmt % math.sqrt(1/proxy.weight),
+                  fmt % restraint.delta_13(),
+                  fmt % restraint.delta_23(),
+                  fmt % restraint.delta_33()
+                 ))
   return loop
 
 def adp_similarity_as_cif_loop(xray_structure, proxies):

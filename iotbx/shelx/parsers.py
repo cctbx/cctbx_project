@@ -578,6 +578,7 @@ class restraint_parser(parser):
     'SADI':'bond_similarity',
     'SIMU':'adp_similarity',
     'DELU':'rigid_bond',
+    'RIGU':'rigu',
     'ISOR':'isotropic_adp',
   }
 
@@ -722,7 +723,7 @@ class restraint_parser(parser):
                                              sym_ops=sym_ops)
             elif cmd == 'CHIV':
               pass
-            elif cmd in ('DELU', 'ISOR', 'SIMU'):
+            elif cmd in ('DELU', 'RIGU', 'ISOR', 'SIMU'):
               assert len(floats) <= 3
               s1 = s2 = dmax = None
               if len(floats) > 0:
@@ -736,8 +737,9 @@ class restraint_parser(parser):
               if s1 is None:
                 if cmd == 'SIMU': s1 = 0.04
                 elif cmd == 'DELU': s1 = 0.01
+                elif cmd == 'RIGU': s1 = 0.004
                 else: s1 = 0.1
-              if cmd == 'DELU':
+              if cmd in ('DELU', 'RIGU'):
                 self.builder.process_restraint(restraint_type,
                                                sigma_12=s1,
                                                sigma_13=s2,

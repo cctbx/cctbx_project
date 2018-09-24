@@ -1,6 +1,7 @@
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/shared_reductions.h>
 #include <scitbx/array_family/selections.h>
+#include <scitbx/array_family/simple_io.h>
 #include <scitbx/matrix/tests.h>
 #include <scitbx/matrix/tests/utils.h>
 #include <scitbx/matrix/cholesky.h>
@@ -120,7 +121,7 @@ struct hilbert
   }
 
   void check_failure(int n, cholesky::failure_info<double> const &fail) {
-    SCITBX_ASSERT(n >= 14);
+    SCITBX_ASSERT(n >= 13)(n);
     SCITBX_ASSERT(fail.index == 13 || fail.index == 14);
   }
 };
@@ -139,6 +140,7 @@ struct random_test
   symmetric_matrix_packed_u_t create_packed_u(int n)
   {
     random_householder_gen_t gen(urng, n, n);
+    lambda = vec_t(n);
     fill_eigenvalues();
     return gen.symmetric_matrix_with_eigenvalues(lambda.ref());
   }
@@ -146,7 +148,9 @@ struct random_test
   virtual void fill_eigenvalues()=0;
 
   virtual void check_failure(int n, cholesky::failure_info<double> const &fail)
-  {}
+  {
+    SCITBX_ASSERT(!fail.failed)(n)(fail.index)(fail.value);
+  }
 };
 
 struct condition_1 : random_test
@@ -154,7 +158,7 @@ struct condition_1 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
   }
 };
@@ -164,7 +168,7 @@ struct condition_2 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., -i);
+      l[i] = std::pow(1.2, -i);
     }
   }
 };
@@ -174,10 +178,10 @@ struct condition_3 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size()/2; ++i) {
-      l[i] = std::pow(10., -i);
+      l[i] = std::pow(1.2, -i);
     }
     for (int i=l.size()/2; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
   }
 };
@@ -187,7 +191,7 @@ struct condition_4 : random_test
   virtual void fill_eigenvalues() {
     vec_ref_t l = lambda.ref();
     for (int i=0; i<l.size(); ++i) {
-      l[i] = std::pow(10., i);
+      l[i] = std::pow(1.2, i);
     }
     scitbx::random::mersenne_twister gen;
     af::shared<std::size_t> perm = gen.random_permutation(l.size());
@@ -196,35 +200,38 @@ struct condition_4 : random_test
 };
 
 int main() {
-  {
-    for (int n=1; n<20; ++n) {
-      test_case<hilbert> t(n);
-      t.exercise();
-    }
+  const int N = 100;
+  std::cout << "Exercising sizes up to " << N << std::endl;
+
+  std::cout << "Hilbert" << std::endl;
+  for (int n=1; n<N; n<20 ? n++ : n+=10) {
+    test_case<hilbert> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_1> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 1" << std::endl;
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
+    test_case<condition_1> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_2> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 2" << std::endl;
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
+    test_case<condition_2> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_3> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 3" << std::endl;
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
+    test_case<condition_3> t(n);
+    t.exercise();
   }
-  {
-    for (int n=2; n<20; ++n) {
-      test_case<condition_4> t(n);
-      t.exercise();
-    }
+
+  std::cout << "Condition 4" << std::endl;
+  for (int n=2; n<N; n<20 ? n++ : n+=10) {
+    test_case<condition_4> t(n);
+    t.exercise();
   }
+
   std::cout << "OK\n";
 }

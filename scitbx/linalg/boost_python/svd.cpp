@@ -38,11 +38,35 @@ namespace scitbx { namespace matrix { namespace boost_python {
     }
   };
 
+  template <typename FloatType>
+  struct matrix_svd_decomposition_wrapper {
+    typedef svd::decompose<FloatType> wt;
+
+    static void wrap(char const *name) {
+      using namespace boost::python;
+
+      class_<wt>(name, no_init)
+        .def(init<af::ref<FloatType, af::mat_grid> const &,
+          optional<FloatType, bool, bool> >(
+          (arg("matrix"),
+            arg("crossover")=5./3,
+            arg("accumulate_u") = false,
+            arg("accumulate_v") = false)))
+        .add_property("u", &wt::getU)
+        .add_property("v", &wt::getV)
+        .add_property("sigma", &wt::getSigma)
+        .def("numerical_rank", &wt::numerical_rank)
+        .def("reconstruct", &wt::reconstruct)
+        ;
+    }
+  };
+
   void wrap_svd() {
     using namespace matrix::boost_python;
     bidiagonal_matrix_svd_decomposition_wrapper<double>::wrap(
       "svd_decomposition_of_bidiagonal_matrix");
-
+    matrix_svd_decomposition_wrapper<double>::wrap(
+      "svd_decompose");
     using namespace boost::python;
     def("reconstruct_svd", matrix::svd::reconstruct<double>);
   }
