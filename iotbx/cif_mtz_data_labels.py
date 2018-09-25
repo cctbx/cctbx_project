@@ -19,8 +19,10 @@ phenix_to_cif_intensities = {
   'SIGIOBS(+)': '_refln.pdbx_I_plus_sigma',
   'IOBS(-)': '_refln.pdbx_I_minus',
   'SIGIOBS(-)': '_refln.pdbx_I_minus_sigma',
-  'I-obs': '_refln.F_squared_meas',
-  'SIGI-obs': '_refln.F_squared_sigma',
+  # 'I-obs': '_refln.F_squared_meas',        # obsoleted
+  # 'SIGI-obs': '_refln.F_squared_sigma',    # obsoleted
+  'I-obs': '_refln.intensity_meas',
+  'SIGI-obs': '_refln.intensity_sigma',
   'I-obs(+)': '_refln.pdbx_I_plus',
   'SIGI-obs(+)': '_refln.pdbx_I_plus_sigma',
   'I-obs(-)': '_refln.pdbx_I_minus',
