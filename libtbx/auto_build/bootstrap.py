@@ -937,13 +937,6 @@ class xia2_module(SourceModule):
                'https://github.com/xia2/xia2.git',
                'https://github.com/xia2/xia2/archive/master.zip']
 
-class xia2_regression_module(SourceModule):
-  module = 'xia2_regression'
-  anonymous = ['git',
-               'git@github.com:xia2/xia2_regression.git',
-               'https://github.com/xia2/xia2_regression.git',
-               'https://github.com/xia2/xia2_regression/archive/master.zip']
-
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
