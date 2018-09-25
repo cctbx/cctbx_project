@@ -4,6 +4,11 @@ import pkg_resources
 
 from dxtbx.model import Experiment, ExperimentList
 from dxtbx.datablock import AutoEncoder
+from dxtbx.datablock import BeamComparison
+from dxtbx.datablock import DetectorComparison
+from dxtbx.datablock import GoniometerComparison
+from dxtbx.datablock import DataBlockFactory
+from dxtbx.datablock import SweepDiff
 
 class InvalidExperimentListError(RuntimeError):
   """
@@ -588,6 +593,29 @@ class ExperimentListFactory(object):
     return experiments
 
   @staticmethod
+  def from_filenames(filenames,
+                     verbose=False,
+                     unhandled=None,
+                     compare_beam=None,
+                     compare_detector=None,
+                     compare_goniometer=None,
+                     scan_tolerance=None,
+                     format_kwargs=None):
+    ''' Create a list of data blocks from a list of directory or file names. '''
+    experiments = ExperimentList()
+    for db in DataBlockFactory.from_filenames(
+        filenames,
+        verbose=verbose,
+        unhandled=unhandled,
+        compare_beam=compare_beam,
+        compare_detector=compare_detector,
+        compare_goniometer=compare_goniometer,
+        scan_tolerance=scan_tolerance,
+        format_kwargs=format_kwargs):
+      experiments.extend(ExperimentListFactory.from_datablock_and_crystal(db, None))
+    return experiments
+
+  @staticmethod
   def from_imageset_and_crystal(imageset, crystal):
     ''' Load an experiment list from an imageset and crystal. '''
     from dxtbx.imageset import ImageSweep
@@ -675,11 +703,22 @@ class ExperimentListFactory(object):
   def from_dict(obj, check_format=True, directory=None):
     ''' Load an experiment list from a dictionary. '''
 
+    try:
+      experiments = ExperimentList()
+      for db in DataBlockFactory.from_dict(
+          obj,
+          check_format=check_format,
+          directory=directory):
+        experiments.extend(ExperimentListFactory.from_datablock_and_crystal(db, None))
+    except Exception:
+      experiments = None
+
     # Decode the experiments from the dictionary
-    experiments = ExperimentListDict(
-      obj,
-      check_format=check_format,
-      directory=directory).decode()
+    if experiments is None:
+      experiments = ExperimentListDict(
+        obj,
+        check_format=check_format,
+        directory=directory).decode()
 
     # Check the list is consistent
     assert(experiments.is_consistent())
@@ -750,3 +789,13 @@ class ExperimentListFactory(object):
 
     # Now try as a pickle file
     return ExperimentListFactory.from_pickle_file(filename)
+
+
+class ExperimentListTemplateImporter(object):
+  ''' A class to import an experiment list from a template. '''
+  def __init__(self, templates, verbose=False, **kwargs):
+    from dxtbx.datablock import DataBlockTemplateImporter
+    importer = DataBlockTemplateImporter(templates, verbose=verbose, **kwargs)
+    self.experiments = ExperimentList()
+    for db in importer.datablocks:
+      self.experiments.extend(ExperimentListFactory.from_datablock_and_crystal(db,None))
