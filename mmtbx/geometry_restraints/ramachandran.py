@@ -61,6 +61,11 @@ master_phil = iotbx.phil.parse("""
   restrain_rama_allowed = True
     .type = bool
     .help = Apply restraints to residues in allowed region on Ramachandran plot
+  restrain_allowed_outliers_with_emsley = False
+    .type = bool
+    .help = In case of restrain_rama_outliers=True and/or restrain_rama_allowed=True \
+      still restrain these residues with emsley. Make sense only in case of \
+      using oldfield potential.
 """)
 
 def is_proxy_present(proxies, n_seq, proxy):
@@ -71,19 +76,36 @@ def is_proxy_present(proxies, n_seq, proxy):
 
 class ramachandran_manager(object):
   def __init__ (self, pdb_hierarchy, params=None,
-      log=sys.stdout, proxies=None, tables=None, initialize=True):
+      log=sys.stdout,
+      proxies=None, tables=None,
+      initialize=True):
     assert pdb_hierarchy is not None
     assert not pdb_hierarchy.atoms().extract_i_seq().all_eq(0), ""+\
         "Probably all atoms have i_seq = 0 which is wrong"
-    self.hierarchy = pdb_hierarchy # only for def select()
     self.params = params
-    self.log = log
-    self.proxies = proxies
-    self.tables = tables
-    self.initialize = initialize
-
     if self.params is None:
       self.params = master_phil.fetch().extract()
+    if self.params.rama_potential == "emsley":
+      assert self.params.restrain_rama_outliers, "Incompatible set of parameters"
+      assert self.params.restrain_rama_allowed, "Incompatible set of parameters"
+      assert not self.params.restrain_allowed_outliers_with_emsley
+    self.hierarchy = pdb_hierarchy # only for def select()
+    self.log = log
+    self._oldfield_proxies = ext.shared_phi_psi_proxy()
+    self._emsley_proxies = ext.shared_phi_psi_proxy()
+    self._oldfield_tables = None
+    self._emsley_tables = None
+    if proxies is not None:
+      self._oldfield_proxies, self._emsley_tables = proxies
+    if tables is not None:
+      self._oldfield_tables, self._emsley_tables = tables
+    self.initialize = initialize
+    # bad hack to keep emsley potential in working(?) condition after
+    # changing from rama500 to rama8000
+    self.new_to_old_conversion = {"general":"ala", "glycine":"gly",
+        "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
+        "isoleucine or valine":"ala"}
+
     self.need_filtering = not (self.params.restrain_rama_outliers and
                           self.params.restrain_rama_allowed)
     self.bool_atom_selection = None
@@ -94,33 +116,31 @@ class ramachandran_manager(object):
       self.bool_atom_selection = cache.selection(self.params.rama_selection)
     if initialize:
       if(self.params.rama_potential == "oldfield"):
-        self.tables = ramachandran_plot_data(
+        self._oldfield_tables = ramachandran_plot_data(
             plot_cutoff=self.params.oldfield.plot_cutoff)
-      else :
-        self.tables = load_tables(params)
+      elif (self.params.rama_potential == "emsley" or
+          (self.need_filtering and self.params.restrain_allowed_outliers_with_emsley)):
+        self._emsley_tables = load_tables(params)
       # get proxies
       self.extract_proxies(pdb_hierarchy)
-    else:
-      assert self.proxies is not None
     if(self.params.rama_potential == "oldfield"):
       self.target_phi_psi = self.update_phi_psi_targets_on_init(
         hierarchy = pdb_hierarchy)
     self.initialize = False
 
   def proxy_select(self, n_seq, iselection):
-    result_proxies = self.proxies.proxy_select(n_seq, iselection)
     new_manager = ramachandran_manager(
         pdb_hierarchy=self.hierarchy,
         params=self.params,
         log=self.log,
-        proxies=result_proxies,
-        tables=self.tables,
+        proxies = (None if self.get_n_oldfield_proxies() == 0 else self._oldfield_proxies.proxy_select(n_seq, iselection),
+            None if self.get_n_emsley_proxies() == 0 else self._emsley_proxies.proxy_select(n_seq, iselection)),
+        tables = (self._oldfield_tables, self._emsley_tables),
         initialize=False)
     return new_manager
 
   def extract_proxies(self, hierarchy):
     self.hierarchy = hierarchy
-    self.proxies = ext.shared_phi_psi_proxy()
     selected_h = hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
     # it would be great to save rama_eval, but the fact that this is called in
@@ -137,12 +157,6 @@ class ramachandran_manager(object):
         angles = three.get_phi_psi_angles()
         rama_score = self.rama_eval.get_score(rama_key, angles[0], angles[1])
         r_evaluation = self.rama_eval.evaluate_score(rama_key, rama_score)
-        if (r_evaluation == ramalyze.RAMALYZE_OUTLIER and
-            not self.params.restrain_rama_outliers):
-          continue
-        if (r_evaluation == ramalyze.RAMALYZE_ALLOWED and
-            not self.params.restrain_rama_allowed):
-          continue
       phi_atoms, psi_atoms = rc
       i_seqs = [atom.i_seq for atom in phi_atoms] + [psi_atoms[-1].i_seq]
       resnames = three.get_resnames()
@@ -155,23 +169,49 @@ class ramachandran_manager(object):
           residue_name=r_name,
           residue_type=text_rama_key,
           i_seqs=i_seqs)
-      if not is_proxy_present(self.proxies, n_seq, proxy):
-        self.proxies.append(proxy)
+      # pick where to put...
+      if self.params.rama_potential == "oldfield":
+        if self.need_filtering:
+          if r_evaluation == ramalyze.RAMALYZE_FAVORED:
+            self.append_oldfield_proxies(proxy, n_seq)
+          elif r_evaluation == ramalyze.RAMALYZE_ALLOWED and self.params.restrain_rama_allowed:
+            self.append_oldfield_proxies(proxy, n_seq)
+          elif r_evaluation == ramalyze.RAMALYZE_OUTLIER and self.params.restrain_rama_outliers:
+            self.append_oldfield_proxies(proxy, n_seq)
+          elif self.params.restrain_allowed_outliers_with_emsley:
+            self.append_emsley_proxies(proxy, n_seq)
+        else:
+          self.append_oldfield_proxies(proxy, n_seq)
+      else: # self.params.rama_potential == "emsley":
+        self.append_emsley_proxies(proxy, n_seq)
     print >> self.log, ""
     print >> self.log, "  %d Ramachandran restraints generated." % (
         self.get_n_proxies())
+    print >> self.log, "    %d Oldfield and %d Emsley." % (
+        self.get_n_oldfield_proxies(), self.get_n_emsley_proxies())
+
+  @staticmethod
+  def _append_proxies(proxies, proxy, n_seq):
+    if not is_proxy_present(proxies, n_seq, proxy):
+      proxies.append(proxy)
+
+  def append_oldfield_proxies(self, proxy, n_seq):
+    ramachandran_manager._append_proxies(self._oldfield_proxies, proxy, n_seq)
+
+  def append_emsley_proxies(self, proxy, n_seq):
+    ramachandran_manager._append_proxies(self._emsley_proxies, proxy, n_seq)
 
   def update_phi_psi_targets_on_init(self, hierarchy):
     if(self.params.rama_potential != "oldfield"): return None
     self.target_phi_psi = phi_psi_targets(
       sites_cart=hierarchy.atoms().extract_xyz(),
-      proxies=self.proxies,
-      general_table=self.tables.general,
-      gly_table=self.tables.gly,
-      cispro_table=self.tables.cispro,
-      transpro_table=self.tables.transpro,
-      prepro_table=self.tables.prepro,
-      ileval_table=self.tables.ileval)
+      proxies=self._oldfield_proxies,
+      general_table=self._oldfield_tables.general,
+      gly_table=self._oldfield_tables.gly,
+      cispro_table=self._oldfield_tables.cispro,
+      transpro_table=self._oldfield_tables.transpro,
+      prepro_table=self._oldfield_tables.prepro,
+      ileval_table=self._oldfield_tables.ileval)
     return self.target_phi_psi
 
   def update_phi_psi_targets(self, hierarchy):
@@ -185,49 +225,60 @@ class ramachandran_manager(object):
       unit_cell,
       sites_cart,
       gradient_array=None,
-      residuals_array=None):
-    assert self.proxies is not None
+      residuals_array_oldfield=None,
+      residuals_array_emsley=None):
     if(gradient_array is None) :
       gradient_array = flex.vec3_double(sites_cart.size(), (0.0,0.0,0.0))
-    if residuals_array is None:
-      residuals_array = flex.double(self.proxies.size())
-    target = 0
-    if(self.params.rama_potential == "oldfield"):
+    n_oldfield_proxies = self.get_n_oldfield_proxies()
+    self.residuals_array_oldfield = residuals_array_oldfield
+    self.residuals_array_emsley = residuals_array_emsley
+    oldfield_residual_sum = 0
+    overall_residual_sum = 0
+    if n_oldfield_proxies > 0:
+      if self.residuals_array_oldfield is None:
+        self.residuals_array_oldfield = flex.double(n_oldfield_proxies, 0.)
       op = self.params.oldfield
       w = op.weight
       if w is None:
         w = -1
-      res = ramachandran_residual_sum(
+      oldfield_residual_sum = ramachandran_residual_sum(
         sites_cart=sites_cart,
-        proxies=self.proxies,
+        proxies=self._oldfield_proxies,
         gradient_array=gradient_array,
         phi_psi_targets = self.target_phi_psi,
         weights=(w, op.esd, op.dist_weight_max, 2.0, op.weight_scale),
-        residuals_array=residuals_array)
-      return res
-    else: # emsley
+        residuals_array=self.residuals_array_oldfield)
+      overall_residual_sum += oldfield_residual_sum
+    n_emsley_proxies = self.get_n_emsley_proxies()
+    if n_emsley_proxies > 0:
+      print "n_emsley_proxies", n_emsley_proxies
+      if self.residuals_array_emsley is None:
+        self.residuals_array_emsley = flex.double(n_emsley_proxies, 0.)
       #assert (self.params.rama_weight >= 0.0)
-      # bad hack to keep emsley potential in working(?) condition after
-      # changing from rama500 to rama8000
-      new_to_old_conversion = {"general":"ala", "glycine":"gly",
-          "cis-proline":"pro", "trans-proline":"pro", "pre-proline":"prepro",
-          "isoleucine or valine":"ala"}
       # Moving these cycles to C++ part would speed them up only up to 10%
-      for i, proxy in enumerate(self.proxies):
-        rama_table = self.tables[new_to_old_conversion[proxy.residue_type]]
-        residuals_array[i] = rama_table.compute_gradients(
+      for i, proxy in enumerate(self._emsley_proxies):
+        rama_table = self._emsley_tables[self.new_to_old_conversion[proxy.residue_type]]
+        self.residuals_array_emsley[i] = rama_table.compute_gradients(
           gradient_array=gradient_array,
           sites_cart=sites_cart,
           proxy=proxy,
           weight=self.params.rama_weight,
           epsilon=0.001)
-    return flex.sum(residuals_array)
+      overall_residual_sum += flex.sum(self.residuals_array_emsley)
+    return overall_residual_sum
+
+  def get_n_oldfield_proxies(self):
+    if self._oldfield_proxies is not None:
+      return self._oldfield_proxies.size()
+    return 0
+
+  def get_n_emsley_proxies(self):
+    if self._emsley_proxies is not None:
+      return self._emsley_proxies.size()
+    return 0
 
   def get_n_proxies(self):
-    if self.proxies is not None:
-      return self.proxies.size()
-    else:
-      return 0
+    return self.get_n_emsley_proxies() + self.get_n_oldfield_proxies()
 
   def _get_sorted_proxies_for_show(self,
       by_value,
@@ -242,26 +293,30 @@ class ramachandran_manager(object):
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if self.get_n_proxies() == 0:
       return
-    residuals_array = flex.double(self.proxies.size())
+    # residuals_array = flex.double(self.proxies.size())
     self.target_and_gradients(
         unit_cell=None,
-        sites_cart=sites_cart,
-        residuals_array=residuals_array)
-    result = []
+        sites_cart=sites_cart)
+    result_oldfield = []
+    result_emsley = []
     labels = site_labels if site_labels is not None \
         else [str(i) for i in range(sites_cart.size())]
-    for i, pr in enumerate(self.proxies):
-      i_seqs = pr.get_i_seqs()
-      result.append(rama_for_show(
-          [labels[i_seqs[0]],
-           labels[i_seqs[1]],
-           labels[i_seqs[2]],
-           labels[i_seqs[3]],
-           labels[i_seqs[4]]],
-          residuals_array[i]))
-    if by_value == "residual":
-      result.sort(key=lambda x: x.residual, reverse=True)
-    return result
+    for proxies, residual_array, result in [
+        (self._oldfield_proxies, self.residuals_array_oldfield, result_oldfield),
+        (self._emsley_proxies, self.residuals_array_emsley, result_emsley)]:
+      if proxies is not None and proxies.size() > 0:
+        for i, pr in enumerate(proxies):
+          i_seqs = pr.get_i_seqs()
+          result.append(rama_for_show(
+              [labels[i_seqs[0]],
+               labels[i_seqs[1]],
+               labels[i_seqs[2]],
+               labels[i_seqs[3]],
+               labels[i_seqs[4]]],
+              residual_array[i]))
+        if by_value == "residual":
+          result.sort(key=lambda x: x.residual, reverse=True)
+    return result_oldfield, result_emsley
 
   def show_sorted(self,
       by_value,
@@ -276,18 +331,22 @@ class ramachandran_manager(object):
     if (f is None): f = sys.stdout
     if by_value != "residual":
       by_value = "residual"
-    sorted_proxies_for_show = self._get_sorted_proxies_for_show(
-      by_value=by_value,
-      sites_cart=sites_cart,
-      site_labels=site_labels)
-    print >> f, "Ramachandran plot restraints: %d"%len(sorted_proxies_for_show)
-    print >> f, "Sorted by %s:" % by_value
-    for p in sorted_proxies_for_show:
-      print >> f, "phi-psi angles formed by             residual"
-      print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
-      for i in range(1,5):
-        print >> f, "    %s" % p.labels[i]
-    print >> f, ""
+    sorted_oldfield_proxies_for_show, sorted_emsley_proxies_for_show = \
+        self._get_sorted_proxies_for_show(
+            by_value=by_value,
+            sites_cart=sites_cart,
+            site_labels=site_labels)
+    for proxies, label in [
+        (sorted_oldfield_proxies_for_show, "Oldfield"),
+        (sorted_emsley_proxies_for_show, "Emsley")]:
+      print >> f, "Ramachandran plot restraints (%s): %d" % (label, len(proxies))
+      print >> f, "Sorted by %s:" % by_value
+      for p in proxies:
+        print >> f, "phi-psi angles formed by             residual"
+        print >> f, "    %s            %5.2e" % (p.labels[0], p.residual)
+        for i in range(1,5):
+          print >> f, "    %s" % p.labels[i]
+      print >> f, ""
 
 
 def load_tables (params=None) :
