@@ -31,25 +31,20 @@ def main():
   pdb_hierarchy = pdb_inp.construct_hierarchy()
   geometry_restraints_manager = get_geometry_restraints_manager(raw_records=model_1yjp)
   pdb_hierarchy.reset_i_seq_if_necessary()
-  from mmtbx.conformation_dependent_library import generate_protein_twos
-  from mmtbx.conformation_dependent_library import generate_protein_threes
-  from mmtbx.conformation_dependent_library import generate_protein_fours
-  from mmtbx.conformation_dependent_library import generate_protein_fives
-  for i, generate_protein_tuples in enumerate([
-    generate_protein_twos,
-    generate_protein_threes,
-    generate_protein_fours,
-    generate_protein_fives,
-    ]):
-    for j, threes in enumerate(generate_protein_tuples(pdb_hierarchy,
-                                          geometry_restraints_manager,
-                                          #verbose=verbose,
-                                          )):
-      print threes
+  from mmtbx.conformation_dependent_library import generate_protein_fragments
+  for k in range(2,6):
+    for j, threes in enumerate(generate_protein_fragments(
+      pdb_hierarchy,
+      geometry_restraints_manager,
+      length=k,
+      #verbose=verbose,
+      )):
+      i=k-2
+      print i, j, k, threes
       rc = None
       try: rc = threes.get_omega_value()
       except: print '  omega is not valid'
-      if i>=2: assert rc==None
+      if i>0: assert rc==None
       else:
         print '  omega   %5.1f' % rc
         assert rc == answers['omegas'][j]

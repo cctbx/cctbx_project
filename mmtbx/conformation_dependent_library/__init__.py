@@ -12,6 +12,8 @@ from mmtbx.conformation_dependent_library.multi_residue_class import \
   ThreeProteinResidues, RestraintsRegistry
 from mmtbx.conformation_dependent_library.multi_residue_class import \
   TwoProteinResidues, FourProteinResidues, FiveProteinResidues
+from mmtbx.conformation_dependent_library.multi_residue_cdl_class import \
+  ThreeProteinResiduesWithCDL
 
 chararcters_36 = letters[:26]+digits
 
@@ -58,18 +60,24 @@ def get_restraint_values(threes, interpolate=False):
 
 def generate_protein_tuples(hierarchy,
                             geometry,
+                            length,
                             include_non_linked=False,
                             backbone_only=True,
                             include_non_standard_peptides=False,
                             # CDL specific
+                            cdl_class=False,
                             omega_cdl=False,
-                            length=None,
+                            #
                             verbose=False,
                             ):
   assert length
   assert length>1
   assert length<=5
-  if length==3: ProteinResidues = ThreeProteinResidues
+  if length==3:
+    if cdl_class:
+      ProteinResidues = ThreeProteinResiduesWithCDL
+    else:
+      ProteinResidues = ThreeProteinResidues
   elif length==2: ProteinResidues = TwoProteinResidues
   elif length==4: ProteinResidues = FourProteinResidues
   elif length==5: ProteinResidues = FiveProteinResidues
@@ -142,6 +150,7 @@ def generate_protein_threes(hierarchy,
                             backbone_only=True,
                             include_non_standard_peptides=False,
                             # CDL specific
+                            cdl_class=False,
                             omega_cdl=False,
                             verbose=False,
                             ):
@@ -151,70 +160,30 @@ def generate_protein_threes(hierarchy,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
     include_non_standard_peptides=include_non_standard_peptides,
+    cdl_class=cdl_class,
     omega_cdl=omega_cdl,
     length=3,
     ):
     yield threes
 
-def generate_protein_twos(hierarchy,
-                          geometry,
-                          include_non_linked=False,
-                          backbone_only=True,
-                          include_non_standard_peptides=False,
-                          # CDL specific
-                          omega_cdl=False,
-                          verbose=False,
-                          ):
-  for twos in generate_protein_tuples(
+def generate_protein_fragments(hierarchy,
+                               geometry,
+                               length,
+                               include_non_linked=False,
+                               backbone_only=True,
+                               include_non_standard_peptides=False,
+                               verbose=False,
+                               ):
+  for fragment in generate_protein_tuples(
     hierarchy,
     geometry,
+    length,
     include_non_linked=include_non_linked,
     backbone_only=backbone_only,
     include_non_standard_peptides=include_non_standard_peptides,
-    omega_cdl=omega_cdl,
-    length=2,
+    verbose=verbose,
     ):
-    yield twos
-
-def generate_protein_fours(hierarchy,
-                           geometry,
-                           include_non_linked=False,
-                           backbone_only=True,
-                           include_non_standard_peptides=False,
-                           # CDL specific
-                           #omega_cdl=False,
-                           verbose=False,
-                           ):
-  for fours in generate_protein_tuples(
-    hierarchy,
-    geometry,
-    include_non_linked=include_non_linked,
-    backbone_only=backbone_only,
-    include_non_standard_peptides=include_non_standard_peptides,
-    #omega_cdl=omega_cdl,
-    length=4,
-    ):
-    yield fours
-
-def generate_protein_fives(hierarchy,
-                           geometry,
-                           include_non_linked=False,
-                           backbone_only=True,
-                           include_non_standard_peptides=False,
-                           # CDL specific
-                           #omega_cdl=False,
-                           verbose=False,
-                           ):
-  for fives in generate_protein_tuples(
-    hierarchy,
-    geometry,
-    include_non_linked=include_non_linked,
-    backbone_only=backbone_only,
-    include_non_standard_peptides=include_non_standard_peptides,
-    #omega_cdl=omega_cdl,
-    length=5,
-    ):
-    yield fives
+    yield fragment
 
 def update_restraints(hierarchy,
                       geometry, # restraints_manager,
@@ -235,46 +204,26 @@ def update_restraints(hierarchy,
     sites_cart = current_geometry.sites_cart()
   if sites_cart:
     pdb_atoms = hierarchy.atoms()
-    #if atom_lookup:
-    #  for j_seq, scatterer in enumerate(current_geometry.scatterers()):
-    #    pdb_atoms[atom_lookup[scatterer.label]].xyz = sites_cart[j_seq]
-    #else:
     # XXX PDB_TRANSITION VERY SLOW
     for j_seq, atom in enumerate(pdb_atoms):
       atom.xyz = sites_cart[j_seq]
-      #atom_lookup[atom.id_str()] = j_seq
 
   threes = None
   average_updates = 0
   total_updates = 0
   for threes in generate_protein_threes(hierarchy,
                                         geometry, #restraints_manager,
+                                        cdl_class=True,
                                         #verbose=verbose,
                                         ):
     if threes.cis_group():
       continue
 
-    if 0:
-      res_type_group = get_res_type_group(
-        threes[1].resname,
-        threes[2].resname,
-         )
-      if res_type_group is None: continue
-      key = threes.get_cdl_key() #verbose=verbose)
-      restraint_values = cdl_database[res_type_group][key]
-      print restraint_values
-      print len(restraint_values)
-      assert 0
-    else:
-      restraint_values = get_restraint_values(threes, interpolate=interpolate)
-
-    #if 1:
-    #  print threes, threes.are_linked(), res_type_group, key, restraint_values
+    restraint_values = get_restraint_values(threes, interpolate=interpolate)
 
     if restraint_values is None: continue
 
     if restraint_values[0]=="I":
-      #print threes, threes.are_linked(), res_type_group, key, restraint_values[:4]
       average_updates += 1
     else:
       total_updates += 1
