@@ -118,7 +118,7 @@ class ramachandran_manager(object):
       if(self.params.rama_potential == "oldfield"):
         self._oldfield_tables = ramachandran_plot_data(
             plot_cutoff=self.params.oldfield.plot_cutoff)
-      elif (self.params.rama_potential == "emsley" or
+      if (self.params.rama_potential == "emsley" or
           (self.need_filtering and self.params.restrain_allowed_outliers_with_emsley)):
         self._emsley_tables = load_tables(params)
       # get proxies
@@ -143,6 +143,9 @@ class ramachandran_manager(object):
     self.hierarchy = hierarchy
     selected_h = hierarchy.select(self.bool_atom_selection)
     n_seq = flex.max(selected_h.atoms().extract_i_seq())
+    # Drop all previous proxies
+    self._oldfield_proxies = ext.shared_phi_psi_proxy()
+    self._emsley_proxies = ext.shared_phi_psi_proxy()
     # it would be great to save rama_eval, but the fact that this is called in
     # pdb_interpretation, not in mmtbx.model makes it impossible
     if self.need_filtering:
@@ -251,7 +254,6 @@ class ramachandran_manager(object):
       overall_residual_sum += oldfield_residual_sum
     n_emsley_proxies = self.get_n_emsley_proxies()
     if n_emsley_proxies > 0:
-      print "n_emsley_proxies", n_emsley_proxies
       if self.residuals_array_emsley is None:
         self.residuals_array_emsley = flex.double(n_emsley_proxies, 0.)
       #assert (self.params.rama_weight >= 0.0)
