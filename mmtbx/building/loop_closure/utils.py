@@ -17,7 +17,8 @@ def get_phi_psi_atoms(hierarchy, omega=False):
   phi_psi_atoms = []
   for three in generate_protein_threes(
         hierarchy=hierarchy,
-        geometry=None):
+        geometry=None,
+        cdl_class=True):
     psatoms = three.get_phi_psi_atoms()
     if psatoms is not None:
       phi_atoms, psi_atoms = psatoms

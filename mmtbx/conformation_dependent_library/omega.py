@@ -137,6 +137,7 @@ def update_restraints(hierarchy,
   total_updates = 0
   for threes in generate_protein_threes(hierarchy,
                                         geometry,
+                                        cdl_class=True,
                                         omega_cdl=True,
                                         #verbose=verbose,
                                         ):

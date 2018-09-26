@@ -93,6 +93,7 @@ def run():
   from mmtbx.conformation_dependent_library import generate_protein_threes
   for i, threes in enumerate(generate_protein_threes(pdb_hierarchy,
                                         geometry_restraints_manager,
+                                        cdl_class=True,
                                         #verbose=verbose,
                                         )):
     print i, threes

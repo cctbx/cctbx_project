@@ -824,6 +824,7 @@ def test_res_type(hierarchy,
     hierarchy,
     #restraints_manager=restraints_manager
     geometry=restraints_manager.geometry,
+    cdl_class=True,
     )
                              ):
     print threes.show(),
@@ -843,6 +844,7 @@ def test_phi_psi_key(hierarchy,
     hierarchy,
     #restraints_manager=restraints_manager
     geometry=restraints_manager.geometry,
+    cdl_class=True,
     )
                              ):
     key = threes.get_cdl_key()
@@ -857,6 +859,7 @@ def test_cdl_lookup(hierarchy,
     hierarchy,
     #restraints_manager=restraints_manager
     geometry=restraints_manager.geometry,
+    cdl_class=True,
     )
                              ):
     res_type_group = cdl_utils.get_res_type_group(
@@ -879,6 +882,7 @@ def test_cis_trans_peptide(hierarchy,
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
     geometry=restraints_manager.geometry,
+    cdl_class=True,
     )
                              ):
     cis_peptide_bond = threes.cis_group()
@@ -893,6 +897,7 @@ def test_average(hierarchy,
   for i, threes in enumerate(cdl.generate_protein_threes(
     hierarchy,
     geometry=restraints_manager.geometry,
+    cdl_class=True,
     )
                              ):
     if threes.registry.n:

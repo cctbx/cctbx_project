@@ -215,6 +215,64 @@ class ThreeProteinResidues(ProteinResidues):
     #assert omega_cdl is None, 'can not use omega_cdl for %sProteinResidues' % self.length
     return ProteinResidues.get_omega_values(self, verbose=verbose)
 
+  def get_phi_psi_atoms(self,
+                        only_psi_phi_pairs=True,
+                        force_plus_one=False,
+                        verbose=False,
+                        ):
+    if len(self)!=self.length: return None, None
+    if force_plus_one: only_psi_phi_pairs=False
+    if self[0] is None:
+      backbone_i_minus_1 = None
+    else:
+      backbone_i_minus_1, junk = get_c_ca_n(self[0], return_subset=True)
+      assert len(backbone_i_minus_1)==self.length
+    backbone_i, junk = get_c_ca_n(self[1], return_subset=True)
+    if verbose: print backbone_i
+    if None in backbone_i: return None
+    backbone_i_plus_1, junk = get_c_ca_n(self[2], return_subset=True)
+    if verbose: print backbone_i_plus_1, junk
+    if None in backbone_i_plus_1: return None
+    assert len(backbone_i)==self.length
+    assert len(backbone_i_plus_1)==self.length
+    phi_atoms = [
+      backbone_i_minus_1[0],
+      backbone_i[2],
+      backbone_i[1],
+      backbone_i[0],
+      ]
+    psi_atoms = [
+      backbone_i[2],
+      backbone_i[1],
+      backbone_i[0],
+      backbone_i_plus_1[2],
+      ]
+    atoms = [phi_atoms, psi_atoms]
+    if verbose: print atoms
+    if not only_psi_phi_pairs:
+      if self.start:
+        psi_atoms = [
+          backbone_i_minus_1[2],
+          backbone_i_minus_1[1],
+          backbone_i_minus_1[0],
+          backbone_i[2],
+          ]
+        atoms.insert(0, psi_atoms)
+      if self.end or force_plus_one:
+        phi_atoms = [
+          backbone_i[0],
+          backbone_i_plus_1[2],
+          backbone_i_plus_1[1],
+          backbone_i_plus_1[0],
+          ]
+        atoms.append(phi_atoms)
+    if verbose:
+      for dihedral in atoms:
+        print '-'*80
+        for atom in dihedral:
+          print atom.quote()
+    return atoms
+
   def get_phi_psi_angles(self, verbose=False):
     if verbose:
       for residue in self:
@@ -255,7 +313,6 @@ class ThreeProteinResidues(ProteinResidues):
     # Needs testing. One of the candidates is 3j0d, chain I, the first
     # residue is missing CA atom.
     #
-    assert 0
     from cctbx.geometry_restraints import dihedral_proxy
     atoms = self.get_phi_psi_atoms(only_psi_phi_pairs=only_psi_phi_pairs)
     proxies = []
