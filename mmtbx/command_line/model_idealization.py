@@ -126,15 +126,9 @@ debug = False
 verbose = False
   .type = bool
   .help = More output to log
-restrain_rama_outliers = True
-  .type = bool
-  .help = Apply restraints to Ramachandran outliers
-restrain_rama_allowed = True
-  .type = bool
-  .help = Apply restraints to residues in allowed region on Ramachandran plot
-restrain_allowed_outliers_with_emsley = False
-  .type = bool
+
 %s
+include scope mmtbx.geometry_restraints.ramachandran.master_phil
 include scope mmtbx.secondary_structure.sec_str_master_phil_str
 include scope mmtbx.building.loop_idealization.loop_idealization_master_phil_str
 include scope mmtbx.building.cablam_idealization.master_phil_str
@@ -190,6 +184,7 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.restrain_rama_outliers = self.params.restrain_rama_outliers
     params.pdb_interpretation.peptide_link.restrain_rama_allowed = self.params.restrain_rama_allowed
     params.pdb_interpretation.peptide_link.restrain_allowed_outliers_with_emsley = self.params.restrain_allowed_outliers_with_emsley
+    params.pdb_interpretation.peptide_link.rama_weight = self.params.rama_weight
     params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
     params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
 
