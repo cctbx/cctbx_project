@@ -605,6 +605,7 @@ class manager(Base_geometry):
             "selection string: %s)") % selection)
       # print >> self.log, "*** Restraining %d atoms to initial coordinates ***" % \
       #     new_selection.size()
+      isel = new_selection.iselection()
     if exclude_outliers:
       new_selection = exclude_outliers_from_reference_restraints_selection(
           pdb_hierarchy=pdb_hierarchy if pdb_hierarchy is not None else all_chain_proxies.pdb_hierarchy,
