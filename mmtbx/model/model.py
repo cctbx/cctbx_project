@@ -447,6 +447,9 @@ class manager(object):
     self._processed_pdb_files_srv = None
     self.all_chain_proxies = None
 
+  def get_monomer_parameters(self):
+    return self._monomer_parameters
+
   def setup_ss_annotation(self, log=null_out()):
     if self._model_input is not None:
       self._ss_annotation = self._model_input.extract_secondary_structure()
@@ -2356,6 +2359,7 @@ class manager(object):
       crystal_symmetry           = self._crystal_symmetry,
       processed_pdb_file         = self._processed_pdb_file,
       restraint_objects          = self._restraint_objects,
+      monomer_parameters         = self._monomer_parameters,
       restraints_manager         = new_restraints_manager,
       expand_with_mtrix          = False,
       xray_structure             = self.get_xray_structure().select(selection),
