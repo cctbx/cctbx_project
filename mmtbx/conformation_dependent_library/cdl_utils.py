@@ -83,6 +83,8 @@ def get_phi_psi_atoms(residue1, residue2, residue3, verbose=False):
     backbone_i_plus_1[2],
     ]
   atoms = [phi_atoms, psi_atoms]
+  if len(filter(None, atoms[0]))!=4: return None
+  if len(filter(None, atoms[1]))!=4: return None
   if verbose:
     print atoms
     for group in atoms:
@@ -95,7 +97,7 @@ def get_phi_psi_angles(residues, verbose=False):
   for i in range(len(residues)):
     if i<2: continue
     atoms = get_phi_psi_atoms(*tuple(residues[i-2:i+1]), verbose=verbose)
-    assert atoms
+    if atoms is None: return None
     for dihedral in atoms:
       phi_or_psi=dihedral_angle(sites=[atom.xyz for atom in dihedral], deg=True)
       dihedrals.append(phi_or_psi)
