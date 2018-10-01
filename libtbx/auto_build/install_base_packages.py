@@ -442,7 +442,7 @@ Found Python version:
           "%s - %s" % (module, desc),
           "*"*80,
         )
-        raise e
+        raise
 
   def set_python(self, python_exe):
     print >> self.log, "Using Python: %s"%python_exe
