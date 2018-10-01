@@ -436,7 +436,7 @@ Found Python version:
     for module, desc in python_dependencies.items():
       try:
         self.verify_python_module(module, module)
-      except RuntimeError, e:
+      except (RuntimeError, e):
         print '\n\n\n%s\n\nThis python does not have %s installed\n\n%s\n\n\n' % (
           "*"*80,
           "%s - %s" % (module, desc),
