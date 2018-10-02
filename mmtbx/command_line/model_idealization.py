@@ -33,6 +33,8 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
+from phenix.programs.phi_psi_2 import validate_phi_psi_2_motifs
+
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
 master_params_str = """
@@ -280,7 +282,14 @@ class model_idealization():
   def get_statistics(self, model):
     # should we shift here? No
     # should we multiply NCS here? No
-    return model.geometry_statistics().result()
+    geometry = model.geometry_statistics().result()
+    motifs = validate_phi_psi_2_motifs(model=model, log=null_out())['counts']
+    mcounts = motifs.get_counts()
+    res = {}
+    for key, value in mcounts.iteritems():
+      res[key] = value.percent
+    geometry.merge(group_args(**res))
+    return geometry
 
   def prepare_user_map(self):
     print >> self.log, "Preparing user map..."
@@ -803,6 +812,11 @@ class model_idealization():
         ("CaBLAM outliers", "cablam", "outliers", "{:10.2f}"),
         ("CaBLAM disfavored", "cablam", "disfavored", "{:10.2f}"),
         ("CaBLAM CA outliers", "cablam", "ca_outliers", "{:10.2f}"),
+        ("phi-psy2: Motif(10)", "MOTIF", "", "{:10.2f}"),
+        ("phi-psy2: Motif(20)", "MOTIF20", "", "{:10.2f}"),
+        ("phi-psy2: Motif(->)", "MOTIF...", "", "{:10.2f}"),
+        ("phi-psy2: General", "GENERAL", "", "{:10.2f}"),
+        ("phi-psy2: Outlier", "OUTLIER", "", "{:10.2f}"),
         ]:
       l = "%-21s:" % val_caption
       for stat_obj in stat_obj_list.geoms:
