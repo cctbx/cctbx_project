@@ -128,6 +128,10 @@ debug = False
 verbose = False
   .type = bool
   .help = More output to log
+nonbonded_weight=10000
+  .type = float
+apply_all_trans = True
+  .type = bool
 
 %s
 include scope mmtbx.geometry_restraints.ramachandran.master_phil
@@ -187,13 +191,13 @@ class model_idealization():
     params.pdb_interpretation.peptide_link.restrain_rama_allowed = self.params.restrain_rama_allowed
     params.pdb_interpretation.peptide_link.restrain_allowed_outliers_with_emsley = self.params.restrain_allowed_outliers_with_emsley
     params.pdb_interpretation.peptide_link.rama_weight = self.params.rama_weight
-    params.pdb_interpretation.peptide_link.oldfield.weight_scale=3
-    params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=0.03
+    params.pdb_interpretation.peptide_link.oldfield.weight_scale=self.params.oldfield.weight_scale
+    params.pdb_interpretation.peptide_link.oldfield.plot_cutoff=self.params.oldfield.plot_cutoff
 
     params.pdb_interpretation.peptide_link.apply_peptide_plane = True
     if self.params.loop_idealization.make_all_trans:
-      params.pdb_interpretation.peptide_link.apply_all_trans = True
-    params.pdb_interpretation.nonbonded_weight = 10000
+      params.pdb_interpretation.peptide_link.apply_all_trans = self.params.apply_all_trans
+    params.pdb_interpretation.nonbonded_weight = self.params.nonbonded_weight
     params.pdb_interpretation.c_beta_restraints=True
     params.pdb_interpretation.max_reasonable_bond_distance = None
     params.pdb_interpretation.ncs_search.enabled = True
