@@ -139,6 +139,13 @@ compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   if (compiler == "default"):
     env_etc.compiler = "win32_cl"
+    cl_exe = full_command_path("cl.exe")
+    mingw_exe = full_command_path("gcc.exe")
+    if (cl_exe is None) and mingw_exe:
+      # hack to detect mingw compiler on windows
+      if "mingw" in mingw_exe:
+        env_etc.compiler = "win32_mingw"
+        libtbx.env.build_options.static_exe = True
   else:
     env_etc.compiler = "win32_"+compiler
     compiler = None
@@ -475,7 +482,7 @@ libtbx.scons: Warning: compiling with /MDd:
         "Cross-compiler gcc not found. How is it prefixed? (see crossmingw.py)"
     # the options here are mostly copied from unix_gcc
     env_etc.libm = ["m"]
-    env_etc.static_libraries = 0
+    env_etc.static_libraries = 1 
     env_etc.static_bpl = 0
     env_etc.gcc_version = libtbx.env_config.get_gcc_version(
                                                  command_name=env_base['CC'])
@@ -483,8 +490,9 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.c_link = env_base['CC']
     env_etc.ccflags_base = [
       "-fPIC",
-      "-fno-strict-aliasing"]
-    env_etc.cxxflags_base = []
+      "-fno-strict-aliasing",
+      "-DMS_WIN64"]
+    env_etc.cxxflags_base = ["-DMS_WIN64"]
     # XXX feature duplication, see env.build_options.enable_cxx11
     if (env_etc.gcc_version >= 40400 and determine_cpp0x_flag()):
       env_etc.cxxflags_base.append("-std=c++0x")

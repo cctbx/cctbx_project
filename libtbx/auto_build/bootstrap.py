@@ -2319,7 +2319,7 @@ def run(root=None):
 
   You can specify which package will be downloaded, configured,
   and built with "--builder". Current builders:
-    cctbx, phenix, xfel, dials, labelit
+    cctbx, cctbxlite, phenix, xfel, dials, labelit, external, molprobity, qrefine, phaser
 
   You can provide your SourceForge username with "--sfuser", and
   your CCI SVN username with "--cciuser". These will checkout
