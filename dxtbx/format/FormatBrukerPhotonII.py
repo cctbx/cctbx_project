@@ -22,28 +22,13 @@ class FormatBrukerPhotonII(FormatBruker):
     except IOError:
       return False
 
-    header_dic = FormatBrukerPhotonII.parse_header(header_lines)
+    header_dic = FormatBruker.parse_header(header_lines)
 
     dettype = header_dic.get('DETTYPE')
     if dettype is None: return False
     if not dettype.startswith('CMOS-PHOTONII'): return False
 
     return True
-
-  @staticmethod
-  def parse_header(header_lines):
-    header_dic = {}
-
-    for l in header_lines:
-      k_v = l.split(':', 1)
-      if len(k_v) == 1: continue
-      k, v = [v.strip() for v in k_v]
-      if k in header_dic:
-        header_dic[k] = header_dic[k] + "\n" + v
-      else:
-        header_dic[k] = v
-
-    return header_dic
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a

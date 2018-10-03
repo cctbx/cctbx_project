@@ -53,6 +53,21 @@ class FormatBruker(Format):
     return hdr_lines
 
   @staticmethod
+  def parse_header(header_lines):
+    header_dic = {}
+
+    for l in header_lines:
+      k_v = l.split(':', 1)
+      if len(k_v) == 1: continue
+      k, v = [v.strip() for v in k_v]
+      if k in header_dic:
+        header_dic[k] = header_dic[k] + "\n" + v
+      else:
+        header_dic[k] = v
+
+    return header_dic
+
+  @staticmethod
   def understand(image_file):
     try:
       tag = FormatBruker.open_file(image_file, 'rb').read(1024)

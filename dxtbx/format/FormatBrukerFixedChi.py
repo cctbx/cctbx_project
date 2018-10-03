@@ -14,18 +14,14 @@ class FormatBrukerFixedChi(FormatBruker):
 
   @staticmethod
   def understand(image_file):
-    #return False
-    try:
-      tag = FormatBruker.open_file(image_file, 'rb').read(1024)
-    except IOError:
-      return False
-    matches = []
-    for x in xrange(0,1024,80):
-      word = tag[x:x+16]
-      if word[0:7].isupper() and word[7]==":":
-        matches.append(word)
 
-    return len(matches)>=12 and 'FixedChiStage' in tag
+    hdr = FormatBruker.read_header_lines(image_file)
+    hdr_dic = FormatBruker.parse_header(hdr)
+
+    if 'FixedChiStage' not in hdr_dic['MODEL']: return False
+    if 'PHOTONII' in hdr_dic['DETTYPE']: return False
+
+    return True
 
   def __init__(self, image_file, **kwargs):
     '''Initialise the image structure from the given file, including a
