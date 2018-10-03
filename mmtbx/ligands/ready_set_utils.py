@@ -16,7 +16,7 @@ def is_n_terminal_residue(residue_group):
   #if residues[0] in n_terminal_amino_acid_codes: return True
   return False
 
-def generate_atom_group_atom_names(rg, names):
+def generate_atom_group_atom_names(rg, names, return_Nones=False):
   '''
   Generate all alt. loc. groups of names
   '''
@@ -40,12 +40,27 @@ def generate_atom_group_atom_names(rg, names):
           atoms.append(atom)
           break
       else:
-        print('not all atoms found. missing %s from %s' % (name, names))
-        break
+        if return_Nones:
+          atoms.append(None)
+        else:
+          print('not all atoms found. missing %s from %s' % (name, names))
+          break
     if len(atoms)!=len(names):
       yield None, None
     else:
       yield atoms[0].parent(), atoms
+
+def _new_atom(ag, name, element, xyz, occ, b, hetero, segid=' '*4):
+  # altloc???
+  atom = iotbx.pdb.hierarchy.atom()
+  atom.name = name
+  atom.element = "H"
+  atom.xyz = xyz
+  atom.occ = occ
+  atom.b = b
+  atom.hetero = hetero
+  atom.segid = segid
+  return atom
 
 def _add_hydrogens_to_atom_group_using_bad(ag,
                                            atom_name,
@@ -80,15 +95,16 @@ def _add_hydrogens_to_atom_group_using_bad(ag,
                       da, dihedral,
                       period=1,
                      )
-  atom = iotbx.pdb.hierarchy.atom()
-  atom.name = atom_name
-  atom.element = atom_element
-  atom.occ = ba.occ
-  atom.b = ba.b
-  # altloc???
-  atom.hetero = ba.hetero
-  atom.segid = ' '*4
-  atom.xyz = ro2[0]
+  atom = _new_atom(atom_name, atom_element, ro2[0], ba.occ, ba.b, ba.hetero)
+  # atom = iotbx.pdb.hierarchy.atom()
+  # atom.name = atom_name
+  # atom.element = atom_element
+  # atom.occ = ba.occ
+  # atom.b = ba.b
+  # # altloc???
+  # atom.hetero = ba.hetero
+  # atom.segid = ' '*4
+  # atom.xyz = ro2[0]
   if append_to_end_of_model:
     chain = _add_atom_to_chain(atom, ag)
     rc.append(chain)
@@ -307,7 +323,7 @@ def add_c_terminal_oxygens_to_atom_group(ag,
 def add_c_terminal_oxygens_to_residue_group(residue_group,
                                             use_capping_hydrogens=False,
                                             append_to_end_of_model=False,
-                                          ):
+                                           ):
   rc=[]
   for ag, (c, ca, n) in generate_atom_group_atom_names(residue_group,
                                                        ['C', 'CA', 'N'],
@@ -320,6 +336,68 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
     )
     rc += tmp
   return rc
+
+def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
+  # cetral functuon
+  if c_ca_n is not None:
+    c, ca, n = c_ca_n
+  else:
+    c = ag.get_atom("C")
+    if c is None: return
+    ca = ag.get_atom("CA")
+    if ca is None: return
+    n = ag.get_atom("N")
+    if n is None: return
+  atom = ag.get_atom('O')
+  print atom
+  dihedral = dihedral_angle(sites=[atom.xyz,
+                                   c.xyz,
+                                   ca.xyz,
+                                   n.xyz,
+                                 ],
+                            deg=True)
+  ro2 = construct_xyz(c, bond_length,
+                      ca, 120.,
+                      n, dihedral,
+                      period=2,
+                     )
+  oxys = [' O  ', atom_name]
+  for i in range(0,2):
+    name = oxys[i]
+    atom = ag.get_atom(name.strip())
+    if atom:
+      pass #atom.xyz = ro2[i]
+    else:
+      atom = iotbx.pdb.hierarchy.atom()
+      atom.name = name
+      atom.element = atom_element
+      atom.occ = c.occ
+      atom.b = c.b
+      atom.segid = ' '*4
+      atom.xyz = ro2[i]
+      if append_to_end_of_model:
+        chain = _add_atom_to_chain(atom, ag)
+        rc.append(chain)
+      else:
+        # add the atom to the hierarchy
+        ag.append_atom(atom)
+
+  #for
+  assert atom
+
+def add_main_chain_atoms_to_residue_group(residue_group):
+  # I think this needs a three
+  for ag, (c, ca, n, o) in generate_atom_group_atom_names(residue_group,
+                                                          ['C', 'CA', 'N', 'O'],
+                                                          return_Nones=True,
+                                                          ):
+    print ag.id_str()
+    try: print c.quote(),ca.quote(),n.quote(),o.quote()
+    except: print c,ca,n,o
+    if o is None:
+      add_main_chain_o_to_atom_group(ag,
+                                     c_ca_n = [c, ca, n],
+                                    )
 
 # def generate_residues_via_conformer(hierarchy,
 #                                     backbone_only=False,
@@ -479,6 +557,19 @@ def add_terminal_hydrogens(hierarchy,
     else:
       pass
   print(additional_hydrogens)
+
+def add_main_chain_atoms(hierarchy,
+                         geometry_restraints_manager,
+                         verbose=False,
+                         ):
+  for residue_group, start, end in generate_residue_group_with_start_and_end(
+    hierarchy,
+    geometry_restraints_manager,
+    verbose=verbose,
+    ):
+    print residue_group
+    add_main_chain_atoms_to_residue_group(residue_group)
+  assert 0
 
 # def junk():
 #   from mmtbx.conformation_dependent_library import generate_protein_threes
