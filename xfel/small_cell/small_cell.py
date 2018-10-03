@@ -744,12 +744,15 @@ def small_cell_index(path, horiz_phil):
     if found_one:
       spots_on_drings.append(spot)
 
-  overlap_limit = 5; overlap_count = 0
-  for spot in spots_on_drings:
-    if len(spot.hkls) > overlap_limit:
-      spots_on_drings.remove(spot)
-      overlap_count += 1
-  print "Removed %d spots that overlaped more than %d rings."%(overlap_count,overlap_limit)
+  overlap_limit = horiz_phil.small_cell.d_ring_overlap_limit; overlap_count = 0
+  if overlap_limit is None:
+    print "Accepting all spots on d-rings"
+  else:
+    for spot in spots_on_drings:
+      if len(spot.hkls) > overlap_limit:
+        spots_on_drings.remove(spot)
+        overlap_count += 1
+    print "Removed %d spots that overlaped more than %d rings."%(overlap_count,overlap_limit)
 
   print "Spots on d-rings:  %d"%len(spots_on_drings)
   print "Total sf spots:    %d"%len(reflections)
@@ -1945,9 +1948,12 @@ def is_bad_pixel(raw_data, pix):
             ( 1, 0),
             ( 1, 1),
             ( 2, 0)]
-  for p in pixels:
-    i = raw_data[pix[1]+p[1],pix[0]+p[0]]
-    if i == None or i <= 0:
-      return True
+  try:
+    for p in pixels:
+      i = raw_data[pix[1]+p[1],pix[0]+p[0]]
+      if i == None or i <= 0:
+        return True
+  except IndexError:
+    return True
 
   return False

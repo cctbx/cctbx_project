@@ -34,6 +34,9 @@ small_cell {
   spot_connection_epsilon = 2.e-3
     .type=float
     .help= "Epsilon for comparing measured vs. predicted inter-spot distances when building the maximum clique"
+  d_ring_overlap_limit = 5
+    .type = int
+    .help = "Number of d rings a spot can overlap before it is removed from consideration. Set to None to use all spots, but this can be time consuming"
   override_wavelength = None
     .type=float
     .help= "Use to override the wavelength found in the image file"
