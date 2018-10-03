@@ -434,6 +434,8 @@ def generate_residue_group_with_start_and_end(hierarchy,
 
 def add_terminal_hydrogens(hierarchy,
                            geometry_restraints_manager,
+                           terminate_all_N_terminals=False,
+                           terminate_all_C_terminals=False,
                            use_capping_hydrogens=False,
                            append_to_end_of_model=False,
                            verbose=False,
@@ -445,8 +447,9 @@ def add_terminal_hydrogens(hierarchy,
     geometry_restraints_manager,
     verbose=verbose,
     ):
-    conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
-                                         residue_group)
+    if use_capping_hydrogens:
+      conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                           residue_group)
     if start:
       ptr+=1
       assert ptr==1
@@ -471,7 +474,6 @@ def add_terminal_hydrogens(hierarchy,
     else:
       pass
   print additional_hydrogens
-  assert 0
 
 # def junk():
 #   from mmtbx.conformation_dependent_library import generate_protein_threes
