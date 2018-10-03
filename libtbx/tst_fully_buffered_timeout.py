@@ -6,8 +6,12 @@ import sys
 
 def test_command(cmd, to, expected_time):
   t0 = time()
-  fully_buffered(command=cmd, timeout=to)
+  fb = fully_buffered(command=cmd, timeout=to)
   t1 = time()
+  if to > expected_time:
+    assert fb.return_code == 0
+  else:
+    assert fb.return_code == -15
   assert approx_equal(t1-t0, expected_time, 0.5)
 
 def exercise():
