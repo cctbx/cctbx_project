@@ -47,7 +47,7 @@ small_cell {
     .type=float
     .help= "Use to override the detector distance (in mm) found in the image file"
 }
-include scope dials.algorithms.peak_finding.spotfinder_factory.phil_scope
+include scope dials.algorithms.spot_finding.factory.phil_scope
 """
 
 def run(argv=None):
@@ -96,14 +96,14 @@ def run(argv=None):
   paths = command_line.args
 
   # Target phil file and at least one file to process are required
-  if command_line.options.target is None or not os.path.isfile(command_line.options.target) \
-      or len(paths) == 0:
+  if len(paths) == 0:
     command_line.parser.print_usage()
     return
 
   # Parse the target
   args = []
-  args.append(parse(file_name=command_line.options.target,process_includes=True))
+  if command_line.options.target is not None:
+    args.append(parse(file_name=command_line.options.target,process_includes=True))
 
   horiz_phil = small_cell_phil.fetch(sources = args).extract()
 

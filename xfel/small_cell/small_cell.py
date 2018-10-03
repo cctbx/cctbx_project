@@ -10,13 +10,12 @@ from six.moves import range
 import numpy as np
 from scipy.optimize import minimize
 import math
-from cctbx.array_family import flex
+from dials.array_family import flex
 from libtbx.test_utils import approx_equal
 import itertools
 from scitbx.matrix import col, sqr
 from cctbx.crystal import symmetry
 import cctbx.miller
-from cctbx.miller import flex
 from cctbx.uctbx import unit_cell
 from cctbx import sgtbx
 import operator
@@ -572,63 +571,37 @@ def small_cell_index(path, horiz_phil):
 
   # Load the dials and small cell parameters
   from dxtbx.datablock import DataBlockFactory
-  from dials.algorithms.peak_finding.spotfinder_factory import SpotFinderFactory
+  from dials.algorithms.spot_finding.factory import SpotFinderFactory
   from dials.model.serialize.dump import reflections as reflections_dump
 
   print "Loading %s"%path
 
-  # this image object isn't used until later when the predictions are made
+  # load the image
   from dxtbx.format.Registry import Registry
   format_class = Registry.find(path)
   img = format_class(path)
   detector = img.get_detector()[0]
   beam = img.get_beam()
 
-  # load the image
-  try:
-    # if it's a pickle file, read it directly
-    try:
-      import cPickle as pickle
-    except ImportError:
-      import pickle
-    DATA = pickle.load(open(path, 'rb'))
-  except KeyError:
-    # otherwise, we have to build the DATA dictionary manually
-    from xfel.cxi.cspad_ana import cspad_tbx
-    beam_x, beam_y = detector.get_beam_centre(beam.get_s0())
-    DATA = cspad_tbx.dpack(active_areas=None,
-                           address=None,
-                           beam_center_x=beam_x,
-                           beam_center_y=beam_x,
-                           ccd_image_saturation=detector.get_trusted_range()[1],
-                           data=img.get_raw_data(),
-                           distance=detector.get_distance(),
-                           pixel_size=detector.get_pixel_size()[0],
-                           saturated_value=detector.get_trusted_range()[1],
-                           timestamp=None,
-                           wavelength=beam.get_wavelength())
-
-  if 'DETECTOR_ADDRESS' not in DATA or DATA['DETECTOR_ADDRESS'] is None:
-    DATA['DETECTOR_ADDRESS'] = 'CxiDs1-0|Cspad-0'
-
+  beam_x, beam_y = detector.get_beam_centre(beam.get_s0())
   if horiz_phil.small_cell.override_beam_x is not None:
-    DATA['BEAM_CENTER_X'] = horiz_phil.small_cell.override_beam_x
+    beam_x = horiz_phil.small_cell.override_beam_x
 
   if horiz_phil.small_cell.override_beam_y is not None:
-    DATA['BEAM_CENTER_Y'] = horiz_phil.small_cell.override_beam_y
+    beam_y = horiz_phil.small_cell.override_beam_y
 
   if horiz_phil.small_cell.override_distance is not None:
-    DATA['DISTANCE'] = horiz_phil.small_cell.override_distance
+    distance = horiz_phil.small_cell.override_distance
+  else:
+    distance=detector.get_distance()
 
   if horiz_phil.small_cell.override_wavelength is not None:
-    DATA['WAVELENGTH'] = horiz_phil.small_cell.override_wavelength
+    wavelength = horiz_phil.small_cell.override_wavelength
+  else:
+    wavelength = beam.get_wavelength()
 
-  beam_x = DATA['BEAM_CENTER_X']
-  beam_y = DATA['BEAM_CENTER_Y']
   beam_center = col((beam_x, beam_y))
-  pixel_size = DATA['PIXEL_SIZE']
-  wavelength = DATA['WAVELENGTH']
-  distance = DATA['DISTANCE']
+  pixel_size = detector.get_pixel_size()[0] # XXX
   raw_data = img.get_raw_data()
 
   print "Using beam center %s, %s, distance %s, and wavelength %s"%(beam_x, beam_y, distance, wavelength)
@@ -637,7 +610,7 @@ def small_cell_index(path, horiz_phil):
   find_spots = SpotFinderFactory.from_parameters(horiz_phil)
 
   # spotfind
-  datablock = DataBlockFactory.from_in_memory([img])
+  datablock = DataBlockFactory.from_filenames([path])[0]
   reflections = find_spots(datablock)
 
   # filter the reflections for those near asic boundries
@@ -1254,6 +1227,8 @@ def small_cell_index(path, horiz_phil):
       indexed_sigmas = flex.double()
       mapped_predictions = flex.vec2_double()
       max_signal = flex.double()
+      xyzobs = flex.vec3_double()
+      shoeboxes = flex.shoebox()
 
       rmsd = 0
       rmsd_n = 0
@@ -1304,7 +1279,7 @@ def small_cell_index(path, horiz_phil):
           intensity += v - (bp_a*p[0] + bp_b*p[1] + bp_c)
           bg_peak += bp_a*p[0] + bp_b*p[1] + bp_c
 
-        gain = 7.5
+        gain = 7.5 # XXX
         sigma = math.sqrt(gain * (intensity + bg_peak + ((len(peakvals)/len(bg_vals))**2) * raw_bg_sum))
 
         print "ID: %3d, ohkl: %s, ahkl: %s, I: %9.1f, sigI: %9.1f, RDiff: %9.6f"%( \
@@ -1326,6 +1301,8 @@ def small_cell_index(path, horiz_phil):
           mapped_predictions.append((spot.spot_dict['xyzobs.px.value'][0], spot.spot_dict['xyzobs.px.value'][1]))
         else:
           mapped_predictions.append((spot.pred[0],spot.pred[1]))
+        xyzobs.append(spot.spot_dict['xyzobs.px.value'])
+        shoeboxes.append(spot.spot_dict['shoebox'])
 
         indexed_hkls.append(spot.hkl.ohkl.elems)
         indexed_intensities.append(intensity)
@@ -1358,8 +1335,34 @@ def small_cell_index(path, horiz_phil):
           current_orientation = [ori],
           current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], #identity.  only support primitive lattices.
         )
-        G = open(os.path.join(path.rstrip(os.path.basename(path)),"int-" + os.path.basename(path).strip()),"wb")
+        G = open(os.path.join(path.rstrip(os.path.basename(path)),"int-" + os.path.splitext(os.path.basename(path).strip())[0]+".pickle"),"wb")
+        import pickle
         pickle.dump(info,G,pickle.HIGHEST_PROTOCOL)
+
+        from dxtbx.model import MosaicCrystalKabsch2010
+        from dxtbx.model.experiment_list import ExperimentListFactory, ExperimentListDumper
+        direct_matrix = ori.direct_matrix()
+        real_a = direct_matrix[0:3]
+        real_b = direct_matrix[3:6]
+        real_c = direct_matrix[6:9]
+        crystal = MosaicCrystalKabsch2010(real_a, real_b, real_c, horiz_phil.small_cell.spacegroup)
+        crystal.set_mosaicity(horiz_phil.small_cell.faked_mosaicity)
+        experiments = ExperimentListFactory.from_imageset_and_crystal(img.get_imageset([path]), crystal)
+        dump = ExperimentListDumper(experiments)
+        dump.as_json(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated_experiments.json")
+
+        refls = flex.reflection_table()
+        refls['id'] = flex.int(len(indexed_hkls), 0)
+        refls['panel'] = flex.size_t(len(indexed_hkls), 0)
+        refls['integration.sum.value'] = indexed_intensities
+        refls['integration.sum.variance'] = indexed_sigmas**2
+        refls['xyzobs.px.value'] = xyzobs
+        refls['miller_index'] = indexed_hkls
+        refls['xyzcal.px'] = flex.vec3_double(mapped_predictions.parts()[0], mapped_predictions.parts()[1], flex.double(len(mapped_predictions), 0))
+        refls['shoebox'] = shoeboxes
+        refls['entering'] = flex.bool(len(refls), False)
+        refls.set_flags(flex.bool(len(refls), True), refls.flags.indexed)
+        refls.as_pickle(os.path.splitext(os.path.basename(path).strip())[0]+"_integrated.pickle")
 
         print "cctbx.small_cell: integrated %d spots."%len(results),
         integrated_count = len(results)
@@ -1371,9 +1374,9 @@ def small_cell_index(path, horiz_phil):
       else:
         print " Cannot calculate RMSD.  Not enough integrated spots or not enough clique spots near predictions."
 
-      if True:# and len(results) >= horiz_phil.small_cell.min_spots_to_integrate:# and len(max_clique_spots) > 4:
+      if False:# and len(results) >= horiz_phil.small_cell.min_spots_to_integrate:# and len(max_clique_spots) > 4:
         from rstbx.command_line.slip_viewer import master_str as slip_params
-        from libtbx import phil
+        from iotbx import phil
         from spotfinder import phil_str
         from spotfinder.command_line.signal_strength import additional_spotfinder_phil_defs
 
