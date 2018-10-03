@@ -387,6 +387,7 @@ def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
 
 def add_main_chain_atoms_to_residue_group(residue_group):
   # I think this needs a three
+  assert 0
   for ag, (c, ca, n, o) in generate_atom_group_atom_names(residue_group,
                                                           ['C', 'CA', 'N', 'O'],
                                                           return_Nones=True,
@@ -398,6 +399,22 @@ def add_main_chain_atoms_to_residue_group(residue_group):
       add_main_chain_o_to_atom_group(ag,
                                      c_ca_n = [c, ca, n],
                                     )
+
+def add_main_chain_atoms_to_protein_three(three):
+  print three
+  for ag, (c, ca, n, o) in generate_atom_group_atom_names(three[1],
+                                                          ['C', 'CA', 'N', 'O'],
+                                                          return_Nones=True,
+                                                          ):
+    print ag.id_str()
+    try: print c.quote(),ca.quote(),n.quote(),o.quote()
+    except: print c,ca,n,o
+    if o is None:
+      add_main_chain_o_to_atom_group(ag,
+                                     c_ca_n = [c, ca, n],
+                                    )
+
+  assert 0
 
 # def generate_residues_via_conformer(hierarchy,
 #                                     backbone_only=False,
@@ -562,13 +579,13 @@ def add_main_chain_atoms(hierarchy,
                          geometry_restraints_manager,
                          verbose=False,
                          ):
-  for residue_group, start, end in generate_residue_group_with_start_and_end(
-    hierarchy,
-    geometry_restraints_manager,
-    verbose=verbose,
-    ):
-    print residue_group
-    add_main_chain_atoms_to_residue_group(residue_group)
+  from mmtbx.conformation_dependent_library import generate_protein_threes
+  for three in generate_protein_threes(hierarchy,
+                                       geometry_restraints_manager,
+                                       verbose=verbose,
+                                       ):
+    print three
+    add_main_chain_atoms_to_protein_three(three)
   assert 0
 
 # def junk():
