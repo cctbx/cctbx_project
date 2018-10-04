@@ -1222,7 +1222,7 @@ _replace_sysconfig_paths(build_time_vars)
 
   def build_freetype(self):
     self.build_compiled_package_simple(
-      pkg_url=BASE_CCI_PKG_URL,
+      pkg_url=DEPENDENCIES_BASE,
       pkg_name=FREETYPE_PKG,
       pkg_name_label="Freetype")
     if self.check_download_only(): return
