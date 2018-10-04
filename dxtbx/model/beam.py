@@ -30,6 +30,16 @@ beam_phil_scope = libtbx.phil.parse('''
       .help = "Override the sample to source direction"
       .short_caption = "Sample to source direction"
 
+    polarization_normal = None
+      .type = floats(size=3)
+      .help = "Override the polarization normal"
+      .short_caption = "Polarization normal"
+
+    polarization_fraction = None
+      .type = float(value_min=0.0, value_max=1.0)
+      .help = "Override the polarization fraction"
+      .short_caption = "Polarization fraction"
+
   }
 ''')
 
@@ -63,6 +73,10 @@ class BeamFactory:
       beam.set_direction(params.beam.direction)
     elif reference is None:
       raise RuntimeError("No beam direction set")
+    if params.beam.polarization_normal is not None:
+      beam.set_polarization_normal(params.beam.polarization_normal)
+    if params.beam.polarization_fraction is not None:
+      beam.set_polarization_fraction(params.beam.polarization_fraction)
 
     # Return the model
     return beam

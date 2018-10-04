@@ -78,6 +78,16 @@ def test_from_phil():
   with pytest.raises(RuntimeError):
     b3 = BeamFactory.from_phil(params2)
 
+  params3 = beam_phil_scope.fetch(parse("""
+    beam {
+      polarization_normal = 1,0,0
+      polarization_fraction = 0.5
+    }
+  """)).extract()
+  b3 = BeamFactory.from_phil(params3, reference)
+  assert b3.get_polarization_fraction() == 0.5
+  assert b3.get_polarization_normal() == (1.0, 0.0, 0.0)
+
 def test_scan_varying():
   from scitbx import matrix
   direction = matrix.col((0.013142, 0.002200, 1.450476))
