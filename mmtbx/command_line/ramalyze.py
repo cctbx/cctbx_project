@@ -29,6 +29,9 @@ def get_master_phil():
     model_list = None
       .type = str
       .help = Comma separated file list to accumulate onto one plot
+    output_prefix = None
+      .type = str
+      .help = prefix for outputted plots (if plot=True)
 """, process_includes=True)
 prog = os.getenv('LIBTBX_DISPATCHER_NAME')
 usage_string = """
@@ -91,7 +94,9 @@ def run (args, out=sys.stdout, quiet=False) :
   if params.verbose:
     result.show_old_output(out=out, verbose=True)
   if params.plot :
-    plot_file_base = os.path.splitext(os.path.basename(params.model))[0]
+    plot_file_base = params.output_prefix
+    if plot_file_base is None:
+      plot_file_base = os.path.splitext(os.path.basename(params.model))[0]
     result.write_plots(
         plot_file_base=plot_file_base,
         out=out,
