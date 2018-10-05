@@ -334,6 +334,9 @@ parallel {
   nproc = 1
     .help = 1, use no parallel execution.
     .type = int
+  a2a = 1
+    .help = Memory partition factor for MPI alltoall - used to address mpy4py memory errors, when hkl chunks are too large for the cpu
+    .type = int
 }
 
 """ + mysql_master_phil
