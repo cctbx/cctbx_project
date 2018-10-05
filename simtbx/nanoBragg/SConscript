@@ -1,4 +1,4 @@
-Import("env")
+Import("env", "env_etc")
 
 # remove -ffast-math compile option
 nanoBragg_env = env.Clone()
@@ -7,12 +7,46 @@ o = '-ffast-math'
 if o in ccflags:
   ccflags.remove(o)
 nanoBragg_env.Replace(SHCCFLAGS=ccflags)
+if (env_etc.enable_cuda):
+  nanoBragg_env.Prepend(CPPDEFINES=["NANOBRAGG_HAVE_CUDA"])
 nanoBragg_obj = nanoBragg_env.SharedObject(
   source=[
     "nanoBragg_ext.cpp",
     "nanoBragg.cpp",
     "nanoBragg_nks.cpp",
   ])
+
+# compile nanoBraggCUDA.cu if possible
+if (env_etc.enable_cuda):
+  import os
+  import libtbx.load_env
+
+  # simtbx location
+  env_etc.simtbx_dist = libtbx.env.dist_path("simtbx")
+  env_etc.simtbx_include = os.path.dirname(env_etc.simtbx_dist)
+  Import("env_boost_python_ext")
+  env_bpl = env_boost_python_ext.Clone()
+
+  # For now do all calculations in double precision to agree with CPU tests
+  env_bpl.Prepend(NVCCFLAGS=["-DCUDAREAL=double"])
+
+  # Flag header to declare the cuda wrapper
+  env_bpl.Prepend(NVCCFLAGS=["-DNANOBRAGG_HAVE_CUDA"])
+
+  # Guard against possibility that *.cu code is not there
+  if "nanoBraggCUDA.cu" in os.listdir(os.path.join(env_etc.simtbx_dist,"nanoBragg")):
+    env_bpl.Prepend(NVCCFLAGS=["-DHAVE_NANOBRAGG_SPOTS_CUDA"])
+    cuda_src = ["nanoBraggCUDA.cu"]
+  else:  cuda_src = []
+
+  env_etc.include_registry.append(
+    env=env_bpl,
+    paths=[env_etc.simtbx_include]
+  )
+  cuda_lib = env_bpl.cudaSharedLibrary(
+    target = "#lib/libsimtbx_nanoBraggCUDA",
+    source = cuda_src + ["nanoBragg_cuda.cpp"])
+  env.Prepend(LIBS=["simtbx_nanoBraggCUDA"])
 
 env.Prepend(LIBS=["omptbx"])
 env.SharedLibrary(
@@ -21,4 +55,3 @@ env.SharedLibrary(
     nanoBragg_obj
   ]
 )
-
