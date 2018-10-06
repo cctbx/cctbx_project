@@ -298,11 +298,13 @@ class manager(object):
   @classmethod
   def from_sites_cart(cls,
       sites_cart,
-      atom_name='CA',
+      atom_name=' CA ',
       resname='GLY',
       chain_id='A',
       b_iso=30.,
+      b_iso_list=None,
       occ=1.,
+      occ_list=None,
       scatterer='C',
       crystal_symmetry=None):
     assert sites_cart is not None
@@ -313,7 +315,11 @@ class manager(object):
     hierarchy.append_model(m)
     m.append_chain(c)
     count=0
-    for sc in sites_cart:
+    if not b_iso_list:
+      b_iso_list=sites_cart.size()*[b_iso]
+    if not occ_list:
+      occ_list=sites_cart.size()*[occ]
+    for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
       count+=1
       rg=iotbx.pdb.hierarchy.residue_group()
       c.append_residue_group(rg)
@@ -321,7 +327,7 @@ class manager(object):
       rg.append_atom_group(ag)
       a=iotbx.pdb.hierarchy.atom()
       ag.append_atom(a)
-      rg.resseq=str(count)
+      rg.resseq = iotbx.pdb.resseq_encode(count)
       ag.resname=resname
       a.set_b(b_iso)
       a.set_element(scatterer)
