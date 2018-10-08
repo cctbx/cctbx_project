@@ -10,8 +10,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import os
-
 from dxtbx.format.FormatCBFMiniEiger import FormatCBFMiniEiger
 
 class FormatCBFMiniEigerPetraP14(FormatCBFMiniEiger):
