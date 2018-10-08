@@ -375,10 +375,14 @@ class any_file_input (object) :
         cif_in = cif_input(file_name=self.file_name)
         self._file_object = input_hierarchy_pair(cif_in, cif_in.hierarchy)
         self._file_type = "pdb"
-      except Exception, e:
-        self._file_object = iotbx.cif.reader(file_path=self.file_name,
-          strict=False)
-        self._file_type = "cif"
+      except Exception as e:
+        if (str(e).startswith("Space group is incompatible") or
+            str(e).startswith("The space group") ):
+          raise
+        else:
+          self._file_object = iotbx.cif.reader(file_path=self.file_name,
+            strict=False)
+          self._file_type = "cif"
 
   def _try_as_phil (self) :
     from iotbx.phil import parse as parse_phil
@@ -485,6 +489,9 @@ class any_file_input (object) :
       except KeyboardInterrupt :
         raise
       except Exception, e :
+        if (str(e).startswith("Space group is incompatible") or
+            str(e).startswith("The space group") ):
+          raise
         self._errors[filetype] = str(e)
         self._file_type = None
         self._file_object = None
