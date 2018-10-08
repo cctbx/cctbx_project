@@ -1,4 +1,4 @@
-import os, sys
+from __future__ import division
 from iotbx import pdb
 from test_rdl import get_geometry_restraints_manager
 
@@ -43,7 +43,7 @@ def main():
       print i, j, k, threes
       rc = None
       try: rc = threes.get_omega_value()
-      except: print '  omega is not valid'
+      except: print '  omega is not valid' # intentional
       if i>0: assert rc==None
       else:
         print '  omega   %5.1f' % rc
@@ -55,20 +55,20 @@ def main():
                                                              )
       rc = None
       try: rc = threes.cis_group()
-      except: pass
+      except: pass # intentional
       try: print "  cis?    %-5s %s" % (rc, threes.cis_group(limit=30))
-      except: print '  cis? is not valid'
+      except: print '  cis? is not valid' # intentional
       if i>=2: assert (rc==None or rc==False), '%s!=%s' % (rc, None)
       else: assert rc == False
       try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-      except: print '  tran? is not valid'
+      except: print '  tran? is not valid' # intentional
       print '  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list())
       try: print "  rama    %s" % threes.get_ramalyze_key()
-      except: print '  rama not specified'
+      except: print '  rama not specified' # intentional
       print '  conf    %s' % threes.is_pure_main_conf()
       rc = None
       try: rc = threes.get_phi_psi_angles()
-      except: print '  phi/psi not specified'
+      except: print '  phi/psi not specified' # intentional
       print '  phi/psi %s' % rc
       if i<1: assert rc==None
       else:
@@ -76,7 +76,7 @@ def main():
         assert rc == test, '%s!=%s' % (rc, test)
       rc = None
       try: rc = threes.get_ca_dihedrals()
-      except: print '  CA dihedrals not specified'
+      except: print '  CA dihedrals not specified' # intentional
       print '  CA dihedrals %s' % rc
       if i<=1: assert rc == None
       else:

@@ -1,16 +1,12 @@
 from __future__ import division
 import copy
 
-from scitbx.math import dihedral_angle
-from libtbx.utils import Sorry
-
 from mmtbx.conformation_dependent_library.cdl_utils import \
-  get_c_ca_n #, distance2, round_to_ten, get_omega_value, get_phi_psi_angles
+  get_c_ca_n
 from mmtbx.conformation_dependent_library.cdl_utils import \
   distance2, get_omega_value, get_phi_psi_angles
 from mmtbx.conformation_dependent_library.cdl_utils import \
   get_ca_dihedrals
-#from mmtbx.conformation_dependent_library.cdl_setup import columns
 
 class RestraintsRegistry(dict):
   def __init__(self):
@@ -355,18 +351,18 @@ if __name__=="__main__":
                                              ):
       print threes
       try: print '  omega   %5.1f' % threes.get_omega_value()
-      except: print '  omega is not valid'
+      except: print '  omega is not valid' # intentional
       print '  omegas  %s' % threes.get_omega_values()
       try: print "  cis?    %-5s %s" % (threes.cis_group(), threes.cis_group(limit=30))
-      except: print '  cis? is not valid'
+      except: print '  cis? is not valid' # intentional
       try: print "  trans?  %-5s %s" % (threes.trans_group(), threes.trans_group(limit=30))
-      except: print '  tran? is not valid'
+      except: print '  tran? is not valid' # intentional
       print '  cis/trans/twisted? %s' % ' '.join(threes.cis_trans_twisted_list())
       try: print "  rama    %s" % threes.get_ramalyze_key()
-      except: print '  rama not specified'
+      except: print '  rama not specified' # intentional
       print '  conf    %s' % threes.is_pure_main_conf()
       try: print '  phi/psi %s' % threes.get_phi_psi_angles()
-      except: print '  phi/psi not specified'
+      except: print '  phi/psi not specified' # intentional
       try: print '  CA dihedrals %s' % threes.get_ca_dihedrals()
-      except: print '  CA dihedrals not specified'
+      except: print '  CA dihedrals not specified' # intentional
     print "OK",i+2
