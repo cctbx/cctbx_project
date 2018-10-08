@@ -319,6 +319,7 @@ class manager(object):
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
       occ_list=sites_cart.size()*[occ]
+    assert len(occ_list) == len(b_iso_list) == sites_cart.size()
     for sc, b_iso, occ in zip(sites_cart,b_iso_list,occ_list):
       count+=1
       rg=iotbx.pdb.hierarchy.residue_group()
