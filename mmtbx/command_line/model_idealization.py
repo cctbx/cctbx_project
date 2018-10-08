@@ -33,7 +33,7 @@ import mmtbx.idealized_aa_residues.rotamer_manager
 
 from elbow.command_line.ready_set import model_interface as ready_set_model_interface
 
-from phenix.programs.phi_psi_2 import validate_phi_psi_2_motifs
+from phenix.programs import phi_psi_2
 
 turned_on_ss = ssb.ss_idealization_master_phil_str
 turned_on_ss = turned_on_ss.replace("enabled = False", "enabled = True")
@@ -287,7 +287,7 @@ class model_idealization():
     # should we shift here? No
     # should we multiply NCS here? No
     geometry = model.geometry_statistics().result()
-    motifs = validate_phi_psi_2_motifs(model=model, log=null_out())['counts']
+    motifs = phi_psi_2.get_results(model=model, log=null_out())['counts']
     mcounts = motifs.get_counts()
     res = {}
     for key, value in mcounts.iteritems():
