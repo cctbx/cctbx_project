@@ -287,7 +287,7 @@ class model_idealization():
     # should we shift here? No
     # should we multiply NCS here? No
     geometry = model.geometry_statistics().result()
-    motifs = phi_psi_2.get_results(model=model, log=null_out())['counts']
+    motifs = phi_psi_2.results_manager(model=model, log=null_out()).get_motif_count()
     mcounts = motifs.get_counts()
     res = {}
     for key, value in mcounts.iteritems():
