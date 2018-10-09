@@ -304,6 +304,7 @@ class manager(object):
       b_iso=30.,
       b_iso_list=None,
       occ=1.,
+      count=0,
       occ_list=None,
       scatterer='C',
       crystal_symmetry=None):
@@ -314,7 +315,6 @@ class manager(object):
     c.id=chain_id
     hierarchy.append_model(m)
     m.append_chain(c)
-    count=0
     if not b_iso_list:
       b_iso_list=sites_cart.size()*[b_iso]
     if not occ_list:
