@@ -20,6 +20,7 @@ def test_data_manager():
   assert (a.get_model() == 'b')
   assert (a.get_model('a') == 'b')
   assert (a.get_model('c') == 'd')
+  assert (a.get_model_names() == ['a', 'c'])
 
   assert (a.has_models())
   assert (a.has_models(exact_count=True, expected_n=2))
