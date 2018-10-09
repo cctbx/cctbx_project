@@ -43,9 +43,9 @@ def template_regex(filename):
     template = prefix + ''.join(['#' for d in digits]) + exten
     return template, int(digits)
 
-  # What is supposed to happen otherwise?
-  from libtbx.utils import Sorry
-  raise Sorry('Could not determine filename template')
+  # Non-standard template so assume the image does not come from a single
+  # dataset
+  return filename, 0
 
 def image2template(filename):
   return template_regex(filename)[0]
