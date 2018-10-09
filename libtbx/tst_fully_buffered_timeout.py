@@ -3,6 +3,7 @@ from libtbx.easy_run import fully_buffered
 from time import time
 from libtbx.test_utils import approx_equal
 import sys
+import libtbx.load_env
 
 def test_command(cmd, to, expected_time):
   t0 = time()
@@ -22,5 +23,11 @@ def exercise():
   print "OK"
 
 if __name__ == "__main__":
-  if sys.platform != 'win32':
-    exercise()
+  if not libtbx.env.has_module(name="probe"):
+    # This test does not need probe per se. This check is done to skip this
+    # test in DIALS testing environment because of their mac mini
+    # which fails this test occasionly.
+    print "Skipping test: probe not configured"
+  else:
+    if sys.platform != 'win32':
+      exercise()
