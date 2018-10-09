@@ -2,6 +2,8 @@ from __future__ import division, print_function
 '''
 '''
 
+from copy import deepcopy
+
 import iotbx.phil
 
 from cctbx import crystal
@@ -58,19 +60,25 @@ class MillerArrayDataManager(DataManagerBase):
     '''
     return self._get(MillerArrayDataManager.datatype, filename)
 
-  def set_miller_array_type(self, filename=None, array_type=None):
+  def set_miller_array_type(self, filename=None, label=None, array_type=None):
     return self._set_miller_array_type(MillerArrayDataManager.datatype,
-                                       filename, array_type)
+                                       filename, label, array_type)
 
-  def get_miller_array_type(self, filename=None):
+  def get_miller_array_type(self, filename=None, label=None):
     return self._get_miller_array_type(MillerArrayDataManager.datatype,
-                                       filename)
+                                       filename, label)
 
   def get_miller_array_labels(self, filename=None):
     '''
     Returns a list of array labels
     '''
     return self._get_array_labels(MillerArrayDataManager.datatype, filename)
+
+  def get_miller_array_types(self, filename=None):
+    '''
+    Returns a dict of array types, keyed by label
+    '''
+    return self._get_array_types(MillerArrayDataManager.datatype, filename)
 
   def get_miller_arrays(self, labels=None, filename=None):
     '''
@@ -102,12 +110,15 @@ class MillerArrayDataManager(DataManagerBase):
     '''
     if (filename not in self._miller_array_arrays.keys()):
       self._miller_array_arrays[filename] = dict()
+    if (filename not in self._miller_array_types.keys()):
+      self._miller_array_types[filename] = dict()
     miller_arrays = self.get_miller_array(filename).as_miller_arrays()
     labels = list()
     for array in miller_arrays:
       label = array.info().label_string()
       labels.append(label)
       self._miller_array_arrays[filename][label] = array
+      self._miller_array_types[filename][label] = self._default_miller_array_type
     self._miller_array_labels[filename] = labels
 
   def write_miller_array_file(self, filename, miller_arrays, overwrite=False):
@@ -165,19 +176,23 @@ class MillerArrayDataManager(DataManagerBase):
         crystal_symmetry = crystal.select_crystal_symmetry(
           from_reflection_files=from_reflection_files)
       except Exception:
-        raise Sorry('A unit cell and space group could not be determined from the "filenames" argument. Please provide a list of filenames.')
+        raise Sorry('A unit cell and space group could not be determined from the "filenames" argument. Please make sure there are enough data arrays being selected.')
 
     # crystal_symmetry and force_symmetry should be set by now
     miller_arrays = list()
     for filename, file_labels in zip(filenames, labels):
-      if ((array_type is None) or
-          (array_type == self.get_miller_array_type(filename))):
-        file_arrays = self.get_miller_array(filename=filename).\
-          as_miller_arrays(crystal_symmetry=crystal_symmetry,
-                           force_symmetry=force_symmetry)
-        for miller_array in file_arrays:
-          if ((file_labels is None) or
-              (miller_array.info().label_string() in file_labels)):
+      file_arrays = self.get_miller_array(filename).\
+        as_miller_arrays(crystal_symmetry=crystal_symmetry,
+                         force_symmetry=force_symmetry)
+      if (file_labels is None):
+        file_labels = self.get_miller_array_labels(filename)
+      for miller_array in file_arrays:
+        label_name = miller_array.info().label_string()
+        # check array label
+        if (label_name in file_labels):
+          # check array type
+          if ((array_type is None) or
+              (array_type == self.get_miller_array_type(filename, label_name))):
             miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
@@ -190,7 +205,7 @@ class MillerArrayDataManager(DataManagerBase):
   def _add_miller_array_phil_str(self, datatype):
 
     # set up storage
-    # self._miller_array_types = dict()       # [filename] = type
+    # self._miller_array_types = dict()       # [filename] = type dict
     # self._miller_array_labels = dict()      # [filename] = label list
     # self._miller_array_arrays = dict()      # [filename] = array dict
     setattr(self, '_%s_types' % datatype, dict())
@@ -208,11 +223,14 @@ class MillerArrayDataManager(DataManagerBase):
   file = None
     .type = path
     .style = file_type:hkl input_file
-  type = *%s
-    .type = choice(multi=False)
-  labels = None
-    .type = str
+  labels
     .multiple = True
+  {
+    name = None
+      .type = str
+    type = *%s
+      .type = choice(multi=False)
+  }
 }
 ''' % (datatype, ' '.join(getattr(self, '_possible_%s_types' % datatype)))
 
@@ -230,12 +248,17 @@ class MillerArrayDataManager(DataManagerBase):
     filenames = getattr(self, 'get_%s_names' % datatype)()
     for filename in filenames:
       item_extract = getattr(self, '_custom_%s_phil' % datatype).extract()
-      item_extract = getattr(item_extract, '%s' % datatype)[0]
+      item_extract = deepcopy(getattr(item_extract, '%s' % datatype)[0])
       item_extract.file = filename
-      item_extract.type = getattr(self, '_%s_types' % datatype).\
-                          get(filename,
-                              getattr(self, '_default_%s_type' % datatype))
-      item_extract.labels = self._get_array_labels(datatype, filename=filename)
+      labels = self._get_array_labels(datatype, filename=filename)
+      types = self._get_array_types(datatype, filename=filename)
+      labels_extract = list()
+      for label in labels:
+        label_extract = deepcopy(item_extract.labels[0])
+        label_extract.name = label
+        label_extract.type = types[label]
+        labels_extract.append(label_extract)
+      item_extract.labels = labels_extract
       extract.append(item_extract)
     return extract
 
@@ -243,18 +266,32 @@ class MillerArrayDataManager(DataManagerBase):
     extract = phil_extract.data_manager
     extract = getattr(extract, '%s' % datatype)
     for item_extract in extract:
-      if ((not hasattr(item_extract, 'file')) or
-          (not hasattr(item_extract, 'labels')) or
-          (not hasattr(item_extract, 'type'))):
-        raise Sorry('This PHIL is not properly defined for the %s datatype.\n There should be a parameter for the filename ("file"), type ("type"), and labels ("labels").\n')
+      if (not hasattr(item_extract, 'file')):
+        raise Sorry('This PHIL is not properly defined for the %s datatype.\n There should be a parameter for the filename ("file").\n')
 
       # process file
       getattr(self, 'process_%s_file' % datatype)(item_extract.file)
-      getattr(self, '_%s_types' % datatype)[item_extract.file] = \
-        item_extract.type
-      # update labels
-      getattr(self, '_%s_labels' % datatype)[item_extract.file] = \
-        item_extract.labels
+
+      # check labels (if available)
+      if (len(item_extract.labels) > 0):
+        # all labels in file
+        file_labels = getattr(self, '_%s_labels' % datatype)[item_extract.file]
+
+        # labels from PHIL
+        phil_labels = list()
+        phil_types = dict()
+        for label in item_extract.labels:
+          if (label.name not in file_labels):
+            raise Sorry('The label, %s, could not be found in %s.' %
+                        (label.name, item_extract.file))
+          phil_labels.append(label.name)
+          if (label.type not in getattr(self, '_possible_%s_types' % datatype)):
+            raise Sorry('Unrecognized %s type, "%s," possible choices are %s.' %
+                        (datatype, label.type, ', '.join(
+                          getattr(self, '_possible_%s_types' % datatype))))
+          phil_types[label.name] = label.type
+        getattr(self, '_%s_labels' % datatype)[item_extract.file] = phil_labels
+        getattr(self, '_%s_types' % datatype)[item_extract.file] = phil_types
 
   def _set_default_miller_array_type(self, datatype, array_type):
     if (array_type not in getattr(self, '_possible_%s_types' % datatype)):
@@ -266,9 +303,12 @@ class MillerArrayDataManager(DataManagerBase):
   def _get_default_miller_array_type(self, datatype):
     return getattr(self, '_default_%s_type' % datatype)
 
-  def _set_miller_array_type(self, datatype, filename=None, array_type=None):
+  def _set_miller_array_type(self, datatype, filename=None, label=None,
+                             array_type=None):
     if (filename is None):
       filename = self._get_default_name(datatype)
+    if (label is None):
+      label = self._get_array_labels(datatype, filename)[0]
     if (array_type is None):
       array_type = getattr(self, '_default_%s_type' % datatype)
     elif (array_type not in getattr(self, '_possible_%s_types' % datatype)):
@@ -276,13 +316,15 @@ class MillerArrayDataManager(DataManagerBase):
                   (datatype,
                    array_type,
                    ', '.join(getattr(self, '_possible_%s_types' % datatype))))
-    setattr(self, '_default_%s_type' % datatype, array_type)
+    getattr(self, '_%s_types' % datatype)[filename][label] = array_type
 
-  def _get_miller_array_type(self, datatype, filename=None):
+  def _get_miller_array_type(self, datatype, filename=None, label=None):
     if (filename is None):
       filename = self._get_default_name(datatype)
-    return getattr(self, '_%s_types' % datatype).\
-      get(filename, getattr(self, '_default_%s_type' % datatype))
+    if (label is None):
+      label = self._get_array_labels(datatype, filename)[0]
+    types = self._get_array_types(datatype, filename)
+    return types.get(label, getattr(self, '_default_%s_type' % datatype))
 
   def _filter_miller_array_child_datatypes(self, filename):
     # filter arrays (e.g self.filter_map_coefficients_arrays)
@@ -315,8 +357,14 @@ class MillerArrayDataManager(DataManagerBase):
     storage_dict = getattr(self, '_%s_labels' % datatype)
     self._check_miller_array_storage_dict(datatype, storage_dict, filename)
     labels = storage_dict[filename]
-
     return labels
+
+  def _get_array_types(self, datatype, filename=None):
+    filename = self._check_miller_array_default_filename(datatype, filename)
+    storage_dict = getattr(self, '_%s_types' % datatype)
+    self._check_miller_array_storage_dict(datatype, storage_dict, filename)
+    types = storage_dict[filename]
+    return types
 
   def _get_arrays(self, datatype, filename=None, labels=None):
     filename = self._check_miller_array_default_filename(datatype, filename)
@@ -327,7 +375,6 @@ class MillerArrayDataManager(DataManagerBase):
     else:
       if (not isinstance(labels, list)):
         raise Sorry('The labels argument should be a list of labels')
-
     storage_dict = getattr(self, '_%s_arrays' % datatype)
     self._check_miller_array_storage_dict(datatype, storage_dict, filename)
     arrays = list()
@@ -353,19 +400,23 @@ class MillerArrayDataManager(DataManagerBase):
     data = self.get_miller_array(filename)
     miller_arrays = data.as_miller_arrays()
     labels = list()
+    types = dict()
     for array in miller_arrays:
       label = set(array.info().labels)
       common_labels = known_labels.intersection(label)
       if (len(common_labels) > 0):
-        labels.append(array.info().label_string())
+        label = array.info().label_string()
+        labels.append(label)
         datatype_dict = getattr(self, '_%s_arrays' % datatype)
         if (filename not in datatype_dict.keys()):
           datatype_dict[filename] = dict()
         datatype_dict[filename][label] = array
+        types[label] = getattr(self, '_default_%s_type' % datatype)
 
     # if arrays exist, start tracking
     if (len(labels) > 1):
       getattr(self, '_%s_labels' % datatype)[filename] = labels
+      getattr(self, '_%s_types' % datatype)[filename] = types
       self._add(datatype, filename, data)
 
 # =============================================================================

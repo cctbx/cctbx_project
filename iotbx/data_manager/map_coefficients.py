@@ -37,6 +37,14 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
   def add_map_coefficients(self, filename, data):
     self.add_miller_array(self, filename, data)
 
+  def set_default_map_coefficients_type(self, array_type=None):
+    return self._set_default_miller_array_type(
+      MapCoefficientsDataManager.datatype, array_type)
+
+  def get_default_map_coefficients_type(self):
+    return self._get_default_miller_array_type(
+      MapCoefficientsDataManager.datatype)
+
   def set_default_map_coefficients(self, filename):
     return self._set_default(MapCoefficientsDataManager.datatype, filename)
 
@@ -46,11 +54,25 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     '''
     return self._get(MapCoefficientsDataManager.datatype, filename)
 
+  def set_map_coefficients_type(self, filename=None, label=None, array_type=None):
+    return self._set_miller_array_type(MapCoefficientsDataManager.datatype,
+                                       filename, label, array_type)
+
+  def get_map_coefficients_type(self, filename=None, label=None):
+    return self._get_miller_array_type(MapCoefficientsDataManager.datatype,
+                                       filename, label)
+
   def get_map_coefficients_labels(self, filename=None):
     '''
     Returns a list of array labels
     '''
     return self._get_array_labels(MapCoefficientsDataManager.datatype, filename)
+
+  def get_map_coefficients_types(self, filename=None):
+    '''
+    Returns a dict of array types, keyed by label
+    '''
+    return self._get_array_types(MapCoefficeintsDataManager.datatype, filename)
 
   def get_map_coefficients_arrays(self, labels=None, filename=None):
     '''

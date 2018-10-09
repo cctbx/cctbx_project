@@ -439,12 +439,13 @@ def test_miller_array_datatype():
 
   # test type
   assert(dm.get_miller_array_type() == 'x_ray')
-  dm.set_miller_array_type(data_mtz, 'electron')
-  assert(dm.get_miller_array_type() == 'electron')
+  label = labels[3]
+  dm.set_miller_array_type(data_mtz, label, 'electron')
+  assert(dm.get_miller_array_type(label=label) == 'electron')
   dm.write_phil_file('test_phil', dm.export_phil_scope().as_str(), True)
   loaded_phil = iotbx.phil.parse(file_name='test_phil')
   new_dm.load_phil_scope(loaded_phil)
-  assert(new_dm.get_miller_array_type() == 'electron')
+  assert(new_dm.get_miller_array_type(label=label) == 'electron')
   new_dm = DataManager(['miller_array'])
   try:
     new_dm.set_default_miller_array_type('q')
@@ -452,7 +453,9 @@ def test_miller_array_datatype():
     pass
   new_dm.set_default_miller_array_type('neutron')
   new_dm.process_miller_array_file(data_mtz)
-  assert(new_dm.get_miller_array_type() == 'neutron')
+  assert(new_dm.get_miller_array_type(label=label) == 'neutron')
+
+  os.remove('test_phil')
 
   # test file server
   fs1 = dm.get_reflection_file_server()
@@ -470,6 +473,8 @@ def test_miller_array_datatype():
   miller_array = fs.get_amplitudes(None,None,True,None,None)
   assert(miller_array.info().label_string() == 'I,as_amplitude_array,merged')
 
+  for label in dm.get_miller_array_labels():
+    dm.set_miller_array_type(label=label, array_type='electron')
   fs = dm.get_reflection_file_server(array_type='x_ray')
   assert(len(fs.get_miller_arrays(None)) == 0)
   fs = dm.get_reflection_file_server(array_type='electron')
@@ -477,10 +482,47 @@ def test_miller_array_datatype():
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='neutron')
   assert(len(fs.get_miller_arrays(None)) == 0)
-  dm.set_miller_array_type(data_mtz, 'x_ray')
+  for label in ['I,SIGI,merged', 'IPR,SIGIPR,merged']:
+    dm.set_miller_array_type(label=label, array_type='x_ray')
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='x_ray')
   assert(len(fs.get_miller_arrays(data_mtz)) == 2)
+  fs = dm.get_reflection_file_server(filenames=[data_mtz], array_type='x_ray')
+  assert(len(fs.get_miller_arrays(data_mtz)) == 2)
+  fs = dm.get_reflection_file_server(filenames=[data_mtz], array_type='electron')
+  assert(len(fs.get_miller_arrays(data_mtz)) == 11)
+
+  # test subset of labels
+  label_subset = labels[3:8]
+  dm = DataManager(['miller_array', 'phil'])
+  dm.process_miller_array_file(data_mtz)
+  dm._miller_array_labels[data_mtz] = label_subset
+  dm.set_miller_array_type(label=label_subset[2], array_type='electron')
+  assert(dm.get_miller_array_type(label=label_subset[2]) == 'electron')
+  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  loaded_phil = iotbx.phil.parse(file_name='test.phil')
+  new_dm = DataManager(['miller_array', 'phil'])
+  new_dm.load_phil_scope(loaded_phil)
+  assert(new_dm.get_miller_array_type(label=label_subset[2]) == 'electron')
+  fs = new_dm.get_reflection_file_server(array_type='x_ray')
+  assert(len(fs.get_miller_arrays(None)) == 4)
+  fs = new_dm.get_reflection_file_server(array_type='electron')
+  assert(len(fs.get_miller_arrays(None)) == 1)
+  os.remove('test.phil')
+
+  label_subset = list()
+  dm = DataManager(['miller_array',  'phil'])
+  dm.process_miller_array_file(data_mtz)
+  dm._miller_array_labels[data_mtz] = label_subset
+  dm.write_phil_file('test.phil', dm.export_phil_scope().as_str(), True)
+  loaded_phil = iotbx.phil.parse(file_name='test.phil')
+  new_dm = DataManager(['miller_array', 'phil'])
+  new_dm.load_phil_scope(loaded_phil)
+  fs = new_dm.get_reflection_file_server(array_type='x_ray')
+  assert(len(fs.get_miller_arrays(None)) == 13)
+  fs = new_dm.get_reflection_file_server(array_type='electron')
+  assert(len(fs.get_miller_arrays(None)) == 0)
+  os.remove('test.phil')
 
 # -----------------------------------------------------------------------------
 if (__name__ == '__main__'):
