@@ -2393,7 +2393,7 @@ def guess_total_memory(meminfo_file='/proc/meminfo'):
   if (sys.platform == 'win32'):
     ps = subprocess.Popen(['wmic','OS','get','TotalVisibleMemorySize', '/Value'],
      stdout=subprocess.PIPE).communicate()[0]
-    mem = float(ps.split("=")[1].strip())
+    mem = float(ps.split("=")[1].strip()) * 1024
     return mem # trivially easy on Windows
 
   elif (sys.platform=='darwin'):
