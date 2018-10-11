@@ -125,10 +125,11 @@ def generate_protein_tuples(hierarchy,
           #
           if 0: list_of_threes.append(copy.copy(threes))
           else:
+            # transfer residues to new class because copy.copy is too deep
             tmp = ProteinResidues(geometry, registry=registry, length=length)
             for pr in threes: tmp.append(pr)
             list_of_threes.append(tmp)
-          #
+            #
         # per conformer
         for i, threes in enumerate(list_of_threes):
           if i==0:
