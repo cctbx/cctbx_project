@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # save specific results from the info object to be used by iota
     int_final = info.last_saved_best
     easy_pickle.dump(tmppath, int_final)
-  except Exception as e:
+  except Exception, e:
     if hasattr(e, "classname"):
       error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
     else:

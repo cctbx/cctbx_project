@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 # LIBTBX_SET_DISPATCHER_NAME iota.single_image
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -161,7 +160,7 @@ class DIALSSpfIdx(Thread):
           datablock = DataBlockFactory.from_filenames([self.img])[0]
           observed = self.processor.find_spots(datablock=datablock)
           status = 'spots found'
-        except Exception as e:
+        except Exception, e:
           fail = True
           observed = []
           err.append('SPOTFINDING ERROR: {}'.format(e))
@@ -174,7 +173,7 @@ class DIALSSpfIdx(Thread):
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
               score = len(indexed)
-            except Exception as e:
+            except Exception, e:
               fail = True
               err.append('INDEXING ERROR: {}'.format(e))
               pass
@@ -194,7 +193,7 @@ class DIALSSpfIdx(Thread):
               lat = experiments[0].crystal.get_space_group().info()
               sg = str(lat).replace(' ', '')
               status = 'indexed'
-            except Exception as e:
+            except Exception, e:
               fail = True
               err.append('LATTICE ERROR: {}'.format(e))
               pass
@@ -210,7 +209,7 @@ class DIALSSpfIdx(Thread):
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-              except Exception as e:
+              except Exception, e:
                 fail = True
                 err.append('REFINEMENT ERROR: {}'.format(e))
                 pass
@@ -223,7 +222,7 @@ class DIALSSpfIdx(Thread):
                                                       indexed=indexed)
                 frame = ConstructFrame(integrated, experiments[0]).make_frame()
                 status = 'integrated'
-              except Exception as e:
+              except Exception, e:
                 err.append('INTEGRATION ERROR: {}'.format(e))
                 pass
 
@@ -234,7 +233,7 @@ class DIALSSpfIdx(Thread):
         beam = datablock.unique_beams()[0]
 
         s1 = flex.vec3_double()
-        for i in range(len(observed)):
+        for i in xrange(len(observed)):
           s1.append(detector[observed['panel'][i]].get_pixel_lab_coord(
             observed['xyzobs.px.value'][i][0:2]))
         two_theta = s1.angle(beam.get_s0())
@@ -290,9 +289,12 @@ class DIALSSpfIdx(Thread):
             print e
 
       if self.output is not None:
+        print 'DEBUG: SAVING UNDER... ', self.output
         with open(self.output, 'a') as outf:
           info_line = ' '.join([str(i) for i in info])
           outf.write('{}\n'.format(info_line))
+      else:
+        print 'DEBUG: OUTPUT FILE NOT SPECIFIED...'
 
     if self.verbose:
       if errors == []:

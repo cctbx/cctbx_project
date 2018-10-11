@@ -59,6 +59,7 @@ class SingleImage(object):
     self.tmp_base = init.tmp_base
     self.abort_file = os.path.join(self.int_base, '.abort.tmp')
 
+    # self.filename_correction = False
     self.obj_path = None
     self.obj_file = None
     self.fin_path = None
@@ -134,15 +135,15 @@ class SingleImage(object):
 
 # =============================== IMAGE IMPORT FUNCTIONS =============================== #
 
-  def load_image(self):
+  def load_image(self, img):
     """ Reads raw image file and extracts data for conversion into pickle
         format. Also estimates gain if turned on."""
     # Load raw image or image pickle
 
     try:
       with misc.Capturing() as junk_output:
-        loaded_img = dxtbx.load(self.raw_img)
-    except Exception as e:
+        loaded_img = dxtbx.load(img)
+    except Exception, e:
       print 'IOTA IMPORT ERROR:', e
       loaded_img = None
       pass
@@ -200,7 +201,7 @@ class SingleImage(object):
           datablock = DataBlockFactory.from_filenames([self.raw_img])[0]
           imageset = datablock.extract_imagesets()[0]
           self.gain = estimate_gain(imageset)
-        except Exception as e:
+        except Exception, e:
           self.gain = 1.0
     else:
       self.gain = 1.0
@@ -376,15 +377,46 @@ class SingleImage(object):
       self.fail = 'aborted'
       return self
 
+    # TODO: remove when dxtbx/model/scan_helpers.py fixes go through.
+    # fn_end = os.path.splitext(self.raw_img)[0].split('_')[-1]
+    # if not fn_end.isdigit():
+    #   self.filename_correction = True
+    #   number = '0001'
+    # elif fn_end.isdigit() and len(str(fn_end)) < 5:
+    #   self.filename_correction = True
+    #   number = '{:05d}'.format(int(fn_end))
+    # else:
+    #   number = fn_end
+    #
+    # if self.filename_correction:
+    #   self.corr_base = misc.set_base_dir('corrected_images',
+    #                                      out_dir=self.params.output)
+    #   img_path = misc.make_image_path(self.raw_img, self.input_base,
+    #                                   self.corr_base)
+    #   img_filename = misc.make_filename(self.raw_img).replace(fn_end, number)
+    #   img_extension = os.path.splitext(self.raw_img)[1]
+    #   new_img = os.path.abspath(os.path.join(img_path,
+    #             '{}{}'.format(img_filename, img_extension)))
+    #   try:
+    #     if not os.path.isdir(img_path):
+    #       os.makedirs(img_path)
+    #   except OSError:
+    #     pass
+    #   shutil.copyfile(self.raw_img, new_img)
+    #   self.conv_img = new_img
+    #   img_data, img_type = self.load_image(img=self.conv_img)
+    # else:
+    #   img_data, img_type = self.load_image(img=self.raw_img)
+
     # Load image
-    img_data, img_type = self.load_image()
+    img_data, img_type = self.load_image(img=self.raw_img)
     self.status = 'loaded'
 
     if img_data is None:
-      self.log_path = misc.make_image_path(self.conv_img, self.input_base,
+      self.log_path = misc.make_image_path(self.raw_img, self.input_base,
                                            self.log_base)
       self.int_log = os.path.join(self.log_path,
-                                  misc.make_filename(self.conv_img) + '.tmp')
+                                  misc.make_filename(self.raw_img) + '.tmp')
       self.log_info.append('\n{:-^100}\n'.format(self.raw_img))
       self.log_info.append('FAILED TO IMPORT')
       self.status = 'failed import'
@@ -393,7 +425,7 @@ class SingleImage(object):
       if not self.params.image_conversion.convert_only:
         self.obj_path = misc.make_image_path(self.conv_img, self.input_base,
                                              self.obj_base)
-        rej_name = filter(None, misc.make_filename(self.conv_img))[0] + '_reject.int'
+        rej_name = filter(None, misc.make_filename(self.conv_img)) + '_reject.int'
         self.obj_file = os.path.abspath(os.path.join(self.obj_path, rej_name))
 
         try:
@@ -402,8 +434,7 @@ class SingleImage(object):
         except OSError:
           pass
 
-        # ep.dump(self.obj_file, self)
-
+      ep.dump(self.obj_file, self)
       return self
 
     # if DIALS is selected, change image type to skip conversion step
@@ -416,7 +447,7 @@ class SingleImage(object):
           data_array = img_data['DATA'].as_numpy_array().astype(float)
           self.center_int = np.nanmax(data_array[beam_y_px - 20:beam_y_px + 20,
                                                  beam_x_px - 20:beam_x_px + 20])
-        except Exception as e:
+        except Exception, e:
           print 'IMPORT ERROR: ', e
 
     # Log initial image information
@@ -561,20 +592,25 @@ class SingleImage(object):
     self.test_filename = filename
 
     if not self.params.image_conversion.convert_only:
-      self.obj_path = misc.make_image_path(self.conv_img, self.input_base, self.obj_base)
+      img = self.conv_img
+      # if self.filename_correction:
+      #   img = self.raw_img
+      # else:
+      #   img = self.conv_img
+      self.obj_path = misc.make_image_path(img, self.input_base, self.obj_base)
       self.obj_file = os.path.abspath(os.path.join(self.obj_path,
                                     filename + ".int"))
-      self.fin_path = misc.make_image_path(self.conv_img, self.input_base, self.fin_base)
-      self.log_path = misc.make_image_path(self.conv_img, self.input_base, self.log_base)
+      self.fin_path = misc.make_image_path(img, self.input_base, self.fin_base)
+      self.log_path = misc.make_image_path(img, self.input_base, self.log_base)
       self.fin_file = os.path.abspath(os.path.join(self.fin_path,
                      "int_{}.pickle".format(filename)))
       self.final['final'] = self.fin_file
-      self.final['img'] = self.conv_img
+      self.final['img'] = img
       self.int_log = os.path.join(self.log_path, filename + '.tmp')
-      self.viz_path = misc.make_image_path(self.conv_img, self.input_base, self.viz_base)
+      self.viz_path = misc.make_image_path(img, self.input_base, self.viz_base)
       self.viz_file = os.path.join(self.viz_path, "int_{}.png".format(filename))
 
-      # Create actual folders (if necessary)f
+      # Create actual folders (if necessary)
       try:
         if not os.path.isdir(self.obj_path):
           os.makedirs(self.obj_path)

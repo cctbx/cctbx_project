@@ -124,7 +124,7 @@ class Plotter(object):
       try:
         info.append([i, i['beamX'], i['beamY'], i['wavelength'], i['distance'],
                     (i['a'], i['b'], i['c'], i['alpha'], i['beta'], i['gamma'])])
-      except IOError as e:
+      except IOError, e:
         pass
 
     # Calculate beam center coordinates and distances
@@ -808,16 +808,20 @@ class Analyzer(object):
       pixel_size = 0
 
     triclinic = ['P1']
-    monoclinic = ['C2', 'P2', 'P121', 'C121']
-    orthorhombic = ['P222', 'C222', 'I222', 'F222']
-    tetragonal = ['I4', 'I422', 'P4', 'P422']
-    hexagonal = ['P3', 'P312', 'P321', 'P6', 'P622']
-    rhombohedral = ['R3', 'R32']
+    monoclinic = ['C2', 'P2', 'P121', 'P1211', 'C121', 'Pm', 'Cm', 'P2/m',
+                  'P21/m', 'C2/m']
+    orthorhombic = ['P222', 'C222', 'C2221', 'I222', 'F222', 'Pmmm', 'Cmmm',
+                    'Fmmm', 'Immm']
+    tetragonal = ['I4', 'I422', 'P4', 'P422', 'P4/m', 'P42/m', 'I4/m',
+                  'P4mm', 'I4mm', 'P4/mmm', 'I4/mmm']
+    hexagonal = ['P3', 'P312', 'P321', 'P6', 'P622', 'P6m', 'P6mm', 'P6/mmm',
+                 'H3', 'H32', 'R3', 'R32', 'R3:H', 'R32:H', 'R-3m:H']
     cubic = ['F23', 'F432', 'I23', 'I432', 'P23', 'P432']
 
     try:
-      sg = self.cons_pg.replace(" ", "")
-    except AttributeError:
+      sg = str(self.cons_pg).replace(" ", "")
+    except AttributeError, e:
+      print 'PRIME INPUT ERROR: ', e
       sg = 'P1'
 
     try:
@@ -835,8 +839,6 @@ class Analyzer(object):
       crystal_system = 'Tetragonal'
     elif sg in hexagonal:
       crystal_system = 'Hexagonal'
-    elif sg in rhombohedral:
-      crystal_system = 'Rhombohedral'
     elif sg in cubic:
       crystal_system = 'Cubic'
     else:

@@ -92,7 +92,7 @@ class merge_data_handler(object):
   def get_r_split(self):
     try:
       r_split_bin = (1/math.sqrt(2))*(flex.sum(flex.abs(self.I_even - self.I_odd))/(flex.sum(self.I_even + self.I_odd)*0.5))
-    except Exception as e:
+    except Exception, e:
       print "Warning: R_split calculation failed."
       print e
       r_split_bin =0

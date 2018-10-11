@@ -58,10 +58,7 @@ class ProcessAll(Thread):
       parallel_map(iterable=self.iterable,
                    func = self.full_proc_wrapper,
                    processes=self.init.params.n_processors)
-      end_filename = os.path.join(self.init.tmp_base, 'finish.cfg')
-      with open(end_filename, 'w') as ef:
-        ef.write('')
-    except IOTATermination as e:
+    except IOTATermination, e:
       aborted_file = os.path.join(self.init.int_base, '.aborted.tmp')
       with open(aborted_file, 'w') as abtf:
         abtf.write('')

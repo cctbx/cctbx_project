@@ -1,15 +1,22 @@
-IOTA v1.2.002 - UI update
+IOTA v1.2.003 - UI update
 
 Bugfixes:
-
+  - Workaround for images with unrecognizable filename templates; deprecated as
+    soon as dxtbx fix is accepted.
+  - Updated lists of space groups per lattice type
+  - Added failed imports to 'failed triage' fail type
+  - Added exception handling for failed PRIME merges at IOTA runtime
+  - Fixed input list expansion for Monitor Mode
+  - Added more exception handling for image object loading / reading in
+  - Unicode-to-str conversion for all input filenames prior to processing
+    (apparently causes problems with indexing)
 
 Features:
-- Removed param requirement for the PRIME Plotter module
-- Removed user / icon definition in PRIME Threads module
-- Added stand-alone image object finder module in utils
-
-
-Known issues:
-- UI remains really slow when using XDisplay
-- Clustering reporting needs touch-up in IOTA log file
-
+  - 'Run Analysis' button in Analysis Tab allows to re-run analysis when timers
+     have been stopped (i.e. when run is done / interrupted / recovered)
+  - User-supplied sg / uc info overrides that determined by Cluster at runtime
+  - PRIME: added timeout to in-IOTA instance (gets stuck if on LCLS queue)
+  - Moved image search thread instantiation to separate function
+  - Processing thread launches image search when finished (may need to revisit)
+  - (In progress) New thread for all calculations; UI will only plot
+  - PRIME: Added accepted/rejected images info in UI table

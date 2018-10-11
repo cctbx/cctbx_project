@@ -1,5 +1,4 @@
 from __future__ import division
-from six.moves import range
 
 """read PRIME input"""
 #Define exceptions
@@ -406,7 +405,7 @@ def process_input(argv=None, flag_mkdir=True):
         else:
           try:
             user_phil.append(iotbx.phil.parse(arg))
-          except RuntimeError as e :
+          except RuntimeError, e :
             raise Sorry("Unrecognized argument '%s' (error: %s)" % (arg, str(e)))
   #setup phil parameters
   working_phil = master_phil.fetch(sources=user_phil)
@@ -506,7 +505,7 @@ def read_pickles(data):
   #take care of tar files
   for tar_filename in frame_files:
     tarf = tarfile.open(name=tar_filename, mode='r')
-    for myindex in range(len(tarf.getmembers())):
+    for myindex in xrange(len(tarf.getmembers())):
       tar_files.append(tar_filename+':ind'+str(myindex))
   return tar_files
 

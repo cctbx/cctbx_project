@@ -287,8 +287,8 @@ class InputFinder():
       else:
         return [], None
 
-    # sort input by filename
-    input_list = sorted(input_list, key=lambda i: i)
+    # sort input by filename and ensure type is str and not unicode
+    input_list = map(str, sorted(input_list, key=lambda i: i))
 
     return input_list, input_type
 
@@ -346,7 +346,8 @@ class ObjectFinder(object):
     ''' Constructor '''
     self.ginp = InputFinder()
 
-  def find_objects(self, obj_folder, read_object_files=None, find_old=False):
+  def find_objects(self, obj_folder, read_object_files=None,
+                   find_old=False, finished_only=False):
     ''' Seek and import IOTA image objects
 
     :param obj_folder: path to objects (which can be in subfolders)
@@ -374,7 +375,10 @@ class ObjectFinder(object):
     new_finished_objects = [i for i in new_objects if
                             i is not None and i.status == 'final']
 
-    return new_finished_objects
+    if finished_only:
+      return new_finished_objects
+    else:
+      return new_objects
 
   def read_object_file(self, filepath):
     ''' Load pickled image object; if necessary, extract observations from

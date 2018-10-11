@@ -258,7 +258,7 @@ class MainWindow(wx.Frame):
         command_line_params = argument_interpreter.process(arg=arg)
         self.iota_phil = self.iota_phil.fetch(sources=[command_line_params, ])
         consume.append(arg)
-      except Sorry as e:
+      except Sorry, e:
         pass
     for item in consume:
       self.phil_args.remove(item)

@@ -1978,7 +1978,8 @@ class ViewerWarning(BaseDialog):
     self.rb2_img_view = wx.RadioButton(self, label='First 10 images')
     self.rb3_img_view = wx.RadioButton(self, label='First 50 images')
     self.rb4_img_view = wx.RadioButton(self, label='First 100 images')
-    self.rb5_img_view = wx.RadioButton(self, label='All images')
+    self.rb5_img_view = wx.RadioButton(self, label='All {} images'
+                                      ''.format(self.img_list_length))
     self.rb_custom = wx.RadioButton(self, label='Other: ')
     self.opt_custom = wx.TextCtrl(self, size=(100, -1))
     self.opt_custom.Disable()

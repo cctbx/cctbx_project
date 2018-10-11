@@ -276,7 +276,7 @@ class Integrator(object):
         else:
           int_final = result
 
-      except Exception as e:
+      except Exception, e:
         int_final = None
         if hasattr(e, "classname"):
           print e.classname, "for %s:"%self.img,

@@ -9,6 +9,7 @@ Description : IOTA GUI Threads and PostEvents
 
 import os
 import wx
+import time
 from threading import Thread
 
 from libtbx.easy_mp import parallel_map
@@ -21,9 +22,11 @@ import multiprocessing
 from xfel.clustering.cluster import Cluster
 from cctbx.uctbx import unit_cell
 from cctbx.sgtbx import lattice_symmetry
-from cctbx import crystal
+from cctbx import crystal, statistics
 
-from iota.components.iota_utils import InputFinder
+from prime.postrefine.mod_mx import mx_handler
+
+from iota.components.iota_utils import InputFinder, ObjectFinder
 from iota.components.iota_misc import Capturing
 import iota.components.iota_image as img
 import iota.components.iota_misc as misc
@@ -101,7 +104,8 @@ class ProcThread(Thread):
                init,
                iterable,
                term_file,
-               input_type='image'):
+               input_type='image',
+               UI_thread=False):
     Thread.__init__(self)
     self.parent = parent
     self.init = init
@@ -109,22 +113,27 @@ class ProcThread(Thread):
     self.type = input_type
     self.term_file = term_file
     self.aborted = False
+    self.UI_thread = UI_thread
 
   def run(self):
     try:
       img_objects = parallel_map(iterable=self.iterable,
                                  func = self.full_proc_wrapper,
+                                 callback=self.callback,
                                  processes=self.init.params.n_processors)
-    except IOTATermination as e:
+    except IOTATermination, e:
       self.aborted = True
       print e
       return
 
     # Send "all done" event to GUI
     try:
-      evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
-      wx.PostEvent(self.parent, evt)
-    except Exception as e:
+      if self.UI_thread:
+        wx.CallAfter(self.parent.onProcThreadDone, img_objects)
+      else:
+        evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
+        wx.PostEvent(self.parent, evt)
+    except Exception, e:
       pass
 
   def full_proc_wrapper(self, input_entry):
@@ -138,10 +147,15 @@ class ProcThread(Thread):
                                          abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except IOTATermination as e:
+    except IOTATermination, e:
       raise e
-    except Exception as e:
+    except Exception, e:
+      print 'IOTA PROC ERROR: ', e
       pass
+
+  def callback(self, result):
+    if self.UI_thread:
+      wx.CallAfter(self.parent.onProcThreadOneDone, result)
 
 class ImageFinderThread(Thread):
   ''' Worker thread generated to poll filesystem on timer. Will check to see
@@ -149,18 +163,26 @@ class ImageFinderThread(Thread):
   def __init__(self,
                parent,
                image_paths,
-               image_list):
+               image_list,
+               min_back=None,
+               last_file=None,
+               back_to_thread=False):
     Thread.__init__(self)
     self.parent = parent
     self.image_paths = image_paths
     self.image_list = image_list
+    self.min_back = min_back
+    self.last_file = last_file
+    self.back_to_thread = back_to_thread
 
   def run(self):
     # Poll filesystem and determine which files are new (if any)
 
     ext_file_list = ginp.make_input_list(self.image_paths,
                                          filter=True,
-                                         filter_type='image')
+                                         filter_type='image',
+                                         min_back=self.min_back,
+                                         last=self.last_file)
     old_file_list = [i[2] for i in self.image_list]
     new_file_list = [i for i in ext_file_list if i not in old_file_list]
 
@@ -168,8 +190,11 @@ class ImageFinderThread(Thread):
     new_img = [[i, len(ext_file_list) + 1, j] for i, j in enumerate(
       new_file_list, len(old_file_list) + 1)]
 
-    evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
-    wx.PostEvent(self.parent, evt)
+    if self.back_to_thread:
+      wx.CallAfter(self.parent.onImageFinderDone, new_img)
+    else:
+      evt = ImageFinderAllDone(tp_EVT_IMGDONE, -1, image_list=new_img)
+      wx.PostEvent(self.parent, evt)
 
 class ObjectFinderThread(Thread):
   ''' Worker thread that polls filesystem on timer for image objects. Will
@@ -203,7 +228,7 @@ class ObjectFinderThread(Thread):
     try:
       object = ep.load(filepath)
       return object
-    except EOFError as e:
+    except EOFError, e:
       print 'OBJECT_IMPORT_ERROR: ', e
       return None
 
@@ -232,6 +257,9 @@ class ImageViewerThread(Thread):
 tp_EVT_PROCTIMER = wx.NewEventType()
 EVT_PROCTIMER = wx.PyEventBinder(tp_EVT_PROCTIMER, 1)
 
+tp_EVT_PROCDONE = wx.NewEventType()
+EVT_PROCDONE = wx.PyEventBinder(tp_EVT_PROCDONE, 1)
+
 class ProcTimerDone(wx.PyCommandEvent):
   ''' Send event at every ProcTimer ping  '''
   def __init__(self, etype, eid, info=None):
@@ -240,19 +268,29 @@ class ProcTimerDone(wx.PyCommandEvent):
   def GetValue(self):
     return self.info
 
+class ProcAllDone(wx.PyCommandEvent):
+  ''' Send event at every ProcTimer ping  '''
+  def __init__(self, etype, eid):
+    wx.PyCommandEvent.__init__(self, etype, eid)
+
+
 class ProcessingInfo(object):
 
   def __init__(self):
     ''' constructor '''
 
-    self.image_objects = None
-    self.nref_list = None
-    self.res_list = None
-    self.img_list = None
-    self.indices = None
-    self.b_factors = None
-    self.cluster_info = None
-    self.prime_info = None
+    self.image_objects = []
+    self.nref_list = []
+    self.nref_xaxis = []
+    self.res_list = []
+    self.img_list = []
+    self.indices = []
+    self.b_factors = []
+    self.cluster_info = {}
+    self.prime_info = {}
+    self.status_summary = []
+    self.msg = None
+    self.test_attribute = 0
 
 class IOTAUIThread(Thread):
   ''' Main thread for IOTA UI; will contain all times and call all the other
@@ -262,17 +300,35 @@ class IOTAUIThread(Thread):
 
   def __init__(self,
                parent,
+               init,
                gparams,
                target_phil,
+               tmp_abort_file=None,
                tmp_aborted_file=None,
                proc_info_file=None,
-               recover=False):
+               recover=False,
+               state='idle'):
     Thread.__init__(self)
     self.parent = parent
+    self.init = init
     self.gparams = gparams
     self.target_phil = target_phil
+    self.tmp_abort_file = tmp_abort_file
     self.tmp_aborted_file = tmp_aborted_file
     self.recover = recover
+
+    self.state = state
+    self.finished = False
+    self.wait_for_new_images = False
+    self.monitor_mode = self.gparams.advanced.monitor_mode
+    self.monitor_mode_timeout = \
+      self.gparams.advanced.monitor_mode_timeout_length
+    self.timeout_start = None
+
+    self.new_images = []
+    self.finished_objects = []
+
+    self.mxh = mx_handler()
 
     # Instantiate info object
     if proc_info_file is None:
@@ -292,14 +348,48 @@ class IOTAUIThread(Thread):
     if self.recover:
       self.recover_info()
     else:
-      pass
+      self.process_images()
 
   def onPlotTimer(self, e):
     ''' One second timer for status check and plotting '''
 
+    # Check for monitor mode; if yes, find more images
+    if self.monitor_mode:
+      self.new_images = self.find_images(mode='new')
+
+    # Check for processing status and submit new images if necessary
+    if self.wait_for_new_images:
+      if len(self.new_images) > 0:
+        self.info.msg = 'Found {} new images'.format(len(self.new_images))
+        self.timeout_start = None
+        self.state = 'new images'
+        self.process_images()
+      else:
+        if self.monitor_mode_timeout != None:
+          if self.timeout_start is None:
+            self.timeout_start = time.time()
+          else:
+            interval = time.time() - self.timeout_start
+            if interval >= self.monitor_mode_timeout:
+              self.info.msg = 'Timed out. Finishing...'
+              self.info.finished = True
+            else:
+              self.info.msg = 'No images found! Timing out in {} seconds' \
+                          ''.format(int(self.monitor_mode_timeout - interval))
+        else:
+          self.find_new_images = self.monitor_mode
+          self.info.msg = 'No new images found! Waiting ...'
+    else:
+      self.info.msg = 'Wrapping up ...'
+      self.info.finished = True
+
+    # # Find image objects and get data
+    # self.info.image_objects = self.find_objects(find_old=True)
+    # for obj in self.info.image_objects:
+    #   self.populate_data_points(obj)
+
     # Send info to UI
-    info = []
-    evt = SpotFinderOneDone(tp_EVT_PROCTIMER, -1, info=info)
+    evt = ProcTimerDone(tp_EVT_PROCTIMER, -1, info=self.info)
     wx.PostEvent(self.parent, evt)
 
   def onAnalysisTimer(self, e):
@@ -329,19 +419,155 @@ class IOTAUIThread(Thread):
 
   def process_images(self):
     ''' One-fell-swoop importing / triaging / integration of images '''
-    pass
+    type = 'image'
+    if self.state == 'new images':
+      iterable = self.new_images
+      self.info.img_list.extend(iterable)
+      self.info.msg = 'Processing additional {} images ({} total)...' \
+                      ''.format(len(iterable), len(self.info.img_list))
+    elif self.state == 'resume':
+      iterable = self.find_images(mode='resume')
+      self.info.msg = 'Processing {} remaining images ({} total)...'\
+                      ''.format(len(iterable), len(self.info.img_list))
+    else:
+      iterable = self.find_images(mode='start')
+      self.info.img_list = iterable
+      self.info.msg = 'Processing {} images...'.format(len(self.info.img_list))
+
+    zeros = [0] * len(iterable)
+    self.info.status_summary.extend(zeros)
+    self.info.nref_list.extend(zeros)
+    self.info.res_list.extend(zeros)
+    self.info.nref_xaxis.extend([i[0] for i in iterable])
+
+    iter_path = os.path.join(self.init.int_base, 'iter.cfg')
+    init_path = os.path.join(self.init.int_base, 'init.cfg')
+    ep.dump(iter_path, iterable)
+    ep.dump(init_path, self.init)
+
+    if self.gparams.mp_method == 'multiprocessing':
+      # print 'DEBUG: SUBMITTING!'
+      # command = 'iota.process {} --files {} --type {} --stopfile {}' \
+      #             ''.format(init_path, iter_path, type, self.tmp_abort_file)
+      # print command
+      # easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
+
+      self.img_process = ProcThread(self,
+                                    init=self.init,
+                                    iterable=iterable,
+                                    input_type=type,
+                                    term_file=self.tmp_abort_file,
+                                    UI_thread=True)
+      self.img_process.start()
+    else:
+      self.img_process = None
+      self.job_id = None
+      queue = self.gparams.mp_queue
+      nproc = self.init.params.n_processors
+
+      if self.init.params.mp_method == 'lsf':
+        logfile = os.path.join(self.init.int_base, 'bsub.log')
+        pid = os.getpid()
+        try:
+          user = os.getlogin()
+        except OSError:
+          user = 'iota'
+        self.job_id = 'J_{}{}'.format(user[0], pid)
+        command = 'bsub -o {} -q {} -n {} -J {} ' \
+                  'iota.process {} --files {} --type {} --stopfile {}' \
+                  ''.format(logfile, queue, nproc, self.job_id,
+                            init_path, iter_path, type, self.tmp_abort_file)
+      elif self.init.params.mp_method == 'torq':
+        params = '{} --files {} --type {} --stopfile {}' \
+                 ''.format(init_path, iter_path, type, self.tmp_abort_file)
+        command = 'qsub -e /dev/null -o /dev/null -d {} iota.process -F "{}"' \
+                  ''.format(self.init.params.output, params)
+      else:
+        command = None
+      if command is not None:
+        try:
+          print command
+          easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
+          print 'JOB NAME = ', self.job_id
+        except IOTATermination, e:
+          print 'IOTA: JOB TERMINATED', e
+      else:
+        print 'IOTA ERROR: COMMAND NOT ISSUED!'
+        return
+
+  def onProcThreadDone(self, img_objects):
+    # Receive 'ALLDONE' signal from Proc thread
+    self.done_images = img_objects
+    if self.monitor_mode:
+      self.wait_for_new_images = True
+
+  def onProcThreadOneDone(self, obj):
+    self.finished_objects.append(obj)
+    self.info.image_objects.append(obj)
+    self.populate_data_points(obj)
 
   def analyze_results(self, analysis=None):
     pass
 
 
+  def find_images(self, mode='start'):
+
+    if mode == 'new':
+      min_back = -1
+    else:
+      min_back = None
+
+    found_files = ginp.make_input_list(self.gparams.input,
+                                       filter=True,
+                                       filter_type='image',
+                                       min_back=min_back)
+
+    if mode == 'new':
+      old_file_list = self.info.img_list
+      new_file_list = list(set(found_files) - set(self.info.img_list))
+    elif mode == 'resume':
+      old_file_list = [obj.raw_img for obj in self.info.image_objects
+                            if obj.status == 'final']
+      new_file_list = [obj.raw_img for obj in self.info.image_objects
+                            if obj.status != 'final']
+      new_images = list(set(found_files) - set(self.info.img_list))
+      new_file_list.extend(new_images)
+    else:
+      old_file_list = []
+      new_file_list = found_files
+
+    total_img_count = len(old_file_list) + len(new_file_list)
+    return [[i, total_img_count + 1, j] for i, j in enumerate(
+      new_file_list, len(old_file_list) + 1)]
+
   def find_objects(self, find_old=False):
-    pass
+    # Find object files (should be usable only on recover / resume)
+    obj_finder = ObjectFinder()
+    return obj_finder.find_objects(obj_folder=self.init.obj_base,
+                                   find_old=find_old)
 
-  def read_object_file(self, filepath):
-    pass
 
-  def populate_data_points(self, objects=None):
+  def populate_data_points(self, obj=None):
+    try:
+      self.info.nref_list[obj.img_index - 1] = obj.final['strong']
+      self.info.res_list[obj.img_index - 1] = obj.final['res']
+      if 'observations' in obj.final:
+        obs = obj.final['observations']
+        self.info.indices.extend([i[0] for i in obs])
+        try:
+          asu_contents = self.mxh.get_asu_contents(500)
+          observations_as_f = obs.as_amplitude_array()
+          observations_as_f.setup_binner(auto_binning=True)
+          wp = statistics.wilson_plot(observations_as_f, asu_contents,
+                                      e_statistics=True)
+          self.info.b_factors.append(wp.wilson_b)
+        except RuntimeError, e:
+          self.info.b_factors.append(0)
+    except Exception, e:
+      print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
+      pass
+
+  def finish_process(self):
     pass
 
 
@@ -406,7 +632,7 @@ class SpotFinderDIALSThread():
         try:
           datablock = DataBlockFactory.from_filenames([img])[0]
           observed = self.processor.find_spots(datablock=datablock)
-        except Exception as e:
+        except Exception, e:
           fail = True
           observed = []
           pass
@@ -417,7 +643,7 @@ class SpotFinderDIALSThread():
             try:
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
-            except Exception as e:
+            except Exception, e:
               fail = True
               pass
 
@@ -449,7 +675,7 @@ class SpotFinderDIALSThread():
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-              except Exception as e:
+              except Exception, e:
                 fail = True
                 pass
 
@@ -459,7 +685,7 @@ class SpotFinderDIALSThread():
                 print indexed
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
-              except Exception as e:
+              except Exception, e:
                 pass
 
       return [idx, int(len(observed)), img, sg, uc]
@@ -604,7 +830,7 @@ class SpotFinderThread(Thread):
                    func=self.spf_wrapper,
                    callback=self.callback,
                    processes=self.n_proc)
-    except IOTATermination as e:
+    except IOTATermination, e:
       self.terminated = True
       print e
 
@@ -621,7 +847,7 @@ class SpotFinderThread(Thread):
       # evt = SpotFinderAllDone(tp_EVT_SPFALLDONE, -1, info=info)
       # wx.PostEvent(self.parent, evt)
       return
-    except TypeError as e:
+    except TypeError, e:
       print e
       return
 
@@ -644,7 +870,7 @@ class SpotFinderThread(Thread):
         return result
       else:
         return [int(self.data_list.index(img)), 0, img, None, None]
-    except IOTATermination as e:
+    except IOTATermination, e:
       raise e
 
   def callback(self, info):
@@ -734,7 +960,7 @@ class InterceptorFileThread(Thread):
           info_line = [float(i) for i in uc]
           info_line.append(item[3])
           input.append(info_line)
-        except ValueError as e:
+        except ValueError, e:
           print 'CLUSTER ERROR: ', e
           pass
 
@@ -851,7 +1077,7 @@ class InterceptorThread(Thread):
             info_line = [float(i) for i in uc]
             info_line.append(item[3])
             input.append(info_line)
-          except ValueError as e:
+          except ValueError, e:
             print 'CLUSTER ERROR: ', e
             pass
 
