@@ -4360,7 +4360,11 @@ class build_all_chain_proxies(linking_mixins):
       bond_sym_proxies=bond_sym_proxies,
       bond_distance_model_max=bond_distance_model_max)
 
-  def process_geometry_restraints_edits_angle(self, sel_cache, params, log):
+  def process_geometry_restraints_edits_angle(self,
+                                              sel_cache,
+                                              params,
+                                              log,
+                                              second_pass=False):
     result = []
     if (len(params.angle) == 0): return result
     if (self.special_position_indices is None):
@@ -4387,6 +4391,21 @@ class build_all_chain_proxies(linking_mixins):
         show_atom_selections()
         print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
         print >> log, "      sigma = %.6g" % angle.sigma
+      elif (angle.action == "change"):
+        if not second_pass: pass
+        i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache, scope_extract=angle, sel_attrs=sel_attrs)
+        print i_seqs
+        print dir(self.geometry_proxy_registries.angle)
+        print dir(self.geometry_proxy_registries.angle.proxies)
+        i_proxy = self.geometry_proxy_registries.angle.lookup_i_proxy(i_seqs)
+        print i_proxy
+        self.geometry_proxy_registries.angle.proxies[i_proxy].angle_ideal=angle.angle_ideal
+        proxy = self.geometry_proxy_registries.angle.proxies[i_proxy]
+        print proxy
+        print dir(proxy)
+        print proxy.i_seqs, proxy.angle_ideal
+        #proxy.angle_ideal=angle.angle_ideal
       elif (angle.action != "add"):
         raise Sorry("%s = %s not implemented." %
           angle.__phil_path_and_value__("action"))
@@ -4633,12 +4652,12 @@ class build_all_chain_proxies(linking_mixins):
               break
       # TODO: planarity?
 
-  def process_geometry_restraints_edits(self, params, log):
+  def process_geometry_restraints_edits(self, params, log, second_pass=False):
     sel_cache = self.pdb_hierarchy.atom_selection_cache()
     result = self.process_geometry_restraints_edits_bond(
         sel_cache=sel_cache, params=params, log=log)
     result.angle_proxies=self.process_geometry_restraints_edits_angle(
-        sel_cache=sel_cache, params=params, log=log)
+        sel_cache=sel_cache, params=params, log=log, second_pass=second_pass)
     result.dihedral_proxies=self.process_geometry_restraints_edits_dihedral(
         sel_cache=sel_cache, params=params, log=log)
     result.planarity_proxies=self.process_geometry_restraints_edits_planarity(
@@ -5048,6 +5067,21 @@ class build_all_chain_proxies(linking_mixins):
         self.geometry_proxy_registries.planarity.add_if_not_duplicated(proxy=proxy)
       for proxy in processed_edits.parallelity_proxies:
         self.geometry_proxy_registries.parallelity.add_if_not_duplicated(proxy=proxy)
+
+    if params_edits.angle:
+      for angle in params_edits.angle:
+        print dir(angle)
+        print angle.atom_selection_1
+      print dir(self.geometry_proxy_registries.angle.proxies)
+
+      processed_edits = self.process_geometry_restraints_edits(
+        params=params_edits, log=log, second_pass=True)
+      max_bond_distance = max(max_bond_distance,
+        processed_edits.bond_distance_model_max)
+      print max_bond_distance
+
+
+
     #
     al_params = self.params.automatic_linking
     any_links = False
