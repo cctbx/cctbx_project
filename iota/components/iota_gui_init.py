@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -258,7 +259,7 @@ class MainWindow(wx.Frame):
         command_line_params = argument_interpreter.process(arg=arg)
         self.iota_phil = self.iota_phil.fetch(sources=[command_line_params, ])
         consume.append(arg)
-      except Sorry, e:
+      except Sorry:
         pass
     for item in consume:
       self.phil_args.remove(item)
@@ -271,7 +272,7 @@ class MainWindow(wx.Frame):
 
 
   def onItemInserted(self, e):
-    print self.input_window.input.all_data_images
+    print (self.input_window.input.all_data_images)
 
   def onReset(self, e):
     self.reset_settings()
@@ -492,7 +493,7 @@ class MainWindow(wx.Frame):
     input_list = []
     input_items = self.input_window.input.all_data_images
 
-    for key, imageset in input_items.iteritems():
+    for key, imageset in input_items.items():
       input_list.extend(imageset)
 
     self.proc_window = frm.ProcWindow(self, -1, title=title,

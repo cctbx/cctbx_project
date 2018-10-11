@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -121,7 +121,7 @@ class ProcThread(Thread):
                                  func = self.full_proc_wrapper,
                                  callback=self.callback,
                                  processes=self.init.params.n_processors)
-    except IOTATermination, e:
+    except IOTATermination as e:
       self.aborted = True
       print e
       return
@@ -133,7 +133,7 @@ class ProcThread(Thread):
       else:
         evt = AllDone(tp_EVT_ALLDONE, -1, img_objects=img_objects)
         wx.PostEvent(self.parent, evt)
-    except Exception, e:
+    except Exception:
       pass
 
   def full_proc_wrapper(self, input_entry):
@@ -147,9 +147,9 @@ class ProcThread(Thread):
                                          abort=abort)
       proc_image = proc_image_instance.run()
       return proc_image
-    except IOTATermination, e:
+    except IOTATermination as e:
       raise e
-    except Exception, e:
+    except Exception as e:
       print 'IOTA PROC ERROR: ', e
       pass
 
@@ -228,7 +228,7 @@ class ObjectFinderThread(Thread):
     try:
       object = ep.load(filepath)
       return object
-    except EOFError, e:
+    except EOFError as e:
       print 'OBJECT_IMPORT_ERROR: ', e
       return None
 
@@ -489,7 +489,7 @@ class IOTAUIThread(Thread):
           print command
           easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
           print 'JOB NAME = ', self.job_id
-        except IOTATermination, e:
+        except IOTATermination as e:
           print 'IOTA: JOB TERMINATED', e
       else:
         print 'IOTA ERROR: COMMAND NOT ISSUED!'
@@ -561,9 +561,9 @@ class IOTAUIThread(Thread):
           wp = statistics.wilson_plot(observations_as_f, asu_contents,
                                       e_statistics=True)
           self.info.b_factors.append(wp.wilson_b)
-        except RuntimeError, e:
+        except RuntimeError:
           self.info.b_factors.append(0)
-    except Exception, e:
+    except Exception as e:
       print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
       pass
 
@@ -632,7 +632,7 @@ class SpotFinderDIALSThread():
         try:
           datablock = DataBlockFactory.from_filenames([img])[0]
           observed = self.processor.find_spots(datablock=datablock)
-        except Exception, e:
+        except Exception:
           fail = True
           observed = []
           pass
@@ -643,7 +643,7 @@ class SpotFinderDIALSThread():
             try:
               experiments, indexed = self.processor.index(
                 datablock=datablock, reflections=observed)
-            except Exception, e:
+            except Exception:
               fail = True
               pass
 
@@ -675,7 +675,7 @@ class SpotFinderDIALSThread():
                 experiments, indexed = self.processor.refine(
                   experiments=experiments,
                   centroids=indexed)
-              except Exception, e:
+              except Exception:
                 fail = True
                 pass
 
@@ -685,7 +685,7 @@ class SpotFinderDIALSThread():
                 print indexed
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
-              except Exception, e:
+              except Exception:
                 pass
 
       return [idx, int(len(observed)), img, sg, uc]
@@ -830,7 +830,7 @@ class SpotFinderThread(Thread):
                    func=self.spf_wrapper,
                    callback=self.callback,
                    processes=self.n_proc)
-    except IOTATermination, e:
+    except IOTATermination as e:
       self.terminated = True
       print e
 
@@ -847,7 +847,7 @@ class SpotFinderThread(Thread):
       # evt = SpotFinderAllDone(tp_EVT_SPFALLDONE, -1, info=info)
       # wx.PostEvent(self.parent, evt)
       return
-    except TypeError, e:
+    except TypeError as e:
       print e
       return
 
@@ -870,7 +870,7 @@ class SpotFinderThread(Thread):
         return result
       else:
         return [int(self.data_list.index(img)), 0, img, None, None]
-    except IOTATermination, e:
+    except IOTATermination as e:
       raise e
 
   def callback(self, info):
@@ -960,7 +960,7 @@ class InterceptorFileThread(Thread):
           info_line = [float(i) for i in uc]
           info_line.append(item[3])
           input.append(info_line)
-        except ValueError, e:
+        except ValueError as e:
           print 'CLUSTER ERROR: ', e
           pass
 

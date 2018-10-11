@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -19,6 +20,11 @@ from wxtbx import bitmaps
 import wx.lib.buttons as btn
 
 import numpy as np
+
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
 from iota.components.iota_misc import noneset
 
@@ -184,7 +190,6 @@ class VirtualInputListCtrl(ulc.UltimateListCtrl, ListCtrlAutoWidthMixin,
     return self
 
   def OnColClick(self, e):
-    print "column clicked"
     e.Skip()
 
   def OnGetItemToolTip(self, item, col):
@@ -277,7 +282,7 @@ class FileListItem(object):
     self.warning = False
 
     if items is not None:
-      for key, value in items.iteritems():
+      for key, value in items.items():
         self.__setattr__(key, value)
 
 # --------------------------------- Controls --------------------------------- #
@@ -812,7 +817,7 @@ class KnobCtrl(CtrlBase):
     self.Bind(fs.EVT_FLOATSPIN, self.onFS_Value_Change, self.value_ctr.ctr)
 
   def onKC_Angle_Change(self, e):
-    print self.knob_ctr.GetMaxValue()
+    print (self.knob_ctr.GetMaxValue())
     self.value_ctr.ctr.SetValue(self.knob_ctr.GetValue())
     e.Skip()
 
@@ -1063,8 +1068,8 @@ class FastPlotter(CtrlBase):
     try:
       assert len(axarr_flat) == len(axes) == len(labels)
     except AssertionError:
-      print 'FastPlotter Error: Match number of plots to number of ' \
-            'axes and axis labels!'
+      print ('FastPlotter Error: Match number of plots to number of ' \
+            'axes and axis labels!')
 
     # Generate generic Nonetype axis object names & labels if none are provided
     if axes is None:

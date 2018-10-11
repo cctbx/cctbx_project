@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -11,7 +11,7 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 
 import sys
 import os
-from cStringIO import StringIO
+from io import StringIO
 
 import iotbx.phil as ip
 

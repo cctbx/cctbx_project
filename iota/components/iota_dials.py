@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -75,7 +75,7 @@ class IOTADialsProcessor(Processor):
       'tP': 75, 'tI': 79, 'hP': 143, 'hR': 146, 'cP': 195, 'cF': 196, 'cI': 197
     }
     filtered_lattices = {}
-    for key, value in lattice_to_sg_number.iteritems():
+    for key, value in lattice_to_sg_number.items():
       if key in possible_bravais_settings:
         filtered_lattices[key] = value
 
@@ -94,13 +94,12 @@ class IOTADialsProcessor(Processor):
 
     # Update space group / unit cell
     experiment = experiments[0]
-    print "Old crystal:"
-    print experiment.crystal
-    print
+    print ("Old crystal:")
+    print (experiment.crystal, '\n')
     experiment.crystal.update(solution.refined_crystal)
-    print "New crystal:"
-    print experiment.crystal
-    print
+    print ("New crystal:")
+    print (experiment.crystal, '\n')
+
 
     # Change basis
     cb_op = solution['cb_op_inp_best'].as_abc()
@@ -108,8 +107,8 @@ class IOTADialsProcessor(Processor):
     miller_indices = reflections['miller_index']
     non_integral_indices = change_of_basis_op.apply_results_in_non_integral_indices(miller_indices)
     if non_integral_indices.size() > 0:
-      print "Removing {}/{} reflections (change of basis results in non-integral indices)" \
-            "".format(non_integral_indices.size(), miller_indices.size())
+      print ("Removing {}/{} reflections (change of basis results in non-integral indices)" \
+            "".format(non_integral_indices.size(), miller_indices.size()))
     sel = flex.bool(miller_indices.size(), True)
     sel.set_selected(non_integral_indices, False)
     miller_indices_reindexed = change_of_basis_op.apply(
@@ -346,33 +345,33 @@ class Integrator(object):
     with misc.Capturing() as output:
       e = None
       try:
-        print "{:-^100}\n".format(" SPOTFINDING: ")
+        print ("{:-^100}\n".format(" SPOTFINDING: "))
         self.find_spots()
-        print "{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed)))
-      except Exception, e:
+        print ("{:-^100}\n\n".format(" FOUND {} SPOTS: ".format(len(self.observed))))
+      except Exception as e:
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img[0],
+          print (e.classname, "for %s:"%self.img[0],)
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Spotfinding error for %s:"%self.img[0],
+          print ("Spotfinding error for %s:"%self.img[0],)
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print error_message
+        print (error_message)
         self.fail = 'failed spotfinding'
 
       if self.fail == None:
         try:
-          print "{:-^100}\n".format(" INDEXING: ")
+          print ("{:-^100}\n".format(" INDEXING: "))
           self.index()
           if self.indexed is not None:
-           print "{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
-                                       "".format(len(self.indexed)))
+           print ("{:-^100}\n\n".format(" USED {} INDEXED REFLECTIONS: "
+                                       "".format(len(self.indexed))))
         except Exception, e:
           if hasattr(e, "classname"):
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Indexing error for %s:"%self.img[0],
+            print ("Indexing error for %s:"%self.img[0],)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print (error_message)
           self.fail = 'failed indexing'
 
       if (                                        self.fail is None and
@@ -380,32 +379,32 @@ class Integrator(object):
                              self.params.dials.determine_sg_and_reindex
           ):
         try:
-          print "{:-^100}\n".format(" DETERMINING SPACE GROUP : ")
+          print ("{:-^100}\n".format(" DETERMINING SPACE GROUP : "))
           self.refine_bravais_settings_and_reindex()
           lat = self.experiments[0].crystal.get_space_group().info()
           sg = str(lat).replace(' ', '')
           if sg != 'P1':
-            print "{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg))
+            print ("{:-^100}\n".format(" REINDEXED TO SPACE GROUP {} ".format(sg)))
           else:
-            print "{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY ")
-        except Exception, e:
-          print "Bravais / Reindexing Error: ", e
+            print ("{:-^100}\n".format(" RETAINED TRICLINIC (P1) SYMMETRY "))
+        except Exception as e:
+          print ("Bravais / Reindexing Error: ", e)
 
       if self.fail == None:
         try:
           self.refine()
-          print "{:-^100}\n".format(" INTEGRATING: ")
+          print ("{:-^100}\n".format(" INTEGRATING: "))
           self.integrate()
-          print "{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
-                                      "".format(len(self.integrated)))
-        except Exception, e:
+          print ("{:-^100}\n\n".format(" FINAL {} INTEGRATED REFLECTIONS "
+                                      "".format(len(self.integrated))))
+        except Exception as e:
           if hasattr(e, "classname"):
-            print e.classname, "for %s:"%self.img[0],
+            print (e.classname, "for %s:"%self.img[0],)
             error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
           else:
-            print "Integration error for %s:"%self.img[0],
+            print ("Integration error for %s:"%self.img[0],)
             error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-          print error_message
+          print (error_message)
           self.fail = 'failed integration'
 
     if self.fail == None and self.params.dials.filter.flag_on:
@@ -415,7 +414,7 @@ class Integrator(object):
                           uc=self.params.dials.filter.target_unit_cell,
                           min_ref=self.params.dials.filter.min_reflections,
                           min_res=self.params.dials.filter.min_resolution)
-      self.fail = selector.filter()
+      self.fail = selector.result_filter()
 
     with open(self.int_log, 'w') as tf:
       for i in output:
@@ -508,7 +507,7 @@ class Selector(object):
     self.min_res = min_res
     self.fail = None
 
-  def filter(self):
+  def result_filter(self):
     """ Unit cell pre-filter. Applies hard space-group constraint and stringent
         unit cell parameter restraints to filter out integration results that
         deviate. Optional step. Unit cell tolerance user-defined. """
@@ -551,7 +550,7 @@ if __name__ == "__main__":
   test = Integrator(sys.argv[1])
   test.find_spots()
 
-  print len(test.observed)
+  print (len(test.observed))
 
   test.index()
-  print len(test.indexed)
+  print (len(test.indexed))

@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -10,7 +10,7 @@ Description : Module with miscellaneous useful functions and classes
 import os
 import sys
 import wx
-from cStringIO import StringIO
+from io import StringIO
 
 from datetime import datetime
 from iota import iota_version
@@ -94,7 +94,7 @@ def main_log(logfile, entry, print_tag=False):
       lf.write('{}\n'.format(entry))
 
   if print_tag:
-    print entry
+    print (entry)
 
 def set_base_dir(dirname=None, sel_flag=False, out_dir=None):
   """ Generates a base folder for converted pickles and/or grid search and/or
@@ -182,6 +182,6 @@ def make_filename(path):
 
 def iota_exit(silent=False):
   if not silent:
-    print '\n\nIOTA version {0}'.format(iota_version)
-    print '{}\n'.format(now)
+    print ('\n\nIOTA version {0}'.format(iota_version))
+    print ('{}\n'.format(now))
   sys.exit()

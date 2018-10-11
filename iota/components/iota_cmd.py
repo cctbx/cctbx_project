@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -64,7 +64,6 @@ class ProgressBar:
     self._timer = ProgressBarTimer()
     self._start_time = self._timer._last_time
 
-    # Print 0 percent
     self.update(0, 0)
 
   def update(self, fpercent, spin_update):

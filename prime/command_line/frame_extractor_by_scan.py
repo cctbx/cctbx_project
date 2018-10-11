@@ -105,7 +105,7 @@ class ConstructFrame(object):
   def populate_mosaicity(self):
     try:
       self.frame['mosaicity'] = self.xtal.get_mosaicity()
-    except AttributeError, e:
+    except AttributeError as e:
       pass
 
   # get any available ML values

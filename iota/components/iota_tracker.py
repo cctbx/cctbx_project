@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -10,6 +11,11 @@ Description : IOTA image-tracking GUI module
 import os
 import wx
 import argparse
+
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
 from wxtbx import bitmaps
 import wx.lib.agw.ultimatelistctrl as ulc
@@ -334,7 +340,7 @@ class TrackChart(wx.Panel):
     self.bragg_line.set_ydata(min_bragg)
     try:
       self.draw_plot()
-    except AttributeError, e:
+    except AttributeError:
       pass
 
   def draw_plot(self, new_x=None, new_y=None, new_i=None, new_p=None):
@@ -463,7 +469,7 @@ class FileListCtrl(ct.CustomImageListCtrl, listmix.ColumnSorterMixin):
     return self.ctr
 
   def OnColClick(self, e):
-    print "column clicked"
+    print ("column clicked")
     e.Skip()
 
   def instantiate_sorting(self, data):
@@ -826,14 +832,14 @@ class TrackerWindow(wx.Frame):
       path = os.path.abspath(self.args.path)
       self.open_images_and_get_ready(path=path)
       if self.args.start:
-        print 'IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE'
+        print ('IMAGE_TRACKER: STARTING FROM FIRST RECORDED IMAGE')
       elif self.args.proceed:
-        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO'
+        print ('IMAGE_TRACKER: STARTING FROM IMAGE RECORDED 1 MIN AGO')
         min_back = -1
       elif self.args.time > 0:
         min_back = -self.args.time[0]
-        print 'IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
-              ''.format(min_back)
+        print ('IMAGE_TRACKER: STARTING FROM IMAGE RECORDED {} MIN AGO' \
+              ''.format(min_back))
       else:
         auto_start = False
     else:

@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -10,6 +11,11 @@ Description : Module with basic utilities of broad applications in IOTA
 import os
 from cctbx import miller
 assert miller
+
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
 from libtbx import easy_pickle as ep
 from libtbx import easy_run
@@ -288,7 +294,7 @@ class InputFinder():
         return [], None
 
     # sort input by filename and ensure type is str and not unicode
-    input_list = map(str, sorted(input_list, key=lambda i: i))
+    input_list = list(map(str, sorted(input_list, key=lambda i: i)))
 
     return input_list, input_type
 
@@ -396,7 +402,7 @@ class ObjectFinder(object):
           object.final['observations'] = pickle['observations'][0]
       return object
     except Exception, e:
-      print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
+      print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
 
@@ -405,7 +411,7 @@ class ObjectFinder(object):
 class RadAverageCalculator(object):
   def __init__(self, image=None, datablock=None):
     if (image is None and datablock is None):
-      print 'ERROR: Need image or datablock for Radial Average Calculator'
+      print ('ERROR: Need image or datablock for Radial Average Calculator')
       return
     if datablock is None:
       from dxtbx.datablock import DataBlockFactory

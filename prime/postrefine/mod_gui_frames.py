@@ -781,7 +781,7 @@ class FileListCtrl(ct.CustomListCtrl):
       try:
         file_string = ' '.join(file_list)
         easy_run.fully_buffered('cctbx.image_viewer {}'.format(file_string))
-      except Exception, e:
+      except Exception as e:
         print e
 
     else:

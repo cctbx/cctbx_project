@@ -1,4 +1,6 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import xrange
+
 # LIBTBX_SET_DISPATCHER_NAME iota.single_image
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export BOOST_ADAPTBX_FPE_DEFAULT=1
@@ -216,8 +218,8 @@ class DIALSSpfIdx(Thread):
 
             if not fail:
               try:
-                print experiments
-                print indexed
+                print (experiments)
+                print (indexed)
                 integrated = self.processor.integrate(experiments=experiments,
                                                       indexed=indexed)
                 frame = ConstructFrame(integrated, experiments[0]).make_frame()
@@ -274,27 +276,24 @@ class DIALSSpfIdx(Thread):
       idx, n_spots, img_path, sg, uc = info
 
       if self.verbose:
-        print 'IMAGE #{}: {}'.format(idx, img_path)
-        print 'SPOTS FOUND: {}'.format(n_spots)
-        print 'INDEXING: {} INDEXED SPOTS'.format(score)
+        print ('IMAGE #{}: {}'.format(idx, img_path))
+        print ('SPOTS FOUND: {}'.format(n_spots))
+        print ('INDEXING: {} INDEXED SPOTS'.format(score))
         if res[0] != 99:
-          print 'RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1])
+          print ('RESOLUTION: {:.2f} - {:.2f}'.format(res[0], res[1]))
         if sg is not None and uc is not None:
-          print 'BRAVAIS LATTICE: {}'.format(sg)
-          print 'UNIT CELL: {}'.format(uc)
-        print 'TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed)
+          print ('BRAVAIS LATTICE: {}'.format(sg))
+          print ('UNIT CELL: {}'.format(uc))
+        print ('TOTAL PROCESSING TIME: {:.2f} SEC'.format(elapsed))
 
         if err != []:
           for e in err:
-            print e
+            print (e)
 
       if self.output is not None:
-        print 'DEBUG: SAVING UNDER... ', self.output
         with open(self.output, 'a') as outf:
           info_line = ' '.join([str(i) for i in info])
           outf.write('{}\n'.format(info_line))
-      else:
-        print 'DEBUG: OUTPUT FILE NOT SPECIFIED...'
 
     if self.verbose:
       if errors == []:
@@ -304,14 +303,14 @@ class DIALSSpfIdx(Thread):
         err = errors[0]
         print_errors = True
 
-      print '\n__RESULTS__'
-      print '{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots, n_overloads,
-                                      score, res[1], n_rings, 0, avg_I, 0, err)
+      print ('\n__RESULTS__')
+      print ('{} {} {} {:.2f} {} {} {} {} {{{}}}' .format(n_spots, n_overloads,
+                                      score, res[1], n_rings, 0, avg_I, 0, err))
 
       if print_errors:
-        print "__ERRORS__"
+        print ("__ERRORS__")
         for e in errors:
-          print e
+          print (e)
 
 
 

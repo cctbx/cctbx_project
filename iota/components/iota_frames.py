@@ -1,4 +1,5 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
+from past.builtins import range
 
 '''
 Author      : Lyubimov, A.Y.
@@ -867,8 +868,8 @@ class ProcessingTab(ScrolledPanel):
 
       self.proc_canvas.draw()
 
-    except ValueError, e:
-      print 'SUMMARY PLOT ERROR: ', e
+    except ValueError as e:
+      print ('SUMMARY PLOT ERROR: ', e)
 
   def draw_plots(self):
     if sum(self.nref_list) > 0 and sum(self.res_list) > 0:
@@ -909,8 +910,8 @@ class ProcessingTab(ScrolledPanel):
       self.nsref_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
       self.nsref_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
 
-    except ValueError, e:
-      print "NSREF ERROR: ", e
+    except ValueError as e:
+      print ("NSREF ERROR: ", e)
 
     try:
       # Resolution per frame
@@ -969,8 +970,8 @@ class ProcessingTab(ScrolledPanel):
         self.btn_right.Enable()
         self.btn_viewer.Enable()
 
-    except ValueError, e:
-      print "RES ERROR: ", e
+    except ValueError as e:
+      print ("RES ERROR: ", e)
 
 
 
@@ -1007,8 +1008,8 @@ class ProcessingTab(ScrolledPanel):
         equiv = ms.multiplicities().merge_equivalents()
         merged_indices = equiv.redundancies()
 
-      except Exception, e:
-        print 'HKL ERROR: ', e
+      except Exception as e:
+        print ('HKL ERROR: ', e)
         return
 
       # Draw a h0, k0, or l0 slice of merged data so far
@@ -1064,7 +1065,7 @@ class ProcessingTab(ScrolledPanel):
         ymax = abs(max(y, key=abs))
         self.hkl_axes.set_xlim(xmin=-xmax, xmax=xmax)
         self.hkl_axes.set_ylim(ymin=-ymax, ymax=ymax)
-      except ValueError, e:
+      except ValueError as e:
         pass
 
       norm = colors.Normalize(vmin=0, vmax=np.max(freq))
@@ -1134,7 +1135,7 @@ class ProcessingTab(ScrolledPanel):
             search = False
           else:
             search = True
-      except IndexError, e:
+      except IndexError as e:
         search = False
         self.pick['index'] = idx
         self.pick['image'] = None
@@ -1147,7 +1148,7 @@ class ProcessingTab(ScrolledPanel):
     obj_i = [i for i in self.finished_objects if i.img_index == idx + 1]
     img = obj_i[0].conv_img
 
-    print '{}: {}'.format(idx+1, img)
+    print ('{}: {}'.format(idx+1, img))
     self.pick['image'] = img
     self.pick['index'] = idx
 
@@ -1329,8 +1330,8 @@ class LiveAnalysisTab(ScrolledPanel):
                               contents=self.tb1_data,
                               label_style='bold')
       self.tb1_box_sizer.Add(self.tb1, 1, flag=wx.EXPAND | wx.ALL, border=10)
-    except Exception, e:
-      print 'PRIME PLOTTER ERROR: ', e
+    except Exception as e:
+      print ('PRIME PLOTTER ERROR: ', e)
 
   def calculate_uc_histogram(self, a, axes, xticks_loc='top', set_ylim=False):
     n, bins = np.histogram(a, 50)
@@ -1414,8 +1415,8 @@ class LiveAnalysisTab(ScrolledPanel):
         #                 histtype='stepfilled')
         plt.setp(self.gamma_axes.get_yticklabels(), visible=False)
 
-    except ValueError, e:
-      print 'UC HISTOGRAM ERROR: ', e
+    except ValueError as e:
+      print ('UC HISTOGRAM ERROR: ', e)
 
 
 class SummaryTab(ScrolledPanel):
@@ -2300,7 +2301,7 @@ class tmpProcWindow(wx.Frame):
       self.status_txt.SetForegroundColour('red')
       self.status_txt.SetLabel('ABORTED BY USER')
       self.proc_toolbar.EnableTool(self.tb_btn_resume.GetId(), True)
-      print 'JOB TERMINATED!'
+      print ('JOB TERMINATED!')
     else:
       self.final_objects = [i for i in self.finished_objects if i.fail == None]
       self.gauge_process.Hide()
@@ -2320,7 +2321,7 @@ class tmpProcWindow(wx.Frame):
         self.status_txt.SetFont(font)
         self.status_txt.SetForegroundColour('blue')
         self.status_txt.SetLabel('NO IMAGES PROCESSED')
-      print 'JOB FINISHED!'
+      print ('JOB FINISHED!')
 
     # Remove the temp folder
     import shutil
@@ -2730,13 +2731,13 @@ class ProcWindow(wx.Frame):
         command = None
       if command is not None:
         try:
-          print command
+          print (command)
           easy_run.fully_buffered(command, join_stdout_stderr=True).show_stdout()
-          print 'JOB NAME = ', self.job_id
-        except thr.IOTATermination, e:
-          print 'IOTA: JOB TERMINATED',  e
+          print ('JOB NAME = ', self.job_id)
+        except thr.IOTATermination as e:
+          print ('IOTA: JOB TERMINATED',  e)
       else:
-        print 'IOTA ERROR: COMMAND NOT ISSUED!'
+        print ('IOTA ERROR: COMMAND NOT ISSUED!')
         return
 
 
@@ -2991,8 +2992,8 @@ class ProcWindow(wx.Frame):
   def read_object_file(self, filepath):
     try:
       object = ep.load(filepath)
-    except Exception, e:
-      print 'OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e)
+    except Exception as e:
+      print ('OBJECT_IMPORT_ERROR for {}: {}'.format(filepath, e))
       return None
 
     try:
@@ -3002,8 +3003,8 @@ class ProcWindow(wx.Frame):
           pickle = ep.load(pickle_path)
           object.final['observations'] = pickle['observations'][0]
       return object
-    except Exception, e:
-      print 'OBJECT_ATTRIBUTE_ERROR for {}: {}'.format(filepath, e)
+    except Exception as e:
+      print ('OBJECT_ATTRIBUTE_ERROR for {}: {}'.format(filepath, e))
       return object
 
   def populate_data_points(self, objects=None):
@@ -3024,10 +3025,10 @@ class ProcWindow(wx.Frame):
               wp = statistics.wilson_plot(observations_as_f, asu_contents,
                                           e_statistics=True)
               self.b_factors.append(wp.wilson_b)
-            except RuntimeError, e:
+            except RuntimeError:
               self.b_factors.append(0)
-        except Exception, e:
-          print 'OBJECT_ERROR:', e, "({})".format(obj.obj_file)
+        except Exception as e:
+          print ('OBJECT_ERROR:', e, "({})".format(obj.obj_file))
           self.finished_objects.pop(self.finished_objects.index(obj))
 
   def onChartTimer(self, e):
@@ -3373,7 +3374,7 @@ class ProcWindow(wx.Frame):
         shutil.rmtree(self.init.tmp_base)
       except Exception:
         pass
-      print 'JOB TERMINATED!'
+      print ('JOB TERMINATED!')
       return
     else:
       self.final_objects = [i for i in self.finished_objects if i.fail == None]
@@ -3395,7 +3396,7 @@ class ProcWindow(wx.Frame):
         self.status_txt.SetForegroundColour('blue')
         self.status_txt.SetLabel('NO IMAGES PROCESSED')
 
-      print 'JOB FINISHED!'
+      print ('JOB FINISHED!')
 
       try:
         shutil.rmtree(self.init.tmp_base)

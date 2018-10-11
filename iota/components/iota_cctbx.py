@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 '''
 Author      : Lyubimov, A.Y.
@@ -12,6 +12,11 @@ Description : Runs cctbx.xfel integration module either in grid-search or final
 import os
 import uuid
 import numpy as np
+
+try:  # for Py3 compatibility
+    import itertools.izip as zip
+except ImportError:
+    pass
 
 from spotfinder.array_family import flex
 
@@ -264,8 +269,8 @@ class Integrator(object):
       try:
         easy_run.fully_buffered(command,join_stdout_stderr=True).show_stdout()
         if not os.path.exists(tmppath):
-          print tmppath
-          print command
+          print (tmppath)
+          print (command)
           raise Exception("Indexing failed for an unknown reason")
 
         # iota.bulletproof saves the needed results from indexing in a tmp file
@@ -279,12 +284,12 @@ class Integrator(object):
       except Exception, e:
         int_final = None
         if hasattr(e, "classname"):
-          print e.classname, "for %s:"%self.img,
+          print (e.classname, "for %s:"%self.img,)
           error_message = "{}: {}".format(e.classname, e[0].replace('\n',' ')[:50])
         else:
-          print "Integration error for %s:"%self.img,
+          print ("Integration error for %s:"%self.img,)
           error_message = "{}".format(str(e).replace('\n', ' ')[:50])
-        print e
+        print (e)
 
     # Output results of integration (from the "info" object returned by
     # run_one_index_core)
@@ -333,7 +338,7 @@ class Integrator(object):
                        'mos':mosaicity, 'epv':ewald_proximal_volume,
                        'info':int_status,'ok':True}
       except ValueError:
-        print self.img
+        print (self.img)
 
 
     # write integration logfile
