@@ -10,7 +10,8 @@ Description : Module with miscellaneous useful functions and classes
 import os
 import sys
 import wx
-from io import StringIO
+# from cStringIO import StringIO
+from io import BytesIO
 
 from datetime import datetime
 from iota import iota_version
@@ -67,8 +68,8 @@ class Capturing(list):
   def __enter__(self):
     self._stdout = sys.stdout
     self._stderr = sys.stderr
-    sys.stdout = self._stringio_stdout = StringIO()
-    sys.stderr = self._stringio_stderr = StringIO()
+    sys.stdout = self._stringio_stdout = BytesIO()
+    sys.stderr = self._stringio_stderr = BytesIO()
     return self
   def __exit__(self, *args):
     self.extend(self._stringio_stdout.getvalue().splitlines())

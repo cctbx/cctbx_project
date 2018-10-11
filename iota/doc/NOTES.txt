@@ -10,6 +10,7 @@ Bugfixes:
   - Added more exception handling for image object loading / reading in
   - Unicode-to-str conversion for all input filenames prior to processing
     (apparently causes problems with indexing)
+  - Removed duplicate Capturing class from iota_input.py
 
 Features:
   - 'Run Analysis' button in Analysis Tab allows to re-run analysis when timers

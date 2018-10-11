@@ -9,11 +9,9 @@ Description : IOTA I/O module. Reads PHIL input, also creates reasonable IOTA
 '''
 
 
-import sys
 import os
-from io import StringIO
-
 import iotbx.phil as ip
+from iota.components.iota_misc import Capturing
 
 master_phil = ip.parse("""
 description = None
@@ -336,22 +334,6 @@ mp_queue = None
   .type = str
   .help = Multiprocessing queue
 """)
-
-class Capturing(list):
-  """ Class used to capture stdout from cctbx.xfel objects. Saves output in
-  appendable list for potential logging.
-  """
-  def __enter__(self):
-    self._stdout = sys.stdout
-    self._stderr = sys.stderr
-    sys.stdout = self._stringio_stdout = StringIO()
-    sys.stderr = self._stringio_stderr = StringIO()
-    return self
-  def __exit__(self, *args):
-    self.extend(self._stringio_stdout.getvalue().splitlines())
-    sys.stdout = self._stdout
-    self.extend(self._stringio_stderr.getvalue().splitlines())
-    sys.stderr = self._stderr
 
 def process_input(args,
                   phil_args,
